@@ -1,5 +1,7 @@
 import { DataAuthorizationEnforcementService } from './data-authorization-enforcement.service';
 import { DataAuthorizationDeniedException } from './data-authorization.exceptions';
+import { POLICY_RESOLVER_DECISION } from './policy-resolver/policy-resolver.constants';
+import type { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 
 describe('DataAuthorizationEnforcementService', () => {
   const prisma = {
@@ -9,11 +11,25 @@ describe('DataAuthorizationEnforcementService', () => {
     },
   };
 
+  const policyResolver = {
+    resolve: jest.fn(),
+  };
+
   let service: DataAuthorizationEnforcementService;
+
+  const denyResolution = {
+    decisionCandidate: POLICY_RESOLVER_DECISION.DENY,
+    matchedPolicy: null,
+    blockingReasons: ['NO_MATCHING_POLICY'],
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new DataAuthorizationEnforcementService(prisma as any);
+    policyResolver.resolve.mockResolvedValue(denyResolution);
+    service = new DataAuthorizationEnforcementService(
+      prisma as never,
+      policyResolver as unknown as PolicyResolverService,
+    );
   });
 
   it('allows CONNECTED_VEHICLES scope when vehicle is listed', async () => {
@@ -104,5 +120,23 @@ describe('DataAuthorizationEnforcementService', () => {
         purpose: 'LIVE_MAP',
       }),
     ).rejects.toBeInstanceOf(DataAuthorizationDeniedException);
+  });
+
+  it('uses policy resolver result when ALLOW with matched policy', async () => {
+    policyResolver.resolve.mockResolvedValue({
+      decisionCandidate: POLICY_RESOLVER_DECISION.ALLOW,
+      matchedPolicy: { id: 'policy-resolved-1' },
+      blockingReasons: [],
+    });
+
+    const result = await service.assertDataAuthorization({
+      orgId: 'org-1',
+      sourceType: 'DIMO',
+      dataCategory: 'GPS_LOCATION',
+      purpose: 'LIVE_MAP',
+    });
+
+    expect(result.id).toBe('policy-resolved-1');
+    expect(prisma.orgDataAuthorization.findMany).not.toHaveBeenCalled();
   });
 });

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'central-policy-resolver-v49795-2026-07-23',
+    version: '4.9.795',
+    title: 'V4.9.795 — Zentraler Policy Resolver (Prompt 12)',
+    summary: [
+      'Einheitlicher PolicyResolverService für runtime-Zugriffsentscheidungen über ProcessingActivity, LegalBasis, Consent, ProviderGrant, DataSharing, DPA und EnforcementPolicy.',
+      'Deterministische Scope-Priorität, Konflikt bei gleichwertigen Treffern, strukturierte Reason Codes, keine DB-Mutationen, kein findFirst.',
+      'DataAuthorizationEnforcementService delegiert an Resolver; Legacy OrgDataAuthorization als kontrollierter Fallback.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 12 — zentrale Resolver-Architektur für mandantensichere, nachvollziehbare Zugriffsentscheidungen.',
+    previousBehavior:
+      'Nur Legacy OrgDataAuthorization-Matching in EnforcementService ohne Privacy-Domain-Stack-Prüfung.',
+    details:
+      'Module: policy-resolver/ (engine, matching, context, service). 15 Engine-Tests + Enforcement-Integration. Doku: docs/architecture/policy-resolver-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:10:00.000Z',
+  },
+  {
     id: 'privacy-policy-lifecycle-v49794-2026-07-23',
     version: '4.9.794',
     title: 'V4.9.794 — Versionierter Policy-Lifecycle (Prompt 11)',

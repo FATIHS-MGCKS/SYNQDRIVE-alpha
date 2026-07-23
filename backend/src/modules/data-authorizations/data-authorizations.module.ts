@@ -19,6 +19,7 @@ import { PolicyLifecycleEventsService } from './privacy-domain/policy-lifecycle/
 import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from './privacy-domain/policy-lifecycle/policy-lifecycle.service';
 import { ProcessingActivityLifecycleService } from './privacy-domain/policy-lifecycle/processing-activity-lifecycle.service';
 import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/policy-lifecycle.controller';
+import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 
 @Module({
   controllers: [
@@ -45,6 +46,7 @@ import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/pol
     PolicyLifecycleEventsService,
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
+    PolicyResolverService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -59,6 +61,7 @@ import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/pol
     PolicyLifecycleService,
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
+    PolicyResolverService,
   ],
 })
 export class DataAuthorizationsModule {}
