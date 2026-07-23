@@ -5,6 +5,9 @@ import { CustomerVerificationService } from '@modules/customer-verification/cust
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { BookingRentalEligibilityService } from '../booking-rental-eligibility.service';
 import {
+  BOOKING_ELIGIBILITY_DECISION_AUTHORITY,
+} from './booking-eligibility-decision.policy';
+import {
   BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION,
   BOOKING_ELIGIBILITY_GATE_DOMAIN,
   BOOKING_ELIGIBILITY_REASON_CODE,
@@ -25,18 +28,14 @@ import {
   mapVerificationToGateReasons,
   resolveAggregateGateStatus,
 } from './booking-eligibility-gatekeeper.util';
+import type { BookingEligibilityDomainContribution } from './booking-eligibility-decision.policy';
 import { buildBookingEligibilityCorrelationIds } from './booking-eligibility-correlation.util';
 
 /**
  * Central orchestrator for booking transition eligibility.
  *
- * Composes existing domain evaluators without duplicating their business logic:
- * - {@link CustomerEligibilityService} — customer lifecycle / policy
- * - {@link CustomerVerificationService} — document verification status
- * - {@link BookingRentalEligibilityService} — effective rental rules
- * - {@link RentalHealthService} — optional vehicle readiness (when enabled)
- *
- * Wired into BookingsService create/update via BookingEligibilityEnforcementService (Prompt 8).
+ * Subsystems contribute facts and partial domain results; this service is the
+ * sole producer of the final booking eligibility decision.
  */
 @Injectable()
 export class BookingEligibilityGatekeeperService {
@@ -57,94 +56,108 @@ export class BookingEligibilityGatekeeperService {
         bookingId: input.bookingId,
         command: input.stage === 'PREVIEW' ? 'preview' : input.stage === 'CONFIRM' ? 'confirm' : input.stage === 'PICKUP' ? 'pickup' : 'create',
       });
-    const blockingReasons: BookingEligibilityGateReason[] = [];
-    const warnings: BookingEligibilityGateReason[] = [];
-    const missingFields: string[] = [];
-    const domainStatuses: BookingEligibilityGateStatus[] = [];
+    const contributions: BookingEligibilityDomainContribution[] = [];
     let recheckRequired = false;
+    let sourceRuleIds: string[] = [];
 
     const vehicleSlice = await this.evaluateVehicleReference(input);
     if (!vehicleSlice.vehicleFound) {
       if (vehicleSlice.error) {
-        domainStatuses.push('TECHNICAL_ERROR');
-        blockingReasons.push({
-          code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+        contributions.push({
           domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE,
-          message: vehicleSlice.error,
+          status: 'TECHNICAL_ERROR',
+          blockingReasons: [{
+            code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+            domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE,
+            message: vehicleSlice.error,
+          }],
+          warnings: [],
         });
       } else {
-        blockingReasons.push({
-          code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_NOT_FOUND,
+        contributions.push({
           domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE,
-          message: `Vehicle ${input.vehicleId} not found in organization`,
+          status: 'NOT_ELIGIBLE',
+          blockingReasons: [{
+            code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_NOT_FOUND,
+            domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE,
+            message: `Vehicle ${input.vehicleId} not found in organization`,
+          }],
+          warnings: [],
         });
-        domainStatuses.push('NOT_ELIGIBLE');
       }
     }
 
-    const customerSlice = await this.evaluateCustomerDomain(input);
+    const verificationSlice = await this.evaluateVerificationDomain(input);
+    let verificationMapped: ReturnType<typeof mapVerificationToGateReasons> | null = null;
+    if (verificationSlice.evaluated && verificationSlice.result) {
+      verificationMapped = mapVerificationToGateReasons(
+        verificationSlice.result,
+        input.stage,
+      );
+      contributions.push(verificationMapped);
+      if (
+        verificationSlice.result.idDocument === 'pending' ||
+        verificationSlice.result.drivingLicense === 'pending' ||
+        verificationSlice.result.idDocument === 'requires_review' ||
+        verificationSlice.result.drivingLicense === 'requires_review'
+      ) {
+        recheckRequired = true;
+      }
+    } else if (verificationSlice.error) {
+      contributions.push({
+        domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION,
+        status: 'TECHNICAL_ERROR',
+        blockingReasons: [{
+          code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+          domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION,
+          message: verificationSlice.error,
+        }],
+        warnings: [],
+      });
+    }
+
+    const customerSlice = await this.evaluateCustomerDomain(
+      input,
+      verificationSlice.result,
+    );
     let customerMapped: ReturnType<typeof mapCustomerEligibilityToGateReasons> | null = null;
     if (customerSlice.evaluated && customerSlice.result) {
       customerMapped = mapCustomerEligibilityToGateReasons(
         customerSlice.result,
         input.stage,
       );
-      blockingReasons.push(...customerMapped.blockingReasons);
-      warnings.push(...customerMapped.warnings);
-      domainStatuses.push(customerMapped.status);
+      contributions.push(customerMapped);
     } else if (customerSlice.error) {
-      domainStatuses.push('TECHNICAL_ERROR');
-      blockingReasons.push({
-        code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+      contributions.push({
         domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.CUSTOMER,
-        message: customerSlice.error,
-      });
-    }
-
-    const verificationSlice = await this.evaluateVerificationDomain(input);
-    if (verificationSlice.evaluated && verificationSlice.result) {
-      const mapped = mapVerificationToGateReasons(
-        verificationSlice.result,
-        input.stage,
-      );
-      blockingReasons.push(...mapped.blockingReasons);
-      warnings.push(...mapped.warnings);
-      if (mapped.blockingReasons.length > 0) {
-        domainStatuses.push('NOT_ELIGIBLE');
-      }
-      if (
-        verificationSlice.result.idDocument === 'pending' ||
-        verificationSlice.result.drivingLicense === 'pending'
-      ) {
-        recheckRequired = true;
-      }
-    } else if (verificationSlice.error) {
-      domainStatuses.push('TECHNICAL_ERROR');
-      blockingReasons.push({
-        code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
-        domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION,
-        message: verificationSlice.error,
+        status: 'TECHNICAL_ERROR',
+        blockingReasons: [{
+          code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+          domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.CUSTOMER,
+          message: customerSlice.error,
+        }],
+        warnings: [],
       });
     }
 
     const rentalSlice = await this.evaluateRentalRulesDomain(input);
-    let sourceRuleIds: string[] = [];
     if (rentalSlice.evaluated && rentalSlice.result) {
       const mapped = mapRentalEligibilityToGateReasons(rentalSlice.result);
-      blockingReasons.push(...mapped.blockingReasons);
-      warnings.push(...mapped.warnings);
-      missingFields.push(...mapped.missingFields);
-      domainStatuses.push(mapped.status);
+      contributions.push(mapped);
       sourceRuleIds = collectSourceRuleIds(rentalSlice.result.effectiveRules);
       if (mapped.status === 'MISSING_INFORMATION') {
         recheckRequired = true;
       }
     } else if (rentalSlice.error) {
-      domainStatuses.push('TECHNICAL_ERROR');
-      blockingReasons.push({
-        code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+      contributions.push({
         domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.RENTAL_RULES,
-        message: rentalSlice.error,
+        status: 'TECHNICAL_ERROR',
+        blockingReasons: [{
+          code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+          domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.RENTAL_RULES,
+          message: rentalSlice.error,
+        }],
+        warnings: [],
       });
     }
 
@@ -154,27 +167,39 @@ export class BookingEligibilityGatekeeperService {
         vehicleReadinessSlice.healthGateStatus === 'UNAVAILABLE' ||
         vehicleReadinessSlice.healthGateStatus === 'UNKNOWN'
       ) {
-        domainStatuses.push('TEMPORARILY_UNAVAILABLE');
-        blockingReasons.push({
-          code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_READINESS_UNAVAILABLE,
+        contributions.push({
           domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE_READINESS,
-          message: vehicleReadinessSlice.error ?? 'Vehicle health gate unavailable',
+          status: 'TEMPORARILY_UNAVAILABLE',
+          blockingReasons: [{
+            code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_READINESS_UNAVAILABLE,
+            domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE_READINESS,
+            message: vehicleReadinessSlice.error ?? 'Vehicle health gate unavailable',
+          }],
+          warnings: [],
         });
         recheckRequired = true;
       } else if (vehicleReadinessSlice.blocked) {
-        domainStatuses.push('NOT_ELIGIBLE');
-        blockingReasons.push({
-          code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_RENTAL_BLOCKED,
+        contributions.push({
           domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE_READINESS,
-          message: vehicleReadinessSlice.error ?? 'Vehicle rental blocked by health gate',
+          status: 'NOT_ELIGIBLE',
+          blockingReasons: [{
+            code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_RENTAL_BLOCKED,
+            domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE_READINESS,
+            message: vehicleReadinessSlice.error ?? 'Vehicle rental blocked by health gate',
+          }],
+          warnings: [],
         });
       }
     } else if (!vehicleReadinessSlice.skipped && vehicleReadinessSlice.blocked) {
-      domainStatuses.push('TECHNICAL_ERROR');
-      blockingReasons.push({
-        code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+      contributions.push({
         domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE_READINESS,
-        message: vehicleReadinessSlice.error ?? 'Vehicle readiness evaluation failed',
+        status: 'TECHNICAL_ERROR',
+        blockingReasons: [{
+          code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+          domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE_READINESS,
+          message: vehicleReadinessSlice.error ?? 'Vehicle readiness evaluation failed',
+        }],
+        warnings: [],
       });
     }
 
@@ -188,24 +213,30 @@ export class BookingEligibilityGatekeeperService {
       customerId: input.customerId,
       vehicleId: input.vehicleId,
       bookingId: input.bookingId,
-      blockingReasons: dedupeGateReasons(blockingReasons),
-      warnings: dedupeGateReasons(warnings),
-      missingFields: [...new Set(missingFields)],
+      contributions: contributions.map((contribution) => ({
+        ...contribution,
+        blockingReasons: dedupeGateReasons(contribution.blockingReasons),
+        warnings: dedupeGateReasons(contribution.warnings),
+      })),
       sourceRuleIds,
-      domainStatuses:
-        domainStatuses.length > 0 ? domainStatuses : ['ELIGIBLE'],
       evaluatedAt,
       recheckRequired,
     });
 
+    const canProceedForStage = resolveCustomerCanProceedForStage(
+      customerSlice.result,
+      input.stage,
+    );
+
     return {
       ...core,
       engineVersion: BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION,
+      decisionAuthority: BOOKING_ELIGIBILITY_DECISION_AUTHORITY,
       correlation,
       domains: {
         customer: {
           ...customerSlice,
-          canProceedForStage: customerMapped?.canProceedForStage ?? false,
+          canProceedForStage,
         },
         verification: verificationSlice,
         rentalRules: rentalSlice,
@@ -260,10 +291,6 @@ export class BookingEligibilityGatekeeperService {
     });
   }
 
-  /**
-   * Allows injecting additional domain evaluators (e.g. pricing/deposit) without
-   * modifying the core orchestration path.
-   */
   async evaluateWithExtensions(
     input: BookingEligibilityGateInput,
     extensions: BookingEligibilityDomainEvaluator[] = [],
@@ -271,8 +298,7 @@ export class BookingEligibilityGatekeeperService {
     const base = await this.evaluate(input);
     if (extensions.length === 0) return base;
 
-    const extraBlocking: BookingEligibilityGateReason[] = [];
-    const extraWarnings: BookingEligibilityGateReason[] = [];
+    const extraContributions: BookingEligibilityDomainContribution[] = [];
     const extraStatuses: BookingEligibilityGateStatus[] = [base.status];
 
     for (const evaluator of extensions) {
@@ -281,20 +307,32 @@ export class BookingEligibilityGatekeeperService {
           effectiveRules: base.domains.rentalRules.result?.effectiveRules ?? null,
         });
         if (slice.skipped) continue;
-        extraBlocking.push(...slice.blockingReasons);
-        extraWarnings.push(...slice.warnings);
+        extraContributions.push({
+          domain: evaluator.domain,
+          status: slice.status ?? 'ELIGIBLE',
+          blockingReasons: slice.blockingReasons,
+          warnings: slice.warnings,
+        });
         if (slice.status) extraStatuses.push(slice.status);
       } catch (error) {
         extraStatuses.push('TECHNICAL_ERROR');
-        extraBlocking.push({
-          code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+        extraContributions.push({
           domain: evaluator.domain,
-          message: error instanceof Error ? error.message : 'Extension evaluator failed',
+          status: 'TECHNICAL_ERROR',
+          blockingReasons: [{
+            code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+            domain: evaluator.domain,
+            message: error instanceof Error ? error.message : 'Extension evaluator failed',
+          }],
+          warnings: [],
         });
       }
     }
 
     const status = resolveAggregateGateStatus(extraStatuses);
+    const extraBlocking = extraContributions.flatMap((c) => c.blockingReasons);
+    const extraWarnings = extraContributions.flatMap((c) => c.warnings);
+
     return {
       ...base,
       status,
@@ -340,6 +378,7 @@ export class BookingEligibilityGatekeeperService {
 
   private async evaluateCustomerDomain(
     input: BookingEligibilityGateInput,
+    verificationSnapshot: BookingEligibilityGateResult['domains']['verification']['result'],
   ): Promise<BookingEligibilityGateResult['domains']['customer']> {
     try {
       const result = await this.customerEligibility.evaluateForBooking(
@@ -350,6 +389,7 @@ export class BookingEligibilityGatekeeperService {
           startDate: input.startDate,
           endDate: input.endDate,
           bookingId: input.bookingId,
+          verificationSnapshot: verificationSnapshot ?? undefined,
         },
       );
       return { evaluated: true, canProceedForStage: false, result };
@@ -400,6 +440,7 @@ export class BookingEligibilityGatekeeperService {
         foreignTravelRequested: input.foreignTravelRequested,
         additionalDriverCount: input.additionalDriverCount,
         depositReceived: input.depositReceived,
+        skipVerificationImpact: true,
       });
       return { evaluated: true, result };
     } catch (error) {
@@ -456,4 +497,14 @@ export class BookingEligibilityGatekeeperService {
         : undefined,
     };
   }
+}
+
+function resolveCustomerCanProceedForStage(
+  result: BookingEligibilityGateResult['domains']['customer']['result'],
+  stage: BookingEligibilityGateInput['stage'],
+): boolean {
+  if (!result) return false;
+  if (stage === 'CONFIRM') return result.stages.confirmBooking.canProceed;
+  if (stage === 'PICKUP') return result.stages.startPickup.canProceed;
+  return result.stages.createBooking.canProceed;
 }

@@ -25,6 +25,8 @@ export interface BookingRentalEligibilityInput {
   additionalDriverCount?: number;
   depositReceived?: boolean;
   bookingId?: string;
+  /** When true, document verification impact is owned by the gatekeeper verification domain. */
+  skipVerificationImpact?: boolean;
 }
 
 export interface BookingRentalEligibilityResult {

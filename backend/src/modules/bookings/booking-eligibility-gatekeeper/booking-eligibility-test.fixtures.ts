@@ -16,6 +16,7 @@ export function testGateResult(
     status: 'ELIGIBLE',
     stage: 'CONFIRM',
     allowed: true,
+    decisionAuthority: 'GATEKEEPER',
     reasonCodes: [],
     blockingReasons: [],
     warnings: [],

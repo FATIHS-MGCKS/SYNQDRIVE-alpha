@@ -95,6 +95,8 @@ export interface BookingEligibilityGateResult {
   status: BookingEligibilityGateStatus;
   stage: BookingEligibilityGateStage;
   allowed: boolean;
+  /** Sole authoritative producer of the final booking eligibility decision. */
+  decisionAuthority: 'GATEKEEPER';
   reasonCodes: BookingEligibilityReasonCode[];
   blockingReasons: BookingEligibilityGateReason[];
   warnings: BookingEligibilityGateReason[];

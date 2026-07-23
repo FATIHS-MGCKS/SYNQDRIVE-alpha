@@ -148,16 +148,20 @@ export class BookingRentalEligibilityService {
       depositReceived,
     });
 
-    const verification = await this.verificationService.getEligibilityStatus(
-      input.organizationId,
-      input.customerId,
-      {
-        bookingId: input.bookingId,
-        startDate: input.startDate,
-      },
-    );
+    const verification = input.skipVerificationImpact
+      ? null
+      : await this.verificationService.getEligibilityStatus(
+          input.organizationId,
+          input.customerId,
+          {
+            bookingId: input.bookingId,
+            startDate: input.startDate,
+          },
+        );
 
-    this.applyVerificationImpact(evaluation, verification);
+    if (verification) {
+      this.applyVerificationImpact(evaluation, verification);
+    }
 
     return {
       ...evaluation,

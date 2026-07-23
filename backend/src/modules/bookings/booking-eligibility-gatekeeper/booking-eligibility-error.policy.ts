@@ -4,6 +4,9 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
+  BOOKING_ELIGIBILITY_DECISION_AUTHORITY,
+} from './booking-eligibility-decision.policy';
+import {
   BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION,
   BOOKING_ELIGIBILITY_REASON_CODE,
 } from './booking-eligibility-gatekeeper.constants';
@@ -147,6 +150,7 @@ export function buildTechnicalFailureGateResult(input: {
     status: 'TECHNICAL_ERROR',
     stage: input.stage,
     allowed: false,
+    decisionAuthority: BOOKING_ELIGIBILITY_DECISION_AUTHORITY,
     reasonCodes: [BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR],
     blockingReasons: [
       {

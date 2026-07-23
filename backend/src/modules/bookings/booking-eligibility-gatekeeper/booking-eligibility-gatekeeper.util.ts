@@ -2,6 +2,8 @@ import type { EffectiveRentalRequirement } from '@modules/rental-rules/rental-ru
 import type { CustomerEligibilityResult } from '@modules/customers/types/customer-eligibility.types';
 import type { CustomerVerificationEligibilityStatus } from '@modules/customer-verification/types/customer-verification-eligibility.types';
 import type { BookingRentalEligibilityResult } from '../booking-rental-eligibility.types';
+import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
+import { BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE } from '../booking-rental-eligibility.types';
 import {
   BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION,
   BOOKING_ELIGIBILITY_GATE_DOMAIN,
@@ -13,24 +15,18 @@ import type {
   BookingEligibilityGateStage,
   BookingEligibilityGateStatus,
 } from './booking-eligibility-gatekeeper.types';
+import {
+  resolveFinalBookingEligibilityDecision,
+  resolveVerificationDomainStatus,
+  sortGateReasonsByPriority,
+  type BookingEligibilityDomainContribution,
+} from './booking-eligibility-decision.policy';
 
-const STATUS_PRIORITY: Record<BookingEligibilityGateStatus, number> = {
-  TECHNICAL_ERROR: 0,
-  TEMPORARILY_UNAVAILABLE: 1,
-  MISSING_INFORMATION: 2,
-  NOT_ELIGIBLE: 3,
-  MANUAL_APPROVAL_REQUIRED: 4,
-  ELIGIBLE: 5,
-};
-
-export function resolveAggregateGateStatus(
-  statuses: BookingEligibilityGateStatus[],
-): BookingEligibilityGateStatus {
-  if (statuses.length === 0) return 'ELIGIBLE';
-  return statuses.reduce((worst, current) =>
-    STATUS_PRIORITY[current] < STATUS_PRIORITY[worst] ? current : worst,
-  );
-}
+export {
+  resolveAggregateGateStatus,
+  resolveFinalBookingEligibilityDecision,
+  sortGateReasonsByPriority,
+} from './booking-eligibility-decision.policy';
 
 export function mapRentalEligibilityStatusToGateStatus(
   status: BookingRentalEligibilityResult['status'],
@@ -91,12 +87,7 @@ function mapCustomerMessageToCode(message: string): BookingEligibilityReasonCode
 export function mapCustomerEligibilityToGateReasons(
   result: CustomerEligibilityResult,
   stage: BookingEligibilityGateStage,
-): {
-  blockingReasons: BookingEligibilityGateReason[];
-  warnings: BookingEligibilityGateReason[];
-  status: BookingEligibilityGateStatus;
-  canProceedForStage: boolean;
-} {
+): BookingEligibilityDomainContribution {
   const stageResult =
     stage === 'CONFIRM'
       ? result.stages.confirmBooking
@@ -117,20 +108,28 @@ export function mapCustomerEligibilityToGateReasons(
     ...stageResult.warnings,
   ].map((message) =>
     reason(
-      BOOKING_ELIGIBILITY_REASON_CODE.CUSTOMER_STAGE_BLOCKED,
+      mapCustomerMessageToCode(message),
       BOOKING_ELIGIBILITY_GATE_DOMAIN.CUSTOMER,
       message,
     ),
   );
 
   const canProceedForStage = stageResult.canProceed;
-  const status: BookingEligibilityGateStatus = canProceedForStage
-    ? warnings.length > 0
-      ? 'ELIGIBLE'
-      : 'ELIGIBLE'
-    : 'NOT_ELIGIBLE';
+  let status: BookingEligibilityGateStatus;
+  if (!canProceedForStage) {
+    status = 'NOT_ELIGIBLE';
+  } else if (stageResult.requiredActions.length > 0) {
+    status = 'MANUAL_APPROVAL_REQUIRED';
+  } else {
+    status = 'ELIGIBLE';
+  }
 
-  return { blockingReasons, warnings, status, canProceedForStage };
+  return {
+    domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.CUSTOMER,
+    status,
+    blockingReasons,
+    warnings,
+  };
 }
 
 const DOCUMENT_STATUS_CODE: Record<
@@ -166,10 +165,7 @@ const DOCUMENT_STATUS_CODE: Record<
 export function mapVerificationToGateReasons(
   verification: CustomerVerificationEligibilityStatus,
   stage: BookingEligibilityGateStage,
-): {
-  blockingReasons: BookingEligibilityGateReason[];
-  warnings: BookingEligibilityGateReason[];
-} {
+): BookingEligibilityDomainContribution {
   const blockingReasons: BookingEligibilityGateReason[] = [];
   const warnings: BookingEligibilityGateReason[] = [];
 
@@ -190,29 +186,42 @@ export function mapVerificationToGateReasons(
     );
   }
 
+  const appendDocumentReason = (
+    code: BookingEligibilityReasonCode,
+    message: string,
+    overridable = false,
+  ) => {
+    const target =
+      stageBlockers.length > 0 ||
+      code === BOOKING_ELIGIBILITY_REASON_CODE.ID_DOCUMENT_REJECTED ||
+      code === BOOKING_ELIGIBILITY_REASON_CODE.LICENSE_REJECTED ||
+      code === BOOKING_ELIGIBILITY_REASON_CODE.ID_DOCUMENT_EXPIRED ||
+      code === BOOKING_ELIGIBILITY_REASON_CODE.LICENSE_EXPIRED ||
+      code === BOOKING_ELIGIBILITY_REASON_CODE.PROOF_OF_ADDRESS_REJECTED
+        ? blockingReasons
+        : warnings;
+    target.push(
+      reason(code, BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION, message, {
+        overridable,
+      }),
+    );
+  };
+
   const idCode = DOCUMENT_STATUS_CODE[verification.idDocument]?.id;
   if (idCode && verification.idDocument !== 'verified') {
-    const target = stageBlockers.length > 0 ? blockingReasons : warnings;
-    target.push(
-      reason(
-        idCode,
-        BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION,
-        `ID document status: ${verification.idDocument}`,
-        { overridable: verification.idDocument === 'pickup_required' },
-      ),
+    appendDocumentReason(
+      idCode,
+      `ID document status: ${verification.idDocument}`,
+      verification.idDocument === 'pickup_required',
     );
   }
 
   const licenseCode = DOCUMENT_STATUS_CODE[verification.drivingLicense]?.license;
   if (licenseCode && verification.drivingLicense !== 'verified') {
-    const target = stageBlockers.length > 0 ? blockingReasons : warnings;
-    target.push(
-      reason(
-        licenseCode,
-        BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION,
-        `Driving license status: ${verification.drivingLicense}`,
-        { overridable: verification.drivingLicense === 'pickup_required' },
-      ),
+    appendDocumentReason(
+      licenseCode,
+      `Driving license status: ${verification.drivingLicense}`,
+      verification.drivingLicense === 'pickup_required',
     );
   }
 
@@ -260,7 +269,17 @@ export function mapVerificationToGateReasons(
     );
   }
 
-  return { blockingReasons, warnings };
+  const status = resolveVerificationDomainStatus(verification, stage, {
+    blockingReasons,
+    warnings,
+  });
+
+  return {
+    domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION,
+    status,
+    blockingReasons,
+    warnings,
+  };
 }
 
 function mapRentalBlockingMessage(message: string): BookingEligibilityReasonCode {
@@ -296,12 +315,7 @@ function mapRentalBlockingMessage(message: string): BookingEligibilityReasonCode
 
 export function mapRentalEligibilityToGateReasons(
   result: BookingRentalEligibilityResult,
-): {
-  blockingReasons: BookingEligibilityGateReason[];
-  warnings: BookingEligibilityGateReason[];
-  missingFields: string[];
-  status: BookingEligibilityGateStatus;
-} {
+): BookingEligibilityDomainContribution {
   const sourceRuleIds = collectSourceRuleIds(result.effectiveRules);
   const categorySourceId = sourceRuleIds.find((id) => id.startsWith('category:'));
 
@@ -348,10 +362,11 @@ export function mapRentalEligibilityToGateReasons(
   });
 
   return {
+    domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.RENTAL_RULES,
+    status: mapRentalEligibilityStatusToGateStatus(result.status),
     blockingReasons: [...blockingReasons, ...missingFieldReasons],
     warnings: [...warnings, ...manualApprovalReasons],
     missingFields: [...result.missingFields],
-    status: mapRentalEligibilityStatusToGateStatus(result.status),
   };
 }
 
@@ -361,11 +376,8 @@ export function assembleGateResult(input: {
   customerId: string;
   vehicleId: string;
   bookingId?: string;
-  blockingReasons: BookingEligibilityGateReason[];
-  warnings: BookingEligibilityGateReason[];
-  missingFields: string[];
+  contributions: BookingEligibilityDomainContribution[];
   sourceRuleIds: string[];
-  domainStatuses: BookingEligibilityGateStatus[];
   evaluatedAt: Date;
   recheckRequired: boolean;
 }): Pick<
@@ -386,24 +398,18 @@ export function assembleGateResult(input: {
   | 'vehicleId'
   | 'bookingId'
 > {
-  const status = resolveAggregateGateStatus(input.domainStatuses);
-  const reasonCodes = [
-    ...new Set([
-      ...input.blockingReasons.map((r) => r.code),
-      ...input.warnings.map((r) => r.code),
-    ]),
-  ];
+  const decision = resolveFinalBookingEligibilityDecision(input.contributions);
 
   return {
-    status,
+    status: decision.status,
     stage: input.stage,
     allowed:
-      status === 'ELIGIBLE' ||
-      status === 'MANUAL_APPROVAL_REQUIRED',
-    reasonCodes,
-    blockingReasons: input.blockingReasons,
-    warnings: input.warnings,
-    missingFields: input.missingFields,
+      decision.status === 'ELIGIBLE' ||
+      decision.status === 'MANUAL_APPROVAL_REQUIRED',
+    reasonCodes: decision.reasonCodes,
+    blockingReasons: decision.blockingReasons,
+    warnings: decision.warnings,
+    missingFields: decision.missingFields,
     sourceRuleIds: input.sourceRuleIds,
     evaluatedAt: input.evaluatedAt.toISOString(),
     recheckRequired: input.recheckRequired,
@@ -425,4 +431,70 @@ export function dedupeGateReasons(
     seen.add(key);
     return true;
   });
+}
+
+export function mapGatekeeperToAuthoritativeRentalPreview(
+  gate: import('./booking-eligibility-gatekeeper.types').BookingEligibilityGateResult,
+): BookingRentalEligibilityResult & {
+  decisionAuthority: typeof import('./booking-eligibility-decision.policy').BOOKING_ELIGIBILITY_DECISION_AUTHORITY;
+  gateStatus: BookingEligibilityGateStatus;
+  reasonCodes: import('./booking-eligibility-gatekeeper.constants').BookingEligibilityReasonCode[];
+} {
+  const rental = gate.domains.rentalRules.result;
+  const rentalCompatibleStatus =
+    gate.status === 'TEMPORARILY_UNAVAILABLE' || gate.status === 'TECHNICAL_ERROR'
+      ? 'NOT_ELIGIBLE'
+      : gate.status;
+
+  const manualApprovalReasons = [
+    ...gate.warnings
+      .filter((reason) => reason.overridable === true)
+      .map((reason) => reason.message),
+    ...(rental?.manualApprovalReasons ?? []),
+  ];
+
+  return {
+    status: rentalCompatibleStatus as BookingRentalEligibilityResult['status'],
+    blockingReasons: gate.blockingReasons.map((reason) => reason.message),
+    warningReasons: gate.warnings
+      .filter((reason) => reason.overridable !== true)
+      .map((reason) => reason.message),
+    missingFields: gate.missingFields,
+    manualApprovalReasons: [...new Set(manualApprovalReasons)],
+    effectiveRules:
+      rental?.effectiveRules ??
+      ({
+        organizationId: gate.organizationId,
+        vehicleId: gate.vehicleId,
+        rentalCategoryId: null,
+        rentalCategoryName: null,
+        rentalCategoryType: null,
+        rulesActive: false,
+        activation: createActiveRentalRulesActivationSnapshot({
+          organizationRulesActive: false,
+          enforcementActive: false,
+        }),
+        minimumAgeYears: { value: null, source: null, sourceName: null },
+        minimumLicenseHoldingMonths: { value: null, source: null, sourceName: null },
+        depositAmountCents: { value: null, source: null, sourceName: null },
+        depositAmount: { value: null, source: null, sourceName: null },
+        depositCurrency: { value: 'EUR', source: null, sourceName: null },
+        creditCardRequired: { value: false, source: null, sourceName: null },
+        foreignTravelPolicy: { value: null, source: null, sourceName: null },
+        additionalDriverPolicy: { value: null, source: null, sourceName: null },
+        youngDriverPolicy: { value: null, source: null, sourceName: null },
+        insuranceRequirement: { value: null, source: null, sourceName: null },
+        manualApprovalRequired: { value: false, source: null, sourceName: null },
+        notes: { value: null, source: null, sourceName: null },
+        minimumLicenseHoldingYears: { value: null, source: null, sourceName: null },
+      } satisfies BookingRentalEligibilityResult['effectiveRules']),
+    decisionSource: BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE,
+    facts: rental?.facts ?? [],
+    customerId: gate.customerId,
+    vehicleId: gate.vehicleId,
+    bookingId: gate.bookingId,
+    decisionAuthority: 'GATEKEEPER',
+    gateStatus: gate.status,
+    reasonCodes: gate.reasonCodes,
+  };
 }

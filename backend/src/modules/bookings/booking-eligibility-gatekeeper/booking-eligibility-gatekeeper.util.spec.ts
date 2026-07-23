@@ -17,7 +17,7 @@ describe('booking-eligibility-gatekeeper.util', () => {
     it('returns worst status by priority', () => {
       expect(
         resolveAggregateGateStatus(['ELIGIBLE', 'NOT_ELIGIBLE', 'MISSING_INFORMATION']),
-      ).toBe('MISSING_INFORMATION');
+      ).toBe('NOT_ELIGIBLE');
       expect(
         resolveAggregateGateStatus(['ELIGIBLE', 'MANUAL_APPROVAL_REQUIRED']),
       ).toBe('MANUAL_APPROVAL_REQUIRED');
@@ -27,6 +27,9 @@ describe('booking-eligibility-gatekeeper.util', () => {
       expect(
         resolveAggregateGateStatus(['NOT_ELIGIBLE', 'TECHNICAL_ERROR']),
       ).toBe('TECHNICAL_ERROR');
+      expect(
+        resolveAggregateGateStatus(['MISSING_INFORMATION', 'MANUAL_APPROVAL_REQUIRED']),
+      ).toBe('MISSING_INFORMATION');
     });
 
     it('returns ELIGIBLE for empty input', () => {
@@ -45,7 +48,6 @@ describe('booking-eligibility-gatekeeper.util', () => {
       });
 
       const mapped = mapCustomerEligibilityToGateReasons(result, 'CREATE');
-      expect(mapped.canProceedForStage).toBe(false);
       expect(mapped.status).toBe('NOT_ELIGIBLE');
       expect(mapped.blockingReasons[0]?.code).toBe(
         BOOKING_ELIGIBILITY_REASON_CODE.CUSTOMER_BLOCKED,
@@ -74,6 +76,7 @@ describe('booking-eligibility-gatekeeper.util', () => {
       expect(mapped.blockingReasons.some((r) => r.code === 'ID_DOCUMENT_MISSING')).toBe(
         true,
       );
+      expect(mapped.status).toBe('NOT_ELIGIBLE');
     });
 
     it('treats pickup_required documents as overridable warnings on create', () => {
@@ -94,6 +97,7 @@ describe('booking-eligibility-gatekeeper.util', () => {
       );
 
       expect(mapped.warnings.some((r) => r.overridable === true)).toBe(true);
+      expect(mapped.status).toBe('ELIGIBLE');
     });
   });
 

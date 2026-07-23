@@ -24,6 +24,8 @@ import {
   SetBookingPrimaryDriverDto,
 } from './booking-allowed-drivers/dto/booking-allowed-drivers.dto';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
+import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
+import { mapGatekeeperToAuthoritativeRentalPreview } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.util';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import {
   BookingRentalEligibilityBookingQueryDto,
@@ -52,6 +54,7 @@ export class BookingsController {
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
+    private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
     private readonly allowedDriversService: BookingAllowedDriversService,
   ) {}
@@ -90,18 +93,19 @@ export class BookingsController {
       throw new BadRequestException('Invalid startDate');
     }
     const endDate = body.endDate ? new Date(body.endDate) : undefined;
-    return this.rentalEligibilityService.check({
+    const gateResult = await this.eligibilityGatekeeper.evaluate({
       organizationId: orgId,
       vehicleId: body.vehicleId,
       customerId: body.customerId,
       startDate,
       endDate: endDate && !Number.isNaN(endDate.getTime()) ? endDate : undefined,
+      stage: 'PREVIEW',
       paymentIntent: body.paymentIntent ?? body.paymentMethod,
-      paymentMethod: body.paymentIntent ?? body.paymentMethod,
       foreignTravelRequested: body.foreignTravelRequested,
       additionalDriverCount: body.additionalDriverCount,
       depositReceived: body.depositReceived,
     });
+    return mapGatekeeperToAuthoritativeRentalPreview(gateResult);
   }
 
   @Post('wizard-draft')
@@ -173,20 +177,25 @@ export class BookingsController {
     @Param('id') id: string,
     @Query() query: BookingRentalEligibilityBookingQueryDto,
   ) {
-    return this.rentalEligibilityService.checkForBooking(orgId, id, {
-      paymentIntent: query.paymentIntent ?? query.paymentMethod,
-      paymentMethod: query.paymentIntent ?? query.paymentMethod,
-      foreignTravelRequested:
-        query.foreignTravelRequested === true ||
-        (query.foreignTravelRequested as unknown) === 'true',
-      additionalDriverCount:
-        query.additionalDriverCount != null
-          ? Number(query.additionalDriverCount)
-          : undefined,
-      depositReceived:
-        query.depositReceived === true ||
-        (query.depositReceived as unknown) === 'true',
-    });
+    const gateResult = await this.eligibilityGatekeeper.evaluateForBooking(
+      orgId,
+      id,
+      'PREVIEW',
+      {
+        paymentIntent: query.paymentIntent ?? query.paymentMethod,
+        foreignTravelRequested:
+          query.foreignTravelRequested === true ||
+          (query.foreignTravelRequested as unknown) === 'true',
+        additionalDriverCount:
+          query.additionalDriverCount != null
+            ? Number(query.additionalDriverCount)
+            : undefined,
+        depositReceived:
+          query.depositReceived === true ||
+          (query.depositReceived as unknown) === 'true',
+      },
+    );
+    return mapGatekeeperToAuthoritativeRentalPreview(gateResult);
   }
 
   @Get(':id/allowed-drivers')
