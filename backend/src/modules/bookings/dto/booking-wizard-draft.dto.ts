@@ -93,6 +93,10 @@ export class BookingWizardDraftConfirmDto {
   privacyAccepted?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  marketingConsent?: boolean;
+
+  @IsOptional()
   @IsString()
   status?: 'PENDING' | 'CONFIRMED';
 

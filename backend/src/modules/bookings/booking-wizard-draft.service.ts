@@ -49,6 +49,7 @@ import { resolveGatekeeperPaymentIntent } from './booking-eligibility-gatekeeper
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import type { ValidatedBookingEligibilityApproval } from './booking-eligibility-approval/booking-eligibility-approval.types';
 import { BookingLegalAcceptanceService } from './legal-acceptance/booking-legal-acceptance.service';
+import { BookingLegalConfirmationEnforcementService } from './legal-confirmation/booking-legal-confirmation-enforcement.service';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -78,6 +79,7 @@ export class BookingWizardDraftService {
     private readonly eligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingDepositSnapshot: BookingDepositSnapshotService,
     private readonly bookingLegalAcceptance: BookingLegalAcceptanceService,
+    private readonly legalConfirmationEnforcement: BookingLegalConfirmationEnforcementService,
   ) {}
 
   async createOrRefreshDraft(
@@ -326,6 +328,18 @@ export class BookingWizardDraftService {
       }
     }
 
+    if (targetStatus === 'CONFIRMED') {
+      await this.legalConfirmationEnforcement.enforceAndRecordCheckoutConfirmation({
+        organizationId: orgId,
+        bookingId,
+        customerId: existing.customerId,
+        actorUserId: options?.userId ?? null,
+        agbAccepted: body.agbAccepted,
+        privacyAccepted: body.privacyAccepted,
+        marketingConsent: body.marketingConsent,
+      });
+    }
+
     const booking = await this.bookingsService.update(orgId, bookingId, {
       status: targetStatus,
       notes: stripWizardDraftMarker(existing.notes) || null,
@@ -362,20 +376,6 @@ export class BookingWizardDraftService {
     }
 
     const bundle = await this.bundleService.getBundleView(orgId, bookingId);
-
-    await this.bookingLegalAcceptance
-      .recordCheckoutAcceptancesFromFlags({
-        organizationId: orgId,
-        bookingId,
-        customerId: booking.customerId,
-        actorUserId: options?.userId ?? null,
-        agbAccepted: body.agbAccepted,
-        privacyAccepted: body.privacyAccepted,
-      })
-      .catch((err) => {
-        console.error('[BookingWizardDraft] legal acceptance recording failed', err);
-      });
-
     const autoSend = await this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
       orgId,
       bookingId,

@@ -54,6 +54,13 @@ describe('BookingWizardDraftService eligibility integration', () => {
     freezeDepositOnSnapshot: jest.fn().mockResolvedValue(undefined),
   } as never;
 
+  const legalConfirmationEnforcement = {
+    enforceAndRecordCheckoutConfirmation: jest.fn().mockResolvedValue({
+      snapshots: [],
+      acceptancesRecorded: 2,
+    }),
+  };
+
   const service = new BookingWizardDraftService(
     prisma,
     bookingsService,
@@ -70,6 +77,8 @@ describe('BookingWizardDraftService eligibility integration', () => {
     eligibilityEnforcement,
     eligibilityApproval,
     bookingDepositSnapshot,
+    {} as never,
+    legalConfirmationEnforcement as never,
   );
 
   const draftBooking = {
@@ -156,11 +165,23 @@ describe('BookingWizardDraftService eligibility integration', () => {
       'booking-1',
       {
         status: 'CONFIRMED',
+        agbAccepted: true,
+        privacyAccepted: true,
         eligibilityPreviewFingerprint: preview.previewFingerprint,
       },
       { userId: 'user-1' },
     );
 
+    expect(
+      (legalConfirmationEnforcement.enforceAndRecordCheckoutConfirmation as jest.Mock),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org-1',
+        bookingId: 'booking-1',
+        agbAccepted: true,
+        privacyAccepted: true,
+      }),
+    );
     expect(bookingsService.update).toHaveBeenCalledWith(
       'org-1',
       'booking-1',

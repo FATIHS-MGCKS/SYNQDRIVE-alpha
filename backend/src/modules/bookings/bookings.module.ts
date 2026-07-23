@@ -25,6 +25,7 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
 import { BookingLegalAcceptanceModule } from './legal-acceptance/booking-legal-acceptance.module';
+import { BookingLegalConfirmationModule } from './legal-confirmation/booking-legal-confirmation.module';
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
@@ -41,6 +42,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     forwardRef(() => DocumentsModule),
     BookingPickupGateModule,
     BookingLegalAcceptanceModule,
+    BookingLegalConfirmationModule,
     TasksModule,
     CustomersModule,
     CustomerVerificationModule,

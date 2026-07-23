@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-legal-confirmation-enforcement-v49791-2026-07-23',
+    version: '4.9.791',
+    title: 'V4.9.791 — Server-side legal confirmation enforcement (Prompt 19)',
+    summary: [
+      '`BookingLegalConfirmationEnforcementService` erzwingt Pflichtbestätigungen serverseitig vor CONFIRMED.',
+      'Prüft AGB/Datenschutz-Flags, Bundle-Pointer, Snapshots, Integrität und Resolver-Versionsmatch.',
+      'Optionale Marketing-Einwilligung blockiert nicht; stabile Fehlercodes `LEGAL_*`.',
+      'Direkte API-Bestätigung ohne Evidence wird abgelehnt; Wizard-Confirm vor Status-Update.',
+      'Tests für Umgehungsversuche; Doku ohne Rechtszertifizierungsanspruch.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 19 — Frontend-Checkboxen dürfen nicht alleinige Kontrolle sein.',
+    previousBehavior: 'Confirm vertraute optionalen UI-Flags; Acceptance-Recording nach Update, ohne harte Server-Gates.',
+    details:
+      'legal-confirmation/booking-legal-confirmation-enforcement.service.ts, booking-wizard-draft.service.ts, bookings.service.ts, docs/privacy/booking-legal-confirmation-enforcement.md',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:00:00.000Z',
+  },
+  {
     id: 'booking-legal-document-snapshot-v49790-2026-07-23',
     version: '4.9.790',
     title: 'V4.9.790 — Booking legal document snapshots (Prompt 18)',

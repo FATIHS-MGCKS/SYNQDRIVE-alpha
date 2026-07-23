@@ -72,6 +72,7 @@ import {
   assertWizardPreviewFingerprintMatches,
   buildEligibilityPreviewFingerprint,
 } from './booking-wizard-eligibility.util';
+import { BookingLegalConfirmationEnforcementService } from './legal-confirmation/booking-legal-confirmation-enforcement.service';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -125,6 +126,7 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly legalConfirmationEnforcement: BookingLegalConfirmationEnforcementService,
   ) {}
 
   /**
@@ -2007,6 +2009,10 @@ export class BookingsService {
             }
             assertWizardPreviewFingerprintMatches(fingerprint, gateResult);
           }
+          await this.legalConfirmationEnforcement.assertExistingLegalEvidenceForConfirmation(
+            orgId,
+            id,
+          );
           const updatedBooking = await tx.booking.update({ where: { id }, data });
           if (
             updatedBooking.status === 'CONFIRMED' &&
