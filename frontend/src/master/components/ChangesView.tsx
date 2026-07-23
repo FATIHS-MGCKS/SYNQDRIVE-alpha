@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-edit-commands-v49793-2026-07-23',
+    version: '4.9.793',
+    title: 'V4.9.793 — Unified booking edit command layer (Prompt 28)',
+    summary: [
+      'Gemeinsame Command-Schicht `booking-commands` + `useBookingMutations`: ein PATCH-Builder für Detail-Edit, Operator-Edit und künftige Pfade.',
+      'Gemeinsame Schema-Validierung (Zeitraum, Stationen, km) — keine optimistischen Finanz-Fakes, Status nur via dedizierte Commands.',
+      'Nach Save: API-Response, `invalidateBookingsList`, Vehicle-Operational-Invalidierung, Detail-Reload.',
+      'Versions-/Permission-/Overlap-Fehler verständlich via `formatBookingMutationError`.',
+      'Toter Legacy-Edit-Modal in `BookingsView` entfernt; Cancel/No-Show über shared mutations.',
+    ],
+    reason:
+      'Booking Production Readiness Prompt 28: Bearbeitungswege hatten divergierende Patch-Logik und optimistische Local-Overlays.',
+    previousBehavior:
+      'BookingEditDialog, OperatorBookingFormSheet und toter BookingsView-Modal bauten PATCH unterschiedlich; `localEdits` zeigten ungespeicherte Änderungen.',
+    details:
+      'booking-commands/*, useBookingMutations.ts, BookingEditDialog, BookingDossier, BookingsView, useOperatorBookingMutations, OperatorBookingFormSheet, Vitest.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:10:00.000Z',
+  },
+  {
     id: 'booking-frontend-pagination-v49792-2026-07-23',
     version: '4.9.792',
     title: 'V4.9.792 — Booking planner frontend pagination wiring (Prompt 27)',
