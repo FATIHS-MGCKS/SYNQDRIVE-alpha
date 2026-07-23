@@ -38,6 +38,12 @@ import {
 } from '../lib/add-customer-wizard';
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
+import type { BookingWizardEligibilityPreview } from '../lib/booking-wizard-eligibility.types';
+import {
+  mapBookingEligibilityConfirmError,
+  mapWizardPreviewToCardResult,
+  wizardCheckoutCanProceed,
+} from '../lib/booking-wizard-eligibility';
 import { PageHeader } from '../../components/patterns';
 import {
   resolveDefaultPickupStationId,
@@ -153,6 +159,9 @@ export function NewBookingView({
   const [rentalEligibility, setRentalEligibility] = useState<BookingRentalEligibilityResult | null>(null);
   const [rentalEligibilityLoading, setRentalEligibilityLoading] = useState(false);
   const [rentalEligibilityError, setRentalEligibilityError] = useState<string | null>(null);
+  const [wizardEligibilityPreview, setWizardEligibilityPreview] =
+    useState<BookingWizardEligibilityPreview | null>(null);
+  const [eligibilityOverrideReason, setEligibilityOverrideReason] = useState('');
 
   useEffect(() => {
     if (!orgId) return;
@@ -544,43 +553,73 @@ export function NewBookingView({
   useEffect(() => {
     if (!orgId || !selectedVehicle?.id || !selectedCustomer?.id || !pickupAtIso) {
       setRentalEligibility(null);
+      setWizardEligibilityPreview(null);
       setRentalEligibilityError(null);
       setRentalEligibilityLoading(false);
       return;
     }
     if (!canReviewEligibility) {
       setRentalEligibility(null);
+      setWizardEligibilityPreview(null);
       setRentalEligibilityError(null);
       setRentalEligibilityLoading(false);
       return;
     }
+
     let cancelled = false;
     setRentalEligibilityLoading(true);
     setRentalEligibilityError(null);
-    api.bookings
-      .checkRentalEligibility(orgId, {
-        vehicleId: selectedVehicle.id,
-        customerId: selectedCustomer.id,
-        startDate: pickupAtIso,
-        endDate: returnAtIso || undefined,
-        paymentIntent,
-      })
-      .then((result) => {
-        if (!cancelled) setRentalEligibility(result);
-      })
-      .catch((err: unknown) => {
+
+    const loadPreview = async () => {
+      try {
+        if (draftBookingId) {
+          const preview = await api.bookings.getWizardEligibilityPreview(orgId, draftBookingId, {
+            paymentIntent,
+            targetStatus: 'CONFIRMED',
+            eligibilityOverrideReason: eligibilityOverrideReason.trim() || undefined,
+          });
+          if (cancelled) return;
+          setWizardEligibilityPreview(preview);
+          setRentalEligibility(mapWizardPreviewToCardResult(preview));
+          return;
+        }
+
+        const result = await api.bookings.checkRentalEligibility(orgId, {
+          vehicleId: selectedVehicle.id,
+          customerId: selectedCustomer.id,
+          startDate: pickupAtIso,
+          endDate: returnAtIso || undefined,
+          paymentIntent,
+        });
+        if (cancelled) return;
+        setWizardEligibilityPreview(null);
+        setRentalEligibility(result);
+      } catch (err: unknown) {
         if (!cancelled) {
           setRentalEligibility(null);
+          setWizardEligibilityPreview(null);
           setRentalEligibilityError(mapBookingEligibilityLoadError(err).message);
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setRentalEligibilityLoading(false);
-      });
+      }
+    };
+
+    void loadPreview();
     return () => {
       cancelled = true;
     };
-  }, [orgId, selectedVehicle?.id, selectedCustomer?.id, pickupAtIso, returnAtIso, paymentIntent, canReviewEligibility]);
+  }, [
+    orgId,
+    selectedVehicle?.id,
+    selectedCustomer?.id,
+    pickupAtIso,
+    returnAtIso,
+    paymentIntent,
+    canReviewEligibility,
+    draftBookingId,
+    eligibilityOverrideReason,
+  ]);
 
   const pricingInputBase = useMemo(
     () => ({
@@ -957,27 +996,6 @@ export function NewBookingView({
       return;
     }
 
-    if (customerEligibility && !customerEligibility.canConfirmBooking) {
-      toast.error('Kunde nicht freigegeben', {
-        description:
-          customerEligibility.blockingReasons.join(' · ') ||
-          'Der Kunde erfüllt die Anforderungen für eine bestätigte Buchung nicht.',
-      });
-      return;
-    }
-
-    if (isBookingVehicleHardBlocked(selectedVehicle, selectedVehicleHealth, vehicleHasTariff(selectedVehicle.id), catalogLoading)) {
-      toast.error('Fahrzeug nicht vermietbar', {
-        description:
-          selectedVehicleHealth?.blocking_reasons?.join(' · ') ||
-          (!vehicleHasTariff(selectedVehicle.id)
-            ? 'Kein aktiver Tarif zugewiesen — bitte unter Preise & Tarife zuweisen.'
-            : 'Dieses Fahrzeug kann aktuell nicht gebucht werden.'),
-        duration: 8000,
-      });
-      return;
-    }
-
     if (!priceSim?.quoteId || !pricingContext || !priceSim || grandTotal == null) {
       toast.error('Preis nicht verfügbar', {
         description:
@@ -1002,18 +1020,64 @@ export function NewBookingView({
       return;
     }
 
+    if (canReviewEligibility) {
+      if (rentalEligibilityLoading || !wizardEligibilityPreview) {
+        toast.error('Eligibility-Prüfung läuft', {
+          description: 'Bitte warten, bis die serverseitige Freigabe-Prüfung abgeschlossen ist.',
+        });
+        return;
+      }
+      const preferConfirmed = wizardEligibilityPreview.canConfirm;
+      if (!wizardCheckoutCanProceed({
+        preview: wizardEligibilityPreview,
+        loading: rentalEligibilityLoading,
+        error: rentalEligibilityError,
+        hasPrice,
+        priceLoading,
+        hasQuote: Boolean(priceSim?.quoteId),
+        agbAccepted,
+        privacyAccepted,
+        draftReady: Boolean(draftBookingId),
+        eligibilityOverrideReason,
+        canOverrideEligibility,
+        preferConfirmed,
+      })) {
+        const mapped = mapBookingEligibilityConfirmError({
+          response: {
+            data: {
+              code:
+                wizardEligibilityPreview.status === 'MISSING_INFORMATION'
+                  ? 'BOOKING_ELIGIBILITY_MISSING_INFORMATION'
+                  : wizardEligibilityPreview.status === 'MANUAL_APPROVAL_REQUIRED'
+                    ? 'BOOKING_ELIGIBILITY_MANUAL_APPROVAL_REQUIRED'
+                    : 'BOOKING_ELIGIBILITY_NOT_ELIGIBLE',
+              message: wizardEligibilityPreview.blockingReasons.map((reason) => reason.message).join(' · '),
+              blockingReasons: wizardEligibilityPreview.blockingReasons,
+              missingFields: wizardEligibilityPreview.missingFields,
+            },
+          },
+        });
+        toast.error(mapped.title, { description: mapped.description, duration: 9000 });
+        return;
+      }
+    }
+
     setIsSavingBooking(true);
     try {
       const insuranceLabel = selectedInsurances.length > 0
         ? insuranceOptions.filter((i) => selectedInsurances.includes(i.id)).map((i) => i.label).join(', ')
         : 'Haftpflicht';
       const paymentLabel = paymentIntentNotesLabel(paymentIntent);
+      const targetStatus =
+        wizardEligibilityPreview?.canConfirm === true ? 'CONFIRMED' : 'PENDING';
 
       const confirmed = await api.bookings.confirmWizardDraft(orgId, draftBookingId, {
         agbAccepted,
         privacyAccepted,
-        status: customerEligibility?.canConfirmBooking ? 'CONFIRMED' : 'PENDING',
+        status: targetStatus,
         paymentIntent,
+        eligibilityOverrideReason: eligibilityOverrideReason.trim() || undefined,
+        eligibilityPreviewFingerprint: wizardEligibilityPreview?.previewFingerprint,
       });
       draftConfirmedRef.current = true;
       const uiBooking = mapApiBooking(confirmed.booking);
@@ -1075,16 +1139,36 @@ export function NewBookingView({
         });
       }
     } catch (err: any) {
-      // V4.6.76 Rental Health V1 — surface the rental_blocked hard-gate with a
-      // dedicated message so dispatchers see WHY the booking was rejected
-      // (TÜV überfällig, Limp Mode aktiv, Bremsen kritisch, etc.) instead of
-      // a generic conflict toast.
       const body = err?.response?.data;
       const code = body?.code;
       const reasons: string[] = Array.isArray(body?.blockingReasons)
         ? (body.blockingReasons as string[])
         : [];
-      if (code === 'VEHICLE_RENTAL_BLOCKED' && reasons.length > 0) {
+      if (
+        code === 'BOOKING_ELIGIBILITY_NOT_ELIGIBLE' ||
+        code === 'BOOKING_ELIGIBILITY_MISSING_INFORMATION' ||
+        code === 'BOOKING_ELIGIBILITY_MANUAL_APPROVAL_REQUIRED' ||
+        code === 'BOOKING_ELIGIBILITY_RULES_CHANGED' ||
+        code === 'BOOKING_ELIGIBILITY_TECHNICAL_ERROR' ||
+        code === 'BOOKING_ELIGIBILITY_TEMPORARILY_UNAVAILABLE' ||
+        code === 'BOOKING_ELIGIBILITY_OVERRIDE_DENIED'
+      ) {
+        const mapped = mapBookingEligibilityConfirmError(err);
+        toast.error(mapped.title, { description: mapped.description, duration: 9000 });
+        if (mapped.category === 'rules_changed' && orgId && draftBookingId) {
+          try {
+            const preview = await api.bookings.getWizardEligibilityPreview(orgId, draftBookingId, {
+              paymentIntent,
+              targetStatus: 'CONFIRMED',
+              eligibilityOverrideReason: eligibilityOverrideReason.trim() || undefined,
+            });
+            setWizardEligibilityPreview(preview);
+            setRentalEligibility(mapWizardPreviewToCardResult(preview));
+          } catch {
+            /* preview refresh is best-effort */
+          }
+        }
+      } else if (code === 'VEHICLE_RENTAL_BLOCKED' && reasons.length > 0) {
         toast.error('Fahrzeug nicht vermietbar', {
           description: reasons.join(' · '),
           duration: 8000,
@@ -1275,7 +1359,20 @@ export function NewBookingView({
         }
         return true;
       case 5:
-        return agbAccepted && privacyAccepted && hasPrice && !priceLoading && Boolean(priceSim?.quoteId);
+        return wizardCheckoutCanProceed({
+          preview: wizardEligibilityPreview,
+          loading: rentalEligibilityLoading,
+          error: rentalEligibilityError,
+          hasPrice,
+          priceLoading,
+          hasQuote: Boolean(priceSim?.quoteId),
+          agbAccepted,
+          privacyAccepted,
+          draftReady: Boolean(draftBookingId) && !draftBundleLoading,
+          eligibilityOverrideReason,
+          canOverrideEligibility,
+          preferConfirmed: wizardEligibilityPreview?.canConfirm ?? true,
+        }) || (!canReviewEligibility && agbAccepted && privacyAccepted && hasPrice && !priceLoading && Boolean(priceSim?.quoteId) && Boolean(draftBookingId) && !draftBundleLoading);
       default:
         return false;
     }
@@ -1610,6 +1707,10 @@ export function NewBookingView({
                 onRefreshDraftBundle={() => void refreshDraftBundle()}
                 pricingCurrency={pricingCurrency}
                 bookingPeriodLabel={bookingPeriodLabel}
+                wizardEligibilityPreview={wizardEligibilityPreview}
+                canOverrideEligibility={canOverrideEligibility}
+                eligibilityOverrideReason={eligibilityOverrideReason}
+                onEligibilityOverrideReasonChange={setEligibilityOverrideReason}
               />
             )}
           </div>
@@ -1621,6 +1722,7 @@ export function NewBookingView({
               rentalEligibilityLoading={rentalEligibilityLoading}
               rentalEligibilityError={rentalEligibilityError}
               canOverrideEligibility={canOverrideEligibility}
+              wizardEligibilityPreview={wizardEligibilityPreview}
               onCompleteCustomerData={() => {
                 if (!selectedCustomer) return;
                 setCustomerDetailTarget(selectedCustomer);

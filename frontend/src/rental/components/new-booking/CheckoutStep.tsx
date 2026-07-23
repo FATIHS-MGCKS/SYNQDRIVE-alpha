@@ -53,6 +53,10 @@ export function CheckoutStep({
   onRefreshDraftBundle,
   pricingCurrency,
   bookingPeriodLabel,
+  wizardEligibilityPreview,
+  canOverrideEligibility = false,
+  eligibilityOverrideReason = '',
+  onEligibilityOverrideReasonChange,
 }: CheckoutStepProps) {
   const { t, locale } = useLanguage();
   const ccy = checkoutContext?.currency ?? pricingCurrency;
@@ -247,6 +251,26 @@ export function CheckoutStep({
       <BookingStepCard>
         <div className="p-4">
           <h2 className="mb-3 text-lg text-muted-foreground">{t('newBooking.confirmations.title')}</h2>
+          {wizardEligibilityPreview?.status === 'MANUAL_APPROVAL_REQUIRED' && (
+            <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+              <p className="text-xs font-medium text-foreground">Manuelle Freigabe erforderlich</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Die finale Buchungsfreigabe erfolgt serverseitig beim Abschluss. Bei Ausnahmen bitte eine Begründung hinterlegen.
+              </p>
+              {canOverrideEligibility ? (
+                <textarea
+                  value={eligibilityOverrideReason}
+                  onChange={(e) => onEligibilityOverrideReasonChange?.(e.target.value)}
+                  placeholder="Begründung für manuelle Freigabe"
+                  className="w-full min-h-[72px] rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
+                />
+              ) : (
+                <p className="text-xs text-[color:var(--status-watch)]">
+                  Keine Berechtigung für Eligibility-Ausnahmen — die Buchung kann nur als offene Anfrage gespeichert werden, sofern erlaubt.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-3">
             <label className="flex cursor-pointer items-start gap-3">
               <input

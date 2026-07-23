@@ -33,6 +33,7 @@ import {
   BookingWizardDraftBodyDto,
   BookingWizardDraftConfirmDto,
   BookingWizardDraftUpdateDto,
+  BookingWizardEligibilityPreviewQueryDto,
 } from './dto/booking-wizard-draft.dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -128,6 +129,23 @@ export class BookingsController {
     @Param('bookingId') bookingId: string,
   ) {
     return this.wizardDraftService.getCheckoutContext(orgId, bookingId);
+  }
+
+  @Get('wizard-draft/:bookingId/eligibility-preview')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async getWizardEligibilityPreview(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Query() query: BookingWizardEligibilityPreviewQueryDto,
+  ) {
+    const paymentIntent = query.paymentIntent ?? query.paymentMethod;
+    return this.wizardDraftService.getEligibilityPreview(orgId, bookingId, {
+      paymentIntent,
+      targetStatus: query.targetStatus,
+      eligibilityOverrideReason: query.eligibilityOverrideReason,
+      userId,
+    });
   }
 
   @Post('wizard-draft/:bookingId/confirm')

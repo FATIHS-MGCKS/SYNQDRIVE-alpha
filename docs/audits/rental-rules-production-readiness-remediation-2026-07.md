@@ -5,8 +5,8 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 7 of 34 — Booking Eligibility Gatekeeper** |
-| **Mode** | Central server-side orchestration (`BookingEligibilityGatekeeperService`) |
+| **Phase** | **Prompt 8 of 34 — Booking create/update gatekeeper enforcement** |
+| **Mode** | `BookingEligibilityEnforcementService` in `BookingsService` create/update |
 | **Method** | Direct code/schema verification; no unverified assumptions |
 
 ---
@@ -1189,4 +1189,76 @@ npm test -- --testPathPattern="booking-eligibility-gatekeeper"
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 7).*
+## 22. Booking Create/Update Gatekeeper Enforcement (Prompt 8)
+
+Direkte Booking-Create- und Update-Pfade erzwingen Rental Eligibility über `BookingEligibilityEnforcementService` → `BookingEligibilityGatekeeperService`.
+
+### 22.1 Transition-Policy
+
+| Zielstatus / Modus | Regel |
+|--------------------|-------|
+| **DRAFT** (Wizard `PENDING` + `[synq:wizard-draft]`) | Keine Eligibility-Enforcement — unvollständig erlaubt |
+| **PENDING** (nicht Draft) | `ELIGIBLE`, `MANUAL_APPROVAL_REQUIRED`, `MISSING_INFORMATION` erlaubt; `NOT_ELIGIBLE` / `TECHNICAL_ERROR` / `TEMPORARILY_UNAVAILABLE` blockieren |
+| **CONFIRMED** | Nur `ELIGIBLE` oder `MANUAL_APPROVAL_REQUIRED` mit `eligibilityOverrideReason` + `booking_eligibility.override`; `MISSING_INFORMATION` / `NOT_ELIGIBLE` / `TECHNICAL_ERROR` blockieren |
+
+CONFIRMED-Transitionen laufen Gate + Status-Update atomar in einer Prisma-Transaktion.
+
+### 22.2 Geschlossene Umgehungspfade
+
+| Pfad | Vorher | Nachher |
+|------|--------|---------|
+| `POST /organizations/:orgId/bookings` | Nur Customer Eligibility | Gatekeeper via `BookingsService.create` |
+| `PATCH /organizations/:orgId/bookings/:id` | Nur Customer Eligibility (bedingt) | Gatekeeper bei relevanten Änderungen / CONFIRMED |
+| `POST .../wizard-draft` (create) | Customer + Health | **DRAFT-Skip** — bewusst unvollständig |
+| `POST .../wizard-draft/:id/confirm` | `BookingsService.update` ohne Rental Gate | CONFIRMED-Policy + optional Override |
+| `BookingAllowedDriversService` add/remove | Kein Rental Gate | Re-Assert nach Fahreränderung (PENDING/CONFIRMED) |
+| Interne `BookingsService.create/update` | Umgehbar | Dieselbe Enforcement-Schicht |
+
+### 22.3 Noch offene Pfade (bewusst / spätere Prompts)
+
+| Pfad | Grund |
+|------|-------|
+| `BookingWizardDraftService.updateDraftQuote` | Nur Pricing-Felder — kein Statuswechsel |
+| `BookingsHandoverService.createHandover` | Pickup-Gate separat (Prompt 20) |
+| `vehicle-booking-handover-repair.service` | Diagnostischer Repair-Pfad |
+| Payment reconciliation `paymentStatus` | Nicht eligibility-relevant |
+| Preview-Endpoints `eligibility-check` | Read-only |
+
+### 22.4 Eligibility-relevante Felder (Re-Check)
+
+`customerId`, `vehicleId`, `startDate`/`endDate`, `paymentIntent`, `extrasJson` (Auslandsfahrt), `BookingAllowedDriver` (Zusatzfahrer), `status` → CONFIRMED.
+
+### 22.5 Neue Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `booking-eligibility-transition.policy.ts` | DRAFT/PENDING/CONFIRMED Policy |
+| `booking-eligibility-context.util.ts` | Payment intent + foreign travel parsing |
+| `booking-eligibility-enforcement.service.ts` | Application-layer Assert API |
+| `booking-eligibility-transition.policy.spec.ts` | 8 Policy-Tests |
+| `booking-eligibility-enforcement.service.spec.ts` | 3 Enforcement-Tests |
+
+Geändert: `bookings.service.ts`, `bookings.controller.ts`, `booking-wizard-draft.service.ts`, `booking-allowed-drivers.service.ts`, `booking-wizard-draft.dto.ts`.
+
+### 22.6 Tests (2026-07-23)
+
+```
+npm test -- --testPathPattern="booking-eligibility-(transition|enforcement|gatekeeper)"
+→ 32/32 PASS
+```
+
+---
+
+## Prompt 8 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Direkte APIs können Gatekeeper nicht umgehen | ✅ `BookingsService` zentral |
+| CONFIRMED nur mit gültiger Entscheidung | ✅ Policy + Override |
+| Feldänderungen invalidieren alte Entscheidung | ✅ Re-Assert bei relevanten Mutationen |
+| Tests bestehen | ✅ 32/32 |
+| Prompt 8 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 8).*

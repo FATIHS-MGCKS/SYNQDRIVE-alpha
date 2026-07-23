@@ -49,6 +49,7 @@ export interface BookingRentalEligibilityCardProps {
   loading?: boolean;
   error?: string | null;
   canOverrideEligibility?: boolean;
+  previewOnly?: boolean;
   onCompleteCustomerData?: () => void;
   onChooseAnotherVehicle?: () => void;
 }
@@ -58,6 +59,7 @@ export function BookingRentalEligibilityCard({
   loading,
   error,
   canOverrideEligibility = false,
+  previewOnly = false,
   onCompleteCustomerData,
   onChooseAnotherVehicle,
 }: BookingRentalEligibilityCardProps) {
@@ -93,6 +95,11 @@ export function BookingRentalEligibilityCard({
           <Icon name="shield-check" className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />
           <div className="min-w-0">
             <p className="font-semibold text-foreground">{statusTitle(result.status)}</p>
+            {previewOnly && (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Vorschau — die finale Freigabe erfolgt serverseitig beim Abschluss.
+              </p>
+            )}
             {minAge != null && (
               <p className="text-muted-foreground mt-0.5 leading-relaxed">
                 Mindestalter {minAge} · {sourceLabel}

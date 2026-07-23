@@ -7,6 +7,7 @@ export function BookingSidebar({
   rentalEligibilityLoading,
   rentalEligibilityError,
   canOverrideEligibility,
+  wizardEligibilityPreview,
   onCompleteCustomerData,
   onChooseAnotherVehicle,
   selectedVehicle,
@@ -22,6 +23,7 @@ export function BookingSidebar({
           loading={rentalEligibilityLoading}
           error={rentalEligibilityError}
           canOverrideEligibility={canOverrideEligibility}
+          previewOnly={wizardEligibilityPreview?.isPreviewOnly ?? true}
           onCompleteCustomerData={onCompleteCustomerData}
           onChooseAnotherVehicle={onChooseAnotherVehicle}
         />

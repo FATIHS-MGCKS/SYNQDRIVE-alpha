@@ -3753,6 +3753,28 @@ export const api = {
       get<WizardCheckoutContext>(
         `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/checkout-context`,
       ),
+    getWizardEligibilityPreview: (
+      orgId: string,
+      bookingId: string,
+      params?: {
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        targetStatus?: 'PENDING' | 'CONFIRMED';
+        eligibilityOverrideReason?: string;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.paymentIntent) q.set('paymentIntent', params.paymentIntent);
+      else if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
+      if (params?.targetStatus) q.set('targetStatus', params.targetStatus);
+      if (params?.eligibilityOverrideReason) {
+        q.set('eligibilityOverrideReason', params.eligibilityOverrideReason);
+      }
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<import('../rental/lib/booking-wizard-eligibility.types').BookingWizardEligibilityPreview>(
+        `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/eligibility-preview${suffix}`,
+      );
+    },
     confirmWizardDraft: (
       orgId: string,
       bookingId: string,
@@ -3762,6 +3784,8 @@ export const api = {
         status?: 'PENDING' | 'CONFIRMED';
         paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        eligibilityOverrideReason?: string;
+        eligibilityPreviewFingerprint?: string;
       },
     ) =>
       post<BookingWizardDraftResult>(
