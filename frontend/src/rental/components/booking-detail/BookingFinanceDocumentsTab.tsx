@@ -2,7 +2,7 @@ import type { BookingDetailDto } from '../../../lib/api';
 import { BookingDocumentsSection } from '../BookingDocumentsSection';
 import { BookingPaymentCard } from '../booking-payment/BookingPaymentCard';
 import { DocumentIntakeLaunchAiButton } from '../documents/DocumentIntakeLaunchButton';
-import { EM_DASH, formatCurrencyCents, parseBookingExtras, paymentStatusLabel, depositStatusLabel } from './bookingDetailUtils';
+import { EM_DASH, formatCurrencyCents, parseBookingExtras, paymentStatusLabel, depositStatusLabel, financialStateLabel } from './bookingDetailUtils';
 
 import { bd } from './booking-detail-ui';
 
@@ -61,10 +61,24 @@ export function BookingFinanceDocumentsTab({
 
       <div className={bd.card}>
         <h3 className="text-xs font-bold mb-4">Rechnungsübersicht</h3>
-        {!f.computed ? (
+        {f.redacted ? (
+          <p className="text-sm text-muted-foreground">Keine Berechtigung für Finanzdaten dieser Buchung.</p>
+        ) : !f.computed ? (
           <p className="text-sm text-muted-foreground">Noch nicht berechnet — keine verlässlichen Beträge vorhanden.</p>
         ) : (
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-2 text-xs">
+            <FinRow label="Finanzstatus" value={financialStateLabel(f.financialState)} />
+            <FinRow label="Rechnungsverarbeitung" value={financialStateLabel(f.invoiceProcessingState)} />
+            {f.invoiceProcessingError ? (
+              <div className="sm:col-span-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-destructive">
+                {f.invoiceProcessingError}
+                {f.recoveryAvailable ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Wiederholung über „Rechnung erneut verarbeiten“ im Buchungsmenü möglich.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <FinRow label="Mietpreis" value={formatCurrencyCents(f.basePriceCents, currency)} />
             <FinRow label="Extras" value={formatCurrencyCents(f.extrasPriceCents, currency)} />
             <FinRow label="Rabatt" value={formatCurrencyCents(f.discountAmountCents, currency)} />

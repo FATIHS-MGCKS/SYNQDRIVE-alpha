@@ -25,14 +25,32 @@ export function paymentStatusLabel(status: string | null): string {
     case 'PAID':
       return 'Bezahlt';
     case 'PARTIAL':
+    case 'PARTIALLY_PAID':
       return 'Teilweise bezahlt';
     case 'OPEN':
+    case 'READY':
       return 'Offen';
     case 'OVERDUE':
       return 'Überfällig';
+    case 'FAILED':
+      return 'Fehlgeschlagen';
+    case 'PROCESSING':
+      return 'In Verarbeitung';
+    case 'PENDING':
+      return 'Ausstehend';
+    case 'REFUND_PENDING':
+      return 'Erstattung ausstehend';
+    case 'REFUNDED':
+      return 'Erstattet';
+    case 'NOT_REQUIRED':
+      return 'Nicht erforderlich';
     default:
       return status;
   }
+}
+
+export function financialStateLabel(state: string | null | undefined): string {
+  return paymentStatusLabel(state ?? null);
 }
 
 export function depositStatusLabel(status: string | null): string {
@@ -67,6 +85,10 @@ export function handoverShortStatus(detail: BookingDetailDto): string {
 }
 
 export function financeShortStatus(detail: BookingDetailDto): string {
+  if (detail.finance.redacted) return 'Keine Berechtigung';
+  if (detail.finance.financialState) {
+    return financialStateLabel(detail.finance.financialState);
+  }
   if (!detail.finance.computed) return 'Noch nicht berechnet';
   if (detail.finance.paymentStatus === 'PAID') return 'Bezahlt';
   if (detail.finance.depositStatus === 'REQUESTED') return 'Kaution offen';

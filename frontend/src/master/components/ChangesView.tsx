@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-financial-state-prompt16-2026-07-23',
+    version: '4.9.791',
+    title: 'V4.9.791 — Booking Financial State / Invoice / Payment Link (Prompt 16/34)',
+    summary: [
+      'BookingFinancialState enum — getrennt von Booking.status (NOT_REQUIRED … REFUNDED).',
+      'BookingInvoiceProcessingState — persistenter Pipeline-Status mit Fehler, Retry-Zeitpunkt und Recovery-Endpoint.',
+      'BookingFinancialStateService — idempotente Rechnungsverarbeitung bei Confirm, Snapshot-FK-Validierung, canonicalInvoiceId.',
+      'OrgInvoice.bookingPriceSnapshotId — Rechnung verweist auf Booking, Org, Kunde, Währung und Price Snapshot.',
+      'Keine stillen Catch-Blöcke bei Wizard-Confirm; Confirm schlägt fehl wenn Pflichtrechnung fehlt.',
+      'findDetail redacted finance/payments ohne invoices.read oder payments.read.',
+      'Frontend: Finanzstatus und Rechnungsfehler in bestehender Statusanzeige.',
+    ],
+    reason:
+      'Booking, Price Snapshot, Invoice und Payment Intent brauchen einen nachvollziehbaren, konsistenten Finanzfluss ohne Vermischung mit dem operativen Buchungsstatus.',
+    previousBehavior:
+      'Parallele paymentStatus-Quellen; Wizard verschluckte Invoice-Fehler; Confirm ohne einheitliche Rechnungs-Pipeline; keine Finanz-Permission auf Booking-Detail.',
+    details:
+      'Backend: financial/booking-financial-state.*, Migration 20260723400000; Wiring in bookings.service update/create, POST retry-invoice-processing; Doku: docs/architecture/booking-financial-state.md.',
+    affectsArchitecture: true,
+    module: 'Bookings / Finance',
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'rental-rules-prod-di-fix-v49788-2026-07-23',
     version: '4.9.788',
     title: 'V4.9.788 — Rental Rules production hotfix (DI + release train)',
