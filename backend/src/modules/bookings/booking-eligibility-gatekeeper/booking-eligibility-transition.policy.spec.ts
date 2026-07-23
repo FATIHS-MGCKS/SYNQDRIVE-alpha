@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import {
   assertBookingEligibilityTransitionAllowed,
   BOOKING_ELIGIBILITY_TRANSITION_CODE,
@@ -12,6 +12,23 @@ function gateResult(
 ) {
   return testGateResult({ status });
 }
+
+const approvedForConfirm = {
+  id: 'approval-1',
+  status: 'APPROVED' as const,
+  eligibilityFingerprint: 'fp',
+  ruleRevision: 'rev',
+  bookingDataVersion: 'data',
+  targetBookingStatus: 'CONFIRMED',
+  gateStage: 'CONFIRM',
+};
+
+const approvedForPickup = {
+  ...approvedForConfirm,
+  id: 'approval-2',
+  targetBookingStatus: 'ACTIVE',
+  gateStage: 'PICKUP',
+};
 
 describe('booking-eligibility-transition.policy', () => {
   it('skips enforcement for wizard drafts', () => {
@@ -28,7 +45,7 @@ describe('booking-eligibility-transition.policy', () => {
   it('allows missing information on pending transitions', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(gateResult('MISSING_INFORMATION'), 'PENDING', {
-        hasOverridePermission: false,
+        validatedApproval: null,
       }),
     ).not.toThrow();
   });
@@ -36,7 +53,7 @@ describe('booking-eligibility-transition.policy', () => {
   it('blocks not eligible on pending transitions', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(gateResult('NOT_ELIGIBLE'), 'PENDING', {
-        hasOverridePermission: false,
+        validatedApproval: null,
       }),
     ).toThrow(ConflictException);
   });
@@ -44,7 +61,7 @@ describe('booking-eligibility-transition.policy', () => {
   it('blocks confirmed when not eligible', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(gateResult('NOT_ELIGIBLE'), 'CONFIRMED', {
-        hasOverridePermission: false,
+        validatedApproval: null,
       }),
     ).toThrow(
       expect.objectContaining({
@@ -55,60 +72,46 @@ describe('booking-eligibility-transition.policy', () => {
     );
   });
 
-  it('blocks confirmed when missing information', () => {
-    expect(() =>
-      assertBookingEligibilityTransitionAllowed(gateResult('MISSING_INFORMATION'), 'CONFIRMED', {
-        hasOverridePermission: false,
-      }),
-    ).toThrow(
-      expect.objectContaining({
-        response: expect.objectContaining({
-          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MISSING_INFORMATION,
-        }),
-      }),
-    );
-  });
-
-  it('requires override reason for manual approval on confirm', () => {
+  it('requires persisted approval for manual approval on confirm', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(
         gateResult('MANUAL_APPROVAL_REQUIRED'),
         'CONFIRMED',
-        { hasOverridePermission: true },
+        { validatedApproval: null },
       ),
     ).toThrow(
       expect.objectContaining({
         response: expect.objectContaining({
-          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MANUAL_APPROVAL_REQUIRED,
+          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.APPROVAL_REQUIRED,
         }),
       }),
     );
   });
 
-  it('allows confirmed manual approval with override permission and reason', () => {
+  it('allows confirmed manual approval with validated approval object', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(
         gateResult('MANUAL_APPROVAL_REQUIRED'),
         'CONFIRMED',
-        { hasOverridePermission: true, eligibilityOverrideReason: 'Approved by station manager' },
+        { validatedApproval: approvedForConfirm },
       ),
     ).not.toThrow();
   });
 
-  it('denies confirmed manual approval override without permission', () => {
+  it('rejects pickup approval object on confirm transition', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(
         gateResult('MANUAL_APPROVAL_REQUIRED'),
         'CONFIRMED',
-        { hasOverridePermission: false, eligibilityOverrideReason: 'Approved' },
+        { validatedApproval: approvedForPickup },
       ),
-    ).toThrow(ForbiddenException);
+    ).toThrow(ConflictException);
   });
 
   it('blocks active pickup when missing information', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(gateResult('MISSING_INFORMATION'), 'ACTIVE', {
-        hasOverridePermission: false,
+        validatedApproval: null,
       }),
     ).toThrow(ConflictException);
   });
@@ -116,17 +119,17 @@ describe('booking-eligibility-transition.policy', () => {
   it('blocks confirmed on technical error with 503', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(gateResult('TECHNICAL_ERROR'), 'CONFIRMED', {
-        hasOverridePermission: false,
+        validatedApproval: null,
       }),
     ).toThrow(ServiceUnavailableException);
   });
 
-  it('allows active pickup with manual override reason and permission', () => {
+  it('allows active pickup with validated approval object', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(
         gateResult('MANUAL_APPROVAL_REQUIRED'),
         'ACTIVE',
-        { hasOverridePermission: true, eligibilityOverrideReason: 'Station manager approved pickup' },
+        { validatedApproval: approvedForPickup },
       ),
     ).not.toThrow();
   });

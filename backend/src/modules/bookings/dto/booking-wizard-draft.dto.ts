@@ -27,7 +27,7 @@ export class BookingWizardEligibilityPreviewQueryDto {
 
   @IsOptional()
   @IsString()
-  eligibilityOverrideReason?: string;
+  eligibilityApprovalId?: string;
 }
 
 export class BookingWizardDraftBodyDto {
@@ -101,8 +101,8 @@ export class BookingWizardDraftConfirmDto {
   paymentMethod?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
 
   @IsOptional()
-  @IsString()
-  eligibilityOverrideReason?: string;
+  @IsUUID('4')
+  eligibilityApprovalId?: string;
 
   @IsOptional()
   @IsString()

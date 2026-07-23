@@ -39,6 +39,30 @@ describe('booking-wizard-eligibility.util', () => {
     expect(preview.previewFingerprint).toHaveLength(64);
   });
 
+  it('requires validated approval for manual approval confirm preview', () => {
+    const preview = mapGatekeeperToWizardPreview(
+      buildGateResult({ status: 'MANUAL_APPROVAL_REQUIRED', allowed: false }),
+      'CONFIRMED',
+    );
+    expect(preview.canConfirm).toBe(false);
+    const withApproval = mapGatekeeperToWizardPreview(
+      buildGateResult({ status: 'MANUAL_APPROVAL_REQUIRED', allowed: false }),
+      'CONFIRMED',
+      {
+        validatedApproval: {
+          id: 'approval-1',
+          status: 'APPROVED',
+          eligibilityFingerprint: 'fp',
+          ruleRevision: 'rev',
+          bookingDataVersion: 'data',
+          targetBookingStatus: 'CONFIRMED',
+          gateStage: 'CONFIRM',
+        },
+      },
+    );
+    expect(withApproval.canConfirm).toBe(true);
+  });
+
   it('throws RULES_CHANGED when preview fingerprint is stale', () => {
     const fresh = buildGateResult({
       status: 'NOT_ELIGIBLE',

@@ -45,8 +45,8 @@ import {
   type BookingWizardEligibilityPreviewResult,
 } from './booking-wizard-eligibility.util';
 import { resolveGatekeeperPaymentIntent } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
-import { assertMembershipPermission } from '@shared/auth/permission.util';
-import { BOOKING_ELIGIBILITY_PERMISSION_REQUIREMENTS } from './booking-eligibility-permission.constants';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import type { ValidatedBookingEligibilityApproval } from './booking-eligibility-approval/booking-eligibility-approval.types';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -73,6 +73,7 @@ export class BookingWizardDraftService {
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
     private readonly eligibilityEnforcement: BookingEligibilityEnforcementService,
+    private readonly eligibilityApproval: BookingEligibilityApprovalService,
   ) {}
 
   async createOrRefreshDraft(
@@ -202,7 +203,7 @@ export class BookingWizardDraftService {
     options?: {
       paymentIntent?: BookingCheckoutPaymentIntent;
       targetStatus?: BookingStatus;
-      eligibilityOverrideReason?: string | null;
+      eligibilityApprovalId?: string | null;
       userId?: string | null;
     },
   ): Promise<BookingWizardEligibilityPreviewResult> {
@@ -210,10 +211,6 @@ export class BookingWizardDraftService {
     const targetStatus: BookingStatus =
       options?.targetStatus === 'PENDING' ? 'PENDING' : 'CONFIRMED';
     const paymentIntent = this.resolvePaymentIntent(options?.paymentIntent);
-    const hasOverridePermission = await this.canOverrideEligibility(
-      options?.userId ?? null,
-      orgId,
-    );
     const gateResult = await this.eligibilityEnforcement.previewEvaluation(
       {
         organizationId: orgId,
@@ -231,9 +228,32 @@ export class BookingWizardDraftService {
       },
     );
 
+    let validatedApproval: ValidatedBookingEligibilityApproval | null = null;
+    if (
+      targetStatus === 'CONFIRMED' &&
+      gateResult.status === 'MANUAL_APPROVAL_REQUIRED' &&
+      options?.eligibilityApprovalId?.trim()
+    ) {
+      validatedApproval = await this.eligibilityApproval.assertValidForTransition({
+        organizationId: orgId,
+        bookingId: draft.id,
+        approvalId: options.eligibilityApprovalId.trim(),
+        gateResult,
+        bookingContext: {
+          organizationId: orgId,
+          customerId: draft.customerId,
+          vehicleId: draft.vehicleId,
+          startDate: draft.startDate,
+          endDate: draft.endDate,
+          targetStatus,
+          bookingId: draft.id,
+          paymentIntent: resolveGatekeeperPaymentIntent(paymentIntent),
+        },
+      });
+    }
+
     return mapGatekeeperToWizardPreview(gateResult, targetStatus, {
-      hasOverridePermission,
-      eligibilityOverrideReason: options?.eligibilityOverrideReason,
+      validatedApproval,
     });
   }
 
@@ -280,7 +300,7 @@ export class BookingWizardDraftService {
       {
         userId: options?.userId ?? null,
         command: 'confirm',
-        eligibilityOverrideReason: body.eligibilityOverrideReason,
+        eligibilityApprovalId: body.eligibilityApprovalId,
       },
     );
     if (!freshGateResult) {
@@ -308,7 +328,7 @@ export class BookingWizardDraftService {
       paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
     }, {
       userId: options?.userId ?? null,
-      eligibilityOverrideReason: body.eligibilityOverrideReason,
+      eligibilityApprovalId: body.eligibilityApprovalId,
     });
 
     await this.bookingInvoiceLifecycle
@@ -374,31 +394,6 @@ export class BookingWizardDraftService {
       paymentFlow: null,
       idempotent: true,
     };
-  }
-
-  private async canOverrideEligibility(
-    userId: string | null,
-    organizationId: string,
-  ): Promise<boolean> {
-    if (!userId) return false;
-    try {
-      const requirement =
-        BOOKING_ELIGIBILITY_PERMISSION_REQUIREMENTS['booking_eligibility.override'];
-      const actor: PermissionActor = {
-        id: userId,
-        organizationId,
-      };
-      await assertMembershipPermission(
-        this.prisma,
-        actor,
-        organizationId,
-        requirement.module,
-        requirement.level,
-      );
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   async abortDraft(orgId: string, bookingId: string) {

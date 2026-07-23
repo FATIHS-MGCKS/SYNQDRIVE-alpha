@@ -44,6 +44,12 @@ describe('BookingWizardDraftService eligibility integration', () => {
     maybeAutoSendFrozenBookingDocuments: jest.fn().mockResolvedValue({ sent: false }),
   };
 
+  const eligibilityApproval = {
+    assertValidForTransition: jest.fn(),
+    revokeActiveApprovals: jest.fn(),
+    expireStale: jest.fn(),
+  } as never;
+
   const service = new BookingWizardDraftService(
     prisma,
     bookingsService,
@@ -58,6 +64,7 @@ describe('BookingWizardDraftService eligibility integration', () => {
     checkoutContextService as never,
     {} as never,
     eligibilityEnforcement,
+    eligibilityApproval,
   );
 
   const draftBooking = {

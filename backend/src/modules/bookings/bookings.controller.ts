@@ -42,6 +42,11 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RequireBookingEligibilityPermission } from './decorators/require-booking-eligibility-permission.decorator';
+import {
+  CreateBookingEligibilityApprovalDto,
+  DecideBookingEligibilityApprovalDto,
+} from './booking-eligibility-approval/dto/booking-eligibility-approval.dto';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
@@ -57,6 +62,7 @@ export class BookingsController {
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
     private readonly allowedDriversService: BookingAllowedDriversService,
+    private readonly eligibilityApprovalService: BookingEligibilityApprovalService,
   ) {}
 
   @Get('today/pickups')
@@ -147,7 +153,7 @@ export class BookingsController {
     return this.wizardDraftService.getEligibilityPreview(orgId, bookingId, {
       paymentIntent,
       targetStatus: query.targetStatus,
-      eligibilityOverrideReason: query.eligibilityOverrideReason,
+      eligibilityApprovalId: query.eligibilityApprovalId,
       userId,
     });
   }
@@ -168,6 +174,61 @@ export class BookingsController {
     @Param('bookingId') bookingId: string,
   ) {
     return this.wizardDraftService.abortDraft(orgId, bookingId);
+  }
+
+  @Get(':id/eligibility-approvals')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async listEligibilityApprovals(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.eligibilityApprovalService.listForBooking(orgId, id);
+  }
+
+  @Post(':id/eligibility-approvals')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async createEligibilityApproval(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: CreateBookingEligibilityApprovalDto,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Authenticated user is required');
+    }
+    return this.eligibilityApprovalService.createRequest({
+      organizationId: orgId,
+      bookingId: id,
+      requestedByUserId: userId,
+      exceptionReason: body.exceptionReason,
+      targetBookingStatus: body.targetBookingStatus,
+    });
+  }
+
+  @Post(':id/eligibility-approvals/:approvalId/decide')
+  @RequireBookingEligibilityPermission('booking_eligibility.override')
+  async decideEligibilityApproval(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('approvalId') approvalId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('platformRole') platformRole: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: DecideBookingEligibilityApprovalDto,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Authenticated user is required');
+    }
+    return this.eligibilityApprovalService.decide({
+      organizationId: orgId,
+      bookingId: id,
+      approvalId,
+      decidedByUserId: userId,
+      decision: body.decision,
+      decisionReason: body.decisionReason,
+      platformRole,
+      membershipRole,
+    });
   }
 
   @Get(':id/rental-eligibility')
@@ -299,13 +360,13 @@ export class BookingsController {
     @CurrentUser('platformRole') platformRole: string | undefined,
     @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
     @Body() body: Omit<Prisma.BookingCreateInput, 'organization'> & {
-      eligibilityOverrideReason?: string;
+      eligibilityApprovalId?: string;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
     },
   ) {
     const {
-      eligibilityOverrideReason,
+      eligibilityApprovalId,
       foreignTravelRequested,
       additionalDriverCount,
       ...bookingBody
@@ -314,7 +375,7 @@ export class BookingsController {
       userId,
       platformRole,
       membershipRole,
-      eligibilityOverrideReason,
+      eligibilityApprovalId,
       foreignTravelRequested,
       additionalDriverCount,
     });
@@ -328,13 +389,13 @@ export class BookingsController {
     @CurrentUser('platformRole') platformRole: string | undefined,
     @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
     @Body() body: Prisma.BookingUpdateInput & {
-      eligibilityOverrideReason?: string;
+      eligibilityApprovalId?: string;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
     },
   ) {
     const {
-      eligibilityOverrideReason,
+      eligibilityApprovalId,
       foreignTravelRequested,
       additionalDriverCount,
       ...bookingBody
@@ -343,7 +404,7 @@ export class BookingsController {
       userId,
       platformRole,
       membershipRole,
-      eligibilityOverrideReason,
+      eligibilityApprovalId,
       foreignTravelRequested,
       additionalDriverCount,
     });

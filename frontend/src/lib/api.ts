@@ -3760,15 +3760,15 @@ export const api = {
         paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         targetStatus?: 'PENDING' | 'CONFIRMED';
-        eligibilityOverrideReason?: string;
+        eligibilityApprovalId?: string;
       },
     ) => {
       const q = new URLSearchParams();
       if (params?.paymentIntent) q.set('paymentIntent', params.paymentIntent);
       else if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
       if (params?.targetStatus) q.set('targetStatus', params.targetStatus);
-      if (params?.eligibilityOverrideReason) {
-        q.set('eligibilityOverrideReason', params.eligibilityOverrideReason);
+      if (params?.eligibilityApprovalId) {
+        q.set('eligibilityApprovalId', params.eligibilityApprovalId);
       }
       const suffix = q.toString() ? `?${q.toString()}` : '';
       return get<import('../rental/lib/booking-wizard-eligibility.types').BookingWizardEligibilityPreview>(
@@ -3784,13 +3784,36 @@ export const api = {
         status?: 'PENDING' | 'CONFIRMED';
         paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
-        eligibilityOverrideReason?: string;
+        eligibilityApprovalId?: string;
         eligibilityPreviewFingerprint?: string;
       },
     ) =>
       post<BookingWizardDraftResult>(
         `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/confirm`,
         data ?? {},
+      ),
+    listEligibilityApprovals: (orgId: string, bookingId: string) =>
+      get<Array<{
+        id: string;
+        status: string;
+        exceptionReason: string;
+        decisionReason: string | null;
+      }>>(`/organizations/${orgId}/bookings/${bookingId}/eligibility-approvals`),
+    createEligibilityApproval: (
+      orgId: string,
+      bookingId: string,
+      data: { exceptionReason: string; targetBookingStatus?: 'CONFIRMED' | 'ACTIVE' },
+    ) =>
+      post(`/organizations/${orgId}/bookings/${bookingId}/eligibility-approvals`, data),
+    decideEligibilityApproval: (
+      orgId: string,
+      bookingId: string,
+      approvalId: string,
+      data: { decision: 'APPROVE' | 'REJECT'; decisionReason: string },
+    ) =>
+      post(
+        `/organizations/${orgId}/bookings/${bookingId}/eligibility-approvals/${approvalId}/decide`,
+        data,
       ),
     abortWizardDraft: (orgId: string, bookingId: string) =>
       post<{ booking: unknown; aborted: boolean }>(

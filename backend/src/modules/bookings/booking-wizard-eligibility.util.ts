@@ -6,6 +6,7 @@ import type {
   BookingEligibilityGateResult,
   BookingEligibilityGateStatus,
 } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.types';
+import type { ValidatedBookingEligibilityApproval } from './booking-eligibility-approval/booking-eligibility-approval.types';
 import {
   assertBookingEligibilityTransitionAllowed,
   BOOKING_ELIGIBILITY_TRANSITION_CODE,
@@ -47,8 +48,7 @@ export function buildEligibilityPreviewFingerprint(
 function gateStatusAllowsPending(gateResult: BookingEligibilityGateResult): boolean {
   try {
     assertBookingEligibilityTransitionAllowed(gateResult, 'PENDING', {
-      eligibilityOverrideReason: null,
-      hasOverridePermission: false,
+      validatedApproval: null,
     });
     return true;
   } catch {
@@ -58,12 +58,11 @@ function gateStatusAllowsPending(gateResult: BookingEligibilityGateResult): bool
 
 function gateStatusAllowsConfirm(
   gateResult: BookingEligibilityGateResult,
-  options: { hasOverridePermission: boolean; eligibilityOverrideReason?: string | null },
+  options: { validatedApproval?: ValidatedBookingEligibilityApproval | null },
 ): boolean {
   try {
     assertBookingEligibilityTransitionAllowed(gateResult, 'CONFIRMED', {
-      eligibilityOverrideReason: options.eligibilityOverrideReason,
-      hasOverridePermission: options.hasOverridePermission,
+      validatedApproval: options.validatedApproval ?? null,
     });
     return true;
   } catch {
@@ -75,12 +74,10 @@ export function mapGatekeeperToWizardPreview(
   gateResult: BookingEligibilityGateResult,
   targetStatus: BookingStatus,
   options: {
-    hasOverridePermission?: boolean;
-    eligibilityOverrideReason?: string | null;
+    validatedApproval?: ValidatedBookingEligibilityApproval | null;
   } = {},
 ): BookingWizardEligibilityPreviewResult {
   const rentalEligibility = gateResult.domains.rentalRules.result;
-  const hasOverridePermission = options.hasOverridePermission ?? false;
   const confirmGate = {
     ...gateResult,
     stage: resolveGateStageForPolicyMode('CONFIRMED'),
@@ -104,8 +101,7 @@ export function mapGatekeeperToWizardPreview(
     isPreviewOnly: true,
     rentalEligibility,
     canConfirm: gateStatusAllowsConfirm(confirmGate, {
-      hasOverridePermission,
-      eligibilityOverrideReason: options.eligibilityOverrideReason,
+      validatedApproval: options.validatedApproval ?? null,
     }),
     canCreatePending: gateStatusAllowsPending(pendingGate),
   };

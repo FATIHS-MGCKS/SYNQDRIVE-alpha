@@ -160,7 +160,7 @@ export class BookingsHandoverService {
       await this.bookingEligibilityEnforcement.assertAllowedForPickup(orgId, bookingId, {
         userId: actor.userId,
         membershipRole: actor.membershipRole as never,
-        eligibilityOverrideReason: payload.pickupGateOverrideReason,
+        eligibilityApprovalId: payload.eligibilityApprovalId,
       });
 
       gateEvaluation = await this.pickupGate.assertPickupAllowed({

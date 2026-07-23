@@ -131,7 +131,7 @@ describe('booking-eligibility-status-transition.matrix', () => {
   it('blocks pickup when not eligible', () => {
     expect(() =>
       assertBookingEligibilityTransitionAllowed(gateResult('NOT_ELIGIBLE'), 'ACTIVE', {
-        hasOverridePermission: false,
+        validatedApproval: null,
       }),
     ).toThrow(
       expect.objectContaining({

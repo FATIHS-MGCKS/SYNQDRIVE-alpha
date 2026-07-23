@@ -49,6 +49,8 @@ export interface CreateHandoverProtocolPayload {
   performedAt?: string | null;
   /** Mandatory when overriding soft pickup gate failures (requires override_handover permission). */
   pickupGateOverrideReason?: string | null;
+  /** Required when rental eligibility gate returns MANUAL_APPROVAL_REQUIRED at pickup. */
+  eligibilityApprovalId?: string | null;
   odometerKm: number;
   fuelPercent: number;
   fuelFull?: boolean;

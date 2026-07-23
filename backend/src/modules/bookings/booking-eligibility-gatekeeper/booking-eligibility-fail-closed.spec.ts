@@ -56,10 +56,17 @@ describe('booking eligibility fail-closed policy', () => {
     rentalHealth,
   );
 
+  const eligibilityApproval = {
+    assertValidForTransition: jest.fn(),
+    revokeActiveApprovals: jest.fn(),
+    expireStale: jest.fn(),
+  } as never;
+
   const enforcement = new BookingEligibilityEnforcementService(
     prisma,
     gatekeeper,
     auditLogger,
+    eligibilityApproval,
   );
 
   const clearedCustomer = assembleCustomerEligibilityResult(

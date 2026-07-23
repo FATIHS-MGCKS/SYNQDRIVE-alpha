@@ -59,6 +59,8 @@ import {
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { listInvalidationFactsFromMutation } from './booking-eligibility-gatekeeper/booking-eligibility-status-transition.matrix';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import {
   resolveEligibilityPolicyMode,
   shouldSkipEligibilityEnforcement,
@@ -116,6 +118,7 @@ export class BookingsService {
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
+    private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
   ) {}
 
   /**
@@ -164,7 +167,7 @@ export class BookingsService {
       userId?: string | null;
       platformRole?: string | null;
       membershipRole?: import('@prisma/client').MembershipRole | null;
-      eligibilityOverrideReason?: string | null;
+      eligibilityApprovalId?: string | null;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
     },
@@ -265,9 +268,9 @@ export class BookingsService {
             userId: options?.userId,
             platformRole: options?.platformRole,
             membershipRole: options?.membershipRole ?? undefined,
-            eligibilityOverrideReason:
-              options?.eligibilityOverrideReason ??
-              (anyData.eligibilityOverrideReason as string | undefined),
+            eligibilityApprovalId:
+              options?.eligibilityApprovalId ??
+              (anyData.eligibilityApprovalId as string | undefined),
           },
         );
       } else if (requestedStatus === 'PENDING' && enforcementMode === 'DRAFT') {
@@ -771,7 +774,7 @@ export class BookingsService {
       pricingInput: _pricingInput,
       foreignTravelRequested: _foreignTravelRequested,
       additionalDriverCount: _additionalDriverCount,
-      eligibilityOverrideReason: _eligibilityOverrideReason,
+      eligibilityApprovalId: _eligibilityApprovalId,
       ...rest
     } = this.stripBookingStationScalars(data);
     return rest;
@@ -1674,7 +1677,7 @@ export class BookingsService {
       userId?: string | null;
       platformRole?: string | null;
       membershipRole?: import('@prisma/client').MembershipRole | null;
-      eligibilityOverrideReason?: string | null;
+      eligibilityApprovalId?: string | null;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
     },
@@ -1804,13 +1807,33 @@ export class BookingsService {
       statusChanged,
     });
 
+    const invalidationFacts = listInvalidationFactsFromMutation({
+      customerIdChanged: nextCustomerId !== existing.customerId,
+      vehicleIdChanged: nextVehicleId !== existing.vehicleId,
+      datesChanged:
+        nextStart.getTime() !== existing.startDate.getTime() ||
+        nextEnd.getTime() !== existing.endDate.getTime(),
+      paymentIntentChanged,
+      extrasChanged,
+      statusChanged,
+    });
+    if (invalidationFacts.length > 0) {
+      await this.bookingEligibilityApproval.revokeActiveApprovals({
+        organizationId: orgId,
+        bookingId: id,
+        reason: 'Booking eligibility context changed',
+        revokedByUserId: options?.userId ?? null,
+        invalidationFacts,
+      });
+    }
+
     const enforcementOptions = {
       userId: options?.userId,
       platformRole: options?.platformRole,
       membershipRole: options?.membershipRole ?? undefined,
-      eligibilityOverrideReason:
-        options?.eligibilityOverrideReason ??
-        (anyData.eligibilityOverrideReason as string | undefined),
+      eligibilityApprovalId:
+        options?.eligibilityApprovalId ??
+        (anyData.eligibilityApprovalId as string | undefined),
     };
     const confirmingTransition =
       shouldEnforce && statusChanged && nextStatus === 'CONFIRMED';
@@ -1900,6 +1923,7 @@ export class BookingsService {
       Object.assign(data, this.stationFieldsToPrismaInput(await this.resolveBookingStationFields(orgId, merged)));
     }
 
+    delete anyData.eligibilityApprovalId;
     delete anyData.eligibilityOverrideReason;
     delete anyData.foreignTravelRequested;
     delete anyData.additionalDriverCount;

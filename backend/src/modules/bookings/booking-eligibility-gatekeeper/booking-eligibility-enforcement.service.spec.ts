@@ -21,7 +21,18 @@ describe('BookingEligibilityEnforcementService', () => {
     logEvaluation: jest.fn(),
   } as unknown as BookingEligibilityAuditLogger;
 
-  const service = new BookingEligibilityEnforcementService(prisma, gatekeeper, auditLogger);
+  const eligibilityApproval = {
+    assertValidForTransition: jest.fn(),
+    revokeActiveApprovals: jest.fn(),
+    expireStale: jest.fn(),
+  } as never;
+
+  const service = new BookingEligibilityEnforcementService(
+    prisma,
+    gatekeeper,
+    auditLogger,
+    eligibilityApproval,
+  );
 
   const eligibleResult = testGateResult({
     status: 'ELIGIBLE',

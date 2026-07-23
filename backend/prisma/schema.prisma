@@ -1635,6 +1635,7 @@ model Organization {
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
   bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
+  bookingEligibilityApprovals          BookingEligibilityApproval[]
   legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
   legalDocumentRetentionPurgeRuns        LegalDocumentRetentionPurgeRun[]
   legalDocumentRetentionPolicy           OrganizationLegalDocumentRetentionPolicy?
@@ -1807,6 +1808,8 @@ model User {
   drivingDecisionsMade                DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
   drivingDecisionsRevoked             DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
   bookingAllowedDriversAdded          BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
+  bookingEligibilityApprovalsRequested BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalRequestedBy")
+  bookingEligibilityApprovalsDecided   BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalDecidedBy")
   tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
@@ -5489,6 +5492,7 @@ model Booking {
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
   documentGenerationJobs        BookingDocumentGenerationJob[]
   pickupGateAuditEvents         BookingPickupGateAuditEvent[]
+  eligibilityApprovals          BookingEligibilityApproval[]
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
@@ -7204,6 +7208,47 @@ model BookingDocumentGenerationJob {
   @@index([organizationId, bookingId], map: "booking_document_generation_jobs_org_booking_idx")
   @@index([status, nextRetryAt], map: "booking_document_generation_jobs_status_retry_idx")
   @@map("booking_document_generation_jobs")
+}
+
+enum BookingEligibilityApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+  EXPIRED
+}
+
+/// Persisted manual-approval workflow for MANUAL_APPROVAL_REQUIRED eligibility decisions.
+model BookingEligibilityApproval {
+  id                       String                            @id @default(uuid())
+  organizationId           String                            @map("organization_id")
+  bookingId                String                            @map("booking_id")
+  eligibilityDecision      String                            @map("eligibility_decision")
+  exceptionReason          String                            @map("exception_reason")
+  reasonCodes              Json                              @default("[]") @map("reason_codes")
+  status                   BookingEligibilityApprovalStatus  @default(PENDING)
+  gateStage                String                            @map("gate_stage")
+  targetBookingStatus      String                            @map("target_booking_status")
+  requestedByUserId        String                            @map("requested_by_user_id")
+  decidedByUserId          String?                           @map("decided_by_user_id")
+  decisionReason           String?                           @map("decision_reason")
+  eligibilityFingerprint   String                            @map("eligibility_fingerprint")
+  ruleRevision             String                            @map("rule_revision")
+  bookingDataVersion       String                            @map("booking_data_version")
+  gateResultSnapshot       Json?                             @map("gate_result_snapshot")
+  createdAt                DateTime                          @default(now()) @map("created_at")
+  decidedAt                DateTime?                         @map("decided_at")
+  expiresAt                DateTime                          @map("expires_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  requestedBy  User         @relation("BookingEligibilityApprovalRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  decidedBy    User?        @relation("BookingEligibilityApprovalDecidedBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, bookingId, createdAt], map: "booking_eligibility_approvals_org_booking_created_idx")
+  @@index([organizationId, bookingId, status], map: "booking_eligibility_approvals_org_booking_status_idx")
+  @@index([organizationId, status, expiresAt], map: "booking_eligibility_approvals_org_status_expires_idx")
+  @@map("booking_eligibility_approvals")
 }
 
 /// Append-only audit trail for pickup gate evaluations, blocks, and authorized overrides.

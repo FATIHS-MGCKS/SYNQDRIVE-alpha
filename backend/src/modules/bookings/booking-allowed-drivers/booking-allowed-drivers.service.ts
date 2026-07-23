@@ -13,6 +13,7 @@ import {
   resolveBookingDriverPool,
 } from './booking-allowed-drivers.util';
 import { BookingEligibilityEnforcementService } from '../booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { BookingEligibilityApprovalService } from '../booking-eligibility-approval/booking-eligibility-approval.service';
 import { isWizardDraftBooking } from '../booking-wizard-draft.util';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class BookingAllowedDriversService {
     private readonly prisma: PrismaService,
     private readonly activityLog: ActivityLogService,
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
+    private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
   ) {}
 
   async listForBooking(organizationId: string, bookingId: string) {
@@ -104,6 +106,7 @@ export class BookingAllowedDriversService {
     await this.reassertBookingEligibilityAfterDriverChange(
       input.organizationId,
       input.bookingId,
+      input.userId,
     );
 
     return this.mapRow(row);
@@ -203,6 +206,7 @@ export class BookingAllowedDriversService {
     await this.reassertBookingEligibilityAfterDriverChange(
       input.organizationId,
       input.bookingId,
+      input.userId,
     );
 
     return this.listForBooking(input.organizationId, input.bookingId);
@@ -254,6 +258,7 @@ export class BookingAllowedDriversService {
     await this.reassertBookingEligibilityAfterDriverChange(
       input.organizationId,
       input.bookingId,
+      input.userId,
     );
 
     return this.listForBooking(input.organizationId, input.bookingId);
@@ -330,7 +335,16 @@ export class BookingAllowedDriversService {
   private async reassertBookingEligibilityAfterDriverChange(
     organizationId: string,
     bookingId: string,
+    userId?: string | null,
   ): Promise<void> {
+    await this.bookingEligibilityApproval.revokeActiveApprovals({
+      organizationId,
+      bookingId,
+      reason: 'Additional drivers changed',
+      revokedByUserId: userId ?? null,
+      invalidationFacts: ['additional_drivers', 'rule_revision'],
+    });
+
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId },
       select: { status: true, notes: true },

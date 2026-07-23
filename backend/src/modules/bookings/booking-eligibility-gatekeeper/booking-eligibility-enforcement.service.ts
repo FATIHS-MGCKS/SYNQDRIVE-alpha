@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BookingStatus, MembershipRole } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  assertMembershipPermission,
-  type PermissionActor,
-} from '@shared/auth/permission.util';
-import { BOOKING_ELIGIBILITY_PERMISSION_REQUIREMENTS } from '../booking-eligibility-permission.constants';
 import { isWizardDraftBooking } from '../booking-wizard-draft.util';
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper.service';
 import {
@@ -35,6 +30,7 @@ import {
   throwBookingEligibilityViolation,
 } from './booking-eligibility-error.policy';
 import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-transition.policy';
+import { BookingEligibilityApprovalService } from '../booking-eligibility-approval/booking-eligibility-approval.service';
 
 export type BookingEligibilityMutationContext = {
   organizationId: string;
@@ -55,7 +51,9 @@ export type BookingEligibilityEnforcementOptions = {
   userId?: string | null;
   platformRole?: string | null;
   membershipRole?: MembershipRole | null;
+  /** @deprecated Use eligibilityApprovalId — direct override reasons are no longer accepted. */
   eligibilityOverrideReason?: string | null;
+  eligibilityApprovalId?: string | null;
   intent?: BookingEligibilityEvaluationIntent;
   command?: BookingEligibilityCommandKind;
   parentCommandId?: string | null;
@@ -67,6 +65,7 @@ export class BookingEligibilityEnforcementService {
     private readonly prisma: PrismaService,
     private readonly gatekeeper: BookingEligibilityGatekeeperService,
     private readonly auditLogger: BookingEligibilityAuditLogger,
+    private readonly eligibilityApproval: BookingEligibilityApprovalService,
   ) {}
 
   shouldEnforceForUpdate(input: {
@@ -142,14 +141,39 @@ export class BookingEligibilityEnforcementService {
       command: options.command ?? this.resolveCommandForMode(mode!),
     });
 
-    const hasOverridePermission = await this.canOverrideEligibility(
-      options,
-      context.organizationId,
-    );
+    const additionalDriverCount =
+      context.additionalDriverCount ??
+      (context.bookingId
+        ? await this.countAdditionalDrivers(context.organizationId, context.bookingId)
+        : 0);
+
+    const needsApproval =
+      gateResult.status === 'MANUAL_APPROVAL_REQUIRED' &&
+      (mode === 'CONFIRMED' || mode === 'ACTIVE');
+
+    let validatedApproval = null;
+    if (needsApproval) {
+      if (!context.bookingId) {
+        assertBookingEligibilityTransitionAllowed(gateResult, mode!, {
+          validatedApproval: null,
+          correlation: gateResult.correlation,
+        });
+        return gateResult;
+      }
+      if (options.eligibilityApprovalId?.trim()) {
+        validatedApproval = await this.eligibilityApproval.assertValidForTransition({
+          organizationId: context.organizationId,
+          bookingId: context.bookingId,
+          approvalId: options.eligibilityApprovalId.trim(),
+          gateResult,
+          bookingContext: context,
+          additionalDriverCount,
+        });
+      }
+    }
 
     assertBookingEligibilityTransitionAllowed(gateResult, mode!, {
-      eligibilityOverrideReason: options.eligibilityOverrideReason,
-      hasOverridePermission,
+      validatedApproval,
       correlation: gateResult.correlation,
     });
 
@@ -378,32 +402,5 @@ export class BookingEligibilityEnforcementService {
     return ['RECEIVED', 'PARTIALLY_USED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(
       deposit.status,
     );
-  }
-
-  private async canOverrideEligibility(
-    options: BookingEligibilityEnforcementOptions,
-    organizationId: string,
-  ): Promise<boolean> {
-    if (!options.userId) return false;
-    try {
-      const requirement =
-        BOOKING_ELIGIBILITY_PERMISSION_REQUIREMENTS['booking_eligibility.override'];
-      const actor: PermissionActor = {
-        id: options.userId,
-        organizationId,
-        platformRole: options.platformRole ?? undefined,
-        membershipRole: options.membershipRole ?? undefined,
-      };
-      await assertMembershipPermission(
-        this.prisma,
-        actor,
-        organizationId,
-        requirement.module,
-        requirement.level,
-      );
-      return true;
-    } catch {
-      return false;
-    }
   }
 }

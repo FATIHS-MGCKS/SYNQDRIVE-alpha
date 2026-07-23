@@ -1639,3 +1639,73 @@ Neue Suite: `customer-fact-trust.policy.spec.ts` (alle `CustomerDocumentStatus` 
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 13).*
+
+---
+
+## Prompt 14 — Eine finale Booking-Eligibility-Entscheidung
+
+**Ziel:** Widersprüchliche Entscheidungen zwischen Customer Eligibility, Dokumentprüfung und Rental Rules verhindern.
+
+### 14.1 Entscheidungspriorität (final)
+
+| Rang | Status / Kategorie | Beispiele |
+|------|-------------------|-----------|
+| 1 | `TECHNICAL_ERROR` | Evaluator-/DB-Fehler |
+| 2 | `TEMPORARILY_UNAVAILABLE` | Vehicle Health Gate nicht verfügbar |
+| 3 | `NOT_ELIGIBLE` | Kundensperre, abgelehnte/abgelaufene Dokumente, Rental-Rule-Verstoß, Fahrzeug blockiert |
+| 4 | `MISSING_INFORMATION` | Fehlende Identitäts-/Kundendaten (DOB, Führerschein, Dokument missing) |
+| 5 | `MANUAL_APPROVAL_REQUIRED` | Pending/Review, Policy-Freigaben, unverifizierte OCR-Vorschläge |
+| 6 | `ELIGIBLE` | Freigabe (Warnungen möglich, nicht blockierend) |
+
+**Reason-Code-Priorität** (Präsentation/Audit): `CUSTOMER_BLOCKED` → Dokument hard-fail → `MISSING_*` → Rental-Rule-Block → Manual-Approval → Warnungen (`DEPOSIT_REQUIRED`, Pickup-deferred).
+
+### 14.2 Architektur
+
+| Komponente | Rolle |
+|------------|-------|
+| `BookingEligibilityGatekeeperService` | **Einzige** finale Entscheidungsinstanz (`decisionAuthority: GATEKEEPER`) |
+| `booking-eligibility-decision.policy.ts` | `resolveFinalBookingEligibilityDecision`, Status-/Reason-Priorität |
+| `CustomerEligibilityService` | Teilresultat (Lifecycle, Risk, Financial) — kein Final-Status |
+| `CustomerVerificationService` | Teilresultat (Dokumentstatus) — **einziger Owner** für Dokument-Impact im Gatekeeper |
+| `BookingRentalEligibilityService` | Teilresultat (Effective Rules + trusted facts) — `skipVerificationImpact: true` im Gatekeeper |
+| `RentalHealthService` | Teilresultat (Vehicle Readiness) |
+
+**Deduplizierung:** Verification wird einmal geladen → `verificationSnapshot` an Customer Eligibility; Rental Rules ohne erneuten Verification-Impact.
+
+**Read-APIs:** `POST eligibility-check` und `GET rental-eligibility` laufen über Gatekeeper (`PREVIEW`) → `mapGatekeeperToAuthoritativeRentalPreview`.
+
+### 14.3 Implementierung
+
+| Datei | Änderung |
+|-------|----------|
+| `booking-eligibility-decision.policy.ts` | Zentrale Final-Decision-Policy + Reason-Sortierung |
+| `booking-eligibility-gatekeeper.service.ts` | Domain-Contributions → eine Final-Entscheidung |
+| `booking-eligibility-gatekeeper.util.ts` | Mapper liefern `BookingEligibilityDomainContribution` |
+| `customer-eligibility.service.ts` | `verificationSnapshot` optional |
+| `booking-rental-eligibility.service.ts` | `skipVerificationImpact` |
+| `bookings.controller.ts` | Eligibility-Endpoints über Gatekeeper |
+
+### 14.4 Tests
+
+```
+npm test -- --testPathPattern="booking-eligibility|booking-rental-eligibility|customer-eligibility|customer-fact-trust|rental-rules"
+→ 212/212 PASS
+```
+
+Neue Suites: `booking-eligibility-decision.policy.spec.ts`, `booking-eligibility-consolidation.spec.ts`
+
+---
+
+## Prompt 14 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Genau eine finale Booking Eligibility Decision | ✅ Gatekeeper + `decisionAuthority` |
+| Subsysteme liefern Fakten, keine konkurrierende Wahrheit | ✅ Domain slices + deduped verification |
+| Gründe priorisiert und reproduzierbar | ✅ Status- + Reason-Code-Priorität |
+| Tests bestehen | ✅ 212/212 |
+| Prompt 14 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 14).*

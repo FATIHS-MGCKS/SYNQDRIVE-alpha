@@ -1,5 +1,6 @@
 import type { BookingStatus } from '@prisma/client';
 import type { BookingEligibilityGateResult, BookingEligibilityGateStage } from './booking-eligibility-gatekeeper.types';
+import type { ValidatedBookingEligibilityApproval } from '../booking-eligibility-approval/booking-eligibility-approval.types';
 import type { BookingEligibilityCorrelationIds } from './booking-eligibility-correlation.util';
 import {
   mapGateStatusToTransitionCode,
@@ -15,6 +16,8 @@ export const BOOKING_ELIGIBILITY_TRANSITION_CODE = {
   RULES_CHANGED: 'BOOKING_ELIGIBILITY_RULES_CHANGED',
   OVERRIDE_DENIED: 'BOOKING_ELIGIBILITY_OVERRIDE_DENIED',
   OVERRIDE_REASON_REQUIRED: 'BOOKING_ELIGIBILITY_OVERRIDE_REASON_REQUIRED',
+  APPROVAL_REQUIRED: 'BOOKING_ELIGIBILITY_APPROVAL_REQUIRED',
+  APPROVAL_INVALID: 'BOOKING_ELIGIBILITY_APPROVAL_INVALID',
 } as const;
 
 export type BookingEligibilityTransitionPolicyMode = 'DRAFT' | 'PENDING' | 'CONFIRMED' | 'ACTIVE';
@@ -54,8 +57,7 @@ export function assertBookingEligibilityTransitionAllowed(
   gateResult: BookingEligibilityGateResult,
   mode: BookingEligibilityTransitionPolicyMode,
   options: {
-    eligibilityOverrideReason?: string | null;
-    hasOverridePermission: boolean;
+    validatedApproval?: ValidatedBookingEligibilityApproval | null;
     correlation?: BookingEligibilityCorrelationIds;
   },
 ): void {
@@ -119,8 +121,7 @@ function assertPendingTransitionAllowed(
 function assertActiveTransitionAllowed(
   gateResult: BookingEligibilityGateResult,
   options: {
-    eligibilityOverrideReason?: string | null;
-    hasOverridePermission: boolean;
+    validatedApproval?: ValidatedBookingEligibilityApproval | null;
     correlation?: BookingEligibilityCorrelationIds;
   },
 ): void {
@@ -128,20 +129,19 @@ function assertActiveTransitionAllowed(
     case 'ELIGIBLE':
       return;
     case 'MANUAL_APPROVAL_REQUIRED': {
-      const reason = options.eligibilityOverrideReason?.trim();
-      if (!reason) {
+      if (!options.validatedApproval || options.validatedApproval.status !== 'APPROVED') {
         throwBookingEligibilityViolation({
-          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MANUAL_APPROVAL_REQUIRED,
-          message: 'Manual approval is required before pickup can start.',
+          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.APPROVAL_REQUIRED,
+          message: 'A valid eligibility approval is required before pickup can start.',
           gateResult,
           correlation: options.correlation,
           requiresOverride: true,
         });
       }
-      if (!options.hasOverridePermission) {
+      if (options.validatedApproval.targetBookingStatus !== 'ACTIVE') {
         throwBookingEligibilityViolation({
-          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.OVERRIDE_DENIED,
-          message: 'Missing permission to override rental eligibility manual approval for pickup.',
+          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.APPROVAL_INVALID,
+          message: 'Eligibility approval does not cover pickup activation.',
           gateResult,
           correlation: options.correlation,
         });
@@ -189,8 +189,7 @@ function assertActiveTransitionAllowed(
 function assertConfirmedTransitionAllowed(
   gateResult: BookingEligibilityGateResult,
   options: {
-    eligibilityOverrideReason?: string | null;
-    hasOverridePermission: boolean;
+    validatedApproval?: ValidatedBookingEligibilityApproval | null;
     correlation?: BookingEligibilityCorrelationIds;
   },
 ): void {
@@ -198,20 +197,19 @@ function assertConfirmedTransitionAllowed(
     case 'ELIGIBLE':
       return;
     case 'MANUAL_APPROVAL_REQUIRED': {
-      const reason = options.eligibilityOverrideReason?.trim();
-      if (!reason) {
+      if (!options.validatedApproval || options.validatedApproval.status !== 'APPROVED') {
         throwBookingEligibilityViolation({
-          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MANUAL_APPROVAL_REQUIRED,
-          message: 'Manual approval is required before this booking can be confirmed.',
+          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.APPROVAL_REQUIRED,
+          message: 'A valid eligibility approval is required before this booking can be confirmed.',
           gateResult,
           correlation: options.correlation,
           requiresOverride: true,
         });
       }
-      if (!options.hasOverridePermission) {
+      if (options.validatedApproval.targetBookingStatus !== 'CONFIRMED') {
         throwBookingEligibilityViolation({
-          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.OVERRIDE_DENIED,
-          message: 'Missing permission to override rental eligibility manual approval.',
+          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.APPROVAL_INVALID,
+          message: 'Eligibility approval does not cover booking confirmation.',
           gateResult,
           correlation: options.correlation,
         });

@@ -26,6 +26,7 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/
     BookingEligibilityGatekeeperService,
     BookingEligibilityEnforcementService,
     BookingEligibilityAuditLogger,
+    BookingEligibilityApprovalService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
@@ -67,6 +69,7 @@ import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/
     BookingEligibilityEnforcementService,
     BookingWizardDraftService,
     BookingAllowedDriversService,
+    BookingEligibilityApprovalService,
   ],
 })
 export class BookingsModule {}
