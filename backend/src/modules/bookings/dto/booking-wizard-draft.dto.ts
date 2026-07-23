@@ -83,6 +83,11 @@ export class BookingWizardDraftConfirmDto {
   @IsBoolean()
   agbAccepted?: boolean;
 
+  /**
+   * @deprecated Checkout UI flag only — not stored as GDPR consent.
+   * Server records `PRIVACY_NOTICE_ACKNOWLEDGMENT` in `booking_legal_acceptances`
+   * when frozen privacy document refs + checksum exist.
+   */
   @IsOptional()
   @IsBoolean()
   privacyAccepted?: boolean;

@@ -1634,6 +1634,7 @@ model Organization {
   legalDocumentStations                  OrganizationLegalDocumentStation[]
   legalDocumentEvents                    OrganizationLegalDocumentEvent[]
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
+  bookingLegalAcceptances                BookingLegalAcceptance[]
   bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
   bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
   bookingEligibilityApprovals          BookingEligibilityApproval[]
@@ -5132,6 +5133,7 @@ model Customer {
   driverAttributionsAsDriver             DriverAttribution[]         @relation("DriverAttributionDriver")
   outboundEmails                         OutboundEmail[]
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
+  bookingLegalAcceptances                BookingLegalAcceptance[]
   bookingPaymentRequests                 BookingPaymentRequest[]
 
   vehicleDamages        VehicleDamage[]
@@ -5603,6 +5605,7 @@ model Booking {
   whatsappConversations   WhatsAppConversation[]
   outboundEmails          OutboundEmail[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
+  legalAcceptances              BookingLegalAcceptance[]
   documentGenerationJobs        BookingDocumentGenerationJob[]
   pickupGateAuditEvents         BookingPickupGateAuditEvent[]
   eligibilityApprovals          BookingEligibilityApproval[]
@@ -6006,6 +6009,7 @@ model BookingHandoverProtocol {
   booking        Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   vehicleDamages VehicleDamage[]
+  legalAcceptances BookingLegalAcceptance[]
 
   @@unique([bookingId, kind])
   @@index([organizationId])
@@ -7078,6 +7082,7 @@ model GeneratedDocument {
   rentalContractsAsWithdrawalDocument RentalContract[]          @relation("RentalContractWithdrawalDocument")
   rentalContractsAsPrivacyDocument    RentalContract[]          @relation("RentalContractPrivacyDocument")
   legalDocumentDeliveryEvidence       LegalDocumentDeliveryEvidence[]
+  bookingLegalAcceptances             BookingLegalAcceptance[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -7160,6 +7165,7 @@ model OrganizationLegalDocument {
 
   events            OrganizationLegalDocumentEvent[]
   deliveryEvidence  LegalDocumentDeliveryEvidence[]
+  bookingLegalAcceptances BookingLegalAcceptance[]
   stations OrganizationLegalDocumentStation[]
 
   // Scope-aware ACTIVE uniqueness is enforced via conflict detection at activation
@@ -7288,6 +7294,93 @@ model LegalDocumentDeliveryEvidence {
   @@index([organizationId, retentionClass, deletionEligibleAt], map: "legal_document_delivery_evidence_org_retention_eligible_idx")
   @@index([organizationId, legalHold], map: "legal_document_delivery_evidence_org_legal_hold_idx")
   @@map("legal_document_delivery_evidence")
+}
+
+/// Append-only legal acceptance / signature events for bookings (Prompt 17).
+/// Distinct from LegalDocumentDeliveryEvidence (delivery proof, not consent).
+enum BookingLegalAcceptanceActorType {
+  CUSTOMER
+  STAFF_USER
+  SYSTEM
+  AUTHORIZED_DRIVER
+}
+
+enum BookingLegalAcceptanceEventKind {
+  ACCEPTANCE
+  REVOCATION
+  CORRECTION
+}
+
+enum BookingLegalAcceptanceType {
+  TERMS_CONTRACT_ACCEPTANCE
+  PRIVACY_NOTICE_ACKNOWLEDGMENT
+  MARKETING_CONSENT
+  OTHER_CONSENT
+  RENTAL_CONTRACT_SIGNATURE
+  HANDOVER_SIGNATURE
+  RETURN_SIGNATURE
+}
+
+enum BookingLegalAcceptanceLegalBasis {
+  CONTRACT
+  LEGAL_OBLIGATION
+  LEGITIMATE_INTEREST
+  CONSENT
+  NOTICE_ACKNOWLEDGMENT
+}
+
+model BookingLegalAcceptance {
+  id                    String                           @id @default(uuid())
+  organizationId        String                           @map("organization_id")
+  bookingId             String                           @map("booking_id")
+  customerId            String                           @map("customer_id")
+  actorType             BookingLegalAcceptanceActorType  @map("actor_type")
+  actorId               String?                          @map("actor_id")
+  eventKind             BookingLegalAcceptanceEventKind  @default(ACCEPTANCE) @map("event_kind")
+  acceptanceType        BookingLegalAcceptanceType       @map("acceptance_type")
+  documentType          String                           @map("document_type")
+  documentVersion       String                           @map("document_version")
+  immutableDocumentHash String                           @map("immutable_document_hash")
+  language              String
+  legalBasis            BookingLegalAcceptanceLegalBasis   @map("legal_basis")
+  purpose               String?
+  acceptedAt            DateTime                         @map("accepted_at")
+  source                String
+  revokedAt             DateTime?                        @map("revoked_at")
+  relatedAcceptanceId   String?                          @map("related_acceptance_id")
+  legalDocumentId       String?                          @map("legal_document_id")
+  generatedDocumentId   String?                          @map("generated_document_id")
+  handoverProtocolId    String?                          @map("handover_protocol_id")
+  requestId             String?                          @map("request_id")
+  metadata              Json?
+  retentionClass        String                           @default("LEGAL_ACCEPTANCE") @map("retention_class")
+  retainUntil           DateTime?                        @map("retain_until")
+  legalHold             Boolean                          @default(false) @map("legal_hold")
+  legalHoldReason       String?                          @map("legal_hold_reason")
+  legalHoldSetAt        DateTime?                        @map("legal_hold_set_at")
+  legalHoldSetByUserId  String?                          @map("legal_hold_set_by_user_id")
+  deletionEligibleAt    DateTime?                        @map("deletion_eligible_at")
+  createdAt             DateTime                         @default(now()) @map("created_at")
+
+  organization      Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking           Booking                    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer          Customer                   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  legalDocument     OrganizationLegalDocument? @relation(fields: [legalDocumentId], references: [id], onDelete: Restrict)
+  generatedDocument GeneratedDocument?         @relation(fields: [generatedDocumentId], references: [id], onDelete: Restrict)
+  handoverProtocol  BookingHandoverProtocol?   @relation(fields: [handoverProtocolId], references: [id], onDelete: SetNull)
+  relatedAcceptance BookingLegalAcceptance?    @relation("BookingLegalAcceptanceCorrectionChain", fields: [relatedAcceptanceId], references: [id], onDelete: Restrict)
+  derivedEvents     BookingLegalAcceptance[]   @relation("BookingLegalAcceptanceCorrectionChain")
+
+  @@unique([organizationId, requestId], map: "booking_legal_acceptances_org_request_id_key")
+  @@index([organizationId, bookingId], map: "booking_legal_acceptances_org_booking_idx")
+  @@index([organizationId, customerId], map: "booking_legal_acceptances_org_customer_idx")
+  @@index([organizationId, documentType], map: "booking_legal_acceptances_org_document_type_idx")
+  @@index([organizationId, acceptedAt], map: "booking_legal_acceptances_org_accepted_at_idx")
+  @@index([organizationId, acceptanceType, acceptedAt], map: "booking_legal_acceptances_org_type_accepted_idx")
+  @@index([organizationId, retentionClass, deletionEligibleAt], map: "booking_legal_acceptances_org_retention_eligible_idx")
+  @@index([organizationId, legalHold], map: "booking_legal_acceptances_org_legal_hold_idx")
+  @@index([relatedAcceptanceId], map: "booking_legal_acceptances_related_acceptance_idx")
+  @@map("booking_legal_acceptances")
 }
 
 /// Durable workflow state for async booking document generation (Prompt 19).

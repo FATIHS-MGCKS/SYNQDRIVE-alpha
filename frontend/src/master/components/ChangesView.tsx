@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-legal-acceptance-v49789-2026-07-23',
+    version: '4.9.789',
+    title: 'V4.9.789 — Booking legal acceptance model (Prompt 17)',
+    summary: [
+      'Append-only `booking_legal_acceptances` — getrennte Typen für AGB, Datenschutzhinweis-Kenntnisnahme, Marketing/sonstige Einwilligung, Mietvertrag, Übergabe-/Rückgabeunterschrift.',
+      'Kein pauschales `privacyAccepted` als DSGVO-Einwilligung; Wizard-Flag deprecated, Server schreibt `PRIVACY_NOTICE_ACKNOWLEDGMENT` nur mit frozen Document-Hash.',
+      'Immutability: Korrekturen/Widerruf nur als neue Events (`REVOCATION`/`CORRECTION`); `revokedAt` nur bei widerrufbaren Einwilligungen.',
+      'API + Permissions (`booking_legal_acceptance.read|record`), Retention-Spalten vorbereitet, Migration ohne Backfill historischer Daten.',
+      'Checkout-Confirm und Handover-Signaturen verdrahtet; Tests + `docs/privacy/booking-legal-acceptance-model.md`.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 17 — revisionssicheres Legal-Acceptance-Datenmodell.',
+    previousBehavior: 'Checkout nutzte `privacyAccepted`-Boolean ohne audit-grade Nachweis; keine getrennte Consent-/Signature-Event-Historie.',
+    details:
+      'prisma/migrations/20260723500000_booking_legal_acceptance, backend/src/modules/bookings/legal-acceptance/*, booking-wizard-draft.service.ts, bookings-handover.service.ts, docs/privacy/booking-legal-acceptance-model.md',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T22:30:00.000Z',
+  },
+  {
     id: 'rental-rules-prod-di-fix-v49788-2026-07-23',
     version: '4.9.788',
     title: 'V4.9.788 — Rental Rules production hotfix (DI + release train)',

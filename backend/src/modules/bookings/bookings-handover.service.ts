@@ -41,6 +41,7 @@ import {
 } from './booking-pickup-gate/booking-pickup-gate.constants';
 import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
+import { BookingLegalAcceptanceService } from './legal-acceptance/booking-legal-acceptance.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -69,6 +70,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly bookingLegalAcceptance: BookingLegalAcceptanceService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -477,6 +479,23 @@ export class BookingsHandoverService {
         }),
       );
     }
+
+    await this.bookingLegalAcceptance
+      .recordHandoverSignatures({
+        organizationId: orgId,
+        bookingId,
+        customerId: booking.customerId,
+        handoverProtocolId: protocol.id,
+        kind,
+        customerSignatureName: payload.customerSignatureName,
+        staffSignatureName: payload.staffSignatureName,
+        actorUserId: actor.userId,
+      })
+      .catch((err) => {
+        this.logger.error(
+          `Legal acceptance handover signature recording failed booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
 
     await this.fleetMapCache.invalidate(orgId);
     await this.rentalHealthSummaryCache.invalidate(orgId, booking.vehicleId);
