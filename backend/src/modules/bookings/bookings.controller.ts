@@ -470,6 +470,7 @@ export class BookingsController {
   async create(
     @Param('orgId') orgId: string,
     @CurrentUser('id') userId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: CreateBookingDto,
   ) {
     const command = mapCreateBookingDtoToCommand(body);
@@ -478,7 +479,7 @@ export class BookingsController {
       customerId: command.customerId,
       stationId: command.pickupStationId ?? command.returnStationId,
     });
-    return this.bookingsService.create(orgId, command, { userId });
+    return this.bookingsService.create(orgId, command, { userId, idempotencyKey });
   }
 
   @Patch(':id/schedule')
@@ -487,12 +488,16 @@ export class BookingsController {
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @CurrentUser('id') userId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: UpdateBookingScheduleDto,
     @Req() req: BookingRequest,
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, id);
     const command = mapUpdateBookingScheduleDtoToCommand(body);
-    return this.bookingUpdateService.updateSchedule(orgId, id, command, this.updateContext(req, userId));
+    return this.bookingUpdateService.updateSchedule(orgId, id, command, {
+      ...this.updateContext(req, userId),
+      idempotencyKey,
+    });
   }
 
   @Patch(':id/customer')
@@ -516,13 +521,17 @@ export class BookingsController {
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @CurrentUser('id') userId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: UpdateBookingVehicleDto,
     @Req() req: BookingRequest,
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, id);
     await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { vehicleId: body.vehicleId });
     const command = mapUpdateBookingVehicleDtoToCommand(body);
-    return this.bookingUpdateService.updateVehicle(orgId, id, command, this.updateContext(req, userId));
+    return this.bookingUpdateService.updateVehicle(orgId, id, command, {
+      ...this.updateContext(req, userId),
+      idempotencyKey,
+    });
   }
 
   @Patch(':id/stations')

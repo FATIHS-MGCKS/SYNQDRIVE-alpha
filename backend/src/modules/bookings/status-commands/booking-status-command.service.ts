@@ -47,6 +47,7 @@ import {
   COMMAND_TO_TARGET_STATUS,
   COMMAND_TO_TRIGGER,
 } from './booking-status-command.types';
+import { hashBookingIdempotencyRequest } from '../idempotency/booking-idempotency.util';
 
 @Injectable()
 export class BookingStatusCommandService {
@@ -75,10 +76,22 @@ export class BookingStatusCommandService {
       throw new BookingStatusIdempotencyKeyRequiredError();
     }
 
-    const replay = await this.findReplay(input.organizationId, idempotencyKey);
-    if (replay) {
-      this.assertReplayMatches(input, replay);
-      return this.withReplayMeta(replay);
+    const requestFingerprint = this.buildRequestFingerprint(input);
+
+    const replayRow = await this.prisma.bookingStatusCommand.findUnique({
+      where: {
+        organizationId_idempotencyKey: {
+          organizationId: input.organizationId,
+          idempotencyKey,
+        },
+      },
+    });
+    if (replayRow) {
+      this.assertStoredMatches(input, replayRow, requestFingerprint);
+      const replay = deserializeBookingStatusCommandResult(replayRow.resultPayload);
+      if (replay) {
+        return this.withReplayMeta(replay);
+      }
     }
 
     this.assertCommandPayload(input);
@@ -96,7 +109,7 @@ export class BookingStatusCommandService {
         },
       });
       if (raced) {
-        this.assertStoredMatches(input, raced);
+        this.assertStoredMatches(input, raced, requestFingerprint);
         const stored = deserializeBookingStatusCommandResult(raced.resultPayload);
         if (stored) {
           return { commandResult: this.withReplayMeta(stored), plannedForEffects: null };
@@ -118,7 +131,7 @@ export class BookingStatusCommandService {
           idempotent: true,
           replayed: false,
         });
-        await this.persistCommand(tx, input, idempotentResult);
+        await this.persistCommand(tx, input, idempotentResult, requestFingerprint);
         return { commandResult: idempotentResult, plannedForEffects: null };
       }
 
@@ -132,7 +145,7 @@ export class BookingStatusCommandService {
         idempotent: false,
         replayed: false,
       });
-      await this.persistCommand(tx, input, commandResult);
+      await this.persistCommand(tx, input, commandResult, requestFingerprint);
       return { commandResult, plannedForEffects: planned };
     });
 
@@ -248,11 +261,38 @@ export class BookingStatusCommandService {
 
   private assertStoredMatches(
     input: ExecuteBookingStatusCommandInput,
-    row: { bookingId: string; commandType: BookingStatusCommandType },
+    row: { bookingId: string; commandType: BookingStatusCommandType; requestFingerprint?: string | null },
+    requestFingerprint: string,
   ): void {
     if (row.bookingId !== input.bookingId || row.commandType !== input.command) {
       throw new BookingStatusIdempotencyKeyConflictError();
     }
+    if (row.requestFingerprint && row.requestFingerprint !== requestFingerprint) {
+      throw new BookingStatusIdempotencyKeyConflictError();
+    }
+  }
+
+  private buildRequestFingerprint(input: ExecuteBookingStatusCommandInput): string {
+    return hashBookingIdempotencyRequest({
+      bookingId: input.bookingId,
+      command: input.command,
+      reason: input.reason ?? null,
+      cancellation: input.cancellation
+        ? {
+            reasonCode: input.cancellation.reasonCode,
+            description: input.cancellation.description ?? null,
+            effectiveAt: input.cancellation.effectiveAt?.toISOString() ?? null,
+          }
+        : null,
+      override: input.override
+        ? {
+            toStatus: input.override.toStatus,
+            reason: input.override.reason,
+            affectedInvariants: input.override.affectedInvariants,
+            approvalRequestId: input.override.approvalRequestId ?? null,
+          }
+        : null,
+    });
   }
 
   private withReplayMeta(result: BookingStatusCommandResult): BookingStatusCommandResult {
@@ -428,6 +468,7 @@ export class BookingStatusCommandService {
     tx: Prisma.TransactionClient,
     input: ExecuteBookingStatusCommandInput,
     result: BookingStatusCommandResult,
+    requestFingerprint: string,
   ): Promise<void> {
     const payload = {
       booking: serializeBooking(result.booking),
@@ -441,6 +482,7 @@ export class BookingStatusCommandService {
           bookingId: input.bookingId,
           commandType: input.command as BookingStatusCommandType,
           idempotencyKey: input.idempotencyKey.trim(),
+          requestFingerprint,
           fromStatus: result.transition.from,
           toStatus: result.transition.to,
           trigger: result.transition.trigger,
@@ -467,7 +509,7 @@ export class BookingStatusCommandService {
           },
         });
         if (dup) {
-          this.assertStoredMatches(input, dup);
+          this.assertStoredMatches(input, dup, requestFingerprint);
           const stored = deserializeBookingStatusCommandResult(dup.resultPayload);
           if (stored) return;
         }

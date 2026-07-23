@@ -25,6 +25,7 @@ import {
   handoverKindToStatusCommand,
 } from './status-commands/booking-status-command.service';
 import { HANDOVER_ERROR_CODES } from './handover-error.codes';
+import { BookingIdempotencyKeyRequiredError } from './idempotency/booking-idempotency.errors';
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
@@ -92,8 +93,13 @@ export class BookingsHandoverService {
   ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
     const hasOverridePermission = options?.hasOverridePermission ?? false;
     const idempotencyKey = options?.idempotencyKey?.trim();
+    if (!idempotencyKey) {
+      throw new BookingIdempotencyKeyRequiredError(
+        kind === 'PICKUP' ? 'BOOKING_HANDOVER_PICKUP' : 'BOOKING_HANDOVER_RETURN',
+      );
+    }
 
-    if (idempotencyKey) {
+    {
       const replay = await this.statusCommands.findReplay(orgId, idempotencyKey);
       if (replay && replay.booking.id === bookingId) {
         const protocol = await this.prisma.bookingHandoverProtocol.findUnique({

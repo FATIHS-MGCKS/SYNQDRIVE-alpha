@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Mail, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -9,6 +9,10 @@ import { dedupeDocumentsByType } from '../../lib/document-list.utils';
 import { isEmailSendableDocument } from '../../lib/email-sendable';
 import { emailDocTypeLabel } from '../../lib/email-i18n';
 import { useLanguage } from '../../rental/i18n/LanguageContext';
+import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from '../../rental/lib/booking-status-idempotency';
 
 export interface SendDocumentsEmailModalProps {
   open: boolean;

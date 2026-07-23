@@ -23,6 +23,7 @@ import type {
 } from '../rental/lib/vehicle-operational-state';
 import {
   createBookingStatusIdempotencyKey,
+  createBookingMutationIdempotencyKey,
   type BookingStatusCommandApiResponse,
 } from '../rental/lib/booking-status-idempotency';
 
@@ -3705,8 +3706,14 @@ export const api = {
     },
     get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/bookings/${id}`),
     detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
-    create: (orgId: string, data: OperatorBookingCreatePayload) =>
-      post<unknown>(`/organizations/${orgId}/bookings`, data),
+    create: (
+      orgId: string,
+      data: OperatorBookingCreatePayload,
+      options: { idempotencyKey: string },
+    ) =>
+      post<unknown>(`/organizations/${orgId}/bookings`, data, {
+        headers: { 'Idempotency-Key': options.idempotencyKey },
+      }),
     /** @deprecated Use typed update* action endpoints */
     update: (orgId: string, id: string, data: OperatorBookingUpdatePayload) =>
       patch<unknown>(`/organizations/${orgId}/bookings/${id}`, data),
@@ -3721,7 +3728,11 @@ export const api = {
         pricingQuoteId?: string;
         quoteId?: string;
       },
-    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/schedule`, data),
+      options: { idempotencyKey: string },
+    ) =>
+      patch<unknown>(`/organizations/${orgId}/bookings/${id}/schedule`, data, {
+        headers: { 'Idempotency-Key': options.idempotencyKey },
+      }),
     updateCustomer: (
       orgId: string,
       id: string,
@@ -3731,7 +3742,11 @@ export const api = {
       orgId: string,
       id: string,
       data: BookingUpdateConcurrencyPayload & { vehicleId: string; pricingQuoteId?: string },
-    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/vehicle`, data),
+      options: { idempotencyKey: string },
+    ) =>
+      patch<unknown>(`/organizations/${orgId}/bookings/${id}/vehicle`, data, {
+        headers: { 'Idempotency-Key': options.idempotencyKey },
+      }),
     updateStations: (
       orgId: string,
       id: string,
@@ -3779,15 +3794,14 @@ export const api = {
         description?: string | null;
         effectiveAt?: string;
       },
-      options?: { idempotencyKey?: string },
+      options: { idempotencyKey: string },
     ) =>
       post<BookingStatusCommandApiResponse>(
         `/organizations/${orgId}/bookings/${id}/status/cancel`,
         payload,
         {
           headers: {
-            'Idempotency-Key':
-              options?.idempotencyKey ?? createBookingStatusIdempotencyKey('cancel', id),
+            'Idempotency-Key': options.idempotencyKey,
           },
         },
       ).then((res) => res.booking),
@@ -3795,15 +3809,14 @@ export const api = {
       orgId: string,
       id: string,
       reason?: string | null,
-      options?: { idempotencyKey?: string },
+      options: { idempotencyKey: string },
     ) =>
       post<BookingStatusCommandApiResponse>(
         `/organizations/${orgId}/bookings/${id}/status/no-show`,
         { reason: reason ?? null },
         {
           headers: {
-            'Idempotency-Key':
-              options?.idempotencyKey ?? createBookingStatusIdempotencyKey('no-show', id),
+            'Idempotency-Key': options.idempotencyKey,
           },
         },
       ).then((res) => res.booking),
@@ -3928,26 +3941,22 @@ export const api = {
       orgId: string,
       bookingId: string,
       data: CreateHandoverProtocolPayload,
-      options?: { idempotencyKey?: string },
+      options: { idempotencyKey: string },
     ) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data, {
         headers: {
-          'Idempotency-Key':
-            options?.idempotencyKey ??
-            createBookingStatusIdempotencyKey('handover-pickup', bookingId),
+          'Idempotency-Key': options.idempotencyKey,
         },
       }),
     createReturnHandover: (
       orgId: string,
       bookingId: string,
       data: CreateHandoverProtocolPayload,
-      options?: { idempotencyKey?: string },
+      options: { idempotencyKey: string },
     ) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data, {
         headers: {
-          'Idempotency-Key':
-            options?.idempotencyKey ??
-            createBookingStatusIdempotencyKey('handover-return', bookingId),
+          'Idempotency-Key': options.idempotencyKey,
         },
       }),
   },
@@ -3956,10 +3965,15 @@ export const api = {
   documents: {
     listForBooking: (orgId: string, bookingId: string) =>
       get<BookingDocumentBundleView>(`/organizations/${orgId}/bookings/${bookingId}/documents`),
-    generateInitialBundle: (orgId: string, bookingId: string) =>
+    generateInitialBundle: (
+      orgId: string,
+      bookingId: string,
+      options: { idempotencyKey: string },
+    ) =>
       post<BookingDocumentBundleView>(
         `/organizations/${orgId}/bookings/${bookingId}/documents/generate-initial-bundle`,
         {},
+        { headers: { 'Idempotency-Key': options.idempotencyKey } },
       ),
     regenerate: (orgId: string, bookingId: string, documentType: string) =>
       post<BookingDocumentBundleView>(
@@ -3987,10 +4001,12 @@ export const api = {
         bccEmails?: string[];
         documentIds: string[];
       },
+      options: { idempotencyKey: string },
     ) =>
       post<OutboundEmailDto>(
         `/organizations/${orgId}/bookings/${bookingId}/documents/send-email`,
         payload,
+        { headers: { 'Idempotency-Key': options.idempotencyKey } },
       ),
   },
   orgEmail: {

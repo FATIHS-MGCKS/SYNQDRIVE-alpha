@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -17,6 +17,10 @@ import {
   type GeneratedDocumentDto,
   type OutboundEmailDto,
 } from '../../lib/api';
+import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from '../lib/booking-status-idempotency';
 import { isEmailSendableDocument } from '../../lib/email-sendable';
 import { emailDocTypeLabel, outboundEmailStatusLabel } from '../../lib/email-i18n';
 import { SendDocumentsEmailModal } from '../../components/email/SendDocumentsEmailModal';
@@ -92,6 +96,7 @@ export function BookingDocumentsSection({
   const [loading, setLoading] = useState(true);
   const [busyType, setBusyType] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const generateIdempotencyRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const [sendDocIds, setSendDocIds] = useState<string[] | undefined>(undefined);
@@ -148,8 +153,16 @@ export function BookingDocumentsSection({
     if (!orgId || !bookingId) return;
     setGenerating(true);
     setError(null);
+    generateIdempotencyRef.current =
+      generateIdempotencyRef.current ?? createBookingIdempotencyNonce();
     try {
-      const data = await api.documents.generateInitialBundle(orgId, bookingId);
+      const data = await api.documents.generateInitialBundle(orgId, bookingId, {
+        idempotencyKey: createBookingMutationIdempotencyKey(
+          'doc-generate',
+          bookingId,
+          generateIdempotencyRef.current,
+        ),
+      });
       setView(data);
     } catch (err) {
       setError((err as Error).message || 'Generierung fehlgeschlagen');

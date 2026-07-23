@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-mutation-idempotency-prompt12-2026-07-23',
+    version: '4.9.784',
+    title: 'Booking Production-Readiness — Unified Mutation Idempotency (Prompt 12/34)',
+    summary: [
+      'Einheitliche Idempotenz für kritische Booking-Mutationen über Idempotency-Key Header.',
+      'Scope: Organisation + Actor (user:{id}|system) + Operation + Client-Key.',
+      'Request-Fingerprint (SHA-256, sortiertes JSON) statt vollständiger sensibler Bodies in Records.',
+      'Gleicher Key + gleicher Request → gespeichertes Ergebnis replay; anderer Request → 409 IDEMPOTENCY_KEY_REUSED.',
+      'Advisory Lock + PROCESSING-Poll verhindern Race Conditions bei parallelen gleichen Keys.',
+      'Ledger booking_idempotency_records für Create/Schedule/Vehicle/Dokumente/E-Mail; Status-Commands + Handover nutzen booking_status_commands mit Fingerprint.',
+      'Konfigurierbare Aufbewahrung BOOKING_IDEMPOTENCY_RETENTION_HOURS (Default 72h) + purgeExpired().',
+      'Frontend: stabile Nonces pro User-Aktion (Dialog-Open) via createBookingMutationIdempotencyKey.',
+    ],
+    reason:
+      'Client-Timeouts und Retries dürfen keine doppelten Buchungen, Stornos, Handovers, Dokumente oder E-Mails erzeugen.',
+    previousBehavior:
+      'Idempotenz nur teilweise (Status-Commands ohne Fingerprint-Mismatch-Schutz; Create/Update/Handover/Dokumente ohne einheitliches Ledger); Frontend generierte teils neue Keys pro Klick.',
+    details:
+      'Backend: BookingIdempotencyService/Config/Util; Migration 20260722290000; BookingsService.create, BookingUpdateService schedule/vehicle, documents generate-initial-bundle, booking-documents-email send; Handover erfordert Key; Status-Commands requestFingerprint. Doku: docs/architecture/booking-mutation-idempotency.md.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T22:15:00.000Z',
+  },
+  {
     id: 'booking-double-booking-guard-prompt11-2026-07-23',
     version: '4.9.783',
     title: 'Booking Production-Readiness — Database-Level Double-Booking Protection (Prompt 11/34)',

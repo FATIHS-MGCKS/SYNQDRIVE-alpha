@@ -3,6 +3,7 @@ import type { BookingPricingInputDto } from '@modules/pricing/dto';
 export interface BookingUpdateContext {
   userId?: string | null;
   hasOverridePermission?: boolean;
+  idempotencyKey?: string | null;
 }
 
 export interface UpdateBookingScheduleCommand {

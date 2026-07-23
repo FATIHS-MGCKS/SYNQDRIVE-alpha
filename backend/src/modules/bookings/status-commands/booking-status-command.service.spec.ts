@@ -294,7 +294,7 @@ describe('BookingStatusCommandService', () => {
       resultPayload: {},
     });
     await expect(service.execute(cancelInput)).rejects.toMatchObject({
-      response: expect.objectContaining({ code: 'BOOKING_STATUS_IDEMPOTENCY_KEY_CONFLICT' }),
+      response: expect.objectContaining({ code: 'IDEMPOTENCY_KEY_REUSED' }),
     });
   });
 

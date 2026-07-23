@@ -14,6 +14,10 @@ import {
   type BookingCancellationReasonCode,
 } from '../lib/booking-cancellation-reasons';
 import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from '../lib/booking-status-idempotency';
+import {
   applyBookingFieldUpdates,
   bookingVersionConflictMessage,
 } from '../lib/bookingUpdateCommands';
@@ -197,6 +201,8 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   // optional reason string that we persist into booking.notes.
   const [noShowConfirmId, setNoShowConfirmId] = useState<string | null>(null);
   const [noShowReason, setNoShowReason] = useState<string>('');
+  const cancelIdempotencyRef = useRef<string | null>(null);
+  const noShowIdempotencyRef = useRef<string | null>(null);
   const [noShowSubmitting, setNoShowSubmitting] = useState(false);
 
   // Inline edit mode state
@@ -821,6 +827,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
   const confirmCancel = (bookingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    cancelIdempotencyRef.current = createBookingIdempotencyNonce();
     setCancelReasonCode('CUSTOMER_REQUEST');
     setCancelDescription('');
     setCancelConfirmId(bookingId);
@@ -832,6 +839,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   // never triggers row-click navigation.
   const confirmNoShow = (bookingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    noShowIdempotencyRef.current = createBookingIdempotencyNonce();
     setNoShowReason('');
     setNoShowConfirmId(bookingId);
   };
@@ -842,7 +850,13 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     const booking = allBk.find(b => b.id === noShowConfirmId);
     try {
       setNoShowSubmitting(true);
-      await api.bookings.markNoShow(orgId, noShowConfirmId, noShowReason.trim() || null);
+      await api.bookings.markNoShow(orgId, noShowConfirmId, noShowReason.trim() || null, {
+        idempotencyKey: createBookingMutationIdempotencyKey(
+          'no-show',
+          noShowConfirmId,
+          noShowIdempotencyRef.current ?? createBookingIdempotencyNonce(),
+        ),
+      });
       onBookingCancelled?.(noShowConfirmId, { vehicleId: booking?.vehicleId ?? null });
       toast.success('Als No-Show markiert', {
         description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
@@ -872,6 +886,12 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         await api.bookings.cancel(orgId, cancelConfirmId, {
           reasonCode: cancelReasonCode,
           description: cancelDescription.trim() || null,
+        }, {
+          idempotencyKey: createBookingMutationIdempotencyKey(
+            'cancel',
+            cancelConfirmId,
+            cancelIdempotencyRef.current ?? createBookingIdempotencyNonce(),
+          ),
         });
       }
       setLocalCancelled(prev => [...prev, cancelConfirmId]);

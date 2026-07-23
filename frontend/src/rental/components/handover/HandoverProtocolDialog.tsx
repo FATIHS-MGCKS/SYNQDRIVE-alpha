@@ -3,6 +3,10 @@ import { Icon } from '../ui/Icon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { api, type Station } from '../../../lib/api';
+import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from '../../lib/booking-status-idempotency';
 import { useHandoverVehicleTelemetryPrefill } from '../../lib/useHandoverVehicleTelemetryPrefill';
 import type { DamageSeverity } from '../../lib/damage.types';
 import { stationsForPickup, stationsForReturn } from '../../lib/stationBookingUtils';
@@ -132,6 +136,15 @@ export function HandoverProtocolDialog({
   const [orgStations, setOrgStations] = useState<Station[]>([]);
   const [actualStationId, setActualStationId] = useState<string>('');
   const telemetryAppliedRef = useRef<string | null>(null);
+  const handoverIdempotencyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      handoverIdempotencyRef.current = createBookingIdempotencyNonce();
+    } else {
+      handoverIdempotencyRef.current = null;
+    }
+  }, [isOpen, booking?.id, kind]);
 
   const { prefill: telemetryPrefill } = useHandoverVehicleTelemetryPrefill(
     isOpen,
@@ -402,10 +415,15 @@ export function HandoverProtocolDialog({
         damageIds: Array.from(selectedDamageIds),
         actualStationId: actualStationId || null,
       };
+      const idempotencyKey = createBookingMutationIdempotencyKey(
+        kind === 'PICKUP' ? 'handover-pickup' : 'handover-return',
+        booking.id,
+        handoverIdempotencyRef.current ?? createBookingIdempotencyNonce(),
+      );
       if (kind === 'PICKUP') {
-        await api.bookings.createPickupHandover(orgId, booking.id, payload);
+        await api.bookings.createPickupHandover(orgId, booking.id, payload, { idempotencyKey });
       } else {
-        await api.bookings.createReturnHandover(orgId, booking.id, payload);
+        await api.bookings.createReturnHandover(orgId, booking.id, payload, { idempotencyKey });
       }
       onSuccess?.();
       onClose();

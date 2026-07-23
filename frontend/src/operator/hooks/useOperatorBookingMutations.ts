@@ -13,7 +13,10 @@ import {
 } from '../../rental/lib/bookingUpdateCommands';
 import { invalidateVehicleOperationalAfterBookingChange } from '../../rental/lib/vehicle-operational-query';
 import type { BookingCancelPayload } from '../../rental/lib/booking-cancellation-reasons';
-import { formatOperatorBookingError } from '../bookings/operatorBooking.utils';
+import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from '../../rental/lib/booking-status-idempotency';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
 function resolveVehicleIdFromUpdatePayload(
@@ -78,9 +81,15 @@ export function useOperatorBookingMutations() {
   );
 
   const createBooking = useCallback(
-    (payload: OperatorBookingCreatePayload, onSuccess?: () => void) =>
-      run(
-        () => api.bookings.create(orgId!, payload),
+    (payload: OperatorBookingCreatePayload, onSuccess?: () => void, idempotencyNonce?: string) => {
+      const nonce = idempotencyNonce ?? createBookingIdempotencyNonce();
+      const idempotencyKey = createBookingMutationIdempotencyKey(
+        'create',
+        payload.vehicleId,
+        nonce,
+      );
+      return run(
+        () => api.bookings.create(orgId!, payload, { idempotencyKey }),
         'Buchung erstellt',
         onSuccess,
         () => {
@@ -90,7 +99,8 @@ export function useOperatorBookingMutations() {
             reason: 'booking-created',
           });
         },
-      ),
+      );
+    },
     [orgId, run],
   );
 
@@ -154,9 +164,13 @@ export function useOperatorBookingMutations() {
       vehicleId: string | null | undefined,
       payload: BookingCancelPayload,
       onSuccess?: () => void,
-    ) =>
-      run(
-        () => api.bookings.cancel(orgId!, bookingId, payload),
+      idempotencyKey?: string,
+    ) => {
+      const key =
+        idempotencyKey ??
+        createBookingMutationIdempotencyKey('cancel', bookingId, createBookingIdempotencyNonce());
+      return run(
+        () => api.bookings.cancel(orgId!, bookingId, payload, { idempotencyKey: key }),
         'Buchung storniert',
         onSuccess,
         () => {
@@ -166,14 +180,24 @@ export function useOperatorBookingMutations() {
             reason: 'booking-cancelled',
           });
         },
-      ),
+      );
+    },
     [orgId, run],
   );
 
   const markNoShow = useCallback(
-    (bookingId: string, vehicleId: string | null | undefined, reason?: string, onSuccess?: () => void) =>
-      run(
-        () => api.bookings.markNoShow(orgId!, bookingId, reason ?? null),
+    (
+      bookingId: string,
+      vehicleId: string | null | undefined,
+      reason?: string,
+      onSuccess?: () => void,
+      idempotencyKey?: string,
+    ) => {
+      const key =
+        idempotencyKey ??
+        createBookingMutationIdempotencyKey('no-show', bookingId, createBookingIdempotencyNonce());
+      return run(
+        () => api.bookings.markNoShow(orgId!, bookingId, reason ?? null, { idempotencyKey: key }),
         'Als No-Show markiert',
         onSuccess,
         () => {
@@ -183,7 +207,8 @@ export function useOperatorBookingMutations() {
             reason: 'booking-no-show',
           });
         },
-      ),
+      );
+    },
     [orgId, run],
   );
 

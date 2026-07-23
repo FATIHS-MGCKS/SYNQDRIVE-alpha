@@ -39,6 +39,8 @@ import { BookingCancellationAuditService } from './cancellation/booking-cancella
 import { BookingStatusOverrideAuditService } from './override/booking-status-override-audit.service';
 import { BookingAvailabilityBufferService } from './availability/booking-availability-buffer.service';
 import { BookingVehicleAvailabilityService } from './availability/booking-vehicle-availability.service';
+import { BookingIdempotencyService } from './idempotency/booking-idempotency.service';
+import { BookingIdempotencyConfigService } from './idempotency/booking-idempotency.config';
 
 @Module({
   imports: [
@@ -82,6 +84,8 @@ import { BookingVehicleAvailabilityService } from './availability/booking-vehicl
     BookingStatusOverrideAuditService,
     BookingAvailabilityBufferService,
     BookingVehicleAvailabilityService,
+    BookingIdempotencyService,
+    BookingIdempotencyConfigService,
     BookingPermissionsGuard,
   ],
   exports: [
@@ -93,6 +97,7 @@ import { BookingVehicleAvailabilityService } from './availability/booking-vehicl
     BookingPermissionService,
     BookingAccessService,
     BookingResponseRedactionService,
+    BookingIdempotencyService,
   ],
 })
 export class BookingsModule {}

@@ -27,6 +27,7 @@ import {
 import { BOOKING_AVAILABILITY_ERROR_CODES } from './availability/booking-availability.constants';
 import { BookingAvailabilityBufferService } from './availability/booking-availability-buffer.service';
 import { BookingVehicleAvailabilityService } from './availability/booking-vehicle-availability.service';
+import { BookingIdempotencyService } from './idempotency/booking-idempotency.service';
 import { BOOKING_CREATE_ERROR_CODES } from './booking-create-error.codes';
 import { mergeNotesCommandToStorage } from './booking-update-command.mapper';
 import type {
@@ -76,9 +77,49 @@ export class BookingUpdateService {
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly availabilityBuffer: BookingAvailabilityBufferService,
     private readonly vehicleAvailability: BookingVehicleAvailabilityService,
+    private readonly bookingIdempotency: BookingIdempotencyService,
   ) {}
 
   async updateSchedule(
+    orgId: string,
+    bookingId: string,
+    command: UpdateBookingScheduleCommand,
+    ctx?: BookingUpdateContext,
+  ): Promise<Booking> {
+    const idempotencyKey = this.bookingIdempotency.requireKey(
+      ctx?.idempotencyKey,
+      'BOOKING_UPDATE_SCHEDULE',
+    );
+
+    const executed = await this.bookingIdempotency.execute({
+      organizationId: orgId,
+      actorUserId: ctx?.userId ?? null,
+      operation: 'BOOKING_UPDATE_SCHEDULE',
+      idempotencyKey,
+      resourceId: bookingId,
+      fingerprintPayload: {
+        bookingId,
+        pickupAt: command.pickupAt?.toISOString() ?? null,
+        returnAt: command.returnAt?.toISOString() ?? null,
+        expectedUpdatedAt: command.expectedUpdatedAt.toISOString(),
+        pricingQuoteId: command.pricingQuoteId ?? null,
+        allowTerminalOverride: command.allowTerminalOverride ?? false,
+      },
+      handler: async () => {
+        const booking = await this.updateScheduleInternal(orgId, bookingId, command, ctx);
+        return { result: { bookingId: booking.id }, resultReference: booking.id };
+      },
+    });
+
+    return this.prisma.booking.findFirstOrThrow({
+      where: {
+        id: (executed.result as { bookingId: string }).bookingId,
+        organizationId: orgId,
+      },
+    });
+  }
+
+  private async updateScheduleInternal(
     orgId: string,
     bookingId: string,
     command: UpdateBookingScheduleCommand,
@@ -172,6 +213,44 @@ export class BookingUpdateService {
   }
 
   async updateVehicle(
+    orgId: string,
+    bookingId: string,
+    command: UpdateBookingVehicleCommand,
+    ctx?: BookingUpdateContext,
+  ): Promise<Booking> {
+    const idempotencyKey = this.bookingIdempotency.requireKey(
+      ctx?.idempotencyKey,
+      'BOOKING_UPDATE_VEHICLE',
+    );
+
+    const executed = await this.bookingIdempotency.execute({
+      organizationId: orgId,
+      actorUserId: ctx?.userId ?? null,
+      operation: 'BOOKING_UPDATE_VEHICLE',
+      idempotencyKey,
+      resourceId: bookingId,
+      fingerprintPayload: {
+        bookingId,
+        vehicleId: command.vehicleId,
+        expectedUpdatedAt: command.expectedUpdatedAt.toISOString(),
+        pricingQuoteId: command.pricingQuoteId ?? null,
+        allowTerminalOverride: command.allowTerminalOverride ?? false,
+      },
+      handler: async () => {
+        const booking = await this.updateVehicleInternal(orgId, bookingId, command, ctx);
+        return { result: { bookingId: booking.id }, resultReference: booking.id };
+      },
+    });
+
+    return this.prisma.booking.findFirstOrThrow({
+      where: {
+        id: (executed.result as { bookingId: string }).bookingId,
+        organizationId: orgId,
+      },
+    });
+  }
+
+  private async updateVehicleInternal(
     orgId: string,
     bookingId: string,
     command: UpdateBookingVehicleCommand,

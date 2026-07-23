@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { api } from '../../lib/api';
+import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from '../../rental/lib/booking-status-idempotency';
 import type {
   HandoverDialogBookingInfo,
   HandoverDialogKind,
@@ -59,6 +63,15 @@ export function OperatorHandoverFlow({
   const [step, setStep] = useState<OperatorHandoverStepId>('vehicle');
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const handoverIdempotencyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      handoverIdempotencyRef.current = createBookingIdempotencyNonce();
+    } else {
+      handoverIdempotencyRef.current = null;
+    }
+  }, [isOpen, booking?.id, kind]);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useOperatorHandoverForm(isOpen, kind, orgId, booking);
@@ -137,10 +150,15 @@ export function OperatorHandoverFlow({
         booking: bookingRef,
         state: form.state,
       });
+      const idempotencyKey = createBookingMutationIdempotencyKey(
+        kind === 'PICKUP' ? 'handover-pickup' : 'handover-return',
+        booking.id,
+        handoverIdempotencyRef.current ?? createBookingIdempotencyNonce(),
+      );
       if (kind === 'PICKUP') {
-        await api.bookings.createPickupHandover(orgId, booking.id, payload);
+        await api.bookings.createPickupHandover(orgId, booking.id, payload, { idempotencyKey });
       } else {
-        await api.bookings.createReturnHandover(orgId, booking.id, payload);
+        await api.bookings.createReturnHandover(orgId, booking.id, payload, { idempotencyKey });
       }
       // Server generates pickup/return protocol PDFs after handover — refresh bundle (no frontend PDF).
       await form.reloadDocuments();

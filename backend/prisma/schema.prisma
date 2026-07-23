@@ -1071,6 +1071,21 @@ enum BookingStatusCommandType {
   ADMIN_OVERRIDE
 }
 
+enum BookingIdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BookingIdempotencyOperation {
+  BOOKING_CREATE
+  BOOKING_UPDATE_SCHEDULE
+  BOOKING_UPDATE_VEHICLE
+  BOOKING_DOCUMENT_GENERATE
+  BOOKING_DOCUMENT_EMAIL
+  BOOKING_INVOICE_BOOTSTRAP
+}
+
 enum BookingPaymentIntent {
   PAYMENT_LINK
   PAY_ON_PICKUP
@@ -1618,6 +1633,7 @@ model Organization {
   brakeHealthAlerts                      BrakeHealthAlert[]
   bookings                               Booking[]
   bookingStatusCommands                  BookingStatusCommand[]
+  bookingIdempotencyRecords              BookingIdempotencyRecord[]
   bookingCancellationAuditEvents         BookingCancellationAuditEvent[]
   bookingStatusOverrideAuditEvents       BookingStatusOverrideAuditEvent[]
   bookingAllowedDrivers                  BookingAllowedDriver[]
@@ -5598,6 +5614,7 @@ model BookingStatusCommand {
   toStatus        BookingStatus            @map("to_status")
   trigger         String
   reasonCode      String                   @map("reason_code")
+  requestFingerprint String?               @map("request_fingerprint")
   requestPayload  Json?                    @map("request_payload")
   resultPayload   Json                     @map("result_payload")
   createdByUserId String?                  @map("created_by_user_id")
@@ -5610,6 +5627,31 @@ model BookingStatusCommand {
   @@index([bookingId, commandType])
   @@index([organizationId, bookingId])
   @@map("booking_status_commands")
+}
+
+/// Generic idempotency ledger for booking mutations (Prompt 12).
+model BookingIdempotencyRecord {
+  id                 String                      @id @default(uuid())
+  organizationId     String                      @map("organization_id")
+  actorScope         String                      @map("actor_scope")
+  operation          BookingIdempotencyOperation @map("operation")
+  idempotencyKey     String                      @map("idempotency_key")
+  resourceId         String?                     @map("resource_id")
+  requestFingerprint String                      @map("request_fingerprint")
+  status             BookingIdempotencyStatus    @default(PROCESSING)
+  resultReference    String?                     @map("result_reference")
+  resultPayload      Json?                       @map("result_payload")
+  errorCode          String?                     @map("error_code")
+  expiresAt          DateTime                    @map("expires_at")
+  createdAt          DateTime                    @default(now()) @map("created_at")
+  updatedAt          DateTime                    @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, actorScope, operation, idempotencyKey])
+  @@index([organizationId, resourceId])
+  @@index([expiresAt])
+  @@map("booking_idempotency_records")
 }
 
 enum BookingDriverRole {

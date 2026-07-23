@@ -1,8 +1,10 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 
 export const BOOKING_STATUS_COMMAND_ERROR_CODES = {
-  IDEMPOTENCY_KEY_REQUIRED: 'BOOKING_STATUS_IDEMPOTENCY_KEY_REQUIRED',
-  IDEMPOTENCY_KEY_CONFLICT: 'BOOKING_STATUS_IDEMPOTENCY_KEY_CONFLICT',
+  IDEMPOTENCY_KEY_REQUIRED: 'IDEMPOTENCY_KEY_REQUIRED',
+  IDEMPOTENCY_KEY_CONFLICT: 'IDEMPOTENCY_KEY_REUSED',
+  /** @deprecated Use IDEMPOTENCY_KEY_REUSED */
+  LEGACY_IDEMPOTENCY_KEY_CONFLICT: 'BOOKING_STATUS_IDEMPOTENCY_KEY_CONFLICT',
   HANDOVER_PROTOCOL_REQUIRED: 'BOOKING_STATUS_HANDOVER_PROTOCOL_REQUIRED',
   LEGACY_ENDPOINT_REMOVED: 'BOOKING_STATUS_LEGACY_ENDPOINT_REMOVED',
 } as const;
@@ -19,7 +21,7 @@ export class BookingStatusIdempotencyKeyRequiredError extends BadRequestExceptio
 export class BookingStatusIdempotencyKeyConflictError extends ConflictException {
   constructor() {
     super({
-      message: 'Idempotency-Key was already used for a different booking status command',
+      message: 'Idempotency-Key was already used with a different request payload',
       code: BOOKING_STATUS_COMMAND_ERROR_CODES.IDEMPOTENCY_KEY_CONFLICT,
     });
   }

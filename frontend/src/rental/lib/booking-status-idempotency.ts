@@ -12,6 +12,30 @@ export function createBookingStatusIdempotencyKey(
   return `${action}:${bookingId}:${id}`;
 }
 
+/**
+ * Preferred helper for critical booking mutations (Prompt 12).
+ * Caller must supply a stable `nonce` per user action (e.g. useRef per dialog).
+ */
+export function createBookingMutationIdempotencyKey(
+  action: string,
+  resourceId: string,
+  nonce: string,
+): string {
+  const trimmed = nonce.trim();
+  if (!trimmed) {
+    throw new Error('Booking idempotency nonce is required');
+  }
+  return `${action}:${resourceId}:${trimmed}`;
+}
+
+/** Create a fresh nonce for a new user action surface (dialog open, form mount). */
+export function createBookingIdempotencyNonce(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export type BookingStatusCommandApiResponse = {
   booking: {
     id: string;

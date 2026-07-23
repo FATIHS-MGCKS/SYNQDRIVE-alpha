@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
 import { api } from '../../../lib/api';
@@ -23,6 +23,10 @@ import {
   BOOKING_CANCELLATION_REASON_LABELS,
   type BookingCancellationReasonCode,
 } from '../../lib/booking-cancellation-reasons';
+import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from '../../lib/booking-status-idempotency';
 
 interface BookingDossierProps {
   bookingId: string;
@@ -54,6 +58,8 @@ export function BookingDossier({
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [noShowReason, setNoShowReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const cancelIdempotencyRef = useRef<string | null>(null);
+  const noShowIdempotencyRef = useRef<string | null>(null);
 
   const matrix = useMemo(() => (detail ? getBookingActionMatrix(detail) : null), [detail]);
   const primary = useMemo(
@@ -71,7 +77,10 @@ export function BookingDossier({
         if (matrix.return.allowed) openHandover({ bookingId, kind: 'RETURN' });
         break;
       case 'no_show':
-        if (matrix.no_show.allowed) setNoShowOpen(true);
+        if (matrix.no_show.allowed) {
+          noShowIdempotencyRef.current = createBookingIdempotencyNonce();
+          setNoShowOpen(true);
+        }
         break;
       case 'edit':
         if (matrix.edit.allowed) setEditOpen(true);
@@ -105,6 +114,12 @@ export function BookingDossier({
       await api.bookings.cancel(orgId, bookingId, {
         reasonCode: cancelReasonCode,
         description: cancelDescription.trim() || null,
+      }, {
+        idempotencyKey: createBookingMutationIdempotencyKey(
+          'cancel',
+          bookingId,
+          cancelIdempotencyRef.current ?? createBookingIdempotencyNonce(),
+        ),
       });
       toast.success('Buchung storniert');
       onBookingCancelled?.(bookingId);
@@ -124,7 +139,13 @@ export function BookingDossier({
     if (!orgId || !detail || submitting) return;
     setSubmitting(true);
     try {
-      await api.bookings.markNoShow(orgId, bookingId, noShowReason.trim() || null);
+      await api.bookings.markNoShow(orgId, bookingId, noShowReason.trim() || null, {
+        idempotencyKey: createBookingMutationIdempotencyKey(
+          'no-show',
+          bookingId,
+          noShowIdempotencyRef.current ?? createBookingIdempotencyNonce(),
+        ),
+      });
       toast.success('Als No-Show markiert');
       onBookingCancelled?.(bookingId);
       onRefreshList?.();
@@ -177,8 +198,18 @@ export function BookingDossier({
         onBack={onBack}
         onPrimaryAction={handlePrimary}
         onEdit={() => matrix.edit.allowed && setEditOpen(true)}
-        onCancel={() => matrix.cancel.allowed && setCancelOpen(true)}
-        onNoShow={() => matrix.no_show.allowed && setNoShowOpen(true)}
+        onCancel={() => {
+          if (matrix.cancel.allowed) {
+            cancelIdempotencyRef.current = createBookingIdempotencyNonce();
+            setCancelOpen(true);
+          }
+        }}
+        onNoShow={() => {
+          if (matrix.no_show.allowed) {
+            noShowIdempotencyRef.current = createBookingIdempotencyNonce();
+            setNoShowOpen(true);
+          }
+        }}
       />
 
       <nav className="flex gap-1 overflow-x-auto border-b border-border mb-4 -mx-1 px-1">

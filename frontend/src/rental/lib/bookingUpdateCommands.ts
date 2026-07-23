@@ -1,4 +1,8 @@
 import { api } from '../../lib/api';
+import {
+  createBookingIdempotencyNonce,
+  createBookingMutationIdempotencyKey,
+} from './booking-status-idempotency';
 
 export type BookingFieldUpdates = {
   startDate?: string;
@@ -49,20 +53,29 @@ export async function applyBookingFieldUpdates(
     pickupStationId?: string | null;
     returnStationId?: string | null;
   },
+  options?: { idempotencyNonce?: string },
 ): Promise<string> {
   let version = expectedUpdatedAt;
+  const nonce = options?.idempotencyNonce ?? createBookingIdempotencyNonce();
   const concurrency = () => ({ expectedUpdatedAt: version });
 
   const scheduleChanged =
     (changes.startDate && changes.startDate !== current?.startDate) ||
     (changes.endDate && changes.endDate !== current?.endDate);
   if (scheduleChanged) {
-    const res = await api.bookings.updateSchedule(orgId, bookingId, {
-      ...concurrency(),
-      ...(changes.startDate ? { startDate: changes.startDate } : {}),
-      ...(changes.endDate ? { endDate: changes.endDate } : {}),
-      ...(changes.pricingQuoteId ? { pricingQuoteId: changes.pricingQuoteId } : {}),
-    });
+    const res = await api.bookings.updateSchedule(
+      orgId,
+      bookingId,
+      {
+        ...concurrency(),
+        ...(changes.startDate ? { startDate: changes.startDate } : {}),
+        ...(changes.endDate ? { endDate: changes.endDate } : {}),
+        ...(changes.pricingQuoteId ? { pricingQuoteId: changes.pricingQuoteId } : {}),
+      },
+      {
+        idempotencyKey: createBookingMutationIdempotencyKey('schedule', bookingId, nonce),
+      },
+    );
     version = (res as { updatedAt: string }).updatedAt ?? version;
   }
 
@@ -75,11 +88,18 @@ export async function applyBookingFieldUpdates(
   }
 
   if (changes.vehicleId && changes.vehicleId !== current?.vehicleId) {
-    const res = await api.bookings.updateVehicle(orgId, bookingId, {
-      ...concurrency(),
-      vehicleId: changes.vehicleId,
-      ...(changes.pricingQuoteId ? { pricingQuoteId: changes.pricingQuoteId } : {}),
-    });
+    const res = await api.bookings.updateVehicle(
+      orgId,
+      bookingId,
+      {
+        ...concurrency(),
+        vehicleId: changes.vehicleId,
+        ...(changes.pricingQuoteId ? { pricingQuoteId: changes.pricingQuoteId } : {}),
+      },
+      {
+        idempotencyKey: createBookingMutationIdempotencyKey('vehicle', bookingId, nonce),
+      },
+    );
     version = (res as { updatedAt: string }).updatedAt ?? version;
   }
 

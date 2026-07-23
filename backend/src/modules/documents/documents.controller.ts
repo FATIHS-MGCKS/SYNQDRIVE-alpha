@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Header,
+  Headers,
   Param,
   Post,
   Res,
@@ -15,6 +16,7 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { BookingAccessService } from '@modules/bookings/booking-access.service';
+import { BookingIdempotencyService } from '@modules/bookings/idempotency/booking-idempotency.service';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { RentalContractService } from './rental-contract.service';
@@ -38,6 +40,7 @@ export class DocumentsController {
     private readonly rentalContract: RentalContractService,
     private readonly documentGeneration: BookingDocumentGenerationDispatcherService,
     private readonly bookingAccess: BookingAccessService,
+    private readonly bookingIdempotency: BookingIdempotencyService,
   ) {}
 
   @Get('bookings/:bookingId/rental-contract')
@@ -85,17 +88,33 @@ export class DocumentsController {
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
     @CurrentUser('id') userId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, bookingId);
-    const enqueued = await this.documentGeneration.enqueueInitialBundle(
-      orgId,
-      bookingId,
-      userId ?? null,
-    );
-    if (enqueued.enqueued) {
-      return { queued: true, job: enqueued };
-    }
-    return this.bundle.generateInitialBundle(orgId, bookingId, userId ?? null);
+    const key = this.bookingIdempotency.requireKey(idempotencyKey, 'BOOKING_DOCUMENT_GENERATE');
+
+    const executed = await this.bookingIdempotency.execute({
+      organizationId: orgId,
+      actorUserId: userId ?? null,
+      operation: 'BOOKING_DOCUMENT_GENERATE',
+      idempotencyKey: key,
+      resourceId: bookingId,
+      fingerprintPayload: { bookingId, mode: 'async' },
+      handler: async () => {
+        const enqueued = await this.documentGeneration.enqueueInitialBundle(
+          orgId,
+          bookingId,
+          userId ?? null,
+        );
+        if (enqueued.enqueued) {
+          return { result: { queued: true, job: enqueued }, resultReference: enqueued.jobId ?? bookingId };
+        }
+        const sync = await this.bundle.generateInitialBundle(orgId, bookingId, userId ?? null);
+        return { result: sync, resultReference: bookingId };
+      },
+    });
+
+    return executed.result;
   }
 
   @Get('bookings/:bookingId/document-generation-jobs')
@@ -128,9 +147,25 @@ export class DocumentsController {
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
     @CurrentUser('id') userId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, bookingId);
-    return this.bundle.generateInitialBundle(orgId, bookingId, userId ?? null);
+    const key = this.bookingIdempotency.requireKey(idempotencyKey, 'BOOKING_DOCUMENT_GENERATE');
+
+    const executed = await this.bookingIdempotency.execute({
+      organizationId: orgId,
+      actorUserId: userId ?? null,
+      operation: 'BOOKING_DOCUMENT_GENERATE',
+      idempotencyKey: key,
+      resourceId: bookingId,
+      fingerprintPayload: { bookingId, mode: 'sync' },
+      handler: async () => {
+        const result = await this.bundle.generateInitialBundle(orgId, bookingId, userId ?? null);
+        return { result, resultReference: bookingId };
+      },
+    });
+
+    return executed.result;
   }
 
   @Post('bookings/:bookingId/documents/regenerate/:documentType')

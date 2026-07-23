@@ -39,6 +39,7 @@ import {
 } from './booking-conflict.util';
 import { BookingAvailabilityBufferService } from './availability/booking-availability-buffer.service';
 import { BookingVehicleAvailabilityService } from './availability/booking-vehicle-availability.service';
+import { BookingIdempotencyService } from './idempotency/booking-idempotency.service';
 import { BOOKING_AVAILABILITY_ERROR_CODES } from './availability/booking-availability.constants';
 import type { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import type {
@@ -122,6 +123,7 @@ export class BookingsService {
     private readonly statusCommands: BookingStatusCommandService,
     private readonly availabilityBuffer: BookingAvailabilityBufferService,
     private readonly vehicleAvailability: BookingVehicleAvailabilityService,
+    private readonly bookingIdempotency: BookingIdempotencyService,
   ) {}
 
   /**
@@ -164,6 +166,47 @@ export class BookingsService {
   }
 
   async create(
+    orgId: string,
+    command: CreateBookingCommand,
+    options?: { userId?: string | null; idempotencyKey?: string | null },
+  ): Promise<Booking> {
+    const idempotencyKey = this.bookingIdempotency.requireKey(
+      options?.idempotencyKey,
+      'BOOKING_CREATE',
+    );
+
+    const executed = await this.bookingIdempotency.execute({
+      organizationId: orgId,
+      actorUserId: options?.userId ?? null,
+      operation: 'BOOKING_CREATE',
+      idempotencyKey,
+      fingerprintPayload: {
+        vehicleId: command.vehicleId,
+        customerId: command.customerId,
+        pickupAt: command.pickupAt.toISOString(),
+        returnAt: command.returnAt.toISOString(),
+        pricingQuoteId: command.pricingQuoteId,
+        status: command.status ?? 'PENDING',
+        pickupStationId: command.pickupStationId ?? null,
+        returnStationId: command.returnStationId ?? null,
+      },
+      handler: async () => {
+        const booking = await this.createInternal(orgId, command, {
+          userId: options?.userId ?? null,
+        });
+        return { result: { bookingId: booking.id }, resultReference: booking.id };
+      },
+    });
+
+    return this.prisma.booking.findFirstOrThrow({
+      where: {
+        id: (executed.result as { bookingId: string }).bookingId,
+        organizationId: orgId,
+      },
+    });
+  }
+
+  private async createInternal(
     orgId: string,
     command: CreateBookingCommand,
     options?: { userId?: string | null },
