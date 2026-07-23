@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   Prisma,
   PrivacyPolicyLifecycleEventType,
@@ -16,6 +16,8 @@ import {
   PolicyTransitionInput,
 } from './policy-lifecycle.service';
 import { PolicyLifecycleTransitionValidator } from './policy-lifecycle.service';
+import { DataProcessingReviewEntityType } from '@prisma/client';
+import { DataProcessingReviewWorkflowService } from '../review-workflow/review-workflow.service';
 
 type ActivityRecord = Prisma.ProcessingActivityGetPayload<object>;
 
@@ -26,6 +28,7 @@ export class ProcessingActivityLifecycleService {
     private readonly lifecycle: PolicyLifecycleService,
     private readonly validator: PolicyLifecycleTransitionValidator,
     private readonly events: PolicyLifecycleEventsService,
+    @Optional() private readonly reviewWorkflow?: DataProcessingReviewWorkflowService,
   ) {}
 
   async create(orgId: string, data: {
@@ -57,7 +60,7 @@ export class ProcessingActivityLifecycleService {
       record,
       toStatus: PrivacyPolicyLifecycleStatus.IN_REVIEW,
       input: { actorUserId },
-      patch: { assessedByUserId: actorUserId },
+      patch: { submittedByUserId: actorUserId, submittedAt: new Date() },
       loadCurrent: (tx, activityId) =>
         tx.processingActivity.findFirst({ where: { id: activityId, organizationId: orgId } }),
       applyTransition: (tx, current, toStatus, patch) =>
@@ -136,6 +139,7 @@ export class ProcessingActivityLifecycleService {
 
   async schedule(orgId: string, id: string, validFrom: Date, input: PolicyTransitionInput = {}): Promise<ActivityRecord> {
     const record = await this.findOrThrow(orgId, id);
+    await this.assertReviewComplete(record);
     return this.lifecycle.transitionVersion({
       orgId,
       record,
@@ -163,6 +167,7 @@ export class ProcessingActivityLifecycleService {
 
   async activate(orgId: string, id: string, input: PolicyActivationInput = {}): Promise<ActivityRecord> {
     const record = await this.findOrThrow(orgId, id);
+    await this.assertReviewComplete(record);
     return this.lifecycle.activateVersion({
       entityKind: 'PROCESSING_ACTIVITY',
       orgId,
@@ -316,5 +321,17 @@ export class ProcessingActivityLifecycleService {
 
   assertEditable(status: PrivacyPolicyLifecycleStatus): void {
     this.validator.assertEditable(status);
+  }
+
+  private async assertReviewComplete(record: ActivityRecord): Promise<void> {
+    if (!this.reviewWorkflow || !record.contentFingerprint) return;
+    await this.reviewWorkflow.assertActivationAllowed({
+      orgId: record.organizationId,
+      entityType: DataProcessingReviewEntityType.PROCESSING_ACTIVITY,
+      entityId: record.id,
+      versionNumber: record.versionNumber,
+      contentFingerprint: record.contentFingerprint,
+      lifecycleStatus: record.status,
+    });
   }
 }

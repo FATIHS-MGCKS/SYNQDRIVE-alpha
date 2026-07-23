@@ -5,6 +5,12 @@ import {
   type ServiceCasePermissionRequirement,
 } from '@modules/service-cases/service-case-permission.constants';
 import {
+  DATA_PROCESSING_PERMISSION_ACTIONS,
+  DATA_PROCESSING_PERMISSION_REQUIREMENTS,
+  type DataProcessingPermissionAction,
+  type DataProcessingPermissionRequirement,
+} from '@modules/data-authorizations/privacy-domain/review-workflow/data-processing-permission.constants';
+import {
   TASK_PERMISSION_ACTIONS,
   TASK_PERMISSION_REQUIREMENTS,
   type TaskPermissionAction,
@@ -20,15 +26,18 @@ import type { PermissionModuleKey } from './permission.constants';
 export const OPERATIONAL_PERMISSION_ACTIONS = [
   ...TASK_PERMISSION_ACTIONS,
   ...SERVICE_CASE_PERMISSION_ACTIONS,
+  ...DATA_PROCESSING_PERMISSION_ACTIONS,
 ] as const;
 
 export type OperationalPermissionAction =
   | TaskPermissionAction
-  | ServiceCasePermissionAction;
+  | ServiceCasePermissionAction
+  | DataProcessingPermissionAction;
 
 export type OperationalPermissionRequirement =
   | TaskPermissionRequirement
-  | ServiceCasePermissionRequirement;
+  | ServiceCasePermissionRequirement
+  | DataProcessingPermissionRequirement;
 
 export interface OperationalPermissionRequirementMap {
   module: PermissionModuleKey;
@@ -40,6 +49,7 @@ export const OPERATIONAL_PERMISSION_REQUIREMENTS: Readonly<
 > = {
   ...TASK_PERMISSION_REQUIREMENTS,
   ...SERVICE_CASE_PERMISSION_REQUIREMENTS,
+  ...DATA_PROCESSING_PERMISSION_REQUIREMENTS,
 };
 
 export function isOperationalPermissionAction(

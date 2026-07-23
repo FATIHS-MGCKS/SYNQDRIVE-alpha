@@ -1568,6 +1568,8 @@ model Organization {
   paymentsEnabled              Boolean            @default(false) @map("payments_enabled")
   /// When true, legal document approve/activate must be performed by a user other than the uploader/submitter.
   legalDocumentFourEyesEnabled Boolean            @default(false) @map("legal_document_four_eyes_enabled")
+  /// When true, data-processing final approval must differ from the review requester (four-eyes).
+  dataProcessingFourEyesEnabled Boolean           @default(true) @map("data_processing_four_eyes_enabled")
   lastActiveAt                 DateTime?          @map("last_active_at")
   createdAt                    DateTime           @default(now()) @map("created_at")
   updatedAt                    DateTime           @updatedAt @map("updated_at")
@@ -1744,6 +1746,8 @@ model Organization {
   dataAuthorizationLegacyMigrationRuns                      DataAuthorizationLegacyMigrationRun[]
   dataAuthorizationLegacyMigrationEntries                   DataAuthorizationLegacyMigrationEntry[]
   authorizationDecisionEvents                               AuthorizationDecisionEvent[]
+  dataProcessingReviewCycles                                DataProcessingReviewCycle[]
+  dataProcessingReviewDecisions                             DataProcessingReviewDecision[]
   processingActivityLifecycleEvents                         ProcessingActivityLifecycleEvent[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
@@ -10803,6 +10807,33 @@ enum ProcessingActivityOwnerRole {
   SYSTEM
 }
 
+/// Review workflow step types — server-configured per risk level, not client-supplied.
+enum DataProcessingReviewStepType {
+  BUSINESS_OWNER
+  PRIVACY_REVIEW
+  SECURITY_REVIEW
+  FINAL_APPROVAL
+}
+
+enum DataProcessingReviewDecisionOutcome {
+  APPROVED
+  REJECTED
+  REQUESTED_CHANGES
+}
+
+enum DataProcessingReviewCycleStatus {
+  OPEN
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum DataProcessingReviewEntityType {
+  PROCESSING_ACTIVITY
+  LEGAL_BASIS_ASSESSMENT
+  ENFORCEMENT_POLICY
+}
+
 enum PrivacyLegalBasisType {
   CONTRACT
   LEGAL_OBLIGATION
@@ -10962,6 +10993,13 @@ model ProcessingActivity {
   supersededById               String?                      @map("superseded_by_id")
   ownerUserId                  String?                      @map("owner_user_id")
   ownerRole                    ProcessingActivityOwnerRole  @default(ORG_ADMIN) @map("owner_role")
+  submittedByUserId            String?                      @map("submitted_by_user_id")
+  submittedAt                  DateTime?                    @map("submitted_at")
+  approvedByUserId             String?                      @map("approved_by_user_id")
+  approvedAt                   DateTime?                    @map("approved_at")
+  riskLevel                    DataAuthorizationRiskLevel?  @map("risk_level")
+  contentFingerprint           String?                      @map("content_fingerprint")
+  activeReviewCycleId          String?                      @map("active_review_cycle_id")
   validFrom                    DateTime?                    @map("valid_from")
   validUntil                   DateTime?                    @map("valid_until")
   activatedAt                  DateTime?                    @map("activated_at")
@@ -10988,6 +11026,7 @@ model ProcessingActivity {
   enforcementPolicies         EnforcementPolicy[]
   authorizationDecisionEvents AuthorizationDecisionEvent[]
   lifecycleEvents             ProcessingActivityLifecycleEvent[]
+  reviewCycles                DataProcessingReviewCycle[]    @relation("ProcessingActivityReviewCycles")
 
   @@unique([policyFamilyId, versionNumber])
   @@unique([organizationId, activityCode, versionNumber])
@@ -11581,6 +11620,56 @@ model AuthorizationDecisionEvent {
   @@index([enforcementPolicyId])
   @@index([eventType, createdAt])
   @@map("authorization_decision_events")
+}
+
+/// Review cycle for a specific entity version — approvals bind to version + fingerprint.
+model DataProcessingReviewCycle {
+  id                       String                          @id @default(uuid())
+  organizationId           String                          @map("organization_id")
+  entityType               DataProcessingReviewEntityType  @map("entity_type")
+  entityId                 String                          @map("entity_id")
+  entityVersionNumber      Int                             @map("entity_version_number")
+  entityContentFingerprint String                          @map("entity_content_fingerprint")
+  riskLevel                DataAuthorizationRiskLevel      @map("risk_level")
+  status                   DataProcessingReviewCycleStatus @default(OPEN)
+  requiredSteps            DataProcessingReviewStepType[]  @map("required_steps")
+  requestedByUserId        String                          @map("requested_by_user_id")
+  requestedAt              DateTime                        @default(now()) @map("requested_at")
+  completedAt              DateTime?                       @map("completed_at")
+  supersededAt             DateTime?                       @map("superseded_at")
+  supersededByCycleId      String?                         @map("superseded_by_cycle_id")
+  processingActivityId     String?                         @map("processing_activity_id")
+
+  organization       Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity ProcessingActivity?             @relation("ProcessingActivityReviewCycles", fields: [processingActivityId], references: [id], onDelete: SetNull)
+  supersededByCycle  DataProcessingReviewCycle?      @relation("ReviewCycleSupersession", fields: [supersededByCycleId], references: [id], onDelete: SetNull)
+  supersedesCycles   DataProcessingReviewCycle[]     @relation("ReviewCycleSupersession")
+  decisions          DataProcessingReviewDecision[]
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, status])
+  @@index([processingActivityId])
+  @@map("data_processing_review_cycles")
+}
+
+/// Append-only review step decisions — no updatedAt.
+model DataProcessingReviewDecision {
+  id                  String                            @id @default(uuid())
+  organizationId      String                            @map("organization_id")
+  reviewCycleId       String                            @map("review_cycle_id")
+  stepType            DataProcessingReviewStepType      @map("step_type")
+  decision            DataProcessingReviewDecisionOutcome
+  actorUserId         String                            @map("actor_user_id")
+  reason              String?                           @db.Text
+  entityVersionNumber Int                               @map("entity_version_number")
+  decidedAt           DateTime                          @default(now()) @map("decided_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  reviewCycle  DataProcessingReviewCycle @relation(fields: [reviewCycleId], references: [id], onDelete: Restrict)
+
+  @@index([reviewCycleId, stepType])
+  @@index([organizationId, decidedAt])
+  @@map("data_processing_review_decisions")
 }
 
 // ─── Workflow Automation ──────────────────────────
