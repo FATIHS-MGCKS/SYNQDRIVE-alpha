@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import highMobilityConfig from '@config/high-mobility.config';
 import { VehicleProviderConsentService } from '@modules/vehicles/vehicle-provider-consent.service';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 
 // ── Shared config service ──────────────────────────────────────────────────
 import { HighMobilityAppConfigService } from './high-mobility-app-config.service';
@@ -44,7 +45,7 @@ import { HighMobilityCompatibilityController } from './compatibility/hm-compatib
 import { HighMobilityCompatibilityService } from './compatibility/hm-compatibility.service';
 
 @Module({
-  imports: [ConfigModule.forFeature(highMobilityConfig)],
+  imports: [ConfigModule.forFeature(highMobilityConfig), DataAuthorizationsModule],
   controllers: [
     HighMobilityAdminController,
     HighMobilityWebhookController,

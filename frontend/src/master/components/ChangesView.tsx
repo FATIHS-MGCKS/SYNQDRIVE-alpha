@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'telemetry-ingestion-enforcement-v49800-2026-07-23',
+    version: '4.9.800',
+    title: 'V4.9.800 — Telemetrie-Ingestion vor Persistierung geschützt (Prompt 17)',
+    summary: [
+      'TelemetryIngestionEnforcementService — INGEST-Decision vor Raw-Persist; kein Legacy-Fallback; konfigurierbarer Shadow Mode (DATA_AUTH_INGEST_SHADOW_MODE, default true).',
+      'Gebunden: DIMO Snapshot/DTC Poll, DIMO DTC/RPM Webhooks, HM Telemetry/Health MQTT. Fail-closed (DATA_AUTH_INGEST_FAIL_CLOSED) blockiert PG/CH ohne Queue-Retry.',
+      'INGESTION_SKIPPED Audit-Events, In-Process-Metriken (allow/deny/shadow/skipped/scope_mismatch/resolver_error), HIGH_MOBILITY in PolicyResolver.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 17 — Authorization Decision Engine verbindlich in Telemetrie-Ingestion vor Persistierung.',
+    previousBehavior:
+      'INGEST-Action definiert aber ungenutzt; Worker/Webhooks/Ingestion ohne Authorization Gate; Legacy-Enforcement-Fallback bei Reads.',
+    details:
+      'telemetry-ingestion-enforcement/, WorkersModule + HighMobilityModule + Dimo Webhook. Tests: telemetry-ingestion-enforcement.service.spec.ts. Doku: docs/architecture/telemetry-ingestion-enforcement-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-23T23:45:00.000Z',
+  },
+  {
     id: 'live-gps-enforcement-v49799-2026-07-23',
     version: '4.9.799',
     title: 'V4.9.799 — Live-GPS-Enforcement gehärtet (Prompt 16)',

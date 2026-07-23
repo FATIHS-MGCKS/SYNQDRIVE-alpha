@@ -7,6 +7,14 @@ import { QUEUE_NAMES } from '../queues/queue-names';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TelemetryIngestionEnforcementService } from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.service';
+import {
+  TELEMETRY_INGEST_DATA_CATEGORY,
+  TELEMETRY_INGEST_PATH,
+  TELEMETRY_INGEST_PURPOSE,
+  TELEMETRY_INGEST_SERVICE_IDENTITY,
+  TELEMETRY_INGEST_SOURCE_SYSTEM,
+} from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.constants';
 import { TripDetectionOrchestrationService } from '../../modules/vehicle-intelligence/trips/trip-detection-orchestration.service';
 import { BatteryV2SnapshotObservationProducer } from '../../modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-observation.producer';
 import { ClickHouseTelemetryService } from '../../modules/clickhouse/clickhouse-telemetry.service';
@@ -70,6 +78,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly episodeService?: DeviceConnectionEpisodeService,
     @Optional()
     private readonly resolutionOutboxProcessor?: DeviceConnectionEpisodeResolutionOutboxProcessorService,
+    @Optional()
+    private readonly ingestGate?: TelemetryIngestionEnforcementService,
   ) {
     super();
   }
@@ -118,6 +128,38 @@ export class DimoSnapshotProcessor extends WorkerHost {
       const normalized = this.normalizeSnapshot(signals);
       const batteryMap = mapDimoBatterySignals(signals);
       const lvBatteryObservedAt = resolveLvBatteryObservedAt(batteryMap);
+
+      if (this.ingestGate) {
+        const gate = await this.ingestGate.evaluateIngest({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          sourceSystem: TELEMETRY_INGEST_SOURCE_SYSTEM.DIMO,
+          dataCategory: TELEMETRY_INGEST_DATA_CATEGORY.TELEMETRY_DATA,
+          purpose: TELEMETRY_INGEST_PURPOSE.FLEET_ANALYTICS,
+          ingestionPath: TELEMETRY_INGEST_PATH.DIMO_SNAPSHOT_POLL,
+          serviceIdentity: TELEMETRY_INGEST_SERVICE_IDENTITY.DIMO_SNAPSHOT_WORKER,
+          correlationId: `ingest:snapshot:${vehicleId}:${startedAt.toISOString()}`,
+        });
+        if (!gate.mayPersist) {
+          const finishedAt = new Date();
+          await this.prisma.dimoPollLog.create({
+            data: {
+              vehicleId,
+              jobType: DimoPollJobType.SNAPSHOT,
+              status: DimoPollStatus.SKIPPED,
+              startedAt,
+              finishedAt,
+              durationMs: finishedAt.getTime() - startedAt.getTime(),
+              errorMessage: `INGEST_DENIED:${gate.reasonCode}`,
+            },
+          });
+          this.logger.warn(
+            `Snapshot ingest denied for vehicle ${vehicleId}: ${gate.reasonCode} correlation=${gate.correlationId}`,
+          );
+          this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'skipped' });
+          return;
+        }
+      }
 
       // Track stale snapshots (data age > 5 min indicates vehicle is not actively sending)
       const STALE_THRESHOLD_MS = 5 * 60_000;

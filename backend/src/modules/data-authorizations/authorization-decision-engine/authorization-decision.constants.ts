@@ -86,6 +86,14 @@ export const AUTHORIZATION_KNOWN_SERVICE_IDENTITIES = new Set([
   'synqdrive-api',
   'dimo-telemetry',
   'high-mobility',
+  'synqdrive-dimo-snapshot-worker',
+  'synqdrive-dimo-dtc-worker',
+  'synqdrive-dimo-webhook',
+  'synqdrive-hm-telemetry-ingest',
+  'synqdrive-hm-health-ingest',
+  'synqdrive-hm-health-poll',
+  'synqdrive-trip-backfill-worker',
+  'synqdrive-trip-replay-worker',
 ]);
 
 /** Default cache TTL for high-frequency ingestion paths (ms). */
