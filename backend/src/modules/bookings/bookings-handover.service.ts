@@ -20,7 +20,6 @@ import {
   HandoverProtocolDto,
 } from './handover.types';
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
-import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
   parseAffectedArea,
@@ -35,6 +34,7 @@ import { BookingPickupGateService } from './booking-pickup-gate/booking-pickup-g
 import { BookingPickupGateAuditService } from './booking-pickup-gate/booking-pickup-gate-audit.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import { BookingDomainEventLifecycleService } from './outbox/booking-domain-event-lifecycle.service';
 import {
   PICKUP_GATE_EVENT_TYPE,
   PICKUP_GATE_OUTCOME,
@@ -60,7 +60,6 @@ export class BookingsHandoverService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
     private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
-    private readonly workflowEvents: WorkflowEventService,
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
@@ -69,6 +68,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly bookingDomainEvents: BookingDomainEventLifecycleService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -404,6 +404,26 @@ export class BookingsHandoverService {
           });
         }
 
+        const bookingForEvent = {
+          ...booking,
+          status: booking2.status,
+        };
+        if (kind === 'PICKUP') {
+          await this.bookingDomainEvents.recordPickupCompleted(
+            tx,
+            bookingForEvent,
+            created.id,
+            { actorUserId: actor.userId, causationId: created.id },
+          );
+        } else {
+          await this.bookingDomainEvents.recordReturnCompleted(
+            tx,
+            bookingForEvent,
+            created.id,
+            { actorUserId: actor.userId, causationId: created.id },
+          );
+        }
+
         return [created, booking2] as const;
       },
     );
@@ -442,26 +462,6 @@ export class BookingsHandoverService {
           );
         });
 
-      const eventBase = {
-        organizationId: orgId,
-        entityType: 'booking' as const,
-        entityId: bookingId,
-        payload: {
-          bookingId,
-          vehicleId: updatedBooking.vehicleId,
-          status: updatedBooking.status,
-        },
-      };
-      this.workflowEvents.scheduleEmit({
-        ...eventBase,
-        type: 'booking.returned',
-        idempotencyKey: `booking.returned:${bookingId}`,
-      });
-      this.workflowEvents.scheduleEmit({
-        ...eventBase,
-        type: 'booking.completed',
-        idempotencyKey: `booking.completed:${bookingId}`,
-      });
       this.runBackgroundTask(
         `taskAutomation.onReturnHandoverCompleted(${bookingId})`,
         this.taskAutomation.onReturnHandoverCompleted({

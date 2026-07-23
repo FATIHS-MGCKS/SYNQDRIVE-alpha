@@ -33,6 +33,7 @@ import {
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
+import { BookingDomainEventLifecycleService } from './outbox/booking-domain-event-lifecycle.service';
 import {
   assertValidBookingWindow,
   buildOverlapWhere,
@@ -125,6 +126,7 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly bookingDomainEvents: BookingDomainEventLifecycleService,
   ) {}
 
   /**
@@ -341,6 +343,10 @@ export class BookingsService {
         quotedPricingInput,
         tx,
       );
+
+      await this.bookingDomainEvents.recordCreated(tx, created, {
+        actorUserId: options?.userId ?? null,
+      });
 
       return created;
     });
@@ -2028,9 +2034,18 @@ export class BookingsService {
               },
             });
           }
+          await this.bookingDomainEvents.recordUpdated(tx, existing, updatedBooking, {
+            actorUserId: options?.userId ?? null,
+          });
           return updatedBooking;
         })
-      : await this.prisma.booking.update({ where: { id }, data });
+      : await this.prisma.$transaction(async (tx) => {
+          const updatedBooking = await tx.booking.update({ where: { id }, data });
+          await this.bookingDomainEvents.recordUpdated(tx, existing, updatedBooking, {
+            actorUserId: options?.userId ?? null,
+          });
+          return updatedBooking;
+        });
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {
@@ -2161,19 +2176,15 @@ export class BookingsService {
 
     await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
 
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedBooking = await tx.booking.update({
         where: { id },
         data: {
           status: 'CANCELLED' as BookingStatus,
           cancelledAt: new Date(),
         },
-      }),
-      // Release the car for a replacement booking — but NEVER overwrite a
-      // maintenance / out-of-service state (same invariant the handover
-      // service enforces). `updateMany` + notIn applies the AVAILABLE flip
-      // only when the vehicle is not IN_SERVICE / OUT_OF_SERVICE.
-      this.prisma.vehicle.updateMany({
+      });
+      await tx.vehicle.updateMany({
         where: {
           id: booking.vehicleId,
           status: {
@@ -2181,8 +2192,10 @@ export class BookingsService {
           },
         },
         data: { status: VehicleStatus.AVAILABLE },
-      }),
-    ]);
+      });
+      await this.bookingDomainEvents.recordCancelled(tx, updatedBooking);
+      return updatedBooking;
+    });
 
     void this.taskAutomationService
       .supersedeBookingLifecycleOnCancellation(orgId, id)
@@ -2254,19 +2267,16 @@ export class BookingsService {
       ? (booking.notes ? `${booking.notes}\n${notesAddendum}` : notesAddendum)
       : booking.notes;
 
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedBooking = await tx.booking.update({
         where: { id },
         data: {
           status: 'NO_SHOW' as BookingStatus,
           cancelledAt: new Date(),
           notes: nextNotes,
         },
-      }),
-      // Reopen the car for a replacement booking without clobbering a
-      // maintenance / out-of-service state (mirrors cancel() + the handover
-      // invariant). Only flips to AVAILABLE when not IN_SERVICE/OUT_OF_SERVICE.
-      this.prisma.vehicle.updateMany({
+      });
+      await tx.vehicle.updateMany({
         where: {
           id: booking.vehicleId,
           status: {
@@ -2274,8 +2284,10 @@ export class BookingsService {
           },
         },
         data: { status: VehicleStatus.AVAILABLE },
-      }),
-    ]);
+      });
+      await this.bookingDomainEvents.recordNoShow(tx, updatedBooking);
+      return updatedBooking;
+    });
 
     void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
 
