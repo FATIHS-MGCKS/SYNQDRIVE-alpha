@@ -1,10 +1,57 @@
 -- Rental rule revisions (Prompt 24/34)
 -- Versioned, temporally valid rule snapshots per ORGANIZATION / CATEGORY / VEHICLE scope.
 
-CREATE TYPE "RentalRuleRevisionScopeType" AS ENUM ('ORGANIZATION', 'CATEGORY', 'VEHICLE');
-CREATE TYPE "RentalRuleRevisionStatus" AS ENUM ('DRAFT', 'ACTIVE', 'RETIRED');
+-- Bootstrap: production may have partial rental-rules schema from older deploys.
+DO $$ BEGIN
+  CREATE TYPE "RentalForeignTravelPolicy" AS ENUM ('FORBIDDEN', 'EU_ONLY', 'WORLDWIDE');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "RentalAdditionalDriverPolicy" AS ENUM ('FORBIDDEN', 'ALLOWED', 'REQUIRES_APPROVAL');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "RentalYoungDriverPolicy" AS ENUM ('FORBIDDEN', 'SURCHARGE', 'REQUIRES_APPROVAL');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE "rental_rule_revisions" (
+ALTER TABLE "organization_rental_rules"
+  ADD COLUMN IF NOT EXISTS "credit_card_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "foreign_travel_policy" "RentalForeignTravelPolicy",
+  ADD COLUMN IF NOT EXISTS "additional_driver_policy" "RentalAdditionalDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "young_driver_policy" "RentalYoungDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "insurance_requirement" TEXT,
+  ADD COLUMN IF NOT EXISTS "manual_approval_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "notes" TEXT;
+
+ALTER TABLE "rental_vehicle_categories"
+  ADD COLUMN IF NOT EXISTS "credit_card_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "foreign_travel_policy" "RentalForeignTravelPolicy",
+  ADD COLUMN IF NOT EXISTS "additional_driver_policy" "RentalAdditionalDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "young_driver_policy" "RentalYoungDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "insurance_requirement" TEXT,
+  ADD COLUMN IF NOT EXISTS "manual_approval_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "notes" TEXT;
+
+ALTER TABLE "vehicle_rental_requirement_overrides"
+  ADD COLUMN IF NOT EXISTS "credit_card_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "foreign_travel_policy" "RentalForeignTravelPolicy",
+  ADD COLUMN IF NOT EXISTS "additional_driver_policy" "RentalAdditionalDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "young_driver_policy" "RentalYoungDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "insurance_requirement" TEXT,
+  ADD COLUMN IF NOT EXISTS "manual_approval_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "notes" TEXT;
+
+DO $$ BEGIN
+  CREATE TYPE "RentalRuleRevisionScopeType" AS ENUM ('ORGANIZATION', 'CATEGORY', 'VEHICLE');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "RentalRuleRevisionStatus" AS ENUM ('DRAFT', 'ACTIVE', 'RETIRED');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "rental_rule_revisions" (
   "id" TEXT NOT NULL,
   "organization_id" TEXT NOT NULL,
   "scope_type" "RentalRuleRevisionScopeType" NOT NULL,
