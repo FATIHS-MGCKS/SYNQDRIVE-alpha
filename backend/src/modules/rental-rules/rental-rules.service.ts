@@ -12,6 +12,7 @@ import {
   CreateRentalVehicleCategoryDto,
   PreviewCategoryVehicleAssignmentDto,
   ResetVehicleRentalOverridesDto,
+  TransitionCategoryLifecycleDto,
   UpdateRentalVehicleCategoryDto,
   UpsertOrganizationRentalRulesDto,
   UpsertVehicleRentalOverridesDto,
@@ -38,6 +39,17 @@ import {
 } from './vehicle-rental-override-reset.util';
 import { RENTAL_RULES_INITIAL_EXPECTED_VERSION } from './rental-rules-concurrency.constants';
 import { throwRentalRulesVersionConflict } from './rental-rules-concurrency.util';
+import {
+  assertCategoryLifecycleTransition,
+  canAssignVehiclesToCategory,
+  canEditCategoryContent,
+  syncIsActiveFromCategoryStatus,
+  throwCategoryHardDeleteBlocked,
+} from './rental-rules-category-lifecycle.util';
+import {
+  categoryHasHistoricalReferences,
+  countCategoryHistoricalReferences,
+} from './rental-rules-category-references.util';
 import type { CategoryAssignmentApplyPlan, CategoryAssignmentDiff } from './rental-rules-category-assignment.types';
 import {
   assertCategoryAssignmentDeltaIsActionable,
@@ -220,15 +232,24 @@ export class RentalRulesService {
     return { ...formatOrganizationRentalRules(row), configured: true };
   }
 
-  async listCategories(orgId: string, includeInactive = false) {
+  async listCategories(
+    orgId: string,
+    includeInactive = false,
+    statusFilter?: string[],
+  ) {
     await this.assertOrgExists(orgId);
+    const statuses = statusFilter?.filter(Boolean);
     const rows = await this.prisma.rentalVehicleCategory.findMany({
       where: {
         organizationId: orgId,
-        ...(includeInactive ? {} : { isActive: true }),
+        ...(statuses?.length
+          ? { status: { in: statuses as Prisma.EnumRentalVehicleCategoryStatusFilter['in'] } }
+          : includeInactive
+            ? {}
+            : { status: 'ACTIVE' }),
       },
       include: { _count: { select: { vehicles: true } } },
-      orderBy: [{ name: 'asc' }],
+      orderBy: [{ status: 'asc' }, { name: 'asc' }],
     });
     return rows.map((row) => formatRentalVehicleCategory(row));
   }
@@ -249,10 +270,12 @@ export class RentalRulesService {
   ) {
     await this.assertOrgExists(orgId);
     const patch = this.toPrismaRuleData(pickRulePatch(dto), 'category');
-    const requestedActive =
-      (patch.isActive as boolean | undefined) ??
-      (dto.isActive !== undefined ? dto.isActive : undefined);
-    await this.rentalRulePermissions.assertPublishIfActiveChange(ctx.actor, orgId, requestedActive);
+    const initialStatus = dto.status ?? (dto.isActive === false ? 'INACTIVE' : 'ACTIVE');
+    await this.rentalRulePermissions.assertPublishIfActiveChange(
+      ctx.actor,
+      orgId,
+      initialStatus === 'ACTIVE',
+    );
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const trimmedName = dto.name.trim();
@@ -265,7 +288,9 @@ export class RentalRulesService {
         type: dto.type ?? null,
         color: dto.color ?? null,
         icon: dto.icon ?? null,
-        isActive: (patch.isActive as boolean | undefined) ?? dto.isActive ?? true,
+        status: initialStatus,
+        statusChangedAt: new Date(),
+        isActive: syncIsActiveFromCategoryStatus(initialStatus),
         ...prismaRuleColumns(patch, { layer: 'category' }),
       },
       include: { _count: { select: { vehicles: true } } },
@@ -280,12 +305,26 @@ export class RentalRulesService {
     ctx: RentalRulesMutationContext = {},
   ) {
     const existing = await this.loadCategory(orgId, categoryId);
+    if (!canEditCategoryContent(existing.status)) {
+      throw new BadRequestException({
+        message: 'Archived categories are read-only. Restore to active before editing.',
+        code: 'RENTAL_CATEGORY_ARCHIVED_READ_ONLY',
+        status: existing.status,
+      });
+    }
     const patch = this.toPrismaRuleData(pickRulePatch(dto), 'category');
-    await this.rentalRulePermissions.assertPublishIfActiveChange(
-      ctx.actor,
-      orgId,
-      patch.isActive as boolean | undefined,
-    );
+    if (patch.isActive !== undefined) {
+      throw new BadRequestException({
+        message: 'Use the lifecycle endpoint to change category status',
+        code: 'RENTAL_CATEGORY_STATUS_USE_LIFECYCLE',
+      });
+    }
+    if (dto.isActive !== undefined) {
+      throw new BadRequestException({
+        message: 'Use the lifecycle endpoint to change category status',
+        code: 'RENTAL_CATEGORY_STATUS_USE_LIFECYCLE',
+      });
+    }
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const data: Prisma.RentalVehicleCategoryUpdateManyMutationInput = {
@@ -301,7 +340,6 @@ export class RentalRulesService {
     if (dto.type !== undefined) data.type = dto.type ?? null;
     if (dto.color !== undefined) data.color = dto.color ?? null;
     if (dto.icon !== undefined) data.icon = dto.icon ?? null;
-    if (patch.isActive !== undefined) data.isActive = patch.isActive as boolean;
 
     const { count } = await this.prisma.rentalVehicleCategory.updateMany({
       where: { id: categoryId, organizationId: orgId, version: dto.expectedVersion },
@@ -328,10 +366,35 @@ export class RentalRulesService {
   }
 
   async disableCategory(orgId: string, categoryId: string, expectedVersion: number) {
+    return this.transitionCategoryLifecycle(
+      orgId,
+      categoryId,
+      { expectedVersion, targetStatus: 'INACTIVE' },
+      {},
+    );
+  }
+
+  async transitionCategoryLifecycle(
+    orgId: string,
+    categoryId: string,
+    dto: TransitionCategoryLifecycleDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
     const existing = await this.loadCategory(orgId, categoryId);
+    assertCategoryLifecycleTransition(existing.status, dto.targetStatus);
+
+    if (dto.targetStatus === 'ACTIVE') {
+      await this.rentalRulePermissions.assertPublishIfActiveChange(ctx.actor, orgId, true);
+    }
+
     const { count } = await this.prisma.rentalVehicleCategory.updateMany({
-      where: { id: categoryId, organizationId: orgId, version: expectedVersion },
-      data: { isActive: false, version: { increment: 1 } },
+      where: { id: categoryId, organizationId: orgId, version: dto.expectedVersion },
+      data: {
+        status: dto.targetStatus,
+        statusChangedAt: new Date(),
+        isActive: syncIsActiveFromCategoryStatus(dto.targetStatus),
+        version: { increment: 1 },
+      },
     });
     if (count === 0) {
       const current = await this.prisma.rentalVehicleCategory.findFirst({
@@ -340,16 +403,44 @@ export class RentalRulesService {
       });
       throwRentalRulesVersionConflict({
         entityType: 'category',
-        expectedVersion,
+        expectedVersion: dto.expectedVersion,
         currentVersion: current?.version ?? existing.version,
         current: current ? formatRentalVehicleCategory(current) : formatRentalVehicleCategory(existing),
       });
     }
+
+    await this.activityLog.log({
+      organizationId: orgId,
+      userId: ctx.actor?.id,
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ORGANIZATION,
+      entityId: orgId,
+      description: `Rental category "${existing.name}" lifecycle: ${existing.status} → ${dto.targetStatus}`,
+      metaJson: {
+        categoryId,
+        categoryName: existing.name,
+        fromStatus: existing.status,
+        toStatus: dto.targetStatus,
+        actorUserId: ctx.actor?.id ?? null,
+      },
+    });
+
     const row = await this.prisma.rentalVehicleCategory.findUniqueOrThrow({
       where: { id: categoryId },
       include: { _count: { select: { vehicles: true } } },
     });
     return formatRentalVehicleCategory(row);
+  }
+
+  async assertCategoryMayBeHardDeleted(orgId: string, categoryId: string): Promise<void> {
+    const category = await this.loadCategory(orgId, categoryId);
+    const references = await countCategoryHistoricalReferences(this.prisma, orgId, categoryId);
+    if (category.status !== 'DRAFT' || categoryHasHistoricalReferences(references)) {
+      throwCategoryHardDeleteBlocked({ categoryId, references });
+    }
+    if (references.assignedVehicles > 0) {
+      throwCategoryHardDeleteBlocked({ categoryId, references });
+    }
   }
 
   async listCategoryVehicles(orgId: string, categoryId: string) {
@@ -381,6 +472,13 @@ export class RentalRulesService {
     ctx: RentalRulesMutationContext = {},
   ) {
     const category = await this.loadCategory(orgId, categoryId);
+    if (!canAssignVehiclesToCategory(category.status)) {
+      throw new BadRequestException({
+        message: 'Vehicles can only be assigned to draft or active categories',
+        code: 'RENTAL_CATEGORY_ASSIGNMENT_NOT_ALLOWED',
+        status: category.status,
+      });
+    }
     const { plan, diff } = await this.buildCategoryAssignmentContext(orgId, categoryId, dto);
 
     if (!plan.hasMutations) {
@@ -1032,6 +1130,9 @@ export class RentalRulesService {
     const [
       defaults,
       activeCategoryCount,
+      draftCategoryCount,
+      inactiveCategoryCount,
+      archivedCategoryCount,
       totalVehicles,
       vehiclesWithCategory,
       overrides,
@@ -1041,7 +1142,16 @@ export class RentalRulesService {
         where: { organizationId: orgId },
       }),
       this.prisma.rentalVehicleCategory.count({
-        where: { organizationId: orgId, isActive: true },
+        where: { organizationId: orgId, status: 'ACTIVE' },
+      }),
+      this.prisma.rentalVehicleCategory.count({
+        where: { organizationId: orgId, status: 'DRAFT' },
+      }),
+      this.prisma.rentalVehicleCategory.count({
+        where: { organizationId: orgId, status: 'INACTIVE' },
+      }),
+      this.prisma.rentalVehicleCategory.count({
+        where: { organizationId: orgId, status: 'ARCHIVED' },
       }),
       this.prisma.vehicle.count({ where: { organizationId: orgId } }),
       this.prisma.vehicle.count({
@@ -1068,7 +1178,7 @@ export class RentalRulesService {
       this.prisma.rentalVehicleCategory.count({
         where: {
           organizationId: orgId,
-          isActive: true,
+          status: 'ACTIVE',
           manualApprovalRequired: true,
         },
       }),
@@ -1097,6 +1207,9 @@ export class RentalRulesService {
       defaultsConfigured: Boolean(defaults),
       defaultsActive: defaults?.isActive ?? true,
       activeCategoryCount,
+      draftCategoryCount,
+      inactiveCategoryCount,
+      archivedCategoryCount,
       totalVehicles,
       vehiclesWithCategory,
       vehiclesMissingCategory: Math.max(0, totalVehicles - vehiclesWithCategory),

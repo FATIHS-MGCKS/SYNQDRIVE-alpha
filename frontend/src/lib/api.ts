@@ -5717,9 +5717,21 @@ export const api = {
         `/organizations/${orgId}/rental-rules/categories/${categoryId}`,
         data,
       ),
-    disableCategory: (orgId: string, categoryId: string) =>
+    disableCategory: (orgId: string, categoryId: string, expectedVersion: number) =>
       del<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
-        `/organizations/${orgId}/rental-rules/categories/${categoryId}`,
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}?expectedVersion=${encodeURIComponent(String(expectedVersion))}`,
+      ),
+    transitionCategoryLifecycle: (
+      orgId: string,
+      categoryId: string,
+      payload: {
+        expectedVersion: number;
+        targetStatus: import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryStatus;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}/lifecycle`,
+        payload,
       ),
     listCategoryVehicles: (orgId: string, categoryId: string) =>
       get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalCategoryVehicleDto[]>(

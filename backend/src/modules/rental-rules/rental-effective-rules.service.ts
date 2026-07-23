@@ -5,6 +5,7 @@ import {
   buildRentalRulesActivationSnapshot,
   resolveInactiveCategoryDisplayName,
 } from './rental-rules-activation.policy';
+import { isCategoryRulesEnforced } from './rental-rules-category-lifecycle.util';
 import {
   extractRuleFields,
   hasActiveRuleOverrides,
@@ -72,7 +73,7 @@ export class RentalEffectiveRulesService {
         values: orgRules ? extractRuleFields(orgRules) : {},
       },
       categoryLayer:
-        category && category.isActive
+        category && isCategoryRulesEnforced(category.status)
           ? {
               source: 'CATEGORY',
               sourceName: category.name,

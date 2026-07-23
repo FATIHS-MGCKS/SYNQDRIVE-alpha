@@ -40,6 +40,8 @@ export interface OrganizationRentalRulesDto extends RentalRuleFields {
   updatedAt?: string;
 }
 
+export type RentalVehicleCategoryStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+
 export interface RentalVehicleCategoryDto extends RentalRuleFields {
   id: string;
   organizationId: string;
@@ -49,6 +51,8 @@ export interface RentalVehicleCategoryDto extends RentalRuleFields {
   color: string | null;
   icon: string | null;
   isActive: boolean;
+  status: RentalVehicleCategoryStatus;
+  statusChangedAt: string | null;
   vehicleCount?: number;
   version: number;
   createdAt: string;
@@ -122,6 +126,9 @@ export interface RentalRulesOverviewDto {
   defaultsConfigured: boolean;
   defaultsActive: boolean;
   activeCategoryCount: number;
+  draftCategoryCount?: number;
+  inactiveCategoryCount?: number;
+  archivedCategoryCount?: number;
   totalVehicles: number;
   vehiclesWithCategory: number;
   vehiclesMissingCategory: number;

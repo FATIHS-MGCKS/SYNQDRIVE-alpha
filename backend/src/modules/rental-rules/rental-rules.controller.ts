@@ -22,6 +22,7 @@ import {
   CreateRentalVehicleCategoryDto,
   PreviewCategoryVehicleAssignmentDto,
   ResetVehicleRentalOverridesDto,
+  TransitionCategoryLifecycleDto,
   UpdateRentalVehicleCategoryDto,
   UpsertOrganizationRentalRulesDto,
   UpsertVehicleRentalOverridesDto,
@@ -70,8 +71,12 @@ export class RentalRulesController {
   listCategories(
     @Param('orgId') orgId: string,
     @Query('includeInactive') includeInactive?: string,
+    @Query('status') status?: string | string[],
   ) {
-    return this.rentalRules.listCategories(orgId, includeInactive === 'true');
+    const statusFilter = status
+      ? (Array.isArray(status) ? status : status.split(',')).map((value) => value.trim()).filter(Boolean)
+      : undefined;
+    return this.rentalRules.listCategories(orgId, includeInactive === 'true', statusFilter);
   }
 
   @Post('organizations/:orgId/rental-rules/categories')
@@ -107,8 +112,20 @@ export class RentalRulesController {
     @Param('orgId') orgId: string,
     @Param('categoryId') categoryId: string,
     @Query('expectedVersion', ParseIntPipe) expectedVersion: number,
+    @CurrentUser() user: PermissionActor | undefined,
   ) {
     return this.rentalRules.disableCategory(orgId, categoryId, expectedVersion);
+  }
+
+  @Post('organizations/:orgId/rental-rules/categories/:categoryId/lifecycle')
+  @RequireRentalRulePermission('rental_rules.publish')
+  transitionCategoryLifecycle(
+    @Param('orgId') orgId: string,
+    @Param('categoryId') categoryId: string,
+    @Body() body: TransitionCategoryLifecycleDto,
+    @CurrentUser() user: PermissionActor | undefined,
+  ) {
+    return this.rentalRules.transitionCategoryLifecycle(orgId, categoryId, body, { actor: user });
   }
 
   @Get('organizations/:orgId/rental-rules/categories/:categoryId/vehicles')

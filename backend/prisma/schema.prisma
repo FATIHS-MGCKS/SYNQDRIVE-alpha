@@ -5260,6 +5260,13 @@ enum RentalVehicleCategoryType {
   CUSTOM
 }
 
+enum RentalVehicleCategoryStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 model OrganizationRentalRules {
   id                          String                        @id @default(uuid())
   organizationId              String                        @unique @map("organization_id")
@@ -5306,6 +5313,8 @@ model RentalVehicleCategory {
   manualApprovalRequired      Boolean?                      @map("manual_approval_required")
   notes                       String?
   isActive                    Boolean                       @default(true) @map("is_active")
+  status                      RentalVehicleCategoryStatus   @default(ACTIVE) @map("status")
+  statusChangedAt             DateTime?                     @map("status_changed_at")
   version                     Int                           @default(1)
   createdAt                   DateTime                      @default(now()) @map("created_at")
   updatedAt                   DateTime                      @updatedAt @map("updated_at")
@@ -5316,6 +5325,7 @@ model RentalVehicleCategory {
   @@unique([organizationId, nameNormalized], map: "rental_vehicle_categories_org_name_normalized_key")
   @@index([organizationId])
   @@index([organizationId, isActive])
+  @@index([organizationId, status], map: "rental_vehicle_categories_org_status_idx")
   @@map("rental_vehicle_categories")
 }
 

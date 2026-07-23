@@ -55,6 +55,7 @@ function baseVehicle(orgId = 'org1') {
       name: 'Economy',
       type: 'ECONOMY',
       isActive: true,
+      status: 'ACTIVE',
       minimumAgeYears: 23,
       minimumLicenseHoldingMonths: null,
       depositAmountCents: null,

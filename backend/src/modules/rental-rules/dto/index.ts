@@ -21,6 +21,7 @@ import {
 import {
   RentalAdditionalDriverPolicy,
   RentalForeignTravelPolicy,
+  RentalVehicleCategoryStatus,
   RentalVehicleCategoryType,
   RentalYoungDriverPolicy,
 } from '@prisma/client';
@@ -168,6 +169,10 @@ export class CreateRentalVehicleCategoryDto extends RentalRuleFieldsDto {
   @IsOptional()
   @IsBoolean({ message: MSG.boolean.invalid })
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEnum(RentalVehicleCategoryStatus, { message: MSG.enum.invalid })
+  status?: RentalVehicleCategoryStatus;
 }
 
 export class UpdateRentalVehicleCategoryDto extends RentalRuleFieldsDto {
@@ -213,6 +218,15 @@ export class UpdateRentalVehicleCategoryDto extends RentalRuleFieldsDto {
   @IsOptional()
   @IsBoolean({ message: MSG.boolean.invalid })
   isActive?: boolean;
+}
+
+export class TransitionCategoryLifecycleDto {
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(0, { message: MSG.expectedVersion.min })
+  expectedVersion!: number;
+
+  @IsEnum(RentalVehicleCategoryStatus, { message: MSG.enum.invalid })
+  targetStatus!: RentalVehicleCategoryStatus;
 }
 
 export class CategoryVehicleMoveDto {

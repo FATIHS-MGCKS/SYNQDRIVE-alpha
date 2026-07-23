@@ -1,6 +1,7 @@
 import type {
   OrganizationRentalRules,
   RentalVehicleCategory,
+  RentalVehicleCategoryStatus,
   VehicleRentalRequirementOverride,
 } from '@prisma/client';
 import type { RentalRuleFieldSet } from './rental-rules.types';
@@ -77,6 +78,8 @@ export function formatRentalVehicleCategory(row: RentalVehicleCategory & { _coun
     depositAmount: fields.depositAmountCents,
     ...licenseHoldingDisplayFields(fields.minimumLicenseHoldingMonths ?? null),
     isActive: row.isActive,
+    status: row.status,
+    statusChangedAt: row.statusChangedAt?.toISOString() ?? null,
     vehicleCount: row._count?.vehicles,
     version: row.version,
     createdAt: row.createdAt.toISOString(),

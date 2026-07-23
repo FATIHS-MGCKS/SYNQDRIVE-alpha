@@ -67,6 +67,8 @@ describe('RentalRulesService category assignment delta', () => {
       organizationId: ORG,
       name: 'Target',
       version,
+      status: 'ACTIVE',
+      isActive: true,
     });
   }
 

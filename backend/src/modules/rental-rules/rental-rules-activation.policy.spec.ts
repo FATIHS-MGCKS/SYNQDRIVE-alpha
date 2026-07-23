@@ -35,7 +35,7 @@ describe('rental-rules-activation.policy', () => {
   it('skips inactive category as rule source but keeps enforcement when org active', () => {
     const activation = buildRentalRulesActivationSnapshot({
       orgRules: { isActive: true },
-      category: { id: 'cat-1', name: 'Premium', isActive: false },
+      category: { id: 'cat-1', name: 'Premium', isActive: false, status: 'INACTIVE' },
       overrideFields: null,
     });
 

@@ -28,6 +28,7 @@ describe('RentalEffectiveRulesService activation semantics', () => {
         name: 'Premium',
         type: 'PREMIUM',
         isActive: false,
+        status: 'INACTIVE',
         minimumAgeYears: 30,
       },
       rentalRequirementOverride: null,

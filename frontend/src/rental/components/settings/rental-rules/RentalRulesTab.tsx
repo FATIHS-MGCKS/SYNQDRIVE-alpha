@@ -11,7 +11,7 @@ import {
 import { toast } from 'sonner';
 import { api } from '../../../../lib/api';
 import { Button } from '../../../../components/ui/button';
-import { EmptyState, ErrorState, PageHeader } from '../../../../components/patterns';
+import { DetailDrawer, EmptyState, ErrorState, PageHeader, StatusChip } from '../../../../components/patterns';
 import { useRentalOrg } from '../../../RentalContext';
 import { RENTAL_RULES_PERMISSION_DENIED_MESSAGE } from '../../../lib/rental-rules-permissions';
 import { useRentalRulesPermissions } from '../../../hooks/useRentalRulesPermissions';
@@ -23,7 +23,12 @@ import { buildCategoryAssignmentDelta } from './rental-rules-category-assignment
 import { rentalRulesMutate } from './rental-rules-concurrency.errors';
 import { resolveExpectedVersion, withExpectedVersion } from './rental-rules-concurrency.utils';
 import { RentalRulesSummaryTile } from './RentalRulesSummaryTile';
-import type { CategoryAssignmentResultDto, RentalCategoryVehicleDto, RentalVehicleCategoryDto } from './rental-rules.types';
+import type { CategoryAssignmentResultDto, RentalCategoryVehicleDto, RentalVehicleCategoryDto, RentalVehicleCategoryStatus } from './rental-rules.types';
+import {
+  CATEGORY_STATUS_TONES,
+  categoryAllowsVehicleAssignment,
+  labelCategoryStatus,
+} from './rental-rules-category-lifecycle.utils';
 import {
   countConfiguredRuleFields,
   formatBool,
@@ -86,6 +91,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
   const {
     canRead,
     canWrite,
+    canPublish,
     canAssignVehicles,
   } = permissions;
   const {
@@ -118,11 +124,12 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
   const [assignedVehicles, setAssignedVehicles] = useState<RentalCategoryVehicleDto[]>([]);
   const [assignDrawer, setAssignDrawer] = useState<RentalVehicleCategoryDto | null>(null);
   const [previewVehicle, setPreviewVehicle] = useState<{ id: string; label: string } | null>(null);
+  const [categoryStatusFilter, setCategoryStatusFilter] = useState<'ALL' | RentalVehicleCategoryStatus>('ALL');
 
-  const activeCategories = useMemo(
-    () => categories.filter((c) => c.isActive),
-    [categories],
-  );
+  const visibleCategories = useMemo(() => {
+    if (categoryStatusFilter === 'ALL') return categories;
+    return categories.filter((category) => category.status === categoryStatusFilter);
+  }, [categories, categoryStatusFilter]);
 
   const unassignedVehicles = useMemo(
     () => fleetVehicles.filter((v) => !v.rentalCategoryId),
@@ -273,7 +280,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
           value={overview?.activeCategoryCount ?? 0}
           valueVariant="numeric"
           subdued={(overview?.activeCategoryCount ?? 0) === 0}
-          hint={`${activeCategories.length} active · ${categories.length} total · rule groups for vehicle classes`}
+          hint={`${overview?.activeCategoryCount ?? 0} active · ${categories.length} total · ${overview?.inactiveCategoryCount ?? 0} inactive · ${overview?.archivedCategoryCount ?? 0} archived`}
           icon={<Layers aria-hidden />}
         />
         <RentalRulesSummaryTile
@@ -403,7 +410,25 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
           }
         />
 
-        {activeCategories.length === 0 ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <label className="text-[11px] font-medium text-muted-foreground" htmlFor="category-status-filter">
+            Status
+          </label>
+          <select
+            id="category-status-filter"
+            className="rounded-lg border border-border bg-background px-3 py-1.5 text-[12px]"
+            value={categoryStatusFilter}
+            onChange={(e) => setCategoryStatusFilter(e.target.value as 'ALL' | RentalVehicleCategoryStatus)}
+          >
+            <option value="ALL">All ({categories.length})</option>
+            <option value="ACTIVE">Active ({overview?.activeCategoryCount ?? 0})</option>
+            <option value="DRAFT">Draft ({overview?.draftCategoryCount ?? 0})</option>
+            <option value="INACTIVE">Inactive ({overview?.inactiveCategoryCount ?? 0})</option>
+            <option value="ARCHIVED">Archived ({overview?.archivedCategoryCount ?? 0})</option>
+          </select>
+        </div>
+
+        {visibleCategories.length === 0 ? (
           <div className="surface-premium rounded-xl border border-border/60 surface-premium p-4">
             <EmptyState
               compact
@@ -421,7 +446,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
           </div>
         ) : (
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {activeCategories.map((cat) => (
+            {visibleCategories.map((cat) => (
               <article
                 key={cat.id}
                 className="surface-premium overflow-hidden rounded-xl border border-border/60 surface-premium"
@@ -440,7 +465,9 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
                       {cat.manualApprovalRequired && (
                         <RentalRequirementsStatusBadge kind="manual-approval" />
                       )}
-                      <RentalRequirementsStatusBadge kind={cat.isActive ? 'active' : 'incomplete'} />
+                      <StatusChip tone={CATEGORY_STATUS_TONES[cat.status]}>
+                        {labelCategoryStatus(cat.status)}
+                      </StatusChip>
                     </div>
                   </div>
 
@@ -485,7 +512,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
                         Edit
                       </Button>
                     )}
-                    {canAssignVehicles && (
+                    {canAssignVehicles && categoryAllowsVehicleAssignment(cat.status) && (
                       <Button
                         type="button"
                         variant="ghost"
@@ -585,6 +612,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
           category={categoryDrawer.category}
           assignedVehicles={assignedVehicles}
           canWrite={canWrite}
+          canPublish={canPublish}
           canAssignVehicles={canAssignVehicles}
           saving={actionId === 'category'}
           onSaved={load}

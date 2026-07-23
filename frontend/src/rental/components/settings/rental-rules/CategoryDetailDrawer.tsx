@@ -2,9 +2,15 @@ import { useEffect, useState } from 'react';
 import { Car, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { DetailDrawer, StatusChip } from '../../../../components/patterns';
-import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto } from './rental-rules.types';
+import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto, RentalVehicleCategoryStatus } from './rental-rules.types';
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
 import { CATEGORY_COLOR_PRESETS, CATEGORY_TYPE_OPTIONS } from './rental-rules.constants';
+import {
+  CATEGORY_LIFECYCLE_ACTIONS,
+  CATEGORY_STATUS_TONES,
+  categoryAllowsVehicleAssignment,
+  labelCategoryStatus,
+} from './rental-rules-category-lifecycle.utils';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { RentalRulesMutationError, rentalRulesMutate } from './rental-rules-concurrency.errors';
 import { RentalRulesConcurrencyDialog } from './RentalRulesConcurrencyDialog';
@@ -17,6 +23,7 @@ import {
   formValuesToPatchPayload,
   labelCategoryType,
   rulesToFormValues,
+  summarizeRuleEntity,
   validateRuleForm,
 } from './rental-rules.utils';
 
@@ -28,6 +35,7 @@ interface CategoryDetailDrawerProps {
   category: RentalVehicleCategoryDto | null;
   assignedVehicles: RentalCategoryVehicleDto[];
   canWrite: boolean;
+  canPublish?: boolean;
   canAssignVehicles?: boolean;
   saving: boolean;
   onSaved: () => Promise<void> | void;
@@ -43,6 +51,7 @@ export function CategoryDetailDrawer({
   category,
   assignedVehicles,
   canWrite,
+  canPublish = false,
   canAssignVehicles = false,
   saving,
   onSaved,
@@ -59,6 +68,7 @@ export function CategoryDetailDrawer({
   const [conflictOpen, setConflictOpen] = useState(false);
   const [conflictError, setConflictError] = useState<RentalRulesMutationError | null>(null);
   const [pendingLocalSummary, setPendingLocalSummary] = useState('');
+  const [lifecycleSaving, setLifecycleSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -127,6 +137,33 @@ export function CategoryDetailDrawer({
     }
   };
 
+  const handleLifecycle = async (targetStatus: RentalVehicleCategoryStatus) => {
+    if (!category) return;
+    setLifecycleSaving(true);
+    try {
+      await rentalRulesMutate(
+        'POST',
+        `/organizations/${orgId}/rental-rules/categories/${category.id}/lifecycle`,
+        withExpectedVersion({ targetStatus }, category.version),
+      );
+      toast.success(`Category ${labelCategoryStatus(targetStatus).toLowerCase()}`);
+      await onSaved();
+      onOpenChange(false);
+    } catch (e: unknown) {
+      if (e instanceof RentalRulesMutationError && e.isVersionConflict) {
+        setConflictError(e);
+        setConflictOpen(true);
+        return;
+      }
+      toast.error(e instanceof Error ? e.message : 'Lifecycle update failed');
+    } finally {
+      setLifecycleSaving(false);
+    }
+  };
+
+  const isArchived = category?.status === 'ARCHIVED';
+  const lifecycleActions = category ? CATEGORY_LIFECYCLE_ACTIONS[category.status] : [];
+
   const conflictModel =
     conflictError != null
       ? buildRentalRulesConflictModel(t, conflictError, pendingLocalSummary)
@@ -141,10 +178,10 @@ export function CategoryDetailDrawer({
       title={mode === 'create' ? 'Create vehicle category' : category?.name ?? 'Category'}
       description="Define eligibility requirements for a group of vehicles."
       status={
-        category && !category.isActive ? (
-          <StatusChip tone="neutral">Inactive</StatusChip>
-        ) : category?.manualApprovalRequired ? (
-          <StatusChip tone="warning">Manual approval</StatusChip>
+        category ? (
+          <StatusChip tone={CATEGORY_STATUS_TONES[category.status]}>
+            {labelCategoryStatus(category.status)}
+          </StatusChip>
         ) : undefined
       }
       widthClassName="sm:max-w-xl"
@@ -157,7 +194,7 @@ export function CategoryDetailDrawer({
             <button
               type="button"
               className="sq-btn sq-btn-primary min-h-9"
-              disabled={saving}
+              disabled={saving || lifecycleSaving || isArchived}
               onClick={() => void handleSave()}
             >
               {saving ? 'Saving…' : mode === 'create' ? 'Create category' : 'Save changes'}
@@ -182,7 +219,7 @@ export function CategoryDetailDrawer({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px]"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={!canWrite || saving}
+              disabled={!canWrite || saving || lifecycleSaving || isArchived}
               placeholder="e.g. Premium"
             />
           </div>
@@ -194,7 +231,7 @@ export function CategoryDetailDrawer({
               className="min-h-[64px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-[13px]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              disabled={!canWrite || saving}
+              disabled={!canWrite || saving || lifecycleSaving || isArchived}
             />
           </div>
           <div>
@@ -205,7 +242,7 @@ export function CategoryDetailDrawer({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px]"
               value={type}
               onChange={(e) => setType(e.target.value)}
-              disabled={!canWrite || saving}
+              disabled={!canWrite || saving || lifecycleSaving || isArchived}
             >
               <option value="">Not set</option>
               {CATEGORY_TYPE_OPTIONS.map((o) => (
@@ -229,7 +266,7 @@ export function CategoryDetailDrawer({
                     color === c ? 'scale-110 border-foreground' : 'border-transparent'
                   }`}
                   style={{ backgroundColor: c }}
-                  disabled={!canWrite || saving}
+                  disabled={!canWrite || saving || lifecycleSaving || isArchived}
                   onClick={() => setColor(c)}
                   aria-label={`Color ${c}`}
                 />
@@ -238,9 +275,33 @@ export function CategoryDetailDrawer({
           </div>
         </div>
 
+        {mode === 'edit' && category && canPublish && lifecycleActions.length > 0 && (
+          <div className="rounded-xl border border-border/70 bg-muted/15 p-3">
+            <h4 className="mb-2 text-[13px] font-semibold text-foreground">Lifecycle</h4>
+            <p className="mb-3 text-[11px] text-muted-foreground">
+              {category.status === 'INACTIVE' || category.status === 'ARCHIVED'
+                ? 'Inactive and archived categories stay visible here. Assigned vehicles keep their link; only active categories enforce category rules on new eligibility checks.'
+                : 'Publish or archive this category without losing history.'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {lifecycleActions.map((action) => (
+                <button
+                  key={action.targetStatus}
+                  type="button"
+                  className="sq-btn sq-btn-ghost min-h-8 text-[12px]"
+                  disabled={lifecycleSaving || saving}
+                  onClick={() => void handleLifecycle(action.targetStatus)}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <h4 className="mb-3 text-[13px] font-semibold text-foreground">Category rules</h4>
-          <RentalRuleFieldsForm values={ruleValues} onChange={setRuleValues} disabled={!canWrite || saving} />
+          <RentalRuleFieldsForm values={ruleValues} onChange={setRuleValues} disabled={!canWrite || saving || lifecycleSaving || isArchived} />
         </div>
 
         {mode === 'edit' && category && (
@@ -249,7 +310,7 @@ export function CategoryDetailDrawer({
               <h4 className="text-[13px] font-semibold text-foreground">
                 Assigned vehicles ({assignedVehicles.length})
               </h4>
-              {canAssignVehicles && (
+              {canAssignVehicles && categoryAllowsVehicleAssignment(category.status) && (
                 <button type="button" className="sq-btn sq-btn-ghost min-h-8 text-[12px]" onClick={onAssignVehicles}>
                   Assign vehicles
                 </button>
