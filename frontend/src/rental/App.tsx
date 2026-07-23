@@ -998,6 +998,10 @@ function RentalAppContent() {
               if (v) { setSelectedVehicle(v); setCurrentView('overview'); }
             }}
             onOpenRentalView={(view) => handleViewChange(view)}
+            onOpenSettingsTab={(tab) => {
+              applySettingsTab(tab as RentalSettingsTab);
+              handleViewChange('settings');
+            }}
             onOpenFinanceView={(view) => handleViewChange(view)}
             onOpenInvoiceById={(invoiceId) => {
               setPendingInvoiceDetailId(invoiceId);

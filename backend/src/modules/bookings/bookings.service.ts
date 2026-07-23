@@ -13,6 +13,7 @@ import { RentalDrivingAnalysisRecomputeTriggerService } from '../rental-driving-
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../rental-driving-analysis/rental-driving-analysis.recompute.types';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import {
   parsePagination,
   buildPaginatedResult,
@@ -46,6 +47,7 @@ import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
+import { BookingLegalDocumentEmailService } from '@modules/outbound-email/booking-legal-document-email.service';
 import type { Station } from '@prisma/client';
 import {
   DEFAULT_TARIFF_TIMEZONE,
@@ -85,10 +87,14 @@ export class BookingsService {
     // booking is confirmed. Fire-and-forget; never blocks/breaks booking create.
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
+    private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
     @Inject(forwardRef(() => GeneratedDocumentsService))
     private readonly generatedDocumentsService: GeneratedDocumentsService,
     @Inject(forwardRef(() => BookingDocumentEmailService))
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
+    @Inject(forwardRef(() => BookingLegalDocumentEmailService))
+    private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     // V4.8.3 Task Action Layer — materializes booking lifecycle tasks
     // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
     // never blocks/breaks booking writes.
@@ -307,18 +313,22 @@ export class BookingsService {
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
     // explicitly as well — the bundle service is idempotent.
     if (booking.status === 'CONFIRMED' || booking.status === 'PENDING') {
-      void this.bookingDocumentBundleService
-        .generateInitialBundle(orgId, booking.id)
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueInitialBundle(orgId, booking.id, options?.userId ?? null)
         .then(() => {
           if (booking.status === 'CONFIRMED') {
-            return this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
+            return this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
               orgId,
               booking.id,
               options?.userId ?? null,
             );
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue initial document bundle for booking ${booking.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
 
     if (booking.status === 'CONFIRMED' || booking.status === 'ACTIVE') {
@@ -950,31 +960,53 @@ export class BookingsService {
       { type: DOCUMENT_TYPE.DEPOSIT_RECEIPT, required: true },
       { type: DOCUMENT_TYPE.RENTAL_CONTRACT, required: true },
       { type: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, required: true },
-      { type: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION, required: true },
+      { type: DOCUMENT_TYPE.CONSUMER_INFORMATION, required: true },
+      { type: DOCUMENT_TYPE.PRIVACY_POLICY, required: true },
       { type: DOCUMENT_TYPE.HANDOVER_PICKUP, required: false },
       { type: DOCUMENT_TYPE.HANDOVER_RETURN, required: false },
       { type: DOCUMENT_TYPE.FINAL_INVOICE, required: false },
     ];
 
+    const completenessRequired = new Set(bundleView?.completeness?.cumulativeRequiredTypes ?? []);
+    const completenessPresent = new Set(bundleView?.completeness?.presentTypes ?? []);
+
     const documentSlots = DOC_SLOTS.map(({ type, required }) => {
+      const slotRequired = completenessRequired.has(type as typeof DOCUMENT_TYPE[keyof typeof DOCUMENT_TYPE]) || required;
       const row = docByType.get(type);
-      if (!row) {
+      if (!row && !completenessPresent.has(type as typeof DOCUMENT_TYPE[keyof typeof DOCUMENT_TYPE])) {
         const isLegal =
           type === DOCUMENT_TYPE.TERMS_AND_CONDITIONS ||
+          type === DOCUMENT_TYPE.CONSUMER_INFORMATION ||
+          type === DOCUMENT_TYPE.PRIVACY_POLICY ||
           type === DOCUMENT_TYPE.WITHDRAWAL_INFORMATION;
+        const missingItem = bundleView?.completeness?.missingItems.find((m) => m.documentType === type);
         return {
           documentType: type,
           status: 'missing' as const,
-          required,
+          required: slotRequired,
           available: false,
           generatedAt: null,
           signedAt: null,
           documentId: null,
-          missingReason: isLegal
+          missingReason: missingItem?.reason === 'configuration_problem'
             ? 'In Administration hinterlegen'
-            : required
-              ? 'Noch nicht erstellt'
-              : null,
+            : isLegal
+              ? 'In Administration hinterlegen'
+              : slotRequired
+                ? 'Noch nicht erstellt'
+                : null,
+        };
+      }
+      if (!row) {
+        return {
+          documentType: type,
+          status: 'missing' as const,
+          required: slotRequired,
+          available: false,
+          generatedAt: null,
+          signedAt: null,
+          documentId: null,
+          missingReason: slotRequired ? 'Noch nicht erstellt' : null,
         };
       }
       const status =
@@ -1189,8 +1221,10 @@ export class BookingsService {
       },
       documents: {
         bundleStatus: bundleView?.bundle.status ?? null,
+        completenessStatus: bundleView?.completeness?.status ?? null,
         legalTermsAttached: bundleView?.legal.termsAttached ?? false,
-        legalWithdrawalAttached: bundleView?.legal.withdrawalAttached ?? false,
+        legalWithdrawalAttached: bundleView?.legal.consumerAttached ?? bundleView?.legal.withdrawalAttached ?? false,
+        legalPrivacyAttached: bundleView?.legal.privacyAttached ?? false,
         legalMissing: bundleView?.legal.missing ?? [],
         warnings: bundleView?.warnings ?? [],
         slots: documentSlots,
@@ -1664,6 +1698,14 @@ export class BookingsService {
       );
     }
 
+    if (existing.status === 'CONFIRMED' && nextStatus === 'ACTIVE') {
+      throw new ConflictException({
+        code: 'BOOKING_ACTIVATION_REQUIRES_HANDOVER',
+        message:
+          'Status ACTIVE requires pickup handover via POST /bookings/:id/handover/pickup',
+      });
+    }
+
     const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
     const pricingRelevant =
       (vehicleOrDatesChanged ||
@@ -1745,12 +1787,16 @@ export class BookingsService {
     // Generate the initial document bundle when a booking transitions INTO
     // CONFIRMED via update. Idempotent + fire-and-forget.
     if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
-      void this.bookingDocumentBundleService
-        .generateInitialBundle(orgId, id)
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueInitialBundle(orgId, id, null)
         .then(() =>
-          this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(orgId, id, null),
+          this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(orgId, id, null),
         )
-        .catch(() => {});
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue initial document bundle for booking ${id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
     // Materialize booking lifecycle tasks on any status transition. The
     // automation service is idempotent (dedup per generatedKey), so calling it

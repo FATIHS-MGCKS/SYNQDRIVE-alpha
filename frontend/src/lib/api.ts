@@ -1642,17 +1642,119 @@ export type BookingPaymentRequestDto = {
   stripePaymentIntentId: string | null;
 };
 
+export interface LegalDocumentActorRef {
+  id: string;
+  displayName: string;
+}
+
 export interface LegalDocumentDto {
   id: string;
   documentType: string;
+  documentVariant?: string | null;
+  legalVariant?: string | null;
+  /** @deprecated Use documentType + legalVariant */
+  legacyDocumentType?: string | null;
   title: string;
   versionLabel: string;
   language: string;
-  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  jurisdiction?: string;
+  customerSegment?: string;
+  channelScope?: string;
+  stationScope?: LegalDocumentStationScopeDto;
+  status: string;
+  isMandatory?: boolean;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  checksum?: string | null;
   fileName: string;
+  fileSize?: number | null;
   sizeBytes: number | null;
+  pageCount?: number | null;
+  scanStatus?: string;
+  integrityStatus?: string;
+  uploadedAt?: string;
+  uploadedBy?: LegalDocumentActorRef | null;
+  submittedForReviewAt?: string | null;
+  submittedForReviewBy?: LegalDocumentActorRef | null;
+  approvedAt?: string | null;
+  approvedBy?: LegalDocumentActorRef | null;
+  activatedAt?: string | null;
+  activatedBy?: LegalDocumentActorRef | null;
+  changeSummary?: string | null;
+  snapshotCount?: number;
   activeFrom: string | null;
+  statusReason?: string | null;
+  legalOwnerName?: string | null;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface LegalDocumentEventDto {
+  id: string;
+  organizationId: string;
+  legalDocumentId: string;
+  eventType: string;
+  previousStatus: string | null;
+  newStatus: string;
+  actorUserId: string | null;
+  actorDisplayName: string | null;
+  reason: string | null;
+  changeSummary: string | null;
+  versionLabel: string;
+  documentType: string;
+  legalVariant: string | null;
+  language: string;
+  jurisdiction: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  correlationId: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedLegalDocumentEvents {
+  data: LegalDocumentEventDto[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface LegalDocumentStationScopeDto {
+  mode: string;
+  stationIds: string[];
+}
+
+export interface LegalDocumentUsageSummaryDto {
+  snapshotCount: number;
+  bookingCount: number;
+  contractCount: number;
+  deliveryEvidenceCount: number;
+  deliveryByStatus: Record<string, number>;
+}
+
+export interface LegalDocumentUsageReferenceDto {
+  generatedDocumentId: string;
+  bookingId: string | null;
+  bookingLabel: string | null;
+  contractNumber: string | null;
+  generatedAt: string | null;
+  documentType: string;
+}
+
+export interface LegalDocumentUsageResponseDto {
+  legalDocumentId: string;
+  summary: LegalDocumentUsageSummaryDto;
+  references: {
+    data: LegalDocumentUsageReferenceDto[];
+    meta: PaginatedLegalDocumentEvents['meta'];
+  };
+}
+
+export interface PaginatedLegalDocuments {
+  data: LegalDocumentDto[];
+  meta: PaginatedLegalDocumentEvents['meta'];
 }
 
 // V4.6.95 — `ASSIGNED_USER` / `USER` removed alongside the unused user-score
@@ -3759,15 +3861,205 @@ export const api = {
   // versioning. Mutations are ORG_ADMIN-gated server-side.
   legalDocuments: {
     list: (orgId: string) => get<LegalDocumentDto[]>(`/organizations/${orgId}/legal-documents`),
-    activate: (orgId: string, id: string) =>
-      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, {}),
-    archive: (orgId: string, id: string) =>
-      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, {}),
+    listPaginated: (
+      orgId: string,
+      params: {
+        page?: number;
+        limit?: number;
+        documentType?: string;
+        status?: string;
+        language?: string;
+        jurisdiction?: string;
+        from?: string;
+        to?: string;
+        sort?: string;
+        order?: 'asc' | 'desc';
+      },
+    ) => {
+      const qs = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value != null && value !== '') qs.set(key, String(value));
+      }
+      const query = qs.toString();
+      return get<PaginatedLegalDocuments>(
+        `/organizations/${orgId}/legal-documents${query ? `?${query}` : ''}`,
+      );
+    },
+    getSettings: (orgId: string) =>
+      get<{ fourEyesEnabled: boolean }>(`/organizations/${orgId}/legal-documents/settings`),
+    get: (orgId: string, id: string) =>
+      get<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}`),
+    listEvents: (orgId: string, params?: {
+      page?: number;
+      limit?: number;
+      legalDocumentId?: string;
+      eventType?: string;
+      from?: string;
+      to?: string;
+      sort?: string;
+      order?: 'asc' | 'desc';
+    }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.legalDocumentId) qs.set('legalDocumentId', params.legalDocumentId);
+      if (params?.eventType) qs.set('eventType', params.eventType);
+      if (params?.from) qs.set('from', params.from);
+      if (params?.to) qs.set('to', params.to);
+      if (params?.sort) qs.set('sort', params.sort);
+      if (params?.order) qs.set('order', params.order);
+      const query = qs.toString();
+      return get<PaginatedLegalDocumentEvents>(
+        `/organizations/${orgId}/legal-documents/events${query ? `?${query}` : ''}`,
+      );
+    },
+    listDocumentEvents: (orgId: string, id: string, params?: { page?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      return get<PaginatedLegalDocumentEvents>(
+        `/organizations/${orgId}/legal-documents/${id}/events${query ? `?${query}` : ''}`,
+      );
+    },
+    getUsage: (orgId: string, id: string, params?: { page?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      return get<LegalDocumentUsageResponseDto>(
+        `/organizations/${orgId}/legal-documents/${id}/usage${query ? `?${query}` : ''}`,
+      );
+    },
+    fetchPreviewBlob: (orgId: string, id: string) =>
+      fetchBlob(`/organizations/${orgId}/legal-documents/${id}/download`),
+    activate: (orgId: string, id: string, body: { statusReason: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, body),
+    approve: (orgId: string, id: string, body?: { changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/approve`, body ?? {}),
+    schedule: (
+      orgId: string,
+      id: string,
+      body: { validFrom: string; changeSummary?: string; statusReason?: string },
+    ) => post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/schedule`, body),
+    requestChanges: (
+      orgId: string,
+      id: string,
+      body: { statusReason: string; changeSummary?: string },
+    ) => post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/request-changes`, body),
+    revoke: (orgId: string, id: string, body: { statusReason: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/revoke`, body),
+    archive: (orgId: string, id: string, body?: { statusReason?: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, body ?? {}),
     open: (orgId: string, id: string) =>
       openAuthedDocument(`/organizations/${orgId}/legal-documents/${id}/download`),
+    submitForReview: (orgId: string, id: string, body?: { changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/submit-for-review`, body ?? {}),
+    uploadWithProgress: (
+      orgId: string,
+      params: {
+        documentType: string;
+        versionLabel: string;
+        title?: string;
+        language?: string;
+        legalVariant?: string;
+        changeSummary?: string;
+        legalOwnerName?: string;
+        jurisdictionCountry?: string;
+        customerSegment?: string;
+        bookingChannel?: string;
+        productScope?: string;
+        stationScopeMode?: string;
+        stationIds?: string[];
+        priority?: number;
+        isMandatory?: boolean;
+        noticePurpose?: string;
+        validFrom?: string;
+        validUntil?: string;
+        file: File;
+      },
+      options?: {
+        onProgress?: (percent: number) => void;
+        signal?: AbortSignal;
+      },
+    ) =>
+      new Promise<LegalDocumentDto>((resolve, reject) => {
+        const form = new FormData();
+        form.append('file', params.file);
+        form.append('documentType', params.documentType);
+        form.append('versionLabel', params.versionLabel);
+        if (params.title) form.append('title', params.title);
+        if (params.language) form.append('language', params.language);
+        if (params.legalVariant) form.append('legalVariant', params.legalVariant);
+        if (params.changeSummary) form.append('changeSummary', params.changeSummary);
+        if (params.legalOwnerName) form.append('legalOwnerName', params.legalOwnerName);
+        if (params.jurisdictionCountry) form.append('jurisdictionCountry', params.jurisdictionCountry);
+        if (params.customerSegment) form.append('customerSegment', params.customerSegment);
+        if (params.bookingChannel) form.append('bookingChannel', params.bookingChannel);
+        if (params.productScope) form.append('productScope', params.productScope);
+        if (params.stationScopeMode) form.append('stationScopeMode', params.stationScopeMode);
+        if (params.stationIds?.length) form.append('stationIds', params.stationIds.join(','));
+        if (params.priority != null) form.append('priority', String(params.priority));
+        if (params.isMandatory != null) form.append('isMandatory', String(params.isMandatory));
+        if (params.validFrom) form.append('validFrom', params.validFrom);
+        if (params.validUntil) form.append('validUntil', params.validUntil);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${BASE_URL}/organizations/${orgId}/legal-documents/upload`);
+        const token = getToken();
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable || !options?.onProgress) return;
+          options.onProgress(Math.round((event.loaded / event.total) * 100));
+        };
+
+        xhr.onload = () => {
+          let body: { message?: string | string[]; field?: string; code?: string } = {};
+          try {
+            body = JSON.parse(xhr.responseText) as typeof body;
+          } catch {
+            /* ignore */
+          }
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText) as LegalDocumentDto);
+            } catch {
+              reject(new Error('Ungültige Serverantwort'));
+            }
+            return;
+          }
+          const msg = body.message;
+          const message = Array.isArray(msg) ? msg.join(', ') : msg || `API-Fehler ${xhr.status}`;
+          const error = new Error(message) as Error & { field?: string; code?: string };
+          error.field = body.field;
+          error.code = body.code;
+          reject(error);
+        };
+
+        xhr.onerror = () => reject(new Error('Netzwerkfehler beim Upload'));
+        xhr.onabort = () => reject(new Error('Upload abgebrochen'));
+
+        if (options?.signal) {
+          if (options.signal.aborted) {
+            xhr.abort();
+            return;
+          }
+          options.signal.addEventListener('abort', () => xhr.abort(), { once: true });
+        }
+
+        xhr.send(form);
+      }),
     upload: async (
       orgId: string,
-      params: { documentType: string; versionLabel: string; title?: string; language?: string; file: File },
+      params: {
+        documentType: string;
+        versionLabel: string;
+        title?: string;
+        language?: string;
+        legalVariant?: string;
+        file: File;
+      },
     ) => {
       const form = new FormData();
       form.append('file', params.file);
@@ -3775,6 +4067,7 @@ export const api = {
       form.append('versionLabel', params.versionLabel);
       if (params.title) form.append('title', params.title);
       if (params.language) form.append('language', params.language);
+      if (params.legalVariant) form.append('legalVariant', params.legalVariant);
       const token = getToken();
       const res = await fetch(`${BASE_URL}/organizations/${orgId}/legal-documents/upload`, {
         method: 'POST',

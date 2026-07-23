@@ -13,6 +13,7 @@ import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-healt
 import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
+import { BookingDocumentGenerationModule } from '@modules/documents/booking-document-generation/booking-document-generation.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -31,6 +32,7 @@ import { TaskAutomationOutboxProcessor } from './processors/task-automation-outb
 import { BatteryV2Processor } from './processors/battery-v2.processor';
 import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
 import { DeviceConnectionWebhookProcessor } from './processors/device-connection-webhook.processor';
+import { BookingDocumentGenerationProcessor } from './processors/booking-document-generation.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -72,6 +74,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
       { name: QUEUE_NAMES.BATTERY_V2 },
       { name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS },
       { name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS },
+      { name: QUEUE_NAMES.BOOKING_DOCUMENT_GENERATION },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -85,6 +88,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     VoiceWebhookIngestionModule,
     VoiceAssistantModule,
     IamDataRetentionModule,
+    BookingDocumentGenerationModule,
   ],
   providers: [
     // Processors
@@ -105,6 +109,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     BatteryV2Processor,
     VoiceWebhookProcessor,
     DeviceConnectionWebhookProcessor,
+    BookingDocumentGenerationProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

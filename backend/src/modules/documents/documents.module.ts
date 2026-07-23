@@ -1,18 +1,59 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
+import documentsConfig from '@config/documents.config';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
+import { LegalDocumentDeliveryEvidenceController } from './legal-document-delivery-evidence.controller';
 import { GeneratedDocumentsService } from './generated-documents.service';
-import { LegalDocumentsService } from './legal-documents.service';
+import { LegalDocumentEventsService } from './legal-document-events.service';
+import { LegalDocumentScopeService } from './legal-document-scope.service';
+import { LegalDocumentResolverService } from './legal-document-resolver.service';
+import { LegalDocumentFourEyesService } from './legal-document-four-eyes.service';
+import { LegalDocumentPdfValidationService } from './legal-document-pdf-validation.service';
+import { LegalDocumentMalwareScanService } from './legal-document-malware-scan.service';
+import { LegalDocumentIngestionService } from './legal-document-ingestion.service';
+import { LegalDocumentUsageService } from './legal-document-usage.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
+import { LegalDocumentOperationalNotificationService } from './notifications/legal-document-operational-notification.service';
+import { LegalDocumentOrgReadinessLoader } from './notifications/legal-document-org-readiness.loader';
+import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
+import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
+import { RentalContractLegalSnapshotService } from './rental-contract-legal-snapshot.service';
+import { RentalContractService } from './rental-contract.service';
+import { BookingDocumentGenerationModule } from './booking-document-generation/booking-document-generation.module';
+import { LegalDocumentDeliveryEvidenceService } from './legal-document-delivery-evidence.service';
+import { LegalDocumentsService } from './legal-documents.service';
 import { DocumentNumberingService } from './document-numbering.service';
+import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
+import { LegalDocumentRetentionReferenceService } from './retention/legal-document-retention-reference.service';
+import { LegalDocumentLegalHoldService } from './retention/legal-document-legal-hold.service';
+import { LegalDocumentRetentionService } from './retention/legal-document-retention.service';
+import { LegalDocumentSubjectAccessService } from './retention/legal-document-subject-access.service';
+import { LegalDocumentRetentionScheduler } from './retention/legal-document-retention.scheduler';
+import legalDocumentRetentionConfig from '@config/legal-document-retention.config';
 import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
 import { DOCUMENTS_STORAGE } from './storage/document-storage.interface';
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
+import { S3PrivateDocumentStorageService } from './storage/s3-private-document-storage.service';
+import { DOCUMENT_STORAGE_PROVIDERS } from './storage/document-storage.constants';
+import { DocumentStorageStartupService } from './storage/document-storage-startup.service';
+import { DocumentStorageHealthService } from './storage/document-storage-health.service';
+import { LegalDocumentChecksumVerificationService } from './integrity/legal-document-checksum-verification.service';
+import { LegalDocumentIntegrityPersistenceService } from './integrity/legal-document-integrity-persistence.service';
+import { LegalDocumentIntegrityAlertService } from './integrity/legal-document-integrity-alert.service';
+import { LegalDocumentStorageReconciliationService } from './integrity/legal-document-storage-reconciliation.service';
+import { LEGAL_DOCUMENT_MALWARE_SCANNER } from './malware-scanner/legal-document-malware-scanner.interface';
+import { LEGAL_MALWARE_SCANNER_PROVIDERS } from './malware-scanner/legal-document-malware-scanner.constants';
+import { LegalDocumentDevelopmentMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-development-malware-scanner.adapter';
+import { LegalDocumentClamAvMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-clamav-malware-scanner.adapter';
+import { LegalDocumentUnavailableMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-unavailable-malware-scanner.adapter';
+import { LegalDocumentMalwareScannerStartupService } from './malware-scanner/legal-document-malware-scanner-startup.service';
+import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/legal-document-malware-scanner-health.service';
 
 /**
  * Central document engine for the Booking Document Lifecycle.
@@ -20,34 +61,123 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
  * Owns rendering, private storage, document metadata, download endpoints,
  * bundle orchestration and legal document versioning. Business modules
  * (bookings/invoices/handover) provide data and trigger generation; they do not
- * render or store PDFs themselves. The storage + renderer are bound behind
- * tokens so a future S3 / Chromium implementation can be swapped in.
+ * render or store PDFs themselves. Storage (local dev / private S3 prod) and
+ * renderer are bound behind tokens.
  */
 @Module({
   imports: [
     forwardRef(() => InvoicesModule),
     forwardRef(() => NotificationsModule),
     TasksModule,
+    forwardRef(() => BookingDocumentGenerationModule),
   ],
-  controllers: [DocumentsController, LegalDocumentsController],
+  controllers: [DocumentsController, LegalDocumentsController, LegalDocumentDeliveryEvidenceController],
   providers: [
     LocalDocumentStorageService,
-    { provide: DOCUMENTS_STORAGE, useClass: LocalDocumentStorageService },
+    S3PrivateDocumentStorageService,
+    {
+      provide: DOCUMENTS_STORAGE,
+      useFactory: (
+        config: ConfigType<typeof documentsConfig>,
+        local: LocalDocumentStorageService,
+        s3: S3PrivateDocumentStorageService,
+      ) => {
+        if (config.storageProvider === DOCUMENT_STORAGE_PROVIDERS.S3) {
+          return s3;
+        }
+        return local;
+      },
+      inject: [documentsConfig.KEY, LocalDocumentStorageService, S3PrivateDocumentStorageService],
+    },
+    DocumentStorageStartupService,
+    DocumentStorageHealthService,
+    LegalDocumentChecksumVerificationService,
+    LegalDocumentIntegrityPersistenceService,
+    LegalDocumentIntegrityAlertService,
+    LegalDocumentStorageReconciliationService,
     DocumentRendererService,
     { provide: DOCUMENT_RENDERER, useClass: DocumentRendererService },
     GeneratedDocumentsService,
+    LegalDocumentEventsService,
+    LegalDocumentScopeService,
+    LegalDocumentResolverService,
+    LegalDocumentFourEyesService,
+    LegalDocumentPdfValidationService,
+    LegalDocumentMalwareScanService,
+    LegalDocumentIngestionService,
+    LegalDocumentDevelopmentMalwareScannerAdapter,
+    LegalDocumentClamAvMalwareScannerAdapter,
+    LegalDocumentUnavailableMalwareScannerAdapter,
+    {
+      provide: LEGAL_DOCUMENT_MALWARE_SCANNER,
+      useFactory: (
+        config: ConfigType<typeof documentsConfig>,
+        developmentScanner: LegalDocumentDevelopmentMalwareScannerAdapter,
+        clamAvScanner: LegalDocumentClamAvMalwareScannerAdapter,
+        unavailableScanner: LegalDocumentUnavailableMalwareScannerAdapter,
+      ) => {
+        if (!config.legalMalwareScanEnabled) {
+          return unavailableScanner;
+        }
+        const provider = config.legalMalwareScannerProvider;
+        if (
+          provider === LEGAL_MALWARE_SCANNER_PROVIDERS.DEVELOPMENT ||
+          provider === LEGAL_MALWARE_SCANNER_PROVIDERS.MOCK
+        ) {
+          return developmentScanner;
+        }
+        if (provider === LEGAL_MALWARE_SCANNER_PROVIDERS.CLAMAV) {
+          return clamAvScanner;
+        }
+        return unavailableScanner;
+      },
+      inject: [
+        documentsConfig.KEY,
+        LegalDocumentDevelopmentMalwareScannerAdapter,
+        LegalDocumentClamAvMalwareScannerAdapter,
+        LegalDocumentUnavailableMalwareScannerAdapter,
+      ],
+    },
+    LegalDocumentMalwareScannerStartupService,
+    LegalDocumentMalwareScannerHealthService,
     LegalDocumentsService,
+    LegalDocumentUsageService,
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,
+    LegalDocumentOperationalNotificationService,
+    LegalDocumentOrgReadinessLoader,
+    BookingDocumentBundleMonitoringService,
+    BookingDocumentCompletenessService,
+    RentalContractLegalSnapshotService,
+    RentalContractService,
+    LegalDocumentDeliveryEvidenceService,
     BookingDocumentBundleService,
+    LegalDocumentRetentionPolicyService,
+    LegalDocumentRetentionReferenceService,
+    LegalDocumentLegalHoldService,
+    LegalDocumentRetentionService,
+    LegalDocumentSubjectAccessService,
+    LegalDocumentRetentionScheduler,
   ],
   exports: [
     BookingDocumentBundleService,
+    BookingDocumentCompletenessService,
+    BookingDocumentGenerationModule,
+    RentalContractService,
+    LegalDocumentDeliveryEvidenceService,
     GeneratedDocumentsService,
+    LegalDocumentEventsService,
+    LegalDocumentResolverService,
     LegalDocumentsService,
+    LegalDocumentUsageService,
     DocumentNumberingService,
     DOCUMENTS_STORAGE,
     DOCUMENT_RENDERER,
+    LegalDocumentMalwareScannerHealthService,
+    DocumentStorageHealthService,
+    LegalDocumentStorageReconciliationService,
+    LegalDocumentRetentionService,
+    LegalDocumentLegalHoldService,
   ],
 })
 export class DocumentsModule {}

@@ -1,0 +1,69 @@
+export const LEGAL_DOCUMENT_INTEGRITY_STATUS = {
+  VERIFIED: 'VERIFIED',
+  MISSING_OBJECT: 'MISSING_OBJECT',
+  CHECKSUM_MISMATCH: 'CHECKSUM_MISMATCH',
+  UNVERIFIED: 'UNVERIFIED',
+  STORAGE_ERROR: 'STORAGE_ERROR',
+} as const;
+
+export type LegalDocumentIntegrityStatus =
+  (typeof LEGAL_DOCUMENT_INTEGRITY_STATUS)[keyof typeof LEGAL_DOCUMENT_INTEGRITY_STATUS];
+
+/** Statuses that block selection for new bookings / resolver. */
+export const LEGAL_DOCUMENT_INTEGRITY_BLOCKING_STATUSES: ReadonlySet<LegalDocumentIntegrityStatus> =
+  new Set([
+    LEGAL_DOCUMENT_INTEGRITY_STATUS.MISSING_OBJECT,
+    LEGAL_DOCUMENT_INTEGRITY_STATUS.CHECKSUM_MISMATCH,
+    LEGAL_DOCUMENT_INTEGRITY_STATUS.STORAGE_ERROR,
+  ]);
+
+export function isLegalDocumentIntegrityBlocking(
+  status: string | null | undefined,
+): boolean {
+  if (!status) return false;
+  return LEGAL_DOCUMENT_INTEGRITY_BLOCKING_STATUSES.has(status as LegalDocumentIntegrityStatus);
+}
+
+export function isLegalDocumentIntegrityVerified(
+  status: string | null | undefined,
+): boolean {
+  return status === LEGAL_DOCUMENT_INTEGRITY_STATUS.VERIFIED;
+}
+
+export const LEGAL_DOCUMENT_INTEGRITY_EVENT_TYPE = {
+  INTEGRITY_VERIFIED: 'INTEGRITY_VERIFIED',
+  INTEGRITY_MISSING_OBJECT: 'INTEGRITY_MISSING_OBJECT',
+  INTEGRITY_CHECKSUM_MISMATCH: 'INTEGRITY_CHECKSUM_MISMATCH',
+  INTEGRITY_STORAGE_ERROR: 'INTEGRITY_STORAGE_ERROR',
+  INTEGRITY_UNEXPECTED_OBJECT: 'INTEGRITY_UNEXPECTED_OBJECT',
+} as const;
+
+export type LegalDocumentIntegrityEventType =
+  (typeof LEGAL_DOCUMENT_INTEGRITY_EVENT_TYPE)[keyof typeof LEGAL_DOCUMENT_INTEGRITY_EVENT_TYPE];
+
+export function integrityEventTypeForStatus(
+  status: LegalDocumentIntegrityStatus,
+): LegalDocumentIntegrityEventType | null {
+  switch (status) {
+    case LEGAL_DOCUMENT_INTEGRITY_STATUS.VERIFIED:
+      return LEGAL_DOCUMENT_INTEGRITY_EVENT_TYPE.INTEGRITY_VERIFIED;
+    case LEGAL_DOCUMENT_INTEGRITY_STATUS.MISSING_OBJECT:
+      return LEGAL_DOCUMENT_INTEGRITY_EVENT_TYPE.INTEGRITY_MISSING_OBJECT;
+    case LEGAL_DOCUMENT_INTEGRITY_STATUS.CHECKSUM_MISMATCH:
+      return LEGAL_DOCUMENT_INTEGRITY_EVENT_TYPE.INTEGRITY_CHECKSUM_MISMATCH;
+    case LEGAL_DOCUMENT_INTEGRITY_STATUS.STORAGE_ERROR:
+      return LEGAL_DOCUMENT_INTEGRITY_EVENT_TYPE.INTEGRITY_STORAGE_ERROR;
+    default:
+      return null;
+  }
+}
+
+export const LEGAL_DOCUMENT_RECONCILIATION_RUN_STATUS = {
+  RUNNING: 'RUNNING',
+  COMPLETED: 'COMPLETED',
+  INTERRUPTED: 'INTERRUPTED',
+  FAILED: 'FAILED',
+} as const;
+
+export type LegalDocumentReconciliationRunStatus =
+  (typeof LEGAL_DOCUMENT_RECONCILIATION_RUN_STATUS)[keyof typeof LEGAL_DOCUMENT_RECONCILIATION_RUN_STATUS];

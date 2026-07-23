@@ -17,6 +17,10 @@ import { RequirePermission } from '@shared/decorators/require-permission.decorat
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
+import { RentalContractService } from './rental-contract.service';
+import { BookingDocumentGenerationDispatcherService } from './booking-document-generation/booking-document-generation.dispatcher.service';
+import { toBookingDocumentGenerationJobDto } from './booking-document-generation/booking-document-generation.dto';
+import { buildContentDispositionInline } from './storage/document-storage-content-disposition.util';
 
 /**
  * Booking document lifecycle + document download/metadata/void.
@@ -31,7 +35,31 @@ export class DocumentsController {
   constructor(
     private readonly bundle: BookingDocumentBundleService,
     private readonly generated: GeneratedDocumentsService,
+    private readonly rentalContract: RentalContractService,
+    private readonly documentGeneration: BookingDocumentGenerationDispatcherService,
   ) {}
+
+  @Get('bookings/:bookingId/rental-contract')
+  getRentalContract(@Param('orgId') orgId: string, @Param('bookingId') bookingId: string) {
+    return this.rentalContract.getByBooking(orgId, bookingId);
+  }
+
+  @Get('bookings/:bookingId/rental-contract/download')
+  @Header('Cache-Control', 'no-store')
+  async downloadRentalContract(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const ctx = await this.rentalContract.getDownloadContext(orgId, bookingId);
+    const dl = await this.generated.getDownload(orgId, ctx.generatedDocumentId);
+    res.set({
+      'Content-Type': dl.mimeType,
+      'Content-Disposition': buildContentDispositionInline(dl.fileName),
+      'X-SynqDrive-Legal-Snapshot-Frozen-At': ctx.legalSnapshotFrozenAt ?? '',
+    });
+    return new StreamableFile(dl.stream);
+  }
 
   @Get('bookings/:bookingId/documents')
   @RequirePermission('bookings', 'read')
@@ -42,7 +70,49 @@ export class DocumentsController {
   @Post('bookings/:bookingId/documents/generate-initial-bundle')
   @Roles('ORG_ADMIN', 'MASTER_ADMIN')
   @RequirePermission('bookings', 'write')
-  generateInitialBundle(
+  async generateInitialBundle(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const enqueued = await this.documentGeneration.enqueueInitialBundle(
+      orgId,
+      bookingId,
+      userId ?? null,
+    );
+    if (enqueued.enqueued) {
+      return { queued: true, job: enqueued };
+    }
+    return this.bundle.generateInitialBundle(orgId, bookingId, userId ?? null);
+  }
+
+  @Get('bookings/:bookingId/document-generation-jobs')
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequirePermission('bookings', 'read')
+  async listGenerationJobs(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+  ) {
+    const jobs = await this.documentGeneration.listForBooking(orgId, bookingId);
+    return jobs.map(toBookingDocumentGenerationJobDto);
+  }
+
+  @Post('bookings/:bookingId/document-generation-jobs/:jobId/retry')
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequirePermission('bookings', 'write')
+  async retryGenerationJob(
+    @Param('orgId') orgId: string,
+    @Param('jobId') jobId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const result = await this.documentGeneration.manualRetry(orgId, jobId, userId ?? null);
+    return result;
+  }
+
+  @Post('bookings/:bookingId/documents/generate-initial-bundle-sync')
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequirePermission('bookings', 'write')
+  generateInitialBundleSync(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
     @CurrentUser('id') userId: string | undefined,
@@ -86,7 +156,7 @@ export class DocumentsController {
     const dl = await this.generated.getDownload(orgId, documentId);
     res.set({
       'Content-Type': dl.mimeType,
-      'Content-Disposition': `inline; filename="${encodeURIComponent(dl.fileName)}"`,
+      'Content-Disposition': buildContentDispositionInline(dl.fileName),
     });
     return new StreamableFile(dl.stream);
   }
