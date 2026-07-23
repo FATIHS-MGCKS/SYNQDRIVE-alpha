@@ -1,49 +1,62 @@
 import {
-  LegalBasisAssessmentStatus,
   PrivacyLegalBasisType,
+  PrivacyPolicyLifecycleStatus,
 } from '@prisma/client';
+import {
+  POLICY_EDITABLE_STATUSES,
+  POLICY_IMMUTABLE_STATUSES,
+} from '../policy-lifecycle/policy-lifecycle.constants';
+import {
+  assertPolicyLifecycleTransition,
+  isPolicyCurrentlyUsable,
+  isPolicyLifecycleTransitionAllowed,
+} from '../policy-lifecycle/policy-lifecycle.transitions';
 
-export const LEGAL_BASIS_ASSESSMENT_TRANSITIONS: Record<
-  LegalBasisAssessmentStatus,
-  LegalBasisAssessmentStatus[]
-> = {
-  [LegalBasisAssessmentStatus.DRAFT]: [LegalBasisAssessmentStatus.UNDER_REVIEW],
-  [LegalBasisAssessmentStatus.UNDER_REVIEW]: [
-    LegalBasisAssessmentStatus.APPROVED,
-    LegalBasisAssessmentStatus.REJECTED,
-  ],
-  [LegalBasisAssessmentStatus.APPROVED]: [
-    LegalBasisAssessmentStatus.SUPERSEDED,
-    LegalBasisAssessmentStatus.EXPIRED,
-  ],
-  [LegalBasisAssessmentStatus.REJECTED]: [],
-  [LegalBasisAssessmentStatus.SUPERSEDED]: [],
-  [LegalBasisAssessmentStatus.EXPIRED]: [],
-};
+export const LEGAL_BASIS_ASSESSMENT_TRANSITIONS = {
+  get [PrivacyPolicyLifecycleStatus.DRAFT]() {
+    return [PrivacyPolicyLifecycleStatus.IN_REVIEW];
+  },
+  get [PrivacyPolicyLifecycleStatus.IN_REVIEW]() {
+    return [PrivacyPolicyLifecycleStatus.APPROVED, PrivacyPolicyLifecycleStatus.REJECTED, PrivacyPolicyLifecycleStatus.DRAFT];
+  },
+  get [PrivacyPolicyLifecycleStatus.APPROVED]() {
+    return [PrivacyPolicyLifecycleStatus.SCHEDULED, PrivacyPolicyLifecycleStatus.ACTIVE, PrivacyPolicyLifecycleStatus.SUPERSEDED];
+  },
+  get [PrivacyPolicyLifecycleStatus.SCHEDULED]() {
+    return [PrivacyPolicyLifecycleStatus.ACTIVE, PrivacyPolicyLifecycleStatus.APPROVED, PrivacyPolicyLifecycleStatus.SUPERSEDED];
+  },
+  get [PrivacyPolicyLifecycleStatus.ACTIVE]() {
+    return [PrivacyPolicyLifecycleStatus.SUSPENDED, PrivacyPolicyLifecycleStatus.SUPERSEDED, PrivacyPolicyLifecycleStatus.REVOKED, PrivacyPolicyLifecycleStatus.EXPIRED];
+  },
+  get [PrivacyPolicyLifecycleStatus.SUSPENDED]() {
+    return [PrivacyPolicyLifecycleStatus.ACTIVE];
+  },
+  get [PrivacyPolicyLifecycleStatus.SUPERSEDED]() {
+    return [];
+  },
+  get [PrivacyPolicyLifecycleStatus.REVOKED]() {
+    return [];
+  },
+  get [PrivacyPolicyLifecycleStatus.EXPIRED]() {
+    return [];
+  },
+  get [PrivacyPolicyLifecycleStatus.REJECTED]() {
+    return [];
+  },
+} as const;
 
-export const IMMUTABLE_LEGAL_BASIS_STATUSES: LegalBasisAssessmentStatus[] = [
-  LegalBasisAssessmentStatus.APPROVED,
-  LegalBasisAssessmentStatus.REJECTED,
-  LegalBasisAssessmentStatus.SUPERSEDED,
-  LegalBasisAssessmentStatus.EXPIRED,
-];
-
-export const EDITABLE_LEGAL_BASIS_STATUSES: LegalBasisAssessmentStatus[] = [
-  LegalBasisAssessmentStatus.DRAFT,
-];
+export const IMMUTABLE_LEGAL_BASIS_STATUSES = [...POLICY_IMMUTABLE_STATUSES];
+export const EDITABLE_LEGAL_BASIS_STATUSES = [...POLICY_EDITABLE_STATUSES];
 
 export function assertLegalBasisTransitionAllowed(
-  from: LegalBasisAssessmentStatus,
-  to: LegalBasisAssessmentStatus,
+  from: PrivacyPolicyLifecycleStatus,
+  to: PrivacyPolicyLifecycleStatus,
 ): void {
-  const allowed = LEGAL_BASIS_ASSESSMENT_TRANSITIONS[from] ?? [];
-  if (!allowed.includes(to)) {
-    throw new Error(`legal_basis_transition_not_allowed:${from}:${to}`);
-  }
+  assertPolicyLifecycleTransition(from, to);
 }
 
-export function isLegalBasisAssessmentImmutable(status: LegalBasisAssessmentStatus): boolean {
-  return IMMUTABLE_LEGAL_BASIS_STATUSES.includes(status);
+export function isLegalBasisAssessmentImmutable(status: PrivacyPolicyLifecycleStatus): boolean {
+  return POLICY_IMMUTABLE_STATUSES.has(status);
 }
 
 export interface LegalBasisContentInput {
@@ -101,22 +114,19 @@ export function assertFourEyesSeparation(
 }
 
 export function isLegalBasisCurrentlyValid(input: {
-  status: LegalBasisAssessmentStatus;
+  status: PrivacyPolicyLifecycleStatus;
   validFrom?: Date | null;
   validUntil?: Date | null;
   now?: Date;
 }): boolean {
-  if (input.status !== LegalBasisAssessmentStatus.APPROVED) {
-    return false;
-  }
-  const now = input.now ?? new Date();
-  if (input.validFrom && input.validFrom.getTime() > now.getTime()) {
-    return false;
-  }
-  if (input.validUntil && input.validUntil.getTime() < now.getTime()) {
-    return false;
-  }
-  return true;
+  return isPolicyCurrentlyUsable(input);
+}
+
+export function isLegalBasisTransitionAllowed(
+  from: PrivacyPolicyLifecycleStatus,
+  to: PrivacyPolicyLifecycleStatus,
+): boolean {
+  return isPolicyLifecycleTransitionAllowed(from, to);
 }
 
 export const LEGAL_BASIS_MATERIAL_FIELDS = [

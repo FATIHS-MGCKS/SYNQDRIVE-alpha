@@ -1,11 +1,13 @@
 import {
-  LegalBasisAssessmentStatus,
   LegalBasisConsentRequirement,
   PrivacyLegalBasisType,
-  ProcessingActivityStatus,
+  PrivacyPolicyLifecycleEventType,
+  PrivacyPolicyLifecycleStatus,
 } from '@prisma/client';
 import { LegalBasisAssessmentService } from './legal-basis-assessment.service';
 import { LegalBasisAssessmentException } from './legal-basis-assessment.exceptions';
+import { PolicyLifecycleEventsService } from '../policy-lifecycle/policy-lifecycle-events.service';
+import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from '../policy-lifecycle/policy-lifecycle.service';
 
 describe('LegalBasisAssessmentService', () => {
   const orgId = 'org-1';
@@ -16,7 +18,7 @@ describe('LegalBasisAssessmentService', () => {
   const activity = {
     id: activityId,
     organizationId: orgId,
-    status: ProcessingActivityStatus.ACTIVE,
+    status: PrivacyPolicyLifecycleStatus.ACTIVE,
   };
 
   let prisma: {
@@ -33,6 +35,7 @@ describe('LegalBasisAssessmentService', () => {
       deleteMany: jest.Mock;
       createMany: jest.Mock;
     };
+    legalBasisAssessmentLifecycleEvent: { create: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -52,7 +55,7 @@ describe('LegalBasisAssessmentService', () => {
     legitimateInterestDescription: null,
     balancingTestReference: null,
     consentRequirement: LegalBasisConsentRequirement.NOT_APPLICABLE,
-    status: LegalBasisAssessmentStatus.DRAFT,
+    status: PrivacyPolicyLifecycleStatus.DRAFT,
     assessedByUserId: null,
     approvedByUserId: null,
     assessedAt: null,
@@ -82,10 +85,23 @@ describe('LegalBasisAssessmentService', () => {
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
         createMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
+      legalBasisAssessmentLifecycleEvent: {
+        create: jest.fn().mockResolvedValue({}),
+      },
       $transaction: jest.fn(async (callback) => callback(prisma)),
     };
 
-    service = new LegalBasisAssessmentService(prisma as never);
+    const lifecycle = new PolicyLifecycleService(
+      prisma as never,
+      new PolicyLifecycleTransitionValidator(),
+      new PolicyLifecycleEventsService(),
+    );
+
+    service = new LegalBasisAssessmentService(
+      prisma as never,
+      lifecycle,
+      new PolicyLifecycleEventsService(),
+    );
   });
 
   it('creates a draft assessment with policy family version 1', async () => {
@@ -110,7 +126,7 @@ describe('LegalBasisAssessmentService', () => {
           organizationId: orgId,
           processingActivityId: activityId,
           versionNumber: 1,
-          status: LegalBasisAssessmentStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
         }),
       }),
     );
@@ -120,7 +136,7 @@ describe('LegalBasisAssessmentService', () => {
   it('blocks approval without four-eyes separation', async () => {
     prisma.legalBasisAssessment.findFirst.mockResolvedValue({
       ...baseAssessment,
-      status: LegalBasisAssessmentStatus.UNDER_REVIEW,
+      status: PrivacyPolicyLifecycleStatus.IN_REVIEW,
       assessedByUserId: assessorId,
     });
 
@@ -132,19 +148,19 @@ describe('LegalBasisAssessmentService', () => {
   it('approves under review assessment with separate approver', async () => {
     prisma.legalBasisAssessment.findFirst.mockResolvedValue({
       ...baseAssessment,
-      status: LegalBasisAssessmentStatus.UNDER_REVIEW,
+      status: PrivacyPolicyLifecycleStatus.IN_REVIEW,
       assessedByUserId: assessorId,
     });
     prisma.legalBasisAssessment.update.mockResolvedValue({
       ...baseAssessment,
-      status: LegalBasisAssessmentStatus.APPROVED,
+      status: PrivacyPolicyLifecycleStatus.APPROVED,
       approvedByUserId: approverId,
       evidenceReferences: [],
     });
 
     const result = await service.approve(orgId, 'assessment-1', approverId);
-    expect(result.status).toBe(LegalBasisAssessmentStatus.APPROVED);
-    expect(prisma.legalBasisAssessment.updateMany).toHaveBeenCalled();
+    expect(result.status).toBe(PrivacyPolicyLifecycleStatus.APPROVED);
+    expect(prisma.legalBasisAssessment.update).toHaveBeenCalled();
   });
 
   it('requires valid approved assessment before processing activity activation', async () => {
@@ -155,11 +171,11 @@ describe('LegalBasisAssessmentService', () => {
     ).rejects.toBeInstanceOf(LegalBasisAssessmentException);
   });
 
-  it('creates a new version from approved assessment', async () => {
+  it('creates a new version from active assessment', async () => {
     prisma.legalBasisAssessment.findFirst
       .mockResolvedValueOnce({
         ...baseAssessment,
-        status: LegalBasisAssessmentStatus.APPROVED,
+        status: PrivacyPolicyLifecycleStatus.ACTIVE,
       })
       .mockResolvedValueOnce({ versionNumber: 1 });
 
@@ -167,13 +183,13 @@ describe('LegalBasisAssessmentService', () => {
       ...baseAssessment,
       id: 'assessment-2',
       versionNumber: 2,
-      status: LegalBasisAssessmentStatus.DRAFT,
+      status: PrivacyPolicyLifecycleStatus.DRAFT,
     });
     prisma.legalBasisAssessment.findUniqueOrThrow.mockResolvedValue({
       ...baseAssessment,
       id: 'assessment-2',
       versionNumber: 2,
-      status: LegalBasisAssessmentStatus.DRAFT,
+      status: PrivacyPolicyLifecycleStatus.DRAFT,
       evidenceReferences: [],
     });
 

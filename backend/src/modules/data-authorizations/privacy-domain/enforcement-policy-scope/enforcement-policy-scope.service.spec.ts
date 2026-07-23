@@ -1,5 +1,5 @@
 import {
-  EnforcementPolicyStatus,
+  PrivacyPolicyLifecycleStatus,
   PrivacyEnforcementMode,
   PrivacyEnforcementScopeType,
   PrivacyProcessingDataCategory,
@@ -21,7 +21,7 @@ describe('EnforcementPolicyScopeService', () => {
     policyFamilyId: 'family-1',
     versionNumber: 1,
     isCurrentVersion: true,
-    status: EnforcementPolicyStatus.DRAFT,
+    status: PrivacyPolicyLifecycleStatus.DRAFT,
     enforcementMode: PrivacyEnforcementMode.SHADOW,
     dataCategory: PrivacyProcessingDataCategory.TELEMETRY_DATA,
     processingPurpose: PrivacyProcessingPurpose.LIVE_MAP,
@@ -112,7 +112,7 @@ describe('EnforcementPolicyScopeService', () => {
   it('blocks direct scope changes on active policies', async () => {
     prisma.enforcementPolicy.findFirst.mockResolvedValue({
       ...basePolicy,
-      status: EnforcementPolicyStatus.ACTIVE,
+      status: PrivacyPolicyLifecycleStatus.ACTIVE,
     });
 
     await expect(
@@ -125,7 +125,7 @@ describe('EnforcementPolicyScopeService', () => {
   it('creates a new policy version for active policies', async () => {
     prisma.enforcementPolicy.findFirst.mockResolvedValue({
       ...basePolicy,
-      status: EnforcementPolicyStatus.ACTIVE,
+      status: PrivacyPolicyLifecycleStatus.ACTIVE,
     });
 
     await service.createScopedVersion(orgId, policyId, { vehicleIds: ['veh-2'] });
@@ -139,7 +139,7 @@ describe('EnforcementPolicyScopeService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           versionNumber: 2,
-          status: EnforcementPolicyStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
           isCurrentVersion: true,
         }),
       }),
@@ -167,7 +167,7 @@ describe('EnforcementPolicyScopeService', () => {
   it('re-reads policy status inside transaction for parallel update safety', async () => {
     prisma.enforcementPolicy.findFirst
       .mockResolvedValueOnce(basePolicy)
-      .mockResolvedValueOnce({ ...basePolicy, status: EnforcementPolicyStatus.ACTIVE });
+      .mockResolvedValueOnce({ ...basePolicy, status: PrivacyPolicyLifecycleStatus.ACTIVE });
 
     await expect(
       service.replaceScopes(orgId, policyId, { vehicleIds: ['veh-1'] }),

@@ -6,14 +6,14 @@ import {
   DataAuthorizationLegacyMigrationRunStatus,
   DataAuthorizationLegacyMigrationSourceType,
   DataAuthorizationLegacyMigrationTargetType,
-  EnforcementPolicyStatus,
+  PrivacyPolicyLifecycleStatus,
   PrivacyEnforcementMode,
   PrivacyEnforcementScopeType,
   Prisma,
-  ProcessingActivityStatus,
   ProviderAccessGrantStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { randomUUID } from 'crypto';
 import {
   buildMigrationFingerprint,
   classifyOrgDataAuthorization,
@@ -414,12 +414,16 @@ export class DataAuthorizationLegacyMigrationService {
           });
           if (existing) return existing.id;
 
+          const policyFamilyId = randomUUID();
           const activity = await tx.processingActivity.create({
             data: {
               organizationId: orgAuth.organizationId,
               activityCode: plan.classification.activityCode,
               title: plan.classification.activityTitle,
-              status: ProcessingActivityStatus.DRAFT,
+              policyFamilyId,
+              versionNumber: 1,
+              isCurrentVersion: true,
+              status: PrivacyPolicyLifecycleStatus.DRAFT,
               legacyOrgDataAuthorizationId: orgAuth.id,
             },
           });
@@ -476,7 +480,7 @@ export class DataAuthorizationLegacyMigrationService {
               policyFamilyId: activity.id,
               versionNumber: 1,
               isCurrentVersion: true,
-              status: EnforcementPolicyStatus.DRAFT,
+              status: PrivacyPolicyLifecycleStatus.DRAFT,
               enforcementMode: PrivacyEnforcementMode.OFF,
               dataCategory: categories[0],
               processingPurpose: purposes[0],

@@ -1744,6 +1744,9 @@ model Organization {
   dataAuthorizationLegacyMigrationRuns                      DataAuthorizationLegacyMigrationRun[]
   dataAuthorizationLegacyMigrationEntries                   DataAuthorizationLegacyMigrationEntry[]
   authorizationDecisionEvents                               AuthorizationDecisionEvent[]
+  processingActivityLifecycleEvents                         ProcessingActivityLifecycleEvent[]
+  legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
+  enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
 
   @@index([status])
   @@map("organizations")
@@ -10764,11 +10767,33 @@ model DataAuthorizationLegacyMigrationEntry {
   @@map("data_authorization_legacy_migration_entries")
 }
 
-enum ProcessingActivityStatus {
+/// Shared lifecycle for ProcessingActivity, LegalBasisAssessment, and EnforcementPolicy.
+enum PrivacyPolicyLifecycleStatus {
   DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
   ACTIVE
   SUSPENDED
-  ARCHIVED
+  SUPERSEDED
+  REVOKED
+  EXPIRED
+  REJECTED
+}
+
+enum PrivacyPolicyLifecycleEventType {
+  SUBMITTED_FOR_REVIEW
+  REQUESTED_CHANGES
+  APPROVED
+  REJECTED
+  SCHEDULED
+  ACTIVATED
+  SUSPENDED
+  RESUMED
+  REVOKED
+  SUPERSEDED
+  EXPIRED
+  VERSION_CREATED
 }
 
 enum ProcessingActivityOwnerRole {
@@ -10794,15 +10819,6 @@ enum LegalBasisConsentRequirement {
   GRANULAR_PER_PURPOSE
   WRITTEN_CONSENT
   ELECTRONIC_CONSENT_WITH_AUDIT
-}
-
-enum LegalBasisAssessmentStatus {
-  DRAFT
-  UNDER_REVIEW
-  APPROVED
-  REJECTED
-  SUPERSEDED
-  EXPIRED
 }
 
 enum DataSubjectConsentStatus {
@@ -10874,12 +10890,6 @@ enum DataProcessingAgreementStatus {
   EXPIRED
 }
 
-enum EnforcementPolicyStatus {
-  DRAFT
-  ACTIVE
-  DISABLED
-}
-
 enum PrivacyEnforcementMode {
   OFF
   SHADOW
@@ -10940,20 +10950,34 @@ enum AuthorizationActorType {
 
 /// Verarbeitungstätigkeit — beschreibt WELCHE Verarbeitung stattfindet (Art. 30 DSGVO).
 model ProcessingActivity {
-  id                           String                      @id @default(uuid())
-  organizationId               String                      @map("organization_id")
-  activityCode                 String                      @map("activity_code")
+  id                           String                       @id @default(uuid())
+  organizationId               String                       @map("organization_id")
+  activityCode                 String                       @map("activity_code")
   title                        String
   description                  String?
-  status                       ProcessingActivityStatus    @default(DRAFT)
-  ownerUserId                  String?                     @map("owner_user_id")
-  ownerRole                    ProcessingActivityOwnerRole @default(ORG_ADMIN) @map("owner_role")
-  legacyOrgDataAuthorizationId String?                     @unique @map("legacy_org_data_authorization_id")
-  createdAt                    DateTime                    @default(now()) @map("created_at")
-  updatedAt                    DateTime                    @updatedAt @map("updated_at")
+  policyFamilyId               String                       @map("policy_family_id")
+  versionNumber                Int                          @default(1) @map("version_number")
+  isCurrentVersion             Boolean                      @default(true) @map("is_current_version")
+  status                       PrivacyPolicyLifecycleStatus @default(DRAFT)
+  supersededById               String?                      @map("superseded_by_id")
+  ownerUserId                  String?                      @map("owner_user_id")
+  ownerRole                    ProcessingActivityOwnerRole  @default(ORG_ADMIN) @map("owner_role")
+  validFrom                    DateTime?                    @map("valid_from")
+  validUntil                   DateTime?                    @map("valid_until")
+  activatedAt                  DateTime?                    @map("activated_at")
+  suspendedAt                  DateTime?                    @map("suspended_at")
+  revokedAt                    DateTime?                    @map("revoked_at")
+  rejectionReason              String?                      @map("rejection_reason") @db.Text
+  revocationReason             String?                      @map("revocation_reason") @db.Text
+  suspensionReason             String?                      @map("suspension_reason") @db.Text
+  legacyOrgDataAuthorizationId String?                      @unique @map("legacy_org_data_authorization_id")
+  createdAt                    DateTime                     @default(now()) @map("created_at")
+  updatedAt                    DateTime                     @updatedAt @map("updated_at")
 
   organization                Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   legacyOrgDataAuthorization  OrgDataAuthorization?        @relation("LegacyOrgAuthProcessingActivity", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  supersededBy                ProcessingActivity?          @relation("ProcessingActivitySupersession", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes                  ProcessingActivity[]         @relation("ProcessingActivitySupersession")
   dataCategories              ProcessingActivityCategory[]
   purposes                    ProcessingActivityPurpose[]
   legalBasisAssessments       LegalBasisAssessment[]
@@ -10963,9 +10987,12 @@ model ProcessingActivity {
   dataProcessingAgreements    DataProcessingAgreement[]
   enforcementPolicies         EnforcementPolicy[]
   authorizationDecisionEvents AuthorizationDecisionEvent[]
+  lifecycleEvents             ProcessingActivityLifecycleEvent[]
 
-  @@unique([organizationId, activityCode])
+  @@unique([policyFamilyId, versionNumber])
+  @@unique([organizationId, activityCode, versionNumber])
   @@index([organizationId, status])
+  @@index([policyFamilyId, isCurrentVersion])
   @@index([ownerUserId])
   @@map("processing_activities")
 }
@@ -11014,15 +11041,21 @@ model LegalBasisAssessment {
   legitimateInterestDescription String?                      @map("legitimate_interest_description") @db.Text
   balancingTestReference        String?                      @map("balancing_test_reference") @db.Text
   consentRequirement            LegalBasisConsentRequirement @default(NOT_APPLICABLE) @map("consent_requirement")
-  status                        LegalBasisAssessmentStatus   @default(DRAFT)
+  status                        PrivacyPolicyLifecycleStatus @default(DRAFT)
+  supersededById                String?                      @map("superseded_by_id")
   assessedByUserId              String?                      @map("assessed_by_user_id")
   approvedByUserId              String?                      @map("approved_by_user_id")
   assessedAt                    DateTime?                    @map("assessed_at")
   approvedAt                    DateTime?                    @map("approved_at")
+  activatedAt                   DateTime?                    @map("activated_at")
+  suspendedAt                   DateTime?                    @map("suspended_at")
+  revokedAt                     DateTime?                    @map("revoked_at")
   validFrom                     DateTime?                    @map("valid_from")
   validUntil                    DateTime?                    @map("valid_until")
   reviewDate                    DateTime?                    @map("review_date")
   rejectionReason               String?                      @map("rejection_reason") @db.Text
+  revocationReason              String?                      @map("revocation_reason") @db.Text
+  suspensionReason              String?                      @map("suspension_reason") @db.Text
   legacyOrgDataAuthorizationId  String?                      @unique @map("legacy_org_data_authorization_id")
   createdAt                     DateTime                     @default(now()) @map("created_at")
   updatedAt                     DateTime                     @updatedAt @map("updated_at")
@@ -11030,9 +11063,12 @@ model LegalBasisAssessment {
   organization               Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   processingActivity         ProcessingActivity                @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
   legacyOrgDataAuthorization OrgDataAuthorization?             @relation("LegacyOrgAuthLegalBasis", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  supersededBy               LegalBasisAssessment?             @relation("LegalBasisAssessmentSupersession", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes                 LegalBasisAssessment[]            @relation("LegalBasisAssessmentSupersession")
   dataSubjectConsents        DataSubjectConsent[]
   evidenceReferences         LegalBasisAssessmentEvidenceRef[]
   dataSharingAuthorizations  DataSharingAuthorization[]
+  lifecycleEvents            LegalBasisAssessmentLifecycleEvent[]
 
   @@unique([policyFamilyId, versionNumber])
   @@index([organizationId, status])
@@ -11292,12 +11328,21 @@ model EnforcementPolicy {
   policyFamilyId               String                        @map("policy_family_id")
   versionNumber                Int                           @default(1) @map("version_number")
   isCurrentVersion             Boolean                       @default(true) @map("is_current_version")
-  status                       EnforcementPolicyStatus       @default(DRAFT)
+  status                       PrivacyPolicyLifecycleStatus  @default(DRAFT)
+  supersededById               String?                       @map("superseded_by_id")
   enforcementMode              PrivacyEnforcementMode        @default(OFF) @map("enforcement_mode")
   dataCategory                 PrivacyProcessingDataCategory @map("data_category")
   processingPurpose            PrivacyProcessingPurpose      @map("processing_purpose")
   scopeType                    PrivacyEnforcementScopeType   @default(ORGANIZATION) @map("scope_type")
   pathId                       String?                       @map("path_id")
+  validFrom                    DateTime?                     @map("valid_from")
+  validUntil                   DateTime?                     @map("valid_until")
+  activatedAt                  DateTime?                     @map("activated_at")
+  suspendedAt                  DateTime?                     @map("suspended_at")
+  revokedAt                    DateTime?                     @map("revoked_at")
+  rejectionReason              String?                       @map("rejection_reason") @db.Text
+  revocationReason             String?                       @map("revocation_reason") @db.Text
+  suspensionReason             String?                       @map("suspension_reason") @db.Text
   legacyOrgDataAuthorizationId String?                       @unique @map("legacy_org_data_authorization_id")
   createdAt                    DateTime                      @default(now()) @map("created_at")
   updatedAt                    DateTime                      @updatedAt @map("updated_at")
@@ -11305,12 +11350,15 @@ model EnforcementPolicy {
   organization                Organization                             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   processingActivity          ProcessingActivity                       @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
   legacyOrgDataAuthorization  OrgDataAuthorization?                    @relation("LegacyOrgAuthEnforcementPolicy", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  supersededBy                EnforcementPolicy?                       @relation("EnforcementPolicySupersession", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes                  EnforcementPolicy[]                      @relation("EnforcementPolicySupersession")
   authorizationDecisionEvents AuthorizationDecisionEvent[]
   vehicles                    EnforcementPolicyVehicle[]
   customers                   EnforcementPolicyCustomer[]
   bookings                    EnforcementPolicyBooking[]
   stations                    EnforcementPolicyStation[]
   scopeMigrationFindings      EnforcementPolicyScopeMigrationFinding[]
+  lifecycleEvents             EnforcementPolicyLifecycleEvent[]
 
   @@unique([policyFamilyId, versionNumber])
   @@index([organizationId, status])
@@ -11430,6 +11478,81 @@ model EnforcementPolicyScopeMigrationFinding {
   @@index([enforcementPolicyId])
   @@index([findingCode])
   @@map("enforcement_policy_scope_migration_findings")
+}
+
+/// Append-only Lifecycle-Audit für ProcessingActivity.
+model ProcessingActivityLifecycleEvent {
+  id                   String                         @id @default(uuid())
+  organizationId       String                         @map("organization_id")
+  processingActivityId String                         @map("processing_activity_id")
+  eventType            PrivacyPolicyLifecycleEventType @map("event_type")
+  previousStatus       PrivacyPolicyLifecycleStatus?  @map("previous_status")
+  newStatus            PrivacyPolicyLifecycleStatus   @map("new_status")
+  actorUserId          String?                        @map("actor_user_id")
+  actorType            AuthorizationActorType         @default(SYSTEM) @map("actor_type")
+  reason               String?                        @db.Text
+  supersededById       String?                        @map("superseded_by_id")
+  validFrom            DateTime?                      @map("valid_from")
+  validUntil           DateTime?                      @map("valid_until")
+  correlationId        String?                        @map("correlation_id")
+  createdAt            DateTime                       @default(now()) @map("created_at")
+
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity ProcessingActivity @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([processingActivityId, createdAt])
+  @@map("processing_activity_lifecycle_events")
+}
+
+/// Append-only Lifecycle-Audit für LegalBasisAssessment.
+model LegalBasisAssessmentLifecycleEvent {
+  id                     String                         @id @default(uuid())
+  organizationId         String                         @map("organization_id")
+  legalBasisAssessmentId String                         @map("legal_basis_assessment_id")
+  eventType              PrivacyPolicyLifecycleEventType @map("event_type")
+  previousStatus         PrivacyPolicyLifecycleStatus?  @map("previous_status")
+  newStatus              PrivacyPolicyLifecycleStatus   @map("new_status")
+  actorUserId            String?                        @map("actor_user_id")
+  actorType              AuthorizationActorType         @default(SYSTEM) @map("actor_type")
+  reason                 String?                        @db.Text
+  supersededById         String?                        @map("superseded_by_id")
+  validFrom              DateTime?                      @map("valid_from")
+  validUntil             DateTime?                      @map("valid_until")
+  correlationId          String?                        @map("correlation_id")
+  createdAt                DateTime                       @default(now()) @map("created_at")
+
+  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  legalBasisAssessment LegalBasisAssessment @relation(fields: [legalBasisAssessmentId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([legalBasisAssessmentId, createdAt])
+  @@map("legal_basis_assessment_lifecycle_events")
+}
+
+/// Append-only Lifecycle-Audit für EnforcementPolicy.
+model EnforcementPolicyLifecycleEvent {
+  id                  String                         @id @default(uuid())
+  organizationId      String                         @map("organization_id")
+  enforcementPolicyId String                         @map("enforcement_policy_id")
+  eventType           PrivacyPolicyLifecycleEventType @map("event_type")
+  previousStatus      PrivacyPolicyLifecycleStatus?  @map("previous_status")
+  newStatus           PrivacyPolicyLifecycleStatus   @map("new_status")
+  actorUserId         String?                        @map("actor_user_id")
+  actorType           AuthorizationActorType         @default(SYSTEM) @map("actor_type")
+  reason              String?                        @db.Text
+  supersededById      String?                        @map("superseded_by_id")
+  validFrom           DateTime?                      @map("valid_from")
+  validUntil          DateTime?                      @map("valid_until")
+  correlationId       String?                        @map("correlation_id")
+  createdAt           DateTime                       @default(now()) @map("created_at")
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  enforcementPolicy EnforcementPolicy @relation(fields: [enforcementPolicyId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([enforcementPolicyId, createdAt])
+  @@map("enforcement_policy_lifecycle_events")
 }
 
 /// Unveränderliches Entscheidungsprotokoll — append-only, kein updatedAt.

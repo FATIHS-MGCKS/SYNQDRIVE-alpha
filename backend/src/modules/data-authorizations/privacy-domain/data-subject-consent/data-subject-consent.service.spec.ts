@@ -2,9 +2,8 @@ import {
   ConsentInteractionChannel,
   DataSubjectConsentStatus,
   DataSubjectType,
-  EnforcementPolicyStatus,
+  PrivacyPolicyLifecycleStatus,
   PrivacyProcessingPurpose,
-  ProcessingActivityStatus,
 } from '@prisma/client';
 import { NotFoundException } from '@nestjs/common';
 import { DataSubjectConsentService } from './data-subject-consent.service';
@@ -19,7 +18,7 @@ describe('DataSubjectConsentService', () => {
   const activity = {
     id: activityId,
     organizationId: orgId,
-    status: ProcessingActivityStatus.ACTIVE,
+    status: PrivacyPolicyLifecycleStatus.ACTIVE,
   };
 
   const baseConsent = {
@@ -169,7 +168,10 @@ describe('DataSubjectConsentService', () => {
 
     expect(prisma.enforcementPolicy.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { status: EnforcementPolicyStatus.DISABLED },
+        data: expect.objectContaining({
+          status: PrivacyPolicyLifecycleStatus.SUSPENDED,
+          suspensionReason: 'User requested deletion',
+        }),
       }),
     );
     expect(prisma.consentWithdrawalPropagation.createMany).toHaveBeenCalled();

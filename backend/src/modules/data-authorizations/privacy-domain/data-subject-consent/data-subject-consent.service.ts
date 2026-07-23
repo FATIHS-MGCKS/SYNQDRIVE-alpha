@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuthorizationActorType,
   DataSubjectConsentStatus,
-  EnforcementPolicyStatus,
+  PrivacyPolicyLifecycleStatus,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -120,7 +120,7 @@ export class DataSubjectConsentService {
         where: {
           organizationId: orgId,
           processingActivityId: consent.processingActivityId,
-          status: EnforcementPolicyStatus.ACTIVE,
+          status: PrivacyPolicyLifecycleStatus.ACTIVE,
         },
         select: { id: true },
       });
@@ -131,7 +131,11 @@ export class DataSubjectConsentService {
             organizationId: orgId,
             id: { in: policies.map((policy) => policy.id) },
           },
-          data: { status: EnforcementPolicyStatus.DISABLED },
+          data: {
+            status: PrivacyPolicyLifecycleStatus.SUSPENDED,
+            suspensionReason: dto.withdrawalReason.trim(),
+            suspendedAt: new Date(),
+          },
         });
 
         await tx.consentWithdrawalPropagation.createMany({
@@ -140,7 +144,7 @@ export class DataSubjectConsentService {
             dataSubjectConsentId: consent.id,
             processingActivityId: consent.processingActivityId,
             enforcementPolicyId: policy.id,
-            action: 'ENFORCEMENT_POLICY_DISABLED',
+            action: 'ENFORCEMENT_POLICY_SUSPENDED',
           })),
         });
       } else {

@@ -1,10 +1,9 @@
 import {
   DataSharingAuthorizationStatus,
   DataSharingRecipientRole,
-  LegalBasisAssessmentStatus,
+  PrivacyPolicyLifecycleStatus,
   PrivacyProcessingDataCategory,
   PrivacyProcessingPurpose,
-  ProcessingActivityStatus,
 } from '@prisma/client';
 import { NotFoundException } from '@nestjs/common';
 import { DataSharingAuthorizationService } from './data-sharing-authorization.service';
@@ -20,14 +19,14 @@ describe('DataSharingAuthorizationService', () => {
   const activity = {
     id: activityId,
     organizationId: orgId,
-    status: ProcessingActivityStatus.ACTIVE,
+    status: PrivacyPolicyLifecycleStatus.ACTIVE,
   };
 
   const assessment = {
     id: assessmentId,
     organizationId: orgId,
     processingActivityId: activityId,
-    status: LegalBasisAssessmentStatus.APPROVED,
+    status: PrivacyPolicyLifecycleStatus.ACTIVE,
     isCurrentVersion: true,
   };
 

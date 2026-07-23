@@ -3,7 +3,7 @@ import {
   DataSharingAuthorizationStatus,
   DataSubjectConsentStatus,
   DataSubjectType,
-  EnforcementPolicyStatus,
+  PrivacyPolicyLifecycleStatus,
   PrivacyProcessingPurpose,
   ProviderAccessGrantStatus,
 } from '@prisma/client';

@@ -14,6 +14,11 @@ import { LegalBasisAssessmentController } from './privacy-domain/legal-basis-ass
 import { LegalBasisAssessmentService } from './privacy-domain/legal-basis-assessment/legal-basis-assessment.service';
 import { ProviderAccessGrantController } from './privacy-domain/provider-access-grant/provider-access-grant.controller';
 import { ProviderAccessGrantService } from './privacy-domain/provider-access-grant/provider-access-grant.service';
+import { EnforcementPolicyLifecycleService } from './privacy-domain/policy-lifecycle/enforcement-policy-lifecycle.service';
+import { PolicyLifecycleEventsService } from './privacy-domain/policy-lifecycle/policy-lifecycle-events.service';
+import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from './privacy-domain/policy-lifecycle/policy-lifecycle.service';
+import { ProcessingActivityLifecycleService } from './privacy-domain/policy-lifecycle/processing-activity-lifecycle.service';
+import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/policy-lifecycle.controller';
 
 @Module({
   controllers: [
@@ -23,6 +28,7 @@ import { ProviderAccessGrantService } from './privacy-domain/provider-access-gra
     ProviderAccessGrantController,
     DataSharingAuthorizationController,
     EnforcementPolicyScopeController,
+    PolicyLifecycleController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -34,6 +40,11 @@ import { ProviderAccessGrantService } from './privacy-domain/provider-access-gra
     EnforcementPolicyScopeService,
     EnforcementPolicyScopeValidationService,
     DataAuthorizationLegacyMigrationService,
+    PolicyLifecycleTransitionValidator,
+    PolicyLifecycleService,
+    PolicyLifecycleEventsService,
+    ProcessingActivityLifecycleService,
+    EnforcementPolicyLifecycleService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -45,6 +56,9 @@ import { ProviderAccessGrantService } from './privacy-domain/provider-access-gra
     EnforcementPolicyScopeService,
     EnforcementPolicyScopeValidationService,
     DataAuthorizationLegacyMigrationService,
+    PolicyLifecycleService,
+    ProcessingActivityLifecycleService,
+    EnforcementPolicyLifecycleService,
   ],
 })
 export class DataAuthorizationsModule {}

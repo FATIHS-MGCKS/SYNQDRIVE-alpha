@@ -1,8 +1,7 @@
 import {
   DataAuthorizationLegacyMigrationMode,
   DataAuthorizationLegacyMigrationRunStatus,
-  EnforcementPolicyStatus,
-  ProcessingActivityStatus,
+  PrivacyPolicyLifecycleStatus,
   ProviderAccessGrantStatus,
 } from '@prisma/client';
 import { DataAuthorizationLegacyMigrationService } from './data-authorization-legacy-migration.service';
@@ -138,7 +137,7 @@ describe('DataAuthorizationLegacyMigrationService', () => {
     expect(prisma.processingActivity.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          status: ProcessingActivityStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
           legacyOrgDataAuthorizationId: orgAuthId,
         }),
       }),
@@ -146,7 +145,7 @@ describe('DataAuthorizationLegacyMigrationService', () => {
     expect(prisma.enforcementPolicy.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          status: EnforcementPolicyStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
           legacyOrgDataAuthorizationId: orgAuthId,
         }),
       }),

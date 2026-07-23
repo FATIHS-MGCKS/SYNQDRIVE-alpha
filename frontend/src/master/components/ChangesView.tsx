@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'privacy-policy-lifecycle-v49794-2026-07-23',
+    version: '4.9.794',
+    title: 'V4.9.794 — Versionierter Policy-Lifecycle (Prompt 11)',
+    summary: [
+      'Einheitlicher Lifecycle (DRAFT→IN_REVIEW→APPROVED→SCHEDULED→ACTIVE + SUSPENDED/SUPERSEDED/REVOKED/EXPIRED/REJECTED) für ProcessingActivity, LegalBasisAssessment und EnforcementPolicy.',
+      'Zentraler Transition-Validator, append-only Lifecycle-Events, policyFamilyId + versionNumber, partielle Unique-Indexes (eine ACTIVE-Version pro Familie).',
+      'Aktivierung idempotent; konkurrierende Aktivierungen → HTTP 409. Keine Statusmutation über generische Update-Endpunkte. DISABLED→SUSPENDED, UNDER_REVIEW→IN_REVIEW.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 11 — professioneller versionierter Policy-Lifecycle mit DB-Invarianten und kontrolliertem Konfliktverhalten.',
+    previousBehavior:
+      'Getrennte Status-Enums (ARCHIVED, UNDER_REVIEW, DISABLED); keine einheitliche Lifecycle-Events; LegalBasis APPROVED als operativer Zustand ohne ACTIVE-Schritt.',
+    details:
+      'Migration 20260724020000. Module: policy-lifecycle/ (transitions, validator, services, controller). 92 Tests passing. Doku: docs/architecture/privacy-policy-lifecycle-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T22:55:00.000Z',
+  },
+  {
     id: 'data-authorization-legacy-migration-v49793-2026-07-23',
     version: '4.9.793',
     title: 'V4.9.793 — Legacy-Migration OrgDataAuthorization & VPC (Prompt 10)',

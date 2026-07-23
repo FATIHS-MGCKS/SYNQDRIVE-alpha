@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
-  EnforcementPolicyStatus,
   Prisma,
+  PrivacyPolicyLifecycleStatus,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -64,7 +64,7 @@ export class EnforcementPolicyScopeService {
     dto: ReplaceEnforcementPolicyScopesDto,
   ) {
     const source = await this.findPolicyOrThrow(orgId, policyId);
-    if (source.status !== EnforcementPolicyStatus.ACTIVE) {
+    if (source.status !== PrivacyPolicyLifecycleStatus.ACTIVE) {
       throwScopeError(
         ENFORCEMENT_POLICY_SCOPE_ERROR.ACTIVE_REQUIRES_NEW_VERSION,
         'Scoped versions can only be created from active policies',
@@ -96,7 +96,7 @@ export class EnforcementPolicyScopeService {
           policyFamilyId: source.policyFamilyId,
           versionNumber: nextVersion,
           isCurrentVersion: true,
-          status: EnforcementPolicyStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
           enforcementMode: source.enforcementMode,
           dataCategory: source.dataCategory,
           processingPurpose: source.processingPurpose,
@@ -127,7 +127,7 @@ export class EnforcementPolicyScopeService {
       if (!locked) {
         throw new NotFoundException('Enforcement policy not found');
       }
-      if (locked.status !== EnforcementPolicyStatus.DRAFT) {
+      if (locked.status !== PrivacyPolicyLifecycleStatus.DRAFT) {
         throwScopeError(
           ENFORCEMENT_POLICY_SCOPE_ERROR.POLICY_NOT_EDITABLE,
           'Scope changes are only allowed on draft policies',
@@ -204,7 +204,7 @@ export class EnforcementPolicyScopeService {
   private assertDraftEditable(
     policy: Pick<PolicyWithScopes, 'status'>,
   ): void {
-    if (policy.status !== EnforcementPolicyStatus.DRAFT) {
+    if (policy.status !== PrivacyPolicyLifecycleStatus.DRAFT) {
       throwScopeError(
         ENFORCEMENT_POLICY_SCOPE_ERROR.POLICY_NOT_EDITABLE,
         'Scope changes are only allowed on draft policies. Create a new policy version instead.',

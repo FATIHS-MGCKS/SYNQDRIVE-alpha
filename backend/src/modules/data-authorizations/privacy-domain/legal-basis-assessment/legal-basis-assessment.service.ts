@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  LegalBasisAssessmentStatus,
   LegalBasisConsentRequirement,
   Prisma,
-  ProcessingActivityStatus,
+  PrivacyPolicyLifecycleEventType,
+  PrivacyPolicyLifecycleStatus,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -14,10 +14,11 @@ import type {
   UpdateLegalBasisAssessmentDto,
 } from './dto';
 import { throwLegalBasisError } from './legal-basis-assessment.exceptions';
+import { PolicyLifecycleEventsService } from '../policy-lifecycle/policy-lifecycle-events.service';
+import { PolicyLifecycleService } from '../policy-lifecycle/policy-lifecycle.service';
 import {
   assertFourEyesSeparation,
   assertLegalBasisContentGates,
-  assertLegalBasisTransitionAllowed,
   isLegalBasisAssessmentImmutable,
   isLegalBasisCurrentlyValid,
 } from './legal-basis-assessment.transitions';
@@ -28,7 +29,11 @@ type AssessmentWithEvidence = Prisma.LegalBasisAssessmentGetPayload<{
 
 @Injectable()
 export class LegalBasisAssessmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly lifecycle: PolicyLifecycleService,
+    private readonly lifecycleEvents: PolicyLifecycleEventsService,
+  ) {}
 
   async create(
     orgId: string,
@@ -67,7 +72,7 @@ export class LegalBasisAssessmentService {
           legitimateInterestDescription: dto.legitimateInterestDescription?.trim() || null,
           balancingTestReference: dto.balancingTestReference?.trim() || null,
           consentRequirement,
-          status: LegalBasisAssessmentStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
           assessedByUserId: actorUserId ?? null,
           validFrom: dto.validFrom ? new Date(dto.validFrom) : null,
           validUntil: dto.validUntil ? new Date(dto.validUntil) : null,
@@ -96,7 +101,7 @@ export class LegalBasisAssessmentService {
         'Approved or historical assessments cannot be modified. Create a new version.',
       );
     }
-    if (existing.status !== LegalBasisAssessmentStatus.DRAFT) {
+    if (existing.status !== PrivacyPolicyLifecycleStatus.DRAFT) {
       throwLegalBasisError(
         'LEGAL_BASIS_NOT_EDITABLE',
         'Only draft assessments can be edited.',
@@ -169,11 +174,6 @@ export class LegalBasisAssessmentService {
     actorUserId: string,
   ): Promise<AssessmentWithEvidence> {
     const existing = await this.findByIdOrThrow(orgId, assessmentId);
-    assertLegalBasisTransitionAllowed(
-      existing.status,
-      LegalBasisAssessmentStatus.UNDER_REVIEW,
-    );
-
     assertLegalBasisContentGates({
       legalBasisType: existing.legalBasisType,
       legalReference: existing.legalReference,
@@ -184,14 +184,31 @@ export class LegalBasisAssessmentService {
       consentRequirement: existing.consentRequirement,
     });
 
-    return this.prisma.legalBasisAssessment.update({
-      where: { id: existing.id },
-      data: {
-        status: LegalBasisAssessmentStatus.UNDER_REVIEW,
-        assessedByUserId: actorUserId,
-        assessedAt: new Date(),
-      },
-      include: { evidenceReferences: true },
+    return this.lifecycle.transitionVersion({
+      orgId,
+      record: existing,
+      toStatus: PrivacyPolicyLifecycleStatus.IN_REVIEW,
+      input: { actorUserId },
+      patch: { assessedByUserId: actorUserId },
+      loadCurrent: (tx, id) =>
+        tx.legalBasisAssessment.findFirst({
+          where: { id, organizationId: orgId },
+          include: { evidenceReferences: true },
+        }),
+      applyTransition: (tx, current, toStatus, patch) =>
+        tx.legalBasisAssessment.update({
+          where: { id: current.id },
+          data: { status: toStatus, ...patch },
+          include: { evidenceReferences: true },
+        }),
+      recordEvent: (tx, current, event) =>
+        this.lifecycleEvents.recordLegalBasisAssessmentEvent(tx, current.id, {
+          organizationId: orgId,
+          eventType: event.eventType,
+          previousStatus: event.previousStatus,
+          newStatus: event.newStatus,
+          actorUserId: event.input?.actorUserId,
+        }),
     });
   }
 
@@ -201,37 +218,33 @@ export class LegalBasisAssessmentService {
     approverUserId: string,
   ): Promise<AssessmentWithEvidence> {
     const existing = await this.findByIdOrThrow(orgId, assessmentId);
-    assertLegalBasisTransitionAllowed(
-      existing.status,
-      LegalBasisAssessmentStatus.APPROVED,
-    );
-
     assertFourEyesSeparation(existing.assessedByUserId, approverUserId);
 
-    return this.prisma.$transaction(async (tx) => {
-      await tx.legalBasisAssessment.updateMany({
-        where: {
+    return this.lifecycle.transitionVersion({
+      orgId,
+      record: existing,
+      toStatus: PrivacyPolicyLifecycleStatus.APPROVED,
+      input: { actorUserId: approverUserId },
+      patch: { approvedByUserId: approverUserId },
+      loadCurrent: (tx, id) =>
+        tx.legalBasisAssessment.findFirst({
+          where: { id, organizationId: orgId },
+          include: { evidenceReferences: true },
+        }),
+      applyTransition: (tx, current, toStatus, patch) =>
+        tx.legalBasisAssessment.update({
+          where: { id: current.id },
+          data: { status: toStatus, ...patch },
+          include: { evidenceReferences: true },
+        }),
+      recordEvent: (tx, current, event) =>
+        this.lifecycleEvents.recordLegalBasisAssessmentEvent(tx, current.id, {
           organizationId: orgId,
-          policyFamilyId: existing.policyFamilyId,
-          status: LegalBasisAssessmentStatus.APPROVED,
-          id: { not: existing.id },
-        },
-        data: {
-          status: LegalBasisAssessmentStatus.SUPERSEDED,
-          isCurrentVersion: false,
-        },
-      });
-
-      return tx.legalBasisAssessment.update({
-        where: { id: existing.id },
-        data: {
-          status: LegalBasisAssessmentStatus.APPROVED,
-          approvedByUserId: approverUserId,
-          approvedAt: new Date(),
-          isCurrentVersion: true,
-        },
-        include: { evidenceReferences: true },
-      });
+          eventType: event.eventType,
+          previousStatus: event.previousStatus,
+          newStatus: event.newStatus,
+          actorUserId: event.input?.actorUserId,
+        }),
     });
   }
 
@@ -242,23 +255,78 @@ export class LegalBasisAssessmentService {
     dto: RejectLegalBasisAssessmentDto,
   ): Promise<AssessmentWithEvidence> {
     const existing = await this.findByIdOrThrow(orgId, assessmentId);
-    assertLegalBasisTransitionAllowed(
-      existing.status,
-      LegalBasisAssessmentStatus.REJECTED,
-    );
-
     assertFourEyesSeparation(existing.assessedByUserId, approverUserId);
 
-    return this.prisma.legalBasisAssessment.update({
-      where: { id: existing.id },
-      data: {
-        status: LegalBasisAssessmentStatus.REJECTED,
-        approvedByUserId: approverUserId,
-        approvedAt: new Date(),
-        rejectionReason: dto.rejectionReason.trim(),
-        isCurrentVersion: false,
-      },
-      include: { evidenceReferences: true },
+    return this.lifecycle.transitionVersion({
+      orgId,
+      record: existing,
+      toStatus: PrivacyPolicyLifecycleStatus.REJECTED,
+      input: { actorUserId: approverUserId, reason: dto.rejectionReason },
+      patch: { approvedByUserId: approverUserId },
+      loadCurrent: (tx, id) =>
+        tx.legalBasisAssessment.findFirst({
+          where: { id, organizationId: orgId },
+          include: { evidenceReferences: true },
+        }),
+      applyTransition: (tx, current, toStatus, patch) =>
+        tx.legalBasisAssessment.update({
+          where: { id: current.id },
+          data: { status: toStatus, ...patch },
+          include: { evidenceReferences: true },
+        }),
+      recordEvent: (tx, current, event) =>
+        this.lifecycleEvents.recordLegalBasisAssessmentEvent(tx, current.id, {
+          organizationId: orgId,
+          eventType: event.eventType,
+          previousStatus: event.previousStatus,
+          newStatus: event.newStatus,
+          actorUserId: event.input?.actorUserId,
+          reason: event.input?.reason,
+        }),
+    });
+  }
+
+  async activate(
+    orgId: string,
+    assessmentId: string,
+    actorUserId?: string,
+  ): Promise<AssessmentWithEvidence> {
+    const existing = await this.findByIdOrThrow(orgId, assessmentId);
+    return this.lifecycle.activateVersion({
+      entityKind: 'LEGAL_BASIS_ASSESSMENT',
+      orgId,
+      record: existing,
+      input: { actorUserId },
+      loadCurrent: (tx, id) =>
+        tx.legalBasisAssessment.findFirst({
+          where: { id, organizationId: orgId },
+          include: { evidenceReferences: true },
+        }),
+      findActivePeers: (tx, current) =>
+        tx.legalBasisAssessment.findMany({
+          where: {
+            organizationId: orgId,
+            policyFamilyId: current.policyFamilyId,
+            status: PrivacyPolicyLifecycleStatus.ACTIVE,
+          },
+          include: { evidenceReferences: true },
+        }),
+      applyTransition: (tx, current, toStatus, patch) =>
+        tx.legalBasisAssessment.update({
+          where: { id: current.id },
+          data: { status: toStatus, isCurrentVersion: true, ...patch },
+          include: { evidenceReferences: true },
+        }),
+      recordEvent: (tx, current, event) =>
+        this.lifecycleEvents.recordLegalBasisAssessmentEvent(tx, current.id, {
+          organizationId: orgId,
+          eventType: event.eventType,
+          previousStatus: event.previousStatus,
+          newStatus: event.newStatus,
+          actorUserId: event.input?.actorUserId,
+          supersededById: event.input?.supersededById,
+          validFrom: event.input?.validFrom,
+        }),
     });
   }
 
@@ -270,8 +338,10 @@ export class LegalBasisAssessmentService {
   ): Promise<AssessmentWithEvidence> {
     const source = await this.findByIdOrThrow(orgId, assessmentId);
     if (
-      source.status !== LegalBasisAssessmentStatus.APPROVED &&
-      source.status !== LegalBasisAssessmentStatus.REJECTED
+      source.status !== PrivacyPolicyLifecycleStatus.ACTIVE &&
+      source.status !== PrivacyPolicyLifecycleStatus.REJECTED &&
+      source.status !== PrivacyPolicyLifecycleStatus.SUPERSEDED &&
+      source.status !== PrivacyPolicyLifecycleStatus.REVOKED
     ) {
       throwLegalBasisError(
         'LEGAL_BASIS_VERSION_SOURCE_INVALID',
@@ -323,7 +393,7 @@ export class LegalBasisAssessmentService {
           legitimateInterestDescription: dto.legitimateInterestDescription?.trim() || null,
           balancingTestReference: dto.balancingTestReference?.trim() || null,
           consentRequirement,
-          status: LegalBasisAssessmentStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
           assessedByUserId: actorUserId ?? null,
           validFrom: dto.validFrom ? new Date(dto.validFrom) : source.validFrom,
           validUntil: dto.validUntil ? new Date(dto.validUntil) : source.validUntil,
@@ -337,6 +407,14 @@ export class LegalBasisAssessmentService {
         created.id,
         dto.evidenceReferences ?? source.evidenceReferences.map((ref) => ref.reference),
       );
+
+      await this.lifecycleEvents.recordLegalBasisAssessmentEvent(tx, created.id, {
+        organizationId: orgId,
+        eventType: PrivacyPolicyLifecycleEventType.VERSION_CREATED,
+        previousStatus: source.status,
+        newStatus: PrivacyPolicyLifecycleStatus.DRAFT,
+        actorUserId,
+      });
 
       return tx.legalBasisAssessment.findUniqueOrThrow({
         where: { id: created.id },
@@ -358,7 +436,7 @@ export class LegalBasisAssessmentService {
         processingActivityId,
         ...(query.legalBasisType ? { legalBasisType: query.legalBasisType } : {}),
         ...(query.policyFamilyId ? { policyFamilyId: query.policyFamilyId } : {}),
-        ...(query.status ? { status: query.status as LegalBasisAssessmentStatus } : {}),
+        ...(query.status ? { status: query.status as PrivacyPolicyLifecycleStatus } : {}),
       },
       include: { evidenceReferences: true },
       orderBy: [{ policyFamilyId: 'asc' }, { versionNumber: 'desc' }],
@@ -378,7 +456,7 @@ export class LegalBasisAssessmentService {
       where: {
         organizationId: orgId,
         processingActivityId,
-        status: LegalBasisAssessmentStatus.APPROVED,
+        status: PrivacyPolicyLifecycleStatus.ACTIVE,
         isCurrentVersion: true,
       },
       include: { evidenceReferences: true },
@@ -399,7 +477,7 @@ export class LegalBasisAssessmentService {
     processingActivityId: string,
   ): Promise<void> {
     const activity = await this.findActivityOrThrow(orgId, processingActivityId);
-    if (activity.status === ProcessingActivityStatus.DRAFT) {
+    if (activity.status === PrivacyPolicyLifecycleStatus.DRAFT) {
       throwLegalBasisError(
         'PROCESSING_ACTIVITY_DRAFT',
         'Processing activities cannot be activated directly from DRAFT.',

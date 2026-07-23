@@ -2,12 +2,10 @@ import {
   DataProcessingAgreementStatus,
   DataSharingAuthorizationStatus,
   DataSubjectConsentStatus,
-  EnforcementPolicyStatus,
-  LegalBasisAssessmentStatus,
   PrivacyEnforcementMode,
   PrivacyEnforcementScopeType,
   PrivacyLegalBasisType,
-  ProcessingActivityStatus,
+  PrivacyPolicyLifecycleStatus,
   ProviderAccessGrantStatus,
 } from '@prisma/client';
 
@@ -18,13 +16,13 @@ export interface TenantScopedRecord {
 export interface ProcessingActivityInvariantInput extends TenantScopedRecord {
   activityCode: string;
   title: string;
-  status: ProcessingActivityStatus;
+  status: PrivacyPolicyLifecycleStatus;
 }
 
 export interface LegalBasisAssessmentInvariantInput extends TenantScopedRecord {
   processingActivityOrganizationId: string;
   legalBasisType: PrivacyLegalBasisType;
-  status: LegalBasisAssessmentStatus;
+  status: PrivacyPolicyLifecycleStatus;
 }
 
 export interface DataSubjectConsentInvariantInput extends TenantScopedRecord {
@@ -64,7 +62,7 @@ export interface DataProcessingAgreementInvariantInput extends TenantScopedRecor
 
 export interface EnforcementPolicyInvariantInput extends TenantScopedRecord {
   processingActivityOrganizationId: string;
-  status: EnforcementPolicyStatus;
+  status: PrivacyPolicyLifecycleStatus;
   enforcementMode: PrivacyEnforcementMode;
   scopeType: PrivacyEnforcementScopeType;
   vehicleScopeCount?: number;
@@ -235,7 +233,7 @@ export function validateEnforcementPolicy(input: EnforcementPolicyInvariantInput
   }
 
   if (
-    input.status === EnforcementPolicyStatus.ACTIVE &&
+    input.status === PrivacyPolicyLifecycleStatus.ACTIVE &&
     input.enforcementMode === PrivacyEnforcementMode.OFF
   ) {
     throw new Error('enforcement_policy_active_requires_mode');
@@ -257,13 +255,13 @@ export function validateAuthorizationDecisionEvent(
   );
 }
 
-export function isProcessingActivityOperational(status: ProcessingActivityStatus): boolean {
-  return status === ProcessingActivityStatus.ACTIVE;
+export function isProcessingActivityOperational(status: PrivacyPolicyLifecycleStatus): boolean {
+  return status === PrivacyPolicyLifecycleStatus.ACTIVE;
 }
 
 export function isEnforcementPolicyOperational(
-  status: EnforcementPolicyStatus,
+  status: PrivacyPolicyLifecycleStatus,
   mode: PrivacyEnforcementMode,
 ): boolean {
-  return status === EnforcementPolicyStatus.ACTIVE && mode !== PrivacyEnforcementMode.OFF;
+  return status === PrivacyPolicyLifecycleStatus.ACTIVE && mode !== PrivacyEnforcementMode.OFF;
 }

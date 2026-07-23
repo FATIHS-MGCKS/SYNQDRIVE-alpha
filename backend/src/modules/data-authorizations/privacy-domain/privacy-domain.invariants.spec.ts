@@ -2,12 +2,10 @@ import {
   DataProcessingAgreementStatus,
   DataSharingAuthorizationStatus,
   DataSubjectConsentStatus,
-  EnforcementPolicyStatus,
-  LegalBasisAssessmentStatus,
   PrivacyEnforcementMode,
   PrivacyEnforcementScopeType,
   PrivacyLegalBasisType,
-  ProcessingActivityStatus,
+  PrivacyPolicyLifecycleStatus,
   ProviderAccessGrantStatus,
 } from '@prisma/client';
 import {
@@ -34,7 +32,7 @@ describe('privacy-domain.invariants', () => {
           organizationId: orgId,
           activityCode: '   ',
           title: 'DIMO Telemetry',
-          status: ProcessingActivityStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
         }),
       ).toThrow('processing_activity_code_required');
 
@@ -43,7 +41,7 @@ describe('privacy-domain.invariants', () => {
           organizationId: orgId,
           activityCode: 'DIMO_TELEMETRY',
           title: '',
-          status: ProcessingActivityStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
         }),
       ).toThrow('processing_activity_title_required');
     });
@@ -56,7 +54,7 @@ describe('privacy-domain.invariants', () => {
           organizationId: orgId,
           processingActivityOrganizationId: otherOrgId,
           legalBasisType: PrivacyLegalBasisType.LEGITIMATE_INTERESTS,
-          status: LegalBasisAssessmentStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
         }),
       ).toThrow('legal_basis_organization_mismatch');
     });
@@ -141,7 +139,7 @@ describe('privacy-domain.invariants', () => {
         validateEnforcementPolicy({
           organizationId: orgId,
           processingActivityOrganizationId: orgId,
-          status: EnforcementPolicyStatus.DRAFT,
+          status: PrivacyPolicyLifecycleStatus.DRAFT,
           enforcementMode: PrivacyEnforcementMode.SHADOW,
           scopeType: PrivacyEnforcementScopeType.VEHICLE,
           vehicleScopeCount: 0,
@@ -154,7 +152,7 @@ describe('privacy-domain.invariants', () => {
         validateEnforcementPolicy({
           organizationId: orgId,
           processingActivityOrganizationId: orgId,
-          status: EnforcementPolicyStatus.ACTIVE,
+          status: PrivacyPolicyLifecycleStatus.ACTIVE,
           enforcementMode: PrivacyEnforcementMode.OFF,
           scopeType: PrivacyEnforcementScopeType.ORGANIZATION,
         }),
@@ -175,20 +173,20 @@ describe('privacy-domain.invariants', () => {
 
   describe('operational helpers', () => {
     it('detects operational processing activity', () => {
-      expect(isProcessingActivityOperational(ProcessingActivityStatus.ACTIVE)).toBe(true);
-      expect(isProcessingActivityOperational(ProcessingActivityStatus.DRAFT)).toBe(false);
+      expect(isProcessingActivityOperational(PrivacyPolicyLifecycleStatus.ACTIVE)).toBe(true);
+      expect(isProcessingActivityOperational(PrivacyPolicyLifecycleStatus.DRAFT)).toBe(false);
     });
 
     it('detects operational enforcement policy', () => {
       expect(
         isEnforcementPolicyOperational(
-          EnforcementPolicyStatus.ACTIVE,
+          PrivacyPolicyLifecycleStatus.ACTIVE,
           PrivacyEnforcementMode.ENFORCE,
         ),
       ).toBe(true);
       expect(
         isEnforcementPolicyOperational(
-          EnforcementPolicyStatus.ACTIVE,
+          PrivacyPolicyLifecycleStatus.ACTIVE,
           PrivacyEnforcementMode.OFF,
         ),
       ).toBe(false);

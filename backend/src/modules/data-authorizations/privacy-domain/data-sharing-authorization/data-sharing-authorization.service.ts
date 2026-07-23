@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuthorizationActorType,
   DataSharingAuthorizationStatus,
-  LegalBasisAssessmentStatus,
+  PrivacyPolicyLifecycleStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
@@ -176,7 +176,7 @@ export class DataSharingAuthorizationService {
         id: legalBasisAssessmentId,
         organizationId: orgId,
         processingActivityId,
-        status: LegalBasisAssessmentStatus.APPROVED,
+        status: PrivacyPolicyLifecycleStatus.ACTIVE,
         isCurrentVersion: true,
       },
     });

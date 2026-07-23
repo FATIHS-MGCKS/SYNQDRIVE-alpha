@@ -1,5 +1,5 @@
 import {
-  LegalBasisAssessmentStatus,
+  PrivacyPolicyLifecycleStatus,
   PrivacyLegalBasisType,
 } from '@prisma/client';
 import {
@@ -14,16 +14,16 @@ describe('legal-basis-assessment.transitions', () => {
   it('allows draft to under review only', () => {
     expect(() =>
       assertLegalBasisTransitionAllowed(
-        LegalBasisAssessmentStatus.DRAFT,
-        LegalBasisAssessmentStatus.UNDER_REVIEW,
+        PrivacyPolicyLifecycleStatus.DRAFT,
+        PrivacyPolicyLifecycleStatus.IN_REVIEW,
       ),
     ).not.toThrow();
     expect(() =>
       assertLegalBasisTransitionAllowed(
-        LegalBasisAssessmentStatus.DRAFT,
-        LegalBasisAssessmentStatus.APPROVED,
+        PrivacyPolicyLifecycleStatus.DRAFT,
+        PrivacyPolicyLifecycleStatus.APPROVED,
       ),
-    ).toThrow('legal_basis_transition_not_allowed:DRAFT:APPROVED');
+    ).toThrow('policy_lifecycle_transition_not_allowed:DRAFT:APPROVED');
   });
 
   it('requires consent requirement for CONSENT basis', () => {
@@ -67,16 +67,16 @@ describe('legal-basis-assessment.transitions', () => {
     );
   });
 
-  it('treats approved assessments as immutable', () => {
-    expect(isLegalBasisAssessmentImmutable(LegalBasisAssessmentStatus.APPROVED)).toBe(true);
-    expect(isLegalBasisAssessmentImmutable(LegalBasisAssessmentStatus.DRAFT)).toBe(false);
+  it('treats active assessments as immutable', () => {
+    expect(isLegalBasisAssessmentImmutable(PrivacyPolicyLifecycleStatus.ACTIVE)).toBe(true);
+    expect(isLegalBasisAssessmentImmutable(PrivacyPolicyLifecycleStatus.DRAFT)).toBe(false);
   });
 
-  it('rejects expired approved assessments for processing', () => {
+  it('rejects expired active assessments for processing', () => {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     expect(
       isLegalBasisCurrentlyValid({
-        status: LegalBasisAssessmentStatus.APPROVED,
+        status: PrivacyPolicyLifecycleStatus.ACTIVE,
         validUntil: yesterday,
       }),
     ).toBe(false);
