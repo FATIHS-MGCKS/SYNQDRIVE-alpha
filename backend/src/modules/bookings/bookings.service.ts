@@ -61,6 +61,7 @@ import { BookingPaymentCardService } from '@modules/payments/booking-payment-car
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { listInvalidationFactsFromMutation } from './booking-eligibility-gatekeeper/booking-eligibility-status-transition.matrix';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import {
   resolveEligibilityPolicyMode,
   shouldSkipEligibilityEnforcement,
@@ -119,6 +120,7 @@ export class BookingsService {
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
+    private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
   ) {}
 
   /**
@@ -1824,6 +1826,12 @@ export class BookingsService {
         reason: 'Booking eligibility context changed',
         revokedByUserId: options?.userId ?? null,
         invalidationFacts,
+      });
+      await this.bookingEligibilityRecheck.processMutationRecheckFromInvalidationFacts({
+        organizationId: orgId,
+        bookingId: id,
+        invalidationFacts,
+        actorUserId: options?.userId ?? null,
       });
     }
 

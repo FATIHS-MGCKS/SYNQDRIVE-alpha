@@ -157,6 +157,7 @@ describe('Vehicle rental override reset', () => {
         analyzePublishImpact: jest.fn(),
         assertPublishPreconditions: jest.fn(),
       } as never,
+      { processRulePublishRechecks: jest.fn().mockResolvedValue([]) } as never,
     );
   });
 

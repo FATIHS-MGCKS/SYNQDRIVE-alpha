@@ -77,6 +77,9 @@ describe('BookingEligibilityApprovalService', () => {
       gatekeeper as never,
       eligibilityDecision as never,
       businessAudit as never,
+      {
+        processApprovalExpiredRecheck: jest.fn().mockResolvedValue(null),
+      } as never,
     );
   });
 

@@ -71,6 +71,7 @@ describe('RentalRulesService category assignment delta', () => {
         analyzePublishImpact: jest.fn(),
         assertPublishPreconditions: jest.fn(),
       } as never,
+      { processRulePublishRechecks: jest.fn().mockResolvedValue([]) } as never,
     );
   });
 

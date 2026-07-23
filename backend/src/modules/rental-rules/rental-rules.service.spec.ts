@@ -95,7 +95,18 @@ describe('RentalRulesService', () => {
       }),
       assertPublishPreconditions: jest.fn(),
     };
-    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any, businessAudit as any, revisions as any, revisionImpact as any);
+    const eligibilityRecheck = {
+      processRulePublishRechecks: jest.fn().mockResolvedValue([]),
+    };
+    svc = new RentalRulesService(
+      prisma as any,
+      effective,
+      rentalRulePermissions as any,
+      businessAudit as any,
+      revisions as any,
+      revisionImpact as any,
+      eligibilityRecheck as any,
+    );
   });
 
   it('blocks access to foreign organization category', async () => {

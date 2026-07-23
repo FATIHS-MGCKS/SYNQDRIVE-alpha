@@ -1,9 +1,13 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { BookingEligibilityRecheckService } from '@modules/bookings/booking-eligibility-recheck/booking-eligibility-recheck.service';
+import type { RentalRulePublishImpactAnalysis } from './rental-rules-revision-impact.service';
 import { BusinessAuditService } from '@modules/business-audit/business-audit.service';
 import {
   BUSINESS_AUDIT_ENTITY_TYPE,
@@ -88,6 +92,8 @@ export class RentalRulesService {
     private readonly businessAudit: BusinessAuditService,
     private readonly revisions: RentalRulesRevisionService,
     private readonly revisionImpact: RentalRulesRevisionImpactService,
+    @Inject(forwardRef(() => BookingEligibilityRecheckService))
+    private readonly eligibilityRecheck: BookingEligibilityRecheckService,
   ) {}
 
   private async assertOrgExists(orgId: string) {
@@ -326,6 +332,7 @@ export class RentalRulesService {
       },
     );
     await this.businessAudit.flushCritical(result.auditOutboxIds);
+    await this.triggerPublishRechecks(orgId, dto, impact);
     const document = result.revision.normalizedRules as NormalizedRentalRulesDocument;
     return {
       ...this.organizationPayloadFromRevisionDocument(
@@ -541,6 +548,7 @@ export class RentalRulesService {
       },
     );
     await this.businessAudit.flushCritical(result.auditOutboxIds);
+    await this.triggerPublishRechecks(orgId, dto, impact);
     const withCount = await this.prisma.rentalVehicleCategory.findUnique({
       where: { id: categoryId },
       include: { _count: { select: { vehicles: true } } },
@@ -1447,6 +1455,7 @@ export class RentalRulesService {
       },
     );
     await this.businessAudit.flushCritical(result.auditOutboxIds);
+    await this.triggerPublishRechecks(orgId, dto, impact);
     const row = await this.prisma.vehicleRentalRequirementOverride.findUnique({
       where: { vehicleId },
     });
@@ -1658,6 +1667,26 @@ export class RentalRulesService {
         scopeId: input.scopeId,
         actorUserId: input.actor?.id ?? null,
       },
+    });
+  }
+
+  private async triggerPublishRechecks(
+    orgId: string,
+    dto: PublishRentalRuleRevisionDto,
+    impact: RentalRulePublishImpactAnalysis,
+  ) {
+    const affectedBookingIds = [
+      ...impact.bookingImpact.wizardDraft.bookingIds,
+      ...impact.bookingImpact.pending.bookingIds,
+      ...impact.bookingImpact.confirmed.bookingIds,
+    ];
+
+    await this.eligibilityRecheck.processRulePublishRechecks({
+      organizationId: orgId,
+      publishedRevisionId: dto.revisionId,
+      affectedBookingIds,
+      criticalRuleChange: impact.criticalImpact.isCritical,
+      correlationId: `publish:${dto.revisionId}:${dto.expectedLockVersion}`,
     });
   }
 }

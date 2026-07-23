@@ -34,6 +34,7 @@ import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-h
 import { BookingPickupGateService } from './booking-pickup-gate/booking-pickup-gate.service';
 import { BookingPickupGateAuditService } from './booking-pickup-gate/booking-pickup-gate-audit.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import {
   PICKUP_GATE_EVENT_TYPE,
   PICKUP_GATE_OUTCOME,
@@ -66,6 +67,8 @@ export class BookingsHandoverService {
     private readonly pickupGate: BookingPickupGateService,
     private readonly pickupGateAudit: BookingPickupGateAuditService,
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
+    @Inject(forwardRef(() => BookingEligibilityRecheckService))
+    private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -157,6 +160,8 @@ export class BookingsHandoverService {
 
     let gateEvaluation: PickupGateEvaluation | null = null;
     if (kind === 'PICKUP') {
+      await this.bookingEligibilityRecheck.processPickupPrecheck(orgId, bookingId, actor.userId);
+
       await this.bookingEligibilityEnforcement.assertAllowedForPickup(orgId, bookingId, {
         userId: actor.userId,
         membershipRole: actor.membershipRole as never,

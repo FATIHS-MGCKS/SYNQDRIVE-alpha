@@ -52,3 +52,22 @@ export interface AppendManualApprovalDecisionInput {
   evaluatedAt: string;
   engineVersion: string;
 }
+
+export interface AppendRecheckDecisionInput {
+  organizationId: string;
+  bookingId: string;
+  eventType:
+    | 'RULE_PUBLISH_RECHECK'
+    | 'MUTATION_RECHECK'
+    | 'SCHEDULED_RECHECK'
+    | 'APPROVAL_EXPIRED_RECHECK';
+  decisionStatus: string;
+  correlationId: string;
+  priorRulesHash: string | null;
+  currentRulesHash: string;
+  bookingDataVersion: string;
+  derivedFacts: Record<string, unknown>;
+  reasonCodes?: string[];
+  recheckAt?: Date | null;
+  engineVersion?: string;
+}

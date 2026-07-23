@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import {
   BookingEligibilityApprovalStatus,
@@ -48,6 +50,7 @@ import {
   resolveApprovalTargetStatus,
 } from './booking-eligibility-approval.util';
 import { BookingEligibilityDecisionService } from '../booking-eligibility-decision/booking-eligibility-decision.service';
+import { BookingEligibilityRecheckService } from '../booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION } from '../booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.constants';
 
 type Tx = Prisma.TransactionClient;
@@ -59,6 +62,8 @@ export class BookingEligibilityApprovalService {
     private readonly gatekeeper: BookingEligibilityGatekeeperService,
     private readonly eligibilityDecision: BookingEligibilityDecisionService,
     private readonly businessAudit: BusinessAuditService,
+    @Inject(forwardRef(() => BookingEligibilityRecheckService))
+    private readonly eligibilityRecheck: BookingEligibilityRecheckService,
   ) {}
 
   async listForBooking(
@@ -608,6 +613,11 @@ export class BookingEligibilityApprovalService {
           bookingId: row.bookingId,
         },
       });
+      await this.eligibilityRecheck.processApprovalExpiredRecheck(
+        organizationId,
+        row.bookingId,
+        row.id,
+      );
     }
 
     return result.count;

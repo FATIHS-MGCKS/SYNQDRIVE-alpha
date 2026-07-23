@@ -104,6 +104,7 @@ describe('RentalRulesService category lifecycle', () => {
         analyzePublishImpact: jest.fn(),
         assertPublishPreconditions: jest.fn(),
       } as never,
+      { processRulePublishRechecks: jest.fn().mockResolvedValue([]) } as never,
     );
   });
 

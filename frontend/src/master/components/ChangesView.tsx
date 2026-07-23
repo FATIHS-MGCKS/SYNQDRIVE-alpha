@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-eligibility-retroactivity-v49782-2026-07-23',
+    version: '4.9.782',
+    title: 'V4.9.782 — Booking eligibility retroactivity & recheck policy (Prompt 29)',
+    summary: [
+      'Klare Retroactivity-Policy pro Buchungsstatus: Wizard DRAFT/PENDING → LIVE_REEVALUATE; CONFIRMED → FROZEN_GRANDFATHER; vor Pickup → PICKUP_RECHECK; ACTIVE/terminal → NO_RETROACTIVE_CHANGE.',
+      'Recheck-Trigger: Rule Publish, Kunden-/Dokument-/Fahrzeug-/Zeitraum-/Zusatzfahrer-/Auslands-/Zahlungsänderung, Approval-Ablauf, Scheduled Recheck, Pickup-Precheck.',
+      'CONFIRMED behält eingefrorenen Rule Snapshot — neue Regeln verschärfen bestätigte Verträge nicht still; Drift/kritische Änderungen → `review_required`.',
+      'Keine automatische Stornierung (`allowAutoCancel: false`); Recheck-Snapshots als append-only `BookingEligibilityDecision` Events.',
+      'Scheduler verarbeitet fällige `recheckAt`-Entscheidungen; Pickup-Handover triggert `pickup_precheck` vor Gatekeeper.',
+    ],
+    reason: 'Regeländerungen dürfen bestehende Buchungen nicht unkontrolliert rückwirkend verändern (Remediation Prompt 29).',
+    previousBehavior: 'Publish-Impact zählte bestätigte Buchungen, mutierte sie aber nicht; kein strukturierter Recheck-Pfad für Mutationen oder Pickup.',
+    details:
+      'booking-eligibility-recheck/*, migration 20260723230000, rental-rules.service.ts triggerPublishRechecks, bookings.service.ts mutation hook, bookings-handover.service.ts pickup precheck.',
+    affectsArchitecture: true,
+    module: 'Bookings / Eligibility',
+    createdAt: '2026-07-24T01:00:00.000Z',
+  },
+  {
     id: 'business-audit-outbox-v49781-2026-07-23',
     version: '4.9.781',
     title: 'V4.9.781 — Business audit outbox for rental rules & approvals (Prompt 28)',

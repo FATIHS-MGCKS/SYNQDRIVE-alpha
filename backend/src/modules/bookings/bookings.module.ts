@@ -28,6 +28,8 @@ import { BookingEligibilityEnforcementService } from './booking-eligibility-gate
 import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
+import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
 
 @Module({
   imports: [
@@ -59,6 +61,8 @@ import { BookingEligibilityDecisionService } from './booking-eligibility-decisio
     BookingEligibilityAuditLogger,
     BookingEligibilityApprovalService,
     BookingEligibilityDecisionService,
+    BookingEligibilityRecheckService,
+    BookingEligibilityRecheckSchedulerService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
@@ -73,6 +77,8 @@ import { BookingEligibilityDecisionService } from './booking-eligibility-decisio
     BookingAllowedDriversService,
     BookingEligibilityApprovalService,
     BookingEligibilityDecisionService,
+    BookingEligibilityRecheckService,
+    BookingEligibilityRecheckSchedulerService,
   ],
 })
 export class BookingsModule {}
