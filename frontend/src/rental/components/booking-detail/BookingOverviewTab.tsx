@@ -9,23 +9,38 @@ import {
 } from './bookingDetailUtils';
 import { getPrimaryBookingAction } from './bookingActionRules';
 import { BookingStationPanel } from './BookingStationPanel';
+import { BookingPreparationPanel } from './BookingPreparationPanel';
 import { bd } from './booking-detail-ui';
 
 interface BookingOverviewTabProps {
   detail: BookingDetailDto;
   matrix: BookingActionMatrix;
+  orgId?: string | null;
+  onRefresh?: () => void;
 }
 
-export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) {
+export function BookingOverviewTab({ detail, matrix, orgId, onRefresh }: BookingOverviewTabProps) {
   const uiStatus = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
   const primary = getPrimaryBookingAction(detail, matrix);
   const warnings: string[] = [];
   if (detail.health.criticalWarnings.length) warnings.push(...detail.health.criticalWarnings);
   if (detail.eligibility?.blockingReasons.length) warnings.push(...detail.eligibility.blockingReasons);
+  if (detail.preparation?.pickupBlockReasons.length) {
+    warnings.push(...detail.preparation.pickupBlockReasons.map((r) => `Vorbereitung: ${r}`));
+  }
   if (isPickupOverdue(detail)) warnings.push('Pickup überfällig — noch kein Übergabeprotokoll');
 
   return (
     <div className="space-y-4">
+      {detail.preparation && orgId && (
+        <BookingPreparationPanel
+          orgId={orgId}
+          bookingId={detail.core.bookingId}
+          preparation={detail.preparation}
+          onRetryComplete={onRefresh}
+        />
+      )}
+
       {warnings.length > 0 && (
         <div className="rounded-lg border border-current/20 sq-tone-warning px-4 py-3 space-y-1">
           <p className="text-xs font-semibold">Wichtige Hinweise</p>

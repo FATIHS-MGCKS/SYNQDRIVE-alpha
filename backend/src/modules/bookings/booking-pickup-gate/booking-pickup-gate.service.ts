@@ -29,6 +29,7 @@ import type {
   PickupGateRequirement,
 } from './booking-pickup-gate.types';
 import { BookingPickupGateAuditService } from './booking-pickup-gate-audit.service';
+import { BookingPreparationStateService } from '../preparation/booking-preparation-state.service';
 
 const ACTIVE_GENERATION_STATUSES = new Set<string>([
   BOOKING_DOCUMENT_GENERATION_STATUS.PENDING,
@@ -50,6 +51,7 @@ export class BookingPickupGateService {
     private readonly prisma: PrismaService,
     private readonly completeness: BookingDocumentCompletenessService,
     private readonly audit: BookingPickupGateAuditService,
+    private readonly preparationState: BookingPreparationStateService,
   ) {}
 
   async assertPickupAllowed(input: AssertPickupGateInput): Promise<PickupGateEvaluation> {
@@ -158,6 +160,18 @@ export class BookingPickupGateService {
           false,
         ),
       );
+    }
+
+    const preparation = await this.preparationState.getSnapshot(
+      input.organizationId,
+      input.bookingId,
+    );
+    if (preparation.blocksPickup) {
+      for (const reason of preparation.pickupBlockReasons) {
+        requirements.push(
+          this.req(PICKUP_GATE_CODE.PREPARATION_INCOMPLETE, reason, false),
+        );
+      }
     }
 
     const completeness = await this.completeness.evaluateForBooking(

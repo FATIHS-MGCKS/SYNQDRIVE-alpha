@@ -112,6 +112,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly bookingDomainEventOutboxRetry: Counter<string>;
   readonly bookingDomainEventOutboxDeadLetter: Counter<string>;
   readonly bookingDomainEventOutboxBacklog: Gauge<string>;
+  readonly bookingPreparationFailed: Gauge<string>;
 
   /** Driving Intelligence V2 durable jobs (P20). */
   readonly drivingIntelligenceJobCompleted: Counter<string>;
@@ -886,6 +887,13 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.bookingPreparationFailed = new Gauge({
+      name: 'synqdrive_booking_preparation_failed',
+      help: 'Persistently failed required booking preparation artifacts',
+      labelNames: ['artifact_type'],
+      registers: [this.registry],
+    });
+
     this.bookingDomainEventOutboxProcessingDuration = new Histogram({
       name: 'synqdrive_booking_domain_event_outbox_processing_duration_seconds',
       help: 'Single booking domain event outbox processing duration',
@@ -1366,6 +1374,10 @@ export class TripMetricsService implements OnModuleInit {
       labelNames: ['classification'],
       registers: [this.registry],
     });
+  }
+
+  setBookingPreparationFailedGauge(artifactType: string, count: number): void {
+    this.bookingPreparationFailed.set({ artifact_type: artifactType }, count);
   }
 
   async onModuleInit(): Promise<void> {

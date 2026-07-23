@@ -67,6 +67,7 @@ import {
   assertWizardPreviewFingerprintMatches,
   buildEligibilityPreviewFingerprint,
 } from './booking-wizard-eligibility.util';
+import { BookingPreparationStateService } from './preparation/booking-preparation-state.service';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -107,6 +108,7 @@ export class BookingsService {
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly bookingDomainEvents: BookingDomainEventLifecycleService,
+    private readonly preparationState: BookingPreparationStateService,
   ) {}
 
   /**
@@ -877,7 +879,7 @@ export class BookingsService {
       performedByName: p.performedByName,
     });
 
-    const [deposit, priceSnapshot, invoices, tasks, misuseCount, analysis, activityRows, noShowCount, openInvoices, openFines, paymentsCard] =
+    const [deposit, priceSnapshot, invoices, tasks, misuseCount, analysis, activityRows, noShowCount, openInvoices, openFines, paymentsCard, preparation] =
       await Promise.all([
         this.prisma.bookingDeposit.findFirst({
           where: { organizationId: orgId, bookingId: id },
@@ -922,6 +924,7 @@ export class BookingsService {
           },
         }),
         this.bookingPaymentCardService.buildForBooking(orgId, id),
+        this.preparationState.getSnapshot(orgId, id).catch(() => null),
       ]);
 
     let bundleView: Awaited<ReturnType<BookingDocumentBundleService['getBundleView']>> | null =
@@ -1279,6 +1282,7 @@ export class BookingsService {
         createdAt: a.createdAt.toISOString(),
       })),
       payments: paymentsCard,
+      preparation,
     };
   }
 

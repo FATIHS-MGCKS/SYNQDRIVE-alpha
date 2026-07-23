@@ -18,10 +18,12 @@ import { BookingNotificationConsumer } from './consumers/booking-notification.co
 import { BookingCustomerEmailConsumer } from './consumers/booking-customer-email.consumer';
 import { BookingInternalEmailConsumer } from './consumers/booking-internal-email.consumer';
 import { BookingPaymentLinkConsumer } from './consumers/booking-payment-link.consumer';
+import { BookingPreparationModule } from '../preparation/booking-preparation.module';
 
 @Module({
   imports: [
     BookingDomainEventOutboxCoreModule,
+    BookingPreparationModule,
     WorkflowsModule,
     InvoicesModule,
     DocumentsModule,

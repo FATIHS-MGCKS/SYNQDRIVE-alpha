@@ -12,6 +12,7 @@ import {
   financeShortStatus,
   formatDateRange,
   handoverShortStatus,
+  preparationShortStatus,
 } from './bookingDetailUtils';
 
 interface BookingDetailHeaderProps {
@@ -88,6 +89,9 @@ export function BookingDetailHeader({
             <div className="flex flex-wrap gap-2 pt-0.5">
               <StatusChip tone="neutral">{financeShortStatus(detail)}</StatusChip>
               <StatusChip tone="neutral">Dokumente: {documentsShortStatus(detail)}</StatusChip>
+              <StatusChip tone={detail.preparation?.failedCount ? 'critical' : detail.preparation?.isOperationallyReady === false ? 'warning' : 'neutral'}>
+                Vorbereitung: {preparationShortStatus(detail)}
+              </StatusChip>
               <StatusChip tone="neutral">Übergabe: {handoverShortStatus(detail)}</StatusChip>
             </div>
           </div>

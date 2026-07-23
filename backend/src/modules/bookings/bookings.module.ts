@@ -33,6 +33,7 @@ import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/
 import { BookingDomainEventLifecycleService } from './outbox/booking-domain-event-lifecycle.service';
 import { BookingDomainEventOutboxCoreModule } from './outbox/booking-domain-event-outbox-core.module';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
+import { BookingPreparationModule } from './preparation/booking-preparation.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     VehiclesModule,
     ActivityLogModule,
     BookingDomainEventOutboxCoreModule,
+    BookingPreparationModule,
   ],
   controllers: [BookingsController],
   providers: [

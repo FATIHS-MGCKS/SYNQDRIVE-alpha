@@ -264,10 +264,15 @@ describe('BookingDomainEventOutboxProcessorService', () => {
       processAllConsumers: jest.fn().mockResolvedValue(undefined),
     };
 
+    const preparationState = {
+      reconcile: jest.fn().mockResolvedValue(undefined),
+    };
+
     const processor = new BookingDomainEventOutboxProcessorService(
       config as any,
       outboxRepo as any,
       consumerRouter as any,
+      preparationState as any,
       observability,
     );
 
@@ -305,10 +310,15 @@ describe('BookingDomainEventOutboxProcessorService', () => {
         .mockRejectedValue(new BookingDomainEventConsumerError('timeout', { retryable: true })),
     };
 
+    const preparationState = {
+      reconcile: jest.fn().mockResolvedValue(undefined),
+    };
+
     const processor = new BookingDomainEventOutboxProcessorService(
       config as any,
       outboxRepo as any,
       consumerRouter as any,
+      preparationState as any,
       observability,
     );
 

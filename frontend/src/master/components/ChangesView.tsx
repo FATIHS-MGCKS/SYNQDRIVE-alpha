@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-preparation-state-v49796-2026-07-23',
+    version: '4.9.796',
+    title: 'V4.9.796 — Booking preparation artifact state (Prompt 24)',
+    summary: [
+      'Kanonischer Preparation-/Processing-State für 9 Artefakte: Pricing, Invoice, Payment, Legal Documents, Rental Agreement, Pickup/Return Task, Customer E-Mail, Internal Notification.',
+      'Status: NOT_REQUIRED, PENDING, PROCESSING, READY, FAILED, RETRY_SCHEDULED — persisted + reconciled aus Outbox-Receipts, Jobs, Invoices, Tasks, E-Mails.',
+      'Pickup-Gate blockiert bei fehlenden Pflichtartefakten (Rechnung, Legal, Mietvertrag); kein falscher Voll-Erfolg in Booking-Detail.',
+      'Admin-Recovery: Retry Invoice/Document/E-Mail, Rebuild Tasks — Permission, Audit, Idempotency.',
+      'Prometheus `synqdrive_booking_preparation_failed`; Frontend StatusChips + Retry nur für `bookings.manage`.',
+    ],
+    reason:
+      'Booking Production-Readiness Prompt 24 — fehlgeschlagene oder laufende Folgeprozesse müssen sichtbar und recoverable sein.',
+    previousBehavior:
+      'Folgeprozesse liefen async via Outbox, aber kein einheitlicher Vorbereitungsstatus; Pickup konnte trotz fehlender Pflichtartefakte scheinbar bereit wirken.',
+    details:
+      'backend/src/modules/bookings/preparation/*, prisma/migrations/20260723270000_booking_preparation_artifact_state, docs/architecture/BOOKING_PREPARATION_ARTIFACT_STATE_2026-07-23.md, frontend BookingPreparationPanel',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:15:00.000Z',
+  },
+  {
     id: 'booking-outbox-consumers-v49795-2026-07-23',
     version: '4.9.795',
     title: 'V4.9.795 — Booking outbox consumers (Prompt 23)',
