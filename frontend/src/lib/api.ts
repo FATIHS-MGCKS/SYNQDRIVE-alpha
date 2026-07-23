@@ -1376,20 +1376,19 @@ export type BookingStationContext = {
 
 /** Lean create body for operator/rental booking forms → `api.bookings.create`. */
 export type OperatorBookingCreatePayload = {
-  customer: { connect: { id: string } };
-  vehicle: { connect: { id: string } };
-  pickupStation?: { connect: { id: string } };
-  returnStation?: { connect: { id: string } };
+  customerId: string;
+  vehicleId: string;
+  pickupStationId?: string;
+  returnStationId?: string;
   startDate: string;
   endDate: string;
-  dailyRateCents?: number;
-  totalPriceCents?: number;
+  quoteId: string;
   kmIncluded?: number;
   insuranceOptions?: string[];
   extrasJson?: unknown;
   pricingInput?: unknown;
   currency?: string;
-  status?: string;
+  status?: 'PENDING' | 'CONFIRMED';
   notes?: string;
 };
 
@@ -1399,14 +1398,16 @@ export type OperatorBookingUpdatePayload = {
   endDate?: string;
   notes?: string;
   kmIncluded?: number;
-  status?: string;
+  status?: 'PENDING' | 'CONFIRMED';
   vehicleId?: string;
-  vehicle?: { connect: { id: string } };
-  customer?: { connect: { id: string } };
+  customerId?: string;
   pickupStationId?: string;
   returnStationId?: string;
-  pickupStation?: { connect: { id: string } };
-  returnStation?: { connect: { id: string } };
+  pickupAddressOverride?: string;
+  returnAddressOverride?: string;
+  insuranceOptions?: string[];
+  extrasJson?: unknown;
+  pricingInput?: unknown;
 };
 
 /** Query params for `GET /organizations/:orgId/bookings` (all optional, backward-compatible). */

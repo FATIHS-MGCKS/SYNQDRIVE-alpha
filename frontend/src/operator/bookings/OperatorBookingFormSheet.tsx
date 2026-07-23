@@ -302,7 +302,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     }
 
     if (vehicleId && vehicleId !== detail.vehicle.vehicleId) {
-      patch.vehicle = { connect: { id: vehicleId } };
+      patch.vehicleId = vehicleId;
     }
 
     if (pickupStationId && pickupStationId !== detail.core.pickupStationId) {

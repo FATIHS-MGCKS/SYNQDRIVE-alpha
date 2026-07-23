@@ -553,7 +553,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         v.license === cleanEdit.plate,
     );
     if (selectedVehicle && selectedVehicle.id !== booking.vehicleId) {
-      patch.vehicle = { connect: { id: selectedVehicle.id } };
+      patch.vehicleId = selectedVehicle.id;
     }
 
     const selectedCustomer = apiCustomers.find((c: any) => {
@@ -561,7 +561,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       return label === cleanEdit.customer;
     });
     if (selectedCustomer?.id && selectedCustomer.id !== booking.customerId) {
-      patch.customer = { connect: { id: selectedCustomer.id } };
+      patch.customerId = selectedCustomer.id;
     }
 
     if (cleanEdit.includedKm != null) patch.kmIncluded = Number(cleanEdit.includedKm);

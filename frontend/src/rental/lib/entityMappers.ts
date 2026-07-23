@@ -592,24 +592,21 @@ export interface BuildBookingCreatePayloadArgs {
 export function buildBookingCreatePayload(args: BuildBookingCreatePayloadArgs) {
   const startIso = new Date(`${args.pickupDate}T${args.pickupTime || '10:00'}:00`).toISOString();
   const endIso = new Date(`${args.returnDate}T${args.returnTime || '10:00'}:00`).toISOString();
+  if (!args.quoteId) {
+    throw new Error('quoteId is required to create a booking');
+  }
   return {
-    customer: { connect: { id: args.customerId } },
-    vehicle: { connect: { id: args.vehicleId } },
-    ...(args.pickupStationId ? { pickupStation: { connect: { id: args.pickupStationId } } } : {}),
-    ...(args.returnStationId ? { returnStation: { connect: { id: args.returnStationId } } } : {}),
+    customerId: args.customerId,
+    vehicleId: args.vehicleId,
+    pickupStationId: args.pickupStationId ?? undefined,
+    returnStationId: args.returnStationId ?? undefined,
     startDate: startIso,
     endDate: endIso,
-    ...(args.dailyRateEuro != null
-      ? { dailyRateCents: Math.round(args.dailyRateEuro * 100) }
-      : {}),
-    ...(args.totalPriceEuro != null
-      ? { totalPriceCents: Math.round(args.totalPriceEuro * 100) }
-      : {}),
+    quoteId: args.quoteId,
     ...(args.includedKm != null ? { kmIncluded: Math.max(0, Math.round(args.includedKm)) } : {}),
     ...(args.insuranceLabels ? { insuranceOptions: args.insuranceLabels } : {}),
     ...(args.extras ? { extrasJson: args.extras } : {}),
     ...(args.pricingInput ? { pricingInput: args.pricingInput } : {}),
-    ...(args.quoteId ? { quoteId: args.quoteId } : {}),
     ...(args.currency ? { currency: args.currency.toLowerCase() } : {}),
     status: args.status || 'PENDING',
     notes: args.notes || '',

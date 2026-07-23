@@ -35,6 +35,66 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-create-validation-prompt5-2026-07-23',
+    version: '4.9.777',
+    title: 'Booking Production-Readiness — Create Validation (Prompt 5/34)',
+    summary: [
+      'Vollständiger `CreateBookingDto` mit kanonischen Feldern (`pickupAt`, `returnAt`, `pricingQuoteId`, `customerNotes`, `internalNotes`, `paymentIntent`, `allowedDriverIds`, `pricingInput`, `isOneWayRental`) und Legacy-Aliases.',
+      'Expliziter `CreateBookingCommand` — keine Client-Preise; Quote ist einzige Preisquelle.',
+      '`BookingCreateValidationService` mit stabilen Fehlercodes (Datumsfenster, Mietdauer, Tenant-IDOR, Quote, Station/One-Way, Rental Health, Customer Eligibility).',
+      '`PricingQuoteService.assertQuoteReadyForBooking` für read-only Quote-Prüfung vor Consume.',
+      'Tests: booking-create.validation.service.spec.ts, booking-command.mapper.spec.ts, booking-mutation.dto.spec.ts.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 5 — fachlich validierte Buchungserstellung ohne Client-Preisvertrauen.',
+    previousBehavior:
+      'CreateBookingDto deckte nur Basis-Felder ab; Validierung verteilt in Service ohne stabile Codes; dailyRateCents/totalPriceCents noch als Legacy-Hints akzeptiert.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-create.validation.service.ts, create-booking.dto.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T19:30:00.000Z',
+  },
+  {
+    id: 'booking-dto-validation-prompt4-2026-07-23',
+    version: '4.9.776',
+    title: 'Booking Production-Readiness — DTO Validation (Prompt 4/34)',
+    summary: [
+      'Entfernt `Prisma.BookingCreateInput` / `Prisma.BookingUpdateInput` aus öffentlichen Booking-HTTP-Endpunkten.',
+      'Neue class-validator DTOs: `CreateBookingDto`, `UpdateBookingDto`, `MarkBookingNoShowDto`.',
+      'Domain-Commands (`CreateBookingCommand`, `UpdateBookingCommand`) + Mapper vor Service-Layer.',
+      'Keine Client-steuerbaren Prisma-Relationen (connect/disconnect); flat IDs only.',
+      'Frontend-Payloads auf `customerId`/`vehicleId`/`quoteId` umgestellt (kein connect-Shape).',
+    ],
+    reason: 'Booking Production-Readiness Prompt 4 — sichere Request-Validierung, deny unknown fields, keine ungefilterten Prisma-Payloads.',
+    previousBehavior:
+      'POST/PATCH /bookings akzeptierten Prisma-Input-Shapes inkl. nested connect; kein forbidNonWhitelisted auf Mutation-Bodies.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-mutation.dto.spec.ts, booking-command.mapper.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T18:01:00.000Z',
+  },
+  {
+    id: 'booking-endpoint-security-prompt3-2026-07-23',
+    version: '4.9.775',
+    title: 'Booking Production-Readiness — Endpoint Security (Prompt 3/34)',
+    summary: [
+      '`BookingPermissionsGuard` deny-by-default auf allen `BookingsController`-Handlern.',
+      'IDOR-Schutz via `BookingAccessService` (bookingId + organizationId); Driver-Scope per E-Mail↔Kunde.',
+      'Response-Redaction für sensitive/finance/signature/audit/documents Bereiche.',
+      'PATCH-Feldprüfung: schedule/customer/vehicle/status erfordern zusätzliche Submodule.',
+      'Documents- und E-Mail-Booking-Routen auf `bookings-documents.*` + IDOR umgestellt.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 3 — explizite Permission-Anforderung pro Endpunkt, keine Mutation nur durch Org-Mitgliedschaft.',
+    previousBehavior:
+      'BookingsController ohne BookingPermissionsGuard; Documents/E-Mail-Routen mit grobem `bookings.*` bzw. `@Roles(ORG_ADMIN)`; keine systematische Response-Redaction.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, bookings.permissions.characterization.spec.ts, bookings.permissions.enforcement.spec.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T17:55:00.000Z',
+  },
+  {
     id: 'fleet-health-service-cases-list-monitoring-v49774-2026-07-23',
     version: '4.9.774',
     title: 'V4.9.774 — Fleet Health Service-Cases-List + monitoring auto-refresh (deploy)',

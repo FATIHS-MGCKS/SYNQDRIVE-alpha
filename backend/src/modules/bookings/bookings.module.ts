@@ -22,6 +22,11 @@ import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.s
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
+import { BookingPermissionService } from './booking-permission.service';
+import { BookingAccessService } from './booking-access.service';
+import { BookingResponseRedactionService } from './booking-response-redaction.service';
+import { BookingPermissionsGuard } from './guards/booking-permissions.guard';
+import { BookingCreateValidationService } from './booking-create.validation.service';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
 
 @Module({
@@ -52,6 +57,11 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
+    BookingPermissionService,
+    BookingAccessService,
+    BookingResponseRedactionService,
+    BookingCreateValidationService,
+    BookingPermissionsGuard,
   ],
   exports: [
     BookingsService,
@@ -59,6 +69,9 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingRentalEligibilityService,
     BookingWizardDraftService,
     BookingAllowedDriversService,
+    BookingPermissionService,
+    BookingAccessService,
+    BookingResponseRedactionService,
   ],
 })
 export class BookingsModule {}
