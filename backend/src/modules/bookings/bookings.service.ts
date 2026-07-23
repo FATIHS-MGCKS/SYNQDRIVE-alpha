@@ -72,6 +72,10 @@ import {
   assertWizardPreviewFingerprintMatches,
   buildEligibilityPreviewFingerprint,
 } from './booking-wizard-eligibility.util';
+import type { PermissionActor } from '@shared/auth/permission.util';
+import { BookingFinancialStateService } from './financial/booking-financial-state.service';
+import { BookingFinancialAccessService } from './financial/booking-financial-access.service';
+import { REDACTED_FINANCE_DETAIL } from './financial/booking-financial-state.types';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -125,6 +129,8 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly bookingFinancialState: BookingFinancialStateService,
+    private readonly bookingFinancialAccess: BookingFinancialAccessService,
   ) {}
 
   /**
@@ -371,6 +377,14 @@ export class BookingsService {
           );
         });
       throw err;
+    }
+
+    if (booking.status === 'CONFIRMED') {
+      await this.bookingFinancialState.ensureBookingInvoiceOnConfirm(orgId, booking.id, {
+        userId: options?.userId ?? null,
+      });
+    } else {
+      await this.bookingFinancialState.syncPersistedFinancialState(orgId, booking.id);
     }
 
     // Generate the initial document bundle for operator/rental bookings once
@@ -897,7 +911,11 @@ export class BookingsService {
     };
   }
 
-  async findDetail(orgId: string, id: string): Promise<BookingDetailDto | null> {
+  async findDetail(
+    orgId: string,
+    id: string,
+    actor?: PermissionActor,
+  ): Promise<BookingDetailDto | null> {
     const b = await this.prisma.booking.findFirst({
       where: { id, organizationId: orgId },
       include: { customer: true, vehicle: true },
@@ -1190,6 +1208,8 @@ export class BookingsService {
     }
 
     const finalInvoice = invoices.find((i) => i.type === 'OUTGOING_BOOKING' && i.title?.includes('Schluss'));
+    const canReadFinancials = await this.bookingFinancialAccess.canReadFinancialData(actor, orgId);
+    const financialReadModel = await this.bookingFinancialState.buildReadModel(orgId, id);
     const payload = (analysis?.payload ?? {}) as Record<string, unknown>;
     const eventSummary = (payload.eventSummary ?? {}) as Record<string, unknown>;
 
@@ -1293,27 +1313,41 @@ export class BookingsService {
         fuelPercent: null,
         evSoc: null,
       },
-      finance: {
-        basePriceCents: b.dailyRateCents != null && b.totalPriceCents != null
-          ? Math.max(0, b.totalPriceCents - extrasPriceCents)
-          : b.totalPriceCents,
-        extrasPriceCents: extrasPriceCents || null,
-        discountAmountCents: null,
-        depositAmountCents: deposit?.amountCents ?? priceSnapshot?.depositAmountCents ?? null,
-        depositStatus: deposit?.status ?? null,
-        taxRate: null,
-        taxAmountCents: null,
-        grossAmountCents,
-        paidAmountCents: paidAmountCents || null,
-        openAmountCents,
-        paymentStatus,
-        invoiceStatus: invoices[0]?.status ?? null,
-        finalInvoiceStatus: finalInvoice?.status ?? null,
-        additionalChargesCents: null,
-        refundAmountCents: deposit?.refundAmountCents ?? null,
-        retainedDepositAmountCents: deposit?.retainedAmountCents ?? null,
-        computed: grossAmountCents != null,
-      },
+      finance: canReadFinancials
+        ? {
+            basePriceCents: b.dailyRateCents != null && b.totalPriceCents != null
+              ? Math.max(0, b.totalPriceCents - extrasPriceCents)
+              : b.totalPriceCents,
+            extrasPriceCents: extrasPriceCents || null,
+            discountAmountCents: null,
+            depositAmountCents: deposit?.amountCents ?? priceSnapshot?.depositAmountCents ?? null,
+            depositStatus: deposit?.status ?? null,
+            taxRate: null,
+            taxAmountCents: null,
+            grossAmountCents,
+            paidAmountCents: paidAmountCents || null,
+            openAmountCents,
+            paymentStatus,
+            invoiceStatus: invoices[0]?.status ?? null,
+            finalInvoiceStatus: finalInvoice?.status ?? null,
+            additionalChargesCents: null,
+            refundAmountCents: deposit?.refundAmountCents ?? null,
+            retainedDepositAmountCents: deposit?.retainedAmountCents ?? null,
+            computed: grossAmountCents != null,
+            financialState: financialReadModel.financialState,
+            invoiceProcessingState: financialReadModel.invoiceProcessingState,
+            invoiceProcessingError: financialReadModel.invoiceProcessingError,
+            invoiceProcessingAttemptCount: financialReadModel.invoiceProcessingAttemptCount,
+            invoiceProcessingNextRetryAt: financialReadModel.invoiceProcessingNextRetryAt,
+            canonicalInvoiceId: financialReadModel.canonicalInvoiceId,
+            priceSnapshotId: financialReadModel.priceSnapshotId,
+            priceSnapshotRevision: financialReadModel.priceSnapshotRevision,
+            invoiceRequired: financialReadModel.invoiceRequired,
+            invoiceReady: financialReadModel.invoiceReady,
+            recoveryAvailable: financialReadModel.recoveryAvailable,
+            redacted: false,
+          }
+        : { ...REDACTED_FINANCE_DETAIL },
       documents: {
         bundleStatus: bundleView?.bundle.status ?? null,
         completenessStatus: bundleView?.completeness?.status ?? null,
@@ -1358,7 +1392,7 @@ export class BookingsService {
         description: a.description,
         createdAt: a.createdAt.toISOString(),
       })),
-      payments: paymentsCard,
+      payments: canReadFinancials ? paymentsCard : null,
     };
   }
 
@@ -2054,6 +2088,9 @@ export class BookingsService {
     // Generate the initial document bundle when a booking transitions INTO
     // CONFIRMED via update. Idempotent + fire-and-forget.
     if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
+      await this.bookingFinancialState.ensureBookingInvoiceOnConfirm(orgId, id, {
+        userId: options?.userId ?? null,
+      });
       void this.bookingDocumentGenerationDispatcher
         .enqueueInitialBundle(orgId, id, null)
         .then(() =>

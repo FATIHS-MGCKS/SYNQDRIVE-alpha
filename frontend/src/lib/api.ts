@@ -1521,6 +1521,18 @@ export type BookingDetailDto = {
     refundAmountCents: number | null;
     retainedDepositAmountCents: number | null;
     computed: boolean;
+    financialState?: string | null;
+    invoiceProcessingState?: string | null;
+    invoiceProcessingError?: string | null;
+    invoiceProcessingAttemptCount?: number | null;
+    invoiceProcessingNextRetryAt?: string | null;
+    canonicalInvoiceId?: string | null;
+    priceSnapshotId?: string | null;
+    priceSnapshotRevision?: number | null;
+    invoiceRequired?: boolean | null;
+    invoiceReady?: boolean | null;
+    recoveryAvailable?: boolean | null;
+    redacted?: boolean;
   };
   documents: {
     bundleStatus: string | null;

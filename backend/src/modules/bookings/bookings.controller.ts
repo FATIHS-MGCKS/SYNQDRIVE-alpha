@@ -41,6 +41,9 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import type { PermissionActor } from '@shared/auth/permission.util';
+import { BookingFinancialStateService } from './financial/booking-financial-state.service';
 import { RequireBookingEligibilityPermission } from './decorators/require-booking-eligibility-permission.decorator';
 import {
   CreateBookingEligibilityApprovalDto,
@@ -65,6 +68,7 @@ export class BookingsController {
     private readonly allowedDriversService: BookingAllowedDriversService,
     private readonly eligibilityApprovalService: BookingEligibilityApprovalService,
     private readonly eligibilityDecisionService: BookingEligibilityDecisionService,
+    private readonly bookingFinancialState: BookingFinancialStateService,
   ) {}
 
   @Get('today/pickups')
@@ -361,10 +365,34 @@ export class BookingsController {
   async findDetail(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('platformRole') platformRole: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @CurrentUser('organizationId') organizationId: string | undefined,
   ) {
-    const detail = await this.bookingsService.findDetail(orgId, id);
+    const actor: PermissionActor = {
+      id: userId,
+      platformRole,
+      membershipRole,
+      organizationId,
+    };
+    const detail = await this.bookingsService.findDetail(orgId, id, actor);
     if (!detail) throw new NotFoundException(`Booking ${id} not found`);
     return detail;
+  }
+
+  @Post(':id/retry-invoice-processing')
+  @RequirePermission('invoices', 'write')
+  async retryInvoiceProcessing(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const invoice = await this.bookingFinancialState.retryInvoiceProcessing(orgId, id, {
+      userId: userId ?? null,
+    });
+    const financial = await this.bookingFinancialState.buildReadModel(orgId, id);
+    return { invoice, financial };
   }
 
   @Get(':id')

@@ -1070,6 +1070,28 @@ enum BookingPaymentIntent {
   TERMINAL
 }
 
+/// Canonical booking financial lifecycle — separate from BookingStatus.
+enum BookingFinancialState {
+  NOT_REQUIRED
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  PARTIALLY_PAID
+  PAID
+  REFUND_PENDING
+  REFUNDED
+}
+
+/// Deferred invoice bootstrap/issue pipeline for a booking.
+enum BookingInvoiceProcessingState {
+  NOT_REQUIRED
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
 enum InsightType {
   TIGHT_HANDOVER
   RETURN_NEEDS_INSPECTION
@@ -5579,6 +5601,14 @@ model Booking {
   paymentStatus           BookingPaymentStatus  @default(UNPAID) @map("payment_status")
   /// Checkout payment intent from wizard — does not imply money received.
   paymentIntent           BookingPaymentIntent? @map("payment_intent")
+  /// Canonical financial lifecycle — derived from invoice + payment requests.
+  financialState          BookingFinancialState @default(PENDING) @map("financial_state")
+  /// Invoice bootstrap/issue pipeline when deferred from booking confirmation.
+  invoiceProcessingState  BookingInvoiceProcessingState @default(PENDING) @map("invoice_processing_state")
+  invoiceProcessingError  String?               @map("invoice_processing_error")
+  invoiceProcessingAttemptCount Int               @default(0) @map("invoice_processing_attempt_count")
+  invoiceProcessingNextRetryAt DateTime?          @map("invoice_processing_next_retry_at")
+  canonicalInvoiceId      String?               @map("canonical_invoice_id")
   notes                   String?
   cancelledAt             DateTime?             @map("cancelled_at")
   completedAt             DateTime?             @map("completed_at")
@@ -5611,12 +5641,16 @@ model Booking {
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
   allowedDrivers          BookingAllowedDriver[]
+  canonicalInvoice        OrgInvoice?                 @relation("BookingCanonicalInvoice", fields: [canonicalInvoiceId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([customerId])
   @@index([assignedDriverId])
   @@index([vehicleId])
   @@index([status])
+  @@index([financialState])
+  @@index([invoiceProcessingState])
+  @@index([canonicalInvoiceId])
   @@index([startDate, endDate])
   @@index([pickupStationId])
   @@index([returnStationId])
@@ -5894,6 +5928,7 @@ model BookingPriceSnapshot {
   tariffGroup   PriceTariffGroup?      @relation(fields: [tariffGroupId], references: [id], onDelete: SetNull)
   tariffVersion PriceTariffVersion?    @relation(fields: [tariffVersionId], references: [id], onDelete: SetNull)
   lineItems     BookingPriceLineItem[]
+  invoices      OrgInvoice[]
 
   @@index([organizationId])
   @@map("booking_price_snapshots")
@@ -6954,6 +6989,7 @@ model OrgInvoice {
   vendorName           String?          @map("vendor_name")
   bookingId            String?          @map("booking_id")
   vehicleId            String?          @map("vehicle_id")
+  bookingPriceSnapshotId String?        @map("booking_price_snapshot_id")
   title                String
   description          String?
   lineItems            Json?            @map("line_items")
@@ -6990,6 +7026,8 @@ model OrgInvoice {
   generatedDocument      GeneratedDocument?         @relation("InvoiceActiveDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
   documents              GeneratedDocument[]        @relation("InvoiceDocuments")
   outboundEmails         OutboundEmail[]
+  bookingPriceSnapshot   BookingPriceSnapshot?    @relation(fields: [bookingPriceSnapshotId], references: [id], onDelete: SetNull)
+  canonicalForBookings   Booking[]                  @relation("BookingCanonicalInvoice")
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
   @@unique([organizationId, documentExtractionId])
@@ -6997,6 +7035,7 @@ model OrgInvoice {
   @@index([customerId])
   @@index([vendorId])
   @@index([bookingId])
+  @@index([bookingPriceSnapshotId])
   @@index([status])
   @@index([type])
   @@index([invoiceDate])

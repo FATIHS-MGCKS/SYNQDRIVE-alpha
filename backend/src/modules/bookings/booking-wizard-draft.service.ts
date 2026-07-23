@@ -10,7 +10,6 @@ import type { PermissionActor } from '@shared/auth/permission.util';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
-import { BookingInvoiceLifecycleService } from '@modules/invoices/booking-invoice-lifecycle.service';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
 import { BookingLegalDocumentEmailService } from '@modules/outbound-email/booking-legal-document-email.service';
 import { PricingService } from '@modules/pricing/pricing.service';
@@ -68,7 +67,6 @@ export class BookingWizardDraftService {
     private readonly bundleService: BookingDocumentBundleService,
     private readonly generatedDocuments: GeneratedDocumentsService,
     private readonly invoicesService: InvoicesService,
-    private readonly bookingInvoiceLifecycle: BookingInvoiceLifecycleService,
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
     private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
@@ -334,15 +332,6 @@ export class BookingWizardDraftService {
     });
 
     await this.bookingDepositSnapshot.freezeDepositOnSnapshot(orgId, bookingId);
-
-    await this.bookingInvoiceLifecycle
-      .syncOnBookingConfirmed(orgId, bookingId, {
-        paymentIntent: resolvedIntent,
-        userId: options?.userId ?? null,
-      })
-      .catch((err) => {
-        console.error('[BookingWizardDraft] invoice sync failed', err);
-      });
 
     let paymentFlow: WizardPaymentFlowResult | null = null;
     if (resolvedIntent === 'payment_link') {
