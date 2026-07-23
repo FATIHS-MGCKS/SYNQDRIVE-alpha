@@ -77,6 +77,10 @@ export const RENTAL_RULES_VALIDATION_MESSAGE_KEYS = {
     invalid: 'rentalRules.validation.resetFields.invalid',
     maxSize: 'rentalRules.validation.resetFields.maxSize',
   },
+  expectedVersion: {
+    int: 'rentalRules.validation.expectedVersion.int',
+    min: 'rentalRules.validation.expectedVersion.min',
+  },
   enum: {
     invalid: 'rentalRules.validation.enum.invalid',
   },

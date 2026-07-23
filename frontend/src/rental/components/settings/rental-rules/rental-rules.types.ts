@@ -35,6 +35,7 @@ export interface OrganizationRentalRulesDto extends RentalRuleFields {
   organizationId: string;
   isActive: boolean;
   configured: boolean;
+  version?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -49,6 +50,7 @@ export interface RentalVehicleCategoryDto extends RentalRuleFields {
   icon: string | null;
   isActive: boolean;
   vehicleCount?: number;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -144,7 +146,7 @@ export interface VehicleRentalRequirementsDto {
     type: RentalVehicleCategoryType | null;
     isActive: boolean;
   } | null;
-  overrides: (RentalRuleFields & { id: string; vehicleId: string }) | null;
+  overrides: (RentalRuleFields & { id: string; vehicleId: string; version?: number }) | null;
 }
 
 export type RentalRuleFormValues = {

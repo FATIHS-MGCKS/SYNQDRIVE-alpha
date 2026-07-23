@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
@@ -101,8 +102,12 @@ export class RentalRulesController {
 
   @Delete('organizations/:orgId/rental-rules/categories/:categoryId')
   @RequireRentalRulePermission('rental_rules.publish')
-  disableCategory(@Param('orgId') orgId: string, @Param('categoryId') categoryId: string) {
-    return this.rentalRules.disableCategory(orgId, categoryId);
+  disableCategory(
+    @Param('orgId') orgId: string,
+    @Param('categoryId') categoryId: string,
+    @Query('expectedVersion', ParseIntPipe) expectedVersion: number,
+  ) {
+    return this.rentalRules.disableCategory(orgId, categoryId, expectedVersion);
   }
 
   @Get('organizations/:orgId/rental-rules/categories/:categoryId/vehicles')
@@ -170,9 +175,10 @@ export class RentalRulesController {
   deleteVehicleOverrides(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
+    @Query('expectedVersion', ParseIntPipe) expectedVersion: number,
     @CurrentUser() user: PermissionActor | undefined,
   ) {
-    return this.rentalRules.deleteVehicleOverrides(orgId, vehicleId, { actor: user });
+    return this.rentalRules.deleteVehicleOverrides(orgId, vehicleId, expectedVersion, { actor: user });
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/rental-requirements/effective')

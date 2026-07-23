@@ -566,35 +566,25 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
       <DefaultRulesDrawer
         open={defaultsOpen}
         onOpenChange={setDefaultsOpen}
+        orgId={orgId ?? ''}
         defaults={defaults}
         canWrite={canWrite}
         saving={actionId === 'defaults'}
-        onSave={async (payload) => {
-          if (!orgId) return;
-          await runAction('defaults', () => api.rentalRules.patchDefaults(orgId, payload));
-        }}
+        onSaved={load}
       />
 
       {categoryDrawer && (
         <CategoryDetailDrawer
           open={Boolean(categoryDrawer)}
           onOpenChange={(open) => !open && setCategoryDrawer(null)}
+          orgId={orgId ?? ''}
           mode={categoryDrawer.mode}
           category={categoryDrawer.category}
           assignedVehicles={assignedVehicles}
           canWrite={canWrite}
           canAssignVehicles={canAssignVehicles}
           saving={actionId === 'category'}
-          onSave={async (payload) => {
-            if (!orgId) return;
-            if (categoryDrawer.mode === 'create') {
-              await runAction('category', () => api.rentalRules.createCategory(orgId, payload));
-            } else if (categoryDrawer.category) {
-              await runAction('category', () =>
-                api.rentalRules.updateCategory(orgId, categoryDrawer.category!.id, payload),
-              );
-            }
-          }}
+          onSaved={load}
           onAssignVehicles={() => {
             if (categoryDrawer.category) void openAssign(categoryDrawer.category);
           }}

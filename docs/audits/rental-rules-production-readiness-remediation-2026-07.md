@@ -2138,3 +2138,81 @@ Normalisierung: `trim` → Whitespace kollabieren → `toLowerCase()` (`normaliz
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 20).*
+
+---
+
+## Prompt 21 — Optimistic Concurrency Control (OCC)
+
+**Ziel:** Parallele Administratoren dürfen sich nicht unbemerkt gegenseitig überschreiben.
+
+### 21.1 Gewählte Strategie
+
+**Integer `version` + `expectedVersion` im Request-Body** (analog Task-Automation-Overrides).
+
+| Aspekt | Entscheidung |
+|--------|--------------|
+| Mechanismus | Monoton steigendes `version`-Feld pro Zeile (Default `1`) |
+| Client sendet | `expectedVersion` bei jedem mutierenden PATCH/POST (Reset) |
+| Erst-Anlage | `expectedVersion: 0` wenn noch keine Zeile existiert |
+| Atomarität | `updateMany` / `deleteMany` mit `where: { …, version: expectedVersion }` |
+| Konflikt | HTTP **409** + Code `RENTAL_RULES_VERSION_CONFLICT` + `current`-Snapshot |
+| Kein Force-Save | Keine Override-Permission; nur Reload oder erneute Bearbeitung |
+
+Kein ETag/If-Match (nicht im Codebase etabliert). Kein `updatedAt`-Vergleich (Millisekunden-Risiko).
+
+### 21.2 Betroffene Entitäten
+
+- `OrganizationRentalRules`
+- `RentalVehicleCategory` (Update/Disable)
+- `VehicleRentalRequirementOverride` (Upsert/Reset/Delete)
+
+Migration: `20260723110000_rental_rules_optimistic_concurrency`
+
+### 21.3 API-Kontrakt (409)
+
+```json
+{
+  "statusCode": 409,
+  "code": "RENTAL_RULES_VERSION_CONFLICT",
+  "entityType": "category",
+  "expectedVersion": 2,
+  "currentVersion": 3,
+  "current": { "...": "formatted entity" }
+}
+```
+
+### 21.4 Frontend
+
+| Komponente | Rolle |
+|------------|-------|
+| `rental-rules-concurrency.errors.ts` | Typed fetch + `RentalRulesMutationError` |
+| `RentalRulesConcurrencyDialog.tsx` | Konfliktdialog: eigene Änderung vs. Serverstand |
+| `rental-rules-concurrency.utils.ts` | `withExpectedVersion`, Conflict-Model |
+| Drawer-Integration | DefaultRules, CategoryDetail, VehicleOverrideEditor |
+
+Dialog-Aktionen: **Reload latest**, **Edit again with latest**, **Keep dialog open** (kein blindes Überschreiben).
+
+### 21.5 Tests
+
+| Suite | Abdeckung |
+|-------|-----------|
+| `rental-rules-concurrency.util.spec.ts` | 409-Payload-Struktur |
+| `rental-rules.service.spec.ts` | Version-Mismatch → ConflictException |
+| `rental-rules-concurrency.utils.test.ts` | Frontend Conflict-Model |
+
+---
+
+## Prompt 21 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Lost Updates verhindert | ✅ |
+| Veraltete Stände → 409 | ✅ |
+| UI zeigt Konfliktdialog | ✅ |
+| Kein blindes Force-Save | ✅ |
+| Tests bestehen | ✅ |
+| Prompt 21 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 21).*

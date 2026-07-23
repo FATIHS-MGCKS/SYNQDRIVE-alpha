@@ -11,7 +11,14 @@ import {
 import { RENTAL_RULES_VALIDATION_LIMITS } from '../rental-rules-validation.constants';
 
 async function validateDto<T extends object>(cls: new () => T, plain: object) {
-  const dto = plainToInstance(cls, plain);
+  const needsVersion =
+    cls === UpsertOrganizationRentalRulesDto ||
+    cls === UpdateRentalVehicleCategoryDto ||
+    cls === UpsertVehicleRentalOverridesDto;
+  const dto = plainToInstance(cls, {
+    ...(needsVersion && !('expectedVersion' in plain) ? { expectedVersion: 0 } : {}),
+    ...plain,
+  });
   return validate(dto, { whitelist: true, forbidNonWhitelisted: true });
 }
 

@@ -7,14 +7,19 @@ function makePrisma() {
     organization: { findUnique: jest.fn() },
     organizationRentalRules: {
       findUnique: jest.fn(),
+      create: jest.fn(),
+      updateMany: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       upsert: jest.fn(),
     },
     rentalVehicleCategory: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     vehicle: {
       findFirst: jest.fn(),
@@ -23,9 +28,13 @@ function makePrisma() {
     },
     vehicleRentalRequirementOverride: {
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      create: jest.fn(),
       upsert: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     priceTariffGroup: { findMany: jest.fn() },
     $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
@@ -113,9 +122,30 @@ describe('RentalRulesService', () => {
 
   it('leaves organization defaults unchanged when patch omits fields', async () => {
     prisma.organization.findUnique.mockResolvedValue({ id: 'org1' });
-    prisma.organizationRentalRules.upsert.mockResolvedValue({
+    prisma.organizationRentalRules.findUnique.mockResolvedValue({
       id: 'rules-1',
       organizationId: 'org1',
+      version: 2,
+      minimumAgeYears: 21,
+      minimumLicenseHoldingMonths: 12,
+      depositAmountCents: 10000,
+      depositCurrency: 'EUR',
+      creditCardRequired: true,
+      foreignTravelPolicy: 'ALLOWED',
+      additionalDriverPolicy: 'ALLOWED',
+      youngDriverPolicy: 'FEE_REQUIRED',
+      insuranceRequirement: null,
+      manualApprovalRequired: false,
+      notes: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.organizationRentalRules.updateMany.mockResolvedValue({ count: 1 });
+    prisma.organizationRentalRules.findUniqueOrThrow.mockResolvedValue({
+      id: 'rules-1',
+      organizationId: 'org1',
+      version: 3,
       minimumAgeYears: 21,
       minimumLicenseHoldingMonths: 12,
       depositAmountCents: 10000,
@@ -132,30 +162,51 @@ describe('RentalRulesService', () => {
       updatedAt: new Date(),
     });
 
-    await svc.upsertOrganizationDefaults('org1', {});
+    await svc.upsertOrganizationDefaults('org1', { expectedVersion: 2 });
 
-    expect(prisma.organizationRentalRules.upsert).toHaveBeenCalledWith(
+    expect(prisma.organizationRentalRules.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        update: {},
+        where: { organizationId: 'org1', version: 2 },
       }),
     );
   });
 
   it('clears organization default fields when patch sends null', async () => {
     prisma.organization.findUnique.mockResolvedValue({ id: 'org1' });
-    prisma.organizationRentalRules.upsert.mockResolvedValue({
+    prisma.organizationRentalRules.findUnique.mockResolvedValue({
       id: 'rules-1',
       organizationId: 'org1',
+      version: 1,
+      minimumAgeYears: 21,
+      minimumLicenseHoldingMonths: 12,
+      depositAmountCents: 10000,
+      depositCurrency: 'EUR',
+      creditCardRequired: true,
+      foreignTravelPolicy: 'ALLOWED',
+      additionalDriverPolicy: 'ALLOWED',
+      youngDriverPolicy: 'FEE_REQUIRED',
+      insuranceRequirement: null,
+      manualApprovalRequired: false,
+      notes: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.organizationRentalRules.updateMany.mockResolvedValue({ count: 1 });
+    prisma.organizationRentalRules.findUniqueOrThrow.mockResolvedValue({
+      id: 'rules-1',
+      organizationId: 'org1',
+      version: 2,
       minimumAgeYears: null,
       minimumLicenseHoldingMonths: null,
       depositAmountCents: null,
       depositCurrency: 'EUR',
-      creditCardRequired: null,
+      creditCardRequired: false,
       foreignTravelPolicy: null,
       additionalDriverPolicy: null,
       youngDriverPolicy: null,
       insuranceRequirement: null,
-      manualApprovalRequired: null,
+      manualApprovalRequired: false,
       notes: null,
       isActive: true,
       createdAt: new Date(),
@@ -163,18 +214,20 @@ describe('RentalRulesService', () => {
     });
 
     await svc.upsertOrganizationDefaults('org1', {
+      expectedVersion: 1,
       minimumAgeYears: null,
       creditCardRequired: false,
       manualApprovalRequired: false,
     });
 
-    expect(prisma.organizationRentalRules.upsert).toHaveBeenCalledWith(
+    expect(prisma.organizationRentalRules.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        update: {
+        where: { organizationId: 'org1', version: 1 },
+        data: expect.objectContaining({
           minimumAgeYears: null,
           creditCardRequired: false,
           manualApprovalRequired: false,
-        },
+        }),
       }),
     );
   });
@@ -210,11 +263,14 @@ describe('RentalRulesService', () => {
       organizationId: 'org1',
       name: 'Premium',
       isActive: true,
+      version: 4,
     });
-    prisma.rentalVehicleCategory.update.mockResolvedValue({
+    prisma.rentalVehicleCategory.updateMany.mockResolvedValue({ count: 1 });
+    prisma.rentalVehicleCategory.findUniqueOrThrow.mockResolvedValue({
       id: 'cat1',
       organizationId: 'org1',
       name: 'Premium',
+      nameNormalized: 'premium',
       description: null,
       type: null,
       color: null,
@@ -231,19 +287,22 @@ describe('RentalRulesService', () => {
       manualApprovalRequired: null,
       notes: null,
       isActive: true,
+      version: 5,
       createdAt: new Date(),
       updatedAt: new Date(),
       _count: { vehicles: 0 },
     });
 
     await svc.updateCategory('org1', 'cat1', {
+      expectedVersion: 4,
       minimumAgeYears: null,
       creditCardRequired: false,
       depositCurrency: null,
     });
 
-    expect(prisma.rentalVehicleCategory.update).toHaveBeenCalledWith(
+    expect(prisma.rentalVehicleCategory.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: { id: 'cat1', organizationId: 'org1', version: 4 },
         data: expect.objectContaining({
           minimumAgeYears: null,
           creditCardRequired: false,
@@ -251,6 +310,55 @@ describe('RentalRulesService', () => {
         }),
       }),
     );
+  });
+
+  it('returns 409 payload when organization defaults version mismatches', async () => {
+    const { ConflictException } = await import('@nestjs/common');
+    prisma.organization.findUnique.mockResolvedValue({ id: 'org1' });
+    prisma.organizationRentalRules.findUnique
+      .mockResolvedValueOnce({
+        id: 'rules-1',
+        organizationId: 'org1',
+        version: 3,
+        minimumAgeYears: 21,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: null,
+        depositCurrency: 'EUR',
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .mockResolvedValueOnce({
+        id: 'rules-1',
+        organizationId: 'org1',
+        version: 3,
+        minimumAgeYears: 21,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: null,
+        depositCurrency: 'EUR',
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    prisma.organizationRentalRules.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      svc.upsertOrganizationDefaults('org1', { expectedVersion: 2, minimumAgeYears: 22 }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });
 

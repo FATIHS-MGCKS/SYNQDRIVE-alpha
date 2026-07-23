@@ -38,6 +38,7 @@ export function formatOrganizationRentalRules(row: OrganizationRentalRules) {
     organizationId: row.organizationId,
     ...extractRuleFields(row),
     isActive: row.isActive,
+    version: row.version,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -77,6 +78,7 @@ export function formatRentalVehicleCategory(row: RentalVehicleCategory & { _coun
     ...licenseHoldingDisplayFields(fields.minimumLicenseHoldingMonths ?? null),
     isActive: row.isActive,
     vehicleCount: row._count?.vehicles,
+    version: row.version,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -87,6 +89,7 @@ export function formatVehicleRentalOverride(row: VehicleRentalRequirementOverrid
     id: row.id,
     organizationId: row.organizationId,
     vehicleId: row.vehicleId,
+    version: row.version,
     ...extractRuleFields(row),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

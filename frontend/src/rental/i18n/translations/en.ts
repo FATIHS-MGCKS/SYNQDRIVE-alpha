@@ -2619,6 +2619,17 @@ export const en = {
   'rentalRules.validation.categoryName.maxLength': 'Category name is too long',
   'rentalRules.validation.vehicleIds.maxSize': 'Too many vehicles selected',
   'rentalRules.validation.vehicleIds.unique': 'Duplicate vehicle IDs are not allowed',
+  'rentalRules.concurrency.title': 'Rental rules changed elsewhere',
+  'rentalRules.concurrency.description':
+    'Another user saved changes while you were editing (your version: {expected}, server version: {current}). Your changes were not applied.',
+  'rentalRules.concurrency.yourChanges': 'Your planned changes',
+  'rentalRules.concurrency.serverChanges': 'Current server state',
+  'rentalRules.concurrency.noLocalSummary': 'Unsaved form changes',
+  'rentalRules.concurrency.serverUnavailable': 'Server state is unavailable — reload to fetch the latest rules.',
+  'rentalRules.concurrency.reload': 'Reload latest',
+  'rentalRules.concurrency.editAgain': 'Edit again with latest',
+  'rentalRules.concurrency.cancel': 'Keep dialog open',
+  'rentalRules.concurrency.clearOverridesAttempt': 'Clear all vehicle overrides',
   ...legalDocumentsEn,
 } as const;
 

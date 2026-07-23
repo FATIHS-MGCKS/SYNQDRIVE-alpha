@@ -2617,5 +2617,17 @@ export const de: Record<TranslationKey, string> = {
   'rentalRules.validation.categoryName.maxLength': 'Kategoriename ist zu lang',
   'rentalRules.validation.vehicleIds.maxSize': 'Zu viele Fahrzeuge ausgewählt',
   'rentalRules.validation.vehicleIds.unique': 'Doppelte Fahrzeug-IDs sind nicht erlaubt',
+  'rentalRules.concurrency.title': 'Mietregeln wurden parallel geändert',
+  'rentalRules.concurrency.description':
+    'Ein anderer Benutzer hat Änderungen gespeichert, während Sie bearbeitet haben (Ihre Version: {expected}, Server-Version: {current}). Ihre Änderungen wurden nicht übernommen.',
+  'rentalRules.concurrency.yourChanges': 'Ihre geplanten Änderungen',
+  'rentalRules.concurrency.serverChanges': 'Aktueller Serverstand',
+  'rentalRules.concurrency.noLocalSummary': 'Nicht gespeicherte Formularänderungen',
+  'rentalRules.concurrency.serverUnavailable':
+    'Serverstand nicht verfügbar — bitte neu laden, um die aktuellen Regeln zu holen.',
+  'rentalRules.concurrency.reload': 'Neu laden',
+  'rentalRules.concurrency.editAgain': 'Mit aktuellem Stand weiterbearbeiten',
+  'rentalRules.concurrency.cancel': 'Dialog offen lassen',
+  'rentalRules.concurrency.clearOverridesAttempt': 'Alle Fahrzeug-Overrides löschen',
   ...legalDocumentsDe,
 };

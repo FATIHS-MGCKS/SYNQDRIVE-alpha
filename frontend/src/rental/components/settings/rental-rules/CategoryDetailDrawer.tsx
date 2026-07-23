@@ -5,6 +5,14 @@ import { DetailDrawer, StatusChip } from '../../../../components/patterns';
 import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto } from './rental-rules.types';
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
 import { CATEGORY_COLOR_PRESETS, CATEGORY_TYPE_OPTIONS } from './rental-rules.constants';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { RentalRulesMutationError, rentalRulesMutate } from './rental-rules-concurrency.errors';
+import { RentalRulesConcurrencyDialog } from './RentalRulesConcurrencyDialog';
+import {
+  buildRentalRulesConflictModel,
+  mergeServerCategory,
+  withExpectedVersion,
+} from './rental-rules-concurrency.utils';
 import {
   formValuesToPatchPayload,
   labelCategoryType,
@@ -15,13 +23,14 @@ import {
 interface CategoryDetailDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  orgId: string;
   mode: 'create' | 'edit';
   category: RentalVehicleCategoryDto | null;
   assignedVehicles: RentalCategoryVehicleDto[];
   canWrite: boolean;
   canAssignVehicles?: boolean;
   saving: boolean;
-  onSave: (payload: Record<string, unknown>) => Promise<void>;
+  onSaved: () => Promise<void> | void;
   onAssignVehicles: () => void;
   onPreviewVehicle: (vehicleId: string, label: string) => void;
 }
@@ -29,22 +38,27 @@ interface CategoryDetailDrawerProps {
 export function CategoryDetailDrawer({
   open,
   onOpenChange,
+  orgId,
   mode,
   category,
   assignedVehicles,
   canWrite,
   canAssignVehicles = false,
   saving,
-  onSave,
+  onSaved,
   onAssignVehicles,
   onPreviewVehicle,
 }: CategoryDetailDrawerProps) {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('');
   const [color, setColor] = useState(CATEGORY_COLOR_PRESETS[0]);
   const [ruleValues, setRuleValues] = useState(rulesToFormValues(null));
   const [formError, setFormError] = useState<string | null>(null);
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const [conflictError, setConflictError] = useState<RentalRulesMutationError | null>(null);
+  const [pendingLocalSummary, setPendingLocalSummary] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -62,6 +76,8 @@ export function CategoryDetailDrawer({
       setRuleValues(rulesToFormValues(null));
     }
     setFormError(null);
+    setConflictOpen(false);
+    setConflictError(null);
   }, [open, mode, category]);
 
   const handleSave = async () => {
@@ -86,16 +102,38 @@ export function CategoryDetailDrawer({
         mode === 'create' ? 'create' : 'edit',
       ),
     };
+    const localSummary = summarizeRuleEntity({ ...category, ...payload });
+    setPendingLocalSummary(localSummary);
     try {
-      await onSave(payload);
+      if (mode === 'create') {
+        await rentalRulesMutate('POST', `/organizations/${orgId}/rental-rules/categories`, payload);
+      } else if (category) {
+        await rentalRulesMutate(
+          'PATCH',
+          `/organizations/${orgId}/rental-rules/categories/${category.id}`,
+          withExpectedVersion(payload, category.version),
+        );
+      }
       toast.success(mode === 'create' ? 'Category created' : 'Category updated');
+      await onSaved();
       onOpenChange(false);
     } catch (e: unknown) {
+      if (e instanceof RentalRulesMutationError && e.isVersionConflict) {
+        setConflictError(e);
+        setConflictOpen(true);
+        return;
+      }
       toast.error(e instanceof Error ? e.message : 'Save failed');
     }
   };
 
+  const conflictModel =
+    conflictError != null
+      ? buildRentalRulesConflictModel(t, conflictError, pendingLocalSummary)
+      : null;
+
   return (
+    <>
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
@@ -247,5 +285,28 @@ export function CategoryDetailDrawer({
         )}
       </div>
     </DetailDrawer>
+
+    <RentalRulesConcurrencyDialog
+      open={conflictOpen}
+      onOpenChange={setConflictOpen}
+      model={conflictModel}
+      onReload={async () => {
+        setConflictOpen(false);
+        onOpenChange(false);
+        await onSaved();
+      }}
+      onEditAgain={() => {
+        const merged = mergeServerCategory(category, conflictError?.current);
+        setConflictOpen(false);
+        if (merged) {
+          setName(merged.name);
+          setDescription(merged.description ?? '');
+          setType(merged.type ?? '');
+          setColor(merged.color ?? CATEGORY_COLOR_PRESETS[0]);
+          setRuleValues(rulesToFormValues(merged));
+        }
+      }}
+    />
+    </>
   );
 }

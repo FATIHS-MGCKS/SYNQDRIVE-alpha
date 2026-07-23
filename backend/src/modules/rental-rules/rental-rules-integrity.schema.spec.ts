@@ -37,6 +37,8 @@ describe('Rental rules DB integrity schema (Prompt 20)', () => {
   it('defines normalized category name uniqueness per organization', () => {
     const schema = readSchema();
     expect(schema).toMatch(/model RentalVehicleCategory[\s\S]*?nameNormalized/);
+    expect(schema).toMatch(/model OrganizationRentalRules[\s\S]*?version\s+Int/);
+    expect(schema).toMatch(/model VehicleRentalRequirementOverride[\s\S]*?version\s+Int/);
     expect(schema).toContain(
       '@@unique([organizationId, nameNormalized], map: "rental_vehicle_categories_org_name_normalized_key")',
     );

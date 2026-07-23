@@ -365,6 +365,16 @@ export function validateRuleForm(values: RentalRuleFormValues): string | null {
   return null;
 }
 
+export function summarizeRuleEntity(entity: Record<string, unknown>): string {
+  const rows = summarizeRules(entity as OrganizationRentalRulesDto);
+  const name = typeof entity.name === 'string' ? entity.name : null;
+  const parts = [
+    ...(name ? [`Name: ${name}`] : []),
+    ...rows.map((row) => `${row.label}: ${row.value}`),
+  ];
+  return parts.join('\n');
+}
+
 export function summarizeRules(
   rules: OrganizationRentalRulesDto | RentalVehicleCategoryDto,
 ): { label: string; value: string }[] {

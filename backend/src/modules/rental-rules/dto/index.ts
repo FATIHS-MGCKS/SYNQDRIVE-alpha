@@ -125,6 +125,10 @@ export class RentalRuleFieldsDto {
 }
 
 export class UpsertOrganizationRentalRulesDto extends RentalRuleFieldsDto {
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(0, { message: MSG.expectedVersion.min })
+  expectedVersion!: number;
+
   @IsOptional()
   @IsBoolean({ message: MSG.boolean.invalid })
   isActive?: boolean;
@@ -166,6 +170,10 @@ export class CreateRentalVehicleCategoryDto extends RentalRuleFieldsDto {
 }
 
 export class UpdateRentalVehicleCategoryDto extends RentalRuleFieldsDto {
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(0, { message: MSG.expectedVersion.min })
+  expectedVersion!: number;
+
   @IsOptional()
   @ValidateIf((_o, value) => isRentalRuleSetValue(value))
   @Transform(trimString)
@@ -215,11 +223,20 @@ export class AssignCategoryVehiclesDto {
   vehicleIds!: string[];
 }
 
-export class UpsertVehicleRentalOverridesDto extends RentalRuleFieldsDto {}
+export class UpsertVehicleRentalOverridesDto extends RentalRuleFieldsDto {
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(0, { message: MSG.expectedVersion.min })
+  expectedVersion!: number;
+}
 
 export const RENTAL_RULE_RESET_FIELD_ALLOWLIST = [...RENTAL_RULE_FIELD_KEYS];
 
 export class ResetVehicleRentalOverridesDto {
+  @IsOptional()
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(0, { message: MSG.expectedVersion.min })
+  expectedVersion?: number;
+
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(L.resetOverrideFields.maxCount, { message: MSG.resetFields.maxSize })
