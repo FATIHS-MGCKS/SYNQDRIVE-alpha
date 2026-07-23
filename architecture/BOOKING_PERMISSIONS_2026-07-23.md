@@ -38,6 +38,24 @@ Public booking mutation endpoints no longer accept Prisma input types:
 
 `ValidationPipe` (`whitelist` + `forbidNonWhitelisted`) rejects unknown fields, nested relation shapes, and internal lifecycle fields. Client sends flat `customerId` / `vehicleId` / `quoteId` only — server owns all Prisma connects.
 
+## Create validation (Prompt 5)
+
+`CreateBookingDto` + `CreateBookingCommand` + `BookingCreateValidationService`:
+
+- Canonical HTTP fields: `pickupAt`, `returnAt`, `pricingQuoteId`, `customerNotes`, `internalNotes`, `paymentIntent`, `allowedDriverIds`, `pricingInput` (mileage/insurance/extras), `isOneWayRental`
+- Legacy aliases accepted: `startDate`/`endDate`/`quoteId`/`notes`/`paymentMethodIntent`
+- Client price hints (`dailyRateCents`, `totalPriceCents`) rejected at DTO boundary
+- `mapCreateBookingDtoToCommand` uses `parseBookingInstant` — no local timezone distortion
+- `BookingCreateValidationService.validate()` — stable error codes (`BOOKING_CREATE_ERROR_CODES`)
+  - Date window (`pickupAt` < `returnAt`)
+  - Min/max rental duration (tariff `minimumRentalDays` + default max 365d)
+  - Tenant-safe customer/vehicle/station/allowed-driver checks
+  - Currency must match quote when provided
+  - Quote integrity via `PricingQuoteService.assertQuoteReadyForBooking`
+  - Station/one-way rules via `StationValidationService`
+  - Rental health gate + customer eligibility (fail closed)
+- `BookingsService.create` applies station defaults, consumes quote server-side, seeds `BookingAllowedDriver` rows from `allowedDriverIds`
+
 ### Guard chain
 
 1. `OrgScopingGuard` — cross-tenant → 403
@@ -87,6 +105,7 @@ Driver scope: DRIVER role without `bookings-sensitive.read` limited to bookings 
 - `backend/src/modules/bookings/dto/mark-booking-no-show.dto.ts`
 - `backend/src/modules/bookings/booking-command.mapper.ts`
 - `backend/src/modules/bookings/booking-command.types.ts`
+- `backend/src/modules/bookings/guards/booking-permissions.guard.ts`
 - `backend/src/modules/bookings/booking-access.service.ts`
 - `backend/src/modules/bookings/booking-response-redaction.service.ts`
 - `backend/src/modules/bookings/booking-update-permission.util.ts`

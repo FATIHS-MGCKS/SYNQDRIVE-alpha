@@ -1,36 +1,128 @@
 import { BadRequestException } from '@nestjs/common';
+import { parseBookingInstant } from '@modules/pricing/tariff-instant.util';
+import { toPrismaBookingPaymentIntent } from './booking-payment-intent.types';
+import { BOOKING_CREATE_ERROR_CODES } from './booking-create-error.codes';
 import type { CreateBookingDto } from './dto/create-booking.dto';
 import type { UpdateBookingDto } from './dto/update-booking.dto';
 import type { CreateBookingCommand, UpdateBookingCommand } from './booking-command.types';
 
-function parseIsoDate(value: string, field: string): Date {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new BadRequestException(`Invalid ${field}`);
+function assertCreateBookingDtoRequiredFields(dto: CreateBookingDto): void {
+  const hasPickup = Boolean(dto.pickupAt?.trim() || dto.startDate?.trim());
+  const hasReturn = Boolean(dto.returnAt?.trim() || dto.endDate?.trim());
+  const hasQuote = Boolean(dto.pricingQuoteId?.trim() || dto.quoteId?.trim());
+  if (!hasPickup || !hasReturn || !hasQuote) {
+    throw new BadRequestException({
+      message:
+        'pickupAt, returnAt and pricingQuoteId are required (legacy aliases: startDate, endDate, quoteId)',
+      code: BOOKING_CREATE_ERROR_CODES.BOOKING_INVALID_DATES,
+    });
   }
-  return date;
+}
+
+function resolveAliasField(
+  canonical: string | undefined,
+  legacy: string | undefined,
+  fieldLabel: string,
+  code: string,
+): string {
+  const canonicalTrimmed = canonical?.trim();
+  const legacyTrimmed = legacy?.trim();
+  if (canonicalTrimmed && legacyTrimmed && canonicalTrimmed !== legacyTrimmed) {
+    throw new BadRequestException({
+      message: `Conflicting values for ${fieldLabel}`,
+      code,
+    });
+  }
+  const resolved = canonicalTrimmed || legacyTrimmed;
+  if (!resolved) {
+    throw new BadRequestException({
+      message: `${fieldLabel} is required`,
+      code: BOOKING_CREATE_ERROR_CODES.BOOKING_INVALID_DATES,
+    });
+  }
+  return resolved;
+}
+
+function parseBookingDate(value: string, field: string): Date {
+  try {
+    return parseBookingInstant(value);
+  } catch (error) {
+    if (error instanceof BadRequestException) {
+      const response = error.getResponse();
+      if (typeof response === 'object' && response !== null) {
+        throw new BadRequestException({
+          ...(response as Record<string, unknown>),
+          field,
+        });
+      }
+    }
+    throw new BadRequestException({
+      message: `Invalid ${field}`,
+      code: BOOKING_CREATE_ERROR_CODES.INVALID_BOOKING_INSTANT,
+      field,
+    });
+  }
+}
+
+export function mergeBookingNotesForStorage(
+  customerNotes?: string,
+  internalNotes?: string,
+): string | undefined {
+  const customer = customerNotes?.trim() ?? '';
+  const internal = internalNotes?.trim() ?? '';
+  if (customer && internal) {
+    return `${customer}\n\n[Internal]\n${internal}`;
+  }
+  const merged = customer || internal;
+  return merged.length > 0 ? merged : undefined;
 }
 
 export function mapCreateBookingDtoToCommand(dto: CreateBookingDto): CreateBookingCommand {
+  assertCreateBookingDtoRequiredFields(dto);
+
+  const pickupRaw = resolveAliasField(
+    dto.pickupAt,
+    dto.startDate,
+    'pickupAt',
+    BOOKING_CREATE_ERROR_CODES.BOOKING_CONFLICTING_DATE_ALIASES,
+  );
+  const returnRaw = resolveAliasField(
+    dto.returnAt,
+    dto.endDate,
+    'returnAt',
+    BOOKING_CREATE_ERROR_CODES.BOOKING_CONFLICTING_DATE_ALIASES,
+  );
+  const quoteId = resolveAliasField(
+    dto.pricingQuoteId,
+    dto.quoteId,
+    'pricingQuoteId',
+    BOOKING_CREATE_ERROR_CODES.BOOKING_CONFLICTING_QUOTE_ALIASES,
+  );
+
+  const customerNotes = dto.customerNotes ?? dto.notes;
+  const paymentIntent = dto.paymentIntent ?? dto.paymentMethodIntent;
+
   return {
     customerId: dto.customerId,
     vehicleId: dto.vehicleId,
-    startDate: parseIsoDate(dto.startDate, 'startDate'),
-    endDate: parseIsoDate(dto.endDate, 'endDate'),
-    quoteId: dto.quoteId,
+    pickupAt: parseBookingDate(pickupRaw, 'pickupAt'),
+    returnAt: parseBookingDate(returnRaw, 'returnAt'),
+    pricingQuoteId: quoteId,
     pickupStationId: dto.pickupStationId,
     returnStationId: dto.returnStationId,
     pickupAddressOverride: dto.pickupAddressOverride,
     returnAddressOverride: dto.returnAddressOverride,
-    notes: dto.notes,
+    customerNotes,
+    internalNotes: dto.internalNotes,
     status: dto.status,
+    paymentIntent,
     kmIncluded: dto.kmIncluded,
-    currency: dto.currency?.toLowerCase(),
+    currency: dto.currency?.trim().toLowerCase(),
     insuranceOptions: dto.insuranceOptions,
     extrasJson: dto.extrasJson,
     pricingInput: dto.pricingInput,
-    dailyRateCents: dto.dailyRateCents,
-    totalPriceCents: dto.totalPriceCents,
+    allowedDriverIds: dto.allowedDriverIds,
+    isOneWayRental: dto.isOneWayRental,
   };
 }
 
@@ -38,10 +130,10 @@ export function mapUpdateBookingDtoToCommand(dto: UpdateBookingDto): UpdateBooki
   const command: UpdateBookingCommand = {};
 
   if (dto.startDate !== undefined) {
-    command.startDate = parseIsoDate(dto.startDate, 'startDate');
+    command.startDate = parseBookingDate(dto.startDate, 'startDate');
   }
   if (dto.endDate !== undefined) {
-    command.endDate = parseIsoDate(dto.endDate, 'endDate');
+    command.endDate = parseBookingDate(dto.endDate, 'endDate');
   }
   if (dto.notes !== undefined) command.notes = dto.notes;
   if (dto.kmIncluded !== undefined) command.kmIncluded = dto.kmIncluded;
@@ -84,4 +176,12 @@ export function updateCommandToPermissionBody(
   if (command.vehicleId !== undefined) body.vehicleId = command.vehicleId;
   if (command.status !== undefined) body.status = command.status;
   return body;
+}
+
+export function createCommandPaymentIntentForPrisma(
+  command: CreateBookingCommand,
+): ReturnType<typeof toPrismaBookingPaymentIntent> | undefined {
+  return command.paymentIntent
+    ? toPrismaBookingPaymentIntent(command.paymentIntent)
+    : undefined;
 }

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-create-validation-prompt5-2026-07-23',
+    version: '4.9.777',
+    title: 'Booking Production-Readiness — Create Validation (Prompt 5/34)',
+    summary: [
+      'Vollständiger `CreateBookingDto` mit kanonischen Feldern (`pickupAt`, `returnAt`, `pricingQuoteId`, `customerNotes`, `internalNotes`, `paymentIntent`, `allowedDriverIds`, `pricingInput`, `isOneWayRental`) und Legacy-Aliases.',
+      'Expliziter `CreateBookingCommand` — keine Client-Preise; Quote ist einzige Preisquelle.',
+      '`BookingCreateValidationService` mit stabilen Fehlercodes (Datumsfenster, Mietdauer, Tenant-IDOR, Quote, Station/One-Way, Rental Health, Customer Eligibility).',
+      '`PricingQuoteService.assertQuoteReadyForBooking` für read-only Quote-Prüfung vor Consume.',
+      'Tests: booking-create.validation.service.spec.ts, booking-command.mapper.spec.ts, booking-mutation.dto.spec.ts.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 5 — fachlich validierte Buchungserstellung ohne Client-Preisvertrauen.',
+    previousBehavior:
+      'CreateBookingDto deckte nur Basis-Felder ab; Validierung verteilt in Service ohne stabile Codes; dailyRateCents/totalPriceCents noch als Legacy-Hints akzeptiert.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-create.validation.service.ts, create-booking.dto.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T19:30:00.000Z',
+  },
+  {
     id: 'booking-dto-validation-prompt4-2026-07-23',
     version: '4.9.776',
     title: 'Booking Production-Readiness — DTO Validation (Prompt 4/34)',

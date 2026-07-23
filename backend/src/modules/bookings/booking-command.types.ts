@@ -1,5 +1,6 @@
 import type { BookingStatus, BookingPaymentIntent } from '@prisma/client';
 import type { BookingPricingInputDto } from '@modules/pricing/dto';
+import type { BookingCheckoutPaymentIntent } from './booking-payment-intent.types';
 
 /** Client-allowed statuses when creating a booking via HTTP API. */
 export type BookingCreateStatus = Extract<BookingStatus, 'PENDING' | 'CONFIRMED'>;
@@ -10,26 +11,31 @@ export type BookingUpdateStatus = Extract<
   'PENDING' | 'CONFIRMED'
 >;
 
+/**
+ * Explicit domain command for booking creation.
+ * Prices are never accepted from the client — only server pricing quotes apply.
+ */
 export interface CreateBookingCommand {
   customerId: string;
   vehicleId: string;
-  startDate: Date;
-  endDate: Date;
-  quoteId: string;
+  pickupAt: Date;
+  returnAt: Date;
+  pricingQuoteId: string;
   pickupStationId?: string;
   returnStationId?: string;
   pickupAddressOverride?: string;
   returnAddressOverride?: string;
-  notes?: string;
+  customerNotes?: string;
+  internalNotes?: string;
   status?: BookingCreateStatus;
+  paymentIntent?: BookingCheckoutPaymentIntent;
   kmIncluded?: number;
   currency?: string;
   insuranceOptions?: string[];
   extrasJson?: unknown;
   pricingInput?: BookingPricingInputDto;
-  /** Legacy client hints — pricing service is source of truth. */
-  dailyRateCents?: number;
-  totalPriceCents?: number;
+  allowedDriverIds?: string[];
+  isOneWayRental?: boolean;
 }
 
 export interface UpdateBookingCommand {

@@ -110,12 +110,12 @@ export class BookingWizardDraftService {
       vehicleId: body.vehicleId,
       pickupStationId: body.pickupStationId,
       returnStationId: body.returnStationId,
-      startDate,
-      endDate,
-      quoteId,
+      pickupAt: startDate,
+      returnAt: endDate,
+      pricingQuoteId: quoteId,
       pricingInput: body.pricingInput,
       status: 'PENDING',
-      notes: mergeWizardDraftNotes(body.notes),
+      customerNotes: mergeWizardDraftNotes(body.notes),
     };
 
     const booking = await this.bookingsService.create(orgId, createCommand, {

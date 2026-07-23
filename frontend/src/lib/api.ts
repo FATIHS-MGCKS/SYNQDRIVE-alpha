@@ -1383,8 +1383,6 @@ export type OperatorBookingCreatePayload = {
   startDate: string;
   endDate: string;
   quoteId: string;
-  dailyRateCents?: number;
-  totalPriceCents?: number;
   kmIncluded?: number;
   insuranceOptions?: string[];
   extrasJson?: unknown;

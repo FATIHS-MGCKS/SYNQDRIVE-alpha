@@ -44,6 +44,8 @@ import type {
   HandoverSideSummary,
 } from './booking-detail.types';
 import type { CreateBookingCommand, UpdateBookingCommand } from './booking-command.types';
+import { createCommandPaymentIntentForPrisma } from './booking-command.mapper';
+import { BookingCreateValidationService } from './booking-create.validation.service';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
@@ -109,6 +111,7 @@ export class BookingsService {
     private readonly bookingPaymentCardService: BookingPaymentCardService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
+    private readonly bookingCreateValidation: BookingCreateValidationService,
   ) {}
 
   /**
@@ -155,44 +158,8 @@ export class BookingsService {
     command: CreateBookingCommand,
     options?: { userId?: string | null },
   ): Promise<Booking> {
-    const { vehicleId, customerId, startDate, endDate } = command;
-
-    try {
-      assertValidBookingWindow(startDate, endDate);
-    } catch (e) {
-      if ((e as Error).message === 'END_BEFORE_START') {
-        throw new BadRequestException('endDate must be after startDate');
-      }
-      throw new BadRequestException('Invalid booking dates');
-    }
-
-    await this.assertNoVehicleOverlap({
-      organizationId: orgId,
-      vehicleId,
-      startDate,
-      endDate,
-    });
-
-    const rentalGate = await this.rentalHealthService.isRentalBlocked(
-      orgId,
-      vehicleId,
-    );
-    this.enforceRentalHealthGate(rentalGate, vehicleId);
-
-    const requestedStatus: BookingStatus = command.status ?? 'PENDING';
-
-    await this.assertCustomerBookingEligibility(
-      orgId,
-      customerId,
-      requestedStatus,
-      startDate,
-    );
-
-    const pricingInput = this.pricingService.extractPricingInputFromBookingData({
-      pricingInput: command.pricingInput,
-      extrasJson: command.extrasJson,
-    });
-    const quoteId = requireQuoteId(command.quoteId);
+    const { vehicleId, customerId, pickupAt, returnAt } = command;
+    const quoteId = requireQuoteId(command.pricingQuoteId);
 
     const existingBookingId = await this.pricingQuoteService.findConsumedBookingId(
       orgId,
@@ -207,31 +174,57 @@ export class BookingsService {
       }
     }
 
+    const stationDefaults = await this.applyBookingStationDefaults(
+      orgId,
+      {
+        pickupStationId: command.pickupStationId,
+        returnStationId: command.returnStationId,
+        pickupAddressOverride: command.pickupAddressOverride,
+        returnAddressOverride: command.returnAddressOverride,
+      },
+      vehicleId,
+    );
+
+    const commandWithStations: CreateBookingCommand = {
+      ...command,
+      pickupStationId:
+        (stationDefaults.pickupStationId as string | undefined) ?? command.pickupStationId,
+      returnStationId:
+        (stationDefaults.returnStationId as string | undefined) ?? command.returnStationId,
+    };
+
+    const validation = await this.bookingCreateValidation.validate(
+      orgId,
+      commandWithStations,
+      options,
+    );
+
+    await this.assertNoVehicleOverlap({
+      organizationId: orgId,
+      vehicleId,
+      startDate: pickupAt,
+      endDate: returnAt,
+    });
+
+    const requestedStatus: BookingStatus = command.status ?? 'PENDING';
+    const pricingInput = this.pricingService.extractPricingInputFromBookingData({
+      pricingInput: command.pricingInput,
+      extrasJson: command.extrasJson,
+    });
+
     const { simulation, pricingInput: quotedPricingInput } =
       await this.pricingQuoteService.consumeForBooking({
         organizationId: orgId,
         userId: options?.userId ?? null,
         quoteId,
         vehicleId,
-        pickupAt: startDate,
-        returnAt: endDate,
+        pickupAt,
+        returnAt,
         pricingInput,
       });
 
     const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
-    const stationFields = await this.resolveBookingStationFields(
-      orgId,
-      await this.applyBookingStationDefaults(
-        orgId,
-        {
-          pickupStationId: command.pickupStationId,
-          returnStationId: command.returnStationId,
-          pickupAddressOverride: command.pickupAddressOverride,
-          returnAddressOverride: command.returnAddressOverride,
-        },
-        vehicleId,
-      ),
-    );
+    const paymentIntent = createCommandPaymentIntentForPrisma(command);
 
     const booking = await this.prisma.$transaction(async (tx) => {
       const created = await tx.booking.create({
@@ -239,12 +232,13 @@ export class BookingsService {
           organization: { connect: { id: orgId } },
           customer: { connect: { id: customerId } },
           vehicle: { connect: { id: vehicleId } },
-          startDate,
-          endDate,
+          startDate: pickupAt,
+          endDate: returnAt,
           status: requestedStatus,
-          notes: command.notes ?? null,
+          notes: validation.notes,
+          ...(paymentIntent ? { paymentIntent } : {}),
           ...pricedFields,
-          ...this.stationFieldsToPrismaInput(stationFields, { forCreate: true }),
+          ...this.stationFieldsToPrismaInput(validation.stationFields, { forCreate: true }),
         } as Prisma.BookingCreateInput,
       });
 
@@ -256,6 +250,19 @@ export class BookingsService {
         quotedPricingInput,
         tx,
       );
+
+      if (validation.validatedAllowedDriverIds.length > 0) {
+        await tx.bookingAllowedDriver.createMany({
+          data: validation.validatedAllowedDriverIds.map((driverId) => ({
+            organizationId: orgId,
+            bookingId: created.id,
+            customerId: driverId,
+            role: 'ADDITIONAL',
+            addedByUserId: options?.userId ?? null,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
       return created;
     });
@@ -328,6 +335,8 @@ export class BookingsService {
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
+
+    const rentalGate = validation.rentalGate;
 
     return {
       ...booking,

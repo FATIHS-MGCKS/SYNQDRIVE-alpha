@@ -1,10 +1,12 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayUnique,
   IsArray,
-  IsDateString,
+  IsBoolean,
   IsIn,
   IsInt,
+  IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
@@ -13,12 +15,16 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { BookingPricingInputDto } from '@modules/pricing/dto';
+import { BOOKING_CHECKOUT_PAYMENT_INTENTS } from '../booking-payment-intent.types';
 
 const BOOKING_CREATE_STATUSES = ['PENDING', 'CONFIRMED'] as const;
 
 /**
  * Validated HTTP body for `POST /organizations/:orgId/bookings`.
  * Flat scalar fields only — no Prisma relation shapes.
+ *
+ * Canonical fields: pickupAt, returnAt, pricingQuoteId, customerNotes, internalNotes.
+ * Legacy aliases remain accepted: startDate, endDate, quoteId, notes.
  */
 export class CreateBookingDto {
   @IsUUID('4')
@@ -27,14 +33,32 @@ export class CreateBookingDto {
   @IsUUID('4')
   vehicleId!: string;
 
-  @IsDateString()
-  startDate!: string;
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  pickupAt?: string;
 
-  @IsDateString()
-  endDate!: string;
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  returnAt?: string;
 
+  @IsOptional()
   @IsUUID('4')
-  quoteId!: string;
+  pricingQuoteId?: string;
+
+  /** @deprecated use pickupAt */
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  startDate?: string;
+
+  /** @deprecated use returnAt */
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  endDate?: string;
+
+  /** @deprecated use pricingQuoteId */
+  @IsOptional()
+  @IsUUID('4')
+  quoteId?: string;
 
   @IsOptional()
   @IsUUID('4')
@@ -57,11 +81,31 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   @MaxLength(8000)
+  customerNotes?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8000)
+  internalNotes?: string;
+
+  /** @deprecated use customerNotes */
+  @IsOptional()
+  @IsString()
+  @MaxLength(8000)
   notes?: string;
 
   @IsOptional()
   @IsIn(BOOKING_CREATE_STATUSES)
   status?: (typeof BOOKING_CREATE_STATUSES)[number];
+
+  @IsOptional()
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentIntent?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
+
+  /** Alias for paymentIntent */
+  @IsOptional()
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentMethodIntent?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
 
   @IsOptional()
   @IsInt()
@@ -88,15 +132,14 @@ export class CreateBookingDto {
   @Type(() => BookingPricingInputDto)
   pricingInput?: BookingPricingInputDto;
 
-  /** Legacy hint — server pricing quote is authoritative. */
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  dailyRateCents?: number;
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  allowedDriverIds?: string[];
 
-  /** Legacy hint — server pricing quote is authoritative. */
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  totalPriceCents?: number;
+  @IsBoolean()
+  isOneWayRental?: boolean;
 }

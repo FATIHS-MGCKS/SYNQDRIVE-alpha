@@ -24,6 +24,14 @@ async function validateDto<T extends object>(
 const validCreateBody = {
   customerId: VALID_UUID,
   vehicleId: VALID_UUID_B,
+  pickupAt: '2026-08-01T10:00:00.000Z',
+  returnAt: '2026-08-05T10:00:00.000Z',
+  pricingQuoteId: VALID_UUID_C,
+};
+
+const validLegacyCreateBody = {
+  customerId: VALID_UUID,
+  vehicleId: VALID_UUID_B,
   startDate: '2026-08-01T10:00:00.000Z',
   endDate: '2026-08-05T10:00:00.000Z',
   quoteId: VALID_UUID_C,
@@ -32,6 +40,41 @@ const validCreateBody = {
 describe('CreateBookingDto security validation', () => {
   it('accepts a valid flat create payload', async () => {
     const errors = await validateDto(CreateBookingDto, validCreateBody);
+    expect(errors).toHaveLength(0);
+  });
+
+  it('accepts legacy alias fields', async () => {
+    const errors = await validateDto(CreateBookingDto, validLegacyCreateBody);
+    expect(errors).toHaveLength(0);
+  });
+
+  it('rejects client price hints', async () => {
+    const errors = await validateDto(CreateBookingDto, {
+      ...validCreateBody,
+      dailyRateCents: 5000,
+      totalPriceCents: 20000,
+    });
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('rejects duplicate allowedDriverIds', async () => {
+    const errors = await validateDto(CreateBookingDto, {
+      ...validCreateBody,
+      allowedDriverIds: [VALID_UUID_D, VALID_UUID_D],
+    });
+    expect(errors.some((e) => e.property === 'allowedDriverIds')).toBe(true);
+  });
+
+  it('accepts paymentIntent and pricingInput selections', async () => {
+    const errors = await validateDto(CreateBookingDto, {
+      ...validCreateBody,
+      paymentIntent: 'invoice',
+      pricingInput: {
+        selectedMileagePackageId: VALID_UUID_D,
+        selectedInsuranceOptionIds: [VALID_UUID_D],
+        selectedExtraOptionIds: [VALID_UUID_D],
+      },
+    });
     expect(errors).toHaveLength(0);
   });
 
@@ -99,9 +142,9 @@ describe('CreateBookingDto security validation', () => {
   it('rejects overlong notes', async () => {
     const errors = await validateDto(CreateBookingDto, {
       ...validCreateBody,
-      notes: 'x'.repeat(8001),
+      customerNotes: 'x'.repeat(8001),
     });
-    expect(errors.some((e) => e.property === 'notes')).toBe(true);
+    expect(errors.some((e) => e.property === 'customerNotes')).toBe(true);
   });
 });
 

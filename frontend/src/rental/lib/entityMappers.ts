@@ -603,12 +603,6 @@ export function buildBookingCreatePayload(args: BuildBookingCreatePayloadArgs) {
     startDate: startIso,
     endDate: endIso,
     quoteId: args.quoteId,
-    ...(args.dailyRateEuro != null
-      ? { dailyRateCents: Math.round(args.dailyRateEuro * 100) }
-      : {}),
-    ...(args.totalPriceEuro != null
-      ? { totalPriceCents: Math.round(args.totalPriceEuro * 100) }
-      : {}),
     ...(args.includedKm != null ? { kmIncluded: Math.max(0, Math.round(args.includedKm)) } : {}),
     ...(args.insuranceLabels ? { insuranceOptions: args.insuranceLabels } : {}),
     ...(args.extras ? { extrasJson: args.extras } : {}),
