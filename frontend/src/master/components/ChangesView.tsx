@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-health-enforcement-v49802-2026-07-23',
+    version: '4.9.802',
+    title: 'V4.9.802 — Vehicle Health, DTC und technische Beobachtungen geschützt (Prompt 19)',
+    summary: [
+      'VehicleHealthEnforcementService — INGEST/DERIVE/READ/USE_FOR_AI/EXPORT für HEALTH_SIGNALS und DTC_CODES.',
+      'Gebunden: DTC upsert, Tire/Brake/Battery derive, Health-Alerts, Service-Ableitung, Health-API-Reads, AI Health Care, DTC-AI, Export, technische Beobachtungen.',
+      'Shadow Mode (DATA_AUTH_HEALTH_SHADOW_MODE). Manuelle vs Telemetrie-Beobachtungen getrennt. Kein Legacy-Fallback.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 19 — Rohdaten und abgeleitete Gesundheitsinformationen getrennt entscheiden.',
+    previousBehavior:
+      'Health/DTC-Pfade nur mit VehicleOwnershipGuard; keine Kategorie-spezifische Authorization Decision Engine.',
+    details:
+      'backend/src/modules/data-authorizations/vehicle-health-enforcement/. Doku: docs/architecture/vehicle-health-enforcement-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-23T23:50:00.000Z',
+  },
+  {
     id: 'trip-location-enforcement-v49801-2026-07-23',
     version: '4.9.801',
     title: 'V4.9.801 — Trips, Waypoints und Standortverläufe geschützt (Prompt 18)',

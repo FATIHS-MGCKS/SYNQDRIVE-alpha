@@ -125,6 +125,13 @@ import {
   TRIP_LOCATION_PURPOSE,
   TRIP_LOCATION_SERVICE_IDENTITY,
 } from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.constants';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -181,6 +188,7 @@ export class VehicleIntelligenceController {
     private readonly drivingImpactService: DrivingImpactService,
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
     private readonly tripLocationEnforcement: TripLocationEnforcementService,
+    private readonly healthEnforcement: VehicleHealthEnforcementService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -428,7 +436,20 @@ export class VehicleIntelligenceController {
 
   // --- Tire Health (enhanced) ---
   @Get('tires/summary')
-  async getTireHealthSummary(@Param('vehicleId') vehicleId: string) {
+  async getTireHealthSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isHealthSignalsReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.TIRE_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.TIRE_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true, overallPercent: null, healthStatus: 'unknown', alerts: [] };
+    }
     const hmTirePressure = await this.hmSignalUsageService
       .getTirePressureSignals(vehicleId)
       .catch(() => null);
@@ -436,7 +457,20 @@ export class VehicleIntelligenceController {
   }
 
   @Get('tires/detail')
-  async getTireHealthDetail(@Param('vehicleId') vehicleId: string) {
+  async getTireHealthDetail(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isHealthSignalsReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.TIRE_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.TIRE_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true };
+    }
     const hmTirePressure = await this.hmSignalUsageService
       .getTirePressureSignals(vehicleId)
       .catch(() => null);
@@ -788,12 +822,38 @@ export class VehicleIntelligenceController {
 
   // --- Brake Health V2 ---
   @Get('brake-health/summary')
-  async getBrakeHealthSummary(@Param('vehicleId') vehicleId: string) {
+  async getBrakeHealthSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isHealthSignalsReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.BRAKE_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.BRAKE_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true };
+    }
     return this.brakeHealthService.getSummary(vehicleId);
   }
 
   @Get('brake-health/detail')
-  async getBrakeHealthDetail(@Param('vehicleId') vehicleId: string) {
+  async getBrakeHealthDetail(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isHealthSignalsReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.BRAKE_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.BRAKE_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true };
+    }
     return this.brakeHealthService.getDetail(vehicleId);
   }
 
@@ -959,7 +1019,19 @@ export class VehicleIntelligenceController {
 
   /** UI-ready freshness-aware summary for the Quick View box. */
   @Get('dtc/summary')
-  async getDtcSummary(@Param('vehicleId') vehicleId: string) {
+  async getDtcSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isDtcReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.DTC_READ,
+    );
+    if (!allowed) {
+      return this.healthEnforcement.emptyDtcSummary();
+    }
     return this.dtcService.getSummary(vehicleId);
   }
 
@@ -974,7 +1046,25 @@ export class VehicleIntelligenceController {
    * wrapped in try/catch and degrades to no/partial knowledge.
    */
   @Get('dtc/detail')
-  async getDtcDetail(@Param('vehicleId') vehicleId: string) {
+  async getDtcDetail(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const readAllowed = await this.isDtcReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.DTC_READ,
+    );
+    if (!readAllowed) {
+      return {
+        currentFaults: { activeFaults: [], stale: true },
+        history: [],
+        monitoring: this.healthEnforcement.emptyDtcSummary(),
+        accessDenied: true,
+      };
+    }
+
     const detail = await this.dtcService.getDetail(vehicleId);
     try {
       const vehicle = await this.prisma.vehicle.findUnique({
@@ -987,6 +1077,7 @@ export class VehicleIntelligenceController {
         year: vehicle?.year ?? null,
         fuelType: vehicle?.fuelType ? String(vehicle.fuelType) : null,
       };
+      const aiAuth = { organizationId, vehicleId };
 
       // Active faults → ensure enrichment + attach knowledge (enqueues missing).
       const activeFaults: Array<{ code: string; knowledge?: unknown }> =
@@ -996,6 +1087,8 @@ export class VehicleIntelligenceController {
           fault.knowledge = await this.dtcKnowledgeService.getOrQueueForActiveFault(
             fault.code,
             ctx,
+            'de',
+            aiAuth,
           );
         }),
       );
@@ -1029,7 +1122,9 @@ export class VehicleIntelligenceController {
   async retryDtcKnowledge(
     @Param('vehicleId') vehicleId: string,
     @Param('code') code: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
   ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
     const normalized = this.dtcKnowledgeService.normalizeDtcCode(code);
     if (!normalized) {
       throw new BadRequestException(`Invalid DTC code: ${code}`);
@@ -1044,7 +1139,10 @@ export class VehicleIntelligenceController {
       year: vehicle?.year ?? null,
       fuelType: vehicle?.fuelType ? String(vehicle.fuelType) : null,
     };
-    const knowledge = await this.dtcKnowledgeService.retry(normalized, ctx);
+    const knowledge = await this.dtcKnowledgeService.retry(normalized, ctx, 'de', {
+      organizationId,
+      vehicleId,
+    });
     return { code: normalized, knowledge };
   }
 
@@ -1782,24 +1880,84 @@ export class VehicleIntelligenceController {
 
   // --- Battery Health Summary ---
   @Get('battery-health-summary')
-  async getBatteryHealthSummary(@Param('vehicleId') vehicleId: string) {
+  async getBatteryHealthSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isHealthSignalsReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.BATTERY_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.BATTERY_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true };
+    }
     return this.canonicalBatteryHealthService.getSummary(vehicleId);
   }
 
   @Get('battery-health-detail')
-  async getBatteryHealthDetail(@Param('vehicleId') vehicleId: string) {
+  async getBatteryHealthDetail(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isHealthSignalsReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.BATTERY_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.BATTERY_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true };
+    }
     return this.canonicalBatteryHealthService.getDetail(vehicleId);
   }
 
   // --- Vehicle file summary (Documents tab read model) ---
   @Get('file-summary')
-  async getVehicleFileSummary(@Param('vehicleId') vehicleId: string) {
+  async getVehicleFileSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const exportAllowed = await this.healthEnforcement.mayExport({
+      organizationId,
+      vehicleId,
+      dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
+      purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+      processingPath: VEHICLE_HEALTH_PATH.HEALTH_EXPORT,
+      serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.HEALTH_EXPORT,
+      correlationId: `health-export:${vehicleId}`,
+    });
+    if (!exportAllowed) {
+      return {
+        accessDenied: true,
+        vehicleId,
+        categories: [],
+        healthDocumentsExcluded: true,
+      };
+    }
     return this.vehicleFileSummaryService.buildSummary(vehicleId);
   }
 
   // --- Service Info Status ---
   @Get('service-info-status')
-  async getServiceInfoStatus(@Param('vehicleId') vehicleId: string) {
+  async getServiceInfoStatus(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.isHealthSignalsReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.SERVICE_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.SERVICE_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true };
+    }
     return this.serviceComplianceService.buildServiceInfoStatus(vehicleId);
   }
 
@@ -1942,10 +2100,19 @@ export class VehicleIntelligenceController {
   @Get('health/summary')
   async getHealthTabSummary(
     @Param('vehicleId') vehicleId: string,
-    @Req() req: { user?: { organizationId?: string } },
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
   ) {
     const orgId = req.user?.organizationId;
     if (!orgId) throw new BadRequestException('Organization context required');
+    const allowed = await this.isHealthSignalsReadAllowed(
+      orgId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.HEALTH_SUMMARY_READ,
+      VEHICLE_HEALTH_SERVICE_IDENTITY.HEALTH_API,
+    );
+    if (!allowed) {
+      return { accessDenied: true };
+    }
     return this.vehicleHealthTabSummaryService.getSummary(orgId, vehicleId);
   }
 
@@ -2089,9 +2256,20 @@ export class VehicleIntelligenceController {
   }
 
   @Get('hm-health-app/error-codes-status')
-  async hmHealthAppErrorCodesStatus(@Param('vehicleId') vehicleId: string) {
+  async hmHealthAppErrorCodesStatus(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const dtcAllowed = await this.isDtcReadAllowed(
+      organizationId,
+      vehicleId,
+      VEHICLE_HEALTH_PATH.DTC_READ,
+    );
     const [dtcSummary, hmActive] = await Promise.all([
-      this.dtcService.getSummary(vehicleId).catch(() => null),
+      dtcAllowed
+        ? this.dtcService.getSummary(vehicleId).catch(() => null)
+        : Promise.resolve(this.healthEnforcement.emptyDtcSummary()),
       this.hmSignalUsageService.isHmHealthActive(vehicleId),
     ]);
     return {
@@ -2135,6 +2313,39 @@ export class VehicleIntelligenceController {
       throw new NotFoundException('Vehicle not found');
     }
     return vehicle.organizationId;
+  }
+
+  private async isHealthSignalsReadAllowed(
+    organizationId: string,
+    vehicleId: string,
+    processingPath: string,
+    serviceIdentity: string,
+  ): Promise<boolean> {
+    return this.healthEnforcement.isReadAllowed({
+      organizationId,
+      vehicleId,
+      dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
+      purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+      processingPath,
+      serviceIdentity,
+      correlationId: `${processingPath}:${vehicleId}`,
+    });
+  }
+
+  private async isDtcReadAllowed(
+    organizationId: string,
+    vehicleId: string,
+    processingPath: string,
+  ): Promise<boolean> {
+    return this.healthEnforcement.isReadAllowed({
+      organizationId,
+      vehicleId,
+      dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.DTC_CODES,
+      purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+      processingPath,
+      serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.DTC_API,
+      correlationId: `${processingPath}:${vehicleId}`,
+    });
   }
 
   /** Attach OBD plug/unplug flags for trip list, timeline, and detail surfaces. */

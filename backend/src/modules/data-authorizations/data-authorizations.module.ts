@@ -37,6 +37,8 @@ import { TelemetryIngestionEnforcementService } from './telemetry-ingestion-enfo
 import { TelemetryIngestionEnforcementMetricsService } from './telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.metrics';
 import { TripLocationEnforcementService } from './trip-location-enforcement/trip-location-enforcement.service';
 import { TripLocationEnforcementMetricsService } from './trip-location-enforcement/trip-location-enforcement.metrics';
+import { VehicleHealthEnforcementService } from './vehicle-health-enforcement/vehicle-health-enforcement.service';
+import { VehicleHealthEnforcementMetricsService } from './vehicle-health-enforcement/vehicle-health-enforcement.metrics';
 
 @Module({
   imports: [RedisModule],
@@ -81,6 +83,8 @@ import { TripLocationEnforcementMetricsService } from './trip-location-enforceme
     TelemetryIngestionEnforcementMetricsService,
     TripLocationEnforcementService,
     TripLocationEnforcementMetricsService,
+    VehicleHealthEnforcementService,
+    VehicleHealthEnforcementMetricsService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -104,6 +108,8 @@ import { TripLocationEnforcementMetricsService } from './trip-location-enforceme
     TelemetryIngestionEnforcementMetricsService,
     TripLocationEnforcementService,
     TripLocationEnforcementMetricsService,
+    VehicleHealthEnforcementService,
+    VehicleHealthEnforcementMetricsService,
   ],
 })
 export class DataAuthorizationsModule {}

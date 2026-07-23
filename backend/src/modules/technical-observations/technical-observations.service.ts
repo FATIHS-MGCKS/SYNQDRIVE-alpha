@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Optional,
@@ -12,6 +13,14 @@ import {
   VehicleComplaint,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_OBSERVATION_SOURCE,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 import { TasksService } from '../tasks/tasks.service';
 import { ServiceCasesService } from '../service-cases/service-cases.service';
@@ -53,6 +62,7 @@ export class TechnicalObservationsService {
     private readonly serviceCases: ServiceCasesService,
     private readonly damages: DamagesService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly healthEnforcement?: VehicleHealthEnforcementService,
   ) {}
 
   async list(
@@ -127,6 +137,28 @@ export class TechnicalObservationsService {
   ): Promise<TechnicalObservationDto> {
     await this.assertVehicleInOrg(orgId, vehicleId);
     await this.validateContextLinks(orgId, vehicleId, body);
+
+    if (this.healthEnforcement) {
+      const source = body.source ?? 'manual';
+      const isTelemetry = source === 'field_agent' || source === 'system_import';
+      const mayIngest = await this.healthEnforcement.mayIngest({
+        organizationId: orgId,
+        vehicleId,
+        dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
+        purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+        processingPath: isTelemetry
+          ? VEHICLE_HEALTH_PATH.TELEMETRY_OBSERVATION
+          : VEHICLE_HEALTH_PATH.MANUAL_OBSERVATION,
+        serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.HEALTH_API,
+        correlationId: `observation-ingest:${vehicleId}:${Date.now()}`,
+        observationSource: isTelemetry
+          ? VEHICLE_HEALTH_OBSERVATION_SOURCE.TELEMETRY
+          : VEHICLE_HEALTH_OBSERVATION_SOURCE.MANUAL,
+      });
+      if (!mayIngest) {
+        throw new ForbiddenException('Technical observation ingest denied by policy');
+      }
+    }
 
     const description = body.description.trim();
     const title = body.title?.trim() || null;

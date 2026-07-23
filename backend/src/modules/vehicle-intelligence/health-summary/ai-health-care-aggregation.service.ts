@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { HealthSummaryService, HealthSummaryAgentResponse } from './health-summary.service';
 import { HmSignalUsageService, HmAiHealthCareSignals } from '../../high-mobility/high-mobility-signal-usage.service';
 import { DtcService } from '../dtc/dtc.service';
@@ -7,6 +7,13 @@ import { hasWearOrSafetyAlert } from '../brakes/brake-health-alert.builder';
 import { TireHealthService } from '../tires/tire-health.service';
 import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
 import { DashboardWarningLightsService } from '../dashboard-warning-lights/dashboard-warning-lights.service';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 import type { DashboardWarningLightsResponse } from '../dashboard-warning-lights/dashboard-warning-lights.types';
 
 // ── Public types ─────────────────────────────────────────────────────────────
@@ -128,9 +135,28 @@ export class AiHealthCareAggregationService {
     private readonly tireHealthService: TireHealthService,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly dashboardWarningLightsService: DashboardWarningLightsService,
+    @Optional() private readonly healthEnforcement?: VehicleHealthEnforcementService,
   ) {}
 
   async getAiHealthCare(vehicleId: string): Promise<AiHealthCareResponse> {
+    if (this.healthEnforcement) {
+      const organizationId = await this.healthEnforcement.resolveOrganizationId(vehicleId);
+      if (organizationId) {
+        const allowed = await this.healthEnforcement.mayUseForAi({
+          organizationId,
+          vehicleId,
+          dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
+          purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+          processingPath: VEHICLE_HEALTH_PATH.HEALTH_AI,
+          serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.HEALTH_AI,
+          correlationId: `health-ai:${vehicleId}`,
+        });
+        if (!allowed) {
+          return this.buildDeniedAiHealthCareResponse(vehicleId);
+        }
+      }
+    }
+
     // Parallel read of all inputs — failures are silenced per-source
     const [baseSummary, hmActive, dtcSummary, brakeHealth, tireHealth, batterySummary, dashboardWarningLights] =
       await Promise.all([
@@ -437,5 +463,55 @@ export class AiHealthCareAggregationService {
       case 'HIGH': return 'HIGH';
       default:     return 'UNKNOWN';
     }
+  }
+
+  private async buildDeniedAiHealthCareResponse(
+    vehicleId: string,
+  ): Promise<AiHealthCareResponse> {
+    const dashboardWarningLights =
+      await this.dashboardWarningLightsService.getDashboardWarningLights(vehicleId).catch(() => null);
+    return {
+      aiStatus: 'NO_RECENT_DATA',
+      summaryText: 'Gesundheitsauswertung nicht autorisiert.',
+      reasons: ['HEALTH_AI_DENIED'],
+      oilLevelDisplay: { mode: 'no_data', value: null, label: 'Nicht autorisiert' },
+      indicators: {
+        limpMode: null,
+        brakeWarning: null,
+        tirePressureWarning: null,
+        batteryWarningLight: null,
+      },
+      overallStatus: { level: 'watch', title: 'Nicht autorisiert', shortSummary: 'Gesundheitsauswertung nicht autorisiert.' },
+      positives: [],
+      watchpoints: ['HEALTH_AI_DENIED'],
+      futureOutlook: { summary: '', items: [] },
+      preventiveRecommendations: [],
+      maintenanceFocus: [],
+      dataConfidence: { level: 'low', reason: 'HEALTH_AI_DENIED' },
+      hmIndicators: {
+        oilLevel: null,
+        limpMode: null,
+        brakeLiningPreWarning: null,
+        tirePressureWarning: null,
+      },
+      lastHmUpdate: null,
+      hmHealthActive: false,
+      hmFreshnessStatus: 'no_data',
+      hmLastErrorAt: null,
+      hmLastErrorMessage: null,
+      dashboardWarningLights:
+        dashboardWarningLights ?? {
+          vehicleId,
+          provider: 'NONE',
+          connectionStatus: 'not_connected',
+          supportStatus: 'not_connected',
+          freshness: 'no_data',
+          overallStatus: 'unknown',
+          lastObservedAt: null,
+          message: 'Gesundheitsauswertung nicht autorisiert.',
+          lights: [],
+          rentalHealthReady: false,
+        },
+    };
   }
 }
