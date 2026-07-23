@@ -2599,4 +2599,74 @@ Draft erstellen/bearbeiten, Publish, paralleler Publish (lockVersion), fehlende 
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 27).*
+## Prompt 28 — Business Audit Outbox
+
+**Ziel:** Kritische Rule- und Approval-Änderungen dauerhaft, strukturiert und ausfallsicher protokollieren.
+
+### Implementierung
+
+| Komponente | Pfad |
+|------------|------|
+| Prisma model + migration | `BusinessAuditOutbox`, `20260723220000_business_audit_outbox` |
+| Outbox module | `backend/src/modules/business-audit/*` |
+| Publish audit (in tx) | `RentalRulesRevisionService.publishDraft` |
+| Draft / lifecycle / assignment | `RentalRulesService` |
+| Manual approval | `BookingEligibilityApprovalService` |
+| Eligibility check | `BookingEligibilityEnforcementService` |
+| Architecture record | `architecture/BUSINESS_AUDIT_OUTBOX_2026-07-23.md` |
+
+### Akzeptanzkriterien
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Kritische Business Events dauerhaft protokolliert | ✅ |
+| Kein stiller Audit-Verlust bei Publish/Approval | ✅ (`flushCritical`) |
+| Events tenant-sicher und datensparsam | ✅ |
+| Retry / Failure / Idempotenz getestet | ✅ |
+| Prompt 28 Status | **DONE** |
+
+---
+
+## Prompt 29 — Booking Eligibility Retroactivity & Recheck
+
+**Ziel:** Regeländerungen dürfen bestehende Buchungen nicht unkontrolliert rückwirkend verändern.
+
+### Implementierung
+
+| Komponente | Pfad |
+|------------|------|
+| Policy + constants | `booking-eligibility-recheck/booking-eligibility-retroactivity.*` |
+| Recheck orchestrator | `booking-eligibility-recheck/booking-eligibility-recheck.service.ts` |
+| Scheduler (due recheckAt) | `booking-eligibility-recheck.scheduler.service.ts` |
+| Decision append helper | `booking-eligibility-decision.service.ts` (`appendRecheckDecision`) |
+| Prisma enum extension | migration `20260723230000_booking_eligibility_recheck_events` |
+| Publish trigger | `rental-rules.service.ts` → `triggerPublishRechecks` |
+| Mutation trigger | `bookings.service.ts`, `booking-allowed-drivers.service.ts` |
+| Approval expiry trigger | `booking-eligibility-approval.service.ts` |
+| Pickup precheck | `bookings-handover.service.ts` |
+| Architecture record | `architecture/BOOKING_ELIGIBILITY_RETROACTIVITY_2026-07-23.md` |
+
+### Retroactivity matrix (summary)
+
+| Status | Rule publish | Mutations | Pickup / scheduled |
+|--------|-------------|-----------|-------------------|
+| Wizard DRAFT / PENDING | LIVE_REEVALUATE, revoke approvals | Re-evaluate + enforce | N/A |
+| CONFIRMED | FROZEN_GRANDFATHER, review if drift/critical | Re-evaluate + enforce, revoke approvals | PICKUP_RECHECK |
+| ACTIVE | NO_RETROACTIVE_CHANGE, review if drift | No re-enforce | N/A |
+| Terminal | NOT_APPLICABLE | — | — |
+
+**Invariant:** `allowAutoCancel` is always `false`.
+
+### Akzeptanzkriterien
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Rückwirkung eindeutig und reproduzierbar | ✅ |
+| Bestätigte Buchungen ändern sich nicht unbemerkt | ✅ |
+| Recheck-Fälle markiert und verarbeitet | ✅ |
+| Tests bestehen | ✅ |
+| Prompt 29 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 29).*

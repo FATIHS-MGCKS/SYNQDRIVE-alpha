@@ -31,12 +31,17 @@ describe('BookingEligibilityEnforcementService', () => {
     appendFromGateResult: jest.fn().mockResolvedValue({}),
   } as never;
 
+  const businessAudit = {
+    enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+  } as never;
+
   const service = new BookingEligibilityEnforcementService(
     prisma,
     gatekeeper,
     auditLogger,
     eligibilityApproval,
     eligibilityDecision,
+    businessAudit,
   );
 
   const eligibleResult = testGateResult({

@@ -32,6 +32,12 @@ import {
 import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-transition.policy';
 import { BookingEligibilityApprovalService } from '../booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityDecisionService } from '../booking-eligibility-decision/booking-eligibility-decision.service';
+import { BusinessAuditService } from '@modules/business-audit/business-audit.service';
+import {
+  BUSINESS_AUDIT_ENTITY_TYPE,
+  BusinessAuditAction,
+} from '@modules/business-audit/business-audit.constants';
+import { buildBusinessAuditIdempotencyKey } from '@modules/business-audit/business-audit-idempotency.util';
 import type { BookingEligibilityDecisionEventType } from '@prisma/client';
 
 export type BookingEligibilityMutationContext = {
@@ -69,6 +75,7 @@ export class BookingEligibilityEnforcementService {
     private readonly auditLogger: BookingEligibilityAuditLogger,
     private readonly eligibilityApproval: BookingEligibilityApprovalService,
     private readonly eligibilityDecision: BookingEligibilityDecisionService,
+    private readonly businessAudit: BusinessAuditService,
   ) {}
 
   shouldEnforceForUpdate(input: {
@@ -441,6 +448,40 @@ export class BookingEligibilityEnforcementService {
         gateResult.status === 'TECHNICAL_ERROR' ||
         gateResult.status === 'TEMPORARILY_UNAVAILABLE',
     });
+
+    if (intent === 'enforce' && context.bookingId) {
+      void this.businessAudit.enqueue({
+        organizationId: context.organizationId,
+        idempotencyKey: buildBusinessAuditIdempotencyKey({
+          action: BusinessAuditAction.ELIGIBILITY_CHECKED,
+          organizationId: context.organizationId,
+          entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+          entityId: context.bookingId,
+          correlationId: gateResult.correlation.auditEventId,
+        }),
+        action: BusinessAuditAction.ELIGIBILITY_CHECKED,
+        actorUserId: options.userId ?? null,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+        entityId: context.bookingId,
+        correlationId: gateResult.correlation.auditEventId,
+        after: {
+          status: gateResult.status,
+          allowed: gateResult.allowed,
+          stage,
+          command,
+          reasonCodeCount: gateResult.reasonCodes.length,
+          engineVersion: gateResult.engineVersion,
+        },
+        outcome,
+        description: 'Booking eligibility checked',
+        metadata: {
+          vehicleId: context.vehicleId,
+          evaluationId: gateResult.correlation.evaluationId,
+          commandId: gateResult.correlation.commandId,
+          transitionId: gateResult.correlation.transitionId,
+        },
+      });
+    }
 
     if (
       intent === 'enforce' &&

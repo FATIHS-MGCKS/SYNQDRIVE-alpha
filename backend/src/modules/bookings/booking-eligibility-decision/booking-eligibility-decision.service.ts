@@ -10,6 +10,7 @@ import { BOOKING_ELIGIBILITY_DECISION_ERROR_CODE } from './booking-eligibility-d
 import type {
   AppendBookingEligibilityDecisionInput,
   AppendManualApprovalDecisionInput,
+  AppendRecheckDecisionInput,
   BookingEligibilityDecisionView,
 } from './booking-eligibility-decision.types';
 import {
@@ -165,6 +166,91 @@ export class BookingEligibilityDecisionService {
     });
 
     return this.mapRow(created);
+  }
+
+  async appendRecheckDecision(
+    input: AppendRecheckDecisionInput,
+    tx?: Tx,
+  ): Promise<BookingEligibilityDecisionView> {
+    const client = tx ?? this.prisma;
+    const created = await client.bookingEligibilityDecision.create({
+      data: {
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        eventType: input.eventType,
+        decisionStatus: input.decisionStatus,
+        reasonCodes: input.reasonCodes ?? [],
+        blockingReasons: [],
+        warnings: [],
+        missingFields: [],
+        evaluatedAt: new Date(),
+        recheckAt: input.recheckAt ?? null,
+        engineVersion: input.engineVersion ?? 'recheck-v1',
+        ruleRevisionIds: [],
+        rulesHash: input.currentRulesHash,
+        derivedFacts: {
+          ...input.derivedFacts,
+          priorRulesHash: input.priorRulesHash,
+        } as Prisma.InputJsonValue,
+        dataSources: {
+          recheck: true,
+          trigger: input.derivedFacts.trigger ?? null,
+        },
+        manualApprovalId: null,
+        bookingDataVersion: input.bookingDataVersion,
+        correlationId: input.correlationId,
+        evaluationId: null,
+      },
+    });
+    return this.mapRow(created);
+  }
+
+  async getLatestConfirmRulesHash(
+    organizationId: string,
+    bookingId: string,
+  ): Promise<string | null> {
+    const row = await this.prisma.bookingEligibilityDecision.findFirst({
+      where: {
+        organizationId,
+        bookingId,
+        eventType: 'CONFIRM_SUCCEEDED',
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { rulesHash: true },
+    });
+    return row?.rulesHash ?? null;
+  }
+
+  async resolveCurrentRulesHashForBooking(
+    organizationId: string,
+    vehicleId: string,
+    rentalCategoryId: string | null,
+  ): Promise<string> {
+    const context = await this.resolveRuleRevisionContext(
+      organizationId,
+      vehicleId,
+      rentalCategoryId,
+    );
+    return context.rulesHash;
+  }
+
+  findDueRecheckDecisions(limit = 50, now: Date = new Date()) {
+    return this.prisma.bookingEligibilityDecision.findMany({
+      where: {
+        recheckAt: { lte: now },
+        eventType: {
+          in: ['CONFIRM_ATTEMPT', 'CONFIRM_SUCCEEDED', 'PICKUP_CHECK', 'MUTATION_RECHECK'],
+        },
+      },
+      orderBy: { recheckAt: 'asc' },
+      take: limit,
+      select: {
+        id: true,
+        organizationId: true,
+        bookingId: true,
+        recheckAt: true,
+      },
+    });
   }
 
   private async resolveRuleRevisionContext(

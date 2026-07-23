@@ -39,6 +39,7 @@ import { MisuseCasesModule } from '@modules/vehicle-intelligence/misuse-cases/mi
 import { BookingsModule } from '@modules/bookings/bookings.module';
 import { RentalDrivingAnalysisModule } from '@modules/rental-driving-analysis/rental-driving-analysis.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { BusinessAuditModule } from '@modules/business-audit/business-audit.module';
 import { SupportModule } from '@modules/support/support.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { ServiceCasesModule } from '@modules/service-cases/service-cases.module';
@@ -215,6 +216,7 @@ export class AppModule {
         BookingsModule,
         RentalDrivingAnalysisModule,
         ActivityLogModule,
+        BusinessAuditModule,
         SupportModule,
         TasksModule,
         ServiceCasesModule,

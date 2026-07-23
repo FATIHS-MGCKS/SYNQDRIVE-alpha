@@ -14,6 +14,7 @@ import {
 } from './booking-allowed-drivers.util';
 import { BookingEligibilityEnforcementService } from '../booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { BookingEligibilityApprovalService } from '../booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityRecheckService } from '../booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { isWizardDraftBooking } from '../booking-wizard-draft.util';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class BookingAllowedDriversService {
     private readonly activityLog: ActivityLogService,
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
+    private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
   ) {}
 
   async listForBooking(organizationId: string, bookingId: string) {
@@ -343,6 +345,13 @@ export class BookingAllowedDriversService {
       reason: 'Additional drivers changed',
       revokedByUserId: userId ?? null,
       invalidationFacts: ['additional_drivers', 'rule_revision'],
+    });
+
+    await this.bookingEligibilityRecheck.processMutationRecheckFromInvalidationFacts({
+      organizationId,
+      bookingId,
+      invalidationFacts: ['additional_drivers', 'rule_revision'],
+      actorUserId: userId ?? null,
     });
 
     const booking = await this.prisma.booking.findFirst({

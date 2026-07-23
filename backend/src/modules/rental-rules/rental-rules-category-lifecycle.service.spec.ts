@@ -48,7 +48,7 @@ function makePrisma() {
 describe('RentalRulesService category lifecycle', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let svc: RentalRulesService;
-  let activityLog: { log: jest.Mock };
+  let businessAudit: { enqueue: jest.Mock; flushCritical: jest.Mock };
 
   const categoryRow = {
     id: 'cat-1',
@@ -85,12 +85,15 @@ describe('RentalRulesService category lifecycle', () => {
       assert: jest.fn().mockResolvedValue(undefined),
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
     };
-    activityLog = { log: jest.fn().mockResolvedValue({ id: 'log-1' }) };
+    businessAudit = {
+      enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+      flushCritical: jest.fn().mockResolvedValue(undefined),
+    };
     svc = new RentalRulesService(
       prisma as never,
       effective,
       rentalRulePermissions as never,
-      activityLog as never,
+      businessAudit as never,
       {
         upsertDraft: jest.fn(),
         publishDraft: jest.fn(),
@@ -101,6 +104,7 @@ describe('RentalRulesService category lifecycle', () => {
         analyzePublishImpact: jest.fn(),
         assertPublishPreconditions: jest.fn(),
       } as never,
+      { processRulePublishRechecks: jest.fn().mockResolvedValue([]) } as never,
     );
   });
 
@@ -121,7 +125,7 @@ describe('RentalRulesService category lifecycle', () => {
 
     expect(result.status).toBe('INACTIVE');
     expect(result.isActive).toBe(false);
-    expect(activityLog.log).toHaveBeenCalled();
+    expect(businessAudit.enqueue).toHaveBeenCalled();
   });
 
   it('transitions INACTIVE back to ACTIVE', async () => {

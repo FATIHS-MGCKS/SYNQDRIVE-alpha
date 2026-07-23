@@ -1698,6 +1698,7 @@ model Organization {
   organizationUserInvites                OrganizationUserInvite[]
   inviteEmailOutbox                      InviteEmailOutbox[]
   iamAuditOutbox                         IamAuditOutbox[]
+  businessAuditOutbox                    BusinessAuditOutbox[]
   accessReviewCampaigns                  AccessReviewCampaign[]
   accessReviewItems                      AccessReviewItem[]
   accessReviewDecisions                  AccessReviewDecision[]
@@ -2394,6 +2395,53 @@ model IamAuditOutbox {
   @@index([status, nextRetryAt])
   @@index([organizationId, eventType])
   @@map("iam_audit_outbox")
+}
+
+enum BusinessAuditOutboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  DEAD_LETTER
+}
+
+/// Transactional outbox for critical rental-rule and eligibility audit events.
+model BusinessAuditOutbox {
+  id             String                    @id @default(uuid())
+  eventId        String                    @unique @default(uuid()) @map("event_id")
+  organizationId String                    @map("organization_id")
+  idempotencyKey String                    @unique @map("idempotency_key")
+  actorUserId    String?                   @map("actor_user_id")
+  action         String
+  entityType     String                    @map("entity_type")
+  entityId       String                    @map("entity_id")
+  correlationId  String?                   @map("correlation_id")
+  occurredAt     DateTime                  @default(now()) @map("occurred_at")
+  payloadVersion Int                       @default(1) @map("payload_version")
+  beforeHash     String?                   @map("before_hash")
+  beforeSummary  String?                   @map("before_summary")
+  afterHash      String?                   @map("after_hash")
+  afterSummary   String?                   @map("after_summary")
+  changeReason   String?                   @map("change_reason")
+  outcome        String?
+  diffRef        String?                   @map("diff_ref")
+  payload        Json
+  status         BusinessAuditOutboxStatus @default(PENDING) @map("processing_status")
+  attempts       Int                       @default(0)
+  nextRetryAt    DateTime                  @default(now()) @map("next_retry_at")
+  processedAt    DateTime?                 @map("processed_at")
+  deadLetteredAt DateTime?                 @map("dead_lettered_at")
+  errorMessage   String?                   @map("error_message")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status, nextRetryAt])
+  @@index([organizationId, action])
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, correlationId])
+  @@map("business_audit_outbox")
 }
 
 // ------------------------------------------------
@@ -7326,6 +7374,10 @@ enum BookingEligibilityDecisionEventType {
   PICKUP_CHECK
   MANUAL_APPROVAL_APPROVED
   MANUAL_APPROVAL_REJECTED
+  RULE_PUBLISH_RECHECK
+  MUTATION_RECHECK
+  SCHEDULED_RECHECK
+  APPROVAL_EXPIRED_RECHECK
 }
 
 /// Append-only eligibility decision snapshots for reproducible booking decisions.

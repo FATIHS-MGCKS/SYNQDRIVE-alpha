@@ -43,7 +43,7 @@ function makePrisma() {
 describe('RentalRulesService category assignment delta', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let svc: RentalRulesService;
-  let activityLog: { log: jest.Mock };
+  let activityLog: { enqueue: jest.Mock };
 
   beforeEach(() => {
     prisma = makePrisma();
@@ -52,12 +52,15 @@ describe('RentalRulesService category assignment delta', () => {
       assert: jest.fn().mockResolvedValue(undefined),
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
     };
-    activityLog = { log: jest.fn().mockResolvedValue({ id: 'log-1' }) };
+    activityLog = { enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
     svc = new RentalRulesService(
       prisma as never,
       effective,
       rentalRulePermissions as never,
-      activityLog as never,
+      {
+        enqueue: activityLog.enqueue,
+        flushCritical: jest.fn().mockResolvedValue(undefined),
+      } as never,
       {
         upsertDraft: jest.fn(),
         publishDraft: jest.fn(),
@@ -68,6 +71,7 @@ describe('RentalRulesService category assignment delta', () => {
         analyzePublishImpact: jest.fn(),
         assertPublishPreconditions: jest.fn(),
       } as never,
+      { processRulePublishRechecks: jest.fn().mockResolvedValue([]) } as never,
     );
   });
 
@@ -145,10 +149,10 @@ describe('RentalRulesService category assignment delta', () => {
     );
     expect(result.version).toBe(3);
     expect(result.diff.moved).toHaveLength(1);
-    expect(activityLog.log).toHaveBeenCalledWith(
+    expect(activityLog.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
-        metaJson: expect.objectContaining({
-          diff: expect.objectContaining({ moved: expect.any(Array) }),
+        metadata: expect.objectContaining({
+          counts: expect.objectContaining({ moved: 1 }),
         }),
       }),
     );

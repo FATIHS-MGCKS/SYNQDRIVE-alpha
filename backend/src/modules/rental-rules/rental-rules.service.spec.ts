@@ -65,7 +65,10 @@ describe('RentalRulesService', () => {
       assert: jest.fn().mockResolvedValue(undefined),
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
     };
-    const activityLog = { log: jest.fn().mockResolvedValue({ id: 'log-1' }) };
+    const businessAudit = {
+      enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+      flushCritical: jest.fn().mockResolvedValue(undefined),
+    };
     revisions = {
       upsertDraft: jest.fn().mockImplementation(async ({ rulePatch, scopeMetaPatch, sourceRow }) => ({
         revision: {
@@ -92,7 +95,18 @@ describe('RentalRulesService', () => {
       }),
       assertPublishPreconditions: jest.fn(),
     };
-    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any, activityLog as any, revisions as any, revisionImpact as any);
+    const eligibilityRecheck = {
+      processRulePublishRechecks: jest.fn().mockResolvedValue([]),
+    };
+    svc = new RentalRulesService(
+      prisma as any,
+      effective,
+      rentalRulePermissions as any,
+      businessAudit as any,
+      revisions as any,
+      revisionImpact as any,
+      eligibilityRecheck as any,
+    );
   });
 
   it('blocks access to foreign organization category', async () => {
