@@ -103,6 +103,7 @@ export function HandoverProvider({
           status: seed.status,
           includedKm: seed.includedKm,
           pickupOdometerKm: seed.pickupOdometerKm ?? null,
+          updatedAt: seed.updatedAt,
         });
       } else {
         setBooking(null);
@@ -135,6 +136,7 @@ export function HandoverProvider({
           status: detail.core.status,
           includedKm: detail.core.kmIncluded ?? undefined,
           pickupOdometerKm: pickupKm,
+          updatedAt: detail.core.updatedAt,
         });
       } catch {
         try {
@@ -160,6 +162,7 @@ export function HandoverProvider({
             status: full.status,
             includedKm: full.kmIncluded,
             pickupOdometerKm: pickupKm,
+            updatedAt: full.updatedAt ?? undefined,
           });
         } catch {
           // keep seed data

@@ -43,6 +43,7 @@ import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
 import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-key-scope.service';
 import { BOOKING_TENANT_SCOPE_MESSAGE } from './tenant-scope/booking-tenant-scope.constants';
+import { BookingConcurrencyService } from './concurrency/booking-concurrency.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -72,6 +73,7 @@ export class BookingsHandoverService {
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly foreignKeyScope: BookingForeignKeyScopeService,
+    private readonly bookingConcurrency: BookingConcurrencyService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -89,6 +91,10 @@ export class BookingsHandoverService {
   ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
     this.validatePayload(payload);
 
+    const expectedVersion = this.bookingConcurrency.requireExpectedUpdatedAt(
+      payload.expectedUpdatedAt,
+    );
+
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId: orgId },
       select: {
@@ -100,6 +106,7 @@ export class BookingsHandoverService {
         endDate: true,
         pickupStationId: true,
         returnStationId: true,
+        updatedAt: true,
       },
     });
     if (!booking) {
@@ -244,16 +251,16 @@ export class BookingsHandoverService {
           },
         });
 
-        const bookingUpdateData: Prisma.BookingUpdateInput = {
+        const bookingUpdateData: Prisma.BookingUpdateManyMutationInput = {
           status: transitionTo,
         };
         if (kind === 'PICKUP' && actualStationId) {
-          bookingUpdateData.actualPickupStation = { connect: { id: actualStationId } };
+          bookingUpdateData.actualPickupStationId = actualStationId;
         }
         if (kind === 'RETURN') {
           bookingUpdateData.completedAt = new Date();
           if (actualStationId) {
-            bookingUpdateData.actualReturnStation = { connect: { id: actualStationId } };
+            bookingUpdateData.actualReturnStationId = actualStationId;
           }
           const pickup = await tx.bookingHandoverProtocol.findFirst({
             where: { organizationId: orgId, bookingId, kind: 'PICKUP' },
@@ -268,17 +275,13 @@ export class BookingsHandoverService {
           }
         }
 
-        const bookingUpdateResult = await tx.booking.updateMany({
-          where: { id: bookingId, organizationId: orgId },
-          data: bookingUpdateData as Prisma.BookingUpdateManyMutationInput,
-        });
-        if (bookingUpdateResult.count !== 1) {
-          throw new NotFoundException(BOOKING_TENANT_SCOPE_MESSAGE);
-        }
-        const booking2 = await tx.booking.findFirstOrThrow({
-          where: { id: bookingId, organizationId: orgId },
-          select: { id: true, status: true, vehicleId: true },
-        });
+        const booking2 = await this.bookingConcurrency.optimisticUpdate(
+          orgId,
+          bookingId,
+          expectedVersion,
+          bookingUpdateData,
+          tx,
+        );
 
         // Keep vehicle.status consistent when the handover finalises or
         // releases the car. Maintenance / out-of-service must not be overwritten.

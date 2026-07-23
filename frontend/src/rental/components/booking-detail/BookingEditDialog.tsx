@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
 import { api, type BookingDetailDto, type Station } from '../../../lib/api';
+import {
+  handleBookingMutationError,
+  resolveBookingUpdatedAt,
+} from '../../lib/booking-version-conflict';
 import { StationSelectFields } from '../stations/StationSelectFields';
 
 interface BookingEditDialogProps {
@@ -80,12 +84,20 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
 
     setSaving(true);
     try {
-      await api.bookings.update(orgId, detail.core.bookingId, patch);
+      await api.bookings.update(
+        orgId,
+        detail.core.bookingId,
+        patch,
+        resolveBookingUpdatedAt(detail.core),
+      );
       toast.success('Buchung gespeichert');
       onSaved();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Speichern fehlgeschlagen';
-      toast.error(msg);
+      const handled = handleBookingMutationError(err, {
+        onConflictReload: onSaved,
+        onOtherError: (msg) => toast.error(msg),
+      });
+      if (handled) return;
     } finally {
       setSaving(false);
     }

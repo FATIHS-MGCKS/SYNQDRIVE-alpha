@@ -1,4 +1,5 @@
 import { getToken, clearAuth } from './auth';
+import { bookingMutate } from '../rental/lib/booking-version-conflict';
 import {
   buildFleetRentalHealthQueryString,
   fetchAllFleetRentalHealth as collectFleetRentalHealthPages,
@@ -760,8 +761,11 @@ function put<T>(path: string, body: unknown) {
   return request<T>(path, { method: 'PUT', body: JSON.stringify(body) });
 }
 
-function del<T>(path: string) {
-  return request<T>(path, { method: 'DELETE' });
+function del<T>(path: string, body?: unknown) {
+  return request<T>(path, {
+    method: 'DELETE',
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
 }
 
 // ── Task Action Layer types (V4.8.3 + V2 detail/buckets) ───────────────────
@@ -1424,6 +1428,8 @@ export type OperatorBookingUpdatePayload = {
   returnStationId?: string;
   pickupStation?: { connect: { id: string } };
   returnStation?: { connect: { id: string } };
+  insuranceOptions?: string[];
+  quoteId?: string;
 };
 
 /** Query params for `GET /organizations/:orgId/bookings` (all optional, backward-compatible). */
@@ -3682,15 +3688,34 @@ export const api = {
     detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
     create: (orgId: string, data: OperatorBookingCreatePayload) =>
       post<unknown>(`/organizations/${orgId}/bookings`, data),
-    update: (orgId: string, id: string, data: OperatorBookingUpdatePayload) =>
-      patch<unknown>(`/organizations/${orgId}/bookings/${id}`, data),
-    cancel: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/bookings/${id}`),
+    update: (
+      orgId: string,
+      id: string,
+      data: OperatorBookingUpdatePayload,
+      expectedUpdatedAt: string,
+    ) =>
+      bookingMutate<unknown>('PATCH', `/organizations/${orgId}/bookings/${id}`, {
+        ...data,
+        expectedUpdatedAt,
+      }),
+    cancel: (orgId: string, id: string, expectedUpdatedAt: string) =>
+      bookingMutate<void>('DELETE', `/organizations/${orgId}/bookings/${id}`, {
+        expectedUpdatedAt,
+      }),
     // V4.6.81 — Mark a CONFIRMED booking whose scheduled pickup has
     // passed without a handover as NO_SHOW. Distinct from cancel so
     // downstream reporting can tell "called off" from "customer never
     // showed". Server-side guardrails enforce status + time window.
-    markNoShow: (orgId: string, id: string, reason?: string | null) =>
-      post<any>(`/organizations/${orgId}/bookings/${id}/no-show`, { reason: reason ?? null }),
+    markNoShow: (
+      orgId: string,
+      id: string,
+      reason: string | null | undefined,
+      expectedUpdatedAt: string,
+    ) =>
+      bookingMutate<unknown>('POST', `/organizations/${orgId}/bookings/${id}/no-show`, {
+        reason: reason ?? null,
+        expectedUpdatedAt,
+      }),
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/bookings/stats`),
     todayPickups: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/pickups`),
     todayReturns: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/returns`),
@@ -3860,10 +3885,18 @@ export const api = {
     // the fact). Omitted → server uses `now()`.
     listHandovers: (orgId: string, bookingId: string) =>
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
-    createPickupHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    createPickupHandover: (orgId: string, bookingId: string, data: Record<string, unknown>) =>
+      bookingMutate<unknown>(
+        'POST',
+        `/organizations/${orgId}/bookings/${bookingId}/handover/pickup`,
+        data,
+      ),
+    createReturnHandover: (orgId: string, bookingId: string, data: Record<string, unknown>) =>
+      bookingMutate<unknown>(
+        'POST',
+        `/organizations/${orgId}/bookings/${bookingId}/handover/return`,
+        data,
+      ),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.

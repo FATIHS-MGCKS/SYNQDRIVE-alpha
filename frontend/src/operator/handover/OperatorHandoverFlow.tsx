@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { api } from '../../lib/api';
+import { handleBookingMutationError } from '../../rental/lib/booking-version-conflict';
 import type {
   HandoverDialogBookingInfo,
   HandoverDialogKind,
@@ -90,6 +91,7 @@ export function OperatorHandoverFlow({
       handoverInstructions: booking.handoverInstructions,
       returnInstructions: booking.returnInstructions,
       pickupOdometerKm: booking.pickupOdometerKm,
+      updatedAt: booking.updatedAt,
     };
   }, [booking]);
 
@@ -147,9 +149,11 @@ export function OperatorHandoverFlow({
       onSuccess?.();
       onClose();
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string }; message?: string };
-      const msg = e?.data?.message ?? e?.message ?? 'Übergabe konnte nicht gespeichert werden';
-      setSubmitError(typeof msg === 'string' ? msg : 'Übergabe fehlgeschlagen');
+      const handled = handleBookingMutationError(err, {
+        onOtherError: (msg) => setSubmitError(msg),
+      });
+      if (handled) return;
+      setSubmitError('Übergabe fehlgeschlagen');
     } finally {
       setSubmitting(false);
     }

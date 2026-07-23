@@ -3,6 +3,7 @@ import { Icon } from '../ui/Icon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { api, type Station } from '../../../lib/api';
+import { handleBookingMutationError } from '../../lib/booking-version-conflict';
 import { useHandoverVehicleTelemetryPrefill } from '../../lib/useHandoverVehicleTelemetryPrefill';
 import type { DamageSeverity } from '../../lib/damage.types';
 import { stationsForPickup, stationsForReturn } from '../../lib/stationBookingUtils';
@@ -38,6 +39,7 @@ export interface HandoverDialogBookingInfo {
   status?: string;
   includedKm?: number;
   pickupOdometerKm?: number | null;
+  updatedAt?: string;
 }
 
 interface HandoverProtocolDialogProps {
@@ -366,6 +368,10 @@ export function HandoverProtocolDialog({
 
   const handleSubmit = async () => {
     if (!booking) return;
+    if (!booking.updatedAt) {
+      setSubmitError('Buchungsversion fehlt — bitte Dialog schließen und erneut öffnen.');
+      return;
+    }
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
@@ -384,6 +390,7 @@ export function HandoverProtocolDialog({
       }
 
       const payload = {
+        expectedUpdatedAt: booking.updatedAt,
         performedAt: performedAtIso,
         performedByUserId: staffId || null,
         performedByName: staffName || null,
@@ -411,12 +418,12 @@ export function HandoverProtocolDialog({
       }
       onSuccess?.();
       onClose();
-    } catch (err: any) {
-      const msg =
-        err?.data?.message ??
-        err?.message ??
-        'Übergabe konnte nicht gespeichert werden';
-      setSubmitError(typeof msg === 'string' ? msg : 'Übergabe fehlgeschlagen');
+    } catch (err: unknown) {
+      const handled = handleBookingMutationError(err, {
+        onOtherError: (msg) => setSubmitError(msg),
+      });
+      if (handled) return;
+      setSubmitError('Übergabe fehlgeschlagen');
     } finally {
       setSubmitting(false);
     }

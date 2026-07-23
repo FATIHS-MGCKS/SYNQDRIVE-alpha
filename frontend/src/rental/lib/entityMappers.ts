@@ -430,6 +430,7 @@ export interface BookingUiRow {
   returnProtocol: HandoverProtocolRow | null;
   extras: Array<{ id?: string; name?: string; price?: number }>;
   totalPriceCents: number | null;
+  updatedAt: string;
   _raw: unknown;
 }
 
@@ -553,6 +554,7 @@ export function mapApiBooking(api: any): BookingUiRow {
     returnProtocol,
     extras: extrasList,
     totalPriceCents,
+    updatedAt: String(api.updatedAt ?? ''),
     _raw: api,
   };
 }

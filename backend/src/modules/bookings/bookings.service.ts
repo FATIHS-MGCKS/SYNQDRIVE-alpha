@@ -64,6 +64,7 @@ import { listInvalidationFactsFromMutation } from './booking-eligibility-gatekee
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-key-scope.service';
+import { BookingConcurrencyService } from './concurrency/booking-concurrency.service';
 import {
   resolveEligibilityPolicyMode,
   shouldSkipEligibilityEnforcement,
@@ -128,6 +129,7 @@ export class BookingsService {
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly foreignKeyScope: BookingForeignKeyScopeService,
+    private readonly bookingConcurrency: BookingConcurrencyService,
   ) {}
 
   /**
@@ -1722,8 +1724,12 @@ export class BookingsService {
       eligibilityPreviewFingerprint?: string | null;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
+      expectedUpdatedAt?: string | null;
     },
   ): Promise<Booking> {
+    const expectedVersion = this.bookingConcurrency.requireExpectedUpdatedAt(
+      options?.expectedUpdatedAt,
+    );
     const existing = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
     });
@@ -1988,6 +1994,7 @@ export class BookingsService {
     delete anyData.eligibilityPreviewFingerprint;
     delete anyData.foreignTravelRequested;
     delete anyData.additionalDriverCount;
+    delete anyData.expectedUpdatedAt;
 
     const updated = confirmingTransition
       ? await this.prisma.$transaction(async (tx) => {
@@ -2013,15 +2020,13 @@ export class BookingsService {
             }
             assertWizardPreviewFingerprintMatches(fingerprint, gateResult);
           }
-          const updatedBooking = await this.foreignKeyScope.updateBookingScoped(
+          const updatedBooking = await this.bookingConcurrency.optimisticUpdate(
             orgId,
             id,
-            data,
+            expectedVersion,
+            data as Prisma.BookingUpdateManyMutationInput,
             tx,
           );
-          if (!updatedBooking) {
-            throw new NotFoundException('Booking not found for organization');
-          }
           if (
             updatedBooking.status === 'CONFIRMED' &&
             gateResult &&
@@ -2044,10 +2049,12 @@ export class BookingsService {
           }
           return updatedBooking;
         })
-      : await this.foreignKeyScope.updateBookingScoped(orgId, id, data);
-    if (!updated) {
-      throw new NotFoundException('Booking not found for organization');
-    }
+      : await this.bookingConcurrency.optimisticUpdate(
+          orgId,
+          id,
+          expectedVersion,
+          data as Prisma.BookingUpdateManyMutationInput,
+        );
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {
@@ -2170,7 +2177,12 @@ export class BookingsService {
     return updated;
   }
 
-  async cancel(orgId: string, id: string): Promise<Booking> {
+  async cancel(
+    orgId: string,
+    id: string,
+    expectedUpdatedAt: string,
+  ): Promise<Booking> {
+    const expectedVersion = this.bookingConcurrency.requireExpectedUpdatedAt(expectedUpdatedAt);
     const booking = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
       include: { vehicle: true },
@@ -2179,17 +2191,12 @@ export class BookingsService {
     await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
 
     const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.updateMany({
-        where: { id, organizationId: orgId },
-        data: {
+      this.bookingConcurrency
+        .optimisticUpdate(orgId, id, expectedVersion, {
           status: 'CANCELLED' as BookingStatus,
           cancelledAt: new Date(),
-        },
-      }).then(async () =>
-        this.prisma.booking.findFirstOrThrow({
-          where: { id, organizationId: orgId },
-        }),
-      ),
+        })
+        .then((row) => row),
       // Release the car for a replacement booking — but NEVER overwrite a
       // maintenance / out-of-service state (same invariant the handover
       // service enforces). `updateMany` + notIn applies the AVAILABLE flip
@@ -2241,8 +2248,10 @@ export class BookingsService {
   async markNoShow(
     orgId: string,
     id: string,
-    reason?: string | null,
+    reason: string | null | undefined,
+    expectedUpdatedAt: string,
   ): Promise<Booking> {
+    const expectedVersion = this.bookingConcurrency.requireExpectedUpdatedAt(expectedUpdatedAt);
     const booking = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
       include: { vehicle: true },
@@ -2277,18 +2286,11 @@ export class BookingsService {
       : booking.notes;
 
     const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.updateMany({
-        where: { id, organizationId: orgId },
-        data: {
-          status: 'NO_SHOW' as BookingStatus,
-          cancelledAt: new Date(),
-          notes: nextNotes,
-        },
-      }).then(async () =>
-        this.prisma.booking.findFirstOrThrow({
-          where: { id, organizationId: orgId },
-        }),
-      ),
+      this.bookingConcurrency.optimisticUpdate(orgId, id, expectedVersion, {
+        status: 'NO_SHOW' as BookingStatus,
+        cancelledAt: new Date(),
+        notes: nextNotes,
+      }),
       // Reopen the car for a replacement booking without clobbering a
       // maintenance / out-of-service state (mirrors cancel() + the handover
       // invariant). Only flips to AVAILABLE when not IN_SERVICE/OUT_OF_SERVICE.

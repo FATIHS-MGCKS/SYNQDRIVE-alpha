@@ -87,6 +87,7 @@ export interface OperatorHandoverBookingRef {
   handoverInstructions?: string | null;
   returnInstructions?: string | null;
   pickupOdometerKm?: number | null;
+  updatedAt?: string;
 }
 
 export interface OperatorHandoverPayloadInput {
@@ -154,6 +155,7 @@ export function buildOperatorHandoverPayload(input: OperatorHandoverPayloadInput
   }
 
   return {
+    expectedUpdatedAt: input.booking.updatedAt,
     performedAt: performedAtIso,
     performedByUserId: state.staffId || null,
     performedByName: state.staffName || null,

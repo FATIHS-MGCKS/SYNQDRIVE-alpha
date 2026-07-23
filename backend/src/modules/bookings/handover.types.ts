@@ -40,6 +40,8 @@ export interface HandoverProtocolDto {
 }
 
 export interface CreateHandoverProtocolPayload {
+  /** Optimistic-lock token from `Booking.updatedAt` (ISO-8601). */
+  expectedUpdatedAt: string;
   // V4.6.81 — Backdate support. When the operator records a pickup that
   // physically happened earlier (customer arrived late, dispatcher logs
   // the handover after the fact, etc.), the UI sends `performedAt` as an

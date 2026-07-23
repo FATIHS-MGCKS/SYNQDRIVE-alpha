@@ -415,6 +415,7 @@ export class BookingsController {
       eligibilityPreviewFingerprint?: string;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
+      expectedUpdatedAt?: string;
     },
   ) {
     const {
@@ -422,6 +423,7 @@ export class BookingsController {
       eligibilityPreviewFingerprint,
       foreignTravelRequested,
       additionalDriverCount,
+      expectedUpdatedAt,
       ...bookingBody
     } = body;
     return this.bookingsService.update(orgId, id, bookingBody, {
@@ -432,6 +434,7 @@ export class BookingsController {
       eligibilityPreviewFingerprint,
       foreignTravelRequested,
       additionalDriverCount,
+      expectedUpdatedAt,
     });
   }
 
@@ -439,8 +442,9 @@ export class BookingsController {
   async cancel(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Body() body: { expectedUpdatedAt?: string } = {},
   ) {
-    return this.bookingsService.cancel(orgId, id);
+    return this.bookingsService.cancel(orgId, id, body.expectedUpdatedAt ?? '');
   }
 
   // V4.6.81 — No-show transition (distinct from cancel). Surfaced as a
@@ -451,9 +455,14 @@ export class BookingsController {
   async markNoShow(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: { reason?: string | null } = {},
+    @Body() body: { reason?: string | null; expectedUpdatedAt?: string } = {},
   ) {
-    return this.bookingsService.markNoShow(orgId, id, body?.reason ?? null);
+    return this.bookingsService.markNoShow(
+      orgId,
+      id,
+      body?.reason ?? null,
+      body?.expectedUpdatedAt ?? '',
+    );
   }
 
   // V4.6.75 — Handover routes (pickup + return).

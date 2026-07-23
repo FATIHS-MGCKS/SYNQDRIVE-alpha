@@ -32,6 +32,7 @@ import { BookingEligibilityDecisionService } from './booking-eligibility-decisio
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
 import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-key-scope.service';
+import { BookingConcurrencyService } from './concurrency/booking-concurrency.service';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-ke
     BookingEligibilityRecheckService,
     BookingEligibilityRecheckSchedulerService,
     BookingForeignKeyScopeService,
+    BookingConcurrencyService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,

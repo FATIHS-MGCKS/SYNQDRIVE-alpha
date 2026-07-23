@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-optimistic-concurrency-prompt14-2026-07-23',
+    version: '4.9.789',
+    title: 'Booking Production-Readiness — Optimistic Concurrency (Prompt 14/34)',
+    summary: [
+      'BookingConcurrencyService — `expectedUpdatedAt` als Versions-Token (`Booking.updatedAt`).',
+      'PATCH update, DELETE cancel, POST no-show und Handover pickup/return nutzen optimisticUpdate.',
+      'Bei Abweichung: 409 BOOKING_VERSION_CONFLICT mit `current`-Refresh-Payload.',
+      'Frontend: bookingMutate + handleBookingMutationError; alle Mutations übergeben updatedAt.',
+      'Bei Konflikt: Dialog bleibt offen, deutscher Refresh-Hinweis, kein Last-Write-Wins.',
+      'Tests: gleichzeitige Bearbeiter, Cancel+Edit, Pickup+Fahrzeugwechsel, Retry mit alter Version.',
+    ],
+    reason:
+      'Gleichzeitige Bearbeitung derselben Buchung darf keine stillen Überschreibungen bei Zeitraum, Fahrzeug, Kunde, Status, Preis, Pickup/Return oder Storno erzeugen.',
+    previousBehavior:
+      'Last-Write-Wins über generisches updateMany ohne Versionsprüfung.',
+    details:
+      'Backend: concurrency/booking-concurrency.service.ts; Wiring in bookings.service, bookings-handover.service, bookings.controller. Frontend: rental/lib/booking-version-conflict.ts, api.ts, BookingsView, BookingDossier, Handover flows. Doku: docs/architecture/booking-optimistic-concurrency.md.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:30:00.000Z',
+  },
+  {
     id: 'booking-tenant-isolation-prompt13-2026-07-23',
     version: '4.9.788',
     title: 'Booking Production-Readiness — Tenant Isolation for Secondary Lookups (Prompt 13/34)',

@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
 import { api } from '../../../lib/api';
+import {
+  handleBookingMutationError,
+  resolveBookingUpdatedAt,
+} from '../../lib/booking-version-conflict';
 import { useRentalOrg } from '../../RentalContext';
 import { useHandover } from '../../HandoverContext';
 import { SkeletonCard } from '../../../components/patterns';
@@ -95,15 +99,25 @@ export function BookingDossier({
     if (!orgId || !detail || submitting) return;
     setSubmitting(true);
     try {
-      await api.bookings.cancel(orgId, bookingId);
+      await api.bookings.cancel(
+        orgId,
+        bookingId,
+        resolveBookingUpdatedAt(detail.core),
+      );
       toast.success('Buchung storniert');
       onBookingCancelled?.(bookingId);
       onRefreshList?.();
       setCancelOpen(false);
       refresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Stornierung fehlgeschlagen';
-      toast.error(msg);
+      const handled = handleBookingMutationError(err, {
+        onConflictReload: () => {
+          void refresh();
+          onRefreshList?.();
+        },
+        onOtherError: (msg) => toast.error(msg),
+      });
+      if (handled) return;
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +127,12 @@ export function BookingDossier({
     if (!orgId || !detail || submitting) return;
     setSubmitting(true);
     try {
-      await api.bookings.markNoShow(orgId, bookingId, noShowReason.trim() || null);
+      await api.bookings.markNoShow(
+        orgId,
+        bookingId,
+        noShowReason.trim() || null,
+        resolveBookingUpdatedAt(detail.core),
+      );
       toast.success('Als No-Show markiert');
       onBookingCancelled?.(bookingId);
       onRefreshList?.();
@@ -121,8 +140,14 @@ export function BookingDossier({
       setNoShowReason('');
       refresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'No-Show konnte nicht gesetzt werden';
-      toast.error(msg);
+      const handled = handleBookingMutationError(err, {
+        onConflictReload: () => {
+          void refresh();
+          onRefreshList?.();
+        },
+        onOtherError: (msg) => toast.error(msg),
+      });
+      if (handled) return;
     } finally {
       setSubmitting(false);
     }

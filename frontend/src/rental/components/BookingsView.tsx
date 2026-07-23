@@ -8,6 +8,10 @@ import { useFleetVehicles } from '../FleetContext';
 import { useHandover } from '../HandoverContext';
 import { api } from '../../lib/api';
 import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
+import {
+  handleBookingMutationError,
+  resolveBookingUpdatedAt,
+} from '../lib/booking-version-conflict';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 import { EntityTasksSection } from './EntityTasksSection';
 import { MisuseCasesPanel } from './MisuseCasesPanel';
@@ -572,7 +576,12 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     }
 
     try {
-      await api.bookings.update(orgId, booking.id, patch);
+      await api.bookings.update(
+        orgId,
+        booking.id,
+        patch,
+        resolveBookingUpdatedAt(booking),
+      );
       await loadBookings();
       onBookingUpdated?.({
         ...booking,
@@ -589,9 +598,13 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       setIsEditMode(false);
       setInlineEdit({});
       setActiveDropdown(null);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Speichern fehlgeschlagen';
-      toast.error('Buchung konnte nicht gespeichert werden', { description: String(msg) });
+    } catch (err: unknown) {
+      const handled = handleBookingMutationError(err, {
+        onConflictReload: () => void loadBookings(),
+        onOtherError: (msg) =>
+          toast.error('Buchung konnte nicht gespeichert werden', { description: msg }),
+      });
+      if (!handled) return;
     }
   };
 
@@ -744,7 +757,12 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       // Only call API for bookings that exist server-side (UUID-like id)
       const isPersistedId = typeof editingBooking.id === 'string' && !editingBooking.id.startsWith('new-');
       if (isPersistedId && Object.keys(patch).length > 0) {
-        await api.bookings.update(orgId, editingBooking.id, patch);
+        await api.bookings.update(
+          orgId,
+          editingBooking.id,
+          patch,
+          resolveBookingUpdatedAt(editingBooking),
+        );
       }
 
       setLocalEdits(prev => ({ ...prev, [editingBooking.id]: editForm }));
@@ -755,9 +773,13 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       });
       setEditingBooking(null);
       loadBookings();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Buchung konnte nicht gespeichert werden';
-      toast.error('Fehler beim Speichern', { description: String(msg) });
+    } catch (err: unknown) {
+      const handled = handleBookingMutationError(err, {
+        onConflictReload: () => void loadBookings(),
+        onOtherError: (msg) =>
+          toast.error('Fehler beim Speichern', { description: msg }),
+      });
+      if (handled) return;
     }
   };
 
@@ -780,9 +802,18 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     if (!noShowConfirmId || !orgId || noShowSubmitting) return;
     const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
     const booking = allBk.find(b => b.id === noShowConfirmId);
+    if (!booking?.updatedAt) {
+      toast.error('Buchungsdaten fehlen — bitte neu laden');
+      return;
+    }
     try {
       setNoShowSubmitting(true);
-      await api.bookings.markNoShow(orgId, noShowConfirmId, noShowReason.trim() || null);
+      await api.bookings.markNoShow(
+        orgId,
+        noShowConfirmId,
+        noShowReason.trim() || null,
+        resolveBookingUpdatedAt(booking),
+      );
       onBookingCancelled?.(noShowConfirmId, { vehicleId: booking?.vehicleId ?? null });
       toast.success('Als No-Show markiert', {
         description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
@@ -794,9 +825,13 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       }
       setNoShowConfirmId(null);
       setNoShowReason('');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'No-Show konnte nicht gesetzt werden';
-      toast.error('Fehler beim Markieren als No-Show', { description: String(msg) });
+    } catch (err: unknown) {
+      const handled = handleBookingMutationError(err, {
+        onConflictReload: () => void loadBookings(),
+        onOtherError: (msg) =>
+          toast.error('Fehler beim Markieren als No-Show', { description: msg }),
+      });
+      if (handled) return;
     } finally {
       setNoShowSubmitting(false);
     }
@@ -807,9 +842,17 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
     const booking = allBk.find(b => b.id === cancelConfirmId);
     const isPersistedId = typeof cancelConfirmId === 'string' && !cancelConfirmId.startsWith('new-');
+    if (isPersistedId && !booking?.updatedAt) {
+      toast.error('Buchungsdaten fehlen — bitte neu laden');
+      return;
+    }
     try {
       if (isPersistedId) {
-        await api.bookings.cancel(orgId, cancelConfirmId);
+        await api.bookings.cancel(
+          orgId,
+          cancelConfirmId,
+          resolveBookingUpdatedAt(booking),
+        );
       }
       setLocalCancelled(prev => [...prev, cancelConfirmId]);
       onBookingCancelled?.(cancelConfirmId, { vehicleId: booking?.vehicleId ?? null });
@@ -818,9 +861,13 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         duration: 3000,
       });
       loadBookings();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Stornieren fehlgeschlagen';
-      toast.error('Fehler beim Stornieren', { description: String(msg) });
+    } catch (err: unknown) {
+      const handled = handleBookingMutationError(err, {
+        onConflictReload: () => void loadBookings(),
+        onOtherError: (msg) =>
+          toast.error('Fehler beim Stornieren', { description: msg }),
+      });
+      if (handled) return;
       setCancelConfirmId(null);
       return;
     }

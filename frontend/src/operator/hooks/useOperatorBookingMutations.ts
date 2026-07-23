@@ -1,6 +1,9 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import {
+  handleBookingMutationError,
+} from '../../rental/lib/booking-version-conflict';
+import {
   api,
   getErrorMessage,
   type OperatorBookingCreatePayload,
@@ -28,12 +31,19 @@ export function useOperatorBookingMutations() {
   const clearError = useCallback(() => setError(null), []);
 
   const reportError = useCallback((e: unknown) => {
+    if (
+      handleBookingMutationError(e, {
+        onConflictReload: () => triggerRefresh(),
+      })
+    ) {
+      return 'Buchung wurde zwischenzeitlich geändert';
+    }
     const msg = getErrorMessage(e, 'Aktion fehlgeschlagen');
     const formatted = formatOperatorBookingError(msg);
     setError(formatted.description);
     toast.error(formatted.title, { description: formatted.description });
     return formatted.description;
-  }, []);
+  }, [triggerRefresh]);
 
   const run = useCallback(
     async <T>(
@@ -89,11 +99,12 @@ export function useOperatorBookingMutations() {
     (
       bookingId: string,
       payload: OperatorBookingUpdatePayload,
+      expectedUpdatedAt: string,
       onSuccess?: () => void,
       previousVehicleId?: string | null,
     ) =>
       run(
-        () => api.bookings.update(orgId!, bookingId, payload),
+        () => api.bookings.update(orgId!, bookingId, payload, expectedUpdatedAt),
         'Buchung gespeichert',
         onSuccess,
         () => {
@@ -110,9 +121,14 @@ export function useOperatorBookingMutations() {
   );
 
   const cancelBooking = useCallback(
-    (bookingId: string, vehicleId: string | null | undefined, onSuccess?: () => void) =>
+    (
+      bookingId: string,
+      expectedUpdatedAt: string,
+      vehicleId: string | null | undefined,
+      onSuccess?: () => void,
+    ) =>
       run(
-        () => api.bookings.cancel(orgId!, bookingId),
+        () => api.bookings.cancel(orgId!, bookingId, expectedUpdatedAt),
         'Buchung storniert',
         onSuccess,
         () => {
@@ -127,9 +143,21 @@ export function useOperatorBookingMutations() {
   );
 
   const markNoShow = useCallback(
-    (bookingId: string, vehicleId: string | null | undefined, reason?: string, onSuccess?: () => void) =>
+    (
+      bookingId: string,
+      expectedUpdatedAt: string,
+      vehicleId: string | null | undefined,
+      reason?: string,
+      onSuccess?: () => void,
+    ) =>
       run(
-        () => api.bookings.markNoShow(orgId!, bookingId, reason ?? null),
+        () =>
+          api.bookings.markNoShow(
+            orgId!,
+            bookingId,
+            reason ?? null,
+            expectedUpdatedAt,
+          ),
         'Als No-Show markiert',
         onSuccess,
         () => {
