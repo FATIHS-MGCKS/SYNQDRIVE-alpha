@@ -3,6 +3,8 @@ import { Icon } from '../ui/Icon';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { api, type Station } from '../../../lib/api';
+import { formatOrgDateTimeLocalValue, parseOrgDateTimeLocalValue } from '../../../lib/datetime';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 import { useHandoverVehicleTelemetryPrefill } from '../../lib/useHandoverVehicleTelemetryPrefill';
 import type { DamageSeverity } from '../../lib/damage.types';
 import { stationsForPickup, stationsForReturn } from '../../lib/stationBookingUtils';
@@ -88,6 +90,7 @@ export function HandoverProtocolDialog({
   isDarkMode,
   onSuccess,
 }: HandoverProtocolDialogProps) {
+  const { timezone } = useOrgTimezone(orgId);
   const [animating, setAnimating] = useState(false);
   const [loadingDamages, setLoadingDamages] = useState(false);
   const [damages, setDamages] = useState<DamageRow[]>([]);
@@ -377,10 +380,7 @@ export function HandoverProtocolDialog({
       // pickup. RETURN ignores this field entirely.
       let performedAtIso: string | null = null;
       if (kind === 'PICKUP' && performedAtLocal) {
-        const d = new Date(performedAtLocal);
-        if (!Number.isNaN(d.getTime())) {
-          performedAtIso = d.toISOString();
-        }
+        performedAtIso = parseOrgDateTimeLocalValue(performedAtLocal, timezone);
       }
 
       const payload = {
@@ -589,7 +589,7 @@ export function HandoverProtocolDialog({
               <input
                 type="datetime-local"
                 value={performedAtLocal}
-                max={new Date().toISOString().slice(0, 16)}
+                max={formatOrgDateTimeLocalValue(new Date(), timezone)}
                 onChange={(e) => setPerformedAtLocal(e.target.value)}
                 className={inputCls}
               />
@@ -598,8 +598,9 @@ export function HandoverProtocolDialog({
                 (z. B. Kunde war verspätet und wurde nachgetragen). Max. 7 Tage rückwirkend.
               </p>
               {performedAtLocal && (() => {
-                const d = new Date(performedAtLocal);
-                if (Number.isNaN(d.getTime())) return null;
+                const performedIso = parseOrgDateTimeLocalValue(performedAtLocal, timezone);
+                if (!performedIso) return null;
+                const d = new Date(performedIso);
                 const scheduled = new Date(booking.startDate);
                 const deltaMin = Math.round((d.getTime() - scheduled.getTime()) / 60_000);
                 if (deltaMin <= 0) return null;

@@ -1,4 +1,5 @@
 import type { BookingDetailDto } from '../../../lib/api';
+import { DEFAULT_ORG_TIMEZONE, formatBookingDateTime } from '../../../lib/datetime';
 import { normalizeBookingStatus } from '../bookings/bookingStatus';
 
 export const EM_DASH = '—';
@@ -8,15 +9,21 @@ export function formatCurrencyCents(cents: number | null | undefined, currency =
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(cents / 100);
 }
 
-export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return EM_DASH;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return EM_DASH;
-  return d.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
+export function formatDateTime(
+  iso: string | null | undefined,
+  timeZone: string = DEFAULT_ORG_TIMEZONE,
+  locale?: string | null,
+): string {
+  return formatBookingDateTime(iso, timeZone, locale);
 }
 
-export function formatDateRange(start: string, end: string): string {
-  return `${formatDateTime(start)} → ${formatDateTime(end)}`;
+export function formatDateRange(
+  start: string,
+  end: string,
+  timeZone: string = DEFAULT_ORG_TIMEZONE,
+  locale?: string | null,
+): string {
+  return `${formatDateTime(start, timeZone, locale)} → ${formatDateTime(end, timeZone, locale)}`;
 }
 
 export function paymentStatusLabel(status: string | null): string {

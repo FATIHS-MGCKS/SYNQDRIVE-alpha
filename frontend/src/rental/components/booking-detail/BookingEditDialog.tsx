@@ -9,6 +9,7 @@ import {
   type BookingEditFormState,
 } from '../../lib/booking-commands';
 import { useBookingMutations } from '../../hooks/useBookingMutations';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 
 interface BookingEditDialogProps {
   orgId: string;
@@ -18,15 +19,18 @@ interface BookingEditDialogProps {
 }
 
 export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEditDialogProps) {
+  const { timezone } = useOrgTimezone(orgId);
   const baseline = bookingEditBaselineFromDetail(detail);
-  const [form, setForm] = useState<BookingEditFormState>(() => bookingEditFormFromDetail(detail));
+  const [form, setForm] = useState<BookingEditFormState>(() =>
+    bookingEditFormFromDetail(detail, timezone),
+  );
   const [stations, setStations] = useState<Station[]>([]);
   const { mutating, error, clearError, updateBookingFields } = useBookingMutations();
 
   useEffect(() => {
-    setForm(bookingEditFormFromDetail(detail));
+    setForm(bookingEditFormFromDetail(detail, timezone));
     clearError();
-  }, [detail, clearError]);
+  }, [detail, timezone, clearError]);
 
   useEffect(() => {
     let cancelled = false;

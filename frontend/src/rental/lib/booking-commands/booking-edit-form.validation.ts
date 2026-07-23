@@ -10,11 +10,14 @@ export interface BookingEditValidationResult {
   effectiveReturnStationId?: string;
 }
 
-export function validateBookingEditForm(form: BookingEditFormState): BookingEditValidationResult {
+export function validateBookingEditForm(
+  form: BookingEditFormState,
+  timeZone: string,
+): BookingEditValidationResult {
   const fieldErrors: Partial<Record<keyof BookingEditFormState, string>> = {};
 
-  const startIso = localDateTimeToIso(form.startLocal);
-  const endIso = localDateTimeToIso(form.endLocal);
+  const startIso = localDateTimeToIso(form.startLocal, timeZone);
+  const endIso = localDateTimeToIso(form.endLocal, timeZone);
 
   if (!startIso) fieldErrors.startLocal = 'Gültiger Abholzeitpunkt erforderlich';
   if (!endIso) fieldErrors.endLocal = 'Gültiger Rückgabezeitpunkt erforderlich';

@@ -17,6 +17,7 @@ import { BOOKING_DETAIL_TABS, type BookingDetailTab } from './bookingDetailTypes
 import { getBookingActionMatrix, getPrimaryBookingAction } from './bookingActionRules';
 import { useBookingDetail } from './useBookingDetail';
 import { useBookingMutations } from '../../hooks/useBookingMutations';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 import { formatDateTime } from './bookingDetailUtils';
 
 interface BookingDossierProps {
@@ -39,6 +40,7 @@ export function BookingDossier({
   onOpenVehicle,
 }: BookingDossierProps) {
   const { orgId } = useRentalOrg();
+  const { timezone, locale } = useOrgTimezone(orgId);
   const { openHandover } = useHandover();
   const { detail, loading, error, refresh } = useBookingDetail(orgId, bookingId);
   const { mutating, cancelBooking, markNoShow } = useBookingMutations();
@@ -240,7 +242,7 @@ export function BookingDossier({
             rows={[
               ['Kunde', detail.customer.fullName],
               ['Fahrzeug', `${detail.vehicle.displayName} · ${detail.vehicle.licensePlate}`],
-              ['Zeitraum', `${formatDateTime(detail.core.startDate)} – ${formatDateTime(detail.core.endDate)}`],
+              ['Zeitraum', `${formatDateTime(detail.core.startDate, timezone, locale)} – ${formatDateTime(detail.core.endDate, timezone, locale)}`],
             ]}
           />
         </ConfirmModal>

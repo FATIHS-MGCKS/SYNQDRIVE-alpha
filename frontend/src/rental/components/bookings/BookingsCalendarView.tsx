@@ -1,12 +1,19 @@
 import { useMemo } from 'react';
 import type { BookingUiRow } from '../../lib/entityMappers';
+import {
+  DEFAULT_ORG_TIMEZONE,
+  overlapsHalfOpen,
+  todayDateOnlyInZone,
+  zonedDayRange,
+} from '../../../lib/datetime';
 import { BookingStatusBadge } from './bookingStatus';
-import { bookingRef, parseIso, rowStatus, bookingStartIso } from './bookingUtils';
+import { bookingRef, parseIso, rowStatus, bookingStartIso, bookingEndIso } from './bookingUtils';
 
 interface BookingsCalendarViewProps {
   rows: BookingUiRow[];
   month: number;
   year: number;
+  timeZone?: string;
   selectedDay: number | null;
   onDayClick: (day: number | null) => void;
   onBookingClick: (id: string) => void;
@@ -17,6 +24,7 @@ export function BookingsCalendarView({
   rows,
   month,
   year,
+  timeZone = DEFAULT_ORG_TIMEZONE,
   selectedDay,
   onDayClick,
   onBookingClick,
@@ -24,18 +32,20 @@ export function BookingsCalendarView({
 }: BookingsCalendarViewProps) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
-  const today = new Date();
+  const todayDateOnly = todayDateOnlyInZone(timeZone);
 
   const byDay = useMemo(() => {
     const map = new Map<number, BookingUiRow[]>();
     for (const row of rows) {
       const start = parseIso(bookingStartIso(row));
-      const end = parseIso(row._raw && typeof row._raw === 'object' && 'endDate' in row._raw ? String((row._raw as { endDate: string }).endDate) : '');
+      const end = parseIso(bookingEndIso(row));
       if (!start || !end) continue;
       for (let d = 1; d <= daysInMonth; d++) {
-        const dayStart = new Date(year, month, d, 0, 0, 0, 0);
-        const dayEnd = new Date(year, month, d, 23, 59, 59, 999);
-        if (start <= dayEnd && end >= dayStart) {
+        const dateOnly = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dayRange = zonedDayRange(dateOnly, timeZone);
+        const dayStart = new Date(dayRange.from);
+        const dayEnd = new Date(dayRange.to);
+        if (overlapsHalfOpen(start, end, dayStart, dayEnd)) {
           const list = map.get(d) ?? [];
           list.push(row);
           map.set(d, list);
@@ -43,7 +53,7 @@ export function BookingsCalendarView({
       }
     }
     return map;
-  }, [rows, month, year, daysInMonth]);
+  }, [rows, month, year, daysInMonth, timeZone]);
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -91,8 +101,8 @@ export function BookingsCalendarView({
         {cells.map((day, idx) => {
           if (!day) return <div key={`e-${idx}`} />;
           const list = byDay.get(day) ?? [];
-          const isToday =
-            day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+          const dateOnly = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const isToday = dateOnly === todayDateOnly;
           const isSelected = selectedDay === day;
           return (
             <button

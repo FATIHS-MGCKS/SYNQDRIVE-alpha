@@ -8,6 +8,8 @@ import {
   validateBookingEditForm,
 } from './index';
 
+const BERLIN = 'Europe/Berlin';
+
 function detailFixture(overrides?: Partial<BookingDetailDto['core']>): BookingDetailDto {
   return {
     core: {
@@ -94,15 +96,18 @@ function detailFixture(overrides?: Partial<BookingDetailDto['core']>): BookingDe
 
 describe('booking-edit validation', () => {
   it('rejects end before start', () => {
-    const result = validateBookingEditForm({
-      startLocal: '2026-07-12T10:00',
-      endLocal: '2026-07-10T10:00',
-      notes: '',
-      kmIncluded: '',
-      pickupStationId: 'sta-1',
-      returnStationId: 'sta-1',
-      sameReturnStation: true,
-    });
+    const result = validateBookingEditForm(
+      {
+        startLocal: '2026-07-12T10:00',
+        endLocal: '2026-07-10T10:00',
+        notes: '',
+        kmIncluded: '',
+        pickupStationId: 'sta-1',
+        returnStationId: 'sta-1',
+        sameReturnStation: true,
+      },
+      BERLIN,
+    );
     expect(result.valid).toBe(false);
     expect(result.fieldErrors?.endLocal).toBeTruthy();
   });
@@ -112,10 +117,10 @@ describe('buildBookingUpdateCommand', () => {
   it('builds diff-only patch for detail edit path', () => {
     const detail = detailFixture();
     const baseline = bookingEditBaselineFromDetail(detail);
-    const form = bookingEditFormFromBaseline(baseline);
+    const form = bookingEditFormFromBaseline(baseline, BERLIN);
     form.notes = 'Updated note';
 
-    const command = buildBookingUpdateCommand(baseline, form);
+    const command = buildBookingUpdateCommand(baseline, form, { timeZone: BERLIN });
     expect(command.ok).toBe(true);
     if (!command.ok) return;
     expect(command.patch).toEqual({ notes: 'Updated note' });
@@ -125,13 +130,16 @@ describe('buildBookingUpdateCommand', () => {
   it('includes vehicle connect only when allowed', () => {
     const detail = detailFixture();
     const baseline = bookingEditBaselineFromDetail(detail);
-    const form = bookingEditFormFromBaseline(baseline);
+    const form = bookingEditFormFromBaseline(baseline, BERLIN);
     form.vehicleId = 'veh-2';
 
-    const blocked = buildBookingUpdateCommand(baseline, form);
+    const blocked = buildBookingUpdateCommand(baseline, form, { timeZone: BERLIN });
     expect(blocked.ok).toBe(false);
 
-    const allowed = buildBookingUpdateCommand(baseline, form, { allowVehicleChange: true });
+    const allowed = buildBookingUpdateCommand(baseline, form, {
+      allowVehicleChange: true,
+      timeZone: BERLIN,
+    });
     expect(allowed.ok).toBe(true);
     if (!allowed.ok) return;
     expect(allowed.patch.vehicle).toEqual({ connect: { id: 'veh-2' } });
@@ -140,11 +148,11 @@ describe('buildBookingUpdateCommand', () => {
   it('never includes financial or status fields', () => {
     const detail = detailFixture();
     const baseline = bookingEditBaselineFromDetail(detail);
-    const form = bookingEditFormFromBaseline(baseline);
+    const form = bookingEditFormFromBaseline(baseline, BERLIN);
     form.notes = 'x';
     form.paymentIntentLabel = 'Paid';
 
-    const command = buildBookingUpdateCommand(baseline, form);
+    const command = buildBookingUpdateCommand(baseline, form, { timeZone: BERLIN });
     expect(command.ok).toBe(true);
     if (!command.ok) return;
     expect(command.patch).not.toHaveProperty('status');

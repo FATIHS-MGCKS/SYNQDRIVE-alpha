@@ -1,28 +1,22 @@
 import type { BookingDetailDto } from '../../../lib/api';
+import {
+  bookingInstantToDateTimeLocal,
+  isSameOrgLocalInstant,
+  parseOrgDateTimeLocalValue,
+} from '../../../lib/datetime';
 import type { BookingEditBaseline, BookingEditFormState } from './booking-edit-form.types';
 
-export function toLocalDateTimeInput(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+export function toLocalDateTimeInput(iso: string, timeZone: string): string {
+  return bookingInstantToDateTimeLocal(iso, timeZone);
 }
 
-export function localDateTimeToIso(local: string): string | null {
-  if (!local) return null;
-  const d = new Date(local);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
+export function localDateTimeToIso(local: string, timeZone: string): string | null {
+  return parseOrgDateTimeLocalValue(local, timeZone);
 }
 
-/** Compare persisted ISO instant with a datetime-local value (minute precision). */
-export function isSameLocalInstant(iso: string, local: string): boolean {
-  const next = localDateTimeToIso(local);
-  if (!next) return false;
-  const a = new Date(iso).getTime();
-  const b = new Date(next).getTime();
-  if (Number.isNaN(a) || Number.isNaN(b)) return false;
-  return Math.abs(a - b) < 60_000;
+/** Compare persisted ISO instant with org-local datetime-local value (minute precision). */
+export function isSameLocalInstant(iso: string, local: string, timeZone: string): boolean {
+  return isSameOrgLocalInstant(iso, local, timeZone);
 }
 
 export function bookingEditBaselineFromDetail(detail: BookingDetailDto): BookingEditBaseline {
@@ -41,15 +35,18 @@ export function bookingEditBaselineFromDetail(detail: BookingDetailDto): Booking
   };
 }
 
-export function bookingEditFormFromBaseline(baseline: BookingEditBaseline): BookingEditFormState {
+export function bookingEditFormFromBaseline(
+  baseline: BookingEditBaseline,
+  timeZone: string,
+): BookingEditFormState {
   const sameReturn =
     !baseline.pickupStationId ||
     !baseline.returnStationId ||
     baseline.pickupStationId === baseline.returnStationId;
 
   return {
-    startLocal: toLocalDateTimeInput(baseline.startDate),
-    endLocal: toLocalDateTimeInput(baseline.endDate),
+    startLocal: toLocalDateTimeInput(baseline.startDate, timeZone),
+    endLocal: toLocalDateTimeInput(baseline.endDate, timeZone),
     notes: baseline.notes ?? '',
     kmIncluded: baseline.kmIncluded != null ? String(baseline.kmIncluded) : '',
     pickupStationId: baseline.pickupStationId ?? '',
@@ -62,6 +59,9 @@ export function bookingEditFormFromBaseline(baseline: BookingEditBaseline): Book
   };
 }
 
-export function bookingEditFormFromDetail(detail: BookingDetailDto): BookingEditFormState {
-  return bookingEditFormFromBaseline(bookingEditBaselineFromDetail(detail));
+export function bookingEditFormFromDetail(
+  detail: BookingDetailDto,
+  timeZone: string,
+): BookingEditFormState {
+  return bookingEditFormFromBaseline(bookingEditBaselineFromDetail(detail), timeZone);
 }

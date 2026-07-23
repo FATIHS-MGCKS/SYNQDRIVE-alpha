@@ -20,9 +20,13 @@ function insuranceChanged(a: string[] | undefined, b: string[] | undefined): boo
 export function buildBookingUpdateCommand(
   baseline: BookingEditBaseline,
   form: BookingEditFormState,
-  options?: { allowVehicleChange?: boolean; allowCustomerChange?: boolean },
+  options?: {
+    allowVehicleChange?: boolean;
+    allowCustomerChange?: boolean;
+    timeZone: string;
+  },
 ): BookingUpdateCommandResult {
-  const validation = validateBookingEditForm(form);
+  const validation = validateBookingEditForm(form, options?.timeZone ?? 'Europe/Berlin');
   if (!validation.valid || !validation.startIso || !validation.endIso || !validation.effectiveReturnStationId) {
     return {
       ok: false,
@@ -34,11 +38,11 @@ export function buildBookingUpdateCommand(
   const patch: OperatorBookingUpdatePayload = {};
   const changedFields: string[] = [];
 
-  if (!isSameLocalInstant(baseline.startDate, form.startLocal)) {
+  if (!isSameLocalInstant(baseline.startDate, form.startLocal, options?.timeZone ?? 'Europe/Berlin')) {
     patch.startDate = validation.startIso;
     changedFields.push('startDate');
   }
-  if (!isSameLocalInstant(baseline.endDate, form.endLocal)) {
+  if (!isSameLocalInstant(baseline.endDate, form.endLocal, options?.timeZone ?? 'Europe/Berlin')) {
     patch.endDate = validation.endIso;
     changedFields.push('endDate');
   }

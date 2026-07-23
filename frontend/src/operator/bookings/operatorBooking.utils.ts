@@ -2,6 +2,11 @@ import type { BookingDetailDto, CustomerApiRecord } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
 import { normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
 import {
+  bookingInstantToDateTimeLocal,
+  isSameOrgLocalInstant,
+  parseOrgDateTimeLocalValue,
+} from '../../lib/datetime';
+import {
   buildBookingUpdateCommand,
   bookingEditBaselineFromDetail,
   formatBookingMutationError,
@@ -18,11 +23,8 @@ export function vehicleDisplayLabel(v: VehicleData): string {
   return `${v.license} · ${name}`;
 }
 
-export function toLocalDateTimeInput(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+export function toLocalDateTimeInput(iso: string, timeZone: string): string {
+  return bookingInstantToDateTimeLocal(iso, timeZone);
 }
 
 export function splitLocalDateTime(local: string): { date: string; time: string } {
@@ -31,21 +33,13 @@ export function splitLocalDateTime(local: string): { date: string; time: string 
   return { date: date ?? '', time: (timePart ?? '10:00').slice(0, 5) };
 }
 
-export function localDateTimeToIso(local: string): string | null {
-  if (!local) return null;
-  const d = new Date(local);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
+export function localDateTimeToIso(local: string, timeZone: string): string | null {
+  return parseOrgDateTimeLocalValue(local, timeZone);
 }
 
-/** Compare persisted ISO instant with a datetime-local value (minute precision). */
-export function isSameLocalInstant(iso: string, local: string): boolean {
-  const next = localDateTimeToIso(local);
-  if (!next) return false;
-  const a = new Date(iso).getTime();
-  const b = new Date(next).getTime();
-  if (Number.isNaN(a) || Number.isNaN(b)) return false;
-  return Math.abs(a - b) < 60_000;
+/** Compare persisted ISO instant with org-local datetime-local value (minute precision). */
+export function isSameLocalInstant(iso: string, local: string, timeZone: string): boolean {
+  return isSameOrgLocalInstant(iso, local, timeZone);
 }
 
 export function formatOperatorBookingError(message: string): { title: string; description: string } {
@@ -56,9 +50,10 @@ export function formatOperatorBookingError(message: string): { title: string; de
 export function buildOperatorBookingUpdateFromDetail(
   detail: BookingDetailDto,
   form: BookingEditFormState,
+  timeZone: string,
 ) {
   const baseline = bookingEditBaselineFromDetail(detail);
-  return buildBookingUpdateCommand(baseline, form, { allowVehicleChange: true });
+  return buildBookingUpdateCommand(baseline, form, { allowVehicleChange: true, timeZone });
 }
 
 export function canOperatorMarkNoShow(detail: BookingDetailDto): { allowed: boolean; reason?: string } {

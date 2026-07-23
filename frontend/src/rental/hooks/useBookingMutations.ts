@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { api, type OperatorBookingUpdatePayload } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import { useOrgTimezone } from '../hooks/useOrgTimezone';
 import { invalidateBookingsList } from '../lib/bookings-invalidation';
 import { invalidateVehicleOperationalAfterBookingChange } from '../lib/vehicle-operational-query';
 import {
@@ -28,6 +29,7 @@ export interface BookingMutationSuccessContext {
 
 export function useBookingMutations() {
   const { orgId } = useRentalOrg();
+  const { timezone } = useOrgTimezone(orgId);
   const [mutating, setMutating] = useState(false);
   const [error, setError] = useState<BookingMutationErrorView | null>(null);
 
@@ -60,6 +62,7 @@ export function useBookingMutations() {
       const command = buildBookingUpdateCommand(baseline, form, {
         allowVehicleChange: options?.allowVehicleChange,
         allowCustomerChange: options?.allowCustomerChange,
+        timeZone: timezone,
       });
       if (!command.ok) {
         const view: BookingMutationErrorView = {

@@ -13,6 +13,12 @@ import { BookingsTimelineView } from './BookingsTimelineView';
 import { BookingsTableView } from './BookingsTableView';
 import { BookingsCalendarView } from './BookingsCalendarView';
 import { useBookingsPlannerData } from '../../hooks/useBookingsPlannerData';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
+import {
+  orgCalendarMonthYear,
+  zonedCalendarMonthRange,
+  zonedWeekRange,
+} from '../../../lib/datetime';
 
 interface StationOption {
   id: string;
@@ -40,10 +46,12 @@ export function BookingsPage({
   onCancelBooking,
   refreshToken = 0,
 }: BookingsPageProps) {
+  const { timezone } = useOrgTimezone(orgId);
+  const initialOrgCalendar = orgCalendarMonthYear(timezone);
   const [view, setView] = useState<BookingPlannerView>('timeline');
   const [timelineRange, setTimelineRange] = useState<'week' | 'month'>('week');
-  const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(() => initialOrgCalendar.month);
+  const [calendarYear, setCalendarYear] = useState(() => initialOrgCalendar.year);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const [tablePage, setTablePage] = useState(1);
   const [sortBy, setSortBy] = useState<BookingTableSortBy>('startDate');
@@ -60,6 +68,7 @@ export function BookingsPage({
 
   const { rows, meta, loading, error, truncated, refresh, tablePageSize } = useBookingsPlannerData({
     orgId,
+    timeZone: timezone,
     view,
     filters,
     timelineRange,
@@ -85,25 +94,27 @@ export function BookingsPage({
   };
 
   const { rangeStart, rangeEnd } = useMemo(() => {
-    const now = new Date();
     if (view === 'calendar') {
-      const start = new Date(calendarYear, calendarMonth, 1);
-      const end = new Date(calendarYear, calendarMonth + 1, 0, 23, 59, 59, 999);
-      return { rangeStart: start, rangeEnd: end };
+      const range = zonedCalendarMonthRange(calendarYear, calendarMonth, timezone);
+      return {
+        rangeStart: new Date(range.from),
+        rangeEnd: new Date(range.to),
+      };
     }
     if (timelineRange === 'week') {
-      const start = new Date(now);
-      start.setHours(0, 0, 0, 0);
-      start.setDate(start.getDate() - start.getDay());
-      const end = new Date(start);
-      end.setDate(end.getDate() + 7);
-      end.setHours(23, 59, 59, 999);
-      return { rangeStart: start, rangeEnd: end };
+      const range = zonedWeekRange(new Date(), timezone);
+      return {
+        rangeStart: new Date(range.from),
+        rangeEnd: new Date(range.to),
+      };
     }
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    return { rangeStart: start, rangeEnd: end };
-  }, [view, timelineRange, calendarMonth, calendarYear]);
+    const { month, year } = orgCalendarMonthYear(timezone);
+    const range = zonedCalendarMonthRange(year, month, timezone);
+    return {
+      rangeStart: new Date(range.from),
+      rangeEnd: new Date(range.to),
+    };
+  }, [view, timelineRange, calendarMonth, calendarYear, timezone]);
 
   const vehiclesForTimeline = useMemo(() => {
     if (filters.vehicleId) {
@@ -205,6 +216,7 @@ export function BookingsPage({
               rows={rows}
               month={calendarMonth}
               year={calendarYear}
+              timeZone={timezone}
               selectedDay={selectedCalendarDay}
               onDayClick={setSelectedCalendarDay}
               onBookingClick={onOpenDrawer}

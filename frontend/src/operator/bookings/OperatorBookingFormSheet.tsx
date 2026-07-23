@@ -6,6 +6,7 @@ import { StationSelectFields } from '../../rental/components/stations/StationSel
 import { usePricingSimulation } from '../../rental/hooks/usePricingSimulation';
 import { formatMoneyCents } from '../../rental/pricing/pricingUtils';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { useOrgTimezone } from '../../rental/hooks/useOrgTimezone';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorVehiclesData } from '../hooks/useOperatorVehiclesData';
@@ -40,6 +41,7 @@ function SectionTitle({ children }: { children: string }) {
 
 export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetProps) {
   const { orgId } = useRentalOrg();
+  const { timezone } = useOrgTimezone(orgId);
   const { closeSheet } = useOperatorShell();
   const { allVehicles } = useOperatorVehiclesData();
   const { mutating, error, clearError, createBooking, updateBooking } = useOperatorBookingMutations();
@@ -60,8 +62,12 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
   const [vehicleId, setVehicleId] = useState(action.prefillVehicleId ?? '');
   const [vehicleSearch, setVehicleSearch] = useState('');
 
-  const [startLocal, setStartLocal] = useState(action.prefillStartDate ? toLocalDateTimeInput(action.prefillStartDate) : '');
-  const [endLocal, setEndLocal] = useState(action.prefillEndDate ? toLocalDateTimeInput(action.prefillEndDate) : '');
+  const [startLocal, setStartLocal] = useState(
+    action.prefillStartDate ? toLocalDateTimeInput(action.prefillStartDate, timezone) : '',
+  );
+  const [endLocal, setEndLocal] = useState(
+    action.prefillEndDate ? toLocalDateTimeInput(action.prefillEndDate, timezone) : '',
+  );
 
   const [pickupStationId, setPickupStationId] = useState('');
   const [returnStationId, setReturnStationId] = useState('');
@@ -156,8 +162,8 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
         setDetail(d);
         setVehicleId(d.vehicle.vehicleId);
         setCustomerId(d.customer.customerId);
-        setStartLocal(toLocalDateTimeInput(d.core.startDate));
-        setEndLocal(toLocalDateTimeInput(d.core.endDate));
+        setStartLocal(toLocalDateTimeInput(d.core.startDate, timezone));
+        setEndLocal(toLocalDateTimeInput(d.core.endDate, timezone));
         setPickupStationId(d.core.pickupStationId ?? '');
         setReturnStationId(d.core.returnStationId ?? '');
         setSameReturnStation(
@@ -185,7 +191,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     return () => {
       cancelled = true;
     };
-  }, [isEdit, orgId, bookingId]);
+  }, [isEdit, orgId, bookingId, timezone]);
 
   useEffect(() => {
     if (isEdit || !selectedVehicle?.stationId || pickupStationId) return;
@@ -198,12 +204,12 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
 
   const priceSimParams = useMemo(() => {
     if (isEdit || !vehicleId || !startLocal || !endLocal) return null;
-    const pickupAt = localDateTimeToIso(startLocal);
-    const returnAt = localDateTimeToIso(endLocal);
+    const pickupAt = localDateTimeToIso(startLocal, timezone);
+    const returnAt = localDateTimeToIso(endLocal, timezone);
     if (!pickupAt || !returnAt) return null;
     if (new Date(returnAt).getTime() <= new Date(pickupAt).getTime()) return null;
     return { vehicleId, pickupAt, returnAt };
-  }, [isEdit, vehicleId, startLocal, endLocal]);
+  }, [isEdit, vehicleId, startLocal, endLocal, timezone]);
 
   const {
     result: priceSim,
@@ -226,8 +232,8 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
       return;
     }
 
-    const startIso = localDateTimeToIso(startLocal);
-    const endIso = localDateTimeToIso(endLocal);
+    const startIso = localDateTimeToIso(startLocal, timezone);
+    const endIso = localDateTimeToIso(endLocal, timezone);
     if (!startIso || !endIso) {
       setFormError('Bitte gültigen Abhol- und Rückgabezeitpunkt angeben.');
       return;
@@ -281,6 +287,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
         status,
         includedKm: km != null && Number.isFinite(km) ? km : undefined,
         quoteId: priceSim.quoteId,
+        timeZone: timezone,
       });
 
       await createBooking(payload, handleSuccess);
@@ -304,7 +311,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
       insuranceOptions: detail.core.insuranceOptions ?? [],
     };
 
-    const command = buildOperatorBookingUpdateFromDetail(detail, form);
+    const command = buildOperatorBookingUpdateFromDetail(detail, form, timezone);
     if (!command.ok) {
       setFormError(command.error);
       return;

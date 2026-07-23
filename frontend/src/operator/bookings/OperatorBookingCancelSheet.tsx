@@ -4,6 +4,7 @@ import { api, type BookingDetailDto } from '../../lib/api';
 import { getBookingActionMatrix } from '../../rental/components/booking-detail/bookingActionRules';
 import { bookingStatusLabel, normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { useOrgTimezone } from '../../rental/hooks/useOrgTimezone';
 import { StatusChip } from '../../components/patterns';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -18,6 +19,7 @@ interface OperatorBookingCancelSheetProps {
 
 export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelSheetProps) {
   const { orgId } = useRentalOrg();
+  const { timezone } = useOrgTimezone(orgId);
   const { closeSheet } = useOperatorShell();
   const { mutating, error, clearError, cancelBooking } = useOperatorBookingMutations();
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
@@ -96,8 +98,8 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
               <div>
                 <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Zeitraum</dt>
                 <dd>
-                  {toLocalDateTimeInput(detail.core.startDate).replace('T', ' ')} →{' '}
-                  {toLocalDateTimeInput(detail.core.endDate).replace('T', ' ')}
+                  {toLocalDateTimeInput(detail.core.startDate, timezone).replace('T', ' ')} →{' '}
+                  {toLocalDateTimeInput(detail.core.endDate, timezone).replace('T', ' ')}
                 </dd>
               </div>
             </dl>

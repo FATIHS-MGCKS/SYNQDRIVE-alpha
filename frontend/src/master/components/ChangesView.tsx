@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-timezone-v49794-2026-07-23',
+    version: '4.9.794',
+    title: 'V4.9.794 — Canonical booking timezone strategy (Prompt 29)',
+    summary: [
+      'Neues Frontend-Modul `lib/datetime` + `useOrgTimezone`: org IANA-Zeitzone aus `organizations.getProfile`, Locale aus `language`.',
+      'Lokale Buchungsdaten (Wizard date/time, datetime-local Edit, Handover backdate) werden in Org-Zeitzone interpretiert und als UTC ISO persistiert — keine `new Date(local)` / `toISOString().slice(0,10)` als fachliche Wahrheit.',
+      'Planner/Calendar/Timeline nutzen halb-offene `[from, to)`-Fenster in Org-Zeitzone; Kalendertage via `zonedDayRange`.',
+      'DST: Sommerzeitlücke → nächste gültige Minute; doppelte Stunde → erste Occurrence. Tests für Berlin, London, UTC, Mitternacht, DST.',
+      'API-Doku: `from`/`to` auf List-Bookings als halb-offenes UTC-Fenster dokumentiert.',
+    ],
+    reason:
+      'Booking Production Readiness Prompt 29 — einheitliche Zeitzonenstrategie über Wizard, Planner, Edit, Detail und Handover.',
+    previousBehavior:
+      'Frontend interpretierte date/time über Browser-Local (`new Date("YYYY-MM-DDTHH:mm")`) und `toISOString().slice(0,10)` für „heute“; Planner-Fenster in Browser-Local.',
+    details:
+      '`frontend/src/lib/datetime/*`, `useOrgTimezone.ts`, `booking-edit-form.*`, `entityMappers.buildBookingCreatePayload(timeZone)`, `useBookingsPlannerData`, `BookingsPage/CalendarView`, `NewBookingView/PeriodStep`, `HandoverProtocolDialog`, Operator-Booking-Sheets, `bookingDetailUtils`. Architektur: `architecture/BOOKING_TIMEZONE_2026-07-23.md`.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:59:00.000Z',
+  },
+  {
     id: 'booking-edit-commands-v49793-2026-07-23',
     version: '4.9.793',
     title: 'V4.9.793 — Unified booking edit command layer (Prompt 28)',

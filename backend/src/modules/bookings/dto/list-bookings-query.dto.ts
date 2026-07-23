@@ -77,10 +77,12 @@ export class ListBookingsQueryDto {
 
   @IsOptional()
   @IsDateString()
+  /** Inclusive UTC lower bound for list overlap filter — window is half-open `[from, to)`. */
   from?: string;
 
   @IsOptional()
   @IsDateString()
+  /** Exclusive UTC upper bound for list overlap filter — window is half-open `[from, to)`. */
   to?: string;
 
   @IsOptional()

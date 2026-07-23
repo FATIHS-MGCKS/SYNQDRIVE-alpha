@@ -14,6 +14,12 @@ import {
 } from '../../lib/bookings-pagination';
 import { buildBookingPlannerListParams } from '../../lib/bookings-query.utils';
 import { BOOKINGS_LIST_INVALIDATED_EVENT } from '../lib/bookings-invalidation';
+import {
+  DEFAULT_ORG_TIMEZONE,
+  orgCalendarMonthYear,
+  zonedCalendarMonthRange,
+  zonedWeekRange,
+} from '../../lib/datetime';
 
 const TABLE_PAGE_SIZE = 50;
 const RANGE_PAGE_SIZE = 100;
@@ -21,6 +27,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 export interface UseBookingsPlannerDataInput {
   orgId: string | null | undefined;
+  timeZone?: string;
   view: BookingPlannerView;
   filters: BookingFiltersState;
   timelineRange: 'week' | 'month';
@@ -34,6 +41,7 @@ export interface UseBookingsPlannerDataInput {
 
 export function useBookingsPlannerData({
   orgId,
+  timeZone = DEFAULT_ORG_TIMEZONE,
   view,
   filters,
   timelineRange,
@@ -63,23 +71,14 @@ export function useBookingsPlannerData({
 
   const visibleRange = useMemo(() => {
     if (view === 'calendar') {
-      const start = new Date(calendarYear, calendarMonth, 1);
-      const end = new Date(calendarYear, calendarMonth + 1, 1);
-      return { from: start.toISOString(), to: end.toISOString() };
+      return zonedCalendarMonthRange(calendarYear, calendarMonth, timeZone);
     }
-    const now = new Date();
     if (timelineRange === 'week') {
-      const start = new Date(now);
-      start.setHours(0, 0, 0, 0);
-      start.setDate(start.getDate() - start.getDay());
-      const end = new Date(start);
-      end.setDate(end.getDate() + 7);
-      return { from: start.toISOString(), to: end.toISOString() };
+      return zonedWeekRange(new Date(), timeZone);
     }
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    return { from: start.toISOString(), to: end.toISOString() };
-  }, [view, timelineRange, calendarMonth, calendarYear]);
+    const { month, year } = orgCalendarMonthYear(timeZone);
+    return zonedCalendarMonthRange(year, month, timeZone);
+  }, [view, timelineRange, calendarMonth, calendarYear, timeZone]);
 
   const listParams = useMemo(
     () =>

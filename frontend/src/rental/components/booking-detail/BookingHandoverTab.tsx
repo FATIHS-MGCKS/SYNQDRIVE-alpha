@@ -1,5 +1,7 @@
 import { Icon } from '../ui/Icon';
 import type { BookingDetailDto } from '../../../lib/api';
+import { useRentalOrg } from '../../RentalContext';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 import type { BookingActionMatrix } from './bookingDetailTypes';
 import { EM_DASH, formatDateTime } from './bookingDetailUtils';
 import { BookingStationPanel } from './BookingStationPanel';
@@ -19,6 +21,8 @@ function HandoverSide({
   actionAllowed,
   actionReason,
   onAction,
+  timezone,
+  locale,
 }: {
   title: string;
   side: BookingDetailDto['handover']['pickup'];
@@ -26,6 +30,8 @@ function HandoverSide({
   actionAllowed: boolean;
   actionReason?: string;
   onAction: () => void;
+  timezone: string;
+  locale: string;
 }) {
   return (
     <div className={bd.card}>
@@ -47,7 +53,7 @@ function HandoverSide({
         <p className="text-xs text-muted-foreground">Noch kein Protokoll erfasst.</p>
       ) : (
         <dl className="space-y-2 text-xs">
-          <Row label="Zeitpunkt" value={formatDateTime(side.completedAt)} />
+          <Row label="Zeitpunkt" value={formatDateTime(side.completedAt, timezone, locale)} />
           <Row label="Mitarbeiter" value={side.performedByName ?? EM_DASH} />
           <Row label="Kilometerstand" value={`${side.odometerKm.toLocaleString('de-DE')} km`} />
           <Row
@@ -63,6 +69,9 @@ function HandoverSide({
 }
 
 export function BookingHandoverTab({ detail, matrix, onPickup, onReturn }: BookingHandoverTabProps) {
+  const { orgId } = useRentalOrg();
+  const { timezone, locale } = useOrgTimezone(orgId);
+
   return (
     <div className="space-y-4">
       {detail.stations && (
@@ -81,6 +90,8 @@ export function BookingHandoverTab({ detail, matrix, onPickup, onReturn }: Booki
         actionAllowed={detail.handover.pickup ? true : matrix.pickup.allowed}
         actionReason={matrix.pickup.reason}
         onAction={onPickup}
+        timezone={timezone}
+        locale={locale}
       />
       <HandoverSide
         title="Rückgabe (Return)"
@@ -89,6 +100,8 @@ export function BookingHandoverTab({ detail, matrix, onPickup, onReturn }: Booki
         actionAllowed={detail.handover.return ? true : matrix.return.allowed}
         actionReason={matrix.return.reason}
         onAction={onReturn}
+        timezone={timezone}
+        locale={locale}
       />
       {!detail.handover.pickup && !matrix.pickup.allowed && matrix.pickup.reason && (
         <div className="lg:col-span-2 flex items-start gap-2 text-xs text-muted-foreground px-1">
