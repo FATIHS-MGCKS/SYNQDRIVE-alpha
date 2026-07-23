@@ -366,7 +366,7 @@ export function validateRuleForm(values: RentalRuleFormValues): string | null {
 }
 
 export function summarizeRuleEntity(entity: Record<string, unknown>): string {
-  const rows = summarizeRules(entity as OrganizationRentalRulesDto);
+  const rows = summarizeRules(entity as unknown as OrganizationRentalRulesDto);
   const name = typeof entity.name === 'string' ? entity.name : null;
   const parts = [
     ...(name ? [`Name: ${name}`] : []),

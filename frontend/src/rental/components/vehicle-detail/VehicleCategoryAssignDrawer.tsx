@@ -143,7 +143,10 @@ export function VehicleCategoryAssignDrawer({
 
       });
 
-      const payload = withExpectedVersion(delta, resolveExpectedVersion(selectedCategory.version));
+      const payload = withExpectedVersion(
+        delta as unknown as Record<string, unknown>,
+        resolveExpectedVersion(selectedCategory.version),
+      );
 
       await rentalRulesMutate(
 

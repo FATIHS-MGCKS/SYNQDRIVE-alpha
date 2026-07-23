@@ -3761,6 +3761,7 @@ export const api = {
         paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         targetStatus?: 'PENDING' | 'CONFIRMED';
         eligibilityApprovalId?: string;
+        eligibilityOverrideReason?: string;
       },
     ) => {
       const q = new URLSearchParams();
@@ -3769,6 +3770,9 @@ export const api = {
       if (params?.targetStatus) q.set('targetStatus', params.targetStatus);
       if (params?.eligibilityApprovalId) {
         q.set('eligibilityApprovalId', params.eligibilityApprovalId);
+      }
+      if (params?.eligibilityOverrideReason) {
+        q.set('eligibilityOverrideReason', params.eligibilityOverrideReason);
       }
       const suffix = q.toString() ? `?${q.toString()}` : '';
       return get<import('../rental/lib/booking-wizard-eligibility.types').BookingWizardEligibilityPreview>(
@@ -3786,6 +3790,7 @@ export const api = {
         paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         eligibilityApprovalId?: string;
         eligibilityPreviewFingerprint?: string;
+        eligibilityOverrideReason?: string;
       },
     ) =>
       post<BookingWizardDraftResult>(

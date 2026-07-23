@@ -45,6 +45,7 @@ interface SettingsViewProps {
   activeTab?: SettingsTab;
   onTabChange?: (tab: SettingsTab) => void;
   onNavigateToStations?: () => void;
+  onCheckBooking?: () => void;
 }
 
 export type { SettingsTab } from './settings/settingsTypes';
@@ -1825,6 +1826,7 @@ export function SettingsView({
   activeTab: controlledTab = 'company',
   onTabChange,
   onNavigateToStations,
+  onCheckBooking,
 }: SettingsViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const { t } = useLanguage();
@@ -1884,7 +1886,7 @@ export function SettingsView({
       {activeTab === 'rental-rules' && (
         <AdministrationTabPanel tab="rental-rules" activeTab={activeTab}>
           {rentalRulesPermissions.canRead ? (
-            <RentalRulesTab />
+            <RentalRulesTab onCheckBooking={onCheckBooking} />
           ) : (
             <ErrorState
               title="Kein Zugriff auf Mietregeln"

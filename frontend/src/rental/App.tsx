@@ -1287,6 +1287,7 @@ function RentalAppContent() {
             activeTab={settingsTab}
             onTabChange={applySettingsTab}
             onNavigateToStations={() => handleViewChange('stations')}
+            onCheckBooking={() => handleViewChange('new-booking')}
           />
         ) : currentView === 'new-booking' ? (
           <NewBookingView
