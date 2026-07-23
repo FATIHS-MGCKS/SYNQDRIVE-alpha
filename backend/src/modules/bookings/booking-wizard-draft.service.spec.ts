@@ -1,11 +1,11 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import type { BookingEligibilityGateResult } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.types';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
-import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BookingsService } from './bookings.service';
 import { WIZARD_DRAFT_MARKER } from './booking-wizard-draft.util';
 import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-gatekeeper/booking-eligibility-transition.policy';
+import { testGateResult } from './booking-eligibility-gatekeeper/booking-eligibility-test.fixtures';
 
 describe('BookingWizardDraftService eligibility integration', () => {
   const prisma = {
@@ -16,9 +16,10 @@ describe('BookingWizardDraftService eligibility integration', () => {
     organizationMembership: { findFirst: jest.fn() },
   } as unknown as PrismaService;
 
-  const gatekeeper = {
-    evaluate: jest.fn(),
-  } as unknown as BookingEligibilityGatekeeperService;
+  const eligibilityEnforcement = {
+    previewEvaluation: jest.fn(),
+    assertAllowed: jest.fn(),
+  } as unknown as BookingEligibilityEnforcementService;
 
   const bookingsService = {
     create: jest.fn(),
@@ -56,7 +57,7 @@ describe('BookingWizardDraftService eligibility integration', () => {
     bookingLegalDocumentEmailService as never,
     checkoutContextService as never,
     {} as never,
-    gatekeeper,
+    eligibilityEnforcement,
   );
 
   const draftBooking = {
@@ -71,22 +72,10 @@ describe('BookingWizardDraftService eligibility integration', () => {
     paymentIntent: 'pay_on_pickup',
   };
 
-  const eligibleGate: BookingEligibilityGateResult = {
-    status: 'ELIGIBLE',
-    stage: 'CONFIRM',
-    allowed: true,
-    reasonCodes: [],
-    blockingReasons: [],
-    warnings: [],
-    missingFields: [],
+  const eligibleGate = testGateResult({
+    bookingId: 'booking-1',
     sourceRuleIds: ['org:org-1'],
     evaluatedAt: '2026-07-01T10:00:00.000Z',
-    recheckRequired: false,
-    engineVersion: '1.0.0',
-    organizationId: 'org-1',
-    customerId: 'cust-1',
-    vehicleId: 'veh-1',
-    bookingId: 'booking-1',
     domains: {
       customer: { evaluated: true, canProceedForStage: true, result: null },
       verification: { evaluated: true, result: null },
@@ -95,12 +84,13 @@ describe('BookingWizardDraftService eligibility integration', () => {
       vehicleReadiness: { evaluated: true, skipped: false, blocked: false },
       pricingDeposit: { evaluated: false, skipped: true },
     },
-  };
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
     (prisma.booking.findFirst as jest.Mock).mockResolvedValue(draftBooking);
-    (gatekeeper.evaluate as jest.Mock).mockResolvedValue(eligibleGate);
+    (eligibilityEnforcement.previewEvaluation as jest.Mock).mockResolvedValue(eligibleGate);
+    (eligibilityEnforcement.assertAllowed as jest.Mock).mockResolvedValue(eligibleGate);
     (bookingsService.update as jest.Mock).mockResolvedValue({
       ...draftBooking,
       status: 'CONFIRMED',
@@ -118,12 +108,12 @@ describe('BookingWizardDraftService eligibility integration', () => {
       targetStatus: 'CONFIRMED',
     });
 
-    expect(gatekeeper.evaluate).toHaveBeenCalledWith(
+    expect(eligibilityEnforcement.previewEvaluation).toHaveBeenCalledWith(
       expect.objectContaining({
         bookingId: 'booking-1',
-        stage: 'CONFIRM',
-        includeVehicleReadiness: true,
+        targetStatus: 'CONFIRMED',
       }),
+      expect.objectContaining({ command: 'preview' }),
     );
     expect(preview.isPreviewOnly).toBe(true);
     expect(preview.canConfirm).toBe(true);
@@ -189,20 +179,7 @@ describe('BookingWizardDraftService eligibility integration', () => {
   });
 
   it('blocks ineligible confirm with structured transition code', async () => {
-    (gatekeeper.evaluate as jest.Mock).mockResolvedValue({
-      ...eligibleGate,
-      status: 'NOT_ELIGIBLE',
-      allowed: false,
-      blockingReasons: [
-        {
-          code: 'MINIMUM_AGE_NOT_MET',
-          domain: 'rental_rules',
-          message: 'Too young',
-        },
-      ],
-      reasonCodes: ['MINIMUM_AGE_NOT_MET'],
-    });
-    (bookingsService.update as jest.Mock).mockRejectedValue(
+    (eligibilityEnforcement.assertAllowed as jest.Mock).mockRejectedValue(
       new ConflictException({
         code: BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
         message: 'blocked',

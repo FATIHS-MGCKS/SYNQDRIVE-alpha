@@ -1,39 +1,16 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import {
   assertBookingEligibilityTransitionAllowed,
   BOOKING_ELIGIBILITY_TRANSITION_CODE,
   resolveEligibilityPolicyMode,
   shouldSkipEligibilityEnforcement,
 } from './booking-eligibility-transition.policy';
-import type { BookingEligibilityGateResult } from './booking-eligibility-gatekeeper.types';
+import { testGateResult } from './booking-eligibility-test.fixtures';
 
 function gateResult(
-  status: BookingEligibilityGateResult['status'],
-): BookingEligibilityGateResult {
-  return {
-    status,
-    stage: 'CONFIRM',
-    allowed: status === 'ELIGIBLE' || status === 'MANUAL_APPROVAL_REQUIRED',
-    reasonCodes: [],
-    blockingReasons: [],
-    warnings: [],
-    missingFields: [],
-    sourceRuleIds: [],
-    evaluatedAt: new Date().toISOString(),
-    recheckRequired: false,
-    engineVersion: '1.0.0',
-    organizationId: 'org-1',
-    customerId: 'cust-1',
-    vehicleId: 'veh-1',
-    domains: {
-      customer: { evaluated: true, canProceedForStage: true, result: null },
-      verification: { evaluated: true, result: null },
-      rentalRules: { evaluated: true, result: null },
-      vehicle: { evaluated: true, vehicleFound: true, vehicleId: 'veh-1' },
-      vehicleReadiness: { evaluated: false, skipped: true, blocked: false },
-      pricingDeposit: { evaluated: false, skipped: true },
-    },
-  };
+  status: ReturnType<typeof testGateResult>['status'],
+) {
+  return testGateResult({ status });
 }
 
 describe('booking-eligibility-transition.policy', () => {
@@ -134,6 +111,14 @@ describe('booking-eligibility-transition.policy', () => {
         hasOverridePermission: false,
       }),
     ).toThrow(ConflictException);
+  });
+
+  it('blocks confirmed on technical error with 503', () => {
+    expect(() =>
+      assertBookingEligibilityTransitionAllowed(gateResult('TECHNICAL_ERROR'), 'CONFIRMED', {
+        hasOverridePermission: false,
+      }),
+    ).toThrow(ServiceUnavailableException);
   });
 
   it('allows active pickup with manual override reason and permission', () => {

@@ -38,11 +38,10 @@ import {
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
 import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
-import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import {
   assertWizardPreviewFingerprintMatches,
   mapGatekeeperToWizardPreview,
-  resolveWizardGateStage,
   type BookingWizardEligibilityPreviewResult,
 } from './booking-wizard-eligibility.util';
 import { resolveGatekeeperPaymentIntent } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
@@ -73,7 +72,7 @@ export class BookingWizardDraftService {
     private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
-    private readonly gatekeeper: BookingEligibilityGatekeeperService,
+    private readonly eligibilityEnforcement: BookingEligibilityEnforcementService,
   ) {}
 
   async createOrRefreshDraft(
@@ -215,18 +214,22 @@ export class BookingWizardDraftService {
       options?.userId ?? null,
       orgId,
     );
-    const gateResult = await this.gatekeeper.evaluate({
-      organizationId: orgId,
-      customerId: draft.customerId,
-      vehicleId: draft.vehicleId,
-      stage: resolveWizardGateStage(targetStatus),
-      startDate: draft.startDate,
-      endDate: draft.endDate,
-      bookingId: draft.id,
-      requestedStatus: targetStatus,
-      paymentIntent: resolveGatekeeperPaymentIntent(paymentIntent),
-      includeVehicleReadiness: targetStatus === 'CONFIRMED',
-    });
+    const gateResult = await this.eligibilityEnforcement.previewEvaluation(
+      {
+        organizationId: orgId,
+        customerId: draft.customerId,
+        vehicleId: draft.vehicleId,
+        startDate: draft.startDate,
+        endDate: draft.endDate,
+        targetStatus,
+        bookingId: draft.id,
+        paymentIntent: resolveGatekeeperPaymentIntent(paymentIntent),
+      },
+      {
+        userId: options?.userId ?? null,
+        command: 'preview',
+      },
+    );
 
     return mapGatekeeperToWizardPreview(gateResult, targetStatus, {
       hasOverridePermission,
@@ -262,18 +265,30 @@ export class BookingWizardDraftService {
     }
 
     const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
-    const freshGateResult = await this.gatekeeper.evaluate({
-      organizationId: orgId,
-      customerId: existing.customerId,
-      vehicleId: existing.vehicleId,
-      stage: resolveWizardGateStage(targetStatus),
-      startDate: existing.startDate,
-      endDate: existing.endDate,
-      bookingId: existing.id,
-      requestedStatus: targetStatus,
-      paymentIntent: resolveGatekeeperPaymentIntent(resolvedIntent),
-      includeVehicleReadiness: targetStatus === 'CONFIRMED',
-    });
+    const freshGateResult = await this.eligibilityEnforcement.assertAllowed(
+      {
+        organizationId: orgId,
+        customerId: existing.customerId,
+        vehicleId: existing.vehicleId,
+        startDate: existing.startDate,
+        endDate: existing.endDate,
+        targetStatus,
+        bookingId: existing.id,
+        notes: stripWizardDraftMarker(existing.notes) || null,
+        paymentIntent: resolveGatekeeperPaymentIntent(resolvedIntent),
+      },
+      {
+        userId: options?.userId ?? null,
+        command: 'confirm',
+        eligibilityOverrideReason: body.eligibilityOverrideReason,
+      },
+    );
+    if (!freshGateResult) {
+      throw new ConflictException({
+        code: 'BOOKING_ELIGIBILITY_TECHNICAL_ERROR',
+        message: 'Rental eligibility could not be evaluated for confirmation.',
+      });
+    }
     assertWizardPreviewFingerprintMatches(body.eligibilityPreviewFingerprint, freshGateResult);
 
     if (resolvedIntent === 'payment_link') {

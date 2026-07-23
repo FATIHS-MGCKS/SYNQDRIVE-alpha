@@ -7,6 +7,7 @@ import type {
   BookingEligibilityGateDomain,
   BookingEligibilityReasonCode,
 } from './booking-eligibility-gatekeeper.constants';
+import type { BookingEligibilityCorrelationIds } from './booking-eligibility-correlation.util';
 
 /** Lifecycle stage for a booking transition decision. */
 export type BookingEligibilityGateStage = 'CREATE' | 'CONFIRM' | 'PICKUP' | 'PREVIEW';
@@ -46,6 +47,8 @@ export interface BookingEligibilityGateInput {
   includeVehicleReadiness?: boolean;
   /** Reserved for Prompt 22 — pricing/deposit conflict evaluator. */
   includePricingDeposit?: boolean;
+  /** Correlation IDs for evaluation, command, transition, and audit trail. */
+  correlation?: BookingEligibilityCorrelationIds;
 }
 
 export interface BookingEligibilityCustomerSlice {
@@ -104,6 +107,7 @@ export interface BookingEligibilityGateResult {
   customerId: string;
   vehicleId: string;
   bookingId?: string;
+  correlation: BookingEligibilityCorrelationIds;
   domains: {
     customer: BookingEligibilityCustomerSlice;
     verification: BookingEligibilityVerificationSlice;

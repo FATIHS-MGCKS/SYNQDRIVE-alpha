@@ -270,7 +270,7 @@ export class BookingsService {
               (anyData.eligibilityOverrideReason as string | undefined),
           },
         );
-      } else if (['PENDING', 'CONFIRMED', 'ACTIVE'].includes(requestedStatus)) {
+      } else if (requestedStatus === 'PENDING' && enforcementMode === 'DRAFT') {
         await this.assertCustomerBookingEligibility(
           orgId,
           customerId,
@@ -1820,7 +1820,13 @@ export class BookingsService {
         enforcementContext,
         enforcementOptions,
       );
-    } else if (customerOrDatesChanged || statusChanged) {
+    } else if (
+      (customerOrDatesChanged || statusChanged) &&
+      isWizardDraftBooking({
+        status: nextStatus,
+        notes: nextNotes ?? existing.notes,
+      })
+    ) {
       await this.assertCustomerBookingEligibility(
         orgId,
         nextCustomerId,

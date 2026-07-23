@@ -22,6 +22,19 @@ import {
   shouldEnforceBookingEligibilityForUpdate,
 } from './booking-eligibility-status-transition.matrix';
 import type { BookingEligibilityGateResult } from './booking-eligibility-gatekeeper.types';
+import {
+  buildBookingEligibilityCorrelationIds,
+  type BookingEligibilityCommandKind,
+} from './booking-eligibility-correlation.util';
+import { BookingEligibilityAuditLogger } from './booking-eligibility-audit.logger';
+import {
+  buildTechnicalFailureGateResult,
+  type BookingEligibilityEvaluationIntent,
+  mapGateStatusToTransitionCode,
+  shouldFailClosedForPolicyMode,
+  throwBookingEligibilityViolation,
+} from './booking-eligibility-error.policy';
+import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-transition.policy';
 
 export type BookingEligibilityMutationContext = {
   organizationId: string;
@@ -43,6 +56,9 @@ export type BookingEligibilityEnforcementOptions = {
   platformRole?: string | null;
   membershipRole?: MembershipRole | null;
   eligibilityOverrideReason?: string | null;
+  intent?: BookingEligibilityEvaluationIntent;
+  command?: BookingEligibilityCommandKind;
+  parentCommandId?: string | null;
 };
 
 @Injectable()
@@ -50,6 +66,7 @@ export class BookingEligibilityEnforcementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gatekeeper: BookingEligibilityGatekeeperService,
+    private readonly auditLogger: BookingEligibilityAuditLogger,
   ) {}
 
   shouldEnforceForUpdate(input: {
@@ -94,6 +111,13 @@ export class BookingEligibilityEnforcementService {
     });
   }
 
+  async previewEvaluation(
+    context: BookingEligibilityMutationContext,
+    options: BookingEligibilityEnforcementOptions = {},
+  ): Promise<BookingEligibilityGateResult> {
+    return this.runEvaluation(context, { ...options, intent: 'preview' });
+  }
+
   async assertAllowed(
     context: BookingEligibilityMutationContext,
     options: BookingEligibilityEnforcementOptions = {},
@@ -112,33 +136,10 @@ export class BookingEligibilityEnforcementService {
       return null;
     }
 
-    const stage = resolveGateStageForPolicyMode(mode!);
-    const additionalDriverCount =
-      context.additionalDriverCount ??
-      (context.bookingId
-        ? await this.countAdditionalDrivers(context.organizationId, context.bookingId)
-        : 0);
-    const depositReceived = context.bookingId
-      ? await this.isDepositReceived(context.organizationId, context.bookingId)
-      : false;
-
-    const gateResult = await this.gatekeeper.evaluate({
-      organizationId: context.organizationId,
-      customerId: context.customerId,
-      vehicleId: context.vehicleId,
-      stage,
-      startDate: context.startDate,
-      endDate: context.endDate,
-      bookingId: context.bookingId,
-      requestedStatus: context.targetStatus,
-      paymentIntent: resolveGatekeeperPaymentIntent(context.paymentIntent),
-      foreignTravelRequested:
-        context.foreignTravelRequested ??
-        parseForeignTravelRequested(context.extrasJson),
-      additionalDriverCount,
-      depositReceived,
-      includeVehicleReadiness:
-        context.targetStatus === 'CONFIRMED' || context.targetStatus === 'ACTIVE',
+    const gateResult = await this.runEvaluation(context, {
+      ...options,
+      intent: 'enforce',
+      command: options.command ?? this.resolveCommandForMode(mode!),
     });
 
     const hasOverridePermission = await this.canOverrideEligibility(
@@ -149,6 +150,7 @@ export class BookingEligibilityEnforcementService {
     assertBookingEligibilityTransitionAllowed(gateResult, mode!, {
       eligibilityOverrideReason: options.eligibilityOverrideReason,
       hasOverridePermission,
+      correlation: gateResult.correlation,
     });
 
     return gateResult;
@@ -211,12 +213,144 @@ export class BookingEligibilityEnforcementService {
       organizationId,
       bookingId,
       'ACTIVE',
-      options,
+      {
+        ...options,
+        command: 'pickup',
+        intent: 'enforce',
+      },
     );
     if (!result) {
-      throw new Error('Pickup eligibility evaluation returned no result');
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
+        message: 'Pickup eligibility evaluation returned no result.',
+      });
     }
     return result;
+  }
+
+  private async runEvaluation(
+    context: BookingEligibilityMutationContext,
+    options: BookingEligibilityEnforcementOptions,
+  ): Promise<BookingEligibilityGateResult> {
+    const isWizardDraft =
+      isWizardDraftBooking({
+        status: context.targetStatus,
+        notes: context.notes,
+      }) && context.targetStatus === 'PENDING';
+    const mode = resolveEligibilityPolicyMode({
+      targetStatus: context.targetStatus,
+      isWizardDraft,
+    });
+    const intent = options.intent ?? 'enforce';
+    const command = options.command ?? this.resolveCommandForMode(mode ?? 'PENDING');
+    const correlation = buildBookingEligibilityCorrelationIds({
+      organizationId: context.organizationId,
+      bookingId: context.bookingId,
+      command,
+      parentCommandId: options.parentCommandId,
+    });
+    const stage = resolveGateStageForPolicyMode(mode ?? 'PENDING');
+
+    let gateResult: BookingEligibilityGateResult;
+    try {
+      const additionalDriverCount =
+        context.additionalDriverCount ??
+        (context.bookingId
+          ? await this.countAdditionalDrivers(context.organizationId, context.bookingId)
+          : 0);
+      const depositReceived = context.bookingId
+        ? await this.isDepositReceived(context.organizationId, context.bookingId)
+        : false;
+
+      gateResult = await this.gatekeeper.evaluate({
+        organizationId: context.organizationId,
+        customerId: context.customerId,
+        vehicleId: context.vehicleId,
+        stage,
+        startDate: context.startDate,
+        endDate: context.endDate,
+        bookingId: context.bookingId,
+        requestedStatus: context.targetStatus,
+        paymentIntent: resolveGatekeeperPaymentIntent(context.paymentIntent),
+        foreignTravelRequested:
+          context.foreignTravelRequested ??
+          parseForeignTravelRequested(context.extrasJson),
+        additionalDriverCount,
+        depositReceived,
+        includeVehicleReadiness:
+          context.targetStatus === 'CONFIRMED' || context.targetStatus === 'ACTIVE',
+        correlation,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Eligibility evaluation failed unexpectedly';
+      gateResult = buildTechnicalFailureGateResult({
+        organizationId: context.organizationId,
+        customerId: context.customerId,
+        vehicleId: context.vehicleId,
+        bookingId: context.bookingId,
+        stage,
+        message,
+        correlation,
+      });
+    }
+
+    const outcome =
+      gateResult.status === 'TECHNICAL_ERROR' || gateResult.status === 'TEMPORARILY_UNAVAILABLE'
+        ? 'technical_error'
+        : gateResult.allowed
+          ? 'allowed'
+          : 'blocked';
+
+    this.auditLogger.logEvaluation({
+      correlation: gateResult.correlation,
+      organizationId: context.organizationId,
+      bookingId: context.bookingId,
+      vehicleId: context.vehicleId,
+      stage,
+      command,
+      policyMode: mode,
+      intent,
+      outcome: intent === 'preview' ? 'preview_only' : outcome,
+      gateResult,
+      errorCode:
+        gateResult.status === 'TECHNICAL_ERROR' ||
+        gateResult.status === 'TEMPORARILY_UNAVAILABLE'
+          ? mapGateStatusToTransitionCode(gateResult.status)
+          : undefined,
+      retryable:
+        gateResult.status === 'TECHNICAL_ERROR' ||
+        gateResult.status === 'TEMPORARILY_UNAVAILABLE',
+    });
+
+    if (
+      intent === 'enforce' &&
+      mode &&
+      shouldFailClosedForPolicyMode(mode) &&
+      (gateResult.status === 'TECHNICAL_ERROR' ||
+        gateResult.status === 'TEMPORARILY_UNAVAILABLE')
+    ) {
+      throwBookingEligibilityViolation({
+        code: mapGateStatusToTransitionCode(gateResult.status),
+        message:
+          gateResult.status === 'TEMPORARILY_UNAVAILABLE'
+            ? 'Rental eligibility is temporarily unavailable.'
+            : 'Rental eligibility could not be evaluated.',
+        gateResult,
+        correlation: gateResult.correlation,
+      });
+    }
+
+    return gateResult;
+  }
+
+  private resolveCommandForMode(
+    mode: NonNullable<ReturnType<typeof resolveEligibilityPolicyMode>>,
+  ): BookingEligibilityCommandKind {
+    if (mode === 'CONFIRMED') return 'confirm';
+    if (mode === 'ACTIVE') return 'pickup';
+    if (mode === 'DRAFT') return 'create';
+    return 'update';
   }
 
   private async countAdditionalDrivers(

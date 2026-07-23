@@ -2,10 +2,11 @@
  * E2E-style flow: wizard draft eligibility preview → confirm gatekeeper → idempotent replay.
  */
 import { ConflictException } from '@nestjs/common';
-import type { BookingEligibilityGateResult } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.types';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
+import { testGateResult } from './booking-eligibility-gatekeeper/booking-eligibility-test.fixtures';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BookingsService } from './bookings.service';
 import { WIZARD_DRAFT_MARKER } from './booking-wizard-draft.util';
@@ -26,7 +27,20 @@ describe('Booking wizard eligibility E2E flow', () => {
     evaluate: jest.fn(),
   } as unknown as BookingEligibilityGatekeeperService;
 
-  const enforcement = new BookingEligibilityEnforcementService(prisma, gatekeeper);
+  const auditLogger = {
+    logEvaluation: jest.fn(),
+  } as unknown as BookingEligibilityAuditLogger;
+
+  const enforcement = new BookingEligibilityEnforcementService(
+    prisma,
+    gatekeeper,
+    auditLogger,
+  );
+
+  const eligibilityEnforcement = {
+    previewEvaluation: jest.fn(),
+    assertAllowed: jest.fn(),
+  } as unknown as BookingEligibilityEnforcementService;
 
   const bookingsService = {
     update: jest.fn(),
@@ -61,7 +75,7 @@ describe('Booking wizard eligibility E2E flow', () => {
       }),
     } as never,
     {} as never,
-    gatekeeper,
+    eligibilityEnforcement,
   );
 
   const draft = {
@@ -76,22 +90,13 @@ describe('Booking wizard eligibility E2E flow', () => {
     paymentIntent: 'pay_on_pickup',
   };
 
-  const eligibleGate: BookingEligibilityGateResult = {
-    status: 'ELIGIBLE',
-    stage: 'CONFIRM',
-    allowed: true,
-    reasonCodes: [],
-    blockingReasons: [],
-    warnings: [],
-    missingFields: [],
-    sourceRuleIds: ['org:org-e2e'],
-    evaluatedAt: '2026-08-01T10:00:00.000Z',
-    recheckRequired: false,
-    engineVersion: '1.0.0',
+  const eligibleGate = testGateResult({
     organizationId: 'org-e2e',
     customerId: 'cust-e2e',
     vehicleId: 'veh-e2e',
     bookingId: 'booking-e2e',
+    sourceRuleIds: ['org:org-e2e'],
+    evaluatedAt: '2026-08-01T10:00:00.000Z',
     domains: {
       customer: { evaluated: true, canProceedForStage: true, result: null },
       verification: { evaluated: true, result: null },
@@ -100,13 +105,15 @@ describe('Booking wizard eligibility E2E flow', () => {
       vehicleReadiness: { evaluated: true, skipped: false, blocked: false },
       pricingDeposit: { evaluated: false, skipped: true },
     },
-  };
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
     (prisma.booking.findFirst as jest.Mock).mockResolvedValue(draft);
     (prisma.bookingAllowedDriver.count as jest.Mock).mockResolvedValue(0);
     (prisma.bookingDeposit.findFirst as jest.Mock).mockResolvedValue(null);
+    (eligibilityEnforcement.previewEvaluation as jest.Mock).mockResolvedValue(eligibleGate);
+    (eligibilityEnforcement.assertAllowed as jest.Mock).mockResolvedValue(eligibleGate);
     (gatekeeper.evaluate as jest.Mock).mockResolvedValue(eligibleGate);
     (bookingsService.update as jest.Mock).mockImplementation(async () => ({
       ...draft,
@@ -134,7 +141,8 @@ describe('Booking wizard eligibility E2E flow', () => {
     );
 
     expect(confirmed.booking.status).toBe('CONFIRMED');
-    expect(gatekeeper.evaluate).toHaveBeenCalledTimes(2);
+    expect(eligibilityEnforcement.previewEvaluation).toHaveBeenCalledTimes(1);
+    expect(eligibilityEnforcement.assertAllowed).toHaveBeenCalledTimes(1);
 
     const enforcementResult = await enforcement.assertAllowedForBooking(
       'org-e2e',
@@ -147,19 +155,12 @@ describe('Booking wizard eligibility E2E flow', () => {
 
   it('detects race conditions when rules change between preview and confirm', async () => {
     const preview = await wizardDraftService.getEligibilityPreview('org-e2e', 'booking-e2e');
-    (gatekeeper.evaluate as jest.Mock).mockResolvedValue({
-      ...eligibleGate,
-      status: 'NOT_ELIGIBLE',
-      allowed: false,
-      blockingReasons: [
-        {
-          code: 'MINIMUM_AGE_NOT_MET',
-          domain: 'rental_rules',
-          message: 'Rules changed',
-        },
-      ],
-      reasonCodes: ['MINIMUM_AGE_NOT_MET'],
-    });
+    (eligibilityEnforcement.assertAllowed as jest.Mock).mockRejectedValue(
+      new ConflictException({
+        code: 'BOOKING_ELIGIBILITY_NOT_ELIGIBLE',
+        message: 'Rules changed',
+      }),
+    );
 
     await expect(
       wizardDraftService.confirmDraft('org-e2e', 'booking-e2e', {

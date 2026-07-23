@@ -7,35 +7,17 @@ import {
 } from './booking-wizard-eligibility.util';
 import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-gatekeeper/booking-eligibility-transition.policy';
 
+import { testGateResult } from './booking-eligibility-gatekeeper/booking-eligibility-test.fixtures';
+
 function buildGateResult(
-  overrides: Partial<BookingEligibilityGateResult> = {},
-): BookingEligibilityGateResult {
-  return {
-    status: 'ELIGIBLE',
-    stage: 'CONFIRM',
-    allowed: true,
-    reasonCodes: [],
-    blockingReasons: [],
-    warnings: [],
-    missingFields: [],
+  overrides: Parameters<typeof testGateResult>[0] = {},
+) {
+  return testGateResult({
+    bookingId: 'booking-1',
     sourceRuleIds: ['org:org-1'],
     evaluatedAt: '2026-07-01T10:00:00.000Z',
-    recheckRequired: false,
-    engineVersion: '1.0.0',
-    organizationId: 'org-1',
-    customerId: 'cust-1',
-    vehicleId: 'veh-1',
-    bookingId: 'booking-1',
-    domains: {
-      customer: { evaluated: true, canProceedForStage: true, result: null },
-      verification: { evaluated: true, result: null },
-      rentalRules: { evaluated: true, result: null },
-      vehicle: { evaluated: true, vehicleFound: true, vehicleId: 'veh-1' },
-      vehicleReadiness: { evaluated: false, skipped: true, blocked: false },
-      pricingDeposit: { evaluated: false, skipped: true },
-    },
     ...overrides,
-  };
+  });
 }
 
 describe('booking-wizard-eligibility.util', () => {

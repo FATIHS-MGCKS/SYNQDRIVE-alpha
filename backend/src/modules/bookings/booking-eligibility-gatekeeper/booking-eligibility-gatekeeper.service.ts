@@ -25,6 +25,7 @@ import {
   mapVerificationToGateReasons,
   resolveAggregateGateStatus,
 } from './booking-eligibility-gatekeeper.util';
+import { buildBookingEligibilityCorrelationIds } from './booking-eligibility-correlation.util';
 
 /**
  * Central orchestrator for booking transition eligibility.
@@ -49,6 +50,13 @@ export class BookingEligibilityGatekeeperService {
 
   async evaluate(input: BookingEligibilityGateInput): Promise<BookingEligibilityGateResult> {
     const evaluatedAt = new Date();
+    const correlation =
+      input.correlation ??
+      buildBookingEligibilityCorrelationIds({
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        command: input.stage === 'PREVIEW' ? 'preview' : input.stage === 'CONFIRM' ? 'confirm' : input.stage === 'PICKUP' ? 'pickup' : 'create',
+      });
     const blockingReasons: BookingEligibilityGateReason[] = [];
     const warnings: BookingEligibilityGateReason[] = [];
     const missingFields: string[] = [];
@@ -57,12 +65,21 @@ export class BookingEligibilityGatekeeperService {
 
     const vehicleSlice = await this.evaluateVehicleReference(input);
     if (!vehicleSlice.vehicleFound) {
-      blockingReasons.push({
-        code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_NOT_FOUND,
-        domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE,
-        message: `Vehicle ${input.vehicleId} not found in organization`,
-      });
-      domainStatuses.push('NOT_ELIGIBLE');
+      if (vehicleSlice.error) {
+        domainStatuses.push('TECHNICAL_ERROR');
+        blockingReasons.push({
+          code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+          domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE,
+          message: vehicleSlice.error,
+        });
+      } else {
+        blockingReasons.push({
+          code: BOOKING_ELIGIBILITY_REASON_CODE.VEHICLE_NOT_FOUND,
+          domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE,
+          message: `Vehicle ${input.vehicleId} not found in organization`,
+        });
+        domainStatuses.push('NOT_ELIGIBLE');
+      }
     }
 
     const customerSlice = await this.evaluateCustomerDomain(input);
@@ -103,6 +120,11 @@ export class BookingEligibilityGatekeeperService {
       }
     } else if (verificationSlice.error) {
       domainStatuses.push('TECHNICAL_ERROR');
+      blockingReasons.push({
+        code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+        domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VERIFICATION,
+        message: verificationSlice.error,
+      });
     }
 
     const rentalSlice = await this.evaluateRentalRulesDomain(input);
@@ -147,6 +169,13 @@ export class BookingEligibilityGatekeeperService {
           message: vehicleReadinessSlice.error ?? 'Vehicle rental blocked by health gate',
         });
       }
+    } else if (!vehicleReadinessSlice.skipped && vehicleReadinessSlice.blocked) {
+      domainStatuses.push('TECHNICAL_ERROR');
+      blockingReasons.push({
+        code: BOOKING_ELIGIBILITY_REASON_CODE.TECHNICAL_ERROR,
+        domain: BOOKING_ELIGIBILITY_GATE_DOMAIN.VEHICLE_READINESS,
+        message: vehicleReadinessSlice.error ?? 'Vehicle readiness evaluation failed',
+      });
     }
 
     const pricingDepositSlice = this.buildSkippedPricingDepositSlice(
@@ -172,6 +201,7 @@ export class BookingEligibilityGatekeeperService {
     return {
       ...core,
       engineVersion: BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION,
+      correlation,
       domains: {
         customer: {
           ...customerSlice,

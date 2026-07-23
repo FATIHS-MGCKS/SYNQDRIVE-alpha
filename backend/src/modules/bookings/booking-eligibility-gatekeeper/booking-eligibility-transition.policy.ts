@@ -1,6 +1,10 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
 import type { BookingStatus } from '@prisma/client';
 import type { BookingEligibilityGateResult, BookingEligibilityGateStage } from './booking-eligibility-gatekeeper.types';
+import type { BookingEligibilityCorrelationIds } from './booking-eligibility-correlation.util';
+import {
+  mapGateStatusToTransitionCode,
+  throwBookingEligibilityViolation,
+} from './booking-eligibility-error.policy';
 
 export const BOOKING_ELIGIBILITY_TRANSITION_CODE = {
   NOT_ELIGIBLE: 'BOOKING_ELIGIBILITY_NOT_ELIGIBLE',
@@ -52,49 +56,63 @@ export function assertBookingEligibilityTransitionAllowed(
   options: {
     eligibilityOverrideReason?: string | null;
     hasOverridePermission: boolean;
+    correlation?: BookingEligibilityCorrelationIds;
   },
 ): void {
   if (mode === 'DRAFT') return;
 
+  const correlation = options.correlation ?? gateResult.correlation;
+
   if (mode === 'PENDING') {
-    assertPendingTransitionAllowed(gateResult);
+    assertPendingTransitionAllowed(gateResult, correlation);
     return;
   }
 
   if (mode === 'ACTIVE') {
-    assertActiveTransitionAllowed(gateResult, options);
+    assertActiveTransitionAllowed(gateResult, { ...options, correlation });
     return;
   }
 
-  assertConfirmedTransitionAllowed(gateResult, options);
+  assertConfirmedTransitionAllowed(gateResult, { ...options, correlation });
 }
 
-function assertPendingTransitionAllowed(gateResult: BookingEligibilityGateResult): void {
+function assertPendingTransitionAllowed(
+  gateResult: BookingEligibilityGateResult,
+  correlation?: BookingEligibilityCorrelationIds,
+): void {
   switch (gateResult.status) {
     case 'ELIGIBLE':
     case 'MANUAL_APPROVAL_REQUIRED':
     case 'MISSING_INFORMATION':
       return;
     case 'NOT_ELIGIBLE':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
-        'Booking cannot be created or updated while rental eligibility is not met.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
+        message: 'Booking cannot be created or updated while rental eligibility is not met.',
         gateResult,
-      );
+        correlation,
+      });
     case 'TECHNICAL_ERROR':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
-        'Rental eligibility could not be evaluated — booking was not saved.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
+        message: 'Rental eligibility could not be evaluated — booking was not saved.',
         gateResult,
-      );
+        correlation,
+      });
     case 'TEMPORARILY_UNAVAILABLE':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
-        'Rental eligibility is temporarily unavailable — booking was not saved.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
+        message: 'Rental eligibility is temporarily unavailable — booking was not saved.',
         gateResult,
-      );
+        correlation,
+      });
     default:
-      return;
+      throwBookingEligibilityViolation({
+        code: mapGateStatusToTransitionCode(gateResult.status),
+        message: 'Rental eligibility could not be verified — booking was not saved.',
+        gateResult,
+        correlation,
+      });
   }
 }
 
@@ -103,6 +121,7 @@ function assertActiveTransitionAllowed(
   options: {
     eligibilityOverrideReason?: string | null;
     hasOverridePermission: boolean;
+    correlation?: BookingEligibilityCorrelationIds;
   },
 ): void {
   switch (gateResult.status) {
@@ -111,51 +130,59 @@ function assertActiveTransitionAllowed(
     case 'MANUAL_APPROVAL_REQUIRED': {
       const reason = options.eligibilityOverrideReason?.trim();
       if (!reason) {
-        throw new ConflictException({
+        throwBookingEligibilityViolation({
           code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MANUAL_APPROVAL_REQUIRED,
           message: 'Manual approval is required before pickup can start.',
-          reasonCodes: gateResult.reasonCodes,
-          blockingReasons: gateResult.blockingReasons,
-          warnings: gateResult.warnings,
-          missingFields: gateResult.missingFields,
-          eligibilityStatus: gateResult.status,
+          gateResult,
+          correlation: options.correlation,
           requiresOverride: true,
         });
       }
       if (!options.hasOverridePermission) {
-        throw new ForbiddenException({
+        throwBookingEligibilityViolation({
           code: BOOKING_ELIGIBILITY_TRANSITION_CODE.OVERRIDE_DENIED,
           message: 'Missing permission to override rental eligibility manual approval for pickup.',
+          gateResult,
+          correlation: options.correlation,
         });
       }
       return;
     }
     case 'NOT_ELIGIBLE':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
-        'Pickup cannot start — rental eligibility requirements are not met.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
+        message: 'Pickup cannot start — rental eligibility requirements are not met.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     case 'MISSING_INFORMATION':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.MISSING_INFORMATION,
-        'Pickup cannot start — required eligibility information is missing.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MISSING_INFORMATION,
+        message: 'Pickup cannot start — required eligibility information is missing.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     case 'TECHNICAL_ERROR':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
-        'Rental eligibility could not be evaluated — pickup was not started.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
+        message: 'Rental eligibility could not be evaluated — pickup was not started.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     case 'TEMPORARILY_UNAVAILABLE':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
-        'Rental eligibility is temporarily unavailable — pickup was not started.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
+        message: 'Rental eligibility is temporarily unavailable — pickup was not started.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     default:
-      return;
+      throwBookingEligibilityViolation({
+        code: mapGateStatusToTransitionCode(gateResult.status),
+        message: 'Rental eligibility could not be verified — pickup was not started.',
+        gateResult,
+        correlation: options.correlation,
+      });
   }
 }
 
@@ -164,6 +191,7 @@ function assertConfirmedTransitionAllowed(
   options: {
     eligibilityOverrideReason?: string | null;
     hasOverridePermission: boolean;
+    correlation?: BookingEligibilityCorrelationIds;
   },
 ): void {
   switch (gateResult.status) {
@@ -172,70 +200,60 @@ function assertConfirmedTransitionAllowed(
     case 'MANUAL_APPROVAL_REQUIRED': {
       const reason = options.eligibilityOverrideReason?.trim();
       if (!reason) {
-        throw new ConflictException({
+        throwBookingEligibilityViolation({
           code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MANUAL_APPROVAL_REQUIRED,
           message: 'Manual approval is required before this booking can be confirmed.',
-          reasonCodes: gateResult.reasonCodes,
-          blockingReasons: gateResult.blockingReasons,
-          warnings: gateResult.warnings,
-          missingFields: gateResult.missingFields,
-          eligibilityStatus: gateResult.status,
+          gateResult,
+          correlation: options.correlation,
           requiresOverride: true,
         });
       }
       if (!options.hasOverridePermission) {
-        throw new ForbiddenException({
+        throwBookingEligibilityViolation({
           code: BOOKING_ELIGIBILITY_TRANSITION_CODE.OVERRIDE_DENIED,
           message: 'Missing permission to override rental eligibility manual approval.',
+          gateResult,
+          correlation: options.correlation,
         });
       }
       return;
     }
     case 'NOT_ELIGIBLE':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
-        'Booking cannot be confirmed — rental eligibility requirements are not met.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
+        message: 'Booking cannot be confirmed — rental eligibility requirements are not met.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     case 'MISSING_INFORMATION':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.MISSING_INFORMATION,
-        'Booking cannot be confirmed — required eligibility information is missing.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MISSING_INFORMATION,
+        message: 'Booking cannot be confirmed — required eligibility information is missing.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     case 'TECHNICAL_ERROR':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
-        'Rental eligibility could not be evaluated — booking was not confirmed.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
+        message: 'Rental eligibility could not be evaluated — booking was not confirmed.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     case 'TEMPORARILY_UNAVAILABLE':
-      throw buildEligibilityConflict(
-        BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
-        'Rental eligibility is temporarily unavailable — booking was not confirmed.',
+      throwBookingEligibilityViolation({
+        code: BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
+        message: 'Rental eligibility is temporarily unavailable — booking was not confirmed.',
         gateResult,
-      );
+        correlation: options.correlation,
+      });
     default:
-      return;
+      throwBookingEligibilityViolation({
+        code: mapGateStatusToTransitionCode(gateResult.status),
+        message: 'Rental eligibility could not be verified — booking was not confirmed.',
+        gateResult,
+        correlation: options.correlation,
+      });
   }
-}
-
-function buildEligibilityConflict(
-  code: (typeof BOOKING_ELIGIBILITY_TRANSITION_CODE)[keyof typeof BOOKING_ELIGIBILITY_TRANSITION_CODE],
-  message: string,
-  gateResult: BookingEligibilityGateResult,
-) {
-  return new ConflictException({
-    code,
-    message,
-    reasonCodes: gateResult.reasonCodes,
-    blockingReasons: gateResult.blockingReasons,
-    warnings: gateResult.warnings,
-    missingFields: gateResult.missingFields,
-    eligibilityStatus: gateResult.status,
-    engineVersion: gateResult.engineVersion,
-    evaluatedAt: gateResult.evaluatedAt,
-  });
 }
 
 export function isEligibilityRelevantBookingMutation(input: {

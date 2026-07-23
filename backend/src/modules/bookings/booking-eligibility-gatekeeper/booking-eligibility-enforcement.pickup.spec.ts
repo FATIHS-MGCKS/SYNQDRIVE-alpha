@@ -2,7 +2,9 @@ import { ConflictException } from '@nestjs/common';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-enforcement.service';
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { BookingEligibilityAuditLogger } from './booking-eligibility-audit.logger';
 import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-transition.policy';
+import { testGateResult } from './booking-eligibility-test.fixtures';
 
 describe('BookingEligibilityEnforcementService pickup transitions', () => {
   const prisma = {
@@ -16,24 +18,16 @@ describe('BookingEligibilityEnforcementService pickup transitions', () => {
     evaluate: jest.fn(),
   } as unknown as BookingEligibilityGatekeeperService;
 
-  const service = new BookingEligibilityEnforcementService(prisma, gatekeeper);
+  const auditLogger = {
+    logEvaluation: jest.fn(),
+  } as unknown as BookingEligibilityAuditLogger;
 
-  const eligiblePickupGate = {
-    status: 'ELIGIBLE',
+  const service = new BookingEligibilityEnforcementService(prisma, gatekeeper, auditLogger);
+
+  const eligiblePickupGate = testGateResult({
     stage: 'PICKUP',
-    allowed: true,
-    reasonCodes: [],
-    blockingReasons: [],
-    warnings: [],
-    missingFields: [],
-    sourceRuleIds: ['org:org-1'],
-    evaluatedAt: new Date().toISOString(),
-    recheckRequired: false,
-    engineVersion: '1.0.0',
-    organizationId: 'org-1',
-    customerId: 'cust-1',
-    vehicleId: 'veh-1',
     bookingId: 'booking-1',
+    sourceRuleIds: ['org:org-1'],
     domains: {
       customer: { evaluated: true, canProceedForStage: true, result: null },
       verification: { evaluated: true, result: null },
@@ -42,7 +36,7 @@ describe('BookingEligibilityEnforcementService pickup transitions', () => {
       vehicleReadiness: { evaluated: true, skipped: false, blocked: false },
       pricingDeposit: { evaluated: false, skipped: true },
     },
-  };
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();

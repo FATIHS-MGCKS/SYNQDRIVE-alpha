@@ -5,8 +5,8 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 9 of 34 — Booking Wizard gatekeeper alignment** |
-| **Mode** | Wizard preview + confirm via `BookingEligibilityGatekeeperService` |
+| **Phase** | **Prompt 10 of 34 — Status transition eligibility enforcement** |
+| **Mode** | Central transition matrix + PICKUP-stage gatekeeper on handover |
 | **Method** | Direct code/schema verification; no unverified assumptions |
 
 ---
@@ -1355,4 +1355,168 @@ E2E-Flow: `booking-wizard-eligibility-e2e-flow.spec.ts` (Preview → Confirm →
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 9).*
+## 24. Status Transition Eligibility Enforcement (Prompt 10)
+
+### 24.1 Datenmodell (tatsächliche BookingStatus-Werte)
+
+`PENDING` · `CONFIRMED` · `ACTIVE` · `COMPLETED` · `CANCELLED` · `NO_SHOW`
+
+Kein `READY_FOR_PICKUP` / `PICKED_UP` — Pickup = `CONFIRMED → ACTIVE` via Handover.
+
+### 24.2 Vollständige Transition-Matrix
+
+| Von \\ Nach | PENDING | CONFIRMED | ACTIVE | COMPLETED | CANCELLED | NO_SHOW |
+|-------------|---------|-----------|--------|-----------|-----------|---------|
+| **DRAFT** (Wizard) | ⏭ skip | — | ✗ | — | — | — |
+| **PENDING** | mutation✓ | **enforce CONFIRM** | ✗ | — | release | — |
+| **CONFIRMED** | mutation✓ | mutation✓ | **enforce PICKUP** | — | release | release |
+| **ACTIVE** | ✗ | ✗ | — | release | release | — |
+| **COMPLETED** | — | — | — | — | — | — |
+| **CANCELLED** | — | — | — | — | — | — |
+| **NO_SHOW** | — | — | — | — | — | — |
+
+Legende:
+- **enforce CONFIRM** — Gatekeeper `CONFIRM` stage, Vehicle Readiness
+- **enforce PICKUP** — Gatekeeper `PICKUP` stage, Vehicle Readiness, vor Dokument-Gate
+- **mutation✓** — Re-Assert bei Änderung relevanter Fakten (ohne Statuswechsel)
+- **release** — kein Eligibility-Enforcement
+- **⏭ skip** — Wizard-Draft (`[synq:wizard-draft]`)
+- **✗** — Transition nicht erlaubt / blockiert
+
+### 24.3 Statusänderungspfade (alle Einstiegspunkte)
+
+| Pfad | Transition | Enforcement |
+|------|------------|-------------|
+| Wizard `confirmDraft` | DRAFT→PENDING/CONFIRMED | Gatekeeper (Prompt 9) |
+| `BookingsService.create` | → PENDING/CONFIRMED | Gatekeeper |
+| `BookingsService.update` | PENDING↔CONFIRMED, Mutationen | Gatekeeper via Matrix |
+| `BookingsService.update` | → ACTIVE | ✗ blockiert (`BOOKING_ACTIVATION_REQUIRES_HANDOVER`) |
+| `BookingsHandoverService` pickup | CONFIRMED→ACTIVE | `assertAllowedForPickup` (PICKUP) + Dokument-Gate |
+| `BookingsHandoverService` return | ACTIVE→COMPLETED | kein Eligibility |
+| `BookingsService.cancel` | → CANCELLED | kein Eligibility |
+| `BookingsService.markNoShow` | CONFIRMED→NO_SHOW | kein Eligibility |
+| `BookingAllowedDriversService` | Zusatzfahrer | Re-Assert für PENDING/CONFIRMED |
+
+### 24.4 Invalidierung früherer Freigaben
+
+Re-Assert bei Mutation von: Kunde, Fahrzeug, Zeitraum, Zahlungsintent, Extras/Ausland, Zusatzfahrer.
+
+Gatekeeper evaluiert bei jedem Assert frisch: Dokumentstatus, Führerscheingültigkeit, Rule Revision, Kaution.
+
+### 24.5 Neue/Geänderte Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `booking-eligibility-status-transition.matrix.ts` | Zentrale Transition Policy + Matrix |
+| `booking-eligibility-transition.policy.ts` | `ACTIVE` mode + Pickup-Assertions |
+| `booking-eligibility-enforcement.service.ts` | Matrix-basiertes `shouldEnforce`, `assertAllowedForPickup` |
+| `bookings-handover.service.ts` | Pickup ruft Gatekeeper vor Dokument-Gate |
+| `booking-pickup-gate.service.ts` | Customer-Eligibility-Duplikat entfernt |
+
+### 24.6 Tests
+
+```
+npm test -- --testPathPattern="booking-eligibility|booking-pickup-gate|booking-wizard"
+→ 93/93 PASS
+```
+
+---
+
+## Prompt 10 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Kein Statuspfad umgeht die zentrale Policy | ✅ Matrix + Handover + BookingsService |
+| Pickup/ACTIVE bei ungültiger Eligibility blockiert | ✅ PICKUP-stage Gatekeeper |
+| Alte Entscheidungen bei Faktenänderung invalidiert | ✅ Re-Assert + frische Evaluation |
+| Tests bestehen | ✅ 93/93 |
+| Prompt 10 Status | **DONE** |
+
+---
+
+## Prompt 11 — Fail-Closed Eligibility Error Policy
+
+**Ziel:** Technische Fehler der Eligibility Engine dürfen nie versehentlich zu einer Freigabe führen.
+
+### 11.1 Fehlerverhalten
+
+| Kontext | Technischer Fehler | Fachliche Ablehnung |
+|---------|-------------------|---------------------|
+| **Preview** | Status `TECHNICAL_ERROR` / `TEMPORARILY_UNAVAILABLE` anzeigen, kein Throw | `NOT_ELIGIBLE` / `MISSING_INFORMATION` anzeigen |
+| **DRAFT (Wizard)** | Speichern erlaubt (Enforcement übersprungen) | — |
+| **PENDING** | Fail-closed (409/503) | 409 Conflict |
+| **CONFIRMED** | Fail-closed **503** | 409 Conflict |
+| **ACTIVE / Pickup** | Fail-closed **503** | 409 Conflict |
+
+Technische Fehler werden **niemals** als `NOT_ELIGIBLE` maskiert.
+
+### 11.2 Domain-Fehlercodes & HTTP-Mapping
+
+| Code | Kategorie | HTTP | Retryable |
+|------|-----------|------|-----------|
+| `BOOKING_ELIGIBILITY_NOT_ELIGIBLE` | `not_eligible` | 409 | nein |
+| `BOOKING_ELIGIBILITY_MISSING_INFORMATION` | `missing_information` | 409 | nein |
+| `BOOKING_ELIGIBILITY_MANUAL_APPROVAL_REQUIRED` | `manual_approval_required` | 409 | nein |
+| `BOOKING_ELIGIBILITY_TECHNICAL_ERROR` | `technical_error` | **503** | **ja** |
+| `BOOKING_ELIGIBILITY_TEMPORARILY_UNAVAILABLE` | `temporarily_unavailable` | **503** | **ja** |
+| `BOOKING_ELIGIBILITY_RULES_CHANGED` | `business_conflict` | 409 | ja |
+| `BOOKING_ELIGIBILITY_OVERRIDE_DENIED` | `business_conflict` | 403 | nein |
+
+### 11.3 Korrelations-IDs
+
+Jede Evaluation erhält vier IDs (`booking-eligibility-correlation.util.ts`):
+
+- `evaluationId` — Eligibility Evaluation
+- `commandId` — Booking Command (preview/create/update/confirm/pickup)
+- `transitionId` — Status Transition
+- `auditEventId` — Audit Event
+
+Wiederholte Confirm-/Pickup-Kommandos können dieselbe `commandId` via `parentCommandId` tragen (Idempotenz).
+
+### 11.4 Strukturierte Logs
+
+`BookingEligibilityAuditLogger` schreibt JSON ohne Kunden-PII:
+
+`organizationId`, `bookingId`, `vehicleId`, Korrelations-IDs, `stage`, `command`, `policyMode`, `intent`, `outcome`, `status`, `reasonCodeCount`, `retryable`.
+
+### 11.5 Fail-Closed Fixes
+
+- Verification-/Vehicle-Readiness-Exceptions → `TECHNICAL_ERROR` + Blocking Reason (nicht still übersprungen)
+- Transition-Policy `default`-Zweige → expliziter Fail-Closed via `throwBookingEligibilityViolation`
+- `assertCustomerBookingEligibility`-Fallback nur noch für Wizard-DRAFT (nicht CONFIRMED/ACTIVE)
+- Enforcement: `preview` vs `enforce` Intent; unerwartete Exceptions → `buildTechnicalFailureGateResult`
+
+### 11.6 Neue/Geänderte Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `booking-eligibility-error.policy.ts` | HTTP-Mapping, Violation Body, Technical Failure Builder |
+| `booking-eligibility-correlation.util.ts` | Korrelations-ID-Generierung |
+| `booking-eligibility-audit.logger.ts` | Strukturierte Audit-Logs |
+| `booking-eligibility-enforcement.service.ts` | Preview/Enforce-Split, Audit, Correlation |
+| `booking-eligibility-transition.policy.ts` | 503 für technische Fehler, fail-closed defaults |
+| `booking-eligibility-gatekeeper.service.ts` | Domain-Fehler → TECHNICAL_ERROR blocking |
+| `booking-eligibility-fail-closed.spec.ts` | Fail-closed + Retry + Idempotenz Tests |
+
+### 11.7 Tests
+
+```
+npm test -- --testPathPattern="booking-eligibility|booking-pickup-gate|booking-wizard"
+→ 104/104 PASS
+```
+
+---
+
+## Prompt 11 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Technische Fehler führen nie zu unbeabsichtigter Freigabe | ✅ Fail-closed CONFIRMED/ACTIVE/Pickup |
+| Fachliche Ablehnung und Systemfehler getrennt | ✅ `category` + HTTP 409 vs 503 |
+| Retry und Idempotenz funktionieren | ✅ `retryable` + `parentCommandId` |
+| Logs datensparsam | ✅ Kein customerId in Audit-Logs |
+| Prompt 11 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 11).*
