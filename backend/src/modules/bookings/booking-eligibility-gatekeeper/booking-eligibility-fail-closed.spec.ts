@@ -62,11 +62,16 @@ describe('booking eligibility fail-closed policy', () => {
     expireStale: jest.fn(),
   } as never;
 
+  const eligibilityDecision = {
+    appendFromGateResult: jest.fn().mockResolvedValue({}),
+  } as never;
+
   const enforcement = new BookingEligibilityEnforcementService(
     prisma,
     gatekeeper,
     auditLogger,
     eligibilityApproval,
+    eligibilityDecision,
   );
 
   const clearedCustomer = assembleCustomerEligibilityResult(

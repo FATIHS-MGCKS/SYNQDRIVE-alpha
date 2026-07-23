@@ -47,6 +47,7 @@ import {
   DecideBookingEligibilityApprovalDto,
 } from './booking-eligibility-approval/dto/booking-eligibility-approval.dto';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
@@ -63,6 +64,7 @@ export class BookingsController {
     private readonly wizardDraftService: BookingWizardDraftService,
     private readonly allowedDriversService: BookingAllowedDriversService,
     private readonly eligibilityApprovalService: BookingEligibilityApprovalService,
+    private readonly eligibilityDecisionService: BookingEligibilityDecisionService,
   ) {}
 
   @Get('today/pickups')
@@ -229,6 +231,25 @@ export class BookingsController {
       platformRole,
       membershipRole,
     });
+  }
+
+  @Get(':id/eligibility-decisions')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async listEligibilityDecisions(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.eligibilityDecisionService.listForBooking(orgId, id);
+  }
+
+  @Get(':id/eligibility-decisions/:decisionId')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async getEligibilityDecision(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('decisionId') decisionId: string,
+  ) {
+    return this.eligibilityDecisionService.getById(orgId, id, decisionId);
   }
 
   @Get(':id/rental-eligibility')
