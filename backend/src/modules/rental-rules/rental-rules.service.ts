@@ -11,6 +11,8 @@ import {
   AssignCategoryVehiclesDto,
   CreateRentalVehicleCategoryDto,
   PreviewCategoryVehicleAssignmentDto,
+  PreviewRentalRuleRevisionDto,
+  PublishRentalRuleRevisionDto,
   ResetVehicleRentalOverridesDto,
   TransitionCategoryLifecycleDto,
   UpdateRentalVehicleCategoryDto,
@@ -58,6 +60,13 @@ import {
   throwRentalRulesAssignmentStale,
   totalDeltaVehicleCount,
 } from './rental-rules-category-assignment.util';
+import {
+  categoryRevisionScope,
+  organizationRevisionScope,
+  vehicleRevisionScope,
+} from './rental-rules-revision-scope.util';
+import { RentalRulesRevisionService } from './rental-rules-revision.service';
+import type { NormalizedRentalRulesDocument } from './rental-rules-revision.types';
 
 interface RentalRulesMutationContext {
   actor?: PermissionActor;
@@ -70,6 +79,7 @@ export class RentalRulesService {
     private readonly effectiveRules: RentalEffectiveRulesService,
     private readonly rentalRulePermissions: RentalRulePermissionService,
     private readonly activityLog: ActivityLogService,
+    private readonly revisions: RentalRulesRevisionService,
   ) {}
 
   private async assertOrgExists(orgId: string) {
@@ -100,6 +110,73 @@ export class RentalRulesService {
     if (patch.depositCurrency !== undefined && patch.depositCurrency !== null) {
       patch.depositCurrency = patch.depositCurrency.trim().toUpperCase() || 'EUR';
     }
+  }
+
+  private formatDraftEnvelope<T extends Record<string, unknown>>(
+    payload: T,
+    input: {
+      publishedVersion: number;
+      draftRevision: ReturnType<RentalRulesRevisionService['formatRevision']>;
+    },
+  ) {
+    return {
+      ...payload,
+      version: input.publishedVersion,
+      hasUnpublishedDraft: true,
+      draftRevision: {
+        id: input.draftRevision.id,
+        lockVersion: input.draftRevision.lockVersion,
+        rulesHash: input.draftRevision.rulesHash,
+        version: input.draftRevision.version,
+      },
+    };
+  }
+
+  private organizationPayloadFromRevisionDocument(
+    organizationId: string,
+    document: NormalizedRentalRulesDocument,
+    publishedVersion: number,
+    configured: boolean,
+  ) {
+    const isActive =
+      typeof document.scopeMeta.isActive === 'boolean' ? document.scopeMeta.isActive : true;
+    const fields = extractRuleFields(document.rules as Parameters<typeof extractRuleFields>[0]);
+    return {
+      organizationId,
+      ...fields,
+      depositAmount: fields.depositAmountCents,
+      isActive,
+      version: publishedVersion,
+      configured,
+    };
+  }
+
+  private categoryPayloadFromRevisionDocument(
+    category: Awaited<ReturnType<RentalRulesService['loadCategory']>>,
+    document: NormalizedRentalRulesDocument,
+    publishedVersion: number,
+    vehicleCount?: number,
+  ) {
+    const fields = extractRuleFields(document.rules as Parameters<typeof extractRuleFields>[0]);
+    return {
+      id: category.id,
+      organizationId: category.organizationId,
+      name: (document.scopeMeta.name as string | undefined) ?? category.name,
+      description:
+        (document.scopeMeta.description as string | null | undefined) ?? category.description,
+      type: (document.scopeMeta.type as string | null | undefined) ?? category.type,
+      color: (document.scopeMeta.color as string | null | undefined) ?? category.color,
+      icon: (document.scopeMeta.icon as string | null | undefined) ?? category.icon,
+      ...fields,
+      depositAmount: fields.depositAmountCents,
+      isActive: category.isActive,
+      status: category.status,
+      statusChangedAt: category.statusChangedAt?.toISOString() ?? null,
+      vehicleCount,
+      version: publishedVersion,
+      createdAt: category.createdAt.toISOString(),
+      updatedAt: category.updatedAt.toISOString(),
+    };
   }
 
   async getOrganizationDefaults(orgId: string) {
@@ -146,7 +223,6 @@ export class RentalRulesService {
     await this.assertOrgExists(orgId);
     const expectedVersion = dto.expectedVersion;
     const patch = this.toPrismaRuleData(pickRulePatch(dto), 'organization');
-    await this.rentalRulePermissions.assertPublishIfActiveChange(ctx.actor, orgId, patch.isActive as boolean | undefined);
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const existing = await this.prisma.organizationRentalRules.findUnique({
@@ -162,74 +238,71 @@ export class RentalRulesService {
           current: null,
         });
       }
-      const row = await this.prisma.organizationRentalRules.create({
-        data: {
-          organizationId: orgId,
-          depositCurrency: (patch.depositCurrency as string | undefined) ?? 'EUR',
-          isActive: (patch.isActive as boolean | undefined) ?? true,
-          minimumAgeYears: (patch.minimumAgeYears as number | null | undefined) ?? null,
-          minimumLicenseHoldingMonths: (patch.minimumLicenseHoldingMonths as number | null | undefined) ?? null,
-          depositAmountCents: (patch.depositAmountCents as number | null | undefined) ?? null,
-          creditCardRequired: (patch.creditCardRequired as boolean | null | undefined) ?? null,
-          foreignTravelPolicy: patch.foreignTravelPolicy as Prisma.OrganizationRentalRulesCreateInput['foreignTravelPolicy'],
-          additionalDriverPolicy: patch.additionalDriverPolicy as Prisma.OrganizationRentalRulesCreateInput['additionalDriverPolicy'],
-          youngDriverPolicy: patch.youngDriverPolicy as Prisma.OrganizationRentalRulesCreateInput['youngDriverPolicy'],
-          insuranceRequirement: (patch.insuranceRequirement as string | null | undefined) ?? null,
-          manualApprovalRequired: (patch.manualApprovalRequired as boolean | null | undefined) ?? null,
-          notes: (patch.notes as string | null | undefined) ?? null,
-        },
-      });
-      return { ...formatOrganizationRentalRules(row), configured: true };
-    }
-
-    const updateData: Prisma.OrganizationRentalRulesUpdateManyMutationInput = {
-      version: { increment: 1 },
-      ...(patch.isActive !== undefined ? { isActive: patch.isActive as boolean } : {}),
-      ...(patch.minimumAgeYears !== undefined ? { minimumAgeYears: patch.minimumAgeYears as number | null } : {}),
-      ...(patch.minimumLicenseHoldingMonths !== undefined
-        ? { minimumLicenseHoldingMonths: patch.minimumLicenseHoldingMonths as number | null }
-        : {}),
-      ...(patch.depositAmountCents !== undefined ? { depositAmountCents: patch.depositAmountCents as number | null } : {}),
-      ...(patch.depositCurrency !== undefined ? { depositCurrency: patch.depositCurrency as string } : {}),
-      ...(patch.creditCardRequired !== undefined ? { creditCardRequired: patch.creditCardRequired as boolean | null } : {}),
-      ...(patch.foreignTravelPolicy !== undefined
-        ? { foreignTravelPolicy: patch.foreignTravelPolicy as Prisma.OrganizationRentalRulesUpdateInput['foreignTravelPolicy'] }
-        : {}),
-      ...(patch.additionalDriverPolicy !== undefined
-        ? { additionalDriverPolicy: patch.additionalDriverPolicy as Prisma.OrganizationRentalRulesUpdateInput['additionalDriverPolicy'] }
-        : {}),
-      ...(patch.youngDriverPolicy !== undefined
-        ? { youngDriverPolicy: patch.youngDriverPolicy as Prisma.OrganizationRentalRulesUpdateInput['youngDriverPolicy'] }
-        : {}),
-      ...(patch.insuranceRequirement !== undefined
-        ? { insuranceRequirement: patch.insuranceRequirement as string | null }
-        : {}),
-      ...(patch.manualApprovalRequired !== undefined
-        ? { manualApprovalRequired: patch.manualApprovalRequired as boolean | null }
-        : {}),
-      ...(patch.notes !== undefined ? { notes: patch.notes as string | null } : {}),
-    };
-
-    const { count } = await this.prisma.organizationRentalRules.updateMany({
-      where: { organizationId: orgId, version: expectedVersion },
-      data: updateData,
-    });
-    if (count === 0) {
-      const current = await this.prisma.organizationRentalRules.findUnique({
-        where: { organizationId: orgId },
-      });
+    } else if (expectedVersion !== existing.version) {
       throwRentalRulesVersionConflict({
         entityType: 'organization_default',
         expectedVersion,
-        currentVersion: current?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
-        current: current ? formatOrganizationRentalRules(current) : null,
+        currentVersion: existing.version,
+        current: formatOrganizationRentalRules(existing),
       });
     }
 
-    const row = await this.prisma.organizationRentalRules.findUniqueOrThrow({
+    const { revision, publishedVersion } = await this.revisions.upsertDraft({
+      scope: organizationRevisionScope(orgId),
+      expectedVersion: existing?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
+      rulePatch: patch,
+      sourceRow: existing ?? {
+        organizationId: orgId,
+        isActive: true,
+        depositCurrency: 'EUR',
+      },
+      actor: ctx.actor,
+    });
+
+    const document = revision.normalizedRules as NormalizedRentalRulesDocument;
+    return this.formatDraftEnvelope(
+      this.organizationPayloadFromRevisionDocument(orgId, document, publishedVersion, Boolean(existing)),
+      { publishedVersion, draftRevision: revision },
+    );
+  }
+
+  async publishOrganizationDefaults(
+    orgId: string,
+    dto: PublishRentalRuleRevisionDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
+    await this.assertOrgExists(orgId);
+    const result = await this.revisions.publishDraft(
+      organizationRevisionScope(orgId),
+      dto,
+      ctx.actor,
+    );
+    const existing = await this.prisma.organizationRentalRules.findUnique({
       where: { organizationId: orgId },
     });
-    return { ...formatOrganizationRentalRules(row), configured: true };
+    const document = result.revision.normalizedRules as NormalizedRentalRulesDocument;
+    return {
+      ...this.organizationPayloadFromRevisionDocument(
+        orgId,
+        document,
+        result.publishedVersion,
+        true,
+      ),
+      publishedRevision: result.revision,
+      previousRevisionId: result.previousRevisionId,
+    };
+  }
+
+  async previewOrganizationDefaults(orgId: string, dto: PreviewRentalRuleRevisionDto) {
+    await this.assertOrgExists(orgId);
+    const existing = await this.prisma.organizationRentalRules.findUnique({
+      where: { organizationId: orgId },
+    });
+    return this.revisions.preview(
+      organizationRevisionScope(orgId),
+      dto.mode,
+      existing ?? { organizationId: orgId, isActive: true },
+    );
   }
 
   async listCategories(
@@ -327,42 +400,81 @@ export class RentalRulesService {
     }
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
-    const data: Prisma.RentalVehicleCategoryUpdateManyMutationInput = {
-      version: { increment: 1 },
-      ...prismaRuleColumns(patch, { layer: 'category' }),
-    };
+    const scopeMetaPatch: Record<string, string | number | boolean | null | undefined> = {};
     if (dto.name !== undefined) {
-      const trimmedName = dto.name.trim();
-      data.name = trimmedName;
-      data.nameNormalized = normalizeRentalCategoryName(trimmedName);
+      scopeMetaPatch.name = dto.name.trim();
     }
-    if (dto.description !== undefined) data.description = dto.description?.trim() || null;
-    if (dto.type !== undefined) data.type = dto.type ?? null;
-    if (dto.color !== undefined) data.color = dto.color ?? null;
-    if (dto.icon !== undefined) data.icon = dto.icon ?? null;
+    if (dto.description !== undefined) {
+      scopeMetaPatch.description = dto.description?.trim() || null;
+    }
+    if (dto.type !== undefined) {
+      scopeMetaPatch.type = dto.type ?? null;
+    }
+    if (dto.color !== undefined) {
+      scopeMetaPatch.color = dto.color ?? null;
+    }
+    if (dto.icon !== undefined) {
+      scopeMetaPatch.icon = dto.icon ?? null;
+    }
 
-    const { count } = await this.prisma.rentalVehicleCategory.updateMany({
-      where: { id: categoryId, organizationId: orgId, version: dto.expectedVersion },
-      data,
+    const { revision, publishedVersion } = await this.revisions.upsertDraft({
+      scope: categoryRevisionScope(orgId, categoryId),
+      expectedVersion: dto.expectedVersion,
+      rulePatch: patch,
+      scopeMetaPatch,
+      sourceRow: existing,
+      actor: ctx.actor,
     });
-    if (count === 0) {
-      const current = await this.prisma.rentalVehicleCategory.findFirst({
-        where: { id: categoryId, organizationId: orgId },
-        include: { _count: { select: { vehicles: true } } },
-      });
-      throwRentalRulesVersionConflict({
-        entityType: 'category',
-        expectedVersion: dto.expectedVersion,
-        currentVersion: current?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
-        current: current ? formatRentalVehicleCategory(current) : null,
-      });
-    }
 
-    const row = await this.prisma.rentalVehicleCategory.findUniqueOrThrow({
+    const withCount = await this.prisma.rentalVehicleCategory.findUnique({
       where: { id: categoryId },
       include: { _count: { select: { vehicles: true } } },
     });
-    return formatRentalVehicleCategory(row);
+
+    const document = revision.normalizedRules as NormalizedRentalRulesDocument;
+    return this.formatDraftEnvelope(
+      this.categoryPayloadFromRevisionDocument(
+        existing,
+        document,
+        publishedVersion,
+        withCount?._count.vehicles,
+      ),
+      { publishedVersion, draftRevision: revision },
+    );
+  }
+
+  async publishCategory(
+    orgId: string,
+    categoryId: string,
+    dto: PublishRentalRuleRevisionDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
+    const existing = await this.loadCategory(orgId, categoryId);
+    const result = await this.revisions.publishDraft(
+      categoryRevisionScope(orgId, categoryId),
+      dto,
+      ctx.actor,
+    );
+    const withCount = await this.prisma.rentalVehicleCategory.findUnique({
+      where: { id: categoryId },
+      include: { _count: { select: { vehicles: true } } },
+    });
+    const document = result.revision.normalizedRules as NormalizedRentalRulesDocument;
+    return {
+      ...this.categoryPayloadFromRevisionDocument(
+        existing,
+        document,
+        result.publishedVersion,
+        withCount?._count.vehicles,
+      ),
+      publishedRevision: result.revision,
+      previousRevisionId: result.previousRevisionId,
+    };
+  }
+
+  async previewCategory(orgId: string, categoryId: string, dto: PreviewRentalRuleRevisionDto) {
+    const existing = await this.loadCategory(orgId, categoryId);
+    return this.revisions.preview(categoryRevisionScope(orgId, categoryId), dto.mode, existing);
   }
 
   async disableCategory(orgId: string, categoryId: string, expectedVersion: number) {
@@ -429,6 +541,12 @@ export class RentalRulesService {
       where: { id: categoryId },
       include: { _count: { select: { vehicles: true } } },
     });
+
+    await this.revisions.syncActiveRevisionScopeMeta(categoryRevisionScope(orgId, categoryId), {
+      status: dto.targetStatus,
+      isActive: syncIsActiveFromCategoryStatus(dto.targetStatus),
+    });
+
     return formatRentalVehicleCategory(row);
   }
 
@@ -929,29 +1047,16 @@ export class RentalRulesService {
     }
 
     const resetPatch = buildOverrideResetPatch(fieldsToReset);
-    const { count } = await this.prisma.vehicleRentalRequirementOverride.updateMany({
-      where: { vehicleId, version: dto.expectedVersion },
-      data: {
-        ...prismaRuleColumns(resetPatch, { layer: 'vehicleOverride' }),
-        version: { increment: 1 },
-      },
+    const draftResult = await this.revisions.upsertDraft({
+      scope: vehicleRevisionScope(orgId, vehicleId),
+      expectedVersion: existing.version,
+      rulePatch: resetPatch,
+      sourceRow: existing,
+      actor: ctx.actor,
     });
-    if (count === 0) {
-      const current = await this.prisma.vehicleRentalRequirementOverride.findUnique({
-        where: { vehicleId },
-      });
-      throwRentalRulesVersionConflict({
-        entityType: 'vehicle_override',
-        expectedVersion: dto.expectedVersion,
-        currentVersion: current?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
-        current: current ? formatVehicleRentalOverride(current) : null,
-      });
-    }
-    const updated = await this.prisma.vehicleRentalRequirementOverride.findUniqueOrThrow({
-      where: { vehicleId },
-    });
-    const pruned = await this.pruneEmptyVehicleOverride(vehicleId);
-    const result = pruned ? ('updated' as const) : ('deleted' as const);
+    const document = draftResult.revision.normalizedRules as NormalizedRentalRulesDocument;
+    const draftFields = extractRuleFields(document.rules as Parameters<typeof extractRuleFields>[0]);
+    const result = hasActiveRuleOverrides(draftFields) ? ('updated' as const) : ('deleted' as const);
 
     await this.logVehicleOverrideReset({
       organizationId: orgId,
@@ -967,7 +1072,24 @@ export class RentalRulesService {
       organizationId: orgId,
       removedFields: fieldsToReset,
       result,
-      overrides: pruned ? formatVehicleRentalOverride(pruned) : null,
+      overrides:
+        result === 'updated'
+          ? {
+              id: existing.id,
+              vehicleId,
+              organizationId: orgId,
+              version: draftResult.publishedVersion,
+              ...draftFields,
+              createdAt: existing.createdAt.toISOString(),
+              updatedAt: draftResult.revision.createdAt,
+            }
+          : null,
+      hasUnpublishedDraft: true,
+      draftRevision: {
+        id: draftResult.revision.id,
+        lockVersion: draftResult.revision.lockVersion,
+        rulesHash: draftResult.revision.rulesHash,
+      },
       effectiveRules: this.effectiveRules.formatEffectiveRules(
         await this.effectiveRules.computeForVehicle(orgId, vehicleId),
       ),
@@ -1014,24 +1136,17 @@ export class RentalRulesService {
       });
     }
 
-    const { count } = await this.prisma.vehicleRentalRequirementOverride.deleteMany({
-      where: { vehicleId, version: expectedVersion },
-    });
-    if (count === 0) {
-      const current = await this.prisma.vehicleRentalRequirementOverride.findUnique({
-        where: { vehicleId },
-      });
-      throwRentalRulesVersionConflict({
-        entityType: 'vehicle_override',
-        expectedVersion,
-        currentVersion: current?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
-        current: current ? formatVehicleRentalOverride(current) : null,
-      });
-    }
-
     const removedFields = RENTAL_RULE_FIELD_KEYS.filter(
       (key) => extractRuleFields(existing)[key] != null,
     );
+    const resetPatch = buildOverrideResetPatch(removedFields);
+    const draftResult = await this.revisions.upsertDraft({
+      scope: vehicleRevisionScope(orgId, vehicleId),
+      expectedVersion: existing.version,
+      rulePatch: resetPatch,
+      sourceRow: existing,
+      actor: ctx.actor,
+    });
 
     await this.logVehicleOverrideReset({
       organizationId: orgId,
@@ -1048,6 +1163,12 @@ export class RentalRulesService {
       removedFields,
       result: 'deleted' as const,
       overrides: null,
+      hasUnpublishedDraft: true,
+      draftRevision: {
+        id: draftResult.revision.id,
+        lockVersion: draftResult.revision.lockVersion,
+        rulesHash: draftResult.revision.rulesHash,
+      },
       effectiveRules: this.effectiveRules.formatEffectiveRules(
         await this.effectiveRules.computeForVehicle(orgId, vehicleId),
       ),
@@ -1064,60 +1185,90 @@ export class RentalRulesService {
     const patch = this.toPrismaRuleData(pickRulePatch(dto), 'vehicleOverride');
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
-    const patchFields = pickRulePatch(dto);
     const existing = await this.prisma.vehicleRentalRequirementOverride.findUnique({
       where: { vehicleId },
     });
 
-    if (!existing) {
-      if (dto.expectedVersion !== RENTAL_RULES_INITIAL_EXPECTED_VERSION) {
-        throwRentalRulesVersionConflict({
-          entityType: 'vehicle_override',
-          expectedVersion: dto.expectedVersion,
-          currentVersion: RENTAL_RULES_INITIAL_EXPECTED_VERSION,
-          current: null,
-        });
-      }
-      await this.prisma.vehicleRentalRequirementOverride.create({
-        data: {
-          organizationId: orgId,
-          vehicleId,
-          ...prismaRuleColumns(patch, { layer: 'vehicleOverride' }),
-        },
+    if (!existing && dto.expectedVersion !== RENTAL_RULES_INITIAL_EXPECTED_VERSION) {
+      throwRentalRulesVersionConflict({
+        entityType: 'vehicle_override',
+        expectedVersion: dto.expectedVersion,
+        currentVersion: RENTAL_RULES_INITIAL_EXPECTED_VERSION,
+        current: null,
       });
-    } else {
-      const { count } = await this.prisma.vehicleRentalRequirementOverride.updateMany({
-        where: { vehicleId, version: dto.expectedVersion },
-        data: {
-          ...prismaRuleColumns(patch, { layer: 'vehicleOverride' }),
-          version: { increment: 1 },
-        },
-      });
-      if (count === 0) {
-        const current = await this.prisma.vehicleRentalRequirementOverride.findUnique({
-          where: { vehicleId },
-        });
-        throwRentalRulesVersionConflict({
-          entityType: 'vehicle_override',
-          expectedVersion: dto.expectedVersion,
-          currentVersion: current?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
-          current: current ? formatVehicleRentalOverride(current) : null,
-        });
-      }
     }
 
-    const row = await this.pruneEmptyVehicleOverride(vehicleId);
-    if (!row) {
-      await this.logVehicleOverrideReset({
-        organizationId: orgId,
-        vehicleId,
-        actor: ctx.actor,
-        removedFields: RENTAL_RULE_FIELD_KEYS.filter((key) => patchFields[key] === null),
-        result: 'deleted',
-      });
-      return null;
+    const { revision, publishedVersion } = await this.revisions.upsertDraft({
+      scope: vehicleRevisionScope(orgId, vehicleId),
+      expectedVersion: existing?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
+      rulePatch: patch,
+      sourceRow: existing ?? { vehicleId, organizationId: orgId },
+      actor: ctx.actor,
+    });
+
+    const document = revision.normalizedRules as NormalizedRentalRulesDocument;
+    const fields = extractRuleFields(document.rules as Parameters<typeof extractRuleFields>[0]);
+    if (!hasActiveRuleOverrides(fields)) {
+      return this.formatDraftEnvelope(
+        {
+          vehicleId,
+          organizationId: orgId,
+          version: publishedVersion,
+          ...fields,
+          result: 'deleted' as const,
+          overrides: null,
+        },
+        { publishedVersion, draftRevision: revision },
+      );
     }
-    return formatVehicleRentalOverride(row);
+
+    return this.formatDraftEnvelope(
+      {
+        id: existing?.id ?? revision.id,
+        vehicleId,
+        organizationId: orgId,
+        version: publishedVersion,
+        ...fields,
+        createdAt: existing?.createdAt.toISOString() ?? revision.createdAt,
+        updatedAt: revision.createdAt,
+      },
+      { publishedVersion, draftRevision: revision },
+    );
+  }
+
+  async publishVehicleOverrides(
+    orgId: string,
+    vehicleId: string,
+    dto: PublishRentalRuleRevisionDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
+    await this.loadVehicle(orgId, vehicleId);
+    const result = await this.revisions.publishDraft(
+      vehicleRevisionScope(orgId, vehicleId),
+      dto,
+      ctx.actor,
+    );
+    const row = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+    return {
+      overrides: row ? formatVehicleRentalOverride(row) : null,
+      publishedRevision: result.revision,
+      previousRevisionId: result.previousRevisionId,
+      publishedVersion: result.publishedVersion,
+    };
+  }
+
+  async previewVehicleOverrides(orgId: string, vehicleId: string, dto: PreviewRentalRuleRevisionDto) {
+    await this.loadVehicle(orgId, vehicleId);
+    const existing = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+    return this.revisions.preview(
+      vehicleRevisionScope(orgId, vehicleId),
+      dto.mode,
+      existing ?? { vehicleId, organizationId: orgId },
+    );
   }
 
   async getVehicleEffectiveRules(orgId: string, vehicleId: string) {

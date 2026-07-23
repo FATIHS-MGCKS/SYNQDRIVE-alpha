@@ -84,7 +84,15 @@ describe('rental-rules-revision.util', () => {
         type: 'PREMIUM',
       },
     });
-    expect(Object.keys(doc.scopeMeta)).toEqual(['isActive', 'name', 'status', 'type']);
+    expect(Object.keys(doc.scopeMeta)).toEqual([
+      'color',
+      'description',
+      'icon',
+      'isActive',
+      'name',
+      'status',
+      'type',
+    ]);
     const snapshot = buildRentalRuleRevisionSnapshot({
       scopeType: 'CATEGORY',
       row: {

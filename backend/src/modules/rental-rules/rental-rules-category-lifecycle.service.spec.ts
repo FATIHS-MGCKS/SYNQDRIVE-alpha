@@ -91,6 +91,12 @@ describe('RentalRulesService category lifecycle', () => {
       effective,
       rentalRulePermissions as never,
       activityLog as never,
+      {
+        upsertDraft: jest.fn(),
+        publishDraft: jest.fn(),
+        preview: jest.fn(),
+        syncActiveRevisionScopeMeta: jest.fn().mockResolvedValue(undefined),
+      } as never,
     );
   });
 

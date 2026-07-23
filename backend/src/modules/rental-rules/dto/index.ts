@@ -294,3 +294,31 @@ export class ResetVehicleRentalOverridesDto {
   @IsIn(RENTAL_RULE_RESET_FIELD_ALLOWLIST, { each: true, message: MSG.resetFields.invalid })
   fields?: string[];
 }
+
+export class PublishRentalRuleRevisionDto {
+  @IsUUID()
+  revisionId!: string;
+
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(0, { message: MSG.expectedVersion.min })
+  expectedVersion!: number;
+
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(1, { message: MSG.expectedVersion.min })
+  expectedLockVersion!: number;
+
+  @IsOptional()
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(500)
+  changeReason?: string;
+}
+
+export const RENTAL_RULE_REVISION_PREVIEW_MODES = ['active', 'draft', 'diff'] as const;
+export type RentalRuleRevisionPreviewModeDto =
+  (typeof RENTAL_RULE_REVISION_PREVIEW_MODES)[number];
+
+export class PreviewRentalRuleRevisionDto {
+  @IsIn(RENTAL_RULE_REVISION_PREVIEW_MODES)
+  mode!: RentalRuleRevisionPreviewModeDto;
+}

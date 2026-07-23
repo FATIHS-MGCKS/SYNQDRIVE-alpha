@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-rule-draft-publish-v49778-2026-07-23',
+    version: '4.9.778',
+    title: 'V4.9.778 — Rental rule draft/publish workflow (Prompt 25)',
+    summary: [
+      'PATCH auf Org-Defaults, Kategorien und Fahrzeug-Overrides erzeugen/aktualisieren DRAFT-Revisionen — Live-Tabellen bleiben bis Publish unverändert.',
+      'POST `.../publish` (nur `rental_rules.publish`): Version prüfen, Validierung, Hash, ACTIVE-Wechsel atomar, vorherige Revision RETIRED.',
+      'Preview-API (`active` / `draft` / `diff`); `RentalEffectiveRulesService` liest produktiv nur veröffentlichte ACTIVE-Revisionen.',
+      'OCC: `expectedVersion` (Live) + `expectedLockVersion` (Draft); parallele Publishes schlagen mit Konflikt fehl.',
+    ],
+    reason: 'Regeländerungen dürfen nicht unkontrolliert sofort produktiv wirken (Remediation Prompt 25).',
+    previousBehavior: 'Jeder PATCH schrieb direkt in Live-Tabellen; Revisionen waren nur historischer Spiegel.',
+    details:
+      'rental-rules-revision.service.ts, rental-rules-revision-publish.spec.ts, rental-effective-rules.service.ts, rental-rules.controller.ts publish/preview routes.',
+    affectsArchitecture: true,
+    module: 'Rental Rules',
+    createdAt: '2026-07-23T20:00:00.000Z',
+  },
+  {
     id: 'rental-rule-revisions-v49777-2026-07-23',
     version: '4.9.777',
     title: 'V4.9.777 — Rental rule revisions table + backfill (Prompt 24)',

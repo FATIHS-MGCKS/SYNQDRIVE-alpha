@@ -36,6 +36,7 @@ function makePrisma() {
       delete: jest.fn(),
       deleteMany: jest.fn(),
     },
+    rentalRuleRevision: { findFirst: jest.fn().mockResolvedValue(null) },
     priceTariffGroup: { findMany: jest.fn() },
     $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
   };
@@ -95,6 +96,12 @@ describe('Vehicle rental override reset', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let svc: RentalRulesService;
   let activityLog: { log: jest.Mock };
+  let revisions: {
+    upsertDraft: jest.Mock;
+    publishDraft: jest.Mock;
+    preview: jest.Mock;
+    syncActiveRevisionScopeMeta: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = makePrisma();
@@ -104,11 +111,45 @@ describe('Vehicle rental override reset', () => {
       assert: jest.fn().mockResolvedValue(undefined),
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
     };
+    revisions = {
+      upsertDraft: jest.fn().mockImplementation(async ({ rulePatch, sourceRow }) => {
+        const row = (sourceRow ?? {}) as Record<string, unknown>;
+        const merged = {
+          minimumAgeYears: row.minimumAgeYears ?? null,
+          minimumLicenseHoldingMonths: row.minimumLicenseHoldingMonths ?? null,
+          depositAmountCents: row.depositAmountCents ?? null,
+          depositCurrency: row.depositCurrency ?? null,
+          creditCardRequired: row.creditCardRequired ?? null,
+          foreignTravelPolicy: row.foreignTravelPolicy ?? null,
+          additionalDriverPolicy: row.additionalDriverPolicy ?? null,
+          youngDriverPolicy: row.youngDriverPolicy ?? null,
+          insuranceRequirement: row.insuranceRequirement ?? null,
+          manualApprovalRequired: row.manualApprovalRequired ?? null,
+          notes: row.notes ?? null,
+          ...(rulePatch ?? {}),
+        };
+        return {
+          revision: {
+            id: 'draft-1',
+            lockVersion: 1,
+            rulesHash: 'hash',
+            createdAt: new Date().toISOString(),
+            normalizedRules: { rules: merged, scopeMeta: { vehicleId: 'v1' } },
+          },
+          publishedVersion: (row.version as number | undefined) ?? 1,
+          created: true,
+        };
+      }),
+      publishDraft: jest.fn(),
+      preview: jest.fn(),
+      syncActiveRevisionScopeMeta: jest.fn().mockResolvedValue(undefined),
+    };
     svc = new RentalRulesService(
       prisma as never,
       effective,
       rentalRulePermissions as never,
       activityLog as never,
+      revisions as never,
     );
   });
 
@@ -238,9 +279,7 @@ describe('Vehicle rental override reset', () => {
       source: 'CATEGORY',
       sourceName: 'Economy',
     });
-    expect(prisma.vehicleRentalRequirementOverride.delete).toHaveBeenCalledWith({
-      where: { vehicleId: 'v1' },
-    });
+    expect(revisions.upsertDraft).toHaveBeenCalled();
     expect(activityLog.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'DELETE',
@@ -585,7 +624,13 @@ describe('Vehicle rental override reset', () => {
       { actor: { id: 'user-1' } },
     );
 
-    expect(result).toBeNull();
-    expect(prisma.vehicleRentalRequirementOverride.delete).toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        result: 'deleted',
+        hasUnpublishedDraft: true,
+        overrides: null,
+      }),
+    );
+    expect(revisions.upsertDraft).toHaveBeenCalled();
   });
 });

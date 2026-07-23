@@ -21,6 +21,8 @@ import {
   AssignCategoryVehiclesDto,
   CreateRentalVehicleCategoryDto,
   PreviewCategoryVehicleAssignmentDto,
+  PreviewRentalRuleRevisionDto,
+  PublishRentalRuleRevisionDto,
   ResetVehicleRentalOverridesDto,
   TransitionCategoryLifecycleDto,
   UpdateRentalVehicleCategoryDto,
@@ -66,6 +68,25 @@ export class RentalRulesController {
     return this.rentalRules.upsertOrganizationDefaults(orgId, body, { actor: user });
   }
 
+  @Post('organizations/:orgId/rental-rules/defaults/publish')
+  @RequireRentalRulePermission('rental_rules.publish')
+  publishDefaults(
+    @Param('orgId') orgId: string,
+    @Body() body: PublishRentalRuleRevisionDto,
+    @CurrentUser() user: PermissionActor | undefined,
+  ) {
+    return this.rentalRules.publishOrganizationDefaults(orgId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/rental-rules/defaults/preview')
+  @RequireRentalRulePermission('rental_rules.read')
+  previewDefaults(
+    @Param('orgId') orgId: string,
+    @Body() body: PreviewRentalRuleRevisionDto,
+  ) {
+    return this.rentalRules.previewOrganizationDefaults(orgId, body);
+  }
+
   @Get('organizations/:orgId/rental-rules/categories')
   @RequireRentalRulePermission('rental_rules.read')
   listCategories(
@@ -104,6 +125,27 @@ export class RentalRulesController {
     @CurrentUser() user: PermissionActor | undefined,
   ) {
     return this.rentalRules.updateCategory(orgId, categoryId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/rental-rules/categories/:categoryId/publish')
+  @RequireRentalRulePermission('rental_rules.publish')
+  publishCategory(
+    @Param('orgId') orgId: string,
+    @Param('categoryId') categoryId: string,
+    @Body() body: PublishRentalRuleRevisionDto,
+    @CurrentUser() user: PermissionActor | undefined,
+  ) {
+    return this.rentalRules.publishCategory(orgId, categoryId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/rental-rules/categories/:categoryId/preview')
+  @RequireRentalRulePermission('rental_rules.read')
+  previewCategory(
+    @Param('orgId') orgId: string,
+    @Param('categoryId') categoryId: string,
+    @Body() body: PreviewRentalRuleRevisionDto,
+  ) {
+    return this.rentalRules.previewCategory(orgId, categoryId, body);
   }
 
   @Delete('organizations/:orgId/rental-rules/categories/:categoryId')
@@ -176,6 +218,27 @@ export class RentalRulesController {
     @CurrentUser() user: PermissionActor | undefined,
   ) {
     return this.rentalRules.upsertVehicleOverrides(orgId, vehicleId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides/publish')
+  @RequireRentalRulePermission('rental_rules.publish')
+  publishVehicleOverrides(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: PublishRentalRuleRevisionDto,
+    @CurrentUser() user: PermissionActor | undefined,
+  ) {
+    return this.rentalRules.publishVehicleOverrides(orgId, vehicleId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides/preview')
+  @RequireRentalRulePermission('rental_rules.read')
+  previewVehicleOverrides(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: PreviewRentalRuleRevisionDto,
+  ) {
+    return this.rentalRules.previewVehicleOverrides(orgId, vehicleId, body);
   }
 
   @Post('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides/reset-preview')

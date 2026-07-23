@@ -42,6 +42,9 @@ export function buildScopeMeta(
         status: typeof row.status === 'string' ? row.status : null,
         isActive: typeof row.isActive === 'boolean' ? row.isActive : null,
         type: typeof row.type === 'string' ? row.type : null,
+        description: typeof row.description === 'string' ? row.description : row.description === null ? null : null,
+        color: typeof row.color === 'string' ? row.color : row.color === null ? null : null,
+        icon: typeof row.icon === 'string' ? row.icon : row.icon === null ? null : null,
       });
     case 'VEHICLE':
       return sortObjectKeys({

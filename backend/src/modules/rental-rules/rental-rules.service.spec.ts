@@ -36,6 +36,12 @@ function makePrisma() {
       delete: jest.fn(),
       deleteMany: jest.fn(),
     },
+    rentalRuleRevision: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      updateMany: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+    },
     priceTariffGroup: { findMany: jest.fn() },
     $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
   };
@@ -45,6 +51,12 @@ describe('RentalRulesService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let svc: RentalRulesService;
   let effective: RentalEffectiveRulesService;
+  let revisions: {
+    upsertDraft: jest.Mock;
+    publishDraft: jest.Mock;
+    preview: jest.Mock;
+    syncActiveRevisionScopeMeta: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = makePrisma();
@@ -54,7 +66,26 @@ describe('RentalRulesService', () => {
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
     };
     const activityLog = { log: jest.fn().mockResolvedValue({ id: 'log-1' }) };
-    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any, activityLog as any);
+    revisions = {
+      upsertDraft: jest.fn().mockImplementation(async ({ rulePatch, scopeMetaPatch, sourceRow }) => ({
+        revision: {
+          id: 'draft-1',
+          lockVersion: 1,
+          rulesHash: 'hash',
+          createdAt: new Date().toISOString(),
+          normalizedRules: {
+            rules: { ...(sourceRow ?? {}), ...(rulePatch ?? {}) },
+            scopeMeta: { ...(scopeMetaPatch ?? {}), isActive: true },
+          },
+        },
+        publishedVersion: sourceRow?.version ?? 0,
+        created: true,
+      })),
+      publishDraft: jest.fn(),
+      preview: jest.fn(),
+      syncActiveRevisionScopeMeta: jest.fn().mockResolvedValue(undefined),
+    };
+    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any, activityLog as any, revisions as any);
   });
 
   it('blocks access to foreign organization category', async () => {
@@ -169,9 +200,10 @@ describe('RentalRulesService', () => {
 
     await svc.upsertOrganizationDefaults('org1', { expectedVersion: 2 });
 
-    expect(prisma.organizationRentalRules.updateMany).toHaveBeenCalledWith(
+    expect(revisions.upsertDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { organizationId: 'org1', version: 2 },
+        scope: expect.objectContaining({ scopeType: 'ORGANIZATION', scopeId: 'org1' }),
+        expectedVersion: 2,
       }),
     );
   });
@@ -225,10 +257,10 @@ describe('RentalRulesService', () => {
       manualApprovalRequired: false,
     });
 
-    expect(prisma.organizationRentalRules.updateMany).toHaveBeenCalledWith(
+    expect(revisions.upsertDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { organizationId: 'org1', version: 1 },
-        data: expect.objectContaining({
+        expectedVersion: 1,
+        rulePatch: expect.objectContaining({
           minimumAgeYears: null,
           creditCardRequired: false,
           manualApprovalRequired: false,
@@ -267,7 +299,15 @@ describe('RentalRulesService', () => {
       id: 'cat1',
       organizationId: 'org1',
       name: 'Premium',
+      description: null,
+      type: null,
+      color: null,
+      icon: null,
       isActive: true,
+      status: 'ACTIVE',
+      statusChangedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       version: 4,
     });
     prisma.rentalVehicleCategory.updateMany.mockResolvedValue({ count: 1 });
@@ -298,6 +338,12 @@ describe('RentalRulesService', () => {
       _count: { vehicles: 0 },
     });
 
+    prisma.rentalVehicleCategory.findUnique.mockResolvedValue({
+      id: 'cat1',
+      organizationId: 'org1',
+      _count: { vehicles: 0 },
+    });
+
     await svc.updateCategory('org1', 'cat1', {
       expectedVersion: 4,
       minimumAgeYears: null,
@@ -305,10 +351,10 @@ describe('RentalRulesService', () => {
       depositCurrency: null,
     });
 
-    expect(prisma.rentalVehicleCategory.updateMany).toHaveBeenCalledWith(
+    expect(revisions.upsertDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'cat1', organizationId: 'org1', version: 4 },
-        data: expect.objectContaining({
+        expectedVersion: 4,
+        rulePatch: expect.objectContaining({
           minimumAgeYears: null,
           creditCardRequired: false,
           depositCurrency: null,
@@ -364,6 +410,7 @@ describe('RentalRulesService', () => {
     await expect(
       svc.upsertOrganizationDefaults('org1', { expectedVersion: 2, minimumAgeYears: 22 }),
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(revisions.upsertDraft).not.toHaveBeenCalled();
   });
 });
 

@@ -6,6 +6,7 @@ function makePrisma() {
   return {
     vehicle: { findFirst: jest.fn() },
     organizationRentalRules: { findUnique: jest.fn() },
+    rentalRuleRevision: { findFirst: jest.fn() },
   };
 }
 
@@ -48,6 +49,7 @@ describe('RentalEffectiveRulesService activation semantics', () => {
       manualApprovalRequired: null,
       notes: null,
     });
+    prisma.rentalRuleRevision.findFirst.mockResolvedValue(null);
 
     const service = new RentalEffectiveRulesService(prisma as never);
     const result = await service.computeForVehicle(orgId, vehicleId);

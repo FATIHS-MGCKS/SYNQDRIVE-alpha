@@ -11,6 +11,13 @@ import {
   hasActiveRuleOverrides,
   vehicleDisplayName,
 } from './rental-rules.mapper';
+import {
+  findPublishedRevision,
+  revisionOrgIsActive,
+  revisionToCategoryRulesShape,
+  revisionToOverrideFields,
+  revisionToOrgRulesShape,
+} from './rental-rules-revision-resolver.util';
 import { splitLicenseHoldingMonths } from './license-holding.util';
 import type {
   EffectiveRentalRequirement,
@@ -33,9 +40,56 @@ export class RentalEffectiveRulesService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
-    const orgRules = await this.prisma.organizationRentalRules.findUnique({
-      where: { organizationId: orgId },
-    });
+    const [orgRevision, categoryRevision, vehicleRevision, orgRulesLive] = await Promise.all([
+      findPublishedRevision(this.prisma, {
+        organizationId: orgId,
+        scopeType: 'ORGANIZATION',
+        scopeId: orgId,
+      }),
+      vehicle.rentalCategoryId
+        ? findPublishedRevision(this.prisma, {
+            organizationId: orgId,
+            scopeType: 'CATEGORY',
+            scopeId: vehicle.rentalCategoryId,
+          })
+        : Promise.resolve(null),
+      findPublishedRevision(this.prisma, {
+        organizationId: orgId,
+        scopeType: 'VEHICLE',
+        scopeId: vehicleId,
+      }),
+      this.prisma.organizationRentalRules.findUnique({
+        where: { organizationId: orgId },
+      }),
+    ]);
+
+    const orgRulesFromRevision = revisionToOrgRulesShape(
+      orgRevision,
+      orgRulesLive ? { isActive: orgRulesLive.isActive } : null,
+    );
+    const orgRules =
+      orgRevision || orgRulesLive
+        ? {
+            ...(orgRulesLive ?? {
+              organizationId: orgId,
+              isActive: orgRulesFromRevision?.isActive ?? true,
+            }),
+            ...(orgRulesFromRevision ?? {}),
+            isActive:
+              revisionOrgIsActive(orgRevision) ??
+              orgRulesLive?.isActive ??
+              orgRulesFromRevision?.isActive ??
+              true,
+          }
+        : null;
+
+    const categoryRuleFields = revisionToCategoryRulesShape(categoryRevision);
+    const overrideFieldsFromRevision = revisionToOverrideFields(vehicleRevision);
+    const overrideFields =
+      overrideFieldsFromRevision ??
+      (vehicle.rentalRequirementOverride
+        ? extractRuleFields(vehicle.rentalRequirementOverride)
+        : null);
 
     return {
       orgId,
@@ -44,7 +98,8 @@ export class RentalEffectiveRulesService {
       orgName: vehicle.organization.companyName || 'Organization',
       vehicleName: vehicleDisplayName(vehicle),
       category: vehicle.rentalCategory,
-      override: vehicle.rentalRequirementOverride,
+      categoryRuleFields,
+      overrideFields,
     };
   }
 
@@ -52,7 +107,8 @@ export class RentalEffectiveRulesService {
     context: Awaited<ReturnType<RentalEffectiveRulesService['loadVehicleRulesContext']>>,
     overrideFields: Partial<RentalRuleFieldSet> | null,
   ): EffectiveRentalRules {
-    const { orgId, vehicle, orgRules, orgName, vehicleName, category } = context;
+    const { orgId, vehicle, orgRules, orgName, vehicleName, category, categoryRuleFields } =
+      context;
     const activation = buildRentalRulesActivationSnapshot({
       orgRules,
       category,
@@ -77,7 +133,7 @@ export class RentalEffectiveRulesService {
           ? {
               source: 'CATEGORY',
               sourceName: category.name,
-              values: extractRuleFields(category),
+              values: categoryRuleFields ?? extractRuleFields(category),
             }
           : null,
       vehicleLayer:
@@ -93,8 +149,7 @@ export class RentalEffectiveRulesService {
 
   async computeForVehicle(orgId: string, vehicleId: string): Promise<EffectiveRentalRules> {
     const context = await this.loadVehicleRulesContext(orgId, vehicleId);
-    const overrideFields = context.override ? extractRuleFields(context.override) : null;
-    return this.buildEffectiveFromContext(context, overrideFields);
+    return this.buildEffectiveFromContext(context, context.overrideFields);
   }
 
   async computeWithSimulatedOverrideFields(

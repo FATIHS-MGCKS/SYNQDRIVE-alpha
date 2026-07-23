@@ -2420,3 +2420,65 @@ Runtime-Backfill: `backfillRentalRuleRevisions()` für Reparatur/Idempotenz.
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 24).*
+
+---
+
+## Prompt 25 — Draft/Publish Workflow
+
+**Ziel:** Regeländerungen wirken nicht sofort produktiv; veröffentlichte ACTIVE-Revisionen sind die einzige Quelle für Buchungsentscheidungen.
+
+### 25.1 Schreibpfad (Draft)
+
+| Aktion | Verhalten |
+|--------|-----------|
+| `PATCH .../defaults` | Upsert DRAFT-Revision (Org-Scope); Live `organization_rental_rules` unverändert |
+| `PATCH .../categories/:id` | Upsert DRAFT (Regeln + scopeMeta: name, type, …) |
+| `PATCH/POST/DELETE .../overrides` | Upsert DRAFT (Vehicle-Scope) |
+| Response | `hasUnpublishedDraft`, `draftRevision { id, lockVersion, rulesHash }`, `version` = publizierte Live-Version |
+
+### 25.2 Publish (nur `rental_rules.publish`)
+
+`POST .../defaults/publish` | `.../categories/:id/publish` | `.../vehicles/:id/.../overrides/publish`
+
+Body: `{ revisionId, expectedVersion, expectedLockVersion, changeReason? }`
+
+**Atomarer Ablauf (Transaktion):**
+
+1. Permission `rental_rules.publish`
+2. `expectedVersion` vs. Live-`version` (OCC)
+3. DRAFT laden; `expectedLockVersion` vs. `lockVersion`
+4. `validateNormalizedRentalRulesDocument()`
+5. `rulesHash` Recompute-Konsistenz
+6. Konflikt: keine zweite ACTIVE mit `version >= draft.version`
+7. Vorherige ACTIVE → `RETIRED`, `effectiveTo = now`
+8. DRAFT → `ACTIVE`, `version = publishedVersion + 1`, `effectiveFrom = now`, `publishedBy`, `changeReason`
+9. Sync in Live-Tabelle (gleiche `version`)
+10. Bei Fehler: Rollback — keine Zwischenzustände mit zwei ACTIVE
+
+### 25.3 Preview
+
+`POST .../preview` Body: `{ mode: "active" | "draft" | "diff" }`
+
+### 25.4 Effective Rules Resolver
+
+`RentalEffectiveRulesService` lädt pro Scope die offene ACTIVE-Revision (`effectiveTo IS NULL`). Fallback Live-Zeile nur wenn keine Revision (Migration).
+
+### 25.5 Tests (`rental-rules-revision-publish.spec.ts`)
+
+Draft erstellen/bearbeiten, Publish, paralleler Publish (lockVersion), fehlende Permission, ungültiger Draft, Rollback bei Retire-Konflikt, Preview-Modi.
+
+---
+
+## Prompt 25 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Entwürfe beeinflussen keine produktiven Buchungen | ✅ |
+| Veröffentlichung atomar und autorisiert | ✅ |
+| Aktive Version eindeutig (partial unique + Transaktion) | ✅ |
+| Tests bestehen | ✅ (189 rental-rules) |
+| Prompt 25 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 25).*
