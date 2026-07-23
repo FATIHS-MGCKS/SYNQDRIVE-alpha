@@ -5,9 +5,10 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 1 of 34 — Audit & tracking baseline** |
-| **Baseline commit** | `36ffe51b4f272b53e93352a607efa38341a6f00a` (`main`) |
-| **Mode** | Documentation & inventory only — **no product code changes** |
+| **Phase** | **Prompt 2 of 34 — Build & test baseline** |
+| **Baseline commit** | `410efa54cdf0361df94cb318848d5ba977638c2f` + Prompt 2 docs |
+| **Baseline report** | `docs/audits/rental-rules-baseline-2026-07.md` |
+| **Mode** | Documentation only — **no product code changes** |
 | **Method** | Direct code/schema verification; no unverified assumptions |
 
 ---
@@ -398,7 +399,7 @@ flowchart TB
 | # | Prompt-Ziel | Status | Abhängigkeit | Migration | Tests |
 |---|-------------|--------|--------------|-----------|-------|
 | **1** | Audit- & Fortschrittsdokumentation (diese Datei) | **DONE** | — | — | — |
-| **2** | Build-/Test-Baseline dokumentieren (`rental-rules-baseline-2026-07.md`) | NOT_STARTED | 1 | — | — |
+| **2** | Build-/Test-Baseline dokumentieren (`rental-rules-baseline-2026-07.md`) | **DONE** | 1 | — | — |
 | **3** | Code-Map / Endpoint-Inventar (CSV) | NOT_STARTED | 1 | — | — |
 | **4** | IAM: `PermissionsGuard` auf Rental-Rules-Schreib-Endpunkte | NOT_STARTED | 2, 3 | Nein | Ja |
 | **5** | IAM: Leserechte-Matrix + `@Roles` verifizieren | NOT_STARTED | 4 | Nein | Ja |
@@ -488,13 +489,72 @@ flowchart TB
 
 | Nachweis | Prompt | Datei / Artefakt | Status |
 |----------|--------|------------------|--------|
-| Baseline Test Report | 2 | `docs/audits/rental-rules-baseline-2026-07.md` | NOT_STARTED |
+| Baseline Test Report | 2 | `docs/audits/rental-rules-baseline-2026-07.md` | **DONE** |
 | IAM Permission Matrix | 4–5 | TBD | NOT_STARTED |
 | Backend Test Coverage Report | 30 | TBD | NOT_STARTED |
 | Frontend Test Coverage Report | 25, 30 | TBD | NOT_STARTED |
 | E2E Recording / Playwright Report | 28–29 | TBD | NOT_STARTED |
 | VPS Read-only Verification | 34 | TBD | NOT_STARTED |
 | Production-Readiness Verdict | 34 | Abschnitt in dieser Datei | NOT_STARTED |
+
+---
+
+## 16. Baseline (Prompt 2) — 2026-07-23
+
+Vollständiger Report: **`docs/audits/rental-rules-baseline-2026-07.md`**
+
+### Toolchain
+
+- **Monorepo:** getrennte npm-Pakete `backend/` + `frontend/` (kein Workspace-Root)
+- **Node / npm:** v22.14.0 / 10.9.8
+- **Install:** `npm ci` je Paket; Prisma: `npx prisma generate` (Backend)
+
+### Ergebnisübersicht
+
+| Prüfung | Ergebnis |
+|---------|----------|
+| `prisma validate` | ✅ PASS (1 SetNull-Warnung) |
+| `prisma format --check` | ❌ FAIL (**vorbestehend**) |
+| Backend `tsc --noEmit` | ❌ FAIL (**vorbestehend**, 24 Fehler in fremden Specs) |
+| Backend `npm run build` | ✅ PASS |
+| Backend Rental Rules Jest | ✅ **11/11** PASS |
+| Backend Booking Eligibility Jest | ✅ **9/9** PASS |
+| Frontend `tsc -b` | ✅ PASS |
+| Frontend `npm run build` | ✅ PASS |
+| Backend `npm run lint` (default) | ✅ PASS (1 Warning, document-extraction) |
+| Backend ESLint Rental-Rules-Pfade | ✅ PASS |
+| Frontend `npm run lint` (default) | ❌ FAIL (**vorbestehend**, document/legal) |
+| Frontend ESLint Rental-Rules-Pfade | ❌ FAIL (**vorbestehend**, 4× set-state-in-effect) |
+| `booking-pickup-gate.integration` | ✅ **12/12** PASS (Legal Pickup, nicht Rental Rules) |
+| `prisma migrate status` | ❌ **P1001** — Postgres nicht erreichbar |
+| Frontend Vitest Rental Rules | ❌ Keine Testdateien |
+
+### Coverage (Backend, Domain-Dateien)
+
+| Bereich | Lines |
+|---------|-------|
+| Gesamt `rental-rules` + `booking-rental-eligibility*` | **55.52%** |
+| `rental-rules/` | **36.94%** |
+| `booking-rental-eligibility.*` | **72.18%** |
+| `rental-rules.controller.ts` | **0%** |
+
+### Regression-Kommandos (für Prompt 3+)
+
+```bash
+cd backend && npm run prisma:validate
+cd backend && npm run build
+cd backend && npx jest --testPathPattern='rental-rules|rental-effective-rules|booking-rental-eligibility' --testPathIgnorePatterns=integration
+cd frontend && npx tsc -b && npm run build
+```
+
+### Bekannte Testlücken (unverändert zur Baseline)
+
+- Kein Controller-Spec, kein `booking-rental-eligibility.util.spec.ts`
+- Keine Frontend-Unit-/E2E-Tests für Rental Rules
+- Keine DB-Integration für Effective Rules
+- `prisma migrate status` in dieser Umgebung nicht reproduzierbar ohne Postgres
+
+**Prompt 2:** Keine Tests deaktiviert, gelockert oder übersprungen.
 
 ---
 
@@ -511,4 +571,17 @@ flowchart TB
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 1).*
+## Prompt 2 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Build-/Test-Zustand dokumentiert | ✅ |
+| Baseline-Datei angelegt | ✅ |
+| Vorbestehende vs. neue Fehler unterscheidbar | ✅ |
+| Keine fachliche Logik geändert | ✅ |
+| Keine Tests entfernt/abgeschwächt | ✅ |
+| Prompt 2 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 2).*
