@@ -11,6 +11,7 @@ import {
 } from '@modules/customers/types/customer-eligibility.types';
 import { BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE } from '../booking-rental-eligibility.types';
 import { BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION } from './booking-eligibility-gatekeeper.constants';
+import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
 
 describe('BookingEligibilityGatekeeperService', () => {
   const orgId = 'org-1';
@@ -70,6 +71,7 @@ describe('BookingEligibilityGatekeeperService', () => {
       rentalCategoryName: null,
       rentalCategoryType: null,
       rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot(),
       minimumAgeYears: { value: 21, source: 'ORGANIZATION_DEFAULT', sourceName: 'Org' },
       minimumLicenseHoldingMonths: { value: 12, source: 'ORGANIZATION_DEFAULT', sourceName: 'Org' },
       depositAmountCents: { value: null, source: null, sourceName: null },

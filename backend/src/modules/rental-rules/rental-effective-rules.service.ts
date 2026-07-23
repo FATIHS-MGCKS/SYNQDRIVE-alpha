@@ -2,10 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildEffectiveRentalRules } from './rental-effective-rules.util';
 import {
+  buildRentalRulesActivationSnapshot,
+  resolveInactiveCategoryDisplayName,
+} from './rental-rules-activation.policy';
+import {
   extractRuleFields,
-  formatOrganizationRentalRules,
-  formatRentalVehicleCategory,
-  formatVehicleRentalOverride,
   hasActiveRuleOverrides,
   vehicleDisplayName,
 } from './rental-rules.mapper';
@@ -35,14 +36,20 @@ export class RentalEffectiveRulesService {
     const category = vehicle.rentalCategory;
     const override = vehicle.rentalRequirementOverride;
     const overrideFields = override ? extractRuleFields(override) : null;
+    const activation = buildRentalRulesActivationSnapshot({
+      orgRules,
+      category,
+      overrideFields,
+    });
 
     return buildEffectiveRentalRules({
       organizationId: orgId,
       vehicleId,
       rentalCategoryId: category?.id ?? null,
-      rentalCategoryName: category?.name ?? null,
+      rentalCategoryName: resolveInactiveCategoryDisplayName(category),
       rentalCategoryType: category?.type ?? null,
-      rulesActive: orgRules?.isActive !== false,
+      rulesActive: activation.organizationRulesActive,
+      activation,
       orgLayer: {
         source: 'ORGANIZATION_DEFAULT',
         sourceName: orgName,

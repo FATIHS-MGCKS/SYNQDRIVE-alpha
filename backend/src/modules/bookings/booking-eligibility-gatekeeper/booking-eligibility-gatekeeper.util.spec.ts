@@ -10,6 +10,7 @@ import {
 } from './booking-eligibility-gatekeeper.util';
 import type { BookingRentalEligibilityResult } from '../booking-rental-eligibility.types';
 import { BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE } from '../booking-rental-eligibility.types';
+import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
 
 describe('booking-eligibility-gatekeeper.util', () => {
   describe('resolveAggregateGateStatus', () => {
@@ -112,6 +113,10 @@ describe('booking-eligibility-gatekeeper.util', () => {
         rentalCategoryName: 'Premium',
         rentalCategoryType: null,
         rulesActive: true,
+        activation: createActiveRentalRulesActivationSnapshot({
+          categoryAssigned: true,
+          categoryActive: true,
+        }),
         minimumAgeYears: { value: 21, source: 'CATEGORY', sourceName: 'Premium' },
         minimumLicenseHoldingMonths: { value: 12, source: 'CATEGORY', sourceName: 'Premium' },
         depositAmountCents: { value: null, source: null, sourceName: null },

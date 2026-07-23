@@ -4,6 +4,10 @@ import type {
   RentalYoungDriverPolicy,
 } from '@prisma/client';
 import type { EffectiveRentalRules } from '@modules/rental-rules/rental-rules.types';
+import {
+  isRentalRulesEnforcementActive,
+  RENTAL_RULES_ACTIVATION_WARNING,
+} from '@modules/rental-rules/rental-rules-activation.policy';
 import type {
   BookingRentalEligibilityResult,
   BookingRentalEligibilityStatus,
@@ -61,14 +65,27 @@ export function evaluateRentalEligibilityChecks(
   | 'manualApprovalReasons'
   | 'status'
 > {
+  const activationWarnings = ctx.rules.activation?.informationalWarnings ?? [];
+
+  if (!isRentalRulesEnforcementActive(ctx.rules.activation, ctx.rules.rulesActive)) {
+    return {
+      status: 'ELIGIBLE',
+      blockingReasons: [],
+      warningReasons: [
+        RENTAL_RULES_ACTIVATION_WARNING.ORGANIZATION_INACTIVE,
+        ...activationWarnings.filter(
+          (w) => w !== RENTAL_RULES_ACTIVATION_WARNING.ORGANIZATION_INACTIVE,
+        ),
+      ],
+      missingFields: [],
+      manualApprovalReasons: [],
+    };
+  }
+
   const blockingReasons: string[] = [];
-  const warningReasons: string[] = [];
+  const warningReasons: string[] = [...activationWarnings];
   const missingFields: string[] = [];
   const manualApprovalReasons: string[] = [];
-
-  if (!ctx.rules.rulesActive) {
-    warningReasons.push('Rental rules are inactive for this organization.');
-  }
 
   const minAge = ctx.rules.minimumAgeYears.value;
   if (minAge != null) {

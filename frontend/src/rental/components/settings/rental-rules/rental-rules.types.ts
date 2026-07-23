@@ -93,6 +93,16 @@ export interface RentalRulesOverviewDto {
   overrideVehicles: RentalRulesOverrideVehicleDto[];
 }
 
+export interface RentalRulesActivationDto {
+  organizationDefaultsConfigured: boolean;
+  organizationRulesActive: boolean;
+  categoryAssigned: boolean;
+  categoryActive: boolean | null;
+  vehicleOverrideActive: boolean;
+  enforcementActive: boolean;
+  informationalWarnings: string[];
+}
+
 export interface EffectiveRuleField<T = unknown> {
   value: T | null;
   source: RentalRuleSource | null;
@@ -106,6 +116,7 @@ export interface EffectiveRentalRulesDto {
   rentalCategoryName: string | null;
   rentalCategoryType: RentalVehicleCategoryType | null;
   rulesActive: boolean;
+  activation?: RentalRulesActivationDto;
   minimumAgeYears: EffectiveRuleField<number | null>;
   minimumLicenseHoldingMonths: EffectiveRuleField<number | null>;
   minimumLicenseHoldingYears: EffectiveRuleField<number | null>;

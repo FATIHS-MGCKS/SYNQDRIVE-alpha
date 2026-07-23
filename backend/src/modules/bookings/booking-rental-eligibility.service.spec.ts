@@ -3,6 +3,7 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildEffectiveRentalRules } from '@modules/rental-rules/rental-effective-rules.util';
+import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
 import type { EffectiveRentalRules } from '@modules/rental-rules/rental-rules.types';
 
 describe('BookingRentalEligibilityService', () => {
@@ -34,6 +35,7 @@ describe('BookingRentalEligibilityService', () => {
     rentalCategoryName: null,
     rentalCategoryType: null,
     rulesActive: true,
+    activation: createActiveRentalRulesActivationSnapshot(),
   });
 
   const prisma = {
@@ -118,6 +120,39 @@ describe('BookingRentalEligibilityService', () => {
     }
   }
 
+  it('returns ELIGIBLE when organization rental rules are inactive', async () => {
+    mockCustomer({
+      dateOfBirth: new Date('2008-01-01'),
+      licenseIssuedAt: '2024-01-01',
+    });
+    const inactiveRules = buildEffectiveRentalRules({
+      organizationId: 'org1',
+      vehicleId: 'veh1',
+      orgLayer,
+      categoryLayer: null,
+      vehicleLayer: null,
+      rentalCategoryId: null,
+      rentalCategoryName: null,
+      rentalCategoryType: null,
+      rulesActive: false,
+      activation: createActiveRentalRulesActivationSnapshot({
+        organizationRulesActive: false,
+        enforcementActive: false,
+      }),
+    });
+    (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(inactiveRules);
+
+    const result = await service.check({
+      organizationId: 'org1',
+      vehicleId: 'veh1',
+      customerId: 'cust1',
+      startDate,
+    });
+
+    expect(result.status).toBe('ELIGIBLE');
+    expect(result.blockingReasons).toHaveLength(0);
+  });
+
   it('returns ELIGIBLE when customer meets minimum age and license holding', async () => {
     mockCustomer({ licenseIssuedAt: '2018-01-01' });
 
@@ -180,6 +215,7 @@ describe('BookingRentalEligibilityService', () => {
       rentalCategoryName: null,
       rentalCategoryType: null,
       rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot(),
     });
     (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(rulesNoLicense);
     mockCustomer({ dateOfBirth: null });
@@ -211,6 +247,7 @@ describe('BookingRentalEligibilityService', () => {
       rentalCategoryName: null,
       rentalCategoryType: null,
       rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot(),
     });
     (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(rules);
 
@@ -249,6 +286,11 @@ describe('BookingRentalEligibilityService', () => {
       rentalCategoryName: 'Premium',
       rentalCategoryType: 'PREMIUM',
       rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot({
+        categoryAssigned: true,
+        categoryActive: true,
+        vehicleOverrideActive: true,
+      }),
     });
     (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(rules);
 

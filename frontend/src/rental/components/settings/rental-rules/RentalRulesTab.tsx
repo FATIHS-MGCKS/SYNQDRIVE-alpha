@@ -245,7 +245,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
       <RuleInheritanceSteps
         steps={RULE_HIERARCHY_STEPS}
         activeStep="effective"
-        rulesActive={overview?.defaultsConfigured ?? false}
+        rulesActive={overview?.defaultsActive ?? true}
         locale="en"
       />
       <p className="-mt-2 text-[11px] leading-snug text-muted-foreground sm:text-[12px]">

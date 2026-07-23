@@ -123,8 +123,12 @@ export function deriveRequirementsStatus(
     cardStatus = 'active';
   } else if (!effective.rulesActive) {
     statusKind = 'incomplete';
-    statusLabel = 'Inactive';
+    statusLabel = 'Rules inactive';
     cardStatus = 'neutral';
+  } else if (effective.activation?.categoryActive === false) {
+    statusKind = 'incomplete';
+    statusLabel = 'Category inactive';
+    cardStatus = 'attention';
   }
 
   return {
@@ -248,8 +252,15 @@ export function effectiveSourceSummary(effective: EffectiveRentalRulesDto): stri
     ].filter(Boolean),
   );
   if (sources.has('VEHICLE_OVERRIDE')) return 'Includes vehicle-specific overrides';
-  if (sources.has('CATEGORY') && effective.rentalCategoryName) {
+  if (
+    sources.has('CATEGORY') &&
+    effective.rentalCategoryName &&
+    effective.activation?.categoryActive !== false
+  ) {
     return `Primarily from ${effective.rentalCategoryName}`;
+  }
+  if (effective.activation?.categoryActive === false && effective.rentalCategoryName) {
+    return `Category inactive — using organization defaults`;
   }
   return 'Organization default rules';
 }
@@ -266,8 +277,15 @@ export function effectiveSourceSummaryDe(effective: EffectiveRentalRulesDto): st
   if (sources.has('VEHICLE_OVERRIDE')) {
     return 'Enthält fahrzeugspezifische Overrides';
   }
-  if (sources.has('CATEGORY') && effective.rentalCategoryName) {
+  if (
+    sources.has('CATEGORY') &&
+    effective.rentalCategoryName &&
+    effective.activation?.categoryActive !== false
+  ) {
     return `Primär aus Kategorie „${effective.rentalCategoryName}"`;
+  }
+  if (effective.activation?.categoryActive === false && effective.rentalCategoryName) {
+    return 'Kategorie inaktiv — Organisationsstandard wird verwendet';
   }
   return 'Organisationsstandard-Regeln';
 }

@@ -64,7 +64,7 @@ export function EffectiveRulesPreviewDrawer({
       status={
         effective ? (
           <StatusChip tone={effective.rulesActive ? 'success' : 'neutral'} dot>
-            {effective.rulesActive ? 'Active' : 'Inactive'}
+            {effective.rulesActive ? 'Enforcement active' : 'Enforcement inactive'}
           </StatusChip>
         ) : undefined
       }
@@ -83,6 +83,13 @@ export function EffectiveRulesPreviewDrawer({
 
       {!loading && !error && effective && (
         <div className="space-y-4">
+          {effective.activation?.informationalWarnings?.length ? (
+            <div className="space-y-1 rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[12px] text-muted-foreground">
+              {effective.activation.informationalWarnings.map((warning) => (
+                <p key={warning}>{warning}</p>
+              ))}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/15 px-3 py-2.5">
             <span className="text-[12px] text-muted-foreground">Category</span>
             <span className="text-[12px] font-medium text-foreground">

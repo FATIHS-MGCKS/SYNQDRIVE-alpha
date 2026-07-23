@@ -1520,3 +1520,57 @@ npm test -- --testPathPattern="booking-eligibility|booking-pickup-gate|booking-w
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 11).*
+
+---
+
+## Prompt 12 — Deaktivierte Regeln blockieren nicht
+
+**Ziel:** „Deaktiviert“ darf nicht weiterhin blockierende Regeln anwenden.
+
+### 12.1 Aktivierungs- und Fallback-Semantik
+
+| Zustand | Semantik | Enforcement | Fallback |
+|---------|----------|-------------|----------|
+| **Org `isActive: false`** | `rulesActive=false`, `enforcementActive=false` | Keine Blockierung — `ELIGIBLE` + Warnung | — |
+| **Org-Revision fehlt** | `organizationDefaultsConfigured=false` | Permissiver Systemstandard (alle Felder `null`) | Kategorie/Override können weiter gelten |
+| **Kategorie `isActive: false`** (archiviert) | Kein `categoryLayer` in Effective Rules | Org/Override weiter aktiv | Organisationsstandard + aktives Override |
+| **Vehicle Override leer** | `hasActiveRuleOverrides=false` | Kein `vehicleLayer` | Kategorie → Org |
+| **Kategorie + Org + Override aktiv** | Normale Vererbung VEHICLE → CATEGORY → ORG | Volle Prüfung | — |
+
+**Master-Switch:** Nur die Organisationsebene (`OrganizationRentalRules.isActive`) deaktiviert die gesamte Rental-Rule-Enforcement. Kategorie/Override-Deaktivierung betrifft nur die jeweilige Ebene.
+
+### 12.2 Implementierung
+
+| Datei | Rolle |
+|-------|-------|
+| `rental-rules-activation.policy.ts` | Zentrale Aktivierungs-Semantik + Warnungen |
+| `rental-effective-rules.service.ts` | `activation`-Snapshot, inaktive Kategorie ausgeschlossen |
+| `booking-rental-eligibility.util.ts` | Early-return `ELIGIBLE` wenn `!enforcementActive` |
+| Frontend `rental-rules.types.ts` | `RentalRulesActivationDto` |
+| Frontend `RentalRulesTab.tsx` | `defaultsActive` statt `defaultsConfigured` für Enforcement-Anzeige |
+| Frontend `vehicle-rental-requirements.utils.ts` | Inaktive Kategorie/Org Semantik in Status + Summary |
+
+### 12.3 Tests
+
+```
+npm test -- --testPathPattern="rental-rules|booking-rental-eligibility"
+→ 92/92 PASS
+```
+
+Neue Suites: `rental-rules-activation.policy.spec.ts`, `booking-rental-eligibility.util.spec.ts`, `rental-effective-rules.service.spec.ts`
+
+---
+
+## Prompt 12 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| `rulesActive=false` führt nicht zu `NOT_ELIGIBLE` | ✅ Early-return ELIGIBLE |
+| Vererbung fällt korrekt zurück | ✅ Inaktive Kategorie/Override |
+| UI und Backend gleiche Semantik | ✅ `activation` DTO + `defaultsActive` |
+| Tests bestehen | ✅ 92/92 |
+| Prompt 12 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 12).*

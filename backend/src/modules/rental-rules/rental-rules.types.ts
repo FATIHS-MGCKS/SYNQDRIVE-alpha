@@ -4,6 +4,7 @@ import type {
   RentalYoungDriverPolicy,
   RentalVehicleCategoryType,
 } from '@prisma/client';
+import type { RentalRulesActivationSnapshot } from './rental-rules-activation.policy';
 
 export type RentalRuleSource = 'ORGANIZATION_DEFAULT' | 'CATEGORY' | 'VEHICLE_OVERRIDE';
 
@@ -36,6 +37,7 @@ export type EffectiveRentalRules = {
   rentalCategoryName: string | null;
   rentalCategoryType: RentalVehicleCategoryType | null;
   rulesActive: boolean;
+  activation: RentalRulesActivationSnapshot;
 };
 
 /** Public API shape for GET .../rental-requirements/effective */
