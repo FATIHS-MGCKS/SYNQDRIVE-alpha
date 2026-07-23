@@ -55,7 +55,7 @@ describe('privacy-domain.invariants', () => {
         validateLegalBasisAssessment({
           organizationId: orgId,
           processingActivityOrganizationId: otherOrgId,
-          legalBasisType: PrivacyLegalBasisType.LEGITIMATE_INTEREST,
+          legalBasisType: PrivacyLegalBasisType.LEGITIMATE_INTERESTS,
           status: LegalBasisAssessmentStatus.DRAFT,
         }),
       ).toThrow('legal_basis_organization_mismatch');

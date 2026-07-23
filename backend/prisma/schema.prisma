@@ -10674,19 +10674,30 @@ enum ProcessingActivityOwnerRole {
 }
 
 enum PrivacyLegalBasisType {
-  CONSENT
   CONTRACT
   LEGAL_OBLIGATION
-  VITAL_INTEREST
-  PUBLIC_INTEREST
-  LEGITIMATE_INTEREST
+  LEGITIMATE_INTERESTS
+  CONSENT
+  VITAL_INTERESTS
+  PUBLIC_TASK
+  OTHER_WITH_LEGAL_REFERENCE
+}
+
+enum LegalBasisConsentRequirement {
+  NOT_APPLICABLE
+  EXPLICIT_OPT_IN
+  GRANULAR_PER_PURPOSE
+  WRITTEN_CONSENT
+  ELECTRONIC_CONSENT_WITH_AUDIT
 }
 
 enum LegalBasisAssessmentStatus {
   DRAFT
   UNDER_REVIEW
-  CONFIRMED
+  APPROVED
+  REJECTED
   SUPERSEDED
+  EXPIRED
 }
 
 enum DataSubjectConsentStatus {
@@ -10855,28 +10866,61 @@ model ProcessingActivityPurpose {
   @@map("processing_activity_purposes")
 }
 
-/// Rechtsgrundlage — separate Bewertung, keine automatische Neubewertung.
+/// Rechtsgrundlage — versionierte, unveränderliche Bewertung nach Freigabe.
+/// SynqDrive dokumentiert und prüft technische Voraussetzungen — keine juristische Auto-Bestimmung.
 model LegalBasisAssessment {
-  id                           String                     @id @default(uuid())
-  organizationId               String                     @map("organization_id")
-  processingActivityId         String                     @map("processing_activity_id")
-  legalBasisType               PrivacyLegalBasisType      @map("legal_basis_type")
-  status                       LegalBasisAssessmentStatus @default(DRAFT)
-  assessedByUserId             String?                    @map("assessed_by_user_id")
-  assessedAt                   DateTime?                  @map("assessed_at")
-  rationaleSummary             String?                    @map("rationale_summary")
-  legacyOrgDataAuthorizationId String?                    @unique @map("legacy_org_data_authorization_id")
-  createdAt                    DateTime                   @default(now()) @map("created_at")
-  updatedAt                    DateTime                   @updatedAt @map("updated_at")
+  id                            String                       @id @default(uuid())
+  organizationId                String                       @map("organization_id")
+  processingActivityId          String                       @map("processing_activity_id")
+  policyFamilyId                String                       @map("policy_family_id")
+  versionNumber                 Int                          @default(1) @map("version_number")
+  isCurrentVersion              Boolean                      @default(true) @map("is_current_version")
+  legalBasisType                PrivacyLegalBasisType        @map("legal_basis_type")
+  legalReference                String?                      @map("legal_reference") @db.Text
+  necessityAssessment           String?                      @map("necessity_assessment") @db.Text
+  proportionalityAssessment     String?                      @map("proportionality_assessment") @db.Text
+  legitimateInterestDescription String?                      @map("legitimate_interest_description") @db.Text
+  balancingTestReference        String?                      @map("balancing_test_reference") @db.Text
+  consentRequirement            LegalBasisConsentRequirement @default(NOT_APPLICABLE) @map("consent_requirement")
+  status                        LegalBasisAssessmentStatus   @default(DRAFT)
+  assessedByUserId              String?                      @map("assessed_by_user_id")
+  approvedByUserId              String?                      @map("approved_by_user_id")
+  assessedAt                    DateTime?                    @map("assessed_at")
+  approvedAt                    DateTime?                    @map("approved_at")
+  validFrom                     DateTime?                    @map("valid_from")
+  validUntil                    DateTime?                    @map("valid_until")
+  reviewDate                    DateTime?                    @map("review_date")
+  rejectionReason               String?                      @map("rejection_reason") @db.Text
+  legacyOrgDataAuthorizationId  String?                      @unique @map("legacy_org_data_authorization_id")
+  createdAt                     DateTime                     @default(now()) @map("created_at")
+  updatedAt                     DateTime                     @updatedAt @map("updated_at")
 
-  organization               Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  processingActivity         ProcessingActivity    @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
-  legacyOrgDataAuthorization OrgDataAuthorization? @relation("LegacyOrgAuthLegalBasis", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  organization               Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity         ProcessingActivity                @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+  legacyOrgDataAuthorization OrgDataAuthorization?             @relation("LegacyOrgAuthLegalBasis", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
   dataSubjectConsents        DataSubjectConsent[]
+  evidenceReferences         LegalBasisAssessmentEvidenceRef[]
 
+  @@unique([policyFamilyId, versionNumber])
   @@index([organizationId, status])
   @@index([processingActivityId])
+  @@index([policyFamilyId, isCurrentVersion])
   @@map("legal_basis_assessments")
+}
+
+model LegalBasisAssessmentEvidenceRef {
+  id                     String   @id @default(uuid())
+  organizationId         String   @map("organization_id")
+  legalBasisAssessmentId String   @map("legal_basis_assessment_id")
+  reference              String
+  label                  String?
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  legalBasisAssessment LegalBasisAssessment @relation(fields: [legalBasisAssessmentId], references: [id], onDelete: Restrict)
+
+  @@unique([legalBasisAssessmentId, reference])
+  @@index([organizationId])
+  @@map("legal_basis_assessment_evidence_refs")
 }
 
 /// Einwilligung der betroffenen Person — nur Referenz-IDs, keine PII-Duplikation.

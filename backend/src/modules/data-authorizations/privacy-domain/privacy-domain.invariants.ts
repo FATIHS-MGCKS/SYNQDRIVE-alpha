@@ -115,14 +115,6 @@ export function validateLegalBasisAssessment(input: LegalBasisAssessmentInvarian
     input.processingActivityOrganizationId,
     'legal_basis_organization_mismatch',
   );
-
-  if (
-    input.status === LegalBasisAssessmentStatus.CONFIRMED &&
-    input.legalBasisType === PrivacyLegalBasisType.CONSENT
-  ) {
-    // Consent basis requires a separate DataSubjectConsent record; assessment alone is insufficient.
-    return;
-  }
 }
 
 export function validateDataSubjectConsent(input: DataSubjectConsentInvariantInput): void {

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-basis-assessment-professional-v49790-2026-07-23',
+    version: '4.9.790',
+    title: 'V4.9.790 — Legal Basis Assessment: professionelles Modell (Prompt 7)',
+    summary: [
+      'LegalBasisAssessment erweitert: 7 Rechtsgrundlagen-Typen, versionierte policyFamilyId, Vier-Augen-Freigabe, Content-Gates pro Basis-Typ.',
+      'Lifecycle DRAFT → UNDER_REVIEW → APPROVED/REJECTED; materielle Änderungen erzeugen neue Version; historische Assessments unveränderlich.',
+      'API unter /processing-activities/:activityId/legal-basis-assessments; Service + Transition-Validierung + 13 neue Unit Tests.',
+    ],
+    reason:
+      'Rechtsgrundlagen dürfen nicht automatisch juristisch bestimmt werden — SynqDrive dokumentiert und prüft technische Voraussetzungen mit klaren Aktivierungsgates.',
+    previousBehavior:
+      'LegalBasisAssessment war ein Minimalmodell ohne Versionierung, Vier-Augen oder typspezifische Pflichtfelder.',
+    details:
+      'Migration 20260723233000_legal_basis_assessment_professional. Doku: docs/architecture/legal-basis-assessment-model-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T22:45:00.000Z',
+  },
+  {
     id: 'privacy-domain-foundation-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Data Authorization: Privacy Domain Foundation (Prompt 5)',
