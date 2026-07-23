@@ -63,6 +63,11 @@ import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/
 import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
+import { LiveGpsEnforcementService } from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.service';
+import {
+  LIVE_GPS_PURPOSE,
+  LIVE_GPS_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.constants';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
@@ -292,6 +297,7 @@ export class VehiclesService {
     private readonly brakeRegistrationService: BrakeRegistrationService,
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
+    private readonly liveGpsEnforcement: LiveGpsEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
@@ -1335,12 +1341,15 @@ export class VehiclesService {
     );
 
     return buildPaginatedResult(
-      data.map((v) =>
-        this.mapToVehicleData(
-          v,
-          tripStateMap,
-          bookingBundle,
-          pickupOdoByBooking,
+      await this.liveGpsEnforcement.applyVehicleListGate(
+        organizationId,
+        data.map((v) =>
+          this.mapToVehicleData(
+            v,
+            tripStateMap,
+            bookingBundle,
+            pickupOdoByBooking,
+          ),
         ),
       ),
       total,
@@ -1353,7 +1362,8 @@ export class VehiclesService {
     try {
       const cached = await this.redis.get(cacheKey);
       if (cached) {
-        return JSON.parse(cached) as FleetMapVehicleDto[];
+        const parsed = JSON.parse(cached) as FleetMapVehicleDto[];
+        return this.liveGpsEnforcement.applyFleetMapGate(organizationId, parsed, 'fleet-map-cache');
       }
     } catch (err: any) {
       this.logger.debug(`Fleet-map cache read failed (${err?.message ?? err})`);
@@ -1526,7 +1536,7 @@ export class VehiclesService {
       this.logger.debug(`Fleet-map cache write failed (${err?.message ?? err})`);
     }
 
-    return result;
+    return this.liveGpsEnforcement.applyFleetMapGate(organizationId, result, 'fleet-map');
   }
 
   async findById(id: string) {
@@ -1556,12 +1566,18 @@ export class VehiclesService {
       organizationId,
       activeBookingIds,
     );
-    return this.mapToVehicleData(
+    const mapped = this.mapToVehicleData(
       vehicle,
       tripStateMap,
       bookingBundle,
       pickupOdoByBooking,
     );
+    const [gated] = await this.liveGpsEnforcement.applyVehicleListGate(
+      organizationId,
+      [mapped],
+      `vehicle-detail:${id}`,
+    );
+    return gated;
   }
 
   async findAllPlatform(
@@ -1626,11 +1642,11 @@ export class VehiclesService {
   }
 
   async getVehicleWithTelemetry(vehicleId: string, organizationId?: string) {
-    const where = organizationId
-      ? { id: vehicleId, organizationId }
-      : { id: vehicleId };
+    if (!organizationId) {
+      throw new NotFoundException('Vehicle not found');
+    }
     const vehicle = await this.prisma.vehicle.findFirst({
-      where,
+      where: { id: vehicleId, organizationId },
       include: {
         homeStation: true,
         latestState: true,
@@ -1639,9 +1655,17 @@ export class VehiclesService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
+    const gpsAllowed = await this.liveGpsEnforcement.isVehicleGpsReadAllowed({
+      organizationId,
+      vehicleId,
+      purpose: LIVE_GPS_PURPOSE.LIVE_MAP,
+      serviceIdentity: LIVE_GPS_SERVICE_IDENTITY.VEHICLES_TELEMETRY_API,
+      correlationId: `telemetry:${vehicleId}:${Date.now()}`,
+    });
+
     const state = vehicle.latestState;
-    let latitude = state?.latitude ?? null;
-    let longitude = state?.longitude ?? null;
+    let latitude = gpsAllowed ? (state?.latitude ?? null) : null;
+    let longitude = gpsAllowed ? (state?.longitude ?? null) : null;
 
     const tripDetState = await this.prisma.vehicleTripDetectionState
       .findUnique({ where: { vehicleId }, select: { state: true } })
@@ -1661,6 +1685,7 @@ export class VehiclesService {
     );
 
     const needsFreshGps =
+      gpsAllowed &&
       (latitude == null || longitude == null || interpreted.isLiveTracking) &&
       vehicle.dimoVehicle?.tokenId != null;
 
@@ -1739,11 +1764,20 @@ export class VehiclesService {
   // ── Live GPS (direct DIMO proxy, no DB caching) ──────────────────
 
   async getLiveGps(vehicleId: string, organizationId?: string) {
-    const where = organizationId
-      ? { id: vehicleId, organizationId }
-      : { id: vehicleId };
+    if (!organizationId) {
+      throw new NotFoundException('Vehicle not found');
+    }
+
+    await this.liveGpsEnforcement.assertVehicleGpsRead({
+      organizationId,
+      vehicleId,
+      purpose: LIVE_GPS_PURPOSE.LIVE_MAP,
+      serviceIdentity: LIVE_GPS_SERVICE_IDENTITY.VEHICLES_LIVE_GPS_API,
+      correlationId: `live-gps:${vehicleId}:${Date.now()}`,
+    });
+
     const vehicle = await this.prisma.vehicle.findFirst({
-      where,
+      where: { id: vehicleId, organizationId },
       select: {
         id: true,
         dimoVehicle: { select: { tokenId: true } },
@@ -1761,21 +1795,6 @@ export class VehiclesService {
         lastSeenAt: null,
         source: 'cache' as const,
       };
-    }
-
-    if (organizationId) {
-      await this.dataAuthorizations.ensureDimoTelemetryAuthorization(
-        organizationId,
-      );
-      await this.dataAuthEnforcement.assertDataAuthorization({
-        orgId: organizationId,
-        vehicleId,
-        sourceType: 'DIMO',
-        dataCategory: 'GPS_LOCATION',
-        purpose: 'LIVE_MAP',
-        processorType: 'SYNQDRIVE',
-        trackAccess: true,
-      });
     }
 
     try {
@@ -1820,7 +1839,7 @@ export class VehiclesService {
         source: 'cache' as const,
       };
     } catch (err) {
-      this.logger.warn(`Live GPS DIMO fetch failed for ${vehicleId}: ${(err as Error).message}`);
+      this.logger.warn(`Live GPS DIMO fetch failed for vehicle=${vehicleId}`);
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
@@ -2342,6 +2361,24 @@ export class VehiclesService {
       .map((item) => vehicleById.get(item.vehicle.vehicleId))
       .filter((v): v is NonNullable<typeof v> => v != null);
 
+    const gatedVehicles = await this.liveGpsEnforcement.applyConnectivityGate(
+      organizationId,
+      pageVehicles,
+    );
+    const gatedById = new Map(gatedVehicles.map((v) => [v.vehicleId, v]));
+    const gatedItems = itemPagination.pageItems.map((item) => {
+      const gated = gatedById.get(item.vehicle.vehicleId);
+      if (!gated) return item;
+      return {
+        ...item,
+        vehicle: {
+          ...item.vehicle,
+          latitude: gated.latitude ?? null,
+          longitude: gated.longitude ?? null,
+        },
+      };
+    });
+
     return {
       generatedAt,
       summary: kpiSummary,
@@ -2351,8 +2388,8 @@ export class VehiclesService {
         total: itemPagination.total,
         totalInOrganization: vehicles.length,
       },
-      items: itemPagination.pageItems,
-      vehicles: pageVehicles,
+      items: gatedItems,
+      vehicles: gatedVehicles,
       thresholds: { ...FLEET_CONNECTIVITY_THRESHOLDS },
       legacySummary: summaryLegacy,
     };
@@ -2400,7 +2437,12 @@ export class VehiclesService {
     }
 
     const mapped = mapFleetConnectivityVehicle(vehicle, nowMs, deviceConnection, runtime);
-    return mapFleetConnectivityDetail(mapped);
+    const [gated] = await this.liveGpsEnforcement.applyConnectivityGate(
+      organizationId,
+      [mapped],
+      `fleet-connectivity-detail:${vehicleId}`,
+    );
+    return mapFleetConnectivityDetail(gated);
   }
 
   async getDeviceConnection(organizationId: string, vehicleId: string) {

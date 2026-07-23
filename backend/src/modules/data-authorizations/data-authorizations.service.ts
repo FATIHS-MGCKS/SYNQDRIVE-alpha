@@ -29,6 +29,7 @@ import type { CreateDataAuthorizationDto } from './dto/create-data-authorization
 import type { GrantDataAuthorizationDto } from './dto/grant-data-authorization.dto';
 import type { ListDataAuthorizationsQueryDto } from './dto/list-data-authorizations-query.dto';
 import type { RevokeDataAuthorizationDto } from './dto/revoke-data-authorization.dto';
+import { LiveGpsEnforcementService } from './live-gps-enforcement/live-gps-enforcement.service';
 import type { UpdateDataAuthorizationDto } from './dto/update-data-authorization.dto';
 
 const STATUS_DISPLAY: Record<string, string> = {
@@ -75,6 +76,7 @@ export class DataAuthorizationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly liveGpsEnforcement: LiveGpsEnforcementService,
   ) {}
 
   private jsonStringArray(value: Prisma.JsonValue | null | undefined): string[] {
@@ -715,6 +717,8 @@ export class DataAuthorizationsService {
         scope: row.scope,
       },
     });
+
+    await this.liveGpsEnforcement.invalidateOrgGpsCaches(orgId);
 
     return this.format(row);
   }

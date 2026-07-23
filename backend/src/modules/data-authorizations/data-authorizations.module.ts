@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { RedisModule } from '@shared/redis/redis.module';
 import { DataAuthorizationsController } from './data-authorizations.controller';
 import { DataAuthorizationsService } from './data-authorizations.service';
 import { DataAuthorizationEnforcementService } from './data-authorization-enforcement.service';
@@ -31,8 +32,10 @@ import { DataAuthorizationAuditService } from './privacy-domain/audit-log/data-a
 import { DataProcessingReviewWorkflowService } from './privacy-domain/review-workflow/review-workflow.service';
 import { DataProcessingPermissionService } from './privacy-domain/review-workflow/data-processing-permission.service';
 import { DataProcessingReviewWorkflowController } from './privacy-domain/review-workflow/review-workflow.controller';
+import { LiveGpsEnforcementService } from './live-gps-enforcement/live-gps-enforcement.service';
 
 @Module({
+  imports: [RedisModule],
   controllers: [
     DataAuthorizationsController,
     LegalBasisAssessmentController,
@@ -69,6 +72,7 @@ import { DataProcessingReviewWorkflowController } from './privacy-domain/review-
     DataAuthorizationAuditOutboxSchedulerService,
     DataProcessingReviewWorkflowService,
     DataProcessingPermissionService,
+    LiveGpsEnforcementService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -87,6 +91,7 @@ import { DataProcessingReviewWorkflowController } from './privacy-domain/review-
     AuthorizationDecisionService,
     DataAuthorizationAuditService,
     DataProcessingReviewWorkflowService,
+    LiveGpsEnforcementService,
   ],
 })
 export class DataAuthorizationsModule {}

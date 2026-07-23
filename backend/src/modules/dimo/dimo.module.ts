@@ -45,6 +45,7 @@ import { DeviceConnectionEpisodeReconciliationApplyService } from './device-conn
 import { DeviceConnectionWebhookConfigurationService } from './device-connection-webhook-configuration/device-connection-webhook-configuration.service';
 import { DimoTriggerRegistryService } from './device-connection-webhook-configuration/dimo-trigger-registry.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
+import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     SharedGuardsModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
+    DataAuthorizationsModule,
   ],
   controllers: [DimoController, DimoWebhookController, DeviceConnectionWebhookInboxController],
   providers: [

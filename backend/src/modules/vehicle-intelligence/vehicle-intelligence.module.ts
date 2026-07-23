@@ -214,6 +214,7 @@ import {
   BatteryShadowValidationController,
   BatteryShadowValidationService,
 } from './battery-health/shadow-validation';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 
 @Module({
   imports: [
@@ -227,6 +228,7 @@ import {
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
     forwardRef(() => NotificationsModule),
+    forwardRef(() => DataAuthorizationsModule),
     TasksModule,
     BatteryV2JobsProducerModule,
     BullModule.registerQueue(
