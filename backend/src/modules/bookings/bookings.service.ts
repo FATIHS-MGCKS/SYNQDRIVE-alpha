@@ -362,13 +362,20 @@ export class BookingsService {
     };
   }
 
-  async findAll(orgId: string, params?: ListBookingsQueryDto) {
+  async findAll(
+    orgId: string,
+    params?: ListBookingsQueryDto,
+    options?: { scopeWhere?: import('@prisma/client').Prisma.BookingWhereInput },
+  ) {
     const page = Math.max(1, params?.page || 1);
     const limit = Math.min(500, Math.max(1, params?.limit || 100));
     const skip = (page - 1) * limit;
     const take = limit;
 
     const andClauses: Prisma.BookingWhereInput[] = [{ organizationId: orgId }];
+    if (options?.scopeWhere) {
+      andClauses.push(options.scopeWhere);
+    }
 
     if (params?.status) {
       const statuses = Array.isArray(params.status) ? params.status : [params.status];
