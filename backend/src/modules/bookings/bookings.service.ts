@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ConflictException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -62,6 +63,7 @@ import { BookingEligibilityEnforcementService } from './booking-eligibility-gate
 import { listInvalidationFactsFromMutation } from './booking-eligibility-gatekeeper/booking-eligibility-status-transition.matrix';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-key-scope.service';
 import {
   resolveEligibilityPolicyMode,
   shouldSkipEligibilityEnforcement,
@@ -125,6 +127,7 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly foreignKeyScope: BookingForeignKeyScopeService,
   ) {}
 
   /**
@@ -241,6 +244,11 @@ export class BookingsService {
         'customerId is required to create a booking',
       );
     }
+
+    await this.foreignKeyScope.assertBookingForeignKeys(orgId, {
+      customerId,
+      vehicleId,
+    });
 
     const notes = anyData.notes as string | undefined;
     const isWizardDraft = isWizardDraftBooking({
@@ -497,11 +505,10 @@ export class BookingsService {
       ),
     ];
 
-    const stations =
+    const stationMap =
       stationIds.length > 0
-        ? await this.prisma.station.findMany({ where: { id: { in: stationIds } } })
-        : [];
-    const stationMap = new Map(stations.map((s) => [s.id, s.name]));
+        ? await this.foreignKeyScope.loadStationNameMap(orgId, stationIds)
+        : new Map<string, string>();
 
     // V4.6.75 — Attach handover protocols so the UI can render pickup /
     // return panels (odometer, fuel, signatures, noted damages) without a
@@ -844,10 +851,8 @@ export class BookingsService {
 
     let stationName = '';
     if (b.pickupStationId) {
-      const station = await this.prisma.station.findUnique({
-        where: { id: b.pickupStationId },
-      });
-      stationName = station?.name || '';
+      const stationMap = await this.foreignKeyScope.loadStationNameMap(orgId, [b.pickupStationId]);
+      stationName = stationMap.get(b.pickupStationId) || '';
     }
 
     // V4.6.75 — Include handover protocols for the detail view.
@@ -858,10 +863,8 @@ export class BookingsService {
 
     let returnStationName = '';
     if (b.returnStationId) {
-      const returnStation = await this.prisma.station.findUnique({
-        where: { id: b.returnStationId },
-      });
-      returnStationName = returnStation?.name || '';
+      const stationMap = await this.foreignKeyScope.loadStationNameMap(orgId, [b.returnStationId]);
+      returnStationName = stationMap.get(b.returnStationId) || '';
     }
 
     return {
@@ -935,7 +938,9 @@ export class BookingsService {
     ].filter(Boolean) as string[];
     const stationRows =
       stationIds.length > 0
-        ? await this.prisma.station.findMany({ where: { id: { in: stationIds } } })
+        ? await this.prisma.station.findMany({
+            where: { organizationId: orgId, id: { in: stationIds } },
+          })
         : [];
     const stationById = new Map(stationRows.map((s) => [s.id, s]));
     const stationMap = new Map(stationRows.map((s) => [s.id, s.name]));
@@ -1424,11 +1429,10 @@ export class BookingsService {
           .filter(Boolean) as string[],
       ),
     ];
-    const stations =
+    const stationMap =
       stationIds.length > 0
-        ? await this.prisma.station.findMany({ where: { id: { in: stationIds } } })
-        : [];
-    const stationMap = new Map(stations.map((s) => [s.id, s.name]));
+        ? await this.foreignKeyScope.loadStationNameMap(orgId, stationIds)
+        : new Map<string, string>();
 
     // V4.6.75 — Attach protocols so tiles / side lists know if the pickup
     // has already been handled.
@@ -1583,11 +1587,10 @@ export class BookingsService {
           .filter(Boolean) as string[],
       ),
     ];
-    const stations =
+    const stationMap =
       stationIds.length > 0
-        ? await this.prisma.station.findMany({ where: { id: { in: stationIds } } })
-        : [];
-    const stationMap = new Map(stations.map((s) => [s.id, s.name]));
+        ? await this.foreignKeyScope.loadStationNameMap(orgId, stationIds)
+        : new Map<string, string>();
 
     const protocolsMap = await this.loadProtocolsMap(
       orgId,
@@ -1599,7 +1602,10 @@ export class BookingsService {
       vehicleIds.length > 0
         ? await this.prisma.vehicleLatestState
             .findMany({
-              where: { vehicleId: { in: vehicleIds } },
+              where: {
+                vehicleId: { in: vehicleIds },
+                vehicle: { organizationId: orgId },
+              },
               select: { vehicleId: true, odometerKm: true },
             })
             .catch(() => [] as Array<{ vehicleId: string; odometerKm: number | null }>)
@@ -2007,7 +2013,15 @@ export class BookingsService {
             }
             assertWizardPreviewFingerprintMatches(fingerprint, gateResult);
           }
-          const updatedBooking = await tx.booking.update({ where: { id }, data });
+          const updatedBooking = await this.foreignKeyScope.updateBookingScoped(
+            orgId,
+            id,
+            data,
+            tx,
+          );
+          if (!updatedBooking) {
+            throw new NotFoundException('Booking not found for organization');
+          }
           if (
             updatedBooking.status === 'CONFIRMED' &&
             gateResult &&
@@ -2030,7 +2044,10 @@ export class BookingsService {
           }
           return updatedBooking;
         })
-      : await this.prisma.booking.update({ where: { id }, data });
+      : await this.foreignKeyScope.updateBookingScoped(orgId, id, data);
+    if (!updated) {
+      throw new NotFoundException('Booking not found for organization');
+    }
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {
@@ -2162,13 +2179,17 @@ export class BookingsService {
     await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
 
     const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
-        where: { id },
+      this.prisma.booking.updateMany({
+        where: { id, organizationId: orgId },
         data: {
           status: 'CANCELLED' as BookingStatus,
           cancelledAt: new Date(),
         },
-      }),
+      }).then(async () =>
+        this.prisma.booking.findFirstOrThrow({
+          where: { id, organizationId: orgId },
+        }),
+      ),
       // Release the car for a replacement booking — but NEVER overwrite a
       // maintenance / out-of-service state (same invariant the handover
       // service enforces). `updateMany` + notIn applies the AVAILABLE flip
@@ -2176,6 +2197,7 @@ export class BookingsService {
       this.prisma.vehicle.updateMany({
         where: {
           id: booking.vehicleId,
+          organizationId: orgId,
           status: {
             notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
           },
@@ -2255,20 +2277,25 @@ export class BookingsService {
       : booking.notes;
 
     const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
-        where: { id },
+      this.prisma.booking.updateMany({
+        where: { id, organizationId: orgId },
         data: {
           status: 'NO_SHOW' as BookingStatus,
           cancelledAt: new Date(),
           notes: nextNotes,
         },
-      }),
+      }).then(async () =>
+        this.prisma.booking.findFirstOrThrow({
+          where: { id, organizationId: orgId },
+        }),
+      ),
       // Reopen the car for a replacement booking without clobbering a
       // maintenance / out-of-service state (mirrors cancel() + the handover
       // invariant). Only flips to AVAILABLE when not IN_SERVICE/OUT_OF_SERVICE.
       this.prisma.vehicle.updateMany({
         where: {
           id: booking.vehicleId,
+          organizationId: orgId,
           status: {
             notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
           },

@@ -41,6 +41,8 @@ import {
 } from './booking-pickup-gate/booking-pickup-gate.constants';
 import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
+import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-key-scope.service';
+import { BOOKING_TENANT_SCOPE_MESSAGE } from './tenant-scope/booking-tenant-scope.constants';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -69,6 +71,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly foreignKeyScope: BookingForeignKeyScopeService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -86,29 +89,6 @@ export class BookingsHandoverService {
   ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
     this.validatePayload(payload);
 
-    if (kind === 'PICKUP') {
-      const existingPickup = await this.prisma.bookingHandoverProtocol.findUnique({
-        where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
-      });
-      if (existingPickup) {
-        const currentBooking = await this.prisma.booking.findFirst({
-          where: { id: bookingId, organizationId: orgId },
-          select: { id: true, status: true },
-        });
-        if (currentBooking?.status === 'ACTIVE') {
-          return {
-            booking: { id: currentBooking.id, status: currentBooking.status },
-            protocol: this.mapProtocol(existingPickup),
-          };
-        }
-        throw new ConflictException({
-          message: 'Pickup-Protokoll existiert bereits für diese Buchung.',
-          code: 'HANDOVER_ALREADY_EXISTS',
-          existingProtocolId: existingPickup.id,
-        });
-      }
-    }
-
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId: orgId },
       select: {
@@ -123,7 +103,25 @@ export class BookingsHandoverService {
       },
     });
     if (!booking) {
-      throw new NotFoundException('Booking not found');
+      throw new NotFoundException(BOOKING_TENANT_SCOPE_MESSAGE);
+    }
+
+    if (kind === 'PICKUP') {
+      const existingPickup = await this.prisma.bookingHandoverProtocol.findFirst({
+        where: { organizationId: orgId, bookingId, kind: 'PICKUP' },
+      });
+      if (existingPickup) {
+        if (booking.status === 'ACTIVE') {
+          return {
+            booking: { id: booking.id, status: booking.status },
+            protocol: this.mapProtocol(existingPickup),
+          };
+        }
+        throw new ConflictException({
+          message: 'Pickup-Protokoll existiert bereits für diese Buchung.',
+          code: 'HANDOVER_ALREADY_EXISTS',
+        });
+      }
     }
 
     // V4.6.81 — Backdate support. When the operator records a pickup that
@@ -186,17 +184,23 @@ export class BookingsHandoverService {
 
     // Uniqueness defence for RETURN (PICKUP handled above with idempotent replay).
     if (kind === 'RETURN') {
-      const existingReturn = await this.prisma.bookingHandoverProtocol.findUnique({
-        where: { bookingId_kind: { bookingId, kind: 'RETURN' } },
+      const existingReturn = await this.prisma.bookingHandoverProtocol.findFirst({
+        where: { organizationId: orgId, bookingId, kind: 'RETURN' },
         select: { id: true },
       });
       if (existingReturn) {
         throw new ConflictException({
           message: 'Rückgabe-Protokoll existiert bereits für diese Buchung.',
           code: 'HANDOVER_ALREADY_EXISTS',
-          existingProtocolId: existingReturn.id,
         });
       }
+    }
+
+    const actualStationId =
+      payload.actualStationId ??
+      (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
+    if (actualStationId) {
+      await this.foreignKeyScope.assertStation(orgId, actualStationId);
     }
 
     const damageIds = Array.isArray(payload.damageIds)
@@ -243,9 +247,6 @@ export class BookingsHandoverService {
         const bookingUpdateData: Prisma.BookingUpdateInput = {
           status: transitionTo,
         };
-        const actualStationId =
-          payload.actualStationId ??
-          (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
         if (kind === 'PICKUP' && actualStationId) {
           bookingUpdateData.actualPickupStation = { connect: { id: actualStationId } };
         }
@@ -254,9 +255,8 @@ export class BookingsHandoverService {
           if (actualStationId) {
             bookingUpdateData.actualReturnStation = { connect: { id: actualStationId } };
           }
-          // kmDriven = return odometer − pickup odometer (if pickup exists).
-          const pickup = await tx.bookingHandoverProtocol.findUnique({
-            where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
+          const pickup = await tx.bookingHandoverProtocol.findFirst({
+            where: { organizationId: orgId, bookingId, kind: 'PICKUP' },
             select: { odometerKm: true },
           });
           if (pickup && pickup.odometerKm != null) {
@@ -268,9 +268,15 @@ export class BookingsHandoverService {
           }
         }
 
-        const booking2 = await tx.booking.update({
-          where: { id: bookingId },
-          data: bookingUpdateData,
+        const bookingUpdateResult = await tx.booking.updateMany({
+          where: { id: bookingId, organizationId: orgId },
+          data: bookingUpdateData as Prisma.BookingUpdateManyMutationInput,
+        });
+        if (bookingUpdateResult.count !== 1) {
+          throw new NotFoundException(BOOKING_TENANT_SCOPE_MESSAGE);
+        }
+        const booking2 = await tx.booking.findFirstOrThrow({
+          where: { id: bookingId, organizationId: orgId },
           select: { id: true, status: true, vehicleId: true },
         });
 
@@ -294,8 +300,8 @@ export class BookingsHandoverService {
             },
           });
           if (!blockedStatus && otherActive === 0) {
-            await tx.vehicle.update({
-              where: { id: booking.vehicleId },
+            await tx.vehicle.updateMany({
+              where: { id: booking.vehicleId, organizationId: orgId },
               data: {
                 status: VehicleStatus.AVAILABLE,
                 ...(actualStationId
@@ -308,8 +314,8 @@ export class BookingsHandoverService {
               },
             });
           } else if (actualStationId) {
-            await tx.vehicle.update({
-              where: { id: booking.vehicleId },
+            await tx.vehicle.updateMany({
+              where: { id: booking.vehicleId, organizationId: orgId },
               data: {
                 currentStationId: actualStationId,
                 currentStationSource: 'HANDOVER_RETURN',
@@ -331,8 +337,8 @@ export class BookingsHandoverService {
               vehicleStatus: vehicleRow?.status ?? null,
             });
           }
-          await tx.vehicle.update({
-            where: { id: booking.vehicleId },
+          await tx.vehicle.updateMany({
+            where: { id: booking.vehicleId, organizationId: orgId },
             data: {
               status: VehicleStatus.RENTED,
               ...(actualStationId
@@ -349,18 +355,18 @@ export class BookingsHandoverService {
         if (damageIds.length > 0) {
           const handoverSource =
             kind === 'PICKUP' ? DamageSource.PICKUP_HANDOVER : DamageSource.RETURN_HANDOVER;
-          await tx.vehicleDamage.updateMany({
-            where: {
-              id: { in: damageIds },
+          await this.foreignKeyScope.linkVehicleDamagesForHandover(
+            orgId,
+            {
+              damageIds,
               vehicleId: booking.vehicleId,
-            },
-            data: {
               bookingId,
               customerId: booking.customerId,
               handoverProtocolId: created.id,
               source: handoverSource,
             },
-          });
+            tx,
+          );
         }
 
         const observationDrafts = this.normalizeTechnicalObservationDrafts(

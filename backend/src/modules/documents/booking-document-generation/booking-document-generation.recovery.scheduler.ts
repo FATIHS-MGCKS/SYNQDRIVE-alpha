@@ -41,6 +41,7 @@ export class BookingDocumentGenerationRecoveryScheduler {
     const stale = await this.repository.findStaleProcessingJobs(staleBefore, 25);
     for (const job of stale) {
       await this.repository.markFailedRetryable(
+        job.organizationId,
         job.id,
         job.attemptCount,
         'STALE_PROCESSING',

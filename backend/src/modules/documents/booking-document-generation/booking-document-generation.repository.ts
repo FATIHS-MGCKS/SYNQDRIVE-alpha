@@ -113,21 +113,21 @@ export class BookingDocumentGenerationRepository {
     }
   }
 
-  markEnqueued(jobId: string, bullJobId: string) {
-    return this.prisma.bookingDocumentGenerationJob.update({
-      where: { id: jobId },
+  markEnqueued(organizationId: string, jobId: string, bullJobId: string) {
+    return this.prisma.bookingDocumentGenerationJob.updateMany({
+      where: { id: jobId, organizationId },
       data: { bullJobId },
     });
   }
 
-  async markProcessing(jobId: string) {
-    const job = await this.prisma.bookingDocumentGenerationJob.findUnique({ where: { id: jobId } });
-    if (!job) throw new NotFoundException(`Job ${jobId} not found`);
+  async markProcessing(organizationId: string, jobId: string) {
+    const job = await this.findById(organizationId, jobId);
+    if (!job) throw new NotFoundException('Resource not found for organization');
     if (this.isTerminalStatus(job.status)) return job;
     if (job.status === BOOKING_DOCUMENT_GENERATION_STATUS.PROCESSING) return job;
 
-    return this.prisma.bookingDocumentGenerationJob.update({
-      where: { id: jobId },
+    await this.prisma.bookingDocumentGenerationJob.updateMany({
+      where: { id: jobId, organizationId },
       data: {
         status: BOOKING_DOCUMENT_GENERATION_STATUS.PROCESSING,
         lastAttemptAt: new Date(),
@@ -136,11 +136,12 @@ export class BookingDocumentGenerationRepository {
         errorMessage: null,
       },
     });
+    return this.findById(organizationId, jobId);
   }
 
-  markSucceeded(jobId: string) {
-    return this.prisma.bookingDocumentGenerationJob.update({
-      where: { id: jobId },
+  markSucceeded(organizationId: string, jobId: string) {
+    return this.prisma.bookingDocumentGenerationJob.updateMany({
+      where: { id: jobId, organizationId },
       data: {
         status: BOOKING_DOCUMENT_GENERATION_STATUS.SUCCEEDED,
         completedAt: new Date(),
@@ -151,9 +152,15 @@ export class BookingDocumentGenerationRepository {
     });
   }
 
-  markFailedRetryable(jobId: string, attemptCount: number, errorCode: string, errorMessage: string) {
-    return this.prisma.bookingDocumentGenerationJob.update({
-      where: { id: jobId },
+  markFailedRetryable(
+    organizationId: string,
+    jobId: string,
+    attemptCount: number,
+    errorCode: string,
+    errorMessage: string,
+  ) {
+    return this.prisma.bookingDocumentGenerationJob.updateMany({
+      where: { id: jobId, organizationId },
       data: {
         status: BOOKING_DOCUMENT_GENERATION_STATUS.FAILED_RETRYABLE,
         errorCode,
@@ -164,9 +171,9 @@ export class BookingDocumentGenerationRepository {
     });
   }
 
-  markFailedFinal(jobId: string, errorCode: string, errorMessage: string) {
-    return this.prisma.bookingDocumentGenerationJob.update({
-      where: { id: jobId },
+  markFailedFinal(organizationId: string, jobId: string, errorCode: string, errorMessage: string) {
+    return this.prisma.bookingDocumentGenerationJob.updateMany({
+      where: { id: jobId, organizationId },
       data: {
         status: BOOKING_DOCUMENT_GENERATION_STATUS.FAILED_FINAL,
         completedAt: new Date(),
@@ -178,9 +185,9 @@ export class BookingDocumentGenerationRepository {
     });
   }
 
-  resetForManualRetry(jobId: string) {
-    return this.prisma.bookingDocumentGenerationJob.update({
-      where: { id: jobId },
+  resetForManualRetry(organizationId: string, jobId: string) {
+    return this.prisma.bookingDocumentGenerationJob.updateMany({
+      where: { id: jobId, organizationId },
       data: {
         status: BOOKING_DOCUMENT_GENERATION_STATUS.PENDING,
         attemptCount: 0,

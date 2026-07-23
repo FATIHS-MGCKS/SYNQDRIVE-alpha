@@ -208,7 +208,10 @@ export class BookingEligibilityRecheckService {
     publishedRevisionId?: string;
     actorUserId?: string | null;
   }): Promise<BookingEligibilityRecheckResult> {
-    const rentalCategoryId = await this.resolveRentalCategoryId(input.context.vehicleId);
+    const rentalCategoryId = await this.resolveRentalCategoryId(
+      input.context.organizationId,
+      input.context.vehicleId,
+    );
     const priorRulesHash = await this.decisions.getLatestConfirmRulesHash(
       input.context.organizationId,
       input.context.bookingId,
@@ -384,9 +387,12 @@ export class BookingEligibilityRecheckService {
     return status;
   }
 
-  private async resolveRentalCategoryId(vehicleId: string): Promise<string | null> {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
+  private async resolveRentalCategoryId(
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<string | null> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
       select: { rentalCategoryId: true },
     });
     return vehicle?.rentalCategoryId ?? null;

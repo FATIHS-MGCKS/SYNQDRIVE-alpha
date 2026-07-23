@@ -31,6 +31,7 @@ import { BookingEligibilityApprovalService } from './booking-eligibility-approva
 import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
+import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-key-scope.service';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     BookingEligibilityDecisionService,
     BookingEligibilityRecheckService,
     BookingEligibilityRecheckSchedulerService,
+    BookingForeignKeyScopeService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
@@ -81,6 +83,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     BookingEligibilityDecisionService,
     BookingEligibilityRecheckService,
     BookingEligibilityRecheckSchedulerService,
+    BookingForeignKeyScopeService,
   ],
 })
 export class BookingsModule {}

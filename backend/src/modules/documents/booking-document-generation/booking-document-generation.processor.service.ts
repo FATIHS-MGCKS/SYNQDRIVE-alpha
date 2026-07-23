@@ -53,7 +53,7 @@ export class BookingDocumentGenerationProcessorService {
         this.assertTenantPayload(job.organizationId, job.bookingId, payload);
       } catch (err) {
         const classified = classifyBookingDocumentGenerationError(err);
-        await this.repository.markFailedFinal(persistentJobId, classified.code, classified.message);
+        await this.repository.markFailedFinal(organizationId, persistentJobId, classified.code, classified.message);
         return 'failed_final';
       }
     }
@@ -65,6 +65,7 @@ export class BookingDocumentGenerationProcessorService {
 
     if (!this.generationEnabled) {
       await this.repository.markFailedFinal(
+        organizationId,
         persistentJobId,
         BOOKING_DOCUMENT_GENERATION_ERROR_CODE.GENERATION_DISABLED,
         'Document generation is disabled',
@@ -72,11 +73,14 @@ export class BookingDocumentGenerationProcessorService {
       return 'failed_final';
     }
 
-    const inProgress = await this.repository.markProcessing(persistentJobId);
+    const inProgress = await this.repository.markProcessing(organizationId, persistentJobId);
+    if (!inProgress) {
+      return 'failed_final';
+    }
 
     try {
       await this.executeJob(inProgress);
-      await this.repository.markSucceeded(persistentJobId);
+      await this.repository.markSucceeded(organizationId, persistentJobId);
       this.logger.log(
         `Booking document generation succeeded jobId=${persistentJobId} type=${inProgress.jobType} booking=${inProgress.bookingId}`,
       );
@@ -88,6 +92,7 @@ export class BookingDocumentGenerationProcessorService {
 
       if (classified.retryable && attemptCount < maxAttempts) {
         await this.repository.markFailedRetryable(
+          organizationId,
           persistentJobId,
           attemptCount,
           classified.code,
@@ -99,7 +104,7 @@ export class BookingDocumentGenerationProcessorService {
         return 'retry';
       }
 
-      await this.repository.markFailedFinal(persistentJobId, classified.code, classified.message);
+      await this.repository.markFailedFinal(organizationId, persistentJobId, classified.code, classified.message);
       this.logger.error(
         `Booking document generation failed final jobId=${persistentJobId} code=${classified.code} ${classified.message}`,
       );

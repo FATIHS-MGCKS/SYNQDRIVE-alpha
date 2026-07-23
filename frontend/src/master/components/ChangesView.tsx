@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-tenant-isolation-prompt13-2026-07-23',
+    version: '4.9.788',
+    title: 'Booking Production-Readiness — Tenant Isolation for Secondary Lookups (Prompt 13/34)',
+    summary: [
+      'BookingForeignKeyScopeService — zentrale org-scoped FK-Validierung und updateMany-Helfer.',
+      'Wizard-Create + BookingsService.create: assertBookingForeignKeys vor connect (Customer, Vehicle, Stationen).',
+      'Handover: Booking zuerst laden; Protokoll-Lookups mit organizationId; Station/Damage/Vehicle-Writes org-scoped.',
+      'Station-Enrichment-Reads in List/Detail/Today mit organizationId.',
+      'Booking-Updates (cancel, no-show, wizard, allowed-drivers) via updateMany + organizationId.',
+      'Document-Generation-Worker: markProcessing/Succeeded/Failed mit organizationId.',
+      'Einheitliche Not-Found-Response BOOKING_TENANT_SCOPE_NOT_FOUND ohne Cross-Tenant-Leak.',
+      'Migration: Composite-Indexes auf handover_protocols + allowed_drivers.',
+    ],
+    reason:
+      'Sekundäre Lookups (Stationen, Kunden, Fahrzeuge, Schäden, Jobs) dürfen keine fremden Mandanten-IDs verbinden oder über Fehlermeldungen Leaks erzeugen.',
+    previousBehavior:
+      'Teilweise id-only Lookups (station.findMany, vehicle.update, handover protocol findUnique vor Booking-Check); inkonsistente Fehlermeldungen.',
+    details:
+      'Backend: tenant-scope/booking-foreign-key-scope.service.ts; Fixes in bookings.service, bookings-handover.service, booking-wizard-draft, booking-allowed-drivers, booking-eligibility-recheck, booking-document-generation.repository; Migration 20260722300000; Doku: docs/architecture/booking-tenant-isolation-audit.md.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T22:45:00.000Z',
+  },
+  {
     id: 'rental-rules-post-remediation-audit-v49787-2026-07-23',
     version: '4.9.787',
     title: 'V4.9.787 — Rental Rules post-remediation audit (Prompt 34)',
