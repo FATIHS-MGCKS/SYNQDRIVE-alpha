@@ -21,6 +21,7 @@ import {
   SimulatedLineItem,
 } from './pricing-calculation.util';
 import { PricingMigrationService } from './pricing-migration.service';
+import { PRICING_ENGINE_VERSION } from './pricing-engine.constants';
 import { parseBookingInstant } from './tariff-instant.util';
 import {
   assignmentEffectiveAtFilter,
@@ -395,6 +396,138 @@ export class PricingService {
     );
   }
 
+  async findCurrentBookingPriceSnapshot(
+    orgId: string,
+    bookingId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const db = tx ?? this.prisma;
+    return db.bookingPriceSnapshot.findFirst({
+      where: { organizationId: orgId, bookingId, isCurrent: true },
+      include: { lineItems: { orderBy: { sortOrder: 'asc' } } },
+    });
+  }
+
+  async appendBookingPriceSnapshotRevision(input: {
+    organizationId: string;
+    bookingId: string;
+    quoteId?: string | null;
+    simulation: BookingPriceSimulation;
+    pricingInput?: BookingPricingInputDto;
+    calculatedAt?: Date | null;
+    tx?: Prisma.TransactionClient;
+  }) {
+    const db = input.tx ?? this.prisma;
+    const latest = await db.bookingPriceSnapshot.findFirst({
+      where: { organizationId: input.organizationId, bookingId: input.bookingId },
+      orderBy: { revision: 'desc' },
+      select: { revision: true },
+    });
+    const nextRevision = (latest?.revision ?? 0) + 1;
+
+    await db.bookingPriceSnapshot.updateMany({
+      where: {
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        isCurrent: true,
+      },
+      data: { isCurrent: false },
+    });
+
+    const resolved = input.simulation.resolvedDeposit ?? null;
+    const frozenDeposit = this.bookingDepositSnapshot.buildFrozenDeposit(resolved, null);
+    const metadataJson = this.buildSnapshotMetadata(input.simulation, input.calculatedAt);
+
+    const snapshot = await db.bookingPriceSnapshot.create({
+      data: {
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        revision: nextRevision,
+        isCurrent: true,
+        pricingQuoteId: input.quoteId ?? null,
+        priceBookId: input.simulation.priceBookId,
+        tariffGroupId: input.simulation.tariffGroupId,
+        tariffVersionId: input.simulation.tariffVersionId,
+        currency: input.simulation.currency,
+        taxRatePercent:
+          input.simulation.lineItems.find((li) => li.type === 'BASE_RENTAL')?.taxRatePercent ?? 19,
+        rentalDays: input.simulation.rentalDays,
+        includedKm: input.simulation.includedKm,
+        extraKmPriceCents: input.simulation.extraKmPriceCents,
+        depositAmountCents: input.simulation.depositAmountCents,
+        subtotalNetCents: input.simulation.subtotalNetCents,
+        taxAmountCents: input.simulation.taxAmountCents,
+        totalGrossCents: input.simulation.totalGrossCents,
+        totalDueNowCents: input.simulation.totalDueNowCents,
+        calculatedAt: input.calculatedAt ?? new Date(),
+        engineVersion: PRICING_ENGINE_VERSION,
+        metadataJson: metadataJson as unknown as Prisma.InputJsonValue,
+        pricingInputJson: {
+          ...(input.pricingInput ?? {}),
+          frozenDeposit,
+        } as Prisma.InputJsonValue,
+        pricingWarningsJson: input.simulation.warnings.length
+          ? (input.simulation.warnings as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        lineItems: {
+          create: input.simulation.lineItems.map((li) =>
+            this.lineItemCreate(input.organizationId, li),
+          ),
+        },
+      },
+      include: { lineItems: true },
+    });
+
+    const booking = await db.booking.findFirst({
+      where: { id: input.bookingId, organizationId: input.organizationId },
+      select: { customerId: true },
+    });
+    await this.bookingDepositSnapshot.syncBookingDepositFromSnapshot(
+      input.organizationId,
+      input.bookingId,
+      booking?.customerId ?? null,
+      db,
+    );
+
+    return { snapshot, simulation: input.simulation };
+  }
+
+  private buildSnapshotMetadata(
+    simulation: BookingPriceSimulation,
+    calculatedAt?: Date | null,
+  ): Record<string, unknown> {
+    const deposit = simulation.resolvedDeposit ?? simulation.pricingContext.resolvedDeposit;
+    return {
+      baseRental: simulation.lineItems.find((li) => li.type === 'BASE_RENTAL') ?? null,
+      rentalDays: simulation.rentalDays,
+      tariff: {
+        priceBookId: simulation.priceBookId,
+        tariffGroupId: simulation.tariffGroupId,
+        tariffVersionId: simulation.tariffVersionId,
+        versionNumber: simulation.pricingContext.versionNumber,
+      },
+      options: simulation.lineItems.filter(
+        (li) =>
+          li.type === 'EXTRA' || li.type === 'INSURANCE' || li.type === 'MILEAGE_PACKAGE',
+      ),
+      fees: simulation.lineItems.filter((li) => li.type === 'MANUAL_ADJUSTMENT'),
+      discounts: simulation.lineItems.filter((li) => li.type === 'DISCOUNT'),
+      taxes: simulation.lineItems.filter((li) => li.type === 'TAX'),
+      deposit: deposit
+        ? {
+            amountCents: deposit.amount,
+            currency: deposit.currency,
+            source: deposit.source,
+            ruleRevisionId: deposit.ruleRevisionId,
+          }
+        : null,
+      currency: simulation.currency,
+      rentalRuleRevisionId: deposit?.ruleRevisionId ?? null,
+      calculatedAt: (calculatedAt ?? new Date()).toISOString(),
+      engineVersion: PRICING_ENGINE_VERSION,
+    };
+  }
+
   async createBookingPriceSnapshotFromSimulation(
     orgId: string,
     bookingId: string,
@@ -402,59 +535,13 @@ export class PricingService {
     pricing?: BookingPricingInputDto,
     tx?: Prisma.TransactionClient,
   ) {
-    const db = tx ?? this.prisma;
-
-    await db.bookingPriceSnapshot.deleteMany({
-      where: { bookingId, organizationId: orgId },
-    });
-
-    const resolved = simulation.resolvedDeposit ?? null;
-    const frozenDeposit = this.bookingDepositSnapshot.buildFrozenDeposit(resolved, null);
-
-    const snapshot = await db.bookingPriceSnapshot.create({
-      data: {
-        organizationId: orgId,
-        bookingId,
-        priceBookId: simulation.priceBookId,
-        tariffGroupId: simulation.tariffGroupId,
-        tariffVersionId: simulation.tariffVersionId,
-        currency: simulation.currency,
-        taxRatePercent:
-          simulation.lineItems.find((li) => li.type === 'BASE_RENTAL')?.taxRatePercent ?? 19,
-        rentalDays: simulation.rentalDays,
-        includedKm: simulation.includedKm,
-        extraKmPriceCents: simulation.extraKmPriceCents,
-        depositAmountCents: simulation.depositAmountCents,
-        subtotalNetCents: simulation.subtotalNetCents,
-        taxAmountCents: simulation.taxAmountCents,
-        totalGrossCents: simulation.totalGrossCents,
-        totalDueNowCents: simulation.totalDueNowCents,
-        pricingInputJson: {
-          ...(pricing ?? {}),
-          frozenDeposit,
-        } as Prisma.InputJsonValue,
-        pricingWarningsJson: simulation.warnings.length
-          ? (simulation.warnings as unknown as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
-        lineItems: {
-          create: simulation.lineItems.map((li) => this.lineItemCreate(orgId, li)),
-        },
-      },
-      include: { lineItems: true },
-    });
-
-    const booking = await db.booking.findFirst({
-      where: { id: bookingId, organizationId: orgId },
-      select: { customerId: true },
-    });
-    await this.bookingDepositSnapshot.syncBookingDepositFromSnapshot(
-      orgId,
+    return this.appendBookingPriceSnapshotRevision({
+      organizationId: orgId,
       bookingId,
-      booking?.customerId ?? null,
-      db,
-    );
-
-    return { snapshot, simulation };
+      simulation,
+      pricingInput: pricing,
+      tx,
+    });
   }
 
   /** Sync legacy Booking columns from pricing simulation. */

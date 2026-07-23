@@ -31,6 +31,7 @@ import {
   PricingQuoteService,
   requireQuoteId,
 } from '@modules/pricing/pricing-quote.service';
+import { PricingQuoteApplicationService } from '@modules/pricing/pricing-quote-application.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
@@ -120,6 +121,7 @@ export class BookingsService {
     private readonly customerEligibilityService: CustomerEligibilityService,
     private readonly pricingService: PricingService,
     private readonly pricingQuoteService: PricingQuoteService,
+    private readonly pricingQuoteApplication: PricingQuoteApplicationService,
     private readonly stationValidation: StationValidationService,
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
@@ -302,57 +304,29 @@ export class BookingsService {
     const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
     const quoteId = requireQuoteId(anyData.quoteId);
 
-    const existingBookingId = await this.pricingQuoteService.findConsumedBookingId(
-      orgId,
-      quoteId,
-    );
-    if (existingBookingId) {
-      const existing = await this.prisma.booking.findFirst({
-        where: { id: existingBookingId, organizationId: orgId },
-      });
-      if (existing) {
-        return existing;
-      }
-    }
-
-    const { simulation, pricingInput: quotedPricingInput } =
-      await this.pricingQuoteService.consumeForBooking({
-        organizationId: orgId,
-        userId: options?.userId ?? null,
-        quoteId,
-        vehicleId,
-        pickupAt: startDate,
-        returnAt: endDate,
-        pricingInput,
-      });
-
-    const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
     const stationFields = await this.resolveBookingStationFields(
       orgId,
       await this.applyBookingStationDefaults(orgId, anyData, vehicleId),
     );
     const bookingData = this.stripBookingCreateScalars(data as Record<string, unknown>);
 
-    const booking = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.booking.create({
-        data: {
-          ...bookingData,
-          ...pricedFields,
-          ...this.stationFieldsToPrismaInput(stationFields, { forCreate: true }),
-          organization: { connect: { id: orgId } },
-        } as Prisma.BookingCreateInput,
-      });
-
-      await this.pricingQuoteService.markConsumed(tx, quoteId, orgId, created.id);
-      await this.pricingService.createBookingPriceSnapshotFromSimulation(
-        orgId,
-        created.id,
-        simulation,
-        quotedPricingInput,
-        tx,
-      );
-
-      return created;
+    const { booking } = await this.pricingQuoteApplication.createBookingWithQuote({
+      organizationId: orgId,
+      userId: options?.userId ?? null,
+      quoteId,
+      vehicleId,
+      pickupAt: startDate,
+      returnAt: endDate,
+      pricingInput,
+      createBooking: async (tx, pricedFields) =>
+        tx.booking.create({
+          data: {
+            ...bookingData,
+            ...pricedFields,
+            ...this.stationFieldsToPrismaInput(stationFields, { forCreate: true }),
+            organization: { connect: { id: orgId } },
+          } as Prisma.BookingCreateInput,
+        }),
     });
 
     try {
@@ -1927,20 +1901,21 @@ export class BookingsService {
         anyData.extrasJson !== undefined ||
         anyData.insuranceOptions !== undefined) &&
       !terminalStatuses.includes(existing.status);
+    const repriceQuoteId =
+      pricingRelevant && typeof anyData.quoteId === 'string'
+        ? anyData.quoteId.trim() || undefined
+        : undefined;
 
     const confirmedLikeStatuses: BookingStatus[] = ['CONFIRMED', 'ACTIVE'];
-    if (pricingRelevant && confirmedLikeStatuses.includes(existing.status)) {
-      const quoteId = anyData.quoteId as string | undefined;
-      if (!quoteId) {
-        throw new BadRequestException({
-          message:
-            'Confirmed bookings require a new pricing quote before vehicle, period, or pricing changes.',
-          code: 'PRICING_QUOTE_REQUIRED_FOR_REPRICE',
-        });
-      }
+    if (pricingRelevant && confirmedLikeStatuses.includes(existing.status) && !repriceQuoteId) {
+      throw new BadRequestException({
+        message:
+          'Confirmed bookings require a new pricing quote before vehicle, period, or pricing changes.',
+        code: 'PRICING_QUOTE_REQUIRED_FOR_REPRICE',
+      });
     }
 
-    if (pricingRelevant) {
+    if (pricingRelevant && !repriceQuoteId) {
       const simulation = await this.pricingService.simulateBookingPrice(orgId, {
         vehicleId: nextVehicleId,
         pickupAt: nextStart.toISOString(),
@@ -1995,9 +1970,25 @@ export class BookingsService {
     delete anyData.foreignTravelRequested;
     delete anyData.additionalDriverCount;
     delete anyData.expectedUpdatedAt;
+    delete anyData.quoteId;
 
-    const updated = confirmingTransition
-      ? await this.prisma.$transaction(async (tx) => {
+    let updated: Booking;
+    if (pricingRelevant && repriceQuoteId) {
+      const result = await this.pricingQuoteApplication.repriceBookingWithQuote({
+        organizationId: orgId,
+        userId: options?.userId ?? null,
+        bookingId: id,
+        quoteId: repriceQuoteId,
+        vehicleId: nextVehicleId,
+        pickupAt: nextStart,
+        returnAt: nextEnd,
+        pricingInput,
+        bookingUpdate: data as Prisma.BookingUpdateManyMutationInput,
+        expectedUpdatedAt: expectedVersion,
+      });
+      updated = result.booking;
+    } else if (confirmingTransition) {
+      updated = await this.prisma.$transaction(async (tx) => {
           const gateResult = await this.bookingEligibilityEnforcement.assertAllowed(
             enforcementContext,
             enforcementOptions,
@@ -2048,15 +2039,17 @@ export class BookingsService {
             });
           }
           return updatedBooking;
-        })
-      : await this.bookingConcurrency.optimisticUpdate(
+        });
+    } else {
+      updated = await this.bookingConcurrency.optimisticUpdate(
           orgId,
           id,
           expectedVersion,
           data as Prisma.BookingUpdateManyMutationInput,
         );
+    }
 
-    if (pricingRelevant) {
+    if (pricingRelevant && !repriceQuoteId) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {
         vehicleId: updated.vehicleId,
         pickupAt: updated.startDate,

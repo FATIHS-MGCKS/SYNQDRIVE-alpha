@@ -136,7 +136,11 @@ export class BookingRentalEligibilityService {
     let requiredDepositCurrency: string | null = rules.depositCurrency.value;
     if (input.bookingId) {
       const priceSnapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-        where: { organizationId: input.organizationId, bookingId: input.bookingId },
+        where: {
+          organizationId: input.organizationId,
+          bookingId: input.bookingId,
+          isCurrent: true,
+        },
         select: { depositAmountCents: true, currency: true },
       });
       if (priceSnapshot?.depositAmountCents != null) {

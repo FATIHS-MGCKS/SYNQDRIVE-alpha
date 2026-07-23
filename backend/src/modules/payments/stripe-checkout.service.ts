@@ -135,6 +135,7 @@ export class StripeCheckoutService {
       where: {
         organizationId: input.organizationId,
         bookingId: input.bookingId,
+        isCurrent: true,
       },
       include: { lineItems: { orderBy: { sortOrder: 'asc' } } },
     });

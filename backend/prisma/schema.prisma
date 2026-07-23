@@ -5870,7 +5870,10 @@ model VehicleTariffAssignment {
 model BookingPriceSnapshot {
   id                  String   @id @default(uuid())
   organizationId      String   @map("organization_id")
-  bookingId           String   @unique @map("booking_id")
+  bookingId           String   @map("booking_id")
+  revision            Int      @default(1)
+  isCurrent           Boolean  @default(true) @map("is_current")
+  pricingQuoteId      String?  @map("pricing_quote_id")
   priceBookId         String?  @map("price_book_id")
   tariffGroupId       String?  @map("tariff_group_id")
   tariffVersionId     String?  @map("tariff_version_id")
@@ -5886,6 +5889,9 @@ model BookingPriceSnapshot {
   totalDueNowCents    Int?     @map("total_due_now_cents")
   pricingInputJson    Json?    @map("pricing_input_json")
   pricingWarningsJson Json?    @map("pricing_warnings_json")
+  calculatedAt        DateTime? @map("calculated_at")
+  engineVersion       String?  @map("engine_version")
+  metadataJson        Json?    @map("metadata_json")
   createdAt           DateTime @default(now()) @map("created_at")
 
   organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -5894,8 +5900,11 @@ model BookingPriceSnapshot {
   tariffGroup   PriceTariffGroup?      @relation(fields: [tariffGroupId], references: [id], onDelete: SetNull)
   tariffVersion PriceTariffVersion?    @relation(fields: [tariffVersionId], references: [id], onDelete: SetNull)
   lineItems     BookingPriceLineItem[]
+  invoices      OrgInvoice[]
 
+  @@unique([bookingId, revision])
   @@index([organizationId])
+  @@index([organizationId, bookingId, isCurrent])
   @@map("booking_price_snapshots")
 }
 
@@ -6953,6 +6962,7 @@ model OrgInvoice {
   vendorId             String?          @map("vendor_id")
   vendorName           String?          @map("vendor_name")
   bookingId            String?          @map("booking_id")
+  bookingPriceSnapshotId String?          @map("booking_price_snapshot_id")
   vehicleId            String?          @map("vehicle_id")
   title                String
   description          String?
@@ -6987,6 +6997,7 @@ model OrgInvoice {
   bookingPaymentRequests BookingPaymentRequest[]
   vendor                 Vendor?                    @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   organization           Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingPriceSnapshot   BookingPriceSnapshot?      @relation(fields: [bookingPriceSnapshotId], references: [id], onDelete: SetNull)
   generatedDocument      GeneratedDocument?         @relation("InvoiceActiveDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
   documents              GeneratedDocument[]        @relation("InvoiceDocuments")
   outboundEmails         OutboundEmail[]
@@ -6997,6 +7008,7 @@ model OrgInvoice {
   @@index([customerId])
   @@index([vendorId])
   @@index([bookingId])
+  @@index([bookingPriceSnapshotId])
   @@index([status])
   @@index([type])
   @@index([invoiceDate])

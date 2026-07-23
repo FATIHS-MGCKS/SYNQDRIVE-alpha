@@ -37,7 +37,7 @@ export class BookingDepositSnapshotService {
   ): Promise<void> {
     const db = tx ?? this.prisma;
     const snapshot = await db.bookingPriceSnapshot.findFirst({
-      where: { organizationId, bookingId },
+      where: { organizationId, bookingId, isCurrent: true },
       select: { depositAmountCents: true, currency: true, pricingInputJson: true },
     });
     if (!snapshot || snapshot.depositAmountCents <= 0) return;
@@ -90,7 +90,7 @@ export class BookingDepositSnapshotService {
   ): Promise<FrozenBookingDeposit | null> {
     const db = tx ?? this.prisma;
     const snapshot = await db.bookingPriceSnapshot.findFirst({
-      where: { organizationId, bookingId },
+      where: { organizationId, bookingId, isCurrent: true },
       select: { id: true, pricingInputJson: true, depositAmountCents: true, currency: true },
     });
     if (!snapshot) return null;

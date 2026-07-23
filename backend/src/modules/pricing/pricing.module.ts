@@ -5,6 +5,7 @@ import { PricingService } from './pricing.service';
 import { PriceTariffsService } from './price-tariffs.service';
 import { PricingMigrationService } from './pricing-migration.service';
 import { PricingQuoteService } from './pricing-quote.service';
+import { PricingQuoteApplicationService } from './pricing-quote-application.service';
 import { PricingIntegrityAuditService } from './pricing-integrity-audit.service';
 
 @Module({
@@ -15,6 +16,7 @@ import { PricingIntegrityAuditService } from './pricing-integrity-audit.service'
     PriceTariffsService,
     PricingMigrationService,
     PricingQuoteService,
+    PricingQuoteApplicationService,
     PricingIntegrityAuditService,
   ],
   exports: [
@@ -22,6 +24,7 @@ import { PricingIntegrityAuditService } from './pricing-integrity-audit.service'
     PriceTariffsService,
     PricingMigrationService,
     PricingQuoteService,
+    PricingQuoteApplicationService,
     PricingIntegrityAuditService,
   ],
 })

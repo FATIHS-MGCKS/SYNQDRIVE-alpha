@@ -439,7 +439,7 @@ export class BookingPaymentRefundService {
 
   private async loadDepositInfo(bookingId: string): Promise<number> {
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { bookingId },
+      where: { bookingId, isCurrent: true },
       select: { depositAmountCents: true },
     });
     return snapshot?.depositAmountCents ?? 0;

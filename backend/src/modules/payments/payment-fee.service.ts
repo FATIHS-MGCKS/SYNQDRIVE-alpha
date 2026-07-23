@@ -32,7 +32,7 @@ export class PaymentFeeService {
     policyOverride?: Partial<PaymentFeePolicyConfig>,
   ): Promise<PaymentRequestFeeSnapshot> {
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { organizationId, bookingId },
+      where: { organizationId, bookingId, isCurrent: true },
       include: { lineItems: { orderBy: { sortOrder: 'asc' } } },
     });
 

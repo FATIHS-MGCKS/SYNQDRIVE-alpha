@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-atomic-pricing-prompt15-2026-07-23',
+    version: '4.9.790',
+    title: 'Booking Production-Readiness — Atomic Pricing / Quote / Snapshot (Prompt 15/34)',
+    summary: [
+      'PricingQuoteApplicationService — Quote laden/sperren, Booking erstellen/aktualisieren, Snapshot-Revision und Quote-Verbrauch in einer DB-Transaktion.',
+      'SELECT … FOR UPDATE auf pricing_quotes; Clientpreis wird nie vertrauenswürdig behandelt.',
+      'BookingPriceSnapshot append-only mit revision + isCurrent; alte Revisionen werden nicht überschrieben.',
+      'metadataJson: Basispreis, Mietdauer, Tarif, Optionen, Gebühren, Rabatte, Steuern, Kaution, Währung, Rental-Rule-Version, calculatedAt, engineVersion.',
+      'OrgInvoice.bookingPriceSnapshotId verweist auf konkrete Snapshot-Revision.',
+      'Idempotenz bei erneutem Quote-Verbrauch für dieselbe Buchung; Concurrency über markConsumed updateMany.',
+      'Tests: Doppelverbrauch, abgelaufene/manipulierte Quote, Rollback bei Booking-/Snapshot-Fehler, Parallelzugriff.',
+    ],
+    reason:
+      'Booking-Erstellung und preisrelevante Updates dürfen keinen Teilzustand hinterlassen — Quote, Booking und Price Snapshot müssen atomar sein.',
+    previousBehavior:
+      'Quote-Verbrauch teilweise außerhalb der Transaktion; Snapshots wurden per deleteMany ersetzt; Rechnungen ohne Snapshot-FK.',
+    details:
+      'Backend: pricing-quote-application.service.ts, pricing-quote.service lockAndPrepareQuote, pricing.service appendBookingPriceSnapshotRevision, Migration 20260723300000; Wiring in bookings.service, booking-wizard-draft, invoices.service; Doku: docs/architecture/booking-atomic-pricing.md.',
+    affectsArchitecture: true,
+    module: 'Bookings / Pricing',
+    createdAt: '2026-07-24T10:00:00.000Z',
+  },
+  {
     id: 'booking-optimistic-concurrency-prompt14-2026-07-23',
     version: '4.9.789',
     title: 'Booking Production-Readiness — Optimistic Concurrency (Prompt 14/34)',

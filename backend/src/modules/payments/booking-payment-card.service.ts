@@ -63,7 +63,7 @@ export class BookingPaymentCardService {
         purpose: BookingPaymentPurpose.RENTAL_PAYMENT,
       }),
       this.prisma.bookingPriceSnapshot.findFirst({
-        where: { organizationId, bookingId },
+        where: { organizationId, bookingId, isCurrent: true },
         select: { depositAmountCents: true },
       }),
       this.prisma.orgInvoice.findFirst({

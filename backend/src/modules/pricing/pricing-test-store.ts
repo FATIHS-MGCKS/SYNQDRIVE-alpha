@@ -85,11 +85,25 @@ type SnapshotRow = {
   id: string;
   organizationId: string;
   bookingId: string;
+  revision: number;
+  isCurrent: boolean;
+  pricingQuoteId: string | null;
   priceBookId: string | null;
   tariffGroupId: string | null;
   tariffVersionId: string | null;
   currency: string;
   depositAmountCents: number;
+  subtotalNetCents?: number;
+  taxAmountCents?: number;
+  totalGrossCents?: number;
+  totalDueNowCents?: number;
+  rentalDays?: number;
+  taxRatePercent?: number;
+  includedKm?: number;
+  extraKmPriceCents?: number;
+  calculatedAt?: Date;
+  engineVersion?: string;
+  metadataJson?: Record<string, unknown> | null;
   lineItems: Array<Record<string, unknown>>;
   [key: string]: unknown;
 };
@@ -267,6 +281,8 @@ export function createPricingTestStore(
     simulatePublishConflict: false,
     simulateArchiveFailure: false,
   };
+
+  let txQueue: Promise<unknown> = Promise.resolve();
 
   const includeVersion = (version: VersionRow) => {
     const rate = rates.find((r) => r.tariffVersionId === version.id) ?? null;
@@ -723,6 +739,15 @@ export function createPricingTestStore(
           ) ?? null
         );
       }),
+      findFirstOrThrow: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        const row = bookings.find(
+          (b) =>
+            b.id === where.id &&
+            (!where.organizationId || b.organizationId === where.organizationId),
+        );
+        if (!row) throw new Error('booking not found');
+        return row;
+      }),
       create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
         const row = {
           id: (data.id as string) ?? nextId('booking'),
@@ -734,10 +759,35 @@ export function createPricingTestStore(
           status: (data.status as string) ?? 'PENDING',
           totalPriceCents: (data.totalPriceCents as number) ?? 0,
           currency: (data.currency as string) ?? 'EUR',
+          updatedAt: new Date(),
         };
         bookings.push(row);
         return row;
       }),
+      updateMany: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>;
+          data: Record<string, unknown>;
+        }) => {
+          let count = 0;
+          for (const row of bookings) {
+            if (where.id && row.id !== where.id) continue;
+            if (where.organizationId && row.organizationId !== where.organizationId) continue;
+            if (
+              where.updatedAt &&
+              (row as { updatedAt?: Date }).updatedAt !== where.updatedAt
+            ) {
+              continue;
+            }
+            Object.assign(row, data);
+            count += 1;
+          }
+          return { count };
+        },
+      ),
     },
     bookingDeposit: {
       findUnique: jest.fn().mockResolvedValue(null),
@@ -747,15 +797,77 @@ export function createPricingTestStore(
       findMany: jest.fn().mockResolvedValue([]),
     },
     bookingPriceSnapshot: {
-      findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
-        return (
-          snapshots.find(
-            (row) =>
-              row.bookingId === where.bookingId &&
-              row.organizationId === where.organizationId,
-          ) ?? null
-        );
-      }),
+      findFirst: jest.fn(
+        async ({
+          where,
+          orderBy,
+          select,
+          include,
+        }: {
+          where: Record<string, unknown>;
+          orderBy?: { revision?: 'asc' | 'desc' };
+          select?: Record<string, boolean>;
+          include?: unknown;
+        }) => {
+          let matches = snapshots.filter((row) => {
+            if (where.bookingId && row.bookingId !== where.bookingId) return false;
+            if (where.organizationId && row.organizationId !== where.organizationId) return false;
+            if (where.isCurrent !== undefined && row.isCurrent !== where.isCurrent) return false;
+            return true;
+          });
+          if (orderBy?.revision) {
+            matches = [...matches].sort((a, b) =>
+              orderBy.revision === 'desc' ? b.revision - a.revision : a.revision - b.revision,
+            );
+          } else if (where.isCurrent === undefined) {
+            const current = matches.filter((row) => row.isCurrent);
+            if (current.length > 0) matches = current;
+          }
+          const row = matches[0] ?? null;
+          if (!row) return null;
+          if (select) {
+            const picked: Record<string, unknown> = {};
+            for (const key of Object.keys(select)) {
+              if (select[key]) picked[key] = row[key];
+            }
+            return picked;
+          }
+          return include ? { ...row, lineItems: row.lineItems } : row;
+        },
+      ),
+      updateMany: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>;
+          data: Partial<SnapshotRow>;
+        }) => {
+          let count = 0;
+          for (const row of snapshots) {
+            if (where.organizationId && row.organizationId !== where.organizationId) continue;
+            if (where.bookingId && row.bookingId !== where.bookingId) continue;
+            if (where.isCurrent !== undefined && row.isCurrent !== where.isCurrent) continue;
+            Object.assign(row, data);
+            count += 1;
+          }
+          return { count };
+        },
+      ),
+      update: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: Partial<SnapshotRow>;
+        }) => {
+          const row = snapshots.find((s) => s.id === where.id);
+          if (!row) throw new Error('snapshot not found');
+          Object.assign(row, data);
+          return row;
+        },
+      ),
       deleteMany: jest.fn(async ({ where }: { where: { bookingId: string } }) => {
         const before = snapshots.length;
         const kept = snapshots.filter((s) => s.bookingId !== where.bookingId);
@@ -768,12 +880,25 @@ export function createPricingTestStore(
           id: nextId('snapshot'),
           organizationId: data.organizationId as string,
           bookingId: data.bookingId as string,
+          revision: (data.revision as number) ?? 1,
+          isCurrent: (data.isCurrent as boolean) ?? true,
+          pricingQuoteId: (data.pricingQuoteId as string | null) ?? null,
           priceBookId: (data.priceBookId as string) ?? null,
           tariffGroupId: (data.tariffGroupId as string) ?? null,
           tariffVersionId: (data.tariffVersionId as string) ?? null,
           currency: data.currency as string,
           depositAmountCents: data.depositAmountCents as number,
+          subtotalNetCents: (data.subtotalNetCents as number) ?? 0,
+          taxAmountCents: (data.taxAmountCents as number) ?? 0,
           totalGrossCents: (data.totalGrossCents as number) ?? 0,
+          totalDueNowCents: (data.totalDueNowCents as number) ?? 0,
+          rentalDays: (data.rentalDays as number) ?? 1,
+          taxRatePercent: (data.taxRatePercent as number) ?? 19,
+          includedKm: (data.includedKm as number) ?? 0,
+          extraKmPriceCents: (data.extraKmPriceCents as number) ?? 0,
+          calculatedAt: (data.calculatedAt as Date) ?? new Date(),
+          engineVersion: (data.engineVersion as string) ?? 'pricing-engine-v1',
+          metadataJson: (data.metadataJson as Record<string, unknown>) ?? null,
           pricingInputJson: (data.pricingInputJson as Record<string, unknown>) ?? null,
           lineItems: [],
           ...data,
@@ -1014,27 +1139,78 @@ export function createPricingTestStore(
     organization: {
       findFirst: jest.fn(async () => ({ timezone: 'Europe/Berlin' })),
     },
+    $queryRaw: jest.fn(async (_strings: TemplateStringsArray, ...values: unknown[]) => {
+      const quoteId = values[0] as string;
+      const orgId = values[1] as string;
+      const row = quotes.find((q) => q.id === quoteId && q.organizationId === orgId);
+      return row ? [row] : [];
+    }),
     $transaction: jest.fn(
       async (
         fn: (tx: Record<string, unknown>) => Promise<unknown>,
         _options?: { isolationLevel?: unknown },
       ) => {
-        const snapshot = {
-          versions: versions.map((v) => ({ ...v })),
-          rates: rates.map((r) => ({ ...r })),
-          quotes: quotes.map((q) => ({ ...q })),
+        const run = async () => {
+          const snapshot = {
+            versions: versions.map((v) => ({ ...v })),
+            rates: rates.map((r) => ({ ...r })),
+            quotes: quotes.map((q) => ({ ...q })),
+            bookings: bookings.map((b) => ({ ...b })),
+            snapshots: snapshots.map((s) => ({ ...s, lineItems: [...s.lineItems] })),
+            bookingLineItems: bookingLineItems.map((li) => ({ ...li })),
+          };
+          try {
+            return await fn(prisma);
+          } catch (error) {
+            versions.length = 0;
+            versions.push(...snapshot.versions);
+            rates.length = 0;
+            rates.push(...snapshot.rates);
+
+            const snapBookingIds = new Set(snapshot.bookings.map((b) => b.id));
+            const newBookingIds = bookings
+              .filter((b) => !snapBookingIds.has(b.id))
+              .map((b) => b.id);
+            for (let i = bookings.length - 1; i >= 0; i -= 1) {
+              if (!snapBookingIds.has(bookings[i].id)) {
+                bookings.splice(i, 1);
+              }
+            }
+
+            for (let i = snapshots.length - 1; i >= 0; i -= 1) {
+              if (newBookingIds.includes(snapshots[i].bookingId)) {
+                snapshots.splice(i, 1);
+              }
+            }
+
+            const snapLineItemIds = new Set(snapshot.bookingLineItems.map((li) => li.id));
+            for (let i = bookingLineItems.length - 1; i >= 0; i -= 1) {
+              if (!snapLineItemIds.has(bookingLineItems[i].id)) {
+                bookingLineItems.splice(i, 1);
+              }
+            }
+
+            for (const saved of snapshot.quotes) {
+              const idx = quotes.findIndex((q) => q.id === saved.id);
+              if (idx < 0) continue;
+              const current = quotes[idx];
+              if (saved.status === 'ACTIVE' && current.status === 'CONSUMED') {
+                const consumedInThisTx =
+                  current.consumedByBookingId &&
+                  newBookingIds.includes(current.consumedByBookingId);
+                if (consumedInThisTx) {
+                  Object.assign(quotes[idx], saved);
+                }
+                continue;
+              }
+              Object.assign(quotes[idx], saved);
+            }
+            throw error;
+          }
         };
-        try {
-          return await fn(prisma);
-        } catch (error) {
-          versions.length = 0;
-          versions.push(...snapshot.versions);
-          rates.length = 0;
-          rates.push(...snapshot.rates);
-          quotes.length = 0;
-          quotes.push(...snapshot.quotes);
-          throw error;
-        }
+        const chained = txQueue.then(run, run);
+        txQueue = chained.catch(() => undefined);
+        return chained;
       },
     ),
   };
@@ -1058,6 +1234,7 @@ export function createPricingTestStore(
     assignments,
     snapshots,
     quotes,
+    bookings,
     mileagePackages,
     insuranceOptions,
     extraOptions,

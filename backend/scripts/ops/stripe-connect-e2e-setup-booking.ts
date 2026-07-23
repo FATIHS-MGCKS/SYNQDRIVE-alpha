@@ -191,7 +191,7 @@ async function main() {
     const feeSnapshot = await feeService.buildFeeSnapshotForBooking(ORG_ID, bookingId);
 
     const snapshot = await prisma.bookingPriceSnapshot.findFirst({
-      where: { organizationId: ORG_ID, bookingId },
+      where: { organizationId: ORG_ID, bookingId, isCurrent: true },
     });
 
     const lineItems = snapshot

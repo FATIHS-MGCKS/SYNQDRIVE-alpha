@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, PricingQuoteStatus } from '@prisma/client';
+import { Prisma, PricingQuote, PricingQuoteStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { BookingPricingInputDto } from './dto';
 import type { BookingPriceSimulation } from './pricing.service';
@@ -14,6 +14,10 @@ import {
   instantsEqual,
   pricingInputsEqual,
 } from './pricing-quote-integrity.util';
+import {
+  PRICING_ENGINE_VERSION,
+  PRICING_QUOTE_ATOMIC_ERROR_CODES,
+} from './pricing-engine.constants';
 import {
   PRICING_QUOTE_STALE_MESSAGE,
   StoredPricingQuotePayload,
@@ -137,19 +141,6 @@ export class PricingQuoteService {
   async consumeForBooking(
     input: ConsumePricingQuoteInput,
   ): Promise<{ simulation: BookingPriceSimulation; pricingInput: BookingPricingInputDto }> {
-    const existingBookingId = await this.findConsumedBookingId(
-      input.organizationId,
-      input.quoteId,
-    );
-    if (existingBookingId) {
-      throw new ConflictException({
-        message: 'Diese Preisquote wurde bereits für eine Buchung verwendet',
-        code: 'PRICING_QUOTE_ALREADY_CONSUMED',
-        quoteId: input.quoteId,
-        bookingId: existingBookingId,
-      });
-    }
-
     const quote = await this.prisma.pricingQuote.findFirst({
       where: { id: input.quoteId, organizationId: input.organizationId },
     });
@@ -160,7 +151,113 @@ export class PricingQuoteService {
         quoteId: input.quoteId,
       });
     }
+    if (quote.status === PricingQuoteStatus.ACTIVE && quote.expiresAt <= new Date()) {
+      await this.prisma.pricingQuote.update({
+        where: { id: quote.id },
+        data: { status: PricingQuoteStatus.EXPIRED },
+      });
+      quote.status = PricingQuoteStatus.EXPIRED;
+    }
+    this.verifyQuoteIntegrity(quote);
+    this.assertQuoteConsumable(quote, input);
+    await this.assertTariffStillMatchesQuote(input.organizationId, quote, input);
+    const payload = this.decodeStoredQuote(quote);
+    return {
+      simulation: payload.simulation,
+      pricingInput: quote.pricingInputJson as BookingPricingInputDto,
+    };
+  }
 
+  async lockAndPrepareQuote(
+    tx: Prisma.TransactionClient,
+    input: ConsumePricingQuoteInput,
+    options?: { allowConsumedForBookingId?: string },
+  ): Promise<{
+    quote: PricingQuote;
+    simulation: BookingPriceSimulation;
+    pricingInput: BookingPricingInputDto;
+    idempotentBookingId: string | null;
+  }> {
+    const rows = await tx.$queryRaw<PricingQuote[]>`
+      SELECT *
+      FROM pricing_quotes
+      WHERE id = ${input.quoteId}::uuid
+        AND organization_id = ${input.organizationId}::uuid
+      FOR UPDATE
+    `;
+    const quote = rows[0];
+    if (!quote) {
+      throw new NotFoundException({
+        message: 'Preisquote nicht gefunden',
+        code: 'PRICING_QUOTE_NOT_FOUND',
+        quoteId: input.quoteId,
+      });
+    }
+
+    if (quote.status === PricingQuoteStatus.CONSUMED && quote.consumedByBookingId) {
+      if (
+        options?.allowConsumedForBookingId &&
+        quote.consumedByBookingId === options.allowConsumedForBookingId
+      ) {
+        const payload = this.decodeStoredQuote(quote);
+        return {
+          quote,
+          simulation: payload.simulation,
+          pricingInput: quote.pricingInputJson as BookingPricingInputDto,
+          idempotentBookingId: quote.consumedByBookingId,
+        };
+      }
+      throw new ConflictException({
+        message: 'Diese Preisquote wurde bereits für eine Buchung verwendet',
+        code: 'PRICING_QUOTE_ALREADY_CONSUMED',
+        quoteId: input.quoteId,
+        bookingId: quote.consumedByBookingId,
+      });
+    }
+
+    this.verifyQuoteIntegrity(quote);
+    this.assertQuoteConsumable(quote, input);
+    await this.assertTariffStillMatchesQuote(input.organizationId, quote, input);
+
+    const payload = this.decodeStoredQuote(quote);
+    return {
+      quote,
+      simulation: payload.simulation,
+      pricingInput: quote.pricingInputJson as BookingPricingInputDto,
+      idempotentBookingId: null,
+    };
+  }
+
+  private verifyQuoteIntegrity(quote: PricingQuote): void {
+    const totals = quote.totalsJson as unknown as PricingQuoteTotals;
+    const expected = buildQuoteIntegrityHash({
+      organizationId: quote.organizationId,
+      vehicleId: quote.vehicleId,
+      pickupAt: quote.pickupAt.toISOString(),
+      returnAt: quote.returnAt.toISOString(),
+      tariffVersionId: quote.tariffVersionId,
+      currency: quote.currency,
+      pricingInput: canonicalPricingInput(quote.pricingInputJson as BookingPricingInputDto),
+      totals: {
+        subtotalNetCents: totals.subtotalNetCents,
+        taxAmountCents: totals.taxAmountCents,
+        totalGrossCents: totals.totalGrossCents,
+        depositAmountCents: totals.depositAmountCents,
+      },
+    });
+    if (expected !== quote.integrityHash) {
+      throw new ConflictException({
+        message: 'Preisquote ist manipuliert oder beschädigt',
+        code: PRICING_QUOTE_ATOMIC_ERROR_CODES.QUOTE_TAMPERED,
+        quoteId: quote.id,
+      });
+    }
+  }
+
+  private assertQuoteConsumable(
+    quote: PricingQuote,
+    input: ConsumePricingQuoteInput,
+  ): void {
     if (quote.status === PricingQuoteStatus.CONSUMED) {
       throw new ConflictException({
         message: 'Diese Preisquote wurde bereits verwendet',
@@ -171,12 +268,6 @@ export class PricingQuoteService {
     }
 
     if (quote.status === PricingQuoteStatus.EXPIRED || quote.expiresAt <= new Date()) {
-      if (quote.status === PricingQuoteStatus.ACTIVE) {
-        await this.prisma.pricingQuote.update({
-          where: { id: quote.id },
-          data: { status: PricingQuoteStatus.EXPIRED },
-        });
-      }
       throw new ConflictException({
         message: PRICING_QUOTE_STALE_MESSAGE,
         code: 'PRICING_QUOTE_EXPIRED',
@@ -201,7 +292,10 @@ export class PricingQuoteService {
       });
     }
 
-    if (!instantsEqual(quote.pickupAt, input.pickupAt) || !instantsEqual(quote.returnAt, input.returnAt)) {
+    if (
+      !instantsEqual(quote.pickupAt, input.pickupAt) ||
+      !instantsEqual(quote.returnAt, input.returnAt)
+    ) {
       throw new ConflictException({
         message: PRICING_QUOTE_STALE_MESSAGE,
         code: 'PRICING_QUOTE_PERIOD_MISMATCH',
@@ -217,14 +311,6 @@ export class PricingQuoteService {
         quoteId: input.quoteId,
       });
     }
-
-    await this.assertTariffStillMatchesQuote(input.organizationId, quote, input);
-
-    const payload = this.decodeStoredQuote(quote);
-    return {
-      simulation: payload.simulation,
-      pricingInput: storedPricingInput,
-    };
   }
 
   async markConsumed(

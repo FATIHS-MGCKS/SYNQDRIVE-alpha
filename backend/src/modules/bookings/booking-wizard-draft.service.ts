@@ -18,6 +18,7 @@ import {
   PricingQuoteService,
   requireQuoteId,
 } from '@modules/pricing/pricing-quote.service';
+import { PricingQuoteApplicationService } from '@modules/pricing/pricing-quote-application.service';
 import { assertValidBookingWindow } from './booking-conflict.util';
 import {
   isWizardDraftBooking,
@@ -65,6 +66,7 @@ export class BookingWizardDraftService {
     private readonly bookingsService: BookingsService,
     private readonly pricingService: PricingService,
     private readonly pricingQuoteService: PricingQuoteService,
+    private readonly pricingQuoteApplication: PricingQuoteApplicationService,
     private readonly bundleService: BookingDocumentBundleService,
     private readonly generatedDocuments: GeneratedDocumentsService,
     private readonly invoicesService: InvoicesService,
@@ -166,37 +168,17 @@ export class BookingWizardDraftService {
       return this.refreshDraftBundle(orgId, bookingId, options?.userId ?? null, booking);
     }
 
-    const { simulation, pricingInput: quotedPricingInput } =
-      await this.pricingQuoteService.consumeForBooking({
-        organizationId: orgId,
-        userId: options?.userId ?? null,
-        quoteId,
-        vehicleId: booking.vehicleId,
-        pickupAt: booking.startDate,
-        returnAt: booking.endDate,
-        pricingInput,
-      });
-
-    const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
-
-    await this.prisma.$transaction(async (tx) => {
-      if (currentQuote) {
-        await this.pricingQuoteService.releaseQuoteFromWizardDraft(tx, orgId, bookingId);
-      }
-      await this.foreignKeyScope.updateBookingScoped(
-        orgId,
-        bookingId,
-        pricedFields as never,
-        tx,
-      );
-      await this.pricingQuoteService.markConsumed(tx, quoteId, orgId, bookingId);
-      await this.pricingService.createBookingPriceSnapshotFromSimulation(
-        orgId,
-        bookingId,
-        simulation,
-        quotedPricingInput,
-        tx,
-      );
+    await this.pricingQuoteApplication.repriceBookingWithQuote({
+      organizationId: orgId,
+      userId: options?.userId ?? null,
+      bookingId,
+      quoteId,
+      vehicleId: booking.vehicleId,
+      pickupAt: booking.startDate,
+      returnAt: booking.endDate,
+      pricingInput,
+      bookingUpdate: {},
+      releasePreviousQuote: !!currentQuote,
     });
 
     await this.regeneratePricingDocuments(orgId, bookingId, options?.userId ?? null);

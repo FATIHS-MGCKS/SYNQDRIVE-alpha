@@ -121,7 +121,11 @@ export class BookingPaymentRequestService {
     }
 
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { organizationId: input.organizationId, bookingId: input.bookingId },
+      where: {
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        isCurrent: true,
+      },
       include: { lineItems: { orderBy: { sortOrder: 'asc' } } },
     });
     if (!snapshot) {
@@ -318,7 +322,7 @@ export class BookingPaymentRequestService {
 
   private async loadDepositInfo(bookingId: string): Promise<number> {
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { bookingId },
+      where: { bookingId, isCurrent: true },
       select: { depositAmountCents: true },
     });
     return snapshot?.depositAmountCents ?? 0;

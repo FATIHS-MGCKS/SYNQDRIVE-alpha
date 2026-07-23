@@ -455,6 +455,7 @@ export class InvoicesService {
         vendorId: data.vendorId,
         vendorName,
         bookingId: data.bookingId,
+        bookingPriceSnapshotId: data.bookingPriceSnapshotId,
         vehicleId: data.vehicleId,
         title: data.title,
         description: data.description,
@@ -809,7 +810,7 @@ export class InvoicesService {
     }
 
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { bookingId: booking.id, organizationId: orgId },
+      where: { bookingId: booking.id, organizationId: orgId, isCurrent: true },
       include: { lineItems: { orderBy: { sortOrder: 'asc' } } },
     });
 
@@ -869,6 +870,7 @@ export class InvoicesService {
       type: 'OUTGOING_BOOKING',
       customerId: booking.customerId,
       bookingId: booking.id,
+      bookingPriceSnapshotId: snapshot?.id,
       vehicleId: booking.vehicleId,
       title: `Buchungsrechnung ${invoiceBookingRef(booking.id)}`,
       description: `Mietrechnung für Buchungszeitraum ${booking.startDate.toLocaleDateString('de-DE')} – ${booking.endDate.toLocaleDateString('de-DE')}`,

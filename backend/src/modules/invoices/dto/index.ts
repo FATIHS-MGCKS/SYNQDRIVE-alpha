@@ -65,6 +65,10 @@ export class CreateInvoiceDto {
   bookingId?: string;
 
   @IsOptional()
+  @IsString()
+  bookingPriceSnapshotId?: string;
+
+  @IsOptional()
   @IsUUID()
   vehicleId?: string;
 

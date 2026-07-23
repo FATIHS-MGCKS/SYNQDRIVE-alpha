@@ -1042,7 +1042,7 @@ export class BookingDocumentBundleService {
     if (existing) return existing;
 
     const priceSnapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { organizationId: orgId, bookingId: booking.id },
+      where: { organizationId: orgId, bookingId: booking.id, isCurrent: true },
       select: { depositAmountCents: true, currency: true },
     });
 

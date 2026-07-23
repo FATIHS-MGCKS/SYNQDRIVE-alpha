@@ -58,7 +58,11 @@ export class ConnectPaymentAuditService {
 
       if (request.commissionableAmountCents != null && request.amountCents < request.commissionableAmountCents) {
         const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-          where: { bookingId: request.bookingId, organizationId: request.organizationId },
+          where: {
+            bookingId: request.bookingId,
+            organizationId: request.organizationId,
+            isCurrent: true,
+          },
           select: { depositAmountCents: true },
         });
         if (snapshot?.depositAmountCents && snapshot.depositAmountCents > 0) {

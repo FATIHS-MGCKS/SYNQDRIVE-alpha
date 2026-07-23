@@ -59,7 +59,7 @@ export class BookingWizardCheckoutContextService {
     }
 
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { organizationId: orgId, bookingId },
+      where: { organizationId: orgId, bookingId, isCurrent: true },
     });
 
     let onlineAmountCents = 0;
@@ -176,7 +176,7 @@ export class BookingWizardCheckoutContextService {
     }
 
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
-      where: { organizationId: orgId, bookingId },
+      where: { organizationId: orgId, bookingId, isCurrent: true },
     });
     const paymentRequestPossible = !!snapshot && onlineAmountCents > 0;
     if (!paymentRequestPossible) {
