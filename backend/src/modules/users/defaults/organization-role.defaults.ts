@@ -5,6 +5,17 @@ import {
   legalDocumentReadPermissions,
   legalDocumentViewerPermissions,
 } from '@modules/documents/legal-document-permission.defaults';
+import {
+  bookingEligibilityFullPermissions,
+  bookingEligibilityOverridePermissions,
+  bookingEligibilityReviewerPermissions,
+} from '@modules/bookings/booking-eligibility-permission.defaults';
+import {
+  rentalRulesFleetOperatorPermissions,
+  rentalRulesFullPermissions,
+  rentalRulesReadPermissions,
+  rentalRulesViewerPermissions,
+} from '@modules/rental-rules/rental-rules-permission.defaults';
 
 export interface DefaultRoleTemplate {
   systemKey: string;
@@ -76,7 +87,10 @@ function adminPermissions(): MembershipPermissionsMap {
       connectManage: true,
       settingsManage: true,
     })),
-    legalDocumentFullPermissions(),
+    mergePermissions(
+      legalDocumentFullPermissions(),
+      mergePermissions(rentalRulesFullPermissions(), bookingEligibilityFullPermissions()),
+    ),
   );
 }
 
@@ -96,7 +110,10 @@ function subAdminPermissions(): MembershipPermissionsMap {
   ] as const) {
     delete perms[key];
   }
-  return mergePermissions(perms, legalDocumentReadPermissions());
+  return mergePermissions(perms, mergePermissions(
+    legalDocumentReadPermissions(),
+    mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
+  ));
 }
 
 function workerReadPermissions(extraWrite: string[] = []): MembershipPermissionsMap {
@@ -141,10 +158,16 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.SUB_ADMIN,
     permissions: mergePermissions(
       workerReadPermissions(['bookings', 'customers', 'fleet']),
-      paymentModulePermissions({
-        payments: { read: true, write: true },
-        disputesRead: true,
-      }),
+      mergePermissions(
+        paymentModulePermissions({
+          payments: { read: true, write: true },
+          disputesRead: true,
+        }),
+        mergePermissions(
+          rentalRulesReadPermissions(),
+          bookingEligibilityOverridePermissions(),
+        ),
+      ),
     ),
   },
   {
@@ -162,7 +185,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
           connectRead: true,
         }),
       ),
-      legalDocumentReadPermissions(),
+      mergePermissions(
+        legalDocumentReadPermissions(),
+        bookingEligibilityReviewerPermissions(),
+      ),
     ),
   },
   {
@@ -173,10 +199,16 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     fieldAgentAccessDefault: true,
     permissions: mergePermissions(
       workerReadPermissions(['stations', 'bookings', 'fleet', 'tasks']),
-      paymentModulePermissions({
-        payments: { read: true, write: true },
-        disputesRead: true,
-      }),
+      mergePermissions(
+        paymentModulePermissions({
+          payments: { read: true, write: true },
+          disputesRead: true,
+        }),
+        mergePermissions(
+          rentalRulesFleetOperatorPermissions(),
+          bookingEligibilityOverridePermissions(),
+        ),
+      ),
     ),
   },
   {
@@ -186,7 +218,13 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.WORKER,
     permissions: mergePermissions(
       workerReadPermissions(),
-      paymentModulePermissions({ payments: { read: true, write: false } }),
+      mergePermissions(
+        paymentModulePermissions({ payments: { read: true, write: false } }),
+        mergePermissions(
+          rentalRulesViewerPermissions(),
+          bookingEligibilityReviewerPermissions(),
+        ),
+      ),
     ),
   },
   {
@@ -204,7 +242,13 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     fieldAgentAccessDefault: true,
     permissions: mergePermissions(
       workerReadPermissions(['bookings', 'fleet', 'tasks']),
-      paymentModulePermissions({ payments: { read: true, write: false } }),
+      mergePermissions(
+        paymentModulePermissions({ payments: { read: true, write: false } }),
+        mergePermissions(
+          rentalRulesReadPermissions(),
+          bookingEligibilityOverridePermissions(),
+        ),
+      ),
     ),
   },
   {
@@ -214,7 +258,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.WORKER,
     permissions: mergePermissions(
       workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet']),
-      paymentModulePermissions({ payments: { read: true, write: false } }),
+      mergePermissions(
+        paymentModulePermissions({ payments: { read: true, write: false } }),
+        rentalRulesViewerPermissions(),
+      ),
     ),
   },
   {
@@ -227,7 +274,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
         workerReadPermissions(),
         paymentModulePermissions({ payments: { read: true, write: false } }),
       ),
-      legalDocumentReadPermissions(),
+      mergePermissions(
+        legalDocumentReadPermissions(),
+        mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
+      ),
     ),
   },
 ];

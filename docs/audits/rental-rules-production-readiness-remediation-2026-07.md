@@ -5,10 +5,8 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 3 of 34 — Deep path & data-flow inventory** |
-| **Baseline commit** | `410efa54cdf0361df94cb318848d5ba977638c2f` + Prompt 2 docs |
-| **Baseline report** | `docs/audits/rental-rules-baseline-2026-07.md` |
-| **Mode** | Documentation only — **no product code changes** |
+| **Phase** | **Prompt 4 of 34 — Permission model definition** |
+| **Mode** | IAM permission catalog + role templates + tests — **no controller enforcement yet** (Prompt 5) |
 | **Method** | Direct code/schema verification; no unverified assumptions |
 
 ---
@@ -401,11 +399,11 @@ flowchart TB
 | **1** | Audit- & Fortschrittsdokumentation (diese Datei) | **DONE** | — | — | — |
 | **2** | Build-/Test-Baseline dokumentieren (`rental-rules-baseline-2026-07.md`) | **DONE** | 1 | — | — |
 | **3** | Code-Map / Endpoint-Inventar + Pfad-Analyse (§17) | **DONE** | 1–2 | — | — |
-| **4** | IAM: `PermissionsGuard` auf Rental-Rules-Schreib-Endpunkte | NOT_STARTED | 2, 3 | Nein | Ja |
-| **5** | IAM: Leserechte-Matrix + `@Roles` verifizieren | NOT_STARTED | 4 | Nein | Ja |
-| **6** | Service-Layer `assertMembershipPermission` (falls erforderlich) | NOT_STARTED | 4 | Nein | Ja |
-| **7** | Controller-Security-Regressionstests | NOT_STARTED | 4–6 | Nein | Ja |
-| **8** | Effective-Rules Merge-Matrix (Util-Tests erweitern) | NOT_STARTED | 2 | Nein | Ja |
+| **4** | IAM: Permission-Modell (Katalog, Rollen-Matrix, Seeds, Tests) | **DONE** | 2, 3 | Nein | Ja |
+| **5** | IAM: `PermissionsGuard` auf Rental-Rules-Endpunkte | NOT_STARTED | 4 | Nein | Ja |
+| **6** | IAM: Leserechte-Matrix + `@Roles` verifizieren | NOT_STARTED | 5 | Nein | Ja |
+| **7** | Service-Layer `assertMembershipPermission` (falls erforderlich) | NOT_STARTED | 5 | Nein | Ja |
+| **8** | Controller-Security-Regressionstests | NOT_STARTED | 5–7 | Nein | Ja |
 | **9** | `RentalRulesService` Unit-Tests (Edge Cases) | NOT_STARTED | 2 | Nein | Ja |
 | **10** | Kategorie-Fahrzeug-Zuordnung Transaktions-Tests | NOT_STARTED | 9 | Nein | Ja |
 | **11** | Override `null`-Semantik + inactive category Tests | NOT_STARTED | 8 | Nein | Ja |
@@ -441,7 +439,7 @@ flowchart TB
 |----|-------|----------|--------------|-------|
 | TD-RR-01 | Enforcement Create/Confirm/Pickup | Preview only / Hard block / Manual approval queue | **OFFEN** — Ist: Preview only | — |
 | TD-RR-02 | Kaution bei Konflikt Tarif vs. Rental Rules | Tarif wins / Rules win / Max / Warn only | **OFFEN** | — |
-| TD-RR-03 | Permission Keys für Rental Rules | `rental-rules.read` / `rental-rules.manage` vs. bestehende Org-Admin-Rolle | **OFFEN** | — |
+| TD-RR-03 | Permission Keys für Rental Rules | Einzelmodul vs. granulare Actions + separate Module | **ENTSCHIEDEN** — granulare Actions `rental_rules.*` / `booking_eligibility.*` mit separaten IAM-Modulen für Publish, Assign, Overrides, Override (siehe §18) | 2026-07-23 |
 | TD-RR-04 | Audit-Event-Schema | IAM Outbox vs. ActivityLog vs. neues Domain-Event | **OFFEN** | — |
 | TD-RR-05 | IAM P0 FALSE_POSITIVE für Fleet-Vehicle-PATCH | PermissionsGuard trotzdem / nur RolesGuard | **OFFEN** — Runtime-Test nötig | — |
 
@@ -451,7 +449,7 @@ flowchart TB
 
 | Risiko | Schwere | Mitigation (geplant) |
 |--------|---------|----------------------|
-| Org-Member mit `RolesGuard` allein kann Regeln ändern (IAM P0) | **Hoch** | Prompt 4–7 |
+| Org-Member mit `RolesGuard` allein kann Regeln ändern (IAM P0) | **Hoch** | Prompt 5–8 (Katalog ✅ Prompt 4) |
 | Buchung trotz `NOT_ELIGIBLE` möglich (nur UI-Warnung) | **Hoch** | Prompt 16–20 (Policy) |
 | Zwei Kaution-Quellen verwirren Operator/Checkout | **Mittel** | Prompt 22 |
 | Regeländerungen nicht auditierbar | **Mittel** | Prompt 23 |
@@ -477,7 +475,7 @@ flowchart TB
 | # | Frage | Blockiert |
 |---|-------|-----------|
 | OQ-RR-01 | Soll `NOT_ELIGIBLE` Buchungserstellung serverseitig blockieren oder nur warnen? | Prompt 16–20 |
-| OQ-RR-02 | Welche Permission soll Rental-Rules-Admin haben (neues Modulrecht vs. ORG_ADMIN)? | Prompt 4 |
+| OQ-RR-02 | Welche Permission soll Rental-Rules-Admin haben (neues Modulrecht vs. ORG_ADMIN)? | **ENTSCHIEDEN** — §18 (Prompt 4) |
 | OQ-RR-03 | Gilt Rental-Rules-Kaution oder Tarif-Kaution für Eligibility `depositReceived`? | Prompt 22 |
 | OQ-RR-04 | Soll `MANUAL_APPROVAL_REQUIRED` einen Workflow/Task auslösen? | **OFFEN** — kein Task-Trigger im Code |
 | OQ-RR-05 | IAM Triage FALSE_POSITIVE für Vehicle-Override/Assign — Runtime-Verifikation nötig? | Prompt 5 |
@@ -858,4 +856,114 @@ flowchart LR
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 3).*
+## 18. Permission-Modell (Prompt 4)
+
+Explizites, serverseitiges Permission-Modell für Rental Rules und manuelle Eligibility-Ausnahmen. **Keine Controller-Umstellung** in diesem Prompt (→ Prompt 5).
+
+### 18.1 Architektur-Entscheidung
+
+Bestehendes IAM-Pattern beibehalten (keine zweite Autorisierungsarchitektur):
+
+- **IAM-Module** in `PERMISSION_MODULE_KEYS` (`{ read, write, manage }` JSON pro Membership)
+- **Granulare Actions** als stabile API-Oberfläche (`rental_rules.*`, `booking_eligibility.*`)
+- **Action → Modul+Level-Mapping** in `*-permission.constants.ts` (wie Legal Documents / Payments)
+- **Rollen-Templates** in `organization-role.defaults.ts`
+- **Backfill** für bestehende Orgs: `scripts/ops/backfill-rental-rules-permissions.ts`
+
+### 18.2 IAM-Modul-Katalog (neu)
+
+| Modul-Key | Zweck | Typische Level |
+|-----------|-------|----------------|
+| `rental-rules` | Defaults/Kategorien lesen & bearbeiten (Entwurf) | read / write / manage |
+| `rental-rules-publish` | Regeln/Kategorien aktivieren (`isActive`, Veröffentlichung) | write |
+| `rental-rules-assign` | Fahrzeuge Kategorien zuordnen | write |
+| `rental-rules-overrides` | Fahrzeug-Overrides pflegen | write |
+| `booking-eligibility` | Rental-Eligibility prüfen/anzeigen | read |
+| `booking-eligibility-override` | Manuelle Eligibility-Ausnahmen | manage |
+
+### 18.3 Granulare Permission-Actions
+
+| Action | IAM-Modul | Level | Audit-Code |
+|--------|-----------|-------|------------|
+| `rental_rules.read` | `rental-rules` | read | `RENTAL_RULES_READ` |
+| `rental_rules.write` | `rental-rules` | write | `RENTAL_RULES_WRITE` |
+| `rental_rules.publish` | `rental-rules-publish` | write | `RENTAL_RULES_PUBLISH` |
+| `rental_rules.assign_vehicles` | `rental-rules-assign` | write | `RENTAL_RULES_ASSIGN_VEHICLES` |
+| `rental_rules.manage_overrides` | `rental-rules-overrides` | write | `RENTAL_RULES_MANAGE_OVERRIDES` |
+| `booking_eligibility.review` | `booking-eligibility` | read | `BOOKING_ELIGIBILITY_REVIEW` |
+| `booking_eligibility.override` | `booking-eligibility-override` | manage | `BOOKING_ELIGIBILITY_OVERRIDE` |
+
+**Trennung (Least Privilege):**
+
+- `write` ≠ `publish` — Bearbeitung ohne Aktivierung möglich
+- `assign_vehicles` / `manage_overrides` — eigene Module, nicht implizit durch `rental-rules.write`
+- `review` ≠ `override` — Anzeige/Prüfung ohne manuelle Ausnahme
+
+### 18.4 Rollen-Matrix (Default-Templates)
+
+| Rolle | read | write | publish | assign | overrides | review | override |
+|-------|:----:|:-----:|:-------:|:------:|:---------:|:------:|:--------:|
+| **Master Admin** (Plattform) | ✓* | ✓* | ✓* | ✓* | ✓* | ✓* | ✓* |
+| **Org Admin** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Sub Admin** | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| **Disposition** | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| **Accounting** | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| **Station Manager** | ✓ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
+| **Employee / Worker** | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| **Driver** | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| **Field Agent** | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| **Service / Workshop** | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| **Read-only** | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| **Customer** | — | — | — | — | — | — | — |
+
+\*Master Admin: Plattform-Bypass via `MASTER_ADMIN` — kein Org-Membership-Modul nötig.
+
+**Worker/Driver-Schutz:** `employee` und `driver` erhalten **keine** Schreib-/Publish-/Assign-Rechte. Driver erhält **keine** Rental-Rules- oder Eligibility-Rechte.
+
+### 18.5 Implementierte Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `backend/src/shared/auth/permission.constants.ts` | 6 neue Modul-Keys |
+| `backend/src/modules/rental-rules/rental-rules-permission.constants.ts` | Actions + Requirements + Audit-Codes |
+| `backend/src/modules/rental-rules/rental-rules-permission.defaults.ts` | Template-Helper (full/read/editor/fleet/viewer) |
+| `backend/src/modules/rental-rules/rental-rules-permission.util.ts` | `evaluateRentalRulePermission()` |
+| `backend/src/modules/bookings/booking-eligibility-permission.constants.ts` | Eligibility Actions |
+| `backend/src/modules/bookings/booking-eligibility-permission.defaults.ts` | Reviewer/Override-Helper |
+| `backend/src/modules/users/defaults/organization-role.defaults.ts` | Alle 10 System-Rollen aktualisiert |
+| `backend/scripts/ops/backfill-rental-rules-permissions.ts` | Backfill bestehender Org-Rollen |
+| `frontend/src/rental/components/users-roles/constants.ts` | UI-Modul-Katalog (DE-Labels) |
+| `backend/src/modules/rental-rules/rental-rules-permission.defaults.spec.ts` | Unit-Tests |
+| `backend/src/modules/rental-rules/rental-rules.permissions.matrix.spec.ts` | Rollen-Matrix-Tests (23 Cases) |
+
+### 18.6 Tests (2026-07-23)
+
+```
+npm test -- --testPathPattern="rental-rules-permission|rental-rules.permissions.matrix"
+→ 23/23 PASS
+```
+
+### 18.7 Offen (Prompt 5+)
+
+- `@RequirePermission` + `PermissionsGuard` auf `RentalRulesController` / Eligibility-Endpunkte
+- Frontend `canWrite` in `RentalRulesTab` von `company-info` auf `rental_rules.write` umstellen
+- Produktions-Backfill auf VPS ausführen
+
+---
+
+## Prompt 4 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Permissions zentral definiert | ✅ §18.2–18.3 |
+| Rollen erhalten nur erforderliche Rechte | ✅ §18.4 |
+| Worker/Driver können Regeln nicht ändern | ✅ Matrix-Tests |
+| Publish und Override getrennt geschützt | ✅ Separate Module |
+| Bestehende Rollen kompatibel | ✅ Merge-Pattern wie Legal Docs |
+| Unit Tests bestehen | ✅ 23/23 |
+| Keine Controller-Umstellung | ✅ |
+| Prompt 4 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 4).*
