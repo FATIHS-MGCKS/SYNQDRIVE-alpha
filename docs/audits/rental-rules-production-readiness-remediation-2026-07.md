@@ -1932,3 +1932,72 @@ Neue Suite: `vehicle-rental-override-reset.spec.ts` — vollständiger Reset, pa
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 17).*
+
+---
+
+## Prompt 18 — Führerscheindauer verlustfrei (Monate kanonisch)
+
+**Ziel:** Führerscheindauer beim Laden/Speichern nicht runden oder verfälschen.
+
+### 18.1 Kanonische Einheit
+
+| Ebene | Feld | Typ |
+|-------|------|-----|
+| Datenbank | `minimum_license_holding_months` | `Int?` |
+| Backend/API | `minimumLicenseHoldingMonths` | Ganzzahl Monate |
+| UI-Form | `licenseHoldingWholeYears` + `licenseHoldingExtraMonths` | Split 0–80 Jahre + 0–11 Monate |
+
+`minimumLicenseHoldingYears` in API-Responses ist nur **Anzeige-Komponente** (`floor(months/12)`), nicht gerundeter Gesamtwert. Neu: `minimumLicenseHoldingRemainderMonths` (`months % 12`).
+
+### 18.2 Entfernte Rundungslogik
+
+- `Math.round(months / 12)` in Mapper, Effective-Rules und Frontend
+- `years * 12` aus gerundeten UI-Jahreswerten
+- Eligibility-Messages nutzen `formatLicenseHoldingDuration(months)`
+
+### 18.3 UI (Variante A)
+
+`RentalRuleFieldsForm`: getrennte Eingaben Jahre + Zusatzmonate, Live-Hinweis „X months total“.
+
+### 18.4 Bestehende Daten
+
+Audit-Hilfsfunktion `findNonWholeYearLicenseHoldingRecords` + SQL zur Prüfung nicht durch 12 teilbarer Werte:
+
+```sql
+SELECT 'organization' AS layer, id, minimum_license_holding_months
+FROM organization_rental_rules
+WHERE minimum_license_holding_months IS NOT NULL AND minimum_license_holding_months % 12 <> 0
+UNION ALL
+SELECT 'category', id, minimum_license_holding_months
+FROM rental_vehicle_categories
+WHERE minimum_license_holding_months IS NOT NULL AND minimum_license_holding_months % 12 <> 0
+UNION ALL
+SELECT 'vehicle_override', id, minimum_license_holding_months
+FROM vehicle_rental_requirement_overrides
+WHERE minimum_license_holding_months IS NOT NULL AND minimum_license_holding_months % 12 <> 0;
+```
+
+Werte wie 18 Monate bleiben unverändert — kein Migrationsbedarf.
+
+### 18.5 Tests
+
+```
+backend: license-holding.util.spec.ts, rental-rules.mapper.spec.ts
+frontend: rental-rules.utils.test.ts (18/6/24 roundtrip, unchanged save)
+```
+
+---
+
+## Prompt 18 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Roundtrip verlustfrei | ✅ 18/6/24 Monate |
+| Keine Rundung verändert Regeln | ✅ |
+| UI verständlich | ✅ Jahre + Zusatzmonate |
+| Tests bestehen | ✅ |
+| Prompt 18 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 18).*

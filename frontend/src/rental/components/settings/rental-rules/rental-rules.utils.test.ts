@@ -5,6 +5,7 @@ import {
   rulesToFormValues,
 } from './rental-rules.utils';
 import type { RentalRuleFormValues, RentalVehicleCategoryDto } from './rental-rules.types';
+import { combineLicenseHoldingMonths } from './license-holding.util';
 
 const baselineCategory = {
   minimumAgeYears: 25,
@@ -100,5 +101,32 @@ describe('rental-rules.utils patch payload', () => {
   it('create mode does not send empty strings as values', () => {
     const payload = formValuesToPatchPayload(emptyForm(), null, 'create');
     expect(payload).toEqual({});
+  });
+
+  it.each([
+    [18, '1', '6'],
+    [6, '', '6'],
+    [24, '2', ''],
+  ])('roundtrips %i months through form without drift', (months, years, extraMonths) => {
+    const values = rulesToFormValues({ minimumLicenseHoldingMonths: months });
+    expect(values.licenseHoldingWholeYears).toBe(years);
+    expect(values.licenseHoldingExtraMonths).toBe(extraMonths);
+
+    const payload = formValuesToPatchPayload(values, { minimumLicenseHoldingMonths: months }, 'edit');
+    expect(payload).toEqual({});
+  });
+
+  it('preserves non-whole-year month values on save', () => {
+    const baseline = { minimumLicenseHoldingMonths: 18 };
+    const values = rulesToFormValues(baseline);
+    values.licenseHoldingWholeYears = '1';
+    values.licenseHoldingExtraMonths = '6';
+
+    const payload = formValuesToPatchPayload(values, baseline, 'edit');
+    expect(payload).toEqual({});
+    expect(
+      formValuesToPatchPayload(values, { minimumLicenseHoldingMonths: 17 }, 'edit'),
+    ).toEqual({ minimumLicenseHoldingMonths: 18 });
+    expect(combineLicenseHoldingMonths(1, 6)).toBe(18);
   });
 });

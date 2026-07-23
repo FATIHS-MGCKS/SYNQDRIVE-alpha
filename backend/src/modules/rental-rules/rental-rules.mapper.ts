@@ -5,6 +5,7 @@ import type {
 } from '@prisma/client';
 import type { RentalRuleFieldSet } from './rental-rules.types';
 import { RENTAL_RULE_FIELD_KEYS } from './rental-rules.types';
+import { licenseHoldingMonthsFromYearsAlias, splitLicenseHoldingMonths } from './license-holding.util';
 
 type RuleRow =
   | OrganizationRentalRules
@@ -43,10 +44,21 @@ export function formatOrganizationRentalRules(row: OrganizationRentalRules) {
   return {
     ...base,
     depositAmount: base.depositAmountCents,
-    minimumLicenseHoldingYears:
-      base.minimumLicenseHoldingMonths != null
-        ? Math.round(base.minimumLicenseHoldingMonths / 12)
-        : null,
+    ...licenseHoldingDisplayFields(base.minimumLicenseHoldingMonths),
+  };
+}
+
+function licenseHoldingDisplayFields(months: number | null | undefined) {
+  if (months == null) {
+    return {
+      minimumLicenseHoldingYears: null,
+      minimumLicenseHoldingRemainderMonths: null,
+    };
+  }
+  const { wholeYears, extraMonths } = splitLicenseHoldingMonths(months);
+  return {
+    minimumLicenseHoldingYears: wholeYears,
+    minimumLicenseHoldingRemainderMonths: extraMonths,
   };
 }
 
@@ -62,10 +74,7 @@ export function formatRentalVehicleCategory(row: RentalVehicleCategory & { _coun
     icon: row.icon,
     ...fields,
     depositAmount: fields.depositAmountCents,
-    minimumLicenseHoldingYears:
-      fields.minimumLicenseHoldingMonths != null
-        ? Math.round(fields.minimumLicenseHoldingMonths / 12)
-        : null,
+    ...licenseHoldingDisplayFields(fields.minimumLicenseHoldingMonths ?? null),
     isActive: row.isActive,
     vehicleCount: row._count?.vehicles,
     createdAt: row.createdAt.toISOString(),
@@ -113,7 +122,9 @@ export function normalizeRuleDtoInput<T extends RentalRuleFieldsInput>(
     normalized.minimumLicenseHoldingMonths === undefined &&
     normalized.minimumLicenseHoldingYears != null
   ) {
-    normalized.minimumLicenseHoldingMonths = normalized.minimumLicenseHoldingYears * 12;
+    normalized.minimumLicenseHoldingMonths = licenseHoldingMonthsFromYearsAlias(
+      normalized.minimumLicenseHoldingYears,
+    );
   }
   if (normalized.depositAmountCents === undefined && normalized.depositAmount != null) {
     normalized.depositAmountCents = normalized.depositAmount;

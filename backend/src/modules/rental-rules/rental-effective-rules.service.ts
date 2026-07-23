@@ -10,6 +10,7 @@ import {
   hasActiveRuleOverrides,
   vehicleDisplayName,
 } from './rental-rules.mapper';
+import { splitLicenseHoldingMonths } from './license-holding.util';
 import type {
   EffectiveRentalRequirement,
   EffectiveRentalRules,
@@ -106,6 +107,8 @@ export class RentalEffectiveRulesService {
 
   formatEffectiveRules(rules: EffectiveRentalRules): EffectiveRentalRequirement {
     const { depositAmountCents, minimumLicenseHoldingMonths, ...rest } = rules;
+    const months = minimumLicenseHoldingMonths.value;
+    const split = months != null ? splitLicenseHoldingMonths(months) : null;
     return {
       ...rest,
       depositAmount: depositAmountCents,
@@ -118,10 +121,12 @@ export class RentalEffectiveRulesService {
             : null,
       },
       minimumLicenseHoldingYears: {
-        value:
-          minimumLicenseHoldingMonths.value != null
-            ? Math.round(minimumLicenseHoldingMonths.value / 12)
-            : null,
+        value: split?.wholeYears ?? null,
+        source: minimumLicenseHoldingMonths.source,
+        sourceName: minimumLicenseHoldingMonths.sourceName,
+      },
+      minimumLicenseHoldingRemainderMonths: {
+        value: split?.extraMonths ?? null,
         source: minimumLicenseHoldingMonths.source,
         sourceName: minimumLicenseHoldingMonths.sourceName,
       },

@@ -17,6 +17,7 @@ export interface RentalRuleFields {
   minimumAgeYears: number | null;
   minimumLicenseHoldingMonths: number | null;
   minimumLicenseHoldingYears?: number | null;
+  minimumLicenseHoldingRemainderMonths?: number | null;
   depositAmountCents: number | null;
   depositAmount?: number | null;
   depositCurrency: string | null;
@@ -120,6 +121,7 @@ export interface EffectiveRentalRulesDto {
   minimumAgeYears: EffectiveRuleField<number | null>;
   minimumLicenseHoldingMonths: EffectiveRuleField<number | null>;
   minimumLicenseHoldingYears: EffectiveRuleField<number | null>;
+  minimumLicenseHoldingRemainderMonths: EffectiveRuleField<number | null>;
   depositAmount: EffectiveRuleField<number | null>;
   depositAmountCents: EffectiveRuleField<number | null>;
   depositCurrency: EffectiveRuleField<string | null>;
@@ -147,7 +149,8 @@ export interface VehicleRentalRequirementsDto {
 
 export type RentalRuleFormValues = {
   minimumAgeYears: string;
-  minimumLicenseHoldingYears: string;
+  licenseHoldingWholeYears: string;
+  licenseHoldingExtraMonths: string;
   depositAmount: string;
   depositCurrency: string;
   creditCardRequired: '' | 'true' | 'false';

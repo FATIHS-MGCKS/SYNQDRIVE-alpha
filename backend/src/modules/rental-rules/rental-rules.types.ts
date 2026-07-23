@@ -45,6 +45,7 @@ export type EffectiveRentalRequirement = Omit<EffectiveRentalRules, 'depositAmou
   depositAmount: EffectiveRuleField<number | null>;
   depositAmountCents: EffectiveRuleField<number | null>;
   minimumLicenseHoldingYears: EffectiveRuleField<number | null>;
+  minimumLicenseHoldingRemainderMonths: EffectiveRuleField<number | null>;
 };
 
 export const RENTAL_RULE_FIELD_KEYS = [

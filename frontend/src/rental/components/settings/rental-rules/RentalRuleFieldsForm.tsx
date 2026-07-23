@@ -100,38 +100,48 @@ export function RentalRuleFieldsForm({ values, onChange, disabled }: RentalRuleF
 
           </div>
 
-          <div>
-
-            <label className={labelClass} htmlFor="rr-license-years">
-
-              License holding period
-
-            </label>
-
-            <input
-
-              id="rr-license-years"
-
-              type="number"
-
-              min={0}
-
-              max={80}
-
-              className={inputClass}
-
-              value={values.minimumLicenseHoldingYears}
-
-              onChange={(e) => set('minimumLicenseHoldingYears', e.target.value)}
-
-              disabled={disabled}
-
-              placeholder="e.g. 2"
-
-            />
-
-            <p className={hintClass}>Years the license must be held before rental.</p>
-
+          <div className="sm:col-span-2">
+            <label className={labelClass}>License holding period</label>
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div>
+                <label className="mb-1 block text-[10px] font-medium text-muted-foreground" htmlFor="rr-license-years">
+                  Years
+                </label>
+                <input
+                  id="rr-license-years"
+                  type="number"
+                  min={0}
+                  max={80}
+                  className={inputClass}
+                  value={values.licenseHoldingWholeYears}
+                  onChange={(e) => set('licenseHoldingWholeYears', e.target.value)}
+                  disabled={disabled}
+                  placeholder="e.g. 1"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-medium text-muted-foreground" htmlFor="rr-license-months">
+                  Additional months
+                </label>
+                <input
+                  id="rr-license-months"
+                  type="number"
+                  min={0}
+                  max={11}
+                  className={inputClass}
+                  value={values.licenseHoldingExtraMonths}
+                  onChange={(e) => set('licenseHoldingExtraMonths', e.target.value)}
+                  disabled={disabled}
+                  placeholder="e.g. 6"
+                />
+              </div>
+              <p className="pb-2 text-[11px] leading-snug text-muted-foreground">
+                {values.licenseHoldingWholeYears.trim() || values.licenseHoldingExtraMonths.trim()
+                  ? `${Number(values.licenseHoldingWholeYears || 0) * 12 + Number(values.licenseHoldingExtraMonths || 0)} months total`
+                  : 'Leave empty to inherit'}
+              </p>
+            </div>
+            <p className={hintClass}>Stored exactly in months — e.g. 1 year + 6 months = 18 months.</p>
           </div>
 
         </div>

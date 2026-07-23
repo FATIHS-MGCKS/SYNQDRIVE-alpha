@@ -5,6 +5,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { buildEffectiveRentalRules } from '@modules/rental-rules/rental-effective-rules.util';
 import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
 import type { EffectiveRentalRules } from '@modules/rental-rules/rental-rules.types';
+import { splitLicenseHoldingMonths } from '@modules/rental-rules/license-holding.util';
 import { CustomerDocumentStatus } from '@prisma/client';
 
 describe('BookingRentalEligibilityService', () => {
@@ -79,7 +80,15 @@ describe('BookingRentalEligibilityService', () => {
         minimumLicenseHoldingYears: {
           value:
             rules.minimumLicenseHoldingMonths.value != null
-              ? Math.round(rules.minimumLicenseHoldingMonths.value / 12)
+              ? splitLicenseHoldingMonths(rules.minimumLicenseHoldingMonths.value).wholeYears
+              : null,
+          source: rules.minimumLicenseHoldingMonths.source,
+          sourceName: rules.minimumLicenseHoldingMonths.sourceName,
+        },
+        minimumLicenseHoldingRemainderMonths: {
+          value:
+            rules.minimumLicenseHoldingMonths.value != null
+              ? splitLicenseHoldingMonths(rules.minimumLicenseHoldingMonths.value).extraMonths
               : null,
           source: rules.minimumLicenseHoldingMonths.source,
           sourceName: rules.minimumLicenseHoldingMonths.sourceName,

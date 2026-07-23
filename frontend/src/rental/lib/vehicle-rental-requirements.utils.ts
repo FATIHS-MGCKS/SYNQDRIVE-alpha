@@ -59,7 +59,7 @@ export function hasAnyVehicleOverride(effective: EffectiveRentalRulesDto | null)
     effective.creditCardRequired,
     effective.foreignTravelPolicy,
     effective.manualApprovalRequired,
-    effective.minimumLicenseHoldingYears,
+    effective.minimumLicenseHoldingMonths,
   ] as EffectiveRuleField<unknown>[];
   return keys.some((f) => f.source === 'VEHICLE_OVERRIDE');
 }
@@ -84,10 +84,7 @@ export function deriveRequirementsStatus(
 
   const currency = effective.depositCurrency.value ?? 'EUR';
   const age = effective.minimumAgeYears.value;
-  const license = formatLicenseHolding(
-    effective.minimumLicenseHoldingMonths.value,
-    effective.minimumLicenseHoldingYears.value,
-  );
+  const license = formatLicenseHolding(effective.minimumLicenseHoldingMonths.value);
   const deposit = formatDeposit(
     effective.depositAmount.value ?? effective.depositAmountCents.value,
     currency,
@@ -170,14 +167,12 @@ export function buildEffectiveRequirementRows(
       value: formatRuleValue('minimumAgeYears', effective.minimumAgeYears.value),
     },
     {
-      key: 'minimumLicenseHoldingYears',
+      key: 'minimumLicenseHoldingMonths',
       label: 'License holding period',
-      field: effective.minimumLicenseHoldingYears,
-      value: formatLicenseHolding(
-        effective.minimumLicenseHoldingMonths.value,
-        effective.minimumLicenseHoldingYears.value,
-        { long: true },
-      ),
+      field: effective.minimumLicenseHoldingMonths,
+      value: formatLicenseHolding(effective.minimumLicenseHoldingMonths.value, undefined, {
+        long: true,
+      }),
     },
     {
       key: 'depositAmount',

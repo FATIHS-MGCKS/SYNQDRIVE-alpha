@@ -37,6 +37,31 @@ describe('rental-rules.mapper patch semantics', () => {
     expect(patch.minimumLicenseHoldingMonths).toBe(24);
   });
 
+  it('exposes lossless year/month split for API display', async () => {
+    const { formatOrganizationRentalRules } = await import('./rental-rules.mapper');
+    const formatted = formatOrganizationRentalRules({
+      id: 'rules-1',
+      organizationId: 'org1',
+      minimumAgeYears: null,
+      minimumLicenseHoldingMonths: 18,
+      depositAmountCents: null,
+      depositCurrency: 'EUR',
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never);
+    expect(formatted.minimumLicenseHoldingYears).toBe(1);
+    expect(formatted.minimumLicenseHoldingRemainderMonths).toBe(6);
+    expect(formatted.minimumLicenseHoldingMonths).toBe(18);
+  });
+
   it('toPrismaRuleColumns allows null depositCurrency for category layer', () => {
     const cols = toPrismaRuleColumns(
       { depositCurrency: null, minimumAgeYears: 21 },

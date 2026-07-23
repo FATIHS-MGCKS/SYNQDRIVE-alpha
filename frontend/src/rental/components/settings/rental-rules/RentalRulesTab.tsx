@@ -449,7 +449,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
                     <div>
                       <dt className="text-muted-foreground">License holding</dt>
                       <dd className="font-medium">
-                        {formatLicenseHolding(cat.minimumLicenseHoldingMonths, cat.minimumLicenseHoldingYears, {
+                        {formatLicenseHolding(cat.minimumLicenseHoldingMonths, undefined, {
                           long: true,
                         })}
                       </dd>

@@ -4,6 +4,7 @@ import type {
   RentalYoungDriverPolicy,
 } from '@prisma/client';
 import type { EffectiveRentalRules } from '@modules/rental-rules/rental-rules.types';
+import { formatLicenseHoldingDuration } from '@modules/rental-rules/license-holding.util';
 import {
   isRentalRulesEnforcementActive,
   RENTAL_RULES_ACTIVATION_WARNING,
@@ -122,9 +123,9 @@ export function evaluateRentalEligibilityChecks(
       ctx.licenseHoldingMonths != null &&
       ctx.licenseHoldingMonths < minLicenseMonths
     ) {
-      const years = Math.round((minLicenseMonths / 12) * 10) / 10;
+      const requiredLabel = formatLicenseHoldingDuration(minLicenseMonths, { long: true });
       blockingReasons.push(
-        `Customer has held a license for ${ctx.licenseHoldingMonths} month(s) but this vehicle requires at least ${minLicenseMonths} month(s) (${years} year(s)).`,
+        `Customer has held a license for ${ctx.licenseHoldingMonths} month(s) but this vehicle requires at least ${minLicenseMonths} month(s) (${requiredLabel}).`,
       );
     }
   }
