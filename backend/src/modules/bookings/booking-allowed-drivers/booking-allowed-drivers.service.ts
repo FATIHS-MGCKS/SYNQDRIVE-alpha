@@ -12,12 +12,15 @@ import {
   isDriverInBookingPool,
   resolveBookingDriverPool,
 } from './booking-allowed-drivers.util';
+import { BookingEligibilityEnforcementService } from '../booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { isWizardDraftBooking } from '../booking-wizard-draft.util';
 
 @Injectable()
 export class BookingAllowedDriversService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLog: ActivityLogService,
+    private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
   ) {}
 
   async listForBooking(organizationId: string, bookingId: string) {
@@ -97,6 +100,11 @@ export class BookingAllowedDriversService {
         role: BookingDriverRole.ADDITIONAL,
       },
     });
+
+    await this.reassertBookingEligibilityAfterDriverChange(
+      input.organizationId,
+      input.bookingId,
+    );
 
     return this.mapRow(row);
   }
@@ -192,6 +200,11 @@ export class BookingAllowedDriversService {
       },
     });
 
+    await this.reassertBookingEligibilityAfterDriverChange(
+      input.organizationId,
+      input.bookingId,
+    );
+
     return this.listForBooking(input.organizationId, input.bookingId);
   }
 
@@ -237,6 +250,11 @@ export class BookingAllowedDriversService {
         role: row.role,
       },
     });
+
+    await this.reassertBookingEligibilityAfterDriverChange(
+      input.organizationId,
+      input.bookingId,
+    );
 
     return this.listForBooking(input.organizationId, input.bookingId);
   }
@@ -307,6 +325,25 @@ export class BookingAllowedDriversService {
       assignedDriverId: booking.assignedDriverId,
       allowedRows: rows.map((row) => ({ customerId: row.customerId, role: row.role })),
     });
+  }
+
+  private async reassertBookingEligibilityAfterDriverChange(
+    organizationId: string,
+    bookingId: string,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId },
+      select: { status: true, notes: true },
+    });
+    if (!booking) return;
+    if (isWizardDraftBooking(booking)) return;
+    if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') return;
+
+    await this.bookingEligibilityEnforcement.assertAllowedForBooking(
+      organizationId,
+      bookingId,
+      booking.status,
+    );
   }
 
   private async assertBooking(organizationId: string, bookingId: string) {

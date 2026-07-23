@@ -211,6 +211,9 @@ export class BookingWizardDraftService {
       status: targetStatus,
       notes: stripWizardDraftMarker(draft.notes) || null,
       paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+    }, {
+      userId: options?.userId ?? null,
+      eligibilityOverrideReason: body.eligibilityOverrideReason,
     });
 
     await this.bookingInvoiceLifecycle

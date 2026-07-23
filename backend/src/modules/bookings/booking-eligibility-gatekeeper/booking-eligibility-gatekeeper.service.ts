@@ -35,7 +35,7 @@ import {
  * - {@link BookingRentalEligibilityService} — effective rental rules
  * - {@link RentalHealthService} — optional vehicle readiness (when enabled)
  *
- * Not yet wired into BookingsService create/update/pickup paths (Prompt 8+).
+ * Wired into BookingsService create/update via BookingEligibilityEnforcementService (Prompt 8).
  */
 @Injectable()
 export class BookingEligibilityGatekeeperService {

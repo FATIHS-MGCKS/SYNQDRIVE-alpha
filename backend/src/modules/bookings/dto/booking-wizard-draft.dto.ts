@@ -80,4 +80,8 @@ export class BookingWizardDraftConfirmDto {
   @IsOptional()
   @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
   paymentMethod?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
+
+  @IsOptional()
+  @IsString()
+  eligibilityOverrideReason?: string;
 }

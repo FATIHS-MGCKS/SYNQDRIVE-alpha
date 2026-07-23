@@ -5,8 +5,8 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 6 of 34 — Frontend permission alignment** |
-| **Mode** | Granular `rental_rules.*` / `booking_eligibility.*` gates in Rental UI |
+| **Phase** | **Prompt 7 of 34 — Booking Eligibility Gatekeeper** |
+| **Mode** | Central server-side orchestration (`BookingEligibilityGatekeeperService`) |
 | **Method** | Direct code/schema verification; no unverified assumptions |
 
 ---
@@ -1098,4 +1098,95 @@ cd frontend && npm run build
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 6).*
+## 21. Booking Eligibility Gatekeeper (Prompt 7)
+
+Zentraler serverseitiger Orchestrator für Buchungsentscheidungen. **Keine Einbindung in Create/Confirm/Pickup** in diesem Prompt — folgt Prompt 8+.
+
+### 21.1 Service-Schnittstelle
+
+**Klasse:** `BookingEligibilityGatekeeperService`  
+**Pfad:** `backend/src/modules/bookings/booking-eligibility-gatekeeper/`
+
+| Methode | Beschreibung |
+|---------|--------------|
+| `evaluate(input: BookingEligibilityGateInput)` | Vollständige Domain-Orchestrierung für einen Stage |
+| `evaluateForBooking(orgId, bookingId, stage, overrides?)` | Lädt Booking-Kontext, delegiert an `evaluate` |
+| `evaluateWithExtensions(input, extensions[])` | Erweiterbar für Pricing/Deposit-Evaluator (Prompt 22) |
+
+**Stages:** `CREATE` | `CONFIRM` | `PICKUP` | `PREVIEW`
+
+**Aggregate Status:** `ELIGIBLE` | `NOT_ELIGIBLE` | `MANUAL_APPROVAL_REQUIRED` | `MISSING_INFORMATION` | `TEMPORARILY_UNAVAILABLE` | `TECHNICAL_ERROR`
+
+**Ergebnisvertrag (`BookingEligibilityGateResult`):**
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| `status` | GateStatus | Schlechtester Domain-Status (Prioritäts-Auflösung) |
+| `allowed` | boolean | `ELIGIBLE` oder `MANUAL_APPROVAL_REQUIRED` |
+| `reasonCodes` | `BookingEligibilityReasonCode[]` | Maschinenlesbare Codes |
+| `blockingReasons` | `GateReason[]` | Strukturiert mit `code`, `domain`, `message` |
+| `warnings` | `GateReason[]` | Nicht-blockierende Hinweise |
+| `missingFields` | `string[]` | z. B. `customer.dateOfBirth` |
+| `sourceRuleIds` | `string[]` | `org:*`, `category:*`, `vehicle:*` |
+| `evaluatedAt` | ISO-8601 | Zeitstempel |
+| `recheckRequired` | boolean | Pending docs / unavailable health |
+| `engineVersion` | semver | `1.0.0` |
+| `domains` | Slices | Rohdaten pro Domain (customer, verification, rentalRules, vehicle, vehicleReadiness, pricingDeposit) |
+
+### 21.2 Orchestrierte Domains (Delegation — keine Duplikation)
+
+| Domain | Delegiert an | Konsolidierter Altpfad |
+|--------|--------------|------------------------|
+| Customer Eligibility | `CustomerEligibilityService.evaluateForBooking()` | `BookingsService.assertCustomerBookingEligibility()` |
+| Document / Verification | `CustomerVerificationService.getEligibilityStatus()` | Inline in Customer + Rental Eligibility |
+| Effective Rental Rules + Rental Eligibility | `BookingRentalEligibilityService.check()` | `POST /eligibility-check`, `GET /:id/rental-eligibility` |
+| Vehicle Reference | `PrismaService.vehicle.findFirst()` | Implizit in Rental Eligibility (wirft NotFound) |
+| Vehicle Readiness (optional) | `RentalHealthService.isRentalBlocked()` | `BookingsService.enforceRentalHealthGate()` |
+| Pricing/Deposit (optional) | `BookingEligibilityDomainEvaluator` Extension | **Stub** — Prompt 22 |
+
+### 21.3 Reason Codes (Auszug)
+
+`CUSTOMER_BLOCKED`, `ID_DOCUMENT_MISSING`, `MINIMUM_AGE_NOT_MET`, `MISSING_CUSTOMER_DATE_OF_BIRTH`, `VEHICLE_NOT_FOUND`, `VEHICLE_RENTAL_BLOCKED`, `VEHICLE_READINESS_UNAVAILABLE`, `RENTAL_MANUAL_APPROVAL_REQUIRED`, `TECHNICAL_ERROR` — vollständige Liste in `booking-eligibility-gatekeeper.constants.ts`.
+
+### 21.4 Implementierte Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `booking-eligibility-gatekeeper.constants.ts` | Engine version, domains, reason codes |
+| `booking-eligibility-gatekeeper.types.ts` | Input/result contract, extension interface |
+| `booking-eligibility-gatekeeper.util.ts` | Status aggregation, domain→gate mappers |
+| `booking-eligibility-gatekeeper.service.ts` | Orchestrator |
+| `booking-eligibility-gatekeeper.util.spec.ts` | 9 Util-Tests |
+| `booking-eligibility-gatekeeper.service.spec.ts` | 12 Service-Tests |
+| `bookings.module.ts` | Provider + Export |
+
+### 21.5 Tests (2026-07-23)
+
+```
+npm test -- --testPathPattern="booking-eligibility-gatekeeper"
+→ 21/21 PASS
+```
+
+### 21.6 Noch nicht konsolidiert (Prompt 8+)
+
+- `BookingsService.assertCustomerBookingEligibility()` — bleibt aktiv
+- `BookingsService.enforceRentalHealthGate()` — bleibt aktiv
+- `BookingPickupGateService` — bleibt für Legal/Handover
+- Preview-Endpoints — rufen Gatekeeper noch nicht auf
+
+---
+
+## Prompt 7 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Zentrale Orchestrierung existiert | ✅ `BookingEligibilityGatekeeperService` |
+| Bestehende Logik wiederverwendet | ✅ Delegation an Leaf-Services |
+| Keine parallele zweite Wahrheit | ✅ Mapper nur für Struktur, nicht für Regeln |
+| Ergebnisvertrag typisiert und getestet | ✅ 21 Tests |
+| Keine vollständige Pfad-Einbindung | ✅ bewusst offen für Prompt 8+ |
+| Prompt 7 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 7).*

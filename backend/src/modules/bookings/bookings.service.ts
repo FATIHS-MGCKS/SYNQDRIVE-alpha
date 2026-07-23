@@ -58,6 +58,13 @@ import {
   zonedLookbackStart,
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import {
+  resolveEligibilityPolicyMode,
+  shouldSkipEligibilityEnforcement,
+} from './booking-eligibility-gatekeeper/booking-eligibility-transition.policy';
+import { isWizardDraftBooking } from './booking-wizard-draft.util';
+import { resolvePaymentIntentChanged } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -108,6 +115,7 @@ export class BookingsService {
     private readonly bookingPaymentCardService: BookingPaymentCardService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
+    private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
   ) {}
 
   /**
@@ -152,7 +160,14 @@ export class BookingsService {
   async create(
     orgId: string,
     data: Omit<Prisma.BookingCreateInput, 'organization'>,
-    options?: { userId?: string | null },
+    options?: {
+      userId?: string | null;
+      platformRole?: string | null;
+      membershipRole?: import('@prisma/client').MembershipRole | null;
+      eligibilityOverrideReason?: string | null;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ): Promise<Booking> {
     // V4.6.74 — server-side gate: prevent double-booking the SAME vehicle
     // within overlapping time windows. The frontend already tries to block
@@ -218,12 +233,52 @@ export class BookingsService {
       );
     }
 
-    await this.assertCustomerBookingEligibility(
-      orgId,
-      customerId,
-      requestedStatus,
-      startDate,
-    );
+    const notes = anyData.notes as string | undefined;
+    const isWizardDraft = isWizardDraftBooking({
+      status: requestedStatus,
+      notes,
+    });
+    const enforcementMode = resolveEligibilityPolicyMode({
+      targetStatus: requestedStatus,
+      isWizardDraft,
+    });
+
+    if (!isWizardDraft) {
+      if (!shouldSkipEligibilityEnforcement(enforcementMode)) {
+        await this.bookingEligibilityEnforcement.assertAllowed(
+          {
+            organizationId: orgId,
+            customerId,
+            vehicleId,
+            startDate,
+            endDate,
+            targetStatus: requestedStatus,
+            notes,
+            paymentIntent: anyData.paymentIntent,
+            extrasJson: anyData.extrasJson,
+            foreignTravelRequested: options?.foreignTravelRequested ??
+              (anyData.foreignTravelRequested as boolean | undefined),
+            additionalDriverCount: options?.additionalDriverCount ??
+              (anyData.additionalDriverCount as number | undefined),
+          },
+          {
+            userId: options?.userId,
+            platformRole: options?.platformRole,
+            membershipRole: options?.membershipRole ?? undefined,
+            eligibilityOverrideReason:
+              options?.eligibilityOverrideReason ??
+              (anyData.eligibilityOverrideReason as string | undefined),
+          },
+        );
+      } else if (['PENDING', 'CONFIRMED', 'ACTIVE'].includes(requestedStatus)) {
+        await this.assertCustomerBookingEligibility(
+          orgId,
+          customerId,
+          requestedStatus,
+          startDate,
+        );
+      }
+    }
 
     const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
     const quoteId = requireQuoteId(anyData.quoteId);
@@ -714,6 +769,9 @@ export class BookingsService {
     const {
       quoteId: _quoteId,
       pricingInput: _pricingInput,
+      foreignTravelRequested: _foreignTravelRequested,
+      additionalDriverCount: _additionalDriverCount,
+      eligibilityOverrideReason: _eligibilityOverrideReason,
       ...rest
     } = this.stripBookingStationScalars(data);
     return rest;
@@ -1612,6 +1670,14 @@ export class BookingsService {
     orgId: string,
     id: string,
     data: Prisma.BookingUpdateInput,
+    options?: {
+      userId?: string | null;
+      platformRole?: string | null;
+      membershipRole?: import('@prisma/client').MembershipRole | null;
+      eligibilityOverrideReason?: string | null;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ): Promise<Booking> {
     const existing = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
@@ -1689,7 +1755,72 @@ export class BookingsService {
       this.enforceRentalHealthGate(rentalGate, nextVehicleId);
     }
 
-    if (customerOrDatesChanged || statusChanged) {
+    const paymentIntentChanged =
+      anyData.paymentIntent !== undefined &&
+      resolvePaymentIntentChanged(existing.paymentIntent, anyData.paymentIntent);
+    const extrasChanged = anyData.extrasJson !== undefined;
+    const nextNotes =
+      anyData.notes !== undefined ? (anyData.notes as string | null) : existing.notes;
+
+    const enforcementContext = {
+      organizationId: orgId,
+      bookingId: id,
+      customerId: nextCustomerId,
+      vehicleId: nextVehicleId,
+      startDate: nextStart,
+      endDate: nextEnd,
+      targetStatus: nextStatus,
+      notes: nextNotes,
+      paymentIntent:
+        anyData.paymentIntent !== undefined ? anyData.paymentIntent : existing.paymentIntent,
+      extrasJson:
+        anyData.extrasJson !== undefined ? anyData.extrasJson : existing.extrasJson,
+      foreignTravelRequested:
+        options?.foreignTravelRequested ??
+        (anyData.foreignTravelRequested as boolean | undefined),
+      additionalDriverCount: options?.additionalDriverCount ??
+        (anyData.additionalDriverCount as number | undefined),
+    };
+
+    const shouldEnforce = this.bookingEligibilityEnforcement.shouldEnforceForUpdate({
+      existing: {
+        status: existing.status,
+        customerId: existing.customerId,
+        vehicleId: existing.vehicleId,
+        startDate: existing.startDate,
+        endDate: existing.endDate,
+        notes: existing.notes,
+        paymentIntent: existing.paymentIntent,
+        extrasJson: existing.extrasJson,
+      },
+      next: enforcementContext,
+      customerIdChanged: nextCustomerId !== existing.customerId,
+      vehicleIdChanged: nextVehicleId !== existing.vehicleId,
+      datesChanged:
+        nextStart.getTime() !== existing.startDate.getTime() ||
+        nextEnd.getTime() !== existing.endDate.getTime(),
+      paymentIntentChanged,
+      extrasChanged,
+      statusChanged,
+    });
+
+    const enforcementOptions = {
+      userId: options?.userId,
+      platformRole: options?.platformRole,
+      membershipRole: options?.membershipRole ?? undefined,
+      eligibilityOverrideReason:
+        options?.eligibilityOverrideReason ??
+        (anyData.eligibilityOverrideReason as string | undefined),
+    };
+    const confirmingTransition =
+      shouldEnforce && statusChanged && nextStatus === 'CONFIRMED';
+
+    if (shouldEnforce && !confirmingTransition) {
+      await this.bookingEligibilityEnforcement.assertAllowed(
+        enforcementContext,
+        enforcementOptions,
+      );
+    } else if (customerOrDatesChanged || statusChanged) {
       await this.assertCustomerBookingEligibility(
         orgId,
         nextCustomerId,
@@ -1763,7 +1894,19 @@ export class BookingsService {
       Object.assign(data, this.stationFieldsToPrismaInput(await this.resolveBookingStationFields(orgId, merged)));
     }
 
-    const updated = await this.prisma.booking.update({ where: { id }, data });
+    delete anyData.eligibilityOverrideReason;
+    delete anyData.foreignTravelRequested;
+    delete anyData.additionalDriverCount;
+
+    const updated = confirmingTransition
+      ? await this.prisma.$transaction(async (tx) => {
+          await this.bookingEligibilityEnforcement.assertAllowed(
+            enforcementContext,
+            enforcementOptions,
+          );
+          return tx.booking.update({ where: { id }, data });
+        })
+      : await this.prisma.booking.update({ where: { id }, data });
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {

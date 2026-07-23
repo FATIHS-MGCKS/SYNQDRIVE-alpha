@@ -269,18 +269,57 @@ export class BookingsController {
   async create(
     @Param('orgId') orgId: string,
     @CurrentUser('id') userId: string | undefined,
-    @Body() body: Omit<Prisma.BookingCreateInput, 'organization'>,
+    @CurrentUser('platformRole') platformRole: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: Omit<Prisma.BookingCreateInput, 'organization'> & {
+      eligibilityOverrideReason?: string;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ) {
-    return this.bookingsService.create(orgId, body, { userId });
+    const {
+      eligibilityOverrideReason,
+      foreignTravelRequested,
+      additionalDriverCount,
+      ...bookingBody
+    } = body;
+    return this.bookingsService.create(orgId, bookingBody, {
+      userId,
+      platformRole,
+      membershipRole,
+      eligibilityOverrideReason,
+      foreignTravelRequested,
+      additionalDriverCount,
+    });
   }
 
   @Patch(':id')
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Prisma.BookingUpdateInput,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('platformRole') platformRole: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: Prisma.BookingUpdateInput & {
+      eligibilityOverrideReason?: string;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ) {
-    return this.bookingsService.update(orgId, id, body);
+    const {
+      eligibilityOverrideReason,
+      foreignTravelRequested,
+      additionalDriverCount,
+      ...bookingBody
+    } = body;
+    return this.bookingsService.update(orgId, id, bookingBody, {
+      userId,
+      platformRole,
+      membershipRole,
+      eligibilityOverrideReason,
+      foreignTravelRequested,
+      additionalDriverCount,
+    });
   }
 
   @Delete(':id')

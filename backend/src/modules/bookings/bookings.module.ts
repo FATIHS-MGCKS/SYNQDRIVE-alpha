@@ -24,6 +24,7 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatek
     BookingAllowedDriversService,
     BookingRentalEligibilityService,
     BookingEligibilityGatekeeperService,
+    BookingEligibilityEnforcementService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
@@ -60,6 +62,7 @@ import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatek
     BookingsHandoverService,
     BookingRentalEligibilityService,
     BookingEligibilityGatekeeperService,
+    BookingEligibilityEnforcementService,
     BookingWizardDraftService,
     BookingAllowedDriversService,
   ],
