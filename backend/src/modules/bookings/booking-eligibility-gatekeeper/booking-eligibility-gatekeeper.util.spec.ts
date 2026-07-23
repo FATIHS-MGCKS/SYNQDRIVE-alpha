@@ -132,6 +132,7 @@ describe('booking-eligibility-gatekeeper.util', () => {
         minimumLicenseHoldingYears: { value: 1, source: 'CATEGORY', sourceName: 'Premium' },
       },
       decisionSource: BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE,
+      facts: [],
       customerId: 'cust-1',
       vehicleId: 'veh-1',
     };

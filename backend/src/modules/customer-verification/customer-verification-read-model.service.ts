@@ -59,11 +59,15 @@ export class CustomerVerificationReadModelService {
     if (kind === 'ID_DOCUMENT') {
       data.idVerificationStatus = customerStatus;
       data.idVerified = customerStatus === 'VERIFIED';
-      this.applyIdExtractedFields(data, extractedJson);
+      if (checkStatus === 'VERIFIED') {
+        this.applyIdExtractedFields(data, extractedJson);
+      }
     } else if (kind === 'DRIVING_LICENSE') {
       data.licenseVerificationStatus = customerStatus;
       data.licenseVerified = customerStatus === 'VERIFIED';
-      this.applyLicenseExtractedFields(data, extractedJson);
+      if (checkStatus === 'VERIFIED') {
+        this.applyLicenseExtractedFields(data, extractedJson);
+      }
     }
 
     if (Object.keys(data).length === 0) {

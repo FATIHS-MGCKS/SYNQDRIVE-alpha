@@ -1,4 +1,5 @@
 import type { EffectiveRentalRequirement } from '@modules/rental-rules/rental-rules.types';
+import type { CustomerEligibilityFact } from '@modules/customer-verification/policies/customer-fact-trust.policy';
 
 export type BookingRentalEligibilityStatus =
   | 'ELIGIBLE'
@@ -34,6 +35,8 @@ export interface BookingRentalEligibilityResult {
   manualApprovalReasons: string[];
   effectiveRules: EffectiveRentalRequirement;
   decisionSource: typeof BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE;
+  /** Per-field provenance for binding rental-rule facts (no full document payloads). */
+  facts: CustomerEligibilityFact[];
   customerId: string;
   vehicleId: string;
   bookingId?: string;

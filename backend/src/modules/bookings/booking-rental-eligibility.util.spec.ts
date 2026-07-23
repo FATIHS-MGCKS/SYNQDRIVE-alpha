@@ -251,6 +251,76 @@ describe('booking-rental-eligibility.util activation policy', () => {
   });
 });
 
+describe('unverified fact handling', () => {
+  const rules = buildEffectiveRentalRules({
+    organizationId: 'org1',
+    vehicleId: 'veh1',
+    orgLayer: {
+      source: 'ORGANIZATION_DEFAULT' as const,
+      sourceName: 'Acme Rental',
+      values: {
+        minimumAgeYears: 21,
+        minimumLicenseHoldingMonths: 12,
+        depositAmountCents: null,
+        depositCurrency: 'EUR',
+        creditCardRequired: false,
+        foreignTravelPolicy: 'ALLOWED' as const,
+        additionalDriverPolicy: 'ALLOWED' as const,
+        youngDriverPolicy: 'ALLOWED' as const,
+        insuranceRequirement: null,
+        manualApprovalRequired: false,
+        notes: null,
+      },
+    },
+    categoryLayer: null,
+    vehicleLayer: null,
+    rentalCategoryId: null,
+    rentalCategoryName: null,
+    rentalCategoryType: null,
+    rulesActive: true,
+    activation: createActiveRentalRulesActivationSnapshot(),
+  });
+
+  const formattedRules = {} as BookingRentalEligibilityResult['effectiveRules'];
+
+  it('routes unverified date of birth suggestions to manual approval', () => {
+    const result = evaluateRentalEligibilityChecks({
+      rules,
+      formattedRules,
+      customerAge: null,
+      licenseHoldingMonths: 120,
+      hasDateOfBirth: false,
+      hasLicenseIssuedAt: true,
+      unverifiedDateOfBirthPending: true,
+      foreignTravelRequested: false,
+      additionalDriverCount: 0,
+      depositReceived: false,
+    });
+
+    expect(result.status).toBe('MANUAL_APPROVAL_REQUIRED');
+    expect(result.missingFields).toHaveLength(0);
+    expect(result.manualApprovalReasons.some((r) => r.includes('unverified'))).toBe(true);
+  });
+
+  it('routes unverified license issue date suggestions to manual approval', () => {
+    const result = evaluateRentalEligibilityChecks({
+      rules,
+      formattedRules,
+      customerAge: 30,
+      licenseHoldingMonths: null,
+      hasDateOfBirth: true,
+      hasLicenseIssuedAt: false,
+      unverifiedLicenseIssuedAtPending: true,
+      foreignTravelRequested: false,
+      additionalDriverCount: 0,
+      depositReceived: false,
+    });
+
+    expect(result.status).toBe('MANUAL_APPROVAL_REQUIRED');
+    expect(result.missingFields).toHaveLength(0);
+  });
+});
+
 describe('resolveEligibilityStatus', () => {
   it('returns ELIGIBLE when no blockers', () => {
     expect(

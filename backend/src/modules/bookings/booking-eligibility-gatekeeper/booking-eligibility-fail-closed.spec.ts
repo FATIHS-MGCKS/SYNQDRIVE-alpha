@@ -80,6 +80,7 @@ describe('booking eligibility fail-closed policy', () => {
     manualApprovalReasons: [],
     effectiveRules: null,
     decisionSource: BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE,
+    facts: [],
     customerId,
     vehicleId,
   };

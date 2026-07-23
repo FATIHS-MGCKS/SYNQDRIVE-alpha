@@ -1574,3 +1574,68 @@ Neue Suites: `rental-rules-activation.policy.spec.ts`, `booking-rental-eligibili
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 12).*
+
+---
+
+## Prompt 13 — Unverifizierte OCR darf keine verbindlichen Mietentscheidungen treffen
+
+**Ziel:** OCR- oder Dokumentdaten im Status UPLOADED / PENDING_REVIEW / PROCESSING / OCR_COMPLETED dürfen weder positive noch negative Endentscheidungen erzeugen. Verifizierte Quellen haben Vorrang; Herkunft und Vertrauensstatus sind nachvollziehbar.
+
+### 13.1 Source-of-Truth-Hierarchie (finale Reihenfolge)
+
+| Rang | `sourceType` | Bedeutung |
+|------|----------------|-----------|
+| 1 | `CUSTOMER_CANONICAL_VERIFIED` | Kanonisches Kundenfeld (`dateOfBirth`, `licenseIssuedAt`, `licenseExpiry`) nur wenn `idVerified` / `licenseVerified` |
+| 2 | `KYC_VERIFIED` | Verifiziertes Didit-/KYC-Ergebnis (`CustomerVerificationCheck.status === VERIFIED`) |
+| 3 | `MANUAL_DOCUMENT_VERIFIED` | Durch Mitarbeiter bestätigtes Dokument (`CustomerDocument.status === VERIFIED`) |
+| 4 | `OCR_UNVERIFIED` | Unverifizierte OCR-/Extraktionsdaten — nur Vorschlag, **nicht bindend** |
+
+**Nicht bindende Lifecycle-Status:** `UPLOADED`, `PENDING_REVIEW`, `PROCESSING`, `OCR_COMPLETED` sowie in-flight KYC (`PENDING`, `IN_PROGRESS`, `REQUIRES_REVIEW`, …).
+
+**Bindungsregel:** Nur Fakten mit `verificationStatus === VERIFIED` und `isBinding === true` dürfen `ELIGIBLE` oder `NOT_ELIGIBLE` auslösen. Unverifizierte Vorschläge → `MANUAL_APPROVAL_REQUIRED`; fehlende verifizierte Daten → `MISSING_INFORMATION`.
+
+### 13.2 Pro-Fakt-Metadaten (`facts[]` in Rental-Eligibility-Response)
+
+Jeder verwendete Fakt enthält:
+
+- `field` — `dateOfBirth` \| `licenseIssuedAt` \| `licenseExpiry`
+- `sourceType`, `sourceId`, `verificationStatus`, `verifiedAt`, `verifiedBy`
+- `factualValue` — ISO-Wert (kein vollständiges `extractedJson`)
+- `evaluatedAt`
+
+### 13.3 Implementierung
+
+| Datei | Rolle |
+|-------|-------|
+| `customer-fact-trust.policy.ts` | Zentrale Vertrauenshierarchie + Resolver |
+| `booking-rental-eligibility.service.ts` | Trusted-Fact-Auflösung, `facts[]`, Verification-Impact auf Status |
+| `booking-rental-eligibility.util.ts` | Unverifizierte Vorschläge → `MANUAL_APPROVAL_REQUIRED` statt Block/Missing |
+| `customer-verification.service.ts` | `syncCustomerReadModel`: `extractedJson` nur bei `VERIFIED` (+ verifizierte Dokumente) |
+| `customer-verification-read-model.service.ts` | `syncCustomerFromCheck`: Extraktion nur bei `VERIFIED` |
+
+**Entfernt:** Direkter OCR-Fallback `resolveLicenseIssuedAtFromDocuments` mit `UPLOADED`/`PENDING_REVIEW`.
+
+### 13.4 Tests
+
+```
+npm test -- --testPathPattern="customer-fact-trust|booking-rental-eligibility|booking-eligibility|rental-rules"
+→ 192/192 PASS
+```
+
+Neue Suite: `customer-fact-trust.policy.spec.ts` (alle `CustomerDocumentStatus` + in-flight KYC + Extraktions-Lifecycle).
+
+---
+
+## Prompt 13 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Pending OCR beeinflusst keine Endentscheidung | ✅ Kein bindendes `NOT_ELIGIBLE`/`ELIGIBLE` aus OCR |
+| Verifizierte Quellen werden priorisiert | ✅ Hierarchie 1→4 |
+| Datenquelle und Vertrauensstatus nachvollziehbar | ✅ `facts[]` mit Metadaten |
+| Tests bestehen | ✅ 192/192 |
+| Prompt 13 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 13).*

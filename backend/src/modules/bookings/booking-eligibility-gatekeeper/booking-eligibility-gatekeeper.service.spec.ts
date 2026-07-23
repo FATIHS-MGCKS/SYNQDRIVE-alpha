@@ -87,6 +87,7 @@ describe('BookingEligibilityGatekeeperService', () => {
       minimumLicenseHoldingYears: { value: 1, source: 'ORGANIZATION_DEFAULT', sourceName: 'Org' },
     },
     decisionSource: BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE,
+    facts: [],
     customerId,
     vehicleId,
   };

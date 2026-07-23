@@ -47,6 +47,10 @@ export interface EligibilityEvaluationContext {
   licenseHoldingMonths: number | null;
   hasDateOfBirth: boolean;
   hasLicenseIssuedAt: boolean;
+  /** Unverified OCR/KYC suggestion exists for date of birth — cannot bind approve/reject. */
+  unverifiedDateOfBirthPending?: boolean;
+  /** Unverified OCR/KYC suggestion exists for license issue date — cannot bind approve/reject. */
+  unverifiedLicenseIssuedAtPending?: boolean;
   paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
   /** @deprecated */
   paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
@@ -90,7 +94,13 @@ export function evaluateRentalEligibilityChecks(
   const minAge = ctx.rules.minimumAgeYears.value;
   if (minAge != null) {
     if (!ctx.hasDateOfBirth) {
-      missingFields.push('customer.dateOfBirth');
+      if (ctx.unverifiedDateOfBirthPending) {
+        manualApprovalReasons.push(
+          'Date of birth is available from unverified document data and requires manual review before eligibility can be confirmed.',
+        );
+      } else {
+        missingFields.push('customer.dateOfBirth');
+      }
     } else if (ctx.customerAge != null && ctx.customerAge < minAge) {
       blockingReasons.push(
         `Customer is ${ctx.customerAge} years old but this vehicle requires minimum age ${minAge}.`,
@@ -101,7 +111,13 @@ export function evaluateRentalEligibilityChecks(
   const minLicenseMonths = ctx.rules.minimumLicenseHoldingMonths.value;
   if (minLicenseMonths != null && minLicenseMonths > 0) {
     if (!ctx.hasLicenseIssuedAt) {
-      missingFields.push('customer.licenseIssuedAt');
+      if (ctx.unverifiedLicenseIssuedAtPending) {
+        manualApprovalReasons.push(
+          'License issue date is available from unverified document data and requires manual review before eligibility can be confirmed.',
+        );
+      } else {
+        missingFields.push('customer.licenseIssuedAt');
+      }
     } else if (
       ctx.licenseHoldingMonths != null &&
       ctx.licenseHoldingMonths < minLicenseMonths
