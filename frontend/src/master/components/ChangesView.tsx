@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-frontend-pagination-v49792-2026-07-23',
+    version: '4.9.792',
+    title: 'V4.9.792 — Booking planner frontend pagination wiring (Prompt 27)',
+    summary: [
+      '`useBookingsPlannerData`: AbortController + Request-Sequenz gegen Race Conditions; debounced Search; Sortierung synchron mit Query.',
+      'Tabellenansicht: serverseitige Pagination + klickbare Sort-Header (`startDate`/`createdAt`); Filter/Zeitraum synchron.',
+      'Timeline/Kalender/Fahrzeug-Buchungen: Range-Fetch bei Horizont-/Monatswechsel; kein `limit:500` mehr.',
+      'Loading/Error/Empty getrennt; API-Fehler nie als leere Liste; `bookings:invalidated` nach Mutationen.',
+      'Tests: Pagination, Filter-Query-Mapping, Abort, Stale-Response, Error-State.',
+    ],
+    reason:
+      'Booking Production Readiness Prompt 27: paginierte Backend-Endpunkte sauber im Frontend anbinden ohne Full-List-Downloads oder stale UI.',
+    previousBehavior:
+      'Hardcoded Sort `startDate/desc`; keine Request-Abbrüche; `additionalBookings` optimistisch gemerged; `VehicleBookingsView` mit `limit:500`.',
+    details:
+      'useBookingsPlannerData.ts, bookings-query.utils.ts, bookings-invalidation.ts, BookingsPage/TableView, VehicleBookingsView, api.bookings.list(signal), Vitest.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:05:00.000Z',
+  },
+  {
     id: 'booking-list-pagination-v49791-2026-07-23',
     version: '4.9.791',
     title: 'V4.9.791 — Booking list pagination & planner range queries (Prompt 26)',

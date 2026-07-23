@@ -42,3 +42,9 @@ Stable ordering: primary sort field + `id ASC` tie-breaker.
 
 - `useBookingsPlannerData` — view-aware fetching (table vs timeline/calendar).
 - `fetchAllBookingsInRange` — multi-page range fetch with truncation banner when `hasNextPage`.
+- `buildBookingPlannerListParams` — pure filter/sort/page → query mapping (tested).
+- Request lifecycle: `AbortController` aborts in-flight fetches on filter/view/page/sort changes; monotonic `requestId` drops stale responses.
+- `bookings:invalidated` CustomEvent + `handover:completed` trigger canonical server reload after create/update/cancel/pickup/return.
+- Table: server pagination + sort headers synced to `sortBy`/`sortOrder` query params.
+- `VehicleBookingsView` uses bounded range pagination (100/page, max 20 pages) instead of `limit:500`.
+- Error vs empty: dedicated error banner with retry; empty state only when `!loading && !error && rows.length === 0`.

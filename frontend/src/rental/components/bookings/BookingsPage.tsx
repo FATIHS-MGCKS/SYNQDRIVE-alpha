@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
-import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
-import type { BookingFiltersState, BookingPlannerView } from './bookingTypes';
+import type {
+  BookingFiltersState,
+  BookingPlannerView,
+  BookingTableSortBy,
+  BookingTableSortOrder,
+} from './bookingTypes';
 import { BookingsToolbar } from './BookingsToolbar';
 import { BookingsTimelineView } from './BookingsTimelineView';
 import { BookingsTableView } from './BookingsTableView';
@@ -17,7 +21,6 @@ interface StationOption {
 
 export interface BookingsPageProps {
   orgId: string | null | undefined;
-  additionalBookings?: BookingUiRow[];
   fleetVehicles: VehicleData[];
   stations: StationOption[];
   onCreateNewBooking?: () => void;
@@ -29,7 +32,6 @@ export interface BookingsPageProps {
 
 export function BookingsPage({
   orgId,
-  additionalBookings = [],
   fleetVehicles,
   stations,
   onCreateNewBooking,
@@ -44,6 +46,8 @@ export function BookingsPage({
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const [tablePage, setTablePage] = useState(1);
+  const [sortBy, setSortBy] = useState<BookingTableSortBy>('startDate');
+  const [sortOrder, setSortOrder] = useState<BookingTableSortOrder>('desc');
   const [filters, setFilters] = useState<BookingFiltersState>({
     search: '',
     status: 'all',
@@ -62,21 +66,23 @@ export function BookingsPage({
     calendarMonth,
     calendarYear,
     tablePage,
+    sortBy,
+    sortOrder,
+    refreshToken,
   });
 
   useEffect(() => {
-    if (refreshToken > 0) void refresh();
-  }, [refreshToken, refresh]);
-
-  useEffect(() => {
     setTablePage(1);
-  }, [filters, view]);
+  }, [filters, view, sortBy, sortOrder]);
 
-  const bookings = useMemo(() => {
-    const apiIds = new Set(rows.map((b) => b.id));
-    const extras = additionalBookings.filter((b) => b?.id && !apiIds.has(b.id));
-    return [...rows, ...extras];
-  }, [rows, additionalBookings]);
+  const handleSortChange = (nextSortBy: BookingTableSortBy) => {
+    if (sortBy === nextSortBy) {
+      setSortOrder((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortBy(nextSortBy);
+    setSortOrder(nextSortBy === 'startDate' ? 'desc' : 'asc');
+  };
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     const now = new Date();
@@ -106,7 +112,8 @@ export function BookingsPage({
     return fleetVehicles;
   }, [fleetVehicles, filters.vehicleId]);
 
-  const timelineBookings = bookings;
+  const showEmpty = !loading && !error && rows.length === 0;
+  const showContent = !error && rows.length > 0;
 
   return (
     <div className="max-w-[1800px] mx-auto space-y-4">
@@ -147,12 +154,12 @@ export function BookingsPage({
         </div>
       )}
 
-      {loading && !error ? (
+      {loading && rows.length === 0 && !error ? (
         <div className="py-16 flex flex-col items-center gap-2 text-muted-foreground">
           <Icon name="loader-2" className="w-8 h-8 animate-spin" />
           <p className="text-xs">Buchungen werden geladen…</p>
         </div>
-      ) : !error && bookings.length === 0 ? (
+      ) : showEmpty ? (
         <EmptyState
           icon={<Icon name="calendar" className="w-6 h-6" />}
           title="Keine Buchungen für die aktuellen Filter"
@@ -165,12 +172,12 @@ export function BookingsPage({
             ) : undefined
           }
         />
-      ) : !error ? (
+      ) : showContent ? (
         <>
           {view === 'timeline' && (
             <BookingsTimelineView
               vehicles={vehiclesForTimeline}
-              bookings={timelineBookings}
+              bookings={rows}
               rangeStart={rangeStart}
               rangeEnd={rangeEnd}
               onSelectBooking={onOpenDrawer}
@@ -178,21 +185,24 @@ export function BookingsPage({
           )}
           {view === 'table' && (
             <BookingsTableView
-              rows={bookings}
+              rows={rows}
               loading={loading}
               onRowClick={onOpenDrawer}
               onEdit={onOpenDetail}
               onCancel={onCancelBooking}
               page={meta?.page ?? tablePage}
               pageSize={tablePageSize}
-              total={meta?.total ?? bookings.length}
+              total={meta?.total ?? rows.length}
               hasNextPage={meta?.hasNextPage ?? false}
               onPageChange={setTablePage}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
             />
           )}
           {view === 'calendar' && (
             <BookingsCalendarView
-              rows={bookings}
+              rows={rows}
               month={calendarMonth}
               year={calendarYear}
               selectedDay={selectedCalendarDay}
@@ -207,13 +217,15 @@ export function BookingsPage({
         </>
       ) : null}
 
-      <p className="text-[10px] text-muted-foreground text-right">
-        {meta?.total ?? bookings.length} Buchung{(meta?.total ?? bookings.length) === 1 ? '' : 'en'}{' '}
-        {view === 'table' && meta
-          ? `· Seite ${meta.page}/${meta.totalPages}`
-          : ''}{' '}
-        · Klick öffnet Detail-Drawer
-      </p>
+      {!error && (
+        <p className="text-[10px] text-muted-foreground text-right">
+          {meta?.total ?? rows.length} Buchung{(meta?.total ?? rows.length) === 1 ? '' : 'en'}{' '}
+          {view === 'table' && meta
+            ? `· Seite ${meta.page}/${meta.totalPages}`
+            : ''}{' '}
+          · Klick öffnet Detail-Drawer
+        </p>
+      )}
     </div>
   );
 }

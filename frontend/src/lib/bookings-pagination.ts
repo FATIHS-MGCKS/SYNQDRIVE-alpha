@@ -1,4 +1,7 @@
 import { api, type BookingsListParams } from './api';
+import { isAbortError } from './bookings-query.utils';
+
+export { isAbortError };
 
 export type BookingListMeta = {
   total: number;
@@ -51,8 +54,9 @@ export function unwrapBookingListPage(res: unknown): BookingListPage {
 export async function fetchBookingListPage(
   orgId: string,
   params: BookingsListParams,
+  options?: { signal?: AbortSignal },
 ): Promise<BookingListPage> {
-  const res = await api.bookings.list(orgId, params);
+  const res = await api.bookings.list(orgId, params, options);
   return unwrapBookingListPage(res);
 }
 
@@ -60,7 +64,7 @@ export async function fetchBookingListPage(
 export async function fetchAllBookingsInRange(
   orgId: string,
   params: Omit<BookingsListParams, 'page' | 'cursor'>,
-  options?: { maxPages?: number },
+  options?: { maxPages?: number; signal?: AbortSignal },
 ): Promise<BookingListPage> {
   const maxPages = options?.maxPages ?? 20;
   const limit = params.limit ?? 100;
@@ -69,7 +73,14 @@ export async function fetchAllBookingsInRange(
   let meta: BookingListMeta | null = null;
 
   while (page <= maxPages) {
-    const result = await fetchBookingListPage(orgId, { ...params, page, limit });
+    if (options?.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    const result = await fetchBookingListPage(
+      orgId,
+      { ...params, page, limit },
+      { signal: options?.signal },
+    );
     merged.push(...result.data);
     meta = result.meta;
     if (!result.meta.hasNextPage) break;

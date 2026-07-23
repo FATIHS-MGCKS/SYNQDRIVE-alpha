@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { DataTable, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import type { BookingUiRow } from '../../lib/entityMappers';
+import type { BookingTableSortBy, BookingTableSortOrder } from './bookingTypes';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, formatCents, rowStatus } from './bookingUtils';
 
@@ -16,6 +17,51 @@ interface BookingsTableViewProps {
   total?: number;
   hasNextPage?: boolean;
   onPageChange?: (page: number) => void;
+  sortBy?: BookingTableSortBy;
+  sortOrder?: BookingTableSortOrder;
+  onSortChange?: (sortBy: BookingTableSortBy) => void;
+}
+
+function sortAria(
+  column: BookingTableSortBy,
+  sortBy?: BookingTableSortBy,
+  sortOrder?: BookingTableSortOrder,
+): 'ascending' | 'descending' | 'none' {
+  if (sortBy !== column) return 'none';
+  return sortOrder === 'asc' ? 'ascending' : 'descending';
+}
+
+function SortableHeader({
+  label,
+  column,
+  sortBy,
+  sortOrder,
+  onSortChange,
+}: {
+  label: string;
+  column: BookingTableSortBy;
+  sortBy?: BookingTableSortBy;
+  sortOrder?: BookingTableSortOrder;
+  onSortChange?: (sortBy: BookingTableSortBy) => void;
+}) {
+  if (!onSortChange) return label;
+  const active = sortBy === column;
+  return (
+    <button
+      type="button"
+      onClick={() => onSortChange(column)}
+      className={`inline-flex items-center gap-1 font-semibold ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+    >
+      {label}
+      {active && (
+        <Icon
+          name={sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'}
+          className="w-3 h-3"
+          aria-hidden
+        />
+      )}
+    </button>
+  );
 }
 
 export function BookingsTableView({
@@ -29,12 +75,24 @@ export function BookingsTableView({
   total,
   hasNextPage = false,
   onPageChange,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: BookingsTableViewProps) {
   const columns = useMemo(
     () => [
       {
         key: 'ref',
-        header: 'Buchung',
+        header: (
+          <SortableHeader
+            label="Buchung"
+            column="createdAt"
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={onSortChange}
+          />
+        ),
+        ariaSort: sortAria('createdAt', sortBy, sortOrder),
         cell: (b: BookingUiRow) => (
           <div>
             <div className="font-mono text-[11px] font-semibold">{bookingRef(b.id)}</div>
@@ -59,7 +117,16 @@ export function BookingsTableView({
       },
       {
         key: 'period',
-        header: 'Zeitraum',
+        header: (
+          <SortableHeader
+            label="Zeitraum"
+            column="startDate"
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={onSortChange}
+          />
+        ),
+        ariaSort: sortAria('startDate', sortBy, sortOrder),
         cell: (b: BookingUiRow) => (
           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
             {b.startDate} – {b.endDate}
@@ -95,7 +162,7 @@ export function BookingsTableView({
         ),
       },
     ],
-    [],
+    [onSortChange, sortBy, sortOrder],
   );
 
   return (

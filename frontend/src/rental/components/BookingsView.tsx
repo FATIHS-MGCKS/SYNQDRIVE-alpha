@@ -15,6 +15,7 @@ import { BookingsPage } from './bookings/BookingsPage';
 import { BookingDossier } from './booking-detail/BookingDossier';
 import { StationSelectFields } from './stations/StationSelectFields';
 import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerStatusTone } from './bookings/bookingStatus';
+import { invalidateBookingsList } from '../lib/bookings-invalidation';
 // V4.6.76 Rental Health V1 — surface the rental_blocked gate on the
 // "Pickup bestätigen" flow so dispatchers can't even try to hand over a
 // vehicle that the backend will refuse. The BookingsService.create gate
@@ -105,6 +106,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
   const loadBookings = useCallback(() => {
     setBookingsRefreshToken((v) => v + 1);
+    invalidateBookingsList();
   }, []);
 
   useEffect(() => {
@@ -1291,7 +1293,6 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       <BookingsPage
         orgId={orgId}
         refreshToken={bookingsRefreshToken}
-        additionalBookings={additionalBookings.map((b) => (b.bookingRef ? (b as BookingUiRow) : mapApiBooking(b)))}
         fleetVehicles={fleetVehicles}
         stations={apiStations.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }))}
         onCreateNewBooking={onCreateNewBooking}

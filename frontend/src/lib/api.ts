@@ -3677,6 +3677,7 @@ export const api = {
     list: (
       orgId: string,
       params?: BookingsListParams,
+      options?: { signal?: AbortSignal },
     ) => {
       const q = new URLSearchParams();
       if (params?.page != null) q.set('page', String(params.page));
@@ -3698,6 +3699,7 @@ export const api = {
       const suffix = q.toString() ? `?${q.toString()}` : '';
       return get<{ data: unknown[]; meta: BookingListResponseMeta } | unknown[]>(
         `/organizations/${orgId}/bookings${suffix}`,
+        { signal: options?.signal },
       );
     },
     get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/bookings/${id}`),
