@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-cancellation-override-prompt10-2026-07-23',
+    version: '4.9.782',
+    title: 'Booking Production-Readiness — Cancellation & Admin Override Hardening (Prompt 10/34)',
+    summary: [
+      'Cancel-Command erfordert Pflicht-DTO: reasonCode, optionale description, effectiveAt; Actor aus Auth.',
+      'Stornogebühr serverseitig aus OrganizationRentalRules + BookingPriceSnapshot.',
+      'BookingCancellationOrchestrationService synchronisiert Dokumente, Rechnung und Payment Requests — kein stiller Drift.',
+      'Append-only Audit-Tabellen booking_cancellation_audit_events + booking_status_override_audit_events mit contentHash.',
+      'Admin-Override: affectedInvariants, Request-Context (IP/User-Agent truncated), optionales approvalRequestId (Four-Eyes-Vorbereitung).',
+      'Frontend Cancel-Dialoge: Pflicht-Stornogrund + optionale Beschreibung (kein UI-Redesign).',
+    ],
+    reason:
+      'Stornierung und administrative Status-Overrides müssen revisionssicher, fachlich vollständig und finanziell konsistent sein — nicht nur Status-Flip.',
+    previousBehavior:
+      'POST .../status/cancel ohne Body; Dokumente wurden voided, Rechnung/Payment blieben unsynchronisiert; Operator-Cancel-Hinweis wurde nicht an API gesendet; Override-Audit nur ActivityLog ohne Manipulationsschutz.',
+    details:
+      'Backend: CancelBookingStatusCommandDto, BookingCancellationFeeService, BookingCancellationOrchestrationService, BookingCancellationAuditService, BookingStatusOverrideAuditService; Migration 20260722270000; Rental-Rules-Felder cancellationFeePercentBps/freeHours/min/max; Response-Erweiterung cancellation + overrideAudit. Doku: docs/architecture/booking-cancellation-and-override.md.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T18:45:00.000Z',
+  },
+  {
     id: 'booking-status-commands-prompt9-2026-07-23',
     version: '4.9.781',
     title: 'Booking Production-Readiness — Dedicated Status Commands (Prompt 9/34)',

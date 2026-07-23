@@ -29,6 +29,7 @@ describe('BookingStatusCommandService', () => {
     bookingStatusCommand: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      updateMany: jest.fn(),
     },
     booking: {
       findFirst: jest.fn(),
@@ -73,12 +74,47 @@ describe('BookingStatusCommandService', () => {
     { onBookingCancelled: jest.fn(() => Promise.resolve()) } as never,
     { invalidate: jest.fn(() => Promise.resolve()) } as never,
     { invalidate: jest.fn(() => Promise.resolve()) } as never,
+    {
+      orchestrateCancellation: jest.fn(() =>
+        Promise.resolve({
+          fee: {
+            feeCents: 0,
+            currency: 'EUR',
+            percentBps: null,
+            freeHoursBeforePickup: null,
+            baseTotalGrossCents: null,
+            waived: true,
+            waiverReason: 'NO_CANCELLATION_FEE_POLICY',
+          },
+          processStatus: {
+            documents: { state: 'NOT_APPLICABLE', voidedCount: 0, pendingCount: 0 },
+            invoice: {
+              state: 'NOT_APPLICABLE',
+              invoiceId: null,
+              previousStatus: null,
+              nextStatus: null,
+              requiresManualRefund: false,
+            },
+            payment: {
+              state: 'NOT_APPLICABLE',
+              cancelledRequestIds: [],
+              activeRequestIds: [],
+              requiresManualRefund: false,
+            },
+            followUpProcessesRunning: false,
+          },
+          auditEventId: 'audit-1',
+        }),
+      ),
+    } as never,
+    { append: jest.fn(() => Promise.resolve('override-audit-1')) } as never,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.bookingStatusCommand.findUnique.mockResolvedValue(null);
     prisma.bookingStatusCommand.create.mockResolvedValue({});
+    prisma.bookingStatusCommand.updateMany.mockResolvedValue({ count: 1 });
     prisma.$executeRaw.mockResolvedValue(undefined);
     statusTransition.planTransition.mockImplementation(({ from, to, trigger }) => ({
       definition: {
@@ -129,9 +165,19 @@ describe('BookingStatusCommandService', () => {
     actor: { userId: 'user-1', displayName: 'Tester' },
   };
 
+  const cancelInput = {
+    ...baseInput,
+    command: 'CANCEL' as const,
+    cancellation: {
+      reasonCode: 'CUSTOMER_REQUEST' as const,
+      description: 'Customer requested cancellation',
+      effectiveAt: new Date('2026-01-01T10:00:00.000Z'),
+    },
+  };
+
   it('requires idempotency key', async () => {
     await expect(
-      service.execute({ ...baseInput, command: 'CANCEL', idempotencyKey: '' }),
+      service.execute({ ...cancelInput, idempotencyKey: '' }),
     ).rejects.toBeInstanceOf(BookingStatusIdempotencyKeyRequiredError);
   });
 
@@ -164,7 +210,7 @@ describe('BookingStatusCommandService', () => {
       },
     });
 
-    const result = await service.execute({ ...baseInput, command: 'CANCEL' });
+    const result = await service.execute(cancelInput);
     expect(result.transition.replayed).toBe(true);
     expect(result.booking.status).toBe('CANCELLED');
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -172,7 +218,7 @@ describe('BookingStatusCommandService', () => {
 
   it('cancels from CONFIRMED', async () => {
     mockTransaction(baseBooking({ status: 'CONFIRMED' }));
-    const result = await service.execute({ ...baseInput, command: 'CANCEL' });
+    const result = await service.execute(cancelInput);
     expect(result.booking.status).toBe('CANCELLED');
     expect(result.transition.idempotent).toBe(false);
     expect(statusTransition.commitTransitionEffects).toHaveBeenCalled();
@@ -180,7 +226,7 @@ describe('BookingStatusCommandService', () => {
 
   it('returns idempotent success when already CANCELLED', async () => {
     mockTransaction(baseBooking({ status: 'CANCELLED' }));
-    const result = await service.execute({ ...baseInput, command: 'CANCEL' });
+    const result = await service.execute(cancelInput);
     expect(result.transition.idempotent).toBe(true);
     expect(statusTransition.commitTransitionEffects).not.toHaveBeenCalled();
   });
@@ -192,7 +238,7 @@ describe('BookingStatusCommandService', () => {
         code: BOOKING_STATE_MACHINE_ERROR_CODES.TRANSITION_NOT_ALLOWED,
       });
     });
-    await expect(service.execute({ ...baseInput, command: 'CANCEL' })).rejects.toBeInstanceOf(
+    await expect(service.execute(cancelInput)).rejects.toBeInstanceOf(
       ConflictException,
     );
   });
@@ -236,7 +282,7 @@ describe('BookingStatusCommandService', () => {
       };
       return fn(tx as never);
     });
-    await expect(service.execute({ ...baseInput, command: 'CANCEL' })).rejects.toBeInstanceOf(
+    await expect(service.execute(cancelInput)).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
@@ -247,8 +293,16 @@ describe('BookingStatusCommandService', () => {
       commandType: 'CANCEL',
       resultPayload: {},
     });
-    await expect(service.execute({ ...baseInput, command: 'CANCEL' })).rejects.toMatchObject({
+    await expect(service.execute(cancelInput)).rejects.toMatchObject({
       response: expect.objectContaining({ code: 'BOOKING_STATUS_IDEMPOTENCY_KEY_CONFLICT' }),
+    });
+  });
+
+  it('requires cancellation reasonCode for CANCEL command', async () => {
+    await expect(
+      service.execute({ ...baseInput, command: 'CANCEL' }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'BOOKING_CANCELLATION_REASON_REQUIRED' }),
     });
   });
 });

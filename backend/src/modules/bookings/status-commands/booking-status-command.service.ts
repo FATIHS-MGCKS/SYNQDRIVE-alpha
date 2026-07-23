@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -24,6 +25,9 @@ import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service'
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 import { BookingStatusTransitionService } from '../state-machine/booking-status-transition.service';
 import type { BookingStatusTransitionResult } from '../state-machine/booking-status-transition.service';
+import { BookingCancellationOrchestrationService } from '../cancellation/booking-cancellation-orchestration.service';
+import { BookingStatusOverrideAuditService } from '../override/booking-status-override-audit.service';
+import { inferOverrideInvariants } from '../override/booking-status-override-invariants';
 import {
   BookingStatusHandoverProtocolRequiredError,
   BookingStatusIdempotencyKeyConflictError,
@@ -61,6 +65,8 @@ export class BookingStatusCommandService {
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
+    private readonly cancellationOrchestration: BookingCancellationOrchestrationService,
+    private readonly overrideAudit: BookingStatusOverrideAuditService,
   ) {}
 
   async execute(input: ExecuteBookingStatusCommandInput): Promise<BookingStatusCommandResult> {
@@ -74,6 +80,8 @@ export class BookingStatusCommandService {
       this.assertReplayMatches(input, replay);
       return this.withReplayMeta(replay);
     }
+
+    this.assertCommandPayload(input);
 
     const { commandResult: result, plannedForEffects } = await this.prisma.$transaction(async (tx) => {
       let planned: BookingStatusTransitionResult | null = null;
@@ -146,7 +154,10 @@ export class BookingStatusCommandService {
               ? 'admin_override'
               : COMMAND_TO_TRIGGER[input.command as Exclude<BookingStatusCommandKind, 'ADMIN_OVERRIDE'>],
           actor: input.actor,
-          reason: input.reason ?? null,
+          reason:
+            input.command === 'CANCEL'
+              ? input.cancellation?.description ?? input.cancellation?.reasonCode ?? null
+              : input.reason ?? null,
           override: input.override
             ? {
                 hasPermission: input.override.hasPermission,
@@ -157,7 +168,12 @@ export class BookingStatusCommandService {
         },
         plannedForEffects,
       );
-      await this.runPostTransitionSideEffects(input, result);
+      const enriched = await this.runPostTransitionSideEffects(input, result, plannedForEffects);
+      if (enriched) {
+        await this.updateStoredCommandResult(input, enriched);
+        await this.invalidateCaches(input.organizationId, enriched.booking.vehicleId);
+        return enriched;
+      }
     }
 
     await this.invalidateCaches(input.organizationId, result.booking.vehicleId);
@@ -193,6 +209,7 @@ export class BookingStatusCommandService {
         reasonCode: result.transition.reasonCode,
         requestPayload: {
           reason: input.reason ?? null,
+          cancellation: input.cancellation ?? null,
           override: input.override ?? null,
         } as Prisma.InputJsonValue,
         resultPayload: {
@@ -459,23 +476,131 @@ export class BookingStatusCommandService {
     }
   }
 
-  private async runPostTransitionSideEffects(
+  private assertCommandPayload(input: ExecuteBookingStatusCommandInput): void {
+    if (input.command === 'CANCEL') {
+      if (!input.cancellation?.reasonCode) {
+        throw new BadRequestException({
+          message: 'Cancellation requires reasonCode',
+          code: 'BOOKING_CANCELLATION_REASON_REQUIRED',
+        });
+      }
+    }
+  }
+
+  private async updateStoredCommandResult(
     input: ExecuteBookingStatusCommandInput,
     result: BookingStatusCommandResult,
   ): Promise<void> {
+    const idempotencyKey = input.idempotencyKey?.trim();
+    if (!idempotencyKey) return;
+
+    await this.prisma.bookingStatusCommand.updateMany({
+      where: {
+        organizationId: input.organizationId,
+        idempotencyKey,
+        bookingId: input.bookingId,
+      },
+      data: {
+        resultPayload: {
+          booking: serializeBooking(result.booking),
+          transition: result.transition,
+          cancellation: result.cancellation ?? null,
+          overrideAudit: result.overrideAudit ?? null,
+        } as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  private async runPostTransitionSideEffects(
+    input: ExecuteBookingStatusCommandInput,
+    result: BookingStatusCommandResult,
+    planned: BookingStatusTransitionResult,
+  ): Promise<BookingStatusCommandResult | null> {
     const { organizationId, bookingId } = input;
     const booking = result.booking;
+    const correlationId = `${input.command.toLowerCase()}:${bookingId}:${input.idempotencyKey}`;
 
     switch (input.command) {
-      case 'CANCEL':
-        await this.generatedDocumentsService.voidAllForBooking(organizationId, bookingId).catch(() => {});
+      case 'CANCEL': {
+        const effectiveAt = input.cancellation?.effectiveAt ?? new Date();
+        const orchestration = await this.cancellationOrchestration.orchestrateCancellation({
+          organizationId,
+          bookingId,
+          reasonCode: input.cancellation!.reasonCode,
+          description: input.cancellation?.description ?? null,
+          effectiveAt,
+          actor: input.actor,
+          requestContext: input.requestContext,
+          correlationId,
+          fromStatus: planned.from,
+          toStatus: planned.to,
+        });
+
         void this.taskAutomationService
           .supersedeBookingLifecycleOnCancellation(organizationId, bookingId)
           .catch(() => {});
         void this.vehicleCleaningTasks
           .onBookingCancelled(organizationId, bookingId, booking.vehicleId)
           .catch(() => {});
-        break;
+
+        return {
+          ...result,
+          cancellation: {
+            reasonCode: input.cancellation!.reasonCode,
+            description: input.cancellation?.description ?? null,
+            effectiveAt: effectiveAt.toISOString(),
+            fee: orchestration.fee,
+            processStatus: orchestration.processStatus,
+            auditEventId: orchestration.auditEventId,
+          },
+        };
+      }
+      case 'ADMIN_OVERRIDE': {
+        const affectedInvariants =
+          input.override?.affectedInvariants ??
+          inferOverrideInvariants({
+            fromStatus: planned.from,
+            toStatus: planned.to,
+          });
+
+        if (input.override?.approvalRequestId) {
+          const approval = await this.prisma.orgWorkflowApproval.findFirst({
+            where: {
+              id: input.override.approvalRequestId,
+              organizationId,
+            },
+          });
+          if (!approval) {
+            throw new BadRequestException({
+              message: 'approvalRequestId does not reference a workflow approval in this organization',
+              code: 'BOOKING_OVERRIDE_APPROVAL_NOT_FOUND',
+            });
+          }
+        }
+
+        const auditEventId = await this.overrideAudit.append({
+          organizationId,
+          bookingId,
+          fromStatus: planned.from,
+          toStatus: planned.to,
+          reason: input.override!.reason,
+          affectedInvariants,
+          approvalRequestId: input.override?.approvalRequestId ?? null,
+          actor: input.actor,
+          requestContext: input.requestContext,
+          correlationId,
+        });
+
+        return {
+          ...result,
+          overrideAudit: {
+            reason: input.override!.reason,
+            affectedInvariants,
+            approvalRequestId: input.override?.approvalRequestId ?? null,
+            auditEventId,
+          },
+        };
+      }
       case 'MARK_NO_SHOW':
         void this.taskAutomationService.handleBookingNoShow(organizationId, bookingId).catch(() => {});
         break;
@@ -511,6 +636,8 @@ export class BookingStatusCommandService {
       default:
         break;
     }
+
+    return null;
   }
 
   private async invalidateCaches(orgId: string, vehicleId: string): Promise<void> {

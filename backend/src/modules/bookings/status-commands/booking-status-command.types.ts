@@ -1,5 +1,12 @@
 import type { Booking, BookingStatus, BookingStatusCommandType } from '@prisma/client';
 import type { BookingStatusTrigger } from '../state-machine/booking-state-machine.types';
+import type { BookingCancellationReasonCode } from '../cancellation/booking-cancellation-reason.codes';
+import type {
+  BookingCancellationFeeResult,
+  BookingCancellationProcessStatus,
+  BookingCancellationRequestContext,
+} from '../cancellation/booking-cancellation.types';
+import type { BookingStatusOverrideInvariant } from '../override/booking-status-override-invariants';
 
 export const BOOKING_STATUS_COMMAND_TYPES = [
   'CONFIRM',
@@ -49,9 +56,27 @@ export interface BookingStatusCommandTransitionMeta {
   replayed: boolean;
 }
 
+export interface BookingStatusCommandCancellationMeta {
+  reasonCode: BookingCancellationReasonCode;
+  description: string | null;
+  effectiveAt: string;
+  fee: BookingCancellationFeeResult;
+  processStatus: BookingCancellationProcessStatus;
+  auditEventId: string;
+}
+
+export interface BookingStatusCommandOverrideMeta {
+  reason: string;
+  affectedInvariants: BookingStatusOverrideInvariant[];
+  approvalRequestId: string | null;
+  auditEventId: string;
+}
+
 export interface BookingStatusCommandResult {
   booking: Booking;
   transition: BookingStatusCommandTransitionMeta;
+  cancellation?: BookingStatusCommandCancellationMeta;
+  overrideAudit?: BookingStatusCommandOverrideMeta;
 }
 
 export interface ExecuteBookingStatusCommandInput {
@@ -61,10 +86,18 @@ export interface ExecuteBookingStatusCommandInput {
   idempotencyKey: string;
   actor: BookingStatusCommandActor;
   reason?: string | null;
+  cancellation?: {
+    reasonCode: BookingCancellationReasonCode;
+    description?: string | null;
+    effectiveAt?: Date;
+  };
+  requestContext?: BookingCancellationRequestContext;
   override?: {
     toStatus: BookingStatus;
     reason: string;
     hasPermission: boolean;
+    affectedInvariants?: BookingStatusOverrideInvariant[];
+    approvalRequestId?: string | null;
   };
   skipSideEffects?: boolean;
 }

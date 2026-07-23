@@ -4,8 +4,10 @@ import {
   Param,
   Body,
   Headers,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { BookingStatus } from '@prisma/client';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -16,7 +18,9 @@ import { RequireBookingPermission } from '../decorators/require-booking-permissi
 import { BookingStatusCommandService } from '../status-commands/booking-status-command.service';
 import { toBookingStatusCommandResponse } from '../status-commands/booking-status-command.response';
 import { NoShowBookingStatusCommandDto } from '../dto/status-commands/no-show-booking-status-command.dto';
+import { CancelBookingStatusCommandDto } from '../dto/status-commands/cancel-booking-status-command.dto';
 import { AdminOverrideBookingStatusDto } from '../dto/status-commands/admin-override-booking-status.dto';
+import { resolveBookingRequestContext } from '../util/booking-request-context.util';
 
 @Controller('organizations/:orgId/bookings/:id/status')
 @UseGuards(OrgScopingGuard, RolesGuard, BookingPermissionsGuard)
@@ -51,6 +55,8 @@ export class BookingStatusCommandsController {
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Body() body: CancelBookingStatusCommandDto,
+    @Req() req: Request,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null },
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, bookingId);
@@ -60,6 +66,12 @@ export class BookingStatusCommandsController {
       command: 'CANCEL',
       idempotencyKey: idempotencyKey ?? '',
       actor: this.actor(user),
+      cancellation: {
+        reasonCode: body.reasonCode,
+        description: body.description ?? null,
+        effectiveAt: body.effectiveAt ? new Date(body.effectiveAt) : new Date(),
+      },
+      requestContext: resolveBookingRequestContext(req),
     });
     return toBookingStatusCommandResponse(result);
   }
@@ -130,6 +142,7 @@ export class BookingStatusCommandsController {
     @Param('id') bookingId: string,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: AdminOverrideBookingStatusDto,
+    @Req() req: Request,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null },
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, bookingId);
@@ -139,10 +152,13 @@ export class BookingStatusCommandsController {
       command: 'ADMIN_OVERRIDE',
       idempotencyKey: idempotencyKey ?? '',
       actor: this.actor(user),
+      requestContext: resolveBookingRequestContext(req),
       override: {
         toStatus: body.toStatus as BookingStatus,
         reason: body.reason,
         hasPermission: true,
+        affectedInvariants: body.affectedInvariants,
+        approvalRequestId: body.approvalRequestId ?? null,
       },
     });
     return toBookingStatusCommandResponse(result);

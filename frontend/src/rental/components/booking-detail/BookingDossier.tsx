@@ -18,6 +18,11 @@ import { BOOKING_DETAIL_TABS, type BookingDetailTab } from './bookingDetailTypes
 import { getBookingActionMatrix, getPrimaryBookingAction } from './bookingActionRules';
 import { useBookingDetail } from './useBookingDetail';
 import { formatDateTime } from './bookingDetailUtils';
+import {
+  BOOKING_CANCELLATION_REASON_CODES,
+  BOOKING_CANCELLATION_REASON_LABELS,
+  type BookingCancellationReasonCode,
+} from '../../lib/booking-cancellation-reasons';
 
 interface BookingDossierProps {
   bookingId: string;
@@ -44,6 +49,8 @@ export function BookingDossier({
   const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview');
   const [editOpen, setEditOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReasonCode, setCancelReasonCode] = useState<BookingCancellationReasonCode>('CUSTOMER_REQUEST');
+  const [cancelDescription, setCancelDescription] = useState('');
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [noShowReason, setNoShowReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -95,11 +102,15 @@ export function BookingDossier({
     if (!orgId || !detail || submitting) return;
     setSubmitting(true);
     try {
-      await api.bookings.cancel(orgId, bookingId);
+      await api.bookings.cancel(orgId, bookingId, {
+        reasonCode: cancelReasonCode,
+        description: cancelDescription.trim() || null,
+      });
       toast.success('Buchung storniert');
       onBookingCancelled?.(bookingId);
       onRefreshList?.();
       setCancelOpen(false);
+      setCancelDescription('');
       refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Stornierung fehlgeschlagen';
@@ -240,9 +251,38 @@ export function BookingDossier({
           confirmLabel="Stornieren"
           tone="critical"
           submitting={submitting}
-          onClose={() => setCancelOpen(false)}
+          onClose={() => {
+            setCancelOpen(false);
+            setCancelDescription('');
+          }}
           onConfirm={executeCancel}
         >
+          <div className="space-y-3">
+            <label className="block text-xs">
+              <span className="font-medium text-muted-foreground">Stornogrund *</span>
+              <select
+                value={cancelReasonCode}
+                onChange={(e) => setCancelReasonCode(e.target.value as BookingCancellationReasonCode)}
+                className="mt-1 w-full rounded-lg border border-border bg-[color:var(--input-background)] px-3 py-2 text-sm"
+              >
+                {BOOKING_CANCELLATION_REASON_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {BOOKING_CANCELLATION_REASON_LABELS[code]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs">
+              <span className="font-medium text-muted-foreground">Beschreibung (optional)</span>
+              <textarea
+                value={cancelDescription}
+                onChange={(e) => setCancelDescription(e.target.value)}
+                rows={2}
+                className="mt-1 w-full rounded-lg border border-border bg-[color:var(--input-background)] px-3 py-2 text-sm resize-none"
+                placeholder="Zusätzliche Details…"
+              />
+            </label>
+          </div>
           <SummaryRows
             rows={[
               ['Kunde', detail.customer.fullName],

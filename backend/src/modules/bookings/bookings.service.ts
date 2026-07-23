@@ -1911,6 +1911,11 @@ export class BookingsService {
     id: string,
     actor?: { userId?: string | null; displayName?: string | null },
     idempotencyKey?: string,
+    cancellation?: {
+      reasonCode?: 'OPERATIONAL_DECISION' | 'CUSTOMER_REQUEST' | 'OTHER';
+      description?: string | null;
+      effectiveAt?: Date;
+    },
   ): Promise<Booking> {
     const result = await this.statusCommands.execute({
       organizationId: orgId,
@@ -1920,6 +1925,11 @@ export class BookingsService {
       actor: {
         userId: actor?.userId ?? null,
         displayName: actor?.displayName ?? null,
+      },
+      cancellation: {
+        reasonCode: cancellation?.reasonCode ?? 'OPERATIONAL_DECISION',
+        description: cancellation?.description ?? null,
+        effectiveAt: cancellation?.effectiveAt ?? new Date(),
       },
     });
     return result.booking;

@@ -3774,11 +3774,16 @@ export const api = {
     cancel: (
       orgId: string,
       id: string,
+      payload: {
+        reasonCode: string;
+        description?: string | null;
+        effectiveAt?: string;
+      },
       options?: { idempotencyKey?: string },
     ) =>
       post<BookingStatusCommandApiResponse>(
         `/organizations/${orgId}/bookings/${id}/status/cancel`,
-        {},
+        payload,
         {
           headers: {
             'Idempotency-Key':

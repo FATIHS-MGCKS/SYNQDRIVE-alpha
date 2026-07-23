@@ -12,6 +12,7 @@ import {
   bookingVersionConflictMessage,
 } from '../../rental/lib/bookingUpdateCommands';
 import { invalidateVehicleOperationalAfterBookingChange } from '../../rental/lib/vehicle-operational-query';
+import type { BookingCancelPayload } from '../../rental/lib/booking-cancellation-reasons';
 import { formatOperatorBookingError } from '../bookings/operatorBooking.utils';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
@@ -148,9 +149,14 @@ export function useOperatorBookingMutations() {
   );
 
   const cancelBooking = useCallback(
-    (bookingId: string, vehicleId: string | null | undefined, onSuccess?: () => void) =>
+    (
+      bookingId: string,
+      vehicleId: string | null | undefined,
+      payload: BookingCancelPayload,
+      onSuccess?: () => void,
+    ) =>
       run(
-        () => api.bookings.cancel(orgId!, bookingId),
+        () => api.bookings.cancel(orgId!, bookingId, payload),
         'Buchung storniert',
         onSuccess,
         () => {

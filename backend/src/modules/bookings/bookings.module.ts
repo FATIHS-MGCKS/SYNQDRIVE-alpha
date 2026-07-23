@@ -33,6 +33,10 @@ import { BookingStatusTransitionService } from './state-machine/booking-status-t
 import { BookingStatusCommandService } from './status-commands/booking-status-command.service';
 import { BookingStatusCommandsController } from './status-commands/booking-status-commands.controller';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
+import { BookingCancellationFeeService } from './cancellation/booking-cancellation-fee.service';
+import { BookingCancellationOrchestrationService } from './cancellation/booking-cancellation-orchestration.service';
+import { BookingCancellationAuditService } from './cancellation/booking-cancellation-audit.service';
+import { BookingStatusOverrideAuditService } from './override/booking-status-override-audit.service';
 
 @Module({
   imports: [
@@ -70,6 +74,10 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     HandoverValidationService,
     BookingStatusTransitionService,
     BookingStatusCommandService,
+    BookingCancellationFeeService,
+    BookingCancellationOrchestrationService,
+    BookingCancellationAuditService,
+    BookingStatusOverrideAuditService,
     BookingPermissionsGuard,
   ],
   exports: [

@@ -17,6 +17,8 @@ export type BookingStatusCommandResponseDto = {
     customerId: string;
   };
   transition: BookingStatusCommandResult['transition'];
+  cancellation?: BookingStatusCommandResult['cancellation'];
+  overrideAudit?: BookingStatusCommandResult['overrideAudit'];
 };
 
 export function toBookingStatusCommandResponse(
@@ -25,6 +27,8 @@ export function toBookingStatusCommandResponse(
   return {
     booking: serializeBooking(result.booking),
     transition: result.transition,
+    ...(result.cancellation ? { cancellation: result.cancellation } : {}),
+    ...(result.overrideAudit ? { overrideAudit: result.overrideAudit } : {}),
   };
 }
 
@@ -55,6 +59,8 @@ export function deserializeBookingStatusCommandResult(
     return null;
   }
   const b = booking as Record<string, unknown>;
+  const cancellation = row.cancellation;
+  const overrideAudit = row.overrideAudit;
   return {
     booking: {
       id: String(b.id),
@@ -70,5 +76,11 @@ export function deserializeBookingStatusCommandResult(
       customerId: String(b.customerId),
     } as Booking,
     transition: transition as BookingStatusCommandResult['transition'],
+    ...(cancellation && typeof cancellation === 'object'
+      ? { cancellation: cancellation as BookingStatusCommandResult['cancellation'] }
+      : {}),
+    ...(overrideAudit && typeof overrideAudit === 'object'
+      ? { overrideAudit: overrideAudit as BookingStatusCommandResult['overrideAudit'] }
+      : {}),
   };
 }

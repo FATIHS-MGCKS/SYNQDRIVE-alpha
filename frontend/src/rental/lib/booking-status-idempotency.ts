@@ -35,4 +35,42 @@ export type BookingStatusCommandApiResponse = {
     idempotent: boolean;
     replayed: boolean;
   };
+  cancellation?: {
+    reasonCode: string;
+    description: string | null;
+    effectiveAt: string;
+    fee: {
+      feeCents: number;
+      currency: string;
+      percentBps: number | null;
+      freeHoursBeforePickup: number | null;
+      baseTotalGrossCents: number | null;
+      waived: boolean;
+      waiverReason: string | null;
+    };
+    processStatus: {
+      documents: { state: string; voidedCount: number; pendingCount: number };
+      invoice: {
+        state: string;
+        invoiceId: string | null;
+        previousStatus: string | null;
+        nextStatus: string | null;
+        requiresManualRefund: boolean;
+      };
+      payment: {
+        state: string;
+        cancelledRequestIds: string[];
+        activeRequestIds: string[];
+        requiresManualRefund: boolean;
+      };
+      followUpProcessesRunning: boolean;
+    };
+    auditEventId: string;
+  };
+  overrideAudit?: {
+    reason: string;
+    affectedInvariants: string[];
+    approvalRequestId: string | null;
+    auditEventId: string;
+  };
 };

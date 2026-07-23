@@ -9,6 +9,11 @@ import { useHandover } from '../HandoverContext';
 import { api } from '../../lib/api';
 import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
 import {
+  BOOKING_CANCELLATION_REASON_CODES,
+  BOOKING_CANCELLATION_REASON_LABELS,
+  type BookingCancellationReasonCode,
+} from '../lib/booking-cancellation-reasons';
+import {
   applyBookingFieldUpdates,
   bookingVersionConflictMessage,
 } from '../lib/bookingUpdateCommands';
@@ -183,6 +188,8 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   });
   const [editSameReturnStation, setEditSameReturnStation] = useState(true);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [cancelReasonCode, setCancelReasonCode] = useState<BookingCancellationReasonCode>('CUSTOMER_REQUEST');
+  const [cancelDescription, setCancelDescription] = useState('');
   const [localCancelled, setLocalCancelled] = useState<string[]>([]);
   const [localEdits, setLocalEdits] = useState<Record<string, any>>({});
   // V4.6.81 — No-show flow (distinct from cancel). The operator opens
@@ -814,6 +821,8 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
   const confirmCancel = (bookingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    setCancelReasonCode('CUSTOMER_REQUEST');
+    setCancelDescription('');
     setCancelConfirmId(bookingId);
   };
 
@@ -860,7 +869,10 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     const isPersistedId = typeof cancelConfirmId === 'string' && !cancelConfirmId.startsWith('new-');
     try {
       if (isPersistedId) {
-        await api.bookings.cancel(orgId, cancelConfirmId);
+        await api.bookings.cancel(orgId, cancelConfirmId, {
+          reasonCode: cancelReasonCode,
+          description: cancelDescription.trim() || null,
+        });
       }
       setLocalCancelled(prev => [...prev, cancelConfirmId]);
       onBookingCancelled?.(cancelConfirmId, { vehicleId: booking?.vehicleId ?? null });
@@ -1792,7 +1804,12 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
       <ConfirmDialog
         open={!!cancelConfirmId}
-        onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelConfirmId(null);
+            setCancelDescription('');
+          }
+        }}
         title="Buchung stornieren?"
         description="Möchten Sie diese Buchung wirklich stornieren? Diese Aktion kann nicht rückgängig gemacht werden."
         confirmLabel="Stornieren"
@@ -1800,6 +1817,32 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         tone="critical"
         onConfirm={executeCancel}
       >
+        <div className="space-y-3 my-2 text-left">
+          <label className="block text-xs">
+            <span className="font-medium text-muted-foreground">Stornogrund *</span>
+            <select
+              value={cancelReasonCode}
+              onChange={(e) => setCancelReasonCode(e.target.value as BookingCancellationReasonCode)}
+              className="mt-1 w-full rounded-lg border border-border bg-[color:var(--input-background)] px-3 py-2 text-sm"
+            >
+              {BOOKING_CANCELLATION_REASON_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {BOOKING_CANCELLATION_REASON_LABELS[code]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs">
+            <span className="font-medium text-muted-foreground">Beschreibung (optional)</span>
+            <textarea
+              value={cancelDescription}
+              onChange={(e) => setCancelDescription(e.target.value)}
+              rows={2}
+              className="mt-1 w-full rounded-lg border border-border bg-[color:var(--input-background)] px-3 py-2 text-sm resize-none"
+              placeholder="Zusätzliche Details zur Stornierung…"
+            />
+          </label>
+        </div>
         {(() => {
         const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
         const booking = allBk.find(b => b.id === cancelConfirmId);
