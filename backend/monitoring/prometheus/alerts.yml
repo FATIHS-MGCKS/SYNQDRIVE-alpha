@@ -1031,3 +1031,55 @@ groups:
           runbook_url: docs/runbooks/iam-data-retention-and-user-rights.md
           clear_condition: no retention failures for 2h.
 
+  - name: synqdrive_bookings
+    rules:
+      - alert: BookingProcessingFailuresUnresolved
+        expr: sum(synqdrive_booking_processing_failure_unresolved) > 5
+        for: 15m
+        labels:
+          severity: warning
+          owner: bookings
+        annotations:
+          summary: Unresolved booking processing failures
+          description: Mandatory booking side-effects (invoice, document, email, task) failed and remain unresolved for more than 30 minutes.
+
+      - alert: BookingConflictRateHigh
+        expr: synqdrive_booking_conflict_rate_window > 10
+        for: 10m
+        labels:
+          severity: warning
+          owner: bookings
+        annotations:
+          summary: Elevated booking conflict rate
+          description: More than 10 vehicle overlap conflicts recorded in the last 15 minutes.
+
+      - alert: BookingOutboxLagHigh
+        expr: synqdrive_booking_outbox_lag_seconds > 600
+        for: 10m
+        labels:
+          severity: warning
+          owner: bookings
+        annotations:
+          summary: Booking outbox backlog is high
+          description: Oldest pending booking domain event is older than 10 minutes.
+
+      - alert: BookingTenantDenialsRepeated
+        expr: synqdrive_booking_tenant_denial_window > 3
+        for: 5m
+        labels:
+          severity: warning
+          owner: bookings
+        annotations:
+          summary: Repeated cross-tenant booking denials
+          description: More than 3 tenant-scoping denials on booking operations in the last 15 minutes.
+
+      - alert: BookingCreateFailureSpike
+        expr: rate(synqdrive_booking_create_failure_total[15m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          owner: bookings
+        annotations:
+          summary: Booking create failure rate elevated
+          description: Booking create failures are occurring at a sustained rate — check invoice bootstrap and validation gates.
+

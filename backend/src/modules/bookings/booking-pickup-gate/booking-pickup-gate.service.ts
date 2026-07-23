@@ -29,6 +29,12 @@ import type {
   PickupGateRequirement,
 } from './booking-pickup-gate.types';
 import { BookingPickupGateAuditService } from './booking-pickup-gate-audit.service';
+import { BookingObservabilityService } from '../observability/booking-observability.service';
+import {
+  BOOKING_FAILURE_CATEGORIES,
+  BOOKING_OBSERVABILITY_OPERATIONS,
+  BOOKING_SAFE_ERROR_CODES,
+} from '../observability/booking-observability.constants';
 
 const ACTIVE_GENERATION_STATUSES = new Set<string>([
   BOOKING_DOCUMENT_GENERATION_STATUS.PENDING,
@@ -50,6 +56,7 @@ export class BookingPickupGateService {
     private readonly prisma: PrismaService,
     private readonly completeness: BookingDocumentCompletenessService,
     private readonly audit: BookingPickupGateAuditService,
+    private readonly bookingObservability: BookingObservabilityService,
   ) {}
 
   async assertPickupAllowed(input: AssertPickupGateInput): Promise<PickupGateEvaluation> {
@@ -63,22 +70,43 @@ export class BookingPickupGateService {
       evaluation.softBlocks[0]?.code ??
       PICKUP_GATE_CODE.BUNDLE_INCOMPLETE;
 
-    await this.audit
-      .appendBlocked({
+    await this.bookingObservability.runSideEffect(
+      {
         organizationId: input.organizationId,
         bookingId: input.bookingId,
-        eventType: PICKUP_GATE_EVENT_TYPE.BLOCKED,
-        outcome: PICKUP_GATE_OUTCOME.BLOCKED,
-        actor: input.actor,
-        gateCode: primaryCode,
-        missingRequirements: evaluation.requirements,
-        correlationId: input.correlationId,
-      })
-      .catch((err) => {
-        this.logger.warn(
-          `Failed to append pickup gate blocked audit booking=${input.bookingId}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      });
+        correlationId: input.correlationId ?? `pickup-gate:${input.bookingId}`,
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.PICKUP_GATE_AUDIT,
+        category: BOOKING_FAILURE_CATEGORIES.SIDE_EFFECT,
+        errorCode: BOOKING_SAFE_ERROR_CODES.PICKUP_GATE_AUDIT_FAILED,
+        persistFailure: true,
+      },
+      async () => {
+        await this.audit.appendBlocked({
+          organizationId: input.organizationId,
+          bookingId: input.bookingId,
+          eventType: PICKUP_GATE_EVENT_TYPE.BLOCKED,
+          outcome: PICKUP_GATE_OUTCOME.BLOCKED,
+          actor: input.actor,
+          gateCode: primaryCode,
+          missingRequirements: evaluation.requirements,
+          correlationId: input.correlationId,
+        });
+      },
+    );
+
+    if (
+      evaluation.hardBlocks.some((b) => b.code === PICKUP_GATE_CODE.TENANT_MISMATCH) ||
+      evaluation.hardBlocks.some((b) => b.code === PICKUP_GATE_CODE.CUSTOMER_TENANT_MISMATCH)
+    ) {
+      this.bookingObservability.recordTenantDenial(
+        {
+          organizationId: input.organizationId,
+          bookingId: input.bookingId,
+          correlationId: input.correlationId ?? `pickup-gate:${input.bookingId}`,
+        },
+        BOOKING_SAFE_ERROR_CODES.TENANT_MISMATCH,
+      );
+    }
 
     throw new PickupGateBlockedException({
       code: primaryCode,

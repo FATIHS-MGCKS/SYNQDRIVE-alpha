@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-observability-v49790-2026-07-23',
+    version: '4.9.790',
+    title: 'V4.9.790 — Booking observability & silent-error remediation (Prompt 25)',
+    summary: [
+      'Neues `BookingObservabilityModule`: strukturierte Logs, Prometheus-Metriken, `booking_processing_failures` Persistenz, Log-Redaction.',
+      'Stille `.catch(() => {})` / `console.error` in Bookings/Handover/Pickup-Gate/Wizard durch `runSideEffect` ersetzt.',
+      '`BookingDetailDto.readIssues` für partielle Read-Degradation; Frontend trennt Fehler/Empty/Loading (Usage-Tab, Edit-Dialog, Dossier-Banner).',
+      'Prometheus-Alerts: unresolved failures, Konfliktrate, Outbox-Lag, Tenant-Denials, Create-Failures.',
+    ],
+    reason:
+      'Booking Production Readiness: stille Side-Effect-Fehler (Invoice, Document, Task, Handover) waren nicht korrelierbar, nicht metrisch sichtbar und wurden im UI teils als leere Daten angezeigt.',
+    previousBehavior:
+      'Fire-and-forget `.catch(() => {})`, `console.error` bei Wizard-Invoice-Sync, `BookingUsageMisuseTab` setzte Analyse-Fehler auf `null`, kein Failure-Ledger.',
+    details:
+      'backend/src/modules/bookings/observability/*, bookings.service.ts, bookings-handover.service.ts, booking-pickup-gate.service.ts, booking-wizard-draft.service.ts, prisma migration 20260723280000, alerts.yml, frontend BookingDossier/BookingUsageMisuseTab/BookingEditDialog/api.ts.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:45:00.000Z',
+  },
+  {
     id: 'fleet-rental-crash-task-pagination-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',

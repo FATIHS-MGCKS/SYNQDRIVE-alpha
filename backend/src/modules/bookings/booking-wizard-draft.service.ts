@@ -48,6 +48,12 @@ import {
 import { resolveGatekeeperPaymentIntent } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import type { ValidatedBookingEligibilityApproval } from './booking-eligibility-approval/booking-eligibility-approval.types';
+import { BookingObservabilityService } from './observability/booking-observability.service';
+import {
+  BOOKING_FAILURE_CATEGORIES,
+  BOOKING_OBSERVABILITY_OPERATIONS,
+  BOOKING_SAFE_ERROR_CODES,
+} from './observability/booking-observability.constants';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -76,6 +82,7 @@ export class BookingWizardDraftService {
     private readonly eligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly eligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingDepositSnapshot: BookingDepositSnapshotService,
+    private readonly bookingObservability: BookingObservabilityService,
   ) {}
 
   async createOrRefreshDraft(
@@ -335,14 +342,22 @@ export class BookingWizardDraftService {
 
     await this.bookingDepositSnapshot.freezeDepositOnSnapshot(orgId, bookingId);
 
-    await this.bookingInvoiceLifecycle
-      .syncOnBookingConfirmed(orgId, bookingId, {
-        paymentIntent: resolvedIntent,
-        userId: options?.userId ?? null,
-      })
-      .catch((err) => {
-        console.error('[BookingWizardDraft] invoice sync failed', err);
-      });
+    await this.bookingObservability.runSideEffect(
+      {
+        organizationId: orgId,
+        bookingId,
+        correlationId: `wizard-confirm:${bookingId}`,
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.INVOICE_SYNC,
+        category: BOOKING_FAILURE_CATEGORIES.INVOICE,
+        errorCode: BOOKING_SAFE_ERROR_CODES.INVOICE_BOOTSTRAP_FAILED,
+      },
+      async () => {
+        await this.bookingInvoiceLifecycle.syncOnBookingConfirmed(orgId, bookingId, {
+          paymentIntent: resolvedIntent,
+          userId: options?.userId ?? null,
+        });
+      },
+    );
 
     let paymentFlow: WizardPaymentFlowResult | null = null;
     if (resolvedIntent === 'payment_link') {

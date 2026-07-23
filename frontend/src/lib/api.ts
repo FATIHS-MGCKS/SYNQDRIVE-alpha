@@ -1589,6 +1589,13 @@ export type BookingDetailDto = {
     createdAt: string;
   }>;
   payments: BookingPaymentCardDto | null;
+  readIssues: BookingDetailReadIssue[];
+};
+
+export type BookingDetailReadIssue = {
+  scope: string;
+  code: string;
+  message: string;
 };
 
 export type BookingPaymentCardDto = {

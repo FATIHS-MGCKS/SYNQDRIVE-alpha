@@ -170,6 +170,17 @@ export function BookingDossier({
         onNoShow={() => matrix.no_show.allowed && setNoShowOpen(true)}
       />
 
+      {detail.readIssues?.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-foreground space-y-1">
+          <p className="font-semibold">Einige Bereiche konnten nicht vollständig geladen werden</p>
+          {detail.readIssues.map((issue) => (
+            <p key={`${issue.scope}:${issue.code}`} className="text-muted-foreground">
+              {issue.message}
+            </p>
+          ))}
+        </div>
+      )}
+
       <nav className="flex gap-1 overflow-x-auto border-b border-border mb-4 -mx-1 px-1">
         {BOOKING_DETAIL_TABS.map((tab) => (
           <button

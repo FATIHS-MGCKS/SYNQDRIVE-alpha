@@ -28,7 +28,6 @@ import {
   parseSeverity,
 } from '@modules/technical-observations/technical-observations.mapper';
 import type { HandoverTechnicalObservationDraft } from './handover.types';
-import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 import { BookingPickupGateService } from './booking-pickup-gate/booking-pickup-gate.service';
@@ -41,6 +40,12 @@ import {
 } from './booking-pickup-gate/booking-pickup-gate.constants';
 import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
+import { BookingObservabilityService } from './observability/booking-observability.service';
+import {
+  BOOKING_FAILURE_CATEGORIES,
+  BOOKING_OBSERVABILITY_OPERATIONS,
+  BOOKING_SAFE_ERROR_CODES,
+} from './observability/booking-observability.constants';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -69,12 +74,32 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly bookingObservability: BookingObservabilityService,
   ) {}
 
-  private runBackgroundTask(label: string, work: Promise<void>): void {
-    void work.catch((err: unknown) => {
-      this.logger.error(`${label}: ${sanitizeAutomationError(err)}`);
-    });
+  private handoverObsCtx(orgId: string, bookingId: string) {
+    return {
+      organizationId: orgId,
+      bookingId,
+      correlationId: `handover:${bookingId}`,
+    };
+  }
+
+  private runHandoverSideEffect(
+    orgId: string,
+    bookingId: string,
+    operation: string,
+    work: () => Promise<void>,
+  ): void {
+    this.bookingObservability.runSideEffectVoid(
+      {
+        ...this.handoverObsCtx(orgId, bookingId),
+        operation,
+        category: BOOKING_FAILURE_CATEGORIES.HANDOVER,
+        errorCode: BOOKING_SAFE_ERROR_CODES.HANDOVER_SIDE_EFFECT_FAILED,
+      },
+      work,
+    );
   }
 
   async createHandover(
@@ -412,35 +437,51 @@ export class BookingsHandoverService {
     // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
     // status transitions above are never affected by document generation.
     if (kind === 'PICKUP') {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueuePickupProtocol(orgId, bookingId, protocol.id, actor.userId)
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue pickup protocol generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+      this.runHandoverSideEffect(
+        orgId,
+        bookingId,
+        BOOKING_OBSERVABILITY_OPERATIONS.DOCUMENT_ENQUEUE,
+        async () => {
+          await this.bookingDocumentGenerationDispatcher.enqueuePickupProtocol(
+            orgId,
+            bookingId,
+            protocol.id,
+            actor.userId,
           );
-        });
-      this.runBackgroundTask(
-        `taskAutomation.onPickupHandoverCompleted(${bookingId})`,
-        this.taskAutomation.onPickupHandoverCompleted({
-          id: bookingId,
-          organizationId: orgId,
-          vehicleId: booking.vehicleId,
-          customerId: booking.customerId,
-          status: 'ACTIVE',
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          pickupStationId: booking.pickupStationId,
-          returnStationId: booking.returnStationId,
-        }),
+        },
+      );
+      this.runHandoverSideEffect(
+        orgId,
+        bookingId,
+        BOOKING_OBSERVABILITY_OPERATIONS.HANDOVER_PICKUP,
+        async () => {
+          await this.taskAutomation.onPickupHandoverCompleted({
+            id: bookingId,
+            organizationId: orgId,
+            vehicleId: booking.vehicleId,
+            customerId: booking.customerId,
+            status: 'ACTIVE',
+            startDate: booking.startDate,
+            endDate: booking.endDate,
+            pickupStationId: booking.pickupStationId,
+            returnStationId: booking.returnStationId,
+          });
+        },
       );
     } else {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueueReturnDocuments(orgId, bookingId, protocol.id, actor.userId)
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue return document generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+      this.runHandoverSideEffect(
+        orgId,
+        bookingId,
+        BOOKING_OBSERVABILITY_OPERATIONS.DOCUMENT_ENQUEUE,
+        async () => {
+          await this.bookingDocumentGenerationDispatcher.enqueueReturnDocuments(
+            orgId,
+            bookingId,
+            protocol.id,
+            actor.userId,
           );
-        });
+        },
+      );
 
       const eventBase = {
         organizationId: orgId,
@@ -462,19 +503,23 @@ export class BookingsHandoverService {
         type: 'booking.completed',
         idempotencyKey: `booking.completed:${bookingId}`,
       });
-      this.runBackgroundTask(
-        `taskAutomation.onReturnHandoverCompleted(${bookingId})`,
-        this.taskAutomation.onReturnHandoverCompleted({
-          id: bookingId,
-          organizationId: orgId,
-          vehicleId: booking.vehicleId,
-          customerId: booking.customerId,
-          status: 'COMPLETED',
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          pickupStationId: booking.pickupStationId,
-          returnStationId: booking.returnStationId,
-        }),
+      this.runHandoverSideEffect(
+        orgId,
+        bookingId,
+        BOOKING_OBSERVABILITY_OPERATIONS.HANDOVER_RETURN,
+        async () => {
+          await this.taskAutomation.onReturnHandoverCompleted({
+            id: bookingId,
+            organizationId: orgId,
+            vehicleId: booking.vehicleId,
+            customerId: booking.customerId,
+            status: 'COMPLETED',
+            startDate: booking.startDate,
+            endDate: booking.endDate,
+            pickupStationId: booking.pickupStationId,
+            returnStationId: booking.returnStationId,
+          });
+        },
       );
     }
 

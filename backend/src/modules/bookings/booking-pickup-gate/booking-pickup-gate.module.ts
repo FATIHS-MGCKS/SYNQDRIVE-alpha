@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { BookingObservabilityModule } from '../observability/booking-observability.module';
 import { BookingPickupGateService } from './booking-pickup-gate.service';
 import { BookingPickupGateAuditService } from './booking-pickup-gate-audit.service';
 
 @Module({
-  imports: [DocumentsModule],
+  imports: [DocumentsModule, BookingObservabilityModule],
   providers: [BookingPickupGateService, BookingPickupGateAuditService],
   exports: [BookingPickupGateService, BookingPickupGateAuditService],
 })

@@ -72,6 +72,12 @@ import {
   assertWizardPreviewFingerprintMatches,
   buildEligibilityPreviewFingerprint,
 } from './booking-wizard-eligibility.util';
+import { BookingObservabilityService } from './observability/booking-observability.service';
+import {
+  BOOKING_FAILURE_CATEGORIES,
+  BOOKING_OBSERVABILITY_OPERATIONS,
+  BOOKING_SAFE_ERROR_CODES,
+} from './observability/booking-observability.constants';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -125,7 +131,20 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly bookingObservability: BookingObservabilityService,
   ) {}
+
+  private bookingObsCtx(
+    organizationId: string,
+    bookingId?: string | null,
+    correlationId?: string | null,
+  ) {
+    return {
+      organizationId,
+      bookingId: bookingId ?? null,
+      correlationId: correlationId ?? (bookingId ? `booking:${bookingId}` : `org:${organizationId}`),
+    };
+  }
 
   /**
    * Enforce the rental-health gate for booking create/update. Fails CLOSED in
@@ -358,6 +377,15 @@ export class BookingsService {
         kmIncluded: booking.kmIncluded,
       });
     } catch (err) {
+      await this.bookingObservability.recordFailure({
+        ...this.bookingObsCtx(orgId, booking.id),
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.INVOICE_BOOTSTRAP,
+        category: BOOKING_FAILURE_CATEGORIES.INVOICE,
+        errorCode: BOOKING_SAFE_ERROR_CODES.INVOICE_BOOTSTRAP_FAILED,
+        error: err,
+        severity: 'CRITICAL',
+        persist: true,
+      });
       this.logger.error(
         `Booking ${booking.id} created but invoice bootstrap failed — rolling back booking`,
         err instanceof Error ? err.stack : String(err),
@@ -377,42 +405,58 @@ export class BookingsService {
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
     // explicitly as well — the bundle service is idempotent.
     if (booking.status === 'CONFIRMED' || booking.status === 'PENDING') {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueueInitialBundle(orgId, booking.id, options?.userId ?? null)
-        .then(() => {
+      this.bookingObservability.runSideEffectVoid(
+        {
+          ...this.bookingObsCtx(orgId, booking.id),
+          operation: BOOKING_OBSERVABILITY_OPERATIONS.DOCUMENT_ENQUEUE,
+          category: BOOKING_FAILURE_CATEGORIES.DOCUMENT,
+          errorCode: BOOKING_SAFE_ERROR_CODES.DOCUMENT_ENQUEUE_FAILED,
+        },
+        async () => {
+          await this.bookingDocumentGenerationDispatcher.enqueueInitialBundle(
+            orgId,
+            booking.id,
+            options?.userId ?? null,
+          );
           if (booking.status === 'CONFIRMED') {
-            return this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
+            await this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
               orgId,
               booking.id,
               options?.userId ?? null,
             );
           }
-        })
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue initial document bundle for booking ${booking.id}: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        });
+        },
+      );
     }
 
     if (booking.status === 'CONFIRMED' || booking.status === 'ACTIVE') {
-      void this.taskAutomationService
-        .ensureBookingLifecycleTasks({
-          id: booking.id,
-          organizationId: orgId,
-          vehicleId: booking.vehicleId,
-          customerId: booking.customerId,
-          status: booking.status,
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          pickupStationId: booking.pickupStationId,
-          returnStationId: booking.returnStationId,
-        })
-        .catch(() => {});
+      this.bookingObservability.runSideEffectVoid(
+        {
+          ...this.bookingObsCtx(orgId, booking.id),
+          operation: BOOKING_OBSERVABILITY_OPERATIONS.TASK_SYNC,
+          category: BOOKING_FAILURE_CATEGORIES.TASK,
+          errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+        },
+        async () => {
+          await this.taskAutomationService.ensureBookingLifecycleTasks({
+            id: booking.id,
+            organizationId: orgId,
+            vehicleId: booking.vehicleId,
+            customerId: booking.customerId,
+            status: booking.status,
+            startDate: booking.startDate,
+            endDate: booking.endDate,
+            pickupStationId: booking.pickupStationId,
+            returnStationId: booking.returnStationId,
+          });
+        },
+      );
     }
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
+
+    this.bookingObservability.recordCreateSuccess(this.bookingObsCtx(orgId, booking.id));
 
     return {
       ...booking,
@@ -575,6 +619,10 @@ export class BookingsService {
       select: { id: true, startDate: true, endDate: true, status: true },
     });
     if (overlapping) {
+      this.bookingObservability.recordConflict(
+        this.bookingObsCtx(input.organizationId, undefined, `overlap:${input.vehicleId}`),
+        BOOKING_SAFE_ERROR_CODES.VEHICLE_BOOKING_OVERLAP,
+      );
       throw new ConflictException({
         message: 'Dieses Fahrzeug ist im gewählten Zeitraum bereits gebucht.',
         code: 'VEHICLE_BOOKING_OVERLAP',
@@ -1006,9 +1054,24 @@ export class BookingsService {
 
     let bundleView: Awaited<ReturnType<BookingDocumentBundleService['getBundleView']>> | null =
       null;
+    const readIssues: BookingDetailDto['readIssues'] = [];
     try {
       bundleView = await this.bookingDocumentBundleService.getBundleView(orgId, id);
-    } catch {
+    } catch (err) {
+      readIssues.push({
+        scope: 'documents',
+        code: BOOKING_SAFE_ERROR_CODES.DETAIL_PARTIAL_READ,
+        message: 'Dokumentenbundle konnte nicht geladen werden',
+      });
+      void this.bookingObservability.recordFailure({
+        ...this.bookingObsCtx(orgId, id),
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.DETAIL_READ,
+        category: BOOKING_FAILURE_CATEGORIES.DETAIL_READ,
+        errorCode: BOOKING_SAFE_ERROR_CODES.DETAIL_PARTIAL_READ,
+        error: err,
+        severity: 'WARNING',
+        persist: true,
+      });
       bundleView = null;
     }
 
@@ -1359,6 +1422,7 @@ export class BookingsService {
         createdAt: a.createdAt.toISOString(),
       })),
       payments: paymentsCard,
+      readIssues,
     };
   }
 
@@ -1602,7 +1666,18 @@ export class BookingsService {
               where: { vehicleId: { in: vehicleIds } },
               select: { vehicleId: true, odometerKm: true },
             })
-            .catch(() => [] as Array<{ vehicleId: string; odometerKm: number | null }>)
+            .catch(async (err) => {
+              void this.bookingObservability.recordFailure({
+                ...this.bookingObsCtx(orgId),
+                operation: BOOKING_OBSERVABILITY_OPERATIONS.DETAIL_READ,
+                category: BOOKING_FAILURE_CATEGORIES.DETAIL_READ,
+                errorCode: BOOKING_SAFE_ERROR_CODES.ODOMETER_LOOKUP_FAILED,
+                error: err,
+                severity: 'WARNING',
+                persist: false,
+              });
+              return [] as Array<{ vehicleId: string; odometerKm: number | null }>;
+            })
         : [];
     const odometerByVehicle = new Map(
       odometerRows.map((r) => [
@@ -2041,47 +2116,69 @@ export class BookingsService {
       });
     }
     if (updated.status === 'COMPLETED') {
-      void this.rentalDrivingAnalysisRecomputeTrigger
-        .enqueueForBooking({
-          organizationId: orgId,
-          vehicleId: updated.vehicleId,
-          bookingId: id,
-          reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED,
-          correlationId: `rental-recompute:${id}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED}`,
-        })
-        .catch(() => {});
+      this.bookingObservability.runSideEffectVoid(
+        {
+          ...this.bookingObsCtx(orgId, id),
+          operation: BOOKING_OBSERVABILITY_OPERATIONS.RENTAL_RECOMPUTE,
+          category: BOOKING_FAILURE_CATEGORIES.SIDE_EFFECT,
+          errorCode: BOOKING_SAFE_ERROR_CODES.RENTAL_RECOMPUTE_FAILED,
+        },
+        async () => {
+          await this.rentalDrivingAnalysisRecomputeTrigger.enqueueForBooking({
+            organizationId: orgId,
+            vehicleId: updated.vehicleId,
+            bookingId: id,
+            reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED,
+            correlationId: `rental-recompute:${id}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED}`,
+          });
+        },
+      );
     }
     // Generate the initial document bundle when a booking transitions INTO
     // CONFIRMED via update. Idempotent + fire-and-forget.
     if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueueInitialBundle(orgId, id, null)
-        .then(() =>
-          this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(orgId, id, null),
-        )
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue initial document bundle for booking ${id}: ${err instanceof Error ? err.message : String(err)}`,
+      this.bookingObservability.runSideEffectVoid(
+        {
+          ...this.bookingObsCtx(orgId, id),
+          operation: BOOKING_OBSERVABILITY_OPERATIONS.DOCUMENT_ENQUEUE,
+          category: BOOKING_FAILURE_CATEGORIES.DOCUMENT,
+          errorCode: BOOKING_SAFE_ERROR_CODES.DOCUMENT_ENQUEUE_FAILED,
+        },
+        async () => {
+          await this.bookingDocumentGenerationDispatcher.enqueueInitialBundle(orgId, id, null);
+          await this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
+            orgId,
+            id,
+            null,
           );
-        });
+        },
+      );
     }
     // Materialize booking lifecycle tasks on any status transition. The
     // automation service is idempotent (dedup per generatedKey), so calling it
     // on every update is safe and only adds tasks when the status warrants it.
     if (updated.status !== existing.status) {
-      void this.taskAutomationService
-        .ensureBookingLifecycleTasks({
-          id: updated.id,
-          organizationId: orgId,
-          vehicleId: updated.vehicleId,
-          customerId: updated.customerId,
-          status: updated.status,
-          startDate: updated.startDate,
-          endDate: updated.endDate,
-          pickupStationId: updated.pickupStationId,
-          returnStationId: updated.returnStationId,
-        })
-        .catch(() => {});
+      this.bookingObservability.runSideEffectVoid(
+        {
+          ...this.bookingObsCtx(orgId, id),
+          operation: BOOKING_OBSERVABILITY_OPERATIONS.TASK_SYNC,
+          category: BOOKING_FAILURE_CATEGORIES.TASK,
+          errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+        },
+        async () => {
+          await this.taskAutomationService.ensureBookingLifecycleTasks({
+            id: updated.id,
+            organizationId: orgId,
+            vehicleId: updated.vehicleId,
+            customerId: updated.customerId,
+            status: updated.status,
+            startDate: updated.startDate,
+            endDate: updated.endDate,
+            pickupStationId: updated.pickupStationId,
+            returnStationId: updated.returnStationId,
+          });
+        },
+      );
     } else if (
       updated.status === 'CONFIRMED' &&
       (updated.vehicleId !== existing.vehicleId ||
@@ -2100,19 +2197,50 @@ export class BookingsService {
         returnStationId: updated.returnStationId,
       };
       if (updated.vehicleId !== existing.vehicleId) {
-        void this.vehicleCleaningTasks
-          .onBookingVehicleChanged(lifecycleInput, existing.vehicleId)
-          .catch(() => {});
+        this.bookingObservability.runSideEffectVoid(
+          {
+            ...this.bookingObsCtx(orgId, id),
+            operation: BOOKING_OBSERVABILITY_OPERATIONS.VEHICLE_CLEANING,
+            category: BOOKING_FAILURE_CATEGORIES.TASK,
+            errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+          },
+          async () => {
+            await this.vehicleCleaningTasks.onBookingVehicleChanged(
+              lifecycleInput,
+              existing.vehicleId,
+            );
+          },
+        );
       }
       if (updated.startDate.getTime() !== existing.startDate.getTime()) {
-        void this.taskAutomationService
-          .syncBookingPreparationTiming(lifecycleInput, { previousStartDate: existing.startDate })
-          .catch(() => {});
-        void this.taskAutomationService
-          .syncBookingPickupTiming(lifecycleInput, { previousStartDate: existing.startDate })
-          .catch(() => {});
+        this.bookingObservability.runSideEffectVoid(
+          {
+            ...this.bookingObsCtx(orgId, id),
+            operation: BOOKING_OBSERVABILITY_OPERATIONS.TASK_SYNC,
+            category: BOOKING_FAILURE_CATEGORIES.TASK,
+            errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+          },
+          async () => {
+            await this.taskAutomationService.syncBookingPreparationTiming(lifecycleInput, {
+              previousStartDate: existing.startDate,
+            });
+            await this.taskAutomationService.syncBookingPickupTiming(lifecycleInput, {
+              previousStartDate: existing.startDate,
+            });
+          },
+        );
       } else {
-        void this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput).catch(() => {});
+        this.bookingObservability.runSideEffectVoid(
+          {
+            ...this.bookingObsCtx(orgId, id),
+            operation: BOOKING_OBSERVABILITY_OPERATIONS.TASK_SYNC,
+            category: BOOKING_FAILURE_CATEGORIES.TASK,
+            errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+          },
+          async () => {
+            await this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput);
+          },
+        );
       }
     } else if (
       updated.status === 'ACTIVE' &&
@@ -2132,16 +2260,47 @@ export class BookingsService {
         returnStationId: updated.returnStationId,
       };
       if (updated.vehicleId !== existing.vehicleId) {
-        void this.vehicleCleaningTasks
-          .onBookingVehicleChanged(lifecycleInput, existing.vehicleId)
-          .catch(() => {});
+        this.bookingObservability.runSideEffectVoid(
+          {
+            ...this.bookingObsCtx(orgId, id),
+            operation: BOOKING_OBSERVABILITY_OPERATIONS.VEHICLE_CLEANING,
+            category: BOOKING_FAILURE_CATEGORIES.TASK,
+            errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+          },
+          async () => {
+            await this.vehicleCleaningTasks.onBookingVehicleChanged(
+              lifecycleInput,
+              existing.vehicleId,
+            );
+          },
+        );
       }
       if (updated.endDate.getTime() !== existing.endDate.getTime()) {
-        void this.taskAutomationService
-          .syncBookingReturnTiming(lifecycleInput, { previousEndDate: existing.endDate })
-          .catch(() => {});
+        this.bookingObservability.runSideEffectVoid(
+          {
+            ...this.bookingObsCtx(orgId, id),
+            operation: BOOKING_OBSERVABILITY_OPERATIONS.TASK_SYNC,
+            category: BOOKING_FAILURE_CATEGORIES.TASK,
+            errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+          },
+          async () => {
+            await this.taskAutomationService.syncBookingReturnTiming(lifecycleInput, {
+              previousEndDate: existing.endDate,
+            });
+          },
+        );
       } else {
-        void this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput).catch(() => {});
+        this.bookingObservability.runSideEffectVoid(
+          {
+            ...this.bookingObsCtx(orgId, id),
+            operation: BOOKING_OBSERVABILITY_OPERATIONS.TASK_SYNC,
+            category: BOOKING_FAILURE_CATEGORIES.TASK,
+            errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+          },
+          async () => {
+            await this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput);
+          },
+        );
       }
     }
     await this.fleetMapCache.invalidate(orgId);
@@ -2159,7 +2318,17 @@ export class BookingsService {
       include: { vehicle: true },
     });
 
-    await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
+    await this.bookingObservability.runSideEffect(
+      {
+        ...this.bookingObsCtx(orgId, id),
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.DOCUMENT_VOID,
+        category: BOOKING_FAILURE_CATEGORIES.DOCUMENT,
+        errorCode: BOOKING_SAFE_ERROR_CODES.DOCUMENT_VOID_FAILED,
+      },
+      async () => {
+        await this.generatedDocumentsService.voidAllForBooking(orgId, id);
+      },
+    );
 
     const [updated] = await this.prisma.$transaction([
       this.prisma.booking.update({
@@ -2184,12 +2353,28 @@ export class BookingsService {
       }),
     ]);
 
-    void this.taskAutomationService
-      .supersedeBookingLifecycleOnCancellation(orgId, id)
-      .catch(() => {});
-    void this.vehicleCleaningTasks
-      .onBookingCancelled(orgId, id, booking.vehicleId)
-      .catch(() => {});
+    this.bookingObservability.runSideEffectVoid(
+      {
+        ...this.bookingObsCtx(orgId, id),
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.CANCEL,
+        category: BOOKING_FAILURE_CATEGORIES.TASK,
+        errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+      },
+      async () => {
+        await this.taskAutomationService.supersedeBookingLifecycleOnCancellation(orgId, id);
+      },
+    );
+    this.bookingObservability.runSideEffectVoid(
+      {
+        ...this.bookingObsCtx(orgId, id),
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.VEHICLE_CLEANING,
+        category: BOOKING_FAILURE_CATEGORIES.TASK,
+        errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+      },
+      async () => {
+        await this.vehicleCleaningTasks.onBookingCancelled(orgId, id, booking.vehicleId);
+      },
+    );
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
@@ -2277,7 +2462,17 @@ export class BookingsService {
       }),
     ]);
 
-    void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
+    this.bookingObservability.runSideEffectVoid(
+      {
+        ...this.bookingObsCtx(orgId, id),
+        operation: BOOKING_OBSERVABILITY_OPERATIONS.NO_SHOW,
+        category: BOOKING_FAILURE_CATEGORIES.TASK,
+        errorCode: BOOKING_SAFE_ERROR_CODES.TASK_SYNC_FAILED,
+      },
+      async () => {
+        await this.taskAutomationService.handleBookingNoShow(orgId, id);
+      },
+    );
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
