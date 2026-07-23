@@ -2334,3 +2334,89 @@ Count-Mismatch → Rollback + `RENTAL_RULES_ASSIGNMENT_STALE`.
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 22).*
+
+---
+
+## Prompt 23 — Category Lifecycle
+
+Siehe Branch `cursor/rental-category-lifecycle-1001`: `RentalVehicleCategoryStatus` (DRAFT/ACTIVE/INACTIVE/ARCHIVED), `POST .../lifecycle`, Status-Filter in UI. **DONE**.
+
+---
+
+## Prompt 24 — Rental Rule Revisions (Versionierung & Reproduzierbarkeit)
+
+**Ziel:** Regelstände versioniert, zeitlich gültig und reproduzierbar speichern — ohne vollständigen Publish-Workflow (folgt Prompt 25).
+
+### 24.1 Schema `rental_rule_revisions`
+
+| Spalte | Typ | Zweck |
+|--------|-----|-------|
+| `id` | UUID PK | Revision |
+| `organization_id` | FK | Tenant-Scope |
+| `scope_type` | `ORGANIZATION \| CATEGORY \| VEHICLE` | Regel-Ebene |
+| `scope_id` | TEXT | orgId / categoryId / vehicleId |
+| `version` | INT | Monotone Scope-Version (spiegelt Live-`version`) |
+| `status` | `DRAFT \| ACTIVE \| RETIRED` | Lebenszyklus der Revision |
+| `normalized_rules` | JSONB | `{ rules, scopeMeta }` kanonisch |
+| `rules_hash` | VARCHAR(64) | SHA-256 über kanonisches JSON |
+| `effective_from` / `effective_to` | TIMESTAMP | Zeitliche Gültigkeit |
+| `created_by` / `created_at` | Audit | Erstellung |
+| `published_by` / `published_at` | Audit | Veröffentlichung (Backfill: `updated_at`) |
+| `change_reason` | TEXT | z. B. Backfill-Kennzeichnung |
+| `supersedes_revision_id` | FK self | Ketten für Historie |
+| `lock_version` | INT | OCC auf Revisionszeile (Publish Prompt 25) |
+
+**Constraints:**
+- `UNIQUE (organization_id, scope_type, scope_id, version)`
+- Partial unique: **eine** offene `ACTIVE`-Revision pro Scope (`effective_to IS NULL`)
+
+### 24.2 Normalisierung & Hash
+
+`rental-rules-revision.util.ts`:
+- `rules`: alle `RENTAL_RULE_FIELD_KEYS` in fester Reihenfolge
+- `scopeMeta`: scope-spezifisch (z. B. `isActive` für Org, `name/status` für Category)
+- `computeRentalRulesHash()` → deterministischer SHA-256
+
+### 24.3 Migration & Backfill
+
+Migration: `20260723130000_rental_rule_revisions`
+
+1. Enums + Tabelle + Indizes
+2. Backfill `INSERT … SELECT` (idempotent, `ON CONFLICT DO NOTHING`):
+   - `organization_rental_rules` → scope `ORGANIZATION`, `scope_id = organization_id`
+   - `rental_vehicle_categories` → scope `CATEGORY`
+   - `vehicle_rental_requirement_overrides` → scope `VEHICLE`
+3. Initiale Revisionen: `status = ACTIVE`, `version` = Live-`version`, `effective_from` = `created_at` (Category: `status_changed_at` falls gesetzt)
+
+Runtime-Backfill: `backfillRentalRuleRevisions()` für Reparatur/Idempotenz.
+
+### 24.4 Bewusst nicht in Prompt 24
+
+- Kein Publish-Workflow (Draft → Active, Retire vorherige Revision)
+- Keine automatische Revision bei jedem PATCH (folgt Prompt 25)
+- Live-Tabellen bleiben operative Quelle; Revisionen sind historischer/reproduzierbarer Spiegel
+
+### 24.5 Tests
+
+| Suite | Abdeckung |
+|-------|-----------|
+| `rental-rules-revision.util.spec.ts` | Kanonisierung, Hash-Stabilität |
+| `rental-rules-revision-backfill.spec.ts` | Idempotenter Backfill |
+| `rental-rules-revision.schema.spec.ts` | Prisma + Migration-SQL |
+
+---
+
+## Prompt 24 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Historische Regelstände reproduzierbar | ✅ |
+| Version + Hash pro Revision | ✅ |
+| Initiale Bestandsdaten übernommen | ✅ |
+| Keine aktive Konfiguration verloren | ✅ |
+| Tests bestehen | ✅ (176 rental-rules) |
+| Prompt 24 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 24).*

@@ -1603,6 +1603,7 @@ model Organization {
   organizationRentalRules                OrganizationRentalRules?
   rentalVehicleCategories                RentalVehicleCategory[]
   vehicleRentalRequirementOverrides      VehicleRentalRequirementOverride[]
+  rentalRuleRevisions                    RentalRuleRevision[]
   tireRentalHealthReviewOverrides        TireRentalHealthReviewOverride[]
   brakeRentalHealthReviewOverrides       BrakeRentalHealthReviewOverride[]
   tireHealthAlerts                       TireHealthAlert[]
@@ -1810,6 +1811,8 @@ model User {
   bookingAllowedDriversAdded          BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
   bookingEligibilityApprovalsRequested BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalRequestedBy")
   bookingEligibilityApprovalsDecided   BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalDecidedBy")
+  rentalRuleRevisionsCreated           RentalRuleRevision[]                   @relation("RentalRuleRevisionCreatedBy")
+  rentalRuleRevisionsPublished         RentalRuleRevision[]                   @relation("RentalRuleRevisionPublishedBy")
   tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
@@ -5267,6 +5270,18 @@ enum RentalVehicleCategoryStatus {
   ARCHIVED
 }
 
+enum RentalRuleRevisionScopeType {
+  ORGANIZATION
+  CATEGORY
+  VEHICLE
+}
+
+enum RentalRuleRevisionStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
 model OrganizationRentalRules {
   id                          String                        @id @default(uuid())
   organizationId              String                        @unique @map("organization_id")
@@ -5353,6 +5368,39 @@ model VehicleRentalRequirementOverride {
 
   @@index([organizationId])
   @@map("vehicle_rental_requirement_overrides")
+}
+
+/// Immutable, temporally versioned rental rule revisions per scope (Prompt 24).
+model RentalRuleRevision {
+  id                   String                      @id @default(uuid())
+  organizationId       String                      @map("organization_id")
+  scopeType            RentalRuleRevisionScopeType @map("scope_type")
+  scopeId              String                      @map("scope_id")
+  version              Int
+  status               RentalRuleRevisionStatus
+  normalizedRules      Json                        @map("normalized_rules")
+  rulesHash            String                      @map("rules_hash") @db.VarChar(64)
+  effectiveFrom        DateTime                    @map("effective_from")
+  effectiveTo          DateTime?                   @map("effective_to")
+  createdBy            String?                     @map("created_by")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  publishedBy          String?                     @map("published_by")
+  publishedAt          DateTime?                   @map("published_at")
+  changeReason         String?                     @map("change_reason")
+  supersedesRevisionId String?                     @map("supersedes_revision_id")
+  lockVersion          Int                         @default(1) @map("lock_version")
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser      User?               @relation("RentalRuleRevisionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  publishedByUser    User?               @relation("RentalRuleRevisionPublishedBy", fields: [publishedBy], references: [id], onDelete: SetNull)
+  supersedesRevision RentalRuleRevision? @relation("RentalRuleRevisionSupersedes", fields: [supersedesRevisionId], references: [id], onDelete: SetNull)
+  supersededBy       RentalRuleRevision[] @relation("RentalRuleRevisionSupersedes")
+
+  @@unique([organizationId, scopeType, scopeId, version], map: "rental_rule_revisions_scope_version_key")
+  @@index([organizationId, scopeType, scopeId, status], map: "rental_rule_revisions_scope_status_idx")
+  @@index([organizationId, scopeType, scopeId, effectiveFrom], map: "rental_rule_revisions_scope_effective_idx")
+  @@index([rulesHash], map: "rental_rule_revisions_rules_hash_idx")
+  @@map("rental_rule_revisions")
 }
 
 model TireRentalHealthReviewOverride {

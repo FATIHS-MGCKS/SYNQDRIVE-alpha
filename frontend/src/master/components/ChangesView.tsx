@@ -35,7 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'rental-rules-category-assignment-delta-v49775-2026-07-23',
+    id: 'rental-rule-revisions-v49777-2026-07-23',
+    version: '4.9.777',
+    title: 'V4.9.777 — Rental rule revisions table + backfill (Prompt 24)',
+    summary: [
+      'Neue Tabelle `rental_rule_revisions` mit Scope ORGANIZATION/CATEGORY/VEHICLE, Status DRAFT/ACTIVE/RETIRED.',
+      'Kanonisches `normalized_rules` JSON + `rulesHash` (SHA-256) für reproduzierbare Regelstände.',
+      'Migration backfillt initiale ACTIVE-Revisionen aus Bestandsdaten (idempotent).',
+      'Partial unique index: eine offene ACTIVE-Revision pro Scope; `lockVersion` für künftigen Publish-Workflow.',
+    ],
+    reason: 'Rental Rules müssen versioniert, zeitlich gültig und reproduzierbar werden (Remediation Prompt 24).',
+    previousBehavior: 'Nur Live-Zeilen mit OCC-`version`; keine historischen Regel-Snapshots.',
+    details:
+      'migration 20260723130000, rental-rules-revision.util.ts, rental-rules-revision-backfill.util.ts, rental-rules-revision.schema.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Rental Rules',
+    createdAt: '2026-07-23T18:38:00.000Z',
+  },
+  {
     version: '4.9.775',
     title: 'V4.9.775 — Rental Rules category assignment delta + OCC (Prompt 22)',
     summary: [
