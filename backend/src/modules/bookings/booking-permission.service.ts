@@ -31,6 +31,21 @@ export class BookingPermissionService {
     );
   }
 
+  async loadPermissions(
+    actor: PermissionActor,
+    orgId: string,
+  ): Promise<MembershipPermissionsMap | null> {
+    if (!actor?.id) return null;
+    if (actor.platformRole === 'MASTER_ADMIN') return null;
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: { userId: actor.id, organizationId: orgId, status: 'ACTIVE' },
+      select: { role: true, permissions: true },
+    });
+    if (!membership) return null;
+    if (membership.role === 'ORG_ADMIN') return null;
+    return normalizeMembershipPermissions(membership.permissions);
+  }
+
   hasAction(
     permissions: MembershipPermissionsMap | null | undefined,
     action: BookingPermissionAction,
