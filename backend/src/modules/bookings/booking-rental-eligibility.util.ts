@@ -58,6 +58,8 @@ export interface EligibilityEvaluationContext {
   foreignTravelRequested: boolean;
   additionalDriverCount: number;
   depositReceived: boolean;
+  requiredDepositAmountCents?: number | null;
+  requiredDepositCurrency?: string | null;
 }
 
 export function evaluateRentalEligibilityChecks(
@@ -139,10 +141,12 @@ export function evaluateRentalEligibilityChecks(
     }
   }
 
-  const depositCents = ctx.rules.depositAmountCents.value;
+  const depositCents =
+    ctx.requiredDepositAmountCents ?? ctx.rules.depositAmountCents.value;
   if (depositCents != null && depositCents > 0 && !ctx.depositReceived) {
     const amount = (depositCents / 100).toFixed(2);
-    const currency = ctx.rules.depositCurrency.value ?? 'EUR';
+    const currency =
+      ctx.requiredDepositCurrency ?? ctx.rules.depositCurrency.value ?? 'EUR';
     warningReasons.push(
       `A deposit of ${amount} ${currency} will be required before or at pickup.`,
     );

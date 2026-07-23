@@ -1040,12 +1040,19 @@ export class BookingDocumentBundleService {
   private async getOrCreateDeposit(orgId: string, booking: BookingWithRelations): Promise<BookingDeposit> {
     const existing = await this.prisma.bookingDeposit.findUnique({ where: { bookingId: booking.id } });
     if (existing) return existing;
+
+    const priceSnapshot = await this.prisma.bookingPriceSnapshot.findFirst({
+      where: { organizationId: orgId, bookingId: booking.id },
+      select: { depositAmountCents: true, currency: true },
+    });
+
     const extras = booking.extrasJson as Record<string, unknown> | null;
     const depositFromExtras =
       typeof extras?.depositCents === 'number' && extras.depositCents > 0
         ? Math.round(extras.depositCents)
         : null;
     const amountCents =
+      priceSnapshot?.depositAmountCents ??
       depositFromExtras ??
       (booking.totalPriceCents != null && booking.totalPriceCents > 0
         ? Math.round(booking.totalPriceCents * 0.2)
@@ -1057,9 +1064,13 @@ export class BookingDocumentBundleService {
           bookingId: booking.id,
           customerId: booking.customerId,
           amountCents,
-          currency: (booking.currency || 'EUR').toUpperCase(),
+          currency: (priceSnapshot?.currency ?? booking.currency || 'EUR').toUpperCase(),
           status: 'REQUESTED',
-          reason: depositFromExtras != null ? 'Aus Buchungsdaten' : 'Standard-Kaution (20 % des Buchungswerts)',
+          reason: priceSnapshot
+            ? 'Aus Booking-Preis-Snapshot (kanonischer Deposit Resolver)'
+            : depositFromExtras != null
+              ? 'Aus Buchungsdaten'
+              : 'Standard-Kaution (20 % des Buchungswerts)',
         },
       });
     } catch {

@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import type { ResolvedTariffContext } from './pricing-context.types';
 import type { PricingContextDto } from './pricing-context.types';
+import type { ResolvedDeposit } from '@modules/deposit/deposit-resolver.types';
 
 type TariffRateRow = ResolvedTariffContext['tariffVersion']['rate'];
 
@@ -36,6 +37,7 @@ export function toPricingContextDto(
   ctx: ResolvedTariffContext,
   vehicleId: string,
   pickupAt: Date,
+  resolvedDeposit?: ResolvedDeposit,
 ): PricingContextDto {
   const tv = ctx.tariffVersion;
   return {
@@ -51,7 +53,18 @@ export function toPricingContextDto(
     effectiveTo: tv.validTo?.toISOString() ?? null,
     vehicleId,
     pickupAt: pickupAt.toISOString(),
-    depositAmountCents: tv.rate.depositAmountCents,
+    depositAmountCents: resolvedDeposit?.amount ?? tv.rate.depositAmountCents,
+    resolvedDeposit: resolvedDeposit
+      ? {
+          amount: resolvedDeposit.amount,
+          currency: resolvedDeposit.currency,
+          source: resolvedDeposit.source,
+          ruleRevisionId: resolvedDeposit.ruleRevisionId,
+          reason: resolvedDeposit.reason,
+          manualOverride: resolvedDeposit.manualOverride,
+          calculatedAt: resolvedDeposit.calculatedAt,
+        }
+      : undefined,
     taxRatePercent: ctx.priceBook.taxRatePercent,
     mileagePackages: tv.mileagePackages,
     insuranceOptions: tv.insuranceOptions,

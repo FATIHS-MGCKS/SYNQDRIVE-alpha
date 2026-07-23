@@ -6,6 +6,7 @@ import { PricingMigrationService } from './pricing-migration.service';
 import {
   createPricingTestStore,
   createSedanPricingFixtures,
+  createTariffPassthroughDepositResolver,
   SEDAN_DEPOSIT_ACTIVE_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
   SEDAN_DAILY_NET_CENTS,
@@ -21,6 +22,7 @@ describe('Pricing tariff publish flow (Sedan deposit 17700 → 50000)', () => {
     const pricing = new PricingService(
       store.prisma as unknown as PrismaService,
       migration as unknown as PricingMigrationService,
+      createTariffPassthroughDepositResolver(),
     );
     return { store, tariffs, pricing };
   }

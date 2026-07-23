@@ -10,6 +10,7 @@ import { PricingQuoteService } from './pricing-quote.service';
 import {
   createPricingTestStore,
   createSedanPricingFixtures,
+  createTariffPassthroughDepositResolver,
   SEDAN_DEPOSIT_ACTIVE_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
   SEDAN_DAILY_NET_CENTS,
@@ -24,7 +25,11 @@ describe('Pricing deposit E2E flow (17700 → 50000 cents)', () => {
     const store = createPricingTestStore(ids);
     const prisma = store.prisma as unknown as PrismaService;
     const tariffs = new PriceTariffsService(prisma, migration as unknown as PricingMigrationService);
-    const pricing = new PricingService(prisma, migration as unknown as PricingMigrationService);
+    const pricing = new PricingService(
+      prisma,
+      migration as unknown as PricingMigrationService,
+      createTariffPassthroughDepositResolver(),
+    );
     const quotes = new PricingQuoteService(prisma, pricing);
     return { store, tariffs, pricing, quotes };
   }

@@ -73,6 +73,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-24T06:00:00.000Z',
   },
   {
+    id: 'canonical-deposit-resolver-v49783-2026-07-23',
+    version: '4.9.783',
+    title: 'V4.9.783 — Canonical deposit resolver (Prompt 30)',
+    summary: [
+      'Zentraler `DepositResolverService` vereint Rental Rules Mindestkaution und Tarif-Kaution zu einer kanonischen Deposit-Wahrheit.',
+      'Priorität: Org-Minimum → Kategorie → Fahrzeug-Override → Tarif (wenn ≥ Minimum) → genehmigter manueller Override.',
+      'Tarif unter Mindestkaution wird angehoben (`raisedToMinimum`); Währungskonflikte blockieren ohne stille FX-Umrechnung.',
+      'Pricing-Simulation, Snapshot, Checkout, Eligibility-Warnung und BookingDeposit nutzen denselben Resolver-Output.',
+      '`ResolvedDeposit`: amount, currency, source, ruleRevisionId, reason, manualOverride, calculatedAt.',
+    ],
+    reason:
+      'Rental Rules und Pricing widersprachen sich bei Kaution — eine kanonische Berechnung mit nachvollziehbarer Quelle (Remediation Prompt 30).',
+    previousBehavior:
+      'Tarif-`depositAmountCents` und Rental-Rules-`depositAmountCents` liefen getrennt; BookingDeposit-Fallback ignorierte Price Snapshot.',
+    details:
+      'deposit/* module, pricing.service.ts integration, pricing-calculation DEPOSIT_RESOLVER metadata, booking-rental-eligibility + document bundle.',
+    affectsArchitecture: true,
+    module: 'Pricing / Rental Rules',
+    createdAt: '2026-07-24T02:00:00.000Z',
+  },
+  {
     id: 'rental-rules-ui-restructure-v49785-2026-07-23',
     version: '4.9.785',
     title: 'V4.9.785 — Rental Rules UI restructure (Prompt 32)',
@@ -203,6 +224,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-23T18:38:00.000Z',
   },
   {
+    id: 'rental-category-assignment-delta-v49775-2026-07-23',
     version: '4.9.775',
     title: 'V4.9.775 — Rental Rules category assignment delta + OCC (Prompt 22)',
     summary: [
