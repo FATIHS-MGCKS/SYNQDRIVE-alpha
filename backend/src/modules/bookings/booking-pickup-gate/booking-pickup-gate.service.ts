@@ -1,9 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  assertMembershipPermission,
-  type PermissionActor,
-} from '@shared/auth/permission.util';
 import { BookingDocumentCompletenessService } from '@modules/documents/booking-document-completeness.service';
 import {
   BUNDLE_COMPLETENESS_REASON_CODE,
@@ -11,7 +7,6 @@ import {
 } from '@modules/documents/booking-document-completeness.constants';
 import { BOOKING_DOCUMENT_GENERATION_STATUS } from '@modules/documents/booking-document-generation/booking-document-generation.constants';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
-import { LEGAL_DOCUMENT_PERMISSION_REQUIREMENTS } from '@modules/documents/legal-document-permission.constants';
 import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 import {
   PICKUP_GATE_ALLOWED_SOURCE_STATUSES,
@@ -339,12 +334,12 @@ export class BookingPickupGateService {
       return this.buildEvaluation(requirements, false);
     }
 
-    const canOverride = await this.canOverrideHandover(input.actor, input.organizationId);
+    const canOverride = input.hasOverridePermission === true;
     if (!canOverride) {
       requirements.push(
         this.req(
           PICKUP_GATE_CODE.OVERRIDE_DENIED,
-          'Missing legal_documents.override_handover permission',
+          'Missing booking.override permission',
           false,
         ),
       );
@@ -386,30 +381,6 @@ export class BookingPickupGateService {
     const name = payload.customerSignatureName?.trim();
     const dataUrl = payload.customerSignatureDataUrl?.trim();
     return Boolean(name || dataUrl);
-  }
-
-  private async canOverrideHandover(
-    actor: AssertPickupGateInput['actor'],
-    organizationId: string,
-  ): Promise<boolean> {
-    try {
-      const requirement = LEGAL_DOCUMENT_PERMISSION_REQUIREMENTS['legal_documents.override_handover'];
-      await assertMembershipPermission(
-        this.prisma,
-        {
-          id: actor.userId,
-          platformRole: actor.platformRole ?? undefined,
-          membershipRole: actor.membershipRole ?? undefined,
-          organizationId,
-        },
-        organizationId,
-        requirement.module,
-        requirement.level,
-      );
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   private req(

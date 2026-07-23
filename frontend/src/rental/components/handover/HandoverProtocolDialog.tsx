@@ -385,8 +385,6 @@ export function HandoverProtocolDialog({
 
       const payload = {
         performedAt: performedAtIso,
-        performedByUserId: staffId || null,
-        performedByName: staffName || null,
         odometerKm: Number(odometerKm),
         fuelPercent: Math.max(0, Math.min(100, Math.round(fuelPercent))),
         fuelFull,

@@ -2,7 +2,6 @@ import {
   Injectable,
   Inject,
   forwardRef,
-  BadRequestException,
   NotFoundException,
   ConflictException,
   Logger,
@@ -16,9 +15,11 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
-  CreateHandoverProtocolPayload,
   HandoverProtocolDto,
 } from './handover.types';
+import type { CreateHandoverCommand } from './handover-command.types';
+import { HandoverValidationService } from './handover-validation.service';
+import { HANDOVER_ERROR_CODES } from './handover-error.codes';
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
@@ -34,6 +35,7 @@ import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-h
 import { BookingPickupGateService } from './booking-pickup-gate/booking-pickup-gate.service';
 import { BookingPickupGateAuditService } from './booking-pickup-gate/booking-pickup-gate-audit.service';
 import {
+  PICKUP_GATE_CODE,
   PICKUP_GATE_EVENT_TYPE,
   PICKUP_GATE_OUTCOME,
 } from './booking-pickup-gate/booking-pickup-gate.constants';
@@ -64,6 +66,7 @@ export class BookingsHandoverService {
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly pickupGate: BookingPickupGateService,
     private readonly pickupGateAudit: BookingPickupGateAuditService,
+    private readonly handoverValidation: HandoverValidationService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -76,10 +79,11 @@ export class BookingsHandoverService {
     orgId: string,
     bookingId: string,
     kind: HandoverKind,
-    payload: CreateHandoverProtocolPayload,
+    command: CreateHandoverCommand,
     actor: HandoverActorContext,
+    options?: { hasOverridePermission?: boolean },
   ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
-    this.validatePayload(payload);
+    const hasOverridePermission = options?.hasOverridePermission ?? false;
 
     if (kind === 'PICKUP') {
       const existingPickup = await this.prisma.bookingHandoverProtocol.findUnique({
@@ -98,8 +102,31 @@ export class BookingsHandoverService {
         }
         throw new ConflictException({
           message: 'Pickup-Protokoll existiert bereits für diese Buchung.',
-          code: 'HANDOVER_ALREADY_EXISTS',
+          code: HANDOVER_ERROR_CODES.ALREADY_EXISTS,
           existingProtocolId: existingPickup.id,
+        });
+      }
+    }
+
+    if (kind === 'RETURN') {
+      const existingReturn = await this.prisma.bookingHandoverProtocol.findUnique({
+        where: { bookingId_kind: { bookingId, kind: 'RETURN' } },
+      });
+      if (existingReturn) {
+        const currentBooking = await this.prisma.booking.findFirst({
+          where: { id: bookingId, organizationId: orgId },
+          select: { id: true, status: true },
+        });
+        if (currentBooking?.status === 'COMPLETED') {
+          return {
+            booking: { id: currentBooking.id, status: currentBooking.status },
+            protocol: this.mapProtocol(existingReturn),
+          };
+        }
+        throw new ConflictException({
+          message: 'Rückgabe-Protokoll existiert bereits für diese Buchung.',
+          code: HANDOVER_ERROR_CODES.ALREADY_EXISTS,
+          existingProtocolId: existingReturn.id,
         });
       }
     }
@@ -121,37 +148,46 @@ export class BookingsHandoverService {
       throw new NotFoundException('Booking not found');
     }
 
-    // V4.6.81 — Backdate support. When the operator records a pickup that
-    // actually happened earlier (customer was late, dispatcher logs after
-    // the fact), the UI supplies `performedAt`. The DB default (`now()`)
-    // is wrong for those cases: a 3-hour-late pickup recorded at 18:00
-    // should show 18:00, not the moment the form was saved. We validate
-    // that the timestamp is (a) parseable, (b) not in the future (a
-    // pickup can never happen later than right now), and (c) not older
-    // than 7 days before the scheduled start — a broader backdate window
-    // indicates either a typo or an operator editing the wrong booking.
     // `performedAt` only applies to PICKUP; return handover timestamps
     // are written on the submission flow itself.
-    const performedAt = this.resolvePerformedAt(payload, kind, booking.startDate);
+    const performedAt = this.handoverValidation.resolvePerformedAt(
+      command,
+      kind,
+      booking.startDate,
+    );
 
-    const expectedFrom: BookingStatus =
-      kind === 'PICKUP' ? 'CONFIRMED' : 'ACTIVE';
-    const transitionTo: BookingStatus =
-      kind === 'PICKUP' ? 'ACTIVE' : 'COMPLETED';
+    this.handoverValidation.assertBookingStatus(kind, booking.status);
+    this.handoverValidation.assertWarningLightsNotes(command);
 
-    if (booking.status !== expectedFrom) {
-      throw new ConflictException({
-        message:
-          kind === 'PICKUP'
-            ? `Übergabe nicht möglich: Buchung ist bereits im Status ${booking.status}. Pickup erfordert Status CONFIRMED.`
-            : `Rückgabe nicht möglich: Buchung ist im Status ${booking.status}. Return erfordert Status ACTIVE.`,
-        code:
-          kind === 'PICKUP'
-            ? 'HANDOVER_PICKUP_WRONG_STATUS'
-            : 'HANDOVER_RETURN_WRONG_STATUS',
-        currentStatus: booking.status,
+    let pickupOdometerKm: number | null = null;
+    if (kind === 'RETURN') {
+      const pickup = await this.prisma.bookingHandoverProtocol.findUnique({
+        where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
+        select: { odometerKm: true },
       });
+      pickupOdometerKm = pickup?.odometerKm ?? null;
     }
+
+    await this.handoverValidation.assertTenantScopedReferences(command, {
+      organizationId: orgId,
+      bookingId,
+      kind,
+      vehicleId: booking.vehicleId,
+      bookingStatus: booking.status,
+      scheduledStartDate: booking.startDate,
+      pickupOdometerKm,
+      hasOverridePermission,
+    });
+    this.handoverValidation.assertOdometerRules(command, {
+      organizationId: orgId,
+      bookingId,
+      kind,
+      vehicleId: booking.vehicleId,
+      bookingStatus: booking.status,
+      scheduledStartDate: booking.startDate,
+      pickupOdometerKm,
+      hasOverridePermission,
+    });
 
     let gateEvaluation: PickupGateEvaluation | null = null;
     if (kind === 'PICKUP') {
@@ -160,37 +196,20 @@ export class BookingsHandoverService {
         bookingId,
         actor,
         payload: {
-          documentsAcknowledged: payload.documentsAcknowledged,
-          customerSignatureName: payload.customerSignatureName,
-          customerSignatureDataUrl: payload.customerSignatureDataUrl,
-          performedByUserId: (payload as { performedByUserId?: string | null }).performedByUserId,
-          performedByName: (payload as { performedByName?: string | null }).performedByName,
+          documentsAcknowledged: command.documentsAcknowledged,
+          customerSignatureName: command.customerSignatureName,
+          customerSignatureDataUrl: command.customerSignatureDataUrl,
         },
-        overrideReason: payload.pickupGateOverrideReason,
+        overrideReason: command.pickupGateOverrideReason,
         correlationId: `pickup:${bookingId}`,
+        hasOverridePermission,
       });
     }
 
-    // Uniqueness defence for RETURN (PICKUP handled above with idempotent replay).
-    if (kind === 'RETURN') {
-      const existingReturn = await this.prisma.bookingHandoverProtocol.findUnique({
-        where: { bookingId_kind: { bookingId, kind: 'RETURN' } },
-        select: { id: true },
-      });
-      if (existingReturn) {
-        throw new ConflictException({
-          message: 'Rückgabe-Protokoll existiert bereits für diese Buchung.',
-          code: 'HANDOVER_ALREADY_EXISTS',
-          existingProtocolId: existingReturn.id,
-        });
-      }
-    }
+    const transitionTo: BookingStatus =
+      kind === 'PICKUP' ? 'ACTIVE' : 'COMPLETED';
 
-    const damageIds = Array.isArray(payload.damageIds)
-      ? payload.damageIds.filter(
-          (v): v is string => typeof v === 'string' && v.length > 0,
-        )
-      : [];
+    const damageIds = command.damageIds ?? [];
 
     const [protocol, updatedBooking] = await this.prisma.$transaction(
       async (tx) => {
@@ -205,24 +224,24 @@ export class BookingsHandoverService {
             ...(performedAt ? { performedAt } : {}),
             performedByUserId: actor.userId,
             performedByName: actor.displayName,
-            odometerKm: Math.max(0, Math.round(payload.odometerKm)),
+            odometerKm: Math.max(0, Math.round(command.odometerKm)),
             fuelPercent: Math.max(
               0,
-              Math.min(100, Math.round(payload.fuelPercent)),
+              Math.min(100, Math.round(command.fuelPercent)),
             ),
-            fuelFull: !!payload.fuelFull,
-            exteriorClean: payload.exteriorClean ?? true,
-            interiorClean: payload.interiorClean ?? true,
-            tiresSeasonOk: payload.tiresSeasonOk ?? true,
-            warningLightsOn: payload.warningLightsOn ?? false,
-            warningLightsNotes: payload.warningLightsNotes ?? null,
-            notes: payload.notes ?? null,
-            customerSignatureName: payload.customerSignatureName ?? null,
+            fuelFull: !!command.fuelFull,
+            exteriorClean: command.exteriorClean ?? true,
+            interiorClean: command.interiorClean ?? true,
+            tiresSeasonOk: command.tiresSeasonOk ?? true,
+            warningLightsOn: command.warningLightsOn ?? false,
+            warningLightsNotes: command.warningLightsNotes ?? null,
+            notes: command.notes ?? null,
+            customerSignatureName: command.customerSignatureName ?? null,
             customerSignatureDataUrl:
-              payload.customerSignatureDataUrl ?? null,
-            staffSignatureName: payload.staffSignatureName ?? null,
-            staffSignatureDataUrl: payload.staffSignatureDataUrl ?? null,
-            documentsAcknowledged: payload.documentsAcknowledged ?? false,
+              command.customerSignatureDataUrl ?? null,
+            staffSignatureName: command.staffSignatureName ?? null,
+            staffSignatureDataUrl: command.staffSignatureDataUrl ?? null,
+            documentsAcknowledged: command.documentsAcknowledged ?? false,
             damageIds: damageIds as unknown as Prisma.InputJsonValue,
           },
         });
@@ -231,7 +250,7 @@ export class BookingsHandoverService {
           status: transitionTo,
         };
         const actualStationId =
-          payload.actualStationId ??
+          command.actualStationId ??
           (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
         if (kind === 'PICKUP' && actualStationId) {
           bookingUpdateData.actualPickupStation = { connect: { id: actualStationId } };
@@ -351,7 +370,7 @@ export class BookingsHandoverService {
         }
 
         const observationDrafts = this.normalizeTechnicalObservationDrafts(
-          payload.technicalObservations,
+          command.technicalObservations,
         );
         if (observationDrafts.length > 0) {
           const complaintSource =
@@ -385,9 +404,33 @@ export class BookingsHandoverService {
             eventType: PICKUP_GATE_EVENT_TYPE.OVERRIDE,
             outcome: PICKUP_GATE_OUTCOME.ALLOWED,
             actor,
-            overrideReason: payload.pickupGateOverrideReason,
+            overrideReason: command.pickupGateOverrideReason,
             missingRequirements: gateEvaluation.requirements,
             correlationId: `pickup:${bookingId}`,
+          });
+        }
+
+        if (
+          kind === 'RETURN' &&
+          command.odometerOverrideReason &&
+          pickupOdometerKm != null &&
+          command.odometerKm < pickupOdometerKm
+        ) {
+          await this.pickupGateAudit.appendInTransaction(tx, {
+            organizationId: orgId,
+            bookingId,
+            eventType: PICKUP_GATE_EVENT_TYPE.OVERRIDE,
+            outcome: PICKUP_GATE_OUTCOME.ALLOWED,
+            actor,
+            overrideReason: command.odometerOverrideReason,
+            missingRequirements: [
+              {
+                code: PICKUP_GATE_CODE.OVERRIDE_REASON_REQUIRED,
+                message: `Return odometer ${command.odometerKm} below pickup ${pickupOdometerKm}`,
+                overridable: true,
+              },
+            ],
+            correlationId: `return-odometer:${bookingId}`,
           });
         }
 
@@ -512,54 +555,8 @@ export class BookingsHandoverService {
     return map;
   }
 
-  // V4.6.81 — Accept an optional backdated `performedAt` for PICKUP so
-  // operators can record a handover that physically happened earlier.
-  //   • PICKUP without `performedAt` → undefined, Prisma uses the DB
-  //     default (`now()`), preserving V4.6.75 behaviour.
-  //   • PICKUP with `performedAt` → parsed ISO-8601 date. Rejected if
-  //     unparseable, in the future, or more than 7 days before
-  //     `booking.startDate` (heuristic: the only legitimate reason to
-  //     backdate further is a data-entry error on the wrong booking).
-  //   • RETURN — we currently DO NOT expose backdating. Return handover
-  //     side-effects (mileage delta, completedAt) are time-sensitive, so
-  //     the operator should always re-run the dialog when the return
-  //     actually happens. Keeping RETURN simple avoids a second code
-  //     path for kmDriven calculations, which already read from pickup.
-  private resolvePerformedAt(
-    payload: CreateHandoverProtocolPayload,
-    kind: HandoverKind,
-    scheduledStartDate: Date,
-  ): Date | null {
-    if (kind !== 'PICKUP') return null;
-    if (payload.performedAt == null || payload.performedAt === '') return null;
-
-    const parsed = new Date(payload.performedAt);
-    if (Number.isNaN(parsed.getTime())) {
-      throw new BadRequestException(
-        'performedAt muss ein gültiger ISO-8601 Zeitstempel sein',
-      );
-    }
-
-    const now = Date.now();
-    if (parsed.getTime() > now + 60_000 /* allow 60s clock skew */) {
-      throw new BadRequestException(
-        'performedAt darf nicht in der Zukunft liegen',
-      );
-    }
-
-    const earliestAllowed =
-      scheduledStartDate.getTime() - 7 * 24 * 60 * 60 * 1000;
-    if (parsed.getTime() < earliestAllowed) {
-      throw new BadRequestException(
-        'performedAt darf höchstens 7 Tage vor dem geplanten Pickup liegen',
-      );
-    }
-
-    return parsed;
-  }
-
   private normalizeTechnicalObservationDrafts(
-    drafts: HandoverTechnicalObservationDraft[] | undefined,
+    drafts: CreateHandoverCommand['technicalObservations'],
   ): HandoverTechnicalObservationDraft[] {
     if (!Array.isArray(drafts)) return [];
     const seen = new Set<string>();
@@ -581,29 +578,6 @@ export class BookingsHandoverService {
       });
     }
     return normalized;
-  }
-
-  private validatePayload(p: CreateHandoverProtocolPayload) {
-    if (p == null || typeof p !== 'object') {
-      throw new BadRequestException('Payload required');
-    }
-    if (
-      typeof p.odometerKm !== 'number' ||
-      !isFinite(p.odometerKm) ||
-      p.odometerKm < 0
-    ) {
-      throw new BadRequestException(
-        'odometerKm must be a non-negative number',
-      );
-    }
-    if (
-      typeof p.fuelPercent !== 'number' ||
-      !isFinite(p.fuelPercent) ||
-      p.fuelPercent < 0 ||
-      p.fuelPercent > 100
-    ) {
-      throw new BadRequestException('fuelPercent must be between 0 and 100');
-    }
   }
 
   private mapProtocol(r: {

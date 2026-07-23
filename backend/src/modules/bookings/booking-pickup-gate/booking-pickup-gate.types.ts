@@ -37,6 +37,8 @@ export interface AssertPickupGateInput {
   payload: PickupGateHandoverPayloadSlice;
   overrideReason?: string | null;
   correlationId?: string | null;
+  /** Pre-evaluated `booking.override` permission from controller. */
+  hasOverridePermission?: boolean;
 }
 
 export interface AppendPickupGateAuditInput {

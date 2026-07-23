@@ -35,6 +35,108 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-handover-dto-prompt7-2026-07-23',
+    version: '4.9.779',
+    title: 'Booking Production-Readiness — Handover DTO Validation (Prompt 7/34)',
+    summary: [
+      '`CreateHandoverProtocolDto` mit class-validator für Pickup/Return — `forbidNonWhitelisted` lehnt `performedByUserId`/`performedByName` ab.',
+      'Signatur-Data-URLs: erlaubte MIME-Typen (png/jpeg/webp), max 512 KB; Zahlenbereiche für Kilometerstand, Kraftstoff/Ladezustand.',
+      'Return-Kilometerstand ≥ Pickup, außer `odometerOverrideReason` + `booking.override`; Pickup-Gate-Override nutzt `booking.override` + Audit.',
+      'Tenant-sichere Prüfung von `damageIds` und `actualStationId`; Status-Gates (Pickup CONFIRMED, Return ACTIVE).',
+      'Idempotenz: wiederholter Pickup auf ACTIVE / Return auf COMPLETED liefert bestehendes Protokoll.',
+      'Frontend: typisierter `CreateHandoverProtocolPayload`, keine Client-Actor-Felder mehr.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 7 — sichere Handover-Request-Bodies statt unvalidierter Interfaces.',
+    previousBehavior:
+      'Handover nutzte `CreateHandoverProtocolPayload` Interface ohne DTO-Validierung; minimale Service-Validierung; Client konnte `performedBy*` senden.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, create-handover-protocol.dto.ts, handover-validation.service.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / Handover',
+    createdAt: '2026-07-23T20:30:00.000Z',
+  },
+  {
+    id: 'booking-update-commands-prompt6-2026-07-23',
+    version: '4.9.778',
+    title: 'Booking Production-Readiness — Typed Update Commands (Prompt 6/34)',
+    summary: [
+      'Generisches `PATCH /bookings/:id` entfernt (410 Gone); sieben fachliche Action-Endpunkte mit eigenen DTOs und Permissions.',
+      '`BookingUpdateService` mit Optimistic Concurrency (`expectedUpdatedAt` → `BOOKING_VERSION_CONFLICT`), Terminal-State-Lock und Override via `bookings.manage`.',
+      'Schedule/Vehicle/Options: Verfügbarkeit, Rental Health, Pricing-Recalc, atomarer Price Snapshot, Invoice-Sync, Dokument-Regenerierung.',
+      'Customer: Eligibility-Re-Check; Allowed Drivers: Pool-Ersetzung in Transaktion.',
+      'Frontend: `applyBookingFieldUpdates()` routet bestehende Edit-Oberflächen auf typisierte API-Calls.',
+      'Tests: booking-update.service.spec.ts (18), booking-update-dtos.spec.ts, bookings.permissions.characterization.spec.ts.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 6 — getrennte fachliche Update-Commands statt generischem PATCH.',
+    previousBehavior:
+      'Ein generischer PATCH-Endpunkt mit `UpdateBookingDto`; Feld-Permissions nur im Service; keine Optimistic Concurrency; Status/Preise theoretisch über PATCH erreichbar.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-update.service.ts, bookingUpdateCommands.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T20:15:00.000Z',
+  },
+  {
+    id: 'booking-create-validation-prompt5-2026-07-23',
+    version: '4.9.777',
+    title: 'Booking Production-Readiness — Create Validation (Prompt 5/34)',
+    summary: [
+      'Vollständiger `CreateBookingDto` mit kanonischen Feldern (`pickupAt`, `returnAt`, `pricingQuoteId`, `customerNotes`, `internalNotes`, `paymentIntent`, `allowedDriverIds`, `pricingInput`, `isOneWayRental`) und Legacy-Aliases.',
+      'Expliziter `CreateBookingCommand` — keine Client-Preise; Quote ist einzige Preisquelle.',
+      '`BookingCreateValidationService` mit stabilen Fehlercodes (Datumsfenster, Mietdauer, Tenant-IDOR, Quote, Station/One-Way, Rental Health, Customer Eligibility).',
+      '`PricingQuoteService.assertQuoteReadyForBooking` für read-only Quote-Prüfung vor Consume.',
+      'Tests: booking-create.validation.service.spec.ts, booking-command.mapper.spec.ts, booking-mutation.dto.spec.ts.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 5 — fachlich validierte Buchungserstellung ohne Client-Preisvertrauen.',
+    previousBehavior:
+      'CreateBookingDto deckte nur Basis-Felder ab; Validierung verteilt in Service ohne stabile Codes; dailyRateCents/totalPriceCents noch als Legacy-Hints akzeptiert.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-create.validation.service.ts, create-booking.dto.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T19:30:00.000Z',
+  },
+  {
+    id: 'booking-dto-validation-prompt4-2026-07-23',
+    version: '4.9.776',
+    title: 'Booking Production-Readiness — DTO Validation (Prompt 4/34)',
+    summary: [
+      'Entfernt `Prisma.BookingCreateInput` / `Prisma.BookingUpdateInput` aus öffentlichen Booking-HTTP-Endpunkten.',
+      'Neue class-validator DTOs: `CreateBookingDto`, `UpdateBookingDto`, `MarkBookingNoShowDto`.',
+      'Domain-Commands (`CreateBookingCommand`, `UpdateBookingCommand`) + Mapper vor Service-Layer.',
+      'Keine Client-steuerbaren Prisma-Relationen (connect/disconnect); flat IDs only.',
+      'Frontend-Payloads auf `customerId`/`vehicleId`/`quoteId` umgestellt (kein connect-Shape).',
+    ],
+    reason: 'Booking Production-Readiness Prompt 4 — sichere Request-Validierung, deny unknown fields, keine ungefilterten Prisma-Payloads.',
+    previousBehavior:
+      'POST/PATCH /bookings akzeptierten Prisma-Input-Shapes inkl. nested connect; kein forbidNonWhitelisted auf Mutation-Bodies.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-mutation.dto.spec.ts, booking-command.mapper.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T18:01:00.000Z',
+  },
+  {
+    id: 'booking-endpoint-security-prompt3-2026-07-23',
+    version: '4.9.775',
+    title: 'Booking Production-Readiness — Endpoint Security (Prompt 3/34)',
+    summary: [
+      '`BookingPermissionsGuard` deny-by-default auf allen `BookingsController`-Handlern.',
+      'IDOR-Schutz via `BookingAccessService` (bookingId + organizationId); Driver-Scope per E-Mail↔Kunde.',
+      'Response-Redaction für sensitive/finance/signature/audit/documents Bereiche.',
+      'PATCH-Feldprüfung: schedule/customer/vehicle/status erfordern zusätzliche Submodule.',
+      'Documents- und E-Mail-Booking-Routen auf `bookings-documents.*` + IDOR umgestellt.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 3 — explizite Permission-Anforderung pro Endpunkt, keine Mutation nur durch Org-Mitgliedschaft.',
+    previousBehavior:
+      'BookingsController ohne BookingPermissionsGuard; Documents/E-Mail-Routen mit grobem `bookings.*` bzw. `@Roles(ORG_ADMIN)`; keine systematische Response-Redaction.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, bookings.permissions.characterization.spec.ts, bookings.permissions.enforcement.spec.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T17:55:00.000Z',
+  },
+  {
     id: 'fleet-health-service-cases-list-monitoring-v49774-2026-07-23',
     version: '4.9.774',
     title: 'V4.9.774 — Fleet Health Service-Cases-List + monitoring auto-refresh (deploy)',
