@@ -1430,14 +1430,29 @@ export type OperatorBookingUpdatePayload = {
 export interface BookingsListParams {
   page?: number;
   limit?: number;
+  cursor?: string;
+  sortBy?: 'startDate' | 'endDate' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
   status?: string;
   vehicleId?: string;
+  vehicleIds?: string;
   customerId?: string;
   stationId?: string;
   from?: string;
   to?: string;
   search?: string;
+  bookingNumber?: string;
+  excludeTerminal?: boolean;
 }
+
+export type BookingListResponseMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  nextCursor: string | null;
+};
 
 export type BookingDetailDto = {
   core: {
@@ -3662,20 +3677,29 @@ export const api = {
     list: (
       orgId: string,
       params?: BookingsListParams,
+      options?: { signal?: AbortSignal },
     ) => {
       const q = new URLSearchParams();
       if (params?.page != null) q.set('page', String(params.page));
       if (params?.limit != null) q.set('limit', String(params.limit));
+      if (params?.cursor) q.set('cursor', params.cursor);
+      if (params?.sortBy) q.set('sortBy', params.sortBy);
+      if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
       if (params?.status) q.set('status', params.status);
       if (params?.vehicleId) q.set('vehicleId', params.vehicleId);
+      if (params?.vehicleIds) q.set('vehicleIds', params.vehicleIds);
       if (params?.customerId) q.set('customerId', params.customerId);
       if (params?.stationId) q.set('stationId', params.stationId);
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);
       if (params?.search) q.set('search', params.search);
+      if (params?.bookingNumber) q.set('bookingNumber', params.bookingNumber);
+      if (params?.excludeTerminal === true) q.set('excludeTerminal', 'true');
+      if (params?.excludeTerminal === false) q.set('excludeTerminal', 'false');
       const suffix = q.toString() ? `?${q.toString()}` : '';
-      return get<{ data: unknown[]; meta?: unknown } | unknown[]>(
+      return get<{ data: unknown[]; meta: BookingListResponseMeta } | unknown[]>(
         `/organizations/${orgId}/bookings${suffix}`,
+        { signal: options?.signal },
       );
     },
     get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/bookings/${id}`),

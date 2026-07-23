@@ -35,6 +35,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-frontend-pagination-v49792-2026-07-23',
+    version: '4.9.792',
+    title: 'V4.9.792 — Booking planner frontend pagination wiring (Prompt 27)',
+    summary: [
+      '`useBookingsPlannerData`: AbortController + Request-Sequenz gegen Race Conditions; debounced Search; Sortierung synchron mit Query.',
+      'Tabellenansicht: serverseitige Pagination + klickbare Sort-Header (`startDate`/`createdAt`); Filter/Zeitraum synchron.',
+      'Timeline/Kalender/Fahrzeug-Buchungen: Range-Fetch bei Horizont-/Monatswechsel; kein `limit:500` mehr.',
+      'Loading/Error/Empty getrennt; API-Fehler nie als leere Liste; `bookings:invalidated` nach Mutationen.',
+      'Tests: Pagination, Filter-Query-Mapping, Abort, Stale-Response, Error-State.',
+    ],
+    reason:
+      'Booking Production Readiness Prompt 27: paginierte Backend-Endpunkte sauber im Frontend anbinden ohne Full-List-Downloads oder stale UI.',
+    previousBehavior:
+      'Hardcoded Sort `startDate/desc`; keine Request-Abbrüche; `additionalBookings` optimistisch gemerged; `VehicleBookingsView` mit `limit:500`.',
+    details:
+      'useBookingsPlannerData.ts, bookings-query.utils.ts, bookings-invalidation.ts, BookingsPage/TableView, VehicleBookingsView, api.bookings.list(signal), Vitest.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:05:00.000Z',
+  },
+  {
+    id: 'booking-list-pagination-v49791-2026-07-23',
+    version: '4.9.791',
+    title: 'V4.9.791 — Booking list pagination & planner range queries (Prompt 26)',
+    summary: [
+      'Serverseitige Pagination: offset + cursor, `total`/`hasNextPage`/`nextCursor`, stabile Sortierung (`sortBy` + `id` Tie-Breaker).',
+      'Validiertes `ListBookingsQueryDto` mit Filtern (Status, Kunde, Fahrzeug, Station, Zeitraum `[from,to)`, Suche/Buchungsnummer).',
+      'DB-Indizes `(organizationId, startDate, id)` und `(organizationId, vehicleId, startDate)`.',
+      'Planner-Frontend: `useBookingsPlannerData` lädt Timeline/Kalender nur für sichtbaren Zeitraum; Tabelle mit Server-Pagination.',
+      'Kein stilles `limit: 500` mehr in `BookingsView`.',
+    ],
+    reason:
+      'Booking Production Readiness: große Organisationen überschritten die 500er-Abschneidung; Kalender/Timeline filterten clientseitig.',
+    previousBehavior:
+      '`BookingsView` lud `api.bookings.list({ limit: 500 })` einmalig; Filter/Sortierung clientseitig; `meta.limit` max 100 Inkonsistenz.',
+    details:
+      'bookings-list-pagination.util.ts, list-bookings-query.dto.ts, bookings.service.ts, BookingsPage/useBookingsPlannerData, bookings-pagination.ts, migration 20260723290000.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:55:00.000Z',
+  },
+  {
     id: 'fleet-rental-crash-task-pagination-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',
