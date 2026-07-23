@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
 import { Icon } from '../ui/Icon';
-import { api, type BookingDetailDto, type Station } from '../../../lib/api';
+import type { BookingDetailDto, Station } from '../../../lib/api';
+import { api } from '../../../lib/api';
 import { StationSelectFields } from '../stations/StationSelectFields';
+import {
+  bookingEditBaselineFromDetail,
+  bookingEditFormFromDetail,
+  type BookingEditFormState,
+} from '../../lib/booking-commands';
+import { useBookingMutations } from '../../hooks/useBookingMutations';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 
 interface BookingEditDialogProps {
   orgId: string;
@@ -11,29 +18,19 @@ interface BookingEditDialogProps {
   onSaved: () => void;
 }
 
-function toLocalInput(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEditDialogProps) {
-  const [startLocal, setStartLocal] = useState(toLocalInput(detail.core.startDate));
-  const [endLocal, setEndLocal] = useState(toLocalInput(detail.core.endDate));
-  const [notes, setNotes] = useState(detail.core.notes ?? '');
-  const [kmIncluded, setKmIncluded] = useState(
-    detail.core.kmIncluded != null ? String(detail.core.kmIncluded) : '',
-  );
-  const [pickupStationId, setPickupStationId] = useState(detail.core.pickupStationId ?? '');
-  const [returnStationId, setReturnStationId] = useState(detail.core.returnStationId ?? '');
-  const [sameReturnStation, setSameReturnStation] = useState(
-    !detail.core.pickupStationId ||
-      !detail.core.returnStationId ||
-      detail.core.pickupStationId === detail.core.returnStationId,
+  const { timezone } = useOrgTimezone(orgId);
+  const baseline = bookingEditBaselineFromDetail(detail);
+  const [form, setForm] = useState<BookingEditFormState>(() =>
+    bookingEditFormFromDetail(detail, timezone),
   );
   const [stations, setStations] = useState<Station[]>([]);
-  const [saving, setSaving] = useState(false);
+  const { mutating, error, clearError, updateBookingFields } = useBookingMutations();
+
+  useEffect(() => {
+    setForm(bookingEditFormFromDetail(detail, timezone));
+    clearError();
+  }, [detail, timezone, clearError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,44 +48,13 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
   }, [orgId]);
 
   const save = async () => {
-    const patch: Record<string, unknown> = {};
-    if (startLocal) {
-      const d = new Date(startLocal);
-      if (!Number.isNaN(d.getTime())) patch.startDate = d.toISOString();
-    }
-    if (endLocal) {
-      const d = new Date(endLocal);
-      if (!Number.isNaN(d.getTime())) patch.endDate = d.toISOString();
-    }
-    if (notes !== (detail.core.notes ?? '')) patch.notes = notes;
-    const km = kmIncluded.trim() ? Number(kmIncluded) : null;
-    if (km != null && Number.isFinite(km) && km !== detail.core.kmIncluded) {
-      patch.kmIncluded = km;
-    }
-    if (pickupStationId && pickupStationId !== detail.core.pickupStationId) {
-      patch.pickupStationId = pickupStationId;
-    }
-    const effectiveReturn = sameReturnStation ? pickupStationId : returnStationId;
-    if (effectiveReturn && effectiveReturn !== detail.core.returnStationId) {
-      patch.returnStationId = effectiveReturn;
-    }
-
-    if (Object.keys(patch).length === 0) {
-      toast.error('Keine Änderungen zum Speichern');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await api.bookings.update(orgId, detail.core.bookingId, patch);
-      toast.success('Buchung gespeichert');
-      onSaved();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Speichern fehlgeschlagen';
-      toast.error(msg);
-    } finally {
-      setSaving(false);
-    }
+    const result = await updateBookingFields(baseline, form, {
+      previousVehicleId: detail.vehicle.vehicleId,
+      onSuccess: async () => {
+        onSaved();
+      },
+    });
+    if (result) onClose();
   };
 
   return (
@@ -109,49 +75,66 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
             {detail.core.bookingNumber} · Kunde #{detail.customer.customerId.slice(0, 8)} · Fahrzeug #
             {detail.vehicle.vehicleId.slice(0, 8)}
           </p>
+
+          {error && (
+            <div className="rounded-lg p-3 sq-tone-critical text-[11px]">
+              <p className="font-semibold">{error.title}</p>
+              <p className="mt-1">{error.description}</p>
+            </div>
+          )}
+
           <Field label="Abholung">
             <input
               type="datetime-local"
-              value={startLocal}
-              onChange={(e) => setStartLocal(e.target.value)}
+              value={form.startLocal}
+              onChange={(e) => setForm((f) => ({ ...f, startLocal: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
             />
           </Field>
           <Field label="Rückgabe">
             <input
               type="datetime-local"
-              value={endLocal}
-              onChange={(e) => setEndLocal(e.target.value)}
+              value={form.endLocal}
+              onChange={(e) => setForm((f) => ({ ...f, endLocal: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
             />
           </Field>
           <Field label="Km inklusive">
             <input
               type="number"
-              value={kmIncluded}
-              onChange={(e) => setKmIncluded(e.target.value)}
+              value={form.kmIncluded}
+              onChange={(e) => setForm((f) => ({ ...f, kmIncluded: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
             />
           </Field>
           <Field label="Stationen">
             <StationSelectFields
               stations={stations}
-              pickupStationId={pickupStationId}
-              returnStationId={returnStationId}
-              sameReturnStation={sameReturnStation}
+              pickupStationId={form.pickupStationId}
+              returnStationId={form.returnStationId}
+              sameReturnStation={form.sameReturnStation}
               onPickupChange={(id) => {
-                setPickupStationId(id);
-                if (sameReturnStation) setReturnStationId(id);
+                setForm((f) => ({
+                  ...f,
+                  pickupStationId: id,
+                  returnStationId: f.sameReturnStation ? id : f.returnStationId,
+                }));
               }}
-              onReturnChange={setReturnStationId}
-              onSameReturnChange={setSameReturnStation}
+              onReturnChange={(id) => setForm((f) => ({ ...f, returnStationId: id }))}
+              onSameReturnChange={(same) =>
+                setForm((f) => ({
+                  ...f,
+                  sameReturnStation: same,
+                  returnStationId: same ? f.pickupStationId : f.returnStationId,
+                }))
+              }
               compact
             />
           </Field>
           <Field label="Notizen">
             <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={4}
               className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)] resize-none"
             />
@@ -163,11 +146,11 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
           </button>
           <button
             type="button"
-            disabled={saving}
-            onClick={save}
+            disabled={mutating}
+            onClick={() => void save()}
             className="px-4 py-2 rounded-lg text-xs font-semibold sq-tone-brand disabled:opacity-60"
           >
-            {saving ? 'Speichern…' : 'Speichern'}
+            {mutating ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
       </div>

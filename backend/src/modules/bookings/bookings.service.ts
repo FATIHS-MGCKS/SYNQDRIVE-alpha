@@ -16,7 +16,6 @@ import { BookingDocumentBundleService } from '@modules/documents/booking-documen
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import {
   parsePagination,
-  buildPaginatedResult,
   PaginationParams,
   PaginatedResult,
 } from '@shared/utils/pagination';
@@ -38,6 +37,14 @@ import {
   buildOverlapWhere,
 } from './booking-conflict.util';
 import type { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
+import {
+  buildBookingListCursorWhere,
+  buildBookingListOrderBy,
+  buildBookingListPageResult,
+  buildBookingRangeOverlapWhere,
+  decodeBookingListCursor,
+  encodeBookingListCursorFromRow,
+} from './bookings-list-pagination.util';
 import type {
   BookingDetailDto,
   BookingStationContext,
@@ -426,21 +433,66 @@ export class BookingsService {
     };
   }
 
-  async findAll(orgId: string, params?: ListBookingsQueryDto) {
-    const page = Math.max(1, params?.page || 1);
-    const limit = Math.min(500, Math.max(1, params?.limit || 100));
-    const skip = (page - 1) * limit;
-    const take = limit;
+  async findAll(orgId: string, params: ListBookingsQueryDto) {
+    const limit = params.resolvedLimit();
+    const page = params.resolvedPage();
+    const sortBy = params.resolvedSortBy();
+    const sortOrder = params.resolvedSortOrder();
+    const orderBy = buildBookingListOrderBy(sortBy, sortOrder);
+    const useCursor = Boolean(params.cursor?.trim());
 
+    const baseWhere = this.buildBookingListWhere(orgId, params);
+    const where: Prisma.BookingWhereInput = useCursor
+      ? {
+          AND: [baseWhere, buildBookingListCursorWhere(decodeBookingListCursor(params.cursor!.trim()))],
+        }
+      : baseWhere;
+
+    const [rows, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+        skip: useCursor ? undefined : (page - 1) * limit,
+        take: limit + 1,
+        orderBy,
+        include: { customer: true, vehicle: true },
+      }),
+      this.prisma.booking.count({ where: baseWhere }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const mapped = await this.mapBookingListRows(orgId, pageRows);
+
+    const lastRow = pageRows.at(-1);
+    const nextCursor = lastRow ? encodeBookingListCursorFromRow(lastRow, sortBy, sortOrder) : null;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    return buildBookingListPageResult(mapped, total, page, limit, nextCursor, {
+      hasNextPage: useCursor ? hasMore : page < totalPages,
+    });
+  }
+
+  private buildBookingListWhere(
+    orgId: string,
+    params: ListBookingsQueryDto,
+  ): Prisma.BookingWhereInput {
     const andClauses: Prisma.BookingWhereInput[] = [{ organizationId: orgId }];
 
-    if (params?.status) {
-      const statuses = Array.isArray(params.status) ? params.status : [params.status];
-      andClauses.push({ status: { in: statuses } });
+    if (params.status?.length) {
+      andClauses.push({ status: { in: params.status } });
+    } else if (params.excludeTerminal) {
+      andClauses.push({ status: { notIn: ['CANCELLED', 'NO_SHOW'] } });
     }
-    if (params?.vehicleId) andClauses.push({ vehicleId: params.vehicleId });
-    if (params?.customerId) andClauses.push({ customerId: params.customerId });
-    if (params?.stationId) {
+
+    if (params.vehicleIds?.length) {
+      andClauses.push({ vehicleId: { in: params.vehicleIds } });
+    } else if (params.vehicleId) {
+      andClauses.push({ vehicleId: params.vehicleId });
+    }
+
+    if (params.customerId) andClauses.push({ customerId: params.customerId });
+
+    if (params.stationId) {
       andClauses.push({
         OR: [
           { pickupStationId: params.stationId },
@@ -448,19 +500,14 @@ export class BookingsService {
         ],
       });
     }
-    if (params?.from || params?.to) {
-      const from = params.from ? new Date(params.from) : null;
-      const to = params.to ? new Date(params.to) : null;
-      if (from && !isNaN(+from) && to && !isNaN(+to)) {
-        andClauses.push({ startDate: { lt: to } }, { endDate: { gt: from } });
-      } else if (from && !isNaN(+from)) {
-        andClauses.push({ endDate: { gt: from } });
-      } else if (to && !isNaN(+to)) {
-        andClauses.push({ startDate: { lt: to } });
-      }
-    }
-    if (params?.search?.trim()) {
-      const q = params.search.trim();
+
+    const from = params.from ? new Date(params.from) : null;
+    const to = params.to ? new Date(params.to) : null;
+    andClauses.push(...buildBookingRangeOverlapWhere(from, to));
+
+    const searchTerm = (params.search ?? params.bookingNumber)?.trim();
+    if (searchTerm) {
+      const q = searchTerm.replace(/^bk-/i, '').trim();
       andClauses.push({
         OR: [
           { id: { contains: q, mode: 'insensitive' } },
@@ -475,20 +522,23 @@ export class BookingsService {
       });
     }
 
-    const where: Prisma.BookingWhereInput =
-      andClauses.length === 1 ? andClauses[0] : { AND: andClauses };
+    return andClauses.length === 1 ? andClauses[0] : { AND: andClauses };
+  }
 
-    const [data, total] = await Promise.all([
-      this.prisma.booking.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { startDate: 'desc' },
-        include: { customer: true, vehicle: true },
-      }),
-      this.prisma.booking.count({ where }),
-    ]);
-
+  private async mapBookingListRows(
+    orgId: string,
+    data: Array<
+      Booking & {
+        customer: { firstName: string; lastName: string };
+        vehicle: {
+          vehicleName?: string | null;
+          make: string;
+          model: string;
+          licensePlate?: string | null;
+        };
+      }
+    >,
+  ) {
     const stationIds = [
       ...new Set(
         data.flatMap((b) =>
@@ -503,22 +553,17 @@ export class BookingsService {
         : [];
     const stationMap = new Map(stations.map((s) => [s.id, s.name]));
 
-    // V4.6.75 — Attach handover protocols so the UI can render pickup /
-    // return panels (odometer, fuel, signatures, noted damages) without a
-    // second roundtrip. Single batched query via bookingId IN (...).
     const protocolsMap = await this.loadProtocolsMap(
       orgId,
       data.map((b) => b.id),
     );
 
-    const mapped = data.map((b) => {
+    return data.map((b) => {
       const protocols = protocolsMap.get(b.id) ?? [];
       const pickup = protocols.find((p) => p.kind === 'PICKUP') ?? null;
       const ret = protocols.find((p) => p.kind === 'RETURN') ?? null;
       return this.mapBookingListRow(b, stationMap, pickup, ret);
     });
-
-    return buildPaginatedResult(mapped, total, { page, limit });
   }
 
   private mapBookingListRow(

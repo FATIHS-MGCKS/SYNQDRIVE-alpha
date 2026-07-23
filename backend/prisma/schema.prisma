@@ -5624,6 +5624,8 @@ model Booking {
   // vehicleId + status + startDate.
   @@index([vehicleId, status, startDate])
   @@index([organizationId, status])
+  @@index([organizationId, startDate, id])
+  @@index([organizationId, vehicleId, startDate])
   @@map("bookings")
 }
 
