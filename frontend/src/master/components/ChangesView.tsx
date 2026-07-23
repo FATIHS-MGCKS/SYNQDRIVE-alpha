@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-production-deploy-2026-07-23',
+    version: '4.9.773',
+    title: 'Legal Documents — Direct Production Deploy (P0/P1 + Migrations)',
+    summary: [
+      'Merge legal-docs P0/P1 remediation auf main und direkter Production-Deploy ohne Soak (Release 20260723151441_v4994).',
+      'DB-Migrationen 20260722100000–20260722250000 angewendet; Migration-Fix TEXT statt UUID für delivery_evidence + generation_jobs.',
+      'Prod-Env: DOCUMENT_STORAGE_ALLOW_LOCAL_IN_PRODUCTION=true, ClamAV installiert für Legal-Malware-Scan.',
+      'Health: https://app.synqdrive.eu/api/v1/health OK.',
+    ],
+    reason: 'Explizite Anweisung — Production-Freigabe Kunden-Rechtstexte ohne Staging-Soak.',
+    previousBehavior: 'Legal-Docs-Stack nur auf Feature-Branch; Prod ohne neue Migrationen und P0/P1-Fixes.',
+    details: 'main @ 0a649c4f, cloud-agent-deploy.sh, VPS backend.env ops (storage + clamav).',
+    affectsArchitecture: true,
+    module: 'Documents / Deploy',
+    createdAt: '2026-07-23T15:21:00.000Z',
+  },
+  {
     id: 'legal-documents-p0-p1-remediation-2026-07-23',
     version: '4.9.772',
     title: 'Legal Documents — P0/P1 Production Blocker Remediation',
