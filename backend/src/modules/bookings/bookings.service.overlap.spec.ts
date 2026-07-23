@@ -1,5 +1,7 @@
 import { ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { buildOverlapWhere } from './booking-conflict.util';
+import { BOOKING_AVAILABILITY_ERROR_CODES } from './availability/booking-availability.constants';
 
 async function assertNoVehicleOverlap(
   prisma: { booking: { findFirst: jest.Mock } },
@@ -18,7 +20,7 @@ async function assertNoVehicleOverlap(
   if (overlapping) {
     throw new ConflictException({
       message: 'Dieses Fahrzeug ist im gewählten Zeitraum bereits gebucht.',
-      code: 'VEHICLE_BOOKING_OVERLAP',
+      code: BOOKING_AVAILABILITY_ERROR_CODES.BOOKING_CONFLICT,
       conflictingBookingId: overlapping.id,
       conflictRange: {
         startDate: overlapping.startDate.toISOString(),
@@ -30,7 +32,7 @@ async function assertNoVehicleOverlap(
 }
 
 describe('BookingsService — vehicle booking overlap (conflict gate)', () => {
-  it('throws VEHICLE_BOOKING_OVERLAP when a blocking booking exists', async () => {
+  it('throws BOOKING_CONFLICT when a blocking booking exists', async () => {
     const findFirst = jest.fn().mockResolvedValue({
       id: 'bk-existing',
       startDate: new Date('2026-07-10T08:00:00.000Z'),
@@ -47,7 +49,7 @@ describe('BookingsService — vehicle booking overlap (conflict gate)', () => {
         endDate: new Date('2026-07-13T08:00:00.000Z'),
       }),
     ).rejects.toMatchObject({
-      response: expect.objectContaining({ code: 'VEHICLE_BOOKING_OVERLAP' }),
+      response: expect.objectContaining({ code: BOOKING_AVAILABILITY_ERROR_CODES.BOOKING_CONFLICT }),
     });
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({

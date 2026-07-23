@@ -42,6 +42,8 @@ export interface ConsumePricingQuoteInput {
   pickupAt: Date;
   returnAt: Date;
   pricingInput?: BookingPricingInputDto;
+  /** When true, run all validation checks without marking the quote consumed. */
+  dryRun?: boolean;
 }
 
 @Injectable()
@@ -137,6 +139,25 @@ export class PricingQuoteService {
   async consumeForBooking(
     input: ConsumePricingQuoteInput,
   ): Promise<{ simulation: BookingPriceSimulation; pricingInput: BookingPricingInputDto }> {
+    const quote = await this.assertQuoteReadyForBooking(input);
+
+    const payload = this.decodeStoredQuote(quote);
+    return {
+      simulation: payload.simulation,
+      pricingInput: quote.pricingInputJson as BookingPricingInputDto,
+    };
+  }
+
+  /**
+   * Read-only quote validation for booking create — same rules as consume, without marking consumed.
+   */
+  async assertQuoteReadyForBooking(
+    input: ConsumePricingQuoteInput,
+  ): Promise<
+    NonNullable<
+      Awaited<ReturnType<PrismaService['pricingQuote']['findFirst']>>
+    >
+  > {
     const existingBookingId = await this.findConsumedBookingId(
       input.organizationId,
       input.quoteId,
@@ -171,7 +192,7 @@ export class PricingQuoteService {
     }
 
     if (quote.status === PricingQuoteStatus.EXPIRED || quote.expiresAt <= new Date()) {
-      if (quote.status === PricingQuoteStatus.ACTIVE) {
+      if (quote.status === PricingQuoteStatus.ACTIVE && !input.dryRun) {
         await this.prisma.pricingQuote.update({
           where: { id: quote.id },
           data: { status: PricingQuoteStatus.EXPIRED },
@@ -220,11 +241,7 @@ export class PricingQuoteService {
 
     await this.assertTariffStillMatchesQuote(input.organizationId, quote, input);
 
-    const payload = this.decodeStoredQuote(quote);
-    return {
-      simulation: payload.simulation,
-      pricingInput: storedPricingInput,
-    };
+    return quote;
   }
 
   async markConsumed(

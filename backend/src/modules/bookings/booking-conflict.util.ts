@@ -1,11 +1,7 @@
 import { BookingStatus } from '@prisma/client';
+import { BLOCKING_BOOKING_STATUSES } from './availability/booking-availability.constants';
 
-/** Statuses that block another booking on the same vehicle/time window. */
-export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
-  'PENDING',
-  'CONFIRMED',
-  'ACTIVE',
-];
+export { BLOCKING_BOOKING_STATUSES };
 
 export type BookingOverlapInput = {
   organizationId: string;

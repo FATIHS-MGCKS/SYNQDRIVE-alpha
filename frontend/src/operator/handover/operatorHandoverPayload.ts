@@ -155,8 +155,6 @@ export function buildOperatorHandoverPayload(input: OperatorHandoverPayloadInput
 
   return {
     performedAt: performedAtIso,
-    performedByUserId: state.staffId || null,
-    performedByName: state.staffName || null,
     odometerKm: Number(state.odometerKm),
     fuelPercent: Math.max(0, Math.min(100, Math.round(state.fuelPercent))),
     fuelFull: state.fuelFull,
