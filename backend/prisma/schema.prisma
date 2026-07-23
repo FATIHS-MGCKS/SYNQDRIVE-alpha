@@ -1741,6 +1741,8 @@ model Organization {
   enforcementPolicyBookings                                 EnforcementPolicyBooking[]
   enforcementPolicyStations                                 EnforcementPolicyStation[]
   enforcementPolicyScopeMigrationFindings                   EnforcementPolicyScopeMigrationFinding[]
+  dataAuthorizationLegacyMigrationRuns                      DataAuthorizationLegacyMigrationRun[]
+  dataAuthorizationLegacyMigrationEntries                   DataAuthorizationLegacyMigrationEntry[]
   authorizationDecisionEvents                               AuthorizationDecisionEvent[]
 
   @@index([status])
@@ -10667,6 +10669,100 @@ model OrgDataAuthorization {
 // ------------------------------------------------
 // Fachliche Trennung der bisherigen OrgDataAuthorization-Monolith-Rolle.
 // Legacy-Tabelle bleibt lesbar; neue Domänen laufen parallel.
+
+enum DataAuthorizationLegacyMigrationMode {
+  DRY_RUN
+  COMMIT
+  ROLLBACK
+}
+
+enum DataAuthorizationLegacyMigrationRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum DataAuthorizationLegacyMigrationEntryStatus {
+  ANALYZED
+  MIGRATED
+  REVIEW_REQUIRED
+  ERROR
+  SKIPPED
+  ROLLED_BACK
+}
+
+enum DataAuthorizationLegacyMigrationSourceType {
+  ORG_DATA_AUTHORIZATION
+  VEHICLE_PROVIDER_CONSENT
+}
+
+enum DataAuthorizationLegacyMigrationTargetType {
+  PROCESSING_ACTIVITY
+  PROVIDER_ACCESS_GRANT
+  ENFORCEMENT_POLICY
+}
+
+enum DataAuthorizationLegacyMigrationReviewReason {
+  SYSTEM_GENERATED_DIMO
+  ACTIVE_NOT_COMPLIANT
+  INCOMPLETE_SCOPE
+  UNMAPPED_DATA_CATEGORY
+  UNMAPPED_PURPOSE
+  CONTRADICTORY_PROVIDER_STATE
+  LEGAL_BASIS_UNCLEAR
+  ALREADY_MIGRATED
+  PROVIDER_SCOPE_UNKNOWN
+}
+
+/// Batch-Lauf für kontrollierte Legacy-Migration (Dry-Run default).
+model DataAuthorizationLegacyMigrationRun {
+  id                  String                                    @id @default(uuid())
+  organizationId      String?                                   @map("organization_id")
+  mode                DataAuthorizationLegacyMigrationMode
+  batchSize           Int                                       @map("batch_size")
+  status              DataAuthorizationLegacyMigrationRunStatus @default(RUNNING)
+  analyzedCount       Int                                       @default(0) @map("analyzed_count")
+  migratedCount       Int                                       @default(0) @map("migrated_count")
+  reviewRequiredCount Int                                       @default(0) @map("review_required_count")
+  errorCount          Int                                       @default(0) @map("error_count")
+  skippedCount        Int                                       @default(0) @map("skipped_count")
+  reportJson          Json?                                     @map("report_json")
+  startedAt           DateTime                                  @default(now()) @map("started_at")
+  completedAt         DateTime?                                 @map("completed_at")
+  createdAt           DateTime                                  @default(now()) @map("created_at")
+
+  organization Organization?                           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  entries      DataAuthorizationLegacyMigrationEntry[]
+
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@map("data_authorization_legacy_migration_runs")
+}
+
+/// Append-only Ergebnis pro Legacy-Datensatz — keine PII in reviewReasons (nur Codes).
+model DataAuthorizationLegacyMigrationEntry {
+  id                   String                                         @id @default(uuid())
+  runId                String                                         @map("run_id")
+  organizationId       String                                         @map("organization_id")
+  sourceType           DataAuthorizationLegacyMigrationSourceType     @map("source_type")
+  legacySourceId       String                                         @map("legacy_source_id")
+  targetType           DataAuthorizationLegacyMigrationTargetType?    @map("target_type")
+  targetId             String?                                        @map("target_id")
+  status               DataAuthorizationLegacyMigrationEntryStatus
+  reviewReasons        DataAuthorizationLegacyMigrationReviewReason[] @map("review_reasons")
+  errorCode            String?                                        @map("error_code")
+  migrationFingerprint String                                         @map("migration_fingerprint")
+  createdAt            DateTime                                       @default(now()) @map("created_at")
+
+  run          DataAuthorizationLegacyMigrationRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  organization Organization                        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([migrationFingerprint])
+  @@index([runId])
+  @@index([organizationId, status])
+  @@index([legacySourceId, sourceType])
+  @@map("data_authorization_legacy_migration_entries")
+}
 
 enum ProcessingActivityStatus {
   DRAFT

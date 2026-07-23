@@ -5,6 +5,7 @@ import { DataAuthorizationEnforcementService } from './data-authorization-enforc
 import { EnforcementPolicyScopeController } from './privacy-domain/enforcement-policy-scope/enforcement-policy-scope.controller';
 import { EnforcementPolicyScopeService } from './privacy-domain/enforcement-policy-scope/enforcement-policy-scope.service';
 import { EnforcementPolicyScopeValidationService } from './privacy-domain/enforcement-policy-scope/enforcement-policy-scope-validation.service';
+import { DataAuthorizationLegacyMigrationService } from './privacy-domain/legacy-migration/data-authorization-legacy-migration.service';
 import { DataSharingAuthorizationController } from './privacy-domain/data-sharing-authorization/data-sharing-authorization.controller';
 import { DataSharingAuthorizationService } from './privacy-domain/data-sharing-authorization/data-sharing-authorization.service';
 import { DataSubjectConsentController } from './privacy-domain/data-subject-consent/data-subject-consent.controller';
@@ -32,6 +33,7 @@ import { ProviderAccessGrantService } from './privacy-domain/provider-access-gra
     DataSharingAuthorizationService,
     EnforcementPolicyScopeService,
     EnforcementPolicyScopeValidationService,
+    DataAuthorizationLegacyMigrationService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -42,6 +44,7 @@ import { ProviderAccessGrantService } from './privacy-domain/provider-access-gra
     DataSharingAuthorizationService,
     EnforcementPolicyScopeService,
     EnforcementPolicyScopeValidationService,
+    DataAuthorizationLegacyMigrationService,
   ],
 })
 export class DataAuthorizationsModule {}

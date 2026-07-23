@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-authorization-legacy-migration-v49793-2026-07-23',
+    version: '4.9.793',
+    title: 'V4.9.793 — Legacy-Migration OrgDataAuthorization & VPC (Prompt 10)',
+    summary: [
+      'Kontrollierter Backfill von OrgDataAuthorization + VehicleProviderConsent in Privacy-Domain-Kandidaten — default Dry-Run, idempotent, batchweise.',
+      'REVIEW_REQUIRED für DIMO-Systemdatensätze, ACTIVE-not-compliant, unvollständige Scopes, widersprüchliche Provider-Zustände, unklare Rechtsgrundlagen.',
+      'Commit erzeugt DRAFT ProcessingActivity, PENDING ProviderAccessGrant, DRAFT/OFF EnforcementPolicy — keine Aktivierung, kein Löschen von Legacy-Daten. Rollback pro Run.',
+    ],
+    reason:
+      'Legacy-Monolith-Daten müssen sicher in die neue Domänenstruktur überführt werden, ohne stillschweigende Compliance-Annahmen oder Datenverlust.',
+    previousBehavior:
+      'Legacy-Tabellen lesbar via nullable FKs, aber kein kontrollierter Batch-Backfill mit Fortschrittsreport und Rollback.',
+    details:
+      'Migration 20260724010000 + scripts/ops/migrate-data-authorization-legacy.ts. Doku: docs/migrations/data-authorization-legacy-migration-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:45:00.000Z',
+  },
+  {
     id: 'enforcement-policy-relational-scopes-v49792-2026-07-23',
     version: '4.9.792',
     title: 'V4.9.792 — Enforcement Policy: relationale Scopes + Tenant-Härtung (Prompt 9)',
