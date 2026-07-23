@@ -4,6 +4,11 @@ import type {
   RentalYoungDriverPolicy,
 } from '@prisma/client';
 import type { EffectiveRentalRules } from '@modules/rental-rules/rental-rules.types';
+import { formatLicenseHoldingDuration } from '@modules/rental-rules/license-holding.util';
+import {
+  isRentalRulesEnforcementActive,
+  RENTAL_RULES_ACTIVATION_WARNING,
+} from '@modules/rental-rules/rental-rules-activation.policy';
 import type {
   BookingRentalEligibilityResult,
   BookingRentalEligibilityStatus,
@@ -43,12 +48,18 @@ export interface EligibilityEvaluationContext {
   licenseHoldingMonths: number | null;
   hasDateOfBirth: boolean;
   hasLicenseIssuedAt: boolean;
+  /** Unverified OCR/KYC suggestion exists for date of birth — cannot bind approve/reject. */
+  unverifiedDateOfBirthPending?: boolean;
+  /** Unverified OCR/KYC suggestion exists for license issue date — cannot bind approve/reject. */
+  unverifiedLicenseIssuedAtPending?: boolean;
   paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
   /** @deprecated */
   paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
   foreignTravelRequested: boolean;
   additionalDriverCount: number;
   depositReceived: boolean;
+  requiredDepositAmountCents?: number | null;
+  requiredDepositCurrency?: string | null;
 }
 
 export function evaluateRentalEligibilityChecks(
@@ -61,19 +72,38 @@ export function evaluateRentalEligibilityChecks(
   | 'manualApprovalReasons'
   | 'status'
 > {
+  const activationWarnings = ctx.rules.activation?.informationalWarnings ?? [];
+
+  if (!isRentalRulesEnforcementActive(ctx.rules.activation, ctx.rules.rulesActive)) {
+    return {
+      status: 'ELIGIBLE',
+      blockingReasons: [],
+      warningReasons: [
+        RENTAL_RULES_ACTIVATION_WARNING.ORGANIZATION_INACTIVE,
+        ...activationWarnings.filter(
+          (w) => w !== RENTAL_RULES_ACTIVATION_WARNING.ORGANIZATION_INACTIVE,
+        ),
+      ],
+      missingFields: [],
+      manualApprovalReasons: [],
+    };
+  }
+
   const blockingReasons: string[] = [];
-  const warningReasons: string[] = [];
+  const warningReasons: string[] = [...activationWarnings];
   const missingFields: string[] = [];
   const manualApprovalReasons: string[] = [];
-
-  if (!ctx.rules.rulesActive) {
-    warningReasons.push('Rental rules are inactive for this organization.');
-  }
 
   const minAge = ctx.rules.minimumAgeYears.value;
   if (minAge != null) {
     if (!ctx.hasDateOfBirth) {
-      missingFields.push('customer.dateOfBirth');
+      if (ctx.unverifiedDateOfBirthPending) {
+        manualApprovalReasons.push(
+          'Date of birth is available from unverified document data and requires manual review before eligibility can be confirmed.',
+        );
+      } else {
+        missingFields.push('customer.dateOfBirth');
+      }
     } else if (ctx.customerAge != null && ctx.customerAge < minAge) {
       blockingReasons.push(
         `Customer is ${ctx.customerAge} years old but this vehicle requires minimum age ${minAge}.`,
@@ -84,14 +114,20 @@ export function evaluateRentalEligibilityChecks(
   const minLicenseMonths = ctx.rules.minimumLicenseHoldingMonths.value;
   if (minLicenseMonths != null && minLicenseMonths > 0) {
     if (!ctx.hasLicenseIssuedAt) {
-      missingFields.push('customer.licenseIssuedAt');
+      if (ctx.unverifiedLicenseIssuedAtPending) {
+        manualApprovalReasons.push(
+          'License issue date is available from unverified document data and requires manual review before eligibility can be confirmed.',
+        );
+      } else {
+        missingFields.push('customer.licenseIssuedAt');
+      }
     } else if (
       ctx.licenseHoldingMonths != null &&
       ctx.licenseHoldingMonths < minLicenseMonths
     ) {
-      const years = Math.round((minLicenseMonths / 12) * 10) / 10;
+      const requiredLabel = formatLicenseHoldingDuration(minLicenseMonths, { long: true });
       blockingReasons.push(
-        `Customer has held a license for ${ctx.licenseHoldingMonths} month(s) but this vehicle requires at least ${minLicenseMonths} month(s) (${years} year(s)).`,
+        `Customer has held a license for ${ctx.licenseHoldingMonths} month(s) but this vehicle requires at least ${minLicenseMonths} month(s) (${requiredLabel}).`,
       );
     }
   }
@@ -105,10 +141,12 @@ export function evaluateRentalEligibilityChecks(
     }
   }
 
-  const depositCents = ctx.rules.depositAmountCents.value;
+  const depositCents =
+    ctx.requiredDepositAmountCents ?? ctx.rules.depositAmountCents.value;
   if (depositCents != null && depositCents > 0 && !ctx.depositReceived) {
     const amount = (depositCents / 100).toFixed(2);
-    const currency = ctx.rules.depositCurrency.value ?? 'EUR';
+    const currency =
+      ctx.requiredDepositCurrency ?? ctx.rules.depositCurrency.value ?? 'EUR';
     warningReasons.push(
       `A deposit of ${amount} ${currency} will be required before or at pickup.`,
     );

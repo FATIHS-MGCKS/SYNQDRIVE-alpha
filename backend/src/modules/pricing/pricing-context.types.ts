@@ -53,6 +53,15 @@ export interface PricingContextDto {
   vehicleId: string;
   pickupAt: string;
   depositAmountCents: number;
+  resolvedDeposit?: {
+    amount: number;
+    currency: string;
+    source: string;
+    ruleRevisionId: string | null;
+    reason: string;
+    manualOverride: boolean;
+    calculatedAt: string;
+  };
   taxRatePercent: number;
   mileagePackages: PricingContextMileagePackage[];
   insuranceOptions: PricingContextInsuranceOption[];

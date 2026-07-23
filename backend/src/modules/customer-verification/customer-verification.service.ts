@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   CustomerEligibilityPolicy,
   CustomerDocument,
+  CustomerDocumentType,
   CustomerTimelineEventType,
   CustomerVerificationCheck,
   CustomerVerificationCheckKind,
@@ -381,11 +382,24 @@ export class CustomerVerificationService {
       licenseVerified: licenseStatus === 'VERIFIED',
     };
 
-    if (idCheck?.extractedJson) {
+    if (idCheck?.status === 'VERIFIED' && idCheck.extractedJson) {
       this.applyIdExtractedFields(data, idCheck.extractedJson);
+    } else {
+      const verifiedIdDoc = this.findLatestVerifiedDocument(docs, ID_DOCUMENT_TYPES);
+      if (verifiedIdDoc?.extractedJson) {
+        this.applyIdExtractedFields(data, verifiedIdDoc.extractedJson);
+      }
     }
-    if (licenseCheck?.extractedJson) {
+    if (licenseCheck?.status === 'VERIFIED' && licenseCheck.extractedJson) {
       this.applyLicenseExtractedFields(data, licenseCheck.extractedJson);
+    } else {
+      const verifiedLicenseDoc = this.findLatestVerifiedDocument(
+        docs,
+        LICENSE_DOCUMENT_TYPES,
+      );
+      if (verifiedLicenseDoc?.extractedJson) {
+        this.applyLicenseExtractedFields(data, verifiedLicenseDoc.extractedJson);
+      }
     }
 
     await this.prisma.customer.update({
@@ -1067,6 +1081,19 @@ export class CustomerVerificationService {
         createdByUserId: userId ?? null,
       },
     });
+  }
+
+  private findLatestVerifiedDocument(
+    docs: CustomerDocument[],
+    types: CustomerDocumentType[],
+  ): CustomerDocument | null {
+    const verified = docs.filter(
+      (doc) => types.includes(doc.type) && doc.status === 'VERIFIED',
+    );
+    if (verified.length === 0) return null;
+    return verified.reduce((latest, doc) =>
+      doc.updatedAt > latest.updatedAt ? doc : latest,
+    );
   }
 
   private applyIdExtractedFields(

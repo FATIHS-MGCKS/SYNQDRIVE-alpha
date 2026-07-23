@@ -62,6 +62,14 @@ export interface SimulatePriceInput {
   extras?: PricedOptionInput[];
   manualDiscountCents?: number;
   manualAdjustmentCents?: number;
+  resolvedDeposit?: {
+    amountCents: number;
+    currency: string;
+    source: string;
+    ruleRevisionId: string | null;
+    reason: string;
+    manualOverride: boolean;
+  };
 }
 
 export interface SimulatePriceResult {
@@ -317,8 +325,12 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
   );
   const totalGrossCents = subtotalNetCents + taxAmountCents;
 
-  const depositAmountCents = Math.max(0, input.rate.depositAmountCents);
+  const depositAmountCents = input.resolvedDeposit
+    ? Math.max(0, input.resolvedDeposit.amountCents)
+    : Math.max(0, input.rate.depositAmountCents);
   if (depositAmountCents > 0) {
+    const depositSourceId =
+      input.resolvedDeposit?.ruleRevisionId ?? input.tariffRateId ?? null;
     lineItems.push({
       type: 'DEPOSIT',
       label: 'Kaution',
@@ -328,14 +340,20 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
       taxRatePercent: 0,
       totalGrossCents: depositAmountCents,
       metadataJson: buildPricingLineMetadata({
-        sourceType: PRICING_LINE_SOURCE_TYPES.TARIFF_RATE,
-        sourceId: input.tariffRateId ?? null,
+        sourceType: input.resolvedDeposit
+          ? PRICING_LINE_SOURCE_TYPES.DEPOSIT_RESOLVER
+          : PRICING_LINE_SOURCE_TYPES.TARIFF_RATE,
+        sourceId: depositSourceId,
         lineItemType: 'DEPOSIT',
         label: 'Kaution',
         quantity: 1,
         unitAmountCents: depositAmountCents,
         totalAmountCents: depositAmountCents,
         currency: input.currency,
+        depositSource: input.resolvedDeposit?.source,
+        ruleRevisionId: input.resolvedDeposit?.ruleRevisionId ?? null,
+        manualOverride: input.resolvedDeposit?.manualOverride ?? false,
+        depositReason: input.resolvedDeposit?.reason,
       }),
       sortOrder: sort++,
     });

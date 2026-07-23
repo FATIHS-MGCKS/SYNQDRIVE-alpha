@@ -47,6 +47,18 @@ Key alerts:
 
 ## Deploy
 
-After merging to `main`, copy the dashboard JSON to the VPS Grafana provisioning path (same flow as other SynqDrive dashboards). No automated deploy change in P60.
+After merging to `main`, monitoring configs refresh automatically at the end of `vps-deploy-release.sh` (`MONITORING_AUTO_REFRESH=auto` default). The refresh script copies `alerts.yml`, reloads Prometheus (`POST /-/reload`), syncs Grafana provisioning + dashboards (including this file), and restarts Grafana when the container is already running.
+
+First-time VPS bootstrap (containers missing):
+
+```bash
+MONITORING_AUTO_BOOTSTRAP=1 bash /opt/synqdrive/current/backend/scripts/ops/vps-refresh-monitoring.sh
+```
+
+Manual refresh only:
+
+```bash
+bash /opt/synqdrive/current/backend/scripts/ops/vps-refresh-monitoring.sh
+```
 
 Grafana UID: `synqdrive-fleet-health-service` — linked from SynqDrive Ops dashboard tag navigation (`tags: ["synqdrive"]`).

@@ -31,6 +31,14 @@ export const PERMISSION_MODULE_KEYS = [
   'payments-disputes',
   'payments-connect',
   'payments-settings',
+  'legal-documents',
+  'legal-documents-audit',
+  'rental-rules',
+  'rental-rules-publish',
+  'rental-rules-assign',
+  'rental-rules-overrides',
+  'booking-eligibility',
+  'booking-eligibility-override',
 ] as const;
 
 export type PermissionModuleKey = (typeof PERMISSION_MODULE_KEYS)[number];

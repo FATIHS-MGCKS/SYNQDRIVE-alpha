@@ -183,6 +183,7 @@ describe('InvoiceRelations component', () => {
             hasAnalysis: false,
           },
           eligibility: null,
+          rentalEligibility: null,
           activity: [],
           payments: null,
         },

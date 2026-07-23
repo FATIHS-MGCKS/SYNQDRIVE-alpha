@@ -93,6 +93,7 @@ export interface DashboardViewProps {
   onItemHover?: (vehicleName: string | null) => void;
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenSettingsTab?: (tab: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenCustomerById?: (customerId: string) => void;
   onOpenFinanceView?: (view: 'financial-insights' | 'invoices') => void;

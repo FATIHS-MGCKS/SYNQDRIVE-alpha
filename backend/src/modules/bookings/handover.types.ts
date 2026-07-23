@@ -1,8 +1,5 @@
 // V4.6.75 — Booking Handover Protocol contract (pickup + return).
-// Payloads are intentionally lean: the operator workflow is
-//   booking (CONFIRMED) → pickup handover → ACTIVE → return handover → COMPLETED
-// so only the two POST payloads are exposed here; queries are served via
-// the existing bookings list/detail routes.
+// V4.9.759 — performedBy* is server-derived from authenticated user; client fields rejected.
 
 export type HandoverKind = 'PICKUP' | 'RETURN';
 
@@ -50,8 +47,10 @@ export interface CreateHandoverProtocolPayload {
   // The server enforces: not in the future, and not more than 7 days
   // before `booking.startDate` (see BookingsHandoverService).
   performedAt?: string | null;
-  performedByUserId?: string | null;
-  performedByName?: string | null;
+  /** Mandatory when overriding soft pickup gate failures (requires override_handover permission). */
+  pickupGateOverrideReason?: string | null;
+  /** Required when rental eligibility gate returns MANUAL_APPROVAL_REQUIRED at pickup. */
+  eligibilityApprovalId?: string | null;
   odometerKm: number;
   fuelPercent: number;
   fuelFull?: boolean;

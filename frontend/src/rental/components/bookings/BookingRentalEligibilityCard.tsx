@@ -48,6 +48,8 @@ export interface BookingRentalEligibilityCardProps {
   result: BookingRentalEligibilityResult | null;
   loading?: boolean;
   error?: string | null;
+  canOverrideEligibility?: boolean;
+  previewOnly?: boolean;
   onCompleteCustomerData?: () => void;
   onChooseAnotherVehicle?: () => void;
 }
@@ -56,18 +58,23 @@ export function BookingRentalEligibilityCard({
   result,
   loading,
   error,
+  canOverrideEligibility = false,
+  previewOnly = false,
   onCompleteCustomerData,
   onChooseAnotherVehicle,
 }: BookingRentalEligibilityCardProps) {
   if (loading) return <EligibilitySkeleton />;
 
   if (error) {
+    const isForbidden = /keine berechtigung|missing permission|forbidden|403/i.test(error);
     return (
       <div
         className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-xs"
         role="alert"
       >
-        <p className="font-semibold text-foreground">Voraussetzungsprüfung nicht verfügbar</p>
+        <p className="font-semibold text-foreground">
+          {isForbidden ? 'Keine Berechtigung für Eligibility-Prüfung' : 'Voraussetzungsprüfung nicht verfügbar'}
+        </p>
         <p className="mt-1 text-muted-foreground">{error}</p>
       </div>
     );
@@ -88,6 +95,11 @@ export function BookingRentalEligibilityCard({
           <Icon name="shield-check" className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />
           <div className="min-w-0">
             <p className="font-semibold text-foreground">{statusTitle(result.status)}</p>
+            {previewOnly && (
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Vorschau — die finale Freigabe erfolgt serverseitig beim Abschluss.
+              </p>
+            )}
             {minAge != null && (
               <p className="text-muted-foreground mt-0.5 leading-relaxed">
                 Mindestalter {minAge} · {sourceLabel}
@@ -166,7 +178,9 @@ export function BookingRentalEligibilityCard({
         )}
         {result.status === 'MANUAL_APPROVAL_REQUIRED' && (
           <StatusChip tone="neutral" className="self-center">
-            Buchung kann als Ausstehend angelegt werden
+            {canOverrideEligibility
+              ? 'Manuelle Freigabe durch berechtigte Rolle möglich'
+              : 'Manuelle Freigabe erforderlich — keine Override-Berechtigung'}
           </StatusChip>
         )}
       </div>

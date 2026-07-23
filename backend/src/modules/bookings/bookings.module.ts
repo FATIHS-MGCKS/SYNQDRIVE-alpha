@@ -19,9 +19,18 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import { DepositResolverModule } from '@modules/deposit/deposit-resolver.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
+import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
+import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
+import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
 
 @Module({
   imports: [
@@ -29,11 +38,13 @@ import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-
     forwardRef(() => InvoicesModule),
     forwardRef(() => RentalHealthModule),
     forwardRef(() => DocumentsModule),
+    BookingPickupGateModule,
     TasksModule,
     CustomersModule,
     CustomerVerificationModule,
     WorkflowsModule,
     PricingModule,
+    DepositResolverModule,
     StationsModule,
     RentalRulesModule,
     OutboundEmailModule,
@@ -47,6 +58,13 @@ import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-
     BookingsHandoverService,
     BookingAllowedDriversService,
     BookingRentalEligibilityService,
+    BookingEligibilityGatekeeperService,
+    BookingEligibilityEnforcementService,
+    BookingEligibilityAuditLogger,
+    BookingEligibilityApprovalService,
+    BookingEligibilityDecisionService,
+    BookingEligibilityRecheckService,
+    BookingEligibilityRecheckSchedulerService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
@@ -55,8 +73,14 @@ import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-
     BookingsService,
     BookingsHandoverService,
     BookingRentalEligibilityService,
+    BookingEligibilityGatekeeperService,
+    BookingEligibilityEnforcementService,
     BookingWizardDraftService,
     BookingAllowedDriversService,
+    BookingEligibilityApprovalService,
+    BookingEligibilityDecisionService,
+    BookingEligibilityRecheckService,
+    BookingEligibilityRecheckSchedulerService,
   ],
 })
 export class BookingsModule {}

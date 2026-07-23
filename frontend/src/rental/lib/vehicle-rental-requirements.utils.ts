@@ -59,7 +59,7 @@ export function hasAnyVehicleOverride(effective: EffectiveRentalRulesDto | null)
     effective.creditCardRequired,
     effective.foreignTravelPolicy,
     effective.manualApprovalRequired,
-    effective.minimumLicenseHoldingYears,
+    effective.minimumLicenseHoldingMonths,
   ] as EffectiveRuleField<unknown>[];
   return keys.some((f) => f.source === 'VEHICLE_OVERRIDE');
 }
@@ -84,10 +84,7 @@ export function deriveRequirementsStatus(
 
   const currency = effective.depositCurrency.value ?? 'EUR';
   const age = effective.minimumAgeYears.value;
-  const license = formatLicenseHolding(
-    effective.minimumLicenseHoldingMonths.value,
-    effective.minimumLicenseHoldingYears.value,
-  );
+  const license = formatLicenseHolding(effective.minimumLicenseHoldingMonths.value);
   const deposit = formatDeposit(
     effective.depositAmount.value ?? effective.depositAmountCents.value,
     currency,
@@ -123,8 +120,12 @@ export function deriveRequirementsStatus(
     cardStatus = 'active';
   } else if (!effective.rulesActive) {
     statusKind = 'incomplete';
-    statusLabel = 'Inactive';
+    statusLabel = 'Rules inactive';
     cardStatus = 'neutral';
+  } else if (effective.activation?.categoryActive === false) {
+    statusKind = 'incomplete';
+    statusLabel = 'Category inactive';
+    cardStatus = 'attention';
   }
 
   return {
@@ -166,14 +167,12 @@ export function buildEffectiveRequirementRows(
       value: formatRuleValue('minimumAgeYears', effective.minimumAgeYears.value),
     },
     {
-      key: 'minimumLicenseHoldingYears',
+      key: 'minimumLicenseHoldingMonths',
       label: 'License holding period',
-      field: effective.minimumLicenseHoldingYears,
-      value: formatLicenseHolding(
-        effective.minimumLicenseHoldingMonths.value,
-        effective.minimumLicenseHoldingYears.value,
-        { long: true },
-      ),
+      field: effective.minimumLicenseHoldingMonths,
+      value: formatLicenseHolding(effective.minimumLicenseHoldingMonths.value, undefined, {
+        long: true,
+      }),
     },
     {
       key: 'depositAmount',
@@ -248,8 +247,15 @@ export function effectiveSourceSummary(effective: EffectiveRentalRulesDto): stri
     ].filter(Boolean),
   );
   if (sources.has('VEHICLE_OVERRIDE')) return 'Includes vehicle-specific overrides';
-  if (sources.has('CATEGORY') && effective.rentalCategoryName) {
+  if (
+    sources.has('CATEGORY') &&
+    effective.rentalCategoryName &&
+    effective.activation?.categoryActive !== false
+  ) {
     return `Primarily from ${effective.rentalCategoryName}`;
+  }
+  if (effective.activation?.categoryActive === false && effective.rentalCategoryName) {
+    return `Category inactive — using organization defaults`;
   }
   return 'Organization default rules';
 }
@@ -266,8 +272,15 @@ export function effectiveSourceSummaryDe(effective: EffectiveRentalRulesDto): st
   if (sources.has('VEHICLE_OVERRIDE')) {
     return 'Enthält fahrzeugspezifische Overrides';
   }
-  if (sources.has('CATEGORY') && effective.rentalCategoryName) {
+  if (
+    sources.has('CATEGORY') &&
+    effective.rentalCategoryName &&
+    effective.activation?.categoryActive !== false
+  ) {
     return `Primär aus Kategorie „${effective.rentalCategoryName}"`;
+  }
+  if (effective.activation?.categoryActive === false && effective.rentalCategoryName) {
+    return 'Kategorie inaktiv — Organisationsstandard wird verwendet';
   }
   return 'Organisationsstandard-Regeln';
 }

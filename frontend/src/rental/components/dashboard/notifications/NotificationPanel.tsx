@@ -43,6 +43,7 @@ interface NotificationPanelHandlers {
   onOpenBookingById?: (bookingId: string) => void;
   onOpenCustomerById?: (customerId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenSettingsTab?: (tab: string) => void;
   onOpenPriceTariffs?: () => void;
 }
 
@@ -60,6 +61,7 @@ function runItemCta(item: ActionQueueItem, vm: DashboardViewModel, handlers: Not
       onOpenVehicleById: handlers.onOpenVehicleById,
       onOpenBookingById: handlers.onOpenBookingById,
       onOpenRentalView: handlers.onOpenRentalView,
+      onOpenSettingsTab: handlers.onOpenSettingsTab,
       onStartHandoverPickup: (bookingId) => {
         const pickup = vm.pickupItems.find((p) => p.bookingId === bookingId);
         if (pickup) vm.handleConfirmPickup(pickup);

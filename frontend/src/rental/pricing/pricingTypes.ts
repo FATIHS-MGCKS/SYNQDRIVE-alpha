@@ -132,6 +132,17 @@ export interface PricingLineItemSourceMetadata {
   packageId?: string;
 }
 
+export interface FrozenDepositSnapshot {
+  amountCents: number;
+  currency: string;
+  source: string;
+  ruleRevisionId: string | null;
+  reason: string;
+  manualOverride: boolean;
+  calculatedAt: string;
+  frozenAt: string | null;
+}
+
 export interface PricingContext {
   priceBookId: string;
   priceBookName?: string;
@@ -146,6 +157,7 @@ export interface PricingContext {
   vehicleId: string;
   pickupAt: string;
   depositAmountCents: number;
+  resolvedDeposit?: FrozenDepositSnapshot | null;
   taxRatePercent: number;
   mileagePackages: MileagePackageOption[];
   insuranceOptions: InsuranceOptionRow[];
@@ -183,6 +195,7 @@ export interface PricingQuoteTotals {
   totalDueNowCents: number;
   currency: string;
   effectiveDailyRateCents: number;
+  frozenDeposit?: FrozenDepositSnapshot | null;
 }
 
 export interface PricingSimulationResult {

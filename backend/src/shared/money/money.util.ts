@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { isIso4217CurrencyCode } from './iso4217-currency-codes';
 
 const ISO4217_PATTERN = /^[A-Z]{3}$/;
 
@@ -12,7 +13,7 @@ export function normalizeCurrencyCode(input: string | null | undefined): string 
     });
   }
   const normalized = trimmed.toUpperCase();
-  if (!ISO4217_PATTERN.test(normalized)) {
+  if (!ISO4217_PATTERN.test(normalized) || !isIso4217CurrencyCode(normalized)) {
     throw new BadRequestException({
       message: `Invalid currency code: ${input}`,
       code: 'CURRENCY_INVALID',

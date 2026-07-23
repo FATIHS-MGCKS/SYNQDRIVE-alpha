@@ -2,15 +2,20 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
 import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
-import { CustomerDocumentType } from '@prisma/client';
 import type { BookingRentalEligibilityInput, BookingRentalEligibilityResult } from './booking-rental-eligibility.types';
 import { BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE } from './booking-rental-eligibility.types';
 import {
   calculateAgeAtDate,
   evaluateRentalEligibilityChecks,
   monthsBetween,
+  resolveEligibilityStatus,
 } from './booking-rental-eligibility.util';
-import { parseLicenseIssuedAtFromExtractedJson } from '@shared/utils/license-issued-at.util';
+import {
+  collectCustomerEligibilityFacts,
+  resolveTrustedDateOfBirth,
+  resolveTrustedLicenseIssuedAt,
+} from '@modules/customer-verification/policies/customer-fact-trust.policy';
+import type { DocumentEligibilityStatus } from '@modules/customer-verification/types/customer-verification-eligibility.types';
 
 @Injectable()
 export class BookingRentalEligibilityService {
@@ -30,6 +35,9 @@ export class BookingRentalEligibilityService {
         organizationId: true,
         dateOfBirth: true,
         licenseIssuedAt: true,
+        licenseExpiry: true,
+        idVerified: true,
+        licenseVerified: true,
       },
     });
     if (!customer) {
@@ -44,28 +52,76 @@ export class BookingRentalEligibilityService {
       throw new NotFoundException('Vehicle not found');
     }
 
-    const rules = await this.rentalEffectiveRules.computeForVehicle(
-      input.organizationId,
-      input.vehicleId,
-    );
-    const formattedRules = this.rentalEffectiveRules.formatEffectiveRules(rules);
-
-    const licenseIssuedAt =
-      customer.licenseIssuedAt ??
-      (await this.resolveLicenseIssuedAtFromDocuments(
+    const [rules, documents, checks] = await Promise.all([
+      this.rentalEffectiveRules.computeForVehicle(
         input.organizationId,
-        input.customerId,
-      ));
+        input.vehicleId,
+      ),
+      this.prisma.customerDocument.findMany({
+        where: {
+          organizationId: input.organizationId,
+          customerId: input.customerId,
+        },
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          extractedJson: true,
+          reviewedAt: true,
+          reviewedByUserId: true,
+          uploadedByUserId: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.customerVerificationCheck.findMany({
+        where: {
+          organizationId: input.organizationId,
+          customerId: input.customerId,
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          kind: true,
+          status: true,
+          extractedJson: true,
+          completedAt: true,
+          checkedByUserId: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
 
-    const hasDateOfBirth = customer.dateOfBirth != null;
-    const customerAge = customer.dateOfBirth
-      ? calculateAgeAtDate(customer.dateOfBirth, input.startDate)
-      : null;
+    const formattedRules = this.rentalEffectiveRules.formatEffectiveRules(rules);
+    const evaluatedAt = new Date();
+    const idCheck =
+      checks.find((check) => check.kind === 'ID_DOCUMENT') ?? null;
+    const licenseCheck =
+      checks.find((check) => check.kind === 'DRIVING_LICENSE') ?? null;
 
-    const hasLicenseIssuedAt = licenseIssuedAt != null;
+    const factInput = {
+      customer,
+      idCheck,
+      licenseCheck,
+      documents,
+      evaluatedAt,
+    };
+
+    const dateOfBirthFact = resolveTrustedDateOfBirth(factInput);
+    const licenseIssuedAtFact = resolveTrustedLicenseIssuedAt(factInput);
+    const facts = collectCustomerEligibilityFacts(factInput);
+
+    const hasDateOfBirth =
+      dateOfBirthFact.isBinding && dateOfBirthFact.value != null;
+    const customerAge =
+      hasDateOfBirth && dateOfBirthFact.value
+        ? calculateAgeAtDate(dateOfBirthFact.value, input.startDate)
+        : null;
+
+    const hasLicenseIssuedAt =
+      licenseIssuedAtFact.isBinding && licenseIssuedAtFact.value != null;
     const licenseHoldingMonths =
-      licenseIssuedAt != null
-        ? monthsBetween(licenseIssuedAt, input.startDate)
+      hasLicenseIssuedAt && licenseIssuedAtFact.value
+        ? monthsBetween(licenseIssuedAtFact.value, input.startDate)
         : null;
 
     let depositReceived = input.depositReceived === true;
@@ -76,6 +132,22 @@ export class BookingRentalEligibilityService {
       );
     }
 
+    let requiredDepositAmountCents: number | null = rules.depositAmountCents.value;
+    let requiredDepositCurrency: string | null = rules.depositCurrency.value;
+    if (input.bookingId) {
+      const priceSnapshot = await this.prisma.bookingPriceSnapshot.findFirst({
+        where: { organizationId: input.organizationId, bookingId: input.bookingId },
+        select: { depositAmountCents: true, currency: true },
+      });
+      if (priceSnapshot?.depositAmountCents != null) {
+        requiredDepositAmountCents = Math.max(
+          requiredDepositAmountCents ?? 0,
+          priceSnapshot.depositAmountCents,
+        );
+        requiredDepositCurrency = priceSnapshot.currency;
+      }
+    }
+
     const evaluation = evaluateRentalEligibilityChecks({
       rules,
       formattedRules,
@@ -83,59 +155,42 @@ export class BookingRentalEligibilityService {
       licenseHoldingMonths,
       hasDateOfBirth,
       hasLicenseIssuedAt,
+      unverifiedDateOfBirthPending: dateOfBirthFact.hasUnverifiedSuggestion,
+      unverifiedLicenseIssuedAtPending: licenseIssuedAtFact.hasUnverifiedSuggestion,
       paymentIntent: input.paymentIntent ?? input.paymentMethod,
       paymentMethod: input.paymentIntent ?? input.paymentMethod,
       foreignTravelRequested: input.foreignTravelRequested === true,
       additionalDriverCount: Math.max(0, input.additionalDriverCount ?? 0),
       depositReceived,
+      requiredDepositAmountCents,
+      requiredDepositCurrency,
     });
 
-    const verification = await this.verificationService.getEligibilityStatus(
-      input.organizationId,
-      input.customerId,
-      {
-        bookingId: input.bookingId,
-        startDate: input.startDate,
-      },
-    );
+    const verification = input.skipVerificationImpact
+      ? null
+      : await this.verificationService.getEligibilityStatus(
+          input.organizationId,
+          input.customerId,
+          {
+            bookingId: input.bookingId,
+            startDate: input.startDate,
+          },
+        );
 
-    if (verification.idDocument !== 'verified') {
-      if (verification.idDocument === 'pickup_required') {
-        evaluation.warningReasons.push(
-          'Ausweisprüfung beim Pickup vorgesehen',
-        );
-      } else if (verification.idDocument !== 'missing') {
-        evaluation.warningReasons.push(
-          'Ausweisprüfung noch nicht abgeschlossen',
-        );
-      }
-    }
-
-    if (verification.drivingLicense !== 'verified') {
-      if (verification.drivingLicense === 'pickup_required') {
-        evaluation.warningReasons.push(
-          'Führerscheinprüfung beim Pickup vorgesehen',
-        );
-      } else if (verification.drivingLicense !== 'missing') {
-        evaluation.warningReasons.push(
-          'Führerscheinprüfung noch nicht abgeschlossen',
-        );
-      }
-    }
-
-    if (
-      verification.proofOfAddress === 'required' ||
-      verification.proofOfAddress === 'pending'
-    ) {
-      evaluation.warningReasons.push(
-        'Adressnachweis optional — noch nicht bestätigt',
-      );
+    if (verification) {
+      this.applyVerificationImpact(evaluation, verification);
     }
 
     return {
       ...evaluation,
+      status: resolveEligibilityStatus({
+        missingFields: evaluation.missingFields,
+        blockingReasons: evaluation.blockingReasons,
+        manualApprovalReasons: evaluation.manualApprovalReasons,
+      }),
       effectiveRules: formattedRules,
       decisionSource: BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE,
+      facts,
       customerId: input.customerId,
       vehicleId: input.vehicleId,
       bookingId: input.bookingId,
@@ -181,23 +236,67 @@ export class BookingRentalEligibilityService {
     });
   }
 
-  private async resolveLicenseIssuedAtFromDocuments(
-    orgId: string,
-    customerId: string,
-  ): Promise<Date | null> {
-    const licenseDoc = await this.prisma.customerDocument.findFirst({
-      where: {
-        organizationId: orgId,
-        customerId,
-        type: { in: [CustomerDocumentType.LICENSE_FRONT, CustomerDocumentType.LICENSE_BACK] },
-        status: { in: ['VERIFIED', 'UPLOADED', 'PENDING_REVIEW'] },
-      },
-      orderBy: { updatedAt: 'desc' },
-      select: { extractedJson: true },
-    });
+  private applyVerificationImpact(
+    evaluation: Pick<
+      BookingRentalEligibilityResult,
+      'warningReasons' | 'manualApprovalReasons'
+    >,
+    verification: {
+      idDocument: DocumentEligibilityStatus;
+      drivingLicense: DocumentEligibilityStatus;
+      proofOfAddress: string;
+    },
+  ): void {
+    this.applyDocumentVerificationImpact(
+      evaluation,
+      verification.idDocument,
+      'Ausweisprüfung',
+    );
+    this.applyDocumentVerificationImpact(
+      evaluation,
+      verification.drivingLicense,
+      'Führerscheinprüfung',
+    );
 
-    if (!licenseDoc?.extractedJson) return null;
-    return parseLicenseIssuedAtFromExtractedJson(licenseDoc.extractedJson);
+    if (
+      verification.proofOfAddress === 'required' ||
+      verification.proofOfAddress === 'pending'
+    ) {
+      evaluation.warningReasons.push(
+        'Adressnachweis optional — noch nicht bestätigt',
+      );
+    }
+  }
+
+  private applyDocumentVerificationImpact(
+    evaluation: Pick<
+      BookingRentalEligibilityResult,
+      'warningReasons' | 'manualApprovalReasons'
+    >,
+    status: DocumentEligibilityStatus,
+    label: string,
+  ): void {
+    if (status === 'verified') {
+      return;
+    }
+    if (status === 'pickup_required') {
+      evaluation.warningReasons.push(`${label} beim Pickup vorgesehen`);
+      return;
+    }
+    if (status === 'missing') {
+      return;
+    }
+    if (status === 'requires_review' || status === 'pending') {
+      evaluation.manualApprovalReasons.push(
+        `${label} erfordert manuelle Freigabe`,
+      );
+      return;
+    }
+    if (status === 'rejected' || status === 'expired') {
+      evaluation.manualApprovalReasons.push(
+        `${label} ist nicht verifiziert (${status})`,
+      );
+    }
   }
 
   private async isDepositReceived(orgId: string, bookingId: string): Promise<boolean> {

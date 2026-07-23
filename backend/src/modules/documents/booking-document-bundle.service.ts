@@ -15,16 +15,17 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
+import { LegalDocumentResolverService } from './legal-document-resolver.service';
 import { DocumentNumberingService } from './document-numbering.service';
 import { DOCUMENT_RENDERER, DocumentRenderer, RenderableDocument } from './renderers/render-model';
 import {
   BUNDLE_STATUS,
-  BundleStatus,
   DOCUMENT_ORIGIN,
   DOCUMENT_STATUS,
   DOCUMENT_TITLE_DE,
   DOCUMENT_TYPE,
   DocumentType,
+  legalDocumentTitleDe,
 } from './documents.constants';
 import {
   BookingInfo,
@@ -43,27 +44,35 @@ import { buildReturnHandoverDocument } from './templates/return-handover.templat
 import { buildFinalInvoiceDocument, FinalInvoiceLineItem } from './templates/final-invoice.template';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
-  applicableDocumentPhases,
   bookingDocumentPackageDedupKey,
   documentPhaseForBookingStatus,
 } from './booking-document-phase.util';
-import { computeMissingDocumentSlots } from './booking-document-missing-slots.util';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
+import { LegalDocumentOperationalNotificationService } from './notifications/legal-document-operational-notification.service';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
+import {
+  BUNDLE_LEGAL_DOCUMENT_SLOT_TYPES,
+  BUNDLE_GENERATED_POINTER_FIELD,
+  bundlePointerValue,
+  canonicalBundleLegalSlotType,
+  resolveBundlePointerField,
+  type BundleLegalDocumentSlotType,
+} from './booking-document-bundle-pointer.mapping';
+import {
+  BookingDocumentBundlePointerMappingError,
+  BookingDocumentBundleResolverConflictError,
+} from './booking-document-bundle.errors';
+import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
+import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
+import { RentalContractService } from './rental-contract.service';
+import {
+  completenessLegalMissingDocumentTypes,
+  completenessToBundleViewWarnings,
+  completenessToLegacyMissingLegalLabels,
+} from './booking-document-completeness.engine';
+import type { BundleCompletenessResult } from './booking-document-completeness.types';
 
 const TEMPLATE_VERSION = '1';
-
-/** Maps a generated document type to its column on BookingDocumentBundle. */
-const BUNDLE_FIELD: Record<string, keyof BookingDocumentBundle> = {
-  [DOCUMENT_TYPE.BOOKING_INVOICE]: 'bookingInvoiceDocumentId',
-  [DOCUMENT_TYPE.DEPOSIT_RECEIPT]: 'depositReceiptDocumentId',
-  [DOCUMENT_TYPE.RENTAL_CONTRACT]: 'rentalContractDocumentId',
-  [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: 'termsDocumentId',
-  [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: 'withdrawalDocumentId',
-  [DOCUMENT_TYPE.HANDOVER_PICKUP]: 'pickupProtocolDocumentId',
-  [DOCUMENT_TYPE.HANDOVER_RETURN]: 'returnProtocolDocumentId',
-  [DOCUMENT_TYPE.FINAL_INVOICE]: 'finalInvoiceDocumentId',
-};
 
 type BookingWithRelations = Booking & {
   customer: Customer;
@@ -72,6 +81,18 @@ type BookingWithRelations = Booking & {
   pickupStation?: Station | null;
   returnStation?: Station | null;
 };
+
+export interface BundleLegalPointerView {
+  termsAttached: boolean;
+  privacyAttached: boolean;
+  consumerAttached: boolean;
+  /** @deprecated Use consumerAttached — kept for API compatibility */
+  withdrawalAttached: boolean;
+  termsDocumentId: string | null;
+  privacyDocumentId: string | null;
+  consumerDocumentId: string | null;
+  missing: DocumentType[];
+}
 
 export interface BundleView {
   bundle: {
@@ -82,9 +103,10 @@ export interface BundleView {
     lastError: string | null;
   };
   documents: ReturnType<GeneratedDocumentsService['toDto']>[];
-  legal: { termsAttached: boolean; withdrawalAttached: boolean; missing: string[] };
+  legal: BundleLegalPointerView;
   missingLegalDocuments: string[];
   warnings: string[];
+  completeness: BundleCompletenessResult;
 }
 
 /**
@@ -92,8 +114,7 @@ export interface BundleView {
  * this service renders, stores, versions and tracks documents. Generation is
  * idempotent (existing non-void documents are reused unless `force`), never
  * blocks the booking/handover flow (callers fire-and-forget), and degrades to a
- * PARTIAL bundle (with a clear warning) when the org's AGB / Widerruf are
- * missing in Administration.
+ * PARTIAL bundle (with a clear warning) when required org legal texts are missing.
  */
 @Injectable()
 export class BookingDocumentBundleService {
@@ -104,11 +125,16 @@ export class BookingDocumentBundleService {
     private readonly config: ConfigService,
     private readonly generatedDocs: GeneratedDocumentsService,
     private readonly legalDocs: LegalDocumentsService,
+    private readonly legalResolver: LegalDocumentResolverService,
     private readonly numbering: DocumentNumberingService,
     private readonly invoices: InvoicesService,
     @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRenderer,
     private readonly taskAutomation: TaskAutomationService,
     private readonly orgLegalNotification: BookingDocumentOrgLegalNotificationService,
+    private readonly operationalNotifications: LegalDocumentOperationalNotificationService,
+    private readonly bundleMonitoring: BookingDocumentBundleMonitoringService,
+    private readonly bundleCompleteness: BookingDocumentCompletenessService,
+    private readonly rentalContract: RentalContractService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -150,38 +176,16 @@ export class BookingDocumentBundleService {
   async getBundleView(orgId: string, bookingId: string): Promise<BundleView> {
     const bundle = await this.getOrCreateBundle(orgId, bookingId);
     const documents = await this.generatedDocs.listForBooking(orgId, bookingId);
-    const hasDoc = (type: DocumentType) =>
-      documents.some((d) => d.documentType === type && d.status !== DOCUMENT_STATUS.VOID);
-    const termsAttached = !!bundle.termsDocumentId || hasDoc(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-    const withdrawalAttached =
-      !!bundle.withdrawalDocumentId || hasDoc(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
-    const missing: string[] = [];
-    const missingLegalDocuments: string[] = [];
-    if (!termsAttached) {
-      missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-      missingLegalDocuments.push('TERMS_AND_CONDITIONS');
-    }
-    if (!withdrawalAttached) {
-      missing.push(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
-      missingLegalDocuments.push('REVOCATION_POLICY');
-    }
-    const warnings: string[] = [];
-    if (missing.length) {
-      const activeLegal = await this.legalDocs.getActiveByType(orgId, 'de');
-      const orgMissingTerms = !activeLegal[DOCUMENT_TYPE.TERMS_AND_CONDITIONS];
-      const orgMissingWithdrawal = !activeLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
-      if (orgMissingTerms || orgMissingWithdrawal) {
-        warnings.push(
-          'Dokumentenpaket unvollständig: AGB/Widerrufsbelehrung fehlt. Bitte in Administration → Unternehmen hochladen.',
-        );
-      } else if (bundle.lastError) {
-        warnings.push(`Dokumentenerstellung fehlgeschlagen: ${bundle.lastError}`);
-      } else {
-        warnings.push(
-          'Dokumente werden vorbereitet. Bitte kurz warten oder die Seite aktualisieren.',
-        );
-      }
-    }
+    const completeness = await this.bundleCompleteness.evaluateForBooking(orgId, bookingId, {
+      generationError: bundle.lastError,
+    });
+
+    const missing = completenessLegalMissingDocumentTypes(completeness);
+    const termsAttached = completeness.legal.terms.present;
+    const consumerAttached = completeness.legal.consumer.present;
+    const privacyAttached = completeness.legal.privacy.present;
+    const warnings = completenessToBundleViewWarnings(completeness);
+
     return {
       bundle: {
         id: bundle.id,
@@ -191,9 +195,19 @@ export class BookingDocumentBundleService {
         lastError: bundle.lastError,
       },
       documents: documents.map((d) => this.generatedDocs.toDto(d)),
-      legal: { termsAttached, withdrawalAttached, missing },
-      missingLegalDocuments,
+      legal: {
+        termsAttached,
+        privacyAttached,
+        consumerAttached,
+        withdrawalAttached: consumerAttached,
+        termsDocumentId: bundle.termsDocumentId,
+        privacyDocumentId: bundle.privacyDocumentId,
+        consumerDocumentId: bundle.withdrawalDocumentId,
+        missing,
+      },
+      missingLegalDocuments: completenessToLegacyMissingLegalLabels(completeness),
       warnings,
+      completeness,
     };
   }
 
@@ -273,6 +287,7 @@ export class BookingDocumentBundleService {
         await this.ensureRentalContract(orgId, bundle, booking, userId, true);
         break;
       case DOCUMENT_TYPE.TERMS_AND_CONDITIONS:
+      case DOCUMENT_TYPE.CONSUMER_INFORMATION:
       case DOCUMENT_TYPE.WITHDRAWAL_INFORMATION:
       case DOCUMENT_TYPE.PRIVACY_POLICY:
         await this.attachLegalDocuments(orgId, bundle, booking, userId, true);
@@ -314,7 +329,7 @@ export class BookingDocumentBundleService {
       links: { handoverProtocolId: protocol.id },
       snapshot: { kind: 'HANDOVER_PICKUP', odometerKm: protocol.odometerKm },
     });
-    await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.HANDOVER_PICKUP, doc.id);
+    await this.setBundlePointer(bundle, DOCUMENT_TYPE.HANDOVER_PICKUP, doc.id);
     await this.refreshBundleStatus(orgId, bookingId, booking.status, null);
     return doc;
   }
@@ -350,7 +365,7 @@ export class BookingDocumentBundleService {
       links: { handoverProtocolId: protocol.id },
       snapshot: { kind: 'HANDOVER_RETURN', odometerKm: protocol.odometerKm },
     });
-    await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.HANDOVER_RETURN, doc.id);
+    await this.setBundlePointer(bundle, DOCUMENT_TYPE.HANDOVER_RETURN, doc.id);
     await this.refreshBundleStatus(orgId, bookingId, booking.status, null);
     return doc;
   }
@@ -448,7 +463,7 @@ export class BookingDocumentBundleService {
       snapshot: { kind: 'FINAL_INVOICE', chargesTotalCents, depositReceivedCents, retainedCents, refundCents, balanceCents },
     });
     if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
-    await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.FINAL_INVOICE, doc.id);
+    await this.setBundlePointer(bundle, DOCUMENT_TYPE.FINAL_INVOICE, doc.id);
     await this.refreshBundleStatus(orgId, bookingId, booking.status, null);
     return doc;
   }
@@ -521,7 +536,7 @@ export class BookingDocumentBundleService {
       snapshot: { kind: 'BOOKING_INVOICE', invoiceId: invoice?.id ?? null, totalCents },
     });
     if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
-    await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.BOOKING_INVOICE, doc.id);
+    await this.setBundlePointer(bundle, DOCUMENT_TYPE.BOOKING_INVOICE, doc.id);
     if (invoice?.id) {
       await this.prisma.orgInvoice.update({
         where: { id: invoice.id },
@@ -566,7 +581,7 @@ export class BookingDocumentBundleService {
     });
     if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
     await this.prisma.bookingDeposit.update({ where: { id: deposit.id }, data: { receiptDocumentId: doc.id } });
-    await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.DEPOSIT_RECEIPT, doc.id);
+    await this.setBundlePointer(bundle, DOCUMENT_TYPE.DEPOSIT_RECEIPT, doc.id);
   }
 
   private async ensureRentalContract(
@@ -577,24 +592,41 @@ export class BookingDocumentBundleService {
     force: boolean,
   ): Promise<void> {
     const existing = await this.existingBundleDoc(orgId, bundle, DOCUMENT_TYPE.RENTAL_CONTRACT);
+    const contract = await this.getOrCreateContract(orgId, booking);
+
+    if (this.rentalContract.shouldSkipLegalSnapshotUpdate(contract) && existing && !force) {
+      return;
+    }
     if (existing && !force) return;
 
-    const contract = await this.getOrCreateContract(orgId, booking);
-    const active = await this.legalDocs.getActiveByType(orgId, 'de');
-    const terms = active[DOCUMENT_TYPE.TERMS_AND_CONDITIONS];
-    const withdrawal = active[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
+    const { refs, resolution, frozenAt } = await this.rentalContract.resolveLegalRefsForGeneration(
+      orgId,
+      booking.id,
+      bundle,
+      contract,
+    );
+    const legalRefs = this.rentalContract.toLegalRefsForRendering(refs);
+    const pointerIds = this.rentalContract.toContractPointerIds(refs);
+    const refsBySlot = new Map(refs.map((ref) => [ref.slot, ref]));
     const cur = (booking.currency || 'EUR').toUpperCase();
     const extraKmPriceCents = booking.vehicle.extraKmPrice != null ? Math.round(booking.vehicle.extraKmPrice * 100) : null;
 
-    const snapshot = {
+    const renderSnapshot = {
       kind: 'RENTAL_CONTRACT',
       org: this.orgInfo(booking.organization),
       customer: this.customerInfo(booking.customer),
       vehicle: this.vehicleInfo(booking.vehicle),
       booking: this.bookingInfo(booking),
       legal: {
-        terms: terms ? { id: terms.id, versionLabel: terms.versionLabel } : null,
-        withdrawal: withdrawal ? { id: withdrawal.id, versionLabel: withdrawal.versionLabel } : null,
+        terms: refsBySlot.get('TERMS')
+          ? { id: refsBySlot.get('TERMS')!.legalDocumentId, versionLabel: refsBySlot.get('TERMS')!.versionLabel }
+          : null,
+        withdrawal: refsBySlot.get('CONSUMER')
+          ? { id: refsBySlot.get('CONSUMER')!.legalDocumentId, versionLabel: refsBySlot.get('CONSUMER')!.versionLabel }
+          : null,
+        privacy: refsBySlot.get('PRIVACY')
+          ? { id: refsBySlot.get('PRIVACY')!.legalDocumentId, versionLabel: refsBySlot.get('PRIVACY')!.versionLabel }
+          : null,
       },
       generatedAt: new Date().toISOString(),
     };
@@ -608,10 +640,7 @@ export class BookingDocumentBundleService {
       depositAmountCents: (await this.prisma.bookingDeposit.findUnique({ where: { bookingId: booking.id } }))?.amountCents ?? null,
       extraKmPriceCents,
       currency: cur,
-      legalRefs: [
-        { label: 'AGB', versionLabel: terms?.versionLabel ?? '', present: !!terms },
-        { label: 'Widerrufsbelehrung', versionLabel: withdrawal?.versionLabel ?? '', present: !!withdrawal },
-      ],
+      legalRefs,
     });
 
     const contractNumber = renderable.documentNumber ?? null;
@@ -623,9 +652,14 @@ export class BookingDocumentBundleService {
       userId,
       documentNumber: contractNumber,
       links: { rentalContractId: contract.id },
-      snapshot,
+      snapshot: renderSnapshot,
     });
     if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
+
+    const legalRefsSnapshot = this.rentalContract.shouldSkipLegalSnapshotUpdate(contract)
+      ? contract.legalRefsSnapshot
+      : this.rentalContract.buildImmutableSnapshot(orgId, booking.id, refs, resolution, frozenAt);
+
     await this.prisma.rentalContract.update({
       where: { id: contract.id },
       data: {
@@ -633,19 +667,21 @@ export class BookingDocumentBundleService {
         status: 'GENERATED',
         generatedAt: new Date(),
         generatedDocumentId: doc.id,
-        termsDocumentId: terms?.id ?? null,
-        withdrawalDocumentId: withdrawal?.id ?? null,
-        snapshot: snapshot as object,
+        termsDocumentId: pointerIds.termsDocumentId,
+        withdrawalDocumentId: pointerIds.withdrawalDocumentId,
+        privacyDocumentId: pointerIds.privacyDocumentId,
+        snapshot: renderSnapshot as object,
+        ...(this.rentalContract.shouldSkipLegalSnapshotUpdate(contract)
+          ? {}
+          : {
+              legalRefsSnapshot: legalRefsSnapshot as object,
+              legalSnapshotFrozenAt: frozenAt,
+            }),
       },
     });
-    await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.RENTAL_CONTRACT, doc.id);
+    await this.setBundlePointer(bundle, DOCUMENT_TYPE.RENTAL_CONTRACT, doc.id);
   }
 
-  /**
-   * Snapshots the org's ACTIVE AGB + Widerruf into the bundle as STATIC_LEGAL
-   * references (pointing to the immutable uploaded object — never regenerated).
-   * Missing legal documents are tolerated: the bundle becomes PARTIAL.
-   */
   private async attachLegalDocuments(
     orgId: string,
     bundle: BookingDocumentBundle,
@@ -653,45 +689,104 @@ export class BookingDocumentBundleService {
     userId: string | null | undefined,
     force = false,
   ): Promise<void> {
-    const active = await this.legalDocs.getActiveByType(orgId, 'de');
-    for (const type of [
-      DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-      DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
-      DOCUMENT_TYPE.PRIVACY_POLICY,
-    ] as DocumentType[]) {
-      const legal = active[type];
-      if (!legal) continue;
+    const resolution = await this.legalResolver.resolveForBooking(orgId, booking.id);
+
+    if (resolution.conflicts.length > 0) {
+      const conflicts = resolution.conflicts.map((c) => ({
+        documentType: c.documentType,
+        code: c.reason,
+        message: `Scope conflict between ${c.documentAId} and ${c.documentBId}`,
+      }));
+      this.bundleMonitoring.recordResolverConflict({
+        organizationId: orgId,
+        bookingId: booking.id,
+        conflicts,
+      });
+      throw new BookingDocumentBundleResolverConflictError(orgId, booking.id, conflicts);
+    }
+
+    const selectionByType = new Map(
+      resolution.selectedDocuments.map((selection) => [selection.documentType, selection]),
+    );
+
+    for (const slotType of BUNDLE_LEGAL_DOCUMENT_SLOT_TYPES) {
+      const selection = selectionByType.get(slotType);
+      if (!selection) {
+        const missing = resolution.missingMandatoryDocuments.find(
+          (m) => m.documentType === slotType,
+        );
+        if (missing) {
+          this.bundleMonitoring.recordMissingMandatorySelection({
+            organizationId: orgId,
+            bookingId: booking.id,
+            documentType: slotType,
+            reason: missing.reason,
+          });
+        }
+        continue;
+      }
+
+      const frozenPointerId = bundlePointerValue(bundle, slotType);
+      if (frozenPointerId && !force) {
+        const frozenDoc = await this.prisma.generatedDocument.findFirst({
+          where: { id: frozenPointerId, organizationId: orgId, status: { not: DOCUMENT_STATUS.VOID } },
+        });
+        if (frozenDoc) {
+          continue;
+        }
+      }
+
+      const legal = await this.prisma.organizationLegalDocument.findFirst({
+        where: { id: selection.legalDocumentId, organizationId: orgId },
+      });
+      if (!legal) {
+        this.bundleMonitoring.recordMissingMandatorySelection({
+          organizationId: orgId,
+          bookingId: booking.id,
+          documentType: slotType,
+          reason: 'resolved_legal_document_not_found',
+        });
+        continue;
+      }
+
+      const consumerTypes =
+        slotType === DOCUMENT_TYPE.CONSUMER_INFORMATION
+          ? [DOCUMENT_TYPE.CONSUMER_INFORMATION, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
+          : [slotType];
 
       const existingActive = await this.prisma.generatedDocument.findFirst({
         where: {
           organizationId: orgId,
           bookingId: booking.id,
-          documentType: type,
+          documentType: { in: consumerTypes },
           status: { not: DOCUMENT_STATUS.VOID },
+          legalDocumentId: legal.id,
         },
         orderBy: { createdAt: 'desc' },
       });
       if (existingActive && !force) {
-        if (existingActive.legalDocumentId === legal.id) {
-          await this.setBundlePointer(bundle.id, type, existingActive.id);
-          continue;
-        }
+        await this.setBundlePointer(bundle, slotType, existingActive.id, { force: false });
+        continue;
       }
 
-      const existing = await this.existingBundleDoc(orgId, bundle, type);
-      if (existing && !force && existing.legalDocumentId === legal.id) continue;
+      const existing = await this.existingBundleDoc(orgId, bundle, slotType);
+      if (existing && !force && existing.legalDocumentId === legal.id) {
+        await this.setBundlePointer(bundle, slotType, existing.id, { force: false });
+        continue;
+      }
 
       const ref = await this.prisma.generatedDocument.create({
         data: {
           organizationId: orgId,
-          documentType: type,
+          documentType: legal.documentType,
+          legalVariant: legal.legalVariant,
           origin: DOCUMENT_ORIGIN.STATIC_LEGAL,
           status: DOCUMENT_STATUS.GENERATED,
           bookingId: booking.id,
           customerId: booking.customerId,
           vehicleId: booking.vehicleId,
           legalDocumentId: legal.id,
-          title: legal.title || DOCUMENT_TITLE_DE[type],
+          title: legal.title || legalDocumentTitleDe(legal.documentType, legal.legalVariant),
           fileName: legal.fileName,
           mimeType: legal.mimeType,
           storageProvider: legal.storageProvider,
@@ -701,29 +796,30 @@ export class BookingDocumentBundleService {
           legalVersionLabel: legal.versionLabel,
           generatedAt: new Date(),
           generatedByUserId: userId ?? null,
+          metadata: {
+            language: legal.language,
+            jurisdiction: legal.jurisdictionCountry,
+            checksum: legal.checksum,
+            legalDocumentId: legal.id,
+            resolverVersion: resolution.resolverVersion,
+            selectionReason: selection.selectionReason,
+          },
+          snapshot: {
+            kind: 'STATIC_LEGAL',
+            legalDocumentId: legal.id,
+            versionLabel: legal.versionLabel,
+            language: legal.language,
+            checksum: legal.checksum,
+            resolvedAt: resolution.evaluatedAt,
+          },
         },
       });
       if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
-      await this.setBundlePointer(bundle.id, type, ref.id);
+      await this.setBundlePointer(bundle, slotType, ref.id, { force });
     }
   }
 
   // ── status ─────────────────────────────────────────────────────────────
-
-  private requiredTypesForStage(status: string): DocumentType[] {
-    const base: DocumentType[] = [
-      DOCUMENT_TYPE.BOOKING_INVOICE,
-      DOCUMENT_TYPE.DEPOSIT_RECEIPT,
-      DOCUMENT_TYPE.RENTAL_CONTRACT,
-      DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-      DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
-    ];
-    if (status === 'ACTIVE') base.push(DOCUMENT_TYPE.HANDOVER_PICKUP);
-    if (status === 'COMPLETED') {
-      base.push(DOCUMENT_TYPE.HANDOVER_PICKUP, DOCUMENT_TYPE.HANDOVER_RETURN, DOCUMENT_TYPE.FINAL_INVOICE);
-    }
-    return base;
-  }
 
   private async refreshBundleStatus(
     orgId: string,
@@ -733,33 +829,28 @@ export class BookingDocumentBundleService {
   ): Promise<void> {
     const bundle = await this.prisma.bookingDocumentBundle.findUnique({ where: { bookingId } });
     if (!bundle) return;
-    const required = this.requiredTypesForStage(bookingStatus);
-    const present = required.filter((t) => !!bundle[BUNDLE_FIELD[t]]);
 
-    let status: BundleStatus;
-    if (lastError) {
-      status = present.length ? BUNDLE_STATUS.PARTIAL : BUNDLE_STATUS.FAILED;
-    } else if (present.length === required.length) {
-      status = BUNDLE_STATUS.COMPLETE;
-    } else if (present.length > 0) {
-      status = BUNDLE_STATUS.PARTIAL;
-    } else {
-      status = BUNDLE_STATUS.PENDING;
-    }
-
-    const legalMissing = !bundle.termsDocumentId || !bundle.withdrawalDocumentId;
+    const completeness = await this.bundleCompleteness.evaluateForBooking(orgId, bookingId, {
+      generationError: lastError ?? bundle.lastError,
+    });
+    const status = completeness.legacyBundleStatus;
     const warning =
-      lastError ??
-      (legalMissing && status !== BUNDLE_STATUS.PENDING
+      completeness.blockingReasons.find((r) => r.blocking)?.message ??
+      completeness.nonBlockingWarnings[0]?.message ??
+      (completeness.orgConfigurationGaps.length > 0
         ? 'Rechtliche Dokumente fehlen in Administration. Das Buchungsdokumentenpaket ist unvollständig.'
         : null);
 
     await this.prisma.bookingDocumentBundle.update({
       where: { id: bundle.id },
-      data: { status, lastError: warning, generatedAt: status === BUNDLE_STATUS.COMPLETE ? new Date() : bundle.generatedAt },
+      data: {
+        status,
+        lastError: warning,
+        generatedAt: status === BUNDLE_STATUS.COMPLETE ? new Date() : bundle.generatedAt,
+      },
     });
 
-    void this.syncMissingDocumentTasks(orgId, bookingId, bookingStatus).catch((err) =>
+    void this.syncMissingDocumentTasks(orgId, bookingId, bookingStatus, completeness).catch((err) =>
       this.logger.warn(`syncMissingDocumentTasks(${bookingId}) failed: ${this.shortError(err)}`),
     );
   }
@@ -781,6 +872,7 @@ export class BookingDocumentBundleService {
     orgId: string,
     bookingId: string,
     bookingStatus: string,
+    completeness?: BundleCompletenessResult,
   ): Promise<void> {
     const bundle = await this.prisma.bookingDocumentBundle.findUnique({ where: { bookingId } });
     if (!bundle || bundle.organizationId !== orgId) return;
@@ -791,8 +883,24 @@ export class BookingDocumentBundleService {
     });
     if (!booking) return;
 
-    const orgActiveLegal = await this.legalDocs.getActiveByType(orgId, 'de');
-    void this.orgLegalNotification.syncFromOrgLegalState(orgId, orgActiveLegal).catch(() => {});
+    const evaluation =
+      completeness ??
+      (await this.bundleCompleteness.evaluateForBooking(orgId, bookingId, {
+        generationError: bundle.lastError,
+      }));
+
+    void this.orgLegalNotification
+      .syncOrgMissingLegalTemplates(orgId, evaluation.orgConfigurationGaps)
+      .catch(() => {});
+
+    void this.operationalNotifications
+      .syncBundleCompleteness({
+        organizationId: orgId,
+        bookingId,
+        bookingRef: bookingRef(bookingId),
+        completeness: evaluation,
+      })
+      .catch(() => {});
 
     if (!documentPhaseForBookingStatus(bookingStatus)) {
       this.runBackgroundTask(
@@ -802,26 +910,18 @@ export class BookingDocumentBundleService {
       return;
     }
 
-    const bundleRow = bundle as unknown as Record<string, string | null | undefined>;
-    const phases = applicableDocumentPhases(bookingStatus);
     const activeKeys: string[] = [];
 
-    for (const phase of phases) {
-      const missingDocuments = computeMissingDocumentSlots({
-        phase,
-        bundle: bundleRow,
-        orgActiveLegal,
-        generationError: bundle.lastError,
-      });
-      const dedupKey = bookingDocumentPackageDedupKey(phase, bookingId);
+    for (const phaseResult of evaluation.phases) {
+      const dedupKey = bookingDocumentPackageDedupKey(phaseResult.phase, bookingId);
       activeKeys.push(dedupKey);
       await this.taskAutomation.syncBookingDocumentPackageTask(orgId, {
         bookingId: booking.id,
         vehicleId: booking.vehicleId,
         customerId: booking.customerId,
-        phase,
+        phase: phaseResult.phase,
         dedupKey,
-        missingDocuments,
+        missingDocuments: phaseResult.missingDocuments,
       });
     }
 
@@ -838,29 +938,57 @@ export class BookingDocumentBundleService {
     bundle: BookingDocumentBundle,
     documentType: DocumentType,
   ): Promise<GeneratedDocument | null> {
-    const field = BUNDLE_FIELD[documentType];
-    const pointerId = field ? (bundle[field] as string | null) : null;
+    const pointerId = bundlePointerValue(bundle, documentType);
     if (pointerId) {
       const doc = await this.prisma.generatedDocument.findFirst({
         where: { id: pointerId, organizationId: orgId },
       });
       if (doc && doc.status !== DOCUMENT_STATUS.VOID) return doc;
     }
+    const slotType = canonicalBundleLegalSlotType(documentType);
+    const lookupTypes =
+      slotType === DOCUMENT_TYPE.CONSUMER_INFORMATION
+        ? [DOCUMENT_TYPE.CONSUMER_INFORMATION, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
+        : [documentType];
     return this.prisma.generatedDocument.findFirst({
       where: {
         organizationId: orgId,
         bookingId: bundle.bookingId,
-        documentType,
+        documentType: { in: lookupTypes },
         status: { not: DOCUMENT_STATUS.VOID },
       },
       orderBy: { createdAt: 'desc' },
     }).then((doc) => doc ?? null);
   }
 
-  private async setBundlePointer(bundleId: string, documentType: DocumentType, documentId: string): Promise<void> {
-    const field = BUNDLE_FIELD[documentType];
-    if (!field) return;
-    await this.prisma.bookingDocumentBundle.update({ where: { id: bundleId }, data: { [field]: documentId } });
+  private async setBundlePointer(
+    bundle: BookingDocumentBundle,
+    documentType: DocumentType,
+    documentId: string,
+    options: { force?: boolean } = {},
+  ): Promise<boolean> {
+    const field = resolveBundlePointerField(documentType);
+    if (!field) {
+      this.bundleMonitoring.recordPointerMappingMissing({
+        organizationId: bundle.organizationId,
+        bookingId: bundle.bookingId,
+        documentType,
+      });
+      throw new BookingDocumentBundlePointerMappingError(documentType);
+    }
+
+    const current = bundle[field] as string | null;
+    if (current === documentId) return false;
+    if (current && !options.force) {
+      return false;
+    }
+
+    await this.prisma.bookingDocumentBundle.update({
+      where: { id: bundle.id },
+      data: { [field]: documentId },
+    });
+    (bundle as unknown as Record<string, string | null>)[field] = documentId;
+    return true;
   }
 
   private async renderAndStore(args: {
@@ -912,12 +1040,19 @@ export class BookingDocumentBundleService {
   private async getOrCreateDeposit(orgId: string, booking: BookingWithRelations): Promise<BookingDeposit> {
     const existing = await this.prisma.bookingDeposit.findUnique({ where: { bookingId: booking.id } });
     if (existing) return existing;
+
+    const priceSnapshot = await this.prisma.bookingPriceSnapshot.findFirst({
+      where: { organizationId: orgId, bookingId: booking.id },
+      select: { depositAmountCents: true, currency: true },
+    });
+
     const extras = booking.extrasJson as Record<string, unknown> | null;
     const depositFromExtras =
       typeof extras?.depositCents === 'number' && extras.depositCents > 0
         ? Math.round(extras.depositCents)
         : null;
     const amountCents =
+      priceSnapshot?.depositAmountCents ??
       depositFromExtras ??
       (booking.totalPriceCents != null && booking.totalPriceCents > 0
         ? Math.round(booking.totalPriceCents * 0.2)
@@ -929,9 +1064,13 @@ export class BookingDocumentBundleService {
           bookingId: booking.id,
           customerId: booking.customerId,
           amountCents,
-          currency: (booking.currency || 'EUR').toUpperCase(),
+          currency: ((priceSnapshot?.currency ?? booking.currency) || 'EUR').toUpperCase(),
           status: 'REQUESTED',
-          reason: depositFromExtras != null ? 'Aus Buchungsdaten' : 'Standard-Kaution (20 % des Buchungswerts)',
+          reason: priceSnapshot
+            ? 'Aus Booking-Preis-Snapshot (kanonischer Deposit Resolver)'
+            : depositFromExtras != null
+              ? 'Aus Buchungsdaten'
+              : 'Standard-Kaution (20 % des Buchungswerts)',
         },
       });
     } catch {

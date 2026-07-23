@@ -1319,8 +1319,14 @@ export interface BookingWizardDraftResult {
 
 export interface WizardCheckoutContext {
   currency: string;
+  rentalAmountCents: number;
   onlineAmountCents: number;
   depositAmountCents: number;
+  frozenDeposit: FrozenDepositSnapshot | null;
+  rentalPaidCents: number;
+  depositPaidCents: number;
+  depositPreauthorizedCents: number;
+  depositDueAtPickupCents: number;
   totalGrossCents: number;
   recipientEmail: string | null;
   paymentLinkEligibility: {
@@ -1332,6 +1338,17 @@ export interface WizardCheckoutContext {
     paymentRequestPossible: boolean;
   };
   checkoutExpiresInSeconds: number;
+}
+
+export interface FrozenDepositSnapshot {
+  amountCents: number;
+  currency: string;
+  source: string;
+  ruleRevisionId: string | null;
+  reason: string;
+  manualOverride: boolean;
+  calculatedAt: string;
+  frozenAt: string | null;
 }
 
 export type BookingDetailDocumentSlot = {
@@ -1554,6 +1571,17 @@ export type BookingDetailDto = {
     warnings: string[];
     requiredActions: string[];
   } | null;
+  rentalEligibility: {
+    status: string;
+    allowed: boolean;
+    stage: string;
+    blockingReasons: string[];
+    warnings: string[];
+    missingFields: string[];
+    engineVersion: string;
+    evaluatedAt: string;
+    rentalRulesStatus: string | null;
+  } | null;
   activity: Array<{
     id: string;
     action: string;
@@ -1642,17 +1670,119 @@ export type BookingPaymentRequestDto = {
   stripePaymentIntentId: string | null;
 };
 
+export interface LegalDocumentActorRef {
+  id: string;
+  displayName: string;
+}
+
 export interface LegalDocumentDto {
   id: string;
   documentType: string;
+  documentVariant?: string | null;
+  legalVariant?: string | null;
+  /** @deprecated Use documentType + legalVariant */
+  legacyDocumentType?: string | null;
   title: string;
   versionLabel: string;
   language: string;
-  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  jurisdiction?: string;
+  customerSegment?: string;
+  channelScope?: string;
+  stationScope?: LegalDocumentStationScopeDto;
+  status: string;
+  isMandatory?: boolean;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  checksum?: string | null;
   fileName: string;
+  fileSize?: number | null;
   sizeBytes: number | null;
+  pageCount?: number | null;
+  scanStatus?: string;
+  integrityStatus?: string;
+  uploadedAt?: string;
+  uploadedBy?: LegalDocumentActorRef | null;
+  submittedForReviewAt?: string | null;
+  submittedForReviewBy?: LegalDocumentActorRef | null;
+  approvedAt?: string | null;
+  approvedBy?: LegalDocumentActorRef | null;
+  activatedAt?: string | null;
+  activatedBy?: LegalDocumentActorRef | null;
+  changeSummary?: string | null;
+  snapshotCount?: number;
   activeFrom: string | null;
+  statusReason?: string | null;
+  legalOwnerName?: string | null;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface LegalDocumentEventDto {
+  id: string;
+  organizationId: string;
+  legalDocumentId: string;
+  eventType: string;
+  previousStatus: string | null;
+  newStatus: string;
+  actorUserId: string | null;
+  actorDisplayName: string | null;
+  reason: string | null;
+  changeSummary: string | null;
+  versionLabel: string;
+  documentType: string;
+  legalVariant: string | null;
+  language: string;
+  jurisdiction: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  correlationId: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedLegalDocumentEvents {
+  data: LegalDocumentEventDto[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface LegalDocumentStationScopeDto {
+  mode: string;
+  stationIds: string[];
+}
+
+export interface LegalDocumentUsageSummaryDto {
+  snapshotCount: number;
+  bookingCount: number;
+  contractCount: number;
+  deliveryEvidenceCount: number;
+  deliveryByStatus: Record<string, number>;
+}
+
+export interface LegalDocumentUsageReferenceDto {
+  generatedDocumentId: string;
+  bookingId: string | null;
+  bookingLabel: string | null;
+  contractNumber: string | null;
+  generatedAt: string | null;
+  documentType: string;
+}
+
+export interface LegalDocumentUsageResponseDto {
+  legalDocumentId: string;
+  summary: LegalDocumentUsageSummaryDto;
+  references: {
+    data: LegalDocumentUsageReferenceDto[];
+    meta: PaginatedLegalDocumentEvents['meta'];
+  };
+}
+
+export interface PaginatedLegalDocuments {
+  data: LegalDocumentDto[];
+  meta: PaginatedLegalDocumentEvents['meta'];
 }
 
 // V4.6.95 — `ASSIGNED_USER` / `USER` removed alongside the unused user-score
@@ -3651,6 +3781,32 @@ export const api = {
       get<WizardCheckoutContext>(
         `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/checkout-context`,
       ),
+    getWizardEligibilityPreview: (
+      orgId: string,
+      bookingId: string,
+      params?: {
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        targetStatus?: 'PENDING' | 'CONFIRMED';
+        eligibilityApprovalId?: string;
+        eligibilityOverrideReason?: string;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.paymentIntent) q.set('paymentIntent', params.paymentIntent);
+      else if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
+      if (params?.targetStatus) q.set('targetStatus', params.targetStatus);
+      if (params?.eligibilityApprovalId) {
+        q.set('eligibilityApprovalId', params.eligibilityApprovalId);
+      }
+      if (params?.eligibilityOverrideReason) {
+        q.set('eligibilityOverrideReason', params.eligibilityOverrideReason);
+      }
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<import('../rental/lib/booking-wizard-eligibility.types').BookingWizardEligibilityPreview>(
+        `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/eligibility-preview${suffix}`,
+      );
+    },
     confirmWizardDraft: (
       orgId: string,
       bookingId: string,
@@ -3660,11 +3816,37 @@ export const api = {
         status?: 'PENDING' | 'CONFIRMED';
         paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        eligibilityApprovalId?: string;
+        eligibilityPreviewFingerprint?: string;
+        eligibilityOverrideReason?: string;
       },
     ) =>
       post<BookingWizardDraftResult>(
         `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/confirm`,
         data ?? {},
+      ),
+    listEligibilityApprovals: (orgId: string, bookingId: string) =>
+      get<Array<{
+        id: string;
+        status: string;
+        exceptionReason: string;
+        decisionReason: string | null;
+      }>>(`/organizations/${orgId}/bookings/${bookingId}/eligibility-approvals`),
+    createEligibilityApproval: (
+      orgId: string,
+      bookingId: string,
+      data: { exceptionReason: string; targetBookingStatus?: 'CONFIRMED' | 'ACTIVE' },
+    ) =>
+      post(`/organizations/${orgId}/bookings/${bookingId}/eligibility-approvals`, data),
+    decideEligibilityApproval: (
+      orgId: string,
+      bookingId: string,
+      approvalId: string,
+      data: { decision: 'APPROVE' | 'REJECT'; decisionReason: string },
+    ) =>
+      post(
+        `/organizations/${orgId}/bookings/${bookingId}/eligibility-approvals/${approvalId}/decide`,
+        data,
       ),
     abortWizardDraft: (orgId: string, bookingId: string) =>
       post<{ booking: unknown; aborted: boolean }>(
@@ -3759,15 +3941,205 @@ export const api = {
   // versioning. Mutations are ORG_ADMIN-gated server-side.
   legalDocuments: {
     list: (orgId: string) => get<LegalDocumentDto[]>(`/organizations/${orgId}/legal-documents`),
-    activate: (orgId: string, id: string) =>
-      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, {}),
-    archive: (orgId: string, id: string) =>
-      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, {}),
+    listPaginated: (
+      orgId: string,
+      params: {
+        page?: number;
+        limit?: number;
+        documentType?: string;
+        status?: string;
+        language?: string;
+        jurisdiction?: string;
+        from?: string;
+        to?: string;
+        sort?: string;
+        order?: 'asc' | 'desc';
+      },
+    ) => {
+      const qs = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value != null && value !== '') qs.set(key, String(value));
+      }
+      const query = qs.toString();
+      return get<PaginatedLegalDocuments>(
+        `/organizations/${orgId}/legal-documents${query ? `?${query}` : ''}`,
+      );
+    },
+    getSettings: (orgId: string) =>
+      get<{ fourEyesEnabled: boolean }>(`/organizations/${orgId}/legal-documents/settings`),
+    get: (orgId: string, id: string) =>
+      get<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}`),
+    listEvents: (orgId: string, params?: {
+      page?: number;
+      limit?: number;
+      legalDocumentId?: string;
+      eventType?: string;
+      from?: string;
+      to?: string;
+      sort?: string;
+      order?: 'asc' | 'desc';
+    }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.legalDocumentId) qs.set('legalDocumentId', params.legalDocumentId);
+      if (params?.eventType) qs.set('eventType', params.eventType);
+      if (params?.from) qs.set('from', params.from);
+      if (params?.to) qs.set('to', params.to);
+      if (params?.sort) qs.set('sort', params.sort);
+      if (params?.order) qs.set('order', params.order);
+      const query = qs.toString();
+      return get<PaginatedLegalDocumentEvents>(
+        `/organizations/${orgId}/legal-documents/events${query ? `?${query}` : ''}`,
+      );
+    },
+    listDocumentEvents: (orgId: string, id: string, params?: { page?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      return get<PaginatedLegalDocumentEvents>(
+        `/organizations/${orgId}/legal-documents/${id}/events${query ? `?${query}` : ''}`,
+      );
+    },
+    getUsage: (orgId: string, id: string, params?: { page?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      const query = qs.toString();
+      return get<LegalDocumentUsageResponseDto>(
+        `/organizations/${orgId}/legal-documents/${id}/usage${query ? `?${query}` : ''}`,
+      );
+    },
+    fetchPreviewBlob: (orgId: string, id: string) =>
+      fetchBlob(`/organizations/${orgId}/legal-documents/${id}/download`),
+    activate: (orgId: string, id: string, body: { statusReason: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, body),
+    approve: (orgId: string, id: string, body?: { changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/approve`, body ?? {}),
+    schedule: (
+      orgId: string,
+      id: string,
+      body: { validFrom: string; changeSummary?: string; statusReason?: string },
+    ) => post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/schedule`, body),
+    requestChanges: (
+      orgId: string,
+      id: string,
+      body: { statusReason: string; changeSummary?: string },
+    ) => post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/request-changes`, body),
+    revoke: (orgId: string, id: string, body: { statusReason: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/revoke`, body),
+    archive: (orgId: string, id: string, body?: { statusReason?: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, body ?? {}),
     open: (orgId: string, id: string) =>
       openAuthedDocument(`/organizations/${orgId}/legal-documents/${id}/download`),
+    submitForReview: (orgId: string, id: string, body?: { changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/submit-for-review`, body ?? {}),
+    uploadWithProgress: (
+      orgId: string,
+      params: {
+        documentType: string;
+        versionLabel: string;
+        title?: string;
+        language?: string;
+        legalVariant?: string;
+        changeSummary?: string;
+        legalOwnerName?: string;
+        jurisdictionCountry?: string;
+        customerSegment?: string;
+        bookingChannel?: string;
+        productScope?: string;
+        stationScopeMode?: string;
+        stationIds?: string[];
+        priority?: number;
+        isMandatory?: boolean;
+        noticePurpose?: string;
+        validFrom?: string;
+        validUntil?: string;
+        file: File;
+      },
+      options?: {
+        onProgress?: (percent: number) => void;
+        signal?: AbortSignal;
+      },
+    ) =>
+      new Promise<LegalDocumentDto>((resolve, reject) => {
+        const form = new FormData();
+        form.append('file', params.file);
+        form.append('documentType', params.documentType);
+        form.append('versionLabel', params.versionLabel);
+        if (params.title) form.append('title', params.title);
+        if (params.language) form.append('language', params.language);
+        if (params.legalVariant) form.append('legalVariant', params.legalVariant);
+        if (params.changeSummary) form.append('changeSummary', params.changeSummary);
+        if (params.legalOwnerName) form.append('legalOwnerName', params.legalOwnerName);
+        if (params.jurisdictionCountry) form.append('jurisdictionCountry', params.jurisdictionCountry);
+        if (params.customerSegment) form.append('customerSegment', params.customerSegment);
+        if (params.bookingChannel) form.append('bookingChannel', params.bookingChannel);
+        if (params.productScope) form.append('productScope', params.productScope);
+        if (params.stationScopeMode) form.append('stationScopeMode', params.stationScopeMode);
+        if (params.stationIds?.length) form.append('stationIds', params.stationIds.join(','));
+        if (params.priority != null) form.append('priority', String(params.priority));
+        if (params.isMandatory != null) form.append('isMandatory', String(params.isMandatory));
+        if (params.validFrom) form.append('validFrom', params.validFrom);
+        if (params.validUntil) form.append('validUntil', params.validUntil);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${BASE_URL}/organizations/${orgId}/legal-documents/upload`);
+        const token = getToken();
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable || !options?.onProgress) return;
+          options.onProgress(Math.round((event.loaded / event.total) * 100));
+        };
+
+        xhr.onload = () => {
+          let body: { message?: string | string[]; field?: string; code?: string } = {};
+          try {
+            body = JSON.parse(xhr.responseText) as typeof body;
+          } catch {
+            /* ignore */
+          }
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText) as LegalDocumentDto);
+            } catch {
+              reject(new Error('Ungültige Serverantwort'));
+            }
+            return;
+          }
+          const msg = body.message;
+          const message = Array.isArray(msg) ? msg.join(', ') : msg || `API-Fehler ${xhr.status}`;
+          const error = new Error(message) as Error & { field?: string; code?: string };
+          error.field = body.field;
+          error.code = body.code;
+          reject(error);
+        };
+
+        xhr.onerror = () => reject(new Error('Netzwerkfehler beim Upload'));
+        xhr.onabort = () => reject(new Error('Upload abgebrochen'));
+
+        if (options?.signal) {
+          if (options.signal.aborted) {
+            xhr.abort();
+            return;
+          }
+          options.signal.addEventListener('abort', () => xhr.abort(), { once: true });
+        }
+
+        xhr.send(form);
+      }),
     upload: async (
       orgId: string,
-      params: { documentType: string; versionLabel: string; title?: string; language?: string; file: File },
+      params: {
+        documentType: string;
+        versionLabel: string;
+        title?: string;
+        language?: string;
+        legalVariant?: string;
+        file: File;
+      },
     ) => {
       const form = new FormData();
       form.append('file', params.file);
@@ -3775,6 +4147,7 @@ export const api = {
       form.append('versionLabel', params.versionLabel);
       if (params.title) form.append('title', params.title);
       if (params.language) form.append('language', params.language);
+      if (params.legalVariant) form.append('legalVariant', params.legalVariant);
       const token = getToken();
       const res = await fetch(`${BASE_URL}/organizations/${orgId}/legal-documents/upload`, {
         method: 'POST',
@@ -5371,6 +5744,77 @@ export const api = {
         `/organizations/${orgId}/rental-rules/defaults`,
         data,
       ),
+    analyzePublishImpact: (
+      orgId: string,
+      scope: 'defaults' | 'category' | 'vehicle',
+      payload: { revisionId: string; scopeEntityId?: string },
+    ) => {
+      const path =
+        scope === 'defaults'
+          ? `/organizations/${orgId}/rental-rules/defaults/publish-analysis`
+          : scope === 'category'
+            ? `/organizations/${orgId}/rental-rules/categories/${payload.scopeEntityId}/publish-analysis`
+            : `/organizations/${orgId}/vehicles/${payload.scopeEntityId}/rental-requirements/overrides/publish-analysis`;
+      return post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalRulePublishImpactAnalysis>(
+        path,
+        { revisionId: payload.revisionId },
+      );
+    },
+    publishPath: (
+      orgId: string,
+      scope: 'defaults' | 'category' | 'vehicle',
+      scopeEntityId?: string,
+    ) => {
+      if (scope === 'defaults') return `/organizations/${orgId}/rental-rules/defaults/publish`;
+      if (scope === 'category') {
+        return `/organizations/${orgId}/rental-rules/categories/${scopeEntityId}/publish`;
+      }
+      return `/organizations/${orgId}/vehicles/${scopeEntityId}/rental-requirements/overrides/publish`;
+    },
+    publishDefaults: (
+      orgId: string,
+      payload: {
+        revisionId: string;
+        expectedVersion: number;
+        expectedLockVersion: number;
+        changeReason: string;
+        acknowledgeCriticalImpact?: boolean;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').OrganizationRentalRulesDto>(
+        `/organizations/${orgId}/rental-rules/defaults/publish`,
+        payload,
+      ),
+    publishCategory: (
+      orgId: string,
+      categoryId: string,
+      payload: {
+        revisionId: string;
+        expectedVersion: number;
+        expectedLockVersion: number;
+        changeReason: string;
+        acknowledgeCriticalImpact?: boolean;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}/publish`,
+        payload,
+      ),
+    publishVehicleOverrides: (
+      orgId: string,
+      vehicleId: string,
+      payload: {
+        revisionId: string;
+        expectedVersion: number;
+        expectedLockVersion: number;
+        changeReason: string;
+        acknowledgeCriticalImpact?: boolean;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').VehicleRentalRequirementsDto>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides/publish`,
+        payload,
+      ),
     listCategories: (orgId: string, includeInactive = false) =>
       get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto[]>(
         `/organizations/${orgId}/rental-rules/categories${includeInactive ? '?includeInactive=true' : ''}`,
@@ -5389,19 +5833,50 @@ export const api = {
         `/organizations/${orgId}/rental-rules/categories/${categoryId}`,
         data,
       ),
-    disableCategory: (orgId: string, categoryId: string) =>
+    disableCategory: (orgId: string, categoryId: string, expectedVersion: number) =>
       del<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
-        `/organizations/${orgId}/rental-rules/categories/${categoryId}`,
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}?expectedVersion=${encodeURIComponent(String(expectedVersion))}`,
+      ),
+    transitionCategoryLifecycle: (
+      orgId: string,
+      categoryId: string,
+      payload: {
+        expectedVersion: number;
+        targetStatus: import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryStatus;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}/lifecycle`,
+        payload,
       ),
     listCategoryVehicles: (orgId: string, categoryId: string) =>
       get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalCategoryVehicleDto[]>(
         `/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles`,
       ),
-    assignCategoryVehicles: (orgId: string, categoryId: string, vehicleIds: string[]) =>
-      patch<import('../rental/components/settings/rental-rules/rental-rules.types').RentalCategoryVehicleDto[]>(
+    assignCategoryVehicles: (
+      orgId: string,
+      categoryId: string,
+      payload: import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentDeltaPayload,
+    ) =>
+      patch<import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentResultDto>(
         `/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles`,
-        { vehicleIds },
+        payload,
       ),
+    previewCategoryVehicleAssignment: (
+      orgId: string,
+      categoryId: string,
+      payload: Omit<
+        import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentDeltaPayload,
+        'expectedVersion'
+      >,
+    ) =>
+      post<{
+        categoryId: string;
+        categoryName: string;
+        version: number;
+        hasMutations: boolean;
+        diff: import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentDiff;
+      }>(`/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles/preview`, payload),
     getVehicleEffective: (orgId: string, vehicleId: string) =>
       get<import('../rental/components/settings/rental-rules/rental-rules.types').EffectiveRentalRulesDto>(
         `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/effective`,
@@ -5415,6 +5890,87 @@ export const api = {
         `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides`,
         data,
       ),
+    previewVehicleOverrideReset: (
+      orgId: string,
+      vehicleId: string,
+      data?: { fields?: string[] },
+    ) =>
+      post<{
+        vehicleId: string;
+        resetFields: string[];
+        fields: Array<{
+          field: string;
+          current: { value: unknown; source: string | null; sourceName: string | null };
+          afterReset: { value: unknown; source: string | null; sourceName: string | null };
+        }>;
+      }>(`/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides/reset-preview`, data ?? {}),
+    resetVehicleOverrides: (
+      orgId: string,
+      vehicleId: string,
+      data?: { fields?: string[] },
+    ) =>
+      post<{
+        vehicleId: string;
+        removedFields: string[];
+        result: 'deleted' | 'updated' | 'no_op';
+        overrides: Record<string, unknown> | null;
+      }>(`/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides/reset`, data ?? {}),
+    deleteVehicleOverrides: (orgId: string, vehicleId: string) =>
+      del<{
+        vehicleId: string;
+        removedFields: string[];
+        result: 'deleted' | 'no_op';
+        overrides: null;
+      }>(`/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides`),
+    previewRevision: (
+      orgId: string,
+      scope: 'defaults' | 'category' | 'vehicle',
+      payload: { mode: 'active' | 'draft' | 'diff'; scopeEntityId?: string },
+    ) => {
+      const path =
+        scope === 'defaults'
+          ? `/organizations/${orgId}/rental-rules/defaults/preview`
+          : scope === 'category'
+            ? `/organizations/${orgId}/rental-rules/categories/${payload.scopeEntityId}/preview`
+            : `/organizations/${orgId}/vehicles/${payload.scopeEntityId}/rental-requirements/overrides/preview`;
+      return post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionPreviewResponse>(
+        path,
+        { mode: payload.mode },
+      );
+    },
+    listRevisions: (
+      orgId: string,
+      query?: {
+        scopeType?: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+        scopeId?: string;
+        status?: 'DRAFT' | 'ACTIVE' | 'RETIRED';
+        limit?: number;
+      },
+    ) => {
+      const params = new URLSearchParams();
+      if (query?.scopeType) params.set('scopeType', query.scopeType);
+      if (query?.scopeId) params.set('scopeId', query.scopeId);
+      if (query?.status) params.set('status', query.status);
+      if (query?.limit) params.set('limit', String(query.limit));
+      const suffix = params.toString() ? `?${params.toString()}` : '';
+      return get<{
+        items: import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionListItemDto[];
+        total: number;
+      }>(`/organizations/${orgId}/rental-rules/revisions${suffix}`);
+    },
+    getRevision: (orgId: string, revisionId: string) =>
+      get<{
+        revision: import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionListItemDto;
+        supersedesRevision: import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionListItemDto | null;
+        diff: {
+          ruleDiffs: Array<{
+            field: string;
+            active: unknown;
+            draft: unknown;
+            changed: boolean;
+          }>;
+        };
+      }>(`/organizations/${orgId}/rental-rules/revisions/${revisionId}`),
   },
   activityLog: {
     listAll: () => get<any[]>('/admin/activity-log'),

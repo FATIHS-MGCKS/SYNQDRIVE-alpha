@@ -2,7 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { RawBodyRequest } from '@nestjs/common/interfaces';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request } from 'express';
-import { ValidationPipe, Logger, LogLevel } from '@nestjs/common';
+import { ValidationPipe, Logger, LogLevel, BadRequestException } from '@nestjs/common';
+import { buildValidationFailedResponse } from '@shared/validation/validation-error.util';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -115,6 +116,8 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: true },
+      exceptionFactory: (errors) =>
+        new BadRequestException(buildValidationFailedResponse(errors)),
     }),
   );
 

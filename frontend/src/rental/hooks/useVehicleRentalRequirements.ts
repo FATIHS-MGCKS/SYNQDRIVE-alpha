@@ -5,7 +5,7 @@ import type {
   OrganizationRentalRulesDto,
   VehicleRentalRequirementsDto,
 } from '../components/settings/rental-rules/rental-rules.types';
-import { parseApiError } from '../components/settings/rental-rules/rental-rules.utils';
+import { mapRentalRulesLoadError } from '../lib/rental-rules-permissions';
 
 export interface UseVehicleRentalRequirementsResult {
   effective: EffectiveRentalRulesDto | null;
@@ -46,7 +46,8 @@ export function useVehicleRentalRequirements(
       setRequirements(req);
       setOrgDefaults(defs);
     } catch (e: unknown) {
-      setError(parseApiError(e));
+      const parsed = mapRentalRulesLoadError(e);
+      setError(parsed.message);
       setEffective(null);
       setRequirements(null);
       setOrgDefaults(null);

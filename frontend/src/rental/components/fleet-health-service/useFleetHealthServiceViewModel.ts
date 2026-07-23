@@ -15,6 +15,9 @@ import { useFleetHealthServiceRefresh } from './FleetHealthServiceRefreshContext
 export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & {
   allTasks: ReturnType<typeof useFleetHealthServiceRefresh>['service']['allTasks'];
   vendors: ReturnType<typeof useFleetHealthServiceRefresh>['service']['vendors']['data'];
+  serviceCasesLoading: boolean;
+  serviceCasesError: string | null;
+  serviceCasesDataReady: boolean;
   reloadAll: ReturnType<typeof useFleetHealthServiceRefresh>['reloadAll'];
   refreshing: boolean;
 } {
@@ -72,6 +75,10 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
     ...vm,
     allTasks: service.allTasks,
     vendors: service.vendors.data,
+    serviceCasesLoading: service.serviceCases.status === 'loading',
+    serviceCasesError: service.serviceCases.error,
+    serviceCasesDataReady:
+      service.serviceCases.status === 'ready' || service.serviceCases.status === 'stale',
     reloadAll,
     refreshing,
   };

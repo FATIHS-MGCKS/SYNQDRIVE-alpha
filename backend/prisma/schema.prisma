@@ -31,6 +31,38 @@ enum BusinessType {
   OTHER
 }
 
+/// Customer segment a legal document rule applies to.
+enum LegalCustomerSegment {
+  B2C
+  B2B
+  BOTH
+}
+
+/// Booking origin channel a legal document rule applies to.
+enum LegalBookingChannel {
+  MANUAL
+  WEBSITE
+  API
+  OPERATOR_APP
+  ALL
+}
+
+/// Whether a legal document applies org-wide or only at specific stations.
+enum LegalStationScopeMode {
+  ORGANIZATION_WIDE
+  STATION_SPECIFIC
+}
+
+/// Administrative purpose of the notice (not legal advice — org selects).
+enum LegalNoticePurpose {
+  TERMS_AND_CONDITIONS
+  PRIVACY_POLICY
+  WITHDRAWAL_RIGHT_NOTICE
+  NO_WITHDRAWAL_RIGHT_NOTICE
+  OTHER_CONSUMER_INFORMATION
+  GENERAL_NOTICE
+}
+
 enum MembershipRole {
   ORG_ADMIN
   SUB_ADMIN
@@ -1534,6 +1566,8 @@ model Organization {
   status            OrganizationStatus @default(ACTIVE)
   /// End-customer Stripe Connect payments — disabled by default; enable via platform admin only.
   paymentsEnabled   Boolean            @default(false) @map("payments_enabled")
+  /// When true, legal document approve/activate must be performed by a user other than the uploader/submitter.
+  legalDocumentFourEyesEnabled Boolean @default(false) @map("legal_document_four_eyes_enabled")
   lastActiveAt      DateTime?          @map("last_active_at")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
@@ -1569,6 +1603,7 @@ model Organization {
   organizationRentalRules                OrganizationRentalRules?
   rentalVehicleCategories                RentalVehicleCategory[]
   vehicleRentalRequirementOverrides      VehicleRentalRequirementOverride[]
+  rentalRuleRevisions                    RentalRuleRevision[]
   tireRentalHealthReviewOverrides        TireRentalHealthReviewOverride[]
   brakeRentalHealthReviewOverrides       BrakeRentalHealthReviewOverride[]
   tireHealthAlerts                       TireHealthAlert[]
@@ -1596,6 +1631,16 @@ model Organization {
   providerConsents                       VehicleProviderConsent[]
   generatedDocuments                     GeneratedDocument[]
   legalDocuments                         OrganizationLegalDocument[]
+  legalDocumentStations                  OrganizationLegalDocumentStation[]
+  legalDocumentEvents                    OrganizationLegalDocumentEvent[]
+  legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
+  bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
+  bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
+  bookingEligibilityApprovals          BookingEligibilityApproval[]
+  bookingEligibilityDecisions          BookingEligibilityDecision[]
+  legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
+  legalDocumentRetentionPurgeRuns        LegalDocumentRetentionPurgeRun[]
+  legalDocumentRetentionPolicy           OrganizationLegalDocumentRetentionPolicy?
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
   organizationPaymentAccounts            OrganizationPaymentAccount[]
@@ -1653,6 +1698,7 @@ model Organization {
   organizationUserInvites                OrganizationUserInvite[]
   inviteEmailOutbox                      InviteEmailOutbox[]
   iamAuditOutbox                         IamAuditOutbox[]
+  businessAuditOutbox                    BusinessAuditOutbox[]
   accessReviewCampaigns                  AccessReviewCampaign[]
   accessReviewItems                      AccessReviewItem[]
   accessReviewDecisions                  AccessReviewDecision[]
@@ -1765,6 +1811,10 @@ model User {
   drivingDecisionsMade                DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
   drivingDecisionsRevoked             DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
   bookingAllowedDriversAdded          BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
+  bookingEligibilityApprovalsRequested BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalRequestedBy")
+  bookingEligibilityApprovalsDecided   BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalDecidedBy")
+  rentalRuleRevisionsCreated           RentalRuleRevision[]                   @relation("RentalRuleRevisionCreatedBy")
+  rentalRuleRevisionsPublished         RentalRuleRevision[]                   @relation("RentalRuleRevisionPublishedBy")
   tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
@@ -2347,6 +2397,53 @@ model IamAuditOutbox {
   @@map("iam_audit_outbox")
 }
 
+enum BusinessAuditOutboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  DEAD_LETTER
+}
+
+/// Transactional outbox for critical rental-rule and eligibility audit events.
+model BusinessAuditOutbox {
+  id             String                    @id @default(uuid())
+  eventId        String                    @unique @default(uuid()) @map("event_id")
+  organizationId String                    @map("organization_id")
+  idempotencyKey String                    @unique @map("idempotency_key")
+  actorUserId    String?                   @map("actor_user_id")
+  action         String
+  entityType     String                    @map("entity_type")
+  entityId       String                    @map("entity_id")
+  correlationId  String?                   @map("correlation_id")
+  occurredAt     DateTime                  @default(now()) @map("occurred_at")
+  payloadVersion Int                       @default(1) @map("payload_version")
+  beforeHash     String?                   @map("before_hash")
+  beforeSummary  String?                   @map("before_summary")
+  afterHash      String?                   @map("after_hash")
+  afterSummary   String?                   @map("after_summary")
+  changeReason   String?                   @map("change_reason")
+  outcome        String?
+  diffRef        String?                   @map("diff_ref")
+  payload        Json
+  status         BusinessAuditOutboxStatus @default(PENDING) @map("processing_status")
+  attempts       Int                       @default(0)
+  nextRetryAt    DateTime                  @default(now()) @map("next_retry_at")
+  processedAt    DateTime?                 @map("processed_at")
+  deadLetteredAt DateTime?                 @map("dead_lettered_at")
+  errorMessage   String?                   @map("error_message")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status, nextRetryAt])
+  @@index([organizationId, action])
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, correlationId])
+  @@map("business_audit_outbox")
+}
+
 // ------------------------------------------------
 // ACCESS REVIEWS (privileged access attestation)
 // ------------------------------------------------
@@ -2581,6 +2678,7 @@ model Station {
   returnBookings         Booking[]                @relation("BookingReturnStation")
   actualPickupBookings   Booking[]                @relation("BookingActualPickupStation")
   actualReturnBookings   Booking[]                @relation("BookingActualReturnStation")
+  legalDocumentStations  OrganizationLegalDocumentStation[]
   userAccountPreferences UserAccountPreference[]
 
   @@unique([organizationId, code])
@@ -5033,6 +5131,7 @@ model Customer {
   driverAttributionsAsBookingCustomer    DriverAttribution[]         @relation("DriverAttributionBookingCustomer")
   driverAttributionsAsDriver             DriverAttribution[]         @relation("DriverAttributionDriver")
   outboundEmails                         OutboundEmail[]
+  legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingPaymentRequests                 BookingPaymentRequest[]
 
   vehicleDamages        VehicleDamage[]
@@ -5213,6 +5312,25 @@ enum RentalVehicleCategoryType {
   CUSTOM
 }
 
+enum RentalVehicleCategoryStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum RentalRuleRevisionScopeType {
+  ORGANIZATION
+  CATEGORY
+  VEHICLE
+}
+
+enum RentalRuleRevisionStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
 model OrganizationRentalRules {
   id                          String                        @id @default(uuid())
   organizationId              String                        @unique @map("organization_id")
@@ -5228,11 +5346,13 @@ model OrganizationRentalRules {
   manualApprovalRequired      Boolean?                      @map("manual_approval_required")
   notes                       String?
   isActive                    Boolean                       @default(true) @map("is_active")
+  version                     Int                           @default(1)
   createdAt                   DateTime                      @default(now()) @map("created_at")
   updatedAt                   DateTime                      @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([isActive], map: "organization_rental_rules_is_active_idx")
   @@map("organization_rental_rules")
 }
 
@@ -5240,6 +5360,7 @@ model RentalVehicleCategory {
   id                          String                        @id @default(uuid())
   organizationId              String                        @map("organization_id")
   name                        String
+  nameNormalized              String                        @map("name_normalized")
   description                 String?
   type                        RentalVehicleCategoryType?
   color                       String?
@@ -5256,14 +5377,19 @@ model RentalVehicleCategory {
   manualApprovalRequired      Boolean?                      @map("manual_approval_required")
   notes                       String?
   isActive                    Boolean                       @default(true) @map("is_active")
+  status                      RentalVehicleCategoryStatus   @default(ACTIVE) @map("status")
+  statusChangedAt             DateTime?                     @map("status_changed_at")
+  version                     Int                           @default(1)
   createdAt                   DateTime                      @default(now()) @map("created_at")
   updatedAt                   DateTime                      @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicles     Vehicle[]
 
+  @@unique([organizationId, nameNormalized], map: "rental_vehicle_categories_org_name_normalized_key")
   @@index([organizationId])
   @@index([organizationId, isActive])
+  @@index([organizationId, status], map: "rental_vehicle_categories_org_status_idx")
   @@map("rental_vehicle_categories")
 }
 
@@ -5282,6 +5408,7 @@ model VehicleRentalRequirementOverride {
   insuranceRequirement        String?                       @map("insurance_requirement")
   manualApprovalRequired      Boolean?                      @map("manual_approval_required")
   notes                       String?
+  version                     Int                           @default(1)
   createdAt                   DateTime                      @default(now()) @map("created_at")
   updatedAt                   DateTime                      @updatedAt @map("updated_at")
 
@@ -5290,6 +5417,39 @@ model VehicleRentalRequirementOverride {
 
   @@index([organizationId])
   @@map("vehicle_rental_requirement_overrides")
+}
+
+/// Immutable, temporally versioned rental rule revisions per scope (Prompt 24).
+model RentalRuleRevision {
+  id                   String                      @id @default(uuid())
+  organizationId       String                      @map("organization_id")
+  scopeType            RentalRuleRevisionScopeType @map("scope_type")
+  scopeId              String                      @map("scope_id")
+  version              Int
+  status               RentalRuleRevisionStatus
+  normalizedRules      Json                        @map("normalized_rules")
+  rulesHash            String                      @map("rules_hash") @db.VarChar(64)
+  effectiveFrom        DateTime                    @map("effective_from")
+  effectiveTo          DateTime?                   @map("effective_to")
+  createdBy            String?                     @map("created_by")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  publishedBy          String?                     @map("published_by")
+  publishedAt          DateTime?                   @map("published_at")
+  changeReason         String?                     @map("change_reason")
+  supersedesRevisionId String?                     @map("supersedes_revision_id")
+  lockVersion          Int                         @default(1) @map("lock_version")
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser      User?               @relation("RentalRuleRevisionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  publishedByUser    User?               @relation("RentalRuleRevisionPublishedBy", fields: [publishedBy], references: [id], onDelete: SetNull)
+  supersedesRevision RentalRuleRevision? @relation("RentalRuleRevisionSupersedes", fields: [supersedesRevisionId], references: [id], onDelete: SetNull)
+  supersededBy       RentalRuleRevision[] @relation("RentalRuleRevisionSupersedes")
+
+  @@unique([organizationId, scopeType, scopeId, version], map: "rental_rule_revisions_scope_version_key")
+  @@index([organizationId, scopeType, scopeId, status], map: "rental_rule_revisions_scope_status_idx")
+  @@index([organizationId, scopeType, scopeId, effectiveFrom], map: "rental_rule_revisions_scope_effective_idx")
+  @@index([rulesHash], map: "rental_rule_revisions_rules_hash_idx")
+  @@map("rental_rule_revisions")
 }
 
 model TireRentalHealthReviewOverride {
@@ -5442,6 +5602,11 @@ model Booking {
   vehicleDamages          VehicleDamage[]
   whatsappConversations   WhatsAppConversation[]
   outboundEmails          OutboundEmail[]
+  legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
+  documentGenerationJobs        BookingDocumentGenerationJob[]
+  pickupGateAuditEvents         BookingPickupGateAuditEvent[]
+  eligibilityApprovals          BookingEligibilityApproval[]
+  eligibilityDecisions          BookingEligibilityDecision[]
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
@@ -6852,14 +7017,16 @@ model OrgInvoice {
 // versions, and the per-booking bundle that tracks which documents exist.
 // Status fields use plain strings (values documented inline) to keep the
 // migration small and consistent with other recent additions. Cross-entity
-// links to Booking/Customer/Vehicle/Invoice/Handover are kept as scalar id
-// columns + indexes (no Prisma relations) to avoid migration friction.
+// Booking/Customer/Vehicle/Invoice/Handover links on GeneratedDocument stay scalar.
+// Legal snapshot pointers on BookingDocumentBundle and RentalContract use explicit
+// relations to GeneratedDocument with onDelete: SetNull (historical evidence preserved).
 
 model GeneratedDocument {
   id                 String       @id @default(uuid())
   organizationId     String       @map("organization_id")
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType       String       @map("document_type") // BOOKING_INVOICE, DEPOSIT_RECEIPT, RENTAL_CONTRACT, TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, HANDOVER_PICKUP, HANDOVER_RETURN, FINAL_INVOICE
+  documentType       String       @map("document_type") // BOOKING_INVOICE, … CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy)
+  legalVariant       String?      @map("legal_variant")
   origin             String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
   status             String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
   bookingId          String?      @map("booking_id")
@@ -6888,12 +7055,29 @@ model GeneratedDocument {
   voidedAt           DateTime?    @map("voided_at")
   metadata           Json?
   snapshot           Json?
+  retentionClass     String       @default("BOOKING_SNAPSHOT") @map("retention_class")
+  retainUntil        DateTime?    @map("retain_until")
+  legalHold          Boolean      @default(false) @map("legal_hold")
+  legalHoldReason    String?      @map("legal_hold_reason")
+  legalHoldSetAt     DateTime?    @map("legal_hold_set_at")
+  legalHoldSetByUserId String?    @map("legal_hold_set_by_user_id")
+  deletionEligibleAt DateTime?    @map("deletion_eligible_at")
+  deletedAt          DateTime?    @map("deleted_at")
+  storagePurgedAt    DateTime?    @map("storage_purged_at")
+  storagePurgeError  String?      @map("storage_purge_error")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
-  outboundEmailAttachments OutboundEmailAttachment[]
-  activeForInvoice         OrgInvoice?               @relation("InvoiceActiveDocument")
-  invoiceRecord            OrgInvoice?               @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
+  outboundEmailAttachments            OutboundEmailAttachment[]
+  activeForInvoice                    OrgInvoice?               @relation("InvoiceActiveDocument")
+  invoiceRecord                       OrgInvoice?               @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
+  bookingBundlesAsTermsDocument       BookingDocumentBundle[]   @relation("BookingBundleTermsDocument")
+  bookingBundlesAsWithdrawalDocument  BookingDocumentBundle[]   @relation("BookingBundleWithdrawalDocument")
+  bookingBundlesAsPrivacyDocument     BookingDocumentBundle[]   @relation("BookingBundlePrivacyDocument")
+  rentalContractsAsTermsDocument      RentalContract[]          @relation("RentalContractTermsDocument")
+  rentalContractsAsWithdrawalDocument RentalContract[]          @relation("RentalContractWithdrawalDocument")
+  rentalContractsAsPrivacyDocument    RentalContract[]          @relation("RentalContractPrivacyDocument")
+  legalDocumentDeliveryEvidence       LegalDocumentDeliveryEvidence[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -6902,56 +7086,440 @@ model GeneratedDocument {
   @@index([invoiceId])
   @@index([documentType])
   @@index([status])
+  @@index([organizationId, retentionClass, deletionEligibleAt], map: "generated_documents_org_retention_eligible_idx")
+  @@index([organizationId, legalHold], map: "generated_documents_org_legal_hold_idx")
   @@map("generated_documents")
 }
 
 model OrganizationLegalDocument {
-  id               String       @id @default(uuid())
-  organizationId   String       @map("organization_id")
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType     String       @map("document_type") // TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION
-  title            String
-  versionLabel     String       @map("version_label")
-  language         String       @default("de")
-  status           String       @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
-  fileName         String       @map("file_name")
-  mimeType         String       @default("application/pdf") @map("mime_type")
-  storageProvider  String       @default("local") @map("storage_provider")
-  objectKey        String       @map("object_key")
-  checksum         String?
-  sizeBytes        Int?         @map("size_bytes")
-  activeFrom       DateTime?    @map("active_from")
-  uploadedByUserId String?      @map("uploaded_by_user_id")
-  createdAt        DateTime     @default(now()) @map("created_at")
-  updatedAt        DateTime     @updatedAt @map("updated_at")
+  id                         String       @id @default(uuid())
+  organizationId             String       @map("organization_id")
+  organization               Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType               String       @map("document_type") // TERMS_AND_CONDITIONS, CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy values)
+  legalVariant               String?      @map("legal_variant") // CONSUMER_INFORMATION variants only
+  title                      String
+  versionLabel               String       @map("version_label")
+  language                   String       @default("de")
+  status                     String       @default("DRAFT") // DRAFT, IN_REVIEW, APPROVED, SCHEDULED, ACTIVE, SUPERSEDED, REVOKED, ARCHIVED
+  fileName                   String       @map("file_name")
+  mimeType                   String       @default("application/pdf") @map("mime_type")
+  storageProvider            String       @default("local") @map("storage_provider")
+  objectKey                  String       @map("object_key")
+  checksum                   String?
+  sizeBytes                  Int?         @map("size_bytes")
+  validFrom                  DateTime?    @map("valid_from")
+  validUntil                 DateTime?    @map("valid_until")
+  jurisdictionCountry        String       @default("DE") @map("jurisdiction_country") // ISO 3166-1 alpha-2
+  customerSegment            LegalCustomerSegment @default(BOTH) @map("customer_segment")
+  bookingChannel             LegalBookingChannel @default(ALL) @map("booking_channel")
+  productScope               BusinessType? @map("product_scope") // null = all business types
+  stationScopeMode           LegalStationScopeMode @default(ORGANIZATION_WIDE) @map("station_scope_mode")
+  priority                   Int          @default(0)
+  isMandatory                Boolean      @default(true) @map("is_mandatory")
+  noticePurpose              LegalNoticePurpose @default(GENERAL_NOTICE) @map("notice_purpose")
+  submittedForReviewAt       DateTime?    @map("submitted_for_review_at")
+  submittedForReviewByUserId String?      @map("submitted_for_review_by_user_id")
+  approvedAt                 DateTime?    @map("approved_at")
+  approvedByUserId           String?      @map("approved_by_user_id")
+  activatedAt                DateTime?    @map("activated_at")
+  activatedByUserId          String?      @map("activated_by_user_id")
+  revokedAt                  DateTime?    @map("revoked_at")
+  revokedByUserId            String?      @map("revoked_by_user_id")
+  statusReason               String?      @map("status_reason")
+  changeSummary              String?      @map("change_summary")
+  legalOwnerName             String?      @map("legal_owner_name")
+  uploadedByUserId           String?      @map("uploaded_by_user_id")
+  scanStatus                 String       @default("UPLOADED") @map("scan_status")
+  pageCount                  Int?         @map("page_count")
+  validationErrorCode        String?      @map("validation_error_code")
+  validationErrorDetail      String?      @map("validation_error_detail")
+  validatedAt                DateTime?    @map("validated_at")
+  malwareScannedAt           DateTime?    @map("malware_scanned_at")
+  malwareScannerId           String?      @map("malware_scanner_id")
+  malwareEngineVersion       String?      @map("malware_engine_version")
+  malwareThreatName          String?      @map("malware_threat_name")
+  malwareScanDetail          String?      @map("malware_scan_detail")
+  malwareScanAttempts        Int?         @default(0) @map("malware_scan_attempts")
+  quarantineObjectKey        String?      @map("quarantine_object_key")
+  integrityStatus            String       @default("UNVERIFIED") @map("integrity_status")
+  integrityCheckedAt         DateTime?    @map("integrity_checked_at")
+  integrityDetail            String?      @map("integrity_detail")
+  integrityUnavailable       Boolean      @default(false) @map("integrity_unavailable")
+  retentionClass             String       @default("LEGAL_MASTER") @map("retention_class")
+  retainUntil                DateTime?    @map("retain_until")
+  legalHold                  Boolean      @default(false) @map("legal_hold")
+  legalHoldReason            String?      @map("legal_hold_reason")
+  legalHoldSetAt             DateTime?    @map("legal_hold_set_at")
+  legalHoldSetByUserId       String?      @map("legal_hold_set_by_user_id")
+  deletionEligibleAt         DateTime?    @map("deletion_eligible_at")
+  deletedAt                  DateTime?    @map("deleted_at")
+  storagePurgedAt            DateTime?    @map("storage_purged_at")
+  storagePurgeError          String?      @map("storage_purge_error")
+  createdAt                  DateTime     @default(now()) @map("created_at")
+  updatedAt                  DateTime     @updatedAt @map("updated_at")
+
+  events            OrganizationLegalDocumentEvent[]
+  deliveryEvidence  LegalDocumentDeliveryEvidence[]
+  stations OrganizationLegalDocumentStation[]
+
+  // Scope-aware ACTIVE uniqueness is enforced via conflict detection at activation
+  // (Prompt 7/32) — legacy partial index `organization_legal_documents_single_active_key`
+  // is dropped in migration 20260722150000.
 
   @@index([organizationId])
-  @@index([organizationId, documentType, status])
+  @@index([organizationId, documentType, status], map: "organization_legal_documents_org_type_status_idx")
+  @@index([organizationId, documentType, language, status], map: "organization_legal_documents_org_type_lang_status_idx")
+  @@index([organizationId, documentType, legalVariant], map: "organization_legal_documents_org_type_variant_idx")
+  @@index([organizationId, status, documentType, language, jurisdictionCountry, customerSegment, bookingChannel], map: "organization_legal_documents_resolver_scope_idx")
+  @@index([organizationId, scanStatus], map: "organization_legal_documents_org_scan_status_idx")
+  @@index([organizationId, integrityStatus], map: "organization_legal_documents_org_integrity_status_idx")
+  @@index([organizationId, retentionClass, deletionEligibleAt], map: "organization_legal_documents_org_retention_eligible_idx")
+  @@index([organizationId, legalHold], map: "organization_legal_documents_org_legal_hold_idx")
   @@map("organization_legal_documents")
 }
 
+/// Normalized station scope for legal documents (STATION_SPECIFIC mode only).
+model OrganizationLegalDocumentStation {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  legalDocumentId String   @map("legal_document_id")
+  stationId       String   @map("station_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  legalDocument OrganizationLegalDocument @relation(fields: [legalDocumentId], references: [id], onDelete: Cascade)
+  station       Station                   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@unique([legalDocumentId, stationId], map: "organization_legal_document_stations_doc_station_key")
+  @@index([organizationId, stationId], map: "organization_legal_document_stations_org_station_idx")
+  @@index([legalDocumentId], map: "organization_legal_document_stations_doc_idx")
+  @@map("organization_legal_document_stations")
+}
+
+/// Append-only audit log for organization legal document lifecycle transitions.
+/// No update/delete API — rows are created atomically with status changes.
+model OrganizationLegalDocumentEvent {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  legalDocumentId  String   @map("legal_document_id")
+  eventType        String   @map("event_type")
+  previousStatus   String?  @map("previous_status")
+  newStatus        String   @map("new_status")
+  actorUserId      String?  @map("actor_user_id")
+  actorDisplayName String?  @map("actor_display_name")
+  reason           String?
+  changeSummary    String?  @map("change_summary")
+  versionLabel     String   @map("version_label")
+  documentType     String   @map("document_type")
+  legalVariant     String?  @map("legal_variant")
+  checksum         String?
+  language         String
+  jurisdiction     String?
+  customerSegment  String?  @map("customer_segment")
+  bookingChannel   String?  @map("booking_channel")
+  productScope     String?  @map("product_scope")
+  stationScopeMode String?  @map("station_scope_mode")
+  priority         Int?
+  isMandatory      Boolean? @map("is_mandatory")
+  noticePurpose    String?  @map("notice_purpose")
+  validFrom        DateTime? @map("valid_from")
+  validUntil       DateTime? @map("valid_until")
+  correlationId    String?  @map("correlation_id")
+  retentionClass   String   @default("AUDIT_EVENT") @map("retention_class")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  legalDocument OrganizationLegalDocument @relation(fields: [legalDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt], map: "organization_legal_document_events_org_created_idx")
+  @@index([legalDocumentId, createdAt], map: "organization_legal_document_events_doc_created_idx")
+  @@index([organizationId, legalDocumentId, createdAt], map: "organization_legal_document_events_org_doc_created_idx")
+  @@map("organization_legal_document_events")
+}
+
+/// Append-only proof of legal text presentation, delivery, and acknowledgment to customers.
+/// NOT a consent store — marketing/KYC/data-processing consents use separate models.
+/// Rows are created via controlled service methods; completed events are immutable.
+model LegalDocumentDeliveryEvidence {
+  id                  String    @id @default(uuid())
+  organizationId      String    @map("organization_id")
+  bookingId           String    @map("booking_id")
+  customerId          String    @map("customer_id")
+  legalDocumentId     String    @map("legal_document_id")
+  generatedDocumentId String    @map("generated_document_id")
+  documentType        String    @map("document_type")
+  versionLabel        String    @map("version_label")
+  language            String
+  checksum            String?
+  presentedAt         DateTime  @map("presented_at")
+  deliveryChannel     String    @map("delivery_channel")
+  deliveryStatus      String    @map("delivery_status")
+  deliveredAt         DateTime? @map("delivered_at")
+  acknowledgedAt      DateTime? @map("acknowledged_at")
+  acknowledgmentMethod String?  @map("acknowledgment_method")
+  signatureReference  String?   @map("signature_reference")
+  actorUserId         String?   @map("actor_user_id")
+  recipientSnapshot   Json      @map("recipient_snapshot")
+  requestId           String?   @map("request_id")
+  outboundEmailId     String?   @map("outbound_email_id")
+  retentionClass    String    @default("DELIVERY_EVIDENCE") @map("retention_class")
+  retainUntil         DateTime? @map("retain_until")
+  legalHold           Boolean   @default(false) @map("legal_hold")
+  legalHoldReason     String?   @map("legal_hold_reason")
+  legalHoldSetAt      DateTime? @map("legal_hold_set_at")
+  legalHoldSetByUserId String?  @map("legal_hold_set_by_user_id")
+  deletionEligibleAt  DateTime? @map("deletion_eligible_at")
+  deletedAt           DateTime? @map("deleted_at")
+  recipientRedactedAt DateTime? @map("recipient_redacted_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking           Booking                   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer          Customer                  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  legalDocument     OrganizationLegalDocument @relation(fields: [legalDocumentId], references: [id], onDelete: Restrict)
+  generatedDocument GeneratedDocument         @relation(fields: [generatedDocumentId], references: [id], onDelete: Restrict)
+  outboundEmail     OutboundEmail?            @relation(fields: [outboundEmailId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, requestId], map: "legal_document_delivery_evidence_org_request_id_key")
+  @@index([organizationId, bookingId], map: "legal_document_delivery_evidence_org_booking_idx")
+  @@index([organizationId, bookingId, documentType], map: "legal_document_delivery_evidence_org_booking_doc_type_idx")
+  @@index([generatedDocumentId], map: "legal_document_delivery_evidence_generated_document_idx")
+  @@index([outboundEmailId], map: "legal_document_delivery_evidence_outbound_email_idx")
+  @@index([organizationId, retentionClass, deletionEligibleAt], map: "legal_document_delivery_evidence_org_retention_eligible_idx")
+  @@index([organizationId, legalHold], map: "legal_document_delivery_evidence_org_legal_hold_idx")
+  @@map("legal_document_delivery_evidence")
+}
+
+/// Durable workflow state for async booking document generation (Prompt 19).
+model BookingDocumentGenerationJob {
+  id                 String    @id @default(uuid())
+  organizationId     String    @map("organization_id")
+  bookingId          String    @map("booking_id")
+  bundleId           String?   @map("bundle_id")
+  jobType            String    @map("job_type")
+  documentType       String?   @map("document_type")
+  handoverProtocolId String?   @map("handover_protocol_id")
+  idempotencyKey     String    @map("idempotency_key")
+  correlationId      String    @map("correlation_id")
+  status             String    @default("PENDING")
+  attemptCount       Int       @default(0) @map("attempt_count")
+  maxAttempts        Int       @default(5) @map("max_attempts")
+  nextRetryAt        DateTime? @map("next_retry_at")
+  lastAttemptAt      DateTime? @map("last_attempt_at")
+  bullJobId          String?   @map("bull_job_id")
+  errorCode          String?   @map("error_code")
+  errorMessage       String?   @map("error_message")
+  requestedByUserId  String?   @map("requested_by_user_id")
+  completedAt        DateTime? @map("completed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking                @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bundle       BookingDocumentBundle? @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey], map: "booking_document_generation_jobs_org_idempotency_key")
+  @@index([organizationId, bookingId], map: "booking_document_generation_jobs_org_booking_idx")
+  @@index([status, nextRetryAt], map: "booking_document_generation_jobs_status_retry_idx")
+  @@map("booking_document_generation_jobs")
+}
+
+enum BookingEligibilityApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+  EXPIRED
+}
+
+/// Persisted manual-approval workflow for MANUAL_APPROVAL_REQUIRED eligibility decisions.
+model BookingEligibilityApproval {
+  id                       String                            @id @default(uuid())
+  organizationId           String                            @map("organization_id")
+  bookingId                String                            @map("booking_id")
+  eligibilityDecision      String                            @map("eligibility_decision")
+  exceptionReason          String                            @map("exception_reason")
+  reasonCodes              Json                              @default("[]") @map("reason_codes")
+  status                   BookingEligibilityApprovalStatus  @default(PENDING)
+  gateStage                String                            @map("gate_stage")
+  targetBookingStatus      String                            @map("target_booking_status")
+  requestedByUserId        String                            @map("requested_by_user_id")
+  decidedByUserId          String?                           @map("decided_by_user_id")
+  decisionReason           String?                           @map("decision_reason")
+  eligibilityFingerprint   String                            @map("eligibility_fingerprint")
+  ruleRevision             String                            @map("rule_revision")
+  bookingDataVersion       String                            @map("booking_data_version")
+  gateResultSnapshot       Json?                             @map("gate_result_snapshot")
+  createdAt                DateTime                          @default(now()) @map("created_at")
+  decidedAt                DateTime?                         @map("decided_at")
+  expiresAt                DateTime                          @map("expires_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  requestedBy  User         @relation("BookingEligibilityApprovalRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  decidedBy    User?        @relation("BookingEligibilityApprovalDecidedBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, bookingId, createdAt], map: "booking_eligibility_approvals_org_booking_created_idx")
+  @@index([organizationId, bookingId, status], map: "booking_eligibility_approvals_org_booking_status_idx")
+  @@index([organizationId, status, expiresAt], map: "booking_eligibility_approvals_org_status_expires_idx")
+  @@index([organizationId, bookingId, ruleRevision], map: "booking_eligibility_approvals_org_booking_revision_idx")
+  @@index([organizationId, ruleRevision, createdAt], map: "booking_eligibility_approvals_org_revision_created_idx")
+  @@map("booking_eligibility_approvals")
+}
+
+enum BookingEligibilityDecisionEventType {
+  CONFIRM_ATTEMPT
+  CONFIRM_SUCCEEDED
+  CONFIRM_REJECTED
+  PICKUP_CHECK
+  MANUAL_APPROVAL_APPROVED
+  MANUAL_APPROVAL_REJECTED
+  RULE_PUBLISH_RECHECK
+  MUTATION_RECHECK
+  SCHEDULED_RECHECK
+  APPROVAL_EXPIRED_RECHECK
+}
+
+/// Append-only eligibility decision snapshots for reproducible booking decisions.
+model BookingEligibilityDecision {
+  id                 String                              @id @default(uuid())
+  organizationId     String                              @map("organization_id")
+  bookingId          String                              @map("booking_id")
+  eventType          BookingEligibilityDecisionEventType @map("event_type")
+  decisionStatus     String                              @map("decision_status")
+  reasonCodes        Json                                @default("[]") @map("reason_codes")
+  blockingReasons    Json                                @default("[]") @map("blocking_reasons")
+  warnings           Json                                @default("[]") @map("warnings")
+  missingFields      Json                                @default("[]") @map("missing_fields")
+  evaluatedAt        DateTime                            @map("evaluated_at")
+  recheckAt          DateTime?                           @map("recheck_at")
+  engineVersion      String                              @map("engine_version")
+  ruleRevisionIds    Json                                @default("[]") @map("rule_revision_ids")
+  rulesHash          String                              @map("rules_hash")
+  derivedFacts       Json                                @default("{}") @map("derived_facts")
+  dataSources        Json                                @default("{}") @map("data_sources")
+  manualApprovalId   String?                             @map("manual_approval_id")
+  bookingDataVersion String                              @map("booking_data_version")
+  correlationId      String                              @map("correlation_id")
+  evaluationId       String?                             @map("evaluation_id")
+  createdAt          DateTime                            @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, bookingId, createdAt], map: "booking_eligibility_decisions_org_booking_created_idx")
+  @@index([organizationId, bookingId, eventType], map: "booking_eligibility_decisions_org_booking_event_idx")
+  @@index([organizationId, rulesHash, createdAt], map: "booking_eligibility_decisions_org_rules_hash_created_idx")
+  @@index([organizationId, correlationId], map: "booking_eligibility_decisions_org_correlation_idx")
+  @@map("booking_eligibility_decisions")
+}
+
+/// Append-only audit trail for pickup gate evaluations, blocks, and authorized overrides.
+model BookingPickupGateAuditEvent {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  bookingId           String   @map("booking_id")
+  eventType           String   @map("event_type")
+  outcome             String
+  actorUserId         String?  @map("actor_user_id")
+  actorDisplayName    String?  @map("actor_display_name")
+  overrideReason      String?  @map("override_reason")
+  gateCode            String?  @map("gate_code")
+  missingRequirements Json?    @map("missing_requirements")
+  correlationId       String?  @map("correlation_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, bookingId, createdAt], map: "booking_pickup_gate_audit_events_org_booking_created_idx")
+  @@index([organizationId, createdAt], map: "booking_pickup_gate_audit_events_org_created_idx")
+  @@map("booking_pickup_gate_audit_events")
+}
+
+/// Per-organization retention policy overrides for legal document classes.
+/// Platform env defaults apply when a class is absent; `0` days disables automatic purge.
+model OrganizationLegalDocumentRetentionPolicy {
+  id              String   @id @default(uuid())
+  organizationId  String   @unique @map("organization_id")
+  policyVersion   String   @map("policy_version")
+  classPolicies   Json     @map("class_policies")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  updatedByUserId String?  @map("updated_by_user_id")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_legal_document_retention_policies")
+}
+
+/// Checkpointed retention purge runs (dry-run or apply) for legal document storage lifecycle.
+model LegalDocumentRetentionPurgeRun {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  trigger        String    @default("manual")
+  dryRun         Boolean   @default(true) @map("dry_run")
+  status         String    @default("RUNNING")
+  report         Json      @default("{}")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  correlationId  String?   @map("correlation_id")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt], map: "legal_document_retention_purge_runs_org_started_idx")
+  @@map("legal_document_retention_purge_runs")
+}
+
+/// Checkpointed storage reconciliation runs for legal document integrity audits.
+model LegalDocumentStorageReconciliationRun {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  status         String    @default("RUNNING")
+  dryRun         Boolean   @default(true) @map("dry_run")
+  cursor         String?
+  metrics        Json      @default("{}")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  interruptedAt  DateTime? @map("interrupted_at")
+  correlationId  String?   @map("correlation_id")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt], map: "legal_document_storage_reconciliation_runs_org_started_idx")
+  @@map("legal_document_storage_reconciliation_runs")
+}
+
 model BookingDocumentBundle {
-  id                       String       @id @default(uuid())
-  organizationId           String       @map("organization_id")
-  organization             Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bookingId                String       @unique @map("booking_id")
-  status                   String       @default("PENDING") // PENDING, PARTIAL, COMPLETE, FAILED
-  bookingInvoiceDocumentId String?      @map("booking_invoice_document_id")
-  depositReceiptDocumentId String?      @map("deposit_receipt_document_id")
-  rentalContractDocumentId String?      @map("rental_contract_document_id")
-  termsDocumentId          String?      @map("terms_document_id")
-  withdrawalDocumentId     String?      @map("withdrawal_document_id")
-  pickupProtocolDocumentId String?      @map("pickup_protocol_document_id")
-  returnProtocolDocumentId String?      @map("return_protocol_document_id")
-  finalInvoiceDocumentId   String?      @map("final_invoice_document_id")
-  generatedAt              DateTime?    @map("generated_at")
-  lastError                String?      @map("last_error")
-  createdAt                DateTime     @default(now()) @map("created_at")
-  updatedAt                DateTime     @updatedAt @map("updated_at")
+  id                       String             @id @default(uuid())
+  organizationId           String             @map("organization_id")
+  organization             Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId                String             @unique @map("booking_id")
+  status                   String             @default("PENDING") // PENDING, PARTIAL, COMPLETE, FAILED
+  bookingInvoiceDocumentId String?            @map("booking_invoice_document_id")
+  depositReceiptDocumentId String?            @map("deposit_receipt_document_id")
+  rentalContractDocumentId String?            @map("rental_contract_document_id")
+  termsDocumentId          String?            @map("terms_document_id")
+  termsDocument            GeneratedDocument? @relation("BookingBundleTermsDocument", fields: [termsDocumentId], references: [id], onDelete: SetNull)
+  withdrawalDocumentId     String?            @map("withdrawal_document_id")
+  withdrawalDocument       GeneratedDocument? @relation("BookingBundleWithdrawalDocument", fields: [withdrawalDocumentId], references: [id], onDelete: SetNull)
+  privacyDocumentId        String?            @map("privacy_document_id")
+  privacyDocument          GeneratedDocument? @relation("BookingBundlePrivacyDocument", fields: [privacyDocumentId], references: [id], onDelete: SetNull)
+  pickupProtocolDocumentId String?            @map("pickup_protocol_document_id")
+  returnProtocolDocumentId String?            @map("return_protocol_document_id")
+  finalInvoiceDocumentId   String?            @map("final_invoice_document_id")
+  generatedAt              DateTime?          @map("generated_at")
+  lastError                String?            @map("last_error")
+  createdAt                DateTime           @default(now()) @map("created_at")
+  updatedAt                DateTime           @updatedAt @map("updated_at")
+
+  generationJobs           BookingDocumentGenerationJob[]
 
   @@index([organizationId])
   @@index([bookingId])
   @@index([status])
+  @@index([termsDocumentId])
+  @@index([withdrawalDocumentId])
+  @@index([privacyDocumentId])
   @@map("booking_document_bundles")
 }
 
@@ -6982,28 +7550,38 @@ model BookingDeposit {
 }
 
 model RentalContract {
-  id                   String       @id @default(uuid())
-  organizationId       String       @map("organization_id")
-  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bookingId            String       @unique @map("booking_id")
-  customerId           String?      @map("customer_id")
-  vehicleId            String?      @map("vehicle_id")
-  contractNumber       String?      @map("contract_number")
-  status               String       @default("DRAFT") // DRAFT, GENERATED, SIGNED, CANCELLED
-  termsDocumentId      String?      @map("terms_document_id")
-  withdrawalDocumentId String?      @map("withdrawal_document_id")
-  generatedDocumentId  String?      @map("generated_document_id")
+  id                   String             @id @default(uuid())
+  organizationId       String             @map("organization_id")
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId            String             @unique @map("booking_id")
+  customerId           String?            @map("customer_id")
+  vehicleId            String?            @map("vehicle_id")
+  contractNumber       String?            @map("contract_number")
+  status               String             @default("DRAFT") // DRAFT, GENERATED, SIGNED, CANCELLED
+  termsDocumentId      String?            @map("terms_document_id")
+  termsDocument        GeneratedDocument? @relation("RentalContractTermsDocument", fields: [termsDocumentId], references: [id], onDelete: SetNull)
+  withdrawalDocumentId String?            @map("withdrawal_document_id")
+  withdrawalDocument   GeneratedDocument? @relation("RentalContractWithdrawalDocument", fields: [withdrawalDocumentId], references: [id], onDelete: SetNull)
+  privacyDocumentId    String?            @map("privacy_document_id")
+  privacyDocument      GeneratedDocument? @relation("RentalContractPrivacyDocument", fields: [privacyDocumentId], references: [id], onDelete: SetNull)
+  generatedDocumentId  String?            @map("generated_document_id")
+  /// Immutable verification snapshot of legal document versions used at contract time.
+  legalRefsSnapshot    Json?              @map("legal_refs_snapshot")
+  legalSnapshotFrozenAt DateTime?           @map("legal_snapshot_frozen_at")
   snapshot             Json?
-  generatedAt          DateTime?    @map("generated_at")
-  signedAt             DateTime?    @map("signed_at")
-  createdAt            DateTime     @default(now()) @map("created_at")
-  updatedAt            DateTime     @updatedAt @map("updated_at")
+  generatedAt          DateTime?          @map("generated_at")
+  signedAt             DateTime?          @map("signed_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
 
   @@index([organizationId])
   @@index([bookingId])
   @@index([customerId])
   @@index([vehicleId])
   @@index([status])
+  @@index([termsDocumentId])
+  @@index([withdrawalDocumentId])
+  @@index([privacyDocumentId])
   @@map("rental_contracts")
 }
 
@@ -10606,6 +11184,7 @@ model OutboundEmail {
   errorCode                   String?                 @map("error_code")
   errorMessage                String?                 @map("error_message")
   sentByUserId                String?                 @map("sent_by_user_id")
+  sendIdempotencyKey          String?                 @map("send_idempotency_key")
   sentAt                      DateTime?               @map("sent_at")
   createdAt                   DateTime                @default(now()) @map("created_at")
   updatedAt                   DateTime                @updatedAt @map("updated_at")
@@ -10623,6 +11202,7 @@ model OutboundEmail {
   events                   OutboundEmailEvent[]
   paymentEmailOutbox       PaymentEmailOutbox[]
   billingEmailSuppressions BillingEmailSuppression[]
+  legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
 
   @@index([organizationId])
   @@index([organizationId, bookingId])
@@ -10634,6 +11214,7 @@ model OutboundEmail {
   @@index([bookingPaymentRequestId])
   @@index([status])
   @@index([createdAt])
+  @@unique([organizationId, sendIdempotencyKey], map: "outbound_emails_org_send_idempotency_key")
   @@map("outbound_emails")
 }
 

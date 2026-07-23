@@ -13,6 +13,7 @@ import { RentalDrivingAnalysisRecomputeTriggerService } from '../rental-driving-
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../rental-driving-analysis/rental-driving-analysis.recompute.types';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import {
   parsePagination,
   buildPaginatedResult,
@@ -46,6 +47,7 @@ import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
+import { BookingLegalDocumentEmailService } from '@modules/outbound-email/booking-legal-document-email.service';
 import type { Station } from '@prisma/client';
 import {
   DEFAULT_TARIFF_TIMEZONE,
@@ -56,6 +58,20 @@ import {
   zonedLookbackStart,
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { listInvalidationFactsFromMutation } from './booking-eligibility-gatekeeper/booking-eligibility-status-transition.matrix';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import {
+  resolveEligibilityPolicyMode,
+  shouldSkipEligibilityEnforcement,
+} from './booking-eligibility-gatekeeper/booking-eligibility-transition.policy';
+import { isWizardDraftBooking } from './booking-wizard-draft.util';
+import { resolvePaymentIntentChanged } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
+import {
+  assertWizardPreviewFingerprintMatches,
+  buildEligibilityPreviewFingerprint,
+} from './booking-wizard-eligibility.util';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -85,10 +101,14 @@ export class BookingsService {
     // booking is confirmed. Fire-and-forget; never blocks/breaks booking create.
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
+    private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
     @Inject(forwardRef(() => GeneratedDocumentsService))
     private readonly generatedDocumentsService: GeneratedDocumentsService,
     @Inject(forwardRef(() => BookingDocumentEmailService))
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
+    @Inject(forwardRef(() => BookingLegalDocumentEmailService))
+    private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     // V4.8.3 Task Action Layer — materializes booking lifecycle tasks
     // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
     // never blocks/breaks booking writes.
@@ -102,6 +122,9 @@ export class BookingsService {
     private readonly bookingPaymentCardService: BookingPaymentCardService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
+    private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
+    private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
+    private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
   ) {}
 
   /**
@@ -146,7 +169,14 @@ export class BookingsService {
   async create(
     orgId: string,
     data: Omit<Prisma.BookingCreateInput, 'organization'>,
-    options?: { userId?: string | null },
+    options?: {
+      userId?: string | null;
+      platformRole?: string | null;
+      membershipRole?: import('@prisma/client').MembershipRole | null;
+      eligibilityApprovalId?: string | null;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ): Promise<Booking> {
     // V4.6.74 — server-side gate: prevent double-booking the SAME vehicle
     // within overlapping time windows. The frontend already tries to block
@@ -212,12 +242,52 @@ export class BookingsService {
       );
     }
 
-    await this.assertCustomerBookingEligibility(
-      orgId,
-      customerId,
-      requestedStatus,
-      startDate,
-    );
+    const notes = anyData.notes as string | undefined;
+    const isWizardDraft = isWizardDraftBooking({
+      status: requestedStatus,
+      notes,
+    });
+    const enforcementMode = resolveEligibilityPolicyMode({
+      targetStatus: requestedStatus,
+      isWizardDraft,
+    });
+
+    if (!isWizardDraft) {
+      if (!shouldSkipEligibilityEnforcement(enforcementMode)) {
+        await this.bookingEligibilityEnforcement.assertAllowed(
+          {
+            organizationId: orgId,
+            customerId,
+            vehicleId,
+            startDate,
+            endDate,
+            targetStatus: requestedStatus,
+            notes,
+            paymentIntent: anyData.paymentIntent,
+            extrasJson: anyData.extrasJson,
+            foreignTravelRequested: options?.foreignTravelRequested ??
+              (anyData.foreignTravelRequested as boolean | undefined),
+            additionalDriverCount: options?.additionalDriverCount ??
+              (anyData.additionalDriverCount as number | undefined),
+          },
+          {
+            userId: options?.userId,
+            platformRole: options?.platformRole,
+            membershipRole: options?.membershipRole ?? undefined,
+            eligibilityApprovalId:
+              options?.eligibilityApprovalId ??
+              (anyData.eligibilityApprovalId as string | undefined),
+          },
+        );
+      } else if (requestedStatus === 'PENDING' && enforcementMode === 'DRAFT') {
+        await this.assertCustomerBookingEligibility(
+          orgId,
+          customerId,
+          requestedStatus,
+          startDate,
+        );
+      }
+    }
 
     const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
     const quoteId = requireQuoteId(anyData.quoteId);
@@ -307,18 +377,22 @@ export class BookingsService {
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
     // explicitly as well — the bundle service is idempotent.
     if (booking.status === 'CONFIRMED' || booking.status === 'PENDING') {
-      void this.bookingDocumentBundleService
-        .generateInitialBundle(orgId, booking.id)
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueInitialBundle(orgId, booking.id, options?.userId ?? null)
         .then(() => {
           if (booking.status === 'CONFIRMED') {
-            return this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
+            return this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
               orgId,
               booking.id,
               options?.userId ?? null,
             );
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue initial document bundle for booking ${booking.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
 
     if (booking.status === 'CONFIRMED' || booking.status === 'ACTIVE') {
@@ -704,6 +778,9 @@ export class BookingsService {
     const {
       quoteId: _quoteId,
       pricingInput: _pricingInput,
+      foreignTravelRequested: _foreignTravelRequested,
+      additionalDriverCount: _additionalDriverCount,
+      eligibilityApprovalId: _eligibilityApprovalId,
       ...rest
     } = this.stripBookingStationScalars(data);
     return rest;
@@ -950,31 +1027,53 @@ export class BookingsService {
       { type: DOCUMENT_TYPE.DEPOSIT_RECEIPT, required: true },
       { type: DOCUMENT_TYPE.RENTAL_CONTRACT, required: true },
       { type: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, required: true },
-      { type: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION, required: true },
+      { type: DOCUMENT_TYPE.CONSUMER_INFORMATION, required: true },
+      { type: DOCUMENT_TYPE.PRIVACY_POLICY, required: true },
       { type: DOCUMENT_TYPE.HANDOVER_PICKUP, required: false },
       { type: DOCUMENT_TYPE.HANDOVER_RETURN, required: false },
       { type: DOCUMENT_TYPE.FINAL_INVOICE, required: false },
     ];
 
+    const completenessRequired = new Set(bundleView?.completeness?.cumulativeRequiredTypes ?? []);
+    const completenessPresent = new Set(bundleView?.completeness?.presentTypes ?? []);
+
     const documentSlots = DOC_SLOTS.map(({ type, required }) => {
+      const slotRequired = completenessRequired.has(type as typeof DOCUMENT_TYPE[keyof typeof DOCUMENT_TYPE]) || required;
       const row = docByType.get(type);
-      if (!row) {
+      if (!row && !completenessPresent.has(type as typeof DOCUMENT_TYPE[keyof typeof DOCUMENT_TYPE])) {
         const isLegal =
           type === DOCUMENT_TYPE.TERMS_AND_CONDITIONS ||
+          type === DOCUMENT_TYPE.CONSUMER_INFORMATION ||
+          type === DOCUMENT_TYPE.PRIVACY_POLICY ||
           type === DOCUMENT_TYPE.WITHDRAWAL_INFORMATION;
+        const missingItem = bundleView?.completeness?.missingItems.find((m) => m.documentType === type);
         return {
           documentType: type,
           status: 'missing' as const,
-          required,
+          required: slotRequired,
           available: false,
           generatedAt: null,
           signedAt: null,
           documentId: null,
-          missingReason: isLegal
+          missingReason: missingItem?.reason === 'configuration_problem'
             ? 'In Administration hinterlegen'
-            : required
-              ? 'Noch nicht erstellt'
-              : null,
+            : isLegal
+              ? 'In Administration hinterlegen'
+              : slotRequired
+                ? 'Noch nicht erstellt'
+                : null,
+        };
+      }
+      if (!row) {
+        return {
+          documentType: type,
+          status: 'missing' as const,
+          required: slotRequired,
+          available: false,
+          generatedAt: null,
+          signedAt: null,
+          documentId: null,
+          missingReason: slotRequired ? 'Noch nicht erstellt' : null,
         };
       }
       const status =
@@ -1019,6 +1118,34 @@ export class BookingsService {
       };
     } catch {
       eligibility = null;
+    }
+
+    let rentalEligibility: BookingDetailDto['rentalEligibility'] = null;
+    try {
+      const gateResult = await this.bookingEligibilityEnforcement.previewEvaluation({
+        organizationId: orgId,
+        customerId: b.customerId,
+        vehicleId: b.vehicleId,
+        startDate: b.startDate,
+        endDate: b.endDate,
+        targetStatus: b.status,
+        bookingId: b.id,
+        notes: b.notes,
+        paymentIntent: b.paymentIntent,
+      });
+      rentalEligibility = {
+        status: gateResult.status,
+        allowed: gateResult.allowed,
+        stage: gateResult.stage,
+        blockingReasons: gateResult.blockingReasons.map((r) => r.message),
+        warnings: gateResult.warnings.map((r) => r.message),
+        missingFields: gateResult.missingFields,
+        engineVersion: gateResult.engineVersion,
+        evaluatedAt: gateResult.evaluatedAt,
+        rentalRulesStatus: gateResult.domains.rentalRules.result?.status ?? null,
+      };
+    } catch {
+      rentalEligibility = null;
     }
 
     const now = Date.now();
@@ -1189,8 +1316,10 @@ export class BookingsService {
       },
       documents: {
         bundleStatus: bundleView?.bundle.status ?? null,
+        completenessStatus: bundleView?.completeness?.status ?? null,
         legalTermsAttached: bundleView?.legal.termsAttached ?? false,
-        legalWithdrawalAttached: bundleView?.legal.withdrawalAttached ?? false,
+        legalWithdrawalAttached: bundleView?.legal.consumerAttached ?? bundleView?.legal.withdrawalAttached ?? false,
+        legalPrivacyAttached: bundleView?.legal.privacyAttached ?? false,
         legalMissing: bundleView?.legal.missing ?? [],
         warnings: bundleView?.warnings ?? [],
         slots: documentSlots,
@@ -1222,6 +1351,7 @@ export class BookingsService {
         hasAnalysis: Boolean(analysis),
       },
       eligibility,
+      rentalEligibility,
       activity: activityRows.map((a) => ({
         id: a.id,
         action: a.action,
@@ -1578,6 +1708,15 @@ export class BookingsService {
     orgId: string,
     id: string,
     data: Prisma.BookingUpdateInput,
+    options?: {
+      userId?: string | null;
+      platformRole?: string | null;
+      membershipRole?: import('@prisma/client').MembershipRole | null;
+      eligibilityApprovalId?: string | null;
+      eligibilityPreviewFingerprint?: string | null;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ): Promise<Booking> {
     const existing = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
@@ -1655,13 +1794,118 @@ export class BookingsService {
       this.enforceRentalHealthGate(rentalGate, nextVehicleId);
     }
 
-    if (customerOrDatesChanged || statusChanged) {
+    const paymentIntentChanged =
+      anyData.paymentIntent !== undefined &&
+      resolvePaymentIntentChanged(existing.paymentIntent, anyData.paymentIntent);
+    const extrasChanged = anyData.extrasJson !== undefined;
+    const nextNotes =
+      anyData.notes !== undefined ? (anyData.notes as string | null) : existing.notes;
+
+    const enforcementContext = {
+      organizationId: orgId,
+      bookingId: id,
+      customerId: nextCustomerId,
+      vehicleId: nextVehicleId,
+      startDate: nextStart,
+      endDate: nextEnd,
+      targetStatus: nextStatus,
+      notes: nextNotes,
+      paymentIntent:
+        anyData.paymentIntent !== undefined ? anyData.paymentIntent : existing.paymentIntent,
+      extrasJson:
+        anyData.extrasJson !== undefined ? anyData.extrasJson : existing.extrasJson,
+      foreignTravelRequested:
+        options?.foreignTravelRequested ??
+        (anyData.foreignTravelRequested as boolean | undefined),
+      additionalDriverCount: options?.additionalDriverCount ??
+        (anyData.additionalDriverCount as number | undefined),
+    };
+
+    const shouldEnforce = this.bookingEligibilityEnforcement.shouldEnforceForUpdate({
+      existing: {
+        status: existing.status,
+        customerId: existing.customerId,
+        vehicleId: existing.vehicleId,
+        startDate: existing.startDate,
+        endDate: existing.endDate,
+        notes: existing.notes,
+        paymentIntent: existing.paymentIntent,
+        extrasJson: existing.extrasJson,
+      },
+      next: enforcementContext,
+      customerIdChanged: nextCustomerId !== existing.customerId,
+      vehicleIdChanged: nextVehicleId !== existing.vehicleId,
+      datesChanged:
+        nextStart.getTime() !== existing.startDate.getTime() ||
+        nextEnd.getTime() !== existing.endDate.getTime(),
+      paymentIntentChanged,
+      extrasChanged,
+      statusChanged,
+    });
+
+    const invalidationFacts = listInvalidationFactsFromMutation({
+      customerIdChanged: nextCustomerId !== existing.customerId,
+      vehicleIdChanged: nextVehicleId !== existing.vehicleId,
+      datesChanged:
+        nextStart.getTime() !== existing.startDate.getTime() ||
+        nextEnd.getTime() !== existing.endDate.getTime(),
+      paymentIntentChanged,
+      extrasChanged,
+      statusChanged,
+    });
+    if (invalidationFacts.length > 0) {
+      await this.bookingEligibilityApproval.revokeActiveApprovals({
+        organizationId: orgId,
+        bookingId: id,
+        reason: 'Booking eligibility context changed',
+        revokedByUserId: options?.userId ?? null,
+        invalidationFacts,
+      });
+      await this.bookingEligibilityRecheck.processMutationRecheckFromInvalidationFacts({
+        organizationId: orgId,
+        bookingId: id,
+        invalidationFacts,
+        actorUserId: options?.userId ?? null,
+      });
+    }
+
+    const enforcementOptions = {
+      userId: options?.userId,
+      platformRole: options?.platformRole,
+      membershipRole: options?.membershipRole ?? undefined,
+      eligibilityApprovalId:
+        options?.eligibilityApprovalId ??
+        (anyData.eligibilityApprovalId as string | undefined),
+    };
+    const confirmingTransition =
+      shouldEnforce && statusChanged && nextStatus === 'CONFIRMED';
+
+    if (shouldEnforce && !confirmingTransition) {
+      await this.bookingEligibilityEnforcement.assertAllowed(
+        enforcementContext,
+        enforcementOptions,
+      );
+    } else if (
+      (customerOrDatesChanged || statusChanged) &&
+      isWizardDraftBooking({
+        status: nextStatus,
+        notes: nextNotes ?? existing.notes,
+      })
+    ) {
       await this.assertCustomerBookingEligibility(
         orgId,
         nextCustomerId,
         nextStatus,
         nextStart,
       );
+    }
+
+    if (existing.status === 'CONFIRMED' && nextStatus === 'ACTIVE') {
+      throw new ConflictException({
+        code: 'BOOKING_ACTIVATION_REQUIRES_HANDOVER',
+        message:
+          'Status ACTIVE requires pickup handover via POST /bookings/:id/handover/pickup',
+      });
     }
 
     const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
@@ -1671,6 +1915,18 @@ export class BookingsService {
         anyData.extrasJson !== undefined ||
         anyData.insuranceOptions !== undefined) &&
       !terminalStatuses.includes(existing.status);
+
+    const confirmedLikeStatuses: BookingStatus[] = ['CONFIRMED', 'ACTIVE'];
+    if (pricingRelevant && confirmedLikeStatuses.includes(existing.status)) {
+      const quoteId = anyData.quoteId as string | undefined;
+      if (!quoteId) {
+        throw new BadRequestException({
+          message:
+            'Confirmed bookings require a new pricing quote before vehicle, period, or pricing changes.',
+          code: 'PRICING_QUOTE_REQUIRED_FOR_REPRICE',
+        });
+      }
+    }
 
     if (pricingRelevant) {
       const simulation = await this.pricingService.simulateBookingPrice(orgId, {
@@ -1721,7 +1977,60 @@ export class BookingsService {
       Object.assign(data, this.stationFieldsToPrismaInput(await this.resolveBookingStationFields(orgId, merged)));
     }
 
-    const updated = await this.prisma.booking.update({ where: { id }, data });
+    delete anyData.eligibilityApprovalId;
+    delete anyData.eligibilityOverrideReason;
+    delete anyData.eligibilityPreviewFingerprint;
+    delete anyData.foreignTravelRequested;
+    delete anyData.additionalDriverCount;
+
+    const updated = confirmingTransition
+      ? await this.prisma.$transaction(async (tx) => {
+          const gateResult = await this.bookingEligibilityEnforcement.assertAllowed(
+            enforcementContext,
+            enforcementOptions,
+          );
+          if (
+            gateResult &&
+            !isWizardDraftBooking({
+              status: nextStatus,
+              notes: nextNotes ?? existing.notes,
+            })
+          ) {
+            const fingerprint = options?.eligibilityPreviewFingerprint?.trim();
+            if (!fingerprint) {
+              throw new BadRequestException({
+                code: 'ELIGIBILITY_PREVIEW_FINGERPRINT_REQUIRED',
+                message:
+                  'Direct booking confirmation requires a prior eligibility preview fingerprint.',
+                previewFingerprint: buildEligibilityPreviewFingerprint(gateResult),
+              });
+            }
+            assertWizardPreviewFingerprintMatches(fingerprint, gateResult);
+          }
+          const updatedBooking = await tx.booking.update({ where: { id }, data });
+          if (
+            updatedBooking.status === 'CONFIRMED' &&
+            gateResult &&
+            existing.status !== 'CONFIRMED'
+          ) {
+            await this.bookingEligibilityEnforcement.recordConfirmSucceededSnapshot({
+              organizationId: orgId,
+              bookingId: id,
+              gateResult,
+              manualApprovalId: enforcementOptions.eligibilityApprovalId,
+              bookingDataContext: {
+                customerId: updatedBooking.customerId,
+                vehicleId: updatedBooking.vehicleId,
+                startDate: updatedBooking.startDate,
+                endDate: updatedBooking.endDate,
+                paymentIntent: updatedBooking.paymentIntent,
+                extrasJson: updatedBooking.extrasJson,
+              },
+            });
+          }
+          return updatedBooking;
+        })
+      : await this.prisma.booking.update({ where: { id }, data });
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {
@@ -1745,12 +2054,16 @@ export class BookingsService {
     // Generate the initial document bundle when a booking transitions INTO
     // CONFIRMED via update. Idempotent + fire-and-forget.
     if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
-      void this.bookingDocumentBundleService
-        .generateInitialBundle(orgId, id)
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueInitialBundle(orgId, id, null)
         .then(() =>
-          this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(orgId, id, null),
+          this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(orgId, id, null),
         )
-        .catch(() => {});
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue initial document bundle for booking ${id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
     // Materialize booking lifecycle tasks on any status transition. The
     // automation service is idempotent (dedup per generatedKey), so calling it

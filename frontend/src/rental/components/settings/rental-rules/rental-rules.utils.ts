@@ -10,6 +10,12 @@ import type {
   RentalYoungDriverPolicy,
 } from './rental-rules.types';
 import { formatPriceCents } from '../../../pricing/pricingUtils';
+import {
+  combineLicenseHoldingMonths,
+  formatLicenseHoldingDuration,
+  splitLicenseHoldingMonths,
+} from './license-holding.util';
+import { RENTAL_RULES_VALIDATION_LIMITS as LIMITS } from './rental-rules-validation.constants';
 
 export function parseApiError(e: unknown): string {
   if (e instanceof Error) return e.message;
@@ -88,20 +94,13 @@ export function ruleSourceInheritanceHint(
   return 'Inherited';
 }
 
+/** @deprecated Prefer formatLicenseHoldingDuration from license-holding.util */
 export function formatLicenseHolding(
   months: number | null | undefined,
-  years?: number | null,
+  _years?: number | null,
   options?: { long?: boolean },
 ): string {
-  const yr = options?.long ? 'years' : 'yr';
-  const mo = options?.long ? 'months' : 'mo';
-  if (years != null) return years === 1 && options?.long ? '1 year' : `${years} ${yr}`;
-  if (months == null) return '—';
-  if (months % 12 === 0) {
-    const y = months / 12;
-    return y === 1 && options?.long ? '1 year' : `${y} ${yr}`;
-  }
-  return `${months} ${mo}`;
+  return formatLicenseHoldingDuration(months, options);
 }
 
 export function formatDeposit(
@@ -126,11 +125,8 @@ export function formatRuleValue(
   if (key === 'depositAmountCents' || key === 'depositAmount') {
     return formatDeposit(Number(value), currency);
   }
-  if (key === 'minimumLicenseHoldingMonths') {
-    return formatLicenseHolding(Number(value));
-  }
-  if (key === 'minimumLicenseHoldingYears') {
-    return formatLicenseHolding(null, Number(value));
+  if (key === 'minimumLicenseHoldingMonths' || key === 'minimumLicenseHoldingYears') {
+    return formatLicenseHoldingDuration(Number(value));
   }
   if (key === 'minimumAgeYears') return `${value} yr`;
   if (key === 'creditCardRequired' || key === 'manualApprovalRequired') {
@@ -146,26 +142,41 @@ export function formatRuleValue(
   return String(value);
 }
 
+function resolveLicenseHoldingMonths(rules: Partial<RentalRuleFields> | null | undefined): number | null {
+  if (rules?.minimumLicenseHoldingMonths != null) {
+    return rules.minimumLicenseHoldingMonths;
+  }
+  if (
+    rules?.minimumLicenseHoldingYears != null ||
+    rules?.minimumLicenseHoldingRemainderMonths != null
+  ) {
+    return combineLicenseHoldingMonths(
+      rules.minimumLicenseHoldingYears ?? 0,
+      rules.minimumLicenseHoldingRemainderMonths ?? 0,
+    );
+  }
+  return null;
+}
+
 export function rulesToFormValues(
   rules: Partial<RentalRuleFields> | null | undefined,
 ): RentalRuleFormValues {
-  const currency = rules?.depositCurrency ?? 'EUR';
+  const months = resolveLicenseHoldingMonths(rules);
+  const split = months != null ? splitLicenseHoldingMonths(months) : null;
   return {
     minimumAgeYears:
       rules?.minimumAgeYears != null ? String(rules.minimumAgeYears) : '',
-    minimumLicenseHoldingYears:
-      rules?.minimumLicenseHoldingYears != null
-        ? String(rules.minimumLicenseHoldingYears)
-        : rules?.minimumLicenseHoldingMonths != null
-          ? String(Math.round(rules.minimumLicenseHoldingMonths / 12))
-          : '',
+    licenseHoldingWholeYears:
+      split && (split.wholeYears > 0 || months === 0) ? String(split.wholeYears) : '',
+    licenseHoldingExtraMonths:
+      split && split.extraMonths > 0 ? String(split.extraMonths) : '',
     depositAmount:
       rules?.depositAmount != null
         ? String(rules.depositAmount / 100)
         : rules?.depositAmountCents != null
           ? String(rules.depositAmountCents / 100)
           : '',
-    depositCurrency: currency,
+    depositCurrency: rules?.depositCurrency ?? '',
     creditCardRequired:
       rules?.creditCardRequired == null
         ? ''
@@ -186,47 +197,182 @@ export function rulesToFormValues(
   };
 }
 
-export function formValuesToPayload(values: RentalRuleFormValues): Record<string, unknown> {
-  const payload: Record<string, unknown> = {};
+export type RentalRulePatchMode = 'create' | 'edit';
+
+type RentalRulePatchBaseline = {
+  minimumAgeYears: number | null;
+  minimumLicenseHoldingMonths: number | null;
+  depositAmountCents: number | null;
+  depositCurrency: string | null;
+  creditCardRequired: boolean | null;
+  foreignTravelPolicy: RentalForeignTravelPolicy | null;
+  additionalDriverPolicy: RentalAdditionalDriverPolicy | null;
+  youngDriverPolicy: RentalYoungDriverPolicy | null;
+  insuranceRequirement: string | null;
+  manualApprovalRequired: boolean | null;
+  notes: string | null;
+};
+
+export function extractRulePatchBaseline(
+  rules: Partial<RentalRuleFields> | null | undefined,
+): RentalRulePatchBaseline {
+  return {
+    minimumAgeYears: rules?.minimumAgeYears ?? null,
+    minimumLicenseHoldingMonths: resolveLicenseHoldingMonths(rules),
+    depositAmountCents: rules?.depositAmountCents ?? rules?.depositAmount ?? null,
+    depositCurrency: rules?.depositCurrency?.trim() ? rules.depositCurrency.trim().toUpperCase() : null,
+    creditCardRequired: rules?.creditCardRequired ?? null,
+    foreignTravelPolicy: (rules?.foreignTravelPolicy ?? null) as RentalForeignTravelPolicy | null,
+    additionalDriverPolicy: (rules?.additionalDriverPolicy ?? null) as RentalAdditionalDriverPolicy | null,
+    youngDriverPolicy: (rules?.youngDriverPolicy ?? null) as RentalYoungDriverPolicy | null,
+    insuranceRequirement: rules?.insuranceRequirement?.trim() || null,
+    manualApprovalRequired: rules?.manualApprovalRequired ?? null,
+    notes: rules?.notes?.trim() || null,
+  };
+}
+
+function parseLicenseHoldingFormValues(values: RentalRuleFormValues): number | null {
+  const hasYears = values.licenseHoldingWholeYears.trim().length > 0;
+  const hasMonths = values.licenseHoldingExtraMonths.trim().length > 0;
+  if (!hasYears && !hasMonths) return null;
+  const wholeYears = hasYears ? Number(values.licenseHoldingWholeYears) : 0;
+  const extraMonths = hasMonths ? Number(values.licenseHoldingExtraMonths) : 0;
+  return combineLicenseHoldingMonths(wholeYears, extraMonths);
+}
+
+function formValuesToDesiredState(values: RentalRuleFormValues): RentalRulePatchBaseline {
+  const desired = extractRulePatchBaseline(null);
+
   if (values.minimumAgeYears.trim()) {
-    payload.minimumAgeYears = Number(values.minimumAgeYears);
+    desired.minimumAgeYears = Number(values.minimumAgeYears);
   }
-  if (values.minimumLicenseHoldingYears.trim()) {
-    payload.minimumLicenseHoldingYears = Number(values.minimumLicenseHoldingYears);
-  }
+  desired.minimumLicenseHoldingMonths = parseLicenseHoldingFormValues(values);
   if (values.depositAmount.trim()) {
     const euros = Number(values.depositAmount.replace(',', '.'));
-    if (!Number.isNaN(euros)) payload.depositAmount = Math.round(euros * 100);
+    if (!Number.isNaN(euros)) desired.depositAmountCents = Math.round(euros * 100);
   }
-  if (values.depositCurrency.trim()) payload.depositCurrency = values.depositCurrency.trim();
-  if (values.creditCardRequired) payload.creditCardRequired = values.creditCardRequired === 'true';
-  if (values.foreignTravelPolicy) payload.foreignTravelPolicy = values.foreignTravelPolicy;
-  if (values.additionalDriverPolicy) payload.additionalDriverPolicy = values.additionalDriverPolicy;
-  if (values.youngDriverPolicy) payload.youngDriverPolicy = values.youngDriverPolicy;
-  if (values.insuranceRequirement.trim()) payload.insuranceRequirement = values.insuranceRequirement.trim();
-  if (values.manualApprovalRequired) {
-    payload.manualApprovalRequired = values.manualApprovalRequired === 'true';
+  if (values.depositCurrency.trim()) {
+    desired.depositCurrency = values.depositCurrency.trim().toUpperCase();
   }
-  if (values.notes.trim()) payload.notes = values.notes.trim();
+  if (values.creditCardRequired === 'true') desired.creditCardRequired = true;
+  else if (values.creditCardRequired === 'false') desired.creditCardRequired = false;
+  if (values.foreignTravelPolicy) desired.foreignTravelPolicy = values.foreignTravelPolicy;
+  if (values.additionalDriverPolicy) desired.additionalDriverPolicy = values.additionalDriverPolicy;
+  if (values.youngDriverPolicy) desired.youngDriverPolicy = values.youngDriverPolicy;
+  if (values.insuranceRequirement.trim()) {
+    desired.insuranceRequirement = values.insuranceRequirement.trim();
+  }
+  if (values.manualApprovalRequired === 'true') desired.manualApprovalRequired = true;
+  else if (values.manualApprovalRequired === 'false') desired.manualApprovalRequired = false;
+  if (values.notes.trim()) desired.notes = values.notes.trim();
+
+  return desired;
+}
+
+function baselineValuesEqual(
+  left: RentalRulePatchBaseline[keyof RentalRulePatchBaseline],
+  right: RentalRulePatchBaseline[keyof RentalRulePatchBaseline],
+): boolean {
+  return left === right;
+}
+
+/**
+ * Build a PATCH payload with three-state semantics:
+ * - omitted key → leave existing value unchanged (edit mode)
+ * - concrete value → set value (including explicit false)
+ * - null → clear field / inherit from parent layer
+ */
+export function formValuesToPatchPayload(
+  values: RentalRuleFormValues,
+  baseline: Partial<RentalRuleFields> | null | undefined,
+  mode: RentalRulePatchMode,
+): Record<string, unknown> {
+  const base = extractRulePatchBaseline(baseline);
+  const desired = formValuesToDesiredState(values);
+  const payload: Record<string, unknown> = {};
+  const keys = Object.keys(desired) as (keyof RentalRulePatchBaseline)[];
+
+  for (const key of keys) {
+    const next = desired[key];
+    if (mode === 'create') {
+      if (next !== null) payload[key] = next;
+      continue;
+    }
+    if (!baselineValuesEqual(next, base[key])) {
+      payload[key] = next;
+    }
+  }
+
   return payload;
+}
+
+/** @deprecated Use formValuesToPatchPayload for edit flows with inherit/clear semantics. */
+export function formValuesToPayload(values: RentalRuleFormValues): Record<string, unknown> {
+  return formValuesToPatchPayload(values, null, 'create');
 }
 
 export function validateRuleForm(values: RentalRuleFormValues): string | null {
   if (values.minimumAgeYears.trim()) {
     const age = Number(values.minimumAgeYears);
-    if (Number.isNaN(age) || age < 18 || age > 99) return 'Minimum age must be between 18 and 99.';
+    if (Number.isNaN(age) || age < LIMITS.minimumAgeYears.min || age > LIMITS.minimumAgeYears.max) {
+      return `Minimum age must be between ${LIMITS.minimumAgeYears.min} and ${LIMITS.minimumAgeYears.max}.`;
+    }
   }
-  if (values.minimumLicenseHoldingYears.trim()) {
-    const years = Number(values.minimumLicenseHoldingYears);
-    if (Number.isNaN(years) || years < 0 || years > 80) {
-      return 'License holding must be between 0 and 80 years.';
+  if (values.licenseHoldingWholeYears.trim()) {
+    const years = Number(values.licenseHoldingWholeYears);
+    if (
+      Number.isNaN(years) ||
+      years < LIMITS.licenseHoldingWholeYears.min ||
+      years > LIMITS.licenseHoldingWholeYears.max
+    ) {
+      return `License holding years must be between ${LIMITS.licenseHoldingWholeYears.min} and ${LIMITS.licenseHoldingWholeYears.max}.`;
+    }
+  }
+  if (values.licenseHoldingExtraMonths.trim()) {
+    const months = Number(values.licenseHoldingExtraMonths);
+    if (
+      Number.isNaN(months) ||
+      months < LIMITS.licenseHoldingExtraMonths.min ||
+      months > LIMITS.licenseHoldingExtraMonths.max
+    ) {
+      return `Additional license holding months must be between ${LIMITS.licenseHoldingExtraMonths.min} and ${LIMITS.licenseHoldingExtraMonths.max}.`;
+    }
+  }
+  if (values.licenseHoldingWholeYears.trim() || values.licenseHoldingExtraMonths.trim()) {
+    const total = combineLicenseHoldingMonths(
+      Number(values.licenseHoldingWholeYears || 0),
+      Number(values.licenseHoldingExtraMonths || 0),
+    );
+    if (total > LIMITS.minimumLicenseHoldingMonths.max) {
+      return `License holding cannot exceed ${LIMITS.minimumLicenseHoldingMonths.max} months.`;
     }
   }
   if (values.depositAmount.trim()) {
     const deposit = Number(values.depositAmount.replace(',', '.'));
-    if (Number.isNaN(deposit) || deposit < 0) return 'Deposit must be a positive amount.';
+    if (Number.isNaN(deposit) || deposit < LIMITS.depositMajorUnits.min) {
+      return 'Deposit must be a positive amount.';
+    }
+    if (deposit > LIMITS.depositMajorUnits.max) {
+      return `Deposit cannot exceed ${LIMITS.depositMajorUnits.max.toLocaleString()}.`;
+    }
+  }
+  if (values.insuranceRequirement.length > LIMITS.insuranceRequirement.maxLength) {
+    return `Insurance requirement cannot exceed ${LIMITS.insuranceRequirement.maxLength} characters.`;
+  }
+  if (values.notes.length > LIMITS.notes.maxLength) {
+    return `Notes cannot exceed ${LIMITS.notes.maxLength} characters.`;
   }
   return null;
+}
+
+export function summarizeRuleEntity(entity: Record<string, unknown>): string {
+  const rows = summarizeRules(entity as unknown as OrganizationRentalRulesDto);
+  const name = typeof entity.name === 'string' ? entity.name : null;
+  const parts = [
+    ...(name ? [`Name: ${name}`] : []),
+    ...rows.map((row) => `${row.label}: ${row.value}`),
+  ];
+  return parts.join('\n');
 }
 
 export function summarizeRules(
@@ -237,11 +383,7 @@ export function summarizeRules(
     { label: 'Minimum age', value: rules.minimumAgeYears != null ? `${rules.minimumAgeYears} yr` : '—' },
     {
       label: 'License holding period',
-      value: formatLicenseHolding(
-        rules.minimumLicenseHoldingMonths,
-        rules.minimumLicenseHoldingYears,
-        { long: true },
-      ),
+      value: formatLicenseHoldingDuration(rules.minimumLicenseHoldingMonths, { long: true }),
     },
     { label: 'Deposit required', value: formatDeposit(rules.depositAmountCents ?? rules.depositAmount ?? null, currency) },
     { label: 'Credit card required', value: formatBool(rules.creditCardRequired) },
@@ -288,19 +430,15 @@ export function effectiveRulesRows(effective: EffectiveRentalRulesDto) {
       sourceName: effective.minimumAgeYears.sourceName,
     },
     {
-      key: 'minimumLicenseHoldingYears',
+      key: 'minimumLicenseHoldingMonths',
       label: 'License holding period',
-      value: formatLicenseHolding(
-        effective.minimumLicenseHoldingMonths.value,
-        effective.minimumLicenseHoldingYears.value,
-        { long: true },
-      ),
+      value: formatLicenseHoldingDuration(effective.minimumLicenseHoldingMonths.value, { long: true }),
       source: labelRuleSource(
-        effective.minimumLicenseHoldingYears.source,
-        effective.minimumLicenseHoldingYears.sourceName,
+        effective.minimumLicenseHoldingMonths.source,
+        effective.minimumLicenseHoldingMonths.sourceName,
       ),
-      sourceKey: effective.minimumLicenseHoldingYears.source,
-      sourceName: effective.minimumLicenseHoldingYears.sourceName,
+      sourceKey: effective.minimumLicenseHoldingMonths.source,
+      sourceName: effective.minimumLicenseHoldingMonths.sourceName,
     },
     {
       key: 'depositAmount',

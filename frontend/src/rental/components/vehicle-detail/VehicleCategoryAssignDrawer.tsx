@@ -10,6 +10,9 @@ import { api } from '../../../lib/api';
 
 import type { RentalVehicleCategoryDto } from '../settings/rental-rules/rental-rules.types';
 
+import { buildSingleVehicleCategoryDelta } from '../settings/rental-rules/rental-rules-category-assignment.utils';
+import { rentalRulesMutate } from '../settings/rental-rules/rental-rules-concurrency.errors';
+import { resolveExpectedVersion, withExpectedVersion } from '../settings/rental-rules/rental-rules-concurrency.utils';
 import { labelCategoryType, parseApiError } from '../settings/rental-rules/rental-rules.utils';
 
 
@@ -114,15 +117,46 @@ export function VehicleCategoryAssignDrawer({
 
     if (!selectedId) return;
 
+    if (selectedId === currentCategoryId) {
+
+      onOpenChange(false);
+
+      return;
+
+    }
+
+    const selectedCategory = categories.find((category) => category.id === selectedId);
+
+    if (!selectedCategory) return;
+
     setSaving(true);
 
     try {
 
-      const existing = await api.rentalRules.listCategoryVehicles(orgId, selectedId);
+      const delta = buildSingleVehicleCategoryDelta({
 
-      const ids = [...new Set([...existing.map((v) => v.id), vehicleId])];
+        vehicleId,
 
-      await api.rentalRules.assignCategoryVehicles(orgId, selectedId, ids);
+        currentCategoryId,
+
+        targetCategoryId: selectedId,
+
+      });
+
+      const payload = withExpectedVersion(
+        delta as unknown as Record<string, unknown>,
+        resolveExpectedVersion(selectedCategory.version),
+      );
+
+      await rentalRulesMutate(
+
+        'PATCH',
+
+        `/organizations/${orgId}/rental-rules/categories/${selectedId}/vehicles`,
+
+        payload,
+
+      );
 
       toast.success('Category assigned');
 
@@ -224,6 +258,8 @@ export function VehicleCategoryAssignDrawer({
 
             const isMove = currentCategoryId && currentCategoryId !== cat.id && checked;
 
+            const sourceCategory = categories.find((category) => category.id === currentCategoryId);
+
             const inputId = `vehicle-category-${cat.id}`;
 
             return (
@@ -276,7 +312,9 @@ export function VehicleCategoryAssignDrawer({
 
                       <p className="mt-1 text-[11px] text-[color:var(--status-watch)]">
 
-                        This vehicle will move to {cat.name}.
+                        This vehicle will move from <strong>{sourceCategory?.name ?? 'current category'}</strong> to{' '}
+
+                        <strong>{cat.name}</strong>.
 
                       </p>
 

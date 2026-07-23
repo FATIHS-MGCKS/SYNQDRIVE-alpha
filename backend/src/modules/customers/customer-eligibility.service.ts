@@ -63,15 +63,17 @@ export class CustomerEligibilityService {
     this.applyStatusBlocks(customer, buckets);
     this.applyExpiryBlocks(customer, refDate, policy, buckets);
 
-    const verification = await this.verificationService.getEligibilityStatus(
-      orgId,
-      customerId,
-      {
-        bookingId: options.bookingId,
-        startDate: refDate,
-        policy,
-      },
-    );
+    const verification =
+      options.verificationSnapshot ??
+      (await this.verificationService.getEligibilityStatus(
+        orgId,
+        customerId,
+        {
+          bookingId: options.bookingId,
+          startDate: refDate,
+          policy,
+        },
+      ));
 
     this.applyVerificationFromCanonical(verification, policy, buckets);
     this.applyRiskRules(customer, policy, buckets);

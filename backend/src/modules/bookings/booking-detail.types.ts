@@ -111,8 +111,10 @@ export type BookingDetailDto = {
   };
   documents: {
     bundleStatus: string | null;
+    completenessStatus: string | null;
     legalTermsAttached: boolean;
     legalWithdrawalAttached: boolean;
+    legalPrivacyAttached: boolean;
     legalMissing: string[];
     warnings: string[];
     slots: BookingDetailDocumentSlot[];
@@ -150,6 +152,17 @@ export type BookingDetailDto = {
     blockingReasons: string[];
     warnings: string[];
     requiredActions: string[];
+  } | null;
+  rentalEligibility: {
+    status: string;
+    allowed: boolean;
+    stage: string;
+    blockingReasons: string[];
+    warnings: string[];
+    missingFields: string[];
+    engineVersion: string;
+    evaluatedAt: string;
+    rentalRulesStatus: string | null;
   } | null;
   activity: ActivityItem[];
   payments: BookingPaymentCardSection | null;

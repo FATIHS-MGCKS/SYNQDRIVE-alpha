@@ -1,0 +1,260 @@
+import { Injectable } from '@nestjs/common';
+import {
+  OrganizationLegalDocument,
+  OrganizationLegalDocumentEvent,
+  Prisma,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import {
+  buildPaginatedResult,
+  PaginationParams,
+  PaginatedResult,
+} from '@shared/utils/pagination';
+import {
+  deriveJurisdictionFromLanguage,
+  resolveLegalDocumentEventType,
+  type LegalDocumentEventType,
+} from './legal-document-events.constants';
+import type { LegalDocumentIntegrityEventType } from './integrity/legal-document-integrity.constants';
+import type { LegalDocumentEventsQueryDto } from './dto/legal-document-events-query.dto';
+import { LegalDocumentNotFoundError } from './legal-documents-api.errors';
+
+export interface LegalDocumentActorContext {
+  userId?: string | null;
+  displayName?: string | null;
+  correlationId?: string | null;
+}
+
+export interface AppendLegalDocumentEventInput {
+  organizationId: string;
+  legalDocument: OrganizationLegalDocument;
+  eventType?: LegalDocumentEventType;
+  previousStatus: string | null;
+  newStatus: string;
+  actor?: LegalDocumentActorContext;
+  reason?: string | null;
+  changeSummary?: string | null;
+  validFrom?: Date | null;
+  validUntil?: Date | null;
+}
+
+export interface LegalDocumentEventDto {
+  id: string;
+  organizationId: string;
+  legalDocumentId: string;
+  eventType: string;
+  previousStatus: string | null;
+  newStatus: string;
+  actorUserId: string | null;
+  actorDisplayName: string | null;
+  reason: string | null;
+  changeSummary: string | null;
+  versionLabel: string;
+  documentType: string;
+  legalVariant: string | null;
+  checksum: string | null;
+  language: string;
+  jurisdiction: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  correlationId: string | null;
+  createdAt: string;
+}
+
+type Tx = Prisma.TransactionClient;
+
+/**
+ * Append-only lifecycle audit for organization legal documents.
+ * Writes happen only via {@link appendInTransaction}; no update/delete surface.
+ */
+@Injectable()
+export class LegalDocumentEventsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async appendInTransaction(
+    tx: Tx,
+    input: AppendLegalDocumentEventInput,
+  ): Promise<OrganizationLegalDocumentEvent> {
+    const eventType =
+      input.eventType ??
+      resolveLegalDocumentEventType(input.previousStatus, input.newStatus);
+
+    return tx.organizationLegalDocumentEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        legalDocumentId: input.legalDocument.id,
+        eventType,
+        previousStatus: input.previousStatus,
+        newStatus: input.newStatus,
+        actorUserId: input.actor?.userId ?? null,
+        actorDisplayName: input.actor?.displayName?.trim() || null,
+        reason: input.reason?.trim() || null,
+        changeSummary:
+          input.changeSummary?.trim() ?? input.legalDocument.changeSummary ?? null,
+        versionLabel: input.legalDocument.versionLabel,
+        documentType: input.legalDocument.documentType,
+        legalVariant: input.legalDocument.legalVariant,
+        checksum: input.legalDocument.checksum,
+        language: input.legalDocument.language,
+        jurisdiction:
+          input.legalDocument.jurisdictionCountry ??
+          deriveJurisdictionFromLanguage(input.legalDocument.language),
+        customerSegment: input.legalDocument.customerSegment,
+        bookingChannel: input.legalDocument.bookingChannel,
+        productScope: input.legalDocument.productScope,
+        stationScopeMode: input.legalDocument.stationScopeMode,
+        priority: input.legalDocument.priority,
+        isMandatory: input.legalDocument.isMandatory,
+        noticePurpose: input.legalDocument.noticePurpose,
+        validFrom: input.validFrom ?? input.legalDocument.validFrom,
+        validUntil: input.validUntil ?? input.legalDocument.validUntil,
+        correlationId: input.actor?.correlationId ?? null,
+      },
+    });
+  }
+
+  async appendIntegrityEventInTransaction(
+    tx: Tx,
+    input: {
+      organizationId: string;
+      legalDocument: OrganizationLegalDocument;
+      eventType: LegalDocumentIntegrityEventType;
+      reason?: string | null;
+      correlationId?: string | null;
+    },
+  ): Promise<OrganizationLegalDocumentEvent> {
+    return tx.organizationLegalDocumentEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        legalDocumentId: input.legalDocument.id,
+        eventType: input.eventType,
+        previousStatus: input.legalDocument.status,
+        newStatus: input.legalDocument.status,
+        actorUserId: null,
+        actorDisplayName: 'system:integrity',
+        reason: input.reason?.trim() || null,
+        changeSummary: `integrityStatus=${input.legalDocument.integrityStatus}`,
+        versionLabel: input.legalDocument.versionLabel,
+        documentType: input.legalDocument.documentType,
+        legalVariant: input.legalDocument.legalVariant,
+        checksum: input.legalDocument.checksum,
+        language: input.legalDocument.language,
+        jurisdiction:
+          input.legalDocument.jurisdictionCountry ??
+          deriveJurisdictionFromLanguage(input.legalDocument.language),
+        customerSegment: input.legalDocument.customerSegment,
+        bookingChannel: input.legalDocument.bookingChannel,
+        productScope: input.legalDocument.productScope,
+        stationScopeMode: input.legalDocument.stationScopeMode,
+        priority: input.legalDocument.priority,
+        isMandatory: input.legalDocument.isMandatory,
+        noticePurpose: input.legalDocument.noticePurpose,
+        validFrom: input.legalDocument.validFrom,
+        validUntil: input.legalDocument.validUntil,
+        correlationId: input.correlationId ?? null,
+      },
+    });
+  }
+
+  async listForDocument(
+    orgId: string,
+    legalDocumentId: string,
+    params: LegalDocumentEventsQueryDto = {},
+  ): Promise<PaginatedResult<LegalDocumentEventDto>> {
+    await this.assertDocumentInOrg(orgId, legalDocumentId);
+    return this.listEvents(orgId, { legalDocumentId }, params);
+  }
+
+  async listForOrganization(
+    orgId: string,
+    params: LegalDocumentEventsQueryDto = {},
+  ): Promise<PaginatedResult<LegalDocumentEventDto>> {
+    const { legalDocumentId, eventType, from, to, sort, order, ...pagination } = params;
+    if (legalDocumentId) {
+      await this.assertDocumentInOrg(orgId, legalDocumentId);
+    }
+    return this.listEvents(
+      orgId,
+      { legalDocumentId, eventType, from, to, sort, order },
+      pagination,
+    );
+  }
+
+  toDto(event: OrganizationLegalDocumentEvent): LegalDocumentEventDto {
+    return {
+      id: event.id,
+      organizationId: event.organizationId,
+      legalDocumentId: event.legalDocumentId,
+      eventType: event.eventType,
+      previousStatus: event.previousStatus,
+      newStatus: event.newStatus,
+      actorUserId: event.actorUserId,
+      actorDisplayName: event.actorDisplayName,
+      reason: event.reason,
+      changeSummary: event.changeSummary,
+      versionLabel: event.versionLabel,
+      documentType: event.documentType,
+      legalVariant: event.legalVariant,
+      checksum: event.checksum,
+      language: event.language,
+      jurisdiction: event.jurisdiction,
+      validFrom: event.validFrom ? event.validFrom.toISOString() : null,
+      validUntil: event.validUntil ? event.validUntil.toISOString() : null,
+      correlationId: event.correlationId,
+      createdAt: event.createdAt.toISOString(),
+    };
+  }
+
+  private async listEvents(
+    orgId: string,
+    filters: {
+      legalDocumentId?: string;
+      eventType?: string;
+      from?: string;
+      to?: string;
+      sort?: 'createdAt';
+      order?: 'asc' | 'desc';
+    },
+    params: PaginationParams,
+  ): Promise<PaginatedResult<LegalDocumentEventDto>> {
+    const page = Math.max(1, params.page || 1);
+    const limit = Math.min(100, Math.max(1, params.limit || 20));
+    const skip = (page - 1) * limit;
+    const direction = filters.order === 'desc' ? 'desc' : 'asc';
+
+    const createdAtFilter =
+      filters.from || filters.to
+        ? {
+            ...(filters.from ? { gte: new Date(filters.from) } : {}),
+            ...(filters.to ? { lte: new Date(filters.to) } : {}),
+          }
+        : undefined;
+
+    const where: Prisma.OrganizationLegalDocumentEventWhereInput = {
+      organizationId: orgId,
+      ...(filters.legalDocumentId ? { legalDocumentId: filters.legalDocumentId } : {}),
+      ...(filters.eventType ? { eventType: filters.eventType } : {}),
+      ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.organizationLegalDocumentEvent.findMany({
+        where,
+        orderBy: { createdAt: direction },
+        skip,
+        take: limit,
+      }),
+      this.prisma.organizationLegalDocumentEvent.count({ where }),
+    ]);
+
+    return buildPaginatedResult(rows.map((row) => this.toDto(row)), total, { page, limit });
+  }
+
+  private async assertDocumentInOrg(orgId: string, legalDocumentId: string): Promise<void> {
+    const doc = await this.prisma.organizationLegalDocument.findFirst({
+      where: { id: legalDocumentId, organizationId: orgId },
+      select: { id: true },
+    });
+    if (!doc) throw new LegalDocumentNotFoundError();
+  }
+}

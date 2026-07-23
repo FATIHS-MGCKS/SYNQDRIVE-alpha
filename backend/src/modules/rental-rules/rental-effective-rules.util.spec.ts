@@ -1,4 +1,5 @@
 import { buildEffectiveRentalRules } from './rental-effective-rules.util';
+import { createActiveRentalRulesActivationSnapshot } from './rental-rules-activation.policy';
 
 describe('buildEffectiveRentalRules', () => {
   const orgLayer = {
@@ -29,6 +30,7 @@ describe('buildEffectiveRentalRules', () => {
     rentalCategoryName: null,
     rentalCategoryType: null,
     rulesActive: true,
+    activation: createActiveRentalRulesActivationSnapshot(),
   };
 
   it('uses organization defaults when no category or override', () => {

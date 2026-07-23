@@ -10,6 +10,8 @@ import { DataAuthorizationTab } from './DataAuthorizationTab';
 import { LegalDocumentsTab } from './LegalDocumentsTab';
 import { EmailVersandTab } from './settings/email/EmailVersandTab';
 import { RentalRulesTab } from './settings/rental-rules/RentalRulesTab';
+import { useRentalRulesPermissions } from '../hooks/useRentalRulesPermissions';
+import { RENTAL_RULES_PERMISSION_DENIED_MESSAGE } from '../lib/rental-rules-permissions';
 import { AccountInformationTab } from './settings/AccountInformationTab';
 import { CompanyInformationTab } from './settings/CompanyInformationTab';
 import { BillingTab } from './billing/BillingTab';
@@ -18,10 +20,12 @@ import {
   DataCard,
   MetricCard,
   EmptyState,
+  ErrorState,
   StatusChip,
   SectionHeader,
 } from '../../components/patterns';
 import { AdministrationTabBar } from './settings/AdministrationTabBar';
+import { AdministrationTabPanel } from './settings/AdministrationTabPanel';
 import type { SettingsTab } from './settings/settingsTypes';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -41,6 +45,7 @@ interface SettingsViewProps {
   activeTab?: SettingsTab;
   onTabChange?: (tab: SettingsTab) => void;
   onNavigateToStations?: () => void;
+  onCheckBooking?: () => void;
 }
 
 export type { SettingsTab } from './settings/settingsTypes';
@@ -1821,13 +1826,14 @@ export function SettingsView({
   activeTab: controlledTab = 'company',
   onTabChange,
   onNavigateToStations,
+  onCheckBooking,
 }: SettingsViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const { t } = useLanguage();
   const activeTab = controlledTab;
   const canWriteDataAuth = hasPermission('data-authorization', 'write');
   const canManageDataAuth = hasPermission('data-authorization', 'manage');
-  const canWriteRentalRules = hasPermission('company-info', 'write');
+  const rentalRulesPermissions = useRentalRulesPermissions();
   const bridgeDark = useDocumentDark();
 
   return (
@@ -1840,22 +1846,55 @@ export function SettingsView({
       </header>
 
       {activeTab === 'account' && (
-        <AccountInformationTab onNavigateToUsers={() => onTabChange?.('users')} />
+        <AdministrationTabPanel tab="account" activeTab={activeTab}>
+          <AccountInformationTab onNavigateToUsers={() => onTabChange?.('users')} />
+        </AdministrationTabPanel>
       )}
       {activeTab === 'company' && (
-        <CompanyInformationTab
-          onNavigateToLegalDocuments={() => onTabChange?.('legal-documents')}
-          onNavigateToStations={onNavigateToStations}
-        />
+        <AdministrationTabPanel tab="company" activeTab={activeTab}>
+          <CompanyInformationTab
+            onNavigateToLegalDocuments={() => onTabChange?.('legal-documents')}
+            onNavigateToStations={onNavigateToStations}
+          />
+        </AdministrationTabPanel>
       )}
-      {activeTab === 'users' && <UsersRolesTab orgId={orgId} />}
-      {activeTab === 'billing' && <BillingTab />}
+      {activeTab === 'users' && (
+        <AdministrationTabPanel tab="users" activeTab={activeTab}>
+          <UsersRolesTab orgId={orgId} />
+        </AdministrationTabPanel>
+      )}
+      {activeTab === 'billing' && (
+        <AdministrationTabPanel tab="billing" activeTab={activeTab}>
+          <BillingTab />
+        </AdministrationTabPanel>
+      )}
       {activeTab === 'data-authorization' && (
-        <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
+        <AdministrationTabPanel tab="data-authorization" activeTab={activeTab}>
+          <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
+        </AdministrationTabPanel>
       )}
-      {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={bridgeDark} />}
-      {activeTab === 'email-versand' && <EmailVersandTab isDarkMode={bridgeDark} />}
-      {activeTab === 'rental-rules' && <RentalRulesTab canWrite={canWriteRentalRules} />}
+      {activeTab === 'legal-documents' && (
+        <AdministrationTabPanel tab="legal-documents" activeTab={activeTab}>
+          <LegalDocumentsTab isDarkMode={bridgeDark} />
+        </AdministrationTabPanel>
+      )}
+      {activeTab === 'email-versand' && (
+        <AdministrationTabPanel tab="email-versand" activeTab={activeTab}>
+          <EmailVersandTab isDarkMode={bridgeDark} />
+        </AdministrationTabPanel>
+      )}
+      {activeTab === 'rental-rules' && (
+        <AdministrationTabPanel tab="rental-rules" activeTab={activeTab}>
+          {rentalRulesPermissions.canRead ? (
+            <RentalRulesTab onCheckBooking={onCheckBooking} />
+          ) : (
+            <ErrorState
+              title="Kein Zugriff auf Mietregeln"
+              description={RENTAL_RULES_PERMISSION_DENIED_MESSAGE}
+            />
+          )}
+        </AdministrationTabPanel>
+      )}
     </div>
   );
 }

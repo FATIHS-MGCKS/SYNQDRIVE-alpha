@@ -24,6 +24,8 @@ import {
   SetBookingPrimaryDriverDto,
 } from './booking-allowed-drivers/dto/booking-allowed-drivers.dto';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
+import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
+import { mapGatekeeperToAuthoritativeRentalPreview } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.util';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import {
   BookingRentalEligibilityBookingQueryDto,
@@ -33,23 +35,36 @@ import {
   BookingWizardDraftBodyDto,
   BookingWizardDraftConfirmDto,
   BookingWizardDraftUpdateDto,
+  BookingWizardEligibilityPreviewQueryDto,
 } from './dto/booking-wizard-draft.dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { RequireBookingEligibilityPermission } from './decorators/require-booking-eligibility-permission.decorator';
+import {
+  CreateBookingEligibilityApprovalDto,
+  DecideBookingEligibilityApprovalDto,
+} from './booking-eligibility-approval/dto/booking-eligibility-approval.dto';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
+import { resolveHandoverActor } from './handover-actor.util';
 
 @Controller('organizations/:orgId/bookings')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
+    private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
     private readonly allowedDriversService: BookingAllowedDriversService,
+    private readonly eligibilityApprovalService: BookingEligibilityApprovalService,
+    private readonly eligibilityDecisionService: BookingEligibilityDecisionService,
   ) {}
 
   @Get('today/pickups')
@@ -76,6 +91,7 @@ export class BookingsController {
   }
 
   @Post('eligibility-check')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
   async checkRentalEligibility(
     @Param('orgId') orgId: string,
     @Body() body: BookingRentalEligibilityCheckDto,
@@ -85,18 +101,19 @@ export class BookingsController {
       throw new BadRequestException('Invalid startDate');
     }
     const endDate = body.endDate ? new Date(body.endDate) : undefined;
-    return this.rentalEligibilityService.check({
+    const gateResult = await this.eligibilityGatekeeper.evaluate({
       organizationId: orgId,
       vehicleId: body.vehicleId,
       customerId: body.customerId,
       startDate,
       endDate: endDate && !Number.isNaN(endDate.getTime()) ? endDate : undefined,
+      stage: 'PREVIEW',
       paymentIntent: body.paymentIntent ?? body.paymentMethod,
-      paymentMethod: body.paymentIntent ?? body.paymentMethod,
       foreignTravelRequested: body.foreignTravelRequested,
       additionalDriverCount: body.additionalDriverCount,
       depositReceived: body.depositReceived,
     });
+    return mapGatekeeperToAuthoritativeRentalPreview(gateResult);
   }
 
   @Post('wizard-draft')
@@ -126,7 +143,25 @@ export class BookingsController {
     return this.wizardDraftService.getCheckoutContext(orgId, bookingId);
   }
 
+  @Get('wizard-draft/:bookingId/eligibility-preview')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async getWizardEligibilityPreview(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Query() query: BookingWizardEligibilityPreviewQueryDto,
+  ) {
+    const paymentIntent = query.paymentIntent ?? query.paymentMethod;
+    return this.wizardDraftService.getEligibilityPreview(orgId, bookingId, {
+      paymentIntent,
+      targetStatus: query.targetStatus,
+      eligibilityApprovalId: query.eligibilityApprovalId,
+      userId,
+    });
+  }
+
   @Post('wizard-draft/:bookingId/confirm')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
   async confirmWizardDraft(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -144,26 +179,106 @@ export class BookingsController {
     return this.wizardDraftService.abortDraft(orgId, bookingId);
   }
 
+  @Get(':id/eligibility-approvals')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async listEligibilityApprovals(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.eligibilityApprovalService.listForBooking(orgId, id);
+  }
+
+  @Post(':id/eligibility-approvals')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async createEligibilityApproval(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: CreateBookingEligibilityApprovalDto,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Authenticated user is required');
+    }
+    return this.eligibilityApprovalService.createRequest({
+      organizationId: orgId,
+      bookingId: id,
+      requestedByUserId: userId,
+      exceptionReason: body.exceptionReason,
+      targetBookingStatus: body.targetBookingStatus,
+    });
+  }
+
+  @Post(':id/eligibility-approvals/:approvalId/decide')
+  @RequireBookingEligibilityPermission('booking_eligibility.override')
+  async decideEligibilityApproval(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('approvalId') approvalId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('platformRole') platformRole: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: DecideBookingEligibilityApprovalDto,
+  ) {
+    if (!userId) {
+      throw new BadRequestException('Authenticated user is required');
+    }
+    return this.eligibilityApprovalService.decide({
+      organizationId: orgId,
+      bookingId: id,
+      approvalId,
+      decidedByUserId: userId,
+      decision: body.decision,
+      decisionReason: body.decisionReason,
+      platformRole,
+      membershipRole,
+    });
+  }
+
+  @Get(':id/eligibility-decisions')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async listEligibilityDecisions(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.eligibilityDecisionService.listForBooking(orgId, id);
+  }
+
+  @Get(':id/eligibility-decisions/:decisionId')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
+  async getEligibilityDecision(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('decisionId') decisionId: string,
+  ) {
+    return this.eligibilityDecisionService.getById(orgId, id, decisionId);
+  }
+
   @Get(':id/rental-eligibility')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
   async getBookingRentalEligibility(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Query() query: BookingRentalEligibilityBookingQueryDto,
   ) {
-    return this.rentalEligibilityService.checkForBooking(orgId, id, {
-      paymentIntent: query.paymentIntent ?? query.paymentMethod,
-      paymentMethod: query.paymentIntent ?? query.paymentMethod,
-      foreignTravelRequested:
-        query.foreignTravelRequested === true ||
-        (query.foreignTravelRequested as unknown) === 'true',
-      additionalDriverCount:
-        query.additionalDriverCount != null
-          ? Number(query.additionalDriverCount)
-          : undefined,
-      depositReceived:
-        query.depositReceived === true ||
-        (query.depositReceived as unknown) === 'true',
-    });
+    const gateResult = await this.eligibilityGatekeeper.evaluateForBooking(
+      orgId,
+      id,
+      'PREVIEW',
+      {
+        paymentIntent: query.paymentIntent ?? query.paymentMethod,
+        foreignTravelRequested:
+          query.foreignTravelRequested === true ||
+          (query.foreignTravelRequested as unknown) === 'true',
+        additionalDriverCount:
+          query.additionalDriverCount != null
+            ? Number(query.additionalDriverCount)
+            : undefined,
+        depositReceived:
+          query.depositReceived === true ||
+          (query.depositReceived as unknown) === 'true',
+      },
+    );
+    return mapGatekeeperToAuthoritativeRentalPreview(gateResult);
   }
 
   @Get(':id/allowed-drivers')
@@ -264,18 +379,60 @@ export class BookingsController {
   async create(
     @Param('orgId') orgId: string,
     @CurrentUser('id') userId: string | undefined,
-    @Body() body: Omit<Prisma.BookingCreateInput, 'organization'>,
+    @CurrentUser('platformRole') platformRole: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: Omit<Prisma.BookingCreateInput, 'organization'> & {
+      eligibilityApprovalId?: string;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ) {
-    return this.bookingsService.create(orgId, body, { userId });
+    const {
+      eligibilityApprovalId,
+      foreignTravelRequested,
+      additionalDriverCount,
+      ...bookingBody
+    } = body;
+    return this.bookingsService.create(orgId, bookingBody, {
+      userId,
+      platformRole,
+      membershipRole,
+      eligibilityApprovalId,
+      foreignTravelRequested,
+      additionalDriverCount,
+    });
   }
 
   @Patch(':id')
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Prisma.BookingUpdateInput,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('platformRole') platformRole: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: Prisma.BookingUpdateInput & {
+      eligibilityApprovalId?: string;
+      eligibilityPreviewFingerprint?: string;
+      foreignTravelRequested?: boolean;
+      additionalDriverCount?: number;
+    },
   ) {
-    return this.bookingsService.update(orgId, id, body);
+    const {
+      eligibilityApprovalId,
+      eligibilityPreviewFingerprint,
+      foreignTravelRequested,
+      additionalDriverCount,
+      ...bookingBody
+    } = body;
+    return this.bookingsService.update(orgId, id, bookingBody, {
+      userId,
+      platformRole,
+      membershipRole,
+      eligibilityApprovalId,
+      eligibilityPreviewFingerprint,
+      foreignTravelRequested,
+      additionalDriverCount,
+    });
   }
 
   @Delete(':id')
@@ -315,17 +472,31 @@ export class BookingsController {
   async createPickupHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
     @Body() body: CreateHandoverProtocolPayload,
   ) {
-    return this.handoverService.createHandover(orgId, bookingId, 'PICKUP', body);
+    return this.handoverService.createHandover(
+      orgId,
+      bookingId,
+      'PICKUP',
+      body,
+      resolveHandoverActor(user),
+    );
   }
 
   @Post(':id/handover/return')
   async createReturnHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
     @Body() body: CreateHandoverProtocolPayload,
   ) {
-    return this.handoverService.createHandover(orgId, bookingId, 'RETURN', body);
+    return this.handoverService.createHandover(
+      orgId,
+      bookingId,
+      'RETURN',
+      body,
+      resolveHandoverActor(user),
+    );
   }
 }

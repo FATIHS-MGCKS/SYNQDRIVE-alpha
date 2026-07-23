@@ -19,7 +19,7 @@ import {
   CreateHandoverProtocolPayload,
   HandoverProtocolDto,
 } from './handover.types';
-import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
@@ -31,6 +31,16 @@ import type { HandoverTechnicalObservationDraft } from './handover.types';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
+import { BookingPickupGateService } from './booking-pickup-gate/booking-pickup-gate.service';
+import { BookingPickupGateAuditService } from './booking-pickup-gate/booking-pickup-gate-audit.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import {
+  PICKUP_GATE_EVENT_TYPE,
+  PICKUP_GATE_OUTCOME,
+} from './booking-pickup-gate/booking-pickup-gate.constants';
+import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
+import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -48,14 +58,17 @@ export class BookingsHandoverService {
 
   constructor(
     private readonly prisma: PrismaService,
-    // Booking Document Lifecycle — generates handover protocol PDFs (and, on
-    // return, the final invoice) after a successful handover. Fire-and-forget.
-    @Inject(forwardRef(() => BookingDocumentBundleService))
-    private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
+    private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
+    private readonly pickupGate: BookingPickupGateService,
+    private readonly pickupGateAudit: BookingPickupGateAuditService,
+    private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
+    @Inject(forwardRef(() => BookingEligibilityRecheckService))
+    private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -69,8 +82,32 @@ export class BookingsHandoverService {
     bookingId: string,
     kind: HandoverKind,
     payload: CreateHandoverProtocolPayload,
+    actor: HandoverActorContext,
   ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
     this.validatePayload(payload);
+
+    if (kind === 'PICKUP') {
+      const existingPickup = await this.prisma.bookingHandoverProtocol.findUnique({
+        where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
+      });
+      if (existingPickup) {
+        const currentBooking = await this.prisma.booking.findFirst({
+          where: { id: bookingId, organizationId: orgId },
+          select: { id: true, status: true },
+        });
+        if (currentBooking?.status === 'ACTIVE') {
+          return {
+            booking: { id: currentBooking.id, status: currentBooking.status },
+            protocol: this.mapProtocol(existingPickup),
+          };
+        }
+        throw new ConflictException({
+          message: 'Pickup-Protokoll existiert bereits für diese Buchung.',
+          code: 'HANDOVER_ALREADY_EXISTS',
+          existingProtocolId: existingPickup.id,
+        });
+      }
+    }
 
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId: orgId },
@@ -121,21 +158,45 @@ export class BookingsHandoverService {
       });
     }
 
-    // Uniqueness defence (also guaranteed by @@unique([bookingId, kind]) at DB
-    // level, but we want a friendly error instead of a raw P2002 crash).
-    const existing = await this.prisma.bookingHandoverProtocol.findUnique({
-      where: { bookingId_kind: { bookingId, kind } },
-      select: { id: true },
-    });
-    if (existing) {
-      throw new ConflictException({
-        message:
-          kind === 'PICKUP'
-            ? 'Pickup-Protokoll existiert bereits für diese Buchung.'
-            : 'Rückgabe-Protokoll existiert bereits für diese Buchung.',
-        code: 'HANDOVER_ALREADY_EXISTS',
-        existingProtocolId: existing.id,
+    let gateEvaluation: PickupGateEvaluation | null = null;
+    if (kind === 'PICKUP') {
+      await this.bookingEligibilityRecheck.processPickupPrecheck(orgId, bookingId, actor.userId);
+
+      await this.bookingEligibilityEnforcement.assertAllowedForPickup(orgId, bookingId, {
+        userId: actor.userId,
+        membershipRole: actor.membershipRole as never,
+        eligibilityApprovalId: payload.eligibilityApprovalId,
       });
+
+      gateEvaluation = await this.pickupGate.assertPickupAllowed({
+        organizationId: orgId,
+        bookingId,
+        actor,
+        payload: {
+          documentsAcknowledged: payload.documentsAcknowledged,
+          customerSignatureName: payload.customerSignatureName,
+          customerSignatureDataUrl: payload.customerSignatureDataUrl,
+          performedByUserId: (payload as { performedByUserId?: string | null }).performedByUserId,
+          performedByName: (payload as { performedByName?: string | null }).performedByName,
+        },
+        overrideReason: payload.pickupGateOverrideReason,
+        correlationId: `pickup:${bookingId}`,
+      });
+    }
+
+    // Uniqueness defence for RETURN (PICKUP handled above with idempotent replay).
+    if (kind === 'RETURN') {
+      const existingReturn = await this.prisma.bookingHandoverProtocol.findUnique({
+        where: { bookingId_kind: { bookingId, kind: 'RETURN' } },
+        select: { id: true },
+      });
+      if (existingReturn) {
+        throw new ConflictException({
+          message: 'Rückgabe-Protokoll existiert bereits für diese Buchung.',
+          code: 'HANDOVER_ALREADY_EXISTS',
+          existingProtocolId: existingReturn.id,
+        });
+      }
     }
 
     const damageIds = Array.isArray(payload.damageIds)
@@ -155,8 +216,8 @@ export class BookingsHandoverService {
             // V4.6.81 — honour backdated `performedAt` when supplied;
             // fall back to the DB default (`now()`) otherwise.
             ...(performedAt ? { performedAt } : {}),
-            performedByUserId: payload.performedByUserId ?? null,
-            performedByName: payload.performedByName ?? null,
+            performedByUserId: actor.userId,
+            performedByName: actor.displayName,
             odometerKm: Math.max(0, Math.round(payload.odometerKm)),
             fuelPercent: Math.max(
               0,
@@ -313,7 +374,7 @@ export class BookingsHandoverService {
               data: {
                 organizationId: orgId,
                 vehicleId: booking.vehicleId,
-                createdByUserId: payload.performedByUserId ?? null,
+                createdByUserId: actor.userId,
                 description: draft.description,
                 urgency: parseSeverity(draft.severity),
                 category: parseCategory(draft.category),
@@ -330,6 +391,19 @@ export class BookingsHandoverService {
           }
         }
 
+        if (kind === 'PICKUP' && gateEvaluation?.overrideUsed) {
+          await this.pickupGateAudit.appendInTransaction(tx, {
+            organizationId: orgId,
+            bookingId,
+            eventType: PICKUP_GATE_EVENT_TYPE.OVERRIDE,
+            outcome: PICKUP_GATE_OUTCOME.ALLOWED,
+            actor,
+            overrideReason: payload.pickupGateOverrideReason,
+            missingRequirements: gateEvaluation.requirements,
+            correlationId: `pickup:${bookingId}`,
+          });
+        }
+
         return [created, booking2] as const;
       },
     );
@@ -338,9 +412,13 @@ export class BookingsHandoverService {
     // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
     // status transitions above are never affected by document generation.
     if (kind === 'PICKUP') {
-      this.bookingDocumentBundleService
-        .generatePickupProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
-        .catch(() => {});
+      void this.bookingDocumentGenerationDispatcher
+        .enqueuePickupProtocol(orgId, bookingId, protocol.id, actor.userId)
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue pickup protocol generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
       this.runBackgroundTask(
         `taskAutomation.onPickupHandoverCompleted(${bookingId})`,
         this.taskAutomation.onPickupHandoverCompleted({
@@ -356,12 +434,13 @@ export class BookingsHandoverService {
         }),
       );
     } else {
-      this.bookingDocumentBundleService
-        .generateReturnProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
-        .catch(() => {});
-      this.bookingDocumentBundleService
-        .generateFinalInvoiceAndDocument(orgId, bookingId, payload.performedByUserId ?? null)
-        .catch(() => {});
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueReturnDocuments(orgId, bookingId, protocol.id, actor.userId)
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue return document generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
 
       const eventBase = {
         organizationId: orgId,

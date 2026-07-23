@@ -105,6 +105,8 @@ export interface BookingSidebarProps extends BookingSummaryPanelProps {
   rentalEligibility: BookingRentalEligibilityResult | null;
   rentalEligibilityLoading: boolean;
   rentalEligibilityError: string | null;
+  canOverrideEligibility?: boolean;
+  wizardEligibilityPreview?: import('../../lib/booking-wizard-eligibility.types').BookingWizardEligibilityPreview | null;
   onCompleteCustomerData: () => void;
   onChooseAnotherVehicle: () => void;
 }
@@ -229,4 +231,8 @@ export interface CheckoutStepProps {
   onRefreshDraftBundle: () => void;
   pricingCurrency: string | null;
   bookingPeriodLabel?: string | null;
+  wizardEligibilityPreview?: import('../../lib/booking-wizard-eligibility.types').BookingWizardEligibilityPreview | null;
+  canOverrideEligibility?: boolean;
+  eligibilityOverrideReason?: string;
+  onEligibilityOverrideReasonChange?: (value: string) => void;
 }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DepositResolverModule } from '@modules/deposit/deposit-resolver.module';
 import { PricingController } from './pricing.controller';
 import { PricingService } from './pricing.service';
 import { PriceTariffsService } from './price-tariffs.service';
@@ -7,6 +8,7 @@ import { PricingQuoteService } from './pricing-quote.service';
 import { PricingIntegrityAuditService } from './pricing-integrity-audit.service';
 
 @Module({
+  imports: [DepositResolverModule],
   controllers: [PricingController],
   providers: [
     PricingService,

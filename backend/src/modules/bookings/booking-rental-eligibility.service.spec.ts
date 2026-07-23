@@ -3,7 +3,10 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildEffectiveRentalRules } from '@modules/rental-rules/rental-effective-rules.util';
+import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
 import type { EffectiveRentalRules } from '@modules/rental-rules/rental-rules.types';
+import { splitLicenseHoldingMonths } from '@modules/rental-rules/license-holding.util';
+import { CustomerDocumentStatus } from '@prisma/client';
 
 describe('BookingRentalEligibilityService', () => {
   const orgLayer = {
@@ -34,12 +37,14 @@ describe('BookingRentalEligibilityService', () => {
     rentalCategoryName: null,
     rentalCategoryType: null,
     rulesActive: true,
+    activation: createActiveRentalRulesActivationSnapshot(),
   });
 
   const prisma = {
     customer: { findFirst: jest.fn() },
     vehicle: { findFirst: jest.fn() },
-    customerDocument: { findFirst: jest.fn() },
+    customerDocument: { findMany: jest.fn() },
+    customerVerificationCheck: { findMany: jest.fn() },
     bookingDeposit: { findFirst: jest.fn() },
     booking: { findFirst: jest.fn() },
   } as unknown as PrismaService;
@@ -64,7 +69,8 @@ describe('BookingRentalEligibilityService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (prisma.vehicle.findFirst as jest.Mock).mockResolvedValue({ id: 'veh1' });
-    (prisma.customerDocument.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.customerDocument.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.customerVerificationCheck.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.bookingDeposit.findFirst as jest.Mock).mockResolvedValue(null);
     (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(baseEffectiveRules);
     (rentalEffectiveRules.formatEffectiveRules as jest.Mock).mockImplementation(
@@ -74,7 +80,15 @@ describe('BookingRentalEligibilityService', () => {
         minimumLicenseHoldingYears: {
           value:
             rules.minimumLicenseHoldingMonths.value != null
-              ? Math.round(rules.minimumLicenseHoldingMonths.value / 12)
+              ? splitLicenseHoldingMonths(rules.minimumLicenseHoldingMonths.value).wholeYears
+              : null,
+          source: rules.minimumLicenseHoldingMonths.source,
+          sourceName: rules.minimumLicenseHoldingMonths.sourceName,
+        },
+        minimumLicenseHoldingRemainderMonths: {
+          value:
+            rules.minimumLicenseHoldingMonths.value != null
+              ? splitLicenseHoldingMonths(rules.minimumLicenseHoldingMonths.value).extraMonths
               : null,
           source: rules.minimumLicenseHoldingMonths.source,
           sourceName: rules.minimumLicenseHoldingMonths.sourceName,
@@ -96,6 +110,8 @@ describe('BookingRentalEligibilityService', () => {
   function mockCustomer(overrides: {
     dateOfBirth?: Date | null;
     licenseIssuedAt?: string | null;
+    idVerified?: boolean;
+    licenseVerified?: boolean;
   } = {}) {
     (prisma.customer.findFirst as jest.Mock).mockResolvedValue({
       id: 'cust1',
@@ -110,15 +126,48 @@ describe('BookingRentalEligibilityService', () => {
           : overrides.licenseIssuedAt
             ? new Date(overrides.licenseIssuedAt)
             : new Date('2018-01-01'),
+      licenseExpiry: null,
+      idVerified: overrides.idVerified ?? true,
+      licenseVerified: overrides.licenseVerified ?? true,
     });
-    if (overrides.licenseIssuedAt === null) {
-      (prisma.customerDocument.findFirst as jest.Mock).mockResolvedValue({
-        extractedJson: { licenseIssuedAt: '2018-01-01' },
-      });
-    }
   }
 
-  it('returns ELIGIBLE when customer meets minimum age and license holding', async () => {
+  it('returns ELIGIBLE when organization rental rules are inactive', async () => {
+    mockCustomer({
+      dateOfBirth: new Date('2008-01-01'),
+      licenseIssuedAt: '2024-01-01',
+      idVerified: false,
+      licenseVerified: false,
+    });
+    const inactiveRules = buildEffectiveRentalRules({
+      organizationId: 'org1',
+      vehicleId: 'veh1',
+      orgLayer,
+      categoryLayer: null,
+      vehicleLayer: null,
+      rentalCategoryId: null,
+      rentalCategoryName: null,
+      rentalCategoryType: null,
+      rulesActive: false,
+      activation: createActiveRentalRulesActivationSnapshot({
+        organizationRulesActive: false,
+        enforcementActive: false,
+      }),
+    });
+    (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(inactiveRules);
+
+    const result = await service.check({
+      organizationId: 'org1',
+      vehicleId: 'veh1',
+      customerId: 'cust1',
+      startDate,
+    });
+
+    expect(result.status).toBe('ELIGIBLE');
+    expect(result.blockingReasons).toHaveLength(0);
+  });
+
+  it('returns ELIGIBLE when customer meets minimum age and license holding with verified facts', async () => {
     mockCustomer({ licenseIssuedAt: '2018-01-01' });
 
     const result = await service.check({
@@ -133,9 +182,10 @@ describe('BookingRentalEligibilityService', () => {
     expect(result.blockingReasons).toHaveLength(0);
     expect(result.missingFields).toHaveLength(0);
     expect(result.decisionSource).toBe('RENTAL_RULES_EFFECTIVE');
+    expect(result.facts.some((f) => f.field === 'dateOfBirth' && f.sourceType === 'CUSTOMER_CANONICAL_VERIFIED')).toBe(true);
   });
 
-  it('returns NOT_ELIGIBLE when customer is too young', async () => {
+  it('returns NOT_ELIGIBLE when verified customer is too young', async () => {
     mockCustomer({
       dateOfBirth: new Date('2008-01-01'),
       licenseIssuedAt: '2024-01-01',
@@ -152,7 +202,7 @@ describe('BookingRentalEligibilityService', () => {
     expect(result.blockingReasons.some((r) => r.includes('minimum age 21'))).toBe(true);
   });
 
-  it('returns NOT_ELIGIBLE when license holding duration is too short', async () => {
+  it('returns NOT_ELIGIBLE when verified license holding duration is too short', async () => {
     mockCustomer({ licenseIssuedAt: '2025-10-01' });
 
     const result = await service.check({
@@ -180,9 +230,10 @@ describe('BookingRentalEligibilityService', () => {
       rentalCategoryName: null,
       rentalCategoryType: null,
       rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot(),
     });
     (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(rulesNoLicense);
-    mockCustomer({ dateOfBirth: null });
+    mockCustomer({ dateOfBirth: null, idVerified: false });
 
     const result = await service.check({
       organizationId: 'org1',
@@ -211,6 +262,7 @@ describe('BookingRentalEligibilityService', () => {
       rentalCategoryName: null,
       rentalCategoryType: null,
       rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot(),
     });
     (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(rules);
 
@@ -249,6 +301,11 @@ describe('BookingRentalEligibilityService', () => {
       rentalCategoryName: 'Premium',
       rentalCategoryType: 'PREMIUM',
       rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot({
+        categoryAssigned: true,
+        categoryActive: true,
+        vehicleOverrideActive: true,
+      }),
     });
     (rentalEffectiveRules.computeForVehicle as jest.Mock).mockResolvedValue(rules);
 
@@ -327,5 +384,145 @@ describe('BookingRentalEligibilityService', () => {
       'Adressnachweis optional — noch nicht bestätigt',
     );
     expect(result.blockingReasons).toHaveLength(0);
+  });
+
+  describe('unverified OCR must not drive binding decisions', () => {
+    it.each(['UPLOADED', 'PENDING_REVIEW'] as CustomerDocumentStatus[])(
+      'does not use %s license OCR for blocking NOT_ELIGIBLE',
+      async (status) => {
+        mockCustomer({
+          dateOfBirth: new Date('1990-01-15'),
+          licenseIssuedAt: null,
+          licenseVerified: false,
+        });
+        (prisma.customerDocument.findMany as jest.Mock).mockResolvedValue([
+          {
+            id: 'license-doc',
+            type: 'LICENSE_FRONT',
+            status,
+            extractedJson: { licenseIssuedAt: '2025-10-01' },
+            reviewedAt: null,
+            reviewedByUserId: null,
+            uploadedByUserId: 'uploader-1',
+            updatedAt: new Date('2026-06-01'),
+          },
+        ]);
+
+        const result = await service.check({
+          organizationId: 'org1',
+          vehicleId: 'veh1',
+          customerId: 'cust1',
+          startDate,
+        });
+
+        expect(result.status).toBe('MANUAL_APPROVAL_REQUIRED');
+        expect(result.blockingReasons).toHaveLength(0);
+        expect(result.manualApprovalReasons.some((r) =>
+          r.includes('unverified document data'),
+        )).toBe(true);
+        expect(result.facts.find((f) => f.field === 'licenseIssuedAt')?.sourceType).toBe(
+          'OCR_UNVERIFIED',
+        );
+      },
+    );
+
+    it('does not treat unverified OCR young age as NOT_ELIGIBLE', async () => {
+      mockCustomer({
+        dateOfBirth: null,
+        licenseIssuedAt: '2018-01-01',
+        idVerified: false,
+      });
+      (prisma.customerDocument.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'id-doc',
+          type: 'ID_FRONT',
+          status: 'UPLOADED',
+          extractedJson: { date_of_birth: '2008-01-01' },
+          reviewedAt: null,
+          reviewedByUserId: null,
+          uploadedByUserId: 'uploader-1',
+          updatedAt: new Date('2026-06-01'),
+        },
+      ]);
+
+      const result = await service.check({
+        organizationId: 'org1',
+        vehicleId: 'veh1',
+        customerId: 'cust1',
+        startDate,
+      });
+
+      expect(result.status).not.toBe('NOT_ELIGIBLE');
+      expect(result.blockingReasons).toHaveLength(0);
+      expect(result.manualApprovalReasons.some((r) =>
+        r.includes('unverified document data'),
+      )).toBe(true);
+    });
+
+    it('uses verified KYC check extracted data when canonical fields are unverified', async () => {
+      mockCustomer({
+        dateOfBirth: null,
+        licenseIssuedAt: null,
+        idVerified: false,
+        licenseVerified: false,
+      });
+      (prisma.customerVerificationCheck.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'id-check',
+          kind: 'ID_DOCUMENT',
+          status: 'VERIFIED',
+          extractedJson: { date_of_birth: '1990-01-15' },
+          completedAt: new Date('2026-05-01'),
+          checkedByUserId: 'kyc-reviewer',
+          updatedAt: new Date('2026-05-01'),
+        },
+        {
+          id: 'license-check',
+          kind: 'DRIVING_LICENSE',
+          status: 'VERIFIED',
+          extractedJson: { licenseIssuedAt: '2018-01-01' },
+          completedAt: new Date('2026-05-01'),
+          checkedByUserId: 'kyc-reviewer',
+          updatedAt: new Date('2026-05-01'),
+        },
+      ]);
+
+      const result = await service.check({
+        organizationId: 'org1',
+        vehicleId: 'veh1',
+        customerId: 'cust1',
+        startDate,
+      });
+
+      expect(result.status).toBe('ELIGIBLE');
+      expect(result.facts.find((f) => f.field === 'dateOfBirth')?.sourceType).toBe('KYC_VERIFIED');
+      expect(result.facts.find((f) => f.field === 'licenseIssuedAt')?.sourceType).toBe('KYC_VERIFIED');
+    });
+
+    it('requires manual approval when verification is pending review', async () => {
+      mockCustomer({ licenseIssuedAt: '2018-01-01' });
+      (verificationService.getEligibilityStatus as jest.Mock).mockResolvedValue({
+        customerId: 'cust1',
+        idDocument: 'requires_review',
+        drivingLicense: 'verified',
+        proofOfAddress: 'not_required',
+        canConfirmBooking: false,
+        canStartPickup: false,
+        blockingReasons: [],
+        warnings: [],
+      });
+
+      const result = await service.check({
+        organizationId: 'org1',
+        vehicleId: 'veh1',
+        customerId: 'cust1',
+        startDate,
+      });
+
+      expect(result.status).toBe('MANUAL_APPROVAL_REQUIRED');
+      expect(result.manualApprovalReasons).toContain(
+        'Ausweisprüfung erfordert manuelle Freigabe',
+      );
+    });
   });
 });

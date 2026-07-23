@@ -1,0 +1,58 @@
+export const BUSINESS_AUDIT_OUTBOX = {
+  payloadVersion: 1,
+  pollBatchSize: 25,
+  maxAttempts: 5,
+  backoffMs: 2_000,
+  staleProcessingMs: 5 * 60_000,
+} as const;
+
+export const BUSINESS_AUDIT_SENSITIVE_KEYS = [
+  'password',
+  'passwordhash',
+  'token',
+  'secret',
+  'apikey',
+  'privatekey',
+  'document',
+  'extractedjson',
+  'factualvalue',
+  'dateofbirth',
+  'licenseissuedat',
+  'licenseexpiry',
+  'idfronturl',
+  'idbackurl',
+  'signaturedataurl',
+  'image',
+  'payload',
+] as const;
+
+export const BusinessAuditAction = {
+  RENTAL_RULE_DRAFT_CREATED: 'RENTAL_RULE_DRAFT_CREATED',
+  RENTAL_RULE_DRAFT_CHANGED: 'RENTAL_RULE_DRAFT_CHANGED',
+  RENTAL_RULE_PUBLISHED: 'RENTAL_RULE_PUBLISHED',
+  RENTAL_RULE_DEACTIVATED: 'RENTAL_RULE_DEACTIVATED',
+  RENTAL_CATEGORY_ARCHIVED: 'RENTAL_CATEGORY_ARCHIVED',
+  RENTAL_CATEGORY_VEHICLES_ASSIGNED: 'RENTAL_CATEGORY_VEHICLES_ASSIGNED',
+  RENTAL_VEHICLE_OVERRIDE_CREATED: 'RENTAL_VEHICLE_OVERRIDE_CREATED',
+  RENTAL_VEHICLE_OVERRIDE_DELETED: 'RENTAL_VEHICLE_OVERRIDE_DELETED',
+  ELIGIBILITY_CHECKED: 'ELIGIBILITY_CHECKED',
+  MANUAL_APPROVAL_REQUESTED: 'MANUAL_APPROVAL_REQUESTED',
+  MANUAL_APPROVAL_APPROVED: 'MANUAL_APPROVAL_APPROVED',
+  MANUAL_APPROVAL_REJECTED: 'MANUAL_APPROVAL_REJECTED',
+  MANUAL_APPROVAL_REVOKED: 'MANUAL_APPROVAL_REVOKED',
+  MANUAL_APPROVAL_EXPIRED: 'MANUAL_APPROVAL_EXPIRED',
+} as const;
+
+export type BusinessAuditActionCode =
+  (typeof BusinessAuditAction)[keyof typeof BusinessAuditAction];
+
+export const BUSINESS_AUDIT_ENTITY_TYPE = {
+  RENTAL_RULE_REVISION: 'RENTAL_RULE_REVISION',
+  RENTAL_CATEGORY: 'RENTAL_CATEGORY',
+  VEHICLE: 'VEHICLE',
+  BOOKING: 'BOOKING',
+  BOOKING_ELIGIBILITY_APPROVAL: 'BOOKING_ELIGIBILITY_APPROVAL',
+} as const;
+
+export type BusinessAuditEntityType =
+  (typeof BUSINESS_AUDIT_ENTITY_TYPE)[keyof typeof BUSINESS_AUDIT_ENTITY_TYPE];

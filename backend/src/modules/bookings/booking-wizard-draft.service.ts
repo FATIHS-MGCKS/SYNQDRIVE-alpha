@@ -12,6 +12,7 @@ import { GeneratedDocumentsService } from '@modules/documents/generated-document
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingInvoiceLifecycleService } from '@modules/invoices/booking-invoice-lifecycle.service';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
+import { BookingLegalDocumentEmailService } from '@modules/outbound-email/booking-legal-document-email.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import {
   PricingQuoteService,
@@ -36,14 +37,25 @@ import {
 } from './booking-payment-intent.types';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import { BookingDepositSnapshotService } from '@modules/deposit/booking-deposit-snapshot.service';
 import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
+import {
+  assertWizardPreviewFingerprintMatches,
+  mapGatekeeperToWizardPreview,
+  type BookingWizardEligibilityPreviewResult,
+} from './booking-wizard-eligibility.util';
+import { resolveGatekeeperPaymentIntent } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
+import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import type { ValidatedBookingEligibilityApproval } from './booking-eligibility-approval/booking-eligibility-approval.types';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
   bundle: Awaited<ReturnType<BookingDocumentBundleService['getBundleView']>>;
-  autoSend: Awaited<ReturnType<BookingDocumentEmailService['maybeAutoSendBookingDocuments']>>;
+  autoSend: Awaited<ReturnType<BookingLegalDocumentEmailService['maybeAutoSendFrozenBookingDocuments']>>;
   paymentIntent: BookingCheckoutPaymentIntent | null;
   paymentFlow?: WizardPaymentFlowResult | null;
+  idempotent?: boolean;
 }
 
 @Injectable()
@@ -58,8 +70,12 @@ export class BookingWizardDraftService {
     private readonly invoicesService: InvoicesService,
     private readonly bookingInvoiceLifecycle: BookingInvoiceLifecycleService,
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
+    private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
+    private readonly eligibilityEnforcement: BookingEligibilityEnforcementService,
+    private readonly eligibilityApproval: BookingEligibilityApprovalService,
+    private readonly bookingDepositSnapshot: BookingDepositSnapshotService,
   ) {}
 
   async createOrRefreshDraft(
@@ -183,6 +199,66 @@ export class BookingWizardDraftService {
     return this.checkoutContextService.getCheckoutContext(orgId, bookingId);
   }
 
+  async getEligibilityPreview(
+    orgId: string,
+    bookingId: string,
+    options?: {
+      paymentIntent?: BookingCheckoutPaymentIntent;
+      targetStatus?: BookingStatus;
+      eligibilityApprovalId?: string | null;
+      userId?: string | null;
+    },
+  ): Promise<BookingWizardEligibilityPreviewResult> {
+    const draft = await this.requireWizardDraft(orgId, bookingId);
+    const targetStatus: BookingStatus =
+      options?.targetStatus === 'PENDING' ? 'PENDING' : 'CONFIRMED';
+    const paymentIntent = this.resolvePaymentIntent(options?.paymentIntent);
+    const gateResult = await this.eligibilityEnforcement.previewEvaluation(
+      {
+        organizationId: orgId,
+        customerId: draft.customerId,
+        vehicleId: draft.vehicleId,
+        startDate: draft.startDate,
+        endDate: draft.endDate,
+        targetStatus,
+        bookingId: draft.id,
+        paymentIntent: resolveGatekeeperPaymentIntent(paymentIntent),
+      },
+      {
+        userId: options?.userId ?? null,
+        command: 'preview',
+      },
+    );
+
+    let validatedApproval: ValidatedBookingEligibilityApproval | null = null;
+    if (
+      targetStatus === 'CONFIRMED' &&
+      gateResult.status === 'MANUAL_APPROVAL_REQUIRED' &&
+      options?.eligibilityApprovalId?.trim()
+    ) {
+      validatedApproval = await this.eligibilityApproval.assertValidForTransition({
+        organizationId: orgId,
+        bookingId: draft.id,
+        approvalId: options.eligibilityApprovalId.trim(),
+        gateResult,
+        bookingContext: {
+          organizationId: orgId,
+          customerId: draft.customerId,
+          vehicleId: draft.vehicleId,
+          startDate: draft.startDate,
+          endDate: draft.endDate,
+          targetStatus,
+          bookingId: draft.id,
+          paymentIntent: resolveGatekeeperPaymentIntent(paymentIntent),
+        },
+      });
+    }
+
+    return mapGatekeeperToWizardPreview(gateResult, targetStatus, {
+      validatedApproval,
+    });
+  }
+
   async confirmDraft(
     orgId: string,
     bookingId: string,
@@ -190,8 +266,52 @@ export class BookingWizardDraftService {
     options?: { userId?: string | null },
   ): Promise<BookingWizardConfirmResult> {
     const paymentIntent = body.paymentIntent ?? body.paymentMethod;
-    const draft = await this.requireWizardDraft(orgId, bookingId);
     const resolvedIntent = this.resolvePaymentIntent(paymentIntent);
+
+    const existing = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId: orgId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (!isWizardDraftBooking(existing)) {
+      if (existing.status === 'CONFIRMED' || existing.status === 'PENDING') {
+        return this.buildIdempotentConfirmResult(orgId, bookingId, resolvedIntent, options?.userId ?? null);
+      }
+      throw new BadRequestException({
+        message: 'Diese Buchung ist kein Checkout-Entwurf',
+        code: 'BOOKING_NOT_WIZARD_DRAFT',
+        bookingId,
+      });
+    }
+
+    const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
+    const freshGateResult = await this.eligibilityEnforcement.assertAllowed(
+      {
+        organizationId: orgId,
+        customerId: existing.customerId,
+        vehicleId: existing.vehicleId,
+        startDate: existing.startDate,
+        endDate: existing.endDate,
+        targetStatus,
+        bookingId: existing.id,
+        notes: stripWizardDraftMarker(existing.notes) || null,
+        paymentIntent: resolveGatekeeperPaymentIntent(resolvedIntent),
+      },
+      {
+        userId: options?.userId ?? null,
+        command: 'confirm',
+        eligibilityApprovalId: body.eligibilityApprovalId,
+      },
+    );
+    if (!freshGateResult) {
+      throw new ConflictException({
+        code: 'BOOKING_ELIGIBILITY_TECHNICAL_ERROR',
+        message: 'Rental eligibility could not be evaluated for confirmation.',
+      });
+    }
+    assertWizardPreviewFingerprintMatches(body.eligibilityPreviewFingerprint, freshGateResult);
 
     if (resolvedIntent === 'payment_link') {
       const context = await this.checkoutContextService.getCheckoutContext(orgId, bookingId);
@@ -204,12 +324,16 @@ export class BookingWizardDraftService {
       }
     }
 
-    const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
     const booking = await this.bookingsService.update(orgId, bookingId, {
       status: targetStatus,
-      notes: stripWizardDraftMarker(draft.notes) || null,
+      notes: stripWizardDraftMarker(existing.notes) || null,
       paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+    }, {
+      userId: options?.userId ?? null,
+      eligibilityApprovalId: body.eligibilityApprovalId,
     });
+
+    await this.bookingDepositSnapshot.freezeDepositOnSnapshot(orgId, bookingId);
 
     await this.bookingInvoiceLifecycle
       .syncOnBookingConfirmed(orgId, bookingId, {
@@ -236,7 +360,7 @@ export class BookingWizardDraftService {
     }
 
     const bundle = await this.bundleService.getBundleView(orgId, bookingId);
-    const autoSend = await this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
+    const autoSend = await this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
       orgId,
       bookingId,
       options?.userId ?? null,
@@ -248,6 +372,31 @@ export class BookingWizardDraftService {
       autoSend,
       paymentIntent: resolvedIntent,
       paymentFlow,
+    };
+  }
+
+  private async buildIdempotentConfirmResult(
+    orgId: string,
+    bookingId: string,
+    paymentIntent: BookingCheckoutPaymentIntent,
+    userId: string | null,
+  ): Promise<BookingWizardConfirmResult> {
+    const booking = await this.prisma.booking.findFirstOrThrow({
+      where: { id: bookingId, organizationId: orgId },
+    });
+    const bundle = await this.bundleService.getBundleView(orgId, bookingId);
+    const autoSend = await this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
+      orgId,
+      bookingId,
+      userId,
+    );
+    return {
+      booking,
+      bundle,
+      autoSend,
+      paymentIntent,
+      paymentFlow: null,
+      idempotent: true,
     };
   }
 

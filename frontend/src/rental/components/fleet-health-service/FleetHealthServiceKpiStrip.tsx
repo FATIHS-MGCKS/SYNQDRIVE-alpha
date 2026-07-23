@@ -33,7 +33,7 @@ export interface FleetHealthServiceKpiItem {
   icon: LucideIcon;
   vehicleStatusFilter?: OperatorStatusFilter;
   taskFilter?: ServiceTaskFilter;
-  workSection?: 'tasks' | 'schedule' | 'vendors';
+  workSection?: 'tasks' | 'service-cases' | 'schedule' | 'vendors';
 }
 
 export interface FleetHealthServiceKpiGroup {

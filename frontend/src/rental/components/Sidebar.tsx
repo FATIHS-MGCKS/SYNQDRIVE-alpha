@@ -40,6 +40,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const canWorkflowAutomation = hasPermission('workflow-automation', 'read');
   const canCustomerPayments = hasPermission('payments-connect', 'read');
   const canBillingSubscription = hasPermission('billing', 'read');
+  const canRentalRules = hasPermission('rental-rules', 'read');
   const isFleetActive =
     currentView === 'fleet' ||
     currentView === 'fleet-condition-detail' ||
@@ -243,9 +244,11 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           <button onClick={() => { onSettingsTabChange?.('email-versand'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'email-versand')}>
             <Mail className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.emailVersand')}</span>
           </button>
+          {canRentalRules && (
           <button onClick={() => { onSettingsTabChange?.('rental-rules'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'rental-rules')}>
             <ShieldCheck className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.rentalRules')}</span>
           </button>
+          )}
           {canBillingSubscription && (
             <button onClick={() => { onSettingsTabChange?.('billing'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'billing')}>
               <CreditCard className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.billingSubscription')}</span>

@@ -43,6 +43,8 @@ export type CustomerEligibilityEvaluateOptions = {
   startDate?: Date | null;
   endDate?: Date | null;
   bookingId?: string | null;
+  /** Preloaded verification snapshot — avoids duplicate fetches when orchestrated by gatekeeper. */
+  verificationSnapshot?: import('@modules/customer-verification/types/customer-verification-eligibility.types').CustomerVerificationEligibilityStatus;
 };
 
 export type EligibilityBuckets = {

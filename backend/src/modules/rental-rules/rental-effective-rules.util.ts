@@ -6,6 +6,7 @@ import type {
   RentalRuleSource,
 } from './rental-rules.types';
 import { RENTAL_RULE_FIELD_KEYS } from './rental-rules.types';
+import type { RentalRulesActivationSnapshot } from './rental-rules-activation.policy';
 
 export interface RentalRuleLayer {
   source: RentalRuleSource;
@@ -42,6 +43,7 @@ export function buildEffectiveRentalRules(input: {
   rentalCategoryName: string | null;
   rentalCategoryType: EffectiveRentalRules['rentalCategoryType'];
   rulesActive: boolean;
+  activation: RentalRulesActivationSnapshot;
 }): EffectiveRentalRules {
   const priorityLayers = [
     input.vehicleLayer,
@@ -56,6 +58,7 @@ export function buildEffectiveRentalRules(input: {
     rentalCategoryName: input.rentalCategoryName,
     rentalCategoryType: input.rentalCategoryType,
     rulesActive: input.rulesActive,
+    activation: input.activation,
   } as EffectiveRentalRules;
 
   for (const key of RENTAL_RULE_FIELD_KEYS) {

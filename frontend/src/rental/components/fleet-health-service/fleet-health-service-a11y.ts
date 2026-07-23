@@ -16,12 +16,14 @@ export const FHS_TAB_PANEL_ID: Record<FleetHealthServiceTab, string> = {
 
 export const FHS_WORK_TAB_ID: Record<FleetHealthServiceWorkSection, string> = {
   tasks: 'fhs-work-tab-tasks',
+  'service-cases': 'fhs-work-tab-service-cases',
   schedule: 'fhs-work-tab-schedule',
   vendors: 'fhs-work-tab-vendors',
 };
 
 export const FHS_WORK_PANEL_ID: Record<FleetHealthServiceWorkSection, string> = {
   tasks: 'fhs-work-panel-tasks',
+  'service-cases': 'fhs-work-panel-service-cases',
   schedule: 'fhs-work-panel-schedule',
   vendors: 'fhs-work-panel-vendors',
 };
