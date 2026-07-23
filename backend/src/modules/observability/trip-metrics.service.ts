@@ -106,6 +106,13 @@ export class TripMetricsService implements OnModuleInit {
   readonly taskAutomationOutboxRetry: Counter<string>;
   readonly taskAutomationOutboxRefreshed: Counter<string>;
 
+  /** Booking domain event outbox. */
+  readonly bookingDomainEventOutboxEnqueued: Counter<string>;
+  readonly bookingDomainEventOutboxPublished: Counter<string>;
+  readonly bookingDomainEventOutboxRetry: Counter<string>;
+  readonly bookingDomainEventOutboxDeadLetter: Counter<string>;
+  readonly bookingDomainEventOutboxBacklog: Gauge<string>;
+
   /** Driving Intelligence V2 durable jobs (P20). */
   readonly drivingIntelligenceJobCompleted: Counter<string>;
   readonly drivingIntelligenceJobRetry: Counter<string>;
@@ -215,6 +222,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationRunDuration: Histogram<string>;
   readonly notificationOpenAge: Histogram<string>;
   readonly taskAutomationOutboxProcessingDuration: Histogram<string>;
+  readonly bookingDomainEventOutboxProcessingDuration: Histogram<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -840,6 +848,47 @@ export class TripMetricsService implements OnModuleInit {
     this.taskAutomationOutboxProcessingDuration = new Histogram({
       name: 'synqdrive_task_automation_outbox_processing_duration_seconds',
       help: 'Single task automation outbox processing duration',
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
+      registers: [this.registry],
+    });
+
+    this.bookingDomainEventOutboxEnqueued = new Counter({
+      name: 'synqdrive_booking_domain_event_outbox_enqueued_total',
+      help: 'Booking domain events written to transactional outbox',
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
+    this.bookingDomainEventOutboxPublished = new Counter({
+      name: 'synqdrive_booking_domain_event_outbox_published_total',
+      help: 'Booking domain events published to consumers',
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
+    this.bookingDomainEventOutboxRetry = new Counter({
+      name: 'synqdrive_booking_domain_event_outbox_retry_total',
+      help: 'Booking domain event outbox retries scheduled',
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
+    this.bookingDomainEventOutboxDeadLetter = new Counter({
+      name: 'synqdrive_booking_domain_event_outbox_dead_letter_total',
+      help: 'Booking domain events moved to dead-letter state',
+      labelNames: ['event_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingDomainEventOutboxBacklog = new Gauge({
+      name: 'synqdrive_booking_domain_event_outbox_backlog',
+      help: 'Pending, failed, or dead-letter booking domain event outbox rows',
+      registers: [this.registry],
+    });
+
+    this.bookingDomainEventOutboxProcessingDuration = new Histogram({
+      name: 'synqdrive_booking_domain_event_outbox_processing_duration_seconds',
+      help: 'Single booking domain event outbox processing duration',
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
       registers: [this.registry],
     });

@@ -7,6 +7,7 @@ import { NotificationDeliveryEnqueueService } from '../delivery/notification-del
 import { NotificationDeliveryPolicyService } from '../delivery/notification-delivery-policy.service';
 import { NotificationDeliverySchedulerService } from '../delivery/notification-delivery-scheduler.service';
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
+import { BookingNotificationAdapter } from './booking-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
@@ -156,6 +157,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       core,
       engineConfig,
       new DrivingAssessmentNotificationAdapter(),
+      new BookingNotificationAdapter(),
       new TechnicalObservationNotificationAdapter(),
       new StationShortageNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),

@@ -266,6 +266,21 @@ enum TaskAutomationOutboxStatus {
   DEAD_LETTER
 }
 
+enum BookingDomainEventOutboxStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+  DEAD_LETTER
+}
+
+enum BookingDomainEventConsumerReceiptStatus {
+  SUCCEEDED
+  FAILED
+  SKIPPED
+  STALE
+}
+
 enum TaskAutomationEntityType {
   BOOKING
   INVOICE
@@ -1715,6 +1730,7 @@ model Organization {
   notificationReceipts                   NotificationReceipt[]
   notificationDeliveryOutbox             NotificationDeliveryOutbox[]
   taskAutomationOutbox                   TaskAutomationOutbox[]
+  bookingDomainEventOutbox               BookingDomainEventOutbox[]
   taskAutomationRuleOverrides            OrgTaskAutomationRuleOverride[]
   batteryMeasurementSessions             BatteryMeasurementSession[]
   batteryMeasurements                    BatteryMeasurement[]
@@ -13191,6 +13207,60 @@ model TaskAutomationOutbox {
   @@index([organizationId])
   @@index([status, availableAt])
   @@map("task_automation_outbox")
+}
+
+/// Transactional outbox for booking domain events — written in the same DB transaction as booking mutations.
+model BookingDomainEventOutbox {
+  id               String                         @id @default(uuid())
+  eventType        String                         @map("event_type")
+  aggregateId      String                         @map("aggregate_id")
+  organizationId   String                         @map("organization_id")
+  aggregateVersion Int                            @map("aggregate_version")
+  occurredAt       DateTime                       @map("occurred_at")
+  payload          Json
+  correlationId    String                         @map("correlation_id")
+  causationId      String?                        @map("causation_id")
+  idempotencyKey   String                         @unique @map("idempotency_key")
+  status           BookingDomainEventOutboxStatus @default(PENDING)
+  retryCount       Int                            @default(0) @map("retry_count")
+  nextRetryAt      DateTime?                      @map("next_retry_at")
+  lastError        String?                        @map("last_error")
+  lockOwner        String?                        @map("lock_owner")
+  lockedAt         DateTime?                      @map("locked_at")
+  publishedAt      DateTime?                      @map("published_at")
+  createdAt        DateTime                       @default(now()) @map("created_at")
+  updatedAt        DateTime                       @updatedAt @map("updated_at")
+
+  organization     Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  consumerReceipts BookingDomainEventConsumerReceipt[]
+
+  @@index([organizationId, occurredAt])
+  @@index([status, nextRetryAt])
+  @@index([aggregateId, aggregateVersion])
+  @@index([eventType, occurredAt])
+  @@map("booking_domain_event_outbox")
+}
+
+/// Idempotent consumer processing receipts.
+model BookingDomainEventConsumerReceipt {
+  id               String                                 @id @default(uuid())
+  outboxEventId    String                                 @map("outbox_event_id")
+  consumerId       String                                 @map("consumer_id")
+  businessKey      String                                 @map("business_key")
+  status           BookingDomainEventConsumerReceiptStatus @default(SUCCEEDED)
+  aggregateVersion Int?                                   @map("aggregate_version")
+  lastError        String?                                @map("last_error")
+  metadata         Json?
+  processedAt      DateTime                               @default(now()) @map("processed_at")
+  updatedAt        DateTime                               @updatedAt @map("updated_at")
+
+  outboxEvent BookingDomainEventOutbox @relation(fields: [outboxEventId], references: [id], onDelete: Cascade)
+
+  @@unique([outboxEventId, consumerId])
+  @@unique([consumerId, businessKey])
+  @@index([consumerId, processedAt])
+  @@index([status, processedAt])
+  @@map("booking_domain_event_consumer_receipts")
 }
 
 /// Per-organization overrides for canonical task automation catalog rules.

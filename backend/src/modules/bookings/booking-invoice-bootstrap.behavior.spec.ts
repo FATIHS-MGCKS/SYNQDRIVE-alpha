@@ -1,30 +1,14 @@
 /**
- * Booking create must not leave orphan bookings when invoice bootstrap fails.
+ * Invoice bootstrap is now handled by the booking domain event outbox consumer.
  */
-describe('Booking invoice bootstrap hardening', () => {
-  it('propagates bootstrap failure after compensating booking rollback', async () => {
-    const logger = { error: jest.fn() };
-    const bootstrapBookingInvoice = jest.fn().mockRejectedValue(new Error('invoice bootstrap failed'));
-    const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
+describe('Booking invoice bootstrap via outbox', () => {
+  it('does not roll back booking when invoice bootstrap is deferred to consumer', async () => {
+    const deleteMany = jest.fn();
 
-    const booking = { id: 'bk-1', organizationId: 'org-1' };
+    const booking = { id: 'bk-1', organizationId: 'org-1', status: 'PENDING' };
 
-    await expect(
-      (async () => {
-        try {
-          await bootstrapBookingInvoice('org-1', { id: booking.id });
-        } catch (err) {
-          logger.error(
-            `Booking ${booking.id} created but invoice bootstrap failed — rolling back booking`,
-            err instanceof Error ? err.stack : String(err),
-          );
-          await deleteMany({ where: { id: booking.id, organizationId: 'org-1' } });
-          throw err;
-        }
-      })(),
-    ).rejects.toThrow('invoice bootstrap failed');
-
-    expect(deleteMany).toHaveBeenCalledWith({ where: { id: 'bk-1', organizationId: 'org-1' } });
-    expect(logger.error).toHaveBeenCalled();
+    // Booking create path no longer calls bootstrap synchronously.
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect(booking.id).toBe('bk-1');
   });
 });

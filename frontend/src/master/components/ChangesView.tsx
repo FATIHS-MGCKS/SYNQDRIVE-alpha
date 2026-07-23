@@ -35,6 +35,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-outbox-consumers-v49795-2026-07-23',
+    version: '4.9.795',
+    title: 'V4.9.795 — Booking outbox consumers (Prompt 23)',
+    summary: [
+      '8 idempotente Outbox-Consumer: Invoice, Document Bundle, Rental Agreement, Pickup/Return Tasks, Notifications, Customer Email, Internal Email, Payment Link.',
+      'Consumer-Receipts v2: businessKey, status (SUCCEEDED/FAILED/SKIPPED/STALE), aggregateVersion, metadata, lastError.',
+      'Router verarbeitet alle Consumer pro Event; retrybare vs. finale Fehler; stale aggregate version → STALE.',
+      'Direkte void-Follow-ups aus BookingsService/Handover entfernt; Invoice-Bootstrap async via Consumer.',
+      'Integrationstests + Failure-Injection für Router/Processor.',
+    ],
+    reason:
+      'Booking Production-Readiness Prompt 23 — Folgeprozesse müssen zuverlässig, mandantensicher und idempotent aus der Outbox laufen.',
+    previousBehavior:
+      'Nur `booking.primary` Workflow-Consumer; Invoice sync mit Booking-Rollback; Dokumente/Tasks/E-Mails als best-effort void.',
+    details:
+      'backend/src/modules/bookings/outbox/consumers/*, prisma/migrations/20260723260000_booking_domain_event_consumer_receipts_v2, docs/architecture/BOOKING_DOMAIN_EVENT_OUTBOX_CONSUMERS_2026-07-23.md',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:59:00.000Z',
+  },
+  {
+    id: 'booking-domain-event-outbox-v49794-2026-07-23',
+    version: '4.9.794',
+    title: 'V4.9.794 — Booking domain event transactional outbox (Prompt 22)',
+    summary: [
+      'Neue Tabelle `booking_domain_event_outbox` + Consumer-Receipts — Events in derselben DB-Transaktion wie Booking-Mutationen.',
+      '13 Event-Typen (Created/Updated/Confirmed/Cancelled/NoShow/Activated/Completed/Pricing/Customer/Vehicle/Legal/Pickup/Return).',
+      'BullMQ-Queue `booking.domain.events` mit Scheduler, Locking, Retry/Backoff, Dead-Letter und 90-Tage-Retention.',
+      'Primary Consumer `booking.primary` → `WorkflowEventService` (idempotent via Receipts).',
+      'Prometheus-Metriken `synqdrive_booking_domain_event_outbox_*`; Tests für Commit/Rollback/Crash/Dedup/Reprocess.',
+    ],
+    reason:
+      'Booking Production-Readiness Prompt 22 — Lifecycle-Side-Effects dürfen nicht nur fire-and-forget nach Commit als einzige Wahrheit laufen.',
+    previousBehavior:
+      'Workflow-Events nur bei Return-Handover via `scheduleEmit`; Task-Automation und Dokumente als direkte void-Aufrufe.',
+    details:
+      'backend/src/modules/bookings/outbox/*, prisma/migrations/20260723250000_booking_domain_event_outbox, docs/architecture/BOOKING_DOMAIN_EVENT_OUTBOX_2026-07-23.md',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:45:00.000Z',
+  },
+  {
     id: 'fleet-rental-crash-task-pagination-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',
