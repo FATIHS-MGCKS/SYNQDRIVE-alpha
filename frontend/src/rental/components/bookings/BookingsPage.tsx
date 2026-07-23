@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageHeader, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import type { BookingUiRow } from '../../lib/entityMappers';
@@ -8,7 +8,7 @@ import { BookingsToolbar } from './BookingsToolbar';
 import { BookingsTimelineView } from './BookingsTimelineView';
 import { BookingsTableView } from './BookingsTableView';
 import { BookingsCalendarView } from './BookingsCalendarView';
-import { filterBookings } from './bookingUtils';
+import { useBookingsPlannerData } from '../../hooks/useBookingsPlannerData';
 
 interface StationOption {
   id: string;
@@ -16,35 +16,34 @@ interface StationOption {
 }
 
 export interface BookingsPageProps {
-  bookings: BookingUiRow[];
-  loading: boolean;
-  error: string | null;
-  onRetry: () => void;
+  orgId: string | null | undefined;
+  additionalBookings?: BookingUiRow[];
   fleetVehicles: VehicleData[];
   stations: StationOption[];
   onCreateNewBooking?: () => void;
   onOpenDetail: (bookingId: string) => void;
   onOpenDrawer: (bookingId: string) => void;
   onCancelBooking?: (bookingId: string) => void;
+  refreshToken?: number;
 }
 
 export function BookingsPage({
-  bookings,
-  loading,
-  error,
-  onRetry,
+  orgId,
+  additionalBookings = [],
   fleetVehicles,
   stations,
   onCreateNewBooking,
   onOpenDetail,
   onOpenDrawer,
   onCancelBooking,
+  refreshToken = 0,
 }: BookingsPageProps) {
   const [view, setView] = useState<BookingPlannerView>('timeline');
   const [timelineRange, setTimelineRange] = useState<'week' | 'month'>('week');
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
+  const [tablePage, setTablePage] = useState(1);
   const [filters, setFilters] = useState<BookingFiltersState>({
     search: '',
     status: 'all',
@@ -55,10 +54,37 @@ export function BookingsPage({
     showTerminal: false,
   });
 
-  const filtered = useMemo(() => filterBookings(bookings, filters), [bookings, filters]);
+  const { rows, meta, loading, error, truncated, refresh, tablePageSize } = useBookingsPlannerData({
+    orgId,
+    view,
+    filters,
+    timelineRange,
+    calendarMonth,
+    calendarYear,
+    tablePage,
+  });
+
+  useEffect(() => {
+    if (refreshToken > 0) void refresh();
+  }, [refreshToken, refresh]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [filters, view]);
+
+  const bookings = useMemo(() => {
+    const apiIds = new Set(rows.map((b) => b.id));
+    const extras = additionalBookings.filter((b) => b?.id && !apiIds.has(b.id));
+    return [...rows, ...extras];
+  }, [rows, additionalBookings]);
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     const now = new Date();
+    if (view === 'calendar') {
+      const start = new Date(calendarYear, calendarMonth, 1);
+      const end = new Date(calendarYear, calendarMonth + 1, 0, 23, 59, 59, 999);
+      return { rangeStart: start, rangeEnd: end };
+    }
     if (timelineRange === 'week') {
       const start = new Date(now);
       start.setHours(0, 0, 0, 0);
@@ -71,7 +97,7 @@ export function BookingsPage({
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     return { rangeStart: start, rangeEnd: end };
-  }, [timelineRange]);
+  }, [view, timelineRange, calendarMonth, calendarYear]);
 
   const vehiclesForTimeline = useMemo(() => {
     if (filters.vehicleId) {
@@ -80,15 +106,7 @@ export function BookingsPage({
     return fleetVehicles;
   }, [fleetVehicles, filters.vehicleId]);
 
-  const timelineBookings = useMemo(() => {
-    return filtered.filter((b) => {
-      const raw = b._raw as { startDate?: string; endDate?: string } | undefined;
-      const start = raw?.startDate ? new Date(raw.startDate) : null;
-      const end = raw?.endDate ? new Date(raw.endDate) : null;
-      if (!start || !end) return false;
-      return start < rangeEnd && end > rangeStart;
-    });
-  }, [filtered, rangeStart, rangeEnd]);
+  const timelineBookings = bookings;
 
   return (
     <div className="max-w-[1800px] mx-auto space-y-4">
@@ -114,11 +132,18 @@ export function BookingsPage({
           </div>
           <button
             type="button"
-            onClick={onRetry}
+            onClick={() => void refresh()}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-current"
           >
             Erneut laden
           </button>
+        </div>
+      )}
+
+      {truncated && !error && (
+        <div className="rounded-xl p-3 border border-amber-500/30 bg-amber-500/5 text-xs text-foreground">
+          Es gibt mehr Buchungen im gewählten Zeitraum ({meta?.total ?? 0} gesamt). Bitte Filter
+          verfeinern oder zur Tabellenansicht wechseln.
         </div>
       )}
 
@@ -127,7 +152,7 @@ export function BookingsPage({
           <Icon name="loader-2" className="w-8 h-8 animate-spin" />
           <p className="text-xs">Buchungen werden geladen…</p>
         </div>
-      ) : !error && filtered.length === 0 ? (
+      ) : !error && bookings.length === 0 ? (
         <EmptyState
           icon={<Icon name="calendar" className="w-6 h-6" />}
           title="Keine Buchungen für die aktuellen Filter"
@@ -153,28 +178,41 @@ export function BookingsPage({
           )}
           {view === 'table' && (
             <BookingsTableView
-              rows={filtered}
+              rows={bookings}
               loading={loading}
               onRowClick={onOpenDrawer}
               onEdit={onOpenDetail}
               onCancel={onCancelBooking}
+              page={meta?.page ?? tablePage}
+              pageSize={tablePageSize}
+              total={meta?.total ?? bookings.length}
+              hasNextPage={meta?.hasNextPage ?? false}
+              onPageChange={setTablePage}
             />
           )}
           {view === 'calendar' && (
             <BookingsCalendarView
-              rows={filtered}
+              rows={bookings}
               month={calendarMonth}
               year={calendarYear}
               selectedDay={selectedCalendarDay}
               onDayClick={setSelectedCalendarDay}
               onBookingClick={onOpenDrawer}
+              onMonthChange={(month, year) => {
+                setCalendarMonth(month);
+                setCalendarYear(year);
+              }}
             />
           )}
         </>
       ) : null}
 
       <p className="text-[10px] text-muted-foreground text-right">
-        {filtered.length} Buchung{filtered.length === 1 ? '' : 'en'} · Klick öffnet Detail-Drawer
+        {meta?.total ?? bookings.length} Buchung{(meta?.total ?? bookings.length) === 1 ? '' : 'en'}{' '}
+        {view === 'table' && meta
+          ? `· Seite ${meta.page}/${meta.totalPages}`
+          : ''}{' '}
+        · Klick öffnet Detail-Drawer
       </p>
     </div>
   );

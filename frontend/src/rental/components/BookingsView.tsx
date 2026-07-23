@@ -95,34 +95,59 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   // V4.6.75 — open the Übergabeprotokoll dialog (pickup/return) via the
   // global HandoverProvider mounted in App.tsx.
   const { openHandover } = useHandover();
-  const [apiBookings, setApiBookings] = useState<BookingUiRow[]>([]);
-  const [apiLoaded, setApiLoaded] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [rawApiBookings, setRawApiBookings] = useState<any[]>([]);
+  const [drawerBooking, setDrawerBooking] = useState<BookingUiRow | null>(null);
+  const [cancelBookingPreview, setCancelBookingPreview] = useState<BookingUiRow | null>(null);
   const [apiCustomers, setApiCustomers] = useState<any[]>([]);
   const [apiUsers, setApiUsers] = useState<any[]>([]);
   const [apiStations, setApiStations] = useState<any[]>([]);
 
+  const [bookingsRefreshToken, setBookingsRefreshToken] = useState(0);
+
   const loadBookings = useCallback(() => {
-    if (!orgId) return;
-    setApiError(null);
-    api.bookings
-      .list(orgId, { limit: 500 })
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
-        setRawApiBookings(list);
-        setApiBookings(list.map(mapApiBooking));
-        setApiLoaded(true);
-      })
-      .catch(() => {
-        setApiError('Buchungen konnten nicht geladen werden.');
-        setApiLoaded(true);
-      });
-  }, [orgId]);
+    setBookingsRefreshToken((v) => v + 1);
+  }, []);
 
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  useEffect(() => {
+    if (!popupBookingId || !orgId) {
+      setDrawerBooking(null);
+      return;
+    }
+    let cancelled = false;
+    api.bookings
+      .get(orgId, popupBookingId)
+      .then((res) => {
+        if (!cancelled) setDrawerBooking(mapApiBooking(res));
+      })
+      .catch(() => {
+        if (!cancelled) setDrawerBooking(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [popupBookingId, orgId]);
+
+  useEffect(() => {
+    if (!cancelConfirmId || !orgId) {
+      setCancelBookingPreview(null);
+      return;
+    }
+    let cancelled = false;
+    api.bookings
+      .get(orgId, cancelConfirmId)
+      .then((res) => {
+        if (!cancelled) setCancelBookingPreview(mapApiBooking(res));
+      })
+      .catch(() => {
+        if (!cancelled) setCancelBookingPreview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cancelConfirmId, orgId]);
 
   // V4.6.75 — Refetch after a handover (pickup/return) was confirmed from
   // any entry point (detail sheet, Dashboard tile, RightSidebar).
@@ -404,7 +429,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
     const currentBookingId = isEditMode ? (inlineEdit.id || inlineEdit._bookingId) : null;
 
-    apiBookings.forEach(b => {
+    [].forEach((b: BookingUiRow) => {
       if (currentBookingId && b.id === currentBookingId) return;
       if (b.vehicle !== vehicleName) return;
       if (b.status === 'cancelled') return;
@@ -778,14 +803,12 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
   const executeNoShow = async () => {
     if (!noShowConfirmId || !orgId || noShowSubmitting) return;
-    const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
-    const booking = allBk.find(b => b.id === noShowConfirmId);
     try {
       setNoShowSubmitting(true);
       await api.bookings.markNoShow(orgId, noShowConfirmId, noShowReason.trim() || null);
-      onBookingCancelled?.(noShowConfirmId, { vehicleId: booking?.vehicleId ?? null });
+      onBookingCancelled?.(noShowConfirmId, { vehicleId: drawerBooking?.vehicleId ?? null });
       toast.success('Als No-Show markiert', {
-        description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
+        description: drawerBooking ? `${drawerBooking.vehicle} • ${drawerBooking.customer}` : undefined,
         duration: 3000,
       });
       loadBookings();
@@ -804,17 +827,15 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
   const executeCancel = async () => {
     if (!cancelConfirmId || !orgId) return;
-    const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
-    const booking = allBk.find(b => b.id === cancelConfirmId);
     const isPersistedId = typeof cancelConfirmId === 'string' && !cancelConfirmId.startsWith('new-');
     try {
       if (isPersistedId) {
         await api.bookings.cancel(orgId, cancelConfirmId);
       }
       setLocalCancelled(prev => [...prev, cancelConfirmId]);
-      onBookingCancelled?.(cancelConfirmId, { vehicleId: booking?.vehicleId ?? null });
+      onBookingCancelled?.(cancelConfirmId, { vehicleId: cancelBookingPreview?.vehicleId ?? null });
       toast.success('Buchung storniert', {
-        description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
+        description: cancelBookingPreview ? `${cancelBookingPreview.vehicle} • ${cancelBookingPreview.customer}` : undefined,
         duration: 3000,
       });
       loadBookings();
@@ -921,12 +942,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   // V4.6.76 Rental Health V1 — derive the detail booking's vehicle at the
   // top level so we can unconditionally call useVehicleHealth (hooks MUST
   // run on every render). Passing a null vehicleId short-circuits the fetch.
-  const detailVehicleId = useMemo(() => {
-    if (!detailBookingId) return null;
-    const b = plannerBookings.find((x) => x.id === detailBookingId) as BookingUiRow | undefined;
-    const raw = b?._raw as { vehicleId?: string } | undefined;
-    return (b?.vehicleId ?? raw?.vehicleId ?? null) as string | null;
-  }, [detailBookingId, plannerBookings]);
+  const detailVehicleId = useMemo(() => null, []);
   const { data: detailHealth } = useVehicleHealth(orgId, detailVehicleId);
 
   // V4.6.99 — Cross-View-Deep-Link konsumieren. Wenn die App einen
@@ -1232,10 +1248,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     [fleetVehicles, systemDark],
   );
 
-  const popupBooking = useMemo(() => {
-    if (!popupBookingId) return null;
-    return plannerBookings.find((b) => b.id === popupBookingId) ?? null;
-  }, [popupBookingId, plannerBookings]);
+  const popupBooking = drawerBooking;
 
   const listSectionTitle =
     activeTab === null
@@ -1276,10 +1289,9 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   return (
     <>
       <BookingsPage
-        bookings={plannerBookings}
-        loading={!apiLoaded && !apiError}
-        error={apiError}
-        onRetry={loadBookings}
+        orgId={orgId}
+        refreshToken={bookingsRefreshToken}
+        additionalBookings={additionalBookings.map((b) => (b.bookingRef ? (b as BookingUiRow) : mapApiBooking(b)))}
         fleetVehicles={fleetVehicles}
         stations={apiStations.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }))}
         onCreateNewBooking={onCreateNewBooking}
@@ -1749,30 +1761,26 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         tone="critical"
         onConfirm={executeCancel}
       >
-        {(() => {
-        const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
-        const booking = allBk.find(b => b.id === cancelConfirmId);
-        return booking ? (
+        {cancelBookingPreview ? (
                   <div className={`rounded-lg p-3 my-2 text-left text-xs space-y-1.5 bg-muted`}>
                     <div className="flex justify-between">
                       <span className={'text-muted-foreground'}>Kunde</span>
-                      <span className={'text-foreground'}>{booking.customer}</span>
+                      <span className={'text-foreground'}>{cancelBookingPreview.customer}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className={'text-muted-foreground'}>Fahrzeug</span>
-                      <span className={'text-foreground'}>{booking.vehicle}</span>
+                      <span className={'text-foreground'}>{cancelBookingPreview.vehicle}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className={'text-muted-foreground'}>Zeitraum</span>
-                      <span className={'text-foreground'}>{booking.startDate} – {booking.endDate}</span>
+                      <span className={'text-foreground'}>{cancelBookingPreview.startDate} – {cancelBookingPreview.endDate}</span>
                     </div>
                     <div className={`flex justify-between pt-1.5 border-t border-border`}>
                       <span className={'text-muted-foreground'}>Betrag</span>
-                      <span className={'text-[color:var(--status-critical)]'}>{booking.revenue}</span>
+                      <span className={'text-[color:var(--status-critical)]'}>{cancelBookingPreview.revenue}</span>
                     </div>
                   </div>
-        ) : null;
-        })()}
+        ) : null}
       </ConfirmDialog>
     </>
   );

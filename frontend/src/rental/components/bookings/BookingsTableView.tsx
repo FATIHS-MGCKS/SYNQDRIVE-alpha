@@ -11,6 +11,11 @@ interface BookingsTableViewProps {
   onRowClick: (id: string) => void;
   onEdit?: (id: string) => void;
   onCancel?: (id: string) => void;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  hasNextPage?: boolean;
+  onPageChange?: (page: number) => void;
 }
 
 export function BookingsTableView({
@@ -19,6 +24,11 @@ export function BookingsTableView({
   onRowClick,
   onEdit,
   onCancel,
+  page = 1,
+  pageSize = 50,
+  total,
+  hasNextPage = false,
+  onPageChange,
 }: BookingsTableViewProps) {
   const columns = useMemo(
     () => [
@@ -89,7 +99,7 @@ export function BookingsTableView({
   );
 
   return (
-    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] space-y-3">
       <DataTable
         columns={columns}
         rows={rows}
@@ -140,6 +150,31 @@ export function BookingsTableView({
           />
         }
       />
+      {onPageChange && (
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+          <span>
+            {(page - 1) * pageSize + 1}–{(page - 1) * pageSize + rows.length} von {total ?? rows.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => onPageChange(Math.max(1, page - 1))}
+              className="px-2 py-1 rounded border border-border disabled:opacity-40"
+            >
+              Zurück
+            </button>
+            <button
+              type="button"
+              disabled={!hasNextPage || loading}
+              onClick={() => onPageChange(page + 1)}
+              className="px-2 py-1 rounded border border-border disabled:opacity-40"
+            >
+              Weiter
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
