@@ -12,6 +12,7 @@ import {
   NotFoundException,
   GoneException,
   Req,
+  Headers,
 } from '@nestjs/common';
 import { MembershipRole } from '@prisma/client';
 import { BookingsService } from './bookings.service';
@@ -595,30 +596,21 @@ export class BookingsController {
 
   @Delete(':id')
   @RequireBookingPermission('booking.cancel')
-  async cancel(
-    @Param('orgId') orgId: string,
-    @Param('id') id: string,
-    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null },
-  ) {
-    await this.bookingAccess.assertBookingInOrg(orgId, id);
-    return this.bookingsService.cancel(orgId, id, {
-      userId: user?.id ?? null,
-      displayName: user?.displayName ?? user?.name ?? null,
+  async cancel() {
+    throw new GoneException({
+      message:
+        'DELETE /bookings/:id is removed. Use POST /bookings/:id/status/cancel with Idempotency-Key header.',
+      code: 'BOOKING_STATUS_LEGACY_ENDPOINT_REMOVED',
     });
   }
 
   @Post(':id/no-show')
   @RequireBookingPermission('booking.mark_no_show')
-  async markNoShow(
-    @Param('orgId') orgId: string,
-    @Param('id') id: string,
-    @Body() body: MarkBookingNoShowDto,
-    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null },
-  ) {
-    await this.bookingAccess.assertBookingInOrg(orgId, id);
-    return this.bookingsService.markNoShow(orgId, id, body.reason ?? null, {
-      userId: user?.id ?? null,
-      displayName: user?.displayName ?? user?.name ?? null,
+  async markNoShow() {
+    throw new GoneException({
+      message:
+        'POST /bookings/:id/no-show is removed. Use POST /bookings/:id/status/no-show with Idempotency-Key header.',
+      code: 'BOOKING_STATUS_LEGACY_ENDPOINT_REMOVED',
     });
   }
 
@@ -649,6 +641,7 @@ export class BookingsController {
   async createPickupHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
     @Body() body: CreateHandoverProtocolDto,
     @Req() req: BookingRequest,
@@ -667,7 +660,7 @@ export class BookingsController {
       'PICKUP',
       command,
       resolveHandoverActor(user),
-      { hasOverridePermission: ctx.hasOverridePermission },
+      { hasOverridePermission: ctx.hasOverridePermission, idempotencyKey },
     );
   }
 
@@ -676,6 +669,7 @@ export class BookingsController {
   async createReturnHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
     @Body() body: CreateHandoverProtocolDto,
     @Req() req: BookingRequest,
@@ -694,7 +688,7 @@ export class BookingsController {
       'RETURN',
       command,
       resolveHandoverActor(user),
-      { hasOverridePermission: ctx.hasOverridePermission },
+      { hasOverridePermission: ctx.hasOverridePermission, idempotencyKey },
     );
   }
 }

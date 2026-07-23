@@ -21,6 +21,10 @@ import type {
   VehicleDataQualityState,
   VehicleBookingReference,
 } from '../rental/lib/vehicle-operational-state';
+import {
+  createBookingStatusIdempotencyKey,
+  type BookingStatusCommandApiResponse,
+} from '../rental/lib/booking-status-idempotency';
 
 export type {
   AddDamageImageInput,
@@ -748,8 +752,15 @@ function get<T>(path: string, init?: RequestInit) {
   return request<T>(path, init);
 }
 
-function post<T>(path: string, body: unknown) {
-  return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
+function post<T>(path: string, body: unknown, init?: RequestInit) {
+  return request<T>(path, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    ...init,
+    headers: {
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  });
 }
 
 function patch<T>(path: string, body: unknown) {
@@ -3760,13 +3771,37 @@ export const api = {
         primaryDriverId?: string;
       },
     ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/allowed-drivers`, data),
-    cancel: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/bookings/${id}`),
-    // V4.6.81 — Mark a CONFIRMED booking whose scheduled pickup has
-    // passed without a handover as NO_SHOW. Distinct from cancel so
-    // downstream reporting can tell "called off" from "customer never
-    // showed". Server-side guardrails enforce status + time window.
-    markNoShow: (orgId: string, id: string, reason?: string | null) =>
-      post<any>(`/organizations/${orgId}/bookings/${id}/no-show`, { reason: reason ?? null }),
+    cancel: (
+      orgId: string,
+      id: string,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<BookingStatusCommandApiResponse>(
+        `/organizations/${orgId}/bookings/${id}/status/cancel`,
+        {},
+        {
+          headers: {
+            'Idempotency-Key':
+              options?.idempotencyKey ?? createBookingStatusIdempotencyKey('cancel', id),
+          },
+        },
+      ).then((res) => res.booking),
+    markNoShow: (
+      orgId: string,
+      id: string,
+      reason?: string | null,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<BookingStatusCommandApiResponse>(
+        `/organizations/${orgId}/bookings/${id}/status/no-show`,
+        { reason: reason ?? null },
+        {
+          headers: {
+            'Idempotency-Key':
+              options?.idempotencyKey ?? createBookingStatusIdempotencyKey('no-show', id),
+          },
+        },
+      ).then((res) => res.booking),
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/bookings/stats`),
     todayPickups: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/pickups`),
     todayReturns: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/returns`),
@@ -3884,10 +3919,32 @@ export const api = {
     // the fact). Omitted → server uses `now()`.
     listHandovers: (orgId: string, bookingId: string) =>
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
-    createPickupHandover: (orgId: string, bookingId: string, data: CreateHandoverProtocolPayload) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: CreateHandoverProtocolPayload) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    createPickupHandover: (
+      orgId: string,
+      bookingId: string,
+      data: CreateHandoverProtocolPayload,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data, {
+        headers: {
+          'Idempotency-Key':
+            options?.idempotencyKey ??
+            createBookingStatusIdempotencyKey('handover-pickup', bookingId),
+        },
+      }),
+    createReturnHandover: (
+      orgId: string,
+      bookingId: string,
+      data: CreateHandoverProtocolPayload,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data, {
+        headers: {
+          'Idempotency-Key':
+            options?.idempotencyKey ??
+            createBookingStatusIdempotencyKey('handover-return', bookingId),
+        },
+      }),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.

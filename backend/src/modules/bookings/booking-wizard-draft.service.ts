@@ -39,7 +39,7 @@ import {
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
 import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
-import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
+import { BookingStatusCommandService } from './status-commands/booking-status-command.service';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -64,7 +64,7 @@ export class BookingWizardDraftService {
     private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
-    private readonly statusTransition: BookingStatusTransitionService,
+    private readonly statusCommands: BookingStatusCommandService,
   ) {}
 
   async createOrRefreshDraft(
@@ -214,32 +214,23 @@ export class BookingWizardDraftService {
 
     let booking: Booking;
     if (targetStatus === 'CONFIRMED' && draft.status === 'PENDING') {
-      const transition = this.statusTransition.planTransition({
-        from: draft.status,
-        to: 'CONFIRMED',
-        trigger: 'confirm',
+      const confirmed = await this.statusCommands.execute({
+        organizationId: orgId,
+        bookingId,
+        command: 'CONFIRM',
+        idempotencyKey: `wizard-confirm:${bookingId}`,
+        actor: { userId: options?.userId ?? null, displayName: null },
       });
       booking = await this.prisma.booking.update({
         where: { id: bookingId, organizationId: orgId },
         data: {
-          ...this.statusTransition.buildUpdateData('CONFIRMED'),
           notes: strippedNotes,
           paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
         },
       });
-      await this.statusTransition.commitTransitionEffects(
-        {
-          organizationId: orgId,
-          bookingId,
-          vehicleId: draft.vehicleId,
-          from: draft.status,
-          to: 'CONFIRMED',
-          trigger: 'confirm',
-          actor: { userId: options?.userId ?? null, displayName: null },
-          correlationId: `wizard-confirm:${bookingId}`,
-        },
-        transition,
-      );
+      if (!confirmed.transition.idempotent && !confirmed.transition.replayed) {
+        booking = { ...booking, status: confirmed.booking.status };
+      }
     } else {
       booking = await this.prisma.booking.update({
         where: { id: bookingId, organizationId: orgId },

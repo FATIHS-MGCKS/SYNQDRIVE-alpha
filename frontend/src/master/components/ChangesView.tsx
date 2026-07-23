@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-status-commands-prompt9-2026-07-23',
+    version: '4.9.781',
+    title: 'Booking Production-Readiness — Dedicated Status Commands (Prompt 9/34)',
+    summary: [
+      'Dedizierte Status-Commands unter `POST /bookings/:id/status/*` (confirm, cancel, no-show, activate, complete, override).',
+      'Jeder Command: eigenes DTO, Permission, Pflicht-`Idempotency-Key`, State-Machine-Prüfung, Audit + Workflow nach atomarem Write.',
+      '`booking_status_commands`-Ledger für Replay; Advisory Lock pro Buchung gegen parallele Doppel-Transitionen.',
+      'Idempotent: bereits im Zielstatus oder gleicher Key → kanonischer Serverzustand ohne doppelte Side Effects.',
+      'Legacy `DELETE /bookings/:id` und `POST /no-show` entfernt (410); Frontend auf neue Endpunkte migriert.',
+      'Handover pickup/return akzeptieren `Idempotency-Key` und registrieren ACTIVATE/COMPLETE-Commands.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 9 — explizite, idempotente Status-Commands statt direkter Status-Patches.',
+    previousBehavior:
+      'Cancel/No-Show über DELETE/POST ohne Idempotenz; Statuswechsel verteilt in Services ohne Command-Ledger; parallele Requests konnten doppelte Side Effects auslösen.',
+    details:
+      'docs/architecture/booking-status-commands.md, status-commands/*, booking-status-command.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / Lifecycle',
+    createdAt: '2026-07-23T21:30:00.000Z',
+  },
+  {
     id: 'booking-state-machine-prompt8-2026-07-23',
     version: '4.9.780',
     title: 'Booking Production-Readiness — Central State Machine (Prompt 8/34)',

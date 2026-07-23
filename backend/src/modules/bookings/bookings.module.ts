@@ -30,6 +30,8 @@ import { BookingCreateValidationService } from './booking-create.validation.serv
 import { BookingUpdateService } from './booking-update.service';
 import { HandoverValidationService } from './handover-validation.service';
 import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
+import { BookingStatusCommandService } from './status-commands/booking-status-command.service';
+import { BookingStatusCommandsController } from './status-commands/booking-status-commands.controller';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
 
 @Module({
@@ -51,7 +53,7 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     VehiclesModule,
     ActivityLogModule,
   ],
-  controllers: [BookingsController],
+  controllers: [BookingsController, BookingStatusCommandsController],
   providers: [
     BookingsService,
     BookingsHandoverService,
@@ -67,6 +69,7 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingUpdateService,
     HandoverValidationService,
     BookingStatusTransitionService,
+    BookingStatusCommandService,
     BookingPermissionsGuard,
   ],
   exports: [

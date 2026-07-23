@@ -48,6 +48,7 @@ import { createCommandPaymentIntentForPrisma } from './booking-command.mapper';
 import { BookingCreateValidationService } from './booking-create.validation.service';
 import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
 import { BOOKING_STATE_MACHINE_ERROR_CODES } from './state-machine/booking-state-machine-error.codes';
+import { BookingStatusCommandService } from './status-commands/booking-status-command.service';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
@@ -115,6 +116,7 @@ export class BookingsService {
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly bookingCreateValidation: BookingCreateValidationService,
     private readonly statusTransition: BookingStatusTransitionService,
+    private readonly statusCommands: BookingStatusCommandService,
   ) {}
 
   /**
@@ -1908,68 +1910,19 @@ export class BookingsService {
     orgId: string,
     id: string,
     actor?: { userId?: string | null; displayName?: string | null },
+    idempotencyKey?: string,
   ): Promise<Booking> {
-    const booking = await this.prisma.booking.findFirstOrThrow({
-      where: { id, organizationId: orgId },
-      include: { vehicle: true },
-    });
-
-    const transition = this.statusTransition.planTransition({
-      from: booking.status,
-      to: 'CANCELLED',
-      trigger: 'cancel',
-    });
-
-    await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
-
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
-        where: { id },
-        data: this.statusTransition.buildUpdateData('CANCELLED'),
-      }),
-      // Release the car for a replacement booking — but NEVER overwrite a
-      // maintenance / out-of-service state (same invariant the handover
-      // service enforces). `updateMany` + notIn applies the AVAILABLE flip
-      // only when the vehicle is not IN_SERVICE / OUT_OF_SERVICE.
-      this.prisma.vehicle.updateMany({
-        where: {
-          id: booking.vehicleId,
-          status: {
-            notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
-          },
-        },
-        data: { status: VehicleStatus.AVAILABLE },
-      }),
-    ]);
-
-    await this.statusTransition.commitTransitionEffects(
-      {
-        organizationId: orgId,
-        bookingId: id,
-        vehicleId: booking.vehicleId,
-        from: booking.status,
-        to: 'CANCELLED',
-        trigger: 'cancel',
-        actor: {
-          userId: actor?.userId ?? null,
-          displayName: actor?.displayName ?? null,
-        },
-        correlationId: `cancel:${id}`,
+    const result = await this.statusCommands.execute({
+      organizationId: orgId,
+      bookingId: id,
+      command: 'CANCEL',
+      idempotencyKey: idempotencyKey ?? `internal-cancel:${id}`,
+      actor: {
+        userId: actor?.userId ?? null,
+        displayName: actor?.displayName ?? null,
       },
-      transition,
-    );
-
-    void this.taskAutomationService
-      .supersedeBookingLifecycleOnCancellation(orgId, id)
-      .catch(() => {});
-    void this.vehicleCleaningTasks
-      .onBookingCancelled(orgId, id, booking.vehicleId)
-      .catch(() => {});
-
-    await this.fleetMapCache.invalidate(orgId);
-    await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
-
-    return updated;
+    });
+    return result.booking;
   }
 
   // V4.6.81 — No-show transition. Distinct from a regular cancel because
@@ -1996,69 +1949,20 @@ export class BookingsService {
     id: string,
     reason?: string | null,
     actor?: { userId?: string | null; displayName?: string | null },
+    idempotencyKey?: string,
   ): Promise<Booking> {
-    const booking = await this.prisma.booking.findFirstOrThrow({
-      where: { id, organizationId: orgId },
-      include: { vehicle: true },
-    });
-
-    const notesAddendum = reason
-      ? `[No-Show ${new Date().toISOString()}] ${reason.trim()}`
-      : null;
-    const nextNotes = notesAddendum
-      ? (booking.notes ? `${booking.notes}\n${notesAddendum}` : notesAddendum)
-      : booking.notes;
-
-    const transition = this.statusTransition.planTransition({
-      from: booking.status,
-      to: 'NO_SHOW',
-      trigger: 'mark_no_show',
-      preconditions: { scheduledStartDate: booking.startDate },
-    });
-
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
-        where: { id },
-        data: this.statusTransition.buildUpdateData('NO_SHOW', { notes: nextNotes }),
-      }),
-      // Reopen the car for a replacement booking without clobbering a
-      // maintenance / out-of-service state (mirrors cancel() + the handover
-      // invariant). Only flips to AVAILABLE when not IN_SERVICE/OUT_OF_SERVICE.
-      this.prisma.vehicle.updateMany({
-        where: {
-          id: booking.vehicleId,
-          status: {
-            notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
-          },
-        },
-        data: { status: VehicleStatus.AVAILABLE },
-      }),
-    ]);
-
-    await this.statusTransition.commitTransitionEffects(
-      {
-        organizationId: orgId,
-        bookingId: id,
-        vehicleId: booking.vehicleId,
-        from: booking.status,
-        to: 'NO_SHOW',
-        trigger: 'mark_no_show',
-        actor: {
-          userId: actor?.userId ?? null,
-          displayName: actor?.displayName ?? null,
-        },
-        reason: reason ?? null,
-        correlationId: `no-show:${id}`,
+    const result = await this.statusCommands.execute({
+      organizationId: orgId,
+      bookingId: id,
+      command: 'MARK_NO_SHOW',
+      idempotencyKey: idempotencyKey ?? `internal-no-show:${id}`,
+      actor: {
+        userId: actor?.userId ?? null,
+        displayName: actor?.displayName ?? null,
       },
-      transition,
-    );
-
-    void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
-
-    await this.fleetMapCache.invalidate(orgId);
-    await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
-
-    return updated;
+      reason: reason ?? null,
+    });
+    return result.booking;
   }
 
   private async assertCustomerBookingEligibility(

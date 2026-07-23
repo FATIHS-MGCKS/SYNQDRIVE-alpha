@@ -20,6 +20,10 @@ import {
 import type { CreateHandoverCommand } from './handover-command.types';
 import { HandoverValidationService } from './handover-validation.service';
 import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
+import {
+  BookingStatusCommandService,
+  handoverKindToStatusCommand,
+} from './status-commands/booking-status-command.service';
 import { HANDOVER_ERROR_CODES } from './handover-error.codes';
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
@@ -69,6 +73,7 @@ export class BookingsHandoverService {
     private readonly pickupGateAudit: BookingPickupGateAuditService,
     private readonly handoverValidation: HandoverValidationService,
     private readonly statusTransition: BookingStatusTransitionService,
+    private readonly statusCommands: BookingStatusCommandService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -83,9 +88,25 @@ export class BookingsHandoverService {
     kind: HandoverKind,
     command: CreateHandoverCommand,
     actor: HandoverActorContext,
-    options?: { hasOverridePermission?: boolean },
+    options?: { hasOverridePermission?: boolean; idempotencyKey?: string },
   ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
     const hasOverridePermission = options?.hasOverridePermission ?? false;
+    const idempotencyKey = options?.idempotencyKey?.trim();
+
+    if (idempotencyKey) {
+      const replay = await this.statusCommands.findReplay(orgId, idempotencyKey);
+      if (replay && replay.booking.id === bookingId) {
+        const protocol = await this.prisma.bookingHandoverProtocol.findUnique({
+          where: { bookingId_kind: { bookingId, kind } },
+        });
+        if (protocol) {
+          return {
+            booking: { id: replay.booking.id, status: replay.booking.status },
+            protocol: this.mapProtocol(protocol),
+          };
+        }
+      }
+    }
 
     if (kind === 'PICKUP') {
       const existingPickup = await this.prisma.bookingHandoverProtocol.findUnique({
@@ -465,6 +486,37 @@ export class BookingsHandoverService {
       },
       plannedTransition,
     );
+
+    if (idempotencyKey) {
+      const fullBooking = await this.prisma.booking.findFirstOrThrow({
+        where: { id: bookingId, organizationId: orgId },
+      });
+      await this.statusCommands.recordCommandResult(
+        {
+          organizationId: orgId,
+          bookingId,
+          command: handoverKindToStatusCommand(kind),
+          idempotencyKey,
+          actor: {
+            userId: actor.userId,
+            displayName: actor.displayName,
+          },
+          skipSideEffects: true,
+        },
+        {
+          booking: fullBooking,
+          transition: {
+            command: handoverKindToStatusCommand(kind),
+            from: booking.status,
+            to: transitionTo,
+            trigger: transitionTrigger,
+            reasonCode: plannedTransition.definition.reasonCode,
+            idempotent: false,
+            replayed: false,
+          },
+        },
+      );
+    }
 
     // After a successful handover, generate the protocol PDF (and, on return,
     // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
