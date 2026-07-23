@@ -6,7 +6,7 @@ import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto } from './renta
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
 import { CATEGORY_COLOR_PRESETS, CATEGORY_TYPE_OPTIONS } from './rental-rules.constants';
 import {
-  formValuesToPayload,
+  formValuesToPatchPayload,
   labelCategoryType,
   rulesToFormValues,
   validateRuleForm,
@@ -80,7 +80,11 @@ export function CategoryDetailDrawer({
       description: description.trim() || null,
       type: type || null,
       color,
-      ...formValuesToPayload(ruleValues),
+      ...formValuesToPatchPayload(
+        ruleValues,
+        mode === 'edit' ? category : null,
+        mode === 'create' ? 'create' : 'edit',
+      ),
     };
     try {
       await onSave(payload);

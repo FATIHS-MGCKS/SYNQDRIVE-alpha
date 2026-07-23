@@ -107,6 +107,123 @@ describe('RentalRulesService', () => {
     await svc.listCategories('org1');
     expect(prisma.priceTariffGroup.findMany).not.toHaveBeenCalled();
   });
+
+  it('leaves organization defaults unchanged when patch omits fields', async () => {
+    prisma.organization.findUnique.mockResolvedValue({ id: 'org1' });
+    prisma.organizationRentalRules.upsert.mockResolvedValue({
+      id: 'rules-1',
+      organizationId: 'org1',
+      minimumAgeYears: 21,
+      minimumLicenseHoldingMonths: 12,
+      depositAmountCents: 10000,
+      depositCurrency: 'EUR',
+      creditCardRequired: true,
+      foreignTravelPolicy: 'ALLOWED',
+      additionalDriverPolicy: 'ALLOWED',
+      youngDriverPolicy: 'FEE_REQUIRED',
+      insuranceRequirement: null,
+      manualApprovalRequired: false,
+      notes: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await svc.upsertOrganizationDefaults('org1', {});
+
+    expect(prisma.organizationRentalRules.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: {},
+      }),
+    );
+  });
+
+  it('clears organization default fields when patch sends null', async () => {
+    prisma.organization.findUnique.mockResolvedValue({ id: 'org1' });
+    prisma.organizationRentalRules.upsert.mockResolvedValue({
+      id: 'rules-1',
+      organizationId: 'org1',
+      minimumAgeYears: null,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: 'EUR',
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await svc.upsertOrganizationDefaults('org1', {
+      minimumAgeYears: null,
+      creditCardRequired: false,
+      manualApprovalRequired: false,
+    });
+
+    expect(prisma.organizationRentalRules.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: {
+          minimumAgeYears: null,
+          creditCardRequired: false,
+          manualApprovalRequired: false,
+        },
+      }),
+    );
+  });
+
+  it('clears category override fields with null and preserves false', async () => {
+    prisma.rentalVehicleCategory.findFirst.mockResolvedValue({
+      id: 'cat1',
+      organizationId: 'org1',
+      name: 'Premium',
+      isActive: true,
+    });
+    prisma.rentalVehicleCategory.update.mockResolvedValue({
+      id: 'cat1',
+      organizationId: 'org1',
+      name: 'Premium',
+      description: null,
+      type: null,
+      color: null,
+      icon: null,
+      minimumAgeYears: null,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: null,
+      creditCardRequired: false,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      _count: { vehicles: 0 },
+    });
+
+    await svc.updateCategory('org1', 'cat1', {
+      minimumAgeYears: null,
+      creditCardRequired: false,
+      depositCurrency: null,
+    });
+
+    expect(prisma.rentalVehicleCategory.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          minimumAgeYears: null,
+          creditCardRequired: false,
+          depositCurrency: null,
+        }),
+      }),
+    );
+  });
 });
 
 describe('normalizeRuleDtoInput', () => {

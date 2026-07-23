@@ -1709,3 +1709,89 @@ Neue Suites: `booking-eligibility-decision.policy.spec.ts`, `booking-eligibility
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 14).*
+
+---
+
+## Prompt 15 — MANUAL_APPROVAL_REQUIRED als auditierbarer Workflow
+
+**Ziel:** `MANUAL_APPROVAL_REQUIRED` wird zu einem persistenten, auditierbaren Freigabeprozess — keine direkten Statusänderungen mehr nur über Freitext-Override.
+
+### 15.1 Datenmodell `BookingEligibilityApproval`
+
+| Feld | Bedeutung |
+|------|-----------|
+| `bookingId`, `organizationId` | Mandanten- und Buchungsbezug |
+| `eligibilityDecision` | Gatekeeper-Status zum Antragszeitpunkt (`MANUAL_APPROVAL_REQUIRED`) |
+| `exceptionReason` | Beantragter Ausnahmegrund (Antragsteller) |
+| `reasonCodes` | Betroffene Reason Codes aus Gatekeeper |
+| `status` | `PENDING` / `APPROVED` / `REJECTED` / `REVOKED` / `EXPIRED` |
+| `gateStage`, `targetBookingStatus` | `CONFIRM`→`CONFIRMED` oder `PICKUP`→`ACTIVE` |
+| `requestedByUserId`, `decidedByUserId` | Vier-Augen: Antragsteller vs. Entscheider |
+| `decisionReason` | Begründung der Entscheidung (approve/reject/revoke/expire) |
+| `eligibilityFingerprint` | Hash aus Gatekeeper-Engine, Status, Rules, Reason Codes |
+| `ruleRevision` | Hash aus `engineVersion` + `sourceRuleIds` |
+| `bookingDataVersion` | Hash relevanter Buchungsdaten (Kunde, Fahrzeug, Zeitraum, Zahlung, Extras, Zusatzfahrer) |
+| `gateResultSnapshot` | Audit-Snapshot der Gatekeeper-Auswertung |
+| `createdAt`, `decidedAt`, `expiresAt` | Lebenszyklus (Default-TTL: 7 Tage) |
+
+### 15.2 API-Endpunkte
+
+| Methode | Pfad | Permission |
+|---------|------|------------|
+| `GET` | `/organizations/:orgId/bookings/:id/eligibility-approvals` | `booking_eligibility.review` |
+| `POST` | `/organizations/:orgId/bookings/:id/eligibility-approvals` | `booking_eligibility.review` |
+| `POST` | `/organizations/:orgId/bookings/:id/eligibility-approvals/:approvalId/decide` | `booking_eligibility.override` |
+
+**Entscheiden:** `APPROVE` / `REJECT` mit Pflicht-Begründung. Selbstgenehmigung blockiert (Antragsteller ≠ Entscheider).
+
+### 15.3 Enforcement-Ablauf
+
+1. Gatekeeper liefert `MANUAL_APPROVAL_REQUIRED` bei CONFIRMED/ACTIVE.
+2. Operator erstellt Approval-Request (`PENDING`) mit Ausnahmebegründung.
+3. Berechtigter Disponent genehmigt (`APPROVED`) oder lehnt ab (`REJECTED`).
+4. Transition (Wizard-Confirm, Booking-Update, Pickup) übergibt `eligibilityApprovalId`.
+5. Enforcement validiert: Status `APPROVED`, nicht abgelaufen, Fingerprint/Rule/Data-Version stimmen mit aktuellem Gate + Booking überein.
+6. **Kein** direkter Bypass mehr über `eligibilityOverrideReason` bei CONFIRMED/ACTIVE.
+
+**Invalidierung:** Änderungen an Kunde, Fahrzeug, Zeitraum, Zahlung, Extras, Zusatzfahrern → aktive `PENDING`/`APPROVED`-Freigaben werden `REVOKED`.
+
+### 15.4 Implementierte Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `prisma/schema.prisma` + Migration `20260722260000_booking_eligibility_approval` | Persistenzmodell |
+| `booking-eligibility-approval.service.ts` | Lifecycle, Vier-Augen, Validierung |
+| `booking-eligibility-approval.util.ts` | Fingerprint, Rule Revision, Data Version |
+| `booking-eligibility-transition.policy.ts` | Erfordert validiertes Approval-Objekt |
+| `booking-eligibility-enforcement.service.ts` | Lädt/validiert Approval vor Transition |
+| `bookings.service.ts` | Revoke bei invalidierenden Mutationen |
+| `booking-wizard-draft.service.ts` | Confirm mit `eligibilityApprovalId` |
+| `bookings-handover.service.ts` | Pickup mit `eligibilityApprovalId` |
+| `frontend/src/lib/api.ts` | Minimale API-Anbindung |
+
+### 15.5 Tests
+
+```
+npm test -- --testPathPattern="booking-eligibility|booking-rental-eligibility|booking-wizard-eligibility"
+→ 122/122 PASS (Prompt-15-Suite)
+```
+
+Neue Suites: `booking-eligibility-approval.service.spec.ts`, `booking-eligibility-approval.util.spec.ts`
+
+---
+
+## Prompt 15 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Manual Approval ist persistenter Workflow | ✅ `BookingEligibilityApproval` |
+| Jede Entscheidung hat Actor, Zeitstempel, Begründung | ✅ `requestedBy` / `decidedBy` / `decisionReason` / `decidedAt` |
+| Datenänderungen invalidieren Freigabe | ✅ `REVOKED` + Fingerprint/Data-Version-Check |
+| Unberechtigte können nicht genehmigen | ✅ `booking_eligibility.override` + Vier-Augen |
+| Kein direkter Override ohne Approval-Objekt | ✅ Transition Policy |
+| Tests bestehen | ✅ |
+| Prompt 15 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 15).*

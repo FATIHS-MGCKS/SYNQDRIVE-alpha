@@ -149,7 +149,6 @@ export function formatRuleValue(
 export function rulesToFormValues(
   rules: Partial<RentalRuleFields> | null | undefined,
 ): RentalRuleFormValues {
-  const currency = rules?.depositCurrency ?? 'EUR';
   return {
     minimumAgeYears:
       rules?.minimumAgeYears != null ? String(rules.minimumAgeYears) : '',
@@ -165,7 +164,7 @@ export function rulesToFormValues(
         : rules?.depositAmountCents != null
           ? String(rules.depositAmountCents / 100)
           : '',
-    depositCurrency: currency,
+    depositCurrency: rules?.depositCurrency ?? '',
     creditCardRequired:
       rules?.creditCardRequired == null
         ? ''
@@ -186,29 +185,112 @@ export function rulesToFormValues(
   };
 }
 
-export function formValuesToPayload(values: RentalRuleFormValues): Record<string, unknown> {
-  const payload: Record<string, unknown> = {};
+export type RentalRulePatchMode = 'create' | 'edit';
+
+type RentalRulePatchBaseline = {
+  minimumAgeYears: number | null;
+  minimumLicenseHoldingMonths: number | null;
+  depositAmountCents: number | null;
+  depositCurrency: string | null;
+  creditCardRequired: boolean | null;
+  foreignTravelPolicy: RentalForeignTravelPolicy | null;
+  additionalDriverPolicy: RentalAdditionalDriverPolicy | null;
+  youngDriverPolicy: RentalYoungDriverPolicy | null;
+  insuranceRequirement: string | null;
+  manualApprovalRequired: boolean | null;
+  notes: string | null;
+};
+
+export function extractRulePatchBaseline(
+  rules: Partial<RentalRuleFields> | null | undefined,
+): RentalRulePatchBaseline {
+  const months = rules?.minimumLicenseHoldingMonths ?? null;
+  return {
+    minimumAgeYears: rules?.minimumAgeYears ?? null,
+    minimumLicenseHoldingMonths: months,
+    depositAmountCents: rules?.depositAmountCents ?? rules?.depositAmount ?? null,
+    depositCurrency: rules?.depositCurrency?.trim() ? rules.depositCurrency.trim().toUpperCase() : null,
+    creditCardRequired: rules?.creditCardRequired ?? null,
+    foreignTravelPolicy: (rules?.foreignTravelPolicy ?? null) as RentalForeignTravelPolicy | null,
+    additionalDriverPolicy: (rules?.additionalDriverPolicy ?? null) as RentalAdditionalDriverPolicy | null,
+    youngDriverPolicy: (rules?.youngDriverPolicy ?? null) as RentalYoungDriverPolicy | null,
+    insuranceRequirement: rules?.insuranceRequirement?.trim() || null,
+    manualApprovalRequired: rules?.manualApprovalRequired ?? null,
+    notes: rules?.notes?.trim() || null,
+  };
+}
+
+function formValuesToDesiredState(values: RentalRuleFormValues): RentalRulePatchBaseline {
+  const desired = extractRulePatchBaseline(null);
+
   if (values.minimumAgeYears.trim()) {
-    payload.minimumAgeYears = Number(values.minimumAgeYears);
+    desired.minimumAgeYears = Number(values.minimumAgeYears);
   }
   if (values.minimumLicenseHoldingYears.trim()) {
-    payload.minimumLicenseHoldingYears = Number(values.minimumLicenseHoldingYears);
+    desired.minimumLicenseHoldingMonths = Number(values.minimumLicenseHoldingYears) * 12;
   }
   if (values.depositAmount.trim()) {
     const euros = Number(values.depositAmount.replace(',', '.'));
-    if (!Number.isNaN(euros)) payload.depositAmount = Math.round(euros * 100);
+    if (!Number.isNaN(euros)) desired.depositAmountCents = Math.round(euros * 100);
   }
-  if (values.depositCurrency.trim()) payload.depositCurrency = values.depositCurrency.trim();
-  if (values.creditCardRequired) payload.creditCardRequired = values.creditCardRequired === 'true';
-  if (values.foreignTravelPolicy) payload.foreignTravelPolicy = values.foreignTravelPolicy;
-  if (values.additionalDriverPolicy) payload.additionalDriverPolicy = values.additionalDriverPolicy;
-  if (values.youngDriverPolicy) payload.youngDriverPolicy = values.youngDriverPolicy;
-  if (values.insuranceRequirement.trim()) payload.insuranceRequirement = values.insuranceRequirement.trim();
-  if (values.manualApprovalRequired) {
-    payload.manualApprovalRequired = values.manualApprovalRequired === 'true';
+  if (values.depositCurrency.trim()) {
+    desired.depositCurrency = values.depositCurrency.trim().toUpperCase();
   }
-  if (values.notes.trim()) payload.notes = values.notes.trim();
+  if (values.creditCardRequired === 'true') desired.creditCardRequired = true;
+  else if (values.creditCardRequired === 'false') desired.creditCardRequired = false;
+  if (values.foreignTravelPolicy) desired.foreignTravelPolicy = values.foreignTravelPolicy;
+  if (values.additionalDriverPolicy) desired.additionalDriverPolicy = values.additionalDriverPolicy;
+  if (values.youngDriverPolicy) desired.youngDriverPolicy = values.youngDriverPolicy;
+  if (values.insuranceRequirement.trim()) {
+    desired.insuranceRequirement = values.insuranceRequirement.trim();
+  }
+  if (values.manualApprovalRequired === 'true') desired.manualApprovalRequired = true;
+  else if (values.manualApprovalRequired === 'false') desired.manualApprovalRequired = false;
+  if (values.notes.trim()) desired.notes = values.notes.trim();
+
+  return desired;
+}
+
+function baselineValuesEqual(
+  left: RentalRulePatchBaseline[keyof RentalRulePatchBaseline],
+  right: RentalRulePatchBaseline[keyof RentalRulePatchBaseline],
+): boolean {
+  return left === right;
+}
+
+/**
+ * Build a PATCH payload with three-state semantics:
+ * - omitted key → leave existing value unchanged (edit mode)
+ * - concrete value → set value (including explicit false)
+ * - null → clear field / inherit from parent layer
+ */
+export function formValuesToPatchPayload(
+  values: RentalRuleFormValues,
+  baseline: Partial<RentalRuleFields> | null | undefined,
+  mode: RentalRulePatchMode,
+): Record<string, unknown> {
+  const base = extractRulePatchBaseline(baseline);
+  const desired = formValuesToDesiredState(values);
+  const payload: Record<string, unknown> = {};
+  const keys = Object.keys(desired) as (keyof RentalRulePatchBaseline)[];
+
+  for (const key of keys) {
+    const next = desired[key];
+    if (mode === 'create') {
+      if (next !== null) payload[key] = next;
+      continue;
+    }
+    if (!baselineValuesEqual(next, base[key])) {
+      payload[key] = next;
+    }
+  }
+
   return payload;
+}
+
+/** @deprecated Use formValuesToPatchPayload for edit flows with inherit/clear semantics. */
+export function formValuesToPayload(values: RentalRuleFormValues): Record<string, unknown> {
+  return formValuesToPatchPayload(values, null, 'create');
 }
 
 export function validateRuleForm(values: RentalRuleFormValues): string | null {

@@ -118,26 +118,35 @@ export function normalizeRuleDtoInput<T extends RentalRuleFieldsInput>(
   if (normalized.depositAmountCents === undefined && normalized.depositAmount != null) {
     normalized.depositAmountCents = normalized.depositAmount;
   }
+  for (const key of ['insuranceRequirement', 'notes', 'depositCurrency'] as const) {
+    const value = normalized[key];
+    if (typeof value === 'string' && value.trim() === '') {
+      (normalized as Record<string, unknown>)[key] = null;
+    }
+  }
   return normalized;
 }
+
+export type RentalRulePersistenceLayer = 'organization' | 'category' | 'vehicleOverride';
+
+const RULE_PATCH_KEYS = [
+  'minimumAgeYears',
+  'minimumLicenseHoldingMonths',
+  'depositAmountCents',
+  'depositCurrency',
+  'creditCardRequired',
+  'foreignTravelPolicy',
+  'additionalDriverPolicy',
+  'youngDriverPolicy',
+  'insuranceRequirement',
+  'manualApprovalRequired',
+  'notes',
+] as const satisfies readonly (keyof RentalRuleFieldSet)[];
 
 export function pickRulePatch<T extends RentalRuleFieldsInput>(dto: T): Partial<RentalRuleFieldSet> & { isActive?: boolean } {
   const normalized = normalizeRuleDtoInput(dto);
   const patch: Record<string, unknown> = {};
-  const keys = [
-    'minimumAgeYears',
-    'minimumLicenseHoldingMonths',
-    'depositAmountCents',
-    'depositCurrency',
-    'creditCardRequired',
-    'foreignTravelPolicy',
-    'additionalDriverPolicy',
-    'youngDriverPolicy',
-    'insuranceRequirement',
-    'manualApprovalRequired',
-    'notes',
-    'isActive',
-  ] as const;
+  const keys = [...RULE_PATCH_KEYS, 'isActive'] as const;
   for (const key of keys) {
     if (key in normalized && (normalized as Record<string, unknown>)[key] !== undefined) {
       patch[key] = (normalized as Record<string, unknown>)[key];
@@ -146,23 +155,27 @@ export function pickRulePatch<T extends RentalRuleFieldsInput>(dto: T): Partial<
   return patch as Partial<RentalRuleFieldSet> & { isActive?: boolean };
 }
 
-export function prismaRuleColumns(patch: Record<string, unknown>) {
-  const keys = [
-    'minimumAgeYears',
-    'minimumLicenseHoldingMonths',
-    'depositAmountCents',
-    'depositCurrency',
-    'creditCardRequired',
-    'foreignTravelPolicy',
-    'additionalDriverPolicy',
-    'youngDriverPolicy',
-    'insuranceRequirement',
-    'manualApprovalRequired',
-    'notes',
-  ] as const;
-  const cols: Record<string, unknown> = {};
-  for (const key of keys) {
-    if (key in patch) cols[key] = patch[key];
+export function toPrismaRuleColumns(
+  patch: Partial<RentalRuleFieldSet> & { isActive?: boolean },
+  options: { layer: RentalRulePersistenceLayer } = { layer: 'organization' },
+) {
+  const allowed = new Set<string>([...RULE_PATCH_KEYS, 'isActive']);
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (!allowed.has(key) || value === undefined) continue;
+    if (key === 'depositCurrency' && value === null && options.layer === 'organization') {
+      continue;
+    }
+    data[key] = value;
   }
-  return cols;
+  return data;
+}
+
+export function prismaRuleColumns(
+  patch: Partial<RentalRuleFieldSet> & { isActive?: boolean },
+  options: { layer: RentalRulePersistenceLayer } = { layer: 'category' },
+) {
+  const data = toPrismaRuleColumns(patch, options);
+  delete data.isActive;
+  return data;
 }

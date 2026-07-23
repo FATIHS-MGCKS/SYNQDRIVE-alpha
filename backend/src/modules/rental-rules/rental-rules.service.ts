@@ -19,6 +19,7 @@ import {
   formatVehicleRentalOverride,
   pickRulePatch,
   prismaRuleColumns,
+  toPrismaRuleColumns,
   vehicleDisplayName,
   extractRuleFields,
   hasActiveRuleOverrides,
@@ -97,28 +98,11 @@ export class RentalRulesService {
     return { ...formatOrganizationRentalRules(row), configured: true };
   }
 
-  private toPrismaRuleData(patch: ReturnType<typeof pickRulePatch>) {
-    const allowed = new Set([
-      'minimumAgeYears',
-      'minimumLicenseHoldingMonths',
-      'depositAmountCents',
-      'depositCurrency',
-      'creditCardRequired',
-      'foreignTravelPolicy',
-      'additionalDriverPolicy',
-      'youngDriverPolicy',
-      'insuranceRequirement',
-      'manualApprovalRequired',
-      'notes',
-      'isActive',
-    ]);
-    const data: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(patch)) {
-      if (!allowed.has(key) || value === undefined) continue;
-      if (key === 'depositCurrency' && value === null) continue;
-      data[key] = value;
-    }
-    return data;
+  private toPrismaRuleData(
+    patch: ReturnType<typeof pickRulePatch>,
+    layer: 'organization' | 'category' | 'vehicleOverride' = 'organization',
+  ) {
+    return toPrismaRuleColumns(patch, { layer });
   }
 
   async upsertOrganizationDefaults(
@@ -127,7 +111,7 @@ export class RentalRulesService {
     ctx: RentalRulesMutationContext = {},
   ) {
     await this.assertOrgExists(orgId);
-    const patch = this.toPrismaRuleData(pickRulePatch(dto));
+    const patch = this.toPrismaRuleData(pickRulePatch(dto), 'organization');
     await this.rentalRulePermissions.assertPublishIfActiveChange(ctx.actor, orgId, patch.isActive as boolean | undefined);
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
@@ -206,7 +190,7 @@ export class RentalRulesService {
     ctx: RentalRulesMutationContext = {},
   ) {
     await this.assertOrgExists(orgId);
-    const patch = this.toPrismaRuleData(pickRulePatch(dto));
+    const patch = this.toPrismaRuleData(pickRulePatch(dto), 'category');
     const requestedActive =
       (patch.isActive as boolean | undefined) ??
       (dto.isActive !== undefined ? dto.isActive : undefined);
@@ -222,7 +206,7 @@ export class RentalRulesService {
         color: dto.color ?? null,
         icon: dto.icon ?? null,
         isActive: (patch.isActive as boolean | undefined) ?? dto.isActive ?? true,
-        ...prismaRuleColumns(patch),
+        ...prismaRuleColumns(patch, { layer: 'category' }),
       },
       include: { _count: { select: { vehicles: true } } },
     });
@@ -236,7 +220,7 @@ export class RentalRulesService {
     ctx: RentalRulesMutationContext = {},
   ) {
     await this.loadCategory(orgId, categoryId);
-    const patch = this.toPrismaRuleData(pickRulePatch(dto));
+    const patch = this.toPrismaRuleData(pickRulePatch(dto), 'category');
     await this.rentalRulePermissions.assertPublishIfActiveChange(
       ctx.actor,
       orgId,
@@ -245,7 +229,7 @@ export class RentalRulesService {
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const data: Prisma.RentalVehicleCategoryUpdateInput = {
-      ...prismaRuleColumns(patch),
+      ...prismaRuleColumns(patch, { layer: 'category' }),
     };
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.description !== undefined) data.description = dto.description?.trim() || null;
@@ -355,7 +339,7 @@ export class RentalRulesService {
 
   async upsertVehicleOverrides(orgId: string, vehicleId: string, dto: UpsertVehicleRentalOverridesDto) {
     await this.loadVehicle(orgId, vehicleId);
-    const patch = this.toPrismaRuleData(pickRulePatch(dto));
+    const patch = this.toPrismaRuleData(pickRulePatch(dto), 'vehicleOverride');
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const row = await this.prisma.vehicleRentalRequirementOverride.upsert({
@@ -363,9 +347,9 @@ export class RentalRulesService {
       create: {
         organizationId: orgId,
         vehicleId,
-        ...prismaRuleColumns(patch),
+        ...prismaRuleColumns(patch, { layer: 'vehicleOverride' }),
       },
-      update: prismaRuleColumns(patch),
+      update: prismaRuleColumns(patch, { layer: 'vehicleOverride' }),
     });
     return formatVehicleRentalOverride(row);
   }

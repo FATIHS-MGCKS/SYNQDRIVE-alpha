@@ -5,7 +5,7 @@ import { api } from '../../../lib/api';
 import type { VehicleRentalRequirementsDto } from '../settings/rental-rules/rental-rules.types';
 import { RentalRuleFieldsForm } from '../settings/rental-rules/RentalRuleFieldsForm';
 import {
-  formValuesToPayload,
+  formValuesToPatchPayload,
   parseApiError,
   rulesToFormValues,
   validateRuleForm,
@@ -55,6 +55,7 @@ export function VehicleOverrideEditorDrawer({
           minimumAgeYears: null,
           minimumLicenseHoldingMonths: null,
           depositAmountCents: null,
+          depositCurrency: null,
           creditCardRequired: null,
           foreignTravelPolicy: null,
           additionalDriverPolicy: null,
@@ -82,27 +83,8 @@ export function VehicleOverrideEditorDrawer({
     setFormError(null);
     setSaving(true);
     try {
-      const payload = formValuesToPayload(values);
-      const ov = requirements?.overrides;
-      const clearKeys: Record<string, null> = {};
-      const fields = [
-        'minimumAgeYears',
-        'minimumLicenseHoldingMonths',
-        'depositAmountCents',
-        'creditCardRequired',
-        'foreignTravelPolicy',
-        'additionalDriverPolicy',
-        'youngDriverPolicy',
-        'insuranceRequirement',
-        'manualApprovalRequired',
-        'notes',
-      ] as const;
-      for (const key of fields) {
-        if (!(key in payload) && ov && ov[key as keyof typeof ov] != null) {
-          clearKeys[key] = null;
-        }
-      }
-      await api.rentalRules.patchVehicleOverrides(orgId, vehicleId, { ...clearKeys, ...payload });
+      const payload = formValuesToPatchPayload(values, requirements?.overrides, 'edit');
+      await api.rentalRules.patchVehicleOverrides(orgId, vehicleId, payload);
       toast.success('Vehicle overrides saved');
       onSaved();
       onOpenChange(false);

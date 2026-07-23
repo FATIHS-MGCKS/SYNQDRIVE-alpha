@@ -4,7 +4,7 @@ import { DetailDrawer } from '../../../../components/patterns';
 import type { OrganizationRentalRulesDto } from './rental-rules.types';
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
 import {
-  formValuesToPayload,
+  formValuesToPatchPayload,
   rulesToFormValues,
   validateRuleForm,
 } from './rental-rules.utils';
@@ -44,7 +44,9 @@ export function DefaultRulesDrawer({
     }
     setFormError(null);
     try {
-      await onSave(formValuesToPayload(values));
+      await onSave(
+        formValuesToPatchPayload(values, defaults, defaults?.configured ? 'edit' : 'create'),
+      );
       toast.success('Default rules saved');
       onOpenChange(false);
     } catch (e: unknown) {
