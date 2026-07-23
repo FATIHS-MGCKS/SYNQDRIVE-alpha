@@ -15,6 +15,8 @@ import { BookingsPage } from './bookings/BookingsPage';
 import { BookingDossier } from './booking-detail/BookingDossier';
 import { StationSelectFields } from './stations/StationSelectFields';
 import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerStatusTone } from './bookings/bookingStatus';
+import { invalidateBookingsList } from '../lib/bookings-invalidation';
+import { useBookingMutations } from '../hooks/useBookingMutations';
 // V4.6.76 Rental Health V1 — surface the rental_blocked gate on the
 // "Pickup bestätigen" flow so dispatchers can't even try to hand over a
 // vehicle that the backend will refuse. The BookingsService.create gate
@@ -95,34 +97,61 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   // V4.6.75 — open the Übergabeprotokoll dialog (pickup/return) via the
   // global HandoverProvider mounted in App.tsx.
   const { openHandover } = useHandover();
-  const [apiBookings, setApiBookings] = useState<BookingUiRow[]>([]);
-  const [apiLoaded, setApiLoaded] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [rawApiBookings, setRawApiBookings] = useState<any[]>([]);
+  const { cancelBooking, markNoShow, mutating: bookingMutating } = useBookingMutations();
+  const [drawerBooking, setDrawerBooking] = useState<BookingUiRow | null>(null);
+  const [cancelBookingPreview, setCancelBookingPreview] = useState<BookingUiRow | null>(null);
   const [apiCustomers, setApiCustomers] = useState<any[]>([]);
   const [apiUsers, setApiUsers] = useState<any[]>([]);
   const [apiStations, setApiStations] = useState<any[]>([]);
 
+  const [bookingsRefreshToken, setBookingsRefreshToken] = useState(0);
+
   const loadBookings = useCallback(() => {
-    if (!orgId) return;
-    setApiError(null);
-    api.bookings
-      .list(orgId, { limit: 500 })
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
-        setRawApiBookings(list);
-        setApiBookings(list.map(mapApiBooking));
-        setApiLoaded(true);
-      })
-      .catch(() => {
-        setApiError('Buchungen konnten nicht geladen werden.');
-        setApiLoaded(true);
-      });
-  }, [orgId]);
+    setBookingsRefreshToken((v) => v + 1);
+    invalidateBookingsList();
+  }, []);
 
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  useEffect(() => {
+    if (!popupBookingId || !orgId) {
+      setDrawerBooking(null);
+      return;
+    }
+    let cancelled = false;
+    api.bookings
+      .get(orgId, popupBookingId)
+      .then((res) => {
+        if (!cancelled) setDrawerBooking(mapApiBooking(res));
+      })
+      .catch(() => {
+        if (!cancelled) setDrawerBooking(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [popupBookingId, orgId]);
+
+  useEffect(() => {
+    if (!cancelConfirmId || !orgId) {
+      setCancelBookingPreview(null);
+      return;
+    }
+    let cancelled = false;
+    api.bookings
+      .get(orgId, cancelConfirmId)
+      .then((res) => {
+        if (!cancelled) setCancelBookingPreview(mapApiBooking(res));
+      })
+      .catch(() => {
+        if (!cancelled) setCancelBookingPreview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cancelConfirmId, orgId]);
 
   // V4.6.75 — Refetch after a handover (pickup/return) was confirmed from
   // any entry point (detail sheet, Dashboard tile, RightSidebar).
@@ -404,7 +433,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
     const currentBookingId = isEditMode ? (inlineEdit.id || inlineEdit._bookingId) : null;
 
-    apiBookings.forEach(b => {
+    [].forEach((b: BookingUiRow) => {
       if (currentBookingId && b.id === currentBookingId) return;
       if (b.vehicle !== vehicleName) return;
       if (b.status === 'cancelled') return;
@@ -777,58 +806,41 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   };
 
   const executeNoShow = async () => {
-    if (!noShowConfirmId || !orgId || noShowSubmitting) return;
-    const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
-    const booking = allBk.find(b => b.id === noShowConfirmId);
+    if (!noShowConfirmId || noShowSubmitting) return;
+    setNoShowSubmitting(true);
     try {
-      setNoShowSubmitting(true);
-      await api.bookings.markNoShow(orgId, noShowConfirmId, noShowReason.trim() || null);
-      onBookingCancelled?.(noShowConfirmId, { vehicleId: booking?.vehicleId ?? null });
-      toast.success('Als No-Show markiert', {
-        description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
-        duration: 3000,
+      await markNoShow(noShowConfirmId, {
+        reason: noShowReason.trim() || null,
+        vehicleId: drawerBooking?.vehicleId ?? null,
+        onSuccess: async () => {
+          onBookingCancelled?.(noShowConfirmId, { vehicleId: drawerBooking?.vehicleId ?? null });
+          if (detailBookingId === noShowConfirmId) setDetailBookingId(null);
+          setNoShowConfirmId(null);
+          setNoShowReason('');
+          loadBookings();
+        },
       });
-      loadBookings();
-      if (detailBookingId === noShowConfirmId) {
-        setDetailBookingId(null);
-      }
-      setNoShowConfirmId(null);
-      setNoShowReason('');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'No-Show konnte nicht gesetzt werden';
-      toast.error('Fehler beim Markieren als No-Show', { description: String(msg) });
     } finally {
       setNoShowSubmitting(false);
     }
   };
 
   const executeCancel = async () => {
-    if (!cancelConfirmId || !orgId) return;
-    const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
-    const booking = allBk.find(b => b.id === cancelConfirmId);
+    if (!cancelConfirmId || bookingMutating) return;
     const isPersistedId = typeof cancelConfirmId === 'string' && !cancelConfirmId.startsWith('new-');
-    try {
-      if (isPersistedId) {
-        await api.bookings.cancel(orgId, cancelConfirmId);
-      }
-      setLocalCancelled(prev => [...prev, cancelConfirmId]);
-      onBookingCancelled?.(cancelConfirmId, { vehicleId: booking?.vehicleId ?? null });
-      toast.success('Buchung storniert', {
-        description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
-        duration: 3000,
-      });
-      loadBookings();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Stornieren fehlgeschlagen';
-      toast.error('Fehler beim Stornieren', { description: String(msg) });
+    if (!isPersistedId) {
       setCancelConfirmId(null);
       return;
     }
-    // If we're in detail view for this booking, navigate back
-    if (detailBookingId === cancelConfirmId) {
-      setDetailBookingId(null);
-    }
-    setCancelConfirmId(null);
+    await cancelBooking(cancelConfirmId, {
+      vehicleId: cancelBookingPreview?.vehicleId ?? null,
+      onSuccess: async () => {
+        onBookingCancelled?.(cancelConfirmId, { vehicleId: cancelBookingPreview?.vehicleId ?? null });
+        if (detailBookingId === cancelConfirmId) setDetailBookingId(null);
+        setCancelConfirmId(null);
+        loadBookings();
+      },
+    });
   };
 
   const today = new Date();
@@ -870,11 +882,10 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     return { active: [], upcoming: [], completed: [] };
   };
 
-  // Use API bookings once loaded (including empty list); otherwise empty until load / no org
-  const useApiData = apiLoaded;
-  const { active: generatedActive, upcoming: generatedUpcoming, completed: generatedCompleted } = useApiData
-    ? { active: apiBookings.filter((b: any) => b.status === 'active'), upcoming: apiBookings.filter((b: any) => b.status === 'confirmed' || b.status === 'pending'), completed: apiBookings.filter((b: any) => b.status === 'completed') }
-    : generateBookingsForMonth(displayMonth, displayYear);
+  // Legacy calendar/metrics helpers retained for breadcrumb compatibility — planner data lives in BookingsPage.
+  const apiLoaded = false;
+  const apiBookings: BookingUiRow[] = [];
+  const { active: generatedActive, upcoming: generatedUpcoming, completed: generatedCompleted } = generateBookingsForMonth(displayMonth, displayYear);
 
   // Merge additional bookings (created via NewBookingView) into correct category for current month.
   // V4.6.68 — Deduplicate against `apiBookings` by id. When a booking is created via
@@ -921,12 +932,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   // V4.6.76 Rental Health V1 — derive the detail booking's vehicle at the
   // top level so we can unconditionally call useVehicleHealth (hooks MUST
   // run on every render). Passing a null vehicleId short-circuits the fetch.
-  const detailVehicleId = useMemo(() => {
-    if (!detailBookingId) return null;
-    const b = plannerBookings.find((x) => x.id === detailBookingId) as BookingUiRow | undefined;
-    const raw = b?._raw as { vehicleId?: string } | undefined;
-    return (b?.vehicleId ?? raw?.vehicleId ?? null) as string | null;
-  }, [detailBookingId, plannerBookings]);
+  const detailVehicleId = useMemo(() => null, []);
   const { data: detailHealth } = useVehicleHealth(orgId, detailVehicleId);
 
   // V4.6.99 — Cross-View-Deep-Link konsumieren. Wenn die App einen
@@ -1232,10 +1238,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     [fleetVehicles, systemDark],
   );
 
-  const popupBooking = useMemo(() => {
-    if (!popupBookingId) return null;
-    return plannerBookings.find((b) => b.id === popupBookingId) ?? null;
-  }, [popupBookingId, plannerBookings]);
+  const popupBooking = drawerBooking;
 
   const listSectionTitle =
     activeTab === null
@@ -1276,10 +1279,8 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   return (
     <>
       <BookingsPage
-        bookings={plannerBookings}
-        loading={!apiLoaded && !apiError}
-        error={apiError}
-        onRetry={loadBookings}
+        orgId={orgId}
+        refreshToken={bookingsRefreshToken}
         fleetVehicles={fleetVehicles}
         stations={apiStations.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }))}
         onCreateNewBooking={onCreateNewBooking}
@@ -1579,165 +1580,6 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         )}
       </DetailDrawer>
 
-      <FormDialog
-        open={!!editingBooking}
-        onOpenChange={(open) => { if (!open) setEditingBooking(null); }}
-        maxWidthClassName="sm:max-w-2xl"
-        title="Buchung bearbeiten"
-        description={editingBooking ? `Ref: ${editingBooking.bookingRef}` : undefined}
-        bodyClassName="p-0"
-        footer={(
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setEditingBooking(null)}
-              className="rounded-lg px-3 py-2 text-xs text-foreground transition-all hover:bg-muted"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              onClick={saveEdit}
-              className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
-            >
-              <Icon name="save" className="w-3.5 h-3.5" />
-              Änderungen speichern
-            </button>
-          </div>
-        )}
-      >
-        {editingBooking && (
-            <div className="max-h-[min(70vh,100dvh-14rem)] overflow-y-auto px-3 py-3 space-y-5">
-              {/* Section: Kunde & Fahrzeug */}
-              <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Kunde & Fahrzeug</div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Kunde</label>
-                    <input type="text" value={editForm.customer} onChange={(e) => setEditForm(f => ({ ...f, customer: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
-                  </div>
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Fahrzeug</label>
-                    <div className="flex items-center gap-2">
-                      <BrandLogoMark
-                        brand={getBrandFromModel(editForm.vehicle)}
-                        isDarkMode={systemDark}
-                      />
-                      <select
-                        value={editForm.vehicle}
-                        onChange={(e) => {
-                          const selected = vehicleOptions.find((v) => v.name === e.target.value);
-                          setEditForm((f) => ({
-                            ...f,
-                            vehicle: e.target.value,
-                            plate: selected?.plate ?? f.plate,
-                          }));
-                        }}
-                        className={`min-w-0 flex-1 px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}
-                      >
-                        {vehicleOptions.length === 0 ? (
-                          <option value="">Keine Fahrzeuge verfügbar</option>
-                        ) : (
-                          vehicleOptions.map((v) => (
-                            <option key={v.id} value={v.name}>
-                              {v.name} · {v.plate}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Kennzeichen</label>
-                    <input type="text" value={editForm.plate} onChange={(e) => setEditForm(f => ({ ...f, plate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section: Zeitraum */}
-              <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Zeitraum</div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Startdatum</label>
-                    <input type="text" value={editForm.startDate} onChange={(e) => setEditForm(f => ({ ...f, startDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
-                  </div>
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Abholzeit</label>
-                    <input type="text" value={editForm.startTime} onChange={(e) => setEditForm(f => ({ ...f, startTime: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
-                  </div>
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Enddatum</label>
-                    <input type="text" value={editForm.endDate} onChange={(e) => setEditForm(f => ({ ...f, endDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
-                  </div>
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Rückgabezeit</label>
-                    <input type="text" value={editForm.endTime} onChange={(e) => setEditForm(f => ({ ...f, endTime: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section: Stationen */}
-              <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Stationen</div>
-                <StationSelectFields
-                  stations={apiStations}
-                  pickupStationId={editForm.pickupStationId}
-                  returnStationId={editForm.returnStationId}
-                  sameReturnStation={editSameReturnStation}
-                  onPickupChange={(id) => {
-                    setEditForm((f) => ({
-                      ...f,
-                      pickupStationId: id,
-                      returnStationId: editSameReturnStation ? id : f.returnStationId,
-                    }));
-                  }}
-                  onReturnChange={(id) => setEditForm((f) => ({ ...f, returnStationId: id }))}
-                  onSameReturnChange={setEditSameReturnStation}
-                  compact
-                />
-              </div>
-
-              {/* Section: Versicherung & Zahlung */}
-              <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Versicherung & Zahlung</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Versicherung</label>
-                    <select value={editForm.insurance} onChange={(e) => setEditForm(f => ({ ...f, insurance: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
-                      <option value="Vollkasko">Vollkasko</option>
-                      <option value="Teilkasko">Teilkasko</option>
-                      <option value="Haftpflicht">Haftpflicht</option>
-                      <option value="Premium Vollkasko">Premium Vollkasko</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Zahlungsmethode</label>
-                    <select value={editForm.paymentMethod} onChange={(e) => setEditForm(f => ({ ...f, paymentMethod: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
-                      <option value="Kreditkarte">Kreditkarte</option>
-                      <option value="PayPal">PayPal</option>
-                      <option value="Überweisung">Überweisung</option>
-                      <option value="Lastschrift">Lastschrift</option>
-                      <option value="Bar">Bar</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section: Notizen */}
-              <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Notizen</div>
-                <textarea
-                  value={editForm.notes}
-                  onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={3}
-                  placeholder="Optionale Anmerkungen zur Buchung..."
-                  className={`w-full px-3 py-2 rounded-lg text-xs border transition-all resize-none border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] placeholder:text-muted-foreground outline-none`}
-                />
-              </div>
-            </div>
-        )}
-      </FormDialog>
 
       <ConfirmDialog
         open={!!cancelConfirmId}
@@ -1749,30 +1591,26 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         tone="critical"
         onConfirm={executeCancel}
       >
-        {(() => {
-        const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
-        const booking = allBk.find(b => b.id === cancelConfirmId);
-        return booking ? (
+        {cancelBookingPreview ? (
                   <div className={`rounded-lg p-3 my-2 text-left text-xs space-y-1.5 bg-muted`}>
                     <div className="flex justify-between">
                       <span className={'text-muted-foreground'}>Kunde</span>
-                      <span className={'text-foreground'}>{booking.customer}</span>
+                      <span className={'text-foreground'}>{cancelBookingPreview.customer}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className={'text-muted-foreground'}>Fahrzeug</span>
-                      <span className={'text-foreground'}>{booking.vehicle}</span>
+                      <span className={'text-foreground'}>{cancelBookingPreview.vehicle}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className={'text-muted-foreground'}>Zeitraum</span>
-                      <span className={'text-foreground'}>{booking.startDate} – {booking.endDate}</span>
+                      <span className={'text-foreground'}>{cancelBookingPreview.startDate} – {cancelBookingPreview.endDate}</span>
                     </div>
                     <div className={`flex justify-between pt-1.5 border-t border-border`}>
                       <span className={'text-muted-foreground'}>Betrag</span>
-                      <span className={'text-[color:var(--status-critical)]'}>{booking.revenue}</span>
+                      <span className={'text-[color:var(--status-critical)]'}>{cancelBookingPreview.revenue}</span>
                     </div>
                   </div>
-        ) : null;
-        })()}
+        ) : null}
       </ConfirmDialog>
     </>
   );

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { DataTable, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import type { BookingUiRow } from '../../lib/entityMappers';
+import type { BookingTableSortBy, BookingTableSortOrder } from './bookingTypes';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, formatCents, rowStatus } from './bookingUtils';
 
@@ -11,6 +12,56 @@ interface BookingsTableViewProps {
   onRowClick: (id: string) => void;
   onEdit?: (id: string) => void;
   onCancel?: (id: string) => void;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  hasNextPage?: boolean;
+  onPageChange?: (page: number) => void;
+  sortBy?: BookingTableSortBy;
+  sortOrder?: BookingTableSortOrder;
+  onSortChange?: (sortBy: BookingTableSortBy) => void;
+}
+
+function sortAria(
+  column: BookingTableSortBy,
+  sortBy?: BookingTableSortBy,
+  sortOrder?: BookingTableSortOrder,
+): 'ascending' | 'descending' | 'none' {
+  if (sortBy !== column) return 'none';
+  return sortOrder === 'asc' ? 'ascending' : 'descending';
+}
+
+function SortableHeader({
+  label,
+  column,
+  sortBy,
+  sortOrder,
+  onSortChange,
+}: {
+  label: string;
+  column: BookingTableSortBy;
+  sortBy?: BookingTableSortBy;
+  sortOrder?: BookingTableSortOrder;
+  onSortChange?: (sortBy: BookingTableSortBy) => void;
+}) {
+  if (!onSortChange) return label;
+  const active = sortBy === column;
+  return (
+    <button
+      type="button"
+      onClick={() => onSortChange(column)}
+      className={`inline-flex items-center gap-1 font-semibold ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+    >
+      {label}
+      {active && (
+        <Icon
+          name={sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'}
+          className="w-3 h-3"
+          aria-hidden
+        />
+      )}
+    </button>
+  );
 }
 
 export function BookingsTableView({
@@ -19,12 +70,29 @@ export function BookingsTableView({
   onRowClick,
   onEdit,
   onCancel,
+  page = 1,
+  pageSize = 50,
+  total,
+  hasNextPage = false,
+  onPageChange,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: BookingsTableViewProps) {
   const columns = useMemo(
     () => [
       {
         key: 'ref',
-        header: 'Buchung',
+        header: (
+          <SortableHeader
+            label="Buchung"
+            column="createdAt"
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={onSortChange}
+          />
+        ),
+        ariaSort: sortAria('createdAt', sortBy, sortOrder),
         cell: (b: BookingUiRow) => (
           <div>
             <div className="font-mono text-[11px] font-semibold">{bookingRef(b.id)}</div>
@@ -49,7 +117,16 @@ export function BookingsTableView({
       },
       {
         key: 'period',
-        header: 'Zeitraum',
+        header: (
+          <SortableHeader
+            label="Zeitraum"
+            column="startDate"
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={onSortChange}
+          />
+        ),
+        ariaSort: sortAria('startDate', sortBy, sortOrder),
         cell: (b: BookingUiRow) => (
           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
             {b.startDate} – {b.endDate}
@@ -85,11 +162,11 @@ export function BookingsTableView({
         ),
       },
     ],
-    [],
+    [onSortChange, sortBy, sortOrder],
   );
 
   return (
-    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] space-y-3">
       <DataTable
         columns={columns}
         rows={rows}
@@ -140,6 +217,31 @@ export function BookingsTableView({
           />
         }
       />
+      {onPageChange && (
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+          <span>
+            {(page - 1) * pageSize + 1}–{(page - 1) * pageSize + rows.length} von {total ?? rows.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => onPageChange(Math.max(1, page - 1))}
+              className="px-2 py-1 rounded border border-border disabled:opacity-40"
+            >
+              Zurück
+            </button>
+            <button
+              type="button"
+              disabled={!hasNextPage || loading}
+              onClick={() => onPageChange(page + 1)}
+              className="px-2 py-1 rounded border border-border disabled:opacity-40"
+            >
+              Weiter
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

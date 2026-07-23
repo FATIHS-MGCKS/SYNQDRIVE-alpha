@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
-import { api } from '../../lib/api';
+import { fetchAllBookingsInRange, isAbortError } from '../../lib/bookings-pagination';
+import { BOOKINGS_LIST_INVALIDATED_EVENT } from '../lib/bookings-invalidation';
 import {
   buildTimelineHorizon,
   resolveHorizonAnchorForMode,
@@ -14,10 +15,6 @@ import {
   normalizeBookingStatus,
   type BookingUiStatus,
 } from './bookings/bookingStatus';
-import {
-  unwrapBookingListMeta,
-  unwrapBookingListResponse,
-} from './bookings/bookingUtils';
 import { Icon } from './ui/Icon';
 import { VehicleAvailabilityTimeline } from './vehicle-bookings/VehicleAvailabilityTimeline';
 import { VehicleBookingQuickDrawer } from './vehicle-bookings/VehicleBookingQuickDrawer';
@@ -43,7 +40,7 @@ interface VehicleBookingsViewProps {
 interface VehicleBookingRow extends VehicleAgendaBooking {}
 
 const MS_DAY = 24 * 60 * 60 * 1000;
-const VEHICLE_BOOKINGS_LIMIT = 500;
+const VEHICLE_BOOKINGS_PAGE_SIZE = 100;
 const DEFAULT_RANGE_MODE: TimelineRangeMode = 14;
 
 function parseDate(value: unknown): Date | null {
@@ -112,6 +109,8 @@ export function VehicleBookingsView({
   const [rangeAnchor, setRangeAnchor] = useState(() => resolveHorizonAnchorForMode(DEFAULT_RANGE_MODE));
   const [drawerBookingId, setDrawerBookingId] = useState<string | null>(null);
   const [drawerFallback, setDrawerFallback] = useState<VehicleAgendaBooking | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
 
   const horizon = useMemo(
     () => buildTimelineHorizon(rangeAnchor, rangeMode),
@@ -119,10 +118,16 @@ export function VehicleBookingsView({
   );
 
   const loadBookings = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+
     if (!orgId || !vehicle?.id) {
       setBookings([]);
       setError(null);
       setTruncated(false);
+      setLoading(false);
       return;
     }
 
@@ -131,31 +136,37 @@ export function VehicleBookingsView({
     setTruncated(false);
 
     try {
-      const res = await api.bookings.list(orgId, {
-        vehicleId: vehicle.id,
-        from: horizon.fromIso,
-        to: horizon.toIso,
-        page: 1,
-        limit: VEHICLE_BOOKINGS_LIMIT,
-      });
+      const result = await fetchAllBookingsInRange(
+        orgId,
+        {
+          vehicleId: vehicle.id,
+          from: horizon.fromIso,
+          to: horizon.toIso,
+          sortBy: 'startDate',
+          sortOrder: 'asc',
+          limit: VEHICLE_BOOKINGS_PAGE_SIZE,
+        },
+        { signal: controller.signal },
+      );
 
-      const rawRows = unwrapBookingListResponse(res);
-      const meta = unwrapBookingListMeta(res);
-      if (meta && meta.total > rawRows.length) {
-        setTruncated(true);
-      }
+      if (requestId !== requestIdRef.current) return;
 
-      const parsed = rawRows
+      setTruncated(result.meta.hasNextPage);
+
+      const parsed = result.data
         .map((row) => buildBooking(row as Record<string, unknown>))
         .filter((b): b is VehicleBookingRow => !!b)
         .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
       setBookings(parsed);
-    } catch {
+    } catch (err: unknown) {
+      if (isAbortError(err) || requestId !== requestIdRef.current) return;
       setBookings([]);
       setError('Buchungen für dieses Fahrzeug konnten nicht geladen werden.');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [horizon.fromIso, horizon.toIso, orgId, vehicle?.id]);
 
@@ -177,12 +188,19 @@ export function VehicleBookingsView({
 
   useEffect(() => {
     void loadBookings();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [loadBookings]);
 
   useEffect(() => {
-    const onHandover = () => void loadBookings();
-    window.addEventListener('handover:completed', onHandover as EventListener);
-    return () => window.removeEventListener('handover:completed', onHandover as EventListener);
+    const onRefresh = () => void loadBookings();
+    window.addEventListener('handover:completed', onRefresh as EventListener);
+    window.addEventListener(BOOKINGS_LIST_INVALIDATED_EVENT, onRefresh);
+    return () => {
+      window.removeEventListener('handover:completed', onRefresh as EventListener);
+      window.removeEventListener(BOOKINGS_LIST_INVALIDATED_EVENT, onRefresh);
+    };
   }, [loadBookings]);
 
   const handleSelectBooking = useCallback(
