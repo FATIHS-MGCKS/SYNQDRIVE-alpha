@@ -47,6 +47,7 @@ describe('Booking wizard eligibility E2E flow', () => {
     auditLogger,
     eligibilityApproval,
     eligibilityDecision,
+    { enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }) } as never,
   );
 
   const eligibilityEnforcement = {

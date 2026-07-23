@@ -95,7 +95,7 @@ function baseOrgRules() {
 describe('Vehicle rental override reset', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let svc: RentalRulesService;
-  let activityLog: { log: jest.Mock };
+  let businessAudit: { enqueue: jest.Mock; flushCritical: jest.Mock };
   let revisions: {
     upsertDraft: jest.Mock;
     publishDraft: jest.Mock;
@@ -106,7 +106,10 @@ describe('Vehicle rental override reset', () => {
   beforeEach(() => {
     prisma = makePrisma();
     const effective = new RentalEffectiveRulesService(prisma as never);
-    activityLog = { log: jest.fn().mockResolvedValue({ id: 'log-1' }) };
+    businessAudit = {
+      enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+      flushCritical: jest.fn().mockResolvedValue(undefined),
+    };
     const rentalRulePermissions = {
       assert: jest.fn().mockResolvedValue(undefined),
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
@@ -148,7 +151,7 @@ describe('Vehicle rental override reset', () => {
       prisma as never,
       effective,
       rentalRulePermissions as never,
-      activityLog as never,
+      businessAudit as never,
       revisions as never,
       {
         analyzePublishImpact: jest.fn(),
@@ -284,15 +287,14 @@ describe('Vehicle rental override reset', () => {
       sourceName: 'Economy',
     });
     expect(revisions.upsertDraft).toHaveBeenCalled();
-    expect(activityLog.log).toHaveBeenCalledWith(
+    expect(businessAudit.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: 'DELETE',
-        entity: 'VEHICLE',
+        action: 'RENTAL_VEHICLE_OVERRIDE_DELETED',
         entityId: 'v1',
-        metaJson: expect.objectContaining({
-          removedFields: ['minimumAgeYears'],
-          result: 'deleted',
+        metadata: expect.objectContaining({
+          vehicleId: 'v1',
         }),
+        outcome: 'deleted',
       }),
     );
   });
@@ -483,8 +485,8 @@ describe('Vehicle rental override reset', () => {
 
     expect(result.result).toBe('deleted');
     expect(result.overrides).toBeNull();
-    expect(activityLog.log).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'DELETE' }),
+    expect(businessAudit.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'RENTAL_VEHICLE_OVERRIDE_DELETED' }),
     );
   });
 

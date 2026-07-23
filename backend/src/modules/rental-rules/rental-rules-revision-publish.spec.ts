@@ -171,8 +171,15 @@ describe('RentalRulesRevisionService draft/publish workflow', () => {
       assert: jest.fn().mockResolvedValue(undefined),
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
     };
-    const service = new RentalRulesRevisionService(prisma as never, permissions as unknown as RentalRulePermissionService);
-    return { service, permissions, prisma };
+    const businessAudit = {
+      enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
+    };
+    const service = new RentalRulesRevisionService(
+      prisma as never,
+      permissions as unknown as RentalRulePermissionService,
+      businessAudit as never,
+    );
+    return { service, permissions, prisma, businessAudit };
   }
 
   it('creates a DRAFT revision on first edit without changing live rules', async () => {

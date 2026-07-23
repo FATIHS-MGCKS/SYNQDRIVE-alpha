@@ -11,6 +11,12 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { BusinessAuditService } from '@modules/business-audit/business-audit.service';
+import {
+  BUSINESS_AUDIT_ENTITY_TYPE,
+  BusinessAuditAction,
+} from '@modules/business-audit/business-audit.constants';
+import { buildBusinessAuditIdempotencyKey } from '@modules/business-audit/business-audit-idempotency.util';
 import {
   assertMembershipPermission,
   type PermissionActor,
@@ -52,6 +58,7 @@ export class BookingEligibilityApprovalService {
     private readonly prisma: PrismaService,
     private readonly gatekeeper: BookingEligibilityGatekeeperService,
     private readonly eligibilityDecision: BookingEligibilityDecisionService,
+    private readonly businessAudit: BusinessAuditService,
   ) {}
 
   async listForBooking(
@@ -128,26 +135,64 @@ export class BookingEligibilityApprovalService {
       additionalDriverCount,
     };
 
-    const created = await this.prisma.bookingEligibilityApproval.create({
-      data: {
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.bookingEligibilityApproval.create({
+        data: {
+          organizationId: input.organizationId,
+          bookingId: input.bookingId,
+          eligibilityDecision: gateResult.status,
+          exceptionReason: input.exceptionReason.trim(),
+          reasonCodes: gateResult.reasonCodes,
+          status: BookingEligibilityApprovalStatus.PENDING,
+          gateStage,
+          targetBookingStatus,
+          requestedByUserId: input.requestedByUserId,
+          eligibilityFingerprint: buildBookingEligibilityFingerprint(gateResult),
+          ruleRevision: buildBookingEligibilityRuleRevision(gateResult),
+          bookingDataVersion: buildBookingEligibilityDataVersion(dataContext),
+          gateResultSnapshot: buildGateResultSnapshot(gateResult) as unknown as Prisma.InputJsonValue,
+          expiresAt,
+        },
+      });
+
+      const outbox = await this.businessAudit.enqueueInTransaction(tx, {
         organizationId: input.organizationId,
-        bookingId: input.bookingId,
-        eligibilityDecision: gateResult.status,
-        exceptionReason: input.exceptionReason.trim(),
-        reasonCodes: gateResult.reasonCodes,
-        status: BookingEligibilityApprovalStatus.PENDING,
-        gateStage,
-        targetBookingStatus,
-        requestedByUserId: input.requestedByUserId,
-        eligibilityFingerprint: buildBookingEligibilityFingerprint(gateResult),
-        ruleRevision: buildBookingEligibilityRuleRevision(gateResult),
-        bookingDataVersion: buildBookingEligibilityDataVersion(dataContext),
-        gateResultSnapshot: buildGateResultSnapshot(gateResult) as unknown as Prisma.InputJsonValue,
-        expiresAt,
-      },
+        idempotencyKey: buildBusinessAuditIdempotencyKey({
+          action: BusinessAuditAction.MANUAL_APPROVAL_REQUESTED,
+          organizationId: input.organizationId,
+          entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+          entityId: row.id,
+          correlationId: `manual-approval-request:${row.id}`,
+        }),
+        action: BusinessAuditAction.MANUAL_APPROVAL_REQUESTED,
+        actorUserId: input.requestedByUserId,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+        entityId: row.id,
+        correlationId: `manual-approval-request:${row.id}`,
+        after: {
+          bookingId: input.bookingId,
+          gateStage,
+          targetBookingStatus,
+          eligibilityFingerprint: row.eligibilityFingerprint,
+          ruleRevision: row.ruleRevision,
+          reasonCodeCount: gateResult.reasonCodes.length,
+        },
+        changeReason: input.exceptionReason.trim(),
+        outcome: 'requested',
+        description: 'Manual booking eligibility approval requested',
+        metadata: {
+          bookingId: input.bookingId,
+          gateStage,
+          targetBookingStatus,
+        },
+      });
+
+      return { row, outboxId: outbox.id };
     });
 
-    return this.mapRow(created);
+    await this.businessAudit.flushCritical([created.outboxId]);
+
+    return this.mapRow(created.row);
   }
 
   async decide(input: {
@@ -214,7 +259,12 @@ export class BookingEligibilityApprovalService {
         ? BookingEligibilityApprovalStatus.APPROVED
         : BookingEligibilityApprovalStatus.REJECTED;
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const auditAction =
+      input.decision === 'APPROVE'
+        ? BusinessAuditAction.MANUAL_APPROVAL_APPROVED
+        : BusinessAuditAction.MANUAL_APPROVAL_REJECTED;
+
+    const { updated, auditOutboxId } = await this.prisma.$transaction(async (tx) => {
       if (input.decision === 'APPROVE') {
         await tx.bookingEligibilityApproval.updateMany({
           where: {
@@ -232,7 +282,7 @@ export class BookingEligibilityApprovalService {
         });
       }
 
-      return tx.bookingEligibilityApproval.update({
+      const row = await tx.bookingEligibilityApproval.update({
         where: { id: approval.id },
         data: {
           status: nextStatus,
@@ -241,7 +291,41 @@ export class BookingEligibilityApprovalService {
           decidedAt: new Date(),
         },
       });
+
+      const outbox = await this.businessAudit.enqueueInTransaction(tx, {
+        organizationId: input.organizationId,
+        idempotencyKey: buildBusinessAuditIdempotencyKey({
+          action: auditAction,
+          organizationId: input.organizationId,
+          entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+          entityId: row.id,
+          correlationId: `manual-approval:${row.id}:${input.decision}`,
+        }),
+        action: auditAction,
+        actorUserId: input.decidedByUserId,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+        entityId: row.id,
+        correlationId: `manual-approval:${row.id}:${input.decision}`,
+        before: {
+          status: approval.status,
+        },
+        after: {
+          status: row.status,
+          decidedByUserId: row.decidedByUserId,
+        },
+        changeReason: reason,
+        outcome: input.decision === 'APPROVE' ? 'approved' : 'rejected',
+        description: `Manual booking eligibility approval ${input.decision === 'APPROVE' ? 'approved' : 'rejected'}`,
+        metadata: {
+          bookingId: input.bookingId,
+          requestedByUserId: approval.requestedByUserId,
+        },
+      });
+
+      return { updated: row, auditOutboxId: outbox.id };
     });
+
+    await this.businessAudit.flushCritical([auditOutboxId]);
 
     await this.eligibilityDecision.appendManualApprovalDecision({
       organizationId: input.organizationId,
@@ -413,6 +497,20 @@ export class BookingEligibilityApprovalService {
         ? `${input.reason} (${input.invalidationFacts.join(', ')})`
         : input.reason;
 
+    const activeRows = await client.bookingEligibilityApproval.findMany({
+      where: {
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        status: {
+          in: [
+            BookingEligibilityApprovalStatus.PENDING,
+            BookingEligibilityApprovalStatus.APPROVED,
+          ],
+        },
+      },
+      select: { id: true, status: true },
+    });
+
     const result = await client.bookingEligibilityApproval.updateMany({
       where: {
         organizationId: input.organizationId,
@@ -431,11 +529,50 @@ export class BookingEligibilityApprovalService {
         decisionReason: reason,
       },
     });
+
+    if (!tx) {
+      for (const row of activeRows) {
+        await this.businessAudit.enqueue({
+          organizationId: input.organizationId,
+          idempotencyKey: buildBusinessAuditIdempotencyKey({
+            action: BusinessAuditAction.MANUAL_APPROVAL_REVOKED,
+            organizationId: input.organizationId,
+            entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+            entityId: row.id,
+            correlationId: `manual-approval-revoked:${row.id}`,
+          }),
+          action: BusinessAuditAction.MANUAL_APPROVAL_REVOKED,
+          actorUserId: input.revokedByUserId ?? null,
+          entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+          entityId: row.id,
+          correlationId: `manual-approval-revoked:${row.id}`,
+          before: { status: row.status },
+          after: { status: BookingEligibilityApprovalStatus.REVOKED },
+          changeReason: reason,
+          outcome: 'revoked',
+          description: 'Manual booking eligibility approval revoked',
+          metadata: {
+            bookingId: input.bookingId,
+            invalidationFacts: input.invalidationFacts ?? [],
+          },
+        });
+      }
+    }
+
     return result.count;
   }
 
   async expireStale(organizationId: string): Promise<number> {
     const now = new Date();
+    const staleRows = await this.prisma.bookingEligibilityApproval.findMany({
+      where: {
+        organizationId,
+        status: BookingEligibilityApprovalStatus.PENDING,
+        expiresAt: { lte: now },
+      },
+      select: { id: true, bookingId: true },
+    });
+
     const result = await this.prisma.bookingEligibilityApproval.updateMany({
       where: {
         organizationId,
@@ -448,16 +585,63 @@ export class BookingEligibilityApprovalService {
         decisionReason: 'Approval request expired before a decision was recorded.',
       },
     });
+
+    for (const row of staleRows) {
+      await this.businessAudit.enqueue({
+        organizationId,
+        idempotencyKey: buildBusinessAuditIdempotencyKey({
+          action: BusinessAuditAction.MANUAL_APPROVAL_EXPIRED,
+          organizationId,
+          entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+          entityId: row.id,
+          correlationId: `manual-approval-expired:${row.id}`,
+        }),
+        action: BusinessAuditAction.MANUAL_APPROVAL_EXPIRED,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+        entityId: row.id,
+        correlationId: `manual-approval-expired:${row.id}`,
+        before: { status: BookingEligibilityApprovalStatus.PENDING },
+        after: { status: BookingEligibilityApprovalStatus.EXPIRED },
+        outcome: 'expired',
+        description: 'Manual booking eligibility approval expired',
+        metadata: {
+          bookingId: row.bookingId,
+        },
+      });
+    }
+
     return result.count;
   }
 
   private async markExpired(approvalId: string) {
-    await this.prisma.bookingEligibilityApproval.update({
+    const row = await this.prisma.bookingEligibilityApproval.update({
       where: { id: approvalId },
       data: {
         status: BookingEligibilityApprovalStatus.EXPIRED,
         decidedAt: new Date(),
         decisionReason: 'Approval request expired before a decision was recorded.',
+      },
+    });
+
+    await this.businessAudit.enqueue({
+      organizationId: row.organizationId,
+      idempotencyKey: buildBusinessAuditIdempotencyKey({
+        action: BusinessAuditAction.MANUAL_APPROVAL_EXPIRED,
+        organizationId: row.organizationId,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+        entityId: row.id,
+        correlationId: `manual-approval-expired:${row.id}`,
+      }),
+      action: BusinessAuditAction.MANUAL_APPROVAL_EXPIRED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL,
+      entityId: row.id,
+      correlationId: `manual-approval-expired:${row.id}`,
+      before: { status: BookingEligibilityApprovalStatus.PENDING },
+      after: { status: BookingEligibilityApprovalStatus.EXPIRED },
+      outcome: 'expired',
+      description: 'Manual booking eligibility approval expired',
+      metadata: {
+        bookingId: row.bookingId,
       },
     });
   }

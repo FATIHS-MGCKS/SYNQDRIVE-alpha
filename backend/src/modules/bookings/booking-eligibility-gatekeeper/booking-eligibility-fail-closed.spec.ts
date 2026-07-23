@@ -72,6 +72,7 @@ describe('booking eligibility fail-closed policy', () => {
     auditLogger,
     eligibilityApproval,
     eligibilityDecision,
+    { enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }) } as never,
   );
 
   const clearedCustomer = assembleCustomerEligibilityResult(

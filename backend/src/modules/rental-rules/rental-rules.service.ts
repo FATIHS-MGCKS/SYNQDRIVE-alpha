@@ -3,8 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ActivityAction, ActivityEntity, Prisma } from '@prisma/client';
-import { ActivityLogService } from '@modules/activity-log/activity-log.service';
+import { Prisma } from '@prisma/client';
+import { BusinessAuditService } from '@modules/business-audit/business-audit.service';
+import {
+  BUSINESS_AUDIT_ENTITY_TYPE,
+  BusinessAuditAction,
+} from '@modules/business-audit/business-audit.constants';
+import { buildBusinessAuditIdempotencyKey } from '@modules/business-audit/business-audit-idempotency.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalEffectiveRulesService } from './rental-effective-rules.service';
 import {
@@ -80,7 +85,7 @@ export class RentalRulesService {
     private readonly prisma: PrismaService,
     private readonly effectiveRules: RentalEffectiveRulesService,
     private readonly rentalRulePermissions: RentalRulePermissionService,
-    private readonly activityLog: ActivityLogService,
+    private readonly businessAudit: BusinessAuditService,
     private readonly revisions: RentalRulesRevisionService,
     private readonly revisionImpact: RentalRulesRevisionImpactService,
   ) {}
@@ -250,7 +255,7 @@ export class RentalRulesService {
       });
     }
 
-    const { revision, publishedVersion } = await this.revisions.upsertDraft({
+    const { revision, publishedVersion, created } = await this.revisions.upsertDraft({
       scope: organizationRevisionScope(orgId),
       expectedVersion: existing?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
       rulePatch: patch,
@@ -259,6 +264,15 @@ export class RentalRulesService {
         isActive: true,
         depositCurrency: 'EUR',
       },
+      actor: ctx.actor,
+    });
+
+    await this.recordDraftAudit({
+      organizationId: orgId,
+      scopeType: 'ORGANIZATION',
+      scopeId: orgId,
+      revision,
+      created,
       actor: ctx.actor,
     });
 
@@ -305,7 +319,13 @@ export class RentalRulesService {
       organizationRevisionScope(orgId),
       dto,
       ctx.actor,
+      {
+        changeReason: dto.changeReason,
+        diff: impact.diff,
+        correlationId: `publish:${dto.revisionId}:${dto.expectedLockVersion}`,
+      },
     );
+    await this.businessAudit.flushCritical(result.auditOutboxIds);
     const document = result.revision.normalizedRules as NormalizedRentalRulesDocument;
     return {
       ...this.organizationPayloadFromRevisionDocument(
@@ -444,12 +464,21 @@ export class RentalRulesService {
       scopeMetaPatch.icon = dto.icon ?? null;
     }
 
-    const { revision, publishedVersion } = await this.revisions.upsertDraft({
+    const { revision, publishedVersion, created } = await this.revisions.upsertDraft({
       scope: categoryRevisionScope(orgId, categoryId),
       expectedVersion: dto.expectedVersion,
       rulePatch: patch,
       scopeMetaPatch,
       sourceRow: existing,
+      actor: ctx.actor,
+    });
+
+    await this.recordDraftAudit({
+      organizationId: orgId,
+      scopeType: 'CATEGORY',
+      scopeId: categoryId,
+      revision,
+      created,
       actor: ctx.actor,
     });
 
@@ -505,7 +534,13 @@ export class RentalRulesService {
       categoryRevisionScope(orgId, categoryId),
       dto,
       ctx.actor,
+      {
+        changeReason: dto.changeReason,
+        diff: impact.diff,
+        correlationId: `publish:${dto.revisionId}:${dto.expectedLockVersion}`,
+      },
     );
+    await this.businessAudit.flushCritical(result.auditOutboxIds);
     const withCount = await this.prisma.rentalVehicleCategory.findUnique({
       where: { id: categoryId },
       include: { _count: { select: { vehicles: true } } },
@@ -573,18 +608,45 @@ export class RentalRulesService {
       });
     }
 
-    await this.activityLog.log({
+    await this.businessAudit.enqueue({
       organizationId: orgId,
-      userId: ctx.actor?.id,
-      action: ActivityAction.UPDATE,
-      entity: ActivityEntity.ORGANIZATION,
-      entityId: orgId,
-      description: `Rental category "${existing.name}" lifecycle: ${existing.status} → ${dto.targetStatus}`,
-      metaJson: {
-        categoryId,
-        categoryName: existing.name,
+      idempotencyKey: buildBusinessAuditIdempotencyKey({
+        action:
+          dto.targetStatus === 'ARCHIVED'
+            ? BusinessAuditAction.RENTAL_CATEGORY_ARCHIVED
+            : BusinessAuditAction.RENTAL_RULE_DRAFT_CHANGED,
+        organizationId: orgId,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_CATEGORY,
+        entityId: categoryId,
+        correlationId: `category-lifecycle:${categoryId}:${dto.expectedVersion}:${dto.targetStatus}`,
+      }),
+      action:
+        dto.targetStatus === 'ARCHIVED'
+          ? BusinessAuditAction.RENTAL_CATEGORY_ARCHIVED
+          : BusinessAuditAction.RENTAL_RULE_DRAFT_CHANGED,
+      actorUserId: ctx.actor?.id ?? null,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_CATEGORY,
+      entityId: categoryId,
+      correlationId: `category-lifecycle:${categoryId}:${dto.expectedVersion}:${dto.targetStatus}`,
+      before: {
+        status: existing.status,
+        isActive: existing.isActive,
+        version: existing.version,
+      },
+      after: {
+        status: dto.targetStatus,
+        isActive: syncIsActiveFromCategoryStatus(dto.targetStatus),
+        version: dto.expectedVersion + 1,
+      },
+      diff: {
         fromStatus: existing.status,
         toStatus: dto.targetStatus,
+      },
+      outcome: dto.targetStatus,
+      description: `Rental category "${existing.name}" lifecycle: ${existing.status} → ${dto.targetStatus}`,
+      metadata: {
+        categoryId,
+        categoryName: existing.name,
         actorUserId: ctx.actor?.id ?? null,
       },
     });
@@ -902,19 +964,37 @@ export class RentalRulesService {
     const movedCount = input.diff.moved.length;
     const alreadyCount = input.diff.alreadyAssigned.length;
 
-    await this.activityLog.log({
+    await this.businessAudit.enqueue({
       organizationId: input.organizationId,
-      userId: input.actor?.id,
-      action: ActivityAction.UPDATE,
-      entity: ActivityEntity.ORGANIZATION,
-      entityId: input.organizationId,
+      idempotencyKey: buildBusinessAuditIdempotencyKey({
+        action: BusinessAuditAction.RENTAL_CATEGORY_VEHICLES_ASSIGNED,
+        organizationId: input.organizationId,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_CATEGORY,
+        entityId: input.categoryId,
+        correlationId: `category-assignment:${input.categoryId}:${input.newVersion}`,
+      }),
+      action: BusinessAuditAction.RENTAL_CATEGORY_VEHICLES_ASSIGNED,
+      actorUserId: input.actor?.id ?? null,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_CATEGORY,
+      entityId: input.categoryId,
+      correlationId: `category-assignment:${input.categoryId}:${input.newVersion}`,
+      before: {
+        version: input.expectedVersion,
+      },
+      after: {
+        version: input.newVersion,
+      },
+      diff: {
+        added: input.diff.added,
+        removed: input.diff.removed,
+        moved: input.diff.moved,
+        alreadyAssigned: input.diff.alreadyAssigned,
+      },
+      outcome: 'assigned',
       description: `Rental category "${input.categoryName}" vehicle assignment updated (+${addedCount} / -${removedCount} / ↔${movedCount})`,
-      metaJson: {
+      metadata: {
         categoryId: input.categoryId,
         categoryName: input.categoryName,
-        expectedVersion: input.expectedVersion,
-        newVersion: input.newVersion,
-        diff: input.diff,
         counts: {
           added: addedCount,
           removed: removedCount,
@@ -972,18 +1052,40 @@ export class RentalRulesService {
   }) {
     const fieldSummary =
       input.removedFields.length > 0 ? input.removedFields.join(', ') : 'none';
-    await this.activityLog.log({
+    await this.businessAudit.enqueue({
       organizationId: input.organizationId,
-      userId: input.actor?.id,
-      action: input.result === 'deleted' ? ActivityAction.DELETE : ActivityAction.RESET,
-      entity: ActivityEntity.VEHICLE,
+      idempotencyKey: buildBusinessAuditIdempotencyKey({
+        action:
+          input.result === 'deleted'
+            ? BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_DELETED
+            : BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_CREATED,
+        organizationId: input.organizationId,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.VEHICLE,
+        entityId: input.vehicleId,
+        correlationId: `vehicle-override-reset:${input.vehicleId}:${input.result}:${fieldSummary}`,
+      }),
+      action:
+        input.result === 'deleted'
+          ? BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_DELETED
+          : BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_CREATED,
+      actorUserId: input.actor?.id ?? null,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.VEHICLE,
       entityId: input.vehicleId,
-      description: `Vehicle rental requirement override reset (${input.result}): ${fieldSummary}`,
-      metaJson: {
-        vehicleId: input.vehicleId,
+      correlationId: `vehicle-override-reset:${input.vehicleId}:${input.result}:${fieldSummary}`,
+      before: {
         removedFields: input.removedFields,
-        result: input.result,
         overrideId: input.overrideId ?? null,
+      },
+      after: {
+        result: input.result,
+      },
+      diff: {
+        removedFields: input.removedFields,
+      },
+      outcome: input.result,
+      description: `Vehicle rental requirement override reset (${input.result}): ${fieldSummary}`,
+      metadata: {
+        vehicleId: input.vehicleId,
         actorUserId: input.actor?.id ?? null,
       },
     });
@@ -1250,11 +1352,20 @@ export class RentalRulesService {
       });
     }
 
-    const { revision, publishedVersion } = await this.revisions.upsertDraft({
+    const { revision, publishedVersion, created } = await this.revisions.upsertDraft({
       scope: vehicleRevisionScope(orgId, vehicleId),
       expectedVersion: existing?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
       rulePatch: patch,
       sourceRow: existing ?? { vehicleId, organizationId: orgId },
+      actor: ctx.actor,
+    });
+
+    await this.recordDraftAudit({
+      organizationId: orgId,
+      scopeType: 'VEHICLE',
+      scopeId: vehicleId,
+      revision,
+      created,
       actor: ctx.actor,
     });
 
@@ -1329,7 +1440,13 @@ export class RentalRulesService {
       vehicleRevisionScope(orgId, vehicleId),
       dto,
       ctx.actor,
+      {
+        changeReason: dto.changeReason,
+        diff: impact.diff,
+        correlationId: `publish:${dto.revisionId}:${dto.expectedLockVersion}`,
+      },
     );
+    await this.businessAudit.flushCritical(result.auditOutboxIds);
     const row = await this.prisma.vehicleRentalRequirementOverride.findUnique({
       where: { vehicleId },
     });
@@ -1497,5 +1614,50 @@ export class RentalRulesService {
         ? hasActiveRuleOverrides(extractRuleFields(v.rentalRequirementOverride))
         : false,
     }));
+  }
+
+  private async recordDraftAudit(input: {
+    organizationId: string;
+    scopeType: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+    scopeId: string;
+    revision: ReturnType<RentalRulesRevisionService['formatRevision']>;
+    created: boolean;
+    actor?: PermissionActor;
+  }) {
+    const action = input.created
+      ? BusinessAuditAction.RENTAL_RULE_DRAFT_CREATED
+      : BusinessAuditAction.RENTAL_RULE_DRAFT_CHANGED;
+
+    await this.businessAudit.enqueue({
+      organizationId: input.organizationId,
+      idempotencyKey: buildBusinessAuditIdempotencyKey({
+        action,
+        organizationId: input.organizationId,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_RULE_REVISION,
+        entityId: input.revision.id,
+        correlationId: `draft:${input.revision.id}:${input.revision.lockVersion}`,
+      }),
+      action,
+      actorUserId: input.actor?.id ?? null,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_RULE_REVISION,
+      entityId: input.revision.id,
+      correlationId: `draft:${input.revision.id}:${input.revision.lockVersion}`,
+      after: {
+        scopeType: input.scopeType,
+        scopeId: input.scopeId,
+        version: input.revision.version,
+        rulesHash: input.revision.rulesHash,
+        lockVersion: input.revision.lockVersion,
+      },
+      outcome: input.created ? 'created' : 'changed',
+      description: input.created
+        ? `Rental rule draft created (${input.scopeType})`
+        : `Rental rule draft changed (${input.scopeType})`,
+      metadata: {
+        scopeType: input.scopeType,
+        scopeId: input.scopeId,
+        actorUserId: input.actor?.id ?? null,
+      },
+    });
   }
 }

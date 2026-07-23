@@ -26,6 +26,11 @@ describe('BookingEligibilityApprovalService', () => {
   };
   let gatekeeper: { evaluate: jest.Mock };
   let eligibilityDecision: { appendManualApprovalDecision: jest.Mock };
+  let businessAudit: {
+    enqueue: jest.Mock;
+    enqueueInTransaction: jest.Mock;
+    flushCritical: jest.Mock;
+  };
   let service: BookingEligibilityApprovalService;
 
   const booking = {
@@ -62,10 +67,16 @@ describe('BookingEligibilityApprovalService', () => {
     eligibilityDecision = {
       appendManualApprovalDecision: jest.fn().mockResolvedValue({ id: 'decision-1' }),
     };
+    businessAudit = {
+      enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+      enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+      flushCritical: jest.fn().mockResolvedValue(undefined),
+    };
     service = new BookingEligibilityApprovalService(
       prisma as never,
       gatekeeper as never,
       eligibilityDecision as never,
+      businessAudit as never,
     );
   });
 

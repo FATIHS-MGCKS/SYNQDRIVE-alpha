@@ -38,6 +38,7 @@ describe('BookingEligibilityEnforcementService pickup transitions', () => {
     auditLogger,
     eligibilityApproval,
     eligibilityDecision,
+    { enqueue: jest.fn().mockResolvedValue({ id: 'audit-1' }) } as never,
   );
 
   const eligiblePickupGate = testGateResult({

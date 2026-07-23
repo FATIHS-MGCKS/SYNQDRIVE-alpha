@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'business-audit-outbox-v49781-2026-07-23',
+    version: '4.9.781',
+    title: 'V4.9.781 — Business audit outbox for rental rules & approvals (Prompt 28)',
+    summary: [
+      'Transactional outbox `BusinessAuditOutbox` für kritische Rental-Rule- und Eligibility-Events (tenant-scoped, idempotent).',
+      'Events: Draft erstellt/geändert, Publish/Deaktivierung, Kategorie archiviert, Fahrzeugzuweisung, Override erstellt/gelöscht, Eligibility geprüft, Manual Approval beantragt/genehmigt/abgelehnt/widerrufen/abgelaufen.',
+      'Jedes Event: organizationId, actorId, action, entityType, entityId, correlationId, timestamp, before/after-Hash, Diff-Referenz, changeReason, outcome — datensparsam ohne Rohdokumente.',
+      'Publish- und Approval-Pfade: Outbox in derselben Transaktion + synchrones `flushCritical` — kein stiller Audit-Verlust (Dead-Letter → HTTP 503).',
+      'Async-Drain: Scheduler alle 15s → Processor → `AuditService` → `activity_log`; Retry/Dead-Letter wie IAM-Outbox.',
+    ],
+    reason: 'Kritische Rule- und Approval-Änderungen müssen dauerhaft, strukturiert und ausfallsicher protokolliert werden (Remediation Prompt 28).',
+    previousBehavior: 'Teilweise fire-and-forget `ActivityLogService.log()` ohne Outbox, ohne Hashes/Diffs und ohne Fail-Closed bei Publish/Approval.',
+    details:
+      'business-audit/* module, migration 20260723220000, rental-rules-revision.service.ts publish transaction, rental-rules.service.ts, booking-eligibility-approval.service.ts, booking-eligibility-enforcement.service.ts.',
+    affectsArchitecture: true,
+    module: 'Rental Rules / Audit',
+    createdAt: '2026-07-24T00:00:00.000Z',
+  },
+  {
     id: 'booking-eligibility-decisions-v49780-2026-07-23',
     version: '4.9.780',
     title: 'V4.9.780 — Booking eligibility decision snapshots (Prompt 27)',

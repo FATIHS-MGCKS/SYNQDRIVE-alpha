@@ -8,6 +8,12 @@ import type { RentalRuleRevision, RentalRuleRevisionScopeType } from '@prisma/cl
 import { Prisma } from '@prisma/client';
 import type { PermissionActor } from '@shared/auth/permission.util';
 import { PrismaService } from '@shared/database/prisma.service';
+import { BusinessAuditService } from '@modules/business-audit/business-audit.service';
+import {
+  BUSINESS_AUDIT_ENTITY_TYPE,
+  BusinessAuditAction,
+} from '@modules/business-audit/business-audit.constants';
+import { buildBusinessAuditIdempotencyKey } from '@modules/business-audit/business-audit-idempotency.util';
 import { RENTAL_RULES_INITIAL_EXPECTED_VERSION } from './rental-rules-concurrency.constants';
 import { throwRentalRulesVersionConflict } from './rental-rules-concurrency.util';
 import { RentalRulePermissionService } from './rental-rule-permission.service';
@@ -37,6 +43,12 @@ import type { RentalRuleFieldSet } from './rental-rules.types';
 import { hasActiveRuleOverrides, extractRuleFields } from './rental-rules.mapper';
 import { normalizeRentalCategoryName } from './rental-rules-category.util';
 
+export interface PublishRentalRuleRevisionAuditInput {
+  changeReason: string;
+  diff: unknown;
+  correlationId: string;
+}
+
 export interface PublishRentalRuleRevisionInput {
   revisionId: string;
   expectedVersion: number;
@@ -59,6 +71,7 @@ export class RentalRulesRevisionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentalRulePermissions: RentalRulePermissionService,
+    private readonly businessAudit: BusinessAuditService,
   ) {}
 
   formatRevision(row: RentalRuleRevision) {
@@ -224,6 +237,7 @@ export class RentalRulesRevisionService {
     scope: RentalRuleRevisionScope,
     input: PublishRentalRuleRevisionInput,
     actor?: PermissionActor,
+    auditInput?: PublishRentalRuleRevisionAuditInput,
   ) {
     await this.rentalRulePermissions.assert(actor, scope.organizationId, 'rental_rules.publish');
 
@@ -245,8 +259,9 @@ export class RentalRulesRevisionService {
     }
 
     const effectiveFrom = new Date();
+    const auditOutboxIds: string[] = [];
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const draft = await tx.rentalRuleRevision.findFirst({
         where: {
           id: input.revisionId,
@@ -349,6 +364,111 @@ export class RentalRulesRevisionService {
 
       await this.syncPublishedRevisionToLive(tx, scope, document, publishedVersion + 1);
 
+      if (auditInput) {
+        const beforeDocument = activeRevision ? this.parseDocument(activeRevision) : null;
+        const isDeactivated =
+          typeof document.scopeMeta.isActive === 'boolean' && document.scopeMeta.isActive === false;
+        const publishAction = isDeactivated
+          ? BusinessAuditAction.RENTAL_RULE_DEACTIVATED
+          : BusinessAuditAction.RENTAL_RULE_PUBLISHED;
+
+        const publishOutbox = await this.businessAudit.enqueueInTransaction(tx, {
+          organizationId: scope.organizationId,
+          idempotencyKey: buildBusinessAuditIdempotencyKey({
+            action: publishAction,
+            organizationId: scope.organizationId,
+            entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_RULE_REVISION,
+            entityId: draft.id,
+            correlationId: auditInput.correlationId,
+          }),
+          action: publishAction,
+          actorUserId: actor?.id ?? null,
+          entityType: BUSINESS_AUDIT_ENTITY_TYPE.RENTAL_RULE_REVISION,
+          entityId: draft.id,
+          correlationId: auditInput.correlationId,
+          before: beforeDocument,
+          after: document,
+          diff: auditInput.diff,
+          changeReason: auditInput.changeReason,
+          outcome: 'published',
+          description: `Rental rule revision published (${scope.scopeType})`,
+          metadata: {
+            scopeType: scope.scopeType,
+            scopeId: scope.scopeId,
+            publishedVersion: publishedVersion + 1,
+            previousRevisionId: activeRevision?.id ?? null,
+          },
+        });
+        auditOutboxIds.push(publishOutbox.id);
+
+        if (scope.scopeType === 'VEHICLE') {
+          const beforeFields = beforeDocument
+            ? extractRuleFields(beforeDocument.rules as Parameters<typeof extractRuleFields>[0])
+            : extractRuleFields({} as Parameters<typeof extractRuleFields>[0]);
+          const afterFields = extractRuleFields(
+            document.rules as Parameters<typeof extractRuleFields>[0],
+          );
+          const hadOverride = hasActiveRuleOverrides(beforeFields);
+          const hasOverride = hasActiveRuleOverrides(afterFields);
+
+          if (!hadOverride && hasOverride) {
+            const overrideOutbox = await this.businessAudit.enqueueInTransaction(tx, {
+              organizationId: scope.organizationId,
+              idempotencyKey: buildBusinessAuditIdempotencyKey({
+                action: BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_CREATED,
+                organizationId: scope.organizationId,
+                entityType: BUSINESS_AUDIT_ENTITY_TYPE.VEHICLE,
+                entityId: scope.scopeId,
+                correlationId: auditInput.correlationId,
+              }),
+              action: BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_CREATED,
+              actorUserId: actor?.id ?? null,
+              entityType: BUSINESS_AUDIT_ENTITY_TYPE.VEHICLE,
+              entityId: scope.scopeId,
+              correlationId: auditInput.correlationId,
+              before: beforeDocument,
+              after: document,
+              diff: auditInput.diff,
+              changeReason: auditInput.changeReason,
+              outcome: 'created',
+              description: 'Vehicle rental requirement override created',
+              metadata: {
+                revisionId: draft.id,
+                publishedVersion: publishedVersion + 1,
+              },
+            });
+            auditOutboxIds.push(overrideOutbox.id);
+          } else if (hadOverride && !hasOverride) {
+            const overrideOutbox = await this.businessAudit.enqueueInTransaction(tx, {
+              organizationId: scope.organizationId,
+              idempotencyKey: buildBusinessAuditIdempotencyKey({
+                action: BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_DELETED,
+                organizationId: scope.organizationId,
+                entityType: BUSINESS_AUDIT_ENTITY_TYPE.VEHICLE,
+                entityId: scope.scopeId,
+                correlationId: auditInput.correlationId,
+              }),
+              action: BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_DELETED,
+              actorUserId: actor?.id ?? null,
+              entityType: BUSINESS_AUDIT_ENTITY_TYPE.VEHICLE,
+              entityId: scope.scopeId,
+              correlationId: auditInput.correlationId,
+              before: beforeDocument,
+              after: document,
+              diff: auditInput.diff,
+              changeReason: auditInput.changeReason,
+              outcome: 'deleted',
+              description: 'Vehicle rental requirement override deleted',
+              metadata: {
+                revisionId: draft.id,
+                publishedVersion: publishedVersion + 1,
+              },
+            });
+            auditOutboxIds.push(overrideOutbox.id);
+          }
+        }
+      }
+
       const published = await tx.rentalRuleRevision.findUniqueOrThrow({
         where: { id: draft.id },
       });
@@ -357,8 +477,11 @@ export class RentalRulesRevisionService {
         revision: this.formatRevision(published),
         previousRevisionId: activeRevision?.id ?? null,
         publishedVersion: publishedVersion + 1,
+        auditOutboxIds,
       };
     });
+
+    return result;
   }
 
   async preview(

@@ -2599,4 +2599,32 @@ Draft erstellen/bearbeiten, Publish, paralleler Publish (lockVersion), fehlende 
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 27).*
+## Prompt 28 — Business Audit Outbox
+
+**Ziel:** Kritische Rule- und Approval-Änderungen dauerhaft, strukturiert und ausfallsicher protokollieren.
+
+### Implementierung
+
+| Komponente | Pfad |
+|------------|------|
+| Prisma model + migration | `BusinessAuditOutbox`, `20260723220000_business_audit_outbox` |
+| Outbox module | `backend/src/modules/business-audit/*` |
+| Publish audit (in tx) | `RentalRulesRevisionService.publishDraft` |
+| Draft / lifecycle / assignment | `RentalRulesService` |
+| Manual approval | `BookingEligibilityApprovalService` |
+| Eligibility check | `BookingEligibilityEnforcementService` |
+| Architecture record | `architecture/BUSINESS_AUDIT_OUTBOX_2026-07-23.md` |
+
+### Akzeptanzkriterien
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Kritische Business Events dauerhaft protokolliert | ✅ |
+| Kein stiller Audit-Verlust bei Publish/Approval | ✅ (`flushCritical`) |
+| Events tenant-sicher und datensparsam | ✅ |
+| Retry / Failure / Idempotenz getestet | ✅ |
+| Prompt 28 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 28).*
