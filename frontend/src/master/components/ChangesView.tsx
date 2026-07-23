@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-handover-dto-prompt7-2026-07-23',
+    version: '4.9.779',
+    title: 'Booking Production-Readiness — Handover DTO Validation (Prompt 7/34)',
+    summary: [
+      '`CreateHandoverProtocolDto` mit class-validator für Pickup/Return — `forbidNonWhitelisted` lehnt `performedByUserId`/`performedByName` ab.',
+      'Signatur-Data-URLs: erlaubte MIME-Typen (png/jpeg/webp), max 512 KB; Zahlenbereiche für Kilometerstand, Kraftstoff/Ladezustand.',
+      'Return-Kilometerstand ≥ Pickup, außer `odometerOverrideReason` + `booking.override`; Pickup-Gate-Override nutzt `booking.override` + Audit.',
+      'Tenant-sichere Prüfung von `damageIds` und `actualStationId`; Status-Gates (Pickup CONFIRMED, Return ACTIVE).',
+      'Idempotenz: wiederholter Pickup auf ACTIVE / Return auf COMPLETED liefert bestehendes Protokoll.',
+      'Frontend: typisierter `CreateHandoverProtocolPayload`, keine Client-Actor-Felder mehr.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 7 — sichere Handover-Request-Bodies statt unvalidierter Interfaces.',
+    previousBehavior:
+      'Handover nutzte `CreateHandoverProtocolPayload` Interface ohne DTO-Validierung; minimale Service-Validierung; Client konnte `performedBy*` senden.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, create-handover-protocol.dto.ts, handover-validation.service.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / Handover',
+    createdAt: '2026-07-23T20:30:00.000Z',
+  },
+  {
     id: 'booking-update-commands-prompt6-2026-07-23',
     version: '4.9.778',
     title: 'Booking Production-Readiness — Typed Update Commands (Prompt 6/34)',

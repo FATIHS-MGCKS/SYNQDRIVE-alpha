@@ -56,7 +56,8 @@ import {
   mapUpdateBookingVehicleDtoToCommand,
 } from './booking-update-command.mapper';
 import { BookingUpdateService } from './booking-update.service';
-import { CreateHandoverProtocolPayload } from './handover.types';
+import { CreateHandoverProtocolDto } from './dto/handover/create-handover-protocol.dto';
+import { mapCreateHandoverProtocolDtoToCommand } from './handover-command.mapper';
 import { resolveHandoverActor } from './handover-actor.util';
 import { RequireBookingPermission } from './decorators/require-booking-permission.decorator';
 import { BookingPermissionsGuard } from './guards/booking-permissions.guard';
@@ -96,6 +97,14 @@ export class BookingsController {
   ) {}
 
   private updateContext(req: BookingRequest, userId?: string) {
+    const perms = normalizeMembershipPermissions(req.bookingMembershipPermissions);
+    return {
+      userId: userId ?? null,
+      hasOverridePermission: evaluateModulePermission(perms, 'bookings', 'manage'),
+    };
+  }
+
+  private handoverContext(req: BookingRequest, userId?: string) {
     const perms = normalizeMembershipPermissions(req.bookingMembershipPermissions);
     return {
       userId: userId ?? null,
@@ -633,7 +642,8 @@ export class BookingsController {
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
-    @Body() body: CreateHandoverProtocolPayload,
+    @Body() body: CreateHandoverProtocolDto,
+    @Req() req: BookingRequest,
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, bookingId);
     if (body.actualStationId) {
@@ -641,12 +651,15 @@ export class BookingsController {
         stationId: body.actualStationId,
       });
     }
+    const command = mapCreateHandoverProtocolDtoToCommand(body);
+    const ctx = this.handoverContext(req, user.id);
     return this.handoverService.createHandover(
       orgId,
       bookingId,
       'PICKUP',
-      body,
+      command,
       resolveHandoverActor(user),
+      { hasOverridePermission: ctx.hasOverridePermission },
     );
   }
 
@@ -656,7 +669,8 @@ export class BookingsController {
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
-    @Body() body: CreateHandoverProtocolPayload,
+    @Body() body: CreateHandoverProtocolDto,
+    @Req() req: BookingRequest,
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, bookingId);
     if (body.actualStationId) {
@@ -664,12 +678,15 @@ export class BookingsController {
         stationId: body.actualStationId,
       });
     }
+    const command = mapCreateHandoverProtocolDtoToCommand(body);
+    const ctx = this.handoverContext(req, user.id);
     return this.handoverService.createHandover(
       orgId,
       bookingId,
       'RETURN',
-      body,
+      command,
       resolveHandoverActor(user),
+      { hasOverridePermission: ctx.hasOverridePermission },
     );
   }
 }

@@ -1357,6 +1357,40 @@ export type BookingDetailHandoverSide = {
   performedByName: string | null;
 };
 
+/** Validated handover protocol submission body (pickup + return). */
+export type CreateHandoverProtocolPayload = {
+  performedAt?: string | null;
+  pickupGateOverrideReason?: string | null;
+  odometerOverrideReason?: string | null;
+  odometerKm: number;
+  fuelPercent?: number;
+  chargePercent?: number;
+  fuelFull?: boolean;
+  exteriorClean?: boolean;
+  interiorClean?: boolean;
+  tiresSeasonOk?: boolean;
+  warningLightsOn?: boolean;
+  warningLightsNotes?: string | null;
+  notes?: string | null;
+  customerSignatureName?: string | null;
+  customerSignatureDataUrl?: string | null;
+  staffSignatureName?: string | null;
+  staffSignatureDataUrl?: string | null;
+  documentsAcknowledged?: boolean;
+  damageIds?: string[];
+  actualStationId?: string | null;
+  technicalObservations?: Array<{
+    description: string;
+    category?: string;
+    affectedArea?: string;
+    severity?: string;
+    blocksRental?: boolean;
+  }>;
+  keysHandedOver?: boolean;
+  idDocumentVerified?: boolean;
+  licenseVerified?: boolean;
+};
+
 export type BookingStationContext = {
   stationId: string;
   name: string;
@@ -3850,9 +3884,9 @@ export const api = {
     // the fact). Omitted → server uses `now()`.
     listHandovers: (orgId: string, bookingId: string) =>
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
-    createPickupHandover: (orgId: string, bookingId: string, data: any) =>
+    createPickupHandover: (orgId: string, bookingId: string, data: CreateHandoverProtocolPayload) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
+    createReturnHandover: (orgId: string, bookingId: string, data: CreateHandoverProtocolPayload) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,

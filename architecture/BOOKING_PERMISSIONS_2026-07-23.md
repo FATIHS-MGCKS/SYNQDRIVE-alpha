@@ -83,6 +83,20 @@ Generic `PATCH /bookings/:id` returns **410 Gone** (`BOOKING_GENERIC_PATCH_REMOV
 
 Frontend: `applyBookingFieldUpdates()` in `bookingUpdateCommands.ts` routes edits to typed endpoints; conflict UX via `BOOKING_VERSION_CONFLICT`.
 
+## Handover DTO validation (Prompt 7)
+
+`CreateHandoverProtocolDto` + `HandoverValidationService` for pickup/return handover:
+
+- Class-validator DTO with `whitelist` + `forbidNonWhitelisted` (rejects `performedByUserId`/`performedByName`)
+- Numeric bounds: odometer ≥ 0, fuel/charge 0–100, array/string limits
+- Signature data URLs: allowed MIME types (png/jpeg/webp), max 512 KB decoded
+- Return odometer ≥ pickup odometer unless `odometerOverrideReason` + `booking.override`
+- Pickup gate override uses `booking.override` (via `bookings.manage`) + mandatory reason + audit
+- Tenant-safe validation for `damageIds`, `actualStationId`
+- Pickup only on `CONFIRMED`, return only on `ACTIVE`
+- Idempotent replay: duplicate pickup on `ACTIVE`, duplicate return on `COMPLETED`
+- Optional fields: `keysHandedOver`, `idDocumentVerified`, `licenseVerified` (merged into notes)
+
 ### Guard chain
 
 1. `OrgScopingGuard` — cross-tenant → 403
@@ -158,6 +172,9 @@ Driver scope: DRIVER role without `bookings-sensitive.read` limited to bookings 
 - `booking-mutation.dto.spec.ts`
 - `booking-update.service.spec.ts`
 - `dto/updates/booking-update-dtos.spec.ts`
+- `dto/handover/handover-mutation.dto.spec.ts`
+- `handover-validation.service.spec.ts`
+- `booking-pickup-gate.integration.spec.ts` (idempotency + override)
 - `booking-update-permission.util.spec.ts`
 - `booking-permission.defaults.spec.ts`
 - `booking-permission.matrix.spec.ts`
