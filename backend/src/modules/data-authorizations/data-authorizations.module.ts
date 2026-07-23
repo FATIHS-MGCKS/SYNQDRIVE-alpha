@@ -39,6 +39,8 @@ import { TripLocationEnforcementService } from './trip-location-enforcement/trip
 import { TripLocationEnforcementMetricsService } from './trip-location-enforcement/trip-location-enforcement.metrics';
 import { VehicleHealthEnforcementService } from './vehicle-health-enforcement/vehicle-health-enforcement.service';
 import { VehicleHealthEnforcementMetricsService } from './vehicle-health-enforcement/vehicle-health-enforcement.metrics';
+import { DrivingBehaviorEnforcementService } from './driving-behavior-enforcement/driving-behavior-enforcement.service';
+import { DrivingBehaviorEnforcementMetricsService } from './driving-behavior-enforcement/driving-behavior-enforcement.metrics';
 
 @Module({
   imports: [RedisModule],
@@ -85,6 +87,8 @@ import { VehicleHealthEnforcementMetricsService } from './vehicle-health-enforce
     TripLocationEnforcementMetricsService,
     VehicleHealthEnforcementService,
     VehicleHealthEnforcementMetricsService,
+    DrivingBehaviorEnforcementService,
+    DrivingBehaviorEnforcementMetricsService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -110,6 +114,8 @@ import { VehicleHealthEnforcementMetricsService } from './vehicle-health-enforce
     TripLocationEnforcementMetricsService,
     VehicleHealthEnforcementService,
     VehicleHealthEnforcementMetricsService,
+    DrivingBehaviorEnforcementService,
+    DrivingBehaviorEnforcementMetricsService,
   ],
 })
 export class DataAuthorizationsModule {}

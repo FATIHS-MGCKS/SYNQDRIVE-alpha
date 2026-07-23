@@ -6,6 +6,13 @@ import type {
   TripAssessabilityDimensionStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { DrivingBehaviorEnforcementService } from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.service';
+import {
+  DRIVING_BEHAVIOR_DATA_CATEGORY,
+  DRIVING_BEHAVIOR_PATH,
+  DRIVING_BEHAVIOR_PURPOSE,
+  DRIVING_BEHAVIOR_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.constants';
 import { buildDrivingAnalysisInputFingerprint } from '../driving-analysis-run/driving-analysis-run.fingerprint';
 import { DrivingAnalysisRunService } from '../driving-analysis-run/driving-analysis-run.service';
 import { DriverAttributionService } from '../driver-attribution/driver-attribution.service';
@@ -32,6 +39,7 @@ export class TripDecisionSummaryService {
     private readonly attributionService: DriverAttributionService,
     private readonly analysisRunService: DrivingAnalysisRunService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly behaviorEnforcement?: DrivingBehaviorEnforcementService,
   ) {}
 
   async findByTrip(organizationId: string, tripId: string): Promise<TripDecisionSummary | null> {
@@ -54,6 +62,29 @@ export class TripDecisionSummaryService {
     tripId: string;
     analysisRunId?: string | null;
   }): Promise<TripDecisionSummary> {
+    if (this.behaviorEnforcement) {
+      const trip = await this.prisma.vehicleTrip.findUnique({
+        where: { id: input.tripId },
+        select: { startTime: true },
+      });
+      const mayProfile = await this.behaviorEnforcement.mayProfile({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+        purpose: DRIVING_BEHAVIOR_PURPOSE.AUTOMATED_ASSESSMENT,
+        processingPath: DRIVING_BEHAVIOR_PATH.TRIP_DECISION_SUMMARY,
+        serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.TRIP_DECISION_API,
+        correlationId: `trip-decision:${input.tripId}`,
+        tripId: input.tripId,
+        effectiveTimestamp: trip?.startTime ?? null,
+        isReprocess: true,
+      });
+      if (!mayProfile) {
+        this.logger.warn(`Trip decision summary profile denied trip=${input.tripId}`);
+        return this.buildDeniedSummary(input.tripId);
+      }
+    }
+
     const summary = await this.buildSummary(input.organizationId, input.vehicleId, input.tripId);
     const fingerprint = buildDrivingAnalysisInputFingerprint({
       organizationId: input.organizationId,
@@ -422,5 +453,37 @@ export class TripDecisionSummaryService {
         },
       ],
     };
+  }
+
+  private buildDeniedSummary(tripId: string): TripDecisionSummary {
+    return {
+      modelVersion: TRIP_DECISION_SUMMARY_MODEL_VERSION,
+      inputFingerprint: `denied:${tripId}`,
+      computedAt: new Date().toISOString(),
+      dataBasis: 'NICHT_UNTERSTUETZT',
+      dataBasisReasons: ['BEHAVIOR_PROFILE_DENIED'],
+      vehicleLoad: null,
+      driverConduct: null,
+      misuseEvidence: {
+        level: 'KEINE',
+        caseCount: 0,
+        informationalOnly: true,
+      },
+      attribution: {
+        level: 'UNKLAR',
+        confidence: 'LOW',
+        customerChargeable: false,
+        attributionType: null,
+      },
+      recommendation: {
+        level: 'TECHNISCHE_DATENPRUEFUNG',
+        primaryReason: 'Bewertung nicht autorisiert',
+        reasons: ['BEHAVIOR_PROFILE_DENIED'],
+        ctas: [],
+      },
+      partial: true,
+      stages: {},
+      accessDenied: true,
+    } as TripDecisionSummary & { accessDenied: boolean };
   }
 }

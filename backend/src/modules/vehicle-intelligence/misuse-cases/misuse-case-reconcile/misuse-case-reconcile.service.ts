@@ -1,6 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { MisuseCaseStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { DrivingBehaviorEnforcementService } from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.service';
+import {
+  DRIVING_BEHAVIOR_DATA_CATEGORY,
+  DRIVING_BEHAVIOR_PATH,
+  DRIVING_BEHAVIOR_PURPOSE,
+  DRIVING_BEHAVIOR_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.constants';
 import { DimoSegmentsService } from '../../../dimo/dimo-segments.service';
 import { recalculateMisuseCaseEvidenceCounts } from '../misuse-case-evidence-count/misuse-case-evidence-count';
 import {
@@ -38,12 +45,36 @@ export class MisuseCaseReconcileService {
     private readonly dimoSegments: DimoSegmentsService,
     private readonly rules: MisuseCaseRulesService,
     private readonly persistence: MisuseCasePersistenceHelper,
+    @Optional() private readonly behaviorEnforcement?: DrivingBehaviorEnforcementService,
   ) {}
 
   /**
    * DRIVING_MISUSE_RECONCILE — deterministic trip-level misuse reconciliation (P52).
    */
   async reconcileTrip(input: MisuseCaseReconcileInput): Promise<MisuseCaseReconcileResult> {
+    if (this.behaviorEnforcement) {
+      const trip = await this.prisma.vehicleTrip.findUnique({
+        where: { id: input.tripId },
+        select: { startTime: true },
+      });
+      const mayProfile = await this.behaviorEnforcement.mayProfile({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+        purpose: DRIVING_BEHAVIOR_PURPOSE.MISUSE_DETECTION,
+        processingPath: DRIVING_BEHAVIOR_PATH.MISUSE_AGGREGATE,
+        serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.MISUSE_RECONCILE,
+        correlationId: `misuse-reconcile:${input.tripId}`,
+        tripId: input.tripId,
+        effectiveTimestamp: trip?.startTime ?? null,
+        isReprocess: input.trigger !== 'LIVE',
+      });
+      if (!mayProfile) {
+        this.logger.warn(`Misuse reconcile profile denied trip=${input.tripId}`);
+        return this.emptyResult(input);
+      }
+    }
+
     const bundle = await this.loadTripBundle(input.tripId, input.organizationId);
     if (!bundle) {
       return this.emptyResult(input);

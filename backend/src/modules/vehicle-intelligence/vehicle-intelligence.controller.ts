@@ -132,6 +132,13 @@ import {
   VEHICLE_HEALTH_PURPOSE,
   VEHICLE_HEALTH_SERVICE_IDENTITY,
 } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
+import {
+  DRIVING_BEHAVIOR_DATA_CATEGORY,
+  DRIVING_BEHAVIOR_PATH,
+  DRIVING_BEHAVIOR_PURPOSE,
+  DRIVING_BEHAVIOR_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.constants';
+import { DrivingBehaviorEnforcementService } from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.service';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -189,6 +196,7 @@ export class VehicleIntelligenceController {
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
     private readonly tripLocationEnforcement: TripLocationEnforcementService,
     private readonly healthEnforcement: VehicleHealthEnforcementService,
+    private readonly behaviorEnforcement: DrivingBehaviorEnforcementService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1199,7 +1207,28 @@ export class VehicleIntelligenceController {
 
   @Header('Cache-Control', 'no-store')
   @Get('driving-impact/rolling')
-  async getDrivingImpactRolling(@Param('vehicleId') vehicleId: string) {
+  async getDrivingImpactRolling(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.behaviorEnforcement.isReadAllowed({
+      organizationId,
+      vehicleId,
+      dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+      purpose: DRIVING_BEHAVIOR_PURPOSE.FLEET_OPERATIONS,
+      processingPath: DRIVING_BEHAVIOR_PATH.DRIVING_IMPACT_DERIVE,
+      serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.DRIVER_SCORE_API,
+      correlationId: `driving-impact-read:${vehicleId}`,
+    });
+    if (!allowed) {
+      return {
+        accessDenied: true,
+        rollingWindow: null,
+        drivingStressScore: null,
+        notDriverEvaluation: true,
+      };
+    }
     const [rollingWindow, current] = await Promise.all([
       this.drivingImpactService.getVehicleRollingWindow(vehicleId),
       this.drivingImpactService.getVehicleImpactForTire(vehicleId),
@@ -1310,6 +1339,18 @@ export class VehicleIntelligenceController {
     }
 
     const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const scoreReadAllowed = await this.behaviorEnforcement.isReadAllowed({
+      organizationId,
+      vehicleId,
+      dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+      purpose: DRIVING_BEHAVIOR_PURPOSE.DRIVER_PROFILING,
+      processingPath: DRIVING_BEHAVIOR_PATH.DRIVER_SCORE_READ,
+      serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.DRIVER_SCORE_API,
+      correlationId: `driver-score:${vehicleId}:${subjectId}`,
+    });
+    if (!scoreReadAllowed) {
+      return this.behaviorEnforcement.emptyDriverScoreSummary(normalizedType, subjectId);
+    }
     return this.driverScoreService.getScoreSummary(
       organizationId,
       normalizedType as TripAssignmentSubjectType,
@@ -1542,17 +1583,18 @@ export class VehicleIntelligenceController {
     });
 
     const organizationId = await this.resolveOrganizationId(req, vehicleId);
-    const allowed = await this.tripLocationEnforcement.isReadAllowed({
+    const allowed = await this.behaviorEnforcement.isReadAllowed({
       organizationId,
       vehicleId,
-      dataCategory: TRIP_LOCATION_DATA_CATEGORY.DRIVING_BEHAVIOR,
-      purpose: TRIP_LOCATION_PURPOSE.TRIPS,
-      processingPath: TRIP_LOCATION_PATH.TRIP_BEHAVIOR_READ,
-      serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIPS_BEHAVIOR_API,
+      dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+      purpose: DRIVING_BEHAVIOR_PURPOSE.TECHNICAL_EVENT_DETECTION,
+      processingPath: DRIVING_BEHAVIOR_PATH.BEHAVIOR_READ,
+      serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.BEHAVIOR_READ_API,
       correlationId: `trip-behavior:${tripId}`,
+      tripId,
     });
 
-    const redactedDriving = this.tripLocationEnforcement.redactDrivingEvents(
+    const redactedDriving = this.behaviorEnforcement.redactBehaviorEvents(
       drivingEvents,
       allowed,
     );

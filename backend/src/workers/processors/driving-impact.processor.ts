@@ -4,6 +4,13 @@ import { Job } from 'bullmq';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { DrivingImpactService } from '../../modules/vehicle-intelligence/driving-impact/driving-impact.service';
+import { DrivingBehaviorEnforcementService } from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.service';
+import {
+  DRIVING_BEHAVIOR_DATA_CATEGORY,
+  DRIVING_BEHAVIOR_PATH,
+  DRIVING_BEHAVIOR_PURPOSE,
+  DRIVING_BEHAVIOR_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.constants';
 import { TripEnrichmentOrchestratorService } from '../../modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
 import { BrakeRecalculationOrchestratorService } from '../../modules/vehicle-intelligence/brakes/brake-recalculation-orchestrator.service';
 import { BrakeHealthObservabilityService } from '../../modules/vehicle-intelligence/brakes/brake-health-observability.service';
@@ -26,12 +33,32 @@ export class DrivingImpactProcessor extends WorkerHost {
     private readonly orchestrator: TripEnrichmentOrchestratorService,
     private readonly brakeRecalcOrchestrator: BrakeRecalculationOrchestratorService,
     @Optional() private readonly observability?: BrakeHealthObservabilityService,
+    @Optional() private readonly behaviorEnforcement?: DrivingBehaviorEnforcementService,
   ) {
     super();
   }
 
   async process(job: Job<DrivingImpactJobData>): Promise<void> {
-    const { tripId, vehicleId } = job.data;
+    const { tripId, vehicleId, organizationId } = job.data;
+
+    if (organizationId && this.behaviorEnforcement) {
+      const mayDerive = await this.behaviorEnforcement.mayDerive({
+        organizationId,
+        vehicleId,
+        dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+        purpose: DRIVING_BEHAVIOR_PURPOSE.FLEET_OPERATIONS,
+        processingPath: DRIVING_BEHAVIOR_PATH.DRIVING_IMPACT_DERIVE,
+        serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.DRIVING_IMPACT_WORKER,
+        correlationId: `driving-impact:${tripId}`,
+        tripId,
+        effectiveTimestamp: job.data.requestedAt,
+      });
+      if (!mayDerive) {
+        this.logger.warn(`DrivingImpact derive denied trip=${tripId}`);
+        await this.orchestrator.markDrivingImpactComputed(tripId, true);
+        return;
+      }
+    }
 
     this.logger.log(`DrivingImpact compute started: trip=${tripId} vehicle=${vehicleId}`);
 
