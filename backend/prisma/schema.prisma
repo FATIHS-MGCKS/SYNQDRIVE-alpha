@@ -1748,6 +1748,7 @@ model Organization {
   authorizationDecisionEvents                               AuthorizationDecisionEvent[]
   dataProcessingReviewCycles                                DataProcessingReviewCycle[]
   dataProcessingReviewDecisions                             DataProcessingReviewDecision[]
+  dataAuthorizationAuditOutbox                            DataAuthorizationAuditOutbox[]
   processingActivityLifecycleEvents                         ProcessingActivityLifecycleEvent[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
@@ -10973,6 +10974,26 @@ enum AuthorizationDecisionEventType {
   INGESTION_SKIPPED
 }
 
+/// Retention class for append-only privacy audit events.
+enum DataAuthorizationAuditRetentionClass {
+  STANDARD
+  EXTENDED
+  LEGAL_HOLD
+}
+
+enum DataAuthorizationAuditEventKind {
+  AUTHORIZATION_DECISION
+  LIFECYCLE_CHANGE
+  REVIEW_DECISION
+}
+
+enum DataAuthorizationAuditOutboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  DEAD_LETTER
+}
+
 enum AuthorizationActorType {
   USER
   SYSTEM
@@ -11596,20 +11617,33 @@ model EnforcementPolicyLifecycleEvent {
 
 /// Unveränderliches Entscheidungsprotokoll — append-only, kein updatedAt.
 model AuthorizationDecisionEvent {
-  id                   String                         @id @default(uuid())
-  organizationId       String                         @map("organization_id")
-  processingActivityId String?                        @map("processing_activity_id")
-  enforcementPolicyId  String?                        @map("enforcement_policy_id")
-  eventType            AuthorizationDecisionEventType @map("event_type")
-  pathId               String?                        @map("path_id")
-  dataCategory         PrivacyProcessingDataCategory? @map("data_category")
-  processingPurpose    PrivacyProcessingPurpose?      @map("processing_purpose")
-  vehicleId            String?                        @map("vehicle_id")
-  actorType            AuthorizationActorType         @map("actor_type")
-  actorId              String?                        @map("actor_id")
-  decisionReason       String?                        @map("decision_reason")
-  correlationId        String?                        @map("correlation_id")
-  createdAt            DateTime                       @default(now()) @map("created_at")
+  id                   String                              @id @default(uuid())
+  organizationId       String                              @map("organization_id")
+  processingActivityId String?                             @map("processing_activity_id")
+  enforcementPolicyId  String?                             @map("enforcement_policy_id")
+  policyVersion        Int?                                @map("policy_version")
+  eventType            AuthorizationDecisionEventType      @map("event_type")
+  pathId               String?                             @map("path_id")
+  dataCategory         PrivacyProcessingDataCategory?      @map("data_category")
+  processingPurpose    PrivacyProcessingPurpose?           @map("processing_purpose")
+  sourceSystem         String?                             @map("source_system")
+  action               String?                             @map("action")
+  processorType        String?                             @map("processor_type")
+  processorIdentity    String?                             @map("processor_identity")
+  resourceType         String?                             @map("resource_type")
+  resourceReferenceHash String?                            @map("resource_reference_hash")
+  vehicleId            String?                             @map("vehicle_id")
+  actorType            AuthorizationActorType              @map("actor_type")
+  actorId              String?                             @map("actor_id")
+  decisionReason       String?                             @map("decision_reason")
+  correlationId        String?                             @map("correlation_id")
+  evaluatedAt          DateTime?                           @map("evaluated_at")
+  policyChecksum       String?                             @map("policy_checksum")
+  resolverVersion      String?                             @map("resolver_version")
+  engineVersion        String?                             @map("engine_version")
+  retentionClass       DataAuthorizationAuditRetentionClass @default(STANDARD) @map("retention_class")
+  sampled              Boolean                             @default(false)
+  createdAt            DateTime                            @default(now()) @map("created_at")
 
   organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   processingActivity ProcessingActivity? @relation(fields: [processingActivityId], references: [id], onDelete: SetNull)
@@ -11619,7 +11653,36 @@ model AuthorizationDecisionEvent {
   @@index([processingActivityId])
   @@index([enforcementPolicyId])
   @@index([eventType, createdAt])
+  @@index([organizationId, correlationId])
+  @@index([retentionClass, createdAt])
   @@map("authorization_decision_events")
+}
+
+/// Transactional outbox for durable privacy audit delivery (decisions, lifecycle, review).
+model DataAuthorizationAuditOutbox {
+  id             String                           @id @default(uuid())
+  organizationId String                           @map("organization_id")
+  idempotencyKey String                           @unique @map("idempotency_key")
+  eventKind      DataAuthorizationAuditEventKind  @map("event_kind")
+  correlationId  String?                          @map("correlation_id")
+  payloadVersion Int                              @default(1) @map("payload_version")
+  payload        Json
+  status         DataAuthorizationAuditOutboxStatus @default(PENDING) @map("processing_status")
+  attempts       Int                              @default(0)
+  nextRetryAt    DateTime                         @default(now()) @map("next_retry_at")
+  processedAt    DateTime?                        @map("processed_at")
+  deadLetteredAt DateTime?                        @map("dead_lettered_at")
+  errorMessage   String?                          @map("error_message")
+  createdAt      DateTime                         @default(now()) @map("created_at")
+  updatedAt      DateTime                         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([status, nextRetryAt])
+  @@index([organizationId, eventKind])
+  @@index([organizationId, correlationId])
+  @@map("data_authorization_audit_outbox")
 }
 
 /// Review cycle for a specific entity version — approvals bind to version + fingerprint.

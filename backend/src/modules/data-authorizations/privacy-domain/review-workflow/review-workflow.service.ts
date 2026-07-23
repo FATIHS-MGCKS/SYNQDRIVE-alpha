@@ -11,6 +11,7 @@ import {
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@shared/database/prisma.service';
 import { calculateAuthorizationRiskLevel } from '../../data-authorization-risk.util';
+import { DataAuthorizationAuditService } from '../audit-log/data-authorization-audit.service';
 import { DATA_PROCESSING_REVIEW_STEP_PERMISSION } from './data-processing-permission.constants';
 import { DataProcessingPermissionService } from './data-processing-permission.service';
 import { assertFourEyesSeparation } from './review-workflow.four-eyes';
@@ -34,6 +35,7 @@ export class DataProcessingReviewWorkflowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: DataProcessingPermissionService,
+    private readonly audit: DataAuthorizationAuditService,
   ) {}
 
   async computeProcessingActivityRisk(orgId: string, activityId: string): Promise<DataAuthorizationRiskLevel> {
@@ -199,6 +201,16 @@ export class DataProcessingReviewWorkflowService {
           reason: params.reason?.trim() || null,
           entityVersionNumber: cycle.entityVersionNumber,
         },
+      });
+
+      await this.audit.enqueueReviewDecisionAuditInTransaction(tx, {
+        organizationId: params.orgId,
+        cycleId: cycle.id,
+        stepType: params.stepType,
+        outcome: params.outcome,
+        actorUserId: params.actorUserId,
+        reason: params.reason,
+        entityVersionNumber: cycle.entityVersionNumber,
       });
 
       if (

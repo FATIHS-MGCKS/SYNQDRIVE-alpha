@@ -21,8 +21,13 @@ import { ProcessingActivityLifecycleService } from './privacy-domain/policy-life
 import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/policy-lifecycle.controller';
 import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
-import { AuthorizationDecisionEventsService } from './authorization-decision-engine/authorization-decision-events.service';
 import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
+import { DataAuthorizationAuditController } from './privacy-domain/audit-log/data-authorization-audit.controller';
+import { DataAuthorizationAuditOutboxMetricsService } from './privacy-domain/audit-log/data-authorization-audit-outbox.metrics';
+import { DataAuthorizationAuditOutboxProcessorService } from './privacy-domain/audit-log/data-authorization-audit-outbox.processor';
+import { DataAuthorizationAuditOutboxRepository } from './privacy-domain/audit-log/data-authorization-audit-outbox.repository';
+import { DataAuthorizationAuditOutboxSchedulerService } from './privacy-domain/audit-log/data-authorization-audit-outbox.scheduler.service';
+import { DataAuthorizationAuditService } from './privacy-domain/audit-log/data-authorization-audit.service';
 import { DataProcessingReviewWorkflowService } from './privacy-domain/review-workflow/review-workflow.service';
 import { DataProcessingPermissionService } from './privacy-domain/review-workflow/data-processing-permission.service';
 import { DataProcessingReviewWorkflowController } from './privacy-domain/review-workflow/review-workflow.controller';
@@ -37,6 +42,7 @@ import { DataProcessingReviewWorkflowController } from './privacy-domain/review-
     EnforcementPolicyScopeController,
     PolicyLifecycleController,
     DataProcessingReviewWorkflowController,
+    DataAuthorizationAuditController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -55,8 +61,12 @@ import { DataProcessingReviewWorkflowController } from './privacy-domain/review-
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,
-    AuthorizationDecisionEventsService,
     AuthorizationDecisionStartupService,
+    DataAuthorizationAuditService,
+    DataAuthorizationAuditOutboxRepository,
+    DataAuthorizationAuditOutboxProcessorService,
+    DataAuthorizationAuditOutboxMetricsService,
+    DataAuthorizationAuditOutboxSchedulerService,
     DataProcessingReviewWorkflowService,
     DataProcessingPermissionService,
   ],
@@ -75,6 +85,7 @@ import { DataProcessingReviewWorkflowController } from './privacy-domain/review-
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,
+    DataAuthorizationAuditService,
     DataProcessingReviewWorkflowService,
   ],
 })

@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-authorization-audit-logging-v49798-2026-07-23',
+    version: '4.9.798',
+    title: 'V4.9.798 — Append-only Lifecycle- & Decision-Logging (Prompt 15)',
+    summary: [
+      'Belastbare append-only Audit-Modelle für Lifecycle-Änderungen, Review-Entscheidungen und Authorization Decisions.',
+      'Transactional Outbox mit Worker, risikobasiertem Sampling (kritische Zugriffe nie gesampelt), Fail-closed bei Audit-Ausfall in Production.',
+      'Erweiterte AuthorizationDecisionEvent-Felder, Pseudonymisierung, Retention-Klassen, Audit-API mit data_processing.audit_view.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 15 — nachvollziehbare, unveränderliche Entscheidungs- und Lifecycle-Protokolle.',
+    previousBehavior:
+      'AuthorizationDecisionEvent mit Basis-Feldern, direktes Prisma-Create ohne Outbox, kein strukturiertes Sampling, keine dedizierte Audit-API.',
+    details:
+      'Prisma: erweiterte authorization_decision_events + data_authorization_audit_outbox. Module privacy-domain/audit-log/: DataAuthorizationAuditService, Outbox Repository/Processor/Scheduler, Sampling, Sanitize. Lifecycle + Review enqueue Outbox in derselben Transaktion. GET .../data-authorizations/audit/authorization-decisions + outbox/backlog. Doku: docs/architecture/data-authorization-audit-logging-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:30:00.000Z',
+  },
+  {
+    id: 'data-processing-review-workflow-v49797-2026-07-23',
+    version: '4.9.797',
+    title: 'V4.9.797 — Review- & Vier-Augen-Freigabe (Prompt 14)',
+    summary: [
+      'Professioneller Review-Workflow mit Requester, Business Owner, Privacy/Security Reviewer und Final Approver.',
+      'Serverseitige Review-Gates nach Risiko (HIGH/CRITICAL → Privacy + Security), append-only Entscheidungen, Vier-Augen bei Final Approval.',
+      'Granulare data_processing.* Permissions, Policy-Lifecycle-Controller abgesichert, Aktivierung nur nach vollständiger Freigabe der konkreten Version.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 14 — Datenschutz- und Sicherheits-Freigabe vor Aktivierung.',
+    previousBehavior:
+      'Lifecycle-Übergänge ohne strukturierten Multi-Step-Review, ohne Vier-Augen auf ProcessingActivity, PolicyLifecycleController ungeschützt.',
+    details:
+      'Module: privacy-domain/review-workflow/. Prisma: data_processing_review_cycles + decisions. Doku: docs/architecture/data-processing-review-workflow-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:45:00.000Z',
+  },
+  {
     id: 'authorization-decision-engine-v49796-2026-07-23',
     version: '4.9.796',
     title: 'V4.9.796 — Fail-closed Authorization Decision Engine (Prompt 13)',

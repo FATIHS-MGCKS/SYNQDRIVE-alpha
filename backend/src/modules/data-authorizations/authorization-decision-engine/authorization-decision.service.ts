@@ -14,7 +14,7 @@ import {
   buildInvalidRequestDecision,
   evaluateAuthorizationDecision,
 } from './authorization-decision.engine';
-import { AuthorizationDecisionEventsService } from './authorization-decision-events.service';
+import { DataAuthorizationAuditService } from '../privacy-domain/audit-log/data-authorization-audit.service';
 import type {
   AuthorizationDecisionRequest,
   AuthorizationDecisionResult,
@@ -31,7 +31,7 @@ export class AuthorizationDecisionService {
 
   constructor(
     private readonly policyResolver: PolicyResolverService,
-    private readonly decisionEvents: AuthorizationDecisionEventsService,
+    private readonly auditService: DataAuthorizationAuditService,
   ) {
     const config = readAuthorizationDecisionConfig();
     this.cache = config.cacheEnabled
@@ -116,13 +116,11 @@ export class AuthorizationDecisionService {
     }
 
     try {
-      const auditEventId = await this.decisionEvents.record({
+      const auditEventId = await this.auditService.recordAuthorizationDecision({
         request: evaluated,
         result,
-        processingActivityOrganizationId: evaluated.organizationId,
-        enforcementPolicyOrganizationId: evaluated.organizationId,
       });
-      return { ...result, auditEventId };
+      return { ...result, auditEventId: auditEventId ?? null };
     } catch (error) {
       this.logger.error(
         `Failed to record authorization decision event correlation=${evaluated.correlationId}`,

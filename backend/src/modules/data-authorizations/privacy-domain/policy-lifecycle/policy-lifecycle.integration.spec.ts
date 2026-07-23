@@ -3,6 +3,13 @@ import { PolicyLifecycleEventsService } from './policy-lifecycle-events.service'
 import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from './policy-lifecycle.service';
 import { ProcessingActivityLifecycleService } from './processing-activity-lifecycle.service';
 
+function noopAuditService() {
+  return {
+    enqueueLifecycleAuditInTransaction: jest.fn().mockResolvedValue(null),
+    enqueueReviewDecisionAuditInTransaction: jest.fn().mockResolvedValue(null),
+  };
+}
+
 describe('Policy lifecycle integration (in-memory harness)', () => {
   it('runs review → approve → activate with append-only events', async () => {
     const events: Array<{ eventType: string; newStatus: PrivacyPolicyLifecycleStatus }> = [];
@@ -23,15 +30,7 @@ describe('Policy lifecycle integration (in-memory harness)', () => {
     };
 
     const store = { row: { ...row } };
-    const prisma: {
-      processingActivity: {
-        findFirst: jest.Mock;
-        update: jest.Mock;
-        findMany: jest.Mock;
-      };
-      processingActivityLifecycleEvent: { create: jest.Mock };
-      $transaction: jest.Mock;
-    } = {
+    const prisma = {
       processingActivity: {
         findFirst: jest.fn(async ({ where }: { where: { id: string } }) =>
           where.id === store.row.id ? { ...store.row } : null,
@@ -48,11 +47,15 @@ describe('Policy lifecycle integration (in-memory harness)', () => {
           return data;
         }),
       },
+      dataAuthorizationAuditOutbox: {
+        create: jest.fn().mockResolvedValue({ id: 'outbox-1' }),
+        findUnique: jest.fn(),
+      },
       $transaction: jest.fn(),
     };
     prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma));
 
-    const lifecycleEvents = new PolicyLifecycleEventsService();
+    const lifecycleEvents = new PolicyLifecycleEventsService(noopAuditService() as never);
     const lifecycle = new PolicyLifecycleService(
       prisma as never,
       new PolicyLifecycleTransitionValidator(),
