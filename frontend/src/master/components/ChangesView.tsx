@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-rules-workflow-v49786-2026-07-23',
+    version: '4.9.786',
+    title: 'V4.9.786 — Rental Rules workflow (Prompt 33)',
+    summary: [
+      'Drei-Zustands-Editor für Kategorie- und Fahrzeug-Overrides (Erben / Eigener Wert / Keine Anforderung; Booleans: Erben / Erforderlich / Nicht erforderlich).',
+      'Organisationsebene ohne Erben-Option; pro Feld effektiver Wert, Herkunft, Entwurf und Änderungsauswirkung.',
+      'Live-Vorschau (produktiv / Entwurf / Diff), Publish-Panel mit Buchungs- und Manual-Approval-Kontext.',
+      'Fahrzeugausnahmen-Tabelle mit Reset auf Kategorie; Revisions-Historie mit Diff und Hash.',
+      'Vollständige DE/EN-i18n und WCAG-orientierte Tastatur-/Fokus-Muster.',
+    ],
+    reason: 'Bearbeitungs-, Preview-, Publish- und History-Workflow professionell umsetzen (Prompt 33).',
+    previousBehavior: 'Einfache Select-Felder, Activity-Log-Historie, Overrides als Liste ohne Reset-Tabelle, Preview-APIs nicht angebunden.',
+    details:
+      'rental-rule-field-state.util, RentalRuleTriStateControl, RentalRuleFieldRow, RentalRuleLivePreviewPanel, RentalRulesManualApprovalPanel, revision history APIs, rentalRules.workflow.* i18n.',
+    affectsArchitecture: true,
+    module: 'Rental Rules / Frontend + Backend',
+    createdAt: '2026-07-24T06:00:00.000Z',
+  },
+  {
     id: 'rental-rules-ui-restructure-v49785-2026-07-23',
     version: '4.9.785',
     title: 'V4.9.785 — Rental Rules UI restructure (Prompt 32)',

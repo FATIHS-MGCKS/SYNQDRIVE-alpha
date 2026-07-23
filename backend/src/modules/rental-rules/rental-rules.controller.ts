@@ -21,6 +21,7 @@ import {
   AssignCategoryVehiclesDto,
   CreateRentalVehicleCategoryDto,
   PreviewCategoryVehicleAssignmentDto,
+  ListRentalRuleRevisionsQueryDto,
   PreviewRentalRuleRevisionDto,
   PublishRentalRuleRevisionDto,
   AnalyzeRentalRulePublishDto,
@@ -45,6 +46,21 @@ export class RentalRulesController {
   @RequireRentalRulePermission('rental_rules.read')
   getOverview(@Param('orgId') orgId: string) {
     return this.rentalRules.getOverview(orgId);
+  }
+
+  @Get('organizations/:orgId/rental-rules/revisions')
+  @RequireRentalRulePermission('rental_rules.read')
+  listRevisions(
+    @Param('orgId') orgId: string,
+    @Query() query: ListRentalRuleRevisionsQueryDto,
+  ) {
+    return this.rentalRules.listRevisions(orgId, query);
+  }
+
+  @Get('organizations/:orgId/rental-rules/revisions/:revisionId')
+  @RequireRentalRulePermission('rental_rules.read')
+  getRevision(@Param('orgId') orgId: string, @Param('revisionId') revisionId: string) {
+    return this.rentalRules.getRevision(orgId, revisionId);
   }
 
   @Get('organizations/:orgId/rental-rules/fleet-vehicles')

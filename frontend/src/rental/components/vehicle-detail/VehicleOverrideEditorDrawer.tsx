@@ -4,6 +4,8 @@ import { DetailDrawer } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { VehicleRentalRequirementsDto } from '../settings/rental-rules/rental-rules.types';
 import { RentalRuleFieldsForm } from '../settings/rental-rules/RentalRuleFieldsForm';
+import { RentalRuleLivePreviewPanel } from '../settings/rental-rules/RentalRuleLivePreviewPanel';
+import { RentalRulePublishImpactPanel } from '../settings/rental-rules/RentalRulePublishImpactPanel';
 import {
   formValuesToPatchPayload,
   parseApiError,
@@ -181,7 +183,34 @@ export function VehicleOverrideEditorDrawer({
         )}
 
         {enabled ? (
-          <RentalRuleFieldsForm values={values} onChange={setValues} disabled={!canWrite || saving} />
+          <>
+            <RentalRuleFieldsForm
+              values={values}
+              onChange={setValues}
+              disabled={!canWrite || saving}
+              scope="vehicle"
+              parentRules={null}
+              baselineRules={requirements?.overrides}
+              showFieldMeta
+            />
+            <RentalRuleLivePreviewPanel
+              orgId={orgId}
+              scope="vehicle"
+              scopeEntityId={vehicleId}
+              className="mt-6 border-t border-border/70 pt-5"
+            />
+            {requirements?.hasUnpublishedDraft && requirements.draftRevision ? (
+              <RentalRulePublishImpactPanel
+                orgId={orgId}
+                scope="vehicle"
+                scopeEntityId={vehicleId}
+                draftRevision={requirements.draftRevision}
+                expectedVersion={requirements.overrides?.version ?? 0}
+                canPublish={canWrite}
+                onPublished={onSaved}
+              />
+            ) : null}
+          </>
         ) : (
           <p className="text-[13px] leading-relaxed text-muted-foreground">
             This vehicle follows organization defaults and category rules. Enable the override to set

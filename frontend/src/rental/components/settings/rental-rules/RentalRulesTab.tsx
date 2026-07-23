@@ -61,7 +61,7 @@ export function RentalRulesTab({
   const { locale } = useLanguage();
   const resolvedPermissions = useRentalRulesPermissions();
   const permissions = permissionsOverride ?? resolvedPermissions;
-  const { canRead, canWrite, canPublish, canAssignVehicles } = permissions;
+  const { canRead, canWrite, canPublish, canAssignVehicles, canManageOverrides } = permissions;
 
   const {
     overview,
@@ -236,8 +236,11 @@ export function RentalRulesTab({
 
       {section === 'overrides' ? (
         <RentalRulesOverridesSection
+          orgId={orgId}
           overview={overview}
+          canManageOverrides={canManageOverrides}
           onPreviewVehicle={(vehicleId, label) => setPreviewVehicle({ id: vehicleId, label })}
+          onReload={load}
         />
       ) : null}
 
@@ -261,6 +264,7 @@ export function RentalRulesTab({
           orgId={orgId ?? ''}
           mode={categoryDrawer.mode}
           category={categoryDrawer.category}
+          organizationDefaults={defaults}
           assignedVehicles={assignedVehicles}
           canWrite={canWrite}
           canPublish={canPublish}

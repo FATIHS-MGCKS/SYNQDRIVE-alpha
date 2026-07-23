@@ -5882,6 +5882,55 @@ export const api = {
         result: 'deleted' | 'no_op';
         overrides: null;
       }>(`/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides`),
+    previewRevision: (
+      orgId: string,
+      scope: 'defaults' | 'category' | 'vehicle',
+      payload: { mode: 'active' | 'draft' | 'diff'; scopeEntityId?: string },
+    ) => {
+      const path =
+        scope === 'defaults'
+          ? `/organizations/${orgId}/rental-rules/defaults/preview`
+          : scope === 'category'
+            ? `/organizations/${orgId}/rental-rules/categories/${payload.scopeEntityId}/preview`
+            : `/organizations/${orgId}/vehicles/${payload.scopeEntityId}/rental-requirements/overrides/preview`;
+      return post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionPreviewResponse>(
+        path,
+        { mode: payload.mode },
+      );
+    },
+    listRevisions: (
+      orgId: string,
+      query?: {
+        scopeType?: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+        scopeId?: string;
+        status?: 'DRAFT' | 'ACTIVE' | 'RETIRED';
+        limit?: number;
+      },
+    ) => {
+      const params = new URLSearchParams();
+      if (query?.scopeType) params.set('scopeType', query.scopeType);
+      if (query?.scopeId) params.set('scopeId', query.scopeId);
+      if (query?.status) params.set('status', query.status);
+      if (query?.limit) params.set('limit', String(query.limit));
+      const suffix = params.toString() ? `?${params.toString()}` : '';
+      return get<{
+        items: import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionListItemDto[];
+        total: number;
+      }>(`/organizations/${orgId}/rental-rules/revisions${suffix}`);
+    },
+    getRevision: (orgId: string, revisionId: string) =>
+      get<{
+        revision: import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionListItemDto;
+        supersedesRevision: import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleRevisionListItemDto | null;
+        diff: {
+          ruleDiffs: Array<{
+            field: string;
+            active: unknown;
+            draft: unknown;
+            changed: boolean;
+          }>;
+        };
+      }>(`/organizations/${orgId}/rental-rules/revisions/${revisionId}`),
   },
   activityLog: {
     listAll: () => get<any[]>('/admin/activity-log'),

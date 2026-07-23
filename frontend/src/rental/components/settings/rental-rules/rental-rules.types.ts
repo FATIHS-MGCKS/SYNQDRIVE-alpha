@@ -224,8 +224,58 @@ export interface RentalRulesOverrideVehicleDto {
   categoryId: string | null;
   categoryName: string | null;
   overrideCount: number;
+  overrideFields?: string[];
   topOverrideField: string | null;
   topOverrideValue: unknown;
+  changeReason?: string | null;
+  createdByName?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  revisionId?: string | null;
+  rulesHash?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RentalRuleRevisionListItemDto {
+  id: string;
+  organizationId: string;
+  scopeType: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+  scopeId: string;
+  version: number;
+  status: 'DRAFT' | 'ACTIVE' | 'RETIRED';
+  rulesHash: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  lockVersion: number;
+  changeReason: string | null;
+  createdAt: string;
+  publishedAt: string | null;
+  supersedesRevisionId: string | null;
+  createdBy: string | null;
+  publishedBy: string | null;
+  createdByName?: string | null;
+  publishedByName?: string | null;
+}
+
+export interface RentalRuleRevisionPreviewResponse {
+  scope: {
+    organizationId: string;
+    scopeType: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+    scopeId: string;
+  };
+  activeRevision: RentalRuleDraftRevisionRef | null;
+  draftRevision: RentalRuleDraftRevisionRef | null;
+  preview: {
+    mode: 'active' | 'draft' | 'diff';
+    hasChanges: boolean;
+    ruleDiffs: Array<{
+      field: string;
+      active: unknown;
+      draft: unknown;
+      changed: boolean;
+    }>;
+  };
 }
 
 export interface RentalRulesOverviewDto {
