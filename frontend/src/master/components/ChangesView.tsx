@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'privacy-domain-foundation-v49789-2026-07-23',
+    version: '4.9.789',
+    title: 'V4.9.789 — Data Authorization: Privacy Domain Foundation (Prompt 5)',
+    summary: [
+      'Fachliche Trennung des Data-Authorization-Monoliths in 8 parallele Domänenmodelle: ProcessingActivity, LegalBasisAssessment, DataSubjectConsent, ProviderAccessGrant, DataSharingAuthorization, DataProcessingAgreement, EnforcementPolicy, AuthorizationDecisionEvent.',
+      'Prisma-Migration `20260723230000_privacy_domain_foundation` — Legacy `org_data_authorizations` und `vehicle_provider_consents` bleiben unverändert lesbar.',
+      'Modellinvarianten + Unit Tests unter `privacy-domain.invariants.ts`. Architektur-Doku: `docs/architecture/data-authorization-domain-model-2026-07.md`.',
+    ],
+    reason:
+      'OrgDataAuthorization vermischte Verarbeitungstätigkeit, Rechtsgrundlage, Einwilligung, Providerzugriff, Partnerweitergabe, AVV und Enforcement — nicht DSGVO-konform modellierbar.',
+    previousBehavior:
+      'Ein Monolith-Record (`OrgDataAuthorization`) für alle Datenschutz-Rollen; keine getrennten Domänen.',
+    details:
+      'Neu: Prisma-Modelle + Migration, `privacy-domain.invariants.ts` (+spec). Unverändert: bestehende Data-Authorization-APIs und Enforcement-Service.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T22:30:00.000Z',
+  },
+  {
     id: 'rental-rules-prod-di-fix-v49788-2026-07-23',
     version: '4.9.788',
     title: 'V4.9.788 — Rental Rules production hotfix (DI + release train)',
