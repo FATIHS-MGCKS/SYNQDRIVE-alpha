@@ -282,6 +282,7 @@ describe('BookingPickupGateService (integration)', () => {
     const result = await service.evaluatePickupGate({
       ...baseInput,
       overrideReason: 'Customer accepted paper copy on site',
+      hasOverridePermission: true,
     });
     expect(result.allowed).toBe(true);
     expect(result.overrideUsed).toBe(true);
@@ -300,6 +301,7 @@ describe('BookingPickupGateService (integration)', () => {
     const result = await service.evaluatePickupGate({
       ...baseInput,
       overrideReason: 'Attempted override',
+      hasOverridePermission: false,
     });
     expect(result.allowed).toBe(false);
     expect(result.hardBlocks.some((b) => b.code === PICKUP_GATE_CODE.OVERRIDE_DENIED)).toBe(true);
@@ -366,6 +368,13 @@ describe('BookingsHandoverService pickup idempotency', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', status: 'ACTIVE' }),
       },
     };
+    const handoverValidation = {
+      resolvePerformedAt: jest.fn().mockReturnValue(null),
+      assertBookingStatus: jest.fn(),
+      assertWarningLightsNotes: jest.fn(),
+      assertTenantScopedReferences: jest.fn().mockResolvedValue(undefined),
+      assertOdometerRules: jest.fn(),
+    };
     const svc = new BookingsHandoverService(
       prisma as any,
       {} as any,
@@ -375,6 +384,7 @@ describe('BookingsHandoverService pickup idempotency', () => {
       {} as any,
       {} as any,
       {} as any,
+      handoverValidation as any,
     );
     const result = await svc.createHandover('org-1', 'bk-1', 'PICKUP', {
       odometerKm: 1000,
@@ -382,5 +392,67 @@ describe('BookingsHandoverService pickup idempotency', () => {
     }, actor);
     expect(result.booking.status).toBe('ACTIVE');
     expect(result.protocol.id).toBe('proto-1');
+  });
+
+  it('returns existing protocol when duplicate return request on COMPLETED booking', async () => {
+    const { BookingsHandoverService } = require('../bookings-handover.service');
+    const existingProtocol = {
+      id: 'proto-return-1',
+      bookingId: 'bk-1',
+      vehicleId: 'veh-1',
+      kind: 'RETURN',
+      performedAt: new Date(),
+      performedByUserId: 'user-1',
+      performedByName: 'Operator',
+      odometerKm: 1500,
+      fuelPercent: 60,
+      fuelFull: false,
+      exteriorClean: true,
+      interiorClean: true,
+      tiresSeasonOk: true,
+      warningLightsOn: false,
+      warningLightsNotes: null,
+      notes: null,
+      customerSignatureName: 'Customer',
+      customerSignatureDataUrl: null,
+      staffSignatureName: null,
+      staffSignatureDataUrl: null,
+      documentsAcknowledged: true,
+      damageIds: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const prisma = {
+      bookingHandoverProtocol: {
+        findUnique: jest.fn().mockResolvedValue(existingProtocol),
+      },
+      booking: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', status: 'COMPLETED' }),
+      },
+    };
+    const handoverValidation = {
+      resolvePerformedAt: jest.fn().mockReturnValue(null),
+      assertBookingStatus: jest.fn(),
+      assertWarningLightsNotes: jest.fn(),
+      assertTenantScopedReferences: jest.fn().mockResolvedValue(undefined),
+      assertOdometerRules: jest.fn(),
+    };
+    const svc = new BookingsHandoverService(
+      prisma as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      handoverValidation as any,
+    );
+    const result = await svc.createHandover('org-1', 'bk-1', 'RETURN', {
+      odometerKm: 1500,
+      fuelPercent: 60,
+    }, actor);
+    expect(result.booking.status).toBe('COMPLETED');
+    expect(result.protocol.id).toBe('proto-return-1');
   });
 });

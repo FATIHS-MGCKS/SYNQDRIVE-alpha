@@ -22,7 +22,21 @@ import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.s
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
+import { BookingPermissionService } from './booking-permission.service';
+import { BookingAccessService } from './booking-access.service';
+import { BookingResponseRedactionService } from './booking-response-redaction.service';
+import { BookingPermissionsGuard } from './guards/booking-permissions.guard';
+import { BookingCreateValidationService } from './booking-create.validation.service';
+import { BookingUpdateService } from './booking-update.service';
+import { HandoverValidationService } from './handover-validation.service';
+import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
+import { BookingStatusCommandService } from './status-commands/booking-status-command.service';
+import { BookingStatusCommandsController } from './status-commands/booking-status-commands.controller';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
+import { BookingCancellationFeeService } from './cancellation/booking-cancellation-fee.service';
+import { BookingCancellationOrchestrationService } from './cancellation/booking-cancellation-orchestration.service';
+import { BookingCancellationAuditService } from './cancellation/booking-cancellation-audit.service';
+import { BookingStatusOverrideAuditService } from './override/booking-status-override-audit.service';
 
 @Module({
   imports: [
@@ -43,7 +57,7 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     VehiclesModule,
     ActivityLogModule,
   ],
-  controllers: [BookingsController],
+  controllers: [BookingsController, BookingStatusCommandsController],
   providers: [
     BookingsService,
     BookingsHandoverService,
@@ -52,6 +66,19 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
+    BookingPermissionService,
+    BookingAccessService,
+    BookingResponseRedactionService,
+    BookingCreateValidationService,
+    BookingUpdateService,
+    HandoverValidationService,
+    BookingStatusTransitionService,
+    BookingStatusCommandService,
+    BookingCancellationFeeService,
+    BookingCancellationOrchestrationService,
+    BookingCancellationAuditService,
+    BookingStatusOverrideAuditService,
+    BookingPermissionsGuard,
   ],
   exports: [
     BookingsService,
@@ -59,6 +86,9 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingRentalEligibilityService,
     BookingWizardDraftService,
     BookingAllowedDriversService,
+    BookingPermissionService,
+    BookingAccessService,
+    BookingResponseRedactionService,
   ],
 })
 export class BookingsModule {}

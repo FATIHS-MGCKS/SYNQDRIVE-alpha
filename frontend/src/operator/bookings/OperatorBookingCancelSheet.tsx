@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { api, type BookingDetailDto } from '../../lib/api';
+import {
+  BOOKING_CANCELLATION_REASON_CODES,
+  BOOKING_CANCELLATION_REASON_LABELS,
+  type BookingCancellationReasonCode,
+} from '../../rental/lib/booking-cancellation-reasons';
 import { getBookingActionMatrix } from '../../rental/components/booking-detail/bookingActionRules';
 import { bookingStatusLabel, normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
 import { useRentalOrg } from '../../rental/RentalContext';
@@ -23,7 +28,8 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [reasonNote, setReasonNote] = useState('');
+  const [reasonCode, setReasonCode] = useState<BookingCancellationReasonCode>('CUSTOMER_REQUEST');
+  const [description, setDescription] = useState('');
 
   const bookingId = action.bookingId;
 
@@ -61,10 +67,18 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
   const handleCancel = async () => {
     if (!bookingId || !cancelAllowed) return;
     clearError();
-    await cancelBooking(bookingId, detail?.vehicle.vehicleId, () => {
-      action.onSuccess?.();
-      closeSheet();
-    });
+    await cancelBooking(
+      bookingId,
+      detail?.vehicle.vehicleId,
+      {
+        reasonCode,
+        description: description.trim() || null,
+      },
+      () => {
+        action.onSuccess?.();
+        closeSheet();
+      },
+    );
   };
 
   return (
@@ -126,18 +140,34 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
           )}
 
           {cancelAllowed && (
-            <label className="block">
-              <span className="text-xs font-medium text-muted-foreground">
-                Interner Hinweis (optional, wird nicht an die API gesendet)
-              </span>
-              <textarea
-                value={reasonNote}
-                onChange={(e) => setReasonNote(e.target.value)}
-                rows={3}
-                placeholder="z. B. Kunde hat telefonisch abgesagt…"
-                className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-3 text-sm resize-none"
-              />
-            </label>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">Stornogrund *</span>
+                <select
+                  value={reasonCode}
+                  onChange={(e) => setReasonCode(e.target.value as BookingCancellationReasonCode)}
+                  className="mt-1 w-full rounded-xl border border-border surface-premium px-3 py-3 text-sm"
+                >
+                  {BOOKING_CANCELLATION_REASON_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {BOOKING_CANCELLATION_REASON_LABELS[code]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Beschreibung (optional)
+                </span>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="z. B. Kunde hat telefonisch abgesagt…"
+                  className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-3 text-sm resize-none"
+                />
+              </label>
+            </div>
           )}
 
           {(error) && (

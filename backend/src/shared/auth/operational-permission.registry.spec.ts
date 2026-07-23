@@ -1,3 +1,4 @@
+import { BOOKING_PERMISSION_ACTIONS } from '@modules/bookings/booking-permission.constants';
 import { PAYMENT_PERMISSION_ACTIONS } from '@modules/payments/payment-permission.constants';
 import { SERVICE_CASE_PERMISSION_ACTIONS } from '@modules/service-cases/service-case-permission.constants';
 import { TASK_PERMISSION_ACTIONS } from '@modules/tasks/task-permission.constants';
@@ -10,8 +11,12 @@ import { evaluateOperationalPermission } from './operational-permission.util';
 import { normalizeMembershipPermissions } from './permission.util';
 
 describe('operational-permission.registry', () => {
-  it('registers all task and service case actions without duplicates', () => {
-    const combined = [...TASK_PERMISSION_ACTIONS, ...SERVICE_CASE_PERMISSION_ACTIONS];
+  it('registers all booking, task and service case actions without duplicates', () => {
+    const combined = [
+      ...BOOKING_PERMISSION_ACTIONS,
+      ...TASK_PERMISSION_ACTIONS,
+      ...SERVICE_CASE_PERMISSION_ACTIONS,
+    ];
     expect(OPERATIONAL_PERMISSION_ACTIONS).toEqual(combined);
     expect(new Set(OPERATIONAL_PERMISSION_ACTIONS).size).toBe(combined.length);
   });
@@ -33,7 +38,10 @@ describe('operational-permission.registry', () => {
     }
   });
 
-  it('uses tasks.* and service_cases.* namespaces exclusively', () => {
+  it('uses booking.*, tasks.* and service_cases.* namespaces exclusively', () => {
+    for (const action of BOOKING_PERMISSION_ACTIONS) {
+      expect(action).toMatch(/^booking\./);
+    }
     for (const action of TASK_PERMISSION_ACTIONS) {
       expect(action).toMatch(/^tasks\./);
     }
@@ -44,10 +52,13 @@ describe('operational-permission.registry', () => {
 
   it('evaluates actions via backward-compatible module flags', () => {
     const perms = normalizeMembershipPermissions({
+      bookings: { read: true, write: false, manage: false },
       tasks: { read: true, write: false, manage: false },
       'vendor-management': { read: true, write: true, manage: false },
     });
 
+    expect(evaluateOperationalPermission(perms, 'booking.read')).toBe(true);
+    expect(evaluateOperationalPermission(perms, 'booking.create')).toBe(false);
     expect(evaluateOperationalPermission(perms, 'tasks.read')).toBe(true);
     expect(evaluateOperationalPermission(perms, 'tasks.create')).toBe(false);
     expect(evaluateOperationalPermission(perms, 'service_cases.read')).toBe(true);

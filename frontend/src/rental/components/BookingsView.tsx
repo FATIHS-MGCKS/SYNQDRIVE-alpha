@@ -8,6 +8,15 @@ import { useFleetVehicles } from '../FleetContext';
 import { useHandover } from '../HandoverContext';
 import { api } from '../../lib/api';
 import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
+import {
+  BOOKING_CANCELLATION_REASON_CODES,
+  BOOKING_CANCELLATION_REASON_LABELS,
+  type BookingCancellationReasonCode,
+} from '../lib/booking-cancellation-reasons';
+import {
+  applyBookingFieldUpdates,
+  bookingVersionConflictMessage,
+} from '../lib/bookingUpdateCommands';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 import { EntityTasksSection } from './EntityTasksSection';
 import { MisuseCasesPanel } from './MisuseCasesPanel';
@@ -179,6 +188,8 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   });
   const [editSameReturnStation, setEditSameReturnStation] = useState(true);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [cancelReasonCode, setCancelReasonCode] = useState<BookingCancellationReasonCode>('CUSTOMER_REQUEST');
+  const [cancelDescription, setCancelDescription] = useState('');
   const [localCancelled, setLocalCancelled] = useState<string[]>([]);
   const [localEdits, setLocalEdits] = useState<Record<string, any>>({});
   // V4.6.81 — No-show flow (distinct from cancel). The operator opens
@@ -553,7 +564,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         v.license === cleanEdit.plate,
     );
     if (selectedVehicle && selectedVehicle.id !== booking.vehicleId) {
-      patch.vehicle = { connect: { id: selectedVehicle.id } };
+      patch.vehicleId = selectedVehicle.id;
     }
 
     const selectedCustomer = apiCustomers.find((c: any) => {
@@ -561,7 +572,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       return label === cleanEdit.customer;
     });
     if (selectedCustomer?.id && selectedCustomer.id !== booking.customerId) {
-      patch.customer = { connect: { id: selectedCustomer.id } };
+      patch.customerId = selectedCustomer.id;
     }
 
     if (cleanEdit.includedKm != null) patch.kmIncluded = Number(cleanEdit.includedKm);
@@ -571,8 +582,33 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       return;
     }
 
+    if (!booking.updatedAt) {
+      toast.error('Buchungsversion unbekannt — bitte neu laden');
+      return;
+    }
+
     try {
-      await api.bookings.update(orgId, booking.id, patch);
+      await applyBookingFieldUpdates(
+        orgId,
+        booking.id,
+        booking.updatedAt,
+        {
+          startDate: patch.startDate as string | undefined,
+          endDate: patch.endDate as string | undefined,
+          notes: patch.notes as string | undefined,
+          kmIncluded: patch.kmIncluded as number | undefined,
+          vehicleId: patch.vehicleId as string | undefined,
+          customerId: patch.customerId as string | undefined,
+        },
+        {
+          startDate: booking.startDateIso,
+          endDate: booking.endDateIso,
+          notes: booking.notes,
+          kmIncluded: booking.includedKm,
+          vehicleId: booking.vehicleId,
+          customerId: booking.customerId,
+        },
+      );
       await loadBookings();
       onBookingUpdated?.({
         ...booking,
@@ -589,9 +625,9 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       setIsEditMode(false);
       setInlineEdit({});
       setActiveDropdown(null);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Speichern fehlgeschlagen';
-      toast.error('Buchung konnte nicht gespeichert werden', { description: String(msg) });
+    } catch (err: unknown) {
+      const msg = bookingVersionConflictMessage(err);
+      toast.error('Buchung konnte nicht gespeichert werden', { description: msg });
     }
   };
 
@@ -744,7 +780,29 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       // Only call API for bookings that exist server-side (UUID-like id)
       const isPersistedId = typeof editingBooking.id === 'string' && !editingBooking.id.startsWith('new-');
       if (isPersistedId && Object.keys(patch).length > 0) {
-        await api.bookings.update(orgId, editingBooking.id, patch);
+        if (!editingBooking.updatedAt) {
+          toast.error('Buchungsversion unbekannt — bitte neu laden');
+          return;
+        }
+        await applyBookingFieldUpdates(
+          orgId,
+          editingBooking.id,
+          editingBooking.updatedAt,
+          {
+            startDate: patch.startDate,
+            endDate: patch.endDate,
+            notes: patch.notes,
+            pickupStationId: patch.pickupStationId,
+            returnStationId: patch.returnStationId,
+          },
+          {
+            startDate: editingBooking.startDateIso,
+            endDate: editingBooking.endDateIso,
+            notes: editingBooking.notes,
+            pickupStationId: editingBooking.pickupStationId,
+            returnStationId: editingBooking.returnStationId,
+          },
+        );
       }
 
       setLocalEdits(prev => ({ ...prev, [editingBooking.id]: editForm }));
@@ -755,14 +813,16 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       });
       setEditingBooking(null);
       loadBookings();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Buchung konnte nicht gespeichert werden';
-      toast.error('Fehler beim Speichern', { description: String(msg) });
+    } catch (err: unknown) {
+      const msg = bookingVersionConflictMessage(err);
+      toast.error('Fehler beim Speichern', { description: msg });
     }
   };
 
   const confirmCancel = (bookingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    setCancelReasonCode('CUSTOMER_REQUEST');
+    setCancelDescription('');
     setCancelConfirmId(bookingId);
   };
 
@@ -809,7 +869,10 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     const isPersistedId = typeof cancelConfirmId === 'string' && !cancelConfirmId.startsWith('new-');
     try {
       if (isPersistedId) {
-        await api.bookings.cancel(orgId, cancelConfirmId);
+        await api.bookings.cancel(orgId, cancelConfirmId, {
+          reasonCode: cancelReasonCode,
+          description: cancelDescription.trim() || null,
+        });
       }
       setLocalCancelled(prev => [...prev, cancelConfirmId]);
       onBookingCancelled?.(cancelConfirmId, { vehicleId: booking?.vehicleId ?? null });
@@ -1741,7 +1804,12 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
 
       <ConfirmDialog
         open={!!cancelConfirmId}
-        onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelConfirmId(null);
+            setCancelDescription('');
+          }
+        }}
         title="Buchung stornieren?"
         description="Möchten Sie diese Buchung wirklich stornieren? Diese Aktion kann nicht rückgängig gemacht werden."
         confirmLabel="Stornieren"
@@ -1749,6 +1817,32 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         tone="critical"
         onConfirm={executeCancel}
       >
+        <div className="space-y-3 my-2 text-left">
+          <label className="block text-xs">
+            <span className="font-medium text-muted-foreground">Stornogrund *</span>
+            <select
+              value={cancelReasonCode}
+              onChange={(e) => setCancelReasonCode(e.target.value as BookingCancellationReasonCode)}
+              className="mt-1 w-full rounded-lg border border-border bg-[color:var(--input-background)] px-3 py-2 text-sm"
+            >
+              {BOOKING_CANCELLATION_REASON_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {BOOKING_CANCELLATION_REASON_LABELS[code]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs">
+            <span className="font-medium text-muted-foreground">Beschreibung (optional)</span>
+            <textarea
+              value={cancelDescription}
+              onChange={(e) => setCancelDescription(e.target.value)}
+              rows={2}
+              className="mt-1 w-full rounded-lg border border-border bg-[color:var(--input-background)] px-3 py-2 text-sm resize-none"
+              placeholder="Zusätzliche Details zur Stornierung…"
+            />
+          </label>
+        </div>
         {(() => {
         const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
         const booking = allBk.find(b => b.id === cancelConfirmId);
