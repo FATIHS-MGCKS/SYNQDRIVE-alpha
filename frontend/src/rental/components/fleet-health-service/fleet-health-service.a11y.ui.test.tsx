@@ -154,10 +154,13 @@ describe('fleet health service a11y UI', () => {
         onSectionChange={() => undefined}
         tasks={[]}
         vendors={[]}
+        serviceCases={[]}
+        serviceCasesDataReady={false}
       />,
     );
     expect(html).toContain('role="tablist"');
     expect(html).toContain('aria-label="fleetHealthService.a11y.workTabs"');
+    expect(html).toContain('id="fhs-work-tab-service-cases"');
     expect(html).toContain('id="fhs-work-tab-vendors"');
     expect(html).toContain('role="tabpanel"');
     expect(html).toContain('id="fhs-work-panel-tasks"');

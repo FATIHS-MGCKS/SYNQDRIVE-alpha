@@ -45,6 +45,8 @@ if [[ "$fail" -ne 0 ]]; then
 fi
 
 echo ""
-echo "Repo monitoring artifacts present. VPS import still required if not provisioned:"
-echo "  - Grafana: import $DASHBOARD"
-echo "  - Prometheus: include alerts.yml and reload"
+echo "Repo monitoring artifacts present."
+echo "VPS refresh (post-deploy, automatic when MONITORING_AUTO_REFRESH=auto):"
+echo "  bash backend/scripts/ops/vps-refresh-monitoring.sh"
+echo "First-time bootstrap on VPS:"
+echo "  MONITORING_AUTO_BOOTSTRAP=1 bash backend/scripts/ops/vps-refresh-monitoring.sh"

@@ -74,6 +74,10 @@ describe('normalizeFleetHealthServiceTab', () => {
       tab: 'work',
       workSection: 'schedule',
     });
+    expect(normalizeFleetHealthServiceTab('work', 'service-cases')).toEqual({
+      tab: 'work',
+      workSection: 'service-cases',
+    });
   });
 
   it('falls back to default overview nav', () => {

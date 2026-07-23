@@ -14,7 +14,7 @@
 | Tab **Zustand & Service** | `FleetHealthServiceView.tsx` | Vier Primärbereiche (2×2 mobile, 4 Spalten desktop) |
 | Bereich **Übersicht** | `FleetHealthServiceOverviewPanel` + `FleetHealthServicePriorityOverview` | KPI-Strip + fünf Prioritätsabschnitte mit **fahrzeugzentrierten Zeilen** (collapsed: Zustand, Zähler, Blockade, „+N weitere“; expanded: Findings, Cases, unmatched Arbeiten) |
 | Bereich **Fahrzeuge** | `FleetConditionView` (`uiLocale=de`, `hideKpiStrip`) | Health/Zustand — keine doppelte KPI-Leiste |
-| Bereich **Arbeiten** | `FleetHealthServiceWorkPanel` | Segmented **Aufgaben** \| **Fälligkeiten**; Partner als sekundäre Aktion |
+| Bereich **Arbeiten** | `FleetHealthServiceWorkPanel` | Segmented **Aufgaben** \| **Servicefälle** \| **Fälligkeiten** \| **Partner** |
 | Bereich **Historie** | `FleetHealthServiceHistoryPanel` | Abgeschlossene/stornierte Tasks |
 | Arbeiten → **Partner** | `FleetHealthServiceVendorsPanel` → `VendorManagementView` | Vendor-Verzeichnis (kein Primärtab) |
 

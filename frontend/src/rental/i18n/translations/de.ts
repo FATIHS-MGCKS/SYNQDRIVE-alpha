@@ -219,6 +219,7 @@ export const de: Record<TranslationKey, string> = {
   'fleetHealthService.tab.work': 'Arbeiten',
   'fleetHealthService.tab.history': 'Historie',
   'fleetHealthService.work.tasks': 'Aufgaben',
+  'fleetHealthService.work.serviceCases': 'Servicefälle',
   'fleetHealthService.work.schedule': 'Fälligkeiten',
   'fleetHealthService.work.vendorsAction': 'Partner',
   'fleetHealthService.tab.tasks': 'Aufgaben',

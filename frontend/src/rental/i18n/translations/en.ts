@@ -219,6 +219,7 @@ export const en = {
   'fleetHealthService.tab.work': 'Work',
   'fleetHealthService.tab.history': 'History',
   'fleetHealthService.work.tasks': 'Tasks',
+  'fleetHealthService.work.serviceCases': 'Service cases',
   'fleetHealthService.work.schedule': 'Due dates',
   'fleetHealthService.work.vendorsAction': 'Partners',
   'fleetHealthService.tab.tasks': 'Tasks',

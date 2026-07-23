@@ -67,3 +67,12 @@ curl -sf http://127.0.0.1:3001/api/v1/health
 echo
 pm2 list
 echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
+
+if [[ "${MONITORING_AUTO_REFRESH:-auto}" == "auto" ]]; then
+  echo "==> Monitoring refresh (Prometheus reload + Grafana dashboards)"
+  if bash "$RELEASE_DIR/backend/scripts/ops/vps-refresh-monitoring.sh"; then
+    echo "Monitoring refresh: OK"
+  else
+    echo "WARN: monitoring refresh failed — app deploy succeeded; fix monitoring manually" >&2
+  fi
+fi

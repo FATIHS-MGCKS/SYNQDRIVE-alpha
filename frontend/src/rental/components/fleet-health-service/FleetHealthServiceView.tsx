@@ -144,6 +144,10 @@ export function FleetHealthServiceView({
             onSectionChange={setWorkSection}
             tasks={vm.allTasks}
             vendors={vm.vendors}
+            serviceCases={vm.serviceCases}
+            serviceCasesDataReady={vm.serviceCasesDataReady}
+            serviceCasesLoading={vm.serviceCasesLoading}
+            serviceCasesError={vm.serviceCasesError}
             loading={vm.serviceLoading}
             error={vm.serviceError}
             onReload={() => void vm.reloadAll()}
