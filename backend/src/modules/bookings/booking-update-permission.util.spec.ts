@@ -17,10 +17,10 @@ describe('collectBookingUpdatePermissionActions', () => {
     );
   });
 
-  it('adds vehicle action for vehicle connect', () => {
-    expect(
-      collectBookingUpdatePermissionActions({ vehicle: { connect: { id: 'v1' } } }),
-    ).toContain('booking.update_vehicle');
+  it('adds vehicle action for vehicleId', () => {
+    expect(collectBookingUpdatePermissionActions({ vehicleId: 'v1' })).toContain(
+      'booking.update_vehicle',
+    );
   });
 
   it('adds confirm action for CONFIRMED status', () => {

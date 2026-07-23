@@ -43,6 +43,7 @@ import type {
   BookingStationContext,
   HandoverSideSummary,
 } from './booking-detail.types';
+import type { CreateBookingCommand, UpdateBookingCommand } from './booking-command.types';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
@@ -151,37 +152,11 @@ export class BookingsService {
 
   async create(
     orgId: string,
-    data: Omit<Prisma.BookingCreateInput, 'organization'>,
+    command: CreateBookingCommand,
     options?: { userId?: string | null },
   ): Promise<Booking> {
-    // V4.6.74 — server-side gate: prevent double-booking the SAME vehicle
-    // within overlapping time windows. The frontend already tries to block
-    // this, but the UI gate was broken (it filtered on a field that wasn't
-    // returned by the API), and even with a working UI gate we must not
-    // rely on the client for a conflict invariant like this. Two overlapping
-    // bookings on the SAME vehicle are never valid. Different vehicles on
-    // the same dates are always allowed.
-    const anyData = data as any;
-    const vehicleId: string | undefined =
-      anyData.vehicleId ?? anyData.vehicle?.connect?.id;
-    const startDate =
-      anyData.startDate instanceof Date
-        ? anyData.startDate
-        : anyData.startDate
-        ? new Date(anyData.startDate)
-        : null;
-    const endDate =
-      anyData.endDate instanceof Date
-        ? anyData.endDate
-        : anyData.endDate
-        ? new Date(anyData.endDate)
-        : null;
+    const { vehicleId, customerId, startDate, endDate } = command;
 
-    if (!vehicleId || !startDate || !endDate || isNaN(+startDate) || isNaN(+endDate)) {
-      throw new BadRequestException(
-        'vehicleId, startDate and endDate are required to create a booking',
-      );
-    }
     try {
       assertValidBookingWindow(startDate, endDate);
     } catch (e) {
@@ -198,25 +173,13 @@ export class BookingsService {
       endDate,
     });
 
-    // V4.6.76 Rental Health V1 — rental_blocked hard-gate. On technical
-    // gate failure we do not silently pretend the vehicle is healthy: the
-    // response carries healthGateStatus=UNAVAILABLE + manualReviewRequired.
     const rentalGate = await this.rentalHealthService.isRentalBlocked(
       orgId,
       vehicleId,
     );
     this.enforceRentalHealthGate(rentalGate, vehicleId);
 
-    const customerId: string | undefined =
-      anyData.customerId ?? anyData.customer?.connect?.id;
-    const requestedStatus: BookingStatus =
-      (anyData.status as BookingStatus) ?? 'PENDING';
-
-    if (!customerId) {
-      throw new BadRequestException(
-        'customerId is required to create a booking',
-      );
-    }
+    const requestedStatus: BookingStatus = command.status ?? 'PENDING';
 
     await this.assertCustomerBookingEligibility(
       orgId,
@@ -225,8 +188,11 @@ export class BookingsService {
       startDate,
     );
 
-    const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
-    const quoteId = requireQuoteId(anyData.quoteId);
+    const pricingInput = this.pricingService.extractPricingInputFromBookingData({
+      pricingInput: command.pricingInput,
+      extrasJson: command.extrasJson,
+    });
+    const quoteId = requireQuoteId(command.quoteId);
 
     const existingBookingId = await this.pricingQuoteService.findConsumedBookingId(
       orgId,
@@ -255,17 +221,30 @@ export class BookingsService {
     const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
     const stationFields = await this.resolveBookingStationFields(
       orgId,
-      await this.applyBookingStationDefaults(orgId, anyData, vehicleId),
+      await this.applyBookingStationDefaults(
+        orgId,
+        {
+          pickupStationId: command.pickupStationId,
+          returnStationId: command.returnStationId,
+          pickupAddressOverride: command.pickupAddressOverride,
+          returnAddressOverride: command.returnAddressOverride,
+        },
+        vehicleId,
+      ),
     );
-    const bookingData = this.stripBookingCreateScalars(data as Record<string, unknown>);
 
     const booking = await this.prisma.$transaction(async (tx) => {
       const created = await tx.booking.create({
         data: {
-          ...bookingData,
+          organization: { connect: { id: orgId } },
+          customer: { connect: { id: customerId } },
+          vehicle: { connect: { id: vehicleId } },
+          startDate,
+          endDate,
+          status: requestedStatus,
+          notes: command.notes ?? null,
           ...pricedFields,
           ...this.stationFieldsToPrismaInput(stationFields, { forCreate: true }),
-          organization: { connect: { id: orgId } },
         } as Prisma.BookingCreateInput,
       });
 
@@ -1618,40 +1597,23 @@ export class BookingsService {
   async update(
     orgId: string,
     id: string,
-    data: Prisma.BookingUpdateInput,
+    command: UpdateBookingCommand,
   ): Promise<Booking> {
     const existing = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
     });
 
-    const anyData = data as Record<string, unknown>;
-    const nextVehicleId =
-      (anyData.vehicleId as string | undefined) ??
-      (anyData.vehicle as { connect?: { id?: string } } | undefined)?.connect?.id ??
-      existing.vehicleId;
-    const nextCustomerId =
-      (anyData.customerId as string | undefined) ??
-      (anyData.customer as { connect?: { id?: string } } | undefined)?.connect
-        ?.id ??
-      existing.customerId;
-    const nextStart =
-      anyData.startDate instanceof Date
-        ? anyData.startDate
-        : anyData.startDate
-          ? new Date(anyData.startDate as string)
-          : existing.startDate;
-    const nextEnd =
-      anyData.endDate instanceof Date
-        ? anyData.endDate
-        : anyData.endDate
-          ? new Date(anyData.endDate as string)
-          : existing.endDate;
-    const nextStatus = (anyData.status as BookingStatus | undefined) ?? existing.status;
+    const commandKeys = Object.keys(command) as (keyof UpdateBookingCommand)[];
+    const nextVehicleId = command.vehicleId ?? existing.vehicleId;
+    const nextCustomerId = command.customerId ?? existing.customerId;
+    const nextStart = command.startDate ?? existing.startDate;
+    const nextEnd = command.endDate ?? existing.endDate;
+    const nextStatus = command.status ?? existing.status;
 
     const terminalStatuses: BookingStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
     if (terminalStatuses.includes(existing.status)) {
       const onlyNotes =
-        Object.keys(anyData).length === 1 && anyData.notes !== undefined;
+        commandKeys.length === 1 && command.notes !== undefined;
       if (!onlyNotes) {
         throw new BadRequestException(
           `Buchungen mit Status ${existing.status} können nur Notizen ergänzt werden.`,
@@ -1713,13 +1675,39 @@ export class BookingsService {
       });
     }
 
-    const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
+    const pricingInput = this.pricingService.extractPricingInputFromBookingData({
+      pricingInput: command.pricingInput,
+      extrasJson: command.extrasJson,
+      insuranceOptions: command.insuranceOptions,
+    });
     const pricingRelevant =
       (vehicleOrDatesChanged ||
         pricingInput !== undefined ||
-        anyData.extrasJson !== undefined ||
-        anyData.insuranceOptions !== undefined) &&
+        command.extrasJson !== undefined ||
+        command.insuranceOptions !== undefined) &&
       !terminalStatuses.includes(existing.status);
+
+    const prismaData: Prisma.BookingUpdateInput = {};
+    if (command.startDate !== undefined) prismaData.startDate = command.startDate;
+    if (command.endDate !== undefined) prismaData.endDate = command.endDate;
+    if (command.notes !== undefined) prismaData.notes = command.notes;
+    if (command.kmIncluded !== undefined) prismaData.kmIncluded = command.kmIncluded;
+    if (command.status !== undefined) prismaData.status = command.status;
+    if (command.vehicleId !== undefined) {
+      prismaData.vehicle = { connect: { id: command.vehicleId } };
+    }
+    if (command.customerId !== undefined) {
+      prismaData.customer = { connect: { id: command.customerId } };
+    }
+    if (command.insuranceOptions !== undefined) {
+      prismaData.insuranceOptions = command.insuranceOptions;
+    }
+    if (command.extrasJson !== undefined) {
+      prismaData.extrasJson = command.extrasJson as Prisma.InputJsonValue;
+    }
+    if (command.paymentIntent !== undefined) {
+      prismaData.paymentIntent = command.paymentIntent;
+    }
 
     if (pricingRelevant) {
       const simulation = await this.pricingService.simulateBookingPrice(orgId, {
@@ -1733,44 +1721,43 @@ export class BookingsService {
         manualAdjustmentCents: pricingInput?.manualAdjustmentCents,
       });
       const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
-      Object.assign(data, pricedFields);
+      Object.assign(prismaData, pricedFields);
     }
 
     const stationTouched =
-      anyData.pickupStationId !== undefined ||
-      anyData.returnStationId !== undefined ||
-      anyData.pickupStation !== undefined ||
-      anyData.returnStation !== undefined ||
-      anyData.actualPickupStationId !== undefined ||
-      anyData.actualReturnStationId !== undefined ||
-      anyData.isOneWayRental !== undefined;
+      command.pickupStationId !== undefined ||
+      command.returnStationId !== undefined ||
+      command.actualPickupStationId !== undefined ||
+      command.actualReturnStationId !== undefined ||
+      command.pickupAddressOverride !== undefined ||
+      command.returnAddressOverride !== undefined ||
+      command.isOneWayRental !== undefined ||
+      command.stationTransferFeeCents !== undefined;
     if (stationTouched) {
       const merged = {
-        pickupStationId:
-          (anyData.pickupStationId as string | undefined) ??
-          (anyData.pickupStation as { connect?: { id?: string } } | undefined)?.connect?.id ??
-          existing.pickupStationId,
-        returnStationId:
-          (anyData.returnStationId as string | undefined) ??
-          (anyData.returnStation as { connect?: { id?: string } } | undefined)?.connect?.id ??
-          existing.returnStationId,
+        pickupStationId: command.pickupStationId ?? existing.pickupStationId,
+        returnStationId: command.returnStationId ?? existing.returnStationId,
         actualPickupStationId:
-          (anyData.actualPickupStationId as string | undefined) ?? existing.actualPickupStationId,
+          command.actualPickupStationId ?? existing.actualPickupStationId,
         actualReturnStationId:
-          (anyData.actualReturnStationId as string | undefined) ?? existing.actualReturnStationId,
+          command.actualReturnStationId ?? existing.actualReturnStationId,
         pickupAddressOverride:
-          (anyData.pickupAddressOverride as string | undefined) ?? existing.pickupAddressOverride,
+          command.pickupAddressOverride ?? existing.pickupAddressOverride,
         returnAddressOverride:
-          (anyData.returnAddressOverride as string | undefined) ?? existing.returnAddressOverride,
-        isOneWayRental: (anyData.isOneWayRental as boolean | undefined) ?? existing.isOneWayRental,
+          command.returnAddressOverride ?? existing.returnAddressOverride,
+        isOneWayRental: command.isOneWayRental ?? existing.isOneWayRental,
         stationTransferFeeCents:
-          (anyData.stationTransferFeeCents as number | undefined) ??
-          existing.stationTransferFeeCents,
+          command.stationTransferFeeCents ?? existing.stationTransferFeeCents,
       };
-      Object.assign(data, this.stationFieldsToPrismaInput(await this.resolveBookingStationFields(orgId, merged)));
+      Object.assign(
+        prismaData,
+        this.stationFieldsToPrismaInput(
+          await this.resolveBookingStationFields(orgId, merged),
+        ),
+      );
     }
 
-    const updated = await this.prisma.booking.update({ where: { id }, data });
+    const updated = await this.prisma.booking.update({ where: { id }, data: prismaData });
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {

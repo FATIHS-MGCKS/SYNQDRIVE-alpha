@@ -35,10 +35,10 @@ export function collectBookingUpdatePermissionActions(
   if (body.startDate !== undefined || body.endDate !== undefined) {
     actions.add('booking.update_schedule');
   }
-  if (body.customerId !== undefined || body.customer !== undefined) {
+  if (body.customerId !== undefined) {
     actions.add('booking.update_customer');
   }
-  if (body.vehicleId !== undefined || body.vehicle !== undefined) {
+  if (body.vehicleId !== undefined) {
     actions.add('booking.update_vehicle');
   }
   if (body.status !== undefined) {

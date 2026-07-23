@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-dto-validation-prompt4-2026-07-23',
+    version: '4.9.776',
+    title: 'Booking Production-Readiness — DTO Validation (Prompt 4/34)',
+    summary: [
+      'Entfernt `Prisma.BookingCreateInput` / `Prisma.BookingUpdateInput` aus öffentlichen Booking-HTTP-Endpunkten.',
+      'Neue class-validator DTOs: `CreateBookingDto`, `UpdateBookingDto`, `MarkBookingNoShowDto`.',
+      'Domain-Commands (`CreateBookingCommand`, `UpdateBookingCommand`) + Mapper vor Service-Layer.',
+      'Keine Client-steuerbaren Prisma-Relationen (connect/disconnect); flat IDs only.',
+      'Frontend-Payloads auf `customerId`/`vehicleId`/`quoteId` umgestellt (kein connect-Shape).',
+    ],
+    reason: 'Booking Production-Readiness Prompt 4 — sichere Request-Validierung, deny unknown fields, keine ungefilterten Prisma-Payloads.',
+    previousBehavior:
+      'POST/PATCH /bookings akzeptierten Prisma-Input-Shapes inkl. nested connect; kein forbidNonWhitelisted auf Mutation-Bodies.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-mutation.dto.spec.ts, booking-command.mapper.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T18:01:00.000Z',
+  },
+  {
     id: 'booking-endpoint-security-prompt3-2026-07-23',
     version: '4.9.775',
     title: 'Booking Production-Readiness — Endpoint Security (Prompt 3/34)',

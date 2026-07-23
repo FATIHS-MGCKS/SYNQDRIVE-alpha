@@ -28,6 +28,16 @@ Core `bookings` module retained for lifecycle read/write/manage.
 
 Every handler declares `@RequireBookingPermission(...)`. Mutations never pass on org membership alone (except ORG_ADMIN / MASTER_ADMIN bypass per existing IAM).
 
+## Request validation (Prompt 4)
+
+Public booking mutation endpoints no longer accept Prisma input types:
+
+- `POST /bookings` → `CreateBookingDto` → `CreateBookingCommand` → explicit Prisma create in service
+- `PATCH /bookings/:id` → `UpdateBookingDto` → `UpdateBookingCommand` → explicit Prisma update in service
+- `POST /bookings/:id/no-show` → `MarkBookingNoShowDto`
+
+`ValidationPipe` (`whitelist` + `forbidNonWhitelisted`) rejects unknown fields, nested relation shapes, and internal lifecycle fields. Client sends flat `customerId` / `vehicleId` / `quoteId` only — server owns all Prisma connects.
+
 ### Guard chain
 
 1. `OrgScopingGuard` — cross-tenant → 403
@@ -72,7 +82,11 @@ Driver scope: DRIVER role without `bookings-sensitive.read` limited to bookings 
 
 - `backend/src/modules/bookings/booking-permission.constants.ts`
 - `backend/src/modules/bookings/booking-permission.defaults.ts`
-- `backend/src/modules/bookings/guards/booking-permissions.guard.ts`
+- `backend/src/modules/bookings/dto/create-booking.dto.ts`
+- `backend/src/modules/bookings/dto/update-booking.dto.ts`
+- `backend/src/modules/bookings/dto/mark-booking-no-show.dto.ts`
+- `backend/src/modules/bookings/booking-command.mapper.ts`
+- `backend/src/modules/bookings/booking-command.types.ts`
 - `backend/src/modules/bookings/booking-access.service.ts`
 - `backend/src/modules/bookings/booking-response-redaction.service.ts`
 - `backend/src/modules/bookings/booking-update-permission.util.ts`
@@ -92,6 +106,7 @@ Driver scope: DRIVER role without `bookings-sensitive.read` limited to bookings 
 
 - `bookings.permissions.characterization.spec.ts`
 - `bookings.permissions.enforcement.spec.ts`
+- `booking-mutation.dto.spec.ts`
 - `booking-update-permission.util.spec.ts`
 - `booking-permission.defaults.spec.ts`
 - `booking-permission.matrix.spec.ts`

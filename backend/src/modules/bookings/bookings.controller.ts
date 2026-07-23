@@ -35,7 +35,14 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
-import { Prisma } from '@prisma/client';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
+import { MarkBookingNoShowDto } from './dto/mark-booking-no-show.dto';
+import {
+  mapCreateBookingDtoToCommand,
+  mapUpdateBookingDtoToCommand,
+  updateCommandToPermissionBody,
+} from './booking-command.mapper';
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { resolveHandoverActor } from './handover-actor.util';
 import { RequireBookingPermission } from './decorators/require-booking-permission.decorator';
@@ -428,20 +435,15 @@ export class BookingsController {
   async create(
     @Param('orgId') orgId: string,
     @CurrentUser('id') userId: string | undefined,
-    @Body() body: Omit<Prisma.BookingCreateInput, 'organization'>,
+    @Body() body: CreateBookingDto,
   ) {
-    const anyBody = body as Record<string, unknown>;
-    const vehicleId =
-      (anyBody.vehicleId as string | undefined) ??
-      (anyBody.vehicle as { connect?: { id?: string } } | undefined)?.connect?.id;
-    const customerId =
-      (anyBody.customerId as string | undefined) ??
-      (anyBody.customer as { connect?: { id?: string } } | undefined)?.connect?.id;
+    const command = mapCreateBookingDtoToCommand(body);
     await this.bookingAccess.assertSecondaryResourceInOrg(orgId, {
-      vehicleId,
-      customerId,
+      vehicleId: command.vehicleId,
+      customerId: command.customerId,
+      stationId: command.pickupStationId ?? command.returnStationId,
     });
-    return this.bookingsService.create(orgId, body, { userId });
+    return this.bookingsService.create(orgId, command, { userId });
   }
 
   @Patch(':id')
@@ -449,23 +451,19 @@ export class BookingsController {
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Prisma.BookingUpdateInput,
+    @Body() body: UpdateBookingDto,
     @Req() req: BookingRequest,
   ) {
+    const command = mapUpdateBookingDtoToCommand(body);
     await this.bookingAccess.assertBookingInOrg(orgId, id);
-    assertBookingUpdatePermissions(body as Record<string, unknown>, this.perms(req));
-    const anyBody = body as Record<string, unknown>;
-    const vehicleId =
-      (anyBody.vehicleId as string | undefined) ??
-      (anyBody.vehicle as { connect?: { id?: string } } | undefined)?.connect?.id;
-    const customerId =
-      (anyBody.customerId as string | undefined) ??
-      (anyBody.customer as { connect?: { id?: string } } | undefined)?.connect?.id;
-    await this.bookingAccess.assertSecondaryResourceInOrg(orgId, {
-      vehicleId,
-      customerId,
-    });
-    return this.bookingsService.update(orgId, id, body);
+    assertBookingUpdatePermissions(updateCommandToPermissionBody(command), this.perms(req));
+    if (command.vehicleId) {
+      await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { vehicleId: command.vehicleId });
+    }
+    if (command.customerId) {
+      await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { customerId: command.customerId });
+    }
+    return this.bookingsService.update(orgId, id, command);
   }
 
   @Delete(':id')
@@ -483,10 +481,10 @@ export class BookingsController {
   async markNoShow(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: { reason?: string | null } = {},
+    @Body() body: MarkBookingNoShowDto,
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, id);
-    return this.bookingsService.markNoShow(orgId, id, body?.reason ?? null);
+    return this.bookingsService.markNoShow(orgId, id, body.reason ?? null);
   }
 
   @Get(':id/handover')
