@@ -1,27 +1,27 @@
 -- Booking document generation workflow jobs (Prompt 19/32)
 
 CREATE TABLE IF NOT EXISTS "booking_document_generation_jobs" (
-  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-  "organization_id" UUID NOT NULL,
-  "booking_id" UUID NOT NULL,
-  "bundle_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "booking_id" TEXT NOT NULL,
+  "bundle_id" TEXT,
   "job_type" TEXT NOT NULL,
   "document_type" TEXT,
-  "handover_protocol_id" UUID,
+  "handover_protocol_id" TEXT,
   "idempotency_key" TEXT NOT NULL,
   "correlation_id" TEXT NOT NULL,
   "status" TEXT NOT NULL DEFAULT 'PENDING',
   "attempt_count" INTEGER NOT NULL DEFAULT 0,
   "max_attempts" INTEGER NOT NULL DEFAULT 5,
-  "next_retry_at" TIMESTAMPTZ,
-  "last_attempt_at" TIMESTAMPTZ,
+  "next_retry_at" TIMESTAMP(3),
+  "last_attempt_at" TIMESTAMP(3),
   "bull_job_id" TEXT,
   "error_code" TEXT,
   "error_message" TEXT,
-  "requested_by_user_id" UUID,
-  "completed_at" TIMESTAMPTZ,
-  "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "requested_by_user_id" TEXT,
+  "completed_at" TIMESTAMP(3),
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT "booking_document_generation_jobs_pkey" PRIMARY KEY ("id")
 );
