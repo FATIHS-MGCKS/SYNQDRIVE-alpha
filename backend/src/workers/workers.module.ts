@@ -14,6 +14,8 @@ import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/batte
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { BookingDocumentGenerationModule } from '@modules/documents/booking-document-generation/booking-document-generation.module';
+import { BookingDomainEventOutboxModule } from '@modules/bookings/outbox/booking-domain-event-outbox.module';
+import { BookingDomainEventOutboxProcessor } from './processors/booking-domain-event-outbox.processor';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -75,6 +77,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
       { name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS },
       { name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS },
       { name: QUEUE_NAMES.BOOKING_DOCUMENT_GENERATION },
+      { name: QUEUE_NAMES.BOOKING_DOMAIN_EVENTS },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -89,6 +92,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     VoiceAssistantModule,
     IamDataRetentionModule,
     BookingDocumentGenerationModule,
+    BookingDomainEventOutboxModule,
   ],
   providers: [
     // Processors
@@ -110,6 +114,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     VoiceWebhookProcessor,
     DeviceConnectionWebhookProcessor,
     BookingDocumentGenerationProcessor,
+    BookingDomainEventOutboxProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

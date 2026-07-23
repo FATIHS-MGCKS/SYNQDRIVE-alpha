@@ -30,6 +30,8 @@ import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import { BookingDomainEventLifecycleService } from './outbox/booking-domain-event-lifecycle.service';
+import { BookingDomainEventOutboxCoreModule } from './outbox/booking-domain-event-outbox-core.module';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
 
 @Module({
@@ -51,6 +53,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     forwardRef(() => PaymentsModule),
     VehiclesModule,
     ActivityLogModule,
+    BookingDomainEventOutboxCoreModule,
   ],
   controllers: [BookingsController],
   providers: [
