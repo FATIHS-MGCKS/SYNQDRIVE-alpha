@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-cases-list-monitoring-v49741-2026-07-23',
+    version: '4.9.741',
+    title: 'V4.9.741 — Fleet Health Service-Cases-List + monitoring auto-refresh',
+    summary: [
+      'Arbeiten → neuer Bereich **Servicefälle** mit Filterleiste, Desktop-Tabelle und Mobile-Cards.',
+      'Additive Portierung in P52-WorkPanel (kein Branch-Merge-Konflikt mit IAM/main).',
+      'VPS: `vps-refresh-monitoring.sh` synct Prometheus alerts + Grafana dashboards (inkl. fleet-health) nach Deploy.',
+      '`vps-deploy-release.sh` ruft Monitoring-Refresh standardmäßig auf (`MONITORING_AUTO_REFRESH=auto`).',
+    ],
+    reason:
+      'Follow-up nach FHS-Production-Rollout: Service-Cases-List UI und automatisierte Grafana/Prometheus-Provisionierung.',
+    previousBehavior:
+      'Servicefälle nur in Übersicht/Fahrzeug-Expand sichtbar; Grafana fleet-health Dashboard manuell kopieren; kein Deploy-Hook.',
+    details:
+      'FleetHealthServiceWorkPanel + CaseList/Panel, fleet-health-service.types (workSection service-cases), vps-refresh-monitoring.sh, vps-setup-grafana.sh fleet-health JSON.',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-23T14:58:00.000Z',
+  },
+  {
     id: 'iam-full-integration-production-v49725-2026-07-22',
     version: '4.9.725',
     title: 'V4.9.725 — IAM full integration + direct production rollout (Prompts 1–22)',

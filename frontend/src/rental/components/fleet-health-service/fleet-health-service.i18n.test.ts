@@ -9,6 +9,7 @@ const FLEET_HEALTH_SERVICE_KEYS: TranslationKey[] = [
   'fleetHealthService.tab.work',
   'fleetHealthService.tab.history',
   'fleetHealthService.work.tasks',
+  'fleetHealthService.work.serviceCases',
   'fleetHealthService.work.schedule',
   'fleetHealthService.tab.schedule',
   'fleetHealthService.kpi.blocked',

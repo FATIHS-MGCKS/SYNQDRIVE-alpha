@@ -21,7 +21,7 @@ export type FleetTabInput = FleetTab | FleetTabLegacy;
 export type FleetHealthServiceTab = 'overview' | 'vehicles' | 'work' | 'history';
 
 /** Sections inside **Arbeiten**. */
-export type FleetHealthServiceWorkSection = 'tasks' | 'schedule' | 'vendors';
+export type FleetHealthServiceWorkSection = 'tasks' | 'service-cases' | 'schedule' | 'vendors';
 
 /** @deprecated Pre-P52 subtabs — mapped to {@link FleetHealthServiceTab} + {@link FleetHealthServiceWorkSection}. */
 export type FleetHealthServiceTabLegacy = 'tasks' | 'schedule' | 'vendors';
@@ -63,6 +63,7 @@ export const FLEET_HEALTH_SERVICE_TAB_ORDER: FleetHealthServiceTab[] = [
 
 export const FLEET_HEALTH_SERVICE_WORK_SECTION_ORDER: FleetHealthServiceWorkSection[] = [
   'tasks',
+  'service-cases',
   'schedule',
 ];
 
@@ -107,7 +108,7 @@ const TASK_STATUS_FILTERS = new Set<FleetHealthServiceTaskStatusFilter>([
  * Stable analytics / telemetry keys — legacy tab ids map to these without breaking dashboards.
  */
 export const FLEET_HEALTH_SERVICE_NAV_ANALYTICS_KEYS: Record<
-  FleetHealthServiceTabInput | 'history',
+  FleetHealthServiceTabInput | FleetHealthServiceWorkSection | 'history',
   string
 > = {
   overview: 'fleet_health_service.overview',
@@ -115,6 +116,7 @@ export const FLEET_HEALTH_SERVICE_NAV_ANALYTICS_KEYS: Record<
   work: 'fleet_health_service.work',
   history: 'fleet_health_service.history',
   tasks: 'fleet_health_service.work.tasks',
+  'service-cases': 'fleet_health_service.work.service_cases',
   schedule: 'fleet_health_service.work.schedule',
   vendors: 'fleet_health_service.work.vendors',
 };
@@ -140,7 +142,14 @@ export function normalizeFleetTab(
 function normalizeWorkSection(
   value: FleetHealthServiceWorkSection | string | undefined,
 ): FleetHealthServiceWorkSection {
-  if (value === 'tasks' || value === 'schedule' || value === 'vendors') return value;
+  if (
+    value === 'tasks' ||
+    value === 'service-cases' ||
+    value === 'schedule' ||
+    value === 'vendors'
+  ) {
+    return value;
+  }
   return 'tasks';
 }
 

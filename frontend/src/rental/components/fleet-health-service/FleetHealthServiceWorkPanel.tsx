@@ -1,11 +1,12 @@
 import { Users } from 'lucide-react';
-import type { ApiTask, Vendor } from '../../../lib/api';
+import type { ApiServiceCase, ApiTask, Vendor } from '../../../lib/api';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import type { ServiceTaskAdvancedFilters } from '../../lib/service-task-filters';
 import type { ServiceTaskFilter } from '../service-center/service-center.types';
 import { FHS_WORK_PANEL_ID, FHS_WORK_TAB_ID } from './fleet-health-service-a11y';
+import { FleetHealthServiceCasesPanel } from './FleetHealthServiceCasesPanel';
 import { fhs } from './fleet-health-service-shell';
 import {
   type FleetHealthServiceWorkSection,
@@ -14,10 +15,16 @@ import { FleetHealthServiceSchedulePanel } from './FleetHealthServiceSchedulePan
 import { FleetHealthServiceTasksPanel } from './FleetHealthServiceTasksPanel';
 import { FleetHealthServiceVendorsPanel } from './FleetHealthServiceVendorsPanel';
 
-const WORK_SECTIONS: FleetHealthServiceWorkSection[] = ['tasks', 'schedule', 'vendors'];
+const WORK_SECTIONS: FleetHealthServiceWorkSection[] = [
+  'tasks',
+  'service-cases',
+  'schedule',
+  'vendors',
+];
 
 const WORK_SECTION_LABEL_KEYS: Record<FleetHealthServiceWorkSection, TranslationKey> = {
   tasks: 'fleetHealthService.work.tasks',
+  'service-cases': 'fleetHealthService.work.serviceCases',
   schedule: 'fleetHealthService.work.schedule',
   vendors: 'fleetHealthService.tab.vendors',
 };
@@ -27,6 +34,10 @@ interface FleetHealthServiceWorkPanelProps {
   onSectionChange: (section: FleetHealthServiceWorkSection) => void;
   tasks: ApiTask[];
   vendors: Vendor[];
+  serviceCases: ApiServiceCase[];
+  serviceCasesDataReady: boolean;
+  serviceCasesLoading?: boolean;
+  serviceCasesError?: string | null;
   loading?: boolean;
   error?: string | null;
   onReload?: () => void;
@@ -42,6 +53,10 @@ export function FleetHealthServiceWorkPanel({
   onSectionChange,
   tasks,
   vendors,
+  serviceCases,
+  serviceCasesDataReady,
+  serviceCasesLoading,
+  serviceCasesError,
   loading,
   error,
   onReload,
@@ -56,7 +71,7 @@ export function FleetHealthServiceWorkPanel({
   return (
     <div className="space-y-3">
       <div
-        className="grid grid-cols-3 gap-0.5 rounded-xl surface-frosted p-1"
+        className="grid grid-cols-2 gap-0.5 rounded-xl surface-frosted p-1 sm:grid-cols-4"
         role="tablist"
         aria-label={t('fleetHealthService.a11y.workTabs')}
       >
@@ -115,6 +130,23 @@ export function FleetHealthServiceWorkPanel({
           focusTaskId={focusTaskId}
           initialTaskFilter={initialTaskFilter}
           initialAdvancedFilters={initialAdvancedFilters}
+        />
+      </div>
+
+      <div
+        id={FHS_WORK_PANEL_ID['service-cases']}
+        role="tabpanel"
+        aria-labelledby={FHS_WORK_TAB_ID['service-cases']}
+        hidden={activeSection !== 'service-cases'}
+        className={activeSection !== 'service-cases' ? 'hidden' : undefined}
+      >
+        <FleetHealthServiceCasesPanel
+          serviceCases={serviceCases}
+          vendors={vendors}
+          dataReady={serviceCasesDataReady}
+          loading={serviceCasesLoading}
+          error={serviceCasesError}
+          onReload={onReload}
         />
       </div>
 
