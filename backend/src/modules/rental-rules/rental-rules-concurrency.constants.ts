@@ -1,4 +1,5 @@
 export const RENTAL_RULES_VERSION_CONFLICT_CODE = 'RENTAL_RULES_VERSION_CONFLICT' as const;
+export const RENTAL_RULES_ASSIGNMENT_STALE_CODE = 'RENTAL_RULES_ASSIGNMENT_STALE' as const;
 
 export type RentalRulesConcurrencyEntityType =
   | 'organization_default'

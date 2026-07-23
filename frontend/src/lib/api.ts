@@ -5725,11 +5725,30 @@ export const api = {
       get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalCategoryVehicleDto[]>(
         `/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles`,
       ),
-    assignCategoryVehicles: (orgId: string, categoryId: string, vehicleIds: string[]) =>
-      patch<import('../rental/components/settings/rental-rules/rental-rules.types').RentalCategoryVehicleDto[]>(
+    assignCategoryVehicles: (
+      orgId: string,
+      categoryId: string,
+      payload: import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentDeltaPayload,
+    ) =>
+      patch<import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentResultDto>(
         `/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles`,
-        { vehicleIds },
+        payload,
       ),
+    previewCategoryVehicleAssignment: (
+      orgId: string,
+      categoryId: string,
+      payload: Omit<
+        import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentDeltaPayload,
+        'expectedVersion'
+      >,
+    ) =>
+      post<{
+        categoryId: string;
+        categoryName: string;
+        version: number;
+        hasMutations: boolean;
+        diff: import('../rental/components/settings/rental-rules/rental-rules.types').CategoryAssignmentDiff;
+      }>(`/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles/preview`, payload),
     getVehicleEffective: (orgId: string, vehicleId: string) =>
       get<import('../rental/components/settings/rental-rules/rental-rules.types').EffectiveRentalRulesDto>(
         `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/effective`,

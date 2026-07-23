@@ -19,8 +19,11 @@ import { CategoryDetailDrawer } from './CategoryDetailDrawer';
 import { DefaultRulesDrawer } from './DefaultRulesDrawer';
 import { EffectiveRulesPreviewDrawer } from './EffectiveRulesPreviewDrawer';
 import { VehicleAssignmentDrawer } from './VehicleAssignmentDrawer';
+import { buildCategoryAssignmentDelta } from './rental-rules-category-assignment.utils';
+import { rentalRulesMutate } from './rental-rules-concurrency.errors';
+import { resolveExpectedVersion, withExpectedVersion } from './rental-rules-concurrency.utils';
 import { RentalRulesSummaryTile } from './RentalRulesSummaryTile';
-import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto } from './rental-rules.types';
+import type { CategoryAssignmentResultDto, RentalCategoryVehicleDto, RentalVehicleCategoryDto } from './rental-rules.types';
 import {
   countConfiguredRuleFields,
   formatBool,
@@ -603,9 +606,24 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
           canWrite={canAssignVehicles}
           saving={actionId === 'assign'}
           onSave={async (vehicleIds) => {
-            await runAction('assign', () =>
-              api.rentalRules.assignCategoryVehicles(orgId, assignDrawer.id, vehicleIds),
+            const delta = buildCategoryAssignmentDelta(
+              assignedVehicles.map((vehicle) => vehicle.id),
+              vehicleIds,
+              fleetVehicles,
+              assignDrawer.id,
             );
+            const payload = withExpectedVersion(delta, resolveExpectedVersion(assignDrawer.version));
+            const result = await runAction('assign', () =>
+              rentalRulesMutate<CategoryAssignmentResultDto>(
+                'PATCH',
+                `/organizations/${orgId}/rental-rules/categories/${assignDrawer.id}/vehicles`,
+                payload,
+              ),
+            );
+            if (result) {
+              setAssignedVehicles(result.vehicles);
+              setAssignDrawer({ ...assignDrawer, version: result.version });
+            }
           }}
         />
       )}

@@ -68,10 +68,15 @@ describe('RentalRulesService', () => {
       organizationId: 'org1',
       name: 'Economy',
       isActive: true,
+      version: 1,
     });
-    prisma.vehicle.findMany.mockResolvedValue([{ id: 'v1' }]);
+    prisma.vehicle.findMany.mockResolvedValue([{ id: 'v1', rentalCategoryId: null, make: 'VW', model: 'Golf', vehicleName: null, licensePlate: 'B-AB 1' }]);
+    prisma.rentalVehicleCategory.findMany.mockResolvedValue([{ id: 'cat1', name: 'Economy' }]);
     await expect(
-      svc.assignCategoryVehicles('org1', 'cat1', { vehicleIds: ['v1', 'v-foreign'] }),
+      svc.assignCategoryVehicles('org1', 'cat1', {
+        expectedVersion: 1,
+        vehiclesToAdd: ['v1', 'v-foreign'],
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 

@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import {
@@ -152,31 +153,42 @@ describe('Rental rules DTO validation', () => {
     expect(errors.some((e) => e.property === 'insuranceRequirement')).toBe(true);
   });
 
-  it('rejects duplicate and invalid vehicle IDs', async () => {
+  it('rejects duplicate and invalid vehicle IDs in assignment delta', async () => {
     const id = '11111111-1111-4111-8111-111111111111';
     const errors = await validateDto(AssignCategoryVehiclesDto, {
-      vehicleIds: [id, id],
+      expectedVersion: 1,
+      vehiclesToAdd: [id, id],
     });
-    expect(errors.some((e) => e.property === 'vehicleIds')).toBe(true);
+    expect(errors.some((e) => e.property === 'vehiclesToAdd')).toBe(true);
 
     const invalid = await validateDto(AssignCategoryVehiclesDto, {
-      vehicleIds: ['not-a-uuid'],
+      expectedVersion: 1,
+      vehiclesToAdd: ['not-a-uuid'],
     });
-    expect(invalid.some((e) => e.property === 'vehicleIds')).toBe(true);
+    expect(invalid.some((e) => e.property === 'vehiclesToAdd')).toBe(true);
   });
 
-  it('rejects vehicle lists above maximum size', async () => {
+  it('rejects vehicle delta lists above maximum size', async () => {
     const errors = await validateDto(AssignCategoryVehiclesDto, {
-      vehicleIds: Array.from({ length: RENTAL_RULES_VALIDATION_LIMITS.vehicleAssignmentIds.maxCount + 1 }, (_, i) =>
+      expectedVersion: 1,
+      vehiclesToAdd: Array.from({ length: RENTAL_RULES_VALIDATION_LIMITS.vehicleAssignmentIds.maxCount + 1 }, (_, i) =>
         `11111111-1111-4111-8111-${String(i).padStart(12, '0')}`,
       ),
     });
-    expect(errors.some((e) => e.property === 'vehicleIds')).toBe(true);
+    expect(errors.some((e) => e.property === 'vehiclesToAdd')).toBe(true);
   });
 
-  it('accepts empty vehicle assignment list', async () => {
-    const errors = await validateDto(AssignCategoryVehiclesDto, { vehicleIds: [] });
+  it('accepts empty assignment delta with expectedVersion', async () => {
+    const errors = await validateDto(AssignCategoryVehiclesDto, { expectedVersion: 0 });
     expect(errors).toHaveLength(0);
+  });
+
+  it('validates vehiclesToMove nested shape', async () => {
+    const errors = await validateDto(AssignCategoryVehiclesDto, {
+      expectedVersion: 1,
+      vehiclesToMove: [{ vehicleId: 'not-a-uuid', fromCategoryId: 'also-bad' }],
+    });
+    expect(errors.length).toBeGreaterThan(0);
   });
 
   it('rejects invalid reset override field names', async () => {

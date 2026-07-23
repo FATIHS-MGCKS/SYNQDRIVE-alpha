@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-rules-category-assignment-delta-v49775-2026-07-23',
+    version: '4.9.775',
+    title: 'V4.9.775 — Rental Rules category assignment delta + OCC (Prompt 22)',
+    summary: [
+      'PATCH `.../categories/:id/vehicles` nutzt explizite Delta-Operationen (`vehiclesToAdd` / `vehiclesToRemove` / `vehiclesToMove`) statt Full-Replacement.',
+      'Serverseitiger Diff vor Persistenz; transaktionale Moves mit `fromCategoryId`-Guard; Audit-Log mit fachlichem `diff`.',
+      'OCC via `expectedVersion` auf Zielkategorie; 409 bei Version- oder Stale-Konflikt.',
+      'Frontend: Assignment-Drawer und Vehicle-Category-Assign auf Delta-API umgestellt; Move-Warnungen mit Quell- und Zielkategorie.',
+    ],
+    reason:
+      'Parallele Kategoriezuweisungen dürfen keine Fahrzeuge verlieren oder unbemerkt verschieben (Rental-Rules-Remediation Prompt 22).',
+    previousBehavior:
+      'Full-Replacement `vehicleIds[]` ohne Versionierung — Race zwischen Administratoren und Read-Modify-Write im Vehicle-Detail.',
+    details:
+      'rental-rules-category-assignment.util.ts, AssignCategoryVehiclesDto delta, POST .../vehicles/preview, VehicleAssignmentDrawer, VehicleCategoryAssignDrawer, RentalRulesTab.',
+    affectsArchitecture: true,
+    module: 'Rental Rules',
+    createdAt: '2026-07-23T18:26:00.000Z',
+  },
+  {
     id: 'fleet-health-service-cases-list-monitoring-v49774-2026-07-23',
     version: '4.9.774',
     title: 'V4.9.774 — Fleet Health Service-Cases-List + monitoring auto-refresh (deploy)',

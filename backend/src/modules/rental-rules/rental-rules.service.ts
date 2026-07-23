@@ -10,6 +10,7 @@ import { RentalEffectiveRulesService } from './rental-effective-rules.service';
 import {
   AssignCategoryVehiclesDto,
   CreateRentalVehicleCategoryDto,
+  PreviewCategoryVehicleAssignmentDto,
   ResetVehicleRentalOverridesDto,
   UpdateRentalVehicleCategoryDto,
   UpsertOrganizationRentalRulesDto,
@@ -37,6 +38,14 @@ import {
 } from './vehicle-rental-override-reset.util';
 import { RENTAL_RULES_INITIAL_EXPECTED_VERSION } from './rental-rules-concurrency.constants';
 import { throwRentalRulesVersionConflict } from './rental-rules-concurrency.util';
+import type { CategoryAssignmentApplyPlan, CategoryAssignmentDiff } from './rental-rules-category-assignment.types';
+import {
+  assertCategoryAssignmentDeltaIsActionable,
+  buildCategoryAssignmentPlan,
+  normalizeCategoryAssignmentDelta,
+  throwRentalRulesAssignmentStale,
+  totalDeltaVehicleCount,
+} from './rental-rules-category-assignment.util';
 
 interface RentalRulesMutationContext {
   actor?: PermissionActor;
@@ -365,41 +374,288 @@ export class RentalRulesService {
     }));
   }
 
-  async assignCategoryVehicles(orgId: string, categoryId: string, dto: AssignCategoryVehiclesDto) {
-    await this.loadCategory(orgId, categoryId);
-    const uniqueIds = [...new Set(dto.vehicleIds)];
+  async assignCategoryVehicles(
+    orgId: string,
+    categoryId: string,
+    dto: AssignCategoryVehiclesDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
+    const category = await this.loadCategory(orgId, categoryId);
+    const { plan, diff } = await this.buildCategoryAssignmentContext(orgId, categoryId, dto);
 
-    if (uniqueIds.length > 0) {
-      const vehicles = await this.prisma.vehicle.findMany({
-        where: { organizationId: orgId, id: { in: uniqueIds } },
-        select: { id: true },
-      });
-      if (vehicles.length !== uniqueIds.length) {
-        throw new BadRequestException('One or more vehicles do not belong to this organization');
+    if (!plan.hasMutations) {
+      return this.formatCategoryAssignmentResult(orgId, categoryId, category.version, diff);
+    }
+
+    const newVersion = await this.applyCategoryAssignmentPlan({
+      orgId,
+      categoryId,
+      categoryName: category.name,
+      expectedVersion: dto.expectedVersion,
+      plan,
+    });
+
+    await this.logCategoryAssignment({
+      organizationId: orgId,
+      categoryId,
+      categoryName: category.name,
+      actor: ctx.actor,
+      expectedVersion: dto.expectedVersion,
+      newVersion,
+      diff,
+    });
+
+    return this.formatCategoryAssignmentResult(orgId, categoryId, newVersion, diff);
+  }
+
+  async previewCategoryVehicleAssignment(
+    orgId: string,
+    categoryId: string,
+    dto: PreviewCategoryVehicleAssignmentDto,
+  ) {
+    const category = await this.loadCategory(orgId, categoryId);
+    const { plan, diff } = await this.buildCategoryAssignmentContext(orgId, categoryId, dto);
+    return {
+      categoryId,
+      categoryName: category.name,
+      version: category.version,
+      diff,
+      hasMutations: plan.hasMutations,
+    };
+  }
+
+  private async buildCategoryAssignmentContext(
+    orgId: string,
+    categoryId: string,
+    dto: AssignCategoryVehiclesDto | PreviewCategoryVehicleAssignmentDto,
+  ): Promise<{ plan: CategoryAssignmentApplyPlan; diff: CategoryAssignmentDiff }> {
+    const delta = normalizeCategoryAssignmentDelta({
+      vehiclesToAdd: dto.vehiclesToAdd,
+      vehiclesToRemove: dto.vehiclesToRemove,
+      vehiclesToMove: dto.vehiclesToMove,
+    });
+
+    const emptyPlan: CategoryAssignmentApplyPlan = {
+      added: [],
+      removed: [],
+      moved: [],
+      alreadyAssigned: [],
+      invalidVehicleIds: [],
+      rejected: [],
+      sourceCategoryIdsToBumpVersion: [],
+      hasMutations: false,
+    };
+
+    if (totalDeltaVehicleCount(delta) === 0) {
+      return { plan: emptyPlan, diff: emptyPlan };
+    }
+
+    const referencedIds = [
+      ...new Set([
+        ...delta.vehiclesToAdd,
+        ...delta.vehiclesToRemove,
+        ...delta.vehiclesToMove.map((move) => move.vehicleId),
+      ]),
+    ];
+
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { organizationId: orgId, id: { in: referencedIds } },
+      select: {
+        id: true,
+        rentalCategoryId: true,
+        vehicleName: true,
+        make: true,
+        model: true,
+        licensePlate: true,
+      },
+    });
+
+    const categoryIds = new Set<string>([
+      categoryId,
+      ...delta.vehiclesToMove.map((move) => move.fromCategoryId),
+      ...vehicles
+        .map((vehicle) => vehicle.rentalCategoryId)
+        .filter((id): id is string => Boolean(id)),
+    ]);
+
+    const categories = await this.prisma.rentalVehicleCategory.findMany({
+      where: { organizationId: orgId, id: { in: [...categoryIds] } },
+      select: { id: true, name: true },
+    });
+    const categoryNamesById = new Map(categories.map((row) => [row.id, row.name]));
+
+    for (const move of delta.vehiclesToMove) {
+      if (!categoryNamesById.has(move.fromCategoryId)) {
+        throw new BadRequestException({
+          message: 'Source category does not belong to this organization',
+          code: 'RENTAL_RULES_ASSIGNMENT_INVALID_SOURCE_CATEGORY',
+          fromCategoryId: move.fromCategoryId,
+        });
       }
     }
 
-    await this.prisma.$transaction([
-      this.prisma.vehicle.updateMany({
-        where: { organizationId: orgId, rentalCategoryId: categoryId, id: { notIn: uniqueIds } },
-        data: { rentalCategoryId: null },
-      }),
-      ...(uniqueIds.length
-        ? [
-            this.prisma.vehicle.updateMany({
-              where: { organizationId: orgId, id: { in: uniqueIds } },
-              data: { rentalCategoryId: categoryId },
-            }),
-          ]
-        : [
-            this.prisma.vehicle.updateMany({
-              where: { organizationId: orgId, rentalCategoryId: categoryId },
-              data: { rentalCategoryId: null },
-            }),
-          ]),
-    ]);
+    const plan = buildCategoryAssignmentPlan({
+      targetCategoryId: categoryId,
+      delta,
+      vehicles,
+      categoryNamesById,
+    });
+    assertCategoryAssignmentDeltaIsActionable(plan);
 
-    return this.listCategoryVehicles(orgId, categoryId);
+    const diff: CategoryAssignmentDiff = {
+      added: plan.added,
+      removed: plan.removed,
+      moved: plan.moved,
+      alreadyAssigned: plan.alreadyAssigned,
+      invalidVehicleIds: plan.invalidVehicleIds,
+      rejected: plan.rejected,
+    };
+
+    return { plan, diff };
+  }
+
+  private async applyCategoryAssignmentPlan(input: {
+    orgId: string;
+    categoryId: string;
+    categoryName: string;
+    expectedVersion: number;
+    plan: CategoryAssignmentApplyPlan;
+  }): Promise<number> {
+    const { orgId, categoryId, expectedVersion, plan } = input;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (plan.removed.length > 0) {
+        const ids = plan.removed.map((row) => row.vehicleId);
+        const { count } = await tx.vehicle.updateMany({
+          where: { organizationId: orgId, rentalCategoryId: categoryId, id: { in: ids } },
+          data: { rentalCategoryId: null },
+        });
+        if (count !== ids.length) {
+          throwRentalRulesAssignmentStale({
+            categoryId,
+            reason: 'One or more vehicles were removed from this category before save completed',
+          });
+        }
+      }
+
+      for (const move of plan.moved) {
+        const { count } = await tx.vehicle.updateMany({
+          where: {
+            organizationId: orgId,
+            id: move.vehicleId,
+            rentalCategoryId: move.fromCategoryId,
+          },
+          data: { rentalCategoryId: categoryId },
+        });
+        if (count !== 1) {
+          throwRentalRulesAssignmentStale({
+            categoryId,
+            reason: `Vehicle ${move.vehicleId} is no longer in source category ${move.fromCategoryId}`,
+          });
+        }
+      }
+
+      if (plan.added.length > 0) {
+        const ids = plan.added.map((row) => row.vehicleId);
+        const { count } = await tx.vehicle.updateMany({
+          where: {
+            organizationId: orgId,
+            id: { in: ids },
+            rentalCategoryId: null,
+          },
+          data: { rentalCategoryId: categoryId },
+        });
+        if (count !== ids.length) {
+          throwRentalRulesAssignmentStale({
+            categoryId,
+            reason: 'One or more vehicles were assigned elsewhere before save completed',
+          });
+        }
+      }
+
+      const { count: targetBump } = await tx.rentalVehicleCategory.updateMany({
+        where: { id: categoryId, organizationId: orgId, version: expectedVersion },
+        data: { version: { increment: 1 } },
+      });
+      if (targetBump === 0) {
+        const current = await tx.rentalVehicleCategory.findFirst({
+          where: { id: categoryId, organizationId: orgId },
+          include: { _count: { select: { vehicles: true } } },
+        });
+        throwRentalRulesVersionConflict({
+          entityType: 'category',
+          expectedVersion,
+          currentVersion: current?.version ?? RENTAL_RULES_INITIAL_EXPECTED_VERSION,
+          current: current ? formatRentalVehicleCategory(current) : null,
+        });
+      }
+
+      for (const sourceCategoryId of plan.sourceCategoryIdsToBumpVersion) {
+        await tx.rentalVehicleCategory.updateMany({
+          where: { id: sourceCategoryId, organizationId: orgId },
+          data: { version: { increment: 1 } },
+        });
+      }
+
+      const updated = await tx.rentalVehicleCategory.findUniqueOrThrow({
+        where: { id: categoryId },
+        select: { version: true },
+      });
+      return updated.version;
+    });
+  }
+
+  private async formatCategoryAssignmentResult(
+    orgId: string,
+    categoryId: string,
+    version: number,
+    diff: CategoryAssignmentDiff,
+  ) {
+    const vehicles = await this.listCategoryVehicles(orgId, categoryId);
+    return {
+      categoryId,
+      version,
+      vehicles,
+      diff,
+    };
+  }
+
+  private async logCategoryAssignment(input: {
+    organizationId: string;
+    categoryId: string;
+    categoryName: string;
+    actor?: PermissionActor;
+    expectedVersion: number;
+    newVersion: number;
+    diff: CategoryAssignmentDiff;
+  }) {
+    const addedCount = input.diff.added.length;
+    const removedCount = input.diff.removed.length;
+    const movedCount = input.diff.moved.length;
+    const alreadyCount = input.diff.alreadyAssigned.length;
+
+    await this.activityLog.log({
+      organizationId: input.organizationId,
+      userId: input.actor?.id,
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ORGANIZATION,
+      entityId: input.organizationId,
+      description: `Rental category "${input.categoryName}" vehicle assignment updated (+${addedCount} / -${removedCount} / ↔${movedCount})`,
+      metaJson: {
+        categoryId: input.categoryId,
+        categoryName: input.categoryName,
+        expectedVersion: input.expectedVersion,
+        newVersion: input.newVersion,
+        diff: input.diff,
+        counts: {
+          added: addedCount,
+          removed: removedCount,
+          moved: movedCount,
+          alreadyAssigned: alreadyCount,
+        },
+        actorUserId: input.actor?.id ?? null,
+      },
+    });
   }
 
   async getVehicleRequirements(orgId: string, vehicleId: string) {

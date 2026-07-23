@@ -62,6 +62,40 @@ export interface RentalCategoryVehicleDto {
   status: string;
 }
 
+export interface CategoryAssignmentVehicleRef {
+  vehicleId: string;
+  displayName: string;
+  licensePlate: string | null;
+}
+
+export interface CategoryAssignmentMoveRef extends CategoryAssignmentVehicleRef {
+  fromCategoryId: string;
+  fromCategoryName: string | null;
+}
+
+export interface CategoryAssignmentDiff {
+  added: CategoryAssignmentVehicleRef[];
+  removed: CategoryAssignmentVehicleRef[];
+  moved: CategoryAssignmentMoveRef[];
+  alreadyAssigned: CategoryAssignmentVehicleRef[];
+  invalidVehicleIds: string[];
+  rejected: Array<{ vehicleId: string; reason: string; code: string }>;
+}
+
+export interface CategoryAssignmentResultDto {
+  categoryId: string;
+  version: number;
+  vehicles: RentalCategoryVehicleDto[];
+  diff: CategoryAssignmentDiff;
+}
+
+export interface CategoryAssignmentDeltaPayload {
+  expectedVersion: number;
+  vehiclesToAdd?: string[];
+  vehiclesToRemove?: string[];
+  vehiclesToMove?: Array<{ vehicleId: string; fromCategoryId: string }>;
+}
+
 export interface RentalFleetVehicleDto {
   id: string;
   displayName: string;

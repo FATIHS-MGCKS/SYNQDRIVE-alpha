@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayUnique,
@@ -16,6 +16,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import {
   RentalAdditionalDriverPolicy,
@@ -214,14 +215,48 @@ export class UpdateRentalVehicleCategoryDto extends RentalRuleFieldsDto {
   isActive?: boolean;
 }
 
-export class AssignCategoryVehiclesDto {
+export class CategoryVehicleMoveDto {
+  @IsUUID('4', { message: MSG.vehicleIds.uuid })
+  @IsNotEmpty({ message: MSG.vehicleIds.notEmpty })
+  vehicleId!: string;
+
+  @IsUUID('4', { message: MSG.vehicleIds.uuid })
+  @IsNotEmpty({ message: MSG.vehicleIds.notEmpty })
+  fromCategoryId!: string;
+}
+
+class CategoryAssignmentDeltaFieldsDto {
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(L.vehicleAssignmentIds.maxCount, { message: MSG.vehicleIds.maxSize })
   @ArrayUnique({ message: MSG.vehicleIds.unique })
   @IsUUID('4', { each: true, message: MSG.vehicleIds.uuid })
   @IsNotEmpty({ each: true, message: MSG.vehicleIds.notEmpty })
-  vehicleIds!: string[];
+  vehiclesToAdd?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(L.vehicleAssignmentIds.maxCount, { message: MSG.vehicleIds.maxSize })
+  @ArrayUnique({ message: MSG.vehicleIds.unique })
+  @IsUUID('4', { each: true, message: MSG.vehicleIds.uuid })
+  @IsNotEmpty({ each: true, message: MSG.vehicleIds.notEmpty })
+  vehiclesToRemove?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(L.vehicleAssignmentIds.maxCount, { message: MSG.vehicleIds.maxSize })
+  @ValidateNested({ each: true })
+  @Type(() => CategoryVehicleMoveDto)
+  vehiclesToMove?: CategoryVehicleMoveDto[];
 }
+
+export class AssignCategoryVehiclesDto extends CategoryAssignmentDeltaFieldsDto {
+  @IsInt({ message: MSG.expectedVersion.int })
+  @Min(0, { message: MSG.expectedVersion.min })
+  expectedVersion!: number;
+}
+
+export class PreviewCategoryVehicleAssignmentDto extends CategoryAssignmentDeltaFieldsDto {}
 
 export class UpsertVehicleRentalOverridesDto extends RentalRuleFieldsDto {
   @IsInt({ message: MSG.expectedVersion.int })

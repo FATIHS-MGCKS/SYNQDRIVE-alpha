@@ -2216,3 +2216,121 @@ Dialog-Aktionen: **Reload latest**, **Edit again with latest**, **Keep dialog op
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 21).*
+
+---
+
+## Prompt 22 — Category Assignment Delta (keine Lost Updates bei Zuweisungen)
+
+**Ziel:** Kategoriezuweisungen dürfen bei parallelen Änderungen keine Fahrzeuge verlieren oder unbemerkt verschieben.
+
+### 22.1 Strategie
+
+| Aspekt | Entscheidung |
+|--------|--------------|
+| API-Modell | Explizite **Delta-Operationen** statt Full-Replacement |
+| OCC | `expectedVersion` auf Zielkategorie (Prompt 21) |
+| Cross-Category | Nur über `vehiclesToMove` mit `fromCategoryId` |
+| Atomarität | Eine DB-Transaktion; `updateMany`-Count-Checks |
+| Konflikt (OCC) | HTTP **409** `RENTAL_RULES_VERSION_CONFLICT` |
+| Konflikt (Stale) | HTTP **409** `RENTAL_RULES_ASSIGNMENT_STALE` (Rollback) |
+| Audit | `ActivityLog` mit vollständigem fachlichen `diff` in `metaJson` |
+
+### 22.2 Assignment-Vertrag
+
+**`PATCH /organizations/:orgId/rental-rules/categories/:categoryId/vehicles`**
+
+Request:
+
+```json
+{
+  "expectedVersion": 2,
+  "vehiclesToAdd": ["uuid"],
+  "vehiclesToRemove": ["uuid"],
+  "vehiclesToMove": [{ "vehicleId": "uuid", "fromCategoryId": "uuid" }]
+}
+```
+
+- Alle Delta-Listen optional; leere Gesamtdelta → No-Op (keine Mutation, gleiche `version`).
+- `vehiclesToAdd`: nur für **unkategorisierte** Fahrzeuge.
+- `vehiclesToMove`: atomare Verschiebung; `fromCategoryId` muss aktueller Stand sein.
+- Keine ID in mehreren Listen (`DUPLICATE_DELTA` → 400).
+- Fremde Fahrzeug-IDs → 400 `RENTAL_RULES_ASSIGNMENT_INVALID_VEHICLES`.
+- Ungültige Kombinationen → 400 `RENTAL_RULES_ASSIGNMENT_REJECTED` + `rejected[]`.
+
+Response:
+
+```json
+{
+  "categoryId": "uuid",
+  "version": 3,
+  "vehicles": [{ "id": "uuid", "displayName": "…", "licensePlate": "…", "status": "…" }],
+  "diff": {
+    "added": [],
+    "removed": [],
+    "moved": [{ "vehicleId": "…", "fromCategoryId": "…", "fromCategoryName": "Economy", "displayName": "…", "licensePlate": "…" }],
+    "alreadyAssigned": [],
+    "invalidVehicleIds": [],
+    "rejected": []
+  }
+}
+```
+
+**`POST .../categories/:categoryId/vehicles/preview`** — gleiche Delta-Felder ohne Mutation; liefert `diff` + `hasMutations`.
+
+### 22.3 Server-Diff vor Persistenz
+
+`buildCategoryAssignmentPlan()` klassifiziert:
+
+| Bucket | Bedeutung |
+|--------|-----------|
+| `added` | Neu zugewiesen (war unkategorisiert) |
+| `removed` | Aus Zielkategorie entfernt |
+| `moved` | Aus anderer Kategorie verschoben |
+| `alreadyAssigned` | Bereits in Zielkategorie (idempotent) |
+| `invalidVehicleIds` | Nicht in Org / unbekannt |
+| `rejected` | Semantisch ungültig (z. B. `USE_VEHICLES_TO_MOVE`) |
+
+### 22.4 Transaktion & Version-Bumps
+
+1. Removals (Zielkategorie)
+2. Moves (`where: rentalCategoryId = fromCategoryId`)
+3. Adds (`where: rentalCategoryId IS NULL`)
+4. Zielkategorie `version++` mit OCC
+5. Quellkategorien bei Moves `version++`
+
+Count-Mismatch → Rollback + `RENTAL_RULES_ASSIGNMENT_STALE`.
+
+### 22.5 Frontend
+
+| Komponente | Änderung |
+|------------|----------|
+| `rental-rules-category-assignment.utils.ts` | Delta aus UI-Selektion |
+| `VehicleAssignmentDrawer` | Move-Warnung mit Quell- → Zielkategorie (bestehend, präzisiert) |
+| `VehicleCategoryAssignDrawer` | Delta statt Read-Modify-Write |
+| `RentalRulesTab` | `expectedVersion` + `rentalRulesMutate` |
+
+### 22.6 Tests
+
+| Suite | Abdeckung |
+|-------|-----------|
+| `rental-rules-category-assignment.util.spec.ts` | Diff-Klassifikation, Duplikate, Cross-Category |
+| `rental-rules-category-assignment.service.spec.ts` | OCC, Stale, Audit, Preview, Cross-Tenant |
+| `rental-rules-category-assignment.utils.test.ts` | Frontend-Delta-Builder |
+
+---
+
+## Prompt 22 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Keine verlorenen Zuweisungen | ✅ |
+| Verschiebungen atomar & nachvollziehbar | ✅ |
+| Cross-Tenant unmöglich | ✅ |
+| Audit mit fachlichem Diff | ✅ |
+| UI warnt vor Verschiebungen | ✅ |
+| Tests bestehen | ✅ |
+| Prompt 22 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 22).*

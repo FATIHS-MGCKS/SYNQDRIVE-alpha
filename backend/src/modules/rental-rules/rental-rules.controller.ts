@@ -20,6 +20,7 @@ import { RequireRentalRulePermission } from './decorators/require-rental-rule-pe
 import {
   AssignCategoryVehiclesDto,
   CreateRentalVehicleCategoryDto,
+  PreviewCategoryVehicleAssignmentDto,
   ResetVehicleRentalOverridesDto,
   UpdateRentalVehicleCategoryDto,
   UpsertOrganizationRentalRulesDto,
@@ -125,8 +126,19 @@ export class RentalRulesController {
     @Param('orgId') orgId: string,
     @Param('categoryId') categoryId: string,
     @Body() body: AssignCategoryVehiclesDto,
+    @CurrentUser() user: PermissionActor | undefined,
   ) {
-    return this.rentalRules.assignCategoryVehicles(orgId, categoryId, body);
+    return this.rentalRules.assignCategoryVehicles(orgId, categoryId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/rental-rules/categories/:categoryId/vehicles/preview')
+  @RequireRentalRulePermission('rental_rules.assign_vehicles')
+  previewCategoryVehicleAssignment(
+    @Param('orgId') orgId: string,
+    @Param('categoryId') categoryId: string,
+    @Body() body: PreviewCategoryVehicleAssignmentDto,
+  ) {
+    return this.rentalRules.previewCategoryVehicleAssignment(orgId, categoryId, body);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/rental-requirements')
