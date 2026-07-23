@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-update-commands-prompt6-2026-07-23',
+    version: '4.9.778',
+    title: 'Booking Production-Readiness — Typed Update Commands (Prompt 6/34)',
+    summary: [
+      'Generisches `PATCH /bookings/:id` entfernt (410 Gone); sieben fachliche Action-Endpunkte mit eigenen DTOs und Permissions.',
+      '`BookingUpdateService` mit Optimistic Concurrency (`expectedUpdatedAt` → `BOOKING_VERSION_CONFLICT`), Terminal-State-Lock und Override via `bookings.manage`.',
+      'Schedule/Vehicle/Options: Verfügbarkeit, Rental Health, Pricing-Recalc, atomarer Price Snapshot, Invoice-Sync, Dokument-Regenerierung.',
+      'Customer: Eligibility-Re-Check; Allowed Drivers: Pool-Ersetzung in Transaktion.',
+      'Frontend: `applyBookingFieldUpdates()` routet bestehende Edit-Oberflächen auf typisierte API-Calls.',
+      'Tests: booking-update.service.spec.ts (18), booking-update-dtos.spec.ts, bookings.permissions.characterization.spec.ts.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 6 — getrennte fachliche Update-Commands statt generischem PATCH.',
+    previousBehavior:
+      'Ein generischer PATCH-Endpunkt mit `UpdateBookingDto`; Feld-Permissions nur im Service; keine Optimistic Concurrency; Status/Preise theoretisch über PATCH erreichbar.',
+    details:
+      'architecture/BOOKING_PERMISSIONS_2026-07-23.md, booking-update.service.ts, bookingUpdateCommands.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / IAM',
+    createdAt: '2026-07-23T20:15:00.000Z',
+  },
+  {
     id: 'booking-create-validation-prompt5-2026-07-23',
     version: '4.9.777',
     title: 'Booking Production-Readiness — Create Validation (Prompt 5/34)',

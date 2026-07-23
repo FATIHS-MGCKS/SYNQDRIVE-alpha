@@ -208,10 +208,13 @@ export class BookingWizardDraftService {
     }
 
     const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
-    const booking = await this.bookingsService.update(orgId, bookingId, {
-      status: targetStatus,
-      notes: stripWizardDraftMarker(draft.notes) || undefined,
-      paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+    const booking = await this.prisma.booking.update({
+      where: { id: bookingId, organizationId: orgId },
+      data: {
+        status: targetStatus,
+        notes: stripWizardDraftMarker(draft.notes) || null,
+        paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+      },
     });
 
     await this.bookingInvoiceLifecycle

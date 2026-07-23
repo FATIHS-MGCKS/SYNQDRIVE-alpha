@@ -396,6 +396,9 @@ export interface BookingUiRow {
   plate: string;
   startDate: string;
   endDate: string;
+  startDateIso: string;
+  endDateIso: string;
+  updatedAt: string;
   startTime: string;
   endTime: string;
   startMonth: number;
@@ -517,6 +520,9 @@ export function mapApiBooking(api: any): BookingUiRow {
     plate: api.vehicleLicense ?? api.plate ?? '',
     startDate: start.display,
     endDate: end.display,
+    startDateIso: String(api.startDate ?? ''),
+    endDateIso: String(api.endDate ?? ''),
+    updatedAt: String(api.updatedAt ?? ''),
     startTime: formatTimeFromIso(api.startDate),
     endTime: formatTimeFromIso(api.endDate),
     startMonth: start.month,

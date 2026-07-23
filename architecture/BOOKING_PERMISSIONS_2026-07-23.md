@@ -1,8 +1,8 @@
 # Booking Permissions — Granular IAM Model
 
 **Date:** 2026-07-23  
-**Prompts:** 2/34 (model) + 3/34 (endpoint enforcement)  
-**Status:** Model + role templates + backfill + deny-by-default controller enforcement
+**Prompts:** 2/34 (model) + 3/34 (endpoint enforcement) + 4/34 (DTO validation) + 5/34 (create validation) + 6/34 (typed update commands)  
+**Status:** Model + role templates + backfill + deny-by-default controller enforcement + typed update commands
 
 ## Summary
 
@@ -33,7 +33,7 @@ Every handler declares `@RequireBookingPermission(...)`. Mutations never pass on
 Public booking mutation endpoints no longer accept Prisma input types:
 
 - `POST /bookings` → `CreateBookingDto` → `CreateBookingCommand` → explicit Prisma create in service
-- `PATCH /bookings/:id` → `UpdateBookingDto` → `UpdateBookingCommand` → explicit Prisma update in service
+- `PATCH /bookings/:id` → **removed (410 Gone)** — use typed action endpoints below
 - `POST /bookings/:id/no-show` → `MarkBookingNoShowDto`
 
 `ValidationPipe` (`whitelist` + `forbidNonWhitelisted`) rejects unknown fields, nested relation shapes, and internal lifecycle fields. Client sends flat `customerId` / `vehicleId` / `quoteId` only — server owns all Prisma connects.
@@ -55,6 +55,33 @@ Public booking mutation endpoints no longer accept Prisma input types:
   - Station/one-way rules via `StationValidationService`
   - Rental health gate + customer eligibility (fail closed)
 - `BookingsService.create` applies station defaults, consumes quote server-side, seeds `BookingAllowedDriver` rows from `allowedDriverIds`
+
+## Typed update commands (Prompt 6)
+
+Generic `PATCH /bookings/:id` returns **410 Gone** (`BOOKING_GENERIC_PATCH_REMOVED`). Each fachliche Änderung nutzt einen eigenen Endpunkt mit eigener Permission und `expectedUpdatedAt` (optimistic concurrency → `BOOKING_VERSION_CONFLICT`).
+
+| Endpoint | Permission | Command |
+|----------|------------|---------|
+| `PATCH /bookings/:id/schedule` | `booking.update_schedule` | `UpdateBookingScheduleDto` |
+| `PATCH /bookings/:id/customer` | `booking.update_customer` | `UpdateBookingCustomerDto` |
+| `PATCH /bookings/:id/vehicle` | `booking.update_vehicle` | `UpdateBookingVehicleDto` |
+| `PATCH /bookings/:id/stations` | `booking.update_stations` | `UpdateBookingStationsDto` |
+| `PATCH /bookings/:id/notes` | `booking.update_notes` | `UpdateBookingNotesDto` |
+| `PATCH /bookings/:id/options` | `booking.update_options` | `UpdateBookingOptionsDto` |
+| `PATCH /bookings/:id/allowed-drivers` | `booking.update_allowed_drivers` | `UpdateBookingAllowedDriversDto` |
+
+`BookingUpdateService` orchestrates:
+
+- Optimistic concurrency via `expectedUpdatedAt` vs `booking.updatedAt`
+- Terminal state lock (`COMPLETED`/`CANCELLED`/`NO_SHOW`) — notes exempt; override via `allowTerminalOverride` + `bookings.manage`
+- No status changes via update commands
+- No direct client price fields — schedule/vehicle/options recalculate via `PricingService` / quote validation
+- Schedule/vehicle/options: availability overlap, rental health, customer eligibility, atomic price snapshot, invoice bootstrap, document regenerate
+- Customer change: customer eligibility re-check
+- Vehicle change: overlap + rental health
+- Stable error codes in `BOOKING_UPDATE_ERROR_CODES`
+
+Frontend: `applyBookingFieldUpdates()` in `bookingUpdateCommands.ts` routes edits to typed endpoints; conflict UX via `BOOKING_VERSION_CONFLICT`.
 
 ### Guard chain
 
@@ -80,9 +107,9 @@ Driver scope: DRIVER role without `bookings-sensitive.read` limited to bookings 
 | Audit activity | `bookings-audit.read` |
 | Document bundle slots | `bookings-documents.read` |
 
-### PATCH field-level permissions
+### PATCH field-level permissions (legacy util — superseded by Prompt 6 action endpoints)
 
-`assertBookingUpdatePermissions` enforces additional actions per changed field:
+`assertBookingUpdatePermissions` (used internally where generic update still exists) enforces additional actions per changed field:
 - `startDate`/`endDate` → `booking.update_schedule`
 - `customerId` → `booking.update_customer`
 - `vehicleId` → `booking.update_vehicle`
@@ -101,10 +128,13 @@ Driver scope: DRIVER role without `bookings-sensitive.read` limited to bookings 
 - `backend/src/modules/bookings/booking-permission.constants.ts`
 - `backend/src/modules/bookings/booking-permission.defaults.ts`
 - `backend/src/modules/bookings/dto/create-booking.dto.ts`
-- `backend/src/modules/bookings/dto/update-booking.dto.ts`
+- `backend/src/modules/bookings/dto/updates/*.dto.ts`
 - `backend/src/modules/bookings/dto/mark-booking-no-show.dto.ts`
 - `backend/src/modules/bookings/booking-command.mapper.ts`
+- `backend/src/modules/bookings/booking-update-command.mapper.ts`
+- `backend/src/modules/bookings/booking-update.service.ts`
 - `backend/src/modules/bookings/booking-command.types.ts`
+- `backend/src/modules/bookings/booking-update-command.types.ts`
 - `backend/src/modules/bookings/guards/booking-permissions.guard.ts`
 - `backend/src/modules/bookings/booking-access.service.ts`
 - `backend/src/modules/bookings/booking-response-redaction.service.ts`
@@ -126,6 +156,8 @@ Driver scope: DRIVER role without `bookings-sensitive.read` limited to bookings 
 - `bookings.permissions.characterization.spec.ts`
 - `bookings.permissions.enforcement.spec.ts`
 - `booking-mutation.dto.spec.ts`
+- `booking-update.service.spec.ts`
+- `dto/updates/booking-update-dtos.spec.ts`
 - `booking-update-permission.util.spec.ts`
 - `booking-permission.defaults.spec.ts`
 - `booking-permission.matrix.spec.ts`

@@ -8,6 +8,10 @@ import { useFleetVehicles } from '../FleetContext';
 import { useHandover } from '../HandoverContext';
 import { api } from '../../lib/api';
 import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
+import {
+  applyBookingFieldUpdates,
+  bookingVersionConflictMessage,
+} from '../lib/bookingUpdateCommands';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 import { EntityTasksSection } from './EntityTasksSection';
 import { MisuseCasesPanel } from './MisuseCasesPanel';
@@ -571,8 +575,33 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       return;
     }
 
+    if (!booking.updatedAt) {
+      toast.error('Buchungsversion unbekannt — bitte neu laden');
+      return;
+    }
+
     try {
-      await api.bookings.update(orgId, booking.id, patch);
+      await applyBookingFieldUpdates(
+        orgId,
+        booking.id,
+        booking.updatedAt,
+        {
+          startDate: patch.startDate as string | undefined,
+          endDate: patch.endDate as string | undefined,
+          notes: patch.notes as string | undefined,
+          kmIncluded: patch.kmIncluded as number | undefined,
+          vehicleId: patch.vehicleId as string | undefined,
+          customerId: patch.customerId as string | undefined,
+        },
+        {
+          startDate: booking.startDateIso,
+          endDate: booking.endDateIso,
+          notes: booking.notes,
+          kmIncluded: booking.includedKm,
+          vehicleId: booking.vehicleId,
+          customerId: booking.customerId,
+        },
+      );
       await loadBookings();
       onBookingUpdated?.({
         ...booking,
@@ -589,9 +618,9 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       setIsEditMode(false);
       setInlineEdit({});
       setActiveDropdown(null);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Speichern fehlgeschlagen';
-      toast.error('Buchung konnte nicht gespeichert werden', { description: String(msg) });
+    } catch (err: unknown) {
+      const msg = bookingVersionConflictMessage(err);
+      toast.error('Buchung konnte nicht gespeichert werden', { description: msg });
     }
   };
 
@@ -744,7 +773,29 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       // Only call API for bookings that exist server-side (UUID-like id)
       const isPersistedId = typeof editingBooking.id === 'string' && !editingBooking.id.startsWith('new-');
       if (isPersistedId && Object.keys(patch).length > 0) {
-        await api.bookings.update(orgId, editingBooking.id, patch);
+        if (!editingBooking.updatedAt) {
+          toast.error('Buchungsversion unbekannt — bitte neu laden');
+          return;
+        }
+        await applyBookingFieldUpdates(
+          orgId,
+          editingBooking.id,
+          editingBooking.updatedAt,
+          {
+            startDate: patch.startDate,
+            endDate: patch.endDate,
+            notes: patch.notes,
+            pickupStationId: patch.pickupStationId,
+            returnStationId: patch.returnStationId,
+          },
+          {
+            startDate: editingBooking.startDateIso,
+            endDate: editingBooking.endDateIso,
+            notes: editingBooking.notes,
+            pickupStationId: editingBooking.pickupStationId,
+            returnStationId: editingBooking.returnStationId,
+          },
+        );
       }
 
       setLocalEdits(prev => ({ ...prev, [editingBooking.id]: editForm }));
@@ -755,9 +806,9 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       });
       setEditingBooking(null);
       loadBookings();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Buchung konnte nicht gespeichert werden';
-      toast.error('Fehler beim Speichern', { description: String(msg) });
+    } catch (err: unknown) {
+      const msg = bookingVersionConflictMessage(err);
+      toast.error('Fehler beim Speichern', { description: msg });
     }
   };
 

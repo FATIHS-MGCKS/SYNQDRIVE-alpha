@@ -10,6 +10,7 @@ import {
   UseGuards,
   BadRequestException,
   NotFoundException,
+  GoneException,
   Req,
 } from '@nestjs/common';
 import { MembershipRole } from '@prisma/client';
@@ -36,13 +37,25 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { UpdateBookingDto } from './dto/update-booking.dto';
 import { MarkBookingNoShowDto } from './dto/mark-booking-no-show.dto';
+import { mapCreateBookingDtoToCommand } from './booking-command.mapper';
+import { UpdateBookingScheduleDto } from './dto/updates/update-booking-schedule.dto';
+import { UpdateBookingCustomerDto } from './dto/updates/update-booking-customer.dto';
+import { UpdateBookingVehicleDto } from './dto/updates/update-booking-vehicle.dto';
+import { UpdateBookingStationsDto } from './dto/updates/update-booking-stations.dto';
+import { UpdateBookingNotesDto } from './dto/updates/update-booking-notes.dto';
+import { UpdateBookingOptionsDto } from './dto/updates/update-booking-options.dto';
+import { UpdateBookingAllowedDriversDto } from './dto/updates/update-booking-allowed-drivers.dto';
 import {
-  mapCreateBookingDtoToCommand,
-  mapUpdateBookingDtoToCommand,
-  updateCommandToPermissionBody,
-} from './booking-command.mapper';
+  mapUpdateBookingAllowedDriversDtoToCommand,
+  mapUpdateBookingCustomerDtoToCommand,
+  mapUpdateBookingNotesDtoToCommand,
+  mapUpdateBookingOptionsDtoToCommand,
+  mapUpdateBookingScheduleDtoToCommand,
+  mapUpdateBookingStationsDtoToCommand,
+  mapUpdateBookingVehicleDtoToCommand,
+} from './booking-update-command.mapper';
+import { BookingUpdateService } from './booking-update.service';
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { resolveHandoverActor } from './handover-actor.util';
 import { RequireBookingPermission } from './decorators/require-booking-permission.decorator';
@@ -50,8 +63,11 @@ import { BookingPermissionsGuard } from './guards/booking-permissions.guard';
 import { BookingAccessService } from './booking-access.service';
 import { BookingResponseRedactionService } from './booking-response-redaction.service';
 import { BookingPermissionService } from './booking-permission.service';
-import { assertBookingUpdatePermissions } from './booking-update-permission.util';
-import type { MembershipPermissionsMap } from '@shared/auth/permission.util';
+import {
+  evaluateModulePermission,
+  normalizeMembershipPermissions,
+  type MembershipPermissionsMap,
+} from '@shared/auth/permission.util';
 
 type BookingRequest = {
   user?: {
@@ -76,7 +92,16 @@ export class BookingsController {
     private readonly bookingAccess: BookingAccessService,
     private readonly bookingRedaction: BookingResponseRedactionService,
     private readonly bookingPermissions: BookingPermissionService,
+    private readonly bookingUpdateService: BookingUpdateService,
   ) {}
+
+  private updateContext(req: BookingRequest, userId?: string) {
+    const perms = normalizeMembershipPermissions(req.bookingMembershipPermissions);
+    return {
+      userId: userId ?? null,
+      hasOverridePermission: evaluateModulePermission(perms, 'bookings', 'manage'),
+    };
+  }
 
   private perms(req: BookingRequest) {
     return req.bookingMembershipPermissions ?? null;
@@ -446,24 +471,117 @@ export class BookingsController {
     return this.bookingsService.create(orgId, command, { userId });
   }
 
-  @Patch(':id')
-  @RequireBookingPermission('booking.update')
-  async update(
+  @Patch(':id/schedule')
+  @RequireBookingPermission('booking.update_schedule')
+  async updateSchedule(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: UpdateBookingDto,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: UpdateBookingScheduleDto,
     @Req() req: BookingRequest,
   ) {
-    const command = mapUpdateBookingDtoToCommand(body);
     await this.bookingAccess.assertBookingInOrg(orgId, id);
-    assertBookingUpdatePermissions(updateCommandToPermissionBody(command), this.perms(req));
-    if (command.vehicleId) {
-      await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { vehicleId: command.vehicleId });
+    const command = mapUpdateBookingScheduleDtoToCommand(body);
+    return this.bookingUpdateService.updateSchedule(orgId, id, command, this.updateContext(req, userId));
+  }
+
+  @Patch(':id/customer')
+  @RequireBookingPermission('booking.update_customer')
+  async updateCustomer(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: UpdateBookingCustomerDto,
+    @Req() req: BookingRequest,
+  ) {
+    await this.bookingAccess.assertBookingInOrg(orgId, id);
+    await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { customerId: body.customerId });
+    const command = mapUpdateBookingCustomerDtoToCommand(body);
+    return this.bookingUpdateService.updateCustomer(orgId, id, command, this.updateContext(req, userId));
+  }
+
+  @Patch(':id/vehicle')
+  @RequireBookingPermission('booking.update_vehicle')
+  async updateVehicle(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: UpdateBookingVehicleDto,
+    @Req() req: BookingRequest,
+  ) {
+    await this.bookingAccess.assertBookingInOrg(orgId, id);
+    await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { vehicleId: body.vehicleId });
+    const command = mapUpdateBookingVehicleDtoToCommand(body);
+    return this.bookingUpdateService.updateVehicle(orgId, id, command, this.updateContext(req, userId));
+  }
+
+  @Patch(':id/stations')
+  @RequireBookingPermission('booking.update_stations')
+  async updateStations(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: UpdateBookingStationsDto,
+    @Req() req: BookingRequest,
+  ) {
+    await this.bookingAccess.assertBookingInOrg(orgId, id);
+    const stationId = body.pickupStationId ?? body.returnStationId;
+    if (stationId) {
+      await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { stationId });
     }
-    if (command.customerId) {
-      await this.bookingAccess.assertSecondaryResourceInOrg(orgId, { customerId: command.customerId });
-    }
-    return this.bookingsService.update(orgId, id, command);
+    const command = mapUpdateBookingStationsDtoToCommand(body);
+    return this.bookingUpdateService.updateStations(orgId, id, command, this.updateContext(req, userId));
+  }
+
+  @Patch(':id/notes')
+  @RequireBookingPermission('booking.update_notes')
+  async updateNotes(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: UpdateBookingNotesDto,
+  ) {
+    await this.bookingAccess.assertBookingInOrg(orgId, id);
+    const command = mapUpdateBookingNotesDtoToCommand(body);
+    return this.bookingUpdateService.updateNotes(orgId, id, command);
+  }
+
+  @Patch(':id/options')
+  @RequireBookingPermission('booking.update_options')
+  async updateOptions(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: UpdateBookingOptionsDto,
+    @Req() req: BookingRequest,
+  ) {
+    await this.bookingAccess.assertBookingInOrg(orgId, id);
+    const command = mapUpdateBookingOptionsDtoToCommand(body);
+    return this.bookingUpdateService.updateOptions(orgId, id, command, this.updateContext(req, userId));
+  }
+
+  @Patch(':id/allowed-drivers')
+  @RequireBookingPermission('booking.update_allowed_drivers')
+  async updateAllowedDrivers(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: UpdateBookingAllowedDriversDto,
+    @Req() req: BookingRequest,
+  ) {
+    await this.bookingAccess.assertBookingInOrg(orgId, id);
+    const command = mapUpdateBookingAllowedDriversDtoToCommand(body);
+    return this.bookingUpdateService.updateAllowedDrivers(orgId, id, command, this.updateContext(req, userId));
+  }
+
+  /** @deprecated Use action-specific PATCH routes (`/schedule`, `/customer`, etc.). */
+  @Patch(':id')
+  @RequireBookingPermission('booking.update')
+  async update() {
+    throw new GoneException({
+      message:
+        'Generic booking PATCH is removed. Use PATCH /bookings/:id/schedule|customer|vehicle|stations|notes|options|allowed-drivers',
+      code: 'BOOKING_GENERIC_PATCH_REMOVED',
+    });
   }
 
   @Delete(':id')
