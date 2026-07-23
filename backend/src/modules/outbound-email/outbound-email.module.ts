@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { BookingsModule } from '@modules/bookings/bookings.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { OrgEmailController } from './org-email.controller';
 import { PlatformEmailController } from './platform-email.controller';
@@ -18,7 +19,7 @@ import { ResendEmailProvider } from './providers/resend-email.provider';
 import { EmailProviderRegistry } from './providers/email-provider.registry';
 
 @Module({
-  imports: [forwardRef(() => DocumentsModule), ActivityLogModule],
+  imports: [forwardRef(() => DocumentsModule), forwardRef(() => BookingsModule), ActivityLogModule],
   controllers: [OrgEmailController, PlatformEmailController, BookingDocumentsEmailController, ResendWebhookController],
   providers: [
     PlatformEmailSettingsService,

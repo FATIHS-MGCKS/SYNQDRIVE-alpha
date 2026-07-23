@@ -30,6 +30,7 @@ import type {
   BookingWizardDraftUpdateDto,
 } from './dto/booking-wizard-draft.dto';
 import { BookingsService } from './bookings.service';
+import type { CreateBookingCommand } from './booking-command.types';
 import {
   BOOKING_CHECKOUT_PAYMENT_INTENTS,
   type BookingCheckoutPaymentIntent,
@@ -104,20 +105,20 @@ export class BookingWizardDraftService {
       }
     }
 
-    const createPayload = {
-      customer: { connect: { id: body.customerId } },
-      vehicle: { connect: { id: body.vehicleId } },
-      ...(body.pickupStationId ? { pickupStation: { connect: { id: body.pickupStationId } } } : {}),
-      ...(body.returnStationId ? { returnStation: { connect: { id: body.returnStationId } } } : {}),
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      quoteId,
+    const createCommand: CreateBookingCommand = {
+      customerId: body.customerId,
+      vehicleId: body.vehicleId,
+      pickupStationId: body.pickupStationId,
+      returnStationId: body.returnStationId,
+      pickupAt: startDate,
+      returnAt: endDate,
+      pricingQuoteId: quoteId,
       pricingInput: body.pricingInput,
-      status: 'PENDING' as BookingStatus,
-      notes: mergeWizardDraftNotes(body.notes),
+      status: 'PENDING',
+      customerNotes: mergeWizardDraftNotes(body.notes),
     };
 
-    const booking = await this.bookingsService.create(orgId, createPayload as never, {
+    const booking = await this.bookingsService.create(orgId, createCommand, {
       userId: options?.userId ?? null,
     });
 
@@ -207,10 +208,13 @@ export class BookingWizardDraftService {
     }
 
     const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
-    const booking = await this.bookingsService.update(orgId, bookingId, {
-      status: targetStatus,
-      notes: stripWizardDraftMarker(draft.notes) || null,
-      paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+    const booking = await this.prisma.booking.update({
+      where: { id: bookingId, organizationId: orgId },
+      data: {
+        status: targetStatus,
+        notes: stripWizardDraftMarker(draft.notes) || null,
+        paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+      },
     });
 
     await this.bookingInvoiceLifecycle

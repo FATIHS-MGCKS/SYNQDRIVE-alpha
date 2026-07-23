@@ -1376,37 +1376,45 @@ export type BookingStationContext = {
 
 /** Lean create body for operator/rental booking forms → `api.bookings.create`. */
 export type OperatorBookingCreatePayload = {
-  customer: { connect: { id: string } };
-  vehicle: { connect: { id: string } };
-  pickupStation?: { connect: { id: string } };
-  returnStation?: { connect: { id: string } };
+  customerId: string;
+  vehicleId: string;
+  pickupStationId?: string;
+  returnStationId?: string;
   startDate: string;
   endDate: string;
-  dailyRateCents?: number;
-  totalPriceCents?: number;
+  quoteId: string;
   kmIncluded?: number;
   insuranceOptions?: string[];
   extrasJson?: unknown;
   pricingInput?: unknown;
   currency?: string;
-  status?: string;
+  status?: 'PENDING' | 'CONFIRMED';
   notes?: string;
 };
 
-/** Lean patch body for operator/rental booking edits → `api.bookings.update`. */
+/** Lean patch body for operator/rental booking edits — use typed action endpoints. */
 export type OperatorBookingUpdatePayload = {
+  expectedUpdatedAt: string;
   startDate?: string;
   endDate?: string;
   notes?: string;
   kmIncluded?: number;
-  status?: string;
+  status?: 'PENDING' | 'CONFIRMED';
   vehicleId?: string;
-  vehicle?: { connect: { id: string } };
-  customer?: { connect: { id: string } };
+  customerId?: string;
   pickupStationId?: string;
   returnStationId?: string;
-  pickupStation?: { connect: { id: string } };
-  returnStation?: { connect: { id: string } };
+  pickupAddressOverride?: string;
+  returnAddressOverride?: string;
+  insuranceOptions?: string[];
+  extrasJson?: unknown;
+  pricingInput?: unknown;
+  pricingQuoteId?: string;
+};
+
+export type BookingUpdateConcurrencyPayload = {
+  expectedUpdatedAt: string;
+  allowTerminalOverride?: boolean;
 };
 
 /** Query params for `GET /organizations/:orgId/bookings` (all optional, backward-compatible). */
@@ -3654,8 +3662,70 @@ export const api = {
     detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
     create: (orgId: string, data: OperatorBookingCreatePayload) =>
       post<unknown>(`/organizations/${orgId}/bookings`, data),
+    /** @deprecated Use typed update* action endpoints */
     update: (orgId: string, id: string, data: OperatorBookingUpdatePayload) =>
       patch<unknown>(`/organizations/${orgId}/bookings/${id}`, data),
+    updateSchedule: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        pickupAt?: string;
+        returnAt?: string;
+        startDate?: string;
+        endDate?: string;
+        pricingQuoteId?: string;
+        quoteId?: string;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/schedule`, data),
+    updateCustomer: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & { customerId: string },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/customer`, data),
+    updateVehicle: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & { vehicleId: string; pricingQuoteId?: string },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/vehicle`, data),
+    updateStations: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        pickupStationId?: string | null;
+        returnStationId?: string | null;
+        pickupAddressOverride?: string | null;
+        returnAddressOverride?: string | null;
+        isOneWayRental?: boolean;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/stations`, data),
+    updateNotes: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        customerNotes?: string;
+        internalNotes?: string;
+        notes?: string;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/notes`, data),
+    updateOptions: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        pricingInput?: unknown;
+        pricingQuoteId?: string;
+        kmIncluded?: number;
+        insuranceOptions?: string[];
+        extrasJson?: unknown;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/options`, data),
+    updateAllowedDrivers: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        allowedDriverIds: string[];
+        primaryDriverId?: string;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/allowed-drivers`, data),
     cancel: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/bookings/${id}`),
     // V4.6.81 — Mark a CONFIRMED booking whose scheduled pickup has
     // passed without a handover as NO_SHOW. Distinct from cancel so

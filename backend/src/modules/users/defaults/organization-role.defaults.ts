@@ -1,6 +1,18 @@
 import { MembershipRole } from '@prisma/client';
 import type { MembershipPermissionsMap } from '@shared/auth/permission.util';
 import {
+  bookingAccountingPermissions,
+  bookingDispositionPermissions,
+  bookingDriverPermissions,
+  bookingFieldAgentPermissions,
+  bookingFullPermissions,
+  bookingNoAccessPermissions,
+  bookingReadOnlyPermissions,
+  bookingStationManagerPermissions,
+  bookingSubAdminPermissions,
+  bookingWorkerReadPermissions,
+} from '@modules/bookings/booking-permission.defaults';
+import {
   legalDocumentFullPermissions,
   legalDocumentReadPermissions,
   legalDocumentViewerPermissions,
@@ -58,7 +70,7 @@ function mergePermissions(
 
 function adminPermissions(): MembershipPermissionsMap {
   const keys = [
-    'dashboard', 'bookings', 'fleet', 'customers', 'stations', 'fleet-condition',
+    'dashboard', 'fleet', 'customers', 'stations', 'fleet-condition',
     'invoices', 'fines', 'price-tariffs', 'tasks', 'vendor-management',
     'ai-assistant', 'workflow-automation', 'document-upload', 'company-info',
     'users-roles', 'fleet-connectivity', 'data-analyse', 'data-authorization', 'billing', 'support',
@@ -68,15 +80,18 @@ function adminPermissions(): MembershipPermissionsMap {
     perms[key] = all(true, true, true);
   }
   return mergePermissions(
-    mergePermissions(perms, paymentModulePermissions({
-      payments: { read: true, write: true },
-      refund: true,
-      disputesRead: true,
-      connectRead: true,
-      connectManage: true,
-      settingsManage: true,
-    })),
-    legalDocumentFullPermissions(),
+    mergePermissions(perms, bookingFullPermissions()),
+    mergePermissions(
+      paymentModulePermissions({
+        payments: { read: true, write: true },
+        refund: true,
+        disputesRead: true,
+        connectRead: true,
+        connectManage: true,
+        settingsManage: true,
+      }),
+      legalDocumentFullPermissions(),
+    ),
   );
 }
 
@@ -96,16 +111,19 @@ function subAdminPermissions(): MembershipPermissionsMap {
   ] as const) {
     delete perms[key];
   }
-  return mergePermissions(perms, legalDocumentReadPermissions());
+  return mergePermissions(
+    mergePermissions(perms, bookingSubAdminPermissions()),
+    legalDocumentReadPermissions(),
+  );
 }
 
 function workerReadPermissions(extraWrite: string[] = []): MembershipPermissionsMap {
   const readKeys = [
-    'dashboard', 'fleet', 'bookings', 'customers', 'stations', 'tasks', 'support',
+    'dashboard', 'fleet', 'customers', 'stations', 'tasks', 'support',
   ];
   const perms: MembershipPermissionsMap = {};
   for (const key of [
-    'dashboard', 'bookings', 'fleet', 'customers', 'stations', 'fleet-condition',
+    'dashboard', 'fleet', 'customers', 'stations', 'fleet-condition',
     'invoices', 'fines', 'price-tariffs', 'tasks', 'vendor-management',
     'ai-assistant', 'workflow-automation', 'document-upload', 'company-info',
     'users-roles', 'fleet-connectivity', 'data-analyse', 'data-authorization', 'billing', 'support',
@@ -114,7 +132,10 @@ function workerReadPermissions(extraWrite: string[] = []): MembershipPermissions
     const canWrite = extraWrite.includes(key);
     perms[key as keyof MembershipPermissionsMap] = all(canRead, canWrite, false);
   }
-  return mergePermissions(perms, legalDocumentViewerPermissions());
+  return mergePermissions(
+    mergePermissions(perms, bookingWorkerReadPermissions()),
+    legalDocumentViewerPermissions(),
+  );
 }
 
 export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
@@ -140,7 +161,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Buchungen, Flotte und Kunden im Tagesgeschäft.',
     membershipRole: MembershipRole.SUB_ADMIN,
     permissions: mergePermissions(
-      workerReadPermissions(['bookings', 'customers', 'fleet']),
+      mergePermissions(
+        workerReadPermissions(['customers', 'fleet']),
+        bookingDispositionPermissions(),
+      ),
       paymentModulePermissions({
         payments: { read: true, write: true },
         disputesRead: true,
@@ -154,7 +178,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.SUB_ADMIN,
     permissions: mergePermissions(
       mergePermissions(
-        workerReadPermissions(['invoices', 'fines', 'price-tariffs']),
+        mergePermissions(
+          workerReadPermissions(['invoices', 'fines', 'price-tariffs']),
+          bookingAccountingPermissions(),
+        ),
         paymentModulePermissions({
           payments: { read: true, write: true },
           refund: true,
@@ -172,7 +199,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.SUB_ADMIN,
     fieldAgentAccessDefault: true,
     permissions: mergePermissions(
-      workerReadPermissions(['stations', 'bookings', 'fleet', 'tasks']),
+      mergePermissions(
+        workerReadPermissions(['stations', 'fleet', 'tasks']),
+        bookingStationManagerPermissions(),
+      ),
       paymentModulePermissions({
         payments: { read: true, write: true },
         disputesRead: true,
@@ -194,7 +224,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     name: 'Fahrer',
     description: 'Eingeschränkter Zugriff für Fahrer.',
     membershipRole: MembershipRole.DRIVER,
-    permissions: workerReadPermissions(['bookings']),
+    permissions: mergePermissions(
+      workerReadPermissions(),
+      bookingDriverPermissions(),
+    ),
   },
   {
     systemKey: 'field_agent',
@@ -203,7 +236,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.WORKER,
     fieldAgentAccessDefault: true,
     permissions: mergePermissions(
-      workerReadPermissions(['bookings', 'fleet', 'tasks']),
+      mergePermissions(
+        workerReadPermissions(['fleet', 'tasks']),
+        bookingFieldAgentPermissions(),
+      ),
       paymentModulePermissions({ payments: { read: true, write: false } }),
     ),
   },
@@ -213,7 +249,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Werkstatt, Servicepartner und Fahrzeugzustand.',
     membershipRole: MembershipRole.WORKER,
     permissions: mergePermissions(
-      workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet']),
+      mergePermissions(
+        workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet']),
+        bookingNoAccessPermissions(),
+      ),
       paymentModulePermissions({ payments: { read: true, write: false } }),
     ),
   },
@@ -224,7 +263,10 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.WORKER,
     permissions: mergePermissions(
       mergePermissions(
-        workerReadPermissions(),
+        mergePermissions(
+          workerReadPermissions(),
+          bookingReadOnlyPermissions(),
+        ),
         paymentModulePermissions({ payments: { read: true, write: false } }),
       ),
       legalDocumentReadPermissions(),
