@@ -7,6 +7,7 @@ import {
   createPricingTestStore,
   createSedanPricingFixtures,
   createTariffPassthroughDepositResolver,
+  createBookingDepositSnapshotStub,
   SEDAN_DEPOSIT_ACTIVE_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
 } from './pricing-test-store';
@@ -40,6 +41,7 @@ describe('Pricing tariff resolution by pickup instant', () => {
       store.prisma as unknown as PrismaService,
       migration as unknown as PricingMigrationService,
       createTariffPassthroughDepositResolver(),
+      createBookingDepositSnapshotStub(),
     );
     return { store, tariffs, pricing };
   }

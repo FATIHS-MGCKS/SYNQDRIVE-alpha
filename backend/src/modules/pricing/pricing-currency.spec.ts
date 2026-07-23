@@ -6,6 +6,7 @@ import {
   createPricingTestStore,
   createSedanPricingFixtures,
   createTariffPassthroughDepositResolver,
+  createBookingDepositSnapshotStub,
   SEDAN_DEPOSIT_DRAFT_CENTS,
 } from './pricing-test-store';
 
@@ -33,6 +34,7 @@ describe('Pricing currency resolution', () => {
       prisma as never,
       migration,
       createTariffPassthroughDepositResolver(),
+      createBookingDepositSnapshotStub(),
     );
     return { ids, prisma, pricing, tariffs };
   }

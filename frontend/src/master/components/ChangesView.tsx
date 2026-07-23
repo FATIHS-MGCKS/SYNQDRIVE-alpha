@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'deposit-checkout-freeze-v49784-2026-07-23',
+    version: '4.9.784',
+    title: 'V4.9.784 — Frozen deposit flow quote → checkout (Prompt 31)',
+    summary: [
+      '`FrozenBookingDeposit` auf `BookingPriceSnapshot.pricingInputJson` — amount, currency, source, ruleRevisionId, calculatedAt, frozenAt.',
+      'Quote-Totals enthalten `frozenDeposit`; Checkout-Context trennt Mietpreis, Kaution, bezahlt, vorautorisiert, bei Abholung fällig.',
+      'Confirm friert Kaution ein (`freezeDepositOnSnapshot`); CONFIRMED-Buchungen ohne neuen Quote dürfen Deposit nicht still ändern.',
+      '`BookingDeposit` wird beim Snapshot-Sync aus kanonischer Kaution befüllt; Vertrags-/Belegpfad nutzt Snapshot zuerst.',
+      'Frontend CheckoutStep + BookingSummaryPanel zeigen getrennte Miet- und Kautionszeilen.',
+    ],
+    reason:
+      'Kanonische Kaution muss vom Angebot bis Checkout eingefroren werden und nach Confirm unverändert bleiben (Remediation Prompt 31).',
+    previousBehavior:
+      'Deposit nur als `depositAmountCents`-Spalte; Checkout ohne Aufschlüsselung; Confirm ohne `frozenAt`; Repricing auf CONFIRMED ohne Quote.',
+    details:
+      'frozen-booking-deposit.types.ts, booking-deposit-snapshot.service.ts, booking-wizard-checkout-context.service.ts, pricing-quote.types.ts, CheckoutStep.tsx.',
+    affectsArchitecture: true,
+    module: 'Pricing / Bookings',
+    createdAt: '2026-07-24T03:00:00.000Z',
+  },
+  {
     id: 'canonical-deposit-resolver-v49783-2026-07-23',
     version: '4.9.783',
     title: 'V4.9.783 — Canonical deposit resolver (Prompt 30)',

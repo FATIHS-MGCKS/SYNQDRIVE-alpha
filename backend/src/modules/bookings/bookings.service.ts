@@ -1714,6 +1714,18 @@ export class BookingsService {
         anyData.insuranceOptions !== undefined) &&
       !terminalStatuses.includes(existing.status);
 
+    const confirmedLikeStatuses: BookingStatus[] = ['CONFIRMED', 'ACTIVE'];
+    if (pricingRelevant && confirmedLikeStatuses.includes(existing.status)) {
+      const quoteId = anyData.quoteId as string | undefined;
+      if (!quoteId) {
+        throw new BadRequestException({
+          message:
+            'Confirmed bookings require a new pricing quote before vehicle, period, or pricing changes.',
+          code: 'PRICING_QUOTE_REQUIRED_FOR_REPRICE',
+        });
+      }
+    }
+
     if (pricingRelevant) {
       const simulation = await this.pricingService.simulateBookingPrice(orgId, {
         vehicleId: nextVehicleId,

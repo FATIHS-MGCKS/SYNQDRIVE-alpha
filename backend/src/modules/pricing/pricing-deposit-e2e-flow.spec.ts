@@ -11,6 +11,7 @@ import {
   createPricingTestStore,
   createSedanPricingFixtures,
   createTariffPassthroughDepositResolver,
+  createBookingDepositSnapshotStub,
   SEDAN_DEPOSIT_ACTIVE_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
   SEDAN_DAILY_NET_CENTS,
@@ -29,6 +30,7 @@ describe('Pricing deposit E2E flow (17700 → 50000 cents)', () => {
       prisma,
       migration as unknown as PricingMigrationService,
       createTariffPassthroughDepositResolver(),
+      createBookingDepositSnapshotStub(),
     );
     const quotes = new PricingQuoteService(prisma, pricing);
     return { store, tariffs, pricing, quotes };
