@@ -1,7 +1,6 @@
 import { Type } from 'class-transformer';
 import {
   IsIn,
-  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -14,13 +13,6 @@ import {
   LEGAL_DELIVERY_STATUS,
 } from '../legal-document-delivery-evidence.constants';
 import type { LegalDocumentRecipientSnapshot } from '../legal-document-delivery-evidence.types';
-import { DOCUMENT_TYPE } from '../documents.constants';
-
-const LEGAL_EVIDENCE_DOCUMENT_TYPES = [
-  DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-  DOCUMENT_TYPE.CONSUMER_INFORMATION,
-  DOCUMENT_TYPE.PRIVACY_POLICY,
-] as const;
 
 export class LegalDocumentRecipientSnapshotDto {
   @IsUUID()
@@ -53,27 +45,8 @@ export class RecordLegalDocumentPresentationBodyDto {
   @IsUUID()
   generatedDocumentId!: string;
 
-  @IsIn([...LEGAL_EVIDENCE_DOCUMENT_TYPES])
-  documentType!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  versionLabel!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  language!: string;
-
-  @IsOptional()
-  @IsString()
-  checksum?: string | null;
-
   @IsIn(Object.values(LEGAL_DELIVERY_CHANNEL))
   deliveryChannel!: string;
-
-  @IsOptional()
-  @IsIn(Object.values(LEGAL_DELIVERY_STATUS))
-  deliveryStatus?: string;
 
   @ValidateNested()
   @Type(() => LegalDocumentRecipientSnapshotDto)

@@ -31,8 +31,13 @@ export class LegalDocumentFourEyesService {
     actorUserId: string | null | undefined,
     operation: LegalDocumentFourEyesOperation,
   ): Promise<void> {
-    if (!actorUserId) return;
     if (!(await this.isEnabled(organizationId))) return;
+    if (!actorUserId) {
+      throw new LegalDocumentForbiddenError(
+        'Four-eyes policy requires an authenticated actor',
+        LEGAL_DOCUMENT_ERROR_CODES.FOUR_EYES_VIOLATION,
+      );
+    }
 
     const blocked = new Set<string>();
     if (doc.uploadedByUserId) blocked.add(doc.uploadedByUserId);

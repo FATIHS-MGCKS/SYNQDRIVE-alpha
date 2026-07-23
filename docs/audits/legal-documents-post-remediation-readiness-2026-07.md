@@ -11,11 +11,9 @@
 
 After 31 remediation prompts, the **Kunden-Rechtstexte** domain has a mature architecture: lifecycle states, append-only audit events, central resolver, private object storage, malware scanning, integrity/reconciliation, bundle pointers (incl. privacy), rental-contract snapshots, delivery evidence, pickup gate, retention/legal hold, permissions, i18n/a11y, notifications, and dedicated CI/E2E gates.
 
-**Decision: NO-GO for production release** on the audited commit.
+**Decision: CONDITIONAL GO** — P0 and P1-1 through P1-4 resolved on remediation commit (see below). **P1-5** (PostgreSQL migration + invariant tests) remains a **CI gate**; local agent could not reach PostgreSQL.
 
-Primary blockers are **repository build failures** (`nest build` / deploy path) and **delivery-evidence trust boundaries** that still accept client-supplied legal metadata and delivery status. Four-eyes enforcement silently no-ops when the authenticated actor is missing. Migration and PostgreSQL invariant tests could not be executed in the audit environment (no local PostgreSQL); they must pass in CI before release.
-
-Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness while evidence integrity and deploy gates remain open.
+Primary blockers from the initial audit (**build failures**, **delivery-evidence trust boundaries**, **four-eyes bypass**, **permission misalignment**) are fixed. Production release requires **green CI** including `legal-documents-production-readiness.yml` (migration + PG invariants) and production env validation (S3 + ClamAV).
 
 ---
 
@@ -23,8 +21,9 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 
 | Field | Value |
 |-------|-------|
-| **Commit** | `9ddeb5156701ebcc1381521b68f67f45d84a9581` |
-| **Message** | `fix(legal-docs): aria-sort on table headers and loading aria-busy (Prompt 27)` |
+| **Commit (remediation)** | _pending push — P0/P1 fixes on `cursor/legal-docs-e2e-ci-28ca`_ |
+| **Commit (prior audit)** | `9ddeb5156701ebcc1381521b68f67f45d84a9581` |
+| **Message (prior)** | `fix(legal-docs): aria-sort on table headers and loading aria-busy (Prompt 27)` |
 | **Branch** | `cursor/legal-docs-e2e-ci-28ca` |
 | **PR** | [#667](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/667) (draft) |
 | **Prior audit commit** | `37636e5f` (Prompt 31 E2E/CI) |
@@ -44,7 +43,7 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 | **Lifecycle** | Upload → activate only | Full workflow: review, approve, schedule, revoke, archive + events (Prompts 4–5) |
 | **Append-only audit** | No event log | `OrganizationLegalDocumentEvent` + immutable append (Prompt 5) |
 | **Permissions** | Role-only | Granular `legal_documents.*` permissions + guard (Prompt 14) |
-| **Vier-Augen** | None | `LegalDocumentFourEyesService` + org flag (Prompt 14); bypass gap remains (P1) |
+| **Vier-Augen** | None | `LegalDocumentFourEyesService` + org flag; fail-closed when actor missing (P1-3 fixed) |
 | **PDF security** | No validation | `LegalDocumentPdfValidationService` (Prompt 11) |
 | **Malware scan** | None | ClamAV/dev/unavailable adapters; prod config validator blocks noop (Prompt 12) |
 | **Private storage** | Local only | S3 private adapter + startup validator; no public URLs (Prompt 13) |
@@ -52,7 +51,7 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 | **Storage reconciliation** | None | Reconciliation runs + alerts (Prompt 13) |
 | **Bundle pointers** | AGB/Widerruf only | Terms, consumer info, privacy pointers frozen on bundle (Prompt 10) |
 | **Rental snapshots** | Mutable / ambiguous | `RentalContractLegalSnapshotService` — explicit IDs, no `findFirst` pick (Prompt 16) |
-| **Delivery evidence** | None | `LegalDocumentDeliveryEvidence` model + API (Prompt 18); trust gaps (P1) |
+| **Delivery evidence** | None | `LegalDocumentDeliveryEvidence` model + API; metadata server-derived from generated/legal doc (P1-1/2 fixed) |
 | **Pickup gate** | Display-only completeness | `BookingPickupGateService` server-side gate + overrides (Prompt 20) |
 | **Email delivery** | Ad-hoc | Idempotent send + webhook status sync + evidence link (Prompt 21) |
 | **Retention / legal hold** | None | Phased purge + hold guards (Prompt 22) |
@@ -65,22 +64,39 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 
 ## Verbleibende Findings
 
-### P0 — Release blockers (deploy / integrity)
+### Resolved in P0/P1 remediation (2026-07-23)
+
+| ID | Resolution |
+|----|------------|
+| **P0-1** | `LegalDocumentsService` import added to `documents.module.ts` |
+| **P0-2** | `VoiceAssistantModule` + `DeviceConnectionWebhookProcessor` imports added to `workers.module.ts` |
+| **P1-1** | `resolvePresentationMetadata()` derives `documentType`, `versionLabel`, `language`, `checksum` from `generatedDocument` + `organizationLegalDocument` |
+| **P1-2** | Client `deliveryStatus` removed from POST DTO; initial status always from `initialStatusForChannel()` |
+| **P1-3** | Four-eyes throws `FOUR_EYES_VIOLATION` when enabled and `actorUserId` absent |
+| **P1-4** | Evidence mutations use `@RequireLegalDocumentPermission('legal_documents.audit_view')`; coarse `@Roles` removed |
+
+### P1 — Open (CI gate only)
 
 | ID | Finding | Impact | Affected files |
 |----|---------|--------|----------------|
-| **P0-1** | `nest build` fails: `LegalDocumentsService` referenced in `documents.module.ts` providers/exports **without import** | Production deploy / PM2 restart cannot compile | `backend/src/modules/documents/documents.module.ts` |
-| **P0-2** | `nest build` fails: `VoiceAssistantModule` and `DeviceConnectionWebhookProcessor` undefined in `workers.module.ts` | Same — blocks entire backend build (not legal-docs-specific but blocks release train) | `backend/src/workers/workers.module.ts` |
+| **P1-5** | **Migration + PG invariant tests not executed** in audit environment (PostgreSQL unreachable locally) | Critical migrations and 7 PG invariants unverified on this agent run; release depends on CI green | `scripts/test/legal-documents-migration-test.sh`, `testing/legal-documents-postgres.invariants.integration.spec.ts`, `.github/workflows/legal-documents-production-readiness.yml` |
 
-### P1 — Production blockers (legal-docs domain)
+### P0 — Release blockers (deploy / integrity) — **RESOLVED**
 
-| ID | Finding | Impact | Affected files |
-|----|---------|--------|----------------|
-| **P1-1** | **Client-trusted delivery evidence metadata:** `recordPresentation` persists `versionLabel`, `checksum`, `language`, `documentType` from request body; `assertDocumentScope` validates ID linkage only, not metadata against DB/generated document | Forged or mismatched legal version proof; audit trail not cryptographically tied to served document | `legal-document-delivery-evidence.service.ts`, `legal-document-delivery-evidence.controller.ts`, `dto/legal-document-delivery-evidence.dto.ts` |
-| **P1-2** | **Client can set `deliveryStatus` on create**, including skip to `DELIVERED` (`deliveryStatus ?? initialStatusForChannel`) | False delivery proof without email/webhook path | Same as P1-1 |
-| **P1-3** | **Four-eyes silent bypass:** `if (!actorUserId) return;` in `assertSeparation` | When four-eyes enabled, missing actor bypasses maker-checker instead of fail-closed | `legal-document-four-eyes.service.ts:34` |
-| **P1-4** | **Delivery evidence write endpoints** use `@Roles('ORG_ADMIN','MASTER_ADMIN')` only on POST/PATCH; GET routes have `@RequireLegalDocumentPermission('legal_documents.audit_view')` but mutations do not align with permission matrix | Over-broad role access vs. configured `legal_documents.*` grants | `legal-document-delivery-evidence.controller.ts` |
-| **P1-5** | **Migration + PG invariant tests not executed** in audit environment (PostgreSQL unreachable locally) | Critical migrations (`20260722100000`–`20260722250000`) and 7 PG invariants unverified on this agent run; release depends on CI green | `scripts/test/legal-documents-migration-test.sh`, `testing/legal-documents-postgres.invariants.integration.spec.ts`, `.github/workflows/legal-documents-production-readiness.yml` |
+| ID | Finding | Status |
+|----|---------|--------|
+| **P0-1** | `nest build` — missing `LegalDocumentsService` import | **Fixed** |
+| **P0-2** | `nest build` — missing workers module imports | **Fixed** |
+
+### P1 — Production blockers (legal-docs domain) — **RESOLVED except P1-5**
+
+| ID | Finding | Status |
+|----|---------|--------|
+| **P1-1** | Client-trusted delivery evidence metadata | **Fixed** — server-derived |
+| **P1-2** | Client `deliveryStatus` on create | **Fixed** — removed from API |
+| **P1-3** | Four-eyes silent bypass | **Fixed** — fail-closed |
+| **P1-4** | Delivery evidence write permission alignment | **Fixed** — `audit_view` on mutations |
+| **P1-5** | Migration + PG invariants | **Open** — CI required |
 
 ### P2 — Should fix before broad production; compensating controls possible short-term
 
@@ -110,8 +126,8 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 | Single-ACTIVE-Invariante | ✅ | Partial unique index + repair log + 409 handling |
 | Dokumenten-Lifecycle | ✅ | States, transitions, events tested |
 | Append-only Audit | ✅ | Events immutable; security tests |
-| Berechtigungen | ⚠️ | Granular permissions; delivery writes misaligned (P1-4) |
-| Vier-Augen | ⚠️ | Implemented; null-actor bypass (P1-3) |
+| Berechtigungen | ✅ | Granular permissions; evidence mutations aligned (P1-4 fixed) |
+| Vier-Augen | ✅ | Fail-closed when actor missing (P1-3 fixed) |
 | Zentraler Resolver | ✅ | Engine + conflict surfacing |
 | Sprache / Jurisdiktion | ⚠️ | Resolver OK; completeness still `de` (P2-1) |
 | B2B/B2C | ✅ | Scope service + resolver context |
@@ -124,7 +140,7 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 | Datenschutzhinweise | ✅ | Privacy pointer on bundle |
 | Bundle-Vollständigkeit | ✅ | Resolver-driven completeness |
 | Mietvertragssnapshots | ✅ | Immutable snapshot IDs |
-| Zustell-/Kenntnisnachweis | ⚠️ | Model exists; client trust (P1-1/2) |
+| Zustell-/Kenntnisnachweis | ✅ | Server-derived metadata; no client DELIVERED on POST (P1-1/2 fixed) |
 | Pickup-Gate | ✅ | Integration + security tests |
 | Overrides | ✅ | Permission + reason + audit |
 | Queue & Idempotenz | ✅ | `requestId` dedup on evidence; email send keys |
@@ -156,14 +172,22 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 | Playwright mobile | `legal-documents-responsive.spec.ts` | **2 PASS** |
 | Playwright a11y | `legal-documents-a11y.spec.ts` | **5 PASS** (prior run; not re-executed this session) |
 | Frontend production build | `npm run build` | **PASS** |
-| Backend `nest build` | `npm run build` | **FAIL** (4 TS errors: P0-1, P0-2) |
+| Backend `nest build` | `npm run build` | **PASS** (P0 fixed 2026-07-23) |
 | Prisma validate | `npm run prisma:validate` | **PASS** (SetNull warning) |
 | Migration tests (empty + legacy) | `legal-documents-migration-test.sh all` | **SKIPPED** — PostgreSQL not reachable locally |
-| PG invariants | `LEGAL_DOCUMENTS_POSTGRES_INTEGRATION=1` | **NOT RUN** — no local DB; **required in CI** |
+| PG invariants | `LEGAL_DOCUMENTS_POSTGRES_INTEGRATION=1` | **NOT RUN** — no local DB; **required in CI (P1-5)** |
+
+### Remediation verification (2026-07-23)
+
+| Suite | Result |
+|-------|--------|
+| Backend `nest build` | **PASS** |
+| Legal-documents test pattern | **267 PASS** (36 suites) |
+| Four-eyes + delivery evidence specs | **PASS** (incl. fail-closed + metadata mismatch) |
 
 ### Prior audit run (2026-07-22)
 
-Same pass/fail pattern; backend build and P1 findings unchanged. Commits `9ddeb515` adds only a11y/i18n hook fixes — **does not resolve P0/P1 blockers**.
+Backend build **FAIL**; P1 trust/permission findings open on commit `9ddeb515`.
 
 ---
 
@@ -217,16 +241,16 @@ Same pass/fail pattern; backend build and P1 findings unchanged. Commits `9ddeb5
 | **ISO 27001 A.8.2** | Classification / handling | ✅ | Legal docs segregated module |
 | **ISO 27001 A.8.24** | Cryptography | ✅ | SHA-256, SSE on S3 |
 | **ISO 27001 A.8.28** | Secure coding | ⚠️ | Trust boundary on evidence API |
-| **ISO 27001 A.12.1** | Change management | ⚠️ | CI exists; build red on commit |
+| **ISO 27001 A.12.1** | Change management | ✅ | CI exists; nest build green |
 | **ISO 27001 A.12.4** | Logging | ✅ | Append-only events; pickup gate audit |
 
 ---
 
 ## Go / No-Go Entscheidung
 
-### **NO-GO**
+### **CONDITIONAL GO**
 
-Production release of **Kunden-Rechtstexte** must not proceed on commit `9ddeb515` until P0 and P1 items are resolved and verified.
+P0 and P1-1–P1-4 are resolved on the remediation commit. **Do not deploy to production until CI workflow `legal-documents-production-readiness.yml` is green** (P1-5: migration + PG invariants) and production env validation passes (S3 + ClamAV).
 
 ---
 

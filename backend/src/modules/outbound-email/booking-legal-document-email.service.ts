@@ -20,7 +20,6 @@ import {
 import { LegalDocumentDeliveryEvidenceService } from '@modules/documents/legal-document-delivery-evidence.service';
 import {
   LEGAL_DELIVERY_CHANNEL,
-  LEGAL_DELIVERY_STATUS,
 } from '@modules/documents/legal-document-delivery-evidence.constants';
 import { BookingDocumentEmailService, type SendBookingDocumentsEmailInput } from './booking-document-email.service';
 import {
@@ -386,12 +385,7 @@ export class BookingLegalDocumentEmailService {
           customerId: booking.customerId,
           legalDocumentId: doc.legalDocumentId,
           generatedDocumentId: doc.id,
-          documentType: doc.documentType as DocumentType,
-          versionLabel: doc.legalVersionLabel ?? 'unknown',
-          language,
-          checksum: doc.checksum,
           deliveryChannel: LEGAL_DELIVERY_CHANNEL.EMAIL,
-          deliveryStatus: LEGAL_DELIVERY_STATUS.SENT,
           outboundEmailId: params.outboundEmailId,
           requestId: buildLegalDeliveryEvidenceRequestId(params.outboundEmailId, doc.documentType),
           recipientSnapshot: {

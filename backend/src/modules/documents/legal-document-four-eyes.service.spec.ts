@@ -62,4 +62,16 @@ describe('LegalDocumentFourEyesService', () => {
       ),
     ).resolves.toBeUndefined();
   });
+
+  it('blocks when four-eyes is enabled and actor is missing', async () => {
+    prisma.organization.findUnique.mockResolvedValue({ legalDocumentFourEyesEnabled: true });
+    await expect(
+      svc.assertSeparation(
+        'org-1',
+        { uploadedByUserId: 'user-1', submittedForReviewByUserId: null, approvedByUserId: null },
+        null,
+        'approve',
+      ),
+    ).rejects.toBeInstanceOf(LegalDocumentForbiddenError);
+  });
 });

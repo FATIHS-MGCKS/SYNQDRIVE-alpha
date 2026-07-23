@@ -1,17 +1,23 @@
 # Legal Documents — Post-Remediation Production Readiness Audit (Prompt 32)
 
-Date: 2026-07-22  
-Commit audited: `37636e5f`  
-Decision: **NO-GO**
+Date: 2026-07-23 (updated after P0/P1 remediation)  
+Commit audited: remediation on `cursor/legal-docs-e2e-ci-28ca`  
+Decision: **CONDITIONAL GO** (P1-5 CI gate remains)
 
 ## Summary
 
-Final independent audit of the 32-prompt remediation series for **Verwaltung → Kunden-Rechtstexte**. Architecture is substantially complete; release is blocked by:
+Final independent audit of the 32-prompt remediation series for **Verwaltung → Kunden-Rechtstexte**. Architecture is substantially complete.
 
-1. **P0** — `nest build` failures (`LegalDocumentsService` missing import in `documents.module.ts`; `workers.module.ts` undefined symbols).
-2. **P1** — Delivery evidence API accepts client-supplied `versionLabel`, `checksum`, `language`, `documentType`, and `deliveryStatus` (including `DELIVERED` on create).
-3. **P1** — Four-eyes `assertSeparation` returns silently when `actorUserId` is absent.
-4. **P1** — Migration and PostgreSQL invariant tests not verified in audit environment (CI gate required).
+**Resolved (2026-07-23):**
+
+1. **P0** — `nest build` green (`LegalDocumentsService` import; workers module imports).
+2. **P1-1/2** — Delivery evidence metadata server-derived; no client `deliveryStatus` on POST.
+3. **P1-3** — Four-eyes fail-closed when `actorUserId` absent.
+4. **P1-4** — Evidence mutations aligned with `@RequireLegalDocumentPermission('legal_documents.audit_view')`.
+
+**Remaining:**
+
+5. **P1-5** — Migration and PostgreSQL invariant tests (CI gate; not run locally).
 
 ## Verified architecture (unchanged)
 
@@ -25,14 +31,15 @@ Final independent audit of the 32-prompt remediation series for **Verwaltung →
 
 See `docs/audits/legal-documents-post-remediation-readiness-2026-07.md` — sections *Bedingungen für Production-Freigabe* and *Rollback*.
 
-## Signal flow (evidence trust — current gap)
+## Signal flow (evidence trust — fixed)
 
 ```mermaid
 flowchart LR
-  Client[POST presentation body] -->|versionLabel checksum language status| API[DeliveryEvidenceController]
+  Client[POST presentation IDs + channel] --> API[DeliveryEvidenceController]
   API --> Svc[recordPresentation]
-  Svc -->|assertDocumentScope IDs only| DB[(legal_document_delivery_evidence)]
-  GD[(generated_documents)] -.->|should derive metadata| Svc
+  Svc -->|resolvePresentationMetadata| GD[(generated_documents)]
+  Svc -->|resolvePresentationMetadata| LD[(organization_legal_documents)]
+  Svc --> DB[(legal_document_delivery_evidence)]
 ```
 
-**Target:** metadata derived server-side from `generatedDocument` + linked `organizationLegalDocument`; client fields rejected or ignored.
+Metadata (`documentType`, `versionLabel`, `language`, `checksum`) and initial `deliveryStatus` are derived server-side; client overrides rejected.

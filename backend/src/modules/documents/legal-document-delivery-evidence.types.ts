@@ -1,5 +1,8 @@
-import type { LegalAcknowledgmentMethod, LegalDeliveryChannel, LegalDeliveryStatus } from './legal-document-delivery-evidence.constants';
-import type { DocumentType } from './documents.constants';
+import type {
+  LegalAcknowledgmentMethod,
+  LegalDeliveryChannel,
+  LegalDeliveryStatus,
+} from './legal-document-delivery-evidence.constants';
 
 /**
  * Minimal recipient snapshot — data minimization; no document content.
@@ -19,12 +22,7 @@ export interface RecordLegalDocumentPresentationInput {
   customerId: string;
   legalDocumentId: string;
   generatedDocumentId: string;
-  documentType: DocumentType;
-  versionLabel: string;
-  language: string;
-  checksum: string | null;
   deliveryChannel: LegalDeliveryChannel;
-  deliveryStatus?: LegalDeliveryStatus;
   recipientSnapshot: LegalDocumentRecipientSnapshot;
   requestId?: string | null;
   outboundEmailId?: string | null;

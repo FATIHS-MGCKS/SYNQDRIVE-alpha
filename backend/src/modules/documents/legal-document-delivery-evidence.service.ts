@@ -21,6 +21,7 @@ import type {
 } from './legal-document-delivery-evidence.types';
 import { toLegalDocumentDeliveryEvidenceDto } from './dto/legal-document-delivery-evidence.dto';
 import type { LegalDocumentDeliveryEvidenceDto } from './dto/legal-document-delivery-evidence.dto';
+import { type DocumentType, isLegalDocumentType } from './documents.constants';
 
 const ALLOWED_DELIVERY_TRANSITIONS: Record<LegalDeliveryStatus, LegalDeliveryStatus[]> = {
   [LEGAL_DELIVERY_STATUS.PENDING]: [
@@ -88,7 +89,7 @@ export class LegalDocumentDeliveryEvidenceService {
     actor: LegalDocumentDeliveryEvidenceActor,
   ): Promise<LegalDocumentDeliveryEvidenceDto> {
     await this.assertBookingScope(input.organizationId, input.bookingId, input.customerId);
-    await this.assertDocumentScope(input);
+    const metadata = await this.resolvePresentationMetadata(input);
 
     if (input.requestId) {
       const existing = await this.prisma.legalDocumentDeliveryEvidence.findFirst({
@@ -102,7 +103,7 @@ export class LegalDocumentDeliveryEvidenceService {
     this.assertRecipientSnapshot(input.recipientSnapshot, input.customerId);
 
     const presentedAt = new Date();
-    const deliveryStatus = input.deliveryStatus ?? this.initialStatusForChannel(input.deliveryChannel);
+    const deliveryStatus = this.initialStatusForChannel(input.deliveryChannel);
 
     try {
       const row = await this.prisma.legalDocumentDeliveryEvidence.create({
@@ -112,10 +113,10 @@ export class LegalDocumentDeliveryEvidenceService {
           customerId: input.customerId,
           legalDocumentId: input.legalDocumentId,
           generatedDocumentId: input.generatedDocumentId,
-          documentType: input.documentType,
-          versionLabel: input.versionLabel,
-          language: input.language,
-          checksum: input.checksum,
+          documentType: metadata.documentType,
+          versionLabel: metadata.versionLabel,
+          language: metadata.language,
+          checksum: metadata.checksum,
           presentedAt,
           deliveryChannel: input.deliveryChannel,
           deliveryStatus,
@@ -342,7 +343,17 @@ export class LegalDocumentDeliveryEvidenceService {
     }
   }
 
-  private async assertDocumentScope(input: RecordLegalDocumentPresentationInput): Promise<void> {
+  private async resolvePresentationMetadata(
+    input: Pick<
+      RecordLegalDocumentPresentationInput,
+      'organizationId' | 'bookingId' | 'legalDocumentId' | 'generatedDocumentId'
+    >,
+  ): Promise<{
+    documentType: DocumentType;
+    versionLabel: string;
+    language: string;
+    checksum: string | null;
+  }> {
     const generated = await this.prisma.generatedDocument.findFirst({
       where: {
         id: input.generatedDocumentId,
@@ -350,7 +361,12 @@ export class LegalDocumentDeliveryEvidenceService {
         bookingId: input.bookingId,
         legalDocumentId: input.legalDocumentId,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        documentType: true,
+        checksum: true,
+        legalVersionLabel: true,
+      },
     });
     if (!generated) {
       throw new LegalDocumentDeliveryEvidenceError(
@@ -364,6 +380,70 @@ export class LegalDocumentDeliveryEvidenceService {
         },
       );
     }
+
+    const legalDoc = await this.prisma.organizationLegalDocument.findFirst({
+      where: {
+        id: input.legalDocumentId,
+        organizationId: input.organizationId,
+      },
+      select: {
+        id: true,
+        documentType: true,
+        versionLabel: true,
+        language: true,
+        checksum: true,
+      },
+    });
+    if (!legalDoc) {
+      throw new LegalDocumentDeliveryEvidenceError(
+        LEGAL_DELIVERY_EVIDENCE_ERROR_CODE.TENANT_MISMATCH,
+        'Legal document is not scoped to organization',
+        {
+          organizationId: input.organizationId,
+          legalDocumentId: input.legalDocumentId,
+        },
+      );
+    }
+
+    if (generated.documentType !== legalDoc.documentType) {
+      throw new LegalDocumentDeliveryEvidenceError(
+        LEGAL_DELIVERY_EVIDENCE_ERROR_CODE.METADATA_MISMATCH,
+        'Generated document type does not match linked legal document',
+        {
+          generatedDocumentId: input.generatedDocumentId,
+          legalDocumentId: input.legalDocumentId,
+          generatedDocumentType: generated.documentType,
+          legalDocumentType: legalDoc.documentType,
+        },
+      );
+    }
+
+    if (!isLegalDocumentType(generated.documentType)) {
+      throw new LegalDocumentDeliveryEvidenceError(
+        LEGAL_DELIVERY_EVIDENCE_ERROR_CODE.METADATA_MISMATCH,
+        `Document type ${generated.documentType} is not eligible for legal delivery evidence`,
+        { documentType: generated.documentType },
+      );
+    }
+
+    const versionLabel = (generated.legalVersionLabel ?? legalDoc.versionLabel).trim();
+    if (!versionLabel) {
+      throw new LegalDocumentDeliveryEvidenceError(
+        LEGAL_DELIVERY_EVIDENCE_ERROR_CODE.MISSING_REQUIRED,
+        'Legal document version label is required for delivery evidence',
+        {
+          generatedDocumentId: input.generatedDocumentId,
+          legalDocumentId: input.legalDocumentId,
+        },
+      );
+    }
+
+    return {
+      documentType: generated.documentType as DocumentType,
+      versionLabel,
+      language: legalDoc.language,
+      checksum: generated.checksum ?? legalDoc.checksum ?? null,
+    };
   }
 
   private assertRecipientSnapshot(snapshot: LegalDocumentRecipientSnapshot, customerId: string): void {

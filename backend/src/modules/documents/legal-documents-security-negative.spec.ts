@@ -435,7 +435,23 @@ describe('Legal documents — security negative tests', () => {
       };
       const prisma = {
         booking: { findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', customerId: 'cust-1' }) },
-        generatedDocument: { findFirst: jest.fn().mockResolvedValue({ id: 'gen-1' }) },
+        generatedDocument: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'gen-1',
+            documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+            checksum: 'sha',
+            legalVersionLabel: 'v1',
+          }),
+        },
+        organizationLegalDocument: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'legal-1',
+            documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+            versionLabel: 'v1',
+            language: 'de',
+            checksum: 'sha',
+          }),
+        },
         legalDocumentDeliveryEvidence: {
           findFirst: jest.fn().mockResolvedValue(existing),
           create: jest.fn(),
@@ -450,10 +466,6 @@ describe('Legal documents — security negative tests', () => {
           customerId: 'cust-1',
           legalDocumentId: 'legal-1',
           generatedDocumentId: 'gen-1',
-          documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-          versionLabel: 'v1',
-          language: 'de',
-          checksum: 'sha',
           deliveryChannel: 'PORTAL',
           recipientSnapshot: { customerId: 'cust-1' },
           requestId: 'req-dup-sec',

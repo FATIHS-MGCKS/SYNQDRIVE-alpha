@@ -258,7 +258,11 @@ describe('BookingLegalDocumentEmailService', () => {
       subject: 'Docs',
     });
     expect(deliveryEvidence.recordPresentation).toHaveBeenCalledWith(
-      expect.objectContaining({ language: 'en', versionLabel: 'AGB v3-en' }),
+      expect.objectContaining({
+        generatedDocumentId: 'gen-terms',
+        legalDocumentId: 'legal-terms',
+        deliveryChannel: 'EMAIL',
+      }),
       expect.any(Object),
     );
   });

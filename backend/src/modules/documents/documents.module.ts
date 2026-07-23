@@ -26,6 +26,7 @@ import { RentalContractLegalSnapshotService } from './rental-contract-legal-snap
 import { RentalContractService } from './rental-contract.service';
 import { BookingDocumentGenerationModule } from './booking-document-generation/booking-document-generation.module';
 import { LegalDocumentDeliveryEvidenceService } from './legal-document-delivery-evidence.service';
+import { LegalDocumentsService } from './legal-documents.service';
 import { DocumentNumberingService } from './document-numbering.service';
 import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
 import { LegalDocumentRetentionReferenceService } from './retention/legal-document-retention-reference.service';

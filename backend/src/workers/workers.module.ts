@@ -12,6 +12,7 @@ import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automatio
 import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
 import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
+import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { BookingDocumentGenerationModule } from '@modules/documents/booking-document-generation/booking-document-generation.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
@@ -30,6 +31,7 @@ import { PaymentEmailProcessor } from './processors/payment-email.processor';
 import { TaskAutomationOutboxProcessor } from './processors/task-automation-outbox.processor';
 import { BatteryV2Processor } from './processors/battery-v2.processor';
 import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
+import { DeviceConnectionWebhookProcessor } from './processors/device-connection-webhook.processor';
 import { BookingDocumentGenerationProcessor } from './processors/booking-document-generation.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';

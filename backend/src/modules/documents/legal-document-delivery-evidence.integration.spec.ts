@@ -1,5 +1,4 @@
 import { LegalDocumentDeliveryEvidenceController } from './legal-document-delivery-evidence.controller';
-import { DOCUMENT_TYPE } from './documents.constants';
 import {
   LEGAL_ACKNOWLEDGMENT_METHOD,
   LEGAL_DELIVERY_CHANNEL,
@@ -36,16 +35,18 @@ describe('LegalDocumentDeliveryEvidenceController (integration)', () => {
         customerId: 'cust-1',
         legalDocumentId: 'legal-1',
         generatedDocumentId: 'gen-1',
-        documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-        versionLabel: 'v1',
-        language: 'de',
         deliveryChannel: LEGAL_DELIVERY_CHANNEL.PORTAL,
         recipientSnapshot: { customerId: 'cust-1' },
       } as any,
       'user-1',
     );
     expect(evidence.recordPresentation).toHaveBeenCalledWith(
-      expect.objectContaining({ organizationId: 'org-1', bookingId: 'bk-1' }),
+      expect.objectContaining({
+        organizationId: 'org-1',
+        bookingId: 'bk-1',
+        generatedDocumentId: 'gen-1',
+        legalDocumentId: 'legal-1',
+      }),
       { userId: 'user-1' },
     );
   });

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-p0-p1-remediation-2026-07-23',
+    version: '4.9.772',
+    title: 'Legal Documents — P0/P1 Production Blocker Remediation',
+    summary: [
+      'P0: nest build wieder grün — LegalDocumentsService-Import in documents.module.ts; VoiceAssistantModule + DeviceConnectionWebhookProcessor in workers.module.ts.',
+      'P1: Delivery-Evidence-Metadaten (versionLabel, checksum, language, documentType) serverseitig aus generatedDocument + organizationLegalDocument; kein client deliveryStatus auf POST.',
+      'P1: Vier-Augen fail-closed wenn actorUserId fehlt; Evidence-Mutationen mit legal_documents.audit_view statt nur @Roles.',
+      'Tests: 267 legal-documents Suites grün; nest build PASS. PG-Migration/Invariants weiterhin CI-Gate (P1-5).',
+    ],
+    reason:
+      'Zwingende Massnahmen aus Prompt-32-Audit (NO-GO) — Build, Trust Boundaries und Permissions vor Production-Freigabe.',
+    previousBehavior:
+      'nest build FAIL; client konnte Evidence-Metadaten und DELIVERED-Status faelschen; Four-Eyes bypass bei fehlendem Actor.',
+    details:
+      'docs/audits/legal-documents-post-remediation-readiness-2026-07.md, architecture/LEGAL_DOCUMENT_POST_REMEDIATION_AUDIT_2026-07-22.md',
+    affectsArchitecture: true,
+    module: 'Documents / Audit',
+    createdAt: '2026-07-23T15:00:00.000Z',
+  },
+  {
     id: 'legal-documents-post-remediation-audit-2026-07-22',
     version: '4.9.771',
     title: 'Legal Documents — Post-Remediation Production Readiness Audit (Prompt 32/32)',

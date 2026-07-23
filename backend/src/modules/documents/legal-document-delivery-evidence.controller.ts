@@ -10,7 +10,6 @@ import {
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
-import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RequireLegalDocumentPermission } from './decorators/require-legal-document-permission.decorator';
 import { LegalDocumentDeliveryEvidenceService } from './legal-document-delivery-evidence.service';
@@ -48,7 +47,7 @@ export class LegalDocumentDeliveryEvidenceController {
   }
 
   @Post()
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.audit_view')
   recordPresentation(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -62,12 +61,7 @@ export class LegalDocumentDeliveryEvidenceController {
         customerId: body.customerId,
         legalDocumentId: body.legalDocumentId,
         generatedDocumentId: body.generatedDocumentId,
-        documentType: body.documentType as never,
-        versionLabel: body.versionLabel,
-        language: body.language,
-        checksum: body.checksum ?? null,
         deliveryChannel: body.deliveryChannel as never,
-        deliveryStatus: body.deliveryStatus as never,
         recipientSnapshot: body.recipientSnapshot,
         requestId: body.requestId ?? null,
         outboundEmailId: body.outboundEmailId ?? null,
@@ -77,7 +71,7 @@ export class LegalDocumentDeliveryEvidenceController {
   }
 
   @Patch(':evidenceId/delivery-status')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.audit_view')
   updateDeliveryStatus(
     @Param('orgId') orgId: string,
     @Param('evidenceId') evidenceId: string,
@@ -96,7 +90,7 @@ export class LegalDocumentDeliveryEvidenceController {
   }
 
   @Post(':evidenceId/acknowledge')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.audit_view')
   recordAcknowledgment(
     @Param('orgId') orgId: string,
     @Param('evidenceId') evidenceId: string,

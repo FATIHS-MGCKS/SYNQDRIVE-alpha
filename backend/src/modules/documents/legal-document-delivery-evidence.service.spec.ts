@@ -14,10 +14,6 @@ function makePresentationInput(overrides: Record<string, unknown> = {}) {
     customerId: 'cust-1',
     legalDocumentId: 'legal-1',
     generatedDocumentId: 'gen-1',
-    documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-    versionLabel: 'AGB v1',
-    language: 'de',
-    checksum: 'sha-abc',
     deliveryChannel: LEGAL_DELIVERY_CHANNEL.PORTAL,
     recipientSnapshot: {
       customerId: 'cust-1',
@@ -31,12 +27,45 @@ function makePresentationInput(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeMetadataMocks(overrides: Record<string, unknown> = {}) {
+  return {
+    booking: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', customerId: 'cust-1' }),
+    },
+    generatedDocument: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'gen-1',
+        documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+        checksum: 'sha-abc',
+        legalVersionLabel: 'AGB v1',
+        ...((overrides.generatedDocument as object) ?? {}),
+      }),
+    },
+    organizationLegalDocument: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'legal-1',
+        documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+        versionLabel: 'AGB v1',
+        language: 'de',
+        checksum: 'sha-abc',
+        ...((overrides.organizationLegalDocument as object) ?? {}),
+      }),
+    },
+    legalDocumentDeliveryEvidence: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+}
+
 describe('LegalDocumentDeliveryEvidenceService', () => {
   function makeService(prisma: any) {
     return new LegalDocumentDeliveryEvidenceService(prisma);
   }
 
-  it('records presentation with server-side presentedAt and actor', async () => {
+  it('records presentation with server-derived metadata, presentedAt and actor', async () => {
     const create = jest.fn().mockResolvedValue({
       id: 'ev-1',
       organizationId: 'org-1',
@@ -62,12 +91,7 @@ describe('LegalDocumentDeliveryEvidenceService', () => {
       createdAt: new Date('2026-07-22T12:00:00.000Z'),
     });
     const prisma = {
-      booking: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', customerId: 'cust-1' }),
-      },
-      generatedDocument: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'gen-1' }),
-      },
+      ...makeMetadataMocks(),
       legalDocumentDeliveryEvidence: {
         findFirst: jest.fn().mockResolvedValue(null),
         create,
@@ -82,12 +106,66 @@ describe('LegalDocumentDeliveryEvidenceService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           actorUserId: 'user-1',
+          documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+          versionLabel: 'AGB v1',
+          language: 'de',
+          checksum: 'sha-abc',
           deliveryStatus: LEGAL_DELIVERY_STATUS.PRESENTED,
           recipientSnapshot: expect.objectContaining({ customerId: 'cust-1' }),
         }),
       }),
     );
     expect(create.mock.calls[0][0].data.presentedAt).toBeInstanceOf(Date);
+  });
+
+  it('derives initial delivery status from channel and ignores client-supplied status', async () => {
+    const create = jest.fn().mockImplementation(({ data }) =>
+      Promise.resolve({
+        id: 'ev-email',
+        ...data,
+        deliveredAt: null,
+        acknowledgedAt: null,
+        acknowledgmentMethod: null,
+        signatureReference: null,
+        createdAt: new Date(),
+      }),
+    );
+    const prisma = {
+      ...makeMetadataMocks({
+        organizationLegalDocument: {
+          documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
+        },
+        generatedDocument: {
+          documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
+          legalVersionLabel: 'DS v1',
+        },
+      }),
+      legalDocumentDeliveryEvidence: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create,
+      },
+    } as any;
+    const svc = makeService(prisma);
+
+    await svc.recordPresentation(
+      makePresentationInput({
+        legalDocumentId: 'legal-privacy',
+        generatedDocumentId: 'gen-privacy',
+        deliveryChannel: LEGAL_DELIVERY_CHANNEL.EMAIL,
+        requestId: 'req-email',
+      }),
+      { userId: 'user-1' },
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          deliveryStatus: LEGAL_DELIVERY_STATUS.SENT,
+          documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
+          versionLabel: 'DS v1',
+        }),
+      }),
+    );
   });
 
   it('is idempotent by requestId', async () => {
@@ -116,8 +194,10 @@ describe('LegalDocumentDeliveryEvidenceService', () => {
       createdAt: new Date(),
     };
     const prisma = {
-      booking: { findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', customerId: 'cust-1' }) },
-      generatedDocument: { findFirst: jest.fn().mockResolvedValue({ id: 'gen-1' }) },
+      ...makeMetadataMocks({
+        generatedDocument: { documentType: DOCUMENT_TYPE.PRIVACY_POLICY },
+        organizationLegalDocument: { documentType: DOCUMENT_TYPE.PRIVACY_POLICY },
+      }),
       legalDocumentDeliveryEvidence: {
         findFirst: jest.fn().mockResolvedValue(existing),
         create: jest.fn(),
@@ -126,12 +206,27 @@ describe('LegalDocumentDeliveryEvidenceService', () => {
     const svc = makeService(prisma);
 
     const result = await svc.recordPresentation(
-      makePresentationInput({ requestId: 'req-dup', documentType: DOCUMENT_TYPE.PRIVACY_POLICY }),
+      makePresentationInput({ requestId: 'req-dup' }),
       { userId: 'user-1' },
     );
 
     expect(result.id).toBe('ev-existing');
     expect(prisma.legalDocumentDeliveryEvidence.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects metadata mismatch between generated and legal documents', async () => {
+    const prisma = {
+      ...makeMetadataMocks({
+        generatedDocument: { documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS },
+        organizationLegalDocument: { documentType: DOCUMENT_TYPE.PRIVACY_POLICY },
+      }),
+      legalDocumentDeliveryEvidence: { findFirst: jest.fn().mockResolvedValue(null) },
+    } as any;
+    const svc = makeService(prisma);
+
+    await expect(
+      svc.recordPresentation(makePresentationInput(), { userId: 'user-1' }),
+    ).rejects.toMatchObject({ code: LEGAL_DELIVERY_EVIDENCE_ERROR_CODE.METADATA_MISMATCH });
   });
 
   it('allows email delivery status updates until terminal', async () => {
@@ -274,10 +369,7 @@ describe('LegalDocumentDeliveryEvidenceService', () => {
 
   it('rejects recipient snapshot customerId mismatch', async () => {
     const prisma = {
-      booking: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', customerId: 'cust-1' }),
-      },
-      generatedDocument: { findFirst: jest.fn().mockResolvedValue({ id: 'gen-1' }) },
+      ...makeMetadataMocks(),
       legalDocumentDeliveryEvidence: { findFirst: jest.fn().mockResolvedValue(null) },
     } as any;
     const svc = makeService(prisma);
@@ -307,18 +399,26 @@ describe('LegalDocumentDeliveryEvidenceService privacy parity', () => {
       }),
     );
     const prisma = {
-      booking: { findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', customerId: 'cust-1' }) },
-      generatedDocument: { findFirst: jest.fn().mockResolvedValue({ id: 'gen-privacy' }) },
+      ...makeMetadataMocks({
+        generatedDocument: {
+          id: 'gen-privacy',
+          documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
+          legalVersionLabel: 'Datenschutz v2',
+        },
+        organizationLegalDocument: {
+          id: 'legal-privacy',
+          documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
+          versionLabel: 'Datenschutz v2',
+        },
+      }),
       legalDocumentDeliveryEvidence: { findFirst: jest.fn().mockResolvedValue(null), create },
     } as any;
     const svc = new LegalDocumentDeliveryEvidenceService(prisma);
 
     const result = await svc.recordPresentation(
       makePresentationInput({
-        documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
         legalDocumentId: 'legal-privacy',
         generatedDocumentId: 'gen-privacy',
-        versionLabel: 'Datenschutz v2',
       }),
       { userId: 'user-1' },
     );
