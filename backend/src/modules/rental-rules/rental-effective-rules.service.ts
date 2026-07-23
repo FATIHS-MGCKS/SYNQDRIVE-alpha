@@ -24,6 +24,8 @@ import type {
   EffectiveRentalRules,
   RentalRuleFieldSet,
 } from './rental-rules.types';
+import type { NormalizedRentalRulesDocument } from './rental-rules-revision.types';
+import type { RentalRuleRevisionScope } from './rental-rules-revision-scope.util';
 
 @Injectable()
 export class RentalEffectiveRulesService {
@@ -159,6 +161,60 @@ export class RentalEffectiveRulesService {
   ): Promise<EffectiveRentalRules> {
     const context = await this.loadVehicleRulesContext(orgId, vehicleId);
     return this.buildEffectiveFromContext(context, overrideFields);
+  }
+
+  async computeWithSimulatedDraftScope(
+    orgId: string,
+    vehicleId: string,
+    draftScope: RentalRuleRevisionScope,
+    draftDocument: NormalizedRentalRulesDocument,
+  ): Promise<EffectiveRentalRules> {
+    const context = await this.loadVehicleRulesContext(orgId, vehicleId);
+    const draftRules = extractRuleFields(
+      draftDocument.rules as Parameters<typeof extractRuleFields>[0],
+    );
+
+    let orgRules = context.orgRules;
+    let categoryRuleFields = context.categoryRuleFields;
+    let overrideFields = context.overrideFields;
+    let category = context.category;
+
+    switch (draftScope.scopeType) {
+      case 'ORGANIZATION':
+        orgRules = {
+          ...(orgRules ?? { organizationId: orgId }),
+          ...draftRules,
+          isActive:
+            typeof draftDocument.scopeMeta.isActive === 'boolean'
+              ? draftDocument.scopeMeta.isActive
+              : (orgRules?.isActive ?? true),
+        };
+        break;
+      case 'CATEGORY':
+        if (context.category?.id === draftScope.scopeId) {
+          categoryRuleFields = draftRules;
+          if (typeof draftDocument.scopeMeta.name === 'string') {
+            category = { ...context.category, name: draftDocument.scopeMeta.name };
+          }
+        }
+        break;
+      case 'VEHICLE':
+        if (vehicleId === draftScope.scopeId) {
+          overrideFields = hasActiveRuleOverrides(draftRules) ? draftRules : null;
+        }
+        break;
+      default:
+        break;
+    }
+
+    const simulatedContext = {
+      ...context,
+      orgRules,
+      category,
+      categoryRuleFields,
+      overrideFields,
+    };
+    return this.buildEffectiveFromContext(simulatedContext, overrideFields);
   }
 
   formatEffectiveRules(rules: EffectiveRentalRules): EffectiveRentalRequirement {

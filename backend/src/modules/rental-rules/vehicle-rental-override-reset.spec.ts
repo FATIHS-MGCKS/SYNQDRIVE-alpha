@@ -150,6 +150,10 @@ describe('Vehicle rental override reset', () => {
       rentalRulePermissions as never,
       activityLog as never,
       revisions as never,
+      {
+        analyzePublishImpact: jest.fn(),
+        assertPublishPreconditions: jest.fn(),
+      } as never,
     );
   });
 

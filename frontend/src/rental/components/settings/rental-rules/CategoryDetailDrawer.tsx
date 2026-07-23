@@ -26,6 +26,7 @@ import {
   summarizeRuleEntity,
   validateRuleForm,
 } from './rental-rules.utils';
+import { RentalRulePublishImpactPanel } from './RentalRulePublishImpactPanel';
 
 interface CategoryDetailDrawerProps {
   open: boolean;
@@ -303,6 +304,18 @@ export function CategoryDetailDrawer({
           <h4 className="mb-3 text-[13px] font-semibold text-foreground">Category rules</h4>
           <RentalRuleFieldsForm values={ruleValues} onChange={setRuleValues} disabled={!canWrite || saving || lifecycleSaving || isArchived} />
         </div>
+
+        {mode === 'edit' && category?.hasUnpublishedDraft && category.draftRevision && (
+          <RentalRulePublishImpactPanel
+            orgId={orgId}
+            scope="category"
+            scopeEntityId={category.id}
+            draftRevision={category.draftRevision}
+            expectedVersion={category.version}
+            canPublish={canPublish}
+            onPublished={onSaved}
+          />
+        )}
 
         {mode === 'edit' && category && (
           <div className="rounded-xl border border-border/70 bg-muted/20 p-3">

@@ -14,6 +14,7 @@ import {
   PreviewRentalRuleRevisionDto,
   PublishRentalRuleRevisionDto,
   ResetVehicleRentalOverridesDto,
+  AnalyzeRentalRulePublishDto,
   TransitionCategoryLifecycleDto,
   UpdateRentalVehicleCategoryDto,
   UpsertOrganizationRentalRulesDto,
@@ -66,6 +67,7 @@ import {
   vehicleRevisionScope,
 } from './rental-rules-revision-scope.util';
 import { RentalRulesRevisionService } from './rental-rules-revision.service';
+import { RentalRulesRevisionImpactService } from './rental-rules-revision-impact.service';
 import type { NormalizedRentalRulesDocument } from './rental-rules-revision.types';
 
 interface RentalRulesMutationContext {
@@ -80,6 +82,7 @@ export class RentalRulesService {
     private readonly rentalRulePermissions: RentalRulePermissionService,
     private readonly activityLog: ActivityLogService,
     private readonly revisions: RentalRulesRevisionService,
+    private readonly revisionImpact: RentalRulesRevisionImpactService,
   ) {}
 
   private async assertOrgExists(orgId: string) {
@@ -266,20 +269,43 @@ export class RentalRulesService {
     );
   }
 
+  async analyzeOrganizationPublishImpact(orgId: string, dto: AnalyzeRentalRulePublishDto) {
+    await this.assertOrgExists(orgId);
+    const existing = await this.prisma.organizationRentalRules.findUnique({
+      where: { organizationId: orgId },
+    });
+    return this.revisionImpact.analyzePublishImpact(
+      organizationRevisionScope(orgId),
+      dto.revisionId,
+      existing ?? { organizationId: orgId, isActive: true },
+    );
+  }
+
   async publishOrganizationDefaults(
     orgId: string,
     dto: PublishRentalRuleRevisionDto,
     ctx: RentalRulesMutationContext = {},
   ) {
     await this.assertOrgExists(orgId);
+    const existing = await this.prisma.organizationRentalRules.findUnique({
+      where: { organizationId: orgId },
+    });
+    const impact = await this.revisionImpact.analyzePublishImpact(
+      organizationRevisionScope(orgId),
+      dto.revisionId,
+      existing ?? { organizationId: orgId, isActive: true },
+    );
+    this.revisionImpact.assertPublishPreconditions({
+      analysis: impact,
+      changeReason: dto.changeReason,
+      acknowledgeCriticalImpact: dto.acknowledgeCriticalImpact,
+    });
+
     const result = await this.revisions.publishDraft(
       organizationRevisionScope(orgId),
       dto,
       ctx.actor,
     );
-    const existing = await this.prisma.organizationRentalRules.findUnique({
-      where: { organizationId: orgId },
-    });
     const document = result.revision.normalizedRules as NormalizedRentalRulesDocument;
     return {
       ...this.organizationPayloadFromRevisionDocument(
@@ -290,6 +316,7 @@ export class RentalRulesService {
       ),
       publishedRevision: result.revision,
       previousRevisionId: result.previousRevisionId,
+      publishImpact: impact,
     };
   }
 
@@ -443,6 +470,19 @@ export class RentalRulesService {
     );
   }
 
+  async analyzeCategoryPublishImpact(
+    orgId: string,
+    categoryId: string,
+    dto: AnalyzeRentalRulePublishDto,
+  ) {
+    const existing = await this.loadCategory(orgId, categoryId);
+    return this.revisionImpact.analyzePublishImpact(
+      categoryRevisionScope(orgId, categoryId),
+      dto.revisionId,
+      existing,
+    );
+  }
+
   async publishCategory(
     orgId: string,
     categoryId: string,
@@ -450,6 +490,17 @@ export class RentalRulesService {
     ctx: RentalRulesMutationContext = {},
   ) {
     const existing = await this.loadCategory(orgId, categoryId);
+    const impact = await this.revisionImpact.analyzePublishImpact(
+      categoryRevisionScope(orgId, categoryId),
+      dto.revisionId,
+      existing,
+    );
+    this.revisionImpact.assertPublishPreconditions({
+      analysis: impact,
+      changeReason: dto.changeReason,
+      acknowledgeCriticalImpact: dto.acknowledgeCriticalImpact,
+    });
+
     const result = await this.revisions.publishDraft(
       categoryRevisionScope(orgId, categoryId),
       dto,
@@ -469,6 +520,7 @@ export class RentalRulesService {
       ),
       publishedRevision: result.revision,
       previousRevisionId: result.previousRevisionId,
+      publishImpact: impact,
     };
   }
 
@@ -1236,13 +1288,43 @@ export class RentalRulesService {
     );
   }
 
+  async analyzeVehicleOverridesPublishImpact(
+    orgId: string,
+    vehicleId: string,
+    dto: AnalyzeRentalRulePublishDto,
+  ) {
+    const vehicle = await this.loadVehicle(orgId, vehicleId);
+    const existing = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+    return this.revisionImpact.analyzePublishImpact(
+      vehicleRevisionScope(orgId, vehicleId),
+      dto.revisionId,
+      existing ?? { ...vehicle, vehicleId, organizationId: orgId },
+    );
+  }
+
   async publishVehicleOverrides(
     orgId: string,
     vehicleId: string,
     dto: PublishRentalRuleRevisionDto,
     ctx: RentalRulesMutationContext = {},
   ) {
-    await this.loadVehicle(orgId, vehicleId);
+    const vehicle = await this.loadVehicle(orgId, vehicleId);
+    const existing = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+    const impact = await this.revisionImpact.analyzePublishImpact(
+      vehicleRevisionScope(orgId, vehicleId),
+      dto.revisionId,
+      existing ?? { ...vehicle, vehicleId, organizationId: orgId },
+    );
+    this.revisionImpact.assertPublishPreconditions({
+      analysis: impact,
+      changeReason: dto.changeReason,
+      acknowledgeCriticalImpact: dto.acknowledgeCriticalImpact,
+    });
+
     const result = await this.revisions.publishDraft(
       vehicleRevisionScope(orgId, vehicleId),
       dto,
@@ -1256,6 +1338,7 @@ export class RentalRulesService {
       publishedRevision: result.revision,
       previousRevisionId: result.previousRevisionId,
       publishedVersion: result.publishedVersion,
+      publishImpact: impact,
     };
   }
 

@@ -12,6 +12,7 @@ import {
 } from './rental-rules.utils';
 import { RentalRulesMutationError, rentalRulesMutate } from './rental-rules-concurrency.errors';
 import { RentalRulesConcurrencyDialog } from './RentalRulesConcurrencyDialog';
+import { RentalRulePublishImpactPanel } from './RentalRulePublishImpactPanel';
 import {
   buildRentalRulesConflictModel,
   mergeServerOrganizationDefaults,
@@ -24,6 +25,7 @@ interface DefaultRulesDrawerProps {
   orgId: string;
   defaults: OrganizationRentalRulesDto | null;
   canWrite: boolean;
+  canPublish?: boolean;
   saving: boolean;
   onSaved: () => Promise<void> | void;
 }
@@ -34,6 +36,7 @@ export function DefaultRulesDrawer({
   orgId,
   defaults,
   canWrite,
+  canPublish = false,
   saving,
   onSaved,
 }: DefaultRulesDrawerProps) {
@@ -145,6 +148,17 @@ export function DefaultRulesDrawer({
           </p>
         )}
         <RentalRuleFieldsForm values={values} onChange={setValues} disabled={!canWrite || saving} />
+
+        {defaults?.hasUnpublishedDraft && defaults.draftRevision && (
+          <RentalRulePublishImpactPanel
+            orgId={orgId}
+            scope="defaults"
+            draftRevision={defaults.draftRevision}
+            expectedVersion={defaults.version ?? 0}
+            canPublish={canPublish}
+            onPublished={onSaved}
+          />
+        )}
       </DetailDrawer>
 
       <RentalRulesConcurrencyDialog

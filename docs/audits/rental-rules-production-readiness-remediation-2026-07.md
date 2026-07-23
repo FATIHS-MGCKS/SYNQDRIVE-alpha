@@ -2481,4 +2481,71 @@ Draft erstellen/bearbeiten, Publish, paralleler Publish (lockVersion), fehlende 
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 25).*
+## Prompt 26 — Publish Diff + Impact Analysis
+
+**Ziel:** Vor Veröffentlichung sichtbar machen, was sich ändert und welche Buchungen/Fahrzeuge betroffen sind.
+
+### 26.1 Diff Engine (`rental-rules-revision-diff.util.ts`)
+
+| Output | Inhalt |
+|--------|--------|
+| `addedRules` / `changedRules` / `removedRules` | Feld, Vorher/Nachher-Wert, Vorher/Nachher-Quelle |
+| `scopeMetaChanges` | z. B. `isActive` |
+| `buildEffectiveRuleImpacts` | Effektive Regeländerungen pro Fahrzeug (simuliert) |
+
+### 26.2 Impact Service (`rental-rules-revision-impact.service.ts`)
+
+| Analyse | Beschreibung |
+|---------|--------------|
+| `affectedScopes` | Kategorien, Fahrzeuge, Overrides, Fahrzeuge ohne Kategorie |
+| `bookingImpact` | Wizard-Draft (`PENDING` + `[synq:wizard-draft]`), Pending, Confirmed |
+| `manualApprovalImpact` | Offene `BookingEligibilityApproval` |
+| `criticalImpact` | Org deactivate/activate, Manual Approval, Deposit/Age increase, Confirmed bookings, Pending approvals |
+| `effectiveImpacts` | Stichprobe max. 50 Fahrzeuge via `computeWithSimulatedDraftScope` |
+
+**Grenzen:**
+
+- Keine automatische Mutation bestätigter Buchungen (`confirmedBookingsUnchanged: true`)
+- Kein vollständiger Eligibility-Re-Run pro Buchung — Status-Buckets + Approval-Records
+- Effective Impact bei großen Flotten auf 50 Fahrzeuge begrenzt
+- Kategorie-Lifecycle bleibt unabhängig vom Draft/Publish-Workflow
+
+### 26.3 Publish Preconditions
+
+- `changeReason` Pflichtfeld (`RENTAL_RULE_PUBLISH_CHANGE_REASON_REQUIRED`)
+- Bei `criticalImpact.requiresAcknowledgement`: `acknowledgeCriticalImpact: true` erforderlich
+
+### 26.4 API
+
+| Route | Permission |
+|-------|------------|
+| `POST .../defaults/publish-analysis` | `rental_rules.read` |
+| `POST .../categories/:id/publish-analysis` | `rental_rules.read` |
+| `POST .../vehicles/:id/.../overrides/publish-analysis` | `rental_rules.read` |
+| Publish-Routen | unverändert `rental_rules.publish`, Response enthält `publishImpact` |
+
+### 26.5 Frontend (minimal)
+
+- `RentalRulePublishImpactPanel` in Default- und Category-Drawer bei `hasUnpublishedDraft`
+- Diff, Scope-Zähler, Buchungs-Buckets, kritische Warnung, Änderungsgrund, Publish-Button
+
+### 26.6 Tests
+
+- `rental-rules-revision-diff.util.spec.ts`
+- `rental-rules-revision-impact.util.spec.ts`
+- `rental-rules-revision-impact.service.spec.ts`
+- Aktualisierte Publish-Specs für Pflicht-`changeReason`
+
+## Prompt 26 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Jeder Publish zeigt fachlichen Vorher/Nachher-Diff | ✅ |
+| Betroffene Scopes nachvollziehbar | ✅ |
+| Bestätigte Buchungen werden nicht still geändert | ✅ |
+| Tests bestehen | ✅ (195 rental-rules) |
+| Prompt 26 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 26).*

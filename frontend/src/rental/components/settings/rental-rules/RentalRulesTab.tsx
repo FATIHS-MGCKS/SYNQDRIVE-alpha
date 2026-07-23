@@ -599,6 +599,7 @@ export function RentalRulesTab({ permissions: permissionsOverride }: RentalRules
         orgId={orgId ?? ''}
         defaults={defaults}
         canWrite={canWrite}
+        canPublish={canPublish}
         saving={actionId === 'defaults'}
         onSaved={load}
       />

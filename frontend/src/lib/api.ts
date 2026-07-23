@@ -5699,6 +5699,77 @@ export const api = {
         `/organizations/${orgId}/rental-rules/defaults`,
         data,
       ),
+    analyzePublishImpact: (
+      orgId: string,
+      scope: 'defaults' | 'category' | 'vehicle',
+      payload: { revisionId: string; scopeEntityId?: string },
+    ) => {
+      const path =
+        scope === 'defaults'
+          ? `/organizations/${orgId}/rental-rules/defaults/publish-analysis`
+          : scope === 'category'
+            ? `/organizations/${orgId}/rental-rules/categories/${payload.scopeEntityId}/publish-analysis`
+            : `/organizations/${orgId}/vehicles/${payload.scopeEntityId}/rental-requirements/overrides/publish-analysis`;
+      return post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalRulePublishImpactAnalysis>(
+        path,
+        { revisionId: payload.revisionId },
+      );
+    },
+    publishPath: (
+      orgId: string,
+      scope: 'defaults' | 'category' | 'vehicle',
+      scopeEntityId?: string,
+    ) => {
+      if (scope === 'defaults') return `/organizations/${orgId}/rental-rules/defaults/publish`;
+      if (scope === 'category') {
+        return `/organizations/${orgId}/rental-rules/categories/${scopeEntityId}/publish`;
+      }
+      return `/organizations/${orgId}/vehicles/${scopeEntityId}/rental-requirements/overrides/publish`;
+    },
+    publishDefaults: (
+      orgId: string,
+      payload: {
+        revisionId: string;
+        expectedVersion: number;
+        expectedLockVersion: number;
+        changeReason: string;
+        acknowledgeCriticalImpact?: boolean;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').OrganizationRentalRulesDto>(
+        `/organizations/${orgId}/rental-rules/defaults/publish`,
+        payload,
+      ),
+    publishCategory: (
+      orgId: string,
+      categoryId: string,
+      payload: {
+        revisionId: string;
+        expectedVersion: number;
+        expectedLockVersion: number;
+        changeReason: string;
+        acknowledgeCriticalImpact?: boolean;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}/publish`,
+        payload,
+      ),
+    publishVehicleOverrides: (
+      orgId: string,
+      vehicleId: string,
+      payload: {
+        revisionId: string;
+        expectedVersion: number;
+        expectedLockVersion: number;
+        changeReason: string;
+        acknowledgeCriticalImpact?: boolean;
+      },
+    ) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').VehicleRentalRequirementsDto>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides/publish`,
+        payload,
+      ),
     listCategories: (orgId: string, includeInactive = false) =>
       get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto[]>(
         `/organizations/${orgId}/rental-rules/categories${includeInactive ? '?includeInactive=true' : ''}`,

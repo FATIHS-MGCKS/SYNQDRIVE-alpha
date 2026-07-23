@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-rule-publish-diff-impact-v49779-2026-07-23',
+    version: '4.9.779',
+    title: 'V4.9.779 — Rental rule publish diff + impact analysis (Prompt 26)',
+    summary: [
+      'Serverseitige Diff Engine für Rule Revisions: hinzugefügte/geänderte/entfernte Regeln inkl. Vorher/Nachher-Wert und Quelle.',
+      'Auswirkungsanalyse vor Publish: betroffene Kategorien/Fahrzeuge/Overrides, Buchungs-Buckets (Wizard-Draft, Pending, Confirmed), Manual Approvals.',
+      'Publish erfordert verpflichtenden Änderungsgrund; kritische Änderungen benötigen explizite Bestätigung (`acknowledgeCriticalImpact`).',
+      'Bestätigte Buchungen werden nicht automatisch geändert (`confirmedBookingsUnchanged: true`).',
+      'API: `POST .../publish-analysis`; minimale UI: `RentalRulePublishImpactPanel` in Default- und Category-Drawer.',
+    ],
+    reason: 'Vor Veröffentlichung muss sichtbar sein, was sich ändert und welche Buchungen/Fahrzeuge betroffen sind (Remediation Prompt 26).',
+    previousBehavior: 'Publish ohne fachlichen Vorher/Nachher-Diff, ohne Auswirkungsanalyse und ohne Pflicht-Änderungsgrund.',
+    details:
+      'rental-rules-revision-diff.util.ts, rental-rules-revision-impact.service.ts, publish-analysis routes, RentalRulePublishImpactPanel.tsx.',
+    affectsArchitecture: true,
+    module: 'Rental Rules',
+    createdAt: '2026-07-23T22:00:00.000Z',
+  },
+  {
     id: 'rental-rule-draft-publish-v49778-2026-07-23',
     version: '4.9.778',
     title: 'V4.9.778 — Rental rule draft/publish workflow (Prompt 25)',

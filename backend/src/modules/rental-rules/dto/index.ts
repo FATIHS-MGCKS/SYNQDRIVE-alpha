@@ -307,11 +307,20 @@ export class PublishRentalRuleRevisionDto {
   @Min(1, { message: MSG.expectedVersion.min })
   expectedLockVersion!: number;
 
-  @IsOptional()
   @Transform(trimString)
   @IsString()
+  @IsNotEmpty({ message: 'rentalRules.validation.changeReason.required' })
   @MaxLength(500)
-  changeReason?: string;
+  changeReason!: string;
+
+  @IsOptional()
+  @IsBoolean({ message: MSG.boolean.invalid })
+  acknowledgeCriticalImpact?: boolean;
+}
+
+export class AnalyzeRentalRulePublishDto {
+  @IsUUID()
+  revisionId!: string;
 }
 
 export const RENTAL_RULE_REVISION_PREVIEW_MODES = ['active', 'draft', 'diff'] as const;

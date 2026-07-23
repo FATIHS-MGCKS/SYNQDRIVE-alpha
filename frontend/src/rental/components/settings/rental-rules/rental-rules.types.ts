@@ -30,7 +30,19 @@ export interface RentalRuleFields {
   notes: string | null;
 }
 
-export interface OrganizationRentalRulesDto extends RentalRuleFields {
+export interface RentalRuleDraftRevisionRef {
+  id: string;
+  lockVersion: number;
+  rulesHash: string;
+  version: number;
+}
+
+export interface RentalRuleDraftEnvelope {
+  hasUnpublishedDraft?: boolean;
+  draftRevision?: RentalRuleDraftRevisionRef;
+}
+
+export interface OrganizationRentalRulesDto extends RentalRuleFields, RentalRuleDraftEnvelope {
   id?: string;
   organizationId: string;
   isActive: boolean;
@@ -42,7 +54,101 @@ export interface OrganizationRentalRulesDto extends RentalRuleFields {
 
 export type RentalVehicleCategoryStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
 
-export interface RentalVehicleCategoryDto extends RentalRuleFields {
+export type RentalRuleRevisionChangeKind = 'added' | 'changed' | 'removed';
+
+export interface RentalRuleRevisionFieldChange {
+  field: string;
+  kind: RentalRuleRevisionChangeKind;
+  previousValue: unknown;
+  newValue: unknown;
+  previousSource: RentalRuleSource;
+  newSource: RentalRuleSource;
+}
+
+export interface RentalRuleRevisionDiffResult {
+  scopeType: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+  scopeId: string;
+  scopeSource: RentalRuleSource;
+  addedRules: RentalRuleRevisionFieldChange[];
+  changedRules: RentalRuleRevisionFieldChange[];
+  removedRules: RentalRuleRevisionFieldChange[];
+  scopeMetaChanges: Array<{
+    key: string;
+    kind: RentalRuleRevisionChangeKind;
+    previousValue: unknown;
+    newValue: unknown;
+  }>;
+  hasChanges: boolean;
+}
+
+export interface RentalRulePublishImpactAnalysis {
+  scope: {
+    organizationId: string;
+    scopeType: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+    scopeId: string;
+  };
+  draftRevisionId: string;
+  diff: RentalRuleRevisionDiffResult;
+  affectedScopes: {
+    categories: Array<{ id: string; name: string; vehicleCount: number }>;
+    vehicles: Array<{
+      id: string;
+      displayName: string;
+      licensePlate: string | null;
+      rentalCategoryId: string | null;
+      rentalCategoryName: string | null;
+    }>;
+    vehicleOverrides: Array<{
+      vehicleId: string;
+      displayName: string;
+      licensePlate: string | null;
+    }>;
+    vehiclesWithoutCategory: Array<{
+      id: string;
+      displayName: string;
+      licensePlate: string | null;
+    }>;
+  };
+  bookingImpact: {
+    wizardDraft: { count: number; bookingIds: string[] };
+    pending: { count: number; bookingIds: string[] };
+    confirmed: { count: number; bookingIds: string[] };
+    confirmedBookingsUnchanged: true;
+  };
+  manualApprovalImpact: {
+    pendingApprovalCount: number;
+    approvalIds: string[];
+    bookingIds: string[];
+  };
+  criticalImpact: {
+    isCritical: boolean;
+    requiresAcknowledgement: boolean;
+    codes: string[];
+    messages: string[];
+  };
+  effectiveImpacts: Array<{
+    vehicleId: string;
+    displayName: string;
+    licensePlate: string | null;
+    rentalCategoryId: string | null;
+    rentalCategoryName: string | null;
+    hasOverride: boolean;
+    fieldChanges: Array<{
+      field: string;
+      kind: RentalRuleRevisionChangeKind;
+      previousValue: unknown;
+      newValue: unknown;
+      previousSource: RentalRuleSource | null;
+      newSource: RentalRuleSource | null;
+      previousSourceName: string | null;
+      newSourceName: string | null;
+    }>;
+  }>;
+  effectiveImpactTotalVehicles: number;
+  effectiveImpactTruncated: boolean;
+}
+
+export interface RentalVehicleCategoryDto extends RentalRuleFields, RentalRuleDraftEnvelope {
   id: string;
   organizationId: string;
   name: string;
@@ -177,7 +283,7 @@ export interface EffectiveRentalRulesDto {
   notes: EffectiveRuleField<string | null>;
 }
 
-export interface VehicleRentalRequirementsDto {
+export interface VehicleRentalRequirementsDto extends RentalRuleDraftEnvelope {
   vehicleId: string;
   organizationId: string;
   rentalCategoryId: string | null;

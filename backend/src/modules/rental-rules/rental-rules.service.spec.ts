@@ -85,7 +85,14 @@ describe('RentalRulesService', () => {
       preview: jest.fn(),
       syncActiveRevisionScopeMeta: jest.fn().mockResolvedValue(undefined),
     };
-    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any, activityLog as any, revisions as any);
+    const revisionImpact = {
+      analyzePublishImpact: jest.fn().mockResolvedValue({
+        criticalImpact: { isCritical: false, requiresAcknowledgement: false, codes: [], messages: [] },
+        diff: { hasChanges: true, changedRules: [], addedRules: [], removedRules: [], scopeMetaChanges: [] },
+      }),
+      assertPublishPreconditions: jest.fn(),
+    };
+    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any, activityLog as any, revisions as any, revisionImpact as any);
   });
 
   it('blocks access to foreign organization category', async () => {

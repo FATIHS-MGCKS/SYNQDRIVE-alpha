@@ -23,6 +23,7 @@ import {
   PreviewCategoryVehicleAssignmentDto,
   PreviewRentalRuleRevisionDto,
   PublishRentalRuleRevisionDto,
+  AnalyzeRentalRulePublishDto,
   ResetVehicleRentalOverridesDto,
   TransitionCategoryLifecycleDto,
   UpdateRentalVehicleCategoryDto,
@@ -66,6 +67,15 @@ export class RentalRulesController {
     @CurrentUser() user: PermissionActor | undefined,
   ) {
     return this.rentalRules.upsertOrganizationDefaults(orgId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/rental-rules/defaults/publish-analysis')
+  @RequireRentalRulePermission('rental_rules.read')
+  analyzeDefaultsPublishImpact(
+    @Param('orgId') orgId: string,
+    @Body() body: AnalyzeRentalRulePublishDto,
+  ) {
+    return this.rentalRules.analyzeOrganizationPublishImpact(orgId, body);
   }
 
   @Post('organizations/:orgId/rental-rules/defaults/publish')
@@ -125,6 +135,16 @@ export class RentalRulesController {
     @CurrentUser() user: PermissionActor | undefined,
   ) {
     return this.rentalRules.updateCategory(orgId, categoryId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/rental-rules/categories/:categoryId/publish-analysis')
+  @RequireRentalRulePermission('rental_rules.read')
+  analyzeCategoryPublishImpact(
+    @Param('orgId') orgId: string,
+    @Param('categoryId') categoryId: string,
+    @Body() body: AnalyzeRentalRulePublishDto,
+  ) {
+    return this.rentalRules.analyzeCategoryPublishImpact(orgId, categoryId, body);
   }
 
   @Post('organizations/:orgId/rental-rules/categories/:categoryId/publish')
@@ -218,6 +238,16 @@ export class RentalRulesController {
     @CurrentUser() user: PermissionActor | undefined,
   ) {
     return this.rentalRules.upsertVehicleOverrides(orgId, vehicleId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides/publish-analysis')
+  @RequireRentalRulePermission('rental_rules.read')
+  analyzeVehicleOverridesPublishImpact(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: AnalyzeRentalRulePublishDto,
+  ) {
+    return this.rentalRules.analyzeVehicleOverridesPublishImpact(orgId, vehicleId, body);
   }
 
   @Post('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides/publish')

@@ -41,7 +41,8 @@ export interface PublishRentalRuleRevisionInput {
   revisionId: string;
   expectedVersion: number;
   expectedLockVersion: number;
-  changeReason?: string;
+  changeReason?: string | null;
+  acknowledgeCriticalImpact?: boolean;
 }
 
 export interface UpsertRentalRuleDraftInput {
@@ -225,6 +226,13 @@ export class RentalRulesRevisionService {
     actor?: PermissionActor,
   ) {
     await this.rentalRulePermissions.assert(actor, scope.organizationId, 'rental_rules.publish');
+
+    if (!input.changeReason?.trim()) {
+      throw new BadRequestException({
+        message: 'A change reason is required before publishing rental rules',
+        code: 'RENTAL_RULE_PUBLISH_CHANGE_REASON_REQUIRED',
+      });
+    }
 
     const publishedVersion = await this.resolvePublishedVersion(scope);
     if (input.expectedVersion !== publishedVersion) {

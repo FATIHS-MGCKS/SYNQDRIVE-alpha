@@ -272,6 +272,7 @@ describe('RentalRulesRevisionService draft/publish workflow', () => {
           revisionId: draft.revision.id,
           expectedVersion: 1,
           expectedLockVersion: draft.revision.lockVersion,
+          changeReason: 'Increase minimum age',
         },
         actor,
       ),
@@ -297,6 +298,7 @@ describe('RentalRulesRevisionService draft/publish workflow', () => {
           revisionId: draft.revision.id,
           expectedVersion: 1,
           expectedLockVersion: draft.revision.lockVersion,
+          changeReason: 'Increase minimum age',
         },
         actor,
       ),
@@ -322,6 +324,7 @@ describe('RentalRulesRevisionService draft/publish workflow', () => {
           revisionId: draft.revision.id,
           expectedVersion: 1,
           expectedLockVersion: draft.revision.lockVersion + 99,
+          changeReason: 'Increase minimum age',
         },
         actor,
       ),
@@ -356,6 +359,7 @@ describe('RentalRulesRevisionService draft/publish workflow', () => {
           revisionId: draft.revision.id,
           expectedVersion: 1,
           expectedLockVersion: draft.revision.lockVersion,
+          changeReason: 'Increase minimum age',
         },
         actor,
       ),
@@ -404,6 +408,31 @@ describe('RentalRulesRevisionService draft/publish workflow', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('rejects publish without change reason', async () => {
+    const prisma = makeStore();
+    const { service } = buildService(prisma);
+    const draft = await service.upsertDraft({
+      scope,
+      expectedVersion: 1,
+      rulePatch: { minimumAgeYears: 25 },
+      sourceRow: prisma.__orgRules()!,
+      actor,
+    });
+
+    await expect(
+      service.publishDraft(
+        scope,
+        {
+          revisionId: draft.revision.id,
+          expectedVersion: 1,
+          expectedLockVersion: draft.revision.lockVersion,
+          changeReason: '   ',
+        },
+        actor,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('rejects publish when draft revision is missing', async () => {
     const prisma = makeStore();
     const { service } = buildService(prisma);
@@ -415,6 +444,7 @@ describe('RentalRulesRevisionService draft/publish workflow', () => {
           revisionId: 'missing',
           expectedVersion: 1,
           expectedLockVersion: 1,
+          changeReason: 'Test publish',
         },
         actor,
       ),
