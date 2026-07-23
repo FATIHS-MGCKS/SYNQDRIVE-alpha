@@ -1,6 +1,6 @@
 # Legal Documents — Post-Remediation Production Readiness Audit (Prompt 32/32)
 
-**Date:** 2026-07-22  
+**Date:** 2026-07-23 (Re-Audit; initial 2026-07-22)  
 **Scope:** Verwaltung → Kunden-Rechtstexte (full remediation series, Prompts 1–31)  
 **Method:** Independent code/schema/test verification; no new product features  
 **Auditor:** Cursor Cloud Agent (final gate)
@@ -23,10 +23,11 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 
 | Field | Value |
 |-------|-------|
-| **Commit** | `37636e5f1ed258c66fa5654e0e6422c7ee75a0f9` |
-| **Message** | `feat(legal-docs): add E2E specs, CI gates, and migration tests (Prompt 31)` |
+| **Commit** | `9ddeb5156701ebcc1381521b68f67f45d84a9581` |
+| **Message** | `fix(legal-docs): aria-sort on table headers and loading aria-busy (Prompt 27)` |
 | **Branch** | `cursor/legal-docs-e2e-ci-28ca` |
 | **PR** | [#667](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/667) (draft) |
+| **Prior audit commit** | `37636e5f` (Prompt 31 E2E/CI) |
 | **Baseline audit** | `docs/audits/legal-documents-remediation-baseline-2026-07.md` (Prompt 1) |
 | **Area audits** | 29 domain audits under `docs/audits/legal-documents-*.md` |
 
@@ -143,22 +144,26 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 
 ---
 
-## Test- und Buildresultate (Audit-Lauf 2026-07-22)
+## Test- und Buildresultate (Re-Audit 2026-07-23)
 
 | Suite | Command | Result |
 |-------|---------|--------|
-| Backend unit (legal-docs) | `npx jest --testPathPattern=legal-document\|…` (46 suites) | **358 PASS** |
+| Backend unit (legal-docs) | 46 suites, `--maxWorkers=2` | **358 PASS** |
 | Backend security negatives | `legal-documents-security-negative` | **22 PASS** |
-| Backend integration | activation, lifecycle-events, delivery-evidence, pickup-gate | **25 PASS** |
+| Backend integration | 4 harness suites | **25 PASS** |
 | Frontend vitest | `npm run test:legal-documents` | **60 PASS** |
 | Playwright E2E desktop | `legal-documents-flow.spec.ts` | **9 PASS** |
 | Playwright mobile | `legal-documents-responsive.spec.ts` | **2 PASS** |
-| Playwright a11y | `legal-documents-a11y.spec.ts` | **5 PASS** |
+| Playwright a11y | `legal-documents-a11y.spec.ts` | **5 PASS** (prior run; not re-executed this session) |
 | Frontend production build | `npm run build` | **PASS** |
 | Backend `nest build` | `npm run build` | **FAIL** (4 TS errors: P0-1, P0-2) |
 | Prisma validate | `npm run prisma:validate` | **PASS** (SetNull warning) |
-| Migration tests (empty + legacy) | `legal-documents-migration-test.sh all` | **SKIPPED** — PostgreSQL not reachable |
-| PG invariants | `LEGAL_DOCUMENTS_POSTGRES_INTEGRATION=1` | **NOT RUN** — no DB |
+| Migration tests (empty + legacy) | `legal-documents-migration-test.sh all` | **SKIPPED** — PostgreSQL not reachable locally |
+| PG invariants | `LEGAL_DOCUMENTS_POSTGRES_INTEGRATION=1` | **NOT RUN** — no local DB; **required in CI** |
+
+### Prior audit run (2026-07-22)
+
+Same pass/fail pattern; backend build and P1 findings unchanged. Commits `9ddeb515` adds only a11y/i18n hook fixes — **does not resolve P0/P1 blockers**.
 
 ---
 
@@ -221,7 +226,7 @@ Cosmetic UI/i18n progress must not be mistaken for legal/compliance readiness wh
 
 ### **NO-GO**
 
-Production release of **Kunden-Rechtstexte** must not proceed on commit `37636e5f` until P0 and P1 items are resolved and verified.
+Production release of **Kunden-Rechtstexte** must not proceed on commit `9ddeb515` until P0 and P1 items are resolved and verified.
 
 ---
 

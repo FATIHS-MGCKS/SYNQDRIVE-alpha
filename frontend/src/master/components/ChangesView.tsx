@@ -41,8 +41,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Unabhängiger Abschlussaudit aller 32 Prompts für Verwaltung → Kunden-Rechtstexte.',
       'Entscheidung: NO-GO — P0 Build-Fehler (documents.module LegalDocumentsService-Import, workers.module) und P1 Delivery-Evidence-Vertrauensgrenzen (client-supplied metadata/status).',
+      'Re-Audit 2026-07-23 auf 9ddeb515: 358+22+25 Backend, 60 Vitest, 11 E2E grün; nest build weiterhin FAIL; Migration/PG nur via CI.',
       'Bestätigt: Resolver, Lifecycle, Single-ACTIVE, private Storage, Malware/PDF, Bundle-Pointer inkl. Privacy, Snapshots, Pickup-Gate, Retention, Permissions, i18n/a11y, CI/E2E.',
-      'Tests lokal: 358+22+25 Backend, 60 Vitest, 16 Playwright grün; Migration/PG-Invarianten in dieser Umgebung nicht ausführbar.',
       'Bericht: docs/audits/legal-documents-post-remediation-readiness-2026-07.md mit DSGVO/ISO-Matrix und Freigabebedingungen.',
     ],
     reason:
