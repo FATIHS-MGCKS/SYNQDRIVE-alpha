@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { AlertTriangle, Car, Search } from 'lucide-react';
 
@@ -98,23 +98,15 @@ export function VehicleAssignmentDrawer({
 
 
 
-  useEffect(() => {
-
-    if (open) {
-
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
       setSelected(assignedIds);
-
       setSearch('');
-
       setFilter('all');
-
       setStatusFilter('all');
-
     }
-
-  }, [open, assignedIds]);
-
-
+    onOpenChange(next);
+  };
 
   const moveWarnings = useMemo(() => {
 
@@ -216,7 +208,7 @@ export function VehicleAssignmentDrawer({
 
       open={open}
 
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
 
       eyebrow="Vehicle assignment"
 

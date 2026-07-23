@@ -27,10 +27,17 @@ export function EffectiveRulesPreviewDrawer({
   const [error, setError] = useState<string | null>(null);
   const [effective, setEffective] = useState<EffectiveRentalRulesDto | null>(null);
 
-  useEffect(() => {
-    if (!open || !orgId || !vehicleId) {
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
       setEffective(null);
       setError(null);
+      setLoading(false);
+    }
+    onOpenChange(next);
+  };
+
+  useEffect(() => {
+    if (!open || !orgId || !vehicleId) {
       return;
     }
     let cancelled = false;
@@ -57,7 +64,7 @@ export function EffectiveRulesPreviewDrawer({
   return (
     <DetailDrawer
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       eyebrow="Effective requirements"
       title={vehicleLabel ?? 'Vehicle requirements'}
       description="Merged organization defaults, category rules, and vehicle overrides."

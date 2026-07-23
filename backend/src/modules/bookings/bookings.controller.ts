@@ -161,6 +161,7 @@ export class BookingsController {
   }
 
   @Post('wizard-draft/:bookingId/confirm')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
   async confirmWizardDraft(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -411,12 +412,14 @@ export class BookingsController {
     @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
     @Body() body: Prisma.BookingUpdateInput & {
       eligibilityApprovalId?: string;
+      eligibilityPreviewFingerprint?: string;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
     },
   ) {
     const {
       eligibilityApprovalId,
+      eligibilityPreviewFingerprint,
       foreignTravelRequested,
       additionalDriverCount,
       ...bookingBody
@@ -426,6 +429,7 @@ export class BookingsController {
       platformRole,
       membershipRole,
       eligibilityApprovalId,
+      eligibilityPreviewFingerprint,
       foreignTravelRequested,
       additionalDriverCount,
     });

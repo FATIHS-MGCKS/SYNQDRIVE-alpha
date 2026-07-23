@@ -1064,7 +1064,7 @@ export class BookingDocumentBundleService {
           bookingId: booking.id,
           customerId: booking.customerId,
           amountCents,
-          currency: (priceSnapshot?.currency ?? booking.currency || 'EUR').toUpperCase(),
+          currency: ((priceSnapshot?.currency ?? booking.currency) || 'EUR').toUpperCase(),
           status: 'REQUESTED',
           reason: priceSnapshot
             ? 'Aus Booking-Preis-Snapshot (kanonischer Deposit Resolver)'

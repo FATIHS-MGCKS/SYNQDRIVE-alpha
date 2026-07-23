@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BusinessAuditService } from '@modules/business-audit/business-audit.service';
 import { RentalRulesRevisionService } from './rental-rules-revision.service';
 import { RentalRulePermissionService } from './rental-rule-permission.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -11,6 +12,9 @@ describe('RentalRulesRevisionService history', () => {
       findFirst: jest.fn(),
     },
   };
+  const businessAudit = {
+    enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -21,6 +25,7 @@ describe('RentalRulesRevisionService history', () => {
           provide: RentalRulePermissionService,
           useValue: { assert: jest.fn(), assertPublishIfActiveChange: jest.fn() },
         },
+        { provide: BusinessAuditService, useValue: businessAudit },
       ],
     }).compile();
 

@@ -8,6 +8,7 @@ import {
   resolveDepositEntityId,
 } from './deposit-resolver.util';
 import type { EffectiveRentalRules } from '@modules/rental-rules/rental-rules.types';
+import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
 
 function effectiveRulesStub(overrides: {
   amountCents: number | null;
@@ -22,6 +23,7 @@ function effectiveRulesStub(overrides: {
     rentalCategoryName: 'Sedan',
     rentalCategoryType: null,
     rulesActive: true,
+    activation: createActiveRentalRulesActivationSnapshot(),
     minimumAgeYears: { value: null, source: null, sourceName: null },
     minimumLicenseHoldingMonths: { value: null, source: null, sourceName: null },
     depositAmountCents: {

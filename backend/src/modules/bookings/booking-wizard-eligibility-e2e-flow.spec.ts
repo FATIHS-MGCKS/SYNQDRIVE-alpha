@@ -90,6 +90,9 @@ describe('Booking wizard eligibility E2E flow', () => {
     {} as never,
     eligibilityEnforcement,
     eligibilityApproval,
+    {
+      freezeDepositOnSnapshot: jest.fn().mockResolvedValue(undefined),
+    } as never,
   );
 
   const draft = {

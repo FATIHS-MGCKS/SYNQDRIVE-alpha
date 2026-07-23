@@ -50,6 +50,10 @@ describe('BookingWizardDraftService eligibility integration', () => {
     expireStale: jest.fn(),
   } as never;
 
+  const bookingDepositSnapshot = {
+    freezeDepositOnSnapshot: jest.fn().mockResolvedValue(undefined),
+  } as never;
+
   const service = new BookingWizardDraftService(
     prisma,
     bookingsService,
@@ -65,6 +69,7 @@ describe('BookingWizardDraftService eligibility integration', () => {
     {} as never,
     eligibilityEnforcement,
     eligibilityApproval,
+    bookingDepositSnapshot,
   );
 
   const draftBooking = {

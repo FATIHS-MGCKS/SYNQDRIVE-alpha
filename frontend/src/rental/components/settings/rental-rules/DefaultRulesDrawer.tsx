@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { DetailDrawer } from '../../../../components/patterns';
 import { useLanguage } from '../../../i18n/LanguageContext';
@@ -48,14 +48,15 @@ export function DefaultRulesDrawer({
   const [conflictError, setConflictError] = useState<RentalRulesMutationError | null>(null);
   const [pendingLocalSummary, setPendingLocalSummary] = useState('');
 
-  useEffect(() => {
-    if (open) {
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
       setValues(rulesToFormValues(defaults));
       setFormError(null);
       setConflictOpen(false);
       setConflictError(null);
     }
-  }, [open, defaults]);
+    onOpenChange(next);
+  };
 
   const handleSave = async () => {
     const err = validateRuleForm(values);
@@ -113,7 +114,7 @@ export function DefaultRulesDrawer({
     <>
       <DetailDrawer
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={handleOpenChange}
         eyebrow="Organization defaults"
         title="Edit default rental rules"
         description="These rules apply when no category or vehicle override is set."

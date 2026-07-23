@@ -153,6 +153,17 @@ export type BookingDetailDto = {
     warnings: string[];
     requiredActions: string[];
   } | null;
+  rentalEligibility: {
+    status: string;
+    allowed: boolean;
+    stage: string;
+    blockingReasons: string[];
+    warnings: string[];
+    missingFields: string[];
+    engineVersion: string;
+    evaluatedAt: string;
+    rentalRulesStatus: string | null;
+  } | null;
   activity: ActivityItem[];
   payments: BookingPaymentCardSection | null;
 };

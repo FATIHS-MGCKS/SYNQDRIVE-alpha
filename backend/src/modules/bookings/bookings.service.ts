@@ -68,6 +68,10 @@ import {
 } from './booking-eligibility-gatekeeper/booking-eligibility-transition.policy';
 import { isWizardDraftBooking } from './booking-wizard-draft.util';
 import { resolvePaymentIntentChanged } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
+import {
+  assertWizardPreviewFingerprintMatches,
+  buildEligibilityPreviewFingerprint,
+} from './booking-wizard-eligibility.util';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -1116,6 +1120,34 @@ export class BookingsService {
       eligibility = null;
     }
 
+    let rentalEligibility: BookingDetailDto['rentalEligibility'] = null;
+    try {
+      const gateResult = await this.bookingEligibilityEnforcement.previewEvaluation({
+        organizationId: orgId,
+        customerId: b.customerId,
+        vehicleId: b.vehicleId,
+        startDate: b.startDate,
+        endDate: b.endDate,
+        targetStatus: b.status,
+        bookingId: b.id,
+        notes: b.notes,
+        paymentIntent: b.paymentIntent,
+      });
+      rentalEligibility = {
+        status: gateResult.status,
+        allowed: gateResult.allowed,
+        stage: gateResult.stage,
+        blockingReasons: gateResult.blockingReasons.map((r) => r.message),
+        warnings: gateResult.warnings.map((r) => r.message),
+        missingFields: gateResult.missingFields,
+        engineVersion: gateResult.engineVersion,
+        evaluatedAt: gateResult.evaluatedAt,
+        rentalRulesStatus: gateResult.domains.rentalRules.result?.status ?? null,
+      };
+    } catch {
+      rentalEligibility = null;
+    }
+
     const now = Date.now();
     const taskItems = tasks.map((t) => ({
       id: t.id,
@@ -1319,6 +1351,7 @@ export class BookingsService {
         hasAnalysis: Boolean(analysis),
       },
       eligibility,
+      rentalEligibility,
       activity: activityRows.map((a) => ({
         id: a.id,
         action: a.action,
@@ -1680,6 +1713,7 @@ export class BookingsService {
       platformRole?: string | null;
       membershipRole?: import('@prisma/client').MembershipRole | null;
       eligibilityApprovalId?: string | null;
+      eligibilityPreviewFingerprint?: string | null;
       foreignTravelRequested?: boolean;
       additionalDriverCount?: number;
     },
@@ -1945,6 +1979,7 @@ export class BookingsService {
 
     delete anyData.eligibilityApprovalId;
     delete anyData.eligibilityOverrideReason;
+    delete anyData.eligibilityPreviewFingerprint;
     delete anyData.foreignTravelRequested;
     delete anyData.additionalDriverCount;
 
@@ -1954,6 +1989,24 @@ export class BookingsService {
             enforcementContext,
             enforcementOptions,
           );
+          if (
+            gateResult &&
+            !isWizardDraftBooking({
+              status: nextStatus,
+              notes: nextNotes ?? existing.notes,
+            })
+          ) {
+            const fingerprint = options?.eligibilityPreviewFingerprint?.trim();
+            if (!fingerprint) {
+              throw new BadRequestException({
+                code: 'ELIGIBILITY_PREVIEW_FINGERPRINT_REQUIRED',
+                message:
+                  'Direct booking confirmation requires a prior eligibility preview fingerprint.',
+                previewFingerprint: buildEligibilityPreviewFingerprint(gateResult),
+              });
+            }
+            assertWizardPreviewFingerprintMatches(fingerprint, gateResult);
+          }
           const updatedBooking = await tx.booking.update({ where: { id }, data });
           if (
             updatedBooking.status === 'CONFIRMED' &&
