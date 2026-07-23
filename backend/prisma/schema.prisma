@@ -274,6 +274,13 @@ enum BookingDomainEventOutboxStatus {
   DEAD_LETTER
 }
 
+enum BookingDomainEventConsumerReceiptStatus {
+  SUCCEEDED
+  FAILED
+  SKIPPED
+  STALE
+}
+
 enum TaskAutomationEntityType {
   BOOKING
   INVOICE
@@ -13236,15 +13243,23 @@ model BookingDomainEventOutbox {
 
 /// Idempotent consumer processing receipts.
 model BookingDomainEventConsumerReceipt {
-  id            String                   @id @default(uuid())
-  outboxEventId String                   @map("outbox_event_id")
-  consumerId    String                   @map("consumer_id")
-  processedAt   DateTime                 @default(now()) @map("processed_at")
+  id               String                                 @id @default(uuid())
+  outboxEventId    String                                 @map("outbox_event_id")
+  consumerId       String                                 @map("consumer_id")
+  businessKey      String                                 @map("business_key")
+  status           BookingDomainEventConsumerReceiptStatus @default(SUCCEEDED)
+  aggregateVersion Int?                                   @map("aggregate_version")
+  lastError        String?                                @map("last_error")
+  metadata         Json?
+  processedAt      DateTime                               @default(now()) @map("processed_at")
+  updatedAt        DateTime                               @updatedAt @map("updated_at")
 
   outboxEvent BookingDomainEventOutbox @relation(fields: [outboxEventId], references: [id], onDelete: Cascade)
 
   @@unique([outboxEventId, consumerId])
+  @@unique([consumerId, businessKey])
   @@index([consumerId, processedAt])
+  @@index([status, processedAt])
   @@map("booking_domain_event_consumer_receipts")
 }
 

@@ -36,7 +36,9 @@ Each outbox row contains:
 
 ## Consumer idempotency
 
-`booking_domain_event_consumer_receipts` stores per-consumer processing receipts. Primary consumer `booking.primary` forwards mapped events to `WorkflowEventService`.
+`booking_domain_event_consumer_receipts` stores per-consumer processing receipts with business keys and delivery status (`SUCCEEDED`, `FAILED`, `SKIPPED`, `STALE`). See `BOOKING_DOMAIN_EVENT_OUTBOX_CONSUMERS_2026-07-23.md` for the 8 follow-up consumers (invoice, documents, tasks, notifications, emails, payment link).
+
+Legacy primary consumer `booking.primary` is superseded by `booking.notifications`.
 
 ## Operations
 

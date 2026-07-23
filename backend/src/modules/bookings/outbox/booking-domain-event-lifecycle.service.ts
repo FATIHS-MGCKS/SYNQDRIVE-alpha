@@ -135,6 +135,10 @@ export class BookingDomainEventLifecycleService {
       await this.emit(tx, {
         eventType: BOOKING_DOMAIN_EVENT_TYPES.BOOKING_PRICING_CHANGED,
         booking: updated,
+        payloadExtras: {
+          previousStartDate: existing.startDate,
+          previousEndDate: existing.endDate,
+        },
         idempotencySuffix: `pricing:${updated.totalPriceCents}:${updated.startDate.toISOString()}`,
         ctx,
       });

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BookingDomainEventConsumerReceiptStatus,
   BookingDomainEventOutboxStatus,
   Prisma,
 } from '@prisma/client';
@@ -194,13 +195,71 @@ export class BookingDomainEventOutboxRepository {
     });
   }
 
-  recordConsumerReceipt(outboxEventId: string, consumerId: string) {
+  findConsumerReceipt(outboxEventId: string, consumerId: string) {
+    return this.hasConsumerReceipt(outboxEventId, consumerId);
+  }
+
+  findConsumerReceiptByBusinessKey(consumerId: string, businessKey: string) {
+    return this.prisma.bookingDomainEventConsumerReceipt.findUnique({
+      where: {
+        consumerId_businessKey: { consumerId, businessKey },
+      },
+    });
+  }
+
+  async allApplicableConsumersTerminal(outboxEventId: string, consumerIds: string[]) {
+    if (consumerIds.length === 0) return true;
+    const receipts = await this.prisma.bookingDomainEventConsumerReceipt.findMany({
+      where: {
+        outboxEventId,
+        consumerId: { in: consumerIds },
+      },
+    });
+    if (receipts.length !== consumerIds.length) return false;
+    const terminal = new Set<BookingDomainEventConsumerReceiptStatus>([
+      BookingDomainEventConsumerReceiptStatus.SUCCEEDED,
+      BookingDomainEventConsumerReceiptStatus.SKIPPED,
+      BookingDomainEventConsumerReceiptStatus.STALE,
+      BookingDomainEventConsumerReceiptStatus.FAILED,
+    ]);
+    return receipts.every((r) => terminal.has(r.status));
+  }
+
+  recordConsumerReceipt(input: {
+    outboxEventId: string;
+    consumerId: string;
+    businessKey: string;
+    status?: BookingDomainEventConsumerReceiptStatus;
+    aggregateVersion?: number | null;
+    lastError?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    const now = new Date();
     return this.prisma.bookingDomainEventConsumerReceipt.upsert({
       where: {
-        outboxEventId_consumerId: { outboxEventId, consumerId },
+        outboxEventId_consumerId: {
+          outboxEventId: input.outboxEventId,
+          consumerId: input.consumerId,
+        },
       },
-      create: { outboxEventId, consumerId },
-      update: { processedAt: new Date() },
+      create: {
+        outboxEventId: input.outboxEventId,
+        consumerId: input.consumerId,
+        businessKey: input.businessKey,
+        status: input.status ?? BookingDomainEventConsumerReceiptStatus.SUCCEEDED,
+        aggregateVersion: input.aggregateVersion ?? null,
+        lastError: input.lastError ?? null,
+        metadata: input.metadata ?? undefined,
+        processedAt: now,
+      },
+      update: {
+        businessKey: input.businessKey,
+        status: input.status ?? BookingDomainEventConsumerReceiptStatus.SUCCEEDED,
+        aggregateVersion: input.aggregateVersion ?? null,
+        lastError: input.lastError ?? null,
+        metadata: input.metadata ?? undefined,
+        processedAt: now,
+      },
     });
   }
 

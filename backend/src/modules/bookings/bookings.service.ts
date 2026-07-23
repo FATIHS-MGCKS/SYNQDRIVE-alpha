@@ -11,9 +11,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { RentalDrivingAnalysisService } from '../rental-driving-analysis/rental-driving-analysis.service';
 import { RentalDrivingAnalysisRecomputeTriggerService } from '../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../rental-driving-analysis/rental-driving-analysis.recompute.types';
-import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
-import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import {
   parsePagination,
   buildPaginatedResult,
@@ -22,8 +20,6 @@ import {
 } from '@shared/utils/pagination';
 import { HandoverProtocolDto } from './handover.types';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
-import { TaskAutomationService } from '@modules/tasks/task-automation.service';
-import { VehicleCleaningTaskService } from '@modules/tasks/vehicle-cleaning-task.service';
 import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import {
@@ -47,8 +43,6 @@ import type {
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
-import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
-import { BookingLegalDocumentEmailService } from '@modules/outbound-email/booking-legal-document-email.service';
 import type { Station } from '@prisma/client';
 import {
   DEFAULT_TARIFF_TIMEZONE,
@@ -91,30 +85,16 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly rentalDrivingAnalysisService: RentalDrivingAnalysisService,
     private readonly rentalDrivingAnalysisRecomputeTrigger: RentalDrivingAnalysisRecomputeTriggerService,
-    @Inject(forwardRef(() => InvoicesService))
-    private readonly invoicesService: InvoicesService,
     // V4.6.76 Rental Health V1 — server-side rental_blocked gate. We
     // read-through the same aggregator the UI uses so the message and
     // the gate can never disagree about "why this vehicle is blocked".
     @Inject(forwardRef(() => RentalHealthService))
     private readonly rentalHealthService: RentalHealthService,
-    // Booking Document Lifecycle — generates the initial document bundle when a
-    // booking is confirmed. Fire-and-forget; never blocks/breaks booking create.
+    // Booking Document Lifecycle — bundle view for booking detail reads.
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
-    @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
-    private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
     @Inject(forwardRef(() => GeneratedDocumentsService))
     private readonly generatedDocumentsService: GeneratedDocumentsService,
-    @Inject(forwardRef(() => BookingDocumentEmailService))
-    private readonly bookingDocumentEmailService: BookingDocumentEmailService,
-    @Inject(forwardRef(() => BookingLegalDocumentEmailService))
-    private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
-    // V4.8.3 Task Action Layer — materializes booking lifecycle tasks
-    // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
-    // never blocks/breaks booking writes.
-    private readonly taskAutomationService: TaskAutomationService,
-    private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
     private readonly customerEligibilityService: CustomerEligibilityService,
     private readonly pricingService: PricingService,
     private readonly pricingQuoteService: PricingQuoteService,
@@ -350,72 +330,6 @@ export class BookingsService {
 
       return created;
     });
-
-    try {
-      await this.invoicesService.bootstrapBookingInvoice(orgId, {
-        id: booking.id,
-        customerId: booking.customerId,
-        vehicleId: booking.vehicleId,
-        totalPriceCents: booking.totalPriceCents,
-        dailyRateCents: booking.dailyRateCents,
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        currency: booking.currency,
-        kmIncluded: booking.kmIncluded,
-      });
-    } catch (err) {
-      this.logger.error(
-        `Booking ${booking.id} created but invoice bootstrap failed — rolling back booking`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      await this.prisma.booking
-        .deleteMany({ where: { id: booking.id, organizationId: orgId } })
-        .catch((deleteErr) => {
-          this.logger.error(
-            `Failed to roll back booking ${booking.id} after invoice bootstrap failure`,
-            deleteErr instanceof Error ? deleteErr.stack : String(deleteErr),
-          );
-        });
-      throw err;
-    }
-
-    // Generate the initial document bundle for operator/rental bookings once
-    // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
-    // explicitly as well — the bundle service is idempotent.
-    if (booking.status === 'CONFIRMED' || booking.status === 'PENDING') {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueueInitialBundle(orgId, booking.id, options?.userId ?? null)
-        .then(() => {
-          if (booking.status === 'CONFIRMED') {
-            return this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
-              orgId,
-              booking.id,
-              options?.userId ?? null,
-            );
-          }
-        })
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue initial document bundle for booking ${booking.id}: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        });
-    }
-
-    if (booking.status === 'CONFIRMED' || booking.status === 'ACTIVE') {
-      void this.taskAutomationService
-        .ensureBookingLifecycleTasks({
-          id: booking.id,
-          organizationId: orgId,
-          vehicleId: booking.vehicleId,
-          customerId: booking.customerId,
-          status: booking.status,
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          pickupStationId: booking.pickupStationId,
-          returnStationId: booking.returnStationId,
-        })
-        .catch(() => {});
-    }
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
@@ -2066,99 +1980,6 @@ export class BookingsService {
         })
         .catch(() => {});
     }
-    // Generate the initial document bundle when a booking transitions INTO
-    // CONFIRMED via update. Idempotent + fire-and-forget.
-    if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueueInitialBundle(orgId, id, null)
-        .then(() =>
-          this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(orgId, id, null),
-        )
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue initial document bundle for booking ${id}: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        });
-    }
-    // Materialize booking lifecycle tasks on any status transition. The
-    // automation service is idempotent (dedup per generatedKey), so calling it
-    // on every update is safe and only adds tasks when the status warrants it.
-    if (updated.status !== existing.status) {
-      void this.taskAutomationService
-        .ensureBookingLifecycleTasks({
-          id: updated.id,
-          organizationId: orgId,
-          vehicleId: updated.vehicleId,
-          customerId: updated.customerId,
-          status: updated.status,
-          startDate: updated.startDate,
-          endDate: updated.endDate,
-          pickupStationId: updated.pickupStationId,
-          returnStationId: updated.returnStationId,
-        })
-        .catch(() => {});
-    } else if (
-      updated.status === 'CONFIRMED' &&
-      (updated.vehicleId !== existing.vehicleId ||
-        updated.customerId !== existing.customerId ||
-        updated.startDate.getTime() !== existing.startDate.getTime())
-    ) {
-      const lifecycleInput = {
-        id: updated.id,
-        organizationId: orgId,
-        vehicleId: updated.vehicleId,
-        customerId: updated.customerId,
-        status: updated.status,
-        startDate: updated.startDate,
-        endDate: updated.endDate,
-        pickupStationId: updated.pickupStationId,
-        returnStationId: updated.returnStationId,
-      };
-      if (updated.vehicleId !== existing.vehicleId) {
-        void this.vehicleCleaningTasks
-          .onBookingVehicleChanged(lifecycleInput, existing.vehicleId)
-          .catch(() => {});
-      }
-      if (updated.startDate.getTime() !== existing.startDate.getTime()) {
-        void this.taskAutomationService
-          .syncBookingPreparationTiming(lifecycleInput, { previousStartDate: existing.startDate })
-          .catch(() => {});
-        void this.taskAutomationService
-          .syncBookingPickupTiming(lifecycleInput, { previousStartDate: existing.startDate })
-          .catch(() => {});
-      } else {
-        void this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput).catch(() => {});
-      }
-    } else if (
-      updated.status === 'ACTIVE' &&
-      (updated.vehicleId !== existing.vehicleId ||
-        updated.customerId !== existing.customerId ||
-        updated.endDate.getTime() !== existing.endDate.getTime())
-    ) {
-      const lifecycleInput = {
-        id: updated.id,
-        organizationId: orgId,
-        vehicleId: updated.vehicleId,
-        customerId: updated.customerId,
-        status: updated.status,
-        startDate: updated.startDate,
-        endDate: updated.endDate,
-        pickupStationId: updated.pickupStationId,
-        returnStationId: updated.returnStationId,
-      };
-      if (updated.vehicleId !== existing.vehicleId) {
-        void this.vehicleCleaningTasks
-          .onBookingVehicleChanged(lifecycleInput, existing.vehicleId)
-          .catch(() => {});
-      }
-      if (updated.endDate.getTime() !== existing.endDate.getTime()) {
-        void this.taskAutomationService
-          .syncBookingReturnTiming(lifecycleInput, { previousEndDate: existing.endDate })
-          .catch(() => {});
-      } else {
-        void this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput).catch(() => {});
-      }
-    }
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(
       orgId,
@@ -2196,13 +2017,6 @@ export class BookingsService {
       await this.bookingDomainEvents.recordCancelled(tx, updatedBooking);
       return updatedBooking;
     });
-
-    void this.taskAutomationService
-      .supersedeBookingLifecycleOnCancellation(orgId, id)
-      .catch(() => {});
-    void this.vehicleCleaningTasks
-      .onBookingCancelled(orgId, id, booking.vehicleId)
-      .catch(() => {});
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
@@ -2288,8 +2102,6 @@ export class BookingsService {
       await this.bookingDomainEvents.recordNoShow(tx, updatedBooking);
       return updatedBooking;
     });
-
-    void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);

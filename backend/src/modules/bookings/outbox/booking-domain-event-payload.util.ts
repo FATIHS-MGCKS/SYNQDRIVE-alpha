@@ -32,6 +32,8 @@ export function buildBookingEventPayload(input: {
   totalPriceCents?: number | null;
   startDate?: Date | string | null;
   endDate?: Date | string | null;
+  previousStartDate?: Date | string | null;
+  previousEndDate?: Date | string | null;
 }): BookingDomainEventPayload {
   return sanitizeBookingDomainEventPayload({
     bookingId: input.bookingId,
@@ -54,6 +56,16 @@ export function buildBookingEventPayload(input: {
       ? input.endDate instanceof Date
         ? input.endDate.toISOString()
         : input.endDate
+      : null,
+    previousStartDate: input.previousStartDate
+      ? input.previousStartDate instanceof Date
+        ? input.previousStartDate.toISOString()
+        : input.previousStartDate
+      : null,
+    previousEndDate: input.previousEndDate
+      ? input.previousEndDate instanceof Date
+        ? input.previousEndDate.toISOString()
+        : input.previousEndDate
       : null,
   });
 }

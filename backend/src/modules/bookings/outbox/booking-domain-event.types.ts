@@ -31,6 +31,8 @@ export type BookingDomainEventPayload = {
   totalPriceCents?: number | null;
   startDate?: string | null;
   endDate?: string | null;
+  previousStartDate?: string | null;
+  previousEndDate?: string | null;
 };
 
 export type BookingDomainEventEnvelope = {

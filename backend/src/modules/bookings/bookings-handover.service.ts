@@ -19,15 +19,12 @@ import {
   CreateHandoverProtocolPayload,
   HandoverProtocolDto,
 } from './handover.types';
-import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
-import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
   parseAffectedArea,
   parseCategory,
   parseSeverity,
 } from '@modules/technical-observations/technical-observations.mapper';
 import type { HandoverTechnicalObservationDraft } from './handover.types';
-import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 import { BookingPickupGateService } from './booking-pickup-gate/booking-pickup-gate.service';
@@ -58,9 +55,6 @@ export class BookingsHandoverService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
-    private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
-    private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly pickupGate: BookingPickupGateService,
@@ -70,12 +64,6 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly bookingDomainEvents: BookingDomainEventLifecycleService,
   ) {}
-
-  private runBackgroundTask(label: string, work: Promise<void>): void {
-    void work.catch((err: unknown) => {
-      this.logger.error(`${label}: ${sanitizeAutomationError(err)}`);
-    });
-  }
 
   async createHandover(
     orgId: string,
@@ -427,56 +415,6 @@ export class BookingsHandoverService {
         return [created, booking2] as const;
       },
     );
-
-    // After a successful handover, generate the protocol PDF (and, on return,
-    // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
-    // status transitions above are never affected by document generation.
-    if (kind === 'PICKUP') {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueuePickupProtocol(orgId, bookingId, protocol.id, actor.userId)
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue pickup protocol generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        });
-      this.runBackgroundTask(
-        `taskAutomation.onPickupHandoverCompleted(${bookingId})`,
-        this.taskAutomation.onPickupHandoverCompleted({
-          id: bookingId,
-          organizationId: orgId,
-          vehicleId: booking.vehicleId,
-          customerId: booking.customerId,
-          status: 'ACTIVE',
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          pickupStationId: booking.pickupStationId,
-          returnStationId: booking.returnStationId,
-        }),
-      );
-    } else {
-      void this.bookingDocumentGenerationDispatcher
-        .enqueueReturnDocuments(orgId, bookingId, protocol.id, actor.userId)
-        .catch((err) => {
-          this.logger.error(
-            `Failed to enqueue return document generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        });
-
-      this.runBackgroundTask(
-        `taskAutomation.onReturnHandoverCompleted(${bookingId})`,
-        this.taskAutomation.onReturnHandoverCompleted({
-          id: bookingId,
-          organizationId: orgId,
-          vehicleId: booking.vehicleId,
-          customerId: booking.customerId,
-          status: 'COMPLETED',
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          pickupStationId: booking.pickupStationId,
-          returnStationId: booking.returnStationId,
-        }),
-      );
-    }
 
     await this.fleetMapCache.invalidate(orgId);
     await this.rentalHealthSummaryCache.invalidate(orgId, booking.vehicleId);

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-outbox-consumers-v49795-2026-07-23',
+    version: '4.9.795',
+    title: 'V4.9.795 — Booking outbox consumers (Prompt 23)',
+    summary: [
+      '8 idempotente Outbox-Consumer: Invoice, Document Bundle, Rental Agreement, Pickup/Return Tasks, Notifications, Customer Email, Internal Email, Payment Link.',
+      'Consumer-Receipts v2: businessKey, status (SUCCEEDED/FAILED/SKIPPED/STALE), aggregateVersion, metadata, lastError.',
+      'Router verarbeitet alle Consumer pro Event; retrybare vs. finale Fehler; stale aggregate version → STALE.',
+      'Direkte void-Follow-ups aus BookingsService/Handover entfernt; Invoice-Bootstrap async via Consumer.',
+      'Integrationstests + Failure-Injection für Router/Processor.',
+    ],
+    reason:
+      'Booking Production-Readiness Prompt 23 — Folgeprozesse müssen zuverlässig, mandantensicher und idempotent aus der Outbox laufen.',
+    previousBehavior:
+      'Nur `booking.primary` Workflow-Consumer; Invoice sync mit Booking-Rollback; Dokumente/Tasks/E-Mails als best-effort void.',
+    details:
+      'backend/src/modules/bookings/outbox/consumers/*, prisma/migrations/20260723260000_booking_domain_event_consumer_receipts_v2, docs/architecture/BOOKING_DOMAIN_EVENT_OUTBOX_CONSUMERS_2026-07-23.md',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:59:00.000Z',
+  },
+  {
     id: 'booking-domain-event-outbox-v49794-2026-07-23',
     version: '4.9.794',
     title: 'V4.9.794 — Booking domain event transactional outbox (Prompt 22)',

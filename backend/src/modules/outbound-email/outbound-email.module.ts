@@ -12,6 +12,7 @@ import { OutboundEmailDomainService } from './outbound-email-domain.service';
 import { OutboundEmailService } from './outbound-email.service';
 import { BookingDocumentEmailService } from './booking-document-email.service';
 import { BookingLegalDocumentEmailService } from './booking-legal-document-email.service';
+import { BookingInternalNotificationEmailService } from './booking-internal-notification-email.service';
 import { InvoiceDocumentEmailService } from './invoice-document-email.service';
 import { DevEmailProvider } from './providers/dev-email.provider';
 import { ResendEmailProvider } from './providers/resend-email.provider';
@@ -27,6 +28,7 @@ import { EmailProviderRegistry } from './providers/email-provider.registry';
     OutboundEmailService,
     BookingDocumentEmailService,
     BookingLegalDocumentEmailService,
+    BookingInternalNotificationEmailService,
     InvoiceDocumentEmailService,
     DevEmailProvider,
     ResendEmailProvider,
@@ -40,6 +42,7 @@ import { EmailProviderRegistry } from './providers/email-provider.registry';
     OutboundEmailService,
     BookingDocumentEmailService,
     BookingLegalDocumentEmailService,
+    BookingInternalNotificationEmailService,
     InvoiceDocumentEmailService,
     EmailProviderRegistry,
   ],

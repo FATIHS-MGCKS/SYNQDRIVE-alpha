@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import bookingDomainEventOutboxConfig from '@config/booking-domain-event-outbox.config';
 import { BookingDomainEventOutboxRepository } from './booking-domain-event-outbox.repository';
-import { BookingDomainEventConsumerService } from './booking-domain-event-consumer.service';
+import { BookingDomainEventConsumerRouterService } from './consumers/booking-domain-event-consumer-router.service';
 import { BookingDomainEventOutboxObservabilityService } from './booking-domain-event-outbox-observability.service';
 
 @Injectable()
@@ -11,7 +11,7 @@ export class BookingDomainEventOutboxProcessorService {
     @Inject(bookingDomainEventOutboxConfig.KEY)
     private readonly config: ConfigType<typeof bookingDomainEventOutboxConfig>,
     private readonly outboxRepo: BookingDomainEventOutboxRepository,
-    private readonly consumer: BookingDomainEventConsumerService,
+    private readonly consumerRouter: BookingDomainEventConsumerRouterService,
     private readonly observability: BookingDomainEventOutboxObservabilityService,
   ) {}
 
@@ -26,7 +26,7 @@ export class BookingDomainEventOutboxProcessorService {
     this.observability.logProcessStarted(claimed);
 
     try {
-      await this.consumer.processPrimaryConsumer(claimed);
+      await this.consumerRouter.processAllConsumers(claimed);
       await this.outboxRepo.markPublished(claimed.id);
       this.observability.recordPublished(claimed.eventType);
       this.observability.observeProcessingDuration((Date.now() - started) / 1000);
