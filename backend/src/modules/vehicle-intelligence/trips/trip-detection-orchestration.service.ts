@@ -58,6 +58,13 @@ import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-env.util';
+import { TripLocationEnforcementService } from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.service';
+import {
+  TRIP_LOCATION_DATA_CATEGORY,
+  TRIP_LOCATION_PATH,
+  TRIP_LOCATION_PURPOSE,
+  TRIP_LOCATION_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.constants';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -142,6 +149,7 @@ export class TripDetectionOrchestrationService {
     private readonly detectorRegistry: DetectorRegistry,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly tripLocationEnforcement?: TripLocationEnforcementService,
   ) {
     this.TRACKING_INTERVAL_MS = this.configService.get<number>('worker.tripTrackingIntervalMs') ?? 30_000;
     this.TRIP_CONTINUITY_CORE_WINDOW_MS = this.configService.get<number>('worker.tripContinuityCoreWindowMs') ?? 120_000;
@@ -874,6 +882,23 @@ export class TripDetectionOrchestrationService {
               ` adjustedMs=${resolvedStart.adjustedMs}`,
           );
         } else {
+          const orgId = det.organizationId;
+          if (
+            orgId &&
+            !(await this.mayIngestTripLocation(
+              orgId,
+              vehicleId,
+              TRIP_LOCATION_PATH.TRIP_CREATE,
+              `trip-create:${vehicleId}:${effectiveStartAt.toISOString()}`,
+              effectiveStartAt,
+            ))
+          ) {
+            this.logger.warn(
+              `Trip create ingest denied vehicle=${vehicleId} org=${orgId}`,
+            );
+            return;
+          }
+
           // DecisionEngine.createTrip is the SOLE canonical trip creator
           const trip = await this.decisionEngine.createTrip({
             vehicleId,
@@ -1373,15 +1398,29 @@ export class TripDetectionOrchestrationService {
         (p) => new Date(p.timestamp).getTime() > waypointCutoff,
       );
       if (newWaypoints.length > 0) {
-        await this.prisma.vehicleTripWaypoint.createMany({
-          data: newWaypoints.map((p) => ({
-            tripId,
-            latitude: p.latitude,
-            longitude: p.longitude,
-            speedKmh: p.speedKmh,
-            recordedAt: new Date(p.timestamp),
-          })),
-        });
+        const orgId = organizationId ?? det.organizationId;
+        if (
+          orgId &&
+          (await this.mayIngestTripLocation(
+            orgId,
+            vehicleId,
+            TRIP_LOCATION_PATH.TRIP_WAYPOINT_PERSIST,
+            `trip-waypoints:${tripId}:${now.toISOString()}`,
+            now,
+          ))
+        ) {
+          await this.prisma.vehicleTripWaypoint.createMany({
+            data: newWaypoints.map((p) => ({
+              tripId,
+              latitude: p.latitude,
+              longitude: p.longitude,
+              speedKmh: p.speedKmh,
+              recordedAt: new Date(p.timestamp),
+            })),
+          });
+        } else if (orgId) {
+          this.logger.warn(`Waypoint ingest denied trip=${tripId} vehicle=${vehicleId}`);
+        }
       }
 
       // ── Update trip metrics ──
@@ -3236,5 +3275,25 @@ export class TripDetectionOrchestrationService {
     } catch (e) {
       this.logger.warn(`Failed to log tracking run: ${e}`);
     }
+  }
+
+  private async mayIngestTripLocation(
+    organizationId: string,
+    vehicleId: string,
+    processingPath: string,
+    correlationId: string,
+    effectiveTimestamp?: Date,
+  ): Promise<boolean> {
+    if (!this.tripLocationEnforcement) return true;
+    return this.tripLocationEnforcement.mayIngest({
+      organizationId,
+      vehicleId,
+      dataCategory: TRIP_LOCATION_DATA_CATEGORY.GPS_LOCATION,
+      purpose: TRIP_LOCATION_PURPOSE.TRIPS,
+      processingPath,
+      serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIP_TRACKING_WORKER,
+      correlationId,
+      effectiveTimestamp: effectiveTimestamp ?? null,
+    });
   }
 }
