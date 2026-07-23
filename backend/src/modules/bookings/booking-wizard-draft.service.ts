@@ -30,6 +30,7 @@ import type {
   BookingWizardDraftUpdateDto,
 } from './dto/booking-wizard-draft.dto';
 import { BookingsService } from './bookings.service';
+import type { CreateBookingCommand } from './booking-command.types';
 import {
   BOOKING_CHECKOUT_PAYMENT_INTENTS,
   type BookingCheckoutPaymentIntent,
@@ -38,6 +39,7 @@ import {
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
 import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
+import { BookingStatusCommandService } from './status-commands/booking-status-command.service';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -62,6 +64,7 @@ export class BookingWizardDraftService {
     private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
+    private readonly statusCommands: BookingStatusCommandService,
   ) {}
 
   async createOrRefreshDraft(
@@ -104,20 +107,20 @@ export class BookingWizardDraftService {
       }
     }
 
-    const createPayload = {
-      customer: { connect: { id: body.customerId } },
-      vehicle: { connect: { id: body.vehicleId } },
-      ...(body.pickupStationId ? { pickupStation: { connect: { id: body.pickupStationId } } } : {}),
-      ...(body.returnStationId ? { returnStation: { connect: { id: body.returnStationId } } } : {}),
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      quoteId,
+    const createCommand: CreateBookingCommand = {
+      customerId: body.customerId,
+      vehicleId: body.vehicleId,
+      pickupStationId: body.pickupStationId,
+      returnStationId: body.returnStationId,
+      pickupAt: startDate,
+      returnAt: endDate,
+      pricingQuoteId: quoteId,
       pricingInput: body.pricingInput,
-      status: 'PENDING' as BookingStatus,
-      notes: mergeWizardDraftNotes(body.notes),
+      status: 'PENDING',
+      customerNotes: mergeWizardDraftNotes(body.notes),
     };
 
-    const booking = await this.bookingsService.create(orgId, createPayload as never, {
+    const booking = await this.bookingsService.create(orgId, createCommand, {
       userId: options?.userId ?? null,
     });
 
@@ -207,11 +210,37 @@ export class BookingWizardDraftService {
     }
 
     const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
-    const booking = await this.bookingsService.update(orgId, bookingId, {
-      status: targetStatus,
-      notes: stripWizardDraftMarker(draft.notes) || null,
-      paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
-    });
+    const strippedNotes = stripWizardDraftMarker(draft.notes) || null;
+
+    let booking: Booking;
+    if (targetStatus === 'CONFIRMED' && draft.status === 'PENDING') {
+      const confirmed = await this.statusCommands.execute({
+        organizationId: orgId,
+        bookingId,
+        command: 'CONFIRM',
+        idempotencyKey: `wizard-confirm:${bookingId}`,
+        actor: { userId: options?.userId ?? null, displayName: null },
+      });
+      booking = await this.prisma.booking.update({
+        where: { id: bookingId, organizationId: orgId },
+        data: {
+          notes: strippedNotes,
+          paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+        },
+      });
+      if (!confirmed.transition.idempotent && !confirmed.transition.replayed) {
+        booking = { ...booking, status: confirmed.booking.status };
+      }
+    } else {
+      booking = await this.prisma.booking.update({
+        where: { id: bookingId, organizationId: orgId },
+        data: {
+          status: targetStatus,
+          notes: strippedNotes,
+          paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+        },
+      });
+    }
 
     await this.bookingInvoiceLifecycle
       .syncOnBookingConfirmed(orgId, bookingId, {

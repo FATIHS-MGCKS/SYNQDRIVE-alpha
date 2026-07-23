@@ -21,6 +21,10 @@ import type {
   VehicleDataQualityState,
   VehicleBookingReference,
 } from '../rental/lib/vehicle-operational-state';
+import {
+  createBookingStatusIdempotencyKey,
+  type BookingStatusCommandApiResponse,
+} from '../rental/lib/booking-status-idempotency';
 
 export type {
   AddDamageImageInput,
@@ -748,8 +752,15 @@ function get<T>(path: string, init?: RequestInit) {
   return request<T>(path, init);
 }
 
-function post<T>(path: string, body: unknown) {
-  return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
+function post<T>(path: string, body: unknown, init?: RequestInit) {
+  return request<T>(path, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    ...init,
+    headers: {
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  });
 }
 
 function patch<T>(path: string, body: unknown) {
@@ -1357,6 +1368,40 @@ export type BookingDetailHandoverSide = {
   performedByName: string | null;
 };
 
+/** Validated handover protocol submission body (pickup + return). */
+export type CreateHandoverProtocolPayload = {
+  performedAt?: string | null;
+  pickupGateOverrideReason?: string | null;
+  odometerOverrideReason?: string | null;
+  odometerKm: number;
+  fuelPercent?: number;
+  chargePercent?: number;
+  fuelFull?: boolean;
+  exteriorClean?: boolean;
+  interiorClean?: boolean;
+  tiresSeasonOk?: boolean;
+  warningLightsOn?: boolean;
+  warningLightsNotes?: string | null;
+  notes?: string | null;
+  customerSignatureName?: string | null;
+  customerSignatureDataUrl?: string | null;
+  staffSignatureName?: string | null;
+  staffSignatureDataUrl?: string | null;
+  documentsAcknowledged?: boolean;
+  damageIds?: string[];
+  actualStationId?: string | null;
+  technicalObservations?: Array<{
+    description: string;
+    category?: string;
+    affectedArea?: string;
+    severity?: string;
+    blocksRental?: boolean;
+  }>;
+  keysHandedOver?: boolean;
+  idDocumentVerified?: boolean;
+  licenseVerified?: boolean;
+};
+
 export type BookingStationContext = {
   stationId: string;
   name: string;
@@ -1376,37 +1421,45 @@ export type BookingStationContext = {
 
 /** Lean create body for operator/rental booking forms → `api.bookings.create`. */
 export type OperatorBookingCreatePayload = {
-  customer: { connect: { id: string } };
-  vehicle: { connect: { id: string } };
-  pickupStation?: { connect: { id: string } };
-  returnStation?: { connect: { id: string } };
+  customerId: string;
+  vehicleId: string;
+  pickupStationId?: string;
+  returnStationId?: string;
   startDate: string;
   endDate: string;
-  dailyRateCents?: number;
-  totalPriceCents?: number;
+  quoteId: string;
   kmIncluded?: number;
   insuranceOptions?: string[];
   extrasJson?: unknown;
   pricingInput?: unknown;
   currency?: string;
-  status?: string;
+  status?: 'PENDING' | 'CONFIRMED';
   notes?: string;
 };
 
-/** Lean patch body for operator/rental booking edits → `api.bookings.update`. */
+/** Lean patch body for operator/rental booking edits — use typed action endpoints. */
 export type OperatorBookingUpdatePayload = {
+  expectedUpdatedAt: string;
   startDate?: string;
   endDate?: string;
   notes?: string;
   kmIncluded?: number;
-  status?: string;
+  status?: 'PENDING' | 'CONFIRMED';
   vehicleId?: string;
-  vehicle?: { connect: { id: string } };
-  customer?: { connect: { id: string } };
+  customerId?: string;
   pickupStationId?: string;
   returnStationId?: string;
-  pickupStation?: { connect: { id: string } };
-  returnStation?: { connect: { id: string } };
+  pickupAddressOverride?: string;
+  returnAddressOverride?: string;
+  insuranceOptions?: string[];
+  extrasJson?: unknown;
+  pricingInput?: unknown;
+  pricingQuoteId?: string;
+};
+
+export type BookingUpdateConcurrencyPayload = {
+  expectedUpdatedAt: string;
+  allowTerminalOverride?: boolean;
 };
 
 /** Query params for `GET /organizations/:orgId/bookings` (all optional, backward-compatible). */
@@ -3654,15 +3707,101 @@ export const api = {
     detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
     create: (orgId: string, data: OperatorBookingCreatePayload) =>
       post<unknown>(`/organizations/${orgId}/bookings`, data),
+    /** @deprecated Use typed update* action endpoints */
     update: (orgId: string, id: string, data: OperatorBookingUpdatePayload) =>
       patch<unknown>(`/organizations/${orgId}/bookings/${id}`, data),
-    cancel: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/bookings/${id}`),
-    // V4.6.81 — Mark a CONFIRMED booking whose scheduled pickup has
-    // passed without a handover as NO_SHOW. Distinct from cancel so
-    // downstream reporting can tell "called off" from "customer never
-    // showed". Server-side guardrails enforce status + time window.
-    markNoShow: (orgId: string, id: string, reason?: string | null) =>
-      post<any>(`/organizations/${orgId}/bookings/${id}/no-show`, { reason: reason ?? null }),
+    updateSchedule: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        pickupAt?: string;
+        returnAt?: string;
+        startDate?: string;
+        endDate?: string;
+        pricingQuoteId?: string;
+        quoteId?: string;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/schedule`, data),
+    updateCustomer: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & { customerId: string },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/customer`, data),
+    updateVehicle: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & { vehicleId: string; pricingQuoteId?: string },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/vehicle`, data),
+    updateStations: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        pickupStationId?: string | null;
+        returnStationId?: string | null;
+        pickupAddressOverride?: string | null;
+        returnAddressOverride?: string | null;
+        isOneWayRental?: boolean;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/stations`, data),
+    updateNotes: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        customerNotes?: string;
+        internalNotes?: string;
+        notes?: string;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/notes`, data),
+    updateOptions: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        pricingInput?: unknown;
+        pricingQuoteId?: string;
+        kmIncluded?: number;
+        insuranceOptions?: string[];
+        extrasJson?: unknown;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/options`, data),
+    updateAllowedDrivers: (
+      orgId: string,
+      id: string,
+      data: BookingUpdateConcurrencyPayload & {
+        allowedDriverIds: string[];
+        primaryDriverId?: string;
+      },
+    ) => patch<unknown>(`/organizations/${orgId}/bookings/${id}/allowed-drivers`, data),
+    cancel: (
+      orgId: string,
+      id: string,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<BookingStatusCommandApiResponse>(
+        `/organizations/${orgId}/bookings/${id}/status/cancel`,
+        {},
+        {
+          headers: {
+            'Idempotency-Key':
+              options?.idempotencyKey ?? createBookingStatusIdempotencyKey('cancel', id),
+          },
+        },
+      ).then((res) => res.booking),
+    markNoShow: (
+      orgId: string,
+      id: string,
+      reason?: string | null,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<BookingStatusCommandApiResponse>(
+        `/organizations/${orgId}/bookings/${id}/status/no-show`,
+        { reason: reason ?? null },
+        {
+          headers: {
+            'Idempotency-Key':
+              options?.idempotencyKey ?? createBookingStatusIdempotencyKey('no-show', id),
+          },
+        },
+      ).then((res) => res.booking),
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/bookings/stats`),
     todayPickups: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/pickups`),
     todayReturns: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/returns`),
@@ -3780,10 +3919,32 @@ export const api = {
     // the fact). Omitted → server uses `now()`.
     listHandovers: (orgId: string, bookingId: string) =>
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
-    createPickupHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    createPickupHandover: (
+      orgId: string,
+      bookingId: string,
+      data: CreateHandoverProtocolPayload,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data, {
+        headers: {
+          'Idempotency-Key':
+            options?.idempotencyKey ??
+            createBookingStatusIdempotencyKey('handover-pickup', bookingId),
+        },
+      }),
+    createReturnHandover: (
+      orgId: string,
+      bookingId: string,
+      data: CreateHandoverProtocolPayload,
+      options?: { idempotencyKey?: string },
+    ) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data, {
+        headers: {
+          'Idempotency-Key':
+            options?.idempotencyKey ??
+            createBookingStatusIdempotencyKey('handover-return', bookingId),
+        },
+      }),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.

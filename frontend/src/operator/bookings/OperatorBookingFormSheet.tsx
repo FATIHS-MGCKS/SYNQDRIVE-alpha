@@ -291,7 +291,9 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
       return;
     }
 
-    const patch: OperatorBookingUpdatePayload = {};
+    const patch: OperatorBookingUpdatePayload = {
+      expectedUpdatedAt: detail.core.updatedAt,
+    };
     if (!isSameLocalInstant(detail.core.startDate, startLocal)) patch.startDate = startIso;
     if (!isSameLocalInstant(detail.core.endDate, endLocal)) patch.endDate = endIso;
     if (notes !== (detail.core.notes ?? '')) patch.notes = notes;
@@ -302,7 +304,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     }
 
     if (vehicleId && vehicleId !== detail.vehicle.vehicleId) {
-      patch.vehicle = { connect: { id: vehicleId } };
+      patch.vehicleId = vehicleId;
     }
 
     if (pickupStationId && pickupStationId !== detail.core.pickupStationId) {
@@ -312,12 +314,28 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
       patch.returnStationId = effectiveReturnStationId;
     }
 
-    if (Object.keys(patch).length === 0) {
+    if (Object.keys(patch).length <= 1) {
       setFormError('Keine Änderungen zum Speichern');
       return;
     }
 
-    await updateBooking(bookingId, patch, handleSuccess, detail.vehicle.vehicleId);
+    await updateBooking(
+      bookingId,
+      patch,
+      handleSuccess,
+      {
+        previousVehicleId: detail.vehicle.vehicleId,
+        current: {
+          startDate: detail.core.startDate,
+          endDate: detail.core.endDate,
+          notes: detail.core.notes,
+          kmIncluded: detail.core.kmIncluded,
+          vehicleId: detail.vehicle.vehicleId,
+          pickupStationId: detail.core.pickupStationId,
+          returnStationId: detail.core.returnStationId,
+        },
+      },
+    );
   };
 
   const title = isEdit ? 'Buchung bearbeiten' : 'Buchung aufnehmen';

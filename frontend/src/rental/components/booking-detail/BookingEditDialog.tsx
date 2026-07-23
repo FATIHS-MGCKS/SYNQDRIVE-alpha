@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
 import { api, type BookingDetailDto, type Station } from '../../../lib/api';
+import {
+  applyBookingFieldUpdates,
+  bookingVersionConflictMessage,
+} from '../../lib/bookingUpdateCommands';
 import { StationSelectFields } from '../stations/StationSelectFields';
 
 interface BookingEditDialogProps {
@@ -80,12 +84,31 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
 
     setSaving(true);
     try {
-      await api.bookings.update(orgId, detail.core.bookingId, patch);
+      await applyBookingFieldUpdates(
+        orgId,
+        detail.core.bookingId,
+        detail.core.updatedAt,
+        {
+          startDate: patch.startDate as string | undefined,
+          endDate: patch.endDate as string | undefined,
+          notes: patch.notes as string | undefined,
+          kmIncluded: patch.kmIncluded as number | undefined,
+          pickupStationId: patch.pickupStationId as string | undefined,
+          returnStationId: patch.returnStationId as string | undefined,
+        },
+        {
+          startDate: detail.core.startDate,
+          endDate: detail.core.endDate,
+          notes: detail.core.notes,
+          kmIncluded: detail.core.kmIncluded,
+          pickupStationId: detail.core.pickupStationId,
+          returnStationId: detail.core.returnStationId,
+        },
+      );
       toast.success('Buchung gespeichert');
       onSaved();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Speichern fehlgeschlagen';
-      toast.error(msg);
+      toast.error(bookingVersionConflictMessage(err));
     } finally {
       setSaving(false);
     }

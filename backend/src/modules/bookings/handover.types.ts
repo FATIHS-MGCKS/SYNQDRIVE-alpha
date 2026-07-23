@@ -39,6 +39,10 @@ export interface HandoverProtocolDto {
   updatedAt: string;
 }
 
+/**
+ * @deprecated Use `CreateHandoverProtocolDto` / `CreateHandoverCommand` instead.
+ * Kept for response mapping compatibility only.
+ */
 export interface CreateHandoverProtocolPayload {
   // V4.6.81 — Backdate support. When the operator records a pickup that
   // physically happened earlier (customer arrived late, dispatcher logs

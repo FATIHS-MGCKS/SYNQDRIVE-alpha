@@ -1062,6 +1062,15 @@ enum BookingStatus {
   NO_SHOW
 }
 
+enum BookingStatusCommandType {
+  CONFIRM
+  ACTIVATE
+  COMPLETE
+  CANCEL
+  MARK_NO_SHOW
+  ADMIN_OVERRIDE
+}
+
 enum BookingPaymentIntent {
   PAYMENT_LINK
   PAY_ON_PICKUP
@@ -1608,6 +1617,7 @@ model Organization {
   tireHealthAlerts                       TireHealthAlert[]
   brakeHealthAlerts                      BrakeHealthAlert[]
   bookings                               Booking[]
+  bookingStatusCommands                  BookingStatusCommand[]
   bookingAllowedDrivers                  BookingAllowedDriver[]
   bookingHandoverProtocols               BookingHandoverProtocol[]
   activityLogs                           ActivityLog[]
@@ -5493,6 +5503,7 @@ model Booking {
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
   allowedDrivers          BookingAllowedDriver[]
+  statusCommands          BookingStatusCommand[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -5507,6 +5518,31 @@ model Booking {
   @@index([vehicleId, status, startDate])
   @@index([organizationId, status])
   @@map("bookings")
+}
+
+/// Idempotency ledger for booking status commands (Prompt 9).
+model BookingStatusCommand {
+  id              String                   @id @default(uuid())
+  organizationId  String                   @map("organization_id")
+  bookingId       String                   @map("booking_id")
+  commandType     BookingStatusCommandType @map("command_type")
+  idempotencyKey  String                   @map("idempotency_key")
+  fromStatus      BookingStatus?           @map("from_status")
+  toStatus        BookingStatus            @map("to_status")
+  trigger         String
+  reasonCode      String                   @map("reason_code")
+  requestPayload  Json?                    @map("request_payload")
+  resultPayload   Json                     @map("result_payload")
+  createdByUserId String?                  @map("created_by_user_id")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([bookingId, commandType])
+  @@index([organizationId, bookingId])
+  @@map("booking_status_commands")
 }
 
 enum BookingDriverRole {
