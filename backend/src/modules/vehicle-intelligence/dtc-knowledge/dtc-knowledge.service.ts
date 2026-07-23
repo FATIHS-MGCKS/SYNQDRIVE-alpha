@@ -1,8 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { DtcKnowledge, DtcVehicleKnowledge, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import {
@@ -42,6 +49,7 @@ export class DtcKnowledgeService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT) private readonly queue: Queue,
+    @Optional() private readonly healthEnforcement?: VehicleHealthEnforcementService,
   ) {}
 
   normalizeDtcCode(code: string | null | undefined): string | null {
@@ -85,7 +93,27 @@ export class DtcKnowledgeService {
     rawCode: string,
     vehicle: DtcVehicleContext,
     language = 'de',
+    auth?: { organizationId: string; vehicleId: string },
   ): Promise<DtcKnowledgeDto> {
+    if (auth && this.healthEnforcement) {
+      const allowed = await this.healthEnforcement.mayUseForAi({
+        organizationId: auth.organizationId,
+        vehicleId: auth.vehicleId,
+        dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.DTC_CODES,
+        purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+        processingPath: VEHICLE_HEALTH_PATH.DTC_AI,
+        serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.DTC_AI,
+        correlationId: `dtc-ai:${auth.vehicleId}:${rawCode}`,
+      });
+      if (!allowed) {
+        return {
+          status: 'MISSING',
+          source: 'MISSING',
+          message: 'AI-Erklärung nicht autorisiert.',
+        };
+      }
+    }
+
     try {
       const normalizedCode = normalizeDtcCode(rawCode);
       if (!normalizedCode) {
@@ -110,7 +138,27 @@ export class DtcKnowledgeService {
     rawCode: string,
     vehicle: DtcVehicleContext,
     language = 'de',
+    auth?: { organizationId: string; vehicleId: string },
   ): Promise<DtcKnowledgeDto> {
+    if (auth && this.healthEnforcement) {
+      const allowed = await this.healthEnforcement.mayUseForAi({
+        organizationId: auth.organizationId,
+        vehicleId: auth.vehicleId,
+        dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.DTC_CODES,
+        purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+        processingPath: VEHICLE_HEALTH_PATH.DTC_AI,
+        serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.DTC_AI,
+        correlationId: `dtc-ai-retry:${auth.vehicleId}:${rawCode}`,
+      });
+      if (!allowed) {
+        return {
+          status: 'MISSING',
+          source: 'MISSING',
+          message: 'AI-Erklärung nicht autorisiert.',
+        };
+      }
+    }
+
     const normalizedCode = normalizeDtcCode(rawCode);
     if (!normalizedCode) {
       return { status: 'MISSING', source: 'MISSING', message: MISSING_MESSAGE };

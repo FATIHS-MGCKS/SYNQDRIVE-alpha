@@ -1,5 +1,13 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_OBSERVATION_SOURCE,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 import { DtcSeverity } from '@prisma/client';
 import {
   BrakeDtcEvidenceProducerService,
@@ -50,6 +58,7 @@ export class DtcService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly brakeDtcProducer?: BrakeDtcEvidenceProducerService,
+    @Optional() private readonly healthEnforcement?: VehicleHealthEnforcementService,
   ) {}
 
   // ── Basic reads ─────────────────────────────────────────────────────────────
@@ -300,6 +309,25 @@ export class DtcService {
       producerContext?: BrakeDtcProducerContext;
     },
   ) {
+    const orgId = options?.producerContext?.organizationId;
+    if (orgId && this.healthEnforcement) {
+      const mayIngest = await this.healthEnforcement.mayIngest({
+        organizationId: orgId,
+        vehicleId,
+        dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.DTC_CODES,
+        purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+        processingPath: VEHICLE_HEALTH_PATH.DTC_INGEST,
+        serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.DTC_WORKER,
+        correlationId: `dtc-ingest:${vehicleId}:${dtcCode}:${Date.now()}`,
+        observationSource: VEHICLE_HEALTH_OBSERVATION_SOURCE.TELEMETRY,
+        effectiveTimestamp: options?.producerContext?.sourceTimestamp ?? null,
+        isBackfill: options?.producerContext?.isBackfill ?? false,
+      });
+      if (!mayIngest) {
+        return null;
+      }
+    }
+
     const now = new Date();
     const existing = await this.prisma.vehicleDtcEvent.findFirst({
       where: { vehicleId, dtcCode, isActive: true },

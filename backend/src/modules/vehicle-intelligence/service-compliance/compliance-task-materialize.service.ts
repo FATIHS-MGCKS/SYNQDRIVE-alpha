@@ -1,6 +1,13 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InsightType, TaskSource, TaskType } from '@prisma/client';
 import { TasksService } from '../../tasks/tasks.service';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 import { checklistForType } from '../../tasks/task-templates';
 import { TaskAutomationRuleResolverService } from '@modules/tasks/automation/task-automation-rule-resolver.service';
 import { shouldMaterializeFromResolvedRule } from '@modules/tasks/automation/task-automation-effective-rule.util';
@@ -32,6 +39,7 @@ export class ComplianceTaskMaterializeService {
     private readonly ruleResolver: TaskAutomationRuleResolverService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
+    @Optional() private readonly healthEnforcement?: VehicleHealthEnforcementService,
   ) {}
 
   async materializeSignal(
@@ -39,6 +47,22 @@ export class ComplianceTaskMaterializeService {
     vehicleId: string,
     signalKey: string,
   ) {
+    if (this.healthEnforcement) {
+      const mayDerive = await this.healthEnforcement.mayDerive({
+        organizationId,
+        vehicleId,
+        dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
+        purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+        processingPath: VEHICLE_HEALTH_PATH.SERVICE_DERIVE,
+        serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.SERVICE_API,
+        correlationId: `service-derive:${vehicleId}:${signalKey}`,
+      });
+      if (!mayDerive) {
+        this.logger.warn(`Service derive denied vehicle=${vehicleId} signal=${signalKey}`);
+        return null;
+      }
+    }
+
     const status = await this.serviceCompliance.buildServiceInfoStatus(vehicleId);
     const signal = status.taskSignals.find((s) => s.signalKey === signalKey || s.dedupeKey === signalKey);
     if (!signal) {

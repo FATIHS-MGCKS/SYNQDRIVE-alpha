@@ -5,6 +5,13 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 import type { VehicleHealthAdapterSource } from '@modules/notifications/adapters/notification-adapter.types';
 import { buildBrakeAlertNotificationCode } from './brake-health-alert.registry';
 import type {
@@ -20,6 +27,7 @@ export class BrakeHealthAlertService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly observability?: BrakeHealthObservabilityService,
+    @Optional() private readonly healthEnforcement?: VehicleHealthEnforcementService,
   ) {}
 
   async syncAlerts(args: {
@@ -30,6 +38,31 @@ export class BrakeHealthAlertService {
     modelSnapshotId?: string | null;
     emitNotifications?: boolean;
   }): Promise<BrakeAlertSyncResult> {
+    if (
+      args.emitNotifications &&
+      args.candidates.length > 0 &&
+      this.healthEnforcement
+    ) {
+      const mayDerive = await this.healthEnforcement.mayDerive({
+        organizationId: args.organizationId,
+        vehicleId: args.vehicleId,
+        dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
+        purpose: VEHICLE_HEALTH_PURPOSE.ALERTS,
+        processingPath: VEHICLE_HEALTH_PATH.BRAKE_ALERT,
+        serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.HEALTH_ALERT,
+        correlationId: `brake-alert:${args.vehicleId}:${Date.now()}`,
+      });
+      if (!mayDerive) {
+        this.logger.warn(`Brake alert derive denied vehicle=${args.vehicleId}`);
+        return {
+          newlyOpened: [],
+          resolved: [],
+          notificationsEmitted: 0,
+          suppressedByPolicy: true,
+        };
+      }
+    }
+
     const now = new Date();
     const candidateByKey = new Map(args.candidates.map((c) => [c.dedupeKey, c]));
 

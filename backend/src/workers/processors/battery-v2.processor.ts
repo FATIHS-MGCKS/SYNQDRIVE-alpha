@@ -1,6 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Job, UnrecoverableError } from 'bullmq';
+import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import {
+  VEHICLE_HEALTH_DATA_CATEGORY,
+  VEHICLE_HEALTH_OBSERVATION_SOURCE,
+  VEHICLE_HEALTH_PATH,
+  VEHICLE_HEALTH_PURPOSE,
+  VEHICLE_HEALTH_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.constants';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { observeQueueLag } from '@modules/observability/queue-lag.util';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
@@ -35,6 +43,7 @@ export class BatteryV2Processor extends WorkerHost {
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly observability: BatteryV2JobObservabilityService,
     private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly healthEnforcement?: VehicleHealthEnforcementService,
   ) {
     super();
   }
@@ -49,6 +58,26 @@ export class BatteryV2Processor extends WorkerHost {
     const attempt = job.attemptsMade + 1;
     const maxAttempts = job.opts.attempts ?? 1;
     const started = Date.now();
+
+    if (payload.organizationId && this.healthEnforcement) {
+      const mayDerive = await this.healthEnforcement.mayDerive({
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
+        purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
+        processingPath: VEHICLE_HEALTH_PATH.BATTERY_DERIVE,
+        serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.BATTERY_WORKER,
+        correlationId: payload.correlationId ?? `battery-derive:${payload.vehicleId}:${job.id}`,
+        observationSource: VEHICLE_HEALTH_OBSERVATION_SOURCE.TELEMETRY,
+        effectiveTimestamp: payload.requestedAt ?? null,
+      });
+      if (!mayDerive) {
+        this.logger.warn(
+          `Battery derive denied vehicle=${payload.vehicleId} jobType=${jobType}`,
+        );
+        return;
+      }
+    }
 
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.BATTERY_V2, job);
 

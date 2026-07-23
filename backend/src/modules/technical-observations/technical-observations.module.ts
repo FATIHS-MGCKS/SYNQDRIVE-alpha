@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { TechnicalObservationsController } from './technical-observations.controller';
 import { TechnicalObservationsService } from './technical-observations.service';
 import { TasksModule } from '../tasks/tasks.module';
@@ -10,6 +11,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
   imports: [
     TasksModule,
     ServiceCasesModule,
+    DataAuthorizationsModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
   ],
