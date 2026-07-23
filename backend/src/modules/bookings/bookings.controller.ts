@@ -36,14 +36,16 @@ import {
 } from './dto/booking-wizard-draft.dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { RequireBookingEligibilityPermission } from './decorators/require-booking-eligibility-permission.decorator';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { resolveHandoverActor } from './handover-actor.util';
 
 @Controller('organizations/:orgId/bookings')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
@@ -77,6 +79,7 @@ export class BookingsController {
   }
 
   @Post('eligibility-check')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
   async checkRentalEligibility(
     @Param('orgId') orgId: string,
     @Body() body: BookingRentalEligibilityCheckDto,
@@ -146,6 +149,7 @@ export class BookingsController {
   }
 
   @Get(':id/rental-eligibility')
+  @RequireBookingEligibilityPermission('booking_eligibility.review')
   async getBookingRentalEligibility(
     @Param('orgId') orgId: string,
     @Param('id') id: string,

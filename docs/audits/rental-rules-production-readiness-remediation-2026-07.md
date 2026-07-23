@@ -404,10 +404,11 @@ flowchart TB
 | **6** | IAM: Leserechte-Matrix + `@Roles` verifizieren | NOT_STARTED | 5 | Nein | Ja |
 | **7** | Service-Layer `assertMembershipPermission` (falls erforderlich) | NOT_STARTED | 5 | Nein | Ja |
 | **8** | Controller-Security-Regressionstests | NOT_STARTED | 5–7 | Nein | Ja |
-| **9** | `RentalRulesService` Unit-Tests (Edge Cases) | NOT_STARTED | 2 | Nein | Ja |
-| **10** | Kategorie-Fahrzeug-Zuordnung Transaktions-Tests | NOT_STARTED | 9 | Nein | Ja |
-| **11** | Override `null`-Semantik + inactive category Tests | NOT_STARTED | 8 | Nein | Ja |
-| **12** | DTO-Validierung (`depositAmount` Alias, License Years) | NOT_STARTED | 9 | Nein | Ja |
+| **9** | Effective-Rules Merge-Matrix (Util-Tests erweitern) | NOT_STARTED | 2 | Nein | Ja |
+| **10** | `RentalRulesService` Unit-Tests (Edge Cases) | NOT_STARTED | 2 | Nein | Ja |
+| **11** | Kategorie-Fahrzeug-Zuordnung Transaktions-Tests | NOT_STARTED | 10 | Nein | Ja |
+| **12** | Override `null`-Semantik + inactive category Tests | NOT_STARTED | 9 | Nein | Ja |
+| **13** | DTO-Validierung (`depositAmount` Alias, License Years) | NOT_STARTED | 10 | Nein | Ja |
 | **13** | `booking-rental-eligibility.util` dedizierte Spec | NOT_STARTED | 2 | Nein | Ja |
 | **14** | Eligibility + `CustomerVerification` Integrationstests | NOT_STARTED | 13 | Nein | Ja |
 | **15** | Eligibility + `BookingDeposit` Status-Tests | NOT_STARTED | 13 | Nein | Ja |

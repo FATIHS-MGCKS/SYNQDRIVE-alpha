@@ -24,12 +24,19 @@ import {
   hasActiveRuleOverrides,
 } from './rental-rules.mapper';
 import { RENTAL_RULE_FIELD_KEYS } from './rental-rules.types';
+import { RentalRulePermissionService } from './rental-rule-permission.service';
+import type { PermissionActor } from '@shared/auth/permission.util';
+
+interface RentalRulesMutationContext {
+  actor?: PermissionActor;
+}
 
 @Injectable()
 export class RentalRulesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly effectiveRules: RentalEffectiveRulesService,
+    private readonly rentalRulePermissions: RentalRulePermissionService,
   ) {}
 
   private async assertOrgExists(orgId: string) {
@@ -114,9 +121,14 @@ export class RentalRulesService {
     return data;
   }
 
-  async upsertOrganizationDefaults(orgId: string, dto: UpsertOrganizationRentalRulesDto) {
+  async upsertOrganizationDefaults(
+    orgId: string,
+    dto: UpsertOrganizationRentalRulesDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
     await this.assertOrgExists(orgId);
     const patch = this.toPrismaRuleData(pickRulePatch(dto));
+    await this.rentalRulePermissions.assertPublishIfActiveChange(ctx.actor, orgId, patch.isActive as boolean | undefined);
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const row = await this.prisma.organizationRentalRules.upsert({
@@ -188,9 +200,17 @@ export class RentalRulesService {
     return formatRentalVehicleCategory(withCount!);
   }
 
-  async createCategory(orgId: string, dto: CreateRentalVehicleCategoryDto) {
+  async createCategory(
+    orgId: string,
+    dto: CreateRentalVehicleCategoryDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
     await this.assertOrgExists(orgId);
     const patch = this.toPrismaRuleData(pickRulePatch(dto));
+    const requestedActive =
+      (patch.isActive as boolean | undefined) ??
+      (dto.isActive !== undefined ? dto.isActive : undefined);
+    await this.rentalRulePermissions.assertPublishIfActiveChange(ctx.actor, orgId, requestedActive);
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const row = await this.prisma.rentalVehicleCategory.create({
@@ -209,9 +229,19 @@ export class RentalRulesService {
     return formatRentalVehicleCategory(row);
   }
 
-  async updateCategory(orgId: string, categoryId: string, dto: UpdateRentalVehicleCategoryDto) {
+  async updateCategory(
+    orgId: string,
+    categoryId: string,
+    dto: UpdateRentalVehicleCategoryDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
     await this.loadCategory(orgId, categoryId);
     const patch = this.toPrismaRuleData(pickRulePatch(dto));
+    await this.rentalRulePermissions.assertPublishIfActiveChange(
+      ctx.actor,
+      orgId,
+      patch.isActive as boolean | undefined,
+    );
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
     const data: Prisma.RentalVehicleCategoryUpdateInput = {

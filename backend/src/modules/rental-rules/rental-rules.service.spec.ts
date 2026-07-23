@@ -38,7 +38,11 @@ describe('RentalRulesService', () => {
   beforeEach(() => {
     prisma = makePrisma();
     effective = new RentalEffectiveRulesService(prisma as any);
-    svc = new RentalRulesService(prisma as any, effective);
+    const rentalRulePermissions = {
+      assert: jest.fn().mockResolvedValue(undefined),
+      assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
+    };
+    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any);
   });
 
   it('blocks access to foreign organization category', async () => {
