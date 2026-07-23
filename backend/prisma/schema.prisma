@@ -1635,6 +1635,8 @@ model Organization {
   legalDocumentEvents                    OrganizationLegalDocumentEvent[]
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingLegalAcceptances                BookingLegalAcceptance[]
+  bookingLegalDocumentSnapshots          BookingLegalDocumentSnapshot[]
+  bookingLegalDocumentSnapshotEvents     BookingLegalDocumentSnapshotEvent[]
   bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
   bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
   bookingEligibilityApprovals          BookingEligibilityApproval[]
@@ -5606,6 +5608,8 @@ model Booking {
   outboundEmails          OutboundEmail[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
   legalAcceptances              BookingLegalAcceptance[]
+  legalDocumentSnapshots        BookingLegalDocumentSnapshot[]
+  legalDocumentSnapshotEvents   BookingLegalDocumentSnapshotEvent[]
   documentGenerationJobs        BookingDocumentGenerationJob[]
   pickupGateAuditEvents         BookingPickupGateAuditEvent[]
   eligibilityApprovals          BookingEligibilityApproval[]
@@ -7083,6 +7087,7 @@ model GeneratedDocument {
   rentalContractsAsPrivacyDocument    RentalContract[]          @relation("RentalContractPrivacyDocument")
   legalDocumentDeliveryEvidence       LegalDocumentDeliveryEvidence[]
   bookingLegalAcceptances             BookingLegalAcceptance[]
+  bookingLegalDocumentSnapshots       BookingLegalDocumentSnapshot[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -7166,6 +7171,7 @@ model OrganizationLegalDocument {
   events            OrganizationLegalDocumentEvent[]
   deliveryEvidence  LegalDocumentDeliveryEvidence[]
   bookingLegalAcceptances BookingLegalAcceptance[]
+  bookingLegalDocumentSnapshots BookingLegalDocumentSnapshot[]
   stations OrganizationLegalDocumentStation[]
 
   // Scope-aware ACTIVE uniqueness is enforced via conflict detection at activation
@@ -7296,6 +7302,78 @@ model LegalDocumentDeliveryEvidence {
   @@map("legal_document_delivery_evidence")
 }
 
+/// Immutable presentation snapshot of a legal document for a booking (Prompt 18).
+/// Legal acceptance rows must reference this snapshot — not live template state.
+enum BookingLegalDocumentSnapshotContext {
+  CHECKOUT
+  RENTAL_CONTRACT
+  HANDOVER
+  STATIC_LEGAL_ATTACH
+  MANUAL
+}
+
+enum BookingLegalDocumentSnapshotIntegrityStatus {
+  VERIFIED
+  UNVERIFIED
+  CHECKSUM_MISMATCH
+  MISSING_OBJECT
+}
+
+model BookingLegalDocumentSnapshot {
+  id                  String                                    @id @default(uuid())
+  organizationId      String                                    @map("organization_id")
+  bookingId           String                                    @map("booking_id")
+  documentType        String                                    @map("document_type")
+  templateKey         String?                                   @map("template_key")
+  templateVersion     String?                                   @map("template_version")
+  renderedVersion     String                                    @map("rendered_version")
+  hashAlgorithm       String                                    @default("sha256") @map("hash_algorithm")
+  contentHash         String                                    @map("content_hash")
+  language            String
+  generatedDocumentId String                                    @map("generated_document_id")
+  legalDocumentId     String?                                   @map("legal_document_id")
+  presentationContext BookingLegalDocumentSnapshotContext       @map("presentation_context")
+  integrityStatus     BookingLegalDocumentSnapshotIntegrityStatus @default(UNVERIFIED) @map("integrity_status")
+  integrityVerifiedAt DateTime?                                 @map("integrity_verified_at")
+  idempotencyKey      String                                    @map("idempotency_key")
+  actorUserId         String?                                   @map("actor_user_id")
+  createdAt           DateTime                                  @default(now()) @map("created_at")
+
+  organization      Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking           Booking                    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  generatedDocument GeneratedDocument          @relation(fields: [generatedDocumentId], references: [id], onDelete: Restrict)
+  legalDocument     OrganizationLegalDocument? @relation(fields: [legalDocumentId], references: [id], onDelete: Restrict)
+  events            BookingLegalDocumentSnapshotEvent[]
+  legalAcceptances  BookingLegalAcceptance[]
+
+  @@unique([organizationId, idempotencyKey], map: "booking_legal_document_snapshots_org_idempotency_key")
+  @@index([organizationId, bookingId], map: "booking_legal_document_snapshots_org_booking_idx")
+  @@index([organizationId, bookingId, documentType], map: "booking_legal_document_snapshots_org_booking_doc_type_idx")
+  @@index([organizationId, contentHash], map: "booking_legal_document_snapshots_org_hash_idx")
+  @@index([generatedDocumentId], map: "booking_legal_document_snapshots_generated_document_idx")
+  @@map("booking_legal_document_snapshots")
+}
+
+/// Append-only audit trail for legal document presentation snapshots.
+model BookingLegalDocumentSnapshotEvent {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  bookingId      String   @map("booking_id")
+  snapshotId     String   @map("snapshot_id")
+  eventType      String   @map("event_type")
+  actorUserId    String?  @map("actor_user_id")
+  detail         Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking                    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  snapshot     BookingLegalDocumentSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, bookingId, createdAt], map: "booking_legal_document_snapshot_events_org_booking_created_idx")
+  @@index([snapshotId, createdAt], map: "booking_legal_document_snapshot_events_snapshot_created_idx")
+  @@map("booking_legal_document_snapshot_events")
+}
+
 /// Append-only legal acceptance / signature events for bookings (Prompt 17).
 /// Distinct from LegalDocumentDeliveryEvidence (delivery proof, not consent).
 enum BookingLegalAcceptanceActorType {
@@ -7350,6 +7428,7 @@ model BookingLegalAcceptance {
   relatedAcceptanceId   String?                          @map("related_acceptance_id")
   legalDocumentId       String?                          @map("legal_document_id")
   generatedDocumentId   String?                          @map("generated_document_id")
+  legalDocumentSnapshotId String?                        @map("legal_document_snapshot_id")
   handoverProtocolId    String?                          @map("handover_protocol_id")
   requestId             String?                          @map("request_id")
   metadata              Json?
@@ -7367,6 +7446,7 @@ model BookingLegalAcceptance {
   customer          Customer                   @relation(fields: [customerId], references: [id], onDelete: Cascade)
   legalDocument     OrganizationLegalDocument? @relation(fields: [legalDocumentId], references: [id], onDelete: Restrict)
   generatedDocument GeneratedDocument?         @relation(fields: [generatedDocumentId], references: [id], onDelete: Restrict)
+  legalDocumentSnapshot BookingLegalDocumentSnapshot? @relation(fields: [legalDocumentSnapshotId], references: [id], onDelete: Restrict)
   handoverProtocol  BookingHandoverProtocol?   @relation(fields: [handoverProtocolId], references: [id], onDelete: SetNull)
   relatedAcceptance BookingLegalAcceptance?    @relation("BookingLegalAcceptanceCorrectionChain", fields: [relatedAcceptanceId], references: [id], onDelete: Restrict)
   derivedEvents     BookingLegalAcceptance[]   @relation("BookingLegalAcceptanceCorrectionChain")
@@ -7380,6 +7460,7 @@ model BookingLegalAcceptance {
   @@index([organizationId, retentionClass, deletionEligibleAt], map: "booking_legal_acceptances_org_retention_eligible_idx")
   @@index([organizationId, legalHold], map: "booking_legal_acceptances_org_legal_hold_idx")
   @@index([relatedAcceptanceId], map: "booking_legal_acceptances_related_acceptance_idx")
+  @@index([legalDocumentSnapshotId], map: "booking_legal_acceptances_snapshot_idx")
   @@map("booking_legal_acceptances")
 }
 

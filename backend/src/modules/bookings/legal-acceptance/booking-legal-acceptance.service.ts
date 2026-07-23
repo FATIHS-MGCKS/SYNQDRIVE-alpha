@@ -17,12 +17,16 @@ import type {
 import { toBookingLegalAcceptanceDto } from './dto/booking-legal-acceptance.dto';
 import type { BookingLegalAcceptanceDto } from './dto/booking-legal-acceptance.dto';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
+import { BookingLegalDocumentSnapshotService } from '@modules/documents/legal-document-snapshot/booking-legal-document-snapshot.service';
 
 type Tx = Prisma.TransactionClient;
 
 @Injectable()
 export class BookingLegalAcceptanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly legalDocumentSnapshots: BookingLegalDocumentSnapshotService,
+  ) {}
 
   async listForBooking(
     organizationId: string,
@@ -126,6 +130,9 @@ export class BookingLegalAcceptanceService {
         : {}),
       ...(input.generatedDocumentId
         ? { generatedDocument: { connect: { id: input.generatedDocumentId } } }
+        : {}),
+      ...(input.legalDocumentSnapshotId
+        ? { legalDocumentSnapshot: { connect: { id: input.legalDocumentSnapshotId } } }
         : {}),
       ...(input.handoverProtocolId
         ? { handoverProtocol: { connect: { id: input.handoverProtocolId } } }
@@ -272,10 +279,12 @@ export class BookingLegalAcceptanceService {
     marketingConsent?: boolean;
     otherConsent?: { purpose: string; documentType: string; generatedDocumentId?: string };
   }): Promise<BookingLegalAcceptanceDto[]> {
-    const bundle = await this.prisma.bookingDocumentBundle.findFirst({
-      where: { organizationId: input.organizationId, bookingId: input.bookingId },
-      select: { termsDocumentId: true, privacyDocumentId: true },
-    });
+    const snapshots = await this.legalDocumentSnapshots.ensureCheckoutSnapshots(
+      input.organizationId,
+      input.bookingId,
+      { actorUserId: input.actorUserId ?? null },
+    );
+    const snapshotByType = new Map(snapshots.map((s) => [s.documentType, s]));
 
     const results: BookingLegalAcceptanceDto[] = [];
     const actor = {
@@ -284,11 +293,8 @@ export class BookingLegalAcceptanceService {
     };
 
     if (input.agbAccepted) {
-      const ref = await this.resolveGeneratedDocumentRef(
-        input.organizationId,
-        bundle?.termsDocumentId,
-      );
-      if (ref) {
+      const snapshot = snapshotByType.get(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
+      if (snapshot && snapshot.integrityStatus !== 'CHECKSUM_MISMATCH') {
         results.push(
           await this.recordAcceptance({
             organizationId: input.organizationId,
@@ -296,29 +302,29 @@ export class BookingLegalAcceptanceService {
             customerId: input.customerId,
             actor,
             acceptanceType: 'TERMS_CONTRACT_ACCEPTANCE',
-            documentType: ref.documentType || DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-            documentVersion: ref.documentVersion,
-            immutableDocumentHash: ref.immutableDocumentHash,
-            language: ref.language,
+            documentType: snapshot.documentType,
+            documentVersion: snapshot.renderedVersion,
+            immutableDocumentHash: snapshot.contentHash,
+            language: snapshot.language,
             purpose: 'Rental contract formation',
             source: 'checkout_wizard',
-            legalDocumentId: ref.legalDocumentId,
-            generatedDocumentId: ref.generatedDocumentId,
-            requestId: `checkout:${input.bookingId}:terms:${ref.immutableDocumentHash}`,
-            metadata: input.actorUserId
-              ? { recordedByUserId: input.actorUserId }
-              : undefined,
+            legalDocumentId: snapshot.legalDocumentId,
+            generatedDocumentId: snapshot.generatedDocumentId,
+            legalDocumentSnapshotId: snapshot.id,
+            requestId: `checkout:${input.bookingId}:terms:${snapshot.contentHash}`,
+            metadata: {
+              hashAlgorithm: snapshot.hashAlgorithm,
+              templateVersion: snapshot.templateVersion,
+              ...(input.actorUserId ? { recordedByUserId: input.actorUserId } : {}),
+            },
           }),
         );
       }
     }
 
     if (input.privacyAccepted) {
-      const ref = await this.resolveGeneratedDocumentRef(
-        input.organizationId,
-        bundle?.privacyDocumentId,
-      );
-      if (ref) {
+      const snapshot = snapshotByType.get(DOCUMENT_TYPE.PRIVACY_POLICY);
+      if (snapshot && snapshot.integrityStatus !== 'CHECKSUM_MISMATCH') {
         results.push(
           await this.recordAcceptance({
             organizationId: input.organizationId,
@@ -326,18 +332,21 @@ export class BookingLegalAcceptanceService {
             customerId: input.customerId,
             actor,
             acceptanceType: 'PRIVACY_NOTICE_ACKNOWLEDGMENT',
-            documentType: ref.documentType || DOCUMENT_TYPE.PRIVACY_POLICY,
-            documentVersion: ref.documentVersion,
-            immutableDocumentHash: ref.immutableDocumentHash,
-            language: ref.language,
+            documentType: snapshot.documentType,
+            documentVersion: snapshot.renderedVersion,
+            immutableDocumentHash: snapshot.contentHash,
+            language: snapshot.language,
             purpose: 'Privacy notice acknowledgment (Art. 13/14 GDPR)',
             source: 'checkout_wizard',
-            legalDocumentId: ref.legalDocumentId,
-            generatedDocumentId: ref.generatedDocumentId,
-            requestId: `checkout:${input.bookingId}:privacy_notice:${ref.immutableDocumentHash}`,
-            metadata: input.actorUserId
-              ? { recordedByUserId: input.actorUserId }
-              : undefined,
+            legalDocumentId: snapshot.legalDocumentId,
+            generatedDocumentId: snapshot.generatedDocumentId,
+            legalDocumentSnapshotId: snapshot.id,
+            requestId: `checkout:${input.bookingId}:privacy_notice:${snapshot.contentHash}`,
+            metadata: {
+              hashAlgorithm: snapshot.hashAlgorithm,
+              templateVersion: snapshot.templateVersion,
+              ...(input.actorUserId ? { recordedByUserId: input.actorUserId } : {}),
+            },
           }),
         );
       }
@@ -440,15 +449,27 @@ export class BookingLegalAcceptanceService {
       input.kind === 'PICKUP'
         ? DOCUMENT_TYPE.HANDOVER_PICKUP
         : DOCUMENT_TYPE.HANDOVER_RETURN;
-    const hash =
-      protocolDoc?.checksum ??
-      `handover:${input.handoverProtocolId}:${acceptanceType}`;
-    const version =
-      protocolDoc?.legalVersionLabel ??
-      protocolDoc?.templateVersion ??
-      'handover-v1';
 
     const results: BookingLegalAcceptanceDto[] = [];
+    let snapshotId: string | null = null;
+    let snapshotHash = protocolDoc?.checksum ?? `handover:${input.handoverProtocolId}:${acceptanceType}`;
+    let snapshotVersion =
+      protocolDoc?.legalVersionLabel ?? protocolDoc?.templateVersion ?? 'handover-v1';
+    let snapshotLanguage = this.extractLanguage(protocolDoc?.metadata);
+
+    if (protocolDoc?.checksum) {
+      const snapshot = await this.legalDocumentSnapshots.createFromGeneratedDocument({
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        generatedDocumentId: protocolDoc.id,
+        presentationContext: 'HANDOVER',
+        actorUserId: input.actorUserId ?? null,
+      });
+      snapshotId = snapshot.id;
+      snapshotHash = snapshot.contentHash;
+      snapshotVersion = snapshot.renderedVersion;
+      snapshotLanguage = snapshot.language;
+    }
 
     if (input.customerSignatureName) {
       results.push(
@@ -459,14 +480,15 @@ export class BookingLegalAcceptanceService {
           actor: { actorType: 'CUSTOMER', actorId: input.customerId },
           acceptanceType,
           documentType: protocolDoc?.documentType ?? documentType,
-          documentVersion: version,
-          immutableDocumentHash: hash,
-          language: this.extractLanguage(protocolDoc?.metadata),
+          documentVersion: snapshotVersion,
+          immutableDocumentHash: snapshotHash,
+          language: snapshotLanguage,
           purpose: `${input.kind} customer signature`,
           source: 'handover_flow',
           handoverProtocolId: input.handoverProtocolId,
           generatedDocumentId: protocolDoc?.id ?? null,
           legalDocumentId: protocolDoc?.legalDocumentId ?? null,
+          legalDocumentSnapshotId: snapshotId,
           requestId: `handover:${input.handoverProtocolId}:customer:${acceptanceType}`,
           metadata: {
             signatureRole: 'customer',
@@ -486,14 +508,15 @@ export class BookingLegalAcceptanceService {
           actor: { actorType: 'STAFF_USER', actorId: input.actorUserId },
           acceptanceType,
           documentType: protocolDoc?.documentType ?? documentType,
-          documentVersion: version,
-          immutableDocumentHash: hash,
-          language: this.extractLanguage(protocolDoc?.metadata),
+          documentVersion: snapshotVersion,
+          immutableDocumentHash: snapshotHash,
+          language: snapshotLanguage,
           purpose: `${input.kind} staff countersignature`,
           source: 'handover_flow',
           handoverProtocolId: input.handoverProtocolId,
           generatedDocumentId: protocolDoc?.id ?? null,
           legalDocumentId: protocolDoc?.legalDocumentId ?? null,
+          legalDocumentSnapshotId: snapshotId,
           requestId: `handover:${input.handoverProtocolId}:staff:${acceptanceType}`,
           metadata: {
             signatureRole: 'staff',

@@ -149,6 +149,7 @@ export interface BookingLegalAcceptanceDto {
   relatedAcceptanceId: string | null;
   legalDocumentId: string | null;
   generatedDocumentId: string | null;
+  legalDocumentSnapshotId: string | null;
   handoverProtocolId: string | null;
   requestId: string | null;
   metadata: unknown;
@@ -182,6 +183,7 @@ export function toBookingLegalAcceptanceDto(
     relatedAcceptanceId: row.relatedAcceptanceId,
     legalDocumentId: row.legalDocumentId,
     generatedDocumentId: row.generatedDocumentId,
+    legalDocumentSnapshotId: row.legalDocumentSnapshotId,
     handoverProtocolId: row.handoverProtocolId,
     requestId: row.requestId,
     metadata: row.metadata,

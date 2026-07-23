@@ -65,6 +65,7 @@ import {
 import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
 import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
 import { RentalContractService } from './rental-contract.service';
+import { BookingLegalDocumentSnapshotService } from './legal-document-snapshot/booking-legal-document-snapshot.service';
 import {
   completenessLegalMissingDocumentTypes,
   completenessToBundleViewWarnings,
@@ -135,6 +136,7 @@ export class BookingDocumentBundleService {
     private readonly bundleMonitoring: BookingDocumentBundleMonitoringService,
     private readonly bundleCompleteness: BookingDocumentCompletenessService,
     private readonly rentalContract: RentalContractService,
+    private readonly legalDocumentSnapshots: BookingLegalDocumentSnapshotService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -771,8 +773,19 @@ export class BookingDocumentBundleService {
 
       const existing = await this.existingBundleDoc(orgId, bundle, slotType);
       if (existing && !force && existing.legalDocumentId === legal.id) {
+        this.legalDocumentSnapshots.assertNoSilentRegeneration(existing, {
+          versionLabel: legal.versionLabel,
+          checksum: legal.checksum,
+        });
         await this.setBundlePointer(bundle, slotType, existing.id, { force: false });
         continue;
+      }
+
+      if (existing && !force) {
+        this.legalDocumentSnapshots.assertNoSilentRegeneration(existing, {
+          versionLabel: legal.versionLabel,
+          checksum: legal.checksum,
+        });
       }
 
       const ref = await this.prisma.generatedDocument.create({
@@ -816,6 +829,20 @@ export class BookingDocumentBundleService {
       });
       if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
       await this.setBundlePointer(bundle, slotType, ref.id, { force });
+
+      await this.legalDocumentSnapshots
+        .createFromGeneratedDocument({
+          organizationId: orgId,
+          bookingId: booking.id,
+          generatedDocumentId: ref.id,
+          presentationContext: 'STATIC_LEGAL_ATTACH',
+          actorUserId: userId ?? null,
+        })
+        .catch((err) => {
+          this.logger.error(
+            `Failed to create legal document snapshot for ${slotType}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
   }
 

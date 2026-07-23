@@ -1,6 +1,7 @@
 import { BookingLegalAcceptanceService } from './booking-legal-acceptance.service';
 import { BookingLegalAcceptanceError } from './booking-legal-acceptance.errors';
 import { BOOKING_LEGAL_ACCEPTANCE_ERROR_CODE } from './booking-legal-acceptance.constants';
+import type { BookingLegalDocumentSnapshotService } from '@modules/documents/legal-document-snapshot/booking-legal-document-snapshot.service';
 
 function makePrisma(overrides: Record<string, unknown> = {}) {
   const store: {
@@ -131,9 +132,73 @@ function flattenCreateData(data: Record<string, unknown>): Record<string, unknow
 }
 
 describe('BookingLegalAcceptanceService', () => {
+  function makeSvc(prisma: unknown, snapshotSvc?: Partial<BookingLegalDocumentSnapshotService>) {
+    const legalDocumentSnapshots = {
+      ensureCheckoutSnapshots: jest.fn(async () => []),
+      createFromGeneratedDocument: jest.fn(async () => ({
+        id: 'snap-1',
+        contentHash: 'a'.repeat(64),
+        renderedVersion: 'v1',
+        language: 'de',
+        hashAlgorithm: 'sha256',
+        templateVersion: '1',
+        documentType: 'TERMS_AND_CONDITIONS',
+        legalDocumentId: 'legal-terms',
+        generatedDocumentId: 'gen-terms',
+        integrityStatus: 'VERIFIED',
+      })),
+      ...snapshotSvc,
+    };
+    return {
+      svc: new BookingLegalAcceptanceService(prisma as never, legalDocumentSnapshots as never),
+      legalDocumentSnapshots,
+    };
+  }
+
   it('records terms and privacy notice acknowledgment separately at checkout', async () => {
     const { prisma, store } = makePrisma();
-    const svc = new BookingLegalAcceptanceService(prisma as never);
+    const { svc, legalDocumentSnapshots } = makeSvc(prisma, {
+      ensureCheckoutSnapshots: jest.fn(async () => [
+        {
+          id: 'snap-terms',
+          organizationId: 'org-1',
+          bookingId: 'bk-1',
+          documentType: 'TERMS_AND_CONDITIONS',
+          templateKey: null,
+          templateVersion: '1',
+          renderedVersion: 'v2026-01',
+          hashAlgorithm: 'sha256',
+          contentHash: 'a'.repeat(64),
+          language: 'de',
+          generatedDocumentId: 'gen-terms',
+          legalDocumentId: 'legal-terms',
+          presentationContext: 'CHECKOUT',
+          integrityStatus: 'VERIFIED',
+          integrityVerifiedAt: null,
+          idempotencyKey: 'k1',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'snap-privacy',
+          organizationId: 'org-1',
+          bookingId: 'bk-1',
+          documentType: 'PRIVACY_POLICY',
+          templateKey: null,
+          templateVersion: '1',
+          renderedVersion: 'v2026-02',
+          hashAlgorithm: 'sha256',
+          contentHash: 'b'.repeat(64),
+          language: 'de',
+          generatedDocumentId: 'gen-privacy',
+          legalDocumentId: 'legal-privacy',
+          presentationContext: 'CHECKOUT',
+          integrityStatus: 'VERIFIED',
+          integrityVerifiedAt: null,
+          idempotencyKey: 'k2',
+          createdAt: new Date().toISOString(),
+        },
+      ]),
+    });
 
     const rows = await svc.recordCheckoutAcceptancesFromFlags({
       organizationId: 'org-1',
@@ -149,13 +214,15 @@ describe('BookingLegalAcceptanceService', () => {
       'PRIVACY_NOTICE_ACKNOWLEDGMENT',
     ]);
     expect(rows[1].legalBasis).toBe('NOTICE_ACKNOWLEDGMENT');
+    expect(rows[0].legalDocumentSnapshotId).toBe('snap-terms');
+    expect(rows[1].legalDocumentSnapshotId).toBe('snap-privacy');
+    expect(legalDocumentSnapshots.ensureCheckoutSnapshots).toHaveBeenCalled();
     expect(store.acceptances).toHaveLength(2);
   });
 
-  it('does not fabricate acceptance when document checksum is missing', async () => {
-    const { prisma, store } = makePrisma();
-    store.generatedDocuments[0].checksum = null;
-    const svc = new BookingLegalAcceptanceService(prisma as never);
+  it('does not fabricate acceptance when no checkout snapshots exist', async () => {
+    const { prisma } = makePrisma();
+    const { svc } = makeSvc(prisma, { ensureCheckoutSnapshots: jest.fn(async () => []) });
 
     const rows = await svc.recordCheckoutAcceptancesFromFlags({
       organizationId: 'org-1',
@@ -170,7 +237,7 @@ describe('BookingLegalAcceptanceService', () => {
 
   it('is idempotent via requestId', async () => {
     const { prisma } = makePrisma();
-    const svc = new BookingLegalAcceptanceService(prisma as never);
+    const { svc } = makeSvc(prisma);
 
     const first = await svc.recordAcceptance({
       organizationId: 'org-1',
@@ -204,7 +271,7 @@ describe('BookingLegalAcceptanceService', () => {
 
   it('rejects revocation for non-revocable acceptance types', async () => {
     const { prisma } = makePrisma();
-    const svc = new BookingLegalAcceptanceService(prisma as never);
+    const { svc } = makeSvc(prisma);
 
     const acceptance = await svc.recordAcceptance({
       organizationId: 'org-1',
@@ -236,7 +303,7 @@ describe('BookingLegalAcceptanceService', () => {
 
   it('appends revocation event for marketing consent', async () => {
     const { prisma, store } = makePrisma();
-    const svc = new BookingLegalAcceptanceService(prisma as never);
+    const { svc } = makeSvc(prisma);
 
     const acceptance = await svc.recordAcceptance({
       organizationId: 'org-1',
@@ -270,7 +337,7 @@ describe('BookingLegalAcceptanceService', () => {
 
   it('rejects forbidden metadata keys', async () => {
     const { prisma } = makePrisma();
-    const svc = new BookingLegalAcceptanceService(prisma as never);
+    const { svc } = makeSvc(prisma);
 
     await expect(
       svc.recordAcceptance({
@@ -291,7 +358,7 @@ describe('BookingLegalAcceptanceService', () => {
 
   it('records handover signatures without embedding raw signature blobs', async () => {
     const { prisma, store } = makePrisma();
-    const svc = new BookingLegalAcceptanceService(prisma as never);
+    const { svc } = makeSvc(prisma);
 
     const rows = await svc.recordHandoverSignatures({
       organizationId: 'org-1',

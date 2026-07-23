@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { Readable } from 'stream';
 import { GeneratedDocument, Prisma } from '@prisma/client';
@@ -7,8 +7,10 @@ import {
   DOCUMENTS_STORAGE,
   DocumentStoragePort,
 } from './storage/document-storage.interface';
-import { DOCUMENT_ORIGIN, DOCUMENT_STATUS, DOCUMENT_TYPE } from './documents.constants';
+import { DOCUMENT_ORIGIN, DOCUMENT_STATUS, DOCUMENT_TYPE, isLegalDocumentType } from './documents.constants';
 import { dedupeDocumentsByType } from './document-list-dedupe.util';
+import { LegalDocumentChecksumVerificationService } from './integrity/legal-document-checksum-verification.service';
+import { LEGAL_DOCUMENT_INTEGRITY_STATUS } from './integrity/legal-document-integrity.constants';
 
 export interface CreateGeneratedDocumentInput {
   organizationId: string;
@@ -57,6 +59,8 @@ export interface DocumentDownload {
   fileName: string;
   mimeType: string;
   sizeBytes: number | null;
+  integrityStatus?: string;
+  contentHash?: string | null;
 }
 
 /**
@@ -72,6 +76,7 @@ export class GeneratedDocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
+    private readonly checksumVerification: LegalDocumentChecksumVerificationService,
   ) {}
 
   async createFromPdf(input: CreateGeneratedDocumentInput): Promise<GeneratedDocument> {
@@ -230,12 +235,51 @@ export class GeneratedDocumentsService {
   /** Returns a stream + headers for an authenticated download. Serves the stored file. */
   async getDownload(orgId: string, documentId: string): Promise<DocumentDownload> {
     const doc = await this.getById(orgId, documentId);
+    const requiresIntegrity =
+      doc.origin === DOCUMENT_ORIGIN.STATIC_LEGAL || isLegalDocumentType(doc.documentType);
+
+    if (requiresIntegrity && doc.checksum) {
+      const verification = await this.checksumVerification.verify({
+        organizationId: orgId,
+        legalDocumentId: doc.legalDocumentId ?? doc.id,
+        objectKey: doc.objectKey,
+        checksum: doc.checksum,
+        sizeBytes: doc.sizeBytes,
+      });
+      if (verification.status === LEGAL_DOCUMENT_INTEGRITY_STATUS.CHECKSUM_MISMATCH) {
+        throw new ConflictException({
+          code: 'GENERATED_DOCUMENT_INTEGRITY_FAILED',
+          message: 'Stored document checksum does not match database record',
+          documentId: doc.id,
+          integrityStatus: verification.status,
+        });
+      }
+      if (verification.status === LEGAL_DOCUMENT_INTEGRITY_STATUS.MISSING_OBJECT) {
+        throw new ConflictException({
+          code: 'GENERATED_DOCUMENT_MISSING_OBJECT',
+          message: 'Stored document object is missing',
+          documentId: doc.id,
+          integrityStatus: verification.status,
+        });
+      }
+      const stream = await this.storage.getObjectStream(doc.objectKey);
+      return {
+        stream,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+        sizeBytes: doc.sizeBytes,
+        integrityStatus: verification.status,
+        contentHash: doc.checksum,
+      };
+    }
+
     const stream = await this.storage.getObjectStream(doc.objectKey);
     return {
       stream,
       fileName: doc.fileName,
       mimeType: doc.mimeType,
       sizeBytes: doc.sizeBytes,
+      contentHash: doc.checksum,
     };
   }
 

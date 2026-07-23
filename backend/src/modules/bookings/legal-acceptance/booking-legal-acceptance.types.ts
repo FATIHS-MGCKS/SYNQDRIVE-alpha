@@ -31,6 +31,7 @@ export interface RecordBookingLegalAcceptanceInput {
   relatedAcceptanceId?: string | null;
   legalDocumentId?: string | null;
   generatedDocumentId?: string | null;
+  legalDocumentSnapshotId?: string | null;
   handoverProtocolId?: string | null;
   requestId?: string | null;
   metadata?: Prisma.InputJsonValue | null;

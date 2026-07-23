@@ -7,6 +7,8 @@ import { TasksModule } from '@modules/tasks/tasks.module';
 import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
 import { LegalDocumentDeliveryEvidenceController } from './legal-document-delivery-evidence.controller';
+import { BookingLegalDocumentSnapshotController } from './legal-document-snapshot/booking-legal-document-snapshot.controller';
+import { BookingLegalDocumentSnapshotService } from './legal-document-snapshot/booking-legal-document-snapshot.service';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LegalDocumentScopeService } from './legal-document-scope.service';
@@ -71,7 +73,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     TasksModule,
     forwardRef(() => BookingDocumentGenerationModule),
   ],
-  controllers: [DocumentsController, LegalDocumentsController, LegalDocumentDeliveryEvidenceController],
+  controllers: [DocumentsController, LegalDocumentsController, LegalDocumentDeliveryEvidenceController, BookingLegalDocumentSnapshotController],
   providers: [
     LocalDocumentStorageService,
     S3PrivateDocumentStorageService,
@@ -151,6 +153,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     RentalContractLegalSnapshotService,
     RentalContractService,
     LegalDocumentDeliveryEvidenceService,
+    BookingLegalDocumentSnapshotService,
     BookingDocumentBundleService,
     LegalDocumentRetentionPolicyService,
     LegalDocumentRetentionReferenceService,
@@ -165,6 +168,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     BookingDocumentGenerationModule,
     RentalContractService,
     LegalDocumentDeliveryEvidenceService,
+    BookingLegalDocumentSnapshotService,
     GeneratedDocumentsService,
     LegalDocumentEventsService,
     LegalDocumentResolverService,

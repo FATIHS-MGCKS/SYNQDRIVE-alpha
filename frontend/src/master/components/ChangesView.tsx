@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-legal-document-snapshot-v49790-2026-07-23',
+    version: '4.9.790',
+    title: 'V4.9.790 — Booking legal document snapshots (Prompt 18)',
+    summary: [
+      'Append-only `booking_legal_document_snapshots` — unveränderbare Version + SHA-256-Hash vor Checkout/Signatur.',
+      'Felder: templateVersion, renderedVersion, hashAlgorithm, contentHash, language, generatedDocumentId, presentationContext.',
+      'Legal Acceptance verweist via `legalDocumentSnapshotId` auf exakten Snapshot — nicht auf Live-Template.',
+      'Integritätsprüfung beim Download (STATIC_LEGAL/legal types); `assertNoSilentRegeneration` blockiert stillen Versionersatz.',
+      'Audit-Events (`SNAPSHOT_CREATED`, `INTEGRITY_VERIFIED/FAILED`); Tests für Template-Wechsel, Hash-Manipulation, Sprachen, Idempotenz, Cross-Tenant.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 18 — kryptografisch gebundene Dokument-Snapshots.',
+    previousBehavior: 'Acceptance nutzte GeneratedDocument-Checksum ohne dedizierten Snapshot; Download ohne Integritätsprüfung.',
+    details:
+      'prisma/migrations/20260723600000_booking_legal_document_snapshot, legal-document-snapshot/*, generated-documents.service.ts, booking-document-bundle.service.ts, booking-legal-acceptance.service.ts, docs/privacy/booking-legal-document-snapshot.md',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T22:45:00.000Z',
+  },
+  {
     id: 'booking-legal-acceptance-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Booking legal acceptance model (Prompt 17)',
