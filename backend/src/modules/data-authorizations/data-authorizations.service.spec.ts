@@ -24,7 +24,11 @@ describe('DataAuthorizationsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new DataAuthorizationsService(prisma as any, audit as any);
+    service = new DataAuthorizationsService(
+      prisma as any,
+      audit as any,
+      { invalidateOrgGpsCaches: jest.fn().mockResolvedValue(undefined) } as any,
+    );
   });
 
   describe('ensureDimoTelemetryAuthorization', () => {

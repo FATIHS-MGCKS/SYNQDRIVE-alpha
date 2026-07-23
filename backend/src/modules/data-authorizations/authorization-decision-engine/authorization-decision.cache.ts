@@ -62,6 +62,18 @@ export class AuthorizationDecisionCache {
     this.entries.clear();
   }
 
+  invalidateOrganization(organizationId: string): number {
+    let removed = 0;
+    const prefix = `${organizationId}|`;
+    for (const key of [...this.entries.keys()]) {
+      if (key.startsWith(prefix)) {
+        this.entries.delete(key);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
   get size(): number {
     return this.entries.size;
   }

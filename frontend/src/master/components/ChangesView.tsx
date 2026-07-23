@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'live-gps-enforcement-v49799-2026-07-23',
+    version: '4.9.799',
+    title: 'V4.9.799 — Live-GPS-Enforcement gehärtet (Prompt 16)',
+    summary: [
+      'Zentraler LiveGpsEnforcementService — jeder GPS-Zugriff mit vollständiger Authorization Decision (GPS_LOCATION, READ, Zweck, Service Identity, Vehicle-ID) vor Datenrückgabe.',
+      'Fleet Map, Telemetry, Vehicle List/Detail, Fleet Connectivity, Trip Route/Detail und Master-Admin Fleet Connectivity abgesichert; Cache-Gate auch bei Redis-Hit.',
+      'Widerruf invalidiert Decision-Cache + Fleet-Map-Redis; DENY als GPS_ACCESS_DENIED ohne Koordinaten in Logs.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 16 — keine Umgehung über parallele Read-Pfade oder stale Caches.',
+    previousBehavior:
+      'Nur GET /live-gps mit Enforcement (und nur bei DIMO-Token); Fleet Map, Telemetry, Trips und Admin-Connectivity lieferten Koordinaten ohne Decision.',
+    details:
+      'live-gps-enforcement/: LiveGpsEnforcementService, Exceptions, Constants. VehiclesService/TripsService/DimoController verdrahtet. data-authorizations revoke → invalidateOrgGpsCaches. Doku: docs/architecture/live-gps-enforcement-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:45:00.000Z',
+  },
+  {
     id: 'data-authorization-audit-logging-v49798-2026-07-23',
     version: '4.9.798',
     title: 'V4.9.798 — Append-only Lifecycle- & Decision-Logging (Prompt 15)',

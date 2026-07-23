@@ -18,6 +18,11 @@ import type { DimoVehicleInput } from './dimo-vehicle-sync.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoConnectionStatus } from '@prisma/client';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { LiveGpsEnforcementService } from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.service';
+import {
+  LIVE_GPS_PURPOSE,
+  LIVE_GPS_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.constants';
 
 const CONNECTION_STATUS_MAP: Record<DimoConnectionStatus, string> = {
   CONNECTED: 'Connected',
@@ -36,6 +41,7 @@ export class DimoController {
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly prisma: PrismaService,
+    private readonly liveGpsEnforcement: LiveGpsEnforcementService,
   ) {}
 
   @Get('vehicles')
@@ -323,16 +329,33 @@ export class DimoController {
       };
     });
 
-    const onlineCount = items.filter(i => i.connectionStatus === 'online').length;
-    const standbyCount = items.filter(i => i.connectionStatus === 'standby').length;
-    const offlineCount = items.filter(i => i.connectionStatus === 'offline').length;
-    const notConnected = items.filter(i => i.connectionStatus === 'not_connected').length;
-    const withTelemetry = items.filter(i => i.hasTelemetry).length;
-    const avgSignalCoverage = items.length > 0 ? Math.round(items.reduce((s, i) => s + i.signalCoverage, 0) / items.length) : 0;
+    const gatedItems = await Promise.all(
+      items.map(async (item) => {
+        if (!item.organizationId) {
+          return { ...item, latitude: null, longitude: null };
+        }
+        const allowed = await this.liveGpsEnforcement.isVehicleGpsReadAllowed({
+          organizationId: item.organizationId,
+          vehicleId: item.vehicleId,
+          purpose: LIVE_GPS_PURPOSE.TECHNICAL_OVERVIEW,
+          serviceIdentity: LIVE_GPS_SERVICE_IDENTITY.MASTER_ADMIN_SUPPORT,
+          correlationId: `master-admin-fleet:${item.vehicleId}`,
+          supportAccess: true,
+        });
+        return allowed ? item : { ...item, latitude: null, longitude: null };
+      }),
+    );
+
+    const onlineCount = gatedItems.filter(i => i.connectionStatus === 'online').length;
+    const standbyCount = gatedItems.filter(i => i.connectionStatus === 'standby').length;
+    const offlineCount = gatedItems.filter(i => i.connectionStatus === 'offline').length;
+    const notConnected = gatedItems.filter(i => i.connectionStatus === 'not_connected').length;
+    const withTelemetry = gatedItems.filter(i => i.hasTelemetry).length;
+    const avgSignalCoverage = gatedItems.length > 0 ? Math.round(gatedItems.reduce((s, i) => s + i.signalCoverage, 0) / gatedItems.length) : 0;
 
     return {
       summary: {
-        total: items.length,
+        total: gatedItems.length,
         online: onlineCount,
         standby: standbyCount,
         offline: offlineCount,
@@ -351,7 +374,7 @@ export class DimoController {
         lastFailureError: lastFailure?.errorMessage ?? null,
         lastFailureJobType: lastFailure?.jobType ?? null,
       },
-      vehicles: items,
+      vehicles: gatedItems,
     };
   }
 

@@ -1,5 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { LiveGpsEnforcementService } from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.service';
+import {
+  LIVE_GPS_PURPOSE,
+  LIVE_GPS_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.constants';
 import {
   DimoSegmentsService,
   RoutePoint,
@@ -61,6 +66,7 @@ export class TripsService {
     @Inject(ROUTE_MAP_MATCHER)
     private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
+    private readonly liveGpsEnforcement: LiveGpsEnforcementService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -104,13 +110,44 @@ export class TripsService {
 
   async findById(organizationId: string, tripId: string) {
     await assertTripInOrganization(this.prisma, organizationId, tripId);
-    return this.prisma.vehicleTrip.findFirst({
+    const trip = await this.prisma.vehicleTrip.findFirst({
       where: { id: tripId, vehicle: { organizationId } },
       include: {
         waypoints: { orderBy: { recordedAt: 'asc' } },
         events: { orderBy: { recordedAt: 'asc' } },
       },
     });
+    if (!trip) return null;
+
+    const allowed = await this.liveGpsEnforcement.isVehicleGpsReadAllowed({
+      organizationId,
+      vehicleId: trip.vehicleId,
+      purpose: LIVE_GPS_PURPOSE.TRIPS,
+      serviceIdentity: LIVE_GPS_SERVICE_IDENTITY.TRIPS_DETAIL_API,
+      correlationId: `trip-detail:${tripId}`,
+    });
+
+    if (!allowed) {
+      return {
+        ...trip,
+        startLatitude: null,
+        startLongitude: null,
+        endLatitude: null,
+        endLongitude: null,
+        waypoints: trip.waypoints.map((w) => ({
+          ...w,
+          latitude: null,
+          longitude: null,
+        })),
+        events: trip.events.map((e) => ({
+          ...e,
+          latitude: null,
+          longitude: null,
+        })),
+      };
+    }
+
+    return trip;
   }
 
   async getRouteForTrip(
@@ -127,6 +164,14 @@ export class TripsService {
     if (scopedVehicleId !== vehicleId) {
       return [];
     }
+
+    await this.liveGpsEnforcement.assertVehicleGpsRead({
+      organizationId,
+      vehicleId,
+      purpose: LIVE_GPS_PURPOSE.TRIPS,
+      serviceIdentity: LIVE_GPS_SERVICE_IDENTITY.TRIPS_ROUTE_API,
+      correlationId: `trip-route:${tripId}`,
+    });
 
     const trip = await this.prisma.vehicleTrip.findFirst({
       where: { id: tripId, vehicle: { organizationId } },

@@ -162,4 +162,10 @@ export class AuthorizationDecisionService {
       correlationId: request.correlationId,
     };
   }
+
+  /** Drop cached ALLOW decisions for an org — e.g. after authorization revocation. */
+  invalidateOrganizationCache(organizationId: string): number {
+    if (!this.cache || !organizationId) return 0;
+    return this.cache.invalidateOrganization(organizationId);
+  }
 }
