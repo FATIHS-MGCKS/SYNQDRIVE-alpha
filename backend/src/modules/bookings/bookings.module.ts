@@ -29,6 +29,7 @@ import { BookingPermissionsGuard } from './guards/booking-permissions.guard';
 import { BookingCreateValidationService } from './booking-create.validation.service';
 import { BookingUpdateService } from './booking-update.service';
 import { HandoverValidationService } from './handover-validation.service';
+import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
 
 @Module({
@@ -65,6 +66,7 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingCreateValidationService,
     BookingUpdateService,
     HandoverValidationService,
+    BookingStatusTransitionService,
     BookingPermissionsGuard,
   ],
   exports: [

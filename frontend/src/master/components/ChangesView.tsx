@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-state-machine-prompt8-2026-07-23',
+    version: '4.9.780',
+    title: 'Booking Production-Readiness — Central State Machine (Prompt 8/34)',
+    summary: [
+      'Geschlossene Booking-State-Machine als einzige Wahrheit für `Booking.status`-Übergänge (9 explizite Transitionen).',
+      '`BookingStatusTransitionService` — Preconditions, Audit (`ActivityLog`), Workflow-Events, Actor/Timestamp/Reason-Code nach atomarem DB-Write.',
+      'ACTIVE nur via Pickup-Handover; COMPLETED nur via Return-Handover; NO_SHOW nur aus CONFIRMED nach Pickup-Zeitpunkt.',
+      'CANCELLED nur aus PENDING/CONFIRMED/ACTIVE; Terminalzustände nicht normal reaktivierbar — Admin-Override via `booking.override` + Mindestbegründung.',
+      'Generisches Update blockiert Statusänderungen (`BOOKING_STATUS_CHANGE_VIA_GENERIC_UPDATE_FORBIDDEN`); Wizard-Confirm nutzt `confirm`-Transition.',
+      'Vollständige Transition-Matrix-Tests in `booking-state-machine.spec.ts`; Doku `docs/architecture/booking-state-machine.md`.',
+    ],
+    reason: 'Booking Production-Readiness Prompt 8 — zentrale, erzwungene Status-State-Machine statt verteilter Ad-hoc-Übergänge.',
+    previousBehavior:
+      'Statuswechsel teils direkt in Services/Updates ohne geschlossene Matrix; Cancel ohne Vorzustands-Guard; Handover-Status-Gates lokal; kein einheitliches Audit/Workflow pro Transition.',
+    details:
+      'docs/architecture/booking-state-machine.md, state-machine/*, bookings.service.ts, bookings-handover.service.ts, booking-wizard-draft.service.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / Lifecycle',
+    createdAt: '2026-07-23T21:00:00.000Z',
+  },
+  {
     id: 'booking-handover-dto-prompt7-2026-07-23',
     version: '4.9.779',
     title: 'Booking Production-Readiness — Handover DTO Validation (Prompt 7/34)',

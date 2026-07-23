@@ -598,9 +598,13 @@ export class BookingsController {
   async cancel(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null },
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, id);
-    return this.bookingsService.cancel(orgId, id);
+    return this.bookingsService.cancel(orgId, id, {
+      userId: user?.id ?? null,
+      displayName: user?.displayName ?? user?.name ?? null,
+    });
   }
 
   @Post(':id/no-show')
@@ -609,9 +613,13 @@ export class BookingsController {
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: MarkBookingNoShowDto,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null },
   ) {
     await this.bookingAccess.assertBookingInOrg(orgId, id);
-    return this.bookingsService.markNoShow(orgId, id, body.reason ?? null);
+    return this.bookingsService.markNoShow(orgId, id, body.reason ?? null, {
+      userId: user?.id ?? null,
+      displayName: user?.displayName ?? user?.name ?? null,
+    });
   }
 
   @Get(':id/handover')

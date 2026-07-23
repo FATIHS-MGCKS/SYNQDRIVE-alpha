@@ -19,6 +19,7 @@ import {
 } from './handover.types';
 import type { CreateHandoverCommand } from './handover-command.types';
 import { HandoverValidationService } from './handover-validation.service';
+import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
 import { HANDOVER_ERROR_CODES } from './handover-error.codes';
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
@@ -67,6 +68,7 @@ export class BookingsHandoverService {
     private readonly pickupGate: BookingPickupGateService,
     private readonly pickupGateAudit: BookingPickupGateAuditService,
     private readonly handoverValidation: HandoverValidationService,
+    private readonly statusTransition: BookingStatusTransitionService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -156,8 +158,16 @@ export class BookingsHandoverService {
       booking.startDate,
     );
 
-    this.handoverValidation.assertBookingStatus(kind, booking.status);
     this.handoverValidation.assertWarningLightsNotes(command);
+
+    const transitionTo: BookingStatus =
+      kind === 'PICKUP' ? 'ACTIVE' : 'COMPLETED';
+    const transitionTrigger = kind === 'PICKUP' ? 'pickup_handover' : 'return_handover';
+    const plannedTransition = this.statusTransition.planTransition({
+      from: booking.status,
+      to: transitionTo,
+      trigger: transitionTrigger,
+    });
 
     let pickupOdometerKm: number | null = null;
     if (kind === 'RETURN') {
@@ -206,9 +216,6 @@ export class BookingsHandoverService {
       });
     }
 
-    const transitionTo: BookingStatus =
-      kind === 'PICKUP' ? 'ACTIVE' : 'COMPLETED';
-
     const damageIds = command.damageIds ?? [];
 
     const [protocol, updatedBooking] = await this.prisma.$transaction(
@@ -246,8 +253,13 @@ export class BookingsHandoverService {
           },
         });
 
+        const statusPatch = this.statusTransition.buildUpdateData(
+          transitionTo,
+          kind === 'RETURN' ? { completedAt: new Date() } : undefined,
+        );
         const bookingUpdateData: Prisma.BookingUpdateInput = {
-          status: transitionTo,
+          status: statusPatch.status,
+          ...(statusPatch.completedAt ? { completedAt: statusPatch.completedAt } : {}),
         };
         const actualStationId =
           command.actualStationId ??
@@ -256,7 +268,6 @@ export class BookingsHandoverService {
           bookingUpdateData.actualPickupStation = { connect: { id: actualStationId } };
         }
         if (kind === 'RETURN') {
-          bookingUpdateData.completedAt = new Date();
           if (actualStationId) {
             bookingUpdateData.actualReturnStation = { connect: { id: actualStationId } };
           }
@@ -438,6 +449,23 @@ export class BookingsHandoverService {
       },
     );
 
+    await this.statusTransition.commitTransitionEffects(
+      {
+        organizationId: orgId,
+        bookingId,
+        vehicleId: booking.vehicleId,
+        from: booking.status,
+        to: transitionTo,
+        trigger: transitionTrigger,
+        actor: {
+          userId: actor.userId,
+          displayName: actor.displayName,
+        },
+        correlationId: `${kind.toLowerCase()}:${bookingId}`,
+      },
+      plannedTransition,
+    );
+
     // After a successful handover, generate the protocol PDF (and, on return,
     // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
     // status transitions above are never affected by document generation.
@@ -486,11 +514,6 @@ export class BookingsHandoverService {
         ...eventBase,
         type: 'booking.returned',
         idempotencyKey: `booking.returned:${bookingId}`,
-      });
-      this.workflowEvents.scheduleEmit({
-        ...eventBase,
-        type: 'booking.completed',
-        idempotencyKey: `booking.completed:${bookingId}`,
       });
       this.runBackgroundTask(
         `taskAutomation.onReturnHandoverCompleted(${bookingId})`,

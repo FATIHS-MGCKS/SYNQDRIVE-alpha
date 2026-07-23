@@ -46,6 +46,8 @@ import type {
 import type { CreateBookingCommand, UpdateBookingCommand } from './booking-command.types';
 import { createCommandPaymentIntentForPrisma } from './booking-command.mapper';
 import { BookingCreateValidationService } from './booking-create.validation.service';
+import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
+import { BOOKING_STATE_MACHINE_ERROR_CODES } from './state-machine/booking-state-machine-error.codes';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
@@ -112,6 +114,7 @@ export class BookingsService {
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly bookingCreateValidation: BookingCreateValidationService,
+    private readonly statusTransition: BookingStatusTransitionService,
   ) {}
 
   /**
@@ -207,6 +210,7 @@ export class BookingsService {
     });
 
     const requestedStatus: BookingStatus = command.status ?? 'PENDING';
+    this.statusTransition.assertInitialStatus(requestedStatus);
     const pricingInput = this.pricingService.extractPricingInputFromBookingData({
       pricingInput: command.pricingInput,
       extrasJson: command.extrasJson,
@@ -1649,6 +1653,16 @@ export class BookingsService {
       nextEnd.getTime() !== existing.endDate.getTime();
     const statusChanged = nextStatus !== existing.status;
 
+    if (statusChanged) {
+      throw new ConflictException({
+        message:
+          'Booking status cannot be changed via generic update. Use dedicated lifecycle endpoints.',
+        code: BOOKING_STATE_MACHINE_ERROR_CODES.STATUS_CHANGE_VIA_GENERIC_UPDATE_FORBIDDEN,
+        from: existing.status,
+        to: nextStatus,
+      });
+    }
+
     if (vehicleOrDatesChanged && !terminalStatuses.includes(nextStatus)) {
       await this.assertNoVehicleOverlap({
         organizationId: orgId,
@@ -1684,6 +1698,7 @@ export class BookingsService {
       });
     }
 
+    // statusChanged is always false here — guarded above
     const pricingInput = this.pricingService.extractPricingInputFromBookingData({
       pricingInput: command.pricingInput,
       extrasJson: command.extrasJson,
@@ -1889,10 +1904,20 @@ export class BookingsService {
     return updated;
   }
 
-  async cancel(orgId: string, id: string): Promise<Booking> {
+  async cancel(
+    orgId: string,
+    id: string,
+    actor?: { userId?: string | null; displayName?: string | null },
+  ): Promise<Booking> {
     const booking = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
       include: { vehicle: true },
+    });
+
+    const transition = this.statusTransition.planTransition({
+      from: booking.status,
+      to: 'CANCELLED',
+      trigger: 'cancel',
     });
 
     await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
@@ -1900,10 +1925,7 @@ export class BookingsService {
     const [updated] = await this.prisma.$transaction([
       this.prisma.booking.update({
         where: { id },
-        data: {
-          status: 'CANCELLED' as BookingStatus,
-          cancelledAt: new Date(),
-        },
+        data: this.statusTransition.buildUpdateData('CANCELLED'),
       }),
       // Release the car for a replacement booking — but NEVER overwrite a
       // maintenance / out-of-service state (same invariant the handover
@@ -1919,6 +1941,23 @@ export class BookingsService {
         data: { status: VehicleStatus.AVAILABLE },
       }),
     ]);
+
+    await this.statusTransition.commitTransitionEffects(
+      {
+        organizationId: orgId,
+        bookingId: id,
+        vehicleId: booking.vehicleId,
+        from: booking.status,
+        to: 'CANCELLED',
+        trigger: 'cancel',
+        actor: {
+          userId: actor?.userId ?? null,
+          displayName: actor?.displayName ?? null,
+        },
+        correlationId: `cancel:${id}`,
+      },
+      transition,
+    );
 
     void this.taskAutomationService
       .supersedeBookingLifecycleOnCancellation(orgId, id)
@@ -1956,33 +1995,13 @@ export class BookingsService {
     orgId: string,
     id: string,
     reason?: string | null,
+    actor?: { userId?: string | null; displayName?: string | null },
   ): Promise<Booking> {
     const booking = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
       include: { vehicle: true },
     });
 
-    if (booking.status !== 'CONFIRMED') {
-      throw new ConflictException({
-        message: `Buchung kann nicht als No-Show markiert werden: Status ist ${booking.status}, erwartet wird CONFIRMED.`,
-        code: 'BOOKING_NO_SHOW_WRONG_STATUS',
-        currentStatus: booking.status,
-      });
-    }
-
-    if (booking.startDate.getTime() > Date.now()) {
-      throw new BadRequestException({
-        message:
-          'Buchung kann erst nach dem geplanten Pickup-Zeitpunkt als No-Show markiert werden.',
-        code: 'BOOKING_NO_SHOW_TOO_EARLY',
-        scheduledStart: booking.startDate.toISOString(),
-      });
-    }
-
-    // Append reason to the existing booking notes instead of dropping
-    // it — `Booking.notes` is already the free-text column ops uses for
-    // manual context, and we do not want to add a one-off column for
-    // an optional audit string.
     const notesAddendum = reason
       ? `[No-Show ${new Date().toISOString()}] ${reason.trim()}`
       : null;
@@ -1990,14 +2009,17 @@ export class BookingsService {
       ? (booking.notes ? `${booking.notes}\n${notesAddendum}` : notesAddendum)
       : booking.notes;
 
+    const transition = this.statusTransition.planTransition({
+      from: booking.status,
+      to: 'NO_SHOW',
+      trigger: 'mark_no_show',
+      preconditions: { scheduledStartDate: booking.startDate },
+    });
+
     const [updated] = await this.prisma.$transaction([
       this.prisma.booking.update({
         where: { id },
-        data: {
-          status: 'NO_SHOW' as BookingStatus,
-          cancelledAt: new Date(),
-          notes: nextNotes,
-        },
+        data: this.statusTransition.buildUpdateData('NO_SHOW', { notes: nextNotes }),
       }),
       // Reopen the car for a replacement booking without clobbering a
       // maintenance / out-of-service state (mirrors cancel() + the handover
@@ -2012,6 +2034,24 @@ export class BookingsService {
         data: { status: VehicleStatus.AVAILABLE },
       }),
     ]);
+
+    await this.statusTransition.commitTransitionEffects(
+      {
+        organizationId: orgId,
+        bookingId: id,
+        vehicleId: booking.vehicleId,
+        from: booking.status,
+        to: 'NO_SHOW',
+        trigger: 'mark_no_show',
+        actor: {
+          userId: actor?.userId ?? null,
+          displayName: actor?.displayName ?? null,
+        },
+        reason: reason ?? null,
+        correlationId: `no-show:${id}`,
+      },
+      transition,
+    );
 
     void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
 

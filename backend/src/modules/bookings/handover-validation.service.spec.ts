@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { HandoverValidationService } from './handover-validation.service';
 import { HANDOVER_ERROR_CODES } from './handover-error.codes';
+import { BOOKING_STATE_MACHINE_ERROR_CODES } from './state-machine/booking-state-machine-error.codes';
 import type { CreateHandoverCommand } from './handover-command.types';
 
 function baseCommand(overrides: Partial<CreateHandoverCommand> = {}): CreateHandoverCommand {
@@ -51,7 +52,7 @@ describe('HandoverValidationService', () => {
       expect(() => service.assertBookingStatus('RETURN', 'CONFIRMED')).toThrow(
         expect.objectContaining({
           response: expect.objectContaining({
-            code: HANDOVER_ERROR_CODES.RETURN_WRONG_STATUS,
+            code: BOOKING_STATE_MACHINE_ERROR_CODES.TRANSITION_NOT_ALLOWED,
           }),
         }),
       );

@@ -39,6 +39,7 @@ import {
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
 import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
+import { BookingStatusTransitionService } from './state-machine/booking-status-transition.service';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -63,6 +64,7 @@ export class BookingWizardDraftService {
     private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
+    private readonly statusTransition: BookingStatusTransitionService,
   ) {}
 
   async createOrRefreshDraft(
@@ -208,14 +210,46 @@ export class BookingWizardDraftService {
     }
 
     const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
-    const booking = await this.prisma.booking.update({
-      where: { id: bookingId, organizationId: orgId },
-      data: {
-        status: targetStatus,
-        notes: stripWizardDraftMarker(draft.notes) || null,
-        paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
-      },
-    });
+    const strippedNotes = stripWizardDraftMarker(draft.notes) || null;
+
+    let booking: Booking;
+    if (targetStatus === 'CONFIRMED' && draft.status === 'PENDING') {
+      const transition = this.statusTransition.planTransition({
+        from: draft.status,
+        to: 'CONFIRMED',
+        trigger: 'confirm',
+      });
+      booking = await this.prisma.booking.update({
+        where: { id: bookingId, organizationId: orgId },
+        data: {
+          ...this.statusTransition.buildUpdateData('CONFIRMED'),
+          notes: strippedNotes,
+          paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+        },
+      });
+      await this.statusTransition.commitTransitionEffects(
+        {
+          organizationId: orgId,
+          bookingId,
+          vehicleId: draft.vehicleId,
+          from: draft.status,
+          to: 'CONFIRMED',
+          trigger: 'confirm',
+          actor: { userId: options?.userId ?? null, displayName: null },
+          correlationId: `wizard-confirm:${bookingId}`,
+        },
+        transition,
+      );
+    } else {
+      booking = await this.prisma.booking.update({
+        where: { id: bookingId, organizationId: orgId },
+        data: {
+          status: targetStatus,
+          notes: strippedNotes,
+          paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
+        },
+      });
+    }
 
     await this.bookingInvoiceLifecycle
       .syncOnBookingConfirmed(orgId, bookingId, {

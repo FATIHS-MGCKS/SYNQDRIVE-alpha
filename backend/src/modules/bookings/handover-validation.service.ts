@@ -5,33 +5,29 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { HandoverKind } from '@prisma/client';
+import { HandoverKind, type BookingStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { HANDOVER_ERROR_CODES } from './handover-error.codes';
+import { resolveBookingStatusTransition } from './state-machine/booking-state-machine';
+import type { BookingStatusTrigger } from './state-machine/booking-state-machine.types';
 import type {
   CreateHandoverCommand,
   HandoverValidationContext,
 } from './handover-command.types';
+import { HANDOVER_ERROR_CODES } from './handover-error.codes';
 
 @Injectable()
 export class HandoverValidationService {
   constructor(private readonly prisma: PrismaService) {}
 
   assertBookingStatus(kind: HandoverKind, currentStatus: string): void {
-    const expected = kind === 'PICKUP' ? 'CONFIRMED' : 'ACTIVE';
-    if (currentStatus !== expected) {
-      throw new ConflictException({
-        message:
-          kind === 'PICKUP'
-            ? `Übergabe nicht möglich: Buchung ist bereits im Status ${currentStatus}. Pickup erfordert Status CONFIRMED.`
-            : `Rückgabe nicht möglich: Buchung ist im Status ${currentStatus}. Return erfordert Status ACTIVE.`,
-        code:
-          kind === 'PICKUP'
-            ? HANDOVER_ERROR_CODES.PICKUP_WRONG_STATUS
-            : HANDOVER_ERROR_CODES.RETURN_WRONG_STATUS,
-        currentStatus,
-      });
-    }
+    const to: BookingStatus = kind === 'PICKUP' ? 'ACTIVE' : 'COMPLETED';
+    const trigger: BookingStatusTrigger =
+      kind === 'PICKUP' ? 'pickup_handover' : 'return_handover';
+    resolveBookingStatusTransition({
+      from: currentStatus as BookingStatus,
+      to,
+      trigger,
+    });
   }
 
   resolvePerformedAt(
