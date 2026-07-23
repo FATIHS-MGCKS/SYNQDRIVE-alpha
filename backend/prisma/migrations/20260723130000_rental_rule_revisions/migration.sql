@@ -72,36 +72,48 @@ CREATE TABLE IF NOT EXISTS "rental_rule_revisions" (
   CONSTRAINT "rental_rule_revisions_pkey" PRIMARY KEY ("id")
 );
 
-ALTER TABLE "rental_rule_revisions"
-  ADD CONSTRAINT "rental_rule_revisions_organization_id_fkey"
-    FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "rental_rule_revisions"
+    ADD CONSTRAINT "rental_rule_revisions_organization_id_fkey"
+      FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "rental_rule_revisions"
-  ADD CONSTRAINT "rental_rule_revisions_created_by_fkey"
-    FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "rental_rule_revisions"
+    ADD CONSTRAINT "rental_rule_revisions_created_by_fkey"
+      FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "rental_rule_revisions"
-  ADD CONSTRAINT "rental_rule_revisions_published_by_fkey"
-    FOREIGN KEY ("published_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "rental_rule_revisions"
+    ADD CONSTRAINT "rental_rule_revisions_published_by_fkey"
+      FOREIGN KEY ("published_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "rental_rule_revisions"
-  ADD CONSTRAINT "rental_rule_revisions_supersedes_revision_id_fkey"
-    FOREIGN KEY ("supersedes_revision_id") REFERENCES "rental_rule_revisions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "rental_rule_revisions"
+    ADD CONSTRAINT "rental_rule_revisions_supersedes_revision_id_fkey"
+      FOREIGN KEY ("supersedes_revision_id") REFERENCES "rental_rule_revisions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE UNIQUE INDEX "rental_rule_revisions_scope_version_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "rental_rule_revisions_scope_version_key"
   ON "rental_rule_revisions" ("organization_id", "scope_type", "scope_id", "version");
 
-CREATE INDEX "rental_rule_revisions_scope_status_idx"
+CREATE INDEX IF NOT EXISTS "rental_rule_revisions_scope_status_idx"
   ON "rental_rule_revisions" ("organization_id", "scope_type", "scope_id", "status");
 
-CREATE INDEX "rental_rule_revisions_scope_effective_idx"
+CREATE INDEX IF NOT EXISTS "rental_rule_revisions_scope_effective_idx"
   ON "rental_rule_revisions" ("organization_id", "scope_type", "scope_id", "effective_from");
 
-CREATE INDEX "rental_rule_revisions_rules_hash_idx"
+CREATE INDEX IF NOT EXISTS "rental_rule_revisions_rules_hash_idx"
   ON "rental_rule_revisions" ("rules_hash");
 
 -- Exactly one open ACTIVE revision per scope (no effective_to).
-CREATE UNIQUE INDEX "rental_rule_revisions_one_active_per_scope_idx"
+CREATE UNIQUE INDEX IF NOT EXISTS "rental_rule_revisions_one_active_per_scope_idx"
   ON "rental_rule_revisions" ("organization_id", "scope_type", "scope_id")
   WHERE "status" = 'ACTIVE' AND "effective_to" IS NULL;
 
@@ -213,7 +225,7 @@ SELECT
   'Initial revision backfill (Prompt 24)',
   1
 FROM "organization_rental_rules" r
-ON CONFLICT ON CONSTRAINT "rental_rule_revisions_scope_version_key" DO NOTHING;
+ON CONFLICT ("organization_id", "scope_type", "scope_id", "version") DO NOTHING;
 
 -- Backfill: vehicle categories
 INSERT INTO "rental_rule_revisions" (
@@ -286,7 +298,7 @@ SELECT
   'Initial revision backfill (Prompt 24)',
   1
 FROM "rental_vehicle_categories" c
-ON CONFLICT ON CONSTRAINT "rental_rule_revisions_scope_version_key" DO NOTHING;
+ON CONFLICT ("organization_id", "scope_type", "scope_id", "version") DO NOTHING;
 
 -- Backfill: vehicle overrides
 INSERT INTO "rental_rule_revisions" (
@@ -349,7 +361,7 @@ SELECT
   'Initial revision backfill (Prompt 24)',
   1
 FROM "vehicle_rental_requirement_overrides" o
-ON CONFLICT ON CONSTRAINT "rental_rule_revisions_scope_version_key" DO NOTHING;
+ON CONFLICT ("organization_id", "scope_type", "scope_id", "version") DO NOTHING;
 
 -- Drop helper functions (hashes persisted on rows).
 DROP FUNCTION IF EXISTS rental_rules_revision_hash(JSONB, JSONB);
