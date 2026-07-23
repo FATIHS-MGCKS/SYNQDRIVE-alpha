@@ -13,7 +13,7 @@ export const BOOKING_ELIGIBILITY_TRANSITION_CODE = {
   OVERRIDE_REASON_REQUIRED: 'BOOKING_ELIGIBILITY_OVERRIDE_REASON_REQUIRED',
 } as const;
 
-export type BookingEligibilityTransitionPolicyMode = 'DRAFT' | 'PENDING' | 'CONFIRMED';
+export type BookingEligibilityTransitionPolicyMode = 'DRAFT' | 'PENDING' | 'CONFIRMED' | 'ACTIVE';
 
 export function resolveEligibilityPolicyMode(input: {
   targetStatus: BookingStatus;
@@ -21,6 +21,9 @@ export function resolveEligibilityPolicyMode(input: {
 }): BookingEligibilityTransitionPolicyMode | null {
   if (input.isWizardDraft && input.targetStatus === 'PENDING') {
     return 'DRAFT';
+  }
+  if (input.targetStatus === 'ACTIVE') {
+    return 'ACTIVE';
   }
   if (input.targetStatus === 'CONFIRMED') {
     return 'CONFIRMED';
@@ -35,6 +38,7 @@ export function resolveGateStageForPolicyMode(
   mode: BookingEligibilityTransitionPolicyMode,
 ): BookingEligibilityGateStage {
   if (mode === 'CONFIRMED') return 'CONFIRM';
+  if (mode === 'ACTIVE') return 'PICKUP';
   return 'CREATE';
 }
 
@@ -54,6 +58,11 @@ export function assertBookingEligibilityTransitionAllowed(
 
   if (mode === 'PENDING') {
     assertPendingTransitionAllowed(gateResult);
+    return;
+  }
+
+  if (mode === 'ACTIVE') {
+    assertActiveTransitionAllowed(gateResult, options);
     return;
   }
 
@@ -82,6 +91,67 @@ function assertPendingTransitionAllowed(gateResult: BookingEligibilityGateResult
       throw buildEligibilityConflict(
         BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
         'Rental eligibility is temporarily unavailable — booking was not saved.',
+        gateResult,
+      );
+    default:
+      return;
+  }
+}
+
+function assertActiveTransitionAllowed(
+  gateResult: BookingEligibilityGateResult,
+  options: {
+    eligibilityOverrideReason?: string | null;
+    hasOverridePermission: boolean;
+  },
+): void {
+  switch (gateResult.status) {
+    case 'ELIGIBLE':
+      return;
+    case 'MANUAL_APPROVAL_REQUIRED': {
+      const reason = options.eligibilityOverrideReason?.trim();
+      if (!reason) {
+        throw new ConflictException({
+          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.MANUAL_APPROVAL_REQUIRED,
+          message: 'Manual approval is required before pickup can start.',
+          reasonCodes: gateResult.reasonCodes,
+          blockingReasons: gateResult.blockingReasons,
+          warnings: gateResult.warnings,
+          missingFields: gateResult.missingFields,
+          eligibilityStatus: gateResult.status,
+          requiresOverride: true,
+        });
+      }
+      if (!options.hasOverridePermission) {
+        throw new ForbiddenException({
+          code: BOOKING_ELIGIBILITY_TRANSITION_CODE.OVERRIDE_DENIED,
+          message: 'Missing permission to override rental eligibility manual approval for pickup.',
+        });
+      }
+      return;
+    }
+    case 'NOT_ELIGIBLE':
+      throw buildEligibilityConflict(
+        BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE,
+        'Pickup cannot start — rental eligibility requirements are not met.',
+        gateResult,
+      );
+    case 'MISSING_INFORMATION':
+      throw buildEligibilityConflict(
+        BOOKING_ELIGIBILITY_TRANSITION_CODE.MISSING_INFORMATION,
+        'Pickup cannot start — required eligibility information is missing.',
+        gateResult,
+      );
+    case 'TECHNICAL_ERROR':
+      throw buildEligibilityConflict(
+        BOOKING_ELIGIBILITY_TRANSITION_CODE.TECHNICAL_ERROR,
+        'Rental eligibility could not be evaluated — pickup was not started.',
+        gateResult,
+      );
+    case 'TEMPORARILY_UNAVAILABLE':
+      throw buildEligibilityConflict(
+        BOOKING_ELIGIBILITY_TRANSITION_CODE.TEMPORARILY_UNAVAILABLE,
+        'Rental eligibility is temporarily unavailable — pickup was not started.',
         gateResult,
       );
     default:
@@ -174,6 +244,7 @@ export function isEligibilityRelevantBookingMutation(input: {
   datesChanged: boolean;
   paymentIntentChanged: boolean;
   extrasChanged: boolean;
+  additionalDriversChanged?: boolean;
   statusChanged: boolean;
 }): boolean {
   return (
@@ -182,6 +253,7 @@ export function isEligibilityRelevantBookingMutation(input: {
     input.datesChanged ||
     input.paymentIntentChanged ||
     input.extrasChanged ||
+    input.additionalDriversChanged === true ||
     input.statusChanged
   );
 }

@@ -33,6 +33,7 @@ import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service'
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 import { BookingPickupGateService } from './booking-pickup-gate/booking-pickup-gate.service';
 import { BookingPickupGateAuditService } from './booking-pickup-gate/booking-pickup-gate-audit.service';
+import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import {
   PICKUP_GATE_EVENT_TYPE,
   PICKUP_GATE_OUTCOME,
@@ -64,6 +65,7 @@ export class BookingsHandoverService {
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly pickupGate: BookingPickupGateService,
     private readonly pickupGateAudit: BookingPickupGateAuditService,
+    private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -155,6 +157,12 @@ export class BookingsHandoverService {
 
     let gateEvaluation: PickupGateEvaluation | null = null;
     if (kind === 'PICKUP') {
+      await this.bookingEligibilityEnforcement.assertAllowedForPickup(orgId, bookingId, {
+        userId: actor.userId,
+        membershipRole: actor.membershipRole as never,
+        eligibilityOverrideReason: payload.pickupGateOverrideReason,
+      });
+
       gateEvaluation = await this.pickupGate.assertPickupAllowed({
         organizationId: orgId,
         bookingId,

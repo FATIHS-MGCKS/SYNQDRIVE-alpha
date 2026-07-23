@@ -5,8 +5,8 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 8 of 34 — Booking create/update gatekeeper enforcement** |
-| **Mode** | `BookingEligibilityEnforcementService` in `BookingsService` create/update |
+| **Phase** | **Prompt 9 of 34 — Booking Wizard gatekeeper alignment** |
+| **Mode** | Wizard preview + confirm via `BookingEligibilityGatekeeperService` |
 | **Method** | Direct code/schema verification; no unverified assumptions |
 
 ---
@@ -1261,4 +1261,98 @@ npm test -- --testPathPattern="booking-eligibility-(transition|enforcement|gatek
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 8).*
+## 23. Booking Wizard Gatekeeper Alignment (Prompt 9)
+
+### 23.1 Ziel
+
+Der Booking Wizard verwendet dieselbe serverseitige Eligibility-Policy wie direkte APIs. Frontend-Vorschau ersetzt keine finale Freigabe.
+
+### 23.2 Wizard-Entscheidungspfad (final)
+
+```mermaid
+sequenceDiagram
+  participant UI as NewBookingView
+  participant API as BookingsController
+  participant Wiz as BookingWizardDraftService
+  participant GK as BookingEligibilityGatekeeperService
+  participant BS as BookingsService
+  participant ENF as BookingEligibilityEnforcementService
+
+  UI->>API: POST wizard-draft (DRAFT skip)
+  UI->>API: GET wizard-draft/:id/eligibility-preview
+  API->>Wiz: getEligibilityPreview
+  Wiz->>GK: evaluate(CONFIRM + bookingId)
+  GK-->>Wiz: gate result + fingerprint
+  Wiz-->>UI: preview (isPreviewOnly)
+
+  UI->>API: POST wizard-draft/:id/confirm + fingerprint
+  API->>Wiz: confirmDraft
+  alt already CONFIRMED/PENDING
+    Wiz-->>UI: idempotent result
+  else wizard draft
+    Wiz->>GK: evaluate (fresh)
+    Wiz->>Wiz: assert fingerprint (RULES_CHANGED)
+    Wiz->>BS: update(CONFIRMED|PENDING)
+    BS->>ENF: assertAllowed (re-evaluate)
+    ENF->>GK: evaluate
+    BS-->>Wiz: booking
+    Wiz-->>UI: confirmed booking
+  end
+```
+
+### 23.3 Backend-Änderungen
+
+| Datei | Änderung |
+|-------|----------|
+| `booking-wizard-eligibility.util.ts` | Fingerprint, Preview-Mapping, `RULES_CHANGED` assert |
+| `booking-wizard-draft.service.ts` | `getEligibilityPreview`, confirm fingerprint + idempotency |
+| `bookings.controller.ts` | `GET wizard-draft/:id/eligibility-preview` |
+| `booking-wizard-draft.dto.ts` | `eligibilityPreviewFingerprint`, preview query DTO |
+| `booking-eligibility-transition.policy.ts` | `BOOKING_ELIGIBILITY_RULES_CHANGED` |
+
+### 23.4 Frontend-Änderungen
+
+| Datei | Änderung |
+|-------|----------|
+| `booking-wizard-eligibility.ts` | Preview-Mapping, strukturierte Fehler, `wizardCheckoutCanProceed` |
+| `NewBookingView.tsx` | Gatekeeper-Preview nach Draft, Confirm mit Fingerprint + Override |
+| `CheckoutStep.tsx` | Override-Begründung bei `MANUAL_APPROVAL_REQUIRED` |
+| `BookingRentalEligibilityCard.tsx` | Preview-Hinweis (nicht autoritativ) |
+
+### 23.5 Strukturierte Wizard-Fehler
+
+| Kategorie | API-Code |
+|-----------|----------|
+| Nicht berechtigt | `BOOKING_ELIGIBILITY_NOT_ELIGIBLE` |
+| Informationen fehlen | `BOOKING_ELIGIBILITY_MISSING_INFORMATION` |
+| Manuelle Freigabe erforderlich | `BOOKING_ELIGIBILITY_MANUAL_APPROVAL_REQUIRED` |
+| Regeln geändert | `BOOKING_ELIGIBILITY_RULES_CHANGED` |
+| Technischer Prüffehler | `BOOKING_ELIGIBILITY_TECHNICAL_ERROR` / `BOOKING_ELIGIBILITY_TEMPORARILY_UNAVAILABLE` |
+
+### 23.6 Tests
+
+```
+npm test -- --testPathPattern="booking-wizard-eligibility|booking-wizard-draft.service"
+→ 12/12 PASS
+
+cd frontend && npm test -- src/rental/lib/booking-wizard-eligibility.test.ts
+→ 2/2 PASS
+```
+
+E2E-Flow: `booking-wizard-eligibility-e2e-flow.spec.ts` (Preview → Confirm → Idempotenz → Race).
+
+---
+
+## Prompt 9 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Wizard kann keine unzulässige Buchung bestätigen | ✅ Gatekeeper vor + in `BookingsService.update` |
+| Preview und Final Decision konsistent | ✅ Gleiche Engine + Fingerprint |
+| Race Conditions erkannt | ✅ `BOOKING_ELIGIBILITY_RULES_CHANGED` |
+| Doppeltes Absenden idempotent | ✅ `confirmDraft` idempotent return |
+| Prompt 9 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 9).*

@@ -14,11 +14,13 @@ import {
 } from './booking-eligibility-context.util';
 import {
   assertBookingEligibilityTransitionAllowed,
-  isEligibilityRelevantBookingMutation,
   resolveEligibilityPolicyMode,
   resolveGateStageForPolicyMode,
   shouldSkipEligibilityEnforcement,
 } from './booking-eligibility-transition.policy';
+import {
+  shouldEnforceBookingEligibilityForUpdate,
+} from './booking-eligibility-status-transition.matrix';
 import type { BookingEligibilityGateResult } from './booking-eligibility-gatekeeper.types';
 
 export type BookingEligibilityMutationContext = {
@@ -67,54 +69,29 @@ export class BookingEligibilityEnforcementService {
     datesChanged: boolean;
     paymentIntentChanged: boolean;
     extrasChanged: boolean;
+    additionalDriversChanged?: boolean;
     statusChanged: boolean;
   }): boolean {
-    const terminal: BookingStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
-    if (terminal.includes(input.existing.status) && !input.statusChanged) {
-      return false;
-    }
-
     const isWizardDraft =
       isWizardDraftBooking({
         status: input.next.targetStatus,
         notes: input.next.notes ?? input.existing.notes,
       }) && input.next.targetStatus === 'PENDING';
 
-    const mode = resolveEligibilityPolicyMode({
+    return shouldEnforceBookingEligibilityForUpdate({
+      existingStatus: input.existing.status,
       targetStatus: input.next.targetStatus,
       isWizardDraft,
+      mutation: {
+        customerIdChanged: input.customerIdChanged,
+        vehicleIdChanged: input.vehicleIdChanged,
+        datesChanged: input.datesChanged,
+        paymentIntentChanged: input.paymentIntentChanged,
+        extrasChanged: input.extrasChanged,
+        additionalDriversChanged: input.additionalDriversChanged,
+        statusChanged: input.statusChanged,
+      },
     });
-    if (shouldSkipEligibilityEnforcement(mode)) {
-      return false;
-    }
-
-    if (input.statusChanged && input.next.targetStatus === 'CONFIRMED') {
-      return true;
-    }
-
-    if (input.next.targetStatus === 'CONFIRMED') {
-      return isEligibilityRelevantBookingMutation({
-        customerIdChanged: input.customerIdChanged,
-        vehicleIdChanged: input.vehicleIdChanged,
-        datesChanged: input.datesChanged,
-        paymentIntentChanged: input.paymentIntentChanged,
-        extrasChanged: input.extrasChanged,
-        statusChanged: input.statusChanged,
-      });
-    }
-
-    if (input.next.targetStatus === 'PENDING' && !isWizardDraft) {
-      return isEligibilityRelevantBookingMutation({
-        customerIdChanged: input.customerIdChanged,
-        vehicleIdChanged: input.vehicleIdChanged,
-        datesChanged: input.datesChanged,
-        paymentIntentChanged: input.paymentIntentChanged,
-        extrasChanged: input.extrasChanged,
-        statusChanged: input.statusChanged,
-      });
-    }
-
-    return false;
   }
 
   async assertAllowed(
@@ -160,7 +137,8 @@ export class BookingEligibilityEnforcementService {
         parseForeignTravelRequested(context.extrasJson),
       additionalDriverCount,
       depositReceived,
-      includeVehicleReadiness: context.targetStatus === 'CONFIRMED',
+      includeVehicleReadiness:
+        context.targetStatus === 'CONFIRMED' || context.targetStatus === 'ACTIVE',
     });
 
     const hasOverridePermission = await this.canOverrideEligibility(
@@ -218,6 +196,27 @@ export class BookingEligibilityEnforcementService {
       },
       options,
     );
+  }
+
+  /**
+   * Fresh PICKUP-stage gatekeeper evaluation immediately before CONFIRMED → ACTIVE.
+   * Used by pickup handover — document/legal gates remain in BookingPickupGateService.
+   */
+  async assertAllowedForPickup(
+    organizationId: string,
+    bookingId: string,
+    options: BookingEligibilityEnforcementOptions = {},
+  ): Promise<BookingEligibilityGateResult> {
+    const result = await this.assertAllowedForBooking(
+      organizationId,
+      bookingId,
+      'ACTIVE',
+      options,
+    );
+    if (!result) {
+      throw new Error('Pickup eligibility evaluation returned no result');
+    }
+    return result;
   }
 
   private async countAdditionalDrivers(

@@ -90,23 +90,12 @@ function makeGateService(options: {
   booking?: Record<string, unknown> | null;
   customer?: Record<string, unknown> | null;
   deliveryEvidence?: Array<Record<string, unknown>>;
-  eligibility?: { canStartRental: boolean; blockingReasons?: unknown[] };
   canOverride?: boolean;
 }) {
   const completeness = {
     evaluateForBooking: jest.fn().mockResolvedValue(
       options.completeness ?? completeBundleResult(),
     ),
-  };
-  const customerEligibility = {
-    evaluateForBooking: jest.fn().mockResolvedValue({
-      canStartRental: options.eligibility?.canStartRental ?? true,
-      stages: {
-        startPickup: {
-          blockingReasons: options.eligibility?.blockingReasons ?? [],
-        },
-      },
-    }),
   };
   const audit = {
     appendBlocked: jest.fn().mockResolvedValue({ id: 'audit-1' }),
@@ -172,10 +161,9 @@ function makeGateService(options: {
   const service = new BookingPickupGateService(
     prisma as any,
     completeness as any,
-    customerEligibility as any,
     audit as unknown as BookingPickupGateAuditService,
   );
-  return { service, prisma, completeness, audit, customerEligibility };
+  return { service, prisma, completeness, audit };
 }
 
 describe('BookingPickupGateService (integration)', () => {
@@ -368,6 +356,7 @@ describe('BookingsHandoverService pickup idempotency', () => {
     };
     const svc = new BookingsHandoverService(
       prisma as any,
+      {} as any,
       {} as any,
       {} as any,
       {} as any,

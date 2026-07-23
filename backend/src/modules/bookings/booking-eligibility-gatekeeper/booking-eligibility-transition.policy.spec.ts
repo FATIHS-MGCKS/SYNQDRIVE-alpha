@@ -127,4 +127,22 @@ describe('booking-eligibility-transition.policy', () => {
       ),
     ).toThrow(ForbiddenException);
   });
+
+  it('blocks active pickup when missing information', () => {
+    expect(() =>
+      assertBookingEligibilityTransitionAllowed(gateResult('MISSING_INFORMATION'), 'ACTIVE', {
+        hasOverridePermission: false,
+      }),
+    ).toThrow(ConflictException);
+  });
+
+  it('allows active pickup with manual override reason and permission', () => {
+    expect(() =>
+      assertBookingEligibilityTransitionAllowed(
+        gateResult('MANUAL_APPROVAL_REQUIRED'),
+        'ACTIVE',
+        { hasOverridePermission: true, eligibilityOverrideReason: 'Station manager approved pickup' },
+      ),
+    ).not.toThrow();
+  });
 });

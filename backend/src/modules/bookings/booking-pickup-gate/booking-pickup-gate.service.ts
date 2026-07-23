@@ -12,7 +12,6 @@ import {
 import { BOOKING_DOCUMENT_GENERATION_STATUS } from '@modules/documents/booking-document-generation/booking-document-generation.constants';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { LEGAL_DOCUMENT_PERMISSION_REQUIREMENTS } from '@modules/documents/legal-document-permission.constants';
-import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 import {
   PICKUP_GATE_ALLOWED_SOURCE_STATUSES,
   PICKUP_GATE_CODE,
@@ -50,7 +49,6 @@ export class BookingPickupGateService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly completeness: BookingDocumentCompletenessService,
-    private readonly customerEligibility: CustomerEligibilityService,
     private readonly audit: BookingPickupGateAuditService,
   ) {}
 
@@ -299,22 +297,9 @@ export class BookingPickupGateService {
       }
     }
 
-    const eligibility = await this.customerEligibility.evaluateForBooking(
-      input.organizationId,
-      booking.customerId,
-      { requestedStatus: 'ACTIVE', startDate: booking.startDate },
-    );
-    if (!eligibility.canStartRental) {
-      for (const reason of eligibility.stages.startPickup.blockingReasons) {
-        const message =
-          typeof reason === 'string'
-            ? reason
-            : typeof reason === 'object' && reason !== null && 'message' in reason
-              ? String((reason as { message?: string }).message ?? 'Customer not eligible for pickup')
-              : 'Customer not eligible for pickup';
-        requirements.push(this.req(PICKUP_GATE_CODE.CUSTOMER_INELIGIBLE, message, true));
-      }
-    }
+    // Rental/customer eligibility is enforced centrally via
+    // BookingEligibilityEnforcementService.assertAllowedForPickup (PICKUP stage)
+    // before this document/legal gate runs in BookingsHandoverService.
 
     const hardBlocks = requirements.filter((r) => !r.overridable);
     const softBlocks = requirements.filter((r) => r.overridable);
