@@ -1,11 +1,13 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
   Header,
   Param,
+  Patch,
   Post,
+  Query,
+  Req,
   Res,
   StreamableFile,
   UploadedFile,
@@ -14,59 +16,178 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
-import { Roles } from '@shared/decorators/roles.decorator';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { RequireLegalDocumentPermission } from './decorators/require-legal-document-permission.decorator';
+import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LegalDocumentsService } from './legal-documents.service';
-import { isLegalPdfUpload } from './legal-documents.util';
+import { LegalDocumentValidationError } from './legal-documents-api.errors';
+import { buildContentDispositionInline } from './storage/document-storage-content-disposition.util';
+import { LegalDocumentListQueryDto } from './dto/legal-document-list-query.dto';
+import { LegalDocumentEventsQueryDto } from './dto/legal-document-events-query.dto';
+import { UpdateLegalDocumentScopeDto } from './dto/legal-document-scope.dto';
+import {
+  LegalDocumentActivateDto,
+  LegalDocumentArchiveDto,
+  LegalDocumentChangeSummaryDto,
+  LegalDocumentRequestChangesDto,
+  LegalDocumentRevokeDto,
+  LegalDocumentScheduleDto,
+} from './dto/legal-document-lifecycle.dto';
+import {
+  ClearLegalDocumentLegalHoldDto,
+  SetLegalDocumentLegalHoldDto,
+} from './dto/legal-document-legal-hold.dto';
+import {
+  RunLegalDocumentRetentionDto,
+  UpsertLegalDocumentRetentionPolicyDto,
+} from './dto/legal-document-retention.dto';
+import { LegalDocumentLegalHoldService } from './retention/legal-document-legal-hold.service';
+import { LegalDocumentRetentionService } from './retention/legal-document-retention.service';
+import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
+import { LegalDocumentUsageService } from './legal-document-usage.service';
 
 const MAX_LEGAL_BYTES =
   Math.max(1, parseInt(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB || '15', 10)) * 1024 * 1024;
 
 /**
- * Administration → Legal Documents (AGB / Widerrufsbelehrung).
+ * Administration → Legal Documents (AGB / consumer information / privacy).
  *
- * Reading is allowed for any org member; mutations (upload/activate/archive) are
- * restricted to ORG_ADMIN (and MASTER_ADMIN). OrgScopingGuard enforces tenant
- * isolation via the :orgId path param. Files are private — never public URLs.
+ * Tenant isolation via OrgScopingGuard; capabilities via PermissionsGuard +
+ * `@RequireLegalDocumentPermission`. ORG_ADMIN / MASTER_ADMIN retain access via
+ * existing guard bypass rules. Files are private — never public URLs in JSON.
  */
 @Controller('organizations/:orgId/legal-documents')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class LegalDocumentsController {
-  constructor(private readonly legal: LegalDocumentsService) {}
+  constructor(
+    private readonly legal: LegalDocumentsService,
+    private readonly events: LegalDocumentEventsService,
+    private readonly legalHold: LegalDocumentLegalHoldService,
+    private readonly retention: LegalDocumentRetentionService,
+    private readonly retentionPolicy: LegalDocumentRetentionPolicyService,
+    private readonly usage: LegalDocumentUsageService,
+  ) {}
 
   @Get()
-  async list(@Param('orgId') orgId: string) {
-    const docs = await this.legal.list(orgId);
-    return docs.map((d) => this.legal.toDto(d));
+  @RequireLegalDocumentPermission('legal_documents.view')
+  async list(@Param('orgId') orgId: string, @Query() query: LegalDocumentListQueryDto) {
+    return this.legal.listPaginated(orgId, query);
+  }
+
+  @Get('events')
+  @RequireLegalDocumentPermission('legal_documents.audit_view')
+  async listOrganizationEvents(
+    @Param('orgId') orgId: string,
+    @Query() query: LegalDocumentEventsQueryDto,
+  ) {
+    return this.events.listForOrganization(orgId, query);
+  }
+
+  @Get('retention/policy')
+  @RequireLegalDocumentPermission('legal_documents.retention_admin')
+  async getRetentionPolicy(@Param('orgId') orgId: string) {
+    const policy = await this.retentionPolicy.getOrganizationPolicy(orgId);
+    return {
+      organizationId: orgId,
+      policyVersion: policy?.policyVersion ?? this.retentionPolicy.getPlatformPolicyVersion(),
+      classPolicies: policy?.classPolicies ?? {},
+      platformDefaults: this.retentionPolicy.getPlatformDefaults(),
+    };
+  }
+
+  @Post('retention/policy')
+  @RequireLegalDocumentPermission('legal_documents.retention_admin')
+  async upsertRetentionPolicy(
+    @Param('orgId') orgId: string,
+    @Body() body: UpsertLegalDocumentRetentionPolicyDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const policy = await this.retentionPolicy.upsertOrganizationPolicy(
+      orgId,
+      body.classPolicies,
+      userId ?? null,
+    );
+    return {
+      organizationId: orgId,
+      policyVersion: policy.policyVersion,
+      classPolicies: policy.classPolicies,
+      updatedAt: policy.updatedAt.toISOString(),
+    };
+  }
+
+  @Post('retention/run')
+  @RequireLegalDocumentPermission('legal_documents.retention_admin')
+  async runRetention(
+    @Param('orgId') orgId: string,
+    @Body() body: RunLegalDocumentRetentionDto,
+    @Req() req: Request,
+  ) {
+    return this.retention.runOnce({
+      trigger: 'manual',
+      dryRun: body.dryRun,
+      organizationId: orgId,
+      correlationId: (req as Request & { requestId?: string }).requestId ?? undefined,
+    });
+  }
+
+  @Get('settings')
+  @RequireLegalDocumentPermission('legal_documents.view')
+  async getWorkflowSettings(@Param('orgId') orgId: string) {
+    return this.legal.getWorkflowSettings(orgId);
   }
 
   @Post('upload')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.upload')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: { fileSize: MAX_LEGAL_BYTES },
-      fileFilter: (_req, file, cb) => {
-        if (!isLegalPdfUpload(file)) {
-          cb(new BadRequestException('Legal documents must be PDF files'), false);
-          return;
-        }
-        cb(null, true);
-      },
     }),
   )
   async upload(
     @Param('orgId') orgId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Body() body: { documentType?: string; versionLabel?: string; title?: string; language?: string },
+    @Body()
+    body: {
+      documentType?: string;
+      versionLabel?: string;
+      title?: string;
+      language?: string;
+      changeSummary?: string;
+      legalOwnerName?: string;
+      legalVariant?: string;
+      jurisdictionCountry?: string;
+      customerSegment?: string;
+      bookingChannel?: string;
+      productScope?: string;
+      stationScopeMode?: string;
+      stationIds?: string;
+      priority?: string;
+      isMandatory?: string;
+      noticePurpose?: string;
+      validFrom?: string;
+      validUntil?: string;
+    },
     @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
   ) {
-    if (!file) throw new BadRequestException('file is required');
-    if (!body.documentType) throw new BadRequestException('documentType is required');
-    if (!body.versionLabel) throw new BadRequestException('versionLabel is required');
+    if (!file) {
+      throw new LegalDocumentValidationError('file is required', 'file');
+    }
+    if (!body.documentType) {
+      throw new LegalDocumentValidationError('documentType is required', 'documentType');
+    }
+    if (!body.versionLabel) {
+      throw new LegalDocumentValidationError('versionLabel is required', 'versionLabel');
+    }
+    const stationIds = body.stationIds
+      ? body.stationIds.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined;
     const doc = await this.legal.upload({
       organizationId: orgId,
       documentType: body.documentType,
@@ -77,23 +198,256 @@ export class LegalDocumentsController {
       buffer: file.buffer,
       mimeType: file.mimetype,
       uploadedByUserId: userId ?? null,
+      changeSummary: body.changeSummary ?? null,
+      legalOwnerName: body.legalOwnerName ?? null,
+      legalVariant: body.legalVariant ?? null,
+      applicationScope: {
+        language: body.language,
+        jurisdictionCountry: body.jurisdictionCountry,
+        customerSegment: body.customerSegment,
+        bookingChannel: body.bookingChannel,
+        productScope: body.productScope,
+        stationScopeMode: body.stationScopeMode,
+        stationIds,
+        priority: body.priority != null ? Number(body.priority) : undefined,
+        isMandatory: body.isMandatory != null ? body.isMandatory === 'true' : undefined,
+        noticePurpose: body.noticePurpose,
+        validFrom: body.validFrom,
+        validUntil: body.validUntil,
+      },
+      actor: this.actorFromRequest(req, userId, userName),
     });
-    return this.legal.toDto(doc);
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Get(':id')
+  @RequireLegalDocumentPermission('legal_documents.view')
+  async getOne(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.legal.getDetail(orgId, id);
+  }
+
+  @Get(':id/usage')
+  @RequireLegalDocumentPermission('legal_documents.view')
+  async getUsage(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.usage.getUsage(orgId, id, {
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get(':id/events')
+  @RequireLegalDocumentPermission('legal_documents.audit_view')
+  async listDocumentEvents(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query() query: LegalDocumentEventsQueryDto,
+  ) {
+    return this.events.listForDocument(orgId, id, query);
+  }
+
+  @Post(':id/submit-for-review')
+  @RequireLegalDocumentPermission('legal_documents.submit_review')
+  async submitForReview(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentChangeSummaryDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.submitForReview(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/approve')
+  @RequireLegalDocumentPermission('legal_documents.approve')
+  async approve(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentChangeSummaryDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.approve(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/schedule')
+  @RequireLegalDocumentPermission('legal_documents.schedule')
+  async schedule(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentScheduleDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    if (!body.validFrom) {
+      throw new LegalDocumentValidationError('validFrom is required', 'validFrom');
+    }
+    const validFrom = new Date(body.validFrom);
+    if (Number.isNaN(validFrom.getTime())) {
+      throw new LegalDocumentValidationError('validFrom must be a valid ISO date', 'validFrom');
+    }
+    const doc = await this.legal.schedule(orgId, id, {
+      validFrom,
+      ...this.actorFromRequest(req, userId, userName),
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/request-changes')
+  @RequireLegalDocumentPermission('legal_documents.approve')
+  async requestChanges(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentRequestChangesDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.requestChanges(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      statusReason: body.statusReason,
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Patch(':id/application-scope')
+  @RequireLegalDocumentPermission('legal_documents.manage_scope')
+  async updateApplicationScope(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: UpdateLegalDocumentScopeDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.updateApplicationScope(orgId, id, {
+      language: body.language,
+      jurisdictionCountry: body.jurisdictionCountry,
+      customerSegment: body.customerSegment,
+      bookingChannel: body.bookingChannel,
+      productScope: body.productScope,
+      stationScopeMode: body.stationScopeMode,
+      stationIds: body.stationIds,
+      priority: body.priority,
+      isMandatory: body.isMandatory,
+      noticePurpose: body.noticePurpose,
+      validFrom: body.validFrom,
+      validUntil: body.validUntil,
+      actor: this.actorFromRequest(req, userId, userName),
+    });
+    return this.legal.getDetail(orgId, doc.id);
   }
 
   @Post(':id/activate')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
-  async activate(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.legal.toDto(await this.legal.activate(orgId, id));
+  @RequireLegalDocumentPermission('legal_documents.activate')
+  async activate(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentActivateDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.activate(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      statusReason: body.statusReason,
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/revoke')
+  @RequireLegalDocumentPermission('legal_documents.revoke')
+  async revoke(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentRevokeDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.revoke(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      statusReason: body.statusReason,
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
   }
 
   @Post(':id/archive')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
-  async archive(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.legal.toDto(await this.legal.archive(orgId, id));
+  @RequireLegalDocumentPermission('legal_documents.archive')
+  async archive(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentArchiveDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.archive(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      statusReason: body.statusReason,
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/legal-hold')
+  @RequireLegalDocumentPermission('legal_documents.manage_legal_hold')
+  async setLegalHold(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: SetLegalDocumentLegalHoldDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legalHold.setMasterLegalHold(
+      orgId,
+      id,
+      body.reason,
+      this.actorFromRequest(req, userId, userName),
+    );
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/legal-hold/clear')
+  @RequireLegalDocumentPermission('legal_documents.manage_legal_hold')
+  async clearLegalHold(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() _body: ClearLegalDocumentLegalHoldDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legalHold.clearMasterLegalHold(
+      orgId,
+      id,
+      this.actorFromRequest(req, userId, userName),
+    );
+    return this.legal.getDetail(orgId, doc.id);
   }
 
   @Get(':id/download')
+  @RequireLegalDocumentPermission('legal_documents.view')
   @Header('Cache-Control', 'no-store')
   async download(
     @Param('orgId') orgId: string,
@@ -103,8 +457,20 @@ export class LegalDocumentsController {
     const dl = await this.legal.getDownload(orgId, id);
     res.set({
       'Content-Type': dl.mimeType,
-      'Content-Disposition': `inline; filename="${encodeURIComponent(dl.fileName)}"`,
+      'Content-Disposition': buildContentDispositionInline(dl.fileName),
     });
     return new StreamableFile(dl.stream);
+  }
+
+  private actorFromRequest(
+    req: Request,
+    userId?: string,
+    userName?: string,
+  ): { userId: string | null; displayName: string | null; correlationId: string | null } {
+    return {
+      userId: userId ?? null,
+      displayName: userName?.trim() || null,
+      correlationId: ((req as Request & { requestId?: string }).requestId ?? null) || null,
+    };
   }
 }

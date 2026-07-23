@@ -40,6 +40,7 @@ import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
+import { resolveHandoverActor } from './handover-actor.util';
 
 @Controller('organizations/:orgId/bookings')
 @UseGuards(OrgScopingGuard, RolesGuard)
@@ -315,17 +316,31 @@ export class BookingsController {
   async createPickupHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
     @Body() body: CreateHandoverProtocolPayload,
   ) {
-    return this.handoverService.createHandover(orgId, bookingId, 'PICKUP', body);
+    return this.handoverService.createHandover(
+      orgId,
+      bookingId,
+      'PICKUP',
+      body,
+      resolveHandoverActor(user),
+    );
   }
 
   @Post(':id/handover/return')
   async createReturnHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
     @Body() body: CreateHandoverProtocolPayload,
   ) {
-    return this.handoverService.createHandover(orgId, bookingId, 'RETURN', body);
+    return this.handoverService.createHandover(
+      orgId,
+      bookingId,
+      'RETURN',
+      body,
+      resolveHandoverActor(user),
+    );
   }
 }

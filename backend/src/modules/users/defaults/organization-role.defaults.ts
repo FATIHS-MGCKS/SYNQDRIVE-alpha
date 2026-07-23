@@ -1,5 +1,10 @@
 import { MembershipRole } from '@prisma/client';
 import type { MembershipPermissionsMap } from '@shared/auth/permission.util';
+import {
+  legalDocumentFullPermissions,
+  legalDocumentReadPermissions,
+  legalDocumentViewerPermissions,
+} from '@modules/documents/legal-document-permission.defaults';
 
 export interface DefaultRoleTemplate {
   systemKey: string;
@@ -62,14 +67,17 @@ function adminPermissions(): MembershipPermissionsMap {
   for (const key of keys) {
     perms[key] = all(true, true, true);
   }
-  return mergePermissions(perms, paymentModulePermissions({
-    payments: { read: true, write: true },
-    refund: true,
-    disputesRead: true,
-    connectRead: true,
-    connectManage: true,
-    settingsManage: true,
-  }));
+  return mergePermissions(
+    mergePermissions(perms, paymentModulePermissions({
+      payments: { read: true, write: true },
+      refund: true,
+      disputesRead: true,
+      connectRead: true,
+      connectManage: true,
+      settingsManage: true,
+    })),
+    legalDocumentFullPermissions(),
+  );
 }
 
 function subAdminPermissions(): MembershipPermissionsMap {
@@ -88,7 +96,7 @@ function subAdminPermissions(): MembershipPermissionsMap {
   ] as const) {
     delete perms[key];
   }
-  return perms;
+  return mergePermissions(perms, legalDocumentReadPermissions());
 }
 
 function workerReadPermissions(extraWrite: string[] = []): MembershipPermissionsMap {
@@ -106,7 +114,7 @@ function workerReadPermissions(extraWrite: string[] = []): MembershipPermissions
     const canWrite = extraWrite.includes(key);
     perms[key as keyof MembershipPermissionsMap] = all(canRead, canWrite, false);
   }
-  return perms;
+  return mergePermissions(perms, legalDocumentViewerPermissions());
 }
 
 export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
@@ -145,13 +153,16 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Rechnungen, Mahnungen und Finanzdaten.',
     membershipRole: MembershipRole.SUB_ADMIN,
     permissions: mergePermissions(
-      workerReadPermissions(['invoices', 'fines', 'price-tariffs']),
-      paymentModulePermissions({
-        payments: { read: true, write: true },
-        refund: true,
-        disputesRead: true,
-        connectRead: true,
-      }),
+      mergePermissions(
+        workerReadPermissions(['invoices', 'fines', 'price-tariffs']),
+        paymentModulePermissions({
+          payments: { read: true, write: true },
+          refund: true,
+          disputesRead: true,
+          connectRead: true,
+        }),
+      ),
+      legalDocumentReadPermissions(),
     ),
   },
   {
@@ -212,8 +223,11 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Nur Lesezugriff auf operative Bereiche.',
     membershipRole: MembershipRole.WORKER,
     permissions: mergePermissions(
-      workerReadPermissions(),
-      paymentModulePermissions({ payments: { read: true, write: false } }),
+      mergePermissions(
+        workerReadPermissions(),
+        paymentModulePermissions({ payments: { read: true, write: false } }),
+      ),
+      legalDocumentReadPermissions(),
     ),
   },
 ];

@@ -1,0 +1,140 @@
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RolesGuard } from '@shared/auth/roles.guard';
+import { LegalDocumentsController } from './legal-documents.controller';
+import { LegalDocumentNotFoundError } from './legal-documents-api.errors';
+
+describe('LegalDocumentsController', () => {
+  const orgId = 'org-1';
+  const docId = 'doc-1';
+  const userId = 'user-1';
+  const userName = 'Admin User';
+
+  const legalService = {
+    listPaginated: jest.fn(),
+    getDetail: jest.fn(),
+    getWorkflowSettings: jest.fn(),
+    upload: jest.fn(),
+    submitForReview: jest.fn(),
+    approve: jest.fn(),
+    requestChanges: jest.fn(),
+    schedule: jest.fn(),
+    updateApplicationScope: jest.fn(),
+    activate: jest.fn(),
+    revoke: jest.fn(),
+    archive: jest.fn(),
+    getDownload: jest.fn(),
+  };
+
+  const eventsService = {
+    listForOrganization: jest.fn(),
+    listForDocument: jest.fn(),
+  };
+
+  const legalHoldService = {
+    setHold: jest.fn(),
+    clearHold: jest.fn(),
+  };
+
+  const retentionService = {
+    runRetention: jest.fn(),
+  };
+
+  const retentionPolicyService = {
+    getOrganizationPolicy: jest.fn(),
+    upsertOrganizationPolicy: jest.fn(),
+    getPlatformPolicyVersion: jest.fn(),
+    getPlatformDefaults: jest.fn(),
+  };
+
+  const usageService = {
+    getUsage: jest.fn(),
+  };
+
+  const controller = new LegalDocumentsController(
+    legalService as any,
+    eventsService as any,
+    legalHoldService as any,
+    retentionService as any,
+    retentionPolicyService as any,
+    usageService as any,
+  );
+
+  const req = { requestId: 'corr-1' } as any;
+  const detail = { id: docId, documentType: 'TERMS_AND_CONDITIONS', snapshotCount: 0 };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    legalService.getDetail.mockResolvedValue(detail);
+    legalService.listPaginated.mockResolvedValue([detail]);
+    eventsService.listForOrganization.mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
+    eventsService.listForDocument.mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
+  });
+
+  it('applies OrgScopingGuard, RolesGuard and PermissionsGuard', () => {
+    const guards = Reflect.getMetadata(GUARDS_METADATA, LegalDocumentsController);
+    expect(guards).toEqual(
+      expect.arrayContaining([OrgScopingGuard, RolesGuard, PermissionsGuard]),
+    );
+  });
+
+  it('delegates list to listPaginated with query DTO', async () => {
+    const query = { status: 'ACTIVE', page: 2, limit: 10 };
+    await controller.list(orgId, query as any);
+    expect(legalService.listPaginated).toHaveBeenCalledWith(orgId, query);
+  });
+
+  it('delegates getOne to getDetail', async () => {
+    await controller.getOne(orgId, docId);
+    expect(legalService.getDetail).toHaveBeenCalledWith(orgId, docId);
+  });
+
+  it('returns enriched detail after lifecycle mutations', async () => {
+    legalService.activate.mockResolvedValue({ id: docId });
+    await controller.activate(
+      orgId,
+      docId,
+      { statusReason: 'Sofortige Aktivierung nach Freigabe' },
+      userId,
+      userName,
+      req,
+    );
+    expect(legalService.activate).toHaveBeenCalledWith(
+      orgId,
+      docId,
+      expect.objectContaining({
+        userId,
+        displayName: userName,
+        correlationId: 'corr-1',
+        statusReason: 'Sofortige Aktivierung nach Freigabe',
+      }),
+    );
+    expect(legalService.getDetail).toHaveBeenCalledWith(orgId, docId);
+  });
+
+  it('delegates organization events with query DTO', async () => {
+    const query = { page: 1, limit: 20, eventType: 'ACTIVATED' };
+    await controller.listOrganizationEvents(orgId, query as any);
+    expect(eventsService.listForOrganization).toHaveBeenCalledWith(orgId, query);
+  });
+
+  it('delegates document events with query DTO', async () => {
+    const query = { page: 2, limit: 5 };
+    await controller.listDocumentEvents(orgId, docId, query as any);
+    expect(eventsService.listForDocument).toHaveBeenCalledWith(orgId, docId, query);
+  });
+
+  it('delegates usage lookup with pagination', async () => {
+    usageService.getUsage.mockResolvedValue({ legalDocumentId: docId, summary: {}, references: { data: [], meta: {} } });
+    await controller.getUsage(orgId, docId, '2', '10');
+    expect(usageService.getUsage).toHaveBeenCalledWith(orgId, docId, { page: 2, limit: 10 });
+  });
+
+  it('propagates tenant-safe not-found from detail lookup', async () => {
+    legalService.getDetail.mockRejectedValue(new LegalDocumentNotFoundError());
+    await expect(controller.getOne('org-a', 'foreign-doc')).rejects.toBeInstanceOf(
+      LegalDocumentNotFoundError,
+    );
+  });
+});

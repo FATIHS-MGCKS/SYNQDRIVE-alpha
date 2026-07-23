@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint \"src/rental/hooks/useDocumentExtractionFlow.ts\" \"src/rental/hooks/useDocumentUploadPage.ts\" \"src/rental/components/DocumentUploadView.tsx\" \"src/rental/components/documents/**\" \"src/rental/lib/document-extraction*.ts\" \"src/rental/lib/document-upload.constants.ts\" \"src/operator/ai-upload/**\" \"e2e/document-upload*.ts\" \"e2e/document-intake-v2*.ts\"",
+    "lint": "eslint \"src/rental/hooks/useDocumentExtractionFlow.ts\" \"src/rental/hooks/useDocumentUploadPage.ts\" \"src/rental/components/DocumentUploadView.tsx\" \"src/rental/components/documents/**\" \"src/rental/lib/document-extraction*.ts\" \"src/rental/lib/document-upload.constants.ts\" \"src/rental/components/legal-documents/**\" \"src/rental/lib/legal-document*.ts\" \"src/rental/lib/legal-documents*.ts\" \"src/operator/ai-upload/**\" \"e2e/document-upload*.ts\" \"e2e/document-intake-v2*.ts\" \"e2e/legal-documents*.ts\"",
     "lint:all": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -17,6 +17,11 @@
     "test:document-intake:v2": "vitest run src/rental/lib/document-intake-test-fixtures.ts src/rental/lib/document-intake-v2-surfaces.test.ts src/rental/lib/document-intake-v2-flow.contract.test.ts src/rental/lib/document-intake-v2-tenant-isolation.test.ts src/rental/lib/document-extraction-apply-polling.test.ts src/rental/lib/document-apply-result.test.ts src/rental/lib/document-intake-navigation.test.ts src/rental/lib/document-intake-entry.test.ts src/rental/lib/document-intake-entry-points.test.ts src/rental/lib/document-intake-processing-steps.test.ts src/rental/lib/document-intake-processing-steps.ui.test.tsx src/rental/lib/document-extraction-lifecycle.test.ts src/rental/lib/document-extraction-session.test.ts src/rental/lib/document-extraction-polling.test.ts src/rental/lib/document-extraction-i18n-fr.test.ts src/rental/lib/document-review-inbox.util.test.ts src/rental/lib/document-archive-audit.util.test.ts src/rental/lib/document-follow-up-contact.test.ts src/rental/lib/document-classification-result.test.ts src/rental/lib/document-entity-review.test.ts src/rental/lib/document-schema-field-review.test.ts src/rental/lib/document-action-plan-preview.test.ts src/rental/lib/document-upload-duplicate-flow.test.ts src/rental/hooks/useDocumentIntakeFlow.test.ts src/rental/hooks/useDocumentExtractionFlow.test.ts src/rental/hooks/document-intake-initial-state.test.tsx src/rental/components/document-upload-page.test.tsx src/rental/components/documents/document-upload-ui-coverage.test.ts src/rental/components/documents/document-upload-responsive.test.ts src/rental/components/documents/document-apply-result-panel.ui.test.tsx src/rental/components/documents/document-action-plan-review.ui.test.tsx src/rental/components/documents/document-classification-result.ui.test.tsx src/rental/components/documents/document-entity-review.ui.test.tsx src/rental/components/documents/document-schema-field-review.ui.test.tsx src/rental/components/documents/document-follow-up-panel.ui.test.tsx src/rental/components/documents/document-archive-panel.ui.test.tsx src/lib/document-upload-context.test.ts src/lib/document-upload-duplicate.test.ts src/lib/document-upload-identification.test.ts src/lib/document-upload-rate-limit.test.ts",
     "test:document-intake:v2:e2e": "playwright test -c e2e/playwright.config.ts document-intake-v2-flow.spec.ts document-intake-v2-responsive.spec.ts --project=desktop-1280",
     "test:document-intake:v2:verify": "bash scripts/test/document-intake-v2-verify.sh all",
+    "test:legal-documents": "vitest run legal-documents legal-document",
+    "test:legal-documents:e2e": "playwright test -c e2e/playwright.config.ts legal-documents-flow.spec.ts --project=desktop-1280 && playwright test -c e2e/playwright.config.ts legal-documents-responsive.spec.ts --project=mobile-320",
+    "test:legal-documents:a11y": "playwright test -c e2e/playwright.config.ts legal-documents-a11y.spec.ts --project=desktop-1280",
+    "test:legal-documents:verify": "bash scripts/test/legal-documents-verify.sh all",
+    "test:legal-documents:verify:unit": "bash scripts/test/legal-documents-verify.sh unit",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"
@@ -75,6 +80,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "^4.2.1",

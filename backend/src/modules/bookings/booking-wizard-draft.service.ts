@@ -12,6 +12,7 @@ import { GeneratedDocumentsService } from '@modules/documents/generated-document
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingInvoiceLifecycleService } from '@modules/invoices/booking-invoice-lifecycle.service';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
+import { BookingLegalDocumentEmailService } from '@modules/outbound-email/booking-legal-document-email.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import {
   PricingQuoteService,
@@ -41,7 +42,7 @@ import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.serv
 export interface BookingWizardConfirmResult {
   booking: Booking;
   bundle: Awaited<ReturnType<BookingDocumentBundleService['getBundleView']>>;
-  autoSend: Awaited<ReturnType<BookingDocumentEmailService['maybeAutoSendBookingDocuments']>>;
+  autoSend: Awaited<ReturnType<BookingLegalDocumentEmailService['maybeAutoSendFrozenBookingDocuments']>>;
   paymentIntent: BookingCheckoutPaymentIntent | null;
   paymentFlow?: WizardPaymentFlowResult | null;
 }
@@ -58,6 +59,7 @@ export class BookingWizardDraftService {
     private readonly invoicesService: InvoicesService,
     private readonly bookingInvoiceLifecycle: BookingInvoiceLifecycleService,
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
+    private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
   ) {}
@@ -236,7 +238,7 @@ export class BookingWizardDraftService {
     }
 
     const bundle = await this.bundleService.getBundleView(orgId, bookingId);
-    const autoSend = await this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
+    const autoSend = await this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
       orgId,
       bookingId,
       options?.userId ?? null,

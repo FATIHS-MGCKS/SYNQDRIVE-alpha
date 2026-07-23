@@ -35,6 +35,10 @@ export interface SendBookingDocumentsEmailInput {
   bodyText?: string;
   bodyHtml?: string;
   documentIds: string[];
+  /** Durable send deduplication key (org-scoped unique). */
+  sendIdempotencyKey?: string | null;
+  /** When true, legal attachments use only frozen GeneratedDocument storage keys. */
+  useFrozenAttachmentsOnly?: boolean;
 }
 
 @Injectable()
@@ -114,7 +118,9 @@ export class BookingDocumentEmailService {
 
     for (const doc of documents) {
       await this.generatedDocuments.getById(orgId, doc.id);
-      const buffer = await this.loadAttachmentBuffer(orgId, doc);
+      const buffer = await this.loadAttachmentBuffer(orgId, doc, {
+        useFrozenAttachmentsOnly: input.useFrozenAttachmentsOnly === true,
+      });
       totalBytes += buffer.length;
       if (totalBytes > maxBytes) {
         throw new BadRequestException('Total attachment size exceeds the allowed limit');
@@ -146,6 +152,7 @@ export class BookingDocumentEmailService {
         bodyText,
         bodyHtml,
         sentByUserId: userId,
+        sendIdempotencyKey: input.sendIdempotencyKey?.trim() || null,
         attachments: {
           create: attachments.map((a) => ({
             generatedDocumentId: a.generatedDocumentId,
@@ -250,6 +257,10 @@ export class BookingDocumentEmailService {
     });
 
     return this.outboundEmail.toDto(updated);
+  }
+
+  toOutboundDto(email: Parameters<OutboundEmailService['toDto']>[0]) {
+    return this.outboundEmail.toDto(email);
   }
 
   /**
@@ -443,9 +454,17 @@ export class BookingDocumentEmailService {
     return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
-  private async loadAttachmentBuffer(orgId: string, doc: { objectKey: string; legalDocumentId: string | null; origin: string; title: string }): Promise<Buffer> {
+  private async loadAttachmentBuffer(
+    orgId: string,
+    doc: { objectKey: string; legalDocumentId: string | null; origin: string; title: string },
+    options: { useFrozenAttachmentsOnly?: boolean } = {},
+  ): Promise<Buffer> {
     const keys = [doc.objectKey];
-    if (doc.origin === DOCUMENT_ORIGIN.STATIC_LEGAL && doc.legalDocumentId) {
+    if (
+      !options.useFrozenAttachmentsOnly &&
+      doc.origin === DOCUMENT_ORIGIN.STATIC_LEGAL &&
+      doc.legalDocumentId
+    ) {
       const legal = await this.prisma.organizationLegalDocument.findFirst({
         where: { id: doc.legalDocumentId, organizationId: orgId },
         select: { objectKey: true },

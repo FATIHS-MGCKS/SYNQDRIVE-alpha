@@ -1,3 +1,5 @@
+import { legalDocumentsEn } from './legal-documents.en';
+
 export const en = {
   // ─── Navigation / Sidebar ───
   'nav.operations': 'Operations',
@@ -34,7 +36,7 @@ export const en = {
   'nav.companyInfo': 'Company Information',
   'nav.usersRoles': 'Users & Roles',
   'nav.dataAuthorization': 'Data Authorization & Consent',
-  'nav.legalDocuments': 'Legal Documents',
+  'nav.legalDocuments': 'Customer legal texts',
   'nav.emailVersand': 'Email & delivery',
   'nav.billingSubscription': 'Billing & Subscription',
   'nav.rentalRules': 'Rental Rules',
@@ -377,7 +379,7 @@ export const en = {
   'settingsTab.users': 'Users & Roles',
   'settingsTab.billing': 'Billing & Subscription',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
-  'settingsTab.legalDocuments': 'Legal Documents',
+  'settingsTab.legalDocuments': 'Customer legal texts',
   'settingsTab.rentalRules': 'Rental Rules',
 
   // Administration in-page tab bar (short labels)
@@ -386,7 +388,7 @@ export const en = {
   'adminTab.users': 'Users & Roles',
   'adminTab.billing': 'Billing',
   'adminTab.dataAuthorization': 'Data Authorization',
-  'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.legalDocuments': 'Customer legal texts',
   'adminTab.emailVersand': 'Email & delivery',
   'adminTab.rentalRules': 'Rental Rules',
 
@@ -839,6 +841,48 @@ export const en = {
   'notification.body.batteryCritical': '{reason}',
   'notification.body.brakeCritical': '{reason}',
   'notification.body.insightDefault': '',
+  'notification.title.requiredDocumentMissing': 'Required legal text missing — {documentType}',
+  'notification.body.requiredDocumentMissing': 'No active legal text is configured for {categoryTitle}. Please review legal text administration.',
+  'notification.title.legalRequiredDocumentMissing': 'Required legal text missing — {documentType}',
+  'notification.body.legalRequiredDocumentMissing': 'No active legal text is configured for {categoryTitle}.',
+  'notification.title.legalRequiredLanguageMissing': 'Required language missing — {documentType}',
+  'notification.body.legalRequiredLanguageMissing': 'No active {expectedLanguage} version exists for {categoryTitle}.',
+  'notification.title.legalRequiredJurisdictionMissing': 'Required jurisdiction missing — {documentType}',
+  'notification.body.legalRequiredJurisdictionMissing': 'No active version for jurisdiction {expectedJurisdiction} exists for {categoryTitle}.',
+  'notification.title.legalApprovalPending': 'Approval pending — {documentType}',
+  'notification.body.legalApprovalPending': 'A version of {categoryTitle} is waiting for approval.',
+  'notification.title.legalActivationScheduled': 'Activation scheduled — {documentType}',
+  'notification.body.legalActivationScheduled': 'Version {versionLabel} of {categoryTitle} is scheduled for activation.',
+  'notification.title.legalDocumentExpiringSoon': 'Legal text expiring soon — {documentType}',
+  'notification.body.legalDocumentExpiringSoon': 'Version {versionLabel} of {categoryTitle} will expire soon.',
+  'notification.title.legalBundleIncomplete': 'Document bundle incomplete — {bookingRef}',
+  'notification.body.legalBundleIncomplete': 'Booking {bookingRef} is still missing documents: {documentType}.',
+  'notification.title.legalDocumentDeliveryFailed': 'Document delivery failed — {bookingRef}',
+  'notification.body.legalDocumentDeliveryFailed': 'Delivery of {documentType} for booking {bookingRef} failed or is incomplete.',
+  'notification.title.legalScanFailed': 'Malware scan failed — {documentType}',
+  'notification.body.legalScanFailed': 'Scan failed for {categoryTitle} (version {versionLabel}).',
+  'notification.title.legalIntegrityCheckFailed': 'Integrity check failed — {documentType}',
+  'notification.body.legalIntegrityCheckFailed': 'Integrity of {categoryTitle} (version {versionLabel}) could not be verified.',
+  'notification.title.legalPickupBlockedMissingProof': 'Pickup blocked — proof missing ({bookingRef})',
+  'notification.body.legalPickupBlockedMissingProof': 'Pickup for {bookingRef} is blocked due to missing document proof ({documentType}).',
+  'notification.title.legal-tech-multiple-active-versions': 'Multiple active versions — {categoryTitle}',
+  'notification.body.legal-tech-multiple-active-versions': 'Technical alert: {activeCount} active versions for {categoryTitle}.',
+  'notification.title.legal-tech-storage-object-missing': 'Storage object missing',
+  'notification.body.legal-tech-storage-object-missing': 'Technical alert: a legal text storage object is missing.',
+  'notification.title.legal-tech-hash-mismatch': 'Hash mismatch detected',
+  'notification.body.legal-tech-hash-mismatch': 'Technical alert: checksum mismatch for a legal text object.',
+  'notification.title.legal-tech-queue-job-dead': 'Background job permanently failed',
+  'notification.body.legal-tech-queue-job-dead': 'Technical alert: a legal text queue job failed permanently.',
+  'notification.title.legal-tech-malware-scanner-unavailable': 'Malware scanner unavailable',
+  'notification.body.legal-tech-malware-scanner-unavailable': 'Technical alert: malware scanner is unreachable.',
+  'notification.title.legal-tech-object-storage-unavailable': 'Object storage unavailable',
+  'notification.body.legal-tech-object-storage-unavailable': 'Technical alert: object storage is unreachable.',
+  'notification.title.legal-tech-reconciliation-failed': 'Reconciliation run failed',
+  'notification.body.legal-tech-reconciliation-failed': 'Technical alert: integrity reconciliation run failed.',
+  'notification.title.legal-tech-unmapped-document-type': 'Unmapped document type',
+  'notification.body.legal-tech-unmapped-document-type': 'Technical alert: a document type could not be mapped.',
+  'notification.title.legal-tech-resolver-conflict-unresolvable': 'Unresolvable resolver conflict',
+  'notification.body.legal-tech-resolver-conflict-unresolvable': 'Technical alert: a legal text resolver conflict could not be resolved.',
   'notification.cta.openVehicle': 'Open vehicle',
   'notification.cta.openBooking': 'Open booking',
   'notification.cta.startPickup': 'Start handover',
@@ -2517,6 +2561,7 @@ export const en = {
   'voice.analytics.overage': 'Overage',
   'voice.analytics.forecast': 'Projected period total: {amount}',
 
+
   // IAM Access Control (Prompt 21)
   'iam.title': 'Users & Roles',
   'iam.tab.team': 'Team',
@@ -2566,6 +2611,7 @@ export const en = {
   'iam.a11y.mainTabs': 'IAM sections',
   'iam.a11y.drawerTabs': 'Member detail sections',
   'iam.a11y.statusBadge': 'Status: {label}',
+  ...legalDocumentsEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

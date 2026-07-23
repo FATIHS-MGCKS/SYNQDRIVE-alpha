@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, iamConfig, iamDataRetentionConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
@@ -138,7 +138,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, iamConfig, iamDataRetentionConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)

@@ -22,6 +22,7 @@ import {
   SectionHeader,
 } from '../../components/patterns';
 import { AdministrationTabBar } from './settings/AdministrationTabBar';
+import { AdministrationTabPanel } from './settings/AdministrationTabPanel';
 import type { SettingsTab } from './settings/settingsTypes';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -1840,22 +1841,48 @@ export function SettingsView({
       </header>
 
       {activeTab === 'account' && (
-        <AccountInformationTab onNavigateToUsers={() => onTabChange?.('users')} />
+        <AdministrationTabPanel tab="account" activeTab={activeTab}>
+          <AccountInformationTab onNavigateToUsers={() => onTabChange?.('users')} />
+        </AdministrationTabPanel>
       )}
       {activeTab === 'company' && (
-        <CompanyInformationTab
-          onNavigateToLegalDocuments={() => onTabChange?.('legal-documents')}
-          onNavigateToStations={onNavigateToStations}
-        />
+        <AdministrationTabPanel tab="company" activeTab={activeTab}>
+          <CompanyInformationTab
+            onNavigateToLegalDocuments={() => onTabChange?.('legal-documents')}
+            onNavigateToStations={onNavigateToStations}
+          />
+        </AdministrationTabPanel>
       )}
-      {activeTab === 'users' && <UsersRolesTab orgId={orgId} />}
-      {activeTab === 'billing' && <BillingTab />}
+      {activeTab === 'users' && (
+        <AdministrationTabPanel tab="users" activeTab={activeTab}>
+          <UsersRolesTab orgId={orgId} />
+        </AdministrationTabPanel>
+      )}
+      {activeTab === 'billing' && (
+        <AdministrationTabPanel tab="billing" activeTab={activeTab}>
+          <BillingTab />
+        </AdministrationTabPanel>
+      )}
       {activeTab === 'data-authorization' && (
-        <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
+        <AdministrationTabPanel tab="data-authorization" activeTab={activeTab}>
+          <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
+        </AdministrationTabPanel>
       )}
-      {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={bridgeDark} />}
-      {activeTab === 'email-versand' && <EmailVersandTab isDarkMode={bridgeDark} />}
-      {activeTab === 'rental-rules' && <RentalRulesTab canWrite={canWriteRentalRules} />}
+      {activeTab === 'legal-documents' && (
+        <AdministrationTabPanel tab="legal-documents" activeTab={activeTab}>
+          <LegalDocumentsTab isDarkMode={bridgeDark} />
+        </AdministrationTabPanel>
+      )}
+      {activeTab === 'email-versand' && (
+        <AdministrationTabPanel tab="email-versand" activeTab={activeTab}>
+          <EmailVersandTab isDarkMode={bridgeDark} />
+        </AdministrationTabPanel>
+      )}
+      {activeTab === 'rental-rules' && (
+        <AdministrationTabPanel tab="rental-rules" activeTab={activeTab}>
+          <RentalRulesTab canWrite={canWriteRentalRules} />
+        </AdministrationTabPanel>
+      )}
     </div>
   );
 }

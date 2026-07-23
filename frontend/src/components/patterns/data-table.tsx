@@ -19,6 +19,8 @@ export interface DataTableColumn<T> {
   className?: string;
   headerClassName?: string;
   width?: string | number;
+  /** Applied to `<th scope="col">` for sortable columns (not on nested buttons). */
+  ariaSort?: 'ascending' | 'descending' | 'none';
 }
 
 export interface DataTableProps<T> {
@@ -79,6 +81,8 @@ export function DataTable<T>({
             {columns.map((col) => (
               <th
                 key={col.key}
+                scope="col"
+                aria-sort={col.ariaSort}
                 style={{ width: col.width }}
                 className={cn(
                   col.align ? alignClass[col.align] : 'text-left',

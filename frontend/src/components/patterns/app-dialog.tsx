@@ -63,7 +63,7 @@ export function AppDialog({
                 variant="ghost"
                 size="icon"
                 className="absolute top-3.5 right-3.5 z-10 size-8"
-                aria-label="Close"
+                aria-label="Schließen"
               >
                 <X className="h-4 w-4" />
               </Button>
