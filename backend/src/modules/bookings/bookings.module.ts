@@ -23,6 +23,7 @@ import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
+import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingsHandoverService,
     BookingAllowedDriversService,
     BookingRentalEligibilityService,
+    BookingEligibilityGatekeeperService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
@@ -57,6 +59,7 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
     BookingsService,
     BookingsHandoverService,
     BookingRentalEligibilityService,
+    BookingEligibilityGatekeeperService,
     BookingWizardDraftService,
     BookingAllowedDriversService,
   ],
