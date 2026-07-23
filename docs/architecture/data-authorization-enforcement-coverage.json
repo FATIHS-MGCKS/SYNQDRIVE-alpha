@@ -1,0 +1,2942 @@
+{
+  "meta": {
+    "generatedAt": "2026-07-23",
+    "prompt": "2 of 44",
+    "baselineRef": "docs/audits/data-authorization-remediation-baseline-2026-07.md",
+    "documentRef": "docs/architecture/data-authorization-dataflow-and-enforcement-map-2026-07.md",
+    "gitRef": "546c4cb7",
+    "classificationVersion": "1.0.0",
+    "totalPaths": 51,
+    "fullyProtected": 0,
+    "partiallyProtected": 2,
+    "unprotected": 49
+  },
+  "classificationCriteria": {
+    "fullyProtected": "OrgDataAuthorization enforcement on read, export, AI/MCP AND ingestion; REVOKED/EXPIRED blocks all stages.",
+    "partiallyProtected": "At least one assertDataAuthorization OR IAM+ledger signal but incomplete coverage.",
+    "unprotected": "No OrgDataAuthorization runtime enforcement; IAM/org-scoping only."
+  },
+  "taxonomy": {
+    "dataCategories": [
+      "GPS_LOCATION",
+      "TELEMETRY_DATA",
+      "VEHICLE_IDENTITY",
+      "VEHICLE_STATUS",
+      "ODOMETER",
+      "TRIP_DATA",
+      "DRIVING_BEHAVIOR",
+      "HEALTH_SIGNALS",
+      "DTC_CODES",
+      "BOOKING_DATA",
+      "CUSTOMER_DATA",
+      "FINANCIAL_DATA",
+      "DOCUMENT_DATA"
+    ],
+    "purposes": [
+      "LIVE_MAP",
+      "TRIPS",
+      "VEHICLE_HEALTH",
+      "ALERTS",
+      "FLEET_ANALYTICS",
+      "RENTAL_ANALYTICS",
+      "TECHNICAL_OVERVIEW",
+      "ABUSE_MISUSE_DETECTION",
+      "DOCUMENT_PROCESSING",
+      "CUSTOMER_CONSENT",
+      "PARTNER_SERVICE"
+    ],
+    "sourceTypes": [
+      "DIMO",
+      "SYNQDRIVE_SYSTEM",
+      "CUSTOMER_CONSENT",
+      "PARTNER_ACCESS",
+      "MANUAL_UPLOAD",
+      "API_INTEGRATION"
+    ]
+  },
+  "paths": [
+    {
+      "id": "DA-001",
+      "name": "DIMO Live GPS",
+      "domain": "DIMO",
+      "dataSource": "DIMO Telemetry GraphQL",
+      "dataCategory": [
+        "GPS_LOCATION"
+      ],
+      "purpose": [
+        "LIVE_MAP"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_latest_states (cache fallback)"
+      ],
+      "services": [
+        "VehiclesService.getLiveGps",
+        "DimoTelemetryService",
+        "DataAuthorizationEnforcementService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/vehicles/:vehicleId/live-gps"
+      ],
+      "uiSurfaces": [
+        "Vehicle detail live map",
+        "Fleet map"
+      ],
+      "pipeline": {
+        "provider": "DIMO",
+        "intake": "API on-demand",
+        "validation": "OrgScoping+fleet.read+assertDataAuthorization",
+        "rawPersist": "None",
+        "normalization": "fetchLastSeenLocation",
+        "analysis": "None",
+        "derivation": "None",
+        "storage": "Cache fallback",
+        "apiRead": "live-gps",
+        "ui": "Map",
+        "export": "None",
+        "aiMcp": "WhatsApp AI getLiveGps",
+        "externalSharing": "None",
+        "deletion": "N/A"
+      },
+      "enforcementPoint": "assertDataAuthorization DIMO/GPS_LOCATION/LIVE_MAP",
+      "protectionStatus": "partial",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": true,
+      "expiryConsidered": true,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P1",
+      "requiredRemediation": "Block cache fallback on deny; audit denials; gate ingestion"
+    },
+    {
+      "id": "DA-002",
+      "name": "DIMO Snapshot Ingestion",
+      "domain": "DIMO",
+      "dataSource": "DIMO latest snapshot",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "GPS_LOCATION",
+        "VEHICLE_STATUS",
+        "ODOMETER",
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "LIVE_MAP",
+        "TRIPS",
+        "VEHICLE_HEALTH",
+        "FLEET_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_latest_states",
+        "dimo_poll_logs",
+        "telemetry_snapshots (CH)"
+      ],
+      "services": [
+        "DimoSnapshotProcessor",
+        "ClickHouseTelemetryService"
+      ],
+      "workers": [
+        "dimo.snapshot.poll"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Fleet map",
+        "Vehicle telemetry (indirect)"
+      ],
+      "pipeline": {
+        "provider": "DIMO",
+        "intake": "Scheduler 30s",
+        "validation": "Vehicle eligibility",
+        "rawPersist": "raw_payload_json",
+        "normalization": "Snapshot mapper",
+        "analysis": "Trip/battery/connectivity",
+        "derivation": "Trip FSM",
+        "storage": "PG+CH",
+        "apiRead": "Via cache",
+        "ui": "Dashboards",
+        "export": "None",
+        "aiMcp": "Indirect",
+        "externalSharing": "None",
+        "deletion": "poll_logs 30d; CH 180d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate TELEMETRY_DATA before persist"
+    },
+    {
+      "id": "DA-003",
+      "name": "DIMO Telemetry Read API",
+      "domain": "DIMO",
+      "dataSource": "VLS + conditional DIMO GPS",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "GPS_LOCATION",
+        "VEHICLE_STATUS"
+      ],
+      "purpose": [
+        "LIVE_MAP",
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_latest_states"
+      ],
+      "services": [
+        "VehiclesService.getVehicleWithTelemetry"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/vehicles/:vehicleId/telemetry"
+      ],
+      "uiSurfaces": [
+        "Vehicle detail telemetry"
+      ],
+      "pipeline": {
+        "provider": "DIMO+cache",
+        "intake": "API",
+        "validation": "OrgScoping+fleet.read",
+        "rawPersist": "None",
+        "normalization": "interpretVehicleState",
+        "analysis": "Live tracking flag",
+        "derivation": "Display DTO",
+        "storage": "Read",
+        "apiRead": "telemetry",
+        "ui": "Vehicle detail",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "N/A"
+      },
+      "enforcementPoint": "None (bypasses assertDataAuthorization)",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Enforce when DIMO fetch occurs"
+    },
+    {
+      "id": "DA-004",
+      "name": "Fleet Map GPS (cached)",
+      "domain": "GPS",
+      "dataSource": "vehicle_latest_states",
+      "dataCategory": [
+        "GPS_LOCATION",
+        "VEHICLE_STATUS"
+      ],
+      "purpose": [
+        "LIVE_MAP",
+        "FLEET_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_latest_states",
+        "Redis fleet-map 5s"
+      ],
+      "services": [
+        "VehiclesService.getFleetMapData",
+        "FleetMapCacheService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/fleet-map"
+      ],
+      "uiSurfaces": [
+        "Fleet map"
+      ],
+      "pipeline": {
+        "provider": "DIMO snapshot indirect",
+        "intake": "API",
+        "validation": "OrgScoping",
+        "rawPersist": "N/A",
+        "normalization": "Fleet DTO",
+        "analysis": "Operational state",
+        "derivation": "Markers",
+        "storage": "Redis",
+        "apiRead": "fleet-map",
+        "ui": "Fleet map",
+        "export": "None",
+        "aiMcp": "Chat fleet metadata",
+        "externalSharing": "None",
+        "deletion": "Redis 5s"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate LIVE_MAP per vehicle"
+    },
+    {
+      "id": "DA-005",
+      "name": "DIMO Device Connection Webhooks",
+      "domain": "DIMO",
+      "dataSource": "DIMO OBD/DTC webhooks",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "DTC_CODES"
+      ],
+      "purpose": [
+        "TECHNICAL_OVERVIEW",
+        "ALERTS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "device_connection_webhook_inbox",
+        "device_connection_episodes",
+        "vehicle_dtc_events"
+      ],
+      "services": [
+        "DeviceConnectionWebhookService",
+        "DtcService"
+      ],
+      "workers": [
+        "connectivity.webhook.process"
+      ],
+      "apiEndpoints": [
+        "POST /webhooks/dimo"
+      ],
+      "uiSurfaces": [
+        "Fleet connectivity"
+      ],
+      "pipeline": {
+        "provider": "DIMO webhook",
+        "intake": "HTTP+inbox",
+        "validation": "HMAC/token",
+        "rawPersist": "Inbox",
+        "normalization": "Dedup 30s",
+        "analysis": "Episodes",
+        "derivation": "Alerts signal",
+        "storage": "PG",
+        "apiRead": "Connectivity APIs",
+        "ui": "Connectivity drawer",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "No dedicated job"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Gate on org DIMO consent"
+    },
+    {
+      "id": "DA-006",
+      "name": "DIMO DTC Poll",
+      "domain": "DTC",
+      "dataSource": "DIMO obdDTCList",
+      "dataCategory": [
+        "DTC_CODES",
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH",
+        "ALERTS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_dtc_events",
+        "vehicle_latest_states"
+      ],
+      "services": [
+        "DimoDtcProcessor",
+        "DtcService"
+      ],
+      "workers": [
+        "dimo.dtc.poll"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Health error codes"
+      ],
+      "pipeline": {
+        "provider": "DIMO",
+        "intake": "Scheduler 3h",
+        "validation": "Vehicle JWT",
+        "rawPersist": "DTC list",
+        "normalization": "DtcService",
+        "analysis": "Stale 6h",
+        "derivation": "Notifications",
+        "storage": "PG",
+        "apiRead": "dtc APIs",
+        "ui": "Health tab",
+        "export": "None",
+        "aiMcp": "DTC knowledge AI",
+        "externalSharing": "None",
+        "deletion": "No auto-prune"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate DTC_CODES poll+read"
+    },
+    {
+      "id": "DA-007",
+      "name": "DIMO Trip Detection",
+      "domain": "Trips",
+      "dataSource": "DIMO snapshots+segments",
+      "dataCategory": [
+        "TRIP_DATA",
+        "GPS_LOCATION",
+        "ODOMETER"
+      ],
+      "purpose": [
+        "TRIPS",
+        "FLEET_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_trips",
+        "vehicle_trip_detection_states",
+        "vehicle_trip_tracking_runs"
+      ],
+      "services": [
+        "TripDetectionOrchestrationService",
+        "DimoSegmentsService"
+      ],
+      "workers": [
+        "dimo.trip-tracking",
+        "dimo.snapshot.poll"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/trips"
+      ],
+      "uiSurfaces": [
+        "Vehicle trips tab"
+      ],
+      "pipeline": {
+        "provider": "DIMO segments",
+        "intake": "FSM+queue",
+        "validation": "Vehicle org",
+        "rawPersist": "Tracking runs",
+        "normalization": "Segment align",
+        "analysis": "End validation",
+        "derivation": "Trips",
+        "storage": "PG",
+        "apiRead": "trips",
+        "ui": "Trips",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "runs 30d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate TRIPS purpose"
+    },
+    {
+      "id": "DA-008",
+      "name": "Trip Route & Waypoints",
+      "domain": "Trips",
+      "dataSource": "DIMO route-enrichment",
+      "dataCategory": [
+        "TRIP_DATA",
+        "GPS_LOCATION"
+      ],
+      "purpose": [
+        "TRIPS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_trip_waypoints",
+        "telemetry_waypoints (CH)",
+        "telemetry_hf_points (CH)"
+      ],
+      "services": [
+        "TripsService",
+        "DimoSegmentsService",
+        "WaypointMirrorService"
+      ],
+      "workers": [
+        "trip.behavior.enrichment"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/trips/:tripId/route"
+      ],
+      "uiSurfaces": [
+        "Trip map speed heatmap"
+      ],
+      "pipeline": {
+        "provider": "DIMO",
+        "intake": "Enrichment job",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Waypoints",
+        "normalization": "7s buckets",
+        "analysis": "Speed coloring",
+        "derivation": "HF events",
+        "storage": "PG+CH",
+        "apiRead": "route",
+        "ui": "Trip map",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "waypoints opt-in; CH TTL"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate route fetch+persist"
+    },
+    {
+      "id": "DA-009",
+      "name": "Driving Behavior Enrichment",
+      "domain": "Driver Behavior",
+      "dataSource": "DIMO HF signals",
+      "dataCategory": [
+        "DRIVING_BEHAVIOR",
+        "TRIP_DATA"
+      ],
+      "purpose": [
+        "ABUSE_MISUSE_DETECTION",
+        "FLEET_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_trip_behavior_events",
+        "trip_driving_impact",
+        "telemetry_hf_points"
+      ],
+      "services": [
+        "TripBehaviorEnrichmentService",
+        "DrivingImpactService"
+      ],
+      "workers": [
+        "trip.behavior.enrichment",
+        "driving.impact.compute"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/trips/:tripId/behavior-events"
+      ],
+      "uiSurfaces": [
+        "Trip behavior UI"
+      ],
+      "pipeline": {
+        "provider": "DIMO HF",
+        "intake": "Post-trip job",
+        "validation": "Trip scope",
+        "rawPersist": "CH HF",
+        "normalization": "Heuristics",
+        "analysis": "Abuse",
+        "derivation": "Events",
+        "storage": "PG+CH",
+        "apiRead": "behavior-events",
+        "ui": "Trip detail",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "CH 90d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate DRIVING_BEHAVIOR"
+    },
+    {
+      "id": "DA-010",
+      "name": "Misuse & Rental Driving Analysis",
+      "domain": "Misuse",
+      "dataSource": "Derived trips+events",
+      "dataCategory": [
+        "DRIVING_BEHAVIOR"
+      ],
+      "purpose": [
+        "ABUSE_MISUSE_DETECTION",
+        "RENTAL_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "misuse_cases",
+        "rental_driving_analyses",
+        "driving_decisions"
+      ],
+      "services": [
+        "MisuseCaseReconcileService",
+        "RentalDrivingAnalysisService"
+      ],
+      "workers": [
+        "driving.intelligence.jobs"
+      ],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/misuse-cases",
+        "GET /organizations/:orgId/rental-driving-analyses"
+      ],
+      "uiSurfaces": [
+        "Misuse UI",
+        "Rental analysis"
+      ],
+      "pipeline": {
+        "provider": "Derived",
+        "intake": "DI jobs",
+        "validation": "OrgScoping",
+        "rawPersist": "Misuse rows",
+        "normalization": "Evidence",
+        "analysis": "Reconcile",
+        "derivation": "Analyses",
+        "storage": "PG",
+        "apiRead": "misuse APIs",
+        "ui": "Operator views",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "repairs 365d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate ABUSE_MISUSE_DETECTION"
+    },
+    {
+      "id": "DA-011",
+      "name": "HM Fleet Clearance Webhook",
+      "domain": "High Mobility",
+      "dataSource": "HM webhook clearance events",
+      "dataCategory": [
+        "VEHICLE_IDENTITY"
+      ],
+      "purpose": [
+        "PARTNER_SERVICE"
+      ],
+      "processor": "EXTERNAL_PARTNER",
+      "storage": [
+        "high_mobility_vehicles",
+        "high_mobility_status_history",
+        "vehicle_provider_consents"
+      ],
+      "services": [
+        "HighMobilityWebhookService",
+        "VehicleProviderConsentService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "POST /integrations/high-mobility/webhook/*"
+      ],
+      "uiSurfaces": [
+        "HM registration UI"
+      ],
+      "pipeline": {
+        "provider": "HM",
+        "intake": "HTTP webhook",
+        "validation": "HMAC signature",
+        "rawPersist": "Status history",
+        "normalization": "Clearance state",
+        "analysis": "None",
+        "derivation": "Provider consent",
+        "storage": "PG",
+        "apiRead": "HM admin",
+        "ui": "Connectivity",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "No prune"
+      },
+      "enforcementPoint": "HMAC only; VehicleProviderConsent ledger",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Add OrgDataAuthorization HM system key"
+    },
+    {
+      "id": "DA-012",
+      "name": "HM Health MQTT Ingestion",
+      "domain": "High Mobility",
+      "dataSource": "HM Health MQTT",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "EXTERNAL_PARTNER",
+      "storage": [
+        "high_mobility_stream_sync_logs",
+        "hm_latest_health_states",
+        "hm_signal_group_states"
+      ],
+      "services": [
+        "HighMobilityHealthAppIngestionService",
+        "HmSignalUsageService"
+      ],
+      "workers": [
+        "HM MQTT consumer"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Health tabs (HM-sourced)"
+      ],
+      "pipeline": {
+        "provider": "HM",
+        "intake": "MQTT QoS1",
+        "validation": "Clearance APPROVED",
+        "rawPersist": "Stream sync log",
+        "normalization": "Signal groups",
+        "analysis": "AI health care agg",
+        "derivation": "Rental health alerts",
+        "storage": "PG",
+        "apiRead": "health APIs",
+        "ui": "Health",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "stream_logs 14d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "HM source type + HEALTH_SIGNALS gate"
+    },
+    {
+      "id": "DA-013",
+      "name": "HM Telemetry MQTT (staged)",
+      "domain": "High Mobility",
+      "dataSource": "HM Telemetry MQTT",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "GPS_LOCATION"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH",
+        "LIVE_MAP"
+      ],
+      "processor": "EXTERNAL_PARTNER",
+      "storage": [
+        "hm_latest_telemetry_states",
+        "high_mobility_stream_sync_logs"
+      ],
+      "services": [
+        "HighMobilityTelemetryAppIngestionService",
+        "HighMobilityTelemetryRoutingService"
+      ],
+      "workers": [
+        "HM MQTT consumer"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Not on fleet map today"
+      ],
+      "pipeline": {
+        "provider": "HM",
+        "intake": "MQTT",
+        "validation": "Clearance+package",
+        "rawPersist": "Sync log",
+        "normalization": "Telemetry state",
+        "analysis": "Routing stub log-only",
+        "derivation": "None operational",
+        "storage": "PG",
+        "apiRead": "None fleet map",
+        "ui": "None",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "stream_logs 14d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Wire routing + enforcement before surfacing GPS"
+    },
+    {
+      "id": "DA-014",
+      "name": "HM Health REST Polling",
+      "domain": "High Mobility",
+      "dataSource": "HM REST health fetch",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "EXTERNAL_PARTNER",
+      "storage": [
+        "high_mobility_health_sync_logs",
+        "hm_signal_group_states"
+      ],
+      "services": [
+        "HmHealthPollingScheduler",
+        "HighMobilityHealthFetchService"
+      ],
+      "workers": [
+        "HmHealthPollingScheduler"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Health modules"
+      ],
+      "pipeline": {
+        "provider": "HM REST",
+        "intake": "Scheduler 5min",
+        "validation": "Active HM link",
+        "rawPersist": "Health sync log",
+        "normalization": "Signal groups",
+        "analysis": "Service/tire groups",
+        "derivation": "Health UI data",
+        "storage": "PG",
+        "apiRead": "health APIs",
+        "ui": "Health",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "health_sync 30d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Gate HM health poll"
+    },
+    {
+      "id": "DA-015",
+      "name": "Battery V2 Health",
+      "domain": "Health",
+      "dataSource": "DIMO snapshots+HM",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "battery_* tables"
+      ],
+      "services": "BatteryV2Service,CanonicalBatteryHealthService",
+      "workers": [
+        "battery.v2"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/battery-health/v2"
+      ],
+      "uiSurfaces": [
+        "Vehicle health tab"
+      ],
+      "pipeline": {
+        "provider": "DIMO/HM/manual",
+        "intake": "Workers+poll",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Health tables",
+        "normalization": "Domain calcs",
+        "analysis": "Thresholds",
+        "derivation": "Summary DTOs",
+        "storage": "PG",
+        "apiRead": "GET /vehicles/:vehicleId/battery-health/v2",
+        "ui": "Health tab",
+        "export": "None",
+        "aiMcp": "Health summary text",
+        "externalSharing": "None",
+        "deletion": "Battery/tire opt-in retention"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate VEHICLE_HEALTH reads+workers"
+    },
+    {
+      "id": "DA-016",
+      "name": "Tire Health",
+      "domain": "Health",
+      "dataSource": "DIMO snapshot+HM tire pressure",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "tire setups/measurements"
+      ],
+      "services": "TireHealthService,TireWearModelService",
+      "workers": [
+        "tire.recalculation"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/tires/*"
+      ],
+      "uiSurfaces": [
+        "Vehicle health tab"
+      ],
+      "pipeline": {
+        "provider": "DIMO/HM/manual",
+        "intake": "Workers+poll",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Health tables",
+        "normalization": "Domain calcs",
+        "analysis": "Thresholds",
+        "derivation": "Summary DTOs",
+        "storage": "PG",
+        "apiRead": "GET /vehicles/:vehicleId/tires/*",
+        "ui": "Health tab",
+        "export": "None",
+        "aiMcp": "Health summary text",
+        "externalSharing": "None",
+        "deletion": "Battery/tire opt-in retention"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate VEHICLE_HEALTH reads+workers"
+    },
+    {
+      "id": "DA-017",
+      "name": "Brake Health",
+      "domain": "Health",
+      "dataSource": "DIMO DTC+manual+estimation",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "brake health snapshots"
+      ],
+      "services": "BrakeHealthService,BrakeRecalculationOrchestrator",
+      "workers": [
+        "brake.recalculation"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/brake-health/*"
+      ],
+      "uiSurfaces": [
+        "Vehicle health tab"
+      ],
+      "pipeline": {
+        "provider": "DIMO/HM/manual",
+        "intake": "Workers+poll",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Health tables",
+        "normalization": "Domain calcs",
+        "analysis": "Thresholds",
+        "derivation": "Summary DTOs",
+        "storage": "PG",
+        "apiRead": "GET /vehicles/:vehicleId/brake-health/*",
+        "ui": "Health tab",
+        "export": "None",
+        "aiMcp": "Health summary text",
+        "externalSharing": "None",
+        "deletion": "Battery/tire opt-in retention"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate VEHICLE_HEALTH reads+workers"
+    },
+    {
+      "id": "DA-018",
+      "name": "Service Info & Compliance",
+      "domain": "Health",
+      "dataSource": "HM service group+DIMO",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_service_events"
+      ],
+      "services": "ServiceEventsService,ServiceComplianceService",
+      "workers": [
+        "HmHealthPollingScheduler"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/service-*"
+      ],
+      "uiSurfaces": [
+        "Vehicle health tab"
+      ],
+      "pipeline": {
+        "provider": "DIMO/HM/manual",
+        "intake": "Workers+poll",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Health tables",
+        "normalization": "Domain calcs",
+        "analysis": "Thresholds",
+        "derivation": "Summary DTOs",
+        "storage": "PG",
+        "apiRead": "GET /vehicles/:vehicleId/service-*",
+        "ui": "Health tab",
+        "export": "None",
+        "aiMcp": "Health summary text",
+        "externalSharing": "None",
+        "deletion": "Battery/tire opt-in retention"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate VEHICLE_HEALTH reads+workers"
+    },
+    {
+      "id": "DA-019",
+      "name": "AI Health Care Summary",
+      "domain": "Health",
+      "dataSource": "HM+DIMO aggregated",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "hm_signal_group_states"
+      ],
+      "services": "AiHealthCareAggregationService,VehicleHealthTabSummaryService",
+      "workers": [],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/ai-health-care-summary"
+      ],
+      "uiSurfaces": [
+        "Vehicle health tab"
+      ],
+      "pipeline": {
+        "provider": "DIMO/HM/manual",
+        "intake": "Workers+poll",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Health tables",
+        "normalization": "Domain calcs",
+        "analysis": "Thresholds",
+        "derivation": "Summary DTOs",
+        "storage": "PG",
+        "apiRead": "GET /vehicles/:vehicleId/ai-health-care-summary",
+        "ui": "Health tab",
+        "export": "None",
+        "aiMcp": "Health summary text",
+        "externalSharing": "None",
+        "deletion": "Battery/tire opt-in retention"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate VEHICLE_HEALTH reads+workers"
+    },
+    {
+      "id": "DA-020",
+      "name": "DTC Read APIs",
+      "domain": "DTC",
+      "dataSource": "vehicle_dtc_events",
+      "dataCategory": [
+        "DTC_CODES"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH",
+        "ALERTS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_dtc_events"
+      ],
+      "services": [
+        "DtcService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/dtc",
+        "/dtc/summary",
+        "/dtc/detail",
+        "/dtc/active"
+      ],
+      "uiSurfaces": [
+        "Error codes UI"
+      ],
+      "pipeline": {
+        "provider": "DIMO poll/webhook",
+        "intake": "Prior ingest",
+        "validation": "VehicleOwnership",
+        "rawPersist": "N/A",
+        "normalization": "DtcService",
+        "analysis": "Stale",
+        "derivation": "UI DTO",
+        "storage": "Read PG",
+        "apiRead": "dtc/*",
+        "ui": "Health",
+        "export": "None",
+        "aiMcp": "DTC knowledge retry",
+        "externalSharing": "None",
+        "deletion": "No prune"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate DTC_CODES read"
+    },
+    {
+      "id": "DA-021",
+      "name": "DTC Knowledge AI Enrichment",
+      "domain": "DTC",
+      "dataSource": "DTC codes text",
+      "dataCategory": [
+        "DTC_CODES"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "dtc_knowledge tables"
+      ],
+      "services": [
+        "DtcKnowledgeService"
+      ],
+      "workers": [
+        "dtc.knowledge"
+      ],
+      "apiEndpoints": [
+        "POST /vehicles/:vehicleId/dtc/:code/knowledge/retry"
+      ],
+      "uiSurfaces": [
+        "DTC detail AI text"
+      ],
+      "pipeline": {
+        "provider": "Mistral LLM",
+        "intake": "Queue job",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Knowledge rows",
+        "normalization": "LLM output",
+        "analysis": "Enrichment",
+        "derivation": "UI copy",
+        "storage": "PG",
+        "apiRead": "knowledge",
+        "ui": "DTC detail",
+        "export": "None",
+        "aiMcp": "LLM gateway",
+        "externalSharing": "Mistral API",
+        "deletion": "No dedicated"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P1",
+      "requiredRemediation": "Gate before LLM call"
+    },
+    {
+      "id": "DA-022",
+      "name": "Notification Evaluation Pipeline",
+      "domain": "Alerts",
+      "dataSource": "Derived health/booking/trip signals",
+      "dataCategory": [
+        "HEALTH_SIGNALS",
+        "TRIP_DATA",
+        "BOOKING_DATA"
+      ],
+      "purpose": [
+        "ALERTS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "notification_instances",
+        "notification_evaluation_runs"
+      ],
+      "services": [
+        "NotificationEvaluationService",
+        "BusinessInsightsService"
+      ],
+      "workers": [
+        "notification.evaluation"
+      ],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/notifications"
+      ],
+      "uiSurfaces": [
+        "Notification center"
+      ],
+      "pipeline": {
+        "provider": "Internal detectors",
+        "intake": "Scheduled+event",
+        "validation": "Org lock",
+        "rawPersist": "Instances",
+        "normalization": "Registry",
+        "analysis": "BI detectors",
+        "derivation": "Alerts",
+        "storage": "PG",
+        "apiRead": "notifications",
+        "ui": "Bell icon",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "Email via delivery",
+        "deletion": "Notification retention policies"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate ALERTS on underlying data reads"
+    },
+    {
+      "id": "DA-023",
+      "name": "Notification Delivery",
+      "domain": "Alerts",
+      "dataSource": "Notification outbox",
+      "dataCategory": [
+        "CUSTOMER_DATA",
+        "BOOKING_DATA"
+      ],
+      "purpose": [
+        "ALERTS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "notification_delivery_outbox"
+      ],
+      "services": [
+        "NotificationDeliveryProcessor"
+      ],
+      "workers": [
+        "notification.delivery"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Email/push channels"
+      ],
+      "pipeline": {
+        "provider": "Internal",
+        "intake": "Outbox",
+        "validation": "Channel config",
+        "rawPersist": "Delivery log",
+        "normalization": "Templates",
+        "analysis": "None",
+        "derivation": "Sent messages",
+        "storage": "PG",
+        "apiRead": "N/A",
+        "ui": "User inbox",
+        "export": "Email body",
+        "aiMcp": "None",
+        "externalSharing": "Resend/email provider",
+        "deletion": "Per notification policy"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": true,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Consent check before PII in alert emails"
+    },
+    {
+      "id": "DA-024",
+      "name": "Connectivity Alerts",
+      "domain": "Alerts",
+      "dataSource": "Provider link state",
+      "dataCategory": [
+        "TELEMETRY_DATA"
+      ],
+      "purpose": [
+        "ALERTS",
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "connectivity_alerts"
+      ],
+      "services": [
+        "ConnectivityAlertService",
+        "ProviderLinkStateBuilder"
+      ],
+      "workers": [],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Fleet connectivity attention"
+      ],
+      "pipeline": {
+        "provider": "Derived connectivity",
+        "intake": "Runtime projection",
+        "validation": "Org scope",
+        "rawPersist": "Alert rows",
+        "normalization": "Link state",
+        "analysis": "REAUTH/REVOKED",
+        "derivation": "Alerts",
+        "storage": "PG",
+        "apiRead": "connectivity",
+        "ui": "Fleet connectivity",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "No dedicated"
+      },
+      "enforcementPoint": "Observability only not data block",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P2",
+      "requiredRemediation": "Link to consent enforcement"
+    },
+    {
+      "id": "DA-025",
+      "name": "Customer CRUD",
+      "domain": "Customer",
+      "dataSource": "Operator input+imports",
+      "dataCategory": [
+        "CUSTOMER_DATA"
+      ],
+      "purpose": [
+        "CUSTOMER_CONSENT",
+        "RENTAL_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "customers",
+        "customer_documents",
+        "customer_timeline"
+      ],
+      "services": [
+        "CustomersService",
+        "CustomerDocumentsService",
+        "CustomerVerificationService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET/POST/PATCH /organizations/:orgId/customers/*"
+      ],
+      "uiSurfaces": [
+        "Customers module"
+      ],
+      "aiSurfaces": "Enforce CUSTOMER_DATA category on read/export/AI",
+      "pipeline": {
+        "provider": "User/operator",
+        "intake": "API",
+        "validation": "OrgScoping+Roles",
+        "rawPersist": "customers",
+        "normalization": "DTO validation",
+        "analysis": "Verification",
+        "derivation": "Timeline",
+        "storage": "PG+FS",
+        "apiRead": "customers",
+        "ui": "Customer views",
+        "export": "DSAR partial",
+        "aiMcp": "Voice MCP customer read",
+        "externalSharing": "None",
+        "deletion": "CustomerRetention placeholder"
+      },
+      "enforcementPoint": "IAM org scope only",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": true,
+      "requiredRemediation": "P1"
+    },
+    {
+      "id": "DA-026",
+      "name": "Booking & Handover Data",
+      "domain": "Booking",
+      "dataSource": "Operator wizard+Stripe",
+      "dataCategory": [
+        "BOOKING_DATA",
+        "CUSTOMER_DATA",
+        "FINANCIAL_DATA"
+      ],
+      "purpose": [
+        "RENTAL_ANALYTICS",
+        "PARTNER_SERVICE"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "bookings",
+        "booking_* tables",
+        "rental_contracts"
+      ],
+      "services": [
+        "BookingsService",
+        "BookingsHandoverService",
+        "BookingDepositSnapshotService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET/POST /organizations/:orgId/bookings/*"
+      ],
+      "uiSurfaces": [
+        "Bookings",
+        "Checkout",
+        "Handover"
+      ],
+      "aiSurfaces": "Enforce BOOKING_DATA on reads/exports/AI",
+      "pipeline": {
+        "provider": "Operator+Stripe",
+        "intake": "API/webhooks",
+        "validation": "OrgScoping+permissions",
+        "rawPersist": "bookings",
+        "normalization": "Wizard state",
+        "analysis": "Eligibility",
+        "derivation": "Handover protocols",
+        "storage": "PG",
+        "apiRead": "bookings",
+        "ui": "Booking detail",
+        "export": "PDF bundles",
+        "aiMcp": "Voice MCP booking read",
+        "externalSharing": "Stripe",
+        "deletion": "Booking lifecycle policies"
+      },
+      "enforcementPoint": "IAM only",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": true,
+      "requiredRemediation": "P1"
+    },
+    {
+      "id": "DA-027",
+      "name": "Document AI Upload & Extraction",
+      "domain": "Documents",
+      "dataSource": "User upload OCR",
+      "dataCategory": [
+        "DOCUMENT_DATA",
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "DOCUMENT_PROCESSING",
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "document_extraction_sessions",
+        "uploads/"
+      ],
+      "services": [
+        "DocumentExtractionService",
+        "DocumentAiExtractionService"
+      ],
+      "workers": [
+        "document.extraction"
+      ],
+      "apiEndpoints": [
+        "POST /organizations/:orgId/document-extractions/*",
+        "/vehicles/:vehicleId/document-extractions/*"
+      ],
+      "uiSurfaces": [
+        "AI Upload wizard"
+      ],
+      "aiSurfaces": "Gate DOCUMENT_PROCESSING",
+      "pipeline": {
+        "provider": "User upload+Mistral OCR",
+        "intake": "Upload",
+        "validation": "document-upload permission",
+        "rawPersist": "Session+files",
+        "normalization": "OCR JSON",
+        "analysis": "Plausibility",
+        "derivation": "Review apply",
+        "storage": "PG+FS",
+        "apiRead": "extraction APIs",
+        "ui": "Upload review",
+        "export": "None",
+        "aiMcp": "Mistral OCR",
+        "externalSharing": "Mistral",
+        "deletion": "DocumentRetentionScheduler"
+      },
+      "enforcementPoint": "None; never auto-apply",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": false,
+      "riskStatus": true,
+      "requiredRemediation": "P1"
+    },
+    {
+      "id": "DA-028",
+      "name": "Booking PDF Generation",
+      "domain": "Documents",
+      "dataSource": "Generated from booking",
+      "dataCategory": [
+        "DOCUMENT_DATA",
+        "BOOKING_DATA",
+        "CUSTOMER_DATA"
+      ],
+      "purpose": [
+        "DOCUMENT_PROCESSING"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "generated_documents",
+        "booking_document_bundles"
+      ],
+      "services": [
+        "BookingDocumentBundleService",
+        "GeneratedDocumentsService"
+      ],
+      "workers": [
+        "booking.document.generation"
+      ],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/bookings/:bookingId/documents"
+      ],
+      "uiSurfaces": [
+        "Booking documents section"
+      ],
+      "aiSurfaces": "Gate DOCUMENT_DATA in exports",
+      "pipeline": {
+        "provider": "Internal templates",
+        "intake": "Booking confirm/handover",
+        "validation": "Org+booking scope",
+        "rawPersist": "PDF files",
+        "normalization": "Renderer",
+        "analysis": "Bundle completeness",
+        "derivation": "PDFs",
+        "storage": "PG+FS",
+        "apiRead": "download",
+        "ui": "Booking docs",
+        "export": "Email PDF",
+        "aiMcp": "Voice resend tool",
+        "externalSharing": "Email",
+        "deletion": "Document retention"
+      },
+      "enforcementPoint": "IAM bookings permission",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": true,
+      "requiredRemediation": "P2"
+    },
+    {
+      "id": "DA-029",
+      "name": "Legal Documents Delivery",
+      "domain": "Documents",
+      "dataSource": "Org legal uploads",
+      "dataCategory": [
+        "DOCUMENT_DATA"
+      ],
+      "purpose": [
+        "CUSTOMER_CONSENT"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "organization_legal_documents",
+        "generated_documents"
+      ],
+      "services": [
+        "LegalDocumentsService",
+        "BookingDocumentBundleService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET/POST /organizations/:orgId/legal-documents/*"
+      ],
+      "uiSurfaces": [
+        "Legal documents tab",
+        "Checkout"
+      ],
+      "aiSurfaces": "Distinct from telematics consent",
+      "pipeline": {
+        "provider": "Org admin upload",
+        "validation": "ORG_ADMIN",
+        "rawPersist": "Legal versions",
+        "normalization": "Activate/archive",
+        "analysis": "Bundle attach",
+        "derivation": "STATIC_LEGAL refs",
+        "storage": "PG+FS",
+        "apiRead": "legal-docs",
+        "ui": "Checkout checkboxes",
+        "export": "Booking bundle",
+        "aiMcp": "None",
+        "externalSharing": "Customer email",
+        "deletion": "Legal retention service"
+      },
+      "enforcementPoint": "IAM legal module separate from data auth",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": false,
+      "requiredRemediation": "P3"
+    },
+    {
+      "id": "DA-030",
+      "name": "IAM DSAR Export",
+      "domain": "Export",
+      "dataSource": "IAM user records",
+      "dataCategory": [
+        "CUSTOMER_DATA"
+      ],
+      "purpose": [
+        "CUSTOMER_CONSENT"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "activity_logs",
+        "memberships",
+        "sessions"
+      ],
+      "services": [
+        "IamDsarExportService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/iam/data-retention/dsar/export/:userId"
+      ],
+      "uiSurfaces": [
+        "IAM retention UI"
+      ],
+      "aiSurfaces": "Include consent records in DSAR; no vehicle telemetry",
+      "pipeline": {
+        "provider": "PG IAM tables",
+        "intake": "Admin request",
+        "validation": "users-roles read+step-up",
+        "rawPersist": "N/A",
+        "normalization": "Export pack",
+        "analysis": "Assessment",
+        "derivation": "ZIP/JSON",
+        "storage": "Ephemeral",
+        "apiRead": "dsar export",
+        "ui": "IAM",
+        "export": "DSAR file",
+        "aiMcp": "None",
+        "externalSharing": "Download to admin",
+        "deletion": "IAM retention scheduler"
+      },
+      "enforcementPoint": "IAM step-up not OrgDataAuthorization",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": false,
+      "requiredRemediation": "P1"
+    },
+    {
+      "id": "DA-031",
+      "name": "Data Analyse Module",
+      "domain": "Analytics",
+      "dataSource": "Fleet connectivity+telemetry aggregates",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "TRIP_DATA",
+        "FLEET_ANALYTICS"
+      ],
+      "purpose": [
+        "FLEET_ANALYTICS",
+        "RENTAL_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_latest_states",
+        "vehicle_trips"
+      ],
+      "services": [
+        "DataAnalyseService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/data-analyse/*"
+      ],
+      "uiSurfaces": [
+        "Data analyse UI"
+      ],
+      "aiSurfaces": "Gate FLEET_ANALYTICS",
+      "pipeline": {
+        "provider": "PG aggregates",
+        "intake": "API",
+        "validation": "data-analyse permission",
+        "rawPersist": "N/A",
+        "normalization": "Analytics DTO",
+        "analysis": "Coverage math",
+        "derivation": "Charts",
+        "storage": "Read",
+        "apiRead": "data-analyse",
+        "ui": "Analytics",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "Underlying retention"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": false,
+      "requiredRemediation": "P1"
+    },
+    {
+      "id": "DA-032",
+      "name": "Org Chat AI",
+      "domain": "AI",
+      "dataSource": "Fleet metadata context",
+      "dataCategory": [
+        "VEHICLE_IDENTITY"
+      ],
+      "purpose": [
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [],
+      "services": [
+        "ChatService",
+        "LlmGatewayService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "POST /organizations/:orgId/ai/chat"
+      ],
+      "uiSurfaces": [
+        "AI assistant panel"
+      ],
+      "aiSurfaces": "No live telemetry in prompt today; gate if expanded",
+      "pipeline": {
+        "provider": "Mistral",
+        "intake": "User message",
+        "validation": "ai-assistant permission",
+        "rawPersist": "Chat history",
+        "normalization": "Prompt build",
+        "analysis": "LLM",
+        "derivation": "Response",
+        "storage": "PG chat",
+        "apiRead": "chat",
+        "ui": "Assistant",
+        "export": "None",
+        "aiMcp": "Mistral API",
+        "externalSharing": "Mistral",
+        "deletion": "Chat retention"
+      },
+      "enforcementPoint": "IAM ai-assistant only",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": true,
+      "requiredRemediation": "P1"
+    },
+    {
+      "id": "DA-033",
+      "name": "Voice MCP Gateway",
+      "domain": "AI/MCP",
+      "dataSource": "Customer/booking/vehicle operational",
+      "dataCategory": [
+        "CUSTOMER_DATA",
+        "BOOKING_DATA",
+        "VEHICLE_STATUS"
+      ],
+      "purpose": [
+        "PARTNER_SERVICE"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "voice_conversations",
+        "voice_tool_executions"
+      ],
+      "services": [
+        "VoiceMcpToolsService",
+        "VoiceMcpActionOrchestratorService"
+      ],
+      "workers": [
+        "voice.webhook.process"
+      ],
+      "apiEndpoints": [
+        "POST /mcp/voice/:orgId"
+      ],
+      "uiSurfaces": [
+        "Voice assistant PSTN"
+      ],
+      "aiSurfaces": "Gate each tool by data category",
+      "pipeline": {
+        "provider": "Twilio+ElevenLabs",
+        "intake": "JSON-RPC",
+        "validation": "MCP bearer+capabilities",
+        "rawPersist": "Tool executions",
+        "normalization": "Entity resolver",
+        "analysis": "Redaction",
+        "derivation": "Tool results",
+        "storage": "PG",
+        "apiRead": "MCP tools",
+        "ui": "Voice",
+        "export": "Call transcripts",
+        "aiMcp": "MCP tools",
+        "externalSharing": "Twilio/ElevenLabs",
+        "deletion": "VoiceRetentionScheduler"
+      },
+      "enforcementPoint": "MCP token+capabilities not OrgDataAuthorization",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": true,
+      "requiredRemediation": "P0"
+    },
+    {
+      "id": "DA-034",
+      "name": "WhatsApp AI Router",
+      "domain": "AI",
+      "dataSource": "Booking+vehicle tools",
+      "dataCategory": [
+        "GPS_LOCATION",
+        "BOOKING_DATA",
+        "CUSTOMER_DATA"
+      ],
+      "purpose": [
+        "LIVE_MAP",
+        "PARTNER_SERVICE"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [],
+      "services": [
+        "WhatsappAiToolsService",
+        "WhatsappAiRouterService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "WhatsApp webhook flow"
+      ],
+      "uiSurfaces": [
+        "WhatsApp bot"
+      ],
+      "pipeline": {
+        "provider": "WhatsApp+internal APIs",
+        "intake": "Message webhook",
+        "validation": "WhatsApp consent+org",
+        "rawPersist": "Message log",
+        "normalization": "Tool routing",
+        "analysis": "LLM router",
+        "derivation": "Replies",
+        "storage": "PG",
+        "apiRead": "N/A",
+        "ui": "WhatsApp",
+        "export": "Messages",
+        "aiMcp": "Tools incl getLiveGps",
+        "externalSharing": "Meta WhatsApp",
+        "deletion": "WhatsApp retention"
+      },
+      "enforcementPoint": "GPS via getLiveGps only; rest IAM",
+      "protectionStatus": "partial",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": "P1",
+      "requiredRemediation": "Gate all tools not just GPS"
+    },
+    {
+      "id": "DA-035",
+      "name": "Master Admin Platform Access",
+      "domain": "Master Admin",
+      "dataSource": "Cross-tenant ops",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "VEHICLE_IDENTITY",
+        "CUSTOMER_DATA"
+      ],
+      "purpose": [
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "all tenant tables"
+      ],
+      "services": [
+        "PlatformAdminController",
+        "DimoController",
+        "HighMobilityAdminController"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET/POST /admin/*"
+      ],
+      "uiSurfaces": [
+        "Master admin UI"
+      ],
+      "aiSurfaces": "Platform audit+purpose limitation",
+      "pipeline": {
+        "provider": "Platform",
+        "intake": "Admin API",
+        "validation": "MASTER_ADMIN role",
+        "rawPersist": "Varies",
+        "normalization": "Admin DTOs",
+        "analysis": "Ops",
+        "derivation": "Reports",
+        "storage": "PG",
+        "apiRead": "admin/*",
+        "ui": "Master",
+        "export": "Admin exports",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "Platform policies"
+      },
+      "enforcementPoint": "MASTER_ADMIN bypasses VehicleOwnership",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": false,
+      "requiredRemediation": "P2"
+    },
+    {
+      "id": "DA-036",
+      "name": "Support Tickets (org)",
+      "domain": "Support",
+      "dataSource": "User-submitted context",
+      "dataCategory": [
+        "CUSTOMER_DATA",
+        "BOOKING_DATA"
+      ],
+      "purpose": [
+        "PARTNER_SERVICE"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "support_tickets",
+        "support_messages"
+      ],
+      "services": [
+        "SupportService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET/POST /organizations/:orgId/support/*"
+      ],
+      "uiSurfaces": [
+        "Support center"
+      ],
+      "aiSurfaces": "No runtime data gate",
+      "pipeline": {
+        "provider": "Users",
+        "intake": "Ticket create",
+        "validation": "OrgScoping",
+        "rawPersist": "Tickets",
+        "normalization": "Context validation",
+        "analysis": "None",
+        "derivation": "Messages",
+        "storage": "PG+uploads",
+        "apiRead": "support",
+        "ui": "Support",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "No dedicated"
+      },
+      "enforcementPoint": "Validates data-auth ID refs only",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": false,
+      "requiredRemediation": "P3"
+    },
+    {
+      "id": "DA-037",
+      "name": "Integrations Connect (DIMO/Stripe/etc)",
+      "domain": "Integrations",
+      "dataSource": "OAuth/API keys",
+      "dataCategory": [],
+      "purpose": [
+        "PARTNER_SERVICE"
+      ],
+      "processor": "EXTERNAL_PARTNER",
+      "storage": [
+        "organization_integrations"
+      ],
+      "services": [
+        "IntegrationsController"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "POST /organizations/:orgId/integrations/connect"
+      ],
+      "uiSurfaces": [
+        "Integrations hub"
+      ],
+      "aiSurfaces": "Clarify IAM vs consent in UI",
+      "pipeline": {
+        "provider": "Third-party",
+        "intake": "Connect flow",
+        "validation": "data-authorization.manage IAM",
+        "rawPersist": "Integration secrets",
+        "normalization": "Catalog",
+        "analysis": "None",
+        "derivation": "Enabled flags",
+        "storage": "PG encrypted",
+        "apiRead": "integrations",
+        "ui": "Settings integrations",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "Provider APIs",
+        "deletion": "Disconnect flow"
+      },
+      "enforcementPoint": "IAM data-authorization.manage not Org consent record",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": false,
+      "requiredRemediation": "P2"
+    },
+    {
+      "id": "DA-038",
+      "name": "DIMO Vehicle Sync (catalog)",
+      "domain": "DIMO",
+      "dataSource": "DIMO Identity API",
+      "dataCategory": [
+        "VEHICLE_IDENTITY",
+        "VEHICLE_STATUS"
+      ],
+      "purpose": [
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "dimo_vehicles",
+        "dimo_poll_logs"
+      ],
+      "services": [
+        "DimoVehicleSyncProcessor",
+        "DimoApiSyncService"
+      ],
+      "workers": [
+        "dimo.vehicle.sync"
+      ],
+      "apiEndpoints": [
+        "POST /admin/dimo/sync"
+      ],
+      "uiSurfaces": [
+        "DIMO admin",
+        "Registration"
+      ],
+      "pipeline": {
+        "provider": "DIMO Identity",
+        "intake": "Scheduler 24h",
+        "validation": "Platform/DIMO JWT",
+        "rawPersist": "dimo_vehicles mirror",
+        "normalization": "Sync service",
+        "analysis": "None",
+        "derivation": "Registration candidates",
+        "storage": "PG",
+        "apiRead": "admin dimo",
+        "ui": "DIMO vehicles",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "poll_logs 30d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P2",
+      "requiredRemediation": "Catalog metadata lower risk"
+    },
+    {
+      "id": "DA-039",
+      "name": "Driver Score",
+      "domain": "Driver Behavior",
+      "dataSource": "Derived trips",
+      "dataCategory": [
+        "DRIVING_BEHAVIOR"
+      ],
+      "purpose": [
+        "FLEET_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "driver_scores"
+      ],
+      "services": [
+        "DriverScoreService"
+      ],
+      "workers": [
+        "driving.intelligence.jobs"
+      ],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/trips/driver-score"
+      ],
+      "uiSurfaces": [
+        "Trip/driver UI"
+      ],
+      "pipeline": {
+        "provider": "Derived",
+        "intake": "Trip finalize",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Scores",
+        "normalization": "Scoring model",
+        "analysis": "Aggregate",
+        "derivation": "Score DTO",
+        "storage": "PG",
+        "apiRead": "driver-score",
+        "ui": "Trips",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "No dedicated"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Gate DRIVING_BEHAVIOR read"
+    },
+    {
+      "id": "DA-040",
+      "name": "Trip Heatmap (speed-colored route)",
+      "domain": "Trips",
+      "dataSource": "DIMO route enrichment 7s",
+      "dataCategory": [
+        "TRIP_DATA",
+        "GPS_LOCATION"
+      ],
+      "purpose": [
+        "TRIPS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_trip_waypoints"
+      ],
+      "services": [
+        "TripsService",
+        "DimoSegmentsService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/trips/:tripId/route"
+      ],
+      "uiSurfaces": [
+        "Trip map heatmap layer"
+      ],
+      "pipeline": {
+        "provider": "DIMO",
+        "intake": "Route API",
+        "validation": "VehicleOwnership",
+        "rawPersist": "Cached waypoints",
+        "normalization": "geospatial.ts densify",
+        "analysis": "Speed color scale",
+        "derivation": "Mapbox heatmap",
+        "storage": "PG read",
+        "apiRead": "route",
+        "ui": "useTripsRouteMap",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "waypoints opt-in"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Subset of DA-008"
+    },
+    {
+      "id": "DA-041",
+      "name": "Damage Pin Heatmap",
+      "domain": "Damages",
+      "dataSource": "Manual damage pin placements",
+      "dataCategory": [
+        "DOCUMENT_DATA"
+      ],
+      "purpose": [
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [],
+      "services": [
+        "damage-analytics.ts"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /vehicles/:vehicleId/damages/analytics"
+      ],
+      "uiSurfaces": [
+        "Damage view heatmap"
+      ],
+      "aiSurfaces": "Not telematics; lower priority",
+      "pipeline": {
+        "provider": "Operator damage pins",
+        "intake": "Damage CRUD",
+        "validation": "VehicleOwnership",
+        "rawPersist": "damages",
+        "normalization": "buildHeatmapCells",
+        "analysis": "Density grid",
+        "derivation": "Heatmap DTO",
+        "storage": "PG",
+        "apiRead": "damages analytics",
+        "ui": "Damage heatmap",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "Damage records lifecycle"
+      },
+      "enforcementPoint": "IAM only",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": false,
+      "requiredRemediation": "P3"
+    },
+    {
+      "id": "DA-042",
+      "name": "Insurance Data Authorization",
+      "domain": "Insurance",
+      "dataSource": "Insurer disclosure consent",
+      "dataCategory": [
+        "CUSTOMER_DATA",
+        "VEHICLE_IDENTITY"
+      ],
+      "purpose": [
+        "PARTNER_SERVICE"
+      ],
+      "processor": "EXTERNAL_PARTNER",
+      "storage": [
+        "insurance_data_authorization_logs"
+      ],
+      "services": [
+        "InsurancesService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /admin/insurances/*/authorization-logs"
+      ],
+      "uiSurfaces": [
+        "Insurance admin"
+      ],
+      "aiSurfaces": "Keep domain separate; document boundary",
+      "pipeline": {
+        "provider": "Insurance partners",
+        "intake": "Admin API",
+        "validation": "MASTER_ADMIN",
+        "rawPersist": "Insurance auth logs",
+        "normalization": "Separate model",
+        "analysis": "Live sharing permission",
+        "derivation": "Insurer API",
+        "storage": "PG",
+        "apiRead": "insurance logs",
+        "ui": "Insurance",
+        "export": "Insurer export",
+        "aiMcp": "None",
+        "externalSharing": "Insurance partners",
+        "deletion": "Insurance policies"
+      },
+      "enforcementPoint": "Separate InsuranceDataAuthorizationLog not OrgDataAuthorization",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": false,
+      "requiredRemediation": "P2"
+    },
+    {
+      "id": "DA-043",
+      "name": "Energy Events (refuel/recharge)",
+      "domain": "Trips",
+      "dataSource": "DIMO energy segments",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "TRIP_DATA"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH",
+        "FLEET_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicle_energy_events"
+      ],
+      "services": [
+        "DimoSegmentsService"
+      ],
+      "workers": [
+        "driving.intelligence.jobs"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Battery/energy UI"
+      ],
+      "pipeline": {
+        "provider": "DIMO segments",
+        "intake": "Segment fetch job",
+        "validation": "Vehicle scope",
+        "rawPersist": "energy events",
+        "normalization": "Segment parser",
+        "analysis": "Energy detection",
+        "derivation": "Events",
+        "storage": "PG",
+        "apiRead": "energy APIs",
+        "ui": "Battery views",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "No dedicated"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Gate TELEMETRY_DATA segment fetch"
+    },
+    {
+      "id": "DA-044",
+      "name": "Manual Health Upload Apply",
+      "domain": "Health",
+      "dataSource": "Document extraction confirmed apply",
+      "dataCategory": [
+        "HEALTH_SIGNALS",
+        "DOCUMENT_DATA"
+      ],
+      "purpose": [
+        "DOCUMENT_PROCESSING",
+        "VEHICLE_HEALTH"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "tire/brake/battery tables"
+      ],
+      "services": [
+        "DocumentExtractionApplyOrchestrator"
+      ],
+      "workers": [
+        "document.extraction"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "AI Upload apply"
+      ],
+      "aiSurfaces": "Gate DOCUMENT_PROCESSING apply",
+      "pipeline": {
+        "provider": "User confirmed OCR",
+        "intake": "Apply after review",
+        "validation": "document-upload",
+        "rawPersist": "Health tables",
+        "normalization": "Domain mappers",
+        "analysis": "Plausibility",
+        "derivation": "Health updates",
+        "storage": "PG",
+        "apiRead": "health APIs",
+        "ui": "Health modules",
+        "export": "None",
+        "aiMcp": "OCR upstream",
+        "externalSharing": "None",
+        "deletion": "Document retention"
+      },
+      "enforcementPoint": "Never auto-apply; IAM only",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": false,
+      "riskStatus": false,
+      "requiredRemediation": "P2"
+    },
+    {
+      "id": "DA-045",
+      "name": "ClickHouse Telemetry Analytics",
+      "domain": "Analytics",
+      "dataSource": "Mirrored telemetry",
+      "dataCategory": [
+        "TELEMETRY_DATA",
+        "TRIP_DATA",
+        "GPS_LOCATION"
+      ],
+      "purpose": [
+        "FLEET_ANALYTICS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "telemetry_snapshots",
+        "telemetry_hf_points",
+        "telemetry_waypoints",
+        "trip_activity_windows"
+      ],
+      "services": [
+        "ClickHouseTelemetryService",
+        "TripEvidenceReadService",
+        "HfMirrorService"
+      ],
+      "workers": [
+        "dimo.snapshot.poll",
+        "trip.behavior.enrichment"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Trip evidence reads",
+        "Analytics"
+      ],
+      "pipeline": {
+        "provider": "DIMO mirror",
+        "intake": "Worker dual-write",
+        "validation": "None",
+        "rawPersist": "CH insert",
+        "normalization": "Mirror mappers",
+        "analysis": "Analytics queries",
+        "derivation": "Evidence DTOs",
+        "storage": "ClickHouse",
+        "apiRead": "TripEvidenceReadService",
+        "ui": "Indirect",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "CH TTL 90-365d"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Gate before CH write"
+    },
+    {
+      "id": "DA-046",
+      "name": "Rental Health Summary (org)",
+      "domain": "Health",
+      "dataSource": "HM+DIMO aggregates",
+      "dataCategory": [
+        "HEALTH_SIGNALS"
+      ],
+      "purpose": [
+        "VEHICLE_HEALTH",
+        "ALERTS"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "hm_signal_group_states",
+        "vehicle_latest_states"
+      ],
+      "services": [
+        "RentalHealthService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET /organizations/:orgId/rental-health/*"
+      ],
+      "uiSurfaces": [
+        "Rental health dashboard"
+      ],
+      "aiSurfaces": "Gate org health aggregate read",
+      "pipeline": {
+        "provider": "Aggregated",
+        "intake": "API",
+        "validation": "Org guards",
+        "rawPersist": "N/A",
+        "normalization": "Summary builder",
+        "analysis": "Fleet rollups",
+        "derivation": "KPIs",
+        "storage": "Read",
+        "apiRead": "rental-health",
+        "ui": "Dashboard",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "Underlying retention"
+      },
+      "enforcementPoint": "None",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": false,
+      "requiredRemediation": "P1"
+    },
+    {
+      "id": "DA-047",
+      "name": "Vehicle Registration DIMO Link",
+      "domain": "DIMO",
+      "dataSource": "DIMO vehicle registration",
+      "dataCategory": [
+        "VEHICLE_IDENTITY"
+      ],
+      "purpose": [
+        "PARTNER_SERVICE"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "vehicles",
+        "vehicle_provider_consents",
+        "org_data_authorizations"
+      ],
+      "services": [
+        "VehiclesService.registerFromDimo",
+        "VehicleProviderConsentService",
+        "DataAuthorizationsService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "POST /organizations/:orgId/vehicles/register-dimo"
+      ],
+      "uiSurfaces": [
+        "DIMO registration UI"
+      ],
+      "pipeline": {
+        "provider": "DIMO",
+        "intake": "Registration API",
+        "validation": "Org+fleet.write",
+        "rawPersist": "Vehicle+consent",
+        "normalization": "DIMO mirror link",
+        "analysis": "None",
+        "derivation": "void ensureDimoTelemetry+recordDimoConsent",
+        "storage": "PG",
+        "apiRead": "N/A",
+        "ui": "Fleet connectivity",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "Vehicle delete cascade"
+      },
+      "enforcementPoint": "Fire-and-forget auto consent",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P0",
+      "requiredRemediation": "Explicit grant before auto-ACTIVE"
+    },
+    {
+      "id": "DA-048",
+      "name": "Connectivity Runtime Projection",
+      "domain": "Connectivity",
+      "dataSource": "Consent+link evidence",
+      "dataCategory": [
+        "TELEMETRY_DATA"
+      ],
+      "purpose": [
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "org_data_authorizations",
+        "vehicle_provider_consents"
+      ],
+      "services": [
+        "VehicleConnectivityRuntimeProjectionService",
+        "ProviderLinkEvidenceAssembler"
+      ],
+      "workers": [],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Fleet connectivity status"
+      ],
+      "pipeline": {
+        "provider": "PG ledgers",
+        "intake": "Read model build",
+        "validation": "Org scope",
+        "rawPersist": "N/A",
+        "normalization": "Link state builder",
+        "analysis": "REAUTH/REVOKED",
+        "derivation": "UI status",
+        "storage": "Ephemeral",
+        "apiRead": "fleet-connectivity",
+        "ui": "Connectivity",
+        "export": "None",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "N/A"
+      },
+      "enforcementPoint": "Observability not enforcement",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": false,
+      "revokeConsidered": false,
+      "expiryConsidered": true,
+      "retentionConsidered": false,
+      "exportConsidered": false,
+      "aiAccessConsidered": false,
+      "riskStatus": "P2",
+      "requiredRemediation": "Use for gating not just UI"
+    },
+    {
+      "id": "DA-049",
+      "name": "Org Consent Center CRUD (meta)",
+      "domain": "Consent Center",
+      "dataSource": "Admin UI input",
+      "dataCategory": [],
+      "purpose": [
+        "CUSTOMER_CONSENT"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "org_data_authorizations",
+        "activity_logs"
+      ],
+      "services": [
+        "DataAuthorizationsService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "GET/POST /organizations/:orgId/data-authorizations/*"
+      ],
+      "uiSurfaces": [
+        "Data Authorization tab"
+      ],
+      "aiSurfaces": "Meta; not a telemetry path",
+      "pipeline": {
+        "provider": "Admin user",
+        "intake": "API",
+        "validation": "data-authorization permissions",
+        "rawPersist": "Auth records",
+        "normalization": "Risk calc",
+        "analysis": "Stats",
+        "derivation": "Audit log",
+        "storage": "PG",
+        "apiRead": "data-authorizations",
+        "ui": "Consent center",
+        "export": "Audit log API",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "No retention job"
+      },
+      "enforcementPoint": "IAM guards on API; not a data flow",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": true,
+      "retentionConsidered": true,
+      "exportConsidered": false,
+      "aiAccessConsidered": true,
+      "riskStatus": false,
+      "requiredRemediation": "P3"
+    },
+    {
+      "id": "DA-050",
+      "name": "Stripe & Payment Webhooks",
+      "domain": "Financial",
+      "dataSource": "Stripe events",
+      "dataCategory": [
+        "FINANCIAL_DATA",
+        "CUSTOMER_DATA"
+      ],
+      "purpose": [
+        "PARTNER_SERVICE"
+      ],
+      "processor": "EXTERNAL_PARTNER",
+      "storage": [
+        "payments",
+        "stripe_*"
+      ],
+      "services": [
+        "StripeWebhookService"
+      ],
+      "workers": [],
+      "apiEndpoints": [
+        "POST /webhooks/stripe"
+      ],
+      "uiSurfaces": [
+        "Billing UI"
+      ],
+      "aiSurfaces": "FINANCIAL_DATA category if extended",
+      "pipeline": {
+        "provider": "Stripe",
+        "intake": "Webhook",
+        "validation": "Stripe signature",
+        "rawPersist": "Payment events",
+        "normalization": "Stripe mapper",
+        "analysis": "Billing",
+        "derivation": "Invoices",
+        "storage": "PG",
+        "apiRead": "billing APIs",
+        "ui": "Billing",
+        "export": "Invoices",
+        "aiMcp": "None",
+        "externalSharing": "Stripe",
+        "deletion": "Billing retention"
+      },
+      "enforcementPoint": "IAM billing module",
+      "protectionStatus": "none",
+      "failMode": "fail-closed-iam",
+      "auditPresent": "fail-closed",
+      "revokeConsidered": true,
+      "expiryConsidered": false,
+      "retentionConsidered": false,
+      "exportConsidered": true,
+      "aiAccessConsidered": true,
+      "riskStatus": false,
+      "requiredRemediation": "P2"
+    },
+    {
+      "id": "DA-051",
+      "name": "IAM Activity Log Retention",
+      "domain": "Audit",
+      "dataSource": "Platform audit",
+      "dataCategory": [],
+      "purpose": [
+        "TECHNICAL_OVERVIEW"
+      ],
+      "processor": "SYNQDRIVE",
+      "storage": [
+        "activity_logs"
+      ],
+      "services": [
+        "DataRetentionScheduler",
+        "IamDataRetentionScheduler"
+      ],
+      "workers": [
+        "data-retention",
+        "iam-data-retention"
+      ],
+      "apiEndpoints": [],
+      "uiSurfaces": [
+        "Audit views"
+      ],
+      "pipeline": {
+        "provider": "Platform",
+        "intake": "Interceptor+services",
+        "validation": "N/A",
+        "rawPersist": "activity_logs",
+        "normalization": "Audit service",
+        "analysis": "Retention",
+        "derivation": "Pseudonymization",
+        "storage": "PG",
+        "apiRead": "audit APIs",
+        "ui": "Activity",
+        "export": "DSAR includes logs",
+        "aiMcp": "None",
+        "externalSharing": "None",
+        "deletion": "RETENTION_ACTIVITY_LOGS_DAYS default 0"
+      },
+      "enforcementPoint": "N/A",
+      "protectionStatus": "none",
+      "failMode": "fail-open",
+      "auditPresent": true,
+      "revokeConsidered": false,
+      "expiryConsidered": false,
+      "retentionConsidered": true,
+      "exportConsidered": true,
+      "aiAccessConsidered": false,
+      "riskStatus": "P1",
+      "requiredRemediation": "Legal hold for consent audit entries"
+    }
+  ]
+}
