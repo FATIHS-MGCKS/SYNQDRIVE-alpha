@@ -68,7 +68,8 @@ describe('privacy-domain.invariants', () => {
         validateDataSubjectConsent({
           organizationId: orgId,
           processingActivityOrganizationId: orgId,
-          status: DataSubjectConsentStatus.GRANTED,
+          consentStatus: DataSubjectConsentStatus.GRANTED,
+          dataSubjectReference: 'subject-ref-12345678',
         }),
       ).toThrow('data_subject_consent_granted_at_required');
     });
@@ -78,7 +79,8 @@ describe('privacy-domain.invariants', () => {
         validateDataSubjectConsent({
           organizationId: orgId,
           processingActivityOrganizationId: orgId,
-          status: DataSubjectConsentStatus.WITHDRAWN,
+          consentStatus: DataSubjectConsentStatus.WITHDRAWN,
+          dataSubjectReference: 'subject-ref-12345678',
           grantedAt: new Date('2026-01-01T00:00:00Z'),
         }),
       ).toThrow('data_subject_consent_withdrawn_at_required');
@@ -89,7 +91,8 @@ describe('privacy-domain.invariants', () => {
         validateDataSubjectConsent({
           organizationId: orgId,
           processingActivityOrganizationId: orgId,
-          status: DataSubjectConsentStatus.WITHDRAWN,
+          consentStatus: DataSubjectConsentStatus.WITHDRAWN,
+          dataSubjectReference: 'subject-ref-12345678',
           grantedAt: new Date('2026-02-01T00:00:00Z'),
           withdrawnAt: new Date('2026-01-01T00:00:00Z'),
         }),
@@ -103,21 +106,21 @@ describe('privacy-domain.invariants', () => {
         validateProviderAccessGrant({
           organizationId: orgId,
           vehicleOrganizationId: otherOrgId,
-          status: ProviderAccessGrantStatus.PENDING,
+          providerStatus: ProviderAccessGrantStatus.PENDING,
         }),
       ).toThrow('provider_access_grant_vehicle_organization_mismatch');
     });
   });
 
   describe('validateDataSharingAuthorization', () => {
-    it('requires authorizedAt for AUTHORIZED status', () => {
+    it('requires validFrom for AUTHORIZED status', () => {
       expect(() =>
         validateDataSharingAuthorization({
           organizationId: orgId,
           processingActivityOrganizationId: orgId,
           status: DataSharingAuthorizationStatus.AUTHORIZED,
         }),
-      ).toThrow('data_sharing_authorized_at_required');
+      ).toThrow('data_sharing_valid_from_required');
     });
   });
 

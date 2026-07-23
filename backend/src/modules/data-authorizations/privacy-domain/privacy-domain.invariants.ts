@@ -29,9 +29,8 @@ export interface LegalBasisAssessmentInvariantInput extends TenantScopedRecord {
 
 export interface DataSubjectConsentInvariantInput extends TenantScopedRecord {
   processingActivityOrganizationId: string;
-  legalBasisAssessmentOrganizationId?: string | null;
-  status: DataSubjectConsentStatus;
-  subjectRefId?: string | null;
+  consentStatus: DataSubjectConsentStatus;
+  dataSubjectReference?: string | null;
   grantedAt?: Date | null;
   withdrawnAt?: Date | null;
   expiresAt?: Date | null;
@@ -40,7 +39,7 @@ export interface DataSubjectConsentInvariantInput extends TenantScopedRecord {
 export interface ProviderAccessGrantInvariantInput extends TenantScopedRecord {
   processingActivityOrganizationId?: string | null;
   vehicleOrganizationId?: string | null;
-  status: ProviderAccessGrantStatus;
+  providerStatus: ProviderAccessGrantStatus;
   grantedAt?: Date | null;
   revokedAt?: Date | null;
   expiresAt?: Date | null;
@@ -48,10 +47,10 @@ export interface ProviderAccessGrantInvariantInput extends TenantScopedRecord {
 
 export interface DataSharingAuthorizationInvariantInput extends TenantScopedRecord {
   processingActivityOrganizationId: string;
+  legalBasisAssessmentOrganizationId?: string | null;
   status: DataSharingAuthorizationStatus;
-  authorizedAt?: Date | null;
-  revokedAt?: Date | null;
-  expiresAt?: Date | null;
+  validFrom?: Date | null;
+  validUntil?: Date | null;
 }
 
 export interface DataProcessingAgreementInvariantInput extends TenantScopedRecord {
@@ -123,17 +122,16 @@ export function validateDataSubjectConsent(input: DataSubjectConsentInvariantInp
     input.processingActivityOrganizationId,
     'data_subject_consent_activity_organization_mismatch',
   );
-  assertOrgMatch(
-    input.organizationId,
-    input.legalBasisAssessmentOrganizationId,
-    'data_subject_consent_legal_basis_organization_mismatch',
-  );
 
-  if (input.status === DataSubjectConsentStatus.GRANTED && !input.grantedAt) {
+  if (!(input.dataSubjectReference ?? '').trim()) {
+    throw new Error('data_subject_reference_required');
+  }
+
+  if (input.consentStatus === DataSubjectConsentStatus.GRANTED && !input.grantedAt) {
     throw new Error('data_subject_consent_granted_at_required');
   }
 
-  if (input.status === DataSubjectConsentStatus.WITHDRAWN && !input.withdrawnAt) {
+  if (input.consentStatus === DataSubjectConsentStatus.WITHDRAWN && !input.withdrawnAt) {
     throw new Error('data_subject_consent_withdrawn_at_required');
   }
 
@@ -153,11 +151,11 @@ export function validateProviderAccessGrant(input: ProviderAccessGrantInvariantI
     'provider_access_grant_vehicle_organization_mismatch',
   );
 
-  if (input.status === ProviderAccessGrantStatus.ACTIVE && !input.grantedAt) {
+  if (input.providerStatus === ProviderAccessGrantStatus.ACTIVE && !input.grantedAt) {
     throw new Error('provider_access_grant_granted_at_required');
   }
 
-  if (input.status === ProviderAccessGrantStatus.REVOKED && !input.revokedAt) {
+  if (input.providerStatus === ProviderAccessGrantStatus.REVOKED && !input.revokedAt) {
     throw new Error('provider_access_grant_revoked_at_required');
   }
 
@@ -173,17 +171,17 @@ export function validateDataSharingAuthorization(
     input.processingActivityOrganizationId,
     'data_sharing_activity_organization_mismatch',
   );
+  assertOrgMatch(
+    input.organizationId,
+    input.legalBasisAssessmentOrganizationId,
+    'data_sharing_legal_basis_organization_mismatch',
+  );
 
-  if (input.status === DataSharingAuthorizationStatus.AUTHORIZED && !input.authorizedAt) {
-    throw new Error('data_sharing_authorized_at_required');
+  if (input.status === DataSharingAuthorizationStatus.AUTHORIZED && !input.validFrom) {
+    throw new Error('data_sharing_valid_from_required');
   }
 
-  if (input.status === DataSharingAuthorizationStatus.REVOKED && !input.revokedAt) {
-    throw new Error('data_sharing_revoked_at_required');
-  }
-
-  assertChronology(input.authorizedAt, input.revokedAt, 'data_sharing_authorize_before_revoke');
-  assertChronology(input.authorizedAt, input.expiresAt, 'data_sharing_authorize_before_expiry');
+  assertChronology(input.validFrom, input.validUntil, 'data_sharing_valid_range');
 }
 
 export function validateDataProcessingAgreement(input: DataProcessingAgreementInvariantInput): void {

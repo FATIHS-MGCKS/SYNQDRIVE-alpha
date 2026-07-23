@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'consent-provider-sharing-domains-v49791-2026-07-23',
+    version: '4.9.791',
+    title: 'V4.9.791 — Consent, Provider-Grant & Data Sharing getrennt (Prompt 8)',
+    summary: [
+      'Drei klar getrennte Domänen: DataSubjectConsent (Einwilligung), ProviderAccessGrant (technischer Zugriff), DataSharingAuthorization (Partnerweitergabe) — jeweils mit eigenen Feldern, Lifecycle, append-only Status-Events und Services.',
+      'Consent-Widerruf propagiert zu EnforcementPolicies (DISABLED) via ConsentWithdrawalPropagation — Provider-Grants bleiben unberührt. Grant-Zeitstempel nur serverseitig; Provider-Scopes über Allowlist.',
+      'API-Routen unter /data-subject-consents, /provider-access-grants, /data-sharing-authorizations. Legacy VehicleProviderConsent migrationsfähig via linkFromLegacyVpc.',
+    ],
+    reason:
+      'Einwilligung, Provider-OAuth und Datenweitergabe sind rechtlich und technisch verschiedene Konzepte — Vermischung führt zu falschen Widerrufsreaktionen und Compliance-Lücken.',
+    previousBehavior:
+      'Foundation-Modelle (Prompt 5) ohne scharfe Feldverträge, ohne Widerrufspropagation und ohne dedizierte Service-/API-Schicht.',
+    details:
+      'Migration 20260723234500_consent_provider_sharing_domains. Doku: docs/architecture/consent-provider-sharing-domain-2026-07.md. 4 neue Service-Specs + Lifecycle-Spec.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:00:00.000Z',
+  },
+  {
     id: 'legal-basis-assessment-professional-v49790-2026-07-23',
     version: '4.9.790',
     title: 'V4.9.790 — Legal Basis Assessment: professionelles Modell (Prompt 7)',

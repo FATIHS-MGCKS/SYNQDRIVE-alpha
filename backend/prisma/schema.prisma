@@ -10707,6 +10707,16 @@ enum DataSubjectConsentStatus {
   EXPIRED
 }
 
+enum ConsentInteractionChannel {
+  IN_PERSON
+  EMAIL
+  APP
+  PHONE
+  WEB_FORM
+  API
+  OTHER
+}
+
 enum DataSubjectType {
   CUSTOMER
   DRIVER
@@ -10734,6 +10744,22 @@ enum DataSharingAuthorizationStatus {
   AUTHORIZED
   REVOKED
   EXPIRED
+}
+
+enum DataSharingRecipientRole {
+  PROCESSOR
+  CONTROLLER
+  PARTNER
+  INSURER
+  OTHER
+}
+
+enum DataTransferMechanism {
+  ADEQUACY_DECISION
+  STANDARD_CONTRACTUAL_CLAUSES
+  BINDING_CORPORATE_RULES
+  EXPLICIT_CONSENT
+  OTHER_SAFEGUARD
 }
 
 enum DataProcessingAgreementStatus {
@@ -10900,6 +10926,7 @@ model LegalBasisAssessment {
   legacyOrgDataAuthorization OrgDataAuthorization?             @relation("LegacyOrgAuthLegalBasis", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
   dataSubjectConsents        DataSubjectConsent[]
   evidenceReferences         LegalBasisAssessmentEvidenceRef[]
+  dataSharingAuthorizations  DataSharingAuthorization[]
 
   @@unique([policyFamilyId, versionNumber])
   @@index([organizationId, status])
@@ -10923,65 +10950,129 @@ model LegalBasisAssessmentEvidenceRef {
   @@map("legal_basis_assessment_evidence_refs")
 }
 
-/// Einwilligung der betroffenen Person — nur Referenz-IDs, keine PII-Duplikation.
+/// Einwilligung der betroffenen Person — getrennt von Providerzugriff und Datenweitergabe.
 model DataSubjectConsent {
-  id                           String                   @id @default(uuid())
-  organizationId               String                   @map("organization_id")
-  processingActivityId         String                   @map("processing_activity_id")
-  legalBasisAssessmentId       String?                  @map("legal_basis_assessment_id")
-  status                       DataSubjectConsentStatus @default(PENDING)
-  subjectType                  DataSubjectType          @map("subject_type")
-  subjectRefId                 String?                  @map("subject_ref_id")
-  recordedByUserId             String?                  @map("recorded_by_user_id")
-  grantedAt                    DateTime?                @map("granted_at")
-  withdrawnAt                  DateTime?                @map("withdrawn_at")
-  expiresAt                    DateTime?                @map("expires_at")
-  withdrawalReason             String?                  @map("withdrawal_reason")
-  legacyOrgDataAuthorizationId String?                  @unique @map("legacy_org_data_authorization_id")
-  createdAt                    DateTime                 @default(now()) @map("created_at")
-  updatedAt                    DateTime                 @updatedAt @map("updated_at")
+  id                           String                     @id @default(uuid())
+  organizationId               String                     @map("organization_id")
+  dataSubjectReference         String                     @map("data_subject_reference")
+  subjectType                  DataSubjectType            @map("subject_type")
+  processingActivityId         String                     @map("processing_activity_id")
+  purpose                      PrivacyProcessingPurpose
+  consentTextVersion           String                     @map("consent_text_version")
+  privacyNoticeVersion         String                     @map("privacy_notice_version")
+  consentStatus                DataSubjectConsentStatus   @default(PENDING) @map("consent_status")
+  grantedAt                    DateTime?                  @map("granted_at")
+  grantedChannel               ConsentInteractionChannel? @map("granted_channel")
+  evidenceReference            String?                    @map("evidence_reference")
+  withdrawnAt                  DateTime?                  @map("withdrawn_at")
+  withdrawalChannel            ConsentInteractionChannel? @map("withdrawal_channel")
+  withdrawalReason             String?                    @map("withdrawal_reason") @db.Text
+  expiresAt                    DateTime?                  @map("expires_at")
+  legacyOrgDataAuthorizationId String?                    @unique @map("legacy_org_data_authorization_id")
+  createdAt                    DateTime                   @default(now()) @map("created_at")
+  updatedAt                    DateTime                   @updatedAt @map("updated_at")
 
-  organization               Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  processingActivity         ProcessingActivity    @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
-  legalBasisAssessment       LegalBasisAssessment? @relation(fields: [legalBasisAssessmentId], references: [id], onDelete: SetNull)
-  legacyOrgDataAuthorization OrgDataAuthorization? @relation("LegacyOrgAuthDataSubjectConsent", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  organization               Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity         ProcessingActivity              @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+  legacyOrgDataAuthorization OrgDataAuthorization?           @relation("LegacyOrgAuthDataSubjectConsent", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  statusEvents               DataSubjectConsentStatusEvent[]
+  withdrawalPropagations     ConsentWithdrawalPropagation[]
+  LegalBasisAssessment       LegalBasisAssessment?           @relation(fields: [legalBasisAssessmentId], references: [id])
+  legalBasisAssessmentId     String?
 
-  @@index([organizationId, status])
+  @@index([organizationId, consentStatus])
   @@index([processingActivityId])
-  @@index([subjectType, subjectRefId])
+  @@index([subjectType, dataSubjectReference])
   @@map("data_subject_consents")
 }
 
-/// Technischer Providerzugriff — getrennt von Einwilligung und Rechtsgrundlage.
+model DataSubjectConsentStatusEvent {
+  id                   String                     @id @default(uuid())
+  organizationId       String                     @map("organization_id")
+  dataSubjectConsentId String                     @map("data_subject_consent_id")
+  fromStatus           DataSubjectConsentStatus?  @map("from_status")
+  toStatus             DataSubjectConsentStatus   @map("to_status")
+  actorType            AuthorizationActorType     @map("actor_type")
+  actorId              String?                    @map("actor_id")
+  channel              ConsentInteractionChannel? @map("channel")
+  reason               String?                    @db.Text
+  createdAt            DateTime                   @default(now()) @map("created_at")
+
+  dataSubjectConsent DataSubjectConsent @relation(fields: [dataSubjectConsentId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([dataSubjectConsentId, createdAt])
+  @@map("data_subject_consent_status_events")
+}
+
+model ConsentWithdrawalPropagation {
+  id                   String   @id @default(uuid())
+  organizationId       String   @map("organization_id")
+  dataSubjectConsentId String   @map("data_subject_consent_id")
+  processingActivityId String   @map("processing_activity_id")
+  enforcementPolicyId  String?  @map("enforcement_policy_id")
+  action               String
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  dataSubjectConsent DataSubjectConsent @relation(fields: [dataSubjectConsentId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([dataSubjectConsentId])
+  @@map("consent_withdrawal_propagations")
+}
+
+/// Technischer Providerzugriff — keine Einwilligung, keine juristische Rechtsgrundlage.
 model ProviderAccessGrant {
   id                             String                       @id @default(uuid())
   organizationId                 String                       @map("organization_id")
+  provider                       String
+  providerAccountReference       String?                      @map("provider_account_reference")
+  providerGrantReference         String?                      @map("provider_grant_reference")
+  providerStatus                 ProviderAccessGrantStatus    @default(PENDING) @map("provider_status")
+  grantMechanism                 ProviderAccessGrantMechanism @default(MANUAL) @map("grant_mechanism")
+  grantedAt                      DateTime?                    @map("granted_at")
+  expiresAt                      DateTime?                    @map("expires_at")
+  revokedAt                      DateTime?                    @map("revoked_at")
+  lastVerifiedAt                 DateTime?                    @map("last_verified_at")
+  technicalOwnerUserId           String?                      @map("technical_owner_user_id")
+  linkedVehicleCount             Int                          @default(0) @map("linked_vehicle_count")
   processingActivityId           String?                      @map("processing_activity_id")
   vehicleId                      String?                      @map("vehicle_id")
-  provider                       String
-  status                         ProviderAccessGrantStatus    @default(PENDING)
-  grantMechanism                 ProviderAccessGrantMechanism @map("grant_mechanism")
-  grantedByUserId                String?                      @map("granted_by_user_id")
-  grantedAt                      DateTime?                    @map("granted_at")
-  revokedAt                      DateTime?                    @map("revoked_at")
-  expiresAt                      DateTime?                    @map("expires_at")
-  proofReference                 String?                      @map("proof_reference")
   legacyVehicleProviderConsentId String?                      @unique @map("legacy_vehicle_provider_consent_id")
   legacyOrgDataAuthorizationId   String?                      @unique @map("legacy_org_data_authorization_id")
   createdAt                      DateTime                     @default(now()) @map("created_at")
   updatedAt                      DateTime                     @updatedAt @map("updated_at")
 
-  organization                 Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  processingActivity           ProcessingActivity?        @relation(fields: [processingActivityId], references: [id], onDelete: SetNull)
-  vehicle                      Vehicle?                   @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  legacyVehicleProviderConsent VehicleProviderConsent?    @relation("LegacyVpcProviderAccessGrant", fields: [legacyVehicleProviderConsentId], references: [id], onDelete: SetNull)
-  legacyOrgDataAuthorization   OrgDataAuthorization?      @relation("LegacyOrgAuthProviderAccessGrant", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
-  scopes                       ProviderAccessGrantScope[]
+  organization                 Organization                     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity           ProcessingActivity?              @relation(fields: [processingActivityId], references: [id], onDelete: SetNull)
+  vehicle                      Vehicle?                         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  legacyVehicleProviderConsent VehicleProviderConsent?          @relation("LegacyVpcProviderAccessGrant", fields: [legacyVehicleProviderConsentId], references: [id], onDelete: SetNull)
+  legacyOrgDataAuthorization   OrgDataAuthorization?            @relation("LegacyOrgAuthProviderAccessGrant", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  grantedScopes                ProviderAccessGrantScope[]
+  statusEvents                 ProviderAccessGrantStatusEvent[]
 
-  @@index([organizationId, status])
+  @@index([organizationId, providerStatus])
   @@index([processingActivityId])
-  @@index([vehicleId, provider, status])
+  @@index([vehicleId, provider, providerStatus])
   @@map("provider_access_grants")
+}
+
+model ProviderAccessGrantStatusEvent {
+  id                    String                     @id @default(uuid())
+  organizationId        String                     @map("organization_id")
+  providerAccessGrantId String                     @map("provider_access_grant_id")
+  fromStatus            ProviderAccessGrantStatus? @map("from_status")
+  toStatus              ProviderAccessGrantStatus  @map("to_status")
+  actorType             AuthorizationActorType     @map("actor_type")
+  actorId               String?                    @map("actor_id")
+  reason                String?                    @db.Text
+  createdAt             DateTime                   @default(now()) @map("created_at")
+
+  providerAccessGrant ProviderAccessGrant @relation(fields: [providerAccessGrantId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([providerAccessGrantId, createdAt])
+  @@map("provider_access_grant_status_events")
 }
 
 model ProviderAccessGrantScope {
@@ -10998,29 +11089,67 @@ model ProviderAccessGrantScope {
   @@map("provider_access_grant_scopes")
 }
 
-/// Partnerweitergabe — autorisierte Weitergabe an Dritte.
+/// Partnerweitergabe — keine ProcessingActivity, autorisierte Weitergabe an Empfänger.
 model DataSharingAuthorization {
   id                           String                         @id @default(uuid())
   organizationId               String                         @map("organization_id")
+  recipient                    String
+  recipientRole                DataSharingRecipientRole       @map("recipient_role")
+  purpose                      PrivacyProcessingPurpose
+  legalBasisAssessmentId       String                         @map("legal_basis_assessment_id")
   processingActivityId         String                         @map("processing_activity_id")
-  partnerLabel                 String                         @map("partner_label")
-  destinationSummary           String?                        @map("destination_summary")
+  transferCountry              String?                        @map("transfer_country")
+  transferMechanism            DataTransferMechanism?         @map("transfer_mechanism")
+  validFrom                    DateTime?                      @map("valid_from")
+  validUntil                   DateTime?                      @map("valid_until")
   status                       DataSharingAuthorizationStatus @default(PENDING)
-  authorizedByUserId           String?                        @map("authorized_by_user_id")
-  authorizedAt                 DateTime?                      @map("authorized_at")
-  revokedAt                    DateTime?                      @map("revoked_at")
-  expiresAt                    DateTime?                      @map("expires_at")
   legacyOrgDataAuthorizationId String?                        @unique @map("legacy_org_data_authorization_id")
   createdAt                    DateTime                       @default(now()) @map("created_at")
   updatedAt                    DateTime                       @updatedAt @map("updated_at")
 
-  organization               Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  processingActivity         ProcessingActivity    @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
-  legacyOrgDataAuthorization OrgDataAuthorization? @relation("LegacyOrgAuthDataSharing", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  organization               Organization                          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity         ProcessingActivity                    @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+  legalBasisAssessment       LegalBasisAssessment                  @relation(fields: [legalBasisAssessmentId], references: [id], onDelete: Restrict)
+  legacyOrgDataAuthorization OrgDataAuthorization?                 @relation("LegacyOrgAuthDataSharing", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  dataCategories             DataSharingAuthorizationCategory[]
+  statusEvents               DataSharingAuthorizationStatusEvent[]
 
   @@index([organizationId, status])
   @@index([processingActivityId])
+  @@index([legalBasisAssessmentId])
   @@map("data_sharing_authorizations")
+}
+
+model DataSharingAuthorizationCategory {
+  id                         String                        @id @default(uuid())
+  organizationId             String                        @map("organization_id")
+  dataSharingAuthorizationId String                        @map("data_sharing_authorization_id")
+  dataCategory               PrivacyProcessingDataCategory @map("data_category")
+  createdAt                  DateTime                      @default(now()) @map("created_at")
+
+  dataSharingAuthorization DataSharingAuthorization @relation(fields: [dataSharingAuthorizationId], references: [id], onDelete: Restrict)
+
+  @@unique([dataSharingAuthorizationId, dataCategory])
+  @@index([organizationId])
+  @@map("data_sharing_authorization_categories")
+}
+
+model DataSharingAuthorizationStatusEvent {
+  id                         String                          @id @default(uuid())
+  organizationId             String                          @map("organization_id")
+  dataSharingAuthorizationId String                          @map("data_sharing_authorization_id")
+  fromStatus                 DataSharingAuthorizationStatus? @map("from_status")
+  toStatus                   DataSharingAuthorizationStatus  @map("to_status")
+  actorType                  AuthorizationActorType          @map("actor_type")
+  actorId                    String?                         @map("actor_id")
+  reason                     String?                         @db.Text
+  createdAt                  DateTime                        @default(now()) @map("created_at")
+
+  dataSharingAuthorization DataSharingAuthorization @relation(fields: [dataSharingAuthorizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([dataSharingAuthorizationId, createdAt])
+  @@map("data_sharing_authorization_status_events")
 }
 
 /// Auftragsverarbeitung (AVV/DPA) — Vertrag mit Auftragsverarbeiter.
