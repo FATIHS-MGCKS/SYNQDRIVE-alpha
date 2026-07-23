@@ -51,19 +51,7 @@ export function VehicleOverrideEditorDrawer({
     if (!enabled) {
       setSaving(true);
       try {
-        await api.rentalRules.patchVehicleOverrides(orgId, vehicleId, {
-          minimumAgeYears: null,
-          minimumLicenseHoldingMonths: null,
-          depositAmountCents: null,
-          depositCurrency: null,
-          creditCardRequired: null,
-          foreignTravelPolicy: null,
-          additionalDriverPolicy: null,
-          youngDriverPolicy: null,
-          insuranceRequirement: null,
-          manualApprovalRequired: null,
-          notes: null,
-        });
+        await api.rentalRules.resetVehicleOverrides(orgId, vehicleId);
         toast.success('Overrides cleared — using inherited rules');
         onSaved();
         onOpenChange(false);

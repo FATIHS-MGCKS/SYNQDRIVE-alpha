@@ -3,12 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ActivityAction, ActivityEntity, Prisma } from '@prisma/client';
+import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalEffectiveRulesService } from './rental-effective-rules.service';
 import {
   AssignCategoryVehiclesDto,
   CreateRentalVehicleCategoryDto,
+  ResetVehicleRentalOverridesDto,
   UpdateRentalVehicleCategoryDto,
   UpsertOrganizationRentalRulesDto,
   UpsertVehicleRentalOverridesDto,
@@ -24,9 +26,14 @@ import {
   extractRuleFields,
   hasActiveRuleOverrides,
 } from './rental-rules.mapper';
-import { RENTAL_RULE_FIELD_KEYS } from './rental-rules.types';
+import { RENTAL_RULE_FIELD_KEYS, type RentalRuleFieldKey } from './rental-rules.types';
 import { RentalRulePermissionService } from './rental-rule-permission.service';
 import type { PermissionActor } from '@shared/auth/permission.util';
+import {
+  buildOverrideResetPatch,
+  mergeOverrideFieldsAfterReset,
+  resolveOverrideResetFields,
+} from './vehicle-rental-override-reset.util';
 
 interface RentalRulesMutationContext {
   actor?: PermissionActor;
@@ -38,6 +45,7 @@ export class RentalRulesService {
     private readonly prisma: PrismaService,
     private readonly effectiveRules: RentalEffectiveRulesService,
     private readonly rentalRulePermissions: RentalRulePermissionService,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   private async assertOrgExists(orgId: string) {
@@ -337,12 +345,242 @@ export class RentalRulesService {
     };
   }
 
-  async upsertVehicleOverrides(orgId: string, vehicleId: string, dto: UpsertVehicleRentalOverridesDto) {
+  private async pruneEmptyVehicleOverride(vehicleId: string) {
+    const row = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+    if (!row) return null;
+    if (!hasActiveRuleOverrides(extractRuleFields(row))) {
+      await this.prisma.vehicleRentalRequirementOverride.delete({
+        where: { vehicleId },
+      });
+      return null;
+    }
+    return row;
+  }
+
+  private async logVehicleOverrideReset(input: {
+    organizationId: string;
+    vehicleId: string;
+    actor?: PermissionActor;
+    removedFields: RentalRuleFieldKey[];
+    result: 'deleted' | 'updated' | 'no_op';
+    overrideId?: string | null;
+  }) {
+    const fieldSummary =
+      input.removedFields.length > 0 ? input.removedFields.join(', ') : 'none';
+    await this.activityLog.log({
+      organizationId: input.organizationId,
+      userId: input.actor?.id,
+      action: input.result === 'deleted' ? ActivityAction.DELETE : ActivityAction.RESET,
+      entity: ActivityEntity.VEHICLE,
+      entityId: input.vehicleId,
+      description: `Vehicle rental requirement override reset (${input.result}): ${fieldSummary}`,
+      metaJson: {
+        vehicleId: input.vehicleId,
+        removedFields: input.removedFields,
+        result: input.result,
+        overrideId: input.overrideId ?? null,
+        actorUserId: input.actor?.id ?? null,
+      },
+    });
+  }
+
+  private formatOverrideResetPreview(
+    fieldsToReset: RentalRuleFieldKey[],
+    currentEffective: Awaited<ReturnType<RentalEffectiveRulesService['formatEffectiveRules']>>,
+    futureEffective: Awaited<ReturnType<RentalEffectiveRulesService['formatEffectiveRules']>>,
+  ) {
+    return fieldsToReset.map((field) => ({
+      field,
+      current: currentEffective[field],
+      afterReset: futureEffective[field],
+    }));
+  }
+
+  async previewVehicleOverrideReset(
+    orgId: string,
+    vehicleId: string,
+    dto: ResetVehicleRentalOverridesDto = {},
+  ) {
+    await this.loadVehicle(orgId, vehicleId);
+    const override = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+    const currentOverrideFields = override ? extractRuleFields(override) : {};
+    const fieldsToReset = resolveOverrideResetFields(dto.fields, currentOverrideFields);
+    const currentEffective = this.effectiveRules.formatEffectiveRules(
+      await this.effectiveRules.computeForVehicle(orgId, vehicleId),
+    );
+
+    if (fieldsToReset.length === 0) {
+      return {
+        vehicleId,
+        organizationId: orgId,
+        requestedFields: dto.fields ?? [],
+        resetFields: [] as RentalRuleFieldKey[],
+        alreadyAbsent: !override,
+        fields: [] as ReturnType<RentalRulesService['formatOverrideResetPreview']>,
+        effectiveRules: currentEffective,
+      };
+    }
+
+    const simulatedOverrideFields = mergeOverrideFieldsAfterReset(
+      currentOverrideFields,
+      fieldsToReset,
+    );
+    const futureEffective = this.effectiveRules.formatEffectiveRules(
+      await this.effectiveRules.computeWithSimulatedOverrideFields(
+        orgId,
+        vehicleId,
+        hasActiveRuleOverrides(simulatedOverrideFields) ? simulatedOverrideFields : null,
+      ),
+    );
+
+    return {
+      vehicleId,
+      organizationId: orgId,
+      requestedFields: dto.fields ?? [],
+      resetFields: fieldsToReset,
+      alreadyAbsent: false,
+      fields: this.formatOverrideResetPreview(fieldsToReset, currentEffective, futureEffective),
+      effectiveRules: currentEffective,
+    };
+  }
+
+  async resetVehicleOverrides(
+    orgId: string,
+    vehicleId: string,
+    dto: ResetVehicleRentalOverridesDto = {},
+    ctx: RentalRulesMutationContext = {},
+  ) {
+    await this.loadVehicle(orgId, vehicleId);
+    const existing = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+    const currentOverrideFields = existing ? extractRuleFields(existing) : {};
+    const fieldsToReset = resolveOverrideResetFields(dto.fields, currentOverrideFields);
+
+    if (!existing || fieldsToReset.length === 0) {
+      await this.logVehicleOverrideReset({
+        organizationId: orgId,
+        vehicleId,
+        actor: ctx.actor,
+        removedFields: [],
+        result: 'no_op',
+        overrideId: existing?.id ?? null,
+      });
+      return {
+        vehicleId,
+        organizationId: orgId,
+        removedFields: [] as RentalRuleFieldKey[],
+        result: 'no_op' as const,
+        overrides: existing ? formatVehicleRentalOverride(existing) : null,
+        effectiveRules: this.effectiveRules.formatEffectiveRules(
+          await this.effectiveRules.computeForVehicle(orgId, vehicleId),
+        ),
+      };
+    }
+
+    const resetPatch = buildOverrideResetPatch(fieldsToReset);
+    const updated = await this.prisma.vehicleRentalRequirementOverride.update({
+      where: { vehicleId },
+      data: prismaRuleColumns(resetPatch, { layer: 'vehicleOverride' }),
+    });
+    const pruned = await this.pruneEmptyVehicleOverride(vehicleId);
+    const result = pruned ? ('updated' as const) : ('deleted' as const);
+
+    await this.logVehicleOverrideReset({
+      organizationId: orgId,
+      vehicleId,
+      actor: ctx.actor,
+      removedFields: fieldsToReset,
+      result,
+      overrideId: existing.id,
+    });
+
+    return {
+      vehicleId,
+      organizationId: orgId,
+      removedFields: fieldsToReset,
+      result,
+      overrides: pruned ? formatVehicleRentalOverride(pruned) : null,
+      effectiveRules: this.effectiveRules.formatEffectiveRules(
+        await this.effectiveRules.computeForVehicle(orgId, vehicleId),
+      ),
+    };
+  }
+
+  async deleteVehicleOverrides(
+    orgId: string,
+    vehicleId: string,
+    ctx: RentalRulesMutationContext = {},
+  ) {
+    await this.loadVehicle(orgId, vehicleId);
+    const existing = await this.prisma.vehicleRentalRequirementOverride.findUnique({
+      where: { vehicleId },
+    });
+
+    if (!existing) {
+      await this.logVehicleOverrideReset({
+        organizationId: orgId,
+        vehicleId,
+        actor: ctx.actor,
+        removedFields: [],
+        result: 'no_op',
+      });
+      return {
+        vehicleId,
+        organizationId: orgId,
+        removedFields: [] as RentalRuleFieldKey[],
+        result: 'no_op' as const,
+        overrides: null,
+        effectiveRules: this.effectiveRules.formatEffectiveRules(
+          await this.effectiveRules.computeForVehicle(orgId, vehicleId),
+        ),
+      };
+    }
+
+    const removedFields = RENTAL_RULE_FIELD_KEYS.filter(
+      (key) => extractRuleFields(existing)[key] != null,
+    );
+    await this.prisma.vehicleRentalRequirementOverride.delete({
+      where: { vehicleId },
+    });
+
+    await this.logVehicleOverrideReset({
+      organizationId: orgId,
+      vehicleId,
+      actor: ctx.actor,
+      removedFields,
+      result: 'deleted',
+      overrideId: existing.id,
+    });
+
+    return {
+      vehicleId,
+      organizationId: orgId,
+      removedFields,
+      result: 'deleted' as const,
+      overrides: null,
+      effectiveRules: this.effectiveRules.formatEffectiveRules(
+        await this.effectiveRules.computeForVehicle(orgId, vehicleId),
+      ),
+    };
+  }
+
+  async upsertVehicleOverrides(
+    orgId: string,
+    vehicleId: string,
+    dto: UpsertVehicleRentalOverridesDto,
+    ctx: RentalRulesMutationContext = {},
+  ) {
     await this.loadVehicle(orgId, vehicleId);
     const patch = this.toPrismaRuleData(pickRulePatch(dto), 'vehicleOverride');
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
-    const row = await this.prisma.vehicleRentalRequirementOverride.upsert({
+    const patchFields = pickRulePatch(dto);
+    await this.prisma.vehicleRentalRequirementOverride.upsert({
       where: { vehicleId },
       create: {
         organizationId: orgId,
@@ -351,6 +589,17 @@ export class RentalRulesService {
       },
       update: prismaRuleColumns(patch, { layer: 'vehicleOverride' }),
     });
+    const row = await this.pruneEmptyVehicleOverride(vehicleId);
+    if (!row) {
+      await this.logVehicleOverrideReset({
+        organizationId: orgId,
+        vehicleId,
+        actor: ctx.actor,
+        removedFields: RENTAL_RULE_FIELD_KEYS.filter((key) => patchFields[key] === null),
+        result: 'deleted',
+      });
+      return null;
+    }
     return formatVehicleRentalOverride(row);
   }
 

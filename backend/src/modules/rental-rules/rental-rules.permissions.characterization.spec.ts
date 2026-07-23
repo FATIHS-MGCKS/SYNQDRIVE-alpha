@@ -34,6 +34,9 @@ describe('RentalRulesController permissions characterization', () => {
     ['disableCategory', 'rental_rules.publish'],
     ['assignCategoryVehicles', 'rental_rules.assign_vehicles'],
     ['upsertVehicleOverrides', 'rental_rules.manage_overrides'],
+    ['previewVehicleOverrideReset', 'rental_rules.manage_overrides'],
+    ['resetVehicleOverrides', 'rental_rules.manage_overrides'],
+    ['deleteVehicleOverrides', 'rental_rules.manage_overrides'],
   ] as const)('%s requires %s', (method, action) => {
     const requirement = RENTAL_RULE_PERMISSION_REQUIREMENTS[action];
     expect(permissionOf(RentalRulesController.prototype, method)).toEqual({
@@ -51,6 +54,9 @@ describe('RentalRulesController permissions characterization', () => {
       'disableCategory',
       'assignCategoryVehicles',
       'upsertVehicleOverrides',
+      'previewVehicleOverrideReset',
+      'resetVehicleOverrides',
+      'deleteVehicleOverrides',
     ]) {
       expect(Reflect.getMetadata('roles', proto[method] as object)).toBeUndefined();
     }
@@ -72,6 +78,9 @@ describe('RentalRulesController permissions characterization', () => {
       'assignCategoryVehicles',
       'getVehicleRequirements',
       'upsertVehicleOverrides',
+      'previewVehicleOverrideReset',
+      'resetVehicleOverrides',
+      'deleteVehicleOverrides',
       'getVehicleEffectiveRules',
     ];
     for (const method of handlers) {

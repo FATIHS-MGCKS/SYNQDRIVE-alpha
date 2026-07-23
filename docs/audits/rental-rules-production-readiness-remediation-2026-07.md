@@ -1795,3 +1795,140 @@ Neue Suites: `booking-eligibility-approval.service.spec.ts`, `booking-eligibilit
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 15).*
+
+---
+
+## Prompt 16 — PATCH-Semantik für Rental Rules
+
+**Ziel:** API und Frontend unterscheiden eindeutig zwischen unverändert, setzen und löschen/erben.
+
+### 16.1 Patch-Vertrag (alle Rule-Felder)
+
+| Payload | Semantik |
+|---------|----------|
+| Feld **fehlt** | Bestehenden Wert **unverändert** lassen |
+| **Konkreter Wert** (inkl. `false`, `0`) | Wert **setzen** |
+| **`null`** | Wert **löschen** → Vererbung von höherer Ebene |
+
+Gilt für: Mindestalter, Führerscheindauer, Kaution (+ Währung), Kreditkartenpflicht, Auslandsfahrt, Zusatzfahrer, Young Driver, manuelle Freigabe, Versicherungstext, Notizen.
+
+**Boolean-Unterscheidung:** `true` / `false` / `null` (erben) / `undefined` (unverändert).
+
+### 16.2 Backend
+
+| Komponente | Änderung |
+|------------|----------|
+| `normalizeRuleDtoInput` | Leere Strings → `null` für Text-/Währungsfelder |
+| `pickRulePatch` | `undefined` weglassen, `null` behalten |
+| `toPrismaRuleColumns` | Layer-aware: `depositCurrency: null` nur bei Category/Override |
+| `RentalRulesService` | Org/Category/Vehicle nutzen korrekte Layer |
+
+Org-Defaults: `depositCurrency` bleibt non-null (Default EUR) — `null` wird auf Org-Ebene ignoriert.
+
+### 16.3 Frontend
+
+| Komponente | Änderung |
+|------------|----------|
+| `formValuesToPatchPayload(values, baseline, mode)` | Diff gegen Baseline; „Inherit / not set“ → `null` |
+| `DefaultRulesDrawer` | Edit vs. Create-Modus |
+| `CategoryDetailDrawer` | Edit sendet `null` beim Löschen |
+| `VehicleOverrideEditorDrawer` | Shared Diff-Builder; Disable sendet inkl. `depositCurrency: null` |
+| `rulesToFormValues` | `depositCurrency` leer wenn geerbt |
+
+### 16.4 Tests
+
+```
+backend: npm test -- --testPathPattern="rental-rules" → 83/83 PASS
+frontend: vitest rental-rules.utils.test.ts → 7/7 PASS
+```
+
+Neue Suites: `rental-rules.mapper.spec.ts`, `rental-rules.utils.test.ts`; erweitert `rental-rules.service.spec.ts`.
+
+---
+
+## Prompt 16 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Bestehende Werte können gelöscht werden | ✅ `null` in PATCH |
+| `false` ≠ `undefined` | ✅ Explizites Senden von `false` |
+| Erben führt zur nächsthöheren Regelquelle | ✅ `null` + Effective-Rules-Merge |
+| Unveränderte Felder bleiben unverändert | ✅ Diff-Payload / `pickRulePatch` |
+| Leere Strings löschen nicht unbeabsichtigt | ✅ Normalisierung + Diff |
+| Tests bestehen | ✅ |
+| Prompt 16 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 16).*
+
+---
+
+## Prompt 17 — Vehicle Override Reset
+
+**Ziel:** Fahrzeugspezifische Overrides einzeln und vollständig entfernbar; nach Reset keine leeren Override-Hüllen; Effective-Rules-Preview vor Reset.
+
+### 17.1 Reset-Pfade (API)
+
+| Methode | Pfad | Permission | Semantik |
+|---------|------|------------|----------|
+| `POST` | `.../vehicles/:vehicleId/rental-requirements/overrides/reset-preview` | `rental_rules.manage_overrides` | Preview: aktueller effektiver Wert, Wert/Herkunft nach Reset |
+| `POST` | `.../vehicles/:vehicleId/rental-requirements/overrides/reset` | `rental_rules.manage_overrides` | Partieller oder vollständiger Reset (`fields` optional; leer = alle aktiven Override-Felder) |
+| `DELETE` | `.../vehicles/:vehicleId/rental-requirements/overrides` | `rental_rules.manage_overrides` | Gesamten Override-Datensatz löschen (idempotent) |
+| `PATCH` | `.../vehicles/:vehicleId/rental-requirements/overrides` | `rental_rules.manage_overrides` | Bestehend; nach Upsert mit nur `null`-Feldern wird leere Hülle entfernt |
+
+**Einzelnes Feld:** `POST .../reset` mit `{ "fields": ["minimumAgeYears"] }`.
+
+**Mehrere Felder:** `{ "fields": ["minimumAgeYears", "depositAmountCents"] }`.
+
+**Alle Overrides:** `POST .../reset` mit `{}` oder `DELETE .../overrides`.
+
+### 17.2 Service-Logik
+
+| Komponente | Verhalten |
+|------------|-----------|
+| `resolveOverrideResetFields` | Validiert Feldnamen; ohne `fields` → alle aktuell gesetzten Override-Felder |
+| `resetVehicleOverrides` | Setzt Felder auf `null`, löscht Zeile wenn `!hasActiveRuleOverrides` |
+| `deleteVehicleOverrides` | Hard-delete der Override-Zeile |
+| `previewVehicleOverrideReset` | Simuliert Override-Layer via `computeWithSimulatedOverrideFields` |
+| `upsertVehicleOverrides` | `pruneEmptyVehicleOverride` nach Upsert |
+| `ActivityLogService` | Actor, vehicleId, removedFields, result (`deleted` / `updated` / `no_op`) |
+
+### 17.3 Preview-Response (pro Feld)
+
+- `current`: bisheriger effektiver Wert inkl. `source` / `sourceName`
+- `afterReset`: zukünftiger vererbter Wert inkl. Herkunft nach Reset
+
+### 17.4 Frontend
+
+| Komponente | Änderung |
+|------------|----------|
+| `api.rentalRules` | `previewVehicleOverrideReset`, `resetVehicleOverrides`, `deleteVehicleOverrides` |
+| `VehicleOverrideEditorDrawer` | Disable-Override nutzt `resetVehicleOverrides` statt Null-PATCH |
+
+### 17.5 Tests
+
+```
+backend: npm test -- --testPathPattern="rental-rules|vehicle-rental-override-reset"
+```
+
+Neue Suite: `vehicle-rental-override-reset.spec.ts` — vollständiger Reset, partieller Reset, Cross-Tenant, idempotent, Preview, Upsert-Prune; Permission-Characterization + Enforcement erweitert.
+
+---
+
+## Prompt 17 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Overrides vollständig entfernbar | ✅ DELETE + Reset ohne fields |
+| Einzelne/mehrere Felder zurücksetzbar | ✅ `fields[]` |
+| Vererbung nach Reset korrekt | ✅ Effective-Rules + Preview |
+| Keine leeren Override-Hüllen | ✅ `pruneEmptyVehicleOverride` |
+| Permission `rental_rules.manage_overrides` | ✅ |
+| Audit-Logging | ✅ ActivityLog VEHICLE |
+| Tests bestehen | ✅ |
+| Prompt 17 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 17).*

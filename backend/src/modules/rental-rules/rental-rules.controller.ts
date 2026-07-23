@@ -19,6 +19,7 @@ import { RequireRentalRulePermission } from './decorators/require-rental-rule-pe
 import {
   AssignCategoryVehiclesDto,
   CreateRentalVehicleCategoryDto,
+  ResetVehicleRentalOverridesDto,
   UpdateRentalVehicleCategoryDto,
   UpsertOrganizationRentalRulesDto,
   UpsertVehicleRentalOverridesDto,
@@ -138,8 +139,40 @@ export class RentalRulesController {
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
     @Body() body: UpsertVehicleRentalOverridesDto,
+    @CurrentUser() user: PermissionActor | undefined,
   ) {
-    return this.rentalRules.upsertVehicleOverrides(orgId, vehicleId, body);
+    return this.rentalRules.upsertVehicleOverrides(orgId, vehicleId, body, { actor: user });
+  }
+
+  @Post('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides/reset-preview')
+  @RequireRentalRulePermission('rental_rules.manage_overrides')
+  previewVehicleOverrideReset(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: ResetVehicleRentalOverridesDto,
+  ) {
+    return this.rentalRules.previewVehicleOverrideReset(orgId, vehicleId, body);
+  }
+
+  @Post('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides/reset')
+  @RequireRentalRulePermission('rental_rules.manage_overrides')
+  resetVehicleOverrides(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: ResetVehicleRentalOverridesDto,
+    @CurrentUser() user: PermissionActor | undefined,
+  ) {
+    return this.rentalRules.resetVehicleOverrides(orgId, vehicleId, body, { actor: user });
+  }
+
+  @Delete('organizations/:orgId/vehicles/:vehicleId/rental-requirements/overrides')
+  @RequireRentalRulePermission('rental_rules.manage_overrides')
+  deleteVehicleOverrides(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @CurrentUser() user: PermissionActor | undefined,
+  ) {
+    return this.rentalRules.deleteVehicleOverrides(orgId, vehicleId, { actor: user });
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/rental-requirements/effective')

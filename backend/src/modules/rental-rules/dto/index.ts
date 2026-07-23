@@ -143,3 +143,10 @@ export class AssignCategoryVehiclesDto {
 }
 
 export class UpsertVehicleRentalOverridesDto extends RentalRuleFieldsDto {}
+
+export class ResetVehicleRentalOverridesDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  fields?: string[];
+}

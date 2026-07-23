@@ -10,13 +10,17 @@ import {
   hasActiveRuleOverrides,
   vehicleDisplayName,
 } from './rental-rules.mapper';
-import type { EffectiveRentalRequirement, EffectiveRentalRules } from './rental-rules.types';
+import type {
+  EffectiveRentalRequirement,
+  EffectiveRentalRules,
+  RentalRuleFieldSet,
+} from './rental-rules.types';
 
 @Injectable()
 export class RentalEffectiveRulesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async computeForVehicle(orgId: string, vehicleId: string): Promise<EffectiveRentalRules> {
+  private async loadVehicleRulesContext(orgId: string, vehicleId: string) {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: orgId },
       include: {
@@ -31,11 +35,22 @@ export class RentalEffectiveRulesService {
       where: { organizationId: orgId },
     });
 
-    const orgName = vehicle.organization.companyName || 'Organization';
-    const vehicleName = vehicleDisplayName(vehicle);
-    const category = vehicle.rentalCategory;
-    const override = vehicle.rentalRequirementOverride;
-    const overrideFields = override ? extractRuleFields(override) : null;
+    return {
+      orgId,
+      vehicle,
+      orgRules,
+      orgName: vehicle.organization.companyName || 'Organization',
+      vehicleName: vehicleDisplayName(vehicle),
+      category: vehicle.rentalCategory,
+      override: vehicle.rentalRequirementOverride,
+    };
+  }
+
+  private buildEffectiveFromContext(
+    context: Awaited<ReturnType<RentalEffectiveRulesService['loadVehicleRulesContext']>>,
+    overrideFields: Partial<RentalRuleFieldSet> | null,
+  ): EffectiveRentalRules {
+    const { orgId, vehicle, orgRules, orgName, vehicleName, category } = context;
     const activation = buildRentalRulesActivationSnapshot({
       orgRules,
       category,
@@ -44,7 +59,7 @@ export class RentalEffectiveRulesService {
 
     return buildEffectiveRentalRules({
       organizationId: orgId,
-      vehicleId,
+      vehicleId: vehicle.id,
       rentalCategoryId: category?.id ?? null,
       rentalCategoryName: resolveInactiveCategoryDisplayName(category),
       rentalCategoryType: category?.type ?? null,
@@ -64,7 +79,7 @@ export class RentalEffectiveRulesService {
             }
           : null,
       vehicleLayer:
-        override && overrideFields && hasActiveRuleOverrides(overrideFields)
+        overrideFields && hasActiveRuleOverrides(overrideFields)
           ? {
               source: 'VEHICLE_OVERRIDE',
               sourceName: vehicleName,
@@ -72,6 +87,21 @@ export class RentalEffectiveRulesService {
             }
           : null,
     });
+  }
+
+  async computeForVehicle(orgId: string, vehicleId: string): Promise<EffectiveRentalRules> {
+    const context = await this.loadVehicleRulesContext(orgId, vehicleId);
+    const overrideFields = context.override ? extractRuleFields(context.override) : null;
+    return this.buildEffectiveFromContext(context, overrideFields);
+  }
+
+  async computeWithSimulatedOverrideFields(
+    orgId: string,
+    vehicleId: string,
+    overrideFields: Partial<RentalRuleFieldSet> | null,
+  ): Promise<EffectiveRentalRules> {
+    const context = await this.loadVehicleRulesContext(orgId, vehicleId);
+    return this.buildEffectiveFromContext(context, overrideFields);
   }
 
   formatEffectiveRules(rules: EffectiveRentalRules): EffectiveRentalRequirement {

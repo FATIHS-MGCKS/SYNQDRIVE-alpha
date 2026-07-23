@@ -203,6 +203,21 @@ describe('Rental rules permission enforcement', () => {
     expect(prisma.organizationMembership.findFirst).not.toHaveBeenCalled();
   });
 
+  it('denies read-only employee on override reset mutation (403)', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      role: 'WORKER',
+      permissions: normalizeMembershipPermissions(templateByKey('employee').permissions),
+    });
+
+    await expect(
+      permissionsGuard.canActivate(
+        permissionsContext({ id: userId, organizationId: orgId }, orgId, overrideRequirement) as never,
+      ),
+    ).rejects.toMatchObject({
+      response: { message: 'Missing permission: rental-rules-overrides.write', statusCode: 403 },
+    });
+  });
+
   it('denies sub_admin write on defaults patch (read-only template)', async () => {
     prisma.organizationMembership.findFirst.mockResolvedValue({
       role: 'SUB_ADMIN',

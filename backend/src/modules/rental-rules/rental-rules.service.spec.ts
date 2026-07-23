@@ -24,6 +24,8 @@ function makePrisma() {
     vehicleRentalRequirementOverride: {
       findUnique: jest.fn(),
       upsert: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
     priceTariffGroup: { findMany: jest.fn() },
     $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
@@ -42,7 +44,8 @@ describe('RentalRulesService', () => {
       assert: jest.fn().mockResolvedValue(undefined),
       assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
     };
-    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any);
+    const activityLog = { log: jest.fn().mockResolvedValue({ id: 'log-1' }) };
+    svc = new RentalRulesService(prisma as any, effective, rentalRulePermissions as any, activityLog as any);
   });
 
   it('blocks access to foreign organization category', async () => {

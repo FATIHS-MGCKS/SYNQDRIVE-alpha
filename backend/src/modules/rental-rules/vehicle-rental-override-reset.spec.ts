@@ -1,0 +1,527 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { RentalEffectiveRulesService } from './rental-effective-rules.service';
+import { RentalRulesService } from './rental-rules.service';
+
+function makePrisma() {
+  return {
+    organization: { findUnique: jest.fn() },
+    organizationRentalRules: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+    },
+    rentalVehicleCategory: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    vehicle: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    vehicleRentalRequirementOverride: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    priceTariffGroup: { findMany: jest.fn() },
+    $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
+  };
+}
+
+function baseVehicle(orgId = 'org1') {
+  return {
+    id: 'v1',
+    organizationId: orgId,
+    vehicleName: 'Golf',
+    make: 'VW',
+    model: 'Golf',
+    licensePlate: 'B-AB 123',
+    rentalCategoryId: 'cat1',
+    rentalCategory: {
+      id: 'cat1',
+      name: 'Economy',
+      type: 'ECONOMY',
+      isActive: true,
+      minimumAgeYears: 23,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: null,
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+    },
+    rentalRequirementOverride: null,
+    organization: { companyName: 'Acme' },
+  };
+}
+
+function baseOrgRules() {
+  return {
+    organizationId: 'org1',
+    isActive: true,
+    minimumAgeYears: 21,
+    minimumLicenseHoldingMonths: 12,
+    depositAmountCents: 10000,
+    depositCurrency: 'EUR',
+    creditCardRequired: true,
+    foreignTravelPolicy: 'ALLOWED',
+    additionalDriverPolicy: 'ALLOWED',
+    youngDriverPolicy: 'FEE_REQUIRED',
+    insuranceRequirement: null,
+    manualApprovalRequired: false,
+    notes: null,
+  };
+}
+
+describe('Vehicle rental override reset', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let svc: RentalRulesService;
+  let activityLog: { log: jest.Mock };
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    const effective = new RentalEffectiveRulesService(prisma as never);
+    activityLog = { log: jest.fn().mockResolvedValue({ id: 'log-1' }) };
+    const rentalRulePermissions = {
+      assert: jest.fn().mockResolvedValue(undefined),
+      assertPublishIfActiveChange: jest.fn().mockResolvedValue(undefined),
+    };
+    svc = new RentalRulesService(
+      prisma as never,
+      effective,
+      rentalRulePermissions as never,
+      activityLog as never,
+    );
+  });
+
+  function mockVehicleContext(vehicle: Record<string, unknown> = baseVehicle()) {
+    prisma.vehicle.findFirst.mockResolvedValue(vehicle);
+    prisma.organizationRentalRules.findUnique.mockResolvedValue(baseOrgRules());
+  }
+
+  it('performs full reset and deletes empty override shell', async () => {
+    mockVehicleContext({
+      ...baseVehicle(),
+      rentalRequirementOverride: {
+        id: 'ov1',
+        organizationId: 'org1',
+        vehicleId: 'v1',
+        minimumAgeYears: 30,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: null,
+        depositCurrency: null,
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    } as Record<string, unknown>);
+    prisma.vehicleRentalRequirementOverride.findUnique
+      .mockResolvedValueOnce({
+        id: 'ov1',
+        organizationId: 'org1',
+        vehicleId: 'v1',
+        minimumAgeYears: 30,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: null,
+        depositCurrency: null,
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .mockResolvedValueOnce({
+        id: 'ov1',
+        organizationId: 'org1',
+        vehicleId: 'v1',
+        minimumAgeYears: null,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: null,
+        depositCurrency: null,
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    prisma.vehicleRentalRequirementOverride.update.mockResolvedValue({});
+    prisma.vehicleRentalRequirementOverride.delete.mockResolvedValue({});
+    prisma.vehicle.findFirst
+      .mockResolvedValueOnce({
+        ...baseVehicle(),
+        rentalRequirementOverride: {
+          id: 'ov1',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          minimumAgeYears: 30,
+          minimumLicenseHoldingMonths: null,
+          depositAmountCents: null,
+          depositCurrency: null,
+          creditCardRequired: null,
+          foreignTravelPolicy: null,
+          additionalDriverPolicy: null,
+          youngDriverPolicy: null,
+          insuranceRequirement: null,
+          manualApprovalRequired: null,
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .mockResolvedValue(baseVehicle());
+
+    const result = await svc.resetVehicleOverrides('org1', 'v1', {}, { actor: { id: 'user-1' } });
+
+    expect(result.result).toBe('deleted');
+    expect(result.overrides).toBeNull();
+    expect(result.removedFields).toEqual(['minimumAgeYears']);
+    expect(result.effectiveRules.minimumAgeYears).toEqual({
+      value: 23,
+      source: 'CATEGORY',
+      sourceName: 'Economy',
+    });
+    expect(prisma.vehicleRentalRequirementOverride.delete).toHaveBeenCalledWith({
+      where: { vehicleId: 'v1' },
+    });
+    expect(activityLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'DELETE',
+        entity: 'VEHICLE',
+        entityId: 'v1',
+        metaJson: expect.objectContaining({
+          removedFields: ['minimumAgeYears'],
+          result: 'deleted',
+        }),
+      }),
+    );
+  });
+
+  it('performs partial reset and keeps remaining override fields', async () => {
+    mockVehicleContext({
+      ...baseVehicle(),
+      rentalRequirementOverride: {
+        id: 'ov1',
+        organizationId: 'org1',
+        vehicleId: 'v1',
+        minimumAgeYears: 30,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: 50000,
+        depositCurrency: 'EUR',
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    } as Record<string, unknown>);
+    prisma.vehicleRentalRequirementOverride.findUnique
+      .mockResolvedValueOnce({
+        id: 'ov1',
+        organizationId: 'org1',
+        vehicleId: 'v1',
+        minimumAgeYears: 30,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: 50000,
+        depositCurrency: 'EUR',
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .mockResolvedValueOnce({
+        id: 'ov1',
+        organizationId: 'org1',
+        vehicleId: 'v1',
+        minimumAgeYears: null,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: 50000,
+        depositCurrency: 'EUR',
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    prisma.vehicleRentalRequirementOverride.update.mockResolvedValue({});
+    prisma.vehicle.findFirst
+      .mockResolvedValueOnce({
+        ...baseVehicle(),
+        rentalRequirementOverride: {
+          id: 'ov1',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          minimumAgeYears: 30,
+          minimumLicenseHoldingMonths: null,
+          depositAmountCents: 50000,
+          depositCurrency: 'EUR',
+          creditCardRequired: null,
+          foreignTravelPolicy: null,
+          additionalDriverPolicy: null,
+          youngDriverPolicy: null,
+          insuranceRequirement: null,
+          manualApprovalRequired: null,
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .mockResolvedValue({
+        ...baseVehicle(),
+        rentalRequirementOverride: {
+          id: 'ov1',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          minimumAgeYears: null,
+          minimumLicenseHoldingMonths: null,
+          depositAmountCents: 50000,
+          depositCurrency: 'EUR',
+          creditCardRequired: null,
+          foreignTravelPolicy: null,
+          additionalDriverPolicy: null,
+          youngDriverPolicy: null,
+          insuranceRequirement: null,
+          manualApprovalRequired: null,
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+    const result = await svc.resetVehicleOverrides(
+      'org1',
+      'v1',
+      { fields: ['minimumAgeYears'] },
+      { actor: { id: 'user-1' } },
+    );
+
+    expect(result.result).toBe('updated');
+    expect(result.removedFields).toEqual(['minimumAgeYears']);
+    expect(result.overrides?.depositAmountCents).toBe(50000);
+    expect(prisma.vehicleRentalRequirementOverride.delete).not.toHaveBeenCalled();
+    expect(result.effectiveRules.minimumAgeYears.source).toBe('CATEGORY');
+    expect(result.effectiveRules.depositAmount.value).toBe(50000);
+  });
+
+  it('blocks cross-tenant vehicle reset via NotFound', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue(null);
+    await expect(
+      svc.resetVehicleOverrides('org1', 'foreign-v', {}, { actor: { id: 'user-1' } }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('is idempotent when override is already absent', async () => {
+    mockVehicleContext();
+    prisma.vehicleRentalRequirementOverride.findUnique.mockResolvedValue(null);
+
+    const first = await svc.resetVehicleOverrides('org1', 'v1', {}, { actor: { id: 'user-1' } });
+    const second = await svc.deleteVehicleOverrides('org1', 'v1', { actor: { id: 'user-1' } });
+
+    expect(first.result).toBe('no_op');
+    expect(second.result).toBe('no_op');
+    expect(prisma.vehicleRentalRequirementOverride.delete).not.toHaveBeenCalled();
+  });
+
+  it('delete endpoint removes entire override row', async () => {
+    mockVehicleContext();
+    prisma.vehicleRentalRequirementOverride.findUnique.mockResolvedValue({
+      id: 'ov1',
+      organizationId: 'org1',
+      vehicleId: 'v1',
+      minimumAgeYears: 30,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: null,
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.vehicleRentalRequirementOverride.delete.mockResolvedValue({});
+
+    const result = await svc.deleteVehicleOverrides('org1', 'v1', { actor: { id: 'user-1' } });
+
+    expect(result.result).toBe('deleted');
+    expect(result.overrides).toBeNull();
+    expect(activityLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'DELETE' }),
+    );
+  });
+
+  it('preview shows current effective, future inherited value, and source after reset', async () => {
+    mockVehicleContext({
+      ...baseVehicle(),
+      rentalRequirementOverride: {
+        id: 'ov1',
+        organizationId: 'org1',
+        vehicleId: 'v1',
+        minimumAgeYears: 30,
+        minimumLicenseHoldingMonths: null,
+        depositAmountCents: null,
+        depositCurrency: null,
+        creditCardRequired: null,
+        foreignTravelPolicy: null,
+        additionalDriverPolicy: null,
+        youngDriverPolicy: null,
+        insuranceRequirement: null,
+        manualApprovalRequired: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    } as Record<string, unknown>);
+    prisma.vehicleRentalRequirementOverride.findUnique.mockResolvedValue({
+      id: 'ov1',
+      organizationId: 'org1',
+      vehicleId: 'v1',
+      minimumAgeYears: 30,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: null,
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const preview = await svc.previewVehicleOverrideReset('org1', 'v1', {
+      fields: ['minimumAgeYears'],
+    });
+
+    expect(preview.resetFields).toEqual(['minimumAgeYears']);
+    expect(preview.fields[0]).toEqual({
+      field: 'minimumAgeYears',
+      current: {
+        value: 30,
+        source: 'VEHICLE_OVERRIDE',
+        sourceName: 'Golf',
+      },
+      afterReset: {
+        value: 23,
+        source: 'CATEGORY',
+        sourceName: 'Economy',
+      },
+    });
+  });
+
+  it('rejects invalid reset field names', async () => {
+    mockVehicleContext();
+    prisma.vehicleRentalRequirementOverride.findUnique.mockResolvedValue({
+      id: 'ov1',
+      organizationId: 'org1',
+      vehicleId: 'v1',
+      minimumAgeYears: 30,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: null,
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(
+      svc.resetVehicleOverrides('org1', 'v1', { fields: ['notAField'] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('prunes empty override shell after upsert clears all fields', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue(baseVehicle());
+    prisma.vehicleRentalRequirementOverride.upsert.mockResolvedValue({
+      id: 'ov1',
+      organizationId: 'org1',
+      vehicleId: 'v1',
+      minimumAgeYears: null,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: null,
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.vehicleRentalRequirementOverride.findUnique.mockResolvedValue({
+      id: 'ov1',
+      organizationId: 'org1',
+      vehicleId: 'v1',
+      minimumAgeYears: null,
+      minimumLicenseHoldingMonths: null,
+      depositAmountCents: null,
+      depositCurrency: null,
+      creditCardRequired: null,
+      foreignTravelPolicy: null,
+      additionalDriverPolicy: null,
+      youngDriverPolicy: null,
+      insuranceRequirement: null,
+      manualApprovalRequired: null,
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.vehicleRentalRequirementOverride.delete.mockResolvedValue({});
+
+    const result = await svc.upsertVehicleOverrides(
+      'org1',
+      'v1',
+      { minimumAgeYears: null },
+      { actor: { id: 'user-1' } },
+    );
+
+    expect(result).toBeNull();
+    expect(prisma.vehicleRentalRequirementOverride.delete).toHaveBeenCalled();
+  });
+});

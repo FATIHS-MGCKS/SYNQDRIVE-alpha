@@ -5743,6 +5743,38 @@ export const api = {
         `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides`,
         data,
       ),
+    previewVehicleOverrideReset: (
+      orgId: string,
+      vehicleId: string,
+      data?: { fields?: string[] },
+    ) =>
+      post<{
+        vehicleId: string;
+        resetFields: string[];
+        fields: Array<{
+          field: string;
+          current: { value: unknown; source: string | null; sourceName: string | null };
+          afterReset: { value: unknown; source: string | null; sourceName: string | null };
+        }>;
+      }>(`/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides/reset-preview`, data ?? {}),
+    resetVehicleOverrides: (
+      orgId: string,
+      vehicleId: string,
+      data?: { fields?: string[] },
+    ) =>
+      post<{
+        vehicleId: string;
+        removedFields: string[];
+        result: 'deleted' | 'updated' | 'no_op';
+        overrides: Record<string, unknown> | null;
+      }>(`/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides/reset`, data ?? {}),
+    deleteVehicleOverrides: (orgId: string, vehicleId: string) =>
+      del<{
+        vehicleId: string;
+        removedFields: string[];
+        result: 'deleted' | 'no_op';
+        overrides: null;
+      }>(`/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides`),
   },
   activityLog: {
     listAll: () => get<any[]>('/admin/activity-log'),
