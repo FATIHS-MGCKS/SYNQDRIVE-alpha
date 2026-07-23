@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Car, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { DetailDrawer, StatusChip } from '../../../../components/patterns';
-import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto, RentalVehicleCategoryStatus } from './rental-rules.types';
+import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto, RentalVehicleCategoryStatus, OrganizationRentalRulesDto } from './rental-rules.types';
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
+import { RentalRuleLivePreviewPanel } from './RentalRuleLivePreviewPanel';
 import { CATEGORY_COLOR_PRESETS, CATEGORY_TYPE_OPTIONS } from './rental-rules.constants';
 import {
   CATEGORY_LIFECYCLE_ACTIONS,
@@ -34,6 +35,7 @@ interface CategoryDetailDrawerProps {
   orgId: string;
   mode: 'create' | 'edit';
   category: RentalVehicleCategoryDto | null;
+  organizationDefaults?: OrganizationRentalRulesDto | null;
   assignedVehicles: RentalCategoryVehicleDto[];
   canWrite: boolean;
   canPublish?: boolean;
@@ -50,6 +52,7 @@ export function CategoryDetailDrawer({
   orgId,
   mode,
   category,
+  organizationDefaults,
   assignedVehicles,
   canWrite,
   canPublish = false,
@@ -302,8 +305,25 @@ export function CategoryDetailDrawer({
 
         <div>
           <h4 className="mb-3 text-[13px] font-semibold text-foreground">Category rules</h4>
-          <RentalRuleFieldsForm values={ruleValues} onChange={setRuleValues} disabled={!canWrite || saving || lifecycleSaving || isArchived} />
+          <RentalRuleFieldsForm
+            values={ruleValues}
+            onChange={setRuleValues}
+            disabled={!canWrite || saving || lifecycleSaving || isArchived}
+            scope="category"
+            parentRules={organizationDefaults}
+            baselineRules={mode === 'edit' ? category : null}
+            showFieldMeta
+          />
         </div>
+
+        {mode === 'edit' && category ? (
+          <RentalRuleLivePreviewPanel
+            orgId={orgId}
+            scope="category"
+            scopeEntityId={category.id}
+            className="border-t border-border/70 pt-5"
+          />
+        ) : null}
 
         {mode === 'edit' && category?.hasUnpublishedDraft && category.draftRevision && (
           <RentalRulePublishImpactPanel

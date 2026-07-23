@@ -331,3 +331,24 @@ export class PreviewRentalRuleRevisionDto {
   @IsIn(RENTAL_RULE_REVISION_PREVIEW_MODES)
   mode!: RentalRuleRevisionPreviewModeDto;
 }
+
+export class ListRentalRuleRevisionsQueryDto {
+  @IsOptional()
+  @IsIn(['ORGANIZATION', 'CATEGORY', 'VEHICLE'])
+  scopeType?: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+
+  @IsOptional()
+  @IsString()
+  scopeId?: string;
+
+  @IsOptional()
+  @IsIn(['DRAFT', 'ACTIVE', 'RETIRED'])
+  status?: 'DRAFT' | 'ACTIVE' | 'RETIRED';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type {
   RentalRuleDraftRevisionRef,
   RentalRulePublishImpactAnalysis,
@@ -9,6 +10,7 @@ import type {
 } from './rental-rules.types';
 import { RentalRulesMutationError, rentalRulesMutate } from './rental-rules-concurrency.errors';
 import { formatRuleValue, labelRuleField, labelRuleSource } from './rental-rules.utils';
+import { RentalRulesManualApprovalPanel } from './RentalRulesManualApprovalPanel';
 
 export type RentalRulePublishScope = 'defaults' | 'category' | 'vehicle';
 
@@ -22,29 +24,31 @@ interface RentalRulePublishImpactPanelProps {
   onPublished: () => Promise<void> | void;
 }
 
-function changeKindLabel(kind: RentalRuleRevisionFieldChange['kind']): string {
-  if (kind === 'added') return 'Added';
-  if (kind === 'removed') return 'Removed';
-  return 'Changed';
-}
-
 function DiffRow({ change }: { change: RentalRuleRevisionFieldChange }) {
+  const { t } = useLanguage();
+  const changeKindLabel =
+    change.kind === 'added'
+      ? t('rentalRules.workflow.publish.kindAdded')
+      : change.kind === 'removed'
+        ? t('rentalRules.workflow.publish.kindRemoved')
+        : t('rentalRules.workflow.publish.kindChanged');
+
   return (
     <li className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-[12px]">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium text-foreground">{labelRuleField(change.field)}</span>
         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-          {changeKindLabel(change.kind)}
+          {changeKindLabel}
         </span>
       </div>
       <div className="mt-1 grid gap-1 text-muted-foreground sm:grid-cols-2">
         <p>
-          <span className="text-foreground/70">Before:</span>{' '}
+          <span className="text-foreground/70">{t('rentalRules.workflow.preview.before')}:</span>{' '}
           {formatRuleValue(change.field, change.previousValue)}
           <span className="ml-1 text-[11px]">({labelRuleSource(change.previousSource, null)})</span>
         </p>
         <p>
-          <span className="text-foreground/70">After:</span>{' '}
+          <span className="text-foreground/70">{t('rentalRules.workflow.preview.after')}:</span>{' '}
           {formatRuleValue(change.field, change.newValue)}
           <span className="ml-1 text-[11px]">({labelRuleSource(change.newSource, null)})</span>
         </p>
@@ -71,6 +75,7 @@ export function RentalRulePublishImpactPanel({
   canPublish,
   onPublished,
 }: RentalRulePublishImpactPanelProps) {
+  const { t } = useLanguage();
   const [analysis, setAnalysis] = useState<RentalRulePublishImpactAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -89,7 +94,7 @@ export function RentalRulePublishImpactPanel({
       });
       setAnalysis(result);
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Failed to load publish impact';
+      const message = e instanceof Error ? e.message : t('rentalRules.workflow.publish.loadError');
       setLoadError(message);
       setAnalysis(null);
     } finally {
@@ -105,11 +110,11 @@ export function RentalRulePublishImpactPanel({
     if (!draftRevision?.id) return;
     const reason = changeReason.trim();
     if (!reason) {
-      toast.error('A change reason is required before publishing');
+      toast.error(t('rentalRules.workflow.publish.reasonRequired'));
       return;
     }
     if (analysis?.criticalImpact.requiresAcknowledgement && !acknowledgeCritical) {
-      toast.error('Please acknowledge the critical impact before publishing');
+      toast.error(t('rentalRules.workflow.publish.acknowledgeRequired'));
       return;
     }
 
@@ -128,7 +133,7 @@ export function RentalRulePublishImpactPanel({
             : {}),
         },
       );
-      toast.success('Rental rules published');
+      toast.success(t('rentalRules.workflow.publish.success'));
       setChangeReason('');
       setAcknowledgeCritical(false);
       await onPublished();
@@ -136,7 +141,7 @@ export function RentalRulePublishImpactPanel({
       if (e instanceof RentalRulesMutationError) {
         toast.error(e.message);
       } else {
-        toast.error(e instanceof Error ? e.message : 'Publish failed');
+        toast.error(e instanceof Error ? e.message : t('rentalRules.workflow.publish.failed'));
       }
     } finally {
       setPublishing(false);
@@ -152,12 +157,17 @@ export function RentalRulePublishImpactPanel({
     : [];
 
   return (
-    <section className="mt-6 space-y-4 border-t border-border/70 pt-5">
+    <section
+      className="mt-6 space-y-4 border-t border-border/70 pt-5"
+      aria-labelledby="rental-rule-publish-heading"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-[13px] font-semibold text-foreground">Publish draft</h3>
+          <h3 id="rental-rule-publish-heading" className="text-[13px] font-semibold text-foreground">
+            {t('rentalRules.workflow.publish.title')}
+          </h3>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            Review the before/after diff and affected bookings before publishing to production.
+            {t('rentalRules.workflow.publish.description')}
           </p>
         </div>
         <button
@@ -166,14 +176,14 @@ export function RentalRulePublishImpactPanel({
           onClick={() => void loadAnalysis()}
           disabled={loading}
         >
-          Refresh
+          {t('rentalRules.ui.actions.refresh')}
         </button>
       </div>
 
       {loading && (
         <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-          Loading publish impact…
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
+          {t('rentalRules.workflow.publish.loading')}
         </div>
       )}
 
@@ -187,11 +197,11 @@ export function RentalRulePublishImpactPanel({
         <>
           {!analysis.diff.hasChanges ? (
             <p className="rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground">
-              No rule field changes detected in this draft.
+              {t('rentalRules.workflow.publish.noDiff')}
             </p>
           ) : (
             <div className="space-y-2">
-              <p className="text-[12px] font-medium text-foreground">Rule changes</p>
+              <p className="text-[12px] font-medium text-foreground">{t('rentalRules.workflow.publish.diff')}</p>
               <ul className="space-y-2">
                 {diffRows.map((change) => (
                   <DiffRow key={`${change.field}-${change.kind}`} change={change} />
@@ -202,7 +212,7 @@ export function RentalRulePublishImpactPanel({
 
           {analysis.diff.scopeMetaChanges.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[12px] font-medium text-foreground">Scope settings</p>
+              <p className="text-[12px] font-medium text-foreground">{t('rentalRules.workflow.publish.scopeMeta')}</p>
               <ul className="space-y-2">
                 {analysis.diff.scopeMetaChanges.map((change) => (
                   <li
@@ -218,46 +228,54 @@ export function RentalRulePublishImpactPanel({
           )}
 
           <div className="space-y-2">
-            <p className="text-[12px] font-medium text-foreground">Affected scope</p>
+            <p className="text-[12px] font-medium text-foreground">{t('rentalRules.workflow.publish.affectedScope')}</p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <ImpactCount label="Categories" count={analysis.affectedScopes.categories.length} />
-              <ImpactCount label="Vehicles" count={analysis.affectedScopes.vehicles.length} />
+              <ImpactCount label={t('rentalRules.workflow.publish.categories')} count={analysis.affectedScopes.categories.length} />
+              <ImpactCount label={t('rentalRules.workflow.publish.vehicles')} count={analysis.affectedScopes.vehicles.length} />
               <ImpactCount
-                label="Without category"
+                label={t('rentalRules.workflow.publish.withoutCategory')}
                 count={analysis.affectedScopes.vehiclesWithoutCategory.length}
               />
               <ImpactCount
-                label="Vehicle overrides"
+                label={t('rentalRules.workflow.publish.overrides')}
                 count={analysis.affectedScopes.vehicleOverrides.length}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-[12px] font-medium text-foreground">Booking impact (future)</p>
+            <p className="text-[12px] font-medium text-foreground">{t('rentalRules.workflow.publish.bookingImpact')}</p>
             <div className="grid gap-2 sm:grid-cols-3">
-              <ImpactCount label="Wizard drafts" count={analysis.bookingImpact.wizardDraft.count} />
-              <ImpactCount label="Pending" count={analysis.bookingImpact.pending.count} />
-              <ImpactCount label="Confirmed (unchanged)" count={analysis.bookingImpact.confirmed.count} />
+              <ImpactCount label={t('rentalRules.workflow.publish.wizardDrafts')} count={analysis.bookingImpact.wizardDraft.count} />
+              <ImpactCount label={t('rentalRules.workflow.publish.pending')} count={analysis.bookingImpact.pending.count} />
+              <ImpactCount label={t('rentalRules.workflow.publish.confirmed')} count={analysis.bookingImpact.confirmed.count} />
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Confirmed bookings are never changed automatically by publish.
+              {t('rentalRules.workflow.publish.confirmedHint')}
             </p>
           </div>
 
-          {analysis.manualApprovalImpact.pendingApprovalCount > 0 && (
+          <RentalRulesManualApprovalPanel
+            orgId={orgId}
+            bookingIds={analysis.manualApprovalImpact.bookingIds}
+            approvalIds={analysis.manualApprovalImpact.approvalIds}
+            pendingCount={analysis.manualApprovalImpact.pendingApprovalCount}
+          />
+
+          {analysis.manualApprovalImpact.pendingApprovalCount > 0 ? (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-900 dark:text-amber-100">
-              {analysis.manualApprovalImpact.pendingApprovalCount} pending manual eligibility approval
-              {analysis.manualApprovalImpact.pendingApprovalCount === 1 ? '' : 's'} may be affected.
+              {t('rentalRules.workflow.publish.pendingApprovals', {
+                count: analysis.manualApprovalImpact.pendingApprovalCount,
+              })}
             </p>
-          )}
+          ) : null}
 
           {analysis.criticalImpact.isCritical && (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-[12px] text-amber-950 dark:text-amber-50">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="space-y-1">
-                  <p className="font-medium">Critical change detected</p>
+                  <p className="font-medium">{t('rentalRules.workflow.publish.critical')}</p>
                   <ul className="list-disc space-y-0.5 pl-4 text-amber-900/90 dark:text-amber-100/90">
                     {analysis.criticalImpact.messages.map((message) => (
                       <li key={message}>{message}</li>
@@ -270,9 +288,12 @@ export function RentalRulePublishImpactPanel({
 
           {analysis.effectiveImpactTotalVehicles > 0 && (
             <p className="text-[11px] text-muted-foreground">
-              Effective rule changes on {analysis.effectiveImpactTotalVehicles} vehicle
-              {analysis.effectiveImpactTotalVehicles === 1 ? '' : 's'}
-              {analysis.effectiveImpactTruncated ? ' (sampled)' : ''}.
+              {t('rentalRules.workflow.publish.effectiveImpact', {
+                count: analysis.effectiveImpactTotalVehicles,
+                sampled: analysis.effectiveImpactTruncated
+                  ? t('rentalRules.workflow.publish.sampled')
+                  : '',
+              })}
             </p>
           )}
 
@@ -280,16 +301,17 @@ export function RentalRulePublishImpactPanel({
             <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
               <label className="block space-y-1">
                 <span className="text-[12px] font-medium text-foreground">
-                  Change reason <span className="text-destructive">*</span>
+                  {t('rentalRules.workflow.publish.changeReason')} <span className="text-destructive">*</span>
                 </span>
                 <textarea
                   value={changeReason}
                   onChange={(e) => setChangeReason(e.target.value)}
                   rows={3}
                   maxLength={500}
-                  placeholder="Why are these rules being published?"
+                  placeholder={t('rentalRules.workflow.publish.changeReasonPlaceholder')}
                   className="sq-input min-h-[72px] w-full resize-y text-[12px]"
                   disabled={publishing}
+                  aria-required
                 />
               </label>
 
@@ -302,7 +324,7 @@ export function RentalRulePublishImpactPanel({
                     onChange={(e) => setAcknowledgeCritical(e.target.checked)}
                     disabled={publishing}
                   />
-                  <span>I understand the critical impact and want to proceed.</span>
+                  <span>{t('rentalRules.workflow.publish.acknowledge')}</span>
                 </label>
               )}
 
@@ -312,10 +334,13 @@ export function RentalRulePublishImpactPanel({
                 disabled={publishing || !changeReason.trim()}
                 onClick={() => void handlePublish()}
               >
-                {publishing ? 'Publishing…' : 'Publish to production'}
+                {publishing ? t('rentalRules.workflow.publish.publishing') : t('rentalRules.workflow.publish.confirm')}
               </button>
             </div>
           )}
+          {!canPublish ? (
+            <p className="text-[12px] text-muted-foreground">{t('rentalRules.workflow.publish.readOnly')}</p>
+          ) : null}
         </>
       )}
     </section>

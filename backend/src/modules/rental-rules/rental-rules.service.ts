@@ -1359,6 +1359,24 @@ export class RentalRulesService {
     return this.effectiveRules.formatEffectiveRules(rules);
   }
 
+  async listRevisions(
+    orgId: string,
+    query: {
+      scopeType?: 'ORGANIZATION' | 'CATEGORY' | 'VEHICLE';
+      scopeId?: string;
+      status?: 'DRAFT' | 'ACTIVE' | 'RETIRED';
+      limit?: number;
+    },
+  ) {
+    await this.assertOrgExists(orgId);
+    return this.revisions.listRevisions(orgId, query);
+  }
+
+  async getRevision(orgId: string, revisionId: string) {
+    await this.assertOrgExists(orgId);
+    return this.revisions.getRevisionDetail(orgId, revisionId);
+  }
+
   async getOverview(orgId: string) {
     await this.assertOrgExists(orgId);
     const [
@@ -1431,11 +1449,54 @@ export class RentalRulesService {
         categoryId: row.vehicle.rentalCategoryId,
         categoryName: row.vehicle.rentalCategory?.name ?? null,
         overrideCount: activeKeys.length,
+        overrideFields: activeKeys,
         topOverrideField: topKey,
         topOverrideValue: topKey ? fields[topKey] : null,
+        changeReason: row.notes?.trim() || null,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
       };
     })
       .filter((row) => row.overrideCount > 0);
+
+    const vehicleIds = overrideVehicles.map((row) => row.vehicleId);
+    const activeVehicleRevisions =
+      vehicleIds.length > 0
+        ? await this.prisma.rentalRuleRevision.findMany({
+            where: {
+              organizationId: orgId,
+              scopeType: 'VEHICLE',
+              scopeId: { in: vehicleIds },
+              status: 'ACTIVE',
+              effectiveTo: null,
+            },
+            include: {
+              createdByUser: { select: { firstName: true, lastName: true, email: true } },
+            },
+          })
+        : [];
+    const revisionByVehicleId = new Map(
+      activeVehicleRevisions.map((revision) => [revision.scopeId, revision]),
+    );
+
+    const overrideVehiclesEnriched = overrideVehicles.map((row) => {
+      const revision = revisionByVehicleId.get(row.vehicleId);
+      const createdByName = revision?.createdByUser
+        ? [revision.createdByUser.firstName, revision.createdByUser.lastName]
+            .filter(Boolean)
+            .join(' ')
+            .trim() || revision.createdByUser.email
+        : null;
+      return {
+        ...row,
+        revisionId: revision?.id ?? null,
+        rulesHash: revision?.rulesHash ?? null,
+        changeReason: revision?.changeReason ?? row.changeReason,
+        createdByName,
+        validFrom: revision?.effectiveFrom.toISOString() ?? row.createdAt,
+        validTo: revision?.effectiveTo?.toISOString() ?? null,
+      };
+    });
 
     return {
       defaultsConfigured: Boolean(defaults),
@@ -1447,9 +1508,9 @@ export class RentalRulesService {
       totalVehicles,
       vehiclesWithCategory,
       vehiclesMissingCategory: Math.max(0, totalVehicles - vehiclesWithCategory),
-      vehiclesWithOverrides: overrideVehicles.length,
+      vehiclesWithOverrides: overrideVehiclesEnriched.length,
       categoriesRequiringManualApproval,
-      overrideVehicles,
+      overrideVehicles: overrideVehiclesEnriched,
     };
   }
 

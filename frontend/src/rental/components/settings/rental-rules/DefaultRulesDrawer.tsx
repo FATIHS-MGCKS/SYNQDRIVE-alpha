@@ -4,6 +4,7 @@ import { DetailDrawer } from '../../../../components/patterns';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { OrganizationRentalRulesDto } from './rental-rules.types';
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
+import { RentalRuleLivePreviewPanel } from './RentalRuleLivePreviewPanel';
 import {
   formValuesToPatchPayload,
   rulesToFormValues,
@@ -147,7 +148,16 @@ export function DefaultRulesDrawer({
             {formError}
           </p>
         )}
-        <RentalRuleFieldsForm values={values} onChange={setValues} disabled={!canWrite || saving} />
+        <RentalRuleFieldsForm
+          values={values}
+          onChange={setValues}
+          disabled={!canWrite || saving}
+          scope="organization"
+          baselineRules={defaults}
+          showFieldMeta
+        />
+
+        <RentalRuleLivePreviewPanel orgId={orgId} scope="defaults" className="mt-6 border-t border-border/70 pt-5" />
 
         {defaults?.hasUnpublishedDraft && defaults.draftRevision && (
           <RentalRulePublishImpactPanel

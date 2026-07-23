@@ -78,6 +78,114 @@ export class RentalRulesRevisionService {
       createdAt: row.createdAt.toISOString(),
       publishedAt: row.publishedAt?.toISOString() ?? null,
       supersedesRevisionId: row.supersedesRevisionId,
+      createdBy: row.createdBy,
+      publishedBy: row.publishedBy,
+    };
+  }
+
+  private formatUserName(user: {
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  } | null | undefined): string | null {
+    if (!user) return null;
+    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+    return name || user.email;
+  }
+
+  formatRevisionListItem(
+    row: RentalRuleRevision & {
+      createdByUser?: {
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+      } | null;
+      publishedByUser?: {
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+      } | null;
+    },
+  ) {
+    const formatted = this.formatRevision(row);
+    return {
+      ...formatted,
+      createdByName: this.formatUserName(row.createdByUser),
+      publishedByName: this.formatUserName(row.publishedByUser),
+    };
+  }
+
+  async listRevisions(
+    organizationId: string,
+    filters: {
+      scopeType?: RentalRuleRevisionScopeType;
+      scopeId?: string;
+      status?: RentalRuleRevision['status'];
+      limit?: number;
+    } = {},
+  ) {
+    const limit = Math.min(Math.max(filters.limit ?? 50, 1), 200);
+    const rows = await this.prisma.rentalRuleRevision.findMany({
+      where: {
+        organizationId,
+        ...(filters.scopeType ? { scopeType: filters.scopeType } : {}),
+        ...(filters.scopeId ? { scopeId: filters.scopeId } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+      },
+      include: {
+        createdByUser: { select: { firstName: true, lastName: true, email: true } },
+        publishedByUser: { select: { firstName: true, lastName: true, email: true } },
+      },
+      orderBy: [{ version: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+    });
+    return {
+      items: rows.map((row) => this.formatRevisionListItem(row)),
+      total: rows.length,
+    };
+  }
+
+  async getRevisionDetail(organizationId: string, revisionId: string) {
+    const row = await this.prisma.rentalRuleRevision.findFirst({
+      where: { id: revisionId, organizationId },
+      include: {
+        createdByUser: { select: { firstName: true, lastName: true, email: true } },
+        publishedByUser: { select: { firstName: true, lastName: true, email: true } },
+        supersedesRevision: true,
+      },
+    });
+    if (!row) {
+      throw new NotFoundException({
+        message: 'Rental rule revision not found',
+        code: 'RENTAL_RULE_REVISION_NOT_FOUND',
+      });
+    }
+
+    const activeRevision = await this.findActiveRevision({
+      organizationId,
+      scopeType: row.scopeType,
+      scopeId: row.scopeId,
+    });
+    const draftRevision = await this.findDraftRevision({
+      organizationId,
+      scopeType: row.scopeType,
+      scopeId: row.scopeId,
+    });
+
+    const activeDocument = activeRevision ? this.parseDocument(activeRevision) : null;
+    const targetDocument = this.parseDocument(row);
+    const preview = buildRentalRuleRevisionPreview({
+      mode: 'diff',
+      active: activeRevision?.id === row.id ? null : activeDocument,
+      draft: targetDocument,
+    });
+
+    return {
+      revision: this.formatRevisionListItem(row),
+      supersedesRevision: row.supersedesRevision
+        ? this.formatRevision(row.supersedesRevision)
+        : null,
+      diff: preview,
     };
   }
 
