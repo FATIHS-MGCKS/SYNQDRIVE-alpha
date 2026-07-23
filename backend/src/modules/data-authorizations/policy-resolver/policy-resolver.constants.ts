@@ -122,6 +122,7 @@ export const POLICY_RESOLVER_DPIA_REQUIRED_COMBINATIONS: ReadonlyArray<{
 }> = [
   { dataCategory: 'GPS_LOCATION', purpose: 'FLEET_ANALYTICS' },
   { dataCategory: 'DRIVING_BEHAVIOR', purpose: 'ABUSE_MISUSE_DETECTION' },
+  { dataCategory: 'DRIVING_BEHAVIOR', purpose: 'RENTAL_ANALYTICS' },
   { dataCategory: 'HEALTH_SIGNALS', purpose: 'VEHICLE_HEALTH' },
   { dataCategory: 'CUSTOMER_DATA', purpose: 'PARTNER_SERVICE' },
 ];

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-behavior-enforcement-v49803-2026-07-23',
+    version: '4.9.803',
+    title: 'V4.9.803 — Driving Behavior, Misuse und Profiling geschützt (Prompt 20)',
+    summary: [
+      'DrivingBehaviorEnforcementService — DERIVE/PROFILE/READ/USE_FOR_AI/EXPORT/NOTIFY für DRIVING_BEHAVIOR.',
+      'Profiling-Abgrenzung: technische Ereigniserkennung (DERIVE) vs Fahrerprofiling/Misuse (PROFILE). DPIA-Gates für ABUSE_MISUSE_DETECTION und RENTAL_ANALYTICS.',
+      'Gebunden: Behavior-Enrichment, Misuse-Reconcile, Driving-Impact, Trip-Decision, Booking-Risk, Driver-Score/Behavior-Reads.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 20 — Profiling darf nicht durch allgemeine Telemetriepolicy implizit erlaubt sein.',
+    previousBehavior:
+      'Behavior-Reads teilweise über TripLocationEnforcement; keine PROFILE-Aktion; keine DPIA-Gates auf Misuse/Scoring-Pipelines.',
+    details:
+      'backend/src/modules/data-authorizations/driving-behavior-enforcement/. Doku: docs/architecture/driving-behavior-enforcement-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-23T23:55:00.000Z',
+  },
+  {
     id: 'vehicle-health-enforcement-v49802-2026-07-23',
     version: '4.9.802',
     title: 'V4.9.802 — Vehicle Health, DTC und technische Beobachtungen geschützt (Prompt 19)',

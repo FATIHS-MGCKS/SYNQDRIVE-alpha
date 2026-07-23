@@ -24,6 +24,13 @@ import { Queue } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus, TripStatus } from '@prisma/client';
 
 import { PrismaService } from '@shared/database/prisma.service';
+import { DrivingBehaviorEnforcementService } from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.service';
+import {
+  DRIVING_BEHAVIOR_DATA_CATEGORY,
+  DRIVING_BEHAVIOR_PATH,
+  DRIVING_BEHAVIOR_PURPOSE,
+  DRIVING_BEHAVIOR_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.constants';
 import { QUEUE_NAMES } from '../../../workers/queues/queue-names';
 import {
   TripBehaviorEnrichmentService,
@@ -131,6 +138,7 @@ export class TripEnrichmentOrchestratorService {
     @Optional() private readonly tripsService?: TripsService,
     @Optional() private readonly analysisCoordinator?: TripAnalysisCoordinatorService,
     @Optional() private readonly misuseCaseAggregator?: MisuseCaseAggregatorService,
+    @Optional() private readonly behaviorEnforcement?: DrivingBehaviorEnforcementService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -259,6 +267,30 @@ export class TripEnrichmentOrchestratorService {
       orgId = trip?.vehicle?.organizationId ?? null;
     }
 
+    if (orgId && this.behaviorEnforcement) {
+      const tripMeta = await this.prisma.vehicleTrip.findUnique({
+        where: { id: tripId },
+        select: { startTime: true },
+      });
+      const mayDerive = await this.behaviorEnforcement.mayDerive({
+        organizationId: orgId,
+        vehicleId,
+        dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+        purpose: DRIVING_BEHAVIOR_PURPOSE.TECHNICAL_EVENT_DETECTION,
+        processingPath: DRIVING_BEHAVIOR_PATH.BEHAVIOR_EVENT_DERIVE,
+        serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.BEHAVIOR_ENRICH_WORKER,
+        correlationId: `behavior-derive:${tripId}`,
+        tripId,
+        effectiveTimestamp: tripMeta?.startTime ?? null,
+        isReprocess: true,
+      });
+      if (!mayDerive) {
+        this.logger.warn(`Behavior derive denied trip=${tripId} vehicle=${vehicleId}`);
+        await this.markEnrichmentSkipped(tripId, 'policy_denied', new Date());
+        return { status: STATUS.SKIPPED_NO_HF_DATA, skipReason: 'NO_HF_DATA', result: null };
+      }
+    }
+
     await this.markEnrichmentStarted(tripId);
     await this.analysisCoordinator?.onAnalysisStarted(tripId);
 
@@ -330,6 +362,22 @@ export class TripEnrichmentOrchestratorService {
         await this.analysisCoordinator?.markStage(tripId, 'route', 'skipped');
         return;
       }
+      if (this.behaviorEnforcement) {
+        const mayDerive = await this.behaviorEnforcement.mayDerive({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+          purpose: DRIVING_BEHAVIOR_PURPOSE.SAFETY_ANALYSIS,
+          processingPath: DRIVING_BEHAVIOR_PATH.SAFETY_ROUTE_DERIVE,
+          serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.BEHAVIOR_ENRICH_WORKER,
+          correlationId: `safety-route:${tripId}`,
+          tripId,
+        });
+        if (!mayDerive) {
+          await this.analysisCoordinator?.markStage(tripId, 'route', 'skipped');
+          return;
+        }
+      }
       await this.tripsService.enrichTrip(vehicle.organizationId, vehicleId, tripId);
       await this.analysisCoordinator?.markStage(tripId, 'route', 'done');
     } catch (error) {
@@ -350,14 +398,51 @@ export class TripEnrichmentOrchestratorService {
       void this.analysisCoordinator?.markStage(tripId, 'misuse', 'skipped');
       return;
     }
-    void this.misuseCaseAggregator
-      .evaluateTrip(tripId)
-      .then(() => this.analysisCoordinator?.markStage(tripId, 'misuse', 'done'))
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Misuse case aggregation failed for trip ${tripId}: ${message}`);
-        void this.analysisCoordinator?.markStage(tripId, 'misuse', 'failed');
+    void this.runMisuseAggregation(tripId);
+  }
+
+  private async runMisuseAggregation(tripId: string): Promise<void> {
+    const trip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: tripId },
+      select: {
+        vehicleId: true,
+        startTime: true,
+        vehicle: { select: { organizationId: true } },
+      },
+    });
+    if (!trip?.vehicle?.organizationId) {
+      await this.analysisCoordinator?.markStage(tripId, 'misuse', 'skipped');
+      return;
+    }
+
+    if (this.behaviorEnforcement) {
+      const mayProfile = await this.behaviorEnforcement.mayProfile({
+        organizationId: trip.vehicle.organizationId,
+        vehicleId: trip.vehicleId,
+        dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+        purpose: DRIVING_BEHAVIOR_PURPOSE.MISUSE_DETECTION,
+        processingPath: DRIVING_BEHAVIOR_PATH.MISUSE_AGGREGATE,
+        serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.MISUSE_RECONCILE,
+        correlationId: `misuse-profile:${tripId}`,
+        tripId,
+        effectiveTimestamp: trip.startTime ?? null,
+        isReprocess: true,
       });
+      if (!mayProfile) {
+        this.logger.warn(`Misuse profile denied trip=${tripId}`);
+        await this.analysisCoordinator?.markStage(tripId, 'misuse', 'skipped');
+        return;
+      }
+    }
+
+    try {
+      await this.misuseCaseAggregator!.evaluateTrip(tripId);
+      await this.analysisCoordinator?.markStage(tripId, 'misuse', 'done');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Misuse case aggregation failed for trip ${tripId}: ${message}`);
+      await this.analysisCoordinator?.markStage(tripId, 'misuse', 'failed');
+    }
   }
 
   /**
@@ -385,6 +470,29 @@ export class TripEnrichmentOrchestratorService {
     vehicleId: string,
     organizationId: string | null,
   ): Promise<void> {
+    if (organizationId && this.behaviorEnforcement) {
+      const trip = await this.prisma.vehicleTrip.findUnique({
+        where: { id: tripId },
+        select: { startTime: true },
+      });
+      const mayDerive = await this.behaviorEnforcement.mayDerive({
+        organizationId,
+        vehicleId,
+        dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+        purpose: DRIVING_BEHAVIOR_PURPOSE.FLEET_OPERATIONS,
+        processingPath: DRIVING_BEHAVIOR_PATH.DRIVING_IMPACT_DERIVE,
+        serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.DRIVING_IMPACT_WORKER,
+        correlationId: `driving-impact:${tripId}`,
+        tripId,
+        effectiveTimestamp: trip?.startTime ?? null,
+      });
+      if (!mayDerive) {
+        this.logger.warn(`Driving impact derive denied trip=${tripId}`);
+        await this.analysisCoordinator?.markStage(tripId, 'drivingImpact', 'skipped');
+        return;
+      }
+    }
+
     const jobId = `driving-impact-${tripId}`;
     if (!canEnqueueQueue(this.logger, 'driving-impact')) {
       await this.analysisCoordinator?.markStage(tripId, 'drivingImpact', 'skipped');

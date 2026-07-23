@@ -115,6 +115,17 @@ export const AUTHORIZATION_KNOWN_SERVICE_IDENTITIES = new Set([
   'synqdrive-health-alert',
   'synqdrive-service-api',
   'synqdrive-health-export',
+  'synqdrive-behavior-enrich-worker',
+  'synqdrive-driving-impact-worker',
+  'synqdrive-misuse-reconcile',
+  'synqdrive-driver-score-api',
+  'synqdrive-trip-decision-api',
+  'synqdrive-trip-assessment-worker',
+  'synqdrive-booking-risk-worker',
+  'synqdrive-behavior-read-api',
+  'synqdrive-behavior-export-api',
+  'synqdrive-behavior-ai',
+  'synqdrive-behavior-notify',
 ]);
 
 /** Default cache TTL for high-frequency ingestion paths (ms). */

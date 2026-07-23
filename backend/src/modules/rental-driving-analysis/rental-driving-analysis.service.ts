@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   BookingStatus,
   DrivingAnalysisMaturity,
@@ -10,6 +10,13 @@ import {
   TripStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { DrivingBehaviorEnforcementService } from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.service';
+import {
+  DRIVING_BEHAVIOR_DATA_CATEGORY,
+  DRIVING_BEHAVIOR_PATH,
+  DRIVING_BEHAVIOR_PURPOSE,
+  DRIVING_BEHAVIOR_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/driving-behavior-enforcement/driving-behavior-enforcement.constants';
 import { TripsService } from '../vehicle-intelligence/trips/trips.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import {
@@ -116,6 +123,7 @@ export class RentalDrivingAnalysisService {
     private readonly dtcService: DtcService,
     private readonly driverScoreService: DriverScoreService,
     private readonly tripAttributionService: TripAttributionService,
+    @Optional() private readonly behaviorEnforcement?: DrivingBehaviorEnforcementService,
   ) {}
 
   /**
@@ -161,6 +169,23 @@ export class RentalDrivingAnalysisService {
     const parallel = await this.hasParallelRecompute(orgId, bookingId, options?.jobId);
     if (parallel) {
       return { status: 'in_progress', reason: 'PARALLEL_RECOMPUTE_ACTIVE' };
+    }
+
+    if (this.behaviorEnforcement && booking.vehicleId) {
+      const mayProfile = await this.behaviorEnforcement.mayProfile({
+        organizationId: orgId,
+        vehicleId: booking.vehicleId,
+        dataCategory: DRIVING_BEHAVIOR_DATA_CATEGORY.DRIVING_BEHAVIOR,
+        purpose: DRIVING_BEHAVIOR_PURPOSE.BOOKING_RISK,
+        processingPath: DRIVING_BEHAVIOR_PATH.BOOKING_RISK,
+        serviceIdentity: DRIVING_BEHAVIOR_SERVICE_IDENTITY.BOOKING_RISK_WORKER,
+        correlationId: `booking-risk:${bookingId}`,
+        bookingId,
+        effectiveTimestamp: booking.endDate ?? booking.startDate,
+      });
+      if (!mayProfile) {
+        return { status: 'skipped', reason: 'BEHAVIOR_PROFILE_DENIED' };
+      }
     }
 
     const computed = await this.computeAnalysisContext(orgId, booking);
