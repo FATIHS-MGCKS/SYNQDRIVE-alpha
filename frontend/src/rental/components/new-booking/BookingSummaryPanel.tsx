@@ -233,13 +233,22 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
               <span className="text-foreground">{fmt(tax)}</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between border-t border-border pt-3">
-            <span className="text-foreground">Gesamt{displayCurrency ? ` (${displayCurrency})` : ''}</span>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Gesamt{displayCurrency ? ` (${displayCurrency})` : ''}</span>
             <span className="text-base text-foreground">{fmt(grandTotal)}</span>
           </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Kaution</span>
-            <span className="text-[color:var(--status-watch)]">{fmt(depositAmount)}</span>
+          <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-muted/20 p-3">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Mietpreis (brutto)</span>
+              <span className="text-foreground">{fmt(grandTotal)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Kaution (bei Abholung)</span>
+              <span className="text-[color:var(--status-watch)]">{fmt(depositAmount)}</span>
+            </div>
+            {priceSim?.pricingContext?.resolvedDeposit?.reason && (
+              <p className="text-[11px] text-muted-foreground">{priceSim.pricingContext.resolvedDeposit.reason}</p>
+            )}
           </div>
         </div>
       </div>

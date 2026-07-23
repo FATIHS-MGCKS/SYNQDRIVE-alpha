@@ -1,6 +1,7 @@
 import type { PricingContextDto } from './pricing-context.types';
 import type { BookingPriceSimulation } from './pricing.service';
 import type { BookingPricingInputDto } from './dto';
+import type { FrozenBookingDeposit } from '@modules/deposit/frozen-booking-deposit.types';
 
 export interface PricingQuoteTotals {
   rentalDays: number;
@@ -13,6 +14,7 @@ export interface PricingQuoteTotals {
   totalDueNowCents: number;
   currency: string;
   effectiveDailyRateCents: number;
+  frozenDeposit?: FrozenBookingDeposit | null;
 }
 
 export interface PricingSimulationWithQuote extends BookingPriceSimulation {
@@ -38,6 +40,31 @@ export const PRICING_QUOTE_STALE_MESSAGE =
   'Der Preis wurde inzwischen geändert. Bitte aktualisieren Sie die Preisberechnung.';
 
 export function totalsFromSimulation(simulation: BookingPriceSimulation): PricingQuoteTotals {
+  const frozenDeposit =
+    simulation.resolvedDeposit != null
+      ? {
+          amountCents: simulation.resolvedDeposit.amount,
+          currency: simulation.resolvedDeposit.currency,
+          source: simulation.resolvedDeposit.source,
+          ruleRevisionId: simulation.resolvedDeposit.ruleRevisionId,
+          reason: simulation.resolvedDeposit.reason,
+          manualOverride: simulation.resolvedDeposit.manualOverride,
+          calculatedAt: simulation.resolvedDeposit.calculatedAt,
+          frozenAt: null,
+        }
+      : simulation.pricingContext.resolvedDeposit
+        ? {
+            amountCents: simulation.pricingContext.resolvedDeposit.amount,
+            currency: simulation.pricingContext.resolvedDeposit.currency,
+            source: simulation.pricingContext.resolvedDeposit.source,
+            ruleRevisionId: simulation.pricingContext.resolvedDeposit.ruleRevisionId,
+            reason: simulation.pricingContext.resolvedDeposit.reason,
+            manualOverride: simulation.pricingContext.resolvedDeposit.manualOverride,
+            calculatedAt: simulation.pricingContext.resolvedDeposit.calculatedAt,
+            frozenAt: null,
+          }
+        : null;
+
   return {
     rentalDays: simulation.rentalDays,
     subtotalNetCents: simulation.subtotalNetCents,
@@ -49,6 +76,7 @@ export function totalsFromSimulation(simulation: BookingPriceSimulation): Pricin
     totalDueNowCents: simulation.totalDueNowCents,
     currency: simulation.currency,
     effectiveDailyRateCents: simulation.effectiveDailyRateCents,
+    frozenDeposit,
   };
 }
 

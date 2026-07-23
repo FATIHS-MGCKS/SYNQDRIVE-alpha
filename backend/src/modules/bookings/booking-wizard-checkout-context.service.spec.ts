@@ -6,6 +6,8 @@ describe('BookingWizardCheckoutContextService', () => {
   const prisma = {
     booking: { findFirst: jest.fn() },
     bookingPriceSnapshot: { findFirst: jest.fn() },
+    bookingDeposit: { findUnique: jest.fn() },
+    bookingPaymentRequest: { findMany: jest.fn() },
   };
 
   const paymentsAccess = {
@@ -20,11 +22,16 @@ describe('BookingWizardCheckoutContextService', () => {
     buildFeeSnapshotForBooking: jest.fn(),
   };
 
+  const bookingDepositSnapshot = {
+    extractFrozenDepositFromPricingInput: jest.fn().mockReturnValue(null),
+  };
+
   const service = new BookingWizardCheckoutContextService(
     prisma as never,
     paymentsAccess as never,
     organizationPaymentAccountService as never,
     paymentFeeService as never,
+    bookingDepositSnapshot as never,
   );
 
   beforeEach(() => {
@@ -51,6 +58,8 @@ describe('BookingWizardCheckoutContextService', () => {
     paymentFeeService.buildFeeSnapshotForBooking.mockResolvedValue({
       rentalPaymentAmountCents: 40_000,
     });
+    prisma.bookingDeposit.findUnique.mockResolvedValue(null);
+    prisma.bookingPaymentRequest.findMany.mockResolvedValue([]);
   });
 
   it('returns server-side amounts without client recalculation', async () => {

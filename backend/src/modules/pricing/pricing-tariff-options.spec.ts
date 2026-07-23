@@ -7,6 +7,7 @@ import {
   createPricingTestStore,
   createSedanPricingFixtures,
   createTariffPassthroughDepositResolver,
+  createBookingDepositSnapshotStub,
   SEDAN_DAILY_NET_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
 } from './pricing-test-store';
@@ -38,6 +39,7 @@ describe('Tariff option stable identity', () => {
       store.prisma as unknown as PrismaService,
       migration as unknown as PricingMigrationService,
       createTariffPassthroughDepositResolver(),
+      createBookingDepositSnapshotStub(),
     );
     return { store, tariffs, pricing };
   }

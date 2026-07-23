@@ -3,6 +3,7 @@
  * Deterministic — no external services.
  */
 import type { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
+import type { BookingDepositSnapshotService } from '@modules/deposit/booking-deposit-snapshot.service';
 import type { ResolvedTariffContext } from './pricing-context.types';
 import { grossToNetCents } from './pricing-calculation.util';
 
@@ -249,6 +250,17 @@ export function createPricingTestStore(
   const insuranceOptions: InsuranceOptionRow[] = [];
   const extraOptions: ExtraOptionRow[] = [];
   const bookingLineItems: BookingLineItemRow[] = [];
+  const bookings: Array<{
+    id: string;
+    organizationId: string;
+    customerId: string;
+    vehicleId: string;
+    startDate: Date;
+    endDate: Date;
+    status: string;
+    totalPriceCents: number;
+    currency: string;
+  }> = [];
   let idCounter = 0;
   const nextId = (prefix: string) => `${prefix}-${++idCounter}`;
   const hooks = {
@@ -701,7 +713,49 @@ export function createPricingTestStore(
         },
       ),
     },
+    booking: {
+      findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        return (
+          bookings.find(
+            (row) =>
+              row.id === where.id &&
+              (!where.organizationId || row.organizationId === where.organizationId),
+          ) ?? null
+        );
+      }),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row = {
+          id: (data.id as string) ?? nextId('booking'),
+          organizationId: data.organizationId as string,
+          customerId: data.customerId as string,
+          vehicleId: data.vehicleId as string,
+          startDate: data.startDate as Date,
+          endDate: data.endDate as Date,
+          status: (data.status as string) ?? 'PENDING',
+          totalPriceCents: (data.totalPriceCents as number) ?? 0,
+          currency: (data.currency as string) ?? 'EUR',
+        };
+        bookings.push(row);
+        return row;
+      }),
+    },
+    bookingDeposit: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn().mockResolvedValue({}),
+    },
+    bookingPaymentRequest: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     bookingPriceSnapshot: {
+      findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        return (
+          snapshots.find(
+            (row) =>
+              row.bookingId === where.bookingId &&
+              row.organizationId === where.organizationId,
+          ) ?? null
+        );
+      }),
       deleteMany: jest.fn(async ({ where }: { where: { bookingId: string } }) => {
         const before = snapshots.length;
         const kept = snapshots.filter((s) => s.bookingId !== where.bookingId);
@@ -719,6 +773,8 @@ export function createPricingTestStore(
           tariffVersionId: (data.tariffVersionId as string) ?? null,
           currency: data.currency as string,
           depositAmountCents: data.depositAmountCents as number,
+          totalGrossCents: (data.totalGrossCents as number) ?? 0,
+          pricingInputJson: (data.pricingInputJson as Record<string, unknown>) ?? null,
           lineItems: [],
           ...data,
         };
@@ -1049,4 +1105,27 @@ export function createTariffPassthroughDepositResolver(): DepositResolverService
       vehicleOverrideId: null,
     }),
   } as unknown as DepositResolverService;
+}
+
+/** Test stub: no-op booking deposit snapshot side effects. */
+export function createBookingDepositSnapshotStub(): BookingDepositSnapshotService {
+  return {
+    buildFrozenDeposit: jest.fn((resolved) =>
+      resolved
+        ? {
+            amountCents: resolved.amount,
+            currency: resolved.currency,
+            source: resolved.source,
+            ruleRevisionId: resolved.ruleRevisionId,
+            reason: resolved.reason,
+            manualOverride: resolved.manualOverride,
+            calculatedAt: resolved.calculatedAt,
+            frozenAt: null,
+          }
+        : null,
+    ),
+    extractFrozenDepositFromPricingInput: jest.fn(() => null),
+    syncBookingDepositFromSnapshot: jest.fn().mockResolvedValue(undefined),
+    freezeDepositOnSnapshot: jest.fn().mockResolvedValue(null),
+  } as unknown as BookingDepositSnapshotService;
 }
