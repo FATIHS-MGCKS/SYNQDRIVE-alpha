@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-rules-ui-restructure-v49785-2026-07-23',
+    version: '4.9.785',
+    title: 'V4.9.785 — Rental Rules UI restructure (Prompt 32)',
+    summary: [
+      'Mietregeln-Tab in fünf Bereiche: Übersicht, Unternehmensstandard, Kategorien, Fahrzeugausnahmen, Änderungsverlauf.',
+      'PageHeader mit aktiver Version, Veröffentlichungszeitpunkt, betroffenen Fahrzeugen und offenen Entwürfen.',
+      'Skalierbare Regelmatrix mit Suche, Statusfilter, Unvollständig-Filter, Sortierung und Pagination.',
+      'Responsive Desktop-Tabelle + Mobile-Cards; inaktive/archivierte Kategorien über Statusfilter auffindbar.',
+      'Keine neue Fachlogik — bestehende APIs, Resolver, Publish-Panel und Drawer bleiben die Datenquelle.',
+    ],
+    reason: 'Mietregeln-Bereich strukturell verständlich und skalierbar an die SynqDrive-UI-Linie anbinden (Remediation Prompt 32).',
+    previousBehavior: 'Lange Kartenketten ohne klare Informationshierarchie; begrenzte Filter/Sortierung bei vielen Kategorien.',
+    details:
+      'RentalRulesPageHeader, RentalRulesSubNav, RentalRulesOverviewPanel, RentalRulesMatrixSection, rental-rules-matrix.utils, i18n rentalRules.ui.*.',
+    affectsArchitecture: true,
+    module: 'Rental Rules / Frontend',
+    createdAt: '2026-07-24T04:00:00.000Z',
+  },
+  {
     id: 'rental-rule-publish-diff-impact-v49779-2026-07-23',
     version: '4.9.779',
     title: 'V4.9.779 — Rental rule publish diff + impact analysis (Prompt 26)',

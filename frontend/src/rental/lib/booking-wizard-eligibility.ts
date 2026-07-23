@@ -4,6 +4,37 @@ import type {
   BookingWizardEligibilityPreview,
 } from './booking-wizard-eligibility.types';
 
+import type { EffectiveRentalRulesDto } from '../components/settings/rental-rules/rental-rules.types';
+
+function emptyEffectiveField<T>(value: T | null = null) {
+  return { value, source: 'ORGANIZATION_DEFAULT' as const, sourceName: null };
+}
+
+function emptyEffectiveRulesFallback(): EffectiveRentalRulesDto {
+  return {
+    organizationId: '',
+    vehicleId: '',
+    rentalCategoryId: null,
+    rentalCategoryName: null,
+    rentalCategoryType: null,
+    rulesActive: false,
+    minimumAgeYears: emptyEffectiveField<number | null>(),
+    minimumLicenseHoldingMonths: emptyEffectiveField<number | null>(),
+    minimumLicenseHoldingYears: emptyEffectiveField<number | null>(),
+    minimumLicenseHoldingRemainderMonths: emptyEffectiveField<number | null>(),
+    depositAmount: emptyEffectiveField<number | null>(),
+    depositAmountCents: emptyEffectiveField<number | null>(),
+    depositCurrency: emptyEffectiveField<string | null>('EUR'),
+    creditCardRequired: emptyEffectiveField(false),
+    foreignTravelPolicy: emptyEffectiveField(null),
+    additionalDriverPolicy: emptyEffectiveField(null),
+    youngDriverPolicy: emptyEffectiveField(null),
+    insuranceRequirement: emptyEffectiveField(null),
+    manualApprovalRequired: emptyEffectiveField(false),
+    notes: emptyEffectiveField(null),
+  };
+}
+
 function gateStatusToRentalStatus(
   status: BookingWizardEligibilityPreview['status'],
 ): BookingRentalEligibilityResult['status'] {
@@ -56,18 +87,7 @@ export function mapWizardPreviewToCardResult(
     warningReasons: preview.warnings.map((reason) => reason.message),
     missingFields: preview.missingFields,
     manualApprovalReasons: extraManual,
-    effectiveRules: {
-      minimumAgeYears: { value: null, source: 'organization', sourceName: null },
-      minimumLicenseHoldingMonths: { value: null, source: 'organization', sourceName: null },
-      creditCardRequired: { value: false, source: 'organization', sourceName: null },
-      depositRequired: { value: false, source: 'organization', sourceName: null },
-      foreignTravelAllowed: { value: true, source: 'organization', sourceName: null },
-      foreignTravelRequiresApproval: { value: false, source: 'organization', sourceName: null },
-      additionalDriversAllowed: { value: true, source: 'organization', sourceName: null },
-      additionalDriversRequireApproval: { value: false, source: 'organization', sourceName: null },
-      youngDriverAllowed: { value: true, source: 'organization', sourceName: null },
-      youngDriverFeeRequired: { value: false, source: 'organization', sourceName: null },
-    },
+    effectiveRules: emptyEffectiveRulesFallback(),
     decisionSource: 'gatekeeper',
     customerId: '',
     vehicleId: '',
