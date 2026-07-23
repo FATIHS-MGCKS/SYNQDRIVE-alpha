@@ -5467,6 +5467,8 @@ model Booking {
   stationTransferFeeCents Int?                  @map("station_transfer_fee_cents")
   startDate               DateTime              @map("start_date")
   endDate                 DateTime              @map("end_date")
+  /// Snapshot of organization turnaround buffer at create/update (minutes); used by DB exclusion + conflict checks.
+  turnaroundBufferMinutes Int                   @default(60) @map("turnaround_buffer_minutes")
   dailyRateCents          Int?                  @map("daily_rate_cents")
   totalPriceCents         Int?                  @map("total_price_cents")
   kmIncluded              Int?                  @map("km_included")

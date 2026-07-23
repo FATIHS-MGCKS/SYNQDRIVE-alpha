@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-double-booking-guard-prompt11-2026-07-23',
+    version: '4.9.783',
+    title: 'Booking Production-Readiness — Database-Level Double-Booking Protection (Prompt 11/34)',
+    summary: [
+      'PostgreSQL GiST Exclusion Constraint auf organizationId + vehicleId + tstzrange [start, end+buffer) für PENDING/CONFIRMED/ACTIVE.',
+      'Transactional Advisory Lock pro Fahrzeug serialisiert parallele Creates/Updates.',
+      'turnaround_buffer_minutes Snapshot aus TenantInsightPolicy.handoverBufferMin (Default 60 min).',
+      'Halb-offene Intervalle [pickupAt, returnAt); direkt anschließende Buchungen bei Buffer=0 erlaubt.',
+      'CANCELLED/NO_SHOW/COMPLETED blockieren keine Verfügbarkeit; stabiler API-Fehler 409 BOOKING_CONFLICT.',
+      'Migration prüft bestehende Konflikte → booking_availability_overlap_reports; Constraint nur wenn sauber.',
+      'Concurrency-Test: 100 parallele identische Creates → genau 1 Erfolg, 99 deterministische Ablehnungen.',
+    ],
+    reason:
+      'Parallele Doppelbuchungen müssen auf DB-Ebene unmöglich sein — Application-Check allein reicht bei Race Conditions nicht.',
+    previousBehavior:
+      'Overlap-Prüfung außerhalb der Insert-Transaktion; kein DB-Constraint; Fehlercode VEHICLE_BOOKING_OVERLAP; kein Buffer in Availability-Logik.',
+    details:
+      'Backend: BookingVehicleAvailabilityService, BookingAvailabilityBufferService; Migration 20260722280000 (btree_gist, turnaround_buffer_minutes, overlap report, conditional exclusion); BookingsService.create + BookingUpdateService schedule/vehicle mit Lock+In-Tx-Check; Doku: docs/architecture/booking-vehicle-availability-constraint.md.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T21:30:00.000Z',
+  },
+  {
     id: 'booking-cancellation-override-prompt10-2026-07-23',
     version: '4.9.782',
     title: 'Booking Production-Readiness — Cancellation & Admin Override Hardening (Prompt 10/34)',

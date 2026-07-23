@@ -37,6 +37,9 @@ import {
   assertValidBookingWindow,
   buildOverlapWhere,
 } from './booking-conflict.util';
+import { BookingAvailabilityBufferService } from './availability/booking-availability-buffer.service';
+import { BookingVehicleAvailabilityService } from './availability/booking-vehicle-availability.service';
+import { BOOKING_AVAILABILITY_ERROR_CODES } from './availability/booking-availability.constants';
 import type { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import type {
   BookingDetailDto,
@@ -117,6 +120,8 @@ export class BookingsService {
     private readonly bookingCreateValidation: BookingCreateValidationService,
     private readonly statusTransition: BookingStatusTransitionService,
     private readonly statusCommands: BookingStatusCommandService,
+    private readonly availabilityBuffer: BookingAvailabilityBufferService,
+    private readonly vehicleAvailability: BookingVehicleAvailabilityService,
   ) {}
 
   /**
@@ -211,6 +216,9 @@ export class BookingsService {
       endDate: returnAt,
     });
 
+    const turnaroundBufferMinutes =
+      await this.availabilityBuffer.resolveTurnaroundBufferMinutes(orgId);
+
     const requestedStatus: BookingStatus = command.status ?? 'PENDING';
     this.statusTransition.assertInitialStatus(requestedStatus);
     const pricingInput = this.pricingService.extractPricingInputFromBookingData({
@@ -232,46 +240,64 @@ export class BookingsService {
     const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
     const paymentIntent = createCommandPaymentIntentForPrisma(command);
 
-    const booking = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.booking.create({
-        data: {
-          organization: { connect: { id: orgId } },
-          customer: { connect: { id: customerId } },
-          vehicle: { connect: { id: vehicleId } },
-          startDate: pickupAt,
-          endDate: returnAt,
-          status: requestedStatus,
-          notes: validation.notes,
-          ...(paymentIntent ? { paymentIntent } : {}),
-          ...pricedFields,
-          ...this.stationFieldsToPrismaInput(validation.stationFields, { forCreate: true }),
-        } as Prisma.BookingCreateInput,
-      });
+    let booking: Booking;
+    try {
+      booking = await this.prisma.$transaction(async (tx) => {
+        await this.vehicleAvailability.acquireVehicleLock(tx, orgId, vehicleId);
 
-      await this.pricingQuoteService.markConsumed(tx, quoteId, orgId, created.id);
-      await this.pricingService.createBookingPriceSnapshotFromSimulation(
-        orgId,
-        created.id,
-        simulation,
-        quotedPricingInput,
-        tx,
-      );
-
-      if (validation.validatedAllowedDriverIds.length > 0) {
-        await tx.bookingAllowedDriver.createMany({
-          data: validation.validatedAllowedDriverIds.map((driverId) => ({
+        if (this.vehicleAvailability.isBlockingStatus(requestedStatus)) {
+          await this.vehicleAvailability.assertNoBlockingConflict(tx, {
             organizationId: orgId,
-            bookingId: created.id,
-            customerId: driverId,
-            role: 'ADDITIONAL',
-            addedByUserId: options?.userId ?? null,
-          })),
-          skipDuplicates: true,
-        });
-      }
+            vehicleId,
+            startDate: pickupAt,
+            endDate: returnAt,
+            turnaroundBufferMinutes,
+          });
+        }
 
-      return created;
-    });
+        const created = await tx.booking.create({
+          data: {
+            organization: { connect: { id: orgId } },
+            customer: { connect: { id: customerId } },
+            vehicle: { connect: { id: vehicleId } },
+            startDate: pickupAt,
+            endDate: returnAt,
+            status: requestedStatus,
+            turnaroundBufferMinutes,
+            notes: validation.notes,
+            ...(paymentIntent ? { paymentIntent } : {}),
+            ...pricedFields,
+            ...this.stationFieldsToPrismaInput(validation.stationFields, { forCreate: true }),
+          } as Prisma.BookingCreateInput,
+        });
+
+        await this.pricingQuoteService.markConsumed(tx, quoteId, orgId, created.id);
+        await this.pricingService.createBookingPriceSnapshotFromSimulation(
+          orgId,
+          created.id,
+          simulation,
+          quotedPricingInput,
+          tx,
+        );
+
+        if (validation.validatedAllowedDriverIds.length > 0) {
+          await tx.bookingAllowedDriver.createMany({
+            data: validation.validatedAllowedDriverIds.map((driverId) => ({
+              organizationId: orgId,
+              bookingId: created.id,
+              customerId: driverId,
+              role: 'ADDITIONAL',
+              addedByUserId: options?.userId ?? null,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        return created;
+      });
+    } catch (error) {
+      this.vehicleAvailability.rethrowAvailabilityError(error);
+    }
 
     try {
       await this.invoicesService.bootstrapBookingInvoice(orgId, {
@@ -514,7 +540,7 @@ export class BookingsService {
     if (overlapping) {
       throw new ConflictException({
         message: 'Dieses Fahrzeug ist im gewählten Zeitraum bereits gebucht.',
-        code: 'VEHICLE_BOOKING_OVERLAP',
+        code: BOOKING_AVAILABILITY_ERROR_CODES.BOOKING_CONFLICT,
         conflictingBookingId: overlapping.id,
         conflictRange: {
           startDate: overlapping.startDate.toISOString(),

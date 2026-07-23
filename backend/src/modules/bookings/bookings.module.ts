@@ -37,6 +37,8 @@ import { BookingCancellationFeeService } from './cancellation/booking-cancellati
 import { BookingCancellationOrchestrationService } from './cancellation/booking-cancellation-orchestration.service';
 import { BookingCancellationAuditService } from './cancellation/booking-cancellation-audit.service';
 import { BookingStatusOverrideAuditService } from './override/booking-status-override-audit.service';
+import { BookingAvailabilityBufferService } from './availability/booking-availability-buffer.service';
+import { BookingVehicleAvailabilityService } from './availability/booking-vehicle-availability.service';
 
 @Module({
   imports: [
@@ -78,6 +80,8 @@ import { BookingStatusOverrideAuditService } from './override/booking-status-ove
     BookingCancellationOrchestrationService,
     BookingCancellationAuditService,
     BookingStatusOverrideAuditService,
+    BookingAvailabilityBufferService,
+    BookingVehicleAvailabilityService,
     BookingPermissionsGuard,
   ],
   exports: [

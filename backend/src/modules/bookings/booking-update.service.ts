@@ -24,6 +24,9 @@ import {
   assertValidBookingWindow,
   buildOverlapWhere,
 } from './booking-conflict.util';
+import { BOOKING_AVAILABILITY_ERROR_CODES } from './availability/booking-availability.constants';
+import { BookingAvailabilityBufferService } from './availability/booking-availability-buffer.service';
+import { BookingVehicleAvailabilityService } from './availability/booking-vehicle-availability.service';
 import { BOOKING_CREATE_ERROR_CODES } from './booking-create-error.codes';
 import { mergeNotesCommandToStorage } from './booking-update-command.mapper';
 import type {
@@ -71,6 +74,8 @@ export class BookingUpdateService {
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
+    private readonly availabilityBuffer: BookingAvailabilityBufferService,
+    private readonly vehicleAvailability: BookingVehicleAvailabilityService,
   ) {}
 
   async updateSchedule(
@@ -117,10 +122,15 @@ export class BookingUpdateService {
       pricingInput,
     });
 
-    const updated = await this.persistOptimistic(existing, {
+    const updated = await this.persistWithAvailabilityCheck(existing, {
+      vehicleId: existing.vehicleId,
       startDate: pickupAt,
       endDate: returnAt,
-      ...priced.bookingFields,
+      data: {
+        startDate: pickupAt,
+        endDate: returnAt,
+        ...priced.bookingFields,
+      },
     });
 
     await this.afterPricingMutation(orgId, bookingId, updated, existing, priced, ctx?.userId ?? null);
@@ -200,9 +210,14 @@ export class BookingUpdateService {
       pricingInput,
     });
 
-    const updated = await this.persistOptimistic(existing, {
+    const updated = await this.persistWithAvailabilityCheck(existing, {
       vehicleId: command.vehicleId,
-      ...priced.bookingFields,
+      startDate: existing.startDate,
+      endDate: existing.endDate,
+      data: {
+        vehicleId: command.vehicleId,
+        ...priced.bookingFields,
+      },
     });
 
     await this.afterPricingMutation(orgId, bookingId, updated, existing, priced, ctx?.userId ?? null);
@@ -496,9 +511,75 @@ export class BookingUpdateService {
     if (overlapping) {
       throw new ConflictException({
         message: 'Dieses Fahrzeug ist im gewählten Zeitraum bereits gebucht.',
-        code: 'VEHICLE_BOOKING_OVERLAP',
+        code: BOOKING_AVAILABILITY_ERROR_CODES.BOOKING_CONFLICT,
         conflictingBookingId: overlapping.id,
+        conflictRange: {
+          startDate: overlapping.startDate.toISOString(),
+          endDate: overlapping.endDate.toISOString(),
+          status: overlapping.status,
+        },
       });
+    }
+  }
+
+  private async persistWithAvailabilityCheck(
+    existing: Booking,
+    input: {
+      vehicleId: string;
+      startDate: Date;
+      endDate: Date;
+      data: Prisma.BookingUncheckedUpdateInput;
+    },
+  ): Promise<Booking> {
+    const turnaroundBufferMinutes =
+      await this.availabilityBuffer.resolveTurnaroundBufferMinutes(existing.organizationId);
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await this.vehicleAvailability.acquireVehicleLock(
+          tx,
+          existing.organizationId,
+          input.vehicleId,
+        );
+
+        if (this.vehicleAvailability.isBlockingStatus(existing.status)) {
+          await this.vehicleAvailability.assertNoBlockingConflict(tx, {
+            organizationId: existing.organizationId,
+            vehicleId: input.vehicleId,
+            startDate: input.startDate,
+            endDate: input.endDate,
+            turnaroundBufferMinutes,
+            excludeBookingId: existing.id,
+          });
+        }
+
+        const result = await tx.booking.updateMany({
+          where: {
+            id: existing.id,
+            organizationId: existing.organizationId,
+            updatedAt: existing.updatedAt,
+          },
+          data: {
+            ...input.data,
+            turnaroundBufferMinutes,
+          },
+        });
+
+        if (result.count !== 1) {
+          throw new ConflictException({
+            message: 'Booking was modified by another user',
+            code: BOOKING_UPDATE_ERROR_CODES.BOOKING_VERSION_CONFLICT,
+            bookingId: existing.id,
+            expectedUpdatedAt: existing.updatedAt.toISOString(),
+          });
+        }
+
+        return tx.booking.findFirstOrThrow({
+          where: { id: existing.id, organizationId: existing.organizationId },
+        });
+      });
+    } catch (error) {
+      this.vehicleAvailability.rethrowAvailabilityError(error);
     }
   }
 
