@@ -6,6 +6,7 @@ import { resolveLineItemSourceId } from './pricing-line-item-source.util';
 import {
   createPricingTestStore,
   createSedanPricingFixtures,
+  createTariffPassthroughDepositResolver,
   SEDAN_DAILY_NET_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
 } from './pricing-test-store';
@@ -36,6 +37,7 @@ describe('Tariff option stable identity', () => {
     const pricing = new PricingService(
       store.prisma as unknown as PrismaService,
       migration as unknown as PricingMigrationService,
+      createTariffPassthroughDepositResolver(),
     );
     return { store, tariffs, pricing };
   }
@@ -221,7 +223,7 @@ describe('Tariff option stable identity', () => {
     expect(deposit).toBeDefined();
     expect(deposit?.metadataJson).toMatchObject({
       lineItemType: 'DEPOSIT',
-      sourceType: 'TARIFF_RATE',
+      sourceType: 'DEPOSIT_RESOLVER',
     });
   });
 });

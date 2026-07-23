@@ -2,6 +2,8 @@
  * In-memory Prisma stand-in for pricing publish / resolution tests.
  * Deterministic — no external services.
  */
+import type { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
+import type { ResolvedTariffContext } from './pricing-context.types';
 import { grossToNetCents } from './pricing-calculation.util';
 
 const TAX_PERCENT = 19;
@@ -1013,4 +1015,38 @@ export function createPricingTestStore(
     countActiveVersions: (groupId: string) =>
       versions.filter((v) => v.tariffGroupId === groupId && v.status === 'ACTIVE').length,
   };
+}
+
+/** Test stub: resolves deposit from tariff only (no rental rules in pricing test store). */
+export function createTariffPassthroughDepositResolver(): DepositResolverService {
+  return {
+    resolveForVehicleTariff: jest.fn(
+      async (input: {
+        tariffContext: ResolvedTariffContext;
+      }) => {
+        const tv = input.tariffContext.tariffVersion;
+        const amount = Math.max(0, tv.rate.depositAmountCents);
+        return {
+          amount,
+          currency: input.tariffContext.priceBook.currency,
+          source: 'TARIFF_RATE',
+          ruleRevisionId: tv.rate.id,
+          reason: 'From active tariff rate.',
+          manualOverride: false,
+          calculatedAt: new Date().toISOString(),
+          components: {
+            rentalRulesFloorCents: null,
+            tariffDepositCents: amount,
+            effectiveMinimumCents: 0,
+            raisedToMinimum: false,
+          },
+        };
+      },
+    ),
+    resolveDepositEntityIds: jest.fn().mockResolvedValue({
+      organizationRulesId: null,
+      categoryId: null,
+      vehicleOverrideId: null,
+    }),
+  } as unknown as DepositResolverService;
 }

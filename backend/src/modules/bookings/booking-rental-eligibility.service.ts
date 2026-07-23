@@ -76,6 +76,22 @@ export class BookingRentalEligibilityService {
       );
     }
 
+    let requiredDepositAmountCents: number | null = rules.depositAmountCents.value;
+    let requiredDepositCurrency: string | null = rules.depositCurrency.value;
+    if (input.bookingId) {
+      const priceSnapshot = await this.prisma.bookingPriceSnapshot.findFirst({
+        where: { organizationId: input.organizationId, bookingId: input.bookingId },
+        select: { depositAmountCents: true, currency: true },
+      });
+      if (priceSnapshot?.depositAmountCents != null) {
+        requiredDepositAmountCents = Math.max(
+          requiredDepositAmountCents ?? 0,
+          priceSnapshot.depositAmountCents,
+        );
+        requiredDepositCurrency = priceSnapshot.currency;
+      }
+    }
+
     const evaluation = evaluateRentalEligibilityChecks({
       rules,
       formattedRules,
@@ -88,6 +104,8 @@ export class BookingRentalEligibilityService {
       foreignTravelRequested: input.foreignTravelRequested === true,
       additionalDriverCount: Math.max(0, input.additionalDriverCount ?? 0),
       depositReceived,
+      requiredDepositAmountCents,
+      requiredDepositCurrency,
     });
 
     const verification = await this.verificationService.getEligibilityStatus(

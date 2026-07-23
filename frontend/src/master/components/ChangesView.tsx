@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'canonical-deposit-resolver-v49783-2026-07-23',
+    version: '4.9.783',
+    title: 'V4.9.783 — Canonical deposit resolver (Prompt 30)',
+    summary: [
+      'Zentraler `DepositResolverService` vereint Rental Rules Mindestkaution und Tarif-Kaution zu einer kanonischen Deposit-Wahrheit.',
+      'Priorität: Org-Minimum → Kategorie → Fahrzeug-Override → Tarif (wenn ≥ Minimum) → genehmigter manueller Override.',
+      'Tarif unter Mindestkaution wird angehoben (`raisedToMinimum`); Währungskonflikte blockieren ohne stille FX-Umrechnung.',
+      'Pricing-Simulation, Snapshot, Checkout, Eligibility-Warnung und BookingDeposit nutzen denselben Resolver-Output.',
+      '`ResolvedDeposit`: amount, currency, source, ruleRevisionId, reason, manualOverride, calculatedAt.',
+    ],
+    reason:
+      'Rental Rules und Pricing widersprachen sich bei Kaution — eine kanonische Berechnung mit nachvollziehbarer Quelle (Remediation Prompt 30).',
+    previousBehavior:
+      'Tarif-`depositAmountCents` und Rental-Rules-`depositAmountCents` liefen getrennt; BookingDeposit-Fallback ignorierte Price Snapshot.',
+    details:
+      'deposit/* module, pricing.service.ts integration, pricing-calculation DEPOSIT_RESOLVER metadata, booking-rental-eligibility + document bundle.',
+    affectsArchitecture: true,
+    module: 'Pricing / Rental Rules',
+    createdAt: '2026-07-24T02:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-cases-list-monitoring-v49774-2026-07-23',
     version: '4.9.774',
     title: 'V4.9.774 — Fleet Health Service-Cases-List + monitoring auto-refresh (deploy)',

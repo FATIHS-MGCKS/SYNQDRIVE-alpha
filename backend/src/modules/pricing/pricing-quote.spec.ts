@@ -7,6 +7,7 @@ import { PricingService } from './pricing.service';
 import {
   createPricingTestStore,
   createSedanPricingFixtures,
+  createTariffPassthroughDepositResolver,
   SEDAN_DEPOSIT_ACTIVE_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
 } from './pricing-test-store';
@@ -38,6 +39,7 @@ describe('Pricing quotes (price lock)', () => {
     const pricing = new PricingService(
       store.prisma as unknown as PrismaService,
       migration as unknown as PricingMigrationService,
+      createTariffPassthroughDepositResolver(),
     );
     const quotes = new PricingQuoteService(
       store.prisma as unknown as PrismaService,

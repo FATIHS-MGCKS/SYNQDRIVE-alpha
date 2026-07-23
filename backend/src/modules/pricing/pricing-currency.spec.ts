@@ -5,6 +5,7 @@ import { PriceTariffsService } from './price-tariffs.service';
 import {
   createPricingTestStore,
   createSedanPricingFixtures,
+  createTariffPassthroughDepositResolver,
   SEDAN_DEPOSIT_DRAFT_CENTS,
 } from './pricing-test-store';
 
@@ -28,7 +29,11 @@ describe('Pricing currency resolution', () => {
     const { prisma } = createPricingTestStore(ids, { currency });
     const migration = { ensureOrgPricing: jest.fn() } as unknown as PricingMigrationService;
     const tariffs = new PriceTariffsService(prisma as never, migration);
-    const pricing = new PricingService(prisma as never, migration);
+    const pricing = new PricingService(
+      prisma as never,
+      migration,
+      createTariffPassthroughDepositResolver(),
+    );
     return { ids, prisma, pricing, tariffs };
   }
 

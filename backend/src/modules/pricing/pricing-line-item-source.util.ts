@@ -7,6 +7,7 @@ export const PRICING_LINE_SOURCE_TYPES = {
   TARIFF_INSURANCE: 'TARIFF_INSURANCE',
   TARIFF_EXTRA: 'TARIFF_EXTRA',
   MANUAL: 'MANUAL',
+  DEPOSIT_RESOLVER: 'DEPOSIT_RESOLVER',
 } as const;
 
 export type PricingLineSourceType =
@@ -26,6 +27,10 @@ export interface PricingLineItemSourceMetadata {
   optionId?: string;
   /** @deprecated Legacy — use sourceId */
   packageId?: string;
+  depositSource?: string;
+  ruleRevisionId?: string | null;
+  manualOverride?: boolean;
+  depositReason?: string;
 }
 
 export function buildPricingLineMetadata(

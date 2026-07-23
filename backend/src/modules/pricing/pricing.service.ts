@@ -11,6 +11,8 @@ import {
   toBookingCurrencyStorage,
 } from '@shared/money/money.util';
 import { BookingPricingInputDto, SimulateBookingPriceDto } from './dto';
+import { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
+import type { ResolvedDeposit } from '@modules/deposit/deposit-resolver.types';
 import type { PricingContextDto, ResolvedTariffContext } from './pricing-context.types';
 import { assertTariffVersionComplete, toPricingContextDto } from './pricing-context.util';
 import {
@@ -35,6 +37,7 @@ export interface BookingPriceSimulation extends ReturnType<typeof simulateBookin
   currency: string;
   effectiveDailyRateCents: number;
   pricingContext: PricingContextDto;
+  resolvedDeposit?: ResolvedDeposit;
 }
 
 @Injectable()
@@ -42,6 +45,7 @@ export class PricingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly migration: PricingMigrationService,
+    private readonly depositResolver: DepositResolverService,
   ) {}
 
   async resolveTariffForVehicle(
@@ -240,8 +244,9 @@ export class PricingService {
     ctx: ResolvedTariffContext,
     vehicleId: string,
     pickupAt: Date,
+    resolvedDeposit?: ResolvedDeposit,
   ): PricingContextDto {
-    return toPricingContextDto(ctx, vehicleId, pickupAt);
+    return toPricingContextDto(ctx, vehicleId, pickupAt, resolvedDeposit);
   }
 
   async resolvePricingContext(
@@ -251,7 +256,12 @@ export class PricingService {
     returnAt: Date,
   ): Promise<PricingContextDto> {
     const ctx = await this.resolveTariffForVehicle(orgId, vehicleId, pickupAt, returnAt);
-    return this.buildPricingContext(ctx, vehicleId, pickupAt);
+    const resolvedDeposit = await this.depositResolver.resolveForVehicleTariff({
+      organizationId: orgId,
+      vehicleId,
+      tariffContext: ctx,
+    });
+    return this.buildPricingContext(ctx, vehicleId, pickupAt, resolvedDeposit);
   }
 
   async simulateBookingPrice(
@@ -301,6 +311,12 @@ export class PricingService {
 
     const currency = ctx.priceBook.currency;
 
+    const resolvedDeposit = await this.depositResolver.resolveForVehicleTariff({
+      organizationId: orgId,
+      vehicleId: dto.vehicleId,
+      tariffContext: ctx,
+    });
+
     const result = simulateBookingPrice({
       pickupAt,
       returnAt,
@@ -313,11 +329,28 @@ export class PricingService {
       extras,
       manualDiscountCents: dto.manualDiscountCents,
       manualAdjustmentCents: dto.manualAdjustmentCents,
+      resolvedDeposit: {
+        amountCents: resolvedDeposit.amount,
+        currency: resolvedDeposit.currency,
+        source: resolvedDeposit.source,
+        ruleRevisionId: resolvedDeposit.ruleRevisionId,
+        reason: resolvedDeposit.reason,
+        manualOverride: resolvedDeposit.manualOverride,
+      },
     });
+
+    if (resolvedDeposit.components.raisedToMinimum) {
+      result.warnings.push(resolvedDeposit.reason);
+    }
 
     assertClientCurrencyMatches(dto.currency, currency);
 
-    const pricingContext = this.buildPricingContext(ctx, dto.vehicleId, pickupAt);
+    const pricingContext = this.buildPricingContext(
+      ctx,
+      dto.vehicleId,
+      pickupAt,
+      resolvedDeposit,
+    );
 
     return {
       ...result,
@@ -327,6 +360,7 @@ export class PricingService {
       currency,
       effectiveDailyRateCents: tv.rate.dailyRateCents,
       pricingContext,
+      resolvedDeposit,
     };
   }
 
@@ -390,7 +424,10 @@ export class PricingService {
         taxAmountCents: simulation.taxAmountCents,
         totalGrossCents: simulation.totalGrossCents,
         totalDueNowCents: simulation.totalDueNowCents,
-        pricingInputJson: (pricing ?? {}) as Prisma.InputJsonValue,
+        pricingInputJson: {
+          ...(pricing ?? {}),
+          resolvedDeposit: simulation.resolvedDeposit ?? simulation.pricingContext.resolvedDeposit ?? null,
+        } as Prisma.InputJsonValue,
         pricingWarningsJson: simulation.warnings.length
           ? (simulation.warnings as unknown as Prisma.InputJsonValue)
           : Prisma.JsonNull,
