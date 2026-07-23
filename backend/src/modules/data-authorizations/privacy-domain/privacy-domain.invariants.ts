@@ -67,9 +67,10 @@ export interface EnforcementPolicyInvariantInput extends TenantScopedRecord {
   status: EnforcementPolicyStatus;
   enforcementMode: PrivacyEnforcementMode;
   scopeType: PrivacyEnforcementScopeType;
-  scopeVehicleId?: string | null;
-  scopeCustomerId?: string | null;
-  scopeBookingId?: string | null;
+  vehicleScopeCount?: number;
+  customerScopeCount?: number;
+  bookingScopeCount?: number;
+  stationScopeCount?: number;
 }
 
 export interface AuthorizationDecisionEventInvariantInput extends TenantScopedRecord {
@@ -210,16 +211,27 @@ export function validateEnforcementPolicy(input: EnforcementPolicyInvariantInput
     'enforcement_policy_activity_organization_mismatch',
   );
 
-  if (input.scopeType === PrivacyEnforcementScopeType.VEHICLE && !input.scopeVehicleId) {
-    throw new Error('enforcement_policy_vehicle_scope_id_required');
+  if (input.scopeType === PrivacyEnforcementScopeType.VEHICLE && !(input.vehicleScopeCount ?? 0)) {
+    throw new Error('enforcement_policy_vehicle_scope_required');
   }
 
-  if (input.scopeType === PrivacyEnforcementScopeType.CUSTOMER && !input.scopeCustomerId) {
-    throw new Error('enforcement_policy_customer_scope_id_required');
+  if (input.scopeType === PrivacyEnforcementScopeType.CUSTOMER && !(input.customerScopeCount ?? 0)) {
+    throw new Error('enforcement_policy_customer_scope_required');
   }
 
-  if (input.scopeType === PrivacyEnforcementScopeType.BOOKING && !input.scopeBookingId) {
-    throw new Error('enforcement_policy_booking_scope_id_required');
+  if (input.scopeType === PrivacyEnforcementScopeType.BOOKING && !(input.bookingScopeCount ?? 0)) {
+    throw new Error('enforcement_policy_booking_scope_required');
+  }
+
+  if (input.scopeType === PrivacyEnforcementScopeType.STATION && !(input.stationScopeCount ?? 0)) {
+    throw new Error('enforcement_policy_station_scope_required');
+  }
+
+  if (
+    input.scopeType === PrivacyEnforcementScopeType.CONNECTED_VEHICLES &&
+    !(input.vehicleScopeCount ?? 0)
+  ) {
+    throw new Error('enforcement_policy_connected_vehicles_scope_required');
   }
 
   if (

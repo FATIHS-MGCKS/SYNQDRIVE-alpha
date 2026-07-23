@@ -1736,6 +1736,11 @@ model Organization {
   dataSharingAuthorizations                                 DataSharingAuthorization[]
   dataProcessingAgreements                                  DataProcessingAgreement[]
   enforcementPolicies                                       EnforcementPolicy[]
+  enforcementPolicyVehicles                                 EnforcementPolicyVehicle[]
+  enforcementPolicyCustomers                                EnforcementPolicyCustomer[]
+  enforcementPolicyBookings                                 EnforcementPolicyBooking[]
+  enforcementPolicyStations                                 EnforcementPolicyStation[]
+  enforcementPolicyScopeMigrationFindings                   EnforcementPolicyScopeMigrationFinding[]
   authorizationDecisionEvents                               AuthorizationDecisionEvent[]
 
   @@index([status])
@@ -2676,18 +2681,19 @@ model Station {
   createdAt                    DateTime      @default(now()) @map("created_at")
   updatedAt                    DateTime      @updatedAt @map("updated_at")
 
-  organization           Organization                       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehiclesHome           Vehicle[]                          @relation("VehicleHomeStation")
-  vehiclesCurrent        Vehicle[]                          @relation("VehicleCurrentStation")
-  vehiclesExpected       Vehicle[]                          @relation("VehicleExpectedStation")
-  transfersFrom          VehicleStationTransfer[]           @relation("TransferFromStation")
-  transfersTo            VehicleStationTransfer[]           @relation("TransferToStation")
-  pickupBookings         Booking[]                          @relation("BookingPickupStation")
-  returnBookings         Booking[]                          @relation("BookingReturnStation")
-  actualPickupBookings   Booking[]                          @relation("BookingActualPickupStation")
-  actualReturnBookings   Booking[]                          @relation("BookingActualReturnStation")
-  legalDocumentStations  OrganizationLegalDocumentStation[]
-  userAccountPreferences UserAccountPreference[]
+  organization              Organization                       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehiclesHome              Vehicle[]                          @relation("VehicleHomeStation")
+  vehiclesCurrent           Vehicle[]                          @relation("VehicleCurrentStation")
+  vehiclesExpected          Vehicle[]                          @relation("VehicleExpectedStation")
+  transfersFrom             VehicleStationTransfer[]           @relation("TransferFromStation")
+  transfersTo               VehicleStationTransfer[]           @relation("TransferToStation")
+  pickupBookings            Booking[]                          @relation("BookingPickupStation")
+  returnBookings            Booking[]                          @relation("BookingReturnStation")
+  actualPickupBookings      Booking[]                          @relation("BookingActualPickupStation")
+  actualReturnBookings      Booking[]                          @relation("BookingActualReturnStation")
+  legalDocumentStations     OrganizationLegalDocumentStation[]
+  userAccountPreferences    UserAccountPreference[]
+  enforcementPolicyStations EnforcementPolicyStation[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -2912,6 +2918,7 @@ model Vehicle {
   hmSignalGroupStates                    HmSignalGroupState[]
   providerConsents                       VehicleProviderConsent[]
   providerAccessGrants                   ProviderAccessGrant[]
+  enforcementPolicyVehicles              EnforcementPolicyVehicle[]
   tariffAssignments                      VehicleTariffAssignment[]
   pricingQuotes                          PricingQuote[]
   rentalCategoryId                       String?                                 @map("rental_category_id")
@@ -5144,9 +5151,10 @@ model Customer {
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingPaymentRequests                 BookingPaymentRequest[]
 
-  vehicleDamages        VehicleDamage[]
-  whatsappConversations WhatsAppConversation[]
-  whatsappConsents      WhatsAppConsent[]
+  vehicleDamages             VehicleDamage[]
+  whatsappConversations      WhatsAppConversation[]
+  whatsappConsents           WhatsAppConsent[]
+  enforcementPolicyCustomers EnforcementPolicyCustomer[]
 
   @@index([organizationId])
   @@index([email])
@@ -5621,6 +5629,7 @@ model Booking {
   drivingIntelligenceJobs       DrivingIntelligenceJob[]
   driverAttributions            DriverAttribution[]
   allowedDrivers                BookingAllowedDriver[]
+  enforcementPolicyBookings     EnforcementPolicyBooking[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -10787,6 +10796,7 @@ enum PrivacyEnforcementScopeType {
   VEHICLE
   CUSTOMER
   BOOKING
+  STATION
 }
 
 enum PrivacyProcessingDataCategory {
@@ -11183,28 +11193,147 @@ model EnforcementPolicy {
   id                           String                        @id @default(uuid())
   organizationId               String                        @map("organization_id")
   processingActivityId         String                        @map("processing_activity_id")
+  policyFamilyId               String                        @map("policy_family_id")
+  versionNumber                Int                           @default(1) @map("version_number")
+  isCurrentVersion             Boolean                       @default(true) @map("is_current_version")
   status                       EnforcementPolicyStatus       @default(DRAFT)
   enforcementMode              PrivacyEnforcementMode        @default(OFF) @map("enforcement_mode")
   dataCategory                 PrivacyProcessingDataCategory @map("data_category")
   processingPurpose            PrivacyProcessingPurpose      @map("processing_purpose")
   scopeType                    PrivacyEnforcementScopeType   @default(ORGANIZATION) @map("scope_type")
-  scopeVehicleId               String?                       @map("scope_vehicle_id")
-  scopeCustomerId              String?                       @map("scope_customer_id")
-  scopeBookingId               String?                       @map("scope_booking_id")
   pathId                       String?                       @map("path_id")
   legacyOrgDataAuthorizationId String?                       @unique @map("legacy_org_data_authorization_id")
   createdAt                    DateTime                      @default(now()) @map("created_at")
   updatedAt                    DateTime                      @updatedAt @map("updated_at")
 
-  organization                Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  processingActivity          ProcessingActivity           @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
-  legacyOrgDataAuthorization  OrgDataAuthorization?        @relation("LegacyOrgAuthEnforcementPolicy", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  organization                Organization                             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity          ProcessingActivity                       @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+  legacyOrgDataAuthorization  OrgDataAuthorization?                    @relation("LegacyOrgAuthEnforcementPolicy", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
   authorizationDecisionEvents AuthorizationDecisionEvent[]
+  vehicles                    EnforcementPolicyVehicle[]
+  customers                   EnforcementPolicyCustomer[]
+  bookings                    EnforcementPolicyBooking[]
+  stations                    EnforcementPolicyStation[]
+  scopeMigrationFindings      EnforcementPolicyScopeMigrationFinding[]
 
+  @@unique([policyFamilyId, versionNumber])
   @@index([organizationId, status])
+  @@index([organizationId, isCurrentVersion])
+  @@index([policyFamilyId, isCurrentVersion])
   @@index([processingActivityId, dataCategory, processingPurpose])
   @@index([pathId])
   @@map("enforcement_policies")
+}
+
+/// Relationale Fahrzeug-Zuordnung für EnforcementPolicy — ersetzt JSON/unstrukturierte Scope-Arrays.
+model EnforcementPolicyVehicle {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  enforcementPolicyId String   @map("enforcement_policy_id")
+  vehicleId           String   @map("vehicle_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  enforcementPolicy EnforcementPolicy @relation(fields: [enforcementPolicyId], references: [id], onDelete: Restrict)
+  vehicle           Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@unique([enforcementPolicyId, vehicleId])
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@map("enforcement_policy_vehicles")
+}
+
+/// Relationale Kunden-Zuordnung für EnforcementPolicy.
+model EnforcementPolicyCustomer {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  enforcementPolicyId String   @map("enforcement_policy_id")
+  customerId          String   @map("customer_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  enforcementPolicy EnforcementPolicy @relation(fields: [enforcementPolicyId], references: [id], onDelete: Restrict)
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@unique([enforcementPolicyId, customerId])
+  @@index([organizationId])
+  @@index([customerId])
+  @@map("enforcement_policy_customers")
+}
+
+/// Relationale Buchungs-Zuordnung für EnforcementPolicy.
+model EnforcementPolicyBooking {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  enforcementPolicyId String   @map("enforcement_policy_id")
+  bookingId           String   @map("booking_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  enforcementPolicy EnforcementPolicy @relation(fields: [enforcementPolicyId], references: [id], onDelete: Restrict)
+  booking           Booking           @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  @@unique([enforcementPolicyId, bookingId])
+  @@index([organizationId])
+  @@index([bookingId])
+  @@map("enforcement_policy_bookings")
+}
+
+/// Relationale Stations-Zuordnung für EnforcementPolicy.
+model EnforcementPolicyStation {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  enforcementPolicyId String   @map("enforcement_policy_id")
+  stationId           String   @map("station_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  enforcementPolicy EnforcementPolicy @relation(fields: [enforcementPolicyId], references: [id], onDelete: Restrict)
+  station           Station           @relation(fields: [stationId], references: [id], onDelete: Restrict)
+
+  @@unique([enforcementPolicyId, stationId])
+  @@index([organizationId])
+  @@index([stationId])
+  @@map("enforcement_policy_stations")
+}
+
+enum EnforcementPolicyScopeResourceType {
+  VEHICLE
+  CUSTOMER
+  BOOKING
+  STATION
+}
+
+enum EnforcementPolicyScopeMigrationFindingCode {
+  RESOURCE_NOT_FOUND
+  CROSS_TENANT
+  INVALID_REFERENCE
+  DUPLICATE_SKIPPED
+}
+
+enum EnforcementPolicyScopeMigrationSource {
+  LEGACY_POLICY_COLUMN
+  LEGACY_ORG_DATA_AUTHORIZATION_JSON
+}
+
+/// Append-only Protokoll unklarer Legacy-Scope-IDs aus Backfill/Migration.
+model EnforcementPolicyScopeMigrationFinding {
+  id                   String                                     @id @default(uuid())
+  organizationId       String                                     @map("organization_id")
+  enforcementPolicyId  String?                                    @map("enforcement_policy_id")
+  legacySource         EnforcementPolicyScopeMigrationSource      @map("legacy_source")
+  resourceType         EnforcementPolicyScopeResourceType         @map("resource_type")
+  referenceFingerprint String                                     @map("reference_fingerprint")
+  findingCode          EnforcementPolicyScopeMigrationFindingCode @map("finding_code")
+  createdAt            DateTime                                   @default(now()) @map("created_at")
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  enforcementPolicy EnforcementPolicy? @relation(fields: [enforcementPolicyId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([enforcementPolicyId])
+  @@index([findingCode])
+  @@map("enforcement_policy_scope_migration_findings")
 }
 
 /// Unveränderliches Entscheidungsprotokoll — append-only, kein updatedAt.

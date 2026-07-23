@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'enforcement-policy-relational-scopes-v49792-2026-07-23',
+    version: '4.9.792',
+    title: 'V4.9.792 — Enforcement Policy: relationale Scopes + Tenant-Härtung (Prompt 9)',
+    summary: [
+      'Ersetzt JSON-/Einzelspalten-Scopes durch relationale Junction-Tabellen: EnforcementPolicyVehicle, Customer, Booking, Station.',
+      'Bulk-Zuordnung vollständig transaktional; Duplikate via Unique Constraints; ACTIVE Policies erfordern neue Version für Scope-Änderungen.',
+      'Backfill-Skript mit --dry-run für Legacy OrgDataAuthorization JSON; Migration Findings für ungültige Legacy-IDs (Fingerprint, keine ID-Leaks).',
+    ],
+    reason:
+      'Unstrukturierte Scope-Arrays erlauben keine harte Tenant-Prüfung, keine atomaren Updates und keine versionierte Scope-Änderung an aktiven Policies.',
+    previousBehavior:
+      'Einzelne scope_vehicle_id/customer_id/booking_id Spalten; JSON-Arrays in OrgDataAuthorization ohne relationale EnforcementPolicy-Zuordnung.',
+    details:
+      'Migration 20260724000000. API: GET/PUT/POST .../enforcement-policies/:id/scopes. Doku: docs/architecture/enforcement-policy-relational-scopes-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:30:00.000Z',
+  },
+  {
     id: 'consent-provider-sharing-domains-v49791-2026-07-23',
     version: '4.9.791',
     title: 'V4.9.791 — Consent, Provider-Grant & Data Sharing getrennt (Prompt 8)',

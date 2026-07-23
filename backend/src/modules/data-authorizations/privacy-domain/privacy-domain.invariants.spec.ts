@@ -136,7 +136,7 @@ describe('privacy-domain.invariants', () => {
   });
 
   describe('validateEnforcementPolicy', () => {
-    it('requires scope entity ids for scoped policies', () => {
+    it('requires relational vehicle scope for VEHICLE scope type', () => {
       expect(() =>
         validateEnforcementPolicy({
           organizationId: orgId,
@@ -144,8 +144,9 @@ describe('privacy-domain.invariants', () => {
           status: EnforcementPolicyStatus.DRAFT,
           enforcementMode: PrivacyEnforcementMode.SHADOW,
           scopeType: PrivacyEnforcementScopeType.VEHICLE,
+          vehicleScopeCount: 0,
         }),
-      ).toThrow('enforcement_policy_vehicle_scope_id_required');
+      ).toThrow('enforcement_policy_vehicle_scope_required');
     });
 
     it('rejects ACTIVE policy with OFF mode', () => {
