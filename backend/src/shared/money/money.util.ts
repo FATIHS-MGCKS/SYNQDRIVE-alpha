@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { isIso4217CurrencyCode } from './iso4217-currency-codes';
 
 const ISO4217_PATTERN = /^[A-Z]{3}$/;
 

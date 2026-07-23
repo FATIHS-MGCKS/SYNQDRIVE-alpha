@@ -246,9 +246,9 @@ describe('normalizeRuleDtoInput', () => {
 describe('RentalRulesService DTO validation integration', () => {
   it('minimumAgeYears below 18 should fail class-validator', async () => {
     const { validate } = await import('class-validator');
+    const { plainToInstance } = await import('class-transformer');
     const { UpsertOrganizationRentalRulesDto } = await import('./dto');
-    const dto = new UpsertOrganizationRentalRulesDto();
-    dto.minimumAgeYears = 16;
+    const dto = plainToInstance(UpsertOrganizationRentalRulesDto, { minimumAgeYears: 16 });
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
   });

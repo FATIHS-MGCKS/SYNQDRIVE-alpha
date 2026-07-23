@@ -15,6 +15,7 @@ import {
   formatLicenseHoldingDuration,
   splitLicenseHoldingMonths,
 } from './license-holding.util';
+import { RENTAL_RULES_VALIDATION_LIMITS as LIMITS } from './rental-rules-validation.constants';
 
 export function parseApiError(e: unknown): string {
   if (e instanceof Error) return e.message;
@@ -313,23 +314,53 @@ export function formValuesToPayload(values: RentalRuleFormValues): Record<string
 export function validateRuleForm(values: RentalRuleFormValues): string | null {
   if (values.minimumAgeYears.trim()) {
     const age = Number(values.minimumAgeYears);
-    if (Number.isNaN(age) || age < 18 || age > 99) return 'Minimum age must be between 18 and 99.';
+    if (Number.isNaN(age) || age < LIMITS.minimumAgeYears.min || age > LIMITS.minimumAgeYears.max) {
+      return `Minimum age must be between ${LIMITS.minimumAgeYears.min} and ${LIMITS.minimumAgeYears.max}.`;
+    }
   }
   if (values.licenseHoldingWholeYears.trim()) {
     const years = Number(values.licenseHoldingWholeYears);
-    if (Number.isNaN(years) || years < 0 || years > 80) {
-      return 'License holding years must be between 0 and 80.';
+    if (
+      Number.isNaN(years) ||
+      years < LIMITS.licenseHoldingWholeYears.min ||
+      years > LIMITS.licenseHoldingWholeYears.max
+    ) {
+      return `License holding years must be between ${LIMITS.licenseHoldingWholeYears.min} and ${LIMITS.licenseHoldingWholeYears.max}.`;
     }
   }
   if (values.licenseHoldingExtraMonths.trim()) {
     const months = Number(values.licenseHoldingExtraMonths);
-    if (Number.isNaN(months) || months < 0 || months > 11) {
-      return 'Additional license holding months must be between 0 and 11.';
+    if (
+      Number.isNaN(months) ||
+      months < LIMITS.licenseHoldingExtraMonths.min ||
+      months > LIMITS.licenseHoldingExtraMonths.max
+    ) {
+      return `Additional license holding months must be between ${LIMITS.licenseHoldingExtraMonths.min} and ${LIMITS.licenseHoldingExtraMonths.max}.`;
+    }
+  }
+  if (values.licenseHoldingWholeYears.trim() || values.licenseHoldingExtraMonths.trim()) {
+    const total = combineLicenseHoldingMonths(
+      Number(values.licenseHoldingWholeYears || 0),
+      Number(values.licenseHoldingExtraMonths || 0),
+    );
+    if (total > LIMITS.minimumLicenseHoldingMonths.max) {
+      return `License holding cannot exceed ${LIMITS.minimumLicenseHoldingMonths.max} months.`;
     }
   }
   if (values.depositAmount.trim()) {
     const deposit = Number(values.depositAmount.replace(',', '.'));
-    if (Number.isNaN(deposit) || deposit < 0) return 'Deposit must be a positive amount.';
+    if (Number.isNaN(deposit) || deposit < LIMITS.depositMajorUnits.min) {
+      return 'Deposit must be a positive amount.';
+    }
+    if (deposit > LIMITS.depositMajorUnits.max) {
+      return `Deposit cannot exceed ${LIMITS.depositMajorUnits.max.toLocaleString()}.`;
+    }
+  }
+  if (values.insuranceRequirement.length > LIMITS.insuranceRequirement.maxLength) {
+    return `Insurance requirement cannot exceed ${LIMITS.insuranceRequirement.maxLength} characters.`;
+  }
+  if (values.notes.length > LIMITS.notes.maxLength) {
+    return `Notes cannot exceed ${LIMITS.notes.maxLength} characters.`;
   }
   return null;
 }

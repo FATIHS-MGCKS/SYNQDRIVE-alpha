@@ -2001,3 +2001,77 @@ frontend: rental-rules.utils.test.ts (18/6/24 roundtrip, unchanged save)
 ---
 
 *Letzte Aktualisierung: 2026-07-23 (Prompt 18).*
+
+---
+
+## Prompt 19 — Serverseitige Rental-Rules-Validierung
+
+**Ziel:** Ungültige, gefährliche oder fachlich unsinnige Mietregeln serverseitig verhindern.
+
+### 19.1 Feldgrenzen (authoritative)
+
+| Feld | Grenzen |
+|------|---------|
+| `minimumAgeYears` | 18–99 |
+| `minimumLicenseHoldingMonths` | 0–971 (80 Jahre + 11 Monate) |
+| `minimumLicenseHoldingYears` (Alias) | 0–80 → ×12 Monate |
+| `depositAmountCents` / `depositAmount` | 0–10.000.000 (100.000,00 Hauptwährung) |
+| `depositCurrency` | ISO-4217 Allowlist, 3 Zeichen |
+| `insuranceRequirement` | max. 500 Zeichen |
+| `notes` | max. 2.000 Zeichen |
+| `category.name` | getrimmt, 1–80 Zeichen |
+| `category.description` | max. 500 Zeichen |
+| `category.color` | max. 32 Zeichen |
+| `category.icon` | max. 64 Zeichen |
+| `vehicleIds` | max. 500, UUID v4, unique, nicht leer |
+| `reset.fields` | max. 20, nur `RENTAL_RULE_FIELD_KEYS` |
+
+`null` bleibt für PATCH-Inherit/Clear gültig (`ValidateIf`).
+
+### 19.2 Implementierung
+
+| Komponente | Rolle |
+|------------|-------|
+| `rental-rules-validation.constants.ts` | Grenzen + `messageKey`-Katalog |
+| `dto/index.ts` | class-validator Decorators auf allen Rental-Rules-DTOs |
+| `iso4217-currency-codes.ts` | Kanonische ISO-4217-Allowlist |
+| `validation-error.util.ts` | Feldbezogene `fieldErrors[]` mit `messageKey` |
+| `main.ts` ValidationPipe | `exceptionFactory` → `VALIDATION_FAILED` |
+| `global-exception.filter.ts` | Gibt strukturierte Validation-Body durch |
+
+### 19.3 Fehlerantwort
+
+```json
+{
+  "statusCode": 400,
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed",
+  "fieldErrors": [
+    { "field": "depositCurrency", "messageKey": "rentalRules.validation.depositCurrency.iso4217" }
+  ]
+}
+```
+
+Frontend-i18n: `rentalRules.validation.*` in `en.ts` / `de.ts`; Client-`validateRuleForm` spiegelt Grenzen.
+
+### 19.4 Tests
+
+`dto/rental-rules-validation.spec.ts` — Grenzwerte, Missbrauch (FAKE currency, Duplikat-UUIDs, leere Kategorienamen, Oversize-Listen).
+
+---
+
+## Prompt 19 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Ungültige Werte serverseitig abgelehnt | ✅ |
+| Keine beliebigen Currency Strings | ✅ ISO-4217 Allowlist |
+| Keine leeren/langen Kategorienamen | ✅ trim + Längen |
+| Keine unbeschränkten Fahrzeuglisten | ✅ max 500, unique |
+| Feldbezogene übersetzbare Fehler | ✅ messageKey + fieldErrors |
+| Tests bestehen | ✅ |
+| Prompt 19 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 19).*

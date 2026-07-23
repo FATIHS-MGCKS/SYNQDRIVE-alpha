@@ -2609,5 +2609,13 @@ export const de: Record<TranslationKey, string> = {
   'iam.a11y.mainTabs': 'IAM-Bereiche',
   'iam.a11y.drawerTabs': 'Mitglieder-Detailbereiche',
   'iam.a11y.statusBadge': 'Status: {label}',
+  'rentalRules.validation.minimumAgeYears.min': 'Mindestalter muss mindestens {min} Jahre betragen',
+  'rentalRules.validation.minimumAgeYears.max': 'Mindestalter darf {max} Jahre nicht überschreiten',
+  'rentalRules.validation.minimumLicenseHoldingMonths.max': 'Führerscheinbesitz darf {max} Monate nicht überschreiten',
+  'rentalRules.validation.depositCurrency.iso4217': 'Währung muss ein gültiger ISO-4217-Code sein',
+  'rentalRules.validation.categoryName.required': 'Kategoriename ist erforderlich',
+  'rentalRules.validation.categoryName.maxLength': 'Kategoriename ist zu lang',
+  'rentalRules.validation.vehicleIds.maxSize': 'Zu viele Fahrzeuge ausgewählt',
+  'rentalRules.validation.vehicleIds.unique': 'Doppelte Fahrzeug-IDs sind nicht erlaubt',
   ...legalDocumentsDe,
 };

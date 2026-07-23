@@ -2611,6 +2611,14 @@ export const en = {
   'iam.a11y.mainTabs': 'IAM sections',
   'iam.a11y.drawerTabs': 'Member detail sections',
   'iam.a11y.statusBadge': 'Status: {label}',
+  'rentalRules.validation.minimumAgeYears.min': 'Minimum age must be at least {min} years',
+  'rentalRules.validation.minimumAgeYears.max': 'Minimum age cannot exceed {max} years',
+  'rentalRules.validation.minimumLicenseHoldingMonths.max': 'License holding cannot exceed {max} months',
+  'rentalRules.validation.depositCurrency.iso4217': 'Currency must be a valid ISO 4217 code',
+  'rentalRules.validation.categoryName.required': 'Category name is required',
+  'rentalRules.validation.categoryName.maxLength': 'Category name is too long',
+  'rentalRules.validation.vehicleIds.maxSize': 'Too many vehicles selected',
+  'rentalRules.validation.vehicleIds.unique': 'Duplicate vehicle IDs are not allowed',
   ...legalDocumentsEn,
 } as const;
 
