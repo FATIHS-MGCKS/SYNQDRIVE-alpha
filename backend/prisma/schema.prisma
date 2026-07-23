@@ -1611,6 +1611,7 @@ model Organization {
   bookings                               Booking[]
   bookingAllowedDrivers                  BookingAllowedDriver[]
   bookingHandoverProtocols               BookingHandoverProtocol[]
+  bookingHandoverSignatures              BookingHandoverSignature[]
   activityLogs                           ActivityLog[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   vendors                                Vendor[]
@@ -5599,6 +5600,7 @@ model Booking {
   actualReturnStation     Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
   rentalDrivingAnalyses   RentalDrivingAnalysis[]
   handoverProtocols       BookingHandoverProtocol[]
+  handoverSignatures      BookingHandoverSignature[]
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
   priceSnapshots          BookingPriceSnapshot[]
@@ -6014,11 +6016,97 @@ model BookingHandoverProtocol {
   vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   vehicleDamages VehicleDamage[]
   legalAcceptances BookingLegalAcceptance[]
+  signatures     BookingHandoverSignature[]
 
   @@unique([bookingId, kind])
   @@index([organizationId])
   @@index([vehicleId])
   @@map("booking_handover_protocols")
+}
+
+enum HandoverSignatureRole {
+  CUSTOMER
+  STAFF
+}
+
+enum BookingHandoverSignatureStorageStatus {
+  PENDING_MIGRATION
+  STORED
+  LEGACY_CLEARED
+}
+
+/// Encrypted handover signature blobs in private object storage (Prompt 20).
+model BookingHandoverSignature {
+  id               String                              @id @default(uuid())
+  organizationId   String                              @map("organization_id")
+  bookingId        String                              @map("booking_id")
+  protocolId       String                              @map("protocol_id")
+  role             HandoverSignatureRole
+  signerName       String?                             @map("signer_name")
+  signedAt         DateTime                            @map("signed_at")
+  objectKey        String?                             @map("object_key")
+  storageProvider  String?                             @map("storage_provider")
+  contentHash      String?                             @map("content_hash")
+  mimeType         String?                             @map("mime_type")
+  sizeBytes        Int?                                @map("size_bytes")
+  storageStatus    BookingHandoverSignatureStorageStatus @default(PENDING_MIGRATION) @map("storage_status")
+  migratedAt       DateTime?                           @map("migrated_at")
+  legacyClearedAt  DateTime?                           @map("legacy_cleared_at")
+  migrationRunId   String?                             @map("migration_run_id")
+  retentionClass   String                              @default("HANDOVER_SIGNATURE") @map("retention_class")
+  deletionEligibleAt DateTime?                         @map("deletion_eligible_at")
+  deletedAt        DateTime?                           @map("deleted_at")
+  createdAt        DateTime                            @default(now()) @map("created_at")
+  updatedAt        DateTime                            @updatedAt @map("updated_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking                 @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  protocol     BookingHandoverProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  accessTokens BookingHandoverSignatureAccessToken[]
+  migrationEvents BookingHandoverSignatureMigrationEvent[]
+
+  @@unique([protocolId, role])
+  @@index([organizationId, bookingId])
+  @@index([organizationId, storageStatus])
+  @@index([organizationId, retentionClass, deletionEligibleAt])
+  @@map("booking_handover_signatures")
+}
+
+/// Short-lived opaque access tokens for authorized signature view/download.
+model BookingHandoverSignatureAccessToken {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  signatureId     String   @map("signature_id")
+  tokenHash       String   @map("token_hash")
+  expiresAt       DateTime @map("expires_at")
+  createdByUserId String?  @map("created_by_user_id")
+  usedAt          DateTime? @map("used_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  signature BookingHandoverSignature @relation(fields: [signatureId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([signatureId, expiresAt])
+  @@map("booking_handover_signature_access_tokens")
+}
+
+/// Auditable migration events for legacy data-URL signature backfill.
+model BookingHandoverSignatureMigrationEvent {
+  id             String               @id @default(uuid())
+  organizationId String               @map("organization_id")
+  protocolId     String               @map("protocol_id")
+  signatureId    String?              @map("signature_id")
+  role           HandoverSignatureRole
+  migrationRunId String               @map("migration_run_id")
+  eventType      String               @map("event_type")
+  detail         Json?
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  signature BookingHandoverSignature? @relation(fields: [signatureId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, migrationRunId])
+  @@index([protocolId, role])
+  @@map("booking_handover_signature_migration_events")
 }
 
 /// Rental-period analysis input coverage (P59).

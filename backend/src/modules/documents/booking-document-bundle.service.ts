@@ -66,6 +66,7 @@ import { BookingDocumentBundleMonitoringService } from './booking-document-bundl
 import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
 import { RentalContractService } from './rental-contract.service';
 import { BookingLegalDocumentSnapshotService } from './legal-document-snapshot/booking-legal-document-snapshot.service';
+import { BookingHandoverSignatureService } from '@modules/bookings/signature/booking-handover-signature.service';
 import {
   completenessLegalMissingDocumentTypes,
   completenessToBundleViewWarnings,
@@ -137,6 +138,7 @@ export class BookingDocumentBundleService {
     private readonly bundleCompleteness: BookingDocumentCompletenessService,
     private readonly rentalContract: RentalContractService,
     private readonly legalDocumentSnapshots: BookingLegalDocumentSnapshotService,
+    private readonly handoverSignatures: BookingHandoverSignatureService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -321,7 +323,7 @@ export class BookingDocumentBundleService {
     const protocol = await this.loadProtocol(orgId, bookingId, handoverProtocolId);
     if (!protocol) return null;
 
-    const ctx: HandoverContext = this.handoverContext(booking, protocol);
+    const ctx: HandoverContext = await this.handoverContext(orgId, booking, protocol);
     const doc = await this.renderAndStore({
       orgId,
       booking,
@@ -352,7 +354,7 @@ export class BookingDocumentBundleService {
       where: { bookingId, kind: 'PICKUP' },
       select: { odometerKm: true },
     });
-    const base = this.handoverContext(booking, protocol);
+    const base = await this.handoverContext(orgId, booking, protocol);
     const doc = await this.renderAndStore({
       orgId,
       booking,
@@ -1182,8 +1184,16 @@ export class BookingDocumentBundleService {
     });
   }
 
-  private handoverContext(booking: BookingWithRelations, protocol: BookingHandoverProtocol): HandoverContext {
+  private async handoverContext(
+    orgId: string,
+    booking: BookingWithRelations,
+    protocol: BookingHandoverProtocol,
+  ): Promise<HandoverContext> {
     const damageIds = Array.isArray(protocol.damageIds) ? (protocol.damageIds as unknown[]) : [];
+    const signatureUrls = await this.handoverSignatures.loadDataUrlsForPdf(orgId, protocol.id, {
+      customerSignatureDataUrl: protocol.customerSignatureDataUrl,
+      staffSignatureDataUrl: protocol.staffSignatureDataUrl,
+    });
     return {
       org: this.orgInfo(booking.organization),
       customer: this.customerInfo(booking.customer),
@@ -1203,9 +1213,9 @@ export class BookingDocumentBundleService {
       damageCount: damageIds.length,
       documentsAcknowledged: protocol.documentsAcknowledged,
       customerSignatureName: protocol.customerSignatureName,
-      customerSignatureDataUrl: protocol.customerSignatureDataUrl,
+      customerSignatureDataUrl: signatureUrls.customerSignatureDataUrl,
       staffSignatureName: protocol.staffSignatureName,
-      staffSignatureDataUrl: protocol.staffSignatureDataUrl,
+      staffSignatureDataUrl: signatureUrls.staffSignatureDataUrl,
     };
   }
 

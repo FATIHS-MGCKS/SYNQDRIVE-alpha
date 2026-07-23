@@ -359,6 +359,13 @@ function formatTimeFromIso(iso: string | Date): string {
 }
 
 // V4.6.75 — Handover protocol DTO (matches backend HandoverProtocolDto).
+// V4.9.792 — Signature blobs removed from API responses.
+export interface HandoverSignatureSummaryRow {
+  signaturePresent: boolean;
+  signedAt: string | null;
+  signatureReferenceId: string | null;
+}
+
 export interface HandoverProtocolRow {
   id: string;
   bookingId: string;
@@ -377,9 +384,10 @@ export interface HandoverProtocolRow {
   warningLightsNotes: string | null;
   notes: string | null;
   customerSignatureName: string | null;
-  customerSignatureDataUrl: string | null;
   staffSignatureName: string | null;
-  staffSignatureDataUrl: string | null;
+  customerSignature: HandoverSignatureSummaryRow;
+  staffSignature: HandoverSignatureSummaryRow;
+  protocolCompleted: boolean;
   documentsAcknowledged: boolean;
   damageIds: string[];
   createdAt: string;
@@ -433,6 +441,17 @@ export interface BookingUiRow {
   _raw: unknown;
 }
 
+function mapSignatureSummary(raw: any): HandoverSignatureSummaryRow {
+  if (!raw || typeof raw !== 'object') {
+    return { signaturePresent: false, signedAt: null, signatureReferenceId: null };
+  }
+  return {
+    signaturePresent: !!raw.signaturePresent,
+    signedAt: raw.signedAt ?? null,
+    signatureReferenceId: raw.signatureReferenceId ?? null,
+  };
+}
+
 // V4.6.75 — Normalise a raw protocol payload (server DTO or partial) into
 // the typed UI shape used across BookingsView / Dashboard tiles.
 function mapApiHandoverProtocol(raw: any): HandoverProtocolRow | null {
@@ -455,9 +474,10 @@ function mapApiHandoverProtocol(raw: any): HandoverProtocolRow | null {
     warningLightsNotes: raw.warningLightsNotes ?? null,
     notes: raw.notes ?? null,
     customerSignatureName: raw.customerSignatureName ?? null,
-    customerSignatureDataUrl: raw.customerSignatureDataUrl ?? null,
     staffSignatureName: raw.staffSignatureName ?? null,
-    staffSignatureDataUrl: raw.staffSignatureDataUrl ?? null,
+    customerSignature: mapSignatureSummary(raw.customerSignature),
+    staffSignature: mapSignatureSummary(raw.staffSignature),
+    protocolCompleted: !!raw.protocolCompleted,
     documentsAcknowledged: !!raw.documentsAcknowledged,
     damageIds: Array.isArray(raw.damageIds)
       ? raw.damageIds.filter((x: any): x is string => typeof x === 'string')

@@ -21,6 +21,7 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 import { HandoverProtocolDto } from './handover.types';
+import { BookingsHandoverService } from './bookings-handover.service';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import { VehicleCleaningTaskService } from '@modules/tasks/vehicle-cleaning-task.service';
@@ -127,6 +128,7 @@ export class BookingsService {
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly legalConfirmationEnforcement: BookingLegalConfirmationEnforcementService,
+    private readonly handoverService: BookingsHandoverService,
   ) {}
 
   /**
@@ -508,7 +510,7 @@ export class BookingsService {
     // V4.6.75 — Attach handover protocols so the UI can render pickup /
     // return panels (odometer, fuel, signatures, noted damages) without a
     // second roundtrip. Single batched query via bookingId IN (...).
-    const protocolsMap = await this.loadProtocolsMap(
+    const protocolsMap = await this.handoverService.findForBookingsMap(
       orgId,
       data.map((b) => b.id),
     );
@@ -788,54 +790,6 @@ export class BookingsService {
     return rest;
   }
 
-  private async loadProtocolsMap(
-    orgId: string,
-    bookingIds: string[],
-  ): Promise<Map<string, HandoverProtocolDto[]>> {
-    if (bookingIds.length === 0) return new Map();
-    const rows = await this.prisma.bookingHandoverProtocol.findMany({
-      where: { organizationId: orgId, bookingId: { in: bookingIds } },
-      orderBy: { performedAt: 'asc' },
-    });
-    const map = new Map<string, HandoverProtocolDto[]>();
-    for (const r of rows) {
-      const dto: HandoverProtocolDto = {
-        id: r.id,
-        bookingId: r.bookingId,
-        vehicleId: r.vehicleId,
-        kind: r.kind,
-        performedAt: r.performedAt.toISOString(),
-        performedByUserId: r.performedByUserId,
-        performedByName: r.performedByName,
-        odometerKm: r.odometerKm,
-        fuelPercent: r.fuelPercent,
-        fuelFull: r.fuelFull,
-        exteriorClean: r.exteriorClean,
-        interiorClean: r.interiorClean,
-        tiresSeasonOk: r.tiresSeasonOk,
-        warningLightsOn: r.warningLightsOn,
-        warningLightsNotes: r.warningLightsNotes,
-        notes: r.notes,
-        customerSignatureName: r.customerSignatureName,
-        customerSignatureDataUrl: r.customerSignatureDataUrl,
-        staffSignatureName: r.staffSignatureName,
-        staffSignatureDataUrl: r.staffSignatureDataUrl,
-        documentsAcknowledged: r.documentsAcknowledged,
-        damageIds: Array.isArray(r.damageIds)
-          ? (r.damageIds as unknown[]).filter(
-              (x): x is string => typeof x === 'string',
-            )
-          : [],
-        createdAt: r.createdAt.toISOString(),
-        updatedAt: r.updatedAt.toISOString(),
-      };
-      const list = map.get(dto.bookingId) ?? [];
-      list.push(dto);
-      map.set(dto.bookingId, list);
-    }
-    return map;
-  }
-
   async findById(orgId: string, id: string) {
     const b = await this.prisma.booking.findFirst({
       where: { id, organizationId: orgId },
@@ -853,7 +807,7 @@ export class BookingsService {
     }
 
     // V4.6.75 — Include handover protocols for the detail view.
-    const protocolsMap = await this.loadProtocolsMap(orgId, [b.id]);
+    const protocolsMap = await this.handoverService.findForBookingsMap(orgId, [b.id]);
     const protocols = protocolsMap.get(b.id) ?? [];
     const pickup = protocols.find((p) => p.kind === 'PICKUP') ?? null;
     const ret = protocols.find((p) => p.kind === 'RETURN') ?? null;
@@ -942,7 +896,7 @@ export class BookingsService {
     const stationById = new Map(stationRows.map((s) => [s.id, s]));
     const stationMap = new Map(stationRows.map((s) => [s.id, s.name]));
 
-    const protocolsMap = await this.loadProtocolsMap(orgId, [b.id]);
+    const protocolsMap = await this.handoverService.findForBookingsMap(orgId, [b.id]);
     const protocols = protocolsMap.get(b.id) ?? [];
     const pickupProto = protocols.find((p) => p.kind === 'PICKUP') ?? null;
     const returnProto = protocols.find((p) => p.kind === 'RETURN') ?? null;
@@ -955,7 +909,9 @@ export class BookingsService {
       fuelPercent: p.fuelPercent,
       fuelFull: p.fuelFull,
       damageCount: p.damageIds.length,
-      signatureComplete: Boolean(p.customerSignatureName && p.staffSignatureName),
+      protocolCompleted: p.protocolCompleted,
+      customerSignature: p.customerSignature,
+      staffSignature: p.staffSignature,
       performedByName: p.performedByName,
     });
 
@@ -1434,7 +1390,7 @@ export class BookingsService {
 
     // V4.6.75 — Attach protocols so tiles / side lists know if the pickup
     // has already been handled.
-    const protocolsMap = await this.loadProtocolsMap(
+    const protocolsMap = await this.handoverService.findForBookingsMap(
       orgId,
       data.map((b) => b.id),
     );
@@ -1591,7 +1547,7 @@ export class BookingsService {
         : [];
     const stationMap = new Map(stations.map((s) => [s.id, s.name]));
 
-    const protocolsMap = await this.loadProtocolsMap(
+    const protocolsMap = await this.handoverService.findForBookingsMap(
       orgId,
       data.map((b) => b.id),
     );

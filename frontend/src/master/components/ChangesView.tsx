@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-signature-protection-v49792-2026-07-23',
+    version: '4.9.792',
+    title: 'V4.9.792 — Handover signature minimization & protection (Prompt 20)',
+    summary: [
+      'Neues Modell `booking_handover_signatures` — verschlüsselte Blobs in privatem Object Storage, DB nur Referenz/Hash/Metadaten.',
+      'List/Calendar/Timeline/Detail/Handover-Responses ohne `*SignatureDataUrl`; nur `signaturePresent`, `signedAt`, `signatureReferenceId`, `protocolCompleted`.',
+      'Permission `booking.signature.read`; kurzlebige opaque View-URLs via `POST .../view-url` + `GET /booking-signature-access/:token`.',
+      'Idempotente Migrationsskript + Audit-Events; Legacy-Data-URL erst nach Storage-Verifikation gelöscht.',
+    ],
+    reason:
+      'Unterschriften sind sensible Rechtsbeweise und dürfen nicht in Listenpayloads, Logs oder erratbaren URLs exponiert werden.',
+    previousBehavior:
+      'Vollständige PNG-Data-URLs in `BookingHandoverProtocol` und allen Booking-List/Detail-Responses eingebettet.',
+    details:
+      'prisma/migrations/20260723700000_booking_handover_signature, backend/src/modules/bookings/signature/*, bookings-handover.service.ts, booking-document-bundle.service.ts, scripts/booking-handover-signature-migration.ts, docs/privacy/booking-handover-signature-protection.md',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T22:00:00.000Z',
+  },
+  {
     id: 'booking-legal-confirmation-enforcement-v49791-2026-07-23',
     version: '4.9.791',
     title: 'V4.9.791 — Server-side legal confirmation enforcement (Prompt 19)',

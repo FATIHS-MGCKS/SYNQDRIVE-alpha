@@ -26,6 +26,7 @@ import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-
 import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
 import { BookingLegalAcceptanceModule } from './legal-acceptance/booking-legal-acceptance.module';
 import { BookingLegalConfirmationModule } from './legal-confirmation/booking-legal-confirmation.module';
+import { BookingHandoverSignatureModule } from './signature/booking-handover-signature.module';
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
@@ -43,6 +44,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     BookingPickupGateModule,
     BookingLegalAcceptanceModule,
     BookingLegalConfirmationModule,
+    BookingHandoverSignatureModule,
     TasksModule,
     CustomersModule,
     CustomerVerificationModule,

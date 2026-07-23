@@ -56,6 +56,7 @@ import { LegalDocumentClamAvMalwareScannerAdapter } from './malware-scanner/adap
 import { LegalDocumentUnavailableMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-unavailable-malware-scanner.adapter';
 import { LegalDocumentMalwareScannerStartupService } from './malware-scanner/legal-document-malware-scanner-startup.service';
 import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/legal-document-malware-scanner-health.service';
+import { BookingHandoverSignatureModule } from '@modules/bookings/signature/booking-handover-signature.module';
 
 /**
  * Central document engine for the Booking Document Lifecycle.
@@ -72,6 +73,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     forwardRef(() => NotificationsModule),
     TasksModule,
     forwardRef(() => BookingDocumentGenerationModule),
+    forwardRef(() => BookingHandoverSignatureModule),
   ],
   controllers: [DocumentsController, LegalDocumentsController, LegalDocumentDeliveryEvidenceController, BookingLegalDocumentSnapshotController],
   providers: [

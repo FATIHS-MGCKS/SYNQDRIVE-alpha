@@ -42,6 +42,11 @@ import {
 import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
 import { BookingLegalAcceptanceService } from './legal-acceptance/booking-legal-acceptance.service';
+import { BookingHandoverSignatureService } from './signature/booking-handover-signature.service';
+import {
+  EMPTY_HANDOVER_SIGNATURE_SUMMARY,
+  type HandoverSignatureSummary,
+} from './signature/booking-handover-signature.types';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -71,6 +76,7 @@ export class BookingsHandoverService {
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly bookingLegalAcceptance: BookingLegalAcceptanceService,
+    private readonly handoverSignatures: BookingHandoverSignatureService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -98,9 +104,10 @@ export class BookingsHandoverService {
           select: { id: true, status: true },
         });
         if (currentBooking?.status === 'ACTIVE') {
+          const [mapped] = await this.mapProtocols(orgId, [existingPickup]);
           return {
             booking: { id: currentBooking.id, status: currentBooking.status },
-            protocol: this.mapProtocol(existingPickup),
+            protocol: mapped,
           };
         }
         throw new ConflictException({
@@ -233,13 +240,23 @@ export class BookingsHandoverService {
             warningLightsNotes: payload.warningLightsNotes ?? null,
             notes: payload.notes ?? null,
             customerSignatureName: payload.customerSignatureName ?? null,
-            customerSignatureDataUrl:
-              payload.customerSignatureDataUrl ?? null,
+            customerSignatureDataUrl: null,
             staffSignatureName: payload.staffSignatureName ?? null,
-            staffSignatureDataUrl: payload.staffSignatureDataUrl ?? null,
+            staffSignatureDataUrl: null,
             documentsAcknowledged: payload.documentsAcknowledged ?? false,
             damageIds: damageIds as unknown as Prisma.InputJsonValue,
           },
+        });
+
+        await this.handoverSignatures.ingestForProtocol(tx, {
+          organizationId: orgId,
+          bookingId,
+          protocolId: created.id,
+          customerSignatureDataUrl: payload.customerSignatureDataUrl,
+          staffSignatureDataUrl: payload.staffSignatureDataUrl,
+          customerSignatureName: payload.customerSignatureName,
+          staffSignatureName: payload.staffSignatureName,
+          signedAt: created.performedAt,
         });
 
         const bookingUpdateData: Prisma.BookingUpdateInput = {
@@ -500,9 +517,11 @@ export class BookingsHandoverService {
     await this.fleetMapCache.invalidate(orgId);
     await this.rentalHealthSummaryCache.invalidate(orgId, booking.vehicleId);
 
+    const mappedProtocols = await this.mapProtocols(orgId, [protocol]);
+
     return {
       booking: { id: updatedBooking.id, status: updatedBooking.status },
-      protocol: this.mapProtocol(protocol),
+      protocol: mappedProtocols[0],
     };
   }
 
@@ -520,7 +539,7 @@ export class BookingsHandoverService {
       where: { bookingId, organizationId: orgId },
       orderBy: { performedAt: 'asc' },
     });
-    return rows.map((r) => this.mapProtocol(r));
+    return this.mapProtocols(orgId, rows);
   }
 
   // Batch helper consumed by BookingsService.findAll / findById so the UI can
@@ -534,9 +553,9 @@ export class BookingsHandoverService {
       where: { organizationId: orgId, bookingId: { in: bookingIds } },
       orderBy: { performedAt: 'asc' },
     });
+    const dtos = await this.mapProtocols(orgId, rows);
     const map = new Map<string, HandoverProtocolDto[]>();
-    for (const r of rows) {
-      const dto = this.mapProtocol(r);
+    for (const dto of dtos) {
       const list = map.get(dto.bookingId) ?? [];
       list.push(dto);
       map.set(dto.bookingId, list);
@@ -638,32 +657,74 @@ export class BookingsHandoverService {
     }
   }
 
-  private mapProtocol(r: {
-    id: string;
-    bookingId: string;
-    vehicleId: string;
-    kind: HandoverKind;
-    performedAt: Date;
-    performedByUserId: string | null;
-    performedByName: string | null;
-    odometerKm: number;
-    fuelPercent: number;
-    fuelFull: boolean;
-    exteriorClean: boolean;
-    interiorClean: boolean;
-    tiresSeasonOk: boolean;
-    warningLightsOn: boolean;
-    warningLightsNotes: string | null;
-    notes: string | null;
-    customerSignatureName: string | null;
-    customerSignatureDataUrl: string | null;
-    staffSignatureName: string | null;
-    staffSignatureDataUrl: string | null;
-    documentsAcknowledged: boolean;
-    damageIds: unknown;
-    createdAt: Date;
-    updatedAt: Date;
-  }): HandoverProtocolDto {
+  private async mapProtocols(
+    orgId: string,
+    rows: Array<{
+      id: string;
+      bookingId: string;
+      vehicleId: string;
+      kind: HandoverKind;
+      performedAt: Date;
+      performedByUserId: string | null;
+      performedByName: string | null;
+      odometerKm: number;
+      fuelPercent: number;
+      fuelFull: boolean;
+      exteriorClean: boolean;
+      interiorClean: boolean;
+      tiresSeasonOk: boolean;
+      warningLightsOn: boolean;
+      warningLightsNotes: string | null;
+      notes: string | null;
+      customerSignatureName: string | null;
+      staffSignatureName: string | null;
+      documentsAcknowledged: boolean;
+      damageIds: unknown;
+      createdAt: Date;
+      updatedAt: Date;
+    }>,
+  ): Promise<HandoverProtocolDto[]> {
+    const summaryMap = await this.handoverSignatures.summariesForProtocolIds(
+      orgId,
+      rows.map((r) => r.id),
+    );
+    return rows.map((r) => {
+      const signatures = summaryMap.get(r.id) ?? {
+        customer: { ...EMPTY_HANDOVER_SIGNATURE_SUMMARY },
+        staff: { ...EMPTY_HANDOVER_SIGNATURE_SUMMARY },
+      };
+      return this.mapProtocolRow(r, signatures.customer, signatures.staff);
+    });
+  }
+
+  private mapProtocolRow(
+    r: {
+      id: string;
+      bookingId: string;
+      vehicleId: string;
+      kind: HandoverKind;
+      performedAt: Date;
+      performedByUserId: string | null;
+      performedByName: string | null;
+      odometerKm: number;
+      fuelPercent: number;
+      fuelFull: boolean;
+      exteriorClean: boolean;
+      interiorClean: boolean;
+      tiresSeasonOk: boolean;
+      warningLightsOn: boolean;
+      warningLightsNotes: string | null;
+      notes: string | null;
+      customerSignatureName: string | null;
+      staffSignatureName: string | null;
+      documentsAcknowledged: boolean;
+      damageIds: unknown;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    customerSignature: HandoverSignatureSummary,
+    staffSignature: HandoverSignatureSummary,
+  ): HandoverProtocolDto {
     const damageIds = Array.isArray(r.damageIds)
       ? (r.damageIds as unknown[]).filter(
           (x): x is string => typeof x === 'string',
@@ -687,9 +748,13 @@ export class BookingsHandoverService {
       warningLightsNotes: r.warningLightsNotes,
       notes: r.notes,
       customerSignatureName: r.customerSignatureName,
-      customerSignatureDataUrl: r.customerSignatureDataUrl,
       staffSignatureName: r.staffSignatureName,
-      staffSignatureDataUrl: r.staffSignatureDataUrl,
+      customerSignature,
+      staffSignature,
+      protocolCompleted: this.handoverSignatures.buildProtocolCompleted(
+        customerSignature,
+        staffSignature,
+      ),
       documentsAcknowledged: r.documentsAcknowledged,
       damageIds,
       createdAt: r.createdAt.toISOString(),

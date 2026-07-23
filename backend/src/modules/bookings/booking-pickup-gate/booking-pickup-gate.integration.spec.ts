@@ -354,6 +354,28 @@ describe('BookingsHandoverService pickup idempotency', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'bk-1', status: 'ACTIVE' }),
       },
     };
+    const handoverSignatures = {
+      summariesForProtocolIds: jest.fn().mockResolvedValue(
+        new Map([
+          [
+            'proto-1',
+            {
+              customer: {
+                signaturePresent: true,
+                signedAt: existingProtocol.performedAt.toISOString(),
+                signatureReferenceId: 'sig-c',
+              },
+              staff: {
+                signaturePresent: false,
+                signedAt: null,
+                signatureReferenceId: null,
+              },
+            },
+          ],
+        ]),
+      ),
+      buildProtocolCompleted: jest.fn().mockReturnValue(false),
+    };
     const svc = new BookingsHandoverService(
       prisma as any,
       {} as any,
@@ -364,6 +386,9 @@ describe('BookingsHandoverService pickup idempotency', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
+      {} as any,
+      handoverSignatures as any,
     );
     const result = await svc.createHandover('org-1', 'bk-1', 'PICKUP', {
       odometerKm: 1000,

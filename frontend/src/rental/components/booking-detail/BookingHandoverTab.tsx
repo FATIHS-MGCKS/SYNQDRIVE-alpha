@@ -55,7 +55,7 @@ function HandoverSide({
             value={side.fuelFull ? 'Voll' : `${side.fuelPercent} %`}
           />
           <Row label="Schäden" value={String(side.damageCount)} />
-          <Row label="Signatur" value={side.signatureComplete ? 'Vollständig' : 'Unvollständig'} />
+          <Row label="Signatur" value={side.protocolCompleted ? 'Vollständig' : 'Unvollständig'} />
         </dl>
       )}
     </div>

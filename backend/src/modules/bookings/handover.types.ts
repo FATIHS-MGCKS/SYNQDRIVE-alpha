@@ -1,5 +1,8 @@
 // V4.6.75 — Booking Handover Protocol contract (pickup + return).
 // V4.9.759 — performedBy* is server-derived from authenticated user; client fields rejected.
+// V4.9.792 — Signature blobs removed from API responses; summaries + secure storage only.
+
+import type { HandoverSignatureSummary } from './signature/booking-handover-signature.types';
 
 export type HandoverKind = 'PICKUP' | 'RETURN';
 
@@ -30,9 +33,10 @@ export interface HandoverProtocolDto {
   warningLightsNotes: string | null;
   notes: string | null;
   customerSignatureName: string | null;
-  customerSignatureDataUrl: string | null;
   staffSignatureName: string | null;
-  staffSignatureDataUrl: string | null;
+  customerSignature: HandoverSignatureSummary;
+  staffSignature: HandoverSignatureSummary;
+  protocolCompleted: boolean;
   documentsAcknowledged: boolean;
   damageIds: string[];
   createdAt: string;
@@ -61,8 +65,10 @@ export interface CreateHandoverProtocolPayload {
   warningLightsNotes?: string | null;
   notes?: string | null;
   customerSignatureName?: string | null;
+  /** Accepted on ingest only — never echoed in list/summary responses. */
   customerSignatureDataUrl?: string | null;
   staffSignatureName?: string | null;
+  /** Accepted on ingest only — never echoed in list/summary responses. */
   staffSignatureDataUrl?: string | null;
   documentsAcknowledged?: boolean;
   damageIds?: string[];

@@ -221,7 +221,17 @@ export type HandoverSideSummary = {
   fuelPercent: number;
   fuelFull: boolean;
   damageCount: number;
-  signatureComplete: boolean;
+  protocolCompleted: boolean;
+  customerSignature: {
+    signaturePresent: boolean;
+    signedAt: string | null;
+    signatureReferenceId: string | null;
+  };
+  staffSignature: {
+    signaturePresent: boolean;
+    signedAt: string | null;
+    signatureReferenceId: string | null;
+  };
   performedByName: string | null;
 };
 
