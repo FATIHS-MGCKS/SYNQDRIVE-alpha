@@ -7,6 +7,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { isLegalBasisCurrentlyValid } from '../legal-basis-assessment/legal-basis-assessment.transitions';
 import { DataProcessingReviewWorkflowService } from '../review-workflow/review-workflow.service';
 import { DpiaActivationGateService } from '../../dpia-workflow/dpia-activation-gate.service';
+import { RetentionActivationGateService } from '../../retention-deletion/retention-activation-gate.service';
 import { POLICY_LIFECYCLE_ERROR_CODES } from './policy-lifecycle.constants';
 import { throwPolicyLifecycleError } from './policy-lifecycle.exceptions';
 import { HttpStatus } from '@nestjs/common';
@@ -29,6 +30,7 @@ export class PolicyLifecycleActivationGuardService {
     private readonly prisma: PrismaService,
     @Optional() private readonly reviewWorkflow?: DataProcessingReviewWorkflowService,
     @Optional() private readonly dpiaGate?: DpiaActivationGateService,
+    @Optional() private readonly retentionGate?: RetentionActivationGateService,
   ) {}
 
   async assertActivationPrerequisites(input: PolicyActivationGuardInput): Promise<void> {
@@ -47,6 +49,10 @@ export class PolicyLifecycleActivationGuardService {
 
     if (this.dpiaGate) {
       await this.dpiaGate.assertActivationAllowed(input.orgId, input.processingActivityId);
+    }
+
+    if (this.retentionGate) {
+      await this.retentionGate.assertActivationAllowed(input.orgId, input.processingActivityId);
     }
   }
 

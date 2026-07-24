@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'retention-deletion-legal-hold-v49815-2026-07-24',
+    version: '4.9.815',
+    title: 'V4.9.815 — Retention, Löschung & Legal Hold (Prompt 32)',
+    summary: [
+      'Retention- und Löschsteuerung pro ProcessingActivity und Datenkategorie — keine pauschale Hardcoded-Frist.',
+      'Felder: retentionClass, retentionDuration, retentionStartEvent, deletionMethod, anonymizationAllowed, legalHold, deletionDueAt, deletionEvidence, exceptions.',
+      'Activation Gate — neue Verarbeitung ohne Retention-Entscheidung nicht aktivierbar; Legal Hold blockiert Löschung und Aktivierung.',
+      'Idempotente Löschjobs mit Dry-Run, getrennte Governance-Entscheidungen vs. technische Store-Steps (PG, ClickHouse, Object Storage, Redis, Derived).',
+      'ClickHouse-Laufzeit wird zuerst geprüft — keine Docker-Annahme; Cache-Invalidierung ≠ vollständige Löschung.',
+      'CI: npm run test:data-auth:retention.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 32 — Retention-Matrix, Löschpfade, Legal Hold und tenantweise Batch-Löschung.',
+    previousBehavior: 'Keine strukturierte Retention-/Löschsteuerung pro Verarbeitungstätigkeit und Datenkategorie.',
+    details:
+      'Migration 20260724120000. Module retention-deletion/. Doku: docs/architecture/retention-deletion-legal-hold-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-24T01:30:00.000Z',
+  },
+  {
     id: 'processor-dpa-management-v49814-2026-07-24',
     version: '4.9.814',
     title: 'V4.9.814 — Processor, DPA, Subprocessor & Drittlandtransfer (Prompt 31)',

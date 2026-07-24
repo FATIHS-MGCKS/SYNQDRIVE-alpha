@@ -44,6 +44,20 @@ import { DpaTransferAssessmentService } from './processor-dpa/dpa-transfer-asses
 import { DpaAuditService } from './processor-dpa/dpa-audit.service';
 import { DpaContractGateService } from './processor-dpa/dpa-contract-gate.service';
 import { DpaExpirySchedulerService } from './processor-dpa/dpa-expiry.scheduler.service';
+import { RetentionDeletionController } from './retention-deletion/retention-deletion.controller';
+import { RetentionPolicyService, RetentionRevocationAssessmentService } from './retention-deletion/retention-policy.service';
+import { RetentionDeletionAuditService } from './retention-deletion/retention-deletion-audit.service';
+import { RetentionActivationGateService } from './retention-deletion/retention-activation-gate.service';
+import { RetentionDeletionExecutorService } from './retention-deletion/retention-deletion-executor.service';
+import { RetentionDeletionSchedulerService } from './retention-deletion/retention-deletion.scheduler.service';
+import {
+  DeletionClickHouseAdapter,
+  DeletionDerivedDataAdapter,
+  DeletionObjectStorageAdapter,
+  DeletionPostgresAdapter,
+  DeletionRedisAdapter,
+  DeletionStoreRegistry,
+} from './retention-deletion/deletion-store.adapters';
 import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
 import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
@@ -131,6 +145,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     ProcessingActivityRegisterController,
     DpiaWorkflowController,
     ProcessorDpaController,
+    RetentionDeletionController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -164,6 +179,18 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     DpaAuditService,
     DpaContractGateService,
     DpaExpirySchedulerService,
+    RetentionDeletionAuditService,
+    RetentionPolicyService,
+    RetentionRevocationAssessmentService,
+    RetentionActivationGateService,
+    DeletionPostgresAdapter,
+    DeletionClickHouseAdapter,
+    DeletionObjectStorageAdapter,
+    DeletionRedisAdapter,
+    DeletionDerivedDataAdapter,
+    DeletionStoreRegistry,
+    RetentionDeletionExecutorService,
+    RetentionDeletionSchedulerService,
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
@@ -233,6 +260,8 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     DpiaWorkflowService,
     DataProcessingAgreementService,
     DpaContractGateService,
+    RetentionActivationGateService,
+    RetentionDeletionExecutorService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,
