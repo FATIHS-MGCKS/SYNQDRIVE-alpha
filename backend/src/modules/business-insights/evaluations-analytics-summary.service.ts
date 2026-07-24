@@ -11,7 +11,6 @@ import {
   buildActiveRisksSummary,
   buildBookingSummary,
   buildCostsSummary,
-  buildDataQualitySummary,
   buildDowntimeSummary,
   buildExecutiveKpis,
   buildFinancialSummary,
@@ -35,6 +34,7 @@ import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization
 import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
 import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import { EvaluationsDriverAnalysisService } from './evaluations-driver-analysis.service';
+import { EvaluationsDataQualityService } from './evaluations-data-quality.service';
 import type { EvaluationsStrengthDetectionSummary } from '@synq/evaluations-insights/evaluations-strength-detection.contract';
 import type { EvaluationsWeaknessDetectionSummary } from '@synq/evaluations-insights/evaluations-weakness-detection.contract';
 import type { EvaluationsDriverAnalysisSummary } from '@synq/evaluations-insights/evaluations-driver-analysis.contract';
@@ -51,6 +51,7 @@ export class EvaluationsAnalyticsSummaryService {
     private readonly strengthDetection: EvaluationsStrengthDetectionService,
     private readonly weaknessDetection: EvaluationsWeaknessDetectionService,
     private readonly driverAnalysis: EvaluationsDriverAnalysisService,
+    private readonly dataQualityService: EvaluationsDataQualityService,
   ) {}
 
   async getSummary(
@@ -89,10 +90,10 @@ export class EvaluationsAnalyticsSummaryService {
       timezone: resolved.period.timezone,
     };
 
-    const utilizationModelSummary = utilizationSnapshot
+    const utilizationModelSummaryRaw = utilizationSnapshot
       ? buildUtilizationModelSummary(utilizationSnapshot, periodWindow)
       : null;
-    const costModelSummary = costModelSnapshot
+    const costModelSummaryRaw = costModelSnapshot
       ? buildCostModelSummary(costModelSnapshot, periodWindow)
       : null;
 
@@ -105,7 +106,7 @@ export class EvaluationsAnalyticsSummaryService {
     const costs = financial
       ? buildCostsSummary(
           financial,
-          costModelSummary?.totals.estimatedFixedCostsMinor ?? null,
+          costModelSummaryRaw?.totals.estimatedFixedCostsMinor ?? null,
         )
       : null;
     const activeRisks = insights ? buildActiveRisksSummary(insights) : null;
@@ -127,14 +128,14 @@ export class EvaluationsAnalyticsSummaryService {
       { key: 'costs', status: sectionStatusFromResult(financialResult) },
       {
         key: 'costModel',
-        status: costModelSummary
-          ? costModelSectionStatus(costModelSummary)
+        status: costModelSummaryRaw
+          ? costModelSectionStatus(costModelSummaryRaw)
           : sectionStatusFromResult(costModelResult),
       },
       {
         key: 'utilizationModel',
-        status: utilizationModelSummary
-          ? utilizationModelSectionStatus(utilizationModelSummary)
+        status: utilizationModelSummaryRaw
+          ? utilizationModelSectionStatus(utilizationModelSummaryRaw)
           : sectionStatusFromResult(utilizationResult),
       },
       { key: 'activeRisks', status: sectionStatusFromResult(insightsResult) },
@@ -142,16 +143,45 @@ export class EvaluationsAnalyticsSummaryService {
       { key: 'insights', status: sectionStatusFromResult(insightsResult) },
     ];
 
-    const dataQuality = buildDataQualitySummary({
+    const dataQuality = this.dataQualityService.build({
+      period: periodWindow,
+      generatedAt,
       sectionStatuses: loaderSectionDefs,
-      insights: {
-        stale: insights?.stale ?? true,
-        lastRunAt: insights?.lastRunAt ?? null,
-        hasRun: insights?.hasRun ?? false,
+      loaderHealth: {
+        financial: { ok: financialResult.ok, error: financialResult.ok ? null : financialResult.error },
+        bookings: { ok: bookingResult.ok, error: bookingResult.ok ? null : bookingResult.error },
+        fleet: { ok: fleetResult.ok, error: fleetResult.ok ? null : fleetResult.error },
+        insights: { ok: insightsResult.ok, error: insightsResult.ok ? null : insightsResult.error },
+        costModel: { ok: costModelResult.ok, error: costModelResult.ok ? null : costModelResult.error },
+        utilizationModel: {
+          ok: utilizationResult.ok,
+          error: utilizationResult.ok ? null : utilizationResult.error,
+        },
       },
-      financialOk: financialResult.ok,
-      fleetOk: fleetResult.ok,
+      financial,
+      bookings,
+      fleet,
+      insights: insights
+        ? {
+            stale: insights.stale,
+            lastRunAt: insights.lastRunAt,
+            hasRun: insights.hasRun,
+            error: insights.error,
+          }
+        : null,
+      costModelSummary: costModelSummaryRaw,
+      costModelSnapshot,
+      utilizationModelSummary: utilizationModelSummaryRaw,
+      utilizationSnapshot,
+      overlappingBookingCount: utilizationSnapshot?.overlappingBookingIds.length ?? 0,
     });
+
+    const costModelSummary = costModelSummaryRaw
+      ? this.dataQualityService.enrichCostModel(costModelSummaryRaw, dataQuality)
+      : null;
+    const utilizationModelSummary = utilizationModelSummaryRaw
+      ? this.dataQualityService.enrichUtilizationModel(utilizationModelSummaryRaw, dataQuality)
+      : null;
 
     const strengthSummary = this.strengthDetection.detect({
       period: periodWindow,
@@ -324,7 +354,7 @@ export class EvaluationsAnalyticsSummaryService {
       strengths: wrapSection(enrichedStrengthSummary, strengthStatus, generatedAt),
       weaknesses: wrapSection(enrichedWeaknessSummary, weaknessStatus, generatedAt),
       driverAnalysis: wrapSection(driverAnalysisSummary, driverAnalysisStatus, generatedAt),
-      dataQuality: wrapSection(dataQuality, dataQuality.overallStatus, generatedAt),
+      dataQuality: wrapSection(dataQuality, this.dataQualityService.sectionStatus(dataQuality), generatedAt),
       insights: wrapSection(
         insights
           ? {
@@ -409,6 +439,28 @@ export class EvaluationsAnalyticsSummaryService {
       comparisonPeriod: summary.comparisonPeriod,
       appliedFilters: summary.appliedFilters,
       driverAnalysis: summary.driverAnalysis,
+    };
+  }
+
+  async getDataQuality(
+    organizationId: string,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+  ): Promise<{
+    organizationId: string;
+    generatedAt: string;
+    period: EvaluationsStrengthDetectionSummary['period'];
+    comparisonPeriod: EvaluationsStrengthDetectionSummary['comparisonPeriod'];
+    appliedFilters: ReturnType<typeof toAppliedFilters>;
+    dataQuality: EvaluationsSectionEnvelope<import('@synq/evaluations-insights/evaluations-data-quality.contract').EvaluationsDataQualityDomainSummary>;
+  }> {
+    const summary = await this.getSummary(organizationId, resolved);
+    return {
+      organizationId: summary.organizationId,
+      generatedAt: summary.generatedAt,
+      period: summary.period,
+      comparisonPeriod: summary.comparisonPeriod,
+      appliedFilters: summary.appliedFilters,
+      dataQuality: summary.dataQuality,
     };
   }
 

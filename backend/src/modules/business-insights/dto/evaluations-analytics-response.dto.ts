@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { EvaluationsAnalyticsSummaryResponse, EvaluationsDriverAnalysisResponse, EvaluationsStrengthDetectionResponse, EvaluationsWeaknessDetectionResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import type { EvaluationsAnalyticsSummaryResponse, EvaluationsDataQualityModelResponse, EvaluationsDriverAnalysisResponse, EvaluationsStrengthDetectionResponse, EvaluationsWeaknessDetectionResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
 import type { InsightAnalyticsSummary } from '@synq/evaluations-insights/insights-analytics.contract';
 import type { EvaluationsInsightDetail } from '@synq/evaluations-insights/evaluations-insight-detail.contract';
 
@@ -167,6 +167,26 @@ export class EvaluationsDriverAnalysisResponseDto implements EvaluationsDriverAn
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
   driverAnalysis!: EvaluationsDriverAnalysisResponse['driverAnalysis'];
+}
+
+export class EvaluationsDataQualityModelResponseDto implements EvaluationsDataQualityModelResponse {
+  @ApiProperty()
+  organizationId!: string;
+
+  @ApiProperty()
+  generatedAt!: string;
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  period!: EvaluationsDataQualityModelResponse['period'];
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  comparisonPeriod!: EvaluationsDataQualityModelResponse['comparisonPeriod'];
+
+  @ApiProperty({ type: Object })
+  appliedFilters!: EvaluationsDataQualityModelResponse['appliedFilters'];
+
+  @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
+  dataQuality!: EvaluationsDataQualityModelResponse['dataQuality'];
 }
 
 export class InsightAnalyticsSummaryResponseDto implements InsightAnalyticsSummary {

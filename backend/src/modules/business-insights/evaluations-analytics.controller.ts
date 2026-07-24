@@ -8,7 +8,7 @@ import {
   EvaluationsAnalyticsSummaryQueryDto,
   normalizeAnalyticsFilterQuery,
 } from './dto/evaluations-analytics-filters.dto';
-import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsDriverAnalysisResponseDto, EvaluationsStrengthDetectionResponseDto, EvaluationsWeaknessDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
+import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsDataQualityModelResponseDto, EvaluationsDriverAnalysisResponseDto, EvaluationsStrengthDetectionResponseDto, EvaluationsWeaknessDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
 
 @ApiTags('Evaluations Analytics')
 @Controller('organizations/:orgId/evaluations/analytics')
@@ -105,5 +105,27 @@ export class EvaluationsAnalyticsController {
       { allowDataQualitySectionFilters: true },
     );
     return this.summaryService.getDriverAnalysis(orgId, resolved);
+  }
+
+  @Get('data-quality')
+  @ApiOperation({
+    summary: 'Unified data quality model for Auswertungen analytics',
+    description:
+      'Per-source and per-metric assessments across completeness, freshness, validity, consistency, uniqueness, and coverage. Distinguishes NOT_CONNECTED from MISSING data. Same filter contract as summary.',
+  })
+  @ApiParam({ name: 'orgId', description: 'Organization ID' })
+  @ApiOkResponse({ type: EvaluationsDataQualityModelResponseDto })
+  async getDataQuality(
+    @Param('orgId') orgId: string,
+    @Query() query: EvaluationsAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+      { allowDataQualitySectionFilters: true },
+    );
+    return this.summaryService.getDataQuality(orgId, resolved);
   }
 }

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-data-quality-model-v49824-2026-07-24',
+    version: 'V4.9.824',
+    title: 'V4.9.824 — Einheitliches Data-Quality-Modell Auswertungen (Prompt 26/54)',
+    summary: [
+      'Neues Domain-Modell: 6 Dimensionen (Completeness, Freshness, Validity, Consistency, Uniqueness, Coverage) × 7 Zustände pro Quelle/Kennzahl.',
+      '9 integrierte Quellen: Invoices, Bookings, Fleet, Insights, Costs, Utilization, Telemetry, Service Cases, Damages.',
+      'Keine subjektive Gesamtnote — `rollupStatus` nur aus Dimensionen abgeleitet; NOT_CONNECTED vs MISSING unterschieden.',
+      'Metric Responses: `dataQuality` auf Cost-/Utilization-KPIs; Dedicated API `GET …/evaluations/analytics/data-quality`.',
+      'Shared: `evaluations-data-quality.*`; Backend `EvaluationsDataQualityService`.',
+      'Doku: `docs/architecture/analytics/evaluations-data-quality-model.md`.',
+    ],
+    reason:
+      'Prompt 26/54 — Transparente, einheitliche Datenqualitätsbewertung für alle Auswertungen ohne falsche Geschäftsrisiko-Attribution.',
+    previousBehavior: 'Fragmentierte `buildDataQualitySummary` ohne per-Source-Dimensionen.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T10:50:00.000Z',
+  },
+  {
     id: 'evaluations-driver-analysis-v49823-2026-07-24',
     version: 'V4.9.823',
     title: 'V4.9.823 — Ursachen- und Einflussanalyse Auswertungen (Prompt 25/54)',

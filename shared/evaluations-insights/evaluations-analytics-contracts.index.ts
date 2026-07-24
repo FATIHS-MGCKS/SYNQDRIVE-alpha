@@ -13,3 +13,4 @@ export * from './evaluations-utilization-model.contract';
 export * from './evaluations-strength-detection.contract';
 export * from './evaluations-weakness-detection.contract';
 export * from './evaluations-driver-analysis.contract';
+export * from './evaluations-data-quality.contract';

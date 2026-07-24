@@ -16,6 +16,7 @@ import type { EvaluationsUtilizationModelSummary } from './evaluations-utilizati
 import type { EvaluationsStrengthDetectionSummary } from './evaluations-strength-detection.contract';
 import type { EvaluationsWeaknessDetectionSummary } from './evaluations-weakness-detection.contract';
 import type { EvaluationsRiskDriverOutcome, EvaluationsDriverAnalysisSummary } from './evaluations-driver-analysis.contract';
+import type { EvaluationsDataQualityDomainSummary } from './evaluations-data-quality.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
@@ -133,7 +134,8 @@ export type EvaluationsStrengthItem = EvaluationsHighlightItem & { severity: 'po
 /** Weakness highlight derived in summary — maps to EvaluationsWeakness with text metric. */
 export type EvaluationsWeaknessItem = EvaluationsHighlightItem & { severity: 'negative' };
 
-export type EvaluationsDataQualitySummary = EvaluationsDataQuality;
+/** Unified data quality domain summary (Prompt 26/54) — includes legacy fields. */
+export type EvaluationsDataQualitySummary = EvaluationsDataQualityDomainSummary;
 
 export type EvaluationsAnalyticsSummaryFilters = EvaluationsAnalyticsAppliedFilters;
 
@@ -196,6 +198,15 @@ export interface EvaluationsDriverAnalysisResponse {
   comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
   appliedFilters: EvaluationsAnalyticsSummaryFilters;
   driverAnalysis: EvaluationsSectionEnvelope<EvaluationsDriverAnalysisSummary>;
+}
+
+export interface EvaluationsDataQualityModelResponse {
+  organizationId: string;
+  generatedAt: string;
+  period: EvaluationsAnalyticsPeriodWindow;
+  comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
+  appliedFilters: EvaluationsAnalyticsSummaryFilters;
+  dataQuality: EvaluationsSectionEnvelope<EvaluationsDataQualitySummary>;
 }
 
 export interface EvaluationsAnalyticsSummaryQuery {

@@ -4,6 +4,7 @@
  * Opportunity costs must never be labeled as actual costs.
  */
 import type { EvaluationsTimePeriod } from './evaluations-analytics-primitives.contract';
+import type { EvaluationsMetricDataQualityAttachment } from './evaluations-data-quality.contract';
 
 export const EVALUATIONS_COST_MODEL_VERSION = 'cost-model-v1';
 
@@ -59,6 +60,8 @@ export interface EvaluationsCostKpi extends EvaluationsCostKpiDefinition {
   valueMinor: number | null;
   unit: string;
   breakdown?: EvaluationsCostBreakdownItem[];
+  /** Data quality status for this KPI (Prompt 26/54). */
+  dataQuality?: EvaluationsMetricDataQualityAttachment;
 }
 
 export interface EvaluationsCostDataGap {

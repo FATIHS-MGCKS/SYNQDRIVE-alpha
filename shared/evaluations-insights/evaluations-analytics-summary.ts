@@ -24,6 +24,7 @@ import type {
 } from './evaluations-analytics-summary.contract';
 import type { InsightAnalyticsSummary } from './insights-analytics.contract';
 import type { InsightEntityCountSummary } from './insight-entity-references.contract';
+import { buildEvaluationsDataQualityDomain } from './evaluations-data-quality';
 
 const PERIOD_LABELS: Record<EvaluationsAnalyticsPeriod, string> = {
   mtd: 'Month to date',
@@ -323,25 +324,64 @@ export function buildDataQualitySummary(input: {
   insights: Pick<InsightAnalyticsSummary, 'stale' | 'lastRunAt' | 'hasRun'>;
   financialOk: boolean;
   fleetOk: boolean;
+  period?: EvaluationsAnalyticsPeriodWindow;
+  generatedAt?: string;
 }): EvaluationsDataQualitySummary {
-  const partialSections = input.sectionStatuses
-    .filter((s) => s.status === 'PARTIAL')
-    .map((s) => s.key);
-  const unavailableSections = input.sectionStatuses
-    .filter((s) => s.status === 'UNAVAILABLE' || s.status === 'ERROR')
-    .map((s) => s.key);
-
-  const overallStatus = computeOverallStatus(input.sectionStatuses);
-
-  return {
-    overallStatus,
-    insightsStale: input.insights.stale,
-    insightsLastRunAt: input.insights.lastRunAt,
-    invoiceDataComplete: input.financialOk,
-    fleetDataComplete: input.fleetOk,
-    partialSections,
-    unavailableSections,
+  const period = input.period ?? {
+    key: 'mtd',
+    label: 'Month to date',
+    from: new Date().toISOString(),
+    to: new Date().toISOString(),
+    timezone: 'UTC',
   };
+  return buildEvaluationsDataQualityDomain({
+    period,
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    sectionStatuses: input.sectionStatuses,
+    loaderHealth: {
+      financial: { ok: input.financialOk },
+      bookings: { ok: true },
+      fleet: { ok: input.fleetOk },
+      insights: { ok: true },
+      costModel: { ok: true },
+      utilizationModel: { ok: true },
+    },
+    financial: input.financialOk ? {
+      revenueMtdMinor: 0,
+      revenuePreviousMinor: 0,
+      expensesMtdMinor: 0,
+      expensesPreviousMinor: 0,
+      paidRevenueMtdMinor: 0,
+      openReceivablesMinor: 0,
+      overdueReceivablesMinor: 0,
+      openReceivablesCount: 0,
+      overdueReceivablesCount: 0,
+      currency: 'EUR',
+    } : null,
+    bookings: null,
+    fleet: input.fleetOk ? {
+      total: 1,
+      available: 1,
+      rented: 0,
+      reserved: 0,
+      maintenance: 0,
+      blocked: 0,
+      other: 0,
+      cleaningRequired: 0,
+      underutilized: 0,
+    } : null,
+    insights: {
+      stale: input.insights.stale,
+      lastRunAt: input.insights.lastRunAt,
+      hasRun: input.insights.hasRun,
+      error: null,
+    },
+    costModelSummary: null,
+    costModelSnapshot: null,
+    utilizationModelSummary: null,
+    utilizationSnapshot: null,
+    overlappingBookingCount: 0,
+  });
 }
 
 export function buildSummaryMetadata(

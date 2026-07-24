@@ -178,6 +178,9 @@ export function validateEvaluationsAnalyticsSummaryResponse(
     if (sectionKey === 'driverAnalysis' && section.data != null) {
       validateDriverAnalysisSummary(section.data, `${sectionKey}.data`, issues);
     }
+    if (sectionKey === 'dataQuality' && section.data != null) {
+      validateDataQualitySummary(section.data, `${sectionKey}.data`, issues);
+    }
   }
   if (!isRecord(value.metadata) || !isNumber(value.metadata.generationDurationMs)) {
     push(issues, 'metadata.generationDurationMs', 'Required number');
@@ -244,6 +247,38 @@ function validateStrengthDetectionSummary(
   }
   if (!isRecord(value.comparisonPeriod) || !isString(value.comparisonPeriod.from)) {
     push(issues, `${path}.comparisonPeriod`, 'Invalid comparison period');
+  }
+}
+
+function validateDataQualitySummary(
+  value: unknown,
+  path: string,
+  issues: ContractValidationIssue[],
+): void {
+  if (!isRecord(value)) {
+    push(issues, path, 'Expected data quality summary object');
+    return;
+  }
+  if (!isString(value.calculationVersion)) {
+    push(issues, `${path}.calculationVersion`, 'Required string');
+  }
+  if (!isString(value.rollupStatus)) {
+    push(issues, `${path}.rollupStatus`, 'Required rollupStatus');
+  }
+  if (!Array.isArray(value.sources)) {
+    push(issues, `${path}.sources`, 'Required sources array');
+  } else {
+    value.sources.forEach((source, index) => {
+      if (!isRecord(source) || !isString(source.sourceKey)) {
+        push(issues, `${path}.sources[${index}]`, 'Invalid source assessment');
+      }
+    });
+  }
+  if (!Array.isArray(value.metricBindings)) {
+    push(issues, `${path}.metricBindings`, 'Required metricBindings array');
+  }
+  if (!isString(value.overallStatus) || !METRIC_STATUSES.has(value.overallStatus as EvaluationsMetricStatus)) {
+    push(issues, `${path}.overallStatus`, 'Invalid overallStatus');
   }
 }
 

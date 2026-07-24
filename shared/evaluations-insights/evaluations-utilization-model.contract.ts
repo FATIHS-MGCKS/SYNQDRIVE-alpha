@@ -4,6 +4,7 @@
  */
 import type { EvaluationsTimePeriod } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsMetricValue } from './evaluations-analytics-primitives.contract';
+import type { EvaluationsMetricDataQualityAttachment } from './evaluations-data-quality.contract';
 
 export const EVALUATIONS_UTILIZATION_MODEL_VERSION = 'utilization-model-v1';
 
@@ -47,6 +48,8 @@ export interface EvaluationsUtilizationMetric {
   valuePercent: number | null;
   unit: 'ms' | 'percent' | 'count';
   breakdown?: EvaluationsUtilizationBreakdownItem[];
+  /** Data quality status for this metric (Prompt 26/54). */
+  dataQuality?: EvaluationsMetricDataQualityAttachment;
 }
 
 export interface EvaluationsUtilizationBreakdownItem {
