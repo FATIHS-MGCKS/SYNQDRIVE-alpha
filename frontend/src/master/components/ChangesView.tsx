@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-timezone-period-v49805-2026-07-24',
+    version: '4.9.805',
+    title: 'V4.9.805 — Auswertungen Zeitzone & Zeitraummodell (Prompt 7/54)',
+    summary: [
+      'Kanonisches serverseitiges Periodenmodell: Org-Zeitzone, optionale Stations-Zeitzone, MTD/QTD/YTD, Rolling 7–365d, MoM/YoY.',
+      'API: GET `/organizations/:orgId/evaluations/periods/resolve` und `/reporting-bundle` mit Zeitzone + Periodengrenzen in Response.',
+      'FinancialInsightsView + Business Pulse nutzen Server-Perioden statt Browser-`startOfMonth`.',
+      'DST-sichere Grenzen via `zonedStartOfDayToUtc`; MoM jetzt gleicher Vormonatszeitraum (fair compare).',
+      'Doku: `evaluations-timezone-period-model.md`; Tests für DST, Monats-/Jahreswechsel, Leap Year, Station-TZ.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 7 — reproduzierbare geschäftliche Zeiträume ohne Browser-/VPS-Zeitzone.',
+    previousBehavior: 'MTD und MoM in FinancialInsights/Business Pulse via `new Date().getMonth()` (Browser-local); Org.timezone ignoriert.',
+    details:
+      'shared/evaluations-periods/*, backend evaluations-period.{resolver,service,controller}.ts, FinancialInsightsView, businessPulseSliceBuilder, useDashboardViewModel; docs/architecture/analytics/evaluations-timezone-period-model.md.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T15:00:00.000Z',
+  },
+  {
     id: 'evaluations-calculation-versioning-v49804-2026-07-24',
     version: '4.9.804',
     title: 'V4.9.804 — Auswertungen Calculation Versioning (Prompt 6/54)',
