@@ -42,6 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Prisma migration renames `iam_audit_outbox.status` → `processing_status` (fixes VPS scheduler errors).',
       'Auswertungen: shared fleet station filter wired to `InsightsCockpit` and invoice KPI scoping.',
       'Production merge: observability (Prompt 52), E2E/visual (Prompt 51), final audit docs (Prompt 54).',
+      'Build hotfix: `shared/evaluations-metrics` vendored under `backend/src/synq/` to preserve `dist/src/main.js` PM2 path.',
     ],
     reason: 'Close P1 open risks from post-remediation audit and deploy directly to production.',
     previousBehavior:
