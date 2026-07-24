@@ -187,7 +187,7 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
   useEffect(() => {
     let cancelled = false;
     api.misuseCases
-      .list(orgId, { limit: 8, page: 1 })
+      .list(orgId, { limit: 8, page: 1, surface: 'cockpit' })
       .then((res) => {
         if (cancelled) return;
         setRows(Array.isArray(res?.data) ? res.data : []);

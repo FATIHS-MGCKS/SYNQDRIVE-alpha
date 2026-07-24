@@ -37,6 +37,15 @@ import {
   UploadCustomerDocumentDto,
 } from './dto';
 import { PaginationParams } from '@shared/utils/pagination';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { MembershipRole } from '@prisma/client';
+import {
+  buildEvaluationsAccessContext,
+  resolveEvaluationsPiiTier,
+} from '@synq/evaluations-insights/evaluations-privacy';
+import { evaluateModulePermission, normalizeMembershipPermissions } from '@shared/auth/permission.util';
 
 const CUSTOMER_DOCS_DIR = join(process.cwd(), 'uploads', 'customer-documents');
 if (!existsSync(CUSTOMER_DOCS_DIR))
@@ -78,7 +87,7 @@ const customerDocUploadInterceptor = FileInterceptor('file', {
 });
 
 @Controller('organizations/:orgId/customers')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class CustomersController {
   constructor(
     private readonly customersService: CustomersService,
@@ -130,7 +139,33 @@ export class CustomersController {
     return { url, documentType: type || null };
   }
 
+  @Get('evaluation-labels')
+  @RequirePermission('invoices', 'read')
+  async getEvaluationLabels(
+    @Param('orgId') orgId: string,
+    @Query('ids') ids?: string,
+    @CurrentUser() user?: {
+      membershipRole?: MembershipRole;
+      permissions?: unknown;
+    },
+  ) {
+    const customerIds = (ids ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    const permissions = normalizeMembershipPermissions(user?.permissions);
+    const tier = resolveEvaluationsPiiTier(
+      buildEvaluationsAccessContext({
+        membershipRole: user?.membershipRole,
+        canReadInvoices: evaluateModulePermission(permissions, 'invoices', 'read'),
+        canReadCustomers: evaluateModulePermission(permissions, 'customers', 'read'),
+      }),
+    );
+    return this.customersService.findEvaluationLabels(orgId, customerIds, tier);
+  }
+
   @Get()
+  @RequirePermission('customers', 'read')
   async findAll(
     @Param('orgId') orgId: string,
     @Query() query: ListCustomersQueryDto,

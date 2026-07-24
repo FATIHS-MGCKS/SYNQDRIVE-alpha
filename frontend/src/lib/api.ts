@@ -4369,6 +4369,7 @@ export const api = {
         type?: string;
         severity?: string;
         status?: MisuseCaseStatus;
+        surface?: 'cockpit' | 'full';
       },
     ) => {
       const q = new URLSearchParams();
@@ -4382,6 +4383,7 @@ export const api = {
       if (params?.type) q.set('type', params.type);
       if (params?.severity) q.set('severity', params.severity);
       if (params?.status) q.set('status', params.status);
+      if (params?.surface) q.set('surface', params.surface);
       const suffix = q.toString() ? `?${q.toString()}` : '';
       return get<{
         data: MisuseCaseRecord[];
@@ -4402,6 +4404,14 @@ export const api = {
       post<MisuseCaseRecord>(`/organizations/${orgId}/misuse-cases/${id}/lifecycle`, body),
   },
   customers: {
+    evaluationLabels: (orgId: string, ids: string[]) => {
+      const q = new URLSearchParams();
+      if (ids.length > 0) q.set('ids', ids.join(','));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<Array<{ id: string; displayLabel: string }>>(
+        `/organizations/${orgId}/customers/evaluation-labels${suffix}`,
+      );
+    },
     list: (
       orgId: string,
       params?: {

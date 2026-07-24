@@ -11,6 +11,7 @@ import {
   PaginationParams,
 } from '@shared/utils/pagination';
 import { CATEGORY_LABELS, CASE_TYPE_LABELS } from './misuse-case.types';
+import { toMisuseCaseCockpitRow } from '@synq/evaluations-insights/evaluations-privacy';
 
 export interface ListMisuseCasesQuery extends PaginationParams {
   vehicleId?: string;
@@ -21,6 +22,7 @@ export interface ListMisuseCasesQuery extends PaginationParams {
   type?: string;
   severity?: string;
   status?: string;
+  surface?: 'cockpit' | 'full';
 }
 
 @Injectable()
@@ -53,14 +55,33 @@ export class MisuseCasesService {
         skip,
         take,
         orderBy: { lastDetectedAt: 'desc' },
-        include: {
-          evidence: { orderBy: { occurredAt: 'desc' }, take: 10 },
-        },
+        include:
+          query.surface === 'cockpit'
+            ? undefined
+            : { evidence: { orderBy: { occurredAt: 'desc' }, take: 10 } },
       }),
       this.prisma.misuseCase.count({ where }),
     ]);
 
-    const mapped = data.map((row) => this.toReadModel(row));
+    const mapped = data.map((row) => {
+      if (query.surface === 'cockpit') {
+        const evidenceSummary = row.evidenceSummary as Record<string, unknown> | null;
+        return toMisuseCaseCockpitRow({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          severity: row.severity,
+          recommendedAction: row.recommendedAction,
+          category: row.category,
+          type: row.type,
+          status: row.status,
+          vehicleId: row.vehicleId,
+          informationalOnly: row.informationalOnly,
+          evidenceCase: evidenceSummary?.evidenceCase ?? null,
+        });
+      }
+      return this.toReadModel(row as Prisma.MisuseCaseGetPayload<{ include: { evidence: true } }>);
+    });
     return buildPaginatedResult(mapped, total, query);
   }
 

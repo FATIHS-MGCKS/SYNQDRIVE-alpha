@@ -2,14 +2,17 @@ import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { PredictiveBacktestService } from './predictive-backtest.service';
 
 @Controller('organizations/:orgId/business-insights/evaluations/predictive/backtests')
-@UseGuards(OrgScopingGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class PredictiveBacktestController {
   constructor(private readonly service: PredictiveBacktestService) {}
 
   @Get('results')
+  @RequirePermission('invoices', 'read')
   listResults(
     @Param('orgId') organizationId: string,
     @Query('modelKey') modelKey?: string,
@@ -24,6 +27,7 @@ export class PredictiveBacktestController {
   }
 
   @Get('registry')
+  @RequirePermission('invoices', 'read')
   listRegistry(
     @Param('orgId') organizationId: string,
     @Query('modelKey') modelKey?: string,
@@ -33,6 +37,7 @@ export class PredictiveBacktestController {
   }
 
   @Get('drift')
+  @RequirePermission('invoices', 'read')
   listDrift(
     @Param('orgId') organizationId: string,
     @Query('modelKey') modelKey?: string,
@@ -45,6 +50,7 @@ export class PredictiveBacktestController {
   }
 
   @Get('runs/latest')
+  @RequirePermission('invoices', 'read')
   getLatestRun(@Param('orgId') organizationId: string) {
     return this.service.getLatestRun(organizationId);
   }

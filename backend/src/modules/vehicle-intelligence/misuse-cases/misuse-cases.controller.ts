@@ -3,6 +3,8 @@ import { MisuseCasesService, ListMisuseCasesQuery } from './misuse-cases.service
 import { MisuseCaseLifecycleService } from './misuse-case-lifecycle/misuse-case-lifecycle.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 
 type MisuseCaseTransitionBody = {
   action: 'CONFIRM' | 'DISMISS' | 'RESOLVE' | 'DOWNGRADE' | 'SUPERSEDE';
@@ -11,7 +13,7 @@ type MisuseCaseTransitionBody = {
 };
 
 @Controller('organizations/:orgId/misuse-cases')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class MisuseCasesController {
   constructor(
     private readonly misuseCasesService: MisuseCasesService,
@@ -19,6 +21,7 @@ export class MisuseCasesController {
   ) {}
 
   @Get()
+  @RequirePermission('invoices', 'read')
   async list(
     @Param('orgId') orgId: string,
     @Query() query: ListMisuseCasesQuery,
@@ -27,6 +30,7 @@ export class MisuseCasesController {
   }
 
   @Get(':id')
+  @RequirePermission('fleet-condition', 'read')
   async getOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.misuseCasesService.getById(orgId, id);
   }
