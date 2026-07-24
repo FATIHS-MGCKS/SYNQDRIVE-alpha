@@ -31,6 +31,10 @@ export default defineConfig({
       use: { ...mobileChromium, viewport: { width: 320, height: 568 } },
     },
     {
+      name: 'mobile-360',
+      use: { ...mobileChromium, viewport: { width: 360, height: 640 } },
+    },
+    {
       name: 'mobile-375',
       use: { ...mobileChromium, viewport: { width: 375, height: 812 } },
     },
@@ -45,6 +49,10 @@ export default defineConfig({
     {
       name: 'tablet-768',
       use: { ...mobileChromium, viewport: { width: 768, height: 1024 } },
+    },
+    {
+      name: 'landscape-375',
+      use: { ...mobileChromium, viewport: { width: 812, height: 375 } },
     },
     {
       name: 'desktop-1280',

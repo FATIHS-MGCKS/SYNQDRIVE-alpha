@@ -258,7 +258,7 @@ export function VehicleTasksView({
   const hasOpenTasks = counts.active > 0;
 
   return (
-    <div className="space-y-4 animate-fade-up">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-clip animate-fade-up" data-testid="vehicle-tasks-view">
       {/* ── Operational header ── */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

@@ -13,6 +13,10 @@ import {
   VehicleConnectionBadge,
   VehicleHealthChip,
 } from './VehicleDetailHeaderBadges';
+import {
+  VEHICLE_DETAIL_BACK_BUTTON_CLASS,
+  VEHICLE_DETAIL_CHIP_TRIGGER_CLASS,
+} from '../../lib/vehicle-detail-mobile-ui';
 
 export type VehicleOperationalUiStatus = 'Available' | 'Manual Block' | 'Maintenance';
 export type VehicleCleaningUiStatus = 'Clean' | 'Needs Cleaning';
@@ -31,19 +35,30 @@ export interface VehicleDetailHeaderProps {
   onRefreshOperationalStatus?: () => void;
 }
 
-function MetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+function MetaItem({
+  icon,
+  children,
+  dataTestId,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  dataTestId?: string;
+}) {
   return (
     <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-[11px] font-medium leading-none text-muted-foreground">
       <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground/80">
         {icon}
       </span>
-      <span className="truncate">{children}</span>
+      <span className="truncate" data-testid={dataTestId}>
+        {children}
+      </span>
     </span>
   );
 }
 
 const backButtonClassName =
-  'sq-press shrink-0 rounded-xl border border-border/60 bg-background p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
+  'sq-press shrink-0 rounded-xl border border-border/60 bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ' +
+  VEHICLE_DETAIL_BACK_BUTTON_CLASS;
 
 function readinessChipFromDisplay(
   vehicleStatus: VehicleOperationalUiStatus,
@@ -135,7 +150,7 @@ export function VehicleDetailHeader({
   const hasStation = Boolean(vehicle.station);
 
   return (
-    <div className="mb-3 animate-fade-up">
+    <div className="mb-3 min-w-0 max-w-full animate-fade-up overflow-x-clip" data-testid="vehicle-detail-header">
       <div className="flex items-start gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
           {/* Row 1 — Meta / Navigation / Signal */}
@@ -153,7 +168,10 @@ export function VehicleDetailHeader({
 
               <div className="flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden sm:flex-wrap sm:gap-x-3 sm:gap-y-1">
                 {hasLicense ? (
-                  <MetaItem icon={<Icon name="car" className="h-3.5 w-3.5" />}>
+                  <MetaItem
+                    icon={<Icon name="car" className="h-3.5 w-3.5" />}
+                    dataTestId="vehicle-detail-license"
+                  >
                     {vehicle.license}
                   </MetaItem>
                 ) : null}
@@ -161,7 +179,10 @@ export function VehicleDetailHeader({
                   <span className="h-3 w-px shrink-0 bg-border/60" aria-hidden="true" />
                 ) : null}
                 {hasStation ? (
-                  <MetaItem icon={<Icon name="map-pin" className="h-3.5 w-3.5" />}>
+                  <MetaItem
+                    icon={<Icon name="map-pin" className="h-3.5 w-3.5" />}
+                    dataTestId="vehicle-detail-station"
+                  >
                     {vehicle.station}
                   </MetaItem>
                 ) : null}
@@ -191,7 +212,7 @@ export function VehicleDetailHeader({
                 <button
                   type="button"
                   onClick={onToggleStatusDropdown}
-                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  className={`sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${VEHICLE_DETAIL_CHIP_TRIGGER_CLASS}`}
                   aria-expanded={isStatusDropdownOpen}
                   aria-haspopup="menu"
                 >
@@ -234,7 +255,7 @@ export function VehicleDetailHeader({
                 <button
                   type="button"
                   onClick={onToggleCleaningDropdown}
-                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  className={`sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${VEHICLE_DETAIL_CHIP_TRIGGER_CLASS}`}
                   aria-expanded={isCleaningDropdownOpen}
                   aria-haspopup="menu"
                 >
