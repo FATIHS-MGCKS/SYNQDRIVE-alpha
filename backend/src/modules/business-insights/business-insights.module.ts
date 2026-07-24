@@ -24,6 +24,9 @@ import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-assessment-device-quality.detector';
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
+import { EvaluationsAccessService } from './access/evaluations-access.service';
+import { EvaluationsPermissionGuard } from './access/evaluations-permission.guard';
+import { EvaluationsExportController } from './access/evaluations-export.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { PredictiveFeatureController } from './predictive/predictive-feature.controller';
 import { PredictiveFeatureLoader } from './predictive/predictive-feature.loader';
@@ -56,6 +59,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
   ],
   controllers: [
     DashboardInsightsController,
+    EvaluationsExportController,
     InternalBusinessInsightsController,
     PredictiveFeatureController,
     PredictiveForecastController,
@@ -73,6 +77,8 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
+    EvaluationsAccessService,
+    EvaluationsPermissionGuard,
     PredictiveFeatureService,
     PredictiveFeatureRepository,
     PredictiveFeatureLoader,
@@ -107,6 +113,8 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PredictiveFeatureService,
     PredictiveForecastService,
     PredictiveRiskService,
+    EvaluationsAccessService,
+    EvaluationsPermissionGuard,
   ],
 })
 export class BusinessInsightsModule {}

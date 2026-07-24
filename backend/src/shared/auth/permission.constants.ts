@@ -39,6 +39,18 @@ export const PERMISSION_MODULE_KEYS = [
   'rental-rules-overrides',
   'booking-eligibility',
   'booking-eligibility-override',
+  'evaluations',
+  'evaluations-finance',
+  'evaluations-receivables',
+  'evaluations-customer-pii',
+  'evaluations-driver',
+  'evaluations-costs',
+  'evaluations-forecasts',
+  'evaluations-data-quality',
+  'evaluations-recommendations',
+  'evaluations-assignees',
+  'evaluations-export',
+  'evaluations-admin',
 ] as const;
 
 export type PermissionModuleKey = (typeof PERMISSION_MODULE_KEYS)[number];

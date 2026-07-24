@@ -2,17 +2,17 @@ import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
-import { PermissionsGuard } from '@shared/auth/permissions.guard';
-import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { EvaluationsPermissionGuard } from '../access/evaluations-permission.guard';
+import { RequireEvaluationsPermission } from '../access/require-evaluations-permission.decorator';
 import { PredictiveBacktestService } from './predictive-backtest.service';
 
 @Controller('organizations/:orgId/business-insights/evaluations/predictive/backtests')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, EvaluationsPermissionGuard)
 export class PredictiveBacktestController {
   constructor(private readonly service: PredictiveBacktestService) {}
 
   @Get('results')
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.data_quality.read')
   listResults(
     @Param('orgId') organizationId: string,
     @Query('modelKey') modelKey?: string,
@@ -27,7 +27,7 @@ export class PredictiveBacktestController {
   }
 
   @Get('registry')
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.forecasts.read')
   listRegistry(
     @Param('orgId') organizationId: string,
     @Query('modelKey') modelKey?: string,
@@ -37,7 +37,7 @@ export class PredictiveBacktestController {
   }
 
   @Get('drift')
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.data_quality.read')
   listDrift(
     @Param('orgId') organizationId: string,
     @Query('modelKey') modelKey?: string,
@@ -50,21 +50,19 @@ export class PredictiveBacktestController {
   }
 
   @Get('runs/latest')
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.data_quality.read')
   getLatestRun(@Param('orgId') organizationId: string) {
     return this.service.getLatestRun(organizationId);
   }
 
   @Post('run')
-  @UseGuards(RolesGuard)
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireEvaluationsPermission('evaluations.admin.manage')
   runBacktests(@Param('orgId') organizationId: string) {
     return this.service.runBacktests({ organizationId, trigger: 'api' });
   }
 
   @Post('drift-check')
-  @UseGuards(RolesGuard)
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireEvaluationsPermission('evaluations.admin.manage')
   runDriftCheck(@Param('orgId') organizationId: string) {
     return this.service.runDriftCheck({ organizationId, trigger: 'api' });
   }

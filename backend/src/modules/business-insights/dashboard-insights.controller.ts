@@ -1,10 +1,9 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { MembershipRole } from '@prisma/client';
 import { RolesGuard } from '@shared/auth/roles.guard';
-import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
-import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import {
@@ -12,25 +11,32 @@ import {
   redactDashboardInsightsForRole,
   resolveEvaluationsPiiTierForMembership,
 } from './access/evaluations-privacy.policy';
-import { evaluateModulePermission, normalizeMembershipPermissions } from '@shared/auth/permission.util';
+import { EvaluationsAccessService } from './access/evaluations-access.service';
+import { EvaluationsPermissionGuard } from './access/evaluations-permission.guard';
+import { RequireEvaluationsPermission } from './access/require-evaluations-permission.decorator';
 
 @Controller('organizations/:orgId/dashboard-insights')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, EvaluationsPermissionGuard)
 export class DashboardInsightsController {
   constructor(
     private readonly repo: DashboardInsightsRepository,
     private readonly policyService: TenantInsightPolicyService,
+    private readonly evaluationsAccess: EvaluationsAccessService,
   ) {}
 
   @Get()
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.executive.read')
   async getInsights(
     @Param('orgId') orgId: string,
+    @Query('stationId') stationId: string | undefined,
     @CurrentUser() user: {
+      id?: string;
       membershipRole?: MembershipRole;
+      platformRole?: string;
       permissions?: unknown;
     },
   ) {
+    await this.evaluationsAccess.assertReadableStation(user?.id, orgId, stationId);
     const policy = await this.policyService.getPolicy(orgId);
     const response = await this.repo.getActiveInsights(orgId, policy.maxVisibleInsights);
     const tier = this.resolveTier(user);
@@ -38,14 +44,18 @@ export class DashboardInsightsController {
   }
 
   @Get('summary')
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.executive.read')
   async getSummary(
     @Param('orgId') orgId: string,
+    @Query('stationId') stationId: string | undefined,
     @CurrentUser() user: {
+      id?: string;
       membershipRole?: MembershipRole;
+      platformRole?: string;
       permissions?: unknown;
     },
   ) {
+    await this.evaluationsAccess.assertReadableStation(user?.id, orgId, stationId);
     const policy = await this.policyService.getPolicy(orgId);
     const response = await this.repo.getActiveInsights(orgId, policy.maxVisibleInsights);
     const lastRun = await this.repo.getLastRunForOrg(orgId);
@@ -65,14 +75,33 @@ export class DashboardInsightsController {
 
   private resolveTier(user: {
     membershipRole?: MembershipRole;
+    platformRole?: string;
     permissions?: unknown;
   }) {
     const permissions = normalizeMembershipPermissions(user.permissions);
+    const options = {
+      membershipRole: user.membershipRole,
+      platformRole: user.platformRole,
+    };
+
     return resolveEvaluationsPiiTierForMembership(
       buildEvaluationsAccessContext({
         membershipRole: user.membershipRole,
-        canReadInvoices: evaluateModulePermission(permissions, 'invoices', 'read'),
-        canReadCustomers: evaluateModulePermission(permissions, 'customers', 'read'),
+        canReadCustomerPii: this.evaluationsAccess.evaluateEvaluationsPermission(
+          permissions,
+          'evaluations.customer_pii.read',
+          options,
+        ),
+        canReadFinance: this.evaluationsAccess.evaluateEvaluationsPermission(
+          permissions,
+          'evaluations.finance.read',
+          options,
+        ),
+        canReadExecutive: this.evaluationsAccess.evaluateEvaluationsPermission(
+          permissions,
+          'evaluations.executive.read',
+          options,
+        ),
       }),
     );
   }

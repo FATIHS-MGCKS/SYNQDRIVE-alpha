@@ -19,6 +19,8 @@ interface InsightsCockpitProps {
   stationId?: string | null;
   financialRiskEur?: number;
   openReceivablesEur?: number;
+  showDriverSignals?: boolean;
+  showRecommendations?: boolean;
 }
 
 interface InsightKpiCardProps {
@@ -255,6 +257,8 @@ export function InsightsCockpit({
   stationId = null,
   financialRiskEur = 0,
   openReceivablesEur = 0,
+  showDriverSignals = true,
+  showRecommendations = true,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
@@ -363,8 +367,11 @@ export function InsightsCockpit({
         </section>
       </div>
 
-      {orgId && <MisuseAbuseSection key={orgId} orgId={orgId} isDarkMode={isDarkMode} />}
+      {orgId && showDriverSignals && (
+        <MisuseAbuseSection key={orgId} orgId={orgId} isDarkMode={isDarkMode} />
+      )}
 
+      {showRecommendations && (
       <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold mb-3 text-foreground">Empfohlene Maßnahmen</h3>
         {recommended.length === 0 ? (
@@ -383,6 +390,7 @@ export function InsightsCockpit({
           </ul>
         )}
       </section>
+      )}
     </div>
   );
 }

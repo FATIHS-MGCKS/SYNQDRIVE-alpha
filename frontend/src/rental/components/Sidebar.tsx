@@ -37,7 +37,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const { hasPermission } = useRentalOrg();
   const { uiEnabled: stationsUiEnabled, loading: stationsFlagsLoading } = useStationsV2FeatureFlags();
   const canDataAnalyse = hasPermission('data-analyse', 'read');
-  const canEvaluations = hasPermission('invoices', 'read');
+  const canEvaluations = hasPermission('evaluations', 'read') || hasPermission('invoices', 'read');
   const canWorkflowAutomation = hasPermission('workflow-automation', 'read');
   const canCustomerPayments = hasPermission('payments-connect', 'read');
   const canBillingSubscription = hasPermission('billing', 'read');

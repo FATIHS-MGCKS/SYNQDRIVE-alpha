@@ -6,10 +6,15 @@ import { CustomerEligibilityService } from './customer-eligibility.service';
 import { CustomerTimelineService } from './customer-timeline.service';
 import { CustomerRetentionService } from './customer-retention.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
+import { BusinessInsightsModule } from '../business-insights/business-insights.module';
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 
 @Module({
-  imports: [VehicleIntelligenceModule, CustomerVerificationModule],
+  imports: [
+    VehicleIntelligenceModule,
+    forwardRef(() => BusinessInsightsModule),
+    CustomerVerificationModule,
+  ],
   controllers: [CustomersController],
   providers: [
     CustomersService,
