@@ -1,17 +1,16 @@
-import { Controller, Post, Get, Patch, Param, Body, Query, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, Query, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { BusinessInsightsService } from './business-insights.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
-import { PredictiveFeatureController } from './predictive/predictive-feature.controller';
-import { PredictiveFeatureLoader } from './predictive/predictive-feature.loader';
-import { PredictiveFeatureRepository } from './predictive/predictive-feature.repository';
 import { PredictiveFeatureService } from './predictive/predictive-feature.service';
 import { PredictiveForecastService } from './predictive/predictive-forecast.service';
 import { PredictiveRiskService } from './predictive/predictive-risk.service';
 import { PolicyUpdatePayload } from './insight.types';
+import { evaluationsAuditActorFromRequest } from './access/evaluations-audit-request.util';
 
 @Controller('admin/business-insights')
 @UseGuards(RolesGuard)
@@ -130,7 +129,12 @@ export class InternalBusinessInsightsController {
   async updatePolicy(
     @Param('orgId') orgId: string,
     @Body() payload: PolicyUpdatePayload,
+    @CurrentUser('id') userId?: string,
+    @Req() req?: Parameters<typeof evaluationsAuditActorFromRequest>[0],
   ) {
-    return this.policyService.updatePolicy(orgId, payload);
+    return this.policyService.updatePolicy(orgId, payload, {
+      actor: evaluationsAuditActorFromRequest({ ...req, user: { id: userId } }),
+      entityId: `insight-policy:${orgId}`,
+    });
   }
 }

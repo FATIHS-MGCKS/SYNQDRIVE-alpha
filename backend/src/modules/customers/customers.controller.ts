@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -32,6 +33,8 @@ import {
 import { EvaluationsAccessService } from '@modules/business-insights/access/evaluations-access.service';
 import { EvaluationsPermissionGuard } from '@modules/business-insights/access/evaluations-permission.guard';
 import { RequireEvaluationsPermission } from '@modules/business-insights/access/require-evaluations-permission.decorator';
+import { EvaluationsAuditService } from '@modules/business-insights/access/evaluations-audit.service';
+import { evaluationsAuditActorFromRequest } from '@modules/business-insights/access/evaluations-audit-request.util';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
@@ -97,6 +100,7 @@ export class CustomersController {
     private readonly customerTimelineService: CustomerTimelineService,
     private readonly storage: StorageService,
     private readonly evaluationsAccess: EvaluationsAccessService,
+    private readonly evaluationsAudit: EvaluationsAuditService,
   ) {}
 
   @Get('stats')
@@ -154,6 +158,7 @@ export class CustomersController {
       platformRole?: string;
       permissions?: unknown;
     },
+    @Req() req?: Parameters<typeof evaluationsAuditActorFromRequest>[0],
   ) {
     const customerIds = (ids ?? '')
       .split(',')
@@ -179,7 +184,20 @@ export class CustomersController {
         ),
       }),
     );
-    return this.customersService.findEvaluationLabels(orgId, customerIds, tier);
+    const labels = await this.customersService.findEvaluationLabels(orgId, customerIds, tier);
+
+    void this.evaluationsAudit.recordPiiDataAccess(
+      orgId,
+      evaluationsAuditActorFromRequest({ ...req, user }),
+      {
+        entityId: `evaluation-labels:${orgId}`,
+        tier,
+        requestedCount: customerIds.length,
+        returnedCount: Array.isArray(labels) ? labels.length : 0,
+      },
+    );
+
+    return labels;
   }
 
   @Get()

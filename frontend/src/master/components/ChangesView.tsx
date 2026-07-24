@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-audit-logging-p48-2026-07-24',
+    version: '4.9.845',
+    title: 'V4.9.845 — Auswertungen Audit Logging (Prompt 48)',
+    summary: [
+      'Tenant-safe audit logging for sensitive evaluations actions via BusinessAuditOutbox → ActivityLog.',
+      'Events: finance export, PII label access, driver/misuse detail, recommendation/status changes, manual recalc, model activation, KPI policy, data quality admin.',
+      'EvaluationsAuditService with correlation ID, outcome, sanitized metadata — no export payloads or secrets.',
+      'Wired into export, customers/evaluation-labels, misuse lifecycle, predictive POST endpoints, policy PATCH, admin diagnostics.',
+      'Docs: docs/security/evaluations-audit-logging.md; retention recommendation 730 days.',
+    ],
+    reason: 'Prompt 48/54: traceable audit trail for sensitive analytics actions with tenant isolation.',
+    previousBehavior: 'Auswertungen APIs had permission gates but no dedicated audit events for exports, PII access, or model/policy mutations.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations / Security',
+    createdAt: '2026-07-24T16:00:00.000Z',
+  },
+  {
     id: 'evaluations-role-permissions-p47-2026-07-24',
     version: '4.9.844',
     title: 'V4.9.844 — Auswertungen Rollen- und Berechtigungsmatrix (Prompt 47)',

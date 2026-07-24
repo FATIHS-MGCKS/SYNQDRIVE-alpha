@@ -126,6 +126,15 @@ export class BusinessAuditOutboxProcessorService {
       case BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_CREATED:
       case BusinessAuditAction.MANUAL_APPROVAL_REQUESTED:
         return ActivityAction.CREATE;
+      case BusinessAuditAction.EVALUATIONS_FINANCE_EXPORT:
+      case BusinessAuditAction.EVALUATIONS_PII_DATA_ACCESSED:
+      case BusinessAuditAction.EVALUATIONS_SENSITIVE_DETAIL_ACCESSED:
+      case BusinessAuditAction.EVALUATIONS_DATA_QUALITY_ACTION:
+        return ActivityAction.IMPORT;
+      case BusinessAuditAction.EVALUATIONS_MANUAL_RECALCULATION:
+        return ActivityAction.BACKFILL;
+      case BusinessAuditAction.EVALUATIONS_ACCESS_DENIED:
+        return ActivityAction.AUTH_FAIL;
       case BusinessAuditAction.RENTAL_VEHICLE_OVERRIDE_DELETED:
         return ActivityAction.DELETE;
       default:
@@ -152,9 +161,18 @@ export class BusinessAuditOutboxProcessorService {
       case BusinessAuditAction.MANUAL_APPROVAL_APPROVED:
       case BusinessAuditAction.MANUAL_APPROVAL_REJECTED:
       case BusinessAuditAction.MANUAL_APPROVAL_REVOKED:
+      case BusinessAuditAction.EVALUATIONS_MODEL_ACTIVATED:
+      case BusinessAuditAction.EVALUATIONS_MODEL_DEACTIVATED:
+      case BusinessAuditAction.EVALUATIONS_KPI_DEFINITION_CHANGED:
+      case BusinessAuditAction.EVALUATIONS_FORECAST_MODEL_CHANGED:
+      case BusinessAuditAction.EVALUATIONS_THRESHOLD_CHANGED:
         return 'CRITICAL';
       case BusinessAuditAction.MANUAL_APPROVAL_REQUESTED:
       case BusinessAuditAction.MANUAL_APPROVAL_EXPIRED:
+      case BusinessAuditAction.EVALUATIONS_ACCESS_DENIED:
+      case BusinessAuditAction.EVALUATIONS_RECOMMENDATION_CHANGED:
+      case BusinessAuditAction.EVALUATIONS_ASSIGNEE_CHANGED:
+      case BusinessAuditAction.EVALUATIONS_STATUS_CHANGED:
         return 'WARN';
       default:
         return 'INFO';

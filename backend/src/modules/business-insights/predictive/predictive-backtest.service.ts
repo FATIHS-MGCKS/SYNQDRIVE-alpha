@@ -21,6 +21,7 @@ import {
 import { PredictiveFeatureLoader } from './predictive-feature.loader';
 import { PredictiveBacktestLoader } from './predictive-backtest.loader';
 import { PredictiveBacktestRepository } from './predictive-backtest.repository';
+import { EvaluationsAuditService } from '../access/evaluations-audit.service';
 
 export type RunBacktestInput = {
   organizationId: string;
@@ -37,6 +38,7 @@ export class PredictiveBacktestService {
     private readonly featureLoader: PredictiveFeatureLoader,
     private readonly loader: PredictiveBacktestLoader,
     private readonly repository: PredictiveBacktestRepository,
+    private readonly evaluationsAudit: EvaluationsAuditService,
   ) {}
 
   async listResults(
@@ -246,6 +248,19 @@ export class PredictiveBacktestService {
             ...(nextStatus === 'DISABLED' ? { disabledAt: new Date() } : {}),
           },
         );
+
+        void this.evaluationsAudit.recordModelStatusChange(input.organizationId, {
+          actorUserId: null,
+          correlationId: `drift:${input.organizationId}:${target}:${asOfDate}`,
+        }, {
+          entityId: `${target}:7`,
+          modelKey: target,
+          modelVersion: registry.modelVersion,
+          horizonDays: 7,
+          previousStatus: registry.status,
+          nextStatus,
+          reason: `Automatic drift response (${drift.severity})`,
+        });
       }
 
       snapshots.push({

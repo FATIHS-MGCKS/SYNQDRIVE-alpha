@@ -9,9 +9,10 @@ import { MisuseCaseLifecycleService } from './misuse-case-lifecycle/misuse-case-
 import { MisuseCaseReconcileService } from './misuse-case-reconcile/misuse-case-reconcile.service';
 import { DrivingMisuseReconcileJobHandler } from './misuse-case-reconcile/driving-misuse-reconcile.handler';
 import { DimoModule } from '../../dimo/dimo.module';
+import { BusinessInsightsModule } from '../../business-insights/business-insights.module';
 
 @Module({
-  imports: [forwardRef(() => DimoModule)],
+  imports: [forwardRef(() => DimoModule), forwardRef(() => BusinessInsightsModule)],
   controllers: [MisuseCasesController],
   providers: [
     MisuseCasesService,
