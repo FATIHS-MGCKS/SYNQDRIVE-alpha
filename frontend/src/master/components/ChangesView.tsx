@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-observability-ci-p32-2026-07-24',
+    version: '4.9.803',
+    title: 'V4.9.803 — Vehicle Detail observability & CI release gates (Prompt 32)',
+    summary: [
+      'Backend Prometheus metrics `synqdrive_vehicle_detail_*` for telemetry, live-gps, device-connection, status PATCH, fleet-map cache hit/miss, provider outcomes (timeout/429/error/cache_fallback), permission denials.',
+      'PII-safe structured logs via `vehicle-detail-log.util.ts` (no coordinates/tokens in general error logs).',
+      'Frontend client technical signals (`vehicle-detail-observability.ts`) for polling lifecycle, map init/token-missing, device-connection and status mutation errors (DEV-only logs).',
+      'CI workflow `.github/workflows/vehicle-detail-production-readiness.yml` with blocking gate: lint, typecheck, build, unit, security, E2E, axe.',
+      'Audit doc `docs/audits/vehicle-detail-page-release-gate-2026-07.md` documents jobs, blockers, and signal matrix.',
+    ],
+    reason: 'Prompt 32/36: technical observability and release gates for Vehicle Detail without new analytics product features.',
+    previousBehavior: 'Vehicle detail telemetry/GPS/device-connection had minimal metrics; no dedicated CI workflow or release-gate audit.',
+    details:
+      'backend: vehicles/observability/*, VehiclesController/VehiclesService instrumentation, vehicle-detail-security-negative.spec.ts, scripts/test/vehicle-detail-backend-verify.sh. frontend: vehicle-detail-observability.ts. CI: vehicle-detail-production-readiness.yml.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Observability',
+    createdAt: '2026-07-24T12:30:00.000Z',
+  },
+  {
     id: 'vehicle-detail-e2e-p31-2026-07-24',
     version: '4.9.802',
     title: 'V4.9.802 — Vehicle Detail Playwright E2E suite (Prompt 31)',

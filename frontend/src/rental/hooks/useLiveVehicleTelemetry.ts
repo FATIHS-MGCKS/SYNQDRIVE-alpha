@@ -12,6 +12,7 @@ import {
   type LiveTelemetrySnapshot,
   useVehicleLiveMapStore,
 } from '../stores/useVehicleLiveMapStore';
+import { recordVehicleDetailClientSignal } from '../lib/vehicle-detail-observability';
 
 const GPS_POLL_MS = 5_000;
 const DASHBOARD_POLL_MS = 30_000;
@@ -107,7 +108,9 @@ export function useLiveVehicleTelemetry(
         if (lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
           applyGpsPoint(boundVehicleId, boundOrgId, lat, lng, data.speedKmh, data.source);
         }
+        recordVehicleDetailClientSignal('gps_poll_success', { source: data.source ?? 'unknown' });
       } catch {
+        recordVehicleDetailClientSignal('gps_poll_error');
         // Keep previous position on GPS-only errors.
       }
     },
@@ -217,11 +220,13 @@ export function useLiveVehicleTelemetry(
             applyGpsPoint(boundVehicleId, boundOrgId, lat, lng, speed, 'cache');
           }
         }
+        recordVehicleDetailClientSignal('telemetry_poll_success');
       } catch (error) {
         const store = useVehicleLiveMapStore.getState();
         if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
           return;
         }
+        recordVehicleDetailClientSignal('telemetry_poll_error');
         store.patchIfBound(boundVehicleId, boundOrgId, {
           loading: false,
           error:
@@ -240,6 +245,7 @@ export function useLiveVehicleTelemetry(
       locationHistoryRef.current = [];
       liveRef.current = false;
       useVehicleLiveMapStore.getState().unbind();
+      recordVehicleDetailClientSignal('polling_unbound');
       return;
     }
 
@@ -250,6 +256,7 @@ export function useLiveVehicleTelemetry(
     locationHistoryRef.current = [];
     liveRef.current = false;
     useVehicleLiveMapStore.getState().bindToVehicle(vehicleId, orgId);
+    recordVehicleDetailClientSignal('polling_bound');
 
     const scheduleDash = () => {
       if (cancelledRef.current) return;
@@ -291,6 +298,8 @@ export function useLiveVehicleTelemetry(
 
     return () => {
       cancelledRef.current = true;
+      recordVehicleDetailClientSignal('telemetry_poll_aborted');
+      recordVehicleDetailClientSignal('gps_poll_aborted');
       if (gpsTimerRef.current) {
         clearTimeout(gpsTimerRef.current);
         gpsTimerRef.current = null;

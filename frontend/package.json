@@ -27,6 +27,8 @@
     "test:bookings:verify": "bash scripts/test/bookings-verify.sh all",
     "test:bookings:verify:unit": "bash scripts/test/bookings-verify.sh unit",
     "test:vehicle-detail:e2e": "playwright test -c e2e/playwright.config.ts vehicle-detail-flow.spec.ts vehicle-detail-a11y.spec.ts --project=desktop-1280 && playwright test -c e2e/playwright.config.ts vehicle-detail-responsive.spec.ts",
+    "test:vehicle-detail:a11y": "playwright test -c e2e/playwright.config.ts vehicle-detail-a11y.spec.ts --project=desktop-1280",
+    "test:vehicle-detail:unit": "vitest run src/rental/lib/vehicle-detail-observability.test.ts src/rental/lib/overview-map-position.test.ts src/rental/components/vehicle-detail/vehicle-health-box.mapper.test.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"
   },

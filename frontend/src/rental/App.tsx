@@ -67,6 +67,7 @@ import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
+import { recordVehicleDetailClientSignal } from './lib/vehicle-detail-observability';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { pushDocumentIntakeEntry, type DocumentIntakeEntryState } from './lib/document-intake-entry';
@@ -489,6 +490,7 @@ function RentalAppContent() {
           toast.success('Fahrzeug als sauber markiert');
         }
       } catch (err) {
+        recordVehicleDetailClientSignal('status_mutation_error');
         toast.error('Reinigungsstatus konnte nicht gespeichert werden', {
           description: err instanceof Error ? err.message : 'Unbekannter Fehler',
         });

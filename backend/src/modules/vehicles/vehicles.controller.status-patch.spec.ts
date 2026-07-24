@@ -11,6 +11,7 @@ describe('VehiclesController — operational status write guard', () => {
 
   const vehiclesService = {
     update: jest.fn().mockResolvedValue({ id: vehicleId, status: VehicleStatus.AVAILABLE }),
+    invalidateFleetMapCache: jest.fn().mockResolvedValue(undefined),
   };
   const vehicleCleaningTasks = {
     ensureCleaningTask: jest.fn(),
@@ -21,6 +22,7 @@ describe('VehiclesController — operational status write guard', () => {
     vehiclesService as any,
     {} as any,
     vehicleCleaningTasks as any,
+    undefined,
   );
 
   beforeEach(() => {

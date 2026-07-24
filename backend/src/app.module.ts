@@ -27,6 +27,7 @@ import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle
 import { ClickHouseModule } from '@modules/clickhouse/clickhouse.module';
 import { ObservabilityModule } from '@modules/observability/observability.module';
 import { FleetHealthObservabilityModule } from '@modules/fleet-health-observability/fleet-health-observability.module';
+import { VehicleDetailObservabilityModule } from '@modules/vehicles/observability/vehicle-detail-observability.module';
 import { IamObservabilityModule } from '@modules/iam-observability/iam-observability.module';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { AiModule } from '@modules/ai/ai.module';
@@ -204,6 +205,7 @@ export class AppModule {
         ObservabilityModule,
         IamObservabilityModule,
         FleetHealthObservabilityModule,
+        VehicleDetailObservabilityModule,
         VehicleIntelligenceModule,
         DimoModule,
         AiModule,
