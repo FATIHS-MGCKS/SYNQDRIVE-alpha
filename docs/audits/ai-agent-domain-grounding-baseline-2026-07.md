@@ -1161,4 +1161,15 @@ Standort-, Health- oder Booking-Domain-Tools.
 
 ---
 
-**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 9–11); Audit-Ergänzung oben. Master Changes View: folgt mit Release-Eintrag.
+## Prompt 12 — `get_vehicle_health_summary` (2026-07-24)
+
+- Modul: `backend/src/modules/ai/tools/get-vehicle-health-summary/`
+- SoT: `RentalHealthService` + domain enrichments (service, damages, tasks, connectivity)
+- Guards: `assertAiHealthAccess` + vehicle scope
+- Tests: 12/12 PASS
+
+**Gesamt nach Prompt 12:** 229/229 PASS (AI module).
+
+---
+
+**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 9–12); Audit-Ergänzung oben. Master Changes View: folgt mit Release-Eintrag.

@@ -223,9 +223,11 @@ export type {
 export {
   AI_GET_VEHICLE_LOCATION_TOOL,
   AI_GET_VEHICLE_TELEMETRY_STATUS_TOOL,
+  AI_GET_VEHICLE_HEALTH_SUMMARY_TOOL,
   AiDataAuthorizationProbeAdapter,
   AiGetVehicleLocationTool,
   AiGetVehicleTelemetryStatusTool,
+  AiGetVehicleHealthSummaryTool,
   AiPrismaVehicleScopeResolver,
 } from './tools';
 export type {
@@ -235,6 +237,10 @@ export type {
   AiGetVehicleTelemetryStatusData,
   AiGetVehicleTelemetryStatusInput,
   AiTelemetryStatusExplanation,
+  AiGetVehicleHealthSummaryData,
+  AiGetVehicleHealthSummaryDomains,
+  AiHealthDomainSlice,
+  AiGetVehicleHealthSummaryInput,
 } from './tools';
 export type {
   StartAiTireSpecJobInput,

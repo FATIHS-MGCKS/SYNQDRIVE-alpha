@@ -24,8 +24,12 @@ import { ChatController } from './chat/chat.controller';
 import { AiVehicleResolutionService } from './vehicle-resolution/ai-vehicle-resolution.service';
 import { AiDataAuthorizationProbeAdapter } from './tools/ai-data-authorization.probe';
 import { AiPrismaVehicleScopeResolver } from './tools/ai-prisma-vehicle-scope.resolver';
+import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
+import { TasksModule } from '@modules/tasks/tasks.module';
+import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { AiGetVehicleLocationTool } from './tools/get-vehicle-location/ai-get-vehicle-location.tool';
 import { AiGetVehicleTelemetryStatusTool } from './tools/get-vehicle-telemetry-status/ai-get-vehicle-telemetry-status.tool';
+import { AiGetVehicleHealthSummaryTool } from './tools/get-vehicle-health-summary/ai-get-vehicle-health-summary.tool';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
@@ -33,6 +37,9 @@ import { AiHealthController } from './ai-health.controller';
     PrismaModule,
     VehiclesModule,
     DataAuthorizationsModule,
+    forwardRef(() => RentalHealthModule),
+    TasksModule,
+    forwardRef(() => VehicleIntelligenceModule),
     ConfigModule.forFeature(aiConfig),
     ConfigModule.forFeature(documentExtractionConfig),
   ],
@@ -69,6 +76,7 @@ import { AiHealthController } from './ai-health.controller';
     AiDataAuthorizationProbeAdapter,
     AiGetVehicleLocationTool,
     AiGetVehicleTelemetryStatusTool,
+    AiGetVehicleHealthSummaryTool,
     ChatService,
   ],
   exports: [
@@ -85,6 +93,7 @@ import { AiHealthController } from './ai-health.controller';
     AiVehicleResolutionService,
     AiGetVehicleLocationTool,
     AiGetVehicleTelemetryStatusTool,
+    AiGetVehicleHealthSummaryTool,
     ChatService,
   ],
 })

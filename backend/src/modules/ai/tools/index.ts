@@ -12,5 +12,15 @@ export type {
   AiTelemetryStatusExplanation,
 } from './get-vehicle-telemetry-status/ai-get-vehicle-telemetry-status.types';
 export { AiGetVehicleTelemetryStatusTool } from './get-vehicle-telemetry-status/ai-get-vehicle-telemetry-status.tool';
+export { AI_GET_VEHICLE_HEALTH_SUMMARY_TOOL } from './get-vehicle-health-summary/ai-get-vehicle-health-summary.types';
+export type {
+  AiGetVehicleHealthSummaryData,
+  AiGetVehicleHealthSummaryDomains,
+  AiHealthDomainSlice,
+  AiHealthDomainSeverity,
+  AiHealthDomainStatus,
+  AiGetVehicleHealthSummaryInput,
+} from './get-vehicle-health-summary/ai-get-vehicle-health-summary.types';
+export { AiGetVehicleHealthSummaryTool } from './get-vehicle-health-summary/ai-get-vehicle-health-summary.tool';
 export { AiPrismaVehicleScopeResolver } from './ai-prisma-vehicle-scope.resolver';
 export { AiDataAuthorizationProbeAdapter } from './ai-data-authorization.probe';
