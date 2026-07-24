@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-vps-runtime-p34-2026-07-24',
+    version: '4.9.805',
+    title: 'V4.9.805 — Vehicle Detail VPS runtime audit (Prompt 34)',
+    summary: [
+      'Runtime audit `docs/audits/vehicle-detail-page-vps-runtime-2026-07.md`: 8 controlled test scenarios (overview polling, tab switch, background, slow provider, tenant isolation, multi-vehicle, freshness, system resources).',
+      'Playwright harness `e2e/vehicle-detail-runtime-audit.spec.ts` (RT-1…RT-6) — all passed with mocked API.',
+      'Findings: GPS 5s continues on Documents (design vs prompt); no visibility pause; VD metrics not on VPS; PM2 2800 restarts.',
+      'VPS: read-only 401 probes, health load, PM2/Redis/PG snapshots — no destructive actions.',
+    ],
+    reason: 'Prompt 34/36: runtime behavior verification before Vehicle Detail production deploy.',
+    previousBehavior: 'No dedicated runtime audit under controlled load for Vehicle Detail polling paths.',
+    details:
+      'Audit-only + runtime test harness. Release blockers: VD-RT-008 (metrics), VD-RT-009 (restarts), VD-RT-002 (GPS on non-map tabs, conditional).',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / Runtime',
+    createdAt: '2026-07-24T12:15:00.000Z',
+  },
+  {
     id: 'vehicle-detail-vps-baseline-p33-2026-07-24',
     version: '4.9.804',
     title: 'V4.9.804 — Vehicle Detail VPS baseline audit (Prompt 33)',
