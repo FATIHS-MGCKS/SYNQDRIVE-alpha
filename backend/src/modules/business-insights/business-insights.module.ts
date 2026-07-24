@@ -11,6 +11,7 @@ import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytic
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
+import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
 import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { BusinessInsightsScheduler } from './business-insights-scheduler.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
@@ -63,6 +64,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     EvaluationsAnalyticsSummaryRepository,
     EvaluationsAnalyticsSummaryService,
     EvaluationsUtilizationSnapshotService,
+    EvaluationsStrengthDetectionService,
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,

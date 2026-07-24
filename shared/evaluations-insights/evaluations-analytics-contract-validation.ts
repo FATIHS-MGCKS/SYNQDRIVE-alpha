@@ -167,6 +167,9 @@ export function validateEvaluationsAnalyticsSummaryResponse(
     if (!isString(section.generatedAt)) {
       push(issues, `${sectionKey}.generatedAt`, 'Required generatedAt');
     }
+    if (sectionKey === 'strengths' && section.data != null) {
+      validateStrengthDetectionSummary(section.data, `${sectionKey}.data`, issues);
+    }
   }
   if (!isRecord(value.metadata) || !isNumber(value.metadata.generationDurationMs)) {
     push(issues, 'metadata.generationDurationMs', 'Required number');
@@ -197,3 +200,73 @@ export const INSIGHT_ANALYTICS_SUMMARY_REQUIRED_KEYS = [
   'estimatedFinancialExposureMinor',
   'estimatedFinancialExposureCurrency',
 ] as const satisfies readonly (keyof InsightAnalyticsSummary)[];
+
+function validateStrengthDetectionSummary(
+  value: unknown,
+  path: string,
+  issues: ContractValidationIssue[],
+): void {
+  if (!isRecord(value)) {
+    push(issues, path, 'Expected strength detection summary object');
+    return;
+  }
+  if (!isString(value.calculationVersion)) {
+    push(issues, `${path}.calculationVersion`, 'Required string');
+  }
+  if (!isNumber(value.rulesEvaluated)) {
+    push(issues, `${path}.rulesEvaluated`, 'Required number');
+  }
+  if (!Array.isArray(value.strengths)) {
+    push(issues, `${path}.strengths`, 'Required array');
+  } else {
+    value.strengths.forEach((item, index) => {
+      if (!isRecord(item) || !isString(item.id) || !isString(item.title)) {
+        push(issues, `${path}.strengths[${index}]`, 'Invalid detected strength');
+      }
+    });
+  }
+  if (!Array.isArray(value.rulesSuppressed)) {
+    push(issues, `${path}.rulesSuppressed`, 'Required array');
+  }
+  if (!Array.isArray(value.highlights)) {
+    push(issues, `${path}.highlights`, 'Required array');
+  }
+  if (!isRecord(value.period) || !isString(value.period.from)) {
+    push(issues, `${path}.period`, 'Invalid period');
+  }
+  if (!isRecord(value.comparisonPeriod) || !isString(value.comparisonPeriod.from)) {
+    push(issues, `${path}.comparisonPeriod`, 'Invalid comparison period');
+  }
+}
+
+export function validateEvaluationsStrengthDetectionResponse(
+  value: unknown,
+): { ok: true; data: import('./evaluations-analytics-summary.contract').EvaluationsStrengthDetectionResponse } | { ok: false; issues: ContractValidationIssue[] } {
+  const issues: ContractValidationIssue[] = [];
+  if (!isRecord(value)) {
+    return { ok: false, issues: [{ path: '', message: 'Expected object' }] };
+  }
+  for (const key of ['organizationId', 'generatedAt'] as const) {
+    if (!isString(value[key])) push(issues, key, 'Required string');
+  }
+  if (!isRecord(value.period) || !isString(value.period.from)) {
+    push(issues, 'period', 'Invalid period');
+  }
+  if (!isRecord(value.comparisonPeriod) || !isString(value.comparisonPeriod.from)) {
+    push(issues, 'comparisonPeriod', 'Invalid comparison period');
+  }
+  if (!isRecord(value.strengths)) {
+    push(issues, 'strengths', 'Required section envelope');
+  } else {
+    if (!isString(value.strengths.status)) push(issues, 'strengths.status', 'Required status');
+    if (!isString(value.strengths.generatedAt)) push(issues, 'strengths.generatedAt', 'Required generatedAt');
+    if (value.strengths.data != null) {
+      validateStrengthDetectionSummary(value.strengths.data, 'strengths.data', issues);
+    }
+  }
+  if (issues.length > 0) return { ok: false, issues };
+  return {
+    ok: true,
+    data: value as unknown as import('./evaluations-analytics-summary.contract').EvaluationsStrengthDetectionResponse,
+  };
+}

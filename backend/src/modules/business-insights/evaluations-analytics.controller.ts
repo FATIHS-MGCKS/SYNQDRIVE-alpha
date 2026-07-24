@@ -8,7 +8,7 @@ import {
   EvaluationsAnalyticsSummaryQueryDto,
   normalizeAnalyticsFilterQuery,
 } from './dto/evaluations-analytics-filters.dto';
-import { EvaluationsAnalyticsSummaryResponseDto } from './dto/evaluations-analytics-response.dto';
+import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsStrengthDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
 
 @ApiTags('Evaluations Analytics')
 @Controller('organizations/:orgId/evaluations/analytics')
@@ -39,5 +39,27 @@ export class EvaluationsAnalyticsController {
       { allowDataQualitySectionFilters: true },
     );
     return this.summaryService.getSummary(orgId, resolved);
+  }
+
+  @Get('strengths')
+  @ApiOperation({
+    summary: 'Rule-based organizational strength detection for Auswertungen',
+    description:
+      'Detects traceable Unternehmensstärken from KPIs vs historical period, org targets, and peer stations. Same filter contract as summary.',
+  })
+  @ApiParam({ name: 'orgId', description: 'Organization ID' })
+  @ApiOkResponse({ type: EvaluationsStrengthDetectionResponseDto })
+  async getStrengthDetection(
+    @Param('orgId') orgId: string,
+    @Query() query: EvaluationsAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+      { allowDataQualitySectionFilters: true },
+    );
+    return this.summaryService.getStrengthDetection(orgId, resolved);
   }
 }

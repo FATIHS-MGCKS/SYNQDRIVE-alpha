@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-strength-detection-v49821-2026-07-24',
+    version: 'V4.9.821',
+    title: 'V4.9.821 — Regelbasierte Unternehmensstärken Auswertungen (Prompt 23/54)',
+    summary: [
+      'Neue `strengths`-Section: 12 regelbasierte Unternehmensstärken mit KPI, Vergleichsbasis, Schwellenwert, Confidence und Begründung.',
+      'Vergleich nur gegen eigenen Verlauf, Org-Ziele (`DEFAULT_STRENGTH_ORG_TARGETS`) und Peer-Stationen/-Klassen — keine Branchenbenchmarks.',
+      'Unterdrückung bei Datenfehlern, überlappenden Buchungen oder unzureichender Datenmenge; Dedupe pro `id + dimensionKey`.',
+      'Dedicated API: `GET …/evaluations/analytics/strengths`; Legacy-`highlights` in Summary für bestehende UI.',
+      'Shared: `evaluations-strength-detection.*`; Backend `EvaluationsStrengthDetectionService`.',
+      'Doku: `docs/architecture/analytics/evaluations-strength-detection.md`.',
+    ],
+    reason:
+      'Prompt 23/54 — Nachvollziehbare Erkennung von Unternehmensstärken ohne unbelegte externe Benchmarks.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T23:00:00.000Z',
+  },
+  {
     id: 'evaluations-utilization-model-v49820-2026-07-24',
     version: 'V4.9.820',
     title: 'V4.9.820 — Kanonische Flottenauslastung Auswertungen (Prompt 22/54)',

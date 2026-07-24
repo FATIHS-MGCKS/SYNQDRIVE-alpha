@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { EvaluationsAnalyticsSummaryResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import type { EvaluationsAnalyticsSummaryResponse, EvaluationsStrengthDetectionResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
 import type { InsightAnalyticsSummary } from '@synq/evaluations-insights/insights-analytics.contract';
 import type { EvaluationsInsightDetail } from '@synq/evaluations-insights/evaluations-insight-detail.contract';
 
@@ -104,6 +104,26 @@ export class EvaluationsAnalyticsSummaryResponseDto implements EvaluationsAnalyt
 
   @ApiProperty({ type: Object })
   metadata!: EvaluationsAnalyticsSummaryResponse['metadata'];
+}
+
+export class EvaluationsStrengthDetectionResponseDto implements EvaluationsStrengthDetectionResponse {
+  @ApiProperty()
+  organizationId!: string;
+
+  @ApiProperty()
+  generatedAt!: string;
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  period!: EvaluationsStrengthDetectionResponse['period'];
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  comparisonPeriod!: EvaluationsStrengthDetectionResponse['comparisonPeriod'];
+
+  @ApiProperty({ type: Object })
+  appliedFilters!: EvaluationsStrengthDetectionResponse['appliedFilters'];
+
+  @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
+  strengths!: EvaluationsStrengthDetectionResponse['strengths'];
 }
 
 export class InsightAnalyticsSummaryResponseDto implements InsightAnalyticsSummary {

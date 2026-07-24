@@ -13,6 +13,7 @@ import type {
 } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsCostModelSummary } from './evaluations-cost-model.contract';
 import type { EvaluationsUtilizationModelSummary } from './evaluations-utilization-model.contract';
+import type { EvaluationsStrengthDetectionSummary } from './evaluations-strength-detection.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
@@ -150,7 +151,7 @@ export interface EvaluationsAnalyticsSummaryResponse {
   utilizationModel: EvaluationsSectionEnvelope<EvaluationsUtilizationModelSummary>;
   activeRisks: EvaluationsSectionEnvelope<EvaluationsActiveRisksSummary>;
   affectedEntities: EvaluationsSectionEnvelope<InsightEntityCountSummary>;
-  strengths: EvaluationsSectionEnvelope<EvaluationsHighlightItem[]>;
+  strengths: EvaluationsSectionEnvelope<EvaluationsStrengthDetectionSummary>;
   weaknesses: EvaluationsSectionEnvelope<EvaluationsHighlightItem[]>;
   dataQuality: EvaluationsSectionEnvelope<EvaluationsDataQualitySummary>;
   insights: EvaluationsSectionEnvelope<Pick<InsightAnalyticsSummary, 'hasRun' | 'lastRunAt' | 'stale' | 'error'>>;
@@ -162,6 +163,15 @@ export interface EvaluationsAnalyticsSummaryResponse {
     errorSections: number;
     unavailableSections: number;
   };
+}
+
+export interface EvaluationsStrengthDetectionResponse {
+  organizationId: string;
+  generatedAt: string;
+  period: EvaluationsAnalyticsPeriodWindow;
+  comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
+  appliedFilters: EvaluationsAnalyticsSummaryFilters;
+  strengths: EvaluationsSectionEnvelope<EvaluationsStrengthDetectionSummary>;
 }
 
 export interface EvaluationsAnalyticsSummaryQuery {

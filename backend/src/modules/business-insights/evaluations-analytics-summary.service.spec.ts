@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
+import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -192,6 +193,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         EvaluationsAnalyticsSummaryService,
+        EvaluationsStrengthDetectionService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
         { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },
@@ -212,6 +214,9 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     expect(result.utilizationModel.status).toBe('PARTIAL');
     expect(result.utilizationModel.data?.metrics.length).toBeGreaterThan(10);
     expect(result.costs.data?.fixedCostsMtdMinor).toBe(8_000);
+    expect(result.strengths.data?.calculationVersion).toBe('strength-detection-v1');
+    expect(result.strengths.data?.strengths.length).toBeGreaterThan(0);
+    expect(result.strengths.data?.highlights.length).toBeGreaterThan(0);
   });
 
   it('passes resolved filters to repository loaders', async () => {

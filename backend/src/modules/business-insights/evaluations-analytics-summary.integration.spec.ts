@@ -4,6 +4,7 @@
 import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
+import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -221,6 +222,7 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         EvaluationsAnalyticsSummaryService,
+        EvaluationsStrengthDetectionService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
         { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },
