@@ -1,5 +1,7 @@
 import type { LiveGpsSource } from '../stores/useVehicleLiveMapStore';
-import { parseTelemetryTimestampMs, TELEMETRY_LIVE_MAX_MS } from './telemetryFreshness';
+import { toTelemetryFreshnessInput } from './telemetry-timestamp-semantics';
+import { parseTelemetryTimestampMs } from './telemetryFreshness';
+import { isCanonicalTelemetryLive } from './vehicle-telemetry-runtime';
 
 /** Canonical fachliche Positionklasse (Prompt 12/36). */
 export type OverviewPositionClass = 'live' | 'lastKnown' | 'none';
@@ -40,10 +42,12 @@ export interface OverviewMapPositionInput {
   loading: boolean;
   error: string | null;
   isLiveTracking: boolean;
-  isFresh: boolean;
   gpsSource: LiveGpsSource;
   measuredAt?: string | null;
+  lastSignal?: string | null;
   signalAgeMs?: number | null;
+  receivedAt?: string | null;
+  onlineStatus?: string | null;
   /** Test hook — defaults to Date.now(). */
   now?: number;
 }
@@ -53,9 +57,11 @@ export interface PositionLiveEligibilityInput {
   isLiveTracking: boolean;
   targetPosition: [number, number] | null;
   gpsSource: LiveGpsSource;
-  isFresh: boolean;
   measuredAt?: string | null;
+  lastSignal?: string | null;
   signalAgeMs?: number | null;
+  receivedAt?: string | null;
+  onlineStatus?: string | null;
   now?: number;
 }
 
@@ -96,28 +102,8 @@ export function isPlausibleMeasuredAt(
 ): boolean {
   const ms = parseTelemetryTimestampMs(measuredAt ?? null);
   if (ms == null) return false;
-  // Allow 60s clock skew into the future; reject far-future timestamps.
   if (ms > now + 60_000) return false;
   return true;
-}
-
-export function isWithinLiveFreshnessWindow(input: {
-  measuredAt?: string | null;
-  signalAgeMs?: number | null;
-  isFresh: boolean;
-  now?: number;
-}): boolean {
-  if (!input.isFresh) return false;
-  const now = input.now ?? Date.now();
-  const measuredMs = parseTelemetryTimestampMs(input.measuredAt ?? null);
-  if (measuredMs != null) {
-    const ageMs = now - measuredMs;
-    return ageMs >= 0 && ageMs < TELEMETRY_LIVE_MAX_MS;
-  }
-  if (typeof input.signalAgeMs === 'number' && Number.isFinite(input.signalAgeMs)) {
-    return input.signalAgeMs >= 0 && input.signalAgeMs < TELEMETRY_LIVE_MAX_MS;
-  }
-  return false;
 }
 
 /** All criteria for a live position label — see audit decision matrix. */
@@ -127,7 +113,7 @@ export function isLivePositionEligible(input: PositionLiveEligibilityInput): boo
   if (!parseLngLat(input.targetPosition)) return false;
   if (!isLiveGpsSource(input.gpsSource)) return false;
   if (!isPlausibleMeasuredAt(input.measuredAt, input.now)) return false;
-  if (!isWithinLiveFreshnessWindow(input)) return false;
+  if (!isCanonicalTelemetryLive(toTelemetryFreshnessInput(input), { now: input.now })) return false;
   return true;
 }
 
@@ -182,10 +168,12 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
     loading,
     error,
     isLiveTracking,
-    isFresh,
     gpsSource,
     measuredAt,
+    lastSignal,
     signalAgeMs,
+    receivedAt,
+    onlineStatus,
     now = Date.now(),
   } = input;
 
@@ -246,9 +234,11 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
     isLiveTracking,
     targetPosition: liveTarget,
     gpsSource,
-    isFresh,
     measuredAt,
+    lastSignal,
     signalAgeMs,
+    receivedAt,
+    onlineStatus,
     now,
     lastKnownPosition: lastKnown,
     staticPosition,

@@ -5,6 +5,7 @@ import type {
   VehicleStateLabel,
 } from '../../lib/liveMapUtils';
 import type { LiveTelemetrySnapshot } from '../lib/telemetry-field-semantics';
+import type { TelemetryFreshness } from '../lib/telemetryFreshness';
 
 export type LiveGpsSource = 'dimo' | 'cache' | null;
 
@@ -31,6 +32,7 @@ export interface VehicleLiveMapData {
   cachedAt: string | null;
   signalAgeMs: number | null;
   isFresh: boolean;
+  telemetryFreshness: TelemetryFreshness;
   onlineStatus: OnlineStatus;
   displayState: VehicleStateLabel;
   displayIgnition: DisplayIgnition;
@@ -74,6 +76,7 @@ function createInitialState(): VehicleLiveMapData {
     cachedAt: null,
     signalAgeMs: null,
     isFresh: false,
+    telemetryFreshness: 'no_signal',
     onlineStatus: 'OFFLINE',
     displayState: 'PARKED',
     displayIgnition: 'UNKNOWN',

@@ -258,9 +258,9 @@ export function resolveBaselineMapPosition(
         loading: false,
         error: null,
         isLiveTracking: true,
-        isFresh: true,
         gpsSource: 'dimo',
         measuredAt: liveMeasuredAt,
+        lastSignal: liveMeasuredAt,
         signalAgeMs: 2 * 60_000,
       });
     case 'last-known':
@@ -276,8 +276,10 @@ export function resolveBaselineMapPosition(
         loading: false,
         error: 'Network error',
         isLiveTracking: true,
-        isFresh: false,
         gpsSource: 'cache',
+        measuredAt: hoursAgoIso(30),
+        lastSignal: hoursAgoIso(30),
+        signalAgeMs: 30 * 60 * 60_000,
       });
     case 'static':
       return deriveOverviewMapPosition({
@@ -292,7 +294,6 @@ export function resolveBaselineMapPosition(
         loading: true,
         error: null,
         isLiveTracking: false,
-        isFresh: false,
         gpsSource: null,
       });
     case 'empty':
@@ -309,7 +310,6 @@ export function resolveBaselineMapPosition(
         loading: false,
         error: null,
         isLiveTracking: false,
-        isFresh: false,
         gpsSource: null,
       });
   }

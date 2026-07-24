@@ -28,6 +28,8 @@ export type TelemetryFreshness =
 export const TELEMETRY_LIVE_MAX_MS = 15 * 60 * 1000; // 15 min
 export const TELEMETRY_STANDBY_MAX_MS = 24 * 60 * 60 * 1000; // 24 h
 export const TELEMETRY_DELAYED_MAX_MS = 48 * 60 * 60 * 1000; // 48 h
+/** Max clock skew into the future before a provider timestamp is rejected as unknown. */
+export const TELEMETRY_FUTURE_SKEW_MAX_MS = 60 * 1000;
 
 /** Minimal structural input — avoids coupling to the full VehicleData shape. */
 export interface TelemetryFreshnessInput {
@@ -129,6 +131,7 @@ export function telemetrySignalAgeMs(
 ): number | null {
   const observedMs = resolveCanonicalTelemetryObservedAtMs(v);
   if (observedMs != null) {
+    if (observedMs > now + TELEMETRY_FUTURE_SKEW_MAX_MS) return null;
     return Math.max(0, now - observedMs);
   }
   if (

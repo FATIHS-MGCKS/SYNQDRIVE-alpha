@@ -167,3 +167,53 @@ Eine Position gilt **nur als live**, wenn **alle** Bedingungen erfüllt sind:
 | `overview-map-position.test.ts` | live, lastKnown, none; cache≠live; stale measuredAt; 0,0; bounds; loading/error |
 | `telemetry-timestamp-semantics.test.ts` | out-of-order accept/reject, mergeGpsMeasuredAt guard |
 | `vehicle-detail-baseline.test.ts` | live-position baseline mit measuredAt |
+
+---
+
+## Prompt 13/36 — Kanonischer Telemetriezustand
+
+| Feld | Wert |
+|------|------|
+| **Audit-Datum** | 2026-07-24 |
+| **Prompt** | 13/36 — Kanonischer Telemetriezustand Vehicle Detail |
+
+### Kanonische Zustände (UI / Runtime)
+
+| Zustand | `TelemetryFreshness` | Regel |
+|---------|-------------------|-------|
+| unknown | `no_signal` | Kein verwertbarer Messzeitpunkt |
+| live | `live` | < 15 min (zentrale `TELEMETRY_LIVE_MAX_MS`) |
+| standby | `standby` | ≥ 15 min und < 24 h |
+| soft-offline | `signal_delayed` | ≥ 24 h und < 48 h |
+| offline | `offline` | ≥ 48 h |
+
+**Single source of truth:** `resolveTelemetryFreshness` in `telemetryFreshness.ts`, aufgerufen über `resolveVehicleDetailTelemetryState` für Vehicle Detail.
+
+### Vehicle Detail Wiring
+
+| Surface | Resolver | Kein lokales isFresh |
+|---------|----------|---------------------|
+| Header `VehicleConnectionBadge` | `resolveVehicleDetailTelemetryState` | ✓ |
+| Overview Map live eligibility | `isCanonicalTelemetryLive` → `resolveTelemetryFreshness` | ✓ |
+| Live store (`useLiveVehicleTelemetry`) | `telemetryFreshness` + `isFresh` abgeleitet | ✓ |
+
+`cachedAt` wird nie für Freshness verwendet — nur `measuredAt` / `providerObservedAt` / `lastSignal`.
+
+### Geänderte Dateien (Prompt 13/36)
+
+| Datei | Änderung |
+|-------|----------|
+| `vehicle-telemetry-runtime.ts` | `resolveVehicleDetailTelemetryState`, Display-State-Mapping |
+| `telemetryFreshness.ts` | Zukunfts-Timestamp → unknown |
+| `overview-map-position.ts` | `isFresh` entfernt, kanonische Freshness |
+| `useVehicleLiveMapStore.ts` | `telemetryFreshness` Feld |
+| `useLiveVehicleTelemetry.ts` | Kanonischer State im Store |
+| `VehicleDetailHeaderBadges.tsx` | Zentraler Resolver |
+| `OverviewLiveMapCard.tsx` | Timestamp-Felder statt `isFresh` |
+
+### Tests (Prompt 13/36)
+
+| Suite | Abdeckung |
+|-------|-----------|
+| `vehicle-detail-telemetry-state.test.ts` | Alle 5 Zustände + Grenzen + Fleet-Parität |
+| `telemetryFreshness.test.ts` | Grenzen 15m/24h/48h, Zukunft, ungültig |

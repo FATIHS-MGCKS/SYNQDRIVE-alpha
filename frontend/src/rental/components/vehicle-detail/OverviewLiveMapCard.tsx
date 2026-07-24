@@ -62,10 +62,12 @@ export function OverviewLiveMapCard({
       displayState: state.displayState,
       loading: state.loading,
       error: state.error,
-      isFresh: state.isFresh,
       gpsSource: state.gpsSource,
       measuredAt: state.measuredAt,
+      lastSignal: state.lastSignal,
       signalAgeMs: state.signalAgeMs,
+      receivedAt: state.receivedAt,
+      onlineStatus: state.onlineStatus,
     })),
   );
 
@@ -82,10 +84,12 @@ export function OverviewLiveMapCard({
     loading: liveTelemetry.loading,
     error: liveTelemetry.error,
     isLiveTracking: liveTelemetry.isLiveTracking,
-    isFresh: liveTelemetry.isFresh,
     gpsSource: liveTelemetry.gpsSource,
     measuredAt: liveTelemetry.measuredAt,
+    lastSignal: liveTelemetry.lastSignal,
     signalAgeMs: liveTelemetry.signalAgeMs,
+    receivedAt: liveTelemetry.receivedAt,
+    onlineStatus: liveTelemetry.onlineStatus,
   });
 
   const hudSnapshot = positionView.isBoundToCurrentVehicle ? liveTelemetry.snapshot : null;

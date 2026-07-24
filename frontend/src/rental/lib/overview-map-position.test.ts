@@ -7,7 +7,6 @@ import {
   isNullIslandCoordinate,
   isPlausibleMeasuredAt,
   isValidGpsCoordinate,
-  isWithinLiveFreshnessWindow,
   parseLngLat,
   type OverviewMapPositionInput,
 } from './overview-map-position';
@@ -33,9 +32,9 @@ function baseInput(
     loading: false,
     error: null,
     isLiveTracking: true,
-    isFresh: true,
     gpsSource: 'dimo',
     measuredAt: RECENT_MEASURED_AT,
+    lastSignal: RECENT_MEASURED_AT,
     signalAgeMs: 2 * 60_000,
     now: NOW,
     ...overrides,
@@ -74,65 +73,32 @@ describe('isPlausibleMeasuredAt', () => {
   });
 });
 
-describe('isWithinLiveFreshnessWindow', () => {
-  it('requires isFresh and measuredAt within 15 min', () => {
-    expect(
-      isWithinLiveFreshnessWindow({
-        isFresh: true,
-        measuredAt: RECENT_MEASURED_AT,
-        now: NOW,
-      }),
-    ).toBe(true);
-    expect(
-      isWithinLiveFreshnessWindow({
-        isFresh: true,
-        measuredAt: STALE_MEASURED_AT,
-        now: NOW,
-      }),
-    ).toBe(false);
-  });
-
-  it('falls back to signalAgeMs when measuredAt absent', () => {
-    expect(
-      isWithinLiveFreshnessWindow({
-        isFresh: true,
-        signalAgeMs: 5 * 60_000,
-      }),
-    ).toBe(true);
-    expect(
-      isWithinLiveFreshnessWindow({
-        isFresh: false,
-        signalAgeMs: 5 * 60_000,
-      }),
-    ).toBe(false);
-  });
-});
-
 describe('isLivePositionEligible', () => {
   const eligibleBase = {
     isBound: true,
     isLiveTracking: true,
     targetPosition: [9.48, 51.31] as [number, number],
     gpsSource: 'dimo' as const,
-    isFresh: true,
     measuredAt: RECENT_MEASURED_AT,
+    lastSignal: RECENT_MEASURED_AT,
     signalAgeMs: 2 * 60_000,
     now: NOW,
   };
 
-  it('requires all live criteria', () => {
+  it('requires all live criteria including canonical freshness', () => {
     expect(isLivePositionEligible(eligibleBase)).toBe(true);
   });
 
-  it('rejects cache source even when fresh', () => {
+  it('rejects cache source even when telemetry is canonically live', () => {
     expect(isLivePositionEligible({ ...eligibleBase, gpsSource: 'cache' })).toBe(false);
   });
 
-  it('rejects stale measuredAt', () => {
+  it('rejects stale measuredAt (standby, not live)', () => {
     expect(
       isLivePositionEligible({
         ...eligibleBase,
         measuredAt: STALE_MEASURED_AT,
+        lastSignal: STALE_MEASURED_AT,
         signalAgeMs: TELEMETRY_LIVE_MAX_MS + 60_000,
       }),
     ).toBe(false);
@@ -143,6 +109,7 @@ describe('isLivePositionEligible', () => {
       isLivePositionEligible({
         ...eligibleBase,
         measuredAt: null,
+        lastSignal: null,
         signalAgeMs: null,
       }),
     ).toBe(false);
@@ -170,8 +137,8 @@ describe('classifyOverviewPositionClass', () => {
         isLiveTracking: true,
         targetPosition: [9.48, 51.31],
         gpsSource: 'dimo',
-        isFresh: true,
         measuredAt: RECENT_MEASURED_AT,
+        lastSignal: RECENT_MEASURED_AT,
         signalAgeMs: 2 * 60_000,
         now: NOW,
         lastKnownPosition: [9.48, 51.31],
@@ -185,8 +152,8 @@ describe('classifyOverviewPositionClass', () => {
         isLiveTracking: true,
         targetPosition: [9.48, 51.31],
         gpsSource: 'cache',
-        isFresh: true,
         measuredAt: RECENT_MEASURED_AT,
+        lastSignal: RECENT_MEASURED_AT,
         signalAgeMs: 2 * 60_000,
         now: NOW,
         lastKnownPosition: [9.48, 51.31],
@@ -200,7 +167,6 @@ describe('classifyOverviewPositionClass', () => {
         isLiveTracking: false,
         targetPosition: null,
         gpsSource: null,
-        isFresh: false,
         lastKnownPosition: null,
         staticPosition: null,
       }),
@@ -222,7 +188,6 @@ describe('deriveOverviewMapPosition', () => {
       loading: true,
       error: null,
       isLiveTracking: false,
-      isFresh: false,
       gpsSource: null,
     });
 
@@ -245,9 +210,9 @@ describe('deriveOverviewMapPosition', () => {
       loading: false,
       error: null,
       isLiveTracking: true,
-      isFresh: true,
       gpsSource: 'dimo',
       measuredAt: RECENT_MEASURED_AT,
+      lastSignal: RECENT_MEASURED_AT,
       now: NOW,
     });
 
@@ -268,8 +233,8 @@ describe('deriveOverviewMapPosition', () => {
     const view = deriveOverviewMapPosition(
       baseInput({
         measuredAt: STALE_MEASURED_AT,
+        lastSignal: STALE_MEASURED_AT,
         signalAgeMs: TELEMETRY_LIVE_MAX_MS + 60_000,
-        isFresh: false,
       }),
     );
 
@@ -281,6 +246,7 @@ describe('deriveOverviewMapPosition', () => {
     const view = deriveOverviewMapPosition(
       baseInput({
         measuredAt: null,
+        lastSignal: null,
         signalAgeMs: null,
       }),
     );
@@ -335,7 +301,8 @@ describe('deriveOverviewMapPosition', () => {
     const view = deriveOverviewMapPosition(
       baseInput({
         error: 'Network error',
-        isFresh: false,
+        measuredAt: STALE_MEASURED_AT,
+        lastSignal: STALE_MEASURED_AT,
         gpsSource: 'cache',
       }),
     );
@@ -353,9 +320,9 @@ describe('deriveOverviewMapPosition', () => {
         targetPosition: null,
         lastConfirmedPosition: null,
         isLiveTracking: false,
-        isFresh: false,
         gpsSource: null,
         measuredAt: null,
+        lastSignal: null,
       }),
     );
 

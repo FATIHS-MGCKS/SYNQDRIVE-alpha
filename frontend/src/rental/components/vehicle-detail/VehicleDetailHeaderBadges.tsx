@@ -2,10 +2,9 @@ import { Icon } from '../ui/Icon';
 import { HealthStatusChip, StatusChip } from '../../../components/patterns';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
 import {
-  mergeGpsMeasuredAt,
-  resolveTelemetryDisplayTime,
   formatTelemetryAgeShort,
 } from '../../lib/telemetry-timestamp-semantics';
+import { resolveVehicleDetailTelemetryState } from '../../lib/vehicle-telemetry-runtime';
 import { useEffectiveHealth } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
@@ -45,14 +44,13 @@ export function VehicleConnectionBadge({
     ? shouldShowObdUnpluggedBadge(obdPlugByVehicleId.get(resolvedVehicleId))
     : false;
 
-  const displayTime = resolveTelemetryDisplayTime({
+  const freshness = resolveVehicleDetailTelemetryState({
     measuredAt,
     receivedAt,
     lastSignal,
     signalAgeMs,
     onlineStatus,
   });
-  const freshness = displayTime.freshness;
   const timeAgo = formatTelemetryAgeShort(freshness);
 
   const dotColor = freshness.isLive

@@ -21,6 +21,7 @@ import {
   resolveTelemetryDisplayTime,
   shouldAcceptNewerMeasurement,
 } from '../lib/telemetry-timestamp-semantics';
+import { resolveVehicleDetailTelemetryState } from '../lib/vehicle-telemetry-runtime';
 import { useVehicleLiveMapStore } from '../stores/useVehicleLiveMapStore';
 
 const GPS_POLL_MS = 5_000;
@@ -130,18 +131,19 @@ export function useLiveVehicleTelemetry(
             source: data.source,
           });
           const displayTime = resolveTelemetryDisplayTime(merged);
+          const canonical = resolveVehicleDetailTelemetryState(merged);
           store.patchIfBound(boundVehicleId, boundOrgId, {
             measuredAt: displayTime.measuredAt,
             receivedAt: displayTime.receivedAt,
             lastSignal: displayTime.observedAtIso ?? store.lastSignal,
-            signalAgeMs: displayTime.freshness.signalAgeMs,
-            isFresh: displayTime.freshness.isLive,
-            onlineStatus:
-              displayTime.freshness.isLive
-                ? 'ONLINE'
-                : displayTime.freshness.isStandby
-                  ? 'STANDBY'
-                  : 'OFFLINE',
+            signalAgeMs: canonical.signalAgeMs,
+            isFresh: canonical.isLive,
+            telemetryFreshness: canonical.freshness,
+            onlineStatus: canonical.isLive
+              ? 'ONLINE'
+              : canonical.isStandby
+                ? 'STANDBY'
+                : 'OFFLINE',
           });
         }
       } catch {
@@ -232,6 +234,14 @@ export function useLiveVehicleTelemetry(
             typeof data.signalAgeMs === 'number' ? data.signalAgeMs : null,
           onlineStatus: data.onlineStatus,
         });
+        const canonical = resolveVehicleDetailTelemetryState({
+          measuredAt: data.measuredAt ?? null,
+          receivedAt: data.receivedAt ?? null,
+          lastSignal: data.lastSignal ?? null,
+          signalAgeMs:
+            typeof data.signalAgeMs === 'number' ? data.signalAgeMs : null,
+          onlineStatus: data.onlineStatus,
+        });
 
         store.patchIfBound(boundVehicleId, boundOrgId, {
           snapshot: snap,
@@ -241,18 +251,14 @@ export function useLiveVehicleTelemetry(
           measuredAt: displayTime.measuredAt,
           receivedAt: displayTime.receivedAt,
           lastSignal: displayTime.observedAtIso ?? data.lastSignal ?? store.lastSignal,
-          signalAgeMs: displayTime.freshness.signalAgeMs,
-          isFresh: displayTime.freshness.isLive,
-          onlineStatus:
-            data.onlineStatus === 'ONLINE' ||
-            data.onlineStatus === 'STANDBY' ||
-            data.onlineStatus === 'OFFLINE'
-              ? data.onlineStatus
-              : displayTime.freshness.isLive
-                ? 'ONLINE'
-                : displayTime.freshness.isStandby
-                  ? 'STANDBY'
-                  : 'OFFLINE',
+          signalAgeMs: canonical.signalAgeMs,
+          isFresh: canonical.isLive,
+          telemetryFreshness: canonical.freshness,
+          onlineStatus: canonical.isLive
+            ? 'ONLINE'
+            : canonical.isStandby
+              ? 'STANDBY'
+              : 'OFFLINE',
           displayState,
           displayIgnition,
           displaySpeed: data.displaySpeed ?? snap.speed,
