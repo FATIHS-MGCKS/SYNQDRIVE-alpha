@@ -1,3 +1,10 @@
+import {
+  buildMultiCurrencyMeta,
+  resolveReportingAmountMinor,
+} from '@synq/fx/fx.analytics-resolver';
+import { emptyMultiCurrencyDataQuality } from '@synq/fx/fx.contract';
+import type { AnalyticsFxContext } from '@synq/fx/fx.contract';
+import { parseDocumentCurrency } from '@synq/fx/fx.convert';
 import { moneyFromMinor, sumMoney } from '@synq/money/money.util';
 import type {
   ReceivableInvoiceRow,
@@ -90,18 +97,44 @@ export interface ComputeReceivablesAnalyticsInput {
   reference?: Date;
   timezone?: string;
   reportingCurrency?: string;
+  fxContext?: AnalyticsFxContext;
+}
+
+function convertOutstanding(
+  inv: ReceivableInvoiceRow,
+  amountMinor: number,
+  reference: Date,
+  reportingCurrency: string,
+  fxContext: AnalyticsFxContext | undefined,
+  dataQuality: ReturnType<typeof emptyMultiCurrencyDataQuality>,
+): number | null {
+  return resolveReportingAmountMinor(
+    amountMinor,
+    inv.currency,
+    reference,
+    fxContext,
+    reportingCurrency,
+    dataQuality,
+  );
 }
 
 /**
  * Compute receivables KPIs and aging buckets for Auswertungen.
- * Sums only invoices matching `reportingCurrency` (default EUR).
+ * Amounts are aggregated in reporting currency via FX conversion when configured.
  */
 export function computeReceivablesAnalytics(
   input: ComputeReceivablesAnalyticsInput,
 ): ReceivablesAnalyticsResult {
   const reference = input.reference ?? new Date();
   const timezone = input.timezone ?? 'Europe/Berlin';
-  const reportingCurrency = (input.reportingCurrency ?? 'EUR').toUpperCase();
+  const reportingCurrency = (
+    input.fxContext?.reportingCurrency ??
+    input.reportingCurrency ??
+    'EUR'
+  ).toUpperCase();
+  const reportingCurrencySource =
+    input.fxContext?.reportingCurrencySource ?? 'platform_default';
+  const fxContext = input.fxContext;
 
   const metrics = {
     openTotal: emptyBucket(reportingCurrency),
@@ -133,80 +166,123 @@ export function computeReceivablesAnalytics(
     overpaidTotalMinor: 0,
   };
 
-  for (const inv of input.invoices) {
-    const currency = (inv.currency ?? 'EUR').toUpperCase();
-    if (currency !== reportingCurrency && currency !== '€') {
-      dataQuality.incompatibleCurrencyCount += 1;
-      continue;
-    }
+  const multiCurrencyQuality = emptyMultiCurrencyDataQuality(
+    reportingCurrency,
+    reportingCurrencySource,
+  );
 
+  for (const inv of input.invoices) {
     const status = normalizeInvoiceStatus(inv.status);
     const outstanding = resolveOutstandingMinor(inv);
     const total = inv.totalCents ?? 0;
     const paid = inv.paidCents ?? 0;
 
+    const convertAbs = (amount: number): number | null =>
+      convertOutstanding(inv, Math.abs(amount), reference, reportingCurrency, fxContext, multiCurrencyQuality);
+
     if (paid > total && total > 0) {
       dataQuality.overpaidCount += 1;
-      dataQuality.overpaidTotalMinor += paid - total;
+      const convertedOverpay = convertAbs(paid - total);
+      if (convertedOverpay != null) dataQuality.overpaidTotalMinor += convertedOverpay;
     }
 
     if (CANCELLED_STATUSES.has(status)) {
-      addToBucket(metrics.cancelled, Math.abs(total));
+      const converted = convertAbs(total);
+      if (converted != null) addToBucket(metrics.cancelled, converted);
       continue;
     }
 
     if (CREDIT_STATUSES.has(status) || (isOutgoingInvoiceType(inv.type) && total < 0)) {
-      addToBucket(metrics.credits, Math.abs(total));
+      const converted = convertAbs(total);
+      if (converted != null) addToBucket(metrics.credits, converted);
       continue;
     }
 
     if (REFUND_STATUSES.has(status)) {
-      addToBucket(metrics.refunds, Math.abs(total > 0 ? total : paid));
+      const converted = convertAbs(total > 0 ? total : paid);
+      if (converted != null) addToBucket(metrics.refunds, converted);
       continue;
     }
 
     if (UNCOLLECTIBLE_STATUSES.has(status)) {
-      addToBucket(metrics.uncollectible, outstanding > 0 ? outstanding : Math.abs(total));
+      const converted = convertOutstanding(
+        inv,
+        outstanding > 0 ? outstanding : Math.abs(total),
+        reference,
+        reportingCurrency,
+        fxContext,
+        multiCurrencyQuality,
+      );
+      if (converted != null) addToBucket(metrics.uncollectible, converted);
       continue;
     }
 
     if (!isOutgoingInvoiceType(inv.type)) continue;
 
     if (DISPUTED_STATUSES.has(status) && outstanding > 0) {
-      addToBucket(metrics.disputed, outstanding);
+      const converted = convertOutstanding(
+        inv,
+        outstanding,
+        reference,
+        reportingCurrency,
+        fxContext,
+        multiCurrencyQuality,
+      );
+      if (converted != null) addToBucket(metrics.disputed, converted);
     }
 
     if (DEFERRED_STATUSES.has(status) && outstanding > 0) {
-      addToBucket(metrics.deferred, outstanding);
+      const converted = convertOutstanding(
+        inv,
+        outstanding,
+        reference,
+        reportingCurrency,
+        fxContext,
+        multiCurrencyQuality,
+      );
+      if (converted != null) addToBucket(metrics.deferred, converted);
     }
 
     if (!isOpenReceivableInvoice(inv)) continue;
 
-    addToBucket(metrics.openTotal, outstanding);
+    const convertedOutstanding = convertOutstanding(
+      inv,
+      outstanding,
+      reference,
+      reportingCurrency,
+      fxContext,
+      multiCurrencyQuality,
+    );
+    if (convertedOutstanding == null) continue;
+
+    addToBucket(metrics.openTotal, convertedOutstanding);
 
     if (paid > 0 && outstanding > 0) {
-      addToBucket(metrics.partiallyPaid, outstanding);
+      addToBucket(metrics.partiallyPaid, convertedOutstanding);
     }
 
     const due = parseInvoiceInstant(inv.dueDate);
     if (!due) {
       dataQuality.missingDueDateCount += 1;
-      dataQuality.missingDueDateOutstandingMinor += outstanding;
-      aging.not_due.amountMinor += outstanding;
+      dataQuality.missingDueDateOutstandingMinor += convertedOutstanding;
+      aging.not_due.amountMinor += convertedOutstanding;
       aging.not_due.invoiceCount += 1;
       continue;
     }
 
     const daysOverdue = daysOverdueInTimezone(due, reference, timezone);
     if (daysOverdue != null && daysOverdue > 0) {
-      addToBucket(metrics.overdue, outstanding);
+      addToBucket(metrics.overdue, convertedOutstanding);
     } else {
-      addToBucket(metrics.openNotDue, outstanding);
+      addToBucket(metrics.openNotDue, convertedOutstanding);
     }
 
     const agingBucket = resolveAgingBucket(daysOverdue, true);
-    addToBucket(aging[agingBucket], outstanding);
+    addToBucket(aging[agingBucket], convertedOutstanding);
   }
+
+  dataQuality.incompatibleCurrencyCount = multiCurrencyQuality.excludedCount;
+  const multiCurrency = buildMultiCurrencyMeta(multiCurrencyQuality, input.invoices.length);
 
   return {
     timezone,
@@ -215,6 +291,7 @@ export function computeReceivablesAnalytics(
     metrics,
     aging,
     dataQuality,
+    multiCurrency,
   };
 }
 
@@ -230,6 +307,15 @@ export function sumOutstandingMinor(
   return sumMoney(amounts, currency).amountMinor;
 }
 
+function matchesReportingCurrency(
+  inv: ReceivableInvoiceRow,
+  reportingCurrency: string,
+): boolean {
+  const parsed = parseDocumentCurrency(inv.currency);
+  if (!parsed) return false;
+  return parsed === reportingCurrency.toUpperCase();
+}
+
 export function filterOpenNotDueReceivables(
   invoices: ReceivableInvoiceRow[],
   reference: Date,
@@ -237,7 +323,7 @@ export function filterOpenNotDueReceivables(
   reportingCurrency = 'EUR',
 ): ReceivableInvoiceRow[] {
   return invoices.filter((inv) => {
-    if ((inv.currency ?? 'EUR').toUpperCase() !== reportingCurrency) return false;
+    if (!matchesReportingCurrency(inv, reportingCurrency)) return false;
     if (!isOpenReceivableInvoice(inv)) return false;
     const due = parseInvoiceInstant(inv.dueDate);
     if (!due) return false;
@@ -253,7 +339,7 @@ export function filterOverdueReceivables(
   reportingCurrency = 'EUR',
 ): ReceivableInvoiceRow[] {
   return invoices.filter((inv) => {
-    if ((inv.currency ?? 'EUR').toUpperCase() !== reportingCurrency) return false;
+    if (!matchesReportingCurrency(inv, reportingCurrency)) return false;
     if (!isOpenReceivableInvoice(inv)) return false;
     const due = parseInvoiceInstant(inv.dueDate);
     if (!due) return false;
@@ -266,7 +352,7 @@ export function filterOpenReceivables(
   reportingCurrency = 'EUR',
 ): ReceivableInvoiceRow[] {
   return invoices.filter((inv) => {
-    if ((inv.currency ?? 'EUR').toUpperCase() !== reportingCurrency) return false;
+    if (!matchesReportingCurrency(inv, reportingCurrency)) return false;
     return isOpenReceivableInvoice(inv);
   });
 }

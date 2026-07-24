@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'multi-currency-analytics-v49811-2026-07-24',
+    version: 'V4.9.811',
+    title: 'V4.9.811 — Multi-Currency Auswertungen (Prompt 13/54)',
+    summary: [
+      'Kanonisches FX-Modul `shared/fx`: Organisationsbasiswährung, Original-/Umgerechneter Betrag, Wechselkurs, Kursdatum, Quelle, Umrechnungsstatus, Rundungsregel.',
+      '`FxRateProvider` + `MemoryFxRateProvider` mit historischen Kursen (latest on/before asOf).',
+      'Revenue/Cashflow + Receivables aggregieren via FX statt Fremdwährung still auszuschließen.',
+      'Fehlende Belegwährung wird nie als EUR interpretiert; ohne Kurs → PARTIAL/UNAVAILABLE.',
+      'Backend: `EvaluationsFxRateService` (PaymentAccount/PriceBook → reporting currency).',
+      'UI: `MultiCurrencySummary` auf Financial Insights.',
+      'Doku: `docs/architecture/finance/multi-currency-analytics.md`.',
+    ],
+    reason:
+      'Prompt 13/54 — belastbare Multi-Currency-Architektur für Auswertungen ohne direkte Summierung unterschiedlicher Währungen.',
+  },
+  {
     id: 'revenue-cashflow-contribution-v49810-2026-07-24',
     version: '4.9.810',
     title: 'V4.9.810 — Umsatz/Cashflow/Ergebnis getrennt (Prompt 12/54)',

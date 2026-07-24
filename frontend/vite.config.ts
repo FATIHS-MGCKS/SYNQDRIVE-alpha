@@ -13,6 +13,7 @@ export default defineConfig({
       '@synq/money': path.resolve(__dirname, '../shared/money'),
       '@synq/receivables': path.resolve(__dirname, '../shared/receivables'),
       '@synq/finance': path.resolve(__dirname, '../shared/finance'),
+      '@synq/fx': path.resolve(__dirname, '../shared/fx'),
     },
   },
   server: {

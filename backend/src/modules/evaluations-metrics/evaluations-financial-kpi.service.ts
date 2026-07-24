@@ -14,11 +14,11 @@ import type { EvaluationsMetricPeriodRef } from '@synq/evaluations-metrics/evalu
 import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluations-period.contract';
 import { resolveEvaluationsMetricCalculationVersion } from '@synq/evaluations-metrics/evaluations-metric-calculation-versions';
 import { EvaluationsPeriodService } from './evaluations-period.service';
+import { EvaluationsFxRateService } from './evaluations-fx-rate.service';
 import {
   computeReceivablesAnalytics,
   computeRevenueCashflowContribution,
   FINANCIAL_KPI_EXCLUSIONS,
-  isEurInvoice,
   latestInvoiceSourceAt,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
@@ -42,6 +42,7 @@ export interface FinancialMtdKpiBundle {
   metrics: EvaluationsMetricResponse[];
   receivablesAnalytics: ReceivablesAnalyticsResult | null;
   revenueCashflowContribution: RevenueCashflowContributionResult | null;
+  multiCurrency: MultiCurrencyAnalyticsMeta | null;
 }
 
 @Injectable()
@@ -51,6 +52,7 @@ export class EvaluationsFinancialKpiService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly periodService: EvaluationsPeriodService,
+    private readonly fxRateService: EvaluationsFxRateService,
   ) {}
 
   async getFinancialMtdBundle(input: {
@@ -69,7 +71,15 @@ export class EvaluationsFinancialKpiService {
       });
 
       const invoices = await this.loadInvoices(input.organizationId);
-      const nonEurCount = invoices.filter((inv) => !isEurInvoice(inv)).length;
+      const { resolution, fxContext } = await this.fxRateService.getAnalyticsContextForOrg(
+        input.organizationId,
+      );
+      const reportingCurrency = resolution.currency ?? 'EUR';
+      const foreignOrExcludedCount =
+        invoices.filter((inv) => {
+          const c = (inv.currency ?? '').trim().toUpperCase();
+          return !c || (c !== reportingCurrency && c !== '€');
+        }).length;
       const latestSourceAt = latestInvoiceSourceAt(invoices);
       const isStale =
         latestSourceAt != null &&
@@ -95,24 +105,27 @@ export class EvaluationsFinancialKpiService {
         periodStart: mtdFrom,
         periodEndInclusive: mtdTo,
         timezone,
-        reportingCurrency: 'EUR',
+        reportingCurrency,
+        fxContext: fxContext ?? undefined,
       });
       const prevRevenueCashflow = computeRevenueCashflowContribution({
         invoices,
         periodStart: prevFrom,
         periodEndInclusive: prevTo,
         timezone,
-        reportingCurrency: 'EUR',
+        reportingCurrency,
+        fxContext: fxContext ?? undefined,
       });
 
       const receivablesAnalytics = computeReceivablesAnalytics({
         invoices,
         reference,
         timezone,
-        reportingCurrency: 'EUR',
+        reportingCurrency,
+        fxContext: fxContext ?? undefined,
       });
-      const openRows = openOutgoingReceivables(invoices, reference, 'EUR');
-      const overdueRows = overdueOutgoingReceivables(invoices, reference, timezone, 'EUR');
+      const openRows = openOutgoingReceivables(invoices, reference, reportingCurrency);
+      const overdueRows = overdueOutgoingReceivables(invoices, reference, timezone, reportingCurrency);
 
       const rcx = revenueCashflowContribution.metrics;
       const periodRevenueCents = rcx.periodRevenue.netAmountMinor;
@@ -129,11 +142,24 @@ export class EvaluationsFinancialKpiService {
           ? (operatingResultCents / periodRevenueCents) * 100
           : 0;
 
+      const multiCurrency =
+        revenueCashflowContribution.multiCurrency ?? receivablesAnalytics.multiCurrency;
+      const fxPartial =
+        multiCurrency.completeness === 'PARTIAL' || multiCurrency.completeness === 'UNAVAILABLE';
+
       const baseCoverage = {
         rowsObserved: invoices.length,
         rowsExpected: null,
         missingSources: [
-          ...(nonEurCount > 0 ? [FINANCIAL_KPI_EXCLUSIONS.nonEur] : []),
+          ...(fxPartial ? ['multi_currency_partial'] : []),
+          ...(multiCurrency.dataQuality.missingRateCount > 0 ? ['fx_rate_unavailable'] : []),
+          ...(multiCurrency.dataQuality.staleRateCount > 0 ? ['fx_rate_stale'] : []),
+          ...(multiCurrency.dataQuality.missingCurrencyCount > 0
+            ? ['documents_missing_currency']
+            : []),
+          ...(foreignOrExcludedCount > 0 && !fxContext
+            ? [FINANCIAL_KPI_EXCLUSIONS.nonEur]
+            : []),
           ...(receivablesAnalytics.dataQuality.missingDueDateCount > 0
             ? ['receivables_missing_due_date']
             : []),
@@ -142,8 +168,12 @@ export class EvaluationsFinancialKpiService {
             : []),
         ],
         ratio:
-          nonEurCount > 0 || receivablesAnalytics.dataQuality.missingDueDateCount > 0
-            ? (invoices.length - nonEurCount) / Math.max(invoices.length, 1)
+          fxPartial || receivablesAnalytics.dataQuality.missingDueDateCount > 0
+            ? Math.max(
+                0,
+                (invoices.length - multiCurrency.dataQuality.excludedCount) /
+                  Math.max(invoices.length, 1),
+              )
             : 1,
       };
 
@@ -170,7 +200,7 @@ export class EvaluationsFinancialKpiService {
           metricId,
           value: cents,
           unit: 'EUR_CENTS' as const,
-          currency: 'EUR',
+          currency: reportingCurrency,
           generatedAt,
           period,
           calculationVersion: calcVersion,
@@ -197,7 +227,7 @@ export class EvaluationsFinancialKpiService {
           });
         }
 
-        if (nonEurCount > 0 || rcxPartial) {
+        if (fxPartial || rcxPartial) {
           return buildPartialMetric({
             ...payload,
             value: cents,
@@ -214,7 +244,7 @@ export class EvaluationsFinancialKpiService {
         const payload = {
           metricId,
           unit: 'EUR_CENTS' as const,
-          currency: 'EUR',
+          currency: reportingCurrency,
           generatedAt,
           period: mtdPeriod,
           calculationVersion: calcVersion,
@@ -317,6 +347,7 @@ export class EvaluationsFinancialKpiService {
         metrics,
         receivablesAnalytics,
         revenueCashflowContribution,
+        multiCurrency,
       };
     } catch (err: unknown) {
       this.logger.warn(
@@ -332,7 +363,7 @@ export class EvaluationsFinancialKpiService {
         buildErrorMetric({
           metricId,
           unit: 'EUR_CENTS',
-          currency: 'EUR',
+          currency: reportingCurrency,
           generatedAt,
           period: fallbackPeriod,
           calculationVersion: resolveEvaluationsMetricCalculationVersion(metricId),
@@ -357,6 +388,7 @@ export class EvaluationsFinancialKpiService {
         ],
         receivablesAnalytics: null,
         revenueCashflowContribution: null,
+        multiCurrency: null,
       };
     }
   }

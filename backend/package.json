@@ -162,7 +162,9 @@
       "^@synq/evaluations-periods/(.*)$": "<rootDir>/../../shared/evaluations-periods/$1",
       "^@synq/money/(.*)$": "<rootDir>/../../shared/money/$1",
       "^@synq/receivables/(.*)$": "<rootDir>/../../shared/receivables/$1",
-      "^@synq/finance/(.*)$": "<rootDir>/../../shared/finance/$1"
+      "^@synq/finance/(.*)$": "<rootDir>/../../shared/finance/$1",
+      "^@synq/fx$": "<rootDir>/../../shared/fx/index.ts",
+      "^@synq/fx/(.*)$": "<rootDir>/../../shared/fx/$1"
     }
   }
 }

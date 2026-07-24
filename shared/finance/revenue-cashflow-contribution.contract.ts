@@ -1,3 +1,5 @@
+import type { MultiCurrencyAnalyticsMeta } from '@synq/fx/fx.contract';
+
 /**
  * Revenue / cashflow / contribution model for Auswertungen (Prompt 12/54).
  * Amounts are integer minor units; currency is ISO-4217.
@@ -41,6 +43,7 @@ export interface RevenueCashflowCompleteness {
 export interface RevenueCashflowDataQuality {
   missingPaidAtCount: number;
   missingSubtotalCount: number;
+  /** @deprecated Prefer multiCurrency.dataQuality.excludedCount */
   incompatibleCurrencyCount: number;
   priorMonthInvoicePaidInPeriodCount: number;
   missingExpenseSource: boolean;
@@ -65,6 +68,7 @@ export interface RevenueCashflowContributionResult {
   };
   completeness: RevenueCashflowCompleteness;
   dataQuality: RevenueCashflowDataQuality;
+  multiCurrency: MultiCurrencyAnalyticsMeta;
 }
 
 export const FINANCE_METRIC_IDS = [

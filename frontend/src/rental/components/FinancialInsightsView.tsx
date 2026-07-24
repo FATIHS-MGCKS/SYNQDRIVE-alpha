@@ -30,6 +30,8 @@ import {
   sumCents,
 } from '../lib/financial-insights.logic';
 import { FinanceMetricHint, financeMetricLabelForLocale } from './finance/FinanceMetricHint';
+import { MultiCurrencySummary } from './finance/MultiCurrencySummary';
+import { createAnalyticsFxContext, createReferenceFxRateProvider } from '@synq/fx';
 import type { ReceivablesAgingBucket } from '@synq/receivables/receivables-invoice.contract';
 import { useEvaluationsReportingPeriods } from '../lib/evaluations/useEvaluationsReportingPeriods';
 import { reportingBundleToFinancialRanges } from '../lib/evaluations/evaluations-period.client';
@@ -241,6 +243,18 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // compute MTD KPIs + month-over-month deltas without re-iterating the list.
   const metricLocale = locale === 'de' ? 'de' : 'en';
 
+  const reportingCurrency = 'EUR';
+  const fxContext = useMemo(
+    () =>
+      createAnalyticsFxContext(
+        reportingCurrency,
+        'platform_default',
+        createReferenceFxRateProvider(),
+        { maxRateAgeDays: 30 },
+      ),
+    [reportingCurrency],
+  );
+
   const revenueCashflow = useMemo(
     () =>
       computeRevenueCashflowContribution({
@@ -248,9 +262,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         periodStart: monthStart,
         periodEndInclusive: now,
         timezone: reportingTimezone,
-        reportingCurrency: 'EUR',
+        reportingCurrency,
+        fxContext,
       }),
-    [invoices, monthStart, now, reportingTimezone],
+    [invoices, monthStart, now, reportingTimezone, reportingCurrency, fxContext],
   );
 
   const prevRevenueCashflow = useMemo(
@@ -260,9 +275,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         periodStart: prevMonthStart,
         periodEndInclusive: prevMonthEnd,
         timezone: reportingTimezone,
-        reportingCurrency: 'EUR',
+        reportingCurrency,
+        fxContext,
       }),
-    [invoices, prevMonthStart, prevMonthEnd, reportingTimezone],
+    [invoices, prevMonthStart, prevMonthEnd, reportingTimezone, reportingCurrency, fxContext],
   );
   const bucketed = useMemo(() => {
     const openTotal = openOutgoingReceivables(invoices, now);
@@ -290,9 +306,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         invoices,
         reference: now,
         timezone: reportingTimezone,
-        reportingCurrency: 'EUR',
+        reportingCurrency,
+        fxContext,
       }),
-    [invoices, now, reportingTimezone],
+    [invoices, now, reportingTimezone, reportingCurrency, fxContext],
   );
 
   const rcx = revenueCashflow.metrics;
@@ -536,6 +553,11 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           Gewinn nur bei vollständiger Kostenbasis.
         </p>
       </div>
+      <MultiCurrencySummary
+        meta={revenueCashflow.multiCurrency}
+        locale={metricLocale}
+        className="mb-2"
+      />
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral">
           {monthLabel}
@@ -725,12 +747,14 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
             );
           })}
         </div>
-        {receivablesAnalytics.dataQuality.incompatibleCurrencyCount > 0 && (
+        {(receivablesAnalytics.multiCurrency.dataQuality.excludedCount > 0 ||
+          receivablesAnalytics.dataQuality.incompatibleCurrencyCount > 0) && (
           <p className="text-[10px] text-muted-foreground mt-3">
-            {receivablesAnalytics.dataQuality.incompatibleCurrencyCount}{' '}
+            {receivablesAnalytics.multiCurrency.dataQuality.excludedCount ||
+              receivablesAnalytics.dataQuality.incompatibleCurrencyCount}{' '}
             {locale === 'de'
-              ? 'Rechnungen in anderer Währung ausgeschlossen (nur EUR-Auswertung).'
-              : 'invoices in other currencies excluded (EUR reporting only).'}
+              ? 'Forderungspositionen nicht in Basiswährung aggregiert (fehlender/veralteter Kurs oder fehlende Währung).'
+              : 'receivable positions not aggregated in base currency (missing/stale rate or missing currency).'}
           </p>
         )}
       </div>

@@ -2,6 +2,7 @@
  * Minimal invoice row for receivables analytics (Auswertungen).
  * Amounts are always integer minor units; currency is ISO-4217.
  */
+import type { MultiCurrencyAnalyticsMeta } from '@synq/fx/fx.contract';
 export interface ReceivableInvoiceRow {
   id: string;
   type: string;
@@ -36,6 +37,7 @@ export interface ReceivablesMoneyBucket {
 export interface ReceivablesDataQuality {
   missingDueDateCount: number;
   missingDueDateOutstandingMinor: number;
+  /** @deprecated Prefer multiCurrency.dataQuality.excludedCount */
   incompatibleCurrencyCount: number;
   overpaidCount: number;
   overpaidTotalMinor: number;
@@ -59,4 +61,5 @@ export interface ReceivablesAnalyticsResult {
   };
   aging: Record<ReceivablesAgingBucket, ReceivablesMoneyBucket>;
   dataQuality: ReceivablesDataQuality;
+  multiCurrency: MultiCurrencyAnalyticsMeta;
 }
