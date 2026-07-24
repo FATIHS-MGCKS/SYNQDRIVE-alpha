@@ -53,7 +53,8 @@
     "test:bookings:integration": "jest booking-pickup-gate.integration booking-wizard-eligibility-e2e-flow",
     "test:bookings:verify": "bash scripts/test/booking-backend-verify.sh all",
     "test:bookings:verify:unit": "bash scripts/test/booking-backend-verify.sh unit",
-    "test:evaluations": "NODE_OPTIONS='--max-old-space-size=8192' jest --runInBand --testPathPattern='business-insights|financial-insights\\.logic|data-analyse\\.utils|dashboard-insights|insight-health-gate|misuse-cases\\.service|evaluations-baseline|evaluations-metric\\.registry|evaluations-calculation-provenance|evaluations-metric-calculation-versions|evaluations-period|evaluations-metric-response|financial-kpi|money-domain|money-insight-migration' --testPathIgnorePatterns='integration|live'",
+    "test:evaluations": "NODE_OPTIONS='--max-old-space-size=8192' jest --runInBand --testPathPattern='business-insights|financial-insights\\.logic|data-analyse\\.utils|dashboard-insights|insight-health-gate|misuse-cases\\.service|evaluations-baseline|evaluations-metric\\.registry|evaluations-calculation-provenance|evaluations-metric-calculation-versions|evaluations-period|evaluations-metric-response|evaluations-finance|evaluations-financial-kpi|financial-kpi|money-domain|money-insight-migration|receivables-analytics|revenue-cashflow-contribution|multi-currency-analytics|fx\\.org-reporting' --testPathIgnorePatterns='live'",
+    "test:evaluations:finance": "NODE_OPTIONS='--max-old-space-size=8192' jest --runInBand --testPathPattern='money-domain|money-insight-migration|money\\.util|receivables-analytics|revenue-cashflow-contribution|multi-currency-analytics|fx\\.org-reporting|evaluations-finance-golden|evaluations-financial-kpi|financial-kpi|evaluations-fx-rate|evaluations-kpi\\.controller' --testPathIgnorePatterns='live'",
     "prisma:validate": "DATABASE_URL=${DATABASE_URL:-postgresql://synqdrive:synqdrive@localhost:5432/synqdrive} prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
@@ -123,6 +124,7 @@
     "@types/supertest": "^7.2.0",
     "@types/uuid": "^10.0.0",
     "eslint": "^9.9.0",
+    "fast-check": "^3.23.2",
     "globals": "^16.3.0",
     "jest": "^29.7.0",
     "prettier": "^3.3.0",
@@ -164,7 +166,8 @@
       "^@synq/receivables/(.*)$": "<rootDir>/../../shared/receivables/$1",
       "^@synq/finance/(.*)$": "<rootDir>/../../shared/finance/$1",
       "^@synq/fx$": "<rootDir>/../../shared/fx/index.ts",
-      "^@synq/fx/(.*)$": "<rootDir>/../../shared/fx/$1"
+      "^@synq/fx/(.*)$": "<rootDir>/../../shared/fx/$1",
+      "^@synq/evaluations-fixtures/(.*)$": "<rootDir>/../../shared/evaluations-fixtures/$1"
     }
   }
 }

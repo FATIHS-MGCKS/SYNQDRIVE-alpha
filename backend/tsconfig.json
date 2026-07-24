@@ -27,8 +27,9 @@
       "@synq/money/*": ["../shared/money/*"],
       "@synq/receivables/*": ["../shared/receivables/*"],
       "@synq/finance/*": ["../shared/finance/*"],
-      "@synq/fx/*": ["../shared/fx/*"]
+      "@synq/fx/*": ["../shared/fx/*"],
+      "@synq/evaluations-fixtures/*": ["../shared/evaluations-fixtures/*"]
     }
   },
-  "include": ["src", "../shared/evaluations-metrics/**/*.ts", "../shared/evaluations-periods/**/*.ts", "../shared/money/**/*.ts", "../shared/receivables/**/*.ts", "../shared/finance/**/*.ts", "../shared/fx/**/*.ts"]
+  "include": ["src", "../shared/evaluations-metrics/**/*.ts", "../shared/evaluations-periods/**/*.ts", "../shared/money/**/*.ts", "../shared/receivables/**/*.ts", "../shared/finance/**/*.ts", "../shared/fx/**/*.ts", "../shared/evaluations-fixtures/**/*.ts"]
 }

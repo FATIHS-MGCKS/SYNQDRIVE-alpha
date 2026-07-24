@@ -116,7 +116,7 @@ export const SCENARIO_PARTIAL = {
   customers: [] as { id: string; name?: string }[],
 };
 
-/** Mehrere Währungen — nur EUR zählt in Finanzlogik. */
+/** Mehrere Währungen — ohne FX nur EUR; mit FX-Kontext werden Fremdwährungen umgerechnet. */
 export const SCENARIO_MULTI_CURRENCY = {
   invoices: [
     invoice({ id: 'eur', totalCents: 10_000, currency: 'EUR' }),

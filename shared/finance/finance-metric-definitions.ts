@@ -1,5 +1,7 @@
 import type { FinanceMetricId } from './revenue-cashflow-contribution.contract';
 
+export type { FinanceMetricId };
+
 export type FinanceMetricLocale = 'de' | 'en';
 
 export interface FinanceMetricDefinition {

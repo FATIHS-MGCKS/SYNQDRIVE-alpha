@@ -11,6 +11,7 @@ export default defineConfig({
       '@synq/receivables': path.resolve(__dirname, '../shared/receivables'),
       '@synq/finance': path.resolve(__dirname, '../shared/finance'),
       '@synq/fx': path.resolve(__dirname, '../shared/fx'),
+      '@synq/evaluations-fixtures': path.resolve(__dirname, '../shared/evaluations-fixtures'),
     },
   },
   test: {

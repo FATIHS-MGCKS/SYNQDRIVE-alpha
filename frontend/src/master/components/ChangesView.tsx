@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-finance-tests-v49812-2026-07-24',
+    version: 'V4.9.812',
+    title: 'V4.9.812 — Finanzlogik Test-Suite (Prompt 14/54)',
+    summary: [
+      'Umfassende automatisierte Tests für Money, Receivables, Revenue/Cashflow, FX und Evaluations-KPI-API.',
+      'Golden Fixtures: `shared/evaluations-fixtures/finance-golden-organizations.ts` (5 Orgs mit dokumentierten Erwartungswerten).',
+      'Property-based Tests (fast-check) für Money-Arithmetik; Integration-Harness für `EvaluationsFinancialKpiService`.',
+      'API-Contract- und Characterization-Tests für `financial-mtd` Bundle.',
+      'Skript: `npm run test:evaluations:finance`; Audit: `docs/audits/evaluations/evaluations-finance-test-report-2026-07.md`.',
+    ],
+    reason:
+      'Prompt 14/54 — Finanzlogik aus Prompts 9–13 absichern: keine stillen Währungsmixes, keine ERROR-as-null, keine heuristische Cent-Umrechnung.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T09:00:00.000Z',
+  },
+  {
     id: 'multi-currency-analytics-v49811-2026-07-24',
     version: 'V4.9.811',
     title: 'V4.9.811 — Multi-Currency Auswertungen (Prompt 13/54)',

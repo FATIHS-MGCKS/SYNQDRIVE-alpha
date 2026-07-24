@@ -15,6 +15,7 @@ import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluati
 import { resolveEvaluationsMetricCalculationVersion } from '@synq/evaluations-metrics/evaluations-metric-calculation-versions';
 import { EvaluationsPeriodService } from './evaluations-period.service';
 import { EvaluationsFxRateService } from './evaluations-fx-rate.service';
+import type { MultiCurrencyAnalyticsMeta } from '@synq/fx/fx.contract';
 import {
   computeReceivablesAnalytics,
   computeRevenueCashflowContribution,
@@ -363,7 +364,7 @@ export class EvaluationsFinancialKpiService {
         buildErrorMetric({
           metricId,
           unit: 'EUR_CENTS',
-          currency: reportingCurrency,
+          currency: 'EUR',
           generatedAt,
           period: fallbackPeriod,
           calculationVersion: resolveEvaluationsMetricCalculationVersion(metricId),

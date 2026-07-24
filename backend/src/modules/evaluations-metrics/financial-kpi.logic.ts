@@ -17,15 +17,15 @@ import {
   filterOpenReceivables,
   filterOverdueReceivables,
   resolveOutstandingMinor,
-  type ReceivableInvoiceRow,
-  type ReceivablesAnalyticsResult,
 } from '@synq/receivables/receivables-analytics';
+import type {
+  ReceivableInvoiceRow,
+  ReceivablesAnalyticsResult,
+} from '@synq/receivables/receivables-invoice.contract';
 
 export type FinancialKpiInvoiceRow = ReceivableInvoiceRow & {
   subtotalCents?: number | null;
   taxCents?: number | null;
-  invoiceDate: Date | string | null;
-  createdAt: Date | string | null;
   updatedAt?: Date | string | null;
   cancelledAt?: Date | string | null;
   creditedAt?: Date | string | null;
