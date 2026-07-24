@@ -42,12 +42,29 @@ export const AUDIT_LEGACY_TO_EVALUATIONS_METRIC: Readonly<Record<string, string>
 export const INSIGHT_METRICS_FIELD_LEGACY: Readonly<Record<string, string>> = {
   lostRevenueEur: 'ins.low_utilization.revenue_potential_eur',
   financialImpactCents: 'ins.health_booking_financial_impact_eur',
+  dailyRateEur: 'ins.low_utilization.daily_rate_eur',
+};
+
+/** Canonical insight money fields (Prompt 10) */
+export const INSIGHT_METRICS_FIELD_CANONICAL: Readonly<Record<string, string>> = {
+  lostRevenueAmountMinor: 'ins.low_utilization.revenue_potential_minor',
+  lostRevenueCurrency: 'ins.low_utilization.revenue_potential_currency',
+  financialImpactAmountMinor: 'ins.health_booking_financial_impact_minor',
+  financialImpactCurrency: 'ins.health_booking_financial_impact_currency',
+  dailyRateAmountMinor: 'ins.low_utilization.daily_rate_minor',
+  dailyRateCurrency: 'ins.low_utilization.daily_rate_currency',
 };
 
 /** Cockpit prop legacy names */
 export const COCKPIT_PROP_LEGACY: Readonly<Record<string, string>> = {
   financialRiskEur: 'fin.overdue_receivables',
   openReceivablesEur: 'fin.open_receivables',
+};
+
+/** Cockpit canonical Money props */
+export const COCKPIT_PROP_CANONICAL: Readonly<Record<string, string>> = {
+  financialRisk: 'fin.overdue_receivables',
+  openReceivables: 'fin.open_receivables',
 };
 
 export function resolveLegacyEvaluationsMetricId(legacyId: string): string {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   financialImpactEur,
+  financialImpactMoney,
   insightRecommendation,
   isVisibleOnInsightsPage,
   matchesStationIdFilter,
@@ -58,32 +59,50 @@ describe('insights-categories (characterization)', () => {
     expect(isVisibleOnInsightsPage(visible)).toBe(true);
   });
 
-  describe('financialImpactEur (money domain)', () => {
-    it('treats financialImpactCents as minor units', () => {
+  describe('financialImpact money domain', () => {
+    it('reads canonical financialImpactAmountMinor', () => {
       const row = insight({
         id: 'impact-cents',
         type: 'BATTERY_CRITICAL',
-        metrics: { financialImpactCents: 12_500 },
+        metrics: {
+          financialImpactAmountMinor: 12_500,
+          financialImpactCurrency: 'EUR',
+          bookingId: 'b1',
+        },
       });
+      expect(financialImpactMoney(row)?.amountMinor).toBe(12_500);
       expect(financialImpactEur(row)).toBe(125);
     });
 
-    it('treats lostRevenueEur as whole major EUR units', () => {
+    it('reads canonical lostRevenueAmountMinor', () => {
       const row = insight({
         id: 'impact-eur',
         type: 'LOW_UTILIZATION',
-        metrics: { lostRevenueEur: 350 },
+        metrics: { lostRevenueAmountMinor: 35_000, lostRevenueCurrency: 'EUR' },
       });
       expect(financialImpactEur(row)).toBe(350);
     });
 
-    it('does not use magnitude heuristics for ambiguous values', () => {
+    it('does not use magnitude heuristics for small canonical minor amounts', () => {
       const row = insight({
         id: 'impact-small-cents',
         type: 'BATTERY_CRITICAL',
-        metrics: { financialImpactCents: 500 },
+        metrics: {
+          financialImpactAmountMinor: 500,
+          financialImpactCurrency: 'EUR',
+          bookingId: 'b1',
+        },
       });
       expect(financialImpactEur(row)).toBe(5);
+    });
+
+    it('still reads legacy fields when canonical is absent', () => {
+      const row = insight({
+        id: 'legacy',
+        type: 'LOW_UTILIZATION',
+        metrics: { lostRevenueEur: 350 },
+      });
+      expect(financialImpactEur(row)).toBe(350);
     });
   });
 

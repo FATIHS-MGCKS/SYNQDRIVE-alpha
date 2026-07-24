@@ -29,7 +29,18 @@ export {
 export {
   legacyInsightFinancialImpactWholeMajor,
   resolveLegacyInsightFinancialImpact,
+  resolveInsightFinancialExposureMoney,
+  resolveInsightFinancialImpactMoney,
+  resolveInsightLostRevenueMoney,
 } from '@synq/money/money.legacy-insight';
+
+export {
+  INSIGHT_MONEY_FIELDS,
+  LEGACY_INSIGHT_MONEY_FIELDS,
+  buildFinancialImpactMetrics,
+  buildLostRevenueMetrics,
+  migrateInsightMetricsMoneyFields,
+} from '@synq/money/money-insight-metrics';
 
 export {
   formatMoney,

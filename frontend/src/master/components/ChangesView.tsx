@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-money-migration-v49808-2026-07-24',
+    version: '4.9.808',
+    title: 'V4.9.808 — Auswertungen Legacy-Geldfelder Migration (Prompt 10/54)',
+    summary: [
+      'Kanonische Insight-Metriken: `lostRevenueAmountMinor/Currency`, `financialImpactAmountMinor/Currency`, `dailyRateAmountMinor/Currency`.',
+      'Detektoren (`low-utilization`, `insight-health-gate`) schreiben nur noch canonical Money-Felder.',
+      '`InsightsCockpit` + `FinancialInsightsView` nutzen `Money`-Props; deprecated `*Eur`-Props mit Fallback.',
+      'Backfill: `scripts/ops/backfill-evaluations-insight-money-metrics.ts` (dry-run / --apply / --strip-legacy).',
+      'Doku: `docs/migrations/evaluations-money-migration.md`; Magnitude-Heuristik vollständig entfernt.',
+    ],
+    reason: 'Auswertungen Prompt 10 — kontrollierte Migration ohne doppelte Wahrheiten; historische JSON-Metriken per Backfill.',
+    previousBehavior: 'Detektoren schrieben `lostRevenueEur`/`financialImpactCents`; Cockpit summierte whole-major EUR; Chart `/100` ohne zentrale Money-Helfer.',
+    details:
+      'shared/money/money-insight-metrics.ts, backfill script, InsightsCockpit, FinancialInsightsView, insight-grouping/ranking, evaluations-money.ts.',
+    affectsArchitecture: true,
+    module: 'Finance / Auswertungen',
+    createdAt: '2026-07-24T20:00:00.000Z',
+  },
+  {
     id: 'money-domain-model-v49807-2026-07-24',
     version: '4.9.807',
     title: 'V4.9.807 — Kanonisches Money-Domain-Modell (Prompt 9/54)',

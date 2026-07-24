@@ -30,7 +30,7 @@ describe('evaluations calculation provenance', () => {
     message: 'idle',
     entityScope: InsightEntityScope.VEHICLE,
     entityIds: ['v1'],
-    metrics: { idleDays: 7, lostRevenueEur: 350 },
+    metrics: { idleDays: 7, lostRevenueAmountMinor: 35_000, lostRevenueCurrency: 'EUR' },
     reasons: ['No bookings'],
     confidence: 1,
     dedupeKey: 'low_utilization:v1',

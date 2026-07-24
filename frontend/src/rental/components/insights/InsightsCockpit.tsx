@@ -1,23 +1,36 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ShieldAlert, TrendingDown, Zap, type LucideIcon } from 'lucide-react';
+import type { Money } from '@synq/money/money.contract';
 import { Icon } from '../ui/Icon';
 import { useDashboardInsights, type DashboardInsight } from '../../DashboardInsightsContext';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { api, type MisuseCaseRecord } from '../../../lib/api';
 import {
-  financialImpactEur,
+  financialImpactMoney,
   insightRecommendation,
   matchesStationIdFilter,
   partitionInsights,
 } from '../../lib/insights-categories';
+import {
+  estimatedFinancialRiskMoney,
+  formatEvaluationsMoneyDisplay,
+  resolveEvaluationsCockpitMoney,
+} from '../../lib/evaluations/evaluations-money';
+import { minorToWholeMajorUnits } from '@synq/money/money.util';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
   stationId?: string | null;
+  /** Canonical overdue receivables (minor + currency). */
+  financialRisk?: Money | null;
+  /** Canonical open receivables (minor + currency). */
+  openReceivables?: Money | null;
+  /** @deprecated Use `financialRisk` — whole major EUR for backward compatibility. */
   financialRiskEur?: number;
+  /** @deprecated Use `openReceivables` — whole major EUR for backward compatibility. */
   openReceivablesEur?: number;
 }
 
@@ -108,7 +121,9 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDarkMode: boolean }) {
-  const impact = financialImpactEur(insight);
+  const impactMoney = financialImpactMoney(insight);
+  const impact =
+    impactMoney != null ? minorToWholeMajorUnits(impactMoney.amountMinor, impactMoney.currency) : null;
   const rec = insightRecommendation(insight);
   const m = insight.metrics as Record<string, unknown> | null | undefined;
   const bookingId = (m?.bookingId ?? insight.timeContext?.bookingId) as string | undefined;
@@ -253,6 +268,8 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 export function InsightsCockpit({
   isDarkMode,
   stationId = null,
+  financialRisk = null,
+  openReceivables = null,
   financialRiskEur = 0,
   openReceivablesEur = 0,
 }: InsightsCockpitProps) {
@@ -276,14 +293,21 @@ export function InsightsCockpit({
     [filteredInsights],
   );
 
+  const resolvedFinancialRisk = useMemo(
+    () => resolveEvaluationsCockpitMoney(financialRisk, financialRiskEur),
+    [financialRisk, financialRiskEur],
+  );
+  const resolvedOpenReceivables = useMemo(
+    () => resolveEvaluationsCockpitMoney(openReceivables, openReceivablesEur),
+    [openReceivables, openReceivablesEur],
+  );
+
   const estimatedRisk = useMemo(() => {
-    let sum = financialRiskEur;
-    for (const i of [...businessRisks, ...revenueLeakage]) {
-      const e = financialImpactEur(i);
-      if (e != null) sum += e;
-    }
-    return sum;
-  }, [businessRisks, revenueLeakage, financialRiskEur]);
+    return estimatedFinancialRiskMoney(resolvedFinancialRisk, [
+      ...businessRisks,
+      ...revenueLeakage,
+    ]);
+  }, [businessRisks, revenueLeakage, resolvedFinancialRisk]);
 
   const criticalBookings = businessRisks.filter((i) => i.severity === 'CRITICAL').length;
   const hasRun = response?.hasRun ?? false;
@@ -303,17 +327,17 @@ export function InsightsCockpit({
         />
         <InsightKpiCard
           label="Finanzrisiko (geschätzt)"
-          value={`≈ ${estimatedRisk.toLocaleString('de-DE')} €`}
+          value={`≈ ${formatEvaluationsMoneyDisplay(estimatedRisk)}`}
           icon={TrendingDown}
           tone="watch"
-          accent={estimatedRisk > 0}
+          accent={estimatedRisk.amountMinor > 0}
         />
         <InsightKpiCard
           label="Offene Forderungen"
-          value={`${openReceivablesEur.toLocaleString('de-DE')} €`}
+          value={formatEvaluationsMoneyDisplay(resolvedOpenReceivables)}
           icon={Zap}
           tone="info"
-          accent={openReceivablesEur > 0}
+          accent={resolvedOpenReceivables.amountMinor > 0}
         />
         <InsightKpiCard
           label="Kritische Buchungen"

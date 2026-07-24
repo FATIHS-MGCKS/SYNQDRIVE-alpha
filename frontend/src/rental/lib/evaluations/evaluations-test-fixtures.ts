@@ -85,7 +85,17 @@ export const SCENARIO_FULL = {
   ],
   insights: [
     insight({ id: 'i1', type: 'STATION_SHORTAGE', severity: 'CRITICAL', priority: 90 }),
-    insight({ id: 'i2', type: 'LOW_UTILIZATION', severity: 'OPPORTUNITY', priority: 40, metrics: { lostRevenueEur: 350 } }),
+    insight({
+      id: 'i2',
+      type: 'LOW_UTILIZATION',
+      severity: 'OPPORTUNITY',
+      priority: 40,
+      metrics: {
+        idleDays: 7,
+        lostRevenueAmountMinor: 35_000,
+        lostRevenueCurrency: 'EUR',
+      },
+    }),
   ],
   customers: [
     { id: 'cust-a', name: 'Alpha GmbH' },

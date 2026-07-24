@@ -1,36 +1,35 @@
-import { majorUnitsNumberToMinor, minorToWholeMajorUnits, moneyFromMinor } from './money.util';
+import { minorToWholeMajorUnits } from './money.util';
 import type { Money } from './money.contract';
+import {
+  resolveInsightFinancialExposureMoney,
+  resolveInsightFinancialImpactMoney,
+  resolveInsightLostRevenueMoney,
+} from './money-insight-metrics';
 
-/**
- * Resolve financial impact from legacy insight metric fields.
- * - `financialImpactCents` — minor units (canonical naming, always cents for EUR rows today)
- * - `lostRevenueEur` — legacy whole major EUR units (Prompt 10 migrates to minor + currency)
- *
- * No magnitude heuristics — field name determines unit semantics.
- */
-export function resolveLegacyInsightFinancialImpact(
-  metrics: Record<string, unknown> | null | undefined,
-  defaultCurrency = 'EUR',
-): Money | null {
-  const financialImpactCents = metrics?.financialImpactCents;
-  if (typeof financialImpactCents === 'number' && Number.isFinite(financialImpactCents)) {
-    return moneyFromMinor(Math.trunc(financialImpactCents), defaultCurrency);
-  }
+/** @deprecated Use resolveInsightFinancialExposureMoney */
+export const resolveLegacyInsightFinancialImpact = resolveInsightFinancialExposureMoney;
 
-  const lostRevenueEur = metrics?.lostRevenueEur;
-  if (typeof lostRevenueEur === 'number' && Number.isFinite(lostRevenueEur)) {
-    return moneyFromMinor(majorUnitsNumberToMinor(lostRevenueEur, defaultCurrency), defaultCurrency);
-  }
+export { resolveInsightFinancialExposureMoney, resolveInsightFinancialImpactMoney, resolveInsightLostRevenueMoney };
 
-  return null;
-}
-
-/** Whole major units for legacy cockpit badges (`≈ {n} € Risiko`). */
+/** Whole major units for legacy cockpit badges — prefer Money + formatMoneyMinor. */
 export function legacyInsightFinancialImpactWholeMajor(
   metrics: Record<string, unknown> | null | undefined,
   defaultCurrency = 'EUR',
 ): number | null {
-  const money = resolveLegacyInsightFinancialImpact(metrics, defaultCurrency);
+  const money = resolveInsightFinancialExposureMoney(metrics, defaultCurrency);
   if (!money) return null;
+  return minorToWholeMajorUnits(money.amountMinor, money.currency);
+}
+
+export function insightLostRevenueWholeMajor(
+  metrics: Record<string, unknown> | null | undefined,
+  defaultCurrency = 'EUR',
+): number | null {
+  const money = resolveInsightLostRevenueMoney(metrics, defaultCurrency);
+  if (!money) return null;
+  return minorToWholeMajorUnits(money.amountMinor, money.currency);
+}
+
+export function formatInsightMoneyWholeMajor(money: Money): number {
   return minorToWholeMajorUnits(money.amountMinor, money.currency);
 }

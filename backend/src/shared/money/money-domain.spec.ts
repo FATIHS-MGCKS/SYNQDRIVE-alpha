@@ -149,23 +149,50 @@ describe('roundMinorToCurrency', () => {
 });
 
 describe('legacy insight financial impact', () => {
-  it('treats financialImpactCents as minor units', () => {
+  it('treats canonical financialImpactAmountMinor as minor units', () => {
+    expect(
+      resolveLegacyInsightFinancialImpact({
+        financialImpactAmountMinor: 12_500,
+        financialImpactCurrency: 'EUR',
+      }),
+    ).toEqual(moneyFromMinor(12_500, 'EUR'));
+    expect(
+      legacyInsightFinancialImpactWholeMajor({
+        financialImpactAmountMinor: 12_500,
+        financialImpactCurrency: 'EUR',
+      }),
+    ).toBe(125);
+  });
+
+  it('treats legacy financialImpactCents as minor units', () => {
     expect(resolveLegacyInsightFinancialImpact({ financialImpactCents: 12_500 })).toEqual(
       moneyFromMinor(12_500, 'EUR'),
     );
-    expect(legacyInsightFinancialImpactWholeMajor({ financialImpactCents: 12_500 })).toBe(125);
   });
 
-  it('treats lostRevenueEur as whole major EUR units', () => {
+  it('treats canonical lostRevenueAmountMinor', () => {
+    expect(
+      resolveLegacyInsightFinancialImpact({
+        lostRevenueAmountMinor: 35_000,
+        lostRevenueCurrency: 'EUR',
+      }),
+    ).toEqual(moneyFromMinor(35_000, 'EUR'));
+  });
+
+  it('treats legacy lostRevenueEur as whole major EUR units', () => {
     expect(resolveLegacyInsightFinancialImpact({ lostRevenueEur: 350 })).toEqual(
       moneyFromMinor(35_000, 'EUR'),
     );
     expect(legacyInsightFinancialImpactWholeMajor({ lostRevenueEur: 350 })).toBe(350);
   });
 
-  it('prefers financialImpactCents over lostRevenueEur', () => {
+  it('prefers canonical financial impact over legacy', () => {
     expect(
-      resolveLegacyInsightFinancialImpact({ financialImpactCents: 500, lostRevenueEur: 350 }),
+      resolveLegacyInsightFinancialImpact({
+        financialImpactAmountMinor: 500,
+        financialImpactCurrency: 'EUR',
+        financialImpactCents: 99_999,
+      }),
     ).toEqual(moneyFromMinor(500, 'EUR'));
   });
 });

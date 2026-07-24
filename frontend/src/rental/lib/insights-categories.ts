@@ -1,8 +1,6 @@
 import type { Money } from '@synq/money/money.contract';
-import {
-  legacyInsightFinancialImpactWholeMajor,
-  resolveLegacyInsightFinancialImpact,
-} from '@synq/money/money.legacy-insight';
+import { resolveInsightFinancialExposureMoney } from '@synq/money/money-insight-metrics';
+import { legacyInsightFinancialImpactWholeMajor } from '@synq/money/money.legacy-insight';
 
 import type { DashboardInsight, InsightType } from '../DashboardInsightsContext';
 
@@ -74,7 +72,7 @@ export function insightRecommendation(insight: DashboardInsight): string {
 
 export function financialImpactMoney(insight: DashboardInsight, defaultCurrency = 'EUR'): Money | null {
   const m = insight.metrics as Record<string, unknown> | null | undefined;
-  return resolveLegacyInsightFinancialImpact(m, defaultCurrency);
+  return resolveInsightFinancialExposureMoney(m, defaultCurrency);
 }
 
 /** Whole major units for legacy cockpit badges — prefer `financialImpactMoney` + `formatMoneyMinor`. */

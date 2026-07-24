@@ -1,50 +1,70 @@
 import { describe, expect, it } from 'vitest';
+import { moneyFromMinor } from '@synq/money/money.util';
+
 import type { DashboardInsight } from '../../DashboardInsightsContext';
-import { financialImpactEur, partitionInsights } from '../insights-categories';
+import { financialImpactMoney, partitionInsights } from '../insights-categories';
+import {
+  estimatedFinancialRiskMoney,
+  resolveEvaluationsCockpitMoney,
+  sumInsightFinancialExposure,
+} from './evaluations-money';
 import { buildManyInsights, insight } from './evaluations-test-fixtures';
 
-/**
- * Mirrors InsightsCockpit estimated-risk aggregation without rendering React.
- * Characterization — includes known legacy prop semantics (financialRiskEur = overdue only).
- */
-function computeEstimatedRiskEur(financialRiskEurProp: number, insights: DashboardInsight[]): number {
+function computeEstimatedRisk(baseRiskMinor: number, insights: DashboardInsight[]) {
   const { businessRisks, revenueLeakage } = partitionInsights(insights);
-  let sum = financialRiskEurProp;
-  for (const i of [...businessRisks, ...revenueLeakage]) {
-    const e = financialImpactEur(i);
-    if (e != null) sum += e;
-  }
-  return sum;
+  const base = moneyFromMinor(baseRiskMinor, 'EUR');
+  return estimatedFinancialRiskMoney(base, [...businessRisks, ...revenueLeakage]);
 }
 
-describe('InsightsCockpit KPI aggregation (characterization)', () => {
-  it('characterization: financialRiskEur prop is treated as overdue EUR base (legacy naming)', () => {
-    const overdueEur = 250;
+describe('InsightsCockpit KPI aggregation (money domain)', () => {
+  it('treats financialRisk Money as overdue receivables base', () => {
+    const overdue = moneyFromMinor(25_000, 'EUR');
     const rows = buildManyInsights(2);
-    const estimated = computeEstimatedRiskEur(overdueEur, rows);
-    expect(estimated).toBeGreaterThanOrEqual(overdueEur);
+    const estimated = computeEstimatedRisk(overdue.amountMinor, rows);
+    expect(estimated.amountMinor).toBeGreaterThanOrEqual(25_000);
   });
 
-  it('adds lostRevenueEur from LOW_UTILIZATION insights to estimated risk', () => {
+  it('adds canonical lost revenue from LOW_UTILIZATION insights', () => {
     const leakage = insight({
       id: 'leak',
       type: 'LOW_UTILIZATION',
       severity: 'OPPORTUNITY',
-      metrics: { lostRevenueEur: 400 },
+      metrics: {
+        lostRevenueAmountMinor: 40_000,
+        lostRevenueCurrency: 'EUR',
+      },
     });
-    const estimated = computeEstimatedRiskEur(0, [leakage]);
-    expect(estimated).toBe(400);
+    const estimated = computeEstimatedRisk(0, [leakage]);
+    expect(estimated).toEqual(moneyFromMinor(40_000, 'EUR'));
   });
 
-  it('critical bookings count equals CRITICAL business risks only', () => {
-    const rows = buildManyInsights(5);
-    const { businessRisks } = partitionInsights(rows);
-    const criticalBookings = businessRisks.filter((i) => i.severity === 'CRITICAL').length;
-    expect(criticalBookings).toBeGreaterThan(0);
-    expect(criticalBookings).toBeLessThanOrEqual(businessRisks.length);
+  it('legacy whole-major EUR props still resolve for compatibility', () => {
+    const resolved = resolveEvaluationsCockpitMoney(null, 250);
+    expect(resolved).toEqual(moneyFromMinor(25_000, 'EUR'));
   });
 
-  it('empty insight list yields zero incremental risk above overdue prop', () => {
-    expect(computeEstimatedRiskEur(100, [])).toBe(100);
+  it('sums insight exposure in minor units', () => {
+    const rows = [
+      insight({
+        id: 'a',
+        type: 'LOW_UTILIZATION',
+        metrics: { lostRevenueAmountMinor: 10_000, lostRevenueCurrency: 'EUR' },
+      }),
+      insight({
+        id: 'b',
+        type: 'BATTERY_CRITICAL',
+        metrics: { financialImpactAmountMinor: 5_000, financialImpactCurrency: 'EUR', bookingId: 'b1' },
+      }),
+    ];
+    expect(sumInsightFinancialExposure(rows).amountMinor).toBe(15_000);
+  });
+
+  it('reads canonical financial impact on insights', () => {
+    const row = insight({
+      id: 'impact',
+      type: 'BATTERY_CRITICAL',
+      metrics: { financialImpactAmountMinor: 12_500, financialImpactCurrency: 'EUR', bookingId: 'x' },
+    });
+    expect(financialImpactMoney(row)?.amountMinor).toBe(12_500);
   });
 });
