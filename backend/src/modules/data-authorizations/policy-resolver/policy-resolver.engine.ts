@@ -28,6 +28,7 @@ import {
 } from './policy-resolver.matching';
 import type {
   PolicyResolverCandidate,
+  PolicyResolverDpaCandidate,
   PolicyResolverEvaluatedContext,
   PolicyResolverInput,
   PolicyResolverLegalBasisCandidate,
@@ -412,23 +413,33 @@ function evaluateDataSharing(
   return { status: DataSharingAuthorizationStatus.AUTHORIZED, entityId: match.id };
 }
 
+function dpaAppliesToActivity(
+  dpa: PolicyResolverDpaCandidate,
+  processingActivityId: string,
+): boolean {
+  return (
+    dpa.processingActivityId === processingActivityId ||
+    dpa.linkedProcessingActivityIds.includes(processingActivityId)
+  );
+}
+
 function evaluateDpa(
   candidate: PolicyResolverCandidate,
   context: PolicyResolverEvaluatedContext,
   at: Date,
   blockingReasons: PolicyResolverReasonCode[],
 ): PolicyResolverResult['dpaStatus'] {
-  const needsDpa = context.processorType === POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_PARTNER;
+  const needsDpa =
+    context.processorType === POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_PARTNER ||
+    context.processorType === POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM;
 
   if (!needsDpa) {
     return { status: 'NOT_APPLICABLE' };
   }
 
+  const activityId = candidate.enforcementPolicy.processingActivityId;
   const dpas = candidate.dataProcessingAgreements.filter(
-    (d) =>
-      d.organizationId === context.organizationId &&
-      (!d.processingActivityId ||
-        d.processingActivityId === candidate.enforcementPolicy.processingActivityId),
+    (d) => d.organizationId === context.organizationId && dpaAppliesToActivity(d, activityId),
   );
 
   if (dpas.length === 0) {
@@ -442,17 +453,23 @@ function evaluateDpa(
     return { status: dpas[0].status, entityId: dpas[0].id };
   }
 
-  const match = active.find(
-    (d) =>
-      d.processorLabel === context.processorId &&
-      (!d.effectiveFrom || d.effectiveFrom.getTime() <= at.getTime()) &&
-      (!d.effectiveUntil || d.effectiveUntil.getTime() > at.getTime()) &&
-      d.signedAt != null,
-  );
+  const match =
+    active.find(
+      (d) =>
+        (!context.processorId || d.processorName === context.processorId) &&
+        (!d.effectiveFrom || d.effectiveFrom.getTime() <= at.getTime()) &&
+        (!d.effectiveUntil || d.effectiveUntil.getTime() > at.getTime()) &&
+        d.signedAt != null,
+    ) ?? active[0];
 
-  if (!match) {
-    blockingReasons.push(POLICY_RESOLVER_REASON.DPA_MISSING);
-    return { status: 'NOT_FOUND', detail: 'no active DPA for processorId' };
+  if (!match.signedAt) {
+    blockingReasons.push(POLICY_RESOLVER_REASON.DPA_NOT_ACTIVE);
+    return { status: 'NOT_FOUND', detail: 'no signed active DPA' };
+  }
+
+  if (match.effectiveUntil && match.effectiveUntil.getTime() <= at.getTime()) {
+    blockingReasons.push(POLICY_RESOLVER_REASON.DPA_EXPIRED);
+    return { status: DataProcessingAgreementStatus.EXPIRED, entityId: match.id };
   }
 
   return { status: DataProcessingAgreementStatus.ACTIVE, entityId: match.id };
@@ -491,8 +508,24 @@ function evaluateTransferGate(
     if (!auth.transferCountry) continue;
     const country = auth.transferCountry.trim().toUpperCase();
     if (POLICY_RESOLVER_EEA_COUNTRIES.has(country)) continue;
-    if (!auth.transferMechanism) {
-      blockingReasons.push(POLICY_RESOLVER_REASON.TRANSFER_MECHANISM_REQUIRED);
+    if (!auth.transferMechanism || auth.transferMechanism === 'NOT_ASSESSED') {
+      blockingReasons.push(
+        auth.transferMechanism === 'NOT_ASSESSED'
+          ? POLICY_RESOLVER_REASON.TRANSFER_NOT_ASSESSED
+          : POLICY_RESOLVER_REASON.TRANSFER_MECHANISM_REQUIRED,
+      );
+    }
+  }
+
+  for (const dpa of candidate.dataProcessingAgreements) {
+    for (const tc of dpa.transferCountries) {
+      const country = tc.countryCode.trim().toUpperCase();
+      if (POLICY_RESOLVER_EEA_COUNTRIES.has(country)) continue;
+      if (tc.transferMechanism === 'NOT_ASSESSED' || tc.assessmentStatus === 'NOT_ASSESSED') {
+        blockingReasons.push(POLICY_RESOLVER_REASON.TRANSFER_NOT_ASSESSED);
+      } else if (!tc.transferMechanism) {
+        blockingReasons.push(POLICY_RESOLVER_REASON.TRANSFER_MECHANISM_REQUIRED);
+      }
     }
   }
 }

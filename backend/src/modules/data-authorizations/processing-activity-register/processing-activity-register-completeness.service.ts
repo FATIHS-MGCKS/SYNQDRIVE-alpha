@@ -32,7 +32,7 @@ export interface RegisterCompletenessInput {
   retentionPeriodDays: number | null;
   technicalOrganizationalMeasures: string | null;
   controllerReference: string | null;
-  dataProcessingAgreements: Array<{ status: DataProcessingAgreementStatus; processorLabel: string }>;
+  dataProcessingAgreements: Array<{ status: DataProcessingAgreementStatus; processorName: string }>;
   jointControllerSummary: string | null;
   legalBasisAssessments: Array<{
     status: PrivacyPolicyLifecycleStatus;

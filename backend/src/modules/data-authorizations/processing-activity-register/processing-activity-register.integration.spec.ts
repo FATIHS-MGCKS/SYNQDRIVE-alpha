@@ -52,7 +52,7 @@ describe('ProcessingActivityRegisterCompletenessService', () => {
       dataProcessingAgreements: [
         {
           status: DataProcessingAgreementStatus.ACTIVE,
-          processorLabel: 'DIMO GmbH',
+          processorName: 'DIMO GmbH',
         } as never,
       ],
       legalBasisAssessments: [
