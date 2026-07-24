@@ -154,6 +154,16 @@ export class WorkflowsController {
     );
   }
 
+  @Post(':id/dry-run')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async dryRun(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: TestWorkflowDto,
+  ) {
+    return this.service.dryRunWorkflow(orgId, id, body);
+  }
+
   @Post(':id/test')
   @Roles(...WORKFLOW_WRITE_ROLES)
   async test(
