@@ -10,8 +10,10 @@ import {
 } from './fleet-map-vehicle-selectors';
 import {
   formatVehicleOperationalStatusLabel,
+  operationalStatusToneFor,
   selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
+  type VehicleOperationalStatus,
 } from './vehicle-operational-state';
 import {
   formatUserFacingReasonLabel,
@@ -252,44 +254,54 @@ function resolveOperationalStatus(
 function primaryLabelFor(
   status: FleetOperationalStatus,
   v: VehicleData,
-  de: boolean,
+  locale: VehicleOperationalDisplayLocale,
 ): string {
+  const de = locale === 'de';
+  const canonicalForPrimary: Partial<Record<FleetOperationalStatus, VehicleOperationalStatus>> = {
+    ready: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    blocked: VEHICLE_OPERATIONAL_STATUS.BLOCKED,
+    maintenance: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+    reserved: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+    unknown: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+  };
+  const canonical = canonicalForPrimary[status];
+  if (canonical) {
+    return formatVehicleOperationalStatusLabel(canonical, locale);
+  }
+
   switch (status) {
-    case 'ready':
-      return de ? 'Verfügbar' : 'Available';
     case 'critical':
       return de ? 'Kritisch' : 'Critical';
-    case 'blocked':
-      return de ? 'Blockiert' : 'Blocked';
     case 'warning':
       if (selectFleetActiveIsOverdue(v)) return de ? 'Überfällig' : 'Overdue';
       if (selectFleetReservedIsOverdue(v)) return de ? 'Abholung überfällig' : 'Pickup overdue';
       return de ? 'Warnung' : 'Warning';
     case 'active':
       return de ? 'Aktiv' : 'Active';
-    case 'reserved':
-      return de ? 'Reserviert' : 'Reserved';
-    case 'maintenance':
-      return de ? 'Wartung' : 'Maintenance';
     default:
-      return de ? 'Status nicht verfügbar' : 'Status unavailable';
+      return formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, locale);
   }
 }
 
 function primaryToneFor(status: FleetOperationalStatus): StatusTone {
+  const canonicalForPrimary: Partial<Record<FleetOperationalStatus, VehicleOperationalStatus>> = {
+    ready: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    blocked: VEHICLE_OPERATIONAL_STATUS.BLOCKED,
+    maintenance: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+    reserved: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+    active: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+    unknown: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+  };
+  const canonical = canonicalForPrimary[status];
+  if (canonical) {
+    return operationalStatusToneFor(canonical);
+  }
+
   switch (status) {
     case 'critical':
-    case 'blocked':
       return 'critical';
     case 'warning':
       return 'watch';
-    case 'maintenance':
-      return 'warning';
-    case 'ready':
-      return 'success';
-    case 'active':
-    case 'reserved':
-      return 'info';
     default:
       return 'neutral';
   }
@@ -556,7 +568,7 @@ export function resolveFleetVehicleDisplayState(
   const bookingSupplement = resolveBookingSupplement(vehicle, displayTimeOptions);
 
   const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual);
-  const primaryLabel = primaryLabelFor(primaryStatus, vehicle, de);
+  const primaryLabel = primaryLabelFor(primaryStatus, vehicle, locale);
   const primaryTone = primaryToneFor(primaryStatus);
 
   const fresh = resolveTelemetryFreshness(vehicle, { now, locale: options.locale });

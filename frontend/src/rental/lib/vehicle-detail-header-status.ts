@@ -3,32 +3,18 @@ import type { VehicleData } from '../data/vehicles';
 import type { useEffectiveHealth } from '../FleetContext';
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
 import {
+  mapCanonicalOperationalStatusToEditStatus,
   selectOperationalStatus,
-  VEHICLE_OPERATIONAL_STATUS,
+  type VehicleOperationalEditStatus,
 } from './vehicle-operational-state';
 
-/** Editable operational states in the Vehicle Detail header dropdown. */
-export type VehicleOperationalUiStatus = 'Available' | 'Manual Block' | 'Maintenance';
+/** @deprecated Use VehicleOperationalEditStatus from vehicle-operational-state */
+export type VehicleOperationalUiStatus = VehicleOperationalEditStatus;
 
 export function deriveVehicleDetailHeaderEditStatus(
   vehicle: Pick<VehicleData, 'status' | 'operationalState' | 'maintenanceReasonCode'>,
-): VehicleOperationalUiStatus {
-  const operational = selectOperationalStatus(vehicle);
-
-  switch (operational) {
-    case VEHICLE_OPERATIONAL_STATUS.MAINTENANCE:
-      return 'Maintenance';
-    case VEHICLE_OPERATIONAL_STATUS.BLOCKED:
-      return 'Manual Block';
-    case VEHICLE_OPERATIONAL_STATUS.UNKNOWN:
-      // Fail-closed — never imply availability for unknown operational state.
-      return 'Manual Block';
-    case VEHICLE_OPERATIONAL_STATUS.AVAILABLE:
-    case VEHICLE_OPERATIONAL_STATUS.RESERVED:
-    case VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED:
-    default:
-      return 'Available';
-  }
+): VehicleOperationalEditStatus {
+  return mapCanonicalOperationalStatusToEditStatus(selectOperationalStatus(vehicle));
 }
 
 export function resolveVehicleDetailHeaderReadinessChip(

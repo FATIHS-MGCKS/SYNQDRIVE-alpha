@@ -163,3 +163,92 @@ Booking-Derivation (deriveFleetStatusContext):
 ## SynqDrive Code → Changes / Architektur
 
 **Nicht aktualisiert** — externes Workspace außerhalb dieses Repos (siehe `architecture/CLOUD_AGENTS_2026-06-30.md`). Dieses Audit-Dokument dient als in-repo Remediation-Nachweis.
+
+---
+
+## Prompt 5/36 — Konsolidierung (2026-07-24)
+
+### Ziel
+
+Verstreute Status-Mappings auf die vorhandene kanonische Runtime-/Domain-Logik konsolidieren — **ohne** neue zweite Source of Truth.
+
+### Wiederverwendete zentrale Datei
+
+| Schicht | Datei | Rolle |
+|---------|-------|-------|
+| Domain | `vehicle-operational-state/normalize.ts` | Rohstatus → kanonischer Token |
+| Domain | `vehicle-operational-state/selectors.ts` | `selectOperationalStatus` — einzige Status-Leselogik |
+| Präsentation | `vehicle-operational-state/display.ts` | **Erweitert:** Labels, Tones, Icons, Edit-Token-Mapping |
+| Badge | `vehicle-operational-booking-display.ts` | `resolveOperationalStatusBadge` — nutzt jetzt `operationalStatusToneFor` aus display |
+| Fleet composite | `fleetVehicleDisplay.ts` | `resolveFleetVehicleDisplayState` — primaryLabel/Tone delegieren an display |
+| Detail facade | `vehicle-detail-header-status.ts` | Dünner Facade über display + fleetVehicleDisplay |
+
+### Zielstruktur (nach Konsolidierung)
+
+```
+API-Rohstatus
+  → normalizeVehicleOperationalStatus / normalizeVehicleOperationalStateDto
+  → selectOperationalStatus (kanonischer Runtime-State)
+  → resolveOperationalStatusBadge / resolveFleetVehicleDisplayState (präsentational)
+  → UI (Header, Fleet, Overview-Badges)
+```
+
+### Neue zentrale Präsentations-API (`display.ts`)
+
+| Export | Zweck |
+|--------|-------|
+| `ALL_VEHICLE_OPERATIONAL_STATUSES` | Matrix-Tests / Iteration |
+| `operationalStatusToneFor` | Einheitliche StatusChip-Töne |
+| `operationalStatusIconName` | Einheitliche Icons |
+| `mapCanonicalOperationalStatusToEditStatus` | Header-Dropdown-Baseline |
+| `formatVehicleOperationalEditStatusLabel` | Dropdown-Labels (UI-Copy unverändert) |
+| `VEHICLE_OPERATIONAL_EDIT_STATUSES` | Dropdown-Optionen |
+
+### Entfernte Doppelimplementierungen
+
+| Datei | Entfernt / ersetzt |
+|-------|-------------------|
+| `vehicle-operational-booking-display.ts` | Lokale `operationalToneForStatus` → `operationalStatusToneFor` |
+| `VehicleDetailHeader.tsx` | Lokale `readinessChipIcon` Switch → `operationalStatusIconName` |
+| `VehicleDetailHeader.tsx` | Hardcodierte Dropdown-Buttons → `VEHICLE_OPERATIONAL_EDIT_STATUSES` + zentrale Labels/Icons |
+| `vehicle-detail-header-status.ts` | Inline Edit-Mapping → `mapCanonicalOperationalStatusToEditStatus` |
+| `fleetVehicleDisplay.ts` | `primaryLabelFor` / `primaryToneFor` Duplikat-Labels/Tones für ready/blocked/maintenance/reserved/unknown |
+| `vehicle-booking-operator.utils.ts` | Lokale DE-Labels für blocked/active/rented → `formatVehicleOperationalStatusLabel` + `operationalStatusToneFor` |
+| `VehiclePickerStep.tsx` | Hardcodierte Tab-Labels (außer `Vermietet`-Kurzform) → zentrale Labels |
+
+### Geänderte Dateien (Prompt 5)
+
+- `frontend/src/rental/lib/vehicle-operational-state/display.ts`
+- `frontend/src/rental/lib/vehicle-operational-state/index.ts`
+- `frontend/src/rental/lib/vehicle-operational-booking-display.ts`
+- `frontend/src/rental/lib/vehicle-detail-header-status.ts`
+- `frontend/src/rental/lib/vehicle-detail-header-status.test.ts`
+- `frontend/src/rental/lib/vehicle-operational-display.consolidation.test.ts` (**neu**)
+- `frontend/src/rental/components/vehicle-detail/VehicleDetailHeader.tsx`
+- `frontend/src/rental/lib/fleetVehicleDisplay.ts`
+- `frontend/src/rental/lib/vehicle-booking-operator.utils.ts`
+- `frontend/src/rental/components/new-booking/VehiclePickerStep.tsx`
+
+### Tests (Prompt 5)
+
+| Suite | Ergebnis |
+|-------|----------|
+| `vehicle-operational-display.consolidation.test.ts` | 24/24 PASS (alle 6 Status + invalid/unknown + edit round-trip) |
+| `vehicle-detail-header-status.test.ts` | 6/6 PASS |
+| `vehicle-operational-booking-display.test.ts` | 13/13 PASS |
+| `fleetVehicleDisplay.test.ts` | 24/24 PASS |
+| `vehicle-operational-state.test.ts` | 10/10 PASS |
+| Frontend `npm run build` | PASS |
+
+### Bewusste Ausnahmen (unverändert)
+
+| Ausnahme | Begründung |
+|----------|------------|
+| `VehiclePickerStep` Tab „Vermietet“ | Produkt-Kurzform ≠ zentrales „Aktiv vermietet“ — UI unverändert |
+| `vehicle-booking-operator.utils` „Frei“ | Operator-Kontext-Kurzlabel für verfügbaren Idle-Zustand |
+| `fleetVehicleDisplay` `primaryLabelFor('active')` → „Aktiv“ | Kürzeres Fleet-Row-Label, nicht vollständiger Operational-Status |
+| `fleetVehicleDisplay` composite `critical` / `warning` | Health/Overdue-Overlays — keine 1:1-Operational-Mappings |
+| `vehicle-overview-ui.ts` readiness labels | Separates Rental-Readiness-Domain (`ready`/`attention`/`blocked`) |
+| `fleetVisualState.ts` Map-Legende | Telemetry-spezifische Labels (`Offline`, `Soft Offline`) |
+| `i18n/translations/*.ts` status.* keys | Parallel zu display.ts — keine Massenmigration i18n in diesem Prompt |
+| Header-Dropdown persistiert nicht | C-01 — separates Thema |

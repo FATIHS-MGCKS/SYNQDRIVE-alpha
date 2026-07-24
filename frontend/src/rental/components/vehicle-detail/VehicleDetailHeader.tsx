@@ -9,7 +9,12 @@ import {
   resolveVehicleDetailHeaderReadinessChip,
   type VehicleOperationalUiStatus,
 } from '../../lib/vehicle-detail-header-status';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
+import {
+  formatVehicleOperationalEditStatusLabel,
+  mapVehicleOperationalEditStatusToCanonical,
+  operationalStatusIconName,
+  VEHICLE_OPERATIONAL_EDIT_STATUSES,
+} from '../../lib/vehicle-operational-state';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
@@ -49,21 +54,6 @@ function MetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) 
 const backButtonClassName =
   'sq-press shrink-0 rounded-xl border border-border/60 bg-background p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
 
-function readinessChipIcon(
-  status: ReturnType<typeof resolveVehicleDetailHeaderReadinessChip>['statusBadge']['status'],
-): ReactNode {
-  if (status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
-    return <Icon name="check-circle" className="h-3 w-3" />;
-  }
-  if (status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
-    return <Icon name="car" className="h-3 w-3" />;
-  }
-  if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
-    return <Icon name="calendar" className="h-3 w-3" />;
-  }
-  return <Icon name="alert-triangle" className="h-3 w-3" />;
-}
-
 export function VehicleDetailHeader({
   vehicle,
   vehicleStatus,
@@ -82,7 +72,13 @@ export function VehicleDetailHeader({
   const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
   const readinessChip = resolveVehicleDetailHeaderReadinessChip(vehicle, rentalHealth, locale);
-  const readinessIcon = readinessChipIcon(readinessChip.statusBadge.status);
+  const readinessIcon = (
+    <Icon
+      name={operationalStatusIconName(readinessChip.statusBadge.status)}
+      className="h-3 w-3"
+    />
+  );
+  const editLocale = locale.startsWith('de') ? 'de' : 'en';
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const hasLicense = Boolean(vehicle.license);
@@ -156,30 +152,30 @@ export function VehicleDetailHeader({
 
                 {isStatusDropdownOpen ? (
                   <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
-                    <button
-                      type="button"
-                      onClick={() => onVehicleStatusChange('Available')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                    >
-                      <Icon name="check-circle" className="h-3.5 w-3.5 text-[color:var(--status-positive)]" />
-                      <span className="text-[12px] font-medium text-foreground">Available</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onVehicleStatusChange('Manual Block')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                    >
-                      <Icon name="x-circle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                      <span className="text-[12px] font-medium text-foreground">Manual Block</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onVehicleStatusChange('Maintenance')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                    >
-                      <Icon name="wrench" className="h-3.5 w-3.5 text-[color:var(--status-attention)]" />
-                      <span className="text-[12px] font-medium text-foreground">Maintenance</span>
-                    </button>
+                    {VEHICLE_OPERATIONAL_EDIT_STATUSES.map((editStatus) => (
+                      <button
+                        key={editStatus}
+                        type="button"
+                        onClick={() => onVehicleStatusChange(editStatus)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                      >
+                        <Icon
+                          name={operationalStatusIconName(
+                            mapVehicleOperationalEditStatusToCanonical(editStatus),
+                          )}
+                          className={`h-3.5 w-3.5 ${
+                            editStatus === 'Available'
+                              ? 'text-[color:var(--status-positive)]'
+                              : editStatus === 'Maintenance'
+                                ? 'text-[color:var(--status-attention)]'
+                                : 'text-[color:var(--status-critical)]'
+                          }`}
+                        />
+                        <span className="text-[12px] font-medium text-foreground">
+                          {formatVehicleOperationalEditStatusLabel(editStatus, editLocale)}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 ) : null}
               </div>

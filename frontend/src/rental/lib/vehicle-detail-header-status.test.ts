@@ -4,7 +4,10 @@ import {
   deriveVehicleDetailHeaderEditStatus,
   resolveVehicleDetailHeaderReadinessChip,
 } from './vehicle-detail-header-status';
-import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
+import {
+  mapCanonicalOperationalStatusToEditStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from './vehicle-operational-state';
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
   return {
@@ -68,17 +71,10 @@ describe('deriveVehicleDetailHeaderEditStatus', () => {
     expect(deriveVehicleDetailHeaderEditStatus(reserved)).toBe('Available');
   });
 
-  it('reproduces fleet sync bug — RESERVED must not map to Manual Block', () => {
-    const reserved = vehicle({ status: VEHICLE_OPERATIONAL_STATUS.RESERVED });
-    const legacyBuggySync =
-      reserved.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE
-        ? 'Available'
-        : reserved.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
-          ? 'Maintenance'
-          : 'Manual Block';
-
-    expect(legacyBuggySync).toBe('Manual Block');
-    expect(deriveVehicleDetailHeaderEditStatus(reserved)).toBe('Available');
+  it('delegates edit status mapping to central display helper', () => {
+    expect(deriveVehicleDetailHeaderEditStatus(vehicle({ status: VEHICLE_OPERATIONAL_STATUS.BLOCKED }))).toBe(
+      mapCanonicalOperationalStatusToEditStatus(VEHICLE_OPERATIONAL_STATUS.BLOCKED),
+    );
   });
 });
 

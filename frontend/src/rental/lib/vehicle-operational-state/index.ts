@@ -28,7 +28,15 @@ export {
   vehicleOperationalStatusMatchesTab,
   countVehicleOperationalTab,
   VEHICLE_OPERATIONAL_TAB_LABEL_KEY,
+  ALL_VEHICLE_OPERATIONAL_STATUSES,
+  VEHICLE_OPERATIONAL_EDIT_STATUSES,
+  mapCanonicalOperationalStatusToEditStatus,
+  mapVehicleOperationalEditStatusToCanonical,
+  formatVehicleOperationalEditStatusLabel,
+  operationalStatusToneFor,
+  operationalStatusIconName,
   type VehicleOperationalDisplayLocale,
+  type VehicleOperationalEditStatus,
 } from './display';
 
 export {
