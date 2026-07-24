@@ -343,6 +343,135 @@ export async function createDataAuthPostgresFixture(
   };
 }
 
+/** Minimal tenant for VPS staging runtime checks — avoids consent columns absent on some prod schemas. */
+export type DataAuthStagingRuntimeFixture = Pick<
+  DataAuthPostgresFixture,
+  'suffix' | 'orgA' | 'orgB' | 'vehicleA' | 'vehicleB' | 'processingActivityA' | 'providerGrantA'
+>;
+
+export async function createDataAuthStagingRuntimeFixture(
+  prisma: PrismaClient,
+): Promise<DataAuthStagingRuntimeFixture> {
+  const suffix = uniqueSuffix();
+  const policyFamilyId = randomUUID();
+  const now = new Date('2026-07-01T00:00:00.000Z');
+
+  const orgA = await prisma.organization.create({
+    data: { name: `Data Auth Staging A ${suffix}`, slug: `da-stg-a-${suffix}` },
+  });
+  const orgB = await prisma.organization.create({
+    data: { name: `Data Auth Staging B ${suffix}`, slug: `da-stg-b-${suffix}` },
+  });
+
+  const stationA = await prisma.station.create({
+    data: { organizationId: orgA.id, name: `Station A ${suffix}`, code: `STA-A-${suffix}`.slice(0, 20) },
+  });
+  const stationB = await prisma.station.create({
+    data: { organizationId: orgB.id, name: `Station B ${suffix}`, code: `STA-B-${suffix}`.slice(0, 20) },
+  });
+
+  const vehicleA = await prisma.vehicle.create({
+    data: {
+      organizationId: orgA.id,
+      homeStationId: stationA.id,
+      licensePlate: `DA-A-${suffix}`.slice(0, 12),
+      vin: `VINA${suffix}`.slice(0, 17).padEnd(17, '0'),
+      make: 'Test',
+      model: 'EV',
+      year: 2025,
+      fuelType: 'ELECTRIC',
+      status: 'AVAILABLE',
+    },
+  });
+  const vehicleB = await prisma.vehicle.create({
+    data: {
+      organizationId: orgB.id,
+      homeStationId: stationB.id,
+      licensePlate: `DA-B-${suffix}`.slice(0, 12),
+      vin: `VINB${suffix}`.slice(0, 17).padEnd(17, '0'),
+      make: 'Test',
+      model: 'EV',
+      year: 2025,
+      fuelType: 'ELECTRIC',
+      status: 'AVAILABLE',
+    },
+  });
+
+  const processingActivityA = await prisma.processingActivity.create({
+    data: {
+      organizationId: orgA.id,
+      activityCode: `fleet-gps-${suffix}`.slice(0, 40),
+      title: `Fleet GPS ${suffix}`,
+      policyFamilyId,
+      versionNumber: 1,
+      isCurrentVersion: true,
+      status: PrivacyPolicyLifecycleStatus.ACTIVE,
+      activatedAt: now,
+      validFrom: now,
+      purposeSummary: 'Live fleet map',
+      dataCategories: {
+        create: [{ organizationId: orgA.id, dataCategory: PrivacyProcessingDataCategory.GPS_LOCATION }],
+      },
+      purposes: {
+        create: [{ organizationId: orgA.id, purpose: PrivacyProcessingPurpose.LIVE_MAP }],
+      },
+    },
+  });
+
+  await prisma.enforcementPolicy.create({
+    data: {
+      organizationId: orgA.id,
+      processingActivityId: processingActivityA.id,
+      policyFamilyId: randomUUID(),
+      versionNumber: 1,
+      isCurrentVersion: true,
+      status: PrivacyPolicyLifecycleStatus.ACTIVE,
+      enforcementMode: PrivacyEnforcementMode.ENFORCE,
+      dataCategory: PrivacyProcessingDataCategory.GPS_LOCATION,
+      processingPurpose: PrivacyProcessingPurpose.LIVE_MAP,
+      scopeType: PrivacyEnforcementScopeType.VEHICLE,
+      pathId: 'live-gps',
+      activatedAt: now,
+      validFrom: now,
+      vehicles: { create: [{ organizationId: orgA.id, vehicleId: vehicleA.id }] },
+    },
+  });
+
+  const providerGrantA = await prisma.providerAccessGrant.create({
+    data: {
+      organizationId: orgA.id,
+      processingActivityId: processingActivityA.id,
+      vehicleId: vehicleA.id,
+      provider: 'DIMO',
+      providerStatus: ProviderAccessGrantStatus.ACTIVE,
+      grantMechanism: ProviderAccessGrantMechanism.OAUTH,
+      grantedAt: now,
+      grantedScopes: { create: [{ organizationId: orgA.id, scopeKey: 'telemetry' }] },
+    },
+  });
+
+  return { suffix, orgA, orgB, vehicleA, vehicleB, processingActivityA, providerGrantA };
+}
+
+export async function cleanupDataAuthStagingRuntimeFixture(
+  prisma: PrismaClient,
+  fixture: DataAuthStagingRuntimeFixture,
+): Promise<void> {
+  const orgIds = [fixture.orgA.id, fixture.orgB.id];
+  await prisma.authorizationDecisionEvent.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.dataAuthorizationAuditOutbox.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.providerAccessGrantScope.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.providerAccessGrant.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.enforcementPolicyVehicle.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.enforcementPolicy.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.processingActivityCategory.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.processingActivityPurpose.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.processingActivity.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.vehicle.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.station.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
+}
+
 export async function cleanupDataAuthPostgresFixture(
   prisma: PrismaClient,
   fixture: DataAuthPostgresFixture,

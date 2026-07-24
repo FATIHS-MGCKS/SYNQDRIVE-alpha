@@ -10,29 +10,27 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { NestFactory } from '@nestjs/core';
-import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AppModule } from '../../src/app.module';
 import {
   AUTHORIZATION_DECISION_ACTION,
   AUTHORIZATION_DECISION_OUTCOME,
-} from '../../src/modules/data-authorizations/authorization-decision-engine/authorization-decision.constants';
+} from '@modules/data-authorizations/authorization-decision-engine/authorization-decision.constants';
 import {
   POLICY_RESOLVER_PROCESSOR_TYPE,
   POLICY_RESOLVER_RESOURCE_TYPE,
   POLICY_RESOLVER_SOURCE_SYSTEM,
-} from '../../src/modules/data-authorizations/policy-resolver/policy-resolver.constants';
-import { AuthorizationDecisionService } from '../../src/modules/data-authorizations/authorization-decision-engine/authorization-decision.service';
-import { EnforcementCoverageRegistryService } from '../../src/modules/data-authorizations/enforcement-coverage-registry/enforcement-coverage-registry.service';
-import { WorkerRuntimeHealthService } from '../../src/modules/data-authorizations/revocation-queue-control/worker-runtime-health.service';
-import { DenySwitchService } from '../../src/modules/data-authorizations/deny-switch/deny-switch.service';
-import { DENY_SWITCH_SCOPE, DENY_SWITCH_TRIGGER } from '../../src/modules/data-authorizations/deny-switch/deny-switch.constants';
+} from '@modules/data-authorizations/policy-resolver/policy-resolver.constants';
+import { AuthorizationDecisionService } from '@modules/data-authorizations/authorization-decision-engine/authorization-decision.service';
+import { EnforcementCoverageRegistryService } from '@modules/data-authorizations/enforcement-coverage-registry/enforcement-coverage-registry.service';
+import { WorkerRuntimeHealthService } from '@modules/data-authorizations/revocation-queue-control/worker-runtime-health.service';
+import { DenySwitchService } from '@modules/data-authorizations/deny-switch/deny-switch.service';
+import { DENY_SWITCH_SCOPE, DENY_SWITCH_TRIGGER } from '@modules/data-authorizations/deny-switch/deny-switch.constants';
 import {
-  cleanupDataAuthPostgresFixture,
-  correlationId,
-  createDataAuthPostgresFixture,
+  cleanupDataAuthStagingRuntimeFixture,
+  createDataAuthStagingRuntimeFixture,
   probeDataAuthDatabase,
-} from '../../src/modules/data-authorizations/testing/data-auth-postgres.integration.harness';
+} from '@modules/data-authorizations/testing/data-auth-postgres.integration.harness';
 
 {
   const envPath = path.resolve(__dirname, '..', '..', '.env');
@@ -83,10 +81,10 @@ async function main(): Promise<void> {
   const workerHealth = app.get(WorkerRuntimeHealthService);
   const denySwitch = app.get(DenySwitchService);
 
-  let fixture: Awaited<ReturnType<typeof createDataAuthPostgresFixture>> | null = null;
+  let fixture: Awaited<ReturnType<typeof createDataAuthStagingRuntimeFixture>> | null = null;
 
   try {
-    fixture = await createDataAuthPostgresFixture(prisma);
+    fixture = await createDataAuthStagingRuntimeFixture(prisma);
     const orgId = fixture.orgA.id;
     const vehicleId = fixture.vehicleA.id;
     const corr = (suffix: string) => correlationId(`staging-${suffix}`);
@@ -325,7 +323,7 @@ async function main(): Promise<void> {
       await prisma.dataAuthorizationDenySwitch
         .deleteMany({ where: { organizationId: { in: [fixture.orgA.id, fixture.orgB.id] } } })
         .catch(() => undefined);
-      await cleanupDataAuthPostgresFixture(prisma, fixture).catch(() => undefined);
+      await cleanupDataAuthStagingRuntimeFixture(prisma, fixture).catch(() => undefined);
     }
     await app.close().catch(() => undefined);
   }
