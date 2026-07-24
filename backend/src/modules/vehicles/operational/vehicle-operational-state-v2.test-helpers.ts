@@ -31,6 +31,7 @@ export function makeOperationalVehiclesService(deps: {
     stub(),
     stub(),
     stub(),
+    stub(),
     fleetMapCache,
     undefined,
   );
