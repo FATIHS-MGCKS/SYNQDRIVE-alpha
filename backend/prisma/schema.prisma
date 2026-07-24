@@ -13035,6 +13035,7 @@ model DashboardInsight {
   run          DashboardInsightRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, isActive])
+  @@index([organizationId, isActive, priority])
   @@index([runId])
   @@index([dedupeKey])
   @@index([type])
