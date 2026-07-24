@@ -1756,6 +1756,12 @@ model Organization {
   processingActivityRegisterAuditEvents                     ProcessingActivityRegisterAuditEvent[]
   processingActivityRiskAssessments                         ProcessingActivityRiskAssessment[]
   processingActivityDpias                                   ProcessingActivityDpia[]
+  dataProcessingAgreementActivities                         DataProcessingAgreementActivity[]
+  dataProcessingAgreementSubprocessors                      DataProcessingAgreementSubprocessor[]
+  dataProcessingAgreementDataLocations                      DataProcessingAgreementDataLocation[]
+  dataProcessingAgreementTransferCountries                  DataProcessingAgreementTransferCountry[]
+  dataProcessingAgreementSharingLinks                       DataProcessingAgreementSharingLink[]
+  dataProcessingAgreementAuditEvents                        DataProcessingAgreementAuditEvent[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
 
@@ -10997,11 +11003,49 @@ enum DataSharingRecipientRole {
 }
 
 enum DataTransferMechanism {
+  NONE_REQUIRED
   ADEQUACY_DECISION
   STANDARD_CONTRACTUAL_CLAUSES
   BINDING_CORPORATE_RULES
-  EXPLICIT_CONSENT
-  OTHER_SAFEGUARD
+  OTHER_APPROVED_MECHANISM
+  NOT_ASSESSED
+}
+
+enum ProcessorPartyRole {
+  CONTROLLER
+  PROCESSOR
+  SUBPROCESSOR
+  JOINT_CONTROLLER
+  INDEPENDENT_RECIPIENT
+}
+
+enum DpaSubprocessorStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  REVOKED
+  EXPIRED
+}
+
+enum TransferAssessmentStatus {
+  NOT_ASSESSED
+  ASSESSED
+  REQUIRES_REVIEW
+}
+
+enum DpaAuditEventType {
+  CREATED
+  UPDATED
+  ACTIVATED
+  TERMINATED
+  EXPIRED
+  SUBPROCESSOR_ADDED
+  SUBPROCESSOR_CHANGED
+  SUBPROCESSOR_REVIEW_REQUIRED
+  TRANSFER_UPDATED
+  SHARING_LINKED
+  VERSION_CREATED
 }
 
 enum DataProcessingAgreementStatus {
@@ -11144,6 +11188,7 @@ model ProcessingActivity {
   providerAccessGrants        ProviderAccessGrant[]
   dataSharingAuthorizations   DataSharingAuthorization[]
   dataProcessingAgreements    DataProcessingAgreement[]
+  dpaActivityLinks            DataProcessingAgreementActivity[]
   enforcementPolicies         EnforcementPolicy[]
   authorizationDecisionEvents AuthorizationDecisionEvent[]
   lifecycleEvents             ProcessingActivityLifecycleEvent[]
@@ -11569,6 +11614,7 @@ model DataSharingAuthorization {
   legacyOrgDataAuthorization OrgDataAuthorization?                 @relation("LegacyOrgAuthDataSharing", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
   dataCategories             DataSharingAuthorizationCategory[]
   statusEvents               DataSharingAuthorizationStatusEvent[]
+  dpaSharingLinks            DataProcessingAgreementSharingLink[]
 
   @@index([organizationId, status])
   @@index([processingActivityId])
@@ -11608,16 +11654,27 @@ model DataSharingAuthorizationStatusEvent {
   @@map("data_sharing_authorization_status_events")
 }
 
-/// Auftragsverarbeitung (AVV/DPA) — Vertrag mit Auftragsverarbeiter.
+/// Auftragsverarbeitung (AVV/DPA) — versionierter Vertrag, getrennt von Enforcement-Policy.
 model DataProcessingAgreement {
   id                           String                        @id @default(uuid())
   organizationId               String                        @map("organization_id")
+  policyFamilyId               String                        @map("policy_family_id")
+  versionNumber                Int                           @default(1) @map("version_number")
+  isCurrentVersion             Boolean                       @default(true) @map("is_current_version")
   processingActivityId         String?                       @map("processing_activity_id")
-  processorLabel               String                        @map("processor_label")
-  agreementRef                 String?                       @map("agreement_ref")
+  processorName                String                        @map("processor_name")
+  processorRole                ProcessorPartyRole            @default(PROCESSOR) @map("processor_role")
+  contractReference            String?                       @map("contract_reference")
   status                       DataProcessingAgreementStatus @default(DRAFT)
   effectiveFrom                DateTime?                     @map("effective_from")
   effectiveUntil               DateTime?                     @map("effective_until")
+  reviewDate                   DateTime?                     @map("review_date")
+  ownerUserId                  String?                       @map("owner_user_id")
+  safeguards                   String?                       @db.Text
+  primaryTransferMechanism     DataTransferMechanism?        @map("primary_transfer_mechanism")
+  transferAssessmentStatus     TransferAssessmentStatus      @default(NOT_ASSESSED) @map("transfer_assessment_status")
+  documentStorageRef           String?                       @map("document_storage_ref")
+  providerKind                 String?                       @map("provider_kind")
   signedByUserId               String?                       @map("signed_by_user_id")
   signedAt                     DateTime?                     @map("signed_at")
   terminatedAt                 DateTime?                     @map("terminated_at")
@@ -11625,13 +11682,128 @@ model DataProcessingAgreement {
   createdAt                    DateTime                      @default(now()) @map("created_at")
   updatedAt                    DateTime                      @updatedAt @map("updated_at")
 
-  organization               Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  processingActivity         ProcessingActivity?   @relation(fields: [processingActivityId], references: [id], onDelete: SetNull)
-  legacyOrgDataAuthorization OrgDataAuthorization? @relation("LegacyOrgAuthDataProcessingAgreement", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  organization               Organization                          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity         ProcessingActivity?                   @relation(fields: [processingActivityId], references: [id], onDelete: SetNull)
+  legacyOrgDataAuthorization OrgDataAuthorization?                 @relation("LegacyOrgAuthDataProcessingAgreement", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  linkedActivities           DataProcessingAgreementActivity[]
+  subprocessors                DataProcessingAgreementSubprocessor[]
+  dataLocations              DataProcessingAgreementDataLocation[]
+  transferCountries          DataProcessingAgreementTransferCountry[]
+  sharingLinks               DataProcessingAgreementSharingLink[]
+  auditEvents                DataProcessingAgreementAuditEvent[]
 
-  @@index([organizationId, status])
+  @@unique([policyFamilyId, versionNumber])
+  @@index([organizationId, status, isCurrentVersion])
   @@index([processingActivityId])
+  @@index([organizationId, reviewDate])
   @@map("data_processing_agreements")
+}
+
+model DataProcessingAgreementActivity {
+  id                   String @id @default(uuid())
+  organizationId       String @map("organization_id")
+  agreementId          String @map("agreement_id")
+  processingActivityId String @map("processing_activity_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreement          DataProcessingAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  processingActivity ProcessingActivity      @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, processingActivityId])
+  @@index([organizationId, processingActivityId])
+  @@map("data_processing_agreement_activities")
+}
+
+model DataProcessingAgreementSubprocessor {
+  id                       String                @id @default(uuid())
+  organizationId           String                @map("organization_id")
+  agreementId              String                @map("agreement_id")
+  name                     String
+  processorRole            ProcessorPartyRole    @default(SUBPROCESSOR) @map("processor_role")
+  dataLocationCountry      String?               @map("data_location_country")
+  processingPartnerCountry String?               @map("processing_partner_country")
+  status                   DpaSubprocessorStatus @default(DRAFT)
+  effectiveFrom            DateTime?             @map("effective_from")
+  effectiveUntil           DateTime?             @map("effective_until")
+  reviewRequired           Boolean               @default(false) @map("review_required")
+  createdAt                DateTime              @default(now()) @map("created_at")
+  updatedAt                DateTime              @updatedAt @map("updated_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreement    DataProcessingAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, agreementId, status])
+  @@map("data_processing_agreement_subprocessors")
+}
+
+model DataProcessingAgreementDataLocation {
+  id             String  @id @default(uuid())
+  organizationId String  @map("organization_id")
+  agreementId    String  @map("agreement_id")
+  countryCode    String  @map("country_code")
+  regionLabel    String? @map("region_label")
+  isPrimary      Boolean @default(false) @map("is_primary")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreement    DataProcessingAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, countryCode, regionLabel])
+  @@index([organizationId, agreementId])
+  @@map("data_processing_agreement_data_locations")
+}
+
+model DataProcessingAgreementTransferCountry {
+  id                String                   @id @default(uuid())
+  organizationId    String                   @map("organization_id")
+  agreementId       String                   @map("agreement_id")
+  countryCode       String                   @map("country_code")
+  transferMechanism DataTransferMechanism    @map("transfer_mechanism")
+  assessmentStatus  TransferAssessmentStatus @default(NOT_ASSESSED) @map("assessment_status")
+  safeguards        String?                  @db.Text
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreement    DataProcessingAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, countryCode])
+  @@index([organizationId, agreementId])
+  @@map("data_processing_agreement_transfer_countries")
+}
+
+model DataProcessingAgreementSharingLink {
+  id                         String @id @default(uuid())
+  organizationId             String @map("organization_id")
+  agreementId                String @map("agreement_id")
+  dataSharingAuthorizationId String @map("data_sharing_authorization_id")
+  createdAt                  DateTime @default(now()) @map("created_at")
+
+  organization             Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreement                DataProcessingAgreement  @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  dataSharingAuthorization DataSharingAuthorization @relation(fields: [dataSharingAuthorizationId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, dataSharingAuthorizationId])
+  @@index([organizationId, dataSharingAuthorizationId])
+  @@map("data_processing_agreement_sharing_links")
+}
+
+model DataProcessingAgreementAuditEvent {
+  id             String            @id @default(uuid())
+  organizationId String            @map("organization_id")
+  agreementId    String            @map("agreement_id")
+  eventType      DpaAuditEventType @map("event_type")
+  actorUserId    String?           @map("actor_user_id")
+  summary        String
+  metadata       Json?
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreement    DataProcessingAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, agreementId, createdAt])
+  @@map("data_processing_agreement_audit_events")
 }
 
 /// Technische Enforcement-Policy — getrennt von Rechtsgrundlage und Einwilligung.

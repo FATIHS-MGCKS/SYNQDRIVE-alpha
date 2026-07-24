@@ -115,14 +115,35 @@ export class PolicyResolverService {
         include: { dataCategories: { select: { dataCategory: true } } },
       }),
       this.prisma.dataProcessingAgreement.findMany({
-        where: { organizationId, processingActivityId: { in: activityIds } },
+        where: {
+          organizationId,
+          isCurrentVersion: true,
+          OR: [
+            { processingActivityId: { in: activityIds } },
+            { linkedActivities: { some: { processingActivityId: { in: activityIds } } } },
+          ],
+        },
+        include: {
+          linkedActivities: { select: { processingActivityId: true } },
+          transferCountries: true,
+        },
       }),
     ]);
 
     const legalByActivity = groupBy(legalBases, (l) => l.processingActivityId);
     const consentByActivity = groupBy(consents, (c) => c.processingActivityId);
     const sharingByActivity = groupBy(sharing, (s) => s.processingActivityId);
-    const dpaByActivity = groupBy(dpas, (d) => d.processingActivityId ?? '');
+    const dpaByActivity = new Map<string, typeof dpas>();
+    for (const dpa of dpas) {
+      const linkedIds = new Set<string>();
+      if (dpa.processingActivityId) linkedIds.add(dpa.processingActivityId);
+      for (const link of dpa.linkedActivities) linkedIds.add(link.processingActivityId);
+      for (const activityId of linkedIds) {
+        const list = dpaByActivity.get(activityId) ?? [];
+        list.push(dpa);
+        dpaByActivity.set(activityId, list);
+      }
+    }
 
     return policies.map((policy) => ({
       enforcementPolicy: {
@@ -204,11 +225,19 @@ export class PolicyResolverService {
         id: d.id,
         organizationId: d.organizationId,
         processingActivityId: d.processingActivityId,
-        processorLabel: d.processorLabel,
+        linkedProcessingActivityIds: d.linkedActivities.map((l) => l.processingActivityId),
+        processorName: d.processorName,
+        processorRole: d.processorRole,
         status: d.status,
         effectiveFrom: d.effectiveFrom,
         effectiveUntil: d.effectiveUntil,
         signedAt: d.signedAt,
+        transferAssessmentStatus: d.transferAssessmentStatus,
+        transferCountries: d.transferCountries.map((tc) => ({
+          countryCode: tc.countryCode,
+          transferMechanism: tc.transferMechanism,
+          assessmentStatus: tc.assessmentStatus,
+        })),
       })),
       scopeVehicleIds: policy.vehicles.map((v) => v.vehicleId),
       scopeCustomerIds: policy.customers.map((c) => c.customerId),

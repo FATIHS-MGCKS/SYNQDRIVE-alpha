@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'processor-dpa-management-v49814-2026-07-24',
+    version: '4.9.814',
+    title: 'V4.9.814 — Processor, DPA, Subprocessor & Drittlandtransfer (Prompt 31)',
+    summary: [
+      'Strukturierte DPA-Verwaltung mit Verantwortlichen, Auftragsverarbeitern, Unterauftragsverarbeitern, Datenstandorten und Drittlandtransfers.',
+      'Vertrag versioniert getrennt von Enforcement-Policy (policyFamilyId + versionNumber).',
+      'Contract/Transfer-Gates im Policy Resolver — fehlende Transferbewertung sichtbar (NOT_ASSESSED).',
+      'Subprocessor-Änderungen erzeugen Review-Pflicht und append-only Audit.',
+      'DataSharingAuthorization logisch mit DPA verknüpfbar; keine öffentlichen Vertragsdokumente.',
+      'CI: npm run test:data-auth:processor-dpa.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 31 — professionelle Processor/DPA-Governance für externe Verarbeitung und Drittlandtransfers.',
+    previousBehavior:
+      'Minimales DataProcessingAgreement ohne Subprocessor, Transfer-Länder, Versionierung oder Resolver-Gates für Transferbewertung.',
+    details:
+      'backend/src/modules/data-authorizations/processor-dpa/. Migration 20260724110000. Doku: docs/architecture/processor-dpa-management-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T07:00:00.000Z',
+  },
+  {
     id: 'dpia-workflow-v49813-2026-07-24',
     version: '4.9.813',
     title: 'V4.9.813 — DPIA-Workflow & Privacy Risk Assessment (Prompt 30)',

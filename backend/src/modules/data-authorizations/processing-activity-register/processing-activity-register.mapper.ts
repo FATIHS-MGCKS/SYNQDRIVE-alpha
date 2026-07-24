@@ -64,7 +64,7 @@ export function toCompletenessInput(record: RegisterActivityRecord): RegisterCom
     controllerReference: record.controllerReference,
     dataProcessingAgreements: record.dataProcessingAgreements.map((d) => ({
       status: d.status,
-      processorLabel: d.processorLabel,
+      processorName: d.processorName,
     })),
     jointControllerSummary: record.jointControllerSummary,
     legalBasisAssessments: record.legalBasisAssessments.map((a) => ({
@@ -139,9 +139,9 @@ export function mapRegisterDetail(
     jointControllerSummary: record.jointControllerSummary,
     processors: record.dataProcessingAgreements.map((d) => ({
       id: d.id,
-      label: d.processorLabel,
+      label: d.processorName,
       status: d.status,
-      agreementRef: d.agreementRef,
+      agreementRef: d.contractReference,
     })),
     legalBasisAssessments: record.legalBasisAssessments.map((a) => ({
       id: a.id,

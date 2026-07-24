@@ -161,11 +161,19 @@ export interface PolicyResolverDpaCandidate {
   id: string;
   organizationId: string;
   processingActivityId: string | null;
-  processorLabel: string;
+  linkedProcessingActivityIds: string[];
+  processorName: string;
+  processorRole: string;
   status: DataProcessingAgreementStatus;
   effectiveFrom: Date | null;
   effectiveUntil: Date | null;
   signedAt: Date | null;
+  transferAssessmentStatus: string;
+  transferCountries: Array<{
+    countryCode: string;
+    transferMechanism: string;
+    assessmentStatus: string;
+  }>;
 }
 
 export interface PolicyResolverProcessingActivityCandidate {
