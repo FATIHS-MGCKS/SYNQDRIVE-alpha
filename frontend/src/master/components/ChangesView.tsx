@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-post-remediation-audit-p36-2026-07-24',
+    version: '4.9.807',
+    title: 'V4.9.807 — Vehicle Detail post-remediation production readiness audit (Prompt 36)',
+    summary: [
+      'Final audit `docs/audits/vehicle-detail-page-post-remediation-readiness-2026-07.md`: independent re-verification of all 22 P0/P1 remediation areas + VPS/runtime/deploy findings.',
+      'Fresh evidence: backend verify green, 182 frontend unit tests, 39 E2E (flow/a11y/runtime) pass; VPS post-deploy health 200 on `main` `4e16a386`.',
+      'Verdict: **PRODUCTION READY WITH ACCEPTED RESIDUAL RISKS** — no open P0; 3 accepted P1 (PM2 restarts, GPS-on-documents design, `/metrics` routing).',
+    ],
+    reason: 'Prompt 36/36: final post-remediation and production-readiness gate for Vehicle Detail Page.',
+    previousBehavior: 'Remediation deployed (Prompt 35) but no consolidated closure audit across all original findings.',
+    details:
+      'Closure tables for VD-R01–VD-R22, VPS-DEPL/VD-RT findings, cross-cutting security/telemetry/polling checks. Architektur unchanged.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / Audit',
+    createdAt: '2026-07-24T12:50:00.000Z',
+  },
+  {
     id: 'vehicle-detail-production-deploy-p35-2026-07-24',
     version: '4.9.806',
     title: 'V4.9.806 — Vehicle Detail controlled production deploy (Prompt 35)',
