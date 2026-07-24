@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { ObservabilityModule } from '@modules/observability/observability.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { DrivingAssessmentNotificationAdapter } from './adapters/driving-assessment-notification.adapter';
@@ -53,6 +54,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
       { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },
     ),
     forwardRef(() => BusinessInsightsModule),
+    forwardRef(() => DataAuthorizationsModule),
   ],
   controllers: [NotificationsController],
   providers: [

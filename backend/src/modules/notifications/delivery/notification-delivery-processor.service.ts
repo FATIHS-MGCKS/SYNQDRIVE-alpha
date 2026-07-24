@@ -1,10 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { NotificationDeliveryChannel } from '@prisma/client';
 import notificationDeliveryConfig from '@config/notification-delivery.config';
 import { NotificationDeliveryOutboxRepository } from './notification-delivery-outbox.repository';
 import { NotificationChannelDispatcher } from './notification-delivery-channels.service';
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
+import { NotificationEnforcementService } from '@modules/data-authorizations/notification-enforcement/notification-enforcement.service';
+import { NOTIFICATION_AUTH_DENY_REASON } from '@modules/data-authorizations/notification-enforcement/notification-enforcement.constants';
 
 @Injectable()
 export class NotificationDeliveryProcessorService {
@@ -14,6 +16,7 @@ export class NotificationDeliveryProcessorService {
     private readonly outboxRepo: NotificationDeliveryOutboxRepository,
     private readonly dispatcher: NotificationChannelDispatcher,
     private readonly observability: NotificationDeliveryObservabilityService,
+    @Optional() private readonly notificationEnforcement?: NotificationEnforcementService,
   ) {}
 
   async processOutboxId(outboxId: string): Promise<'completed' | 'retry' | 'dead_letter' | 'skipped'> {
@@ -43,6 +46,41 @@ export class NotificationDeliveryProcessorService {
         errorCode: 'PUSH_NOT_IMPLEMENTED',
       });
       return 'skipped';
+    }
+
+    if (this.notificationEnforcement) {
+      const notification = await this.outboxRepo.findNotificationForDelivery(claimed.notificationId);
+      if (notification) {
+        const vehicleId =
+          notification.entityType === 'VEHICLE'
+            ? notification.entityId
+            : (notification.actionTarget as Record<string, unknown> | null)?.vehicleId as string | undefined;
+        const auth = await this.notificationEnforcement.checkDelivery({
+          organizationId: claimed.organizationId,
+          eventType: claimed.eventType,
+          vehicleId: vehicleId ?? null,
+          entityType: notification.entityType,
+          entityId: notification.entityId,
+          correlationId: `notification-delivery-process:${claimed.id}`,
+        });
+        if (!auth.mayProceed) {
+          const reason =
+            auth.reasonCode === NOTIFICATION_AUTH_DENY_REASON.REVOKED
+              ? NOTIFICATION_AUTH_DENY_REASON.REVOKED
+              : auth.reasonCode;
+          await this.outboxRepo.markSuppressed(claimed.id, reason);
+          this.observability.logWarn({
+            notificationId: claimed.notificationId,
+            organizationId: claimed.organizationId,
+            eventType: claimed.eventType,
+            operation: 'delivery_suppressed_auth',
+            deliveryId: claimed.id,
+            channel: claimed.channel,
+            errorCode: reason,
+          });
+          return 'skipped';
+        }
+      }
     }
 
     const result = await this.dispatcher.deliver(claimed);

@@ -78,6 +78,18 @@ export class NotificationDeliveryOutboxRepository {
     });
   }
 
+  findNotificationForDelivery(notificationId: string) {
+    return this.prisma.notification.findUnique({
+      where: { id: notificationId },
+      select: {
+        entityType: true,
+        entityId: true,
+        actionTarget: true,
+        templateParams: true,
+      },
+    });
+  }
+
   findPendingBatch(limit: number, now: Date = new Date()) {
     return this.prisma.notificationDeliveryOutbox.findMany({
       where: {

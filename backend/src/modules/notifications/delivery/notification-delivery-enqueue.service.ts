@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   NotificationDeliveryChannel,
@@ -20,6 +20,8 @@ import {
   nextDigestAvailableAt,
 } from './notification-delivery-quiet-hours.util';
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
+import { NotificationEnforcementService } from '@modules/data-authorizations/notification-enforcement/notification-enforcement.service';
+import { getActiveNotificationAuthCache } from '../runtime/notification-run-context';
 
 export interface EnqueueDeliveryInput {
   notification: Notification;
@@ -39,6 +41,7 @@ export class NotificationDeliveryEnqueueService {
     private readonly stationScope: NotificationStationScopeService,
     private readonly outboxRepo: NotificationDeliveryOutboxRepository,
     private readonly observability: NotificationDeliveryObservabilityService,
+    @Optional() private readonly notificationEnforcement?: NotificationEnforcementService,
   ) {}
 
   isDeliveryEnabled(): boolean {
@@ -50,6 +53,31 @@ export class NotificationDeliveryEnqueueService {
     tx: NotificationTx,
   ): Promise<string[]> {
     if (!this.isDeliveryEnabled()) return [];
+
+    if (this.notificationEnforcement) {
+      const vehicleId = this.extractVehicleId(input.notification);
+      const auth = await this.notificationEnforcement.checkDelivery(
+        {
+          organizationId: input.notification.organizationId,
+          eventType: input.notification.eventType,
+          vehicleId,
+          entityType: input.notification.entityType,
+          entityId: input.notification.entityId,
+          correlationId: `notification-delivery:${input.notification.id}:${input.transition}`,
+        },
+        getActiveNotificationAuthCache() ?? undefined,
+      );
+      if (!auth.mayProceed) {
+        this.observability.logWarn({
+          notificationId: input.notification.id,
+          organizationId: input.notification.organizationId,
+          eventType: input.notification.eventType,
+          operation: 'delivery_suppressed_auth',
+          errorCode: auth.reasonCode,
+        });
+        return [];
+      }
+    }
 
     const channels = this.policyService.resolveChannels(input.notification.eventType);
     if (channels.length === 0) return [];
@@ -184,5 +212,14 @@ export class NotificationDeliveryEnqueueService {
     }
 
     return createdIds;
+  }
+
+  private extractVehicleId(notification: EnqueueDeliveryInput['notification']): string | null {
+    if (notification.entityType === 'VEHICLE') return notification.entityId;
+    const target = notification.actionTarget as Record<string, unknown> | null;
+    if (target && typeof target.vehicleId === 'string') return target.vehicleId;
+    const params = notification.templateParams as Record<string, unknown> | null;
+    if (params && typeof params.vehicleId === 'string') return params.vehicleId;
+    return null;
   }
 }

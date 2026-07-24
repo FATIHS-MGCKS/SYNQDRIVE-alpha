@@ -14,6 +14,10 @@ import type { NotificationAvailableAction } from './notification-available-actio
 import type { MembershipRole } from '@prisma/client';
 import { redactActionTargetForRole, redactTemplateParamsForRole } from '../access/notification-privacy.policy';
 import { isUuidLike } from './notification-entity-label.enricher';
+import {
+  minimizeNotificationPreviewParams,
+} from '@modules/data-authorizations/notification-enforcement/notification-preview-minimizer';
+import { resolveNotificationAuthGate } from '@modules/data-authorizations/notification-enforcement/notification-authorization.registry';
 
 export interface NotificationEntityDto {
   type: NotificationEntityType;
@@ -98,20 +102,29 @@ export function mapNotificationToDto(
   availableActions: NotificationAvailableAction[],
   membershipRole?: MembershipRole,
   templateParamsOverride?: Record<string, string | number | boolean | null>,
+  deepLinkAuthorized = true,
 ): NotificationResponseDto {
   const templateParamsRaw = templateParamsOverride
     ?? ((row.templateParams ?? {}) as Record<string, string | number | boolean | null>);
+  const gateSpec = resolveNotificationAuthGate(row.eventType);
+  const authMinimized = minimizeNotificationPreviewParams(
+    templateParamsRaw,
+    gateSpec,
+    deepLinkAuthorized,
+  );
   const templateParams = membershipRole
-    ? redactTemplateParamsForRole(templateParamsRaw, membershipRole, row.domain)
-    : templateParamsRaw;
+    ? redactTemplateParamsForRole(authMinimized, membershipRole, row.domain)
+    : authMinimized;
   const actionTargetRaw = (row.actionTarget ?? {}) as unknown as NotificationActionTarget;
-  const actionTarget = membershipRole
-    ? (redactActionTargetForRole(
-        actionTargetRaw as unknown as Record<string, unknown>,
-        membershipRole,
-        row.domain,
-      ) as unknown as NotificationActionTarget)
-    : actionTargetRaw;
+  const actionTarget = deepLinkAuthorized
+    ? membershipRole
+      ? (redactActionTargetForRole(
+          actionTargetRaw as unknown as Record<string, unknown>,
+          membershipRole,
+          row.domain,
+        ) as unknown as NotificationActionTarget)
+      : actionTargetRaw
+    : ({} as NotificationActionTarget);
 
   return {
     id: row.id,

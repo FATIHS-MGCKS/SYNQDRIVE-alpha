@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
@@ -45,6 +46,7 @@ import {
   type NotificationListFilters,
 } from './notification-query.util';
 import type { ListNotificationsQueryDto } from './dto/notification-api.dto';
+import { NotificationEnforcementService } from '@modules/data-authorizations/notification-enforcement/notification-enforcement.service';
 
 export interface NotificationRequestUser {
   id?: string;
@@ -71,6 +73,7 @@ export class NotificationApiService {
     private readonly audit: AuditService,
     private readonly receiptService: NotificationReceiptService,
     private readonly stationScopeService: NotificationStationScopeService,
+    @Optional() private readonly notificationEnforcement?: NotificationEnforcementService,
   ) {}
 
   assertApiEnabled(): void {
@@ -548,6 +551,30 @@ export class NotificationApiService {
     await enrichTemplateParamsFromLegacyInsights(this.prisma, rows, enrichedParamsById);
     await enrichActiveDtcTemplateParams(this.prisma, rows, enrichedParamsById);
 
+    const deepLinkAuthById = new Map<string, boolean>();
+    if (this.notificationEnforcement) {
+      const authResults = await Promise.all(
+        rows.map(async (row) => {
+          const vehicleId =
+            row.entityType === 'VEHICLE'
+              ? row.entityId
+              : (row.actionTarget as Record<string, unknown> | null)?.vehicleId as string | undefined;
+          const auth = await this.notificationEnforcement!.checkDeepLink({
+            organizationId: ctx.organizationId,
+            eventType: row.eventType,
+            vehicleId: vehicleId ?? null,
+            entityType: row.entityType,
+            entityId: row.entityId,
+            correlationId: `notification-deep-link:${row.id}`,
+          });
+          return { id: row.id, allowed: auth.mayProceed };
+        }),
+      );
+      for (const result of authResults) {
+        deepLinkAuthById.set(result.id, result.allowed);
+      }
+    }
+
     return rows.map((row) => {
       const receipt = receiptByNotification.get(row.id) ?? null;
       const isRead = receipt?.readAt != null;
@@ -563,7 +590,17 @@ export class NotificationApiService {
         referenceNow,
       });
       const enrichedParams = enrichedParamsById.get(row.id) ?? mergeEnrichedTemplateParams(row, labelContexts);
-      return mapNotificationToDto(row as any, receipt, actions, ctx.membershipRole, enrichedParams);
+      const deepLinkAuthorized = this.notificationEnforcement
+        ? deepLinkAuthById.get(row.id) ?? false
+        : true;
+      return mapNotificationToDto(
+        row as any,
+        receipt,
+        actions,
+        ctx.membershipRole,
+        enrichedParams,
+        deepLinkAuthorized,
+      );
     });
   }
 

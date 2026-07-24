@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-authorization-v49804-2026-07-23',
+    version: '4.9.804',
+    title: 'V4.9.804 — Alerts und Notifications authorization-aware (Prompt 21)',
+    summary: [
+      'NotificationEnforcementService — NOTIFY als explizite Aktion vor Ingest, Delivery und Deep Link.',
+      'Event-Registry mapped Health/Driving/Connectivity/Operational/Technical-Monitoring Gates. Widerruf resolved aktive Meldungen und cancelled Pending-Delivery.',
+      'Datenminimierung in Preview, E-Mail und Push. In-Process Decision-Cache pro Evaluation-Run.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 21 — Meldungen nur aus autorisierten Daten und Prozessen.',
+    previousBehavior:
+      'Notification Engine V2 ohne zentrale Privacy-Gates; mayNotify nur in DrivingBehaviorEnforcement definiert aber nicht verdrahtet.',
+    details:
+      'backend/src/modules/data-authorizations/notification-enforcement/. Doku: docs/architecture/notification-authorization-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-24T00:15:00.000Z',
+  },
+  {
     id: 'driving-behavior-enforcement-v49803-2026-07-23',
     version: '4.9.803',
     title: 'V4.9.803 — Driving Behavior, Misuse und Profiling geschützt (Prompt 20)',
