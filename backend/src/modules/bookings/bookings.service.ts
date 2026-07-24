@@ -21,6 +21,7 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 import { HandoverProtocolDto } from './handover.types';
+import { redactHandoverProtocolForList } from './booking-handover-privacy.util';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import { VehicleCleaningTaskService } from '@modules/tasks/vehicle-cleaning-task.service';
@@ -555,8 +556,8 @@ export class BookingsService {
       notes: b.notes,
       insuranceOptions: Array.isArray(b.insuranceOptions) ? b.insuranceOptions : [],
       extras: Array.isArray(b.extrasJson) ? b.extrasJson : [],
-      pickupProtocol: pickup,
-      returnProtocol: ret,
+      pickupProtocol: redactHandoverProtocolForList(pickup),
+      returnProtocol: redactHandoverProtocolForList(ret),
       isOneWayRental: b.isOneWayRental ?? false,
       actualPickupStationId: b.actualPickupStationId ?? null,
       actualReturnStationId: b.actualReturnStationId ?? null,

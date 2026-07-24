@@ -22,6 +22,10 @@
     "test:legal-documents:a11y": "playwright test -c e2e/playwright.config.ts legal-documents-a11y.spec.ts --project=desktop-1280",
     "test:legal-documents:verify": "bash scripts/test/legal-documents-verify.sh all",
     "test:legal-documents:verify:unit": "bash scripts/test/legal-documents-verify.sh unit",
+    "test:bookings": "vitest run booking-wizard-eligibility booking-payment booking-vehicle-preflight vehicle-operational-booking vehicle-booking-risk booking-production-test-matrix bookingHandoverGates bookingUtils",
+    "test:bookings:e2e": "playwright test -c e2e/playwright.config.ts bookings-planner.spec.ts --project=desktop-1280",
+    "test:bookings:verify": "bash scripts/test/bookings-verify.sh all",
+    "test:bookings:verify:unit": "bash scripts/test/bookings-verify.sh unit",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"

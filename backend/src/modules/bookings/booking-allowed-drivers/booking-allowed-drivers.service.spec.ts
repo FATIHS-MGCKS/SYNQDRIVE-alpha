@@ -13,15 +13,38 @@ function makePrisma() {
   } as any;
 }
 
+function makeEligibilityDeps() {
+  return {
+    bookingEligibilityEnforcement: {
+      shouldEnforceForUpdate: jest.fn().mockReturnValue(false),
+      assertAllowed: jest.fn().mockResolvedValue(undefined),
+    },
+    bookingEligibilityApproval: {
+      revokeActiveApprovals: jest.fn().mockResolvedValue(undefined),
+    },
+    bookingEligibilityRecheck: {
+      processMutationRecheckFromInvalidationFacts: jest.fn().mockResolvedValue(undefined),
+    },
+  };
+}
+
 describe('BookingAllowedDriversService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let activityLog: { log: jest.Mock };
+  let eligibilityDeps: ReturnType<typeof makeEligibilityDeps>;
   let service: BookingAllowedDriversService;
 
   beforeEach(() => {
     prisma = makePrisma();
     activityLog = { log: jest.fn().mockResolvedValue({}) };
-    service = new BookingAllowedDriversService(prisma, activityLog as any);
+    eligibilityDeps = makeEligibilityDeps();
+    service = new BookingAllowedDriversService(
+      prisma,
+      activityLog as any,
+      eligibilityDeps.bookingEligibilityEnforcement as any,
+      eligibilityDeps.bookingEligibilityApproval as any,
+      eligibilityDeps.bookingEligibilityRecheck as any,
+    );
   });
 
   it('rejects adding contract holder as additional driver', async () => {

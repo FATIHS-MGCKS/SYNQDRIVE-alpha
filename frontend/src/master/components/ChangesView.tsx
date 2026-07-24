@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-production-test-matrix-v49799-2026-07-24',
+    version: '4.9.799',
+    title: 'V4.9.799 — Booking production test matrix (Prompt 33)',
+    summary: [
+      'Vollständige Testmatrix: docs/testing/booking-production-test-matrix.md (Security, State Machine, Concurrency, Idempotency, Failure Injection, Datenschutz, Frontend).',
+      'Neue Backend-Tests: lifecycle matrix, security negatives, privacy redaction, concurrency/idempotency/failure characterization.',
+      'Listen-API redigiert Handover-Signaturen (keine Signaturen in Booking-Listen).',
+      'CI-Skripte: booking-backend-verify.sh, bookings-verify.sh; Playwright bookings-planner E2E (7 Szenarien, mocked API).',
+      'Fix: booking-allowed-drivers.service.spec.ts (Eligibility-Deps).',
+    ],
+    reason: 'Booking Production Readiness Prompt 33 — kritische Testlücken schließen und reproduzierbare CI-Gates etablieren.',
+    previousBehavior: 'Booking-Tests fragmentiert; keine zentrale Matrix; Signaturen in Listen-Responses; allowed-drivers Spec kompilierte nicht.',
+    details:
+      'docs/testing/booking-production-test-matrix.md, booking-lifecycle-status.matrix.ts, booking-handover-privacy.util.ts, bookings-security-negative.spec.ts, frontend/e2e/bookings-planner.spec.ts, backend/scripts/test/booking-backend-verify.sh.',
+    affectsArchitecture: true,
+    module: 'Bookings / QA',
+    createdAt: '2026-07-24T00:30:00.000Z',
+  },
+  {
     id: 'fleet-rental-crash-task-pagination-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',
