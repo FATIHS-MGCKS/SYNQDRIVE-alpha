@@ -37,11 +37,14 @@ describe('live-map-instance', () => {
   it('classifies runtime errors', () => {
     expect(classifyMapRuntimeError(new Error('Failed to load style'))).toBe('style_load');
     expect(classifyMapRuntimeError(new Error('WebGL context lost'))).toBe('webgl_context_lost');
+    expect(classifyMapRuntimeError(new Error('Failed to fetch'))).toBe('network_unavailable');
     expect(classifyMapRuntimeError(new Error('network'))).toBe('runtime');
   });
 
   it('returns user-facing map error messages', () => {
     expect(mapErrorMessage('webgl_context_lost')).toMatch(/unterbrochen/i);
     expect(mapErrorMessage('style_load')).toMatch(/Stil/i);
+    expect(mapErrorMessage('network_unavailable')).toMatch(/Verbindung/i);
+    expect(mapErrorMessage('missing_token')).toMatch(/nicht verfügbar/i);
   });
 });

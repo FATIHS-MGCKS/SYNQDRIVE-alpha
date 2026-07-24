@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-livemap-behavior-attribution-v49790-2026-07-24',
+    version: '4.9.790',
+    title: 'V4.9.790 — Vehicle Detail live map behavior, attribution & error states (Prompt 22/36)',
+    summary: [
+      'Mapbox attribution restored (compact control, HUD-styled) — license-compliant, no silent disable.',
+      'Follow mode pauses after manual drag/zoom/rotate/pitch; no forced re-center until vehicle remount resets follow.',
+      '`prefers-reduced-motion` + `animationPolicy`: instant camera moves, marker snap (no dead-reckoning animation).',
+      'Neutral error overlays for missing token, Mapbox runtime/style/WebGL/network failures — no env/config leakage.',
+      '`cooperativeGestures: true` for mobile: map gestures without blocking vertical page scroll.',
+      'New `live-map-behavior.ts`; network classification in `live-map-instance.ts`; audit + tests.',
+    ],
+    reason:
+      'Close live-map remediation on Vehicle Detail Page: attribution compliance, respect user pan/zoom, reduced motion, and operator-safe error states.',
+    previousBehavior:
+      'Attribution disabled; camera `easeTo` on every GPS update fought manual pan/zoom; missing token used plain text early return; network errors undifferentiated.',
+    details:
+      'frontend/src/rental/components/LiveMapOverview.tsx, frontend/src/rental/lib/live-map-behavior.ts, live-map-instance.ts, liquid-glass-lens.css, LiveMapOverview.map-behavior.test.tsx, LiveMapOverview.missing-token.test.tsx, docs/audits/vehicle-detail-page-map-behavior-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Live Map',
+    createdAt: '2026-07-24T09:50:00.000Z',
+  },
+  {
     id: 'fleet-rental-crash-task-pagination-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',
