@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { CustomersModule } from '@modules/customers/customers.module';
 import { BookingsModule } from '@modules/bookings/bookings.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
@@ -56,6 +57,7 @@ import {
     OutboundEmailModule,
     DocumentsModule,
     VoiceWebhookIngestionModule,
+    DataAuthorizationsModule,
   ],
   controllers: [VoiceMcpGatewayController, VoiceMcpApprovalController],
   providers: [
@@ -76,6 +78,6 @@ import {
     VoiceAgentDeploymentRepository,
     VoiceSubscriptionRepository,
   ],
-  exports: [VoiceMcpTokenService, VoiceMcpProtocolService, VoiceMcpApprovalService],
+  exports: [VoiceMcpTokenService, VoiceMcpProtocolService, VoiceMcpApprovalService, VoiceMcpNonceStore],
 })
 export class VoiceMcpGatewayModule {}

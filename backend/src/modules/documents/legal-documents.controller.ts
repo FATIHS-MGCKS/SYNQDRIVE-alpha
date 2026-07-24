@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Header,
+  Optional,
   Param,
   Patch,
   Post,
@@ -49,6 +51,7 @@ import { LegalDocumentLegalHoldService } from './retention/legal-document-legal-
 import { LegalDocumentRetentionService } from './retention/legal-document-retention.service';
 import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
 import { LegalDocumentUsageService } from './legal-document-usage.service';
+import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
 
 const MAX_LEGAL_BYTES =
   Math.max(1, parseInt(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB || '15', 10)) * 1024 * 1024;
@@ -70,6 +73,7 @@ export class LegalDocumentsController {
     private readonly retention: LegalDocumentRetentionService,
     private readonly retentionPolicy: LegalDocumentRetentionPolicyService,
     private readonly usage: LegalDocumentUsageService,
+    @Optional() private readonly externalAccess?: ExternalAccessEnforcementService,
   ) {}
 
   @Get()
@@ -454,6 +458,17 @@ export class LegalDocumentsController {
     @Param('id') id: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
+    if (this.externalAccess) {
+      const auth = await this.externalAccess.checkExport({
+        organizationId: orgId,
+        channelKey: 'legal_document_download',
+        correlationId: `legal-doc-export:${orgId}:${id}`,
+        resourceId: id,
+      });
+      if (!auth.mayProceed) {
+        throw new ForbiddenException('Legal document export is not authorized for this organization.');
+      }
+    }
     const dl = await this.legal.getDownload(orgId, id);
     res.set({
       'Content-Type': dl.mimeType,

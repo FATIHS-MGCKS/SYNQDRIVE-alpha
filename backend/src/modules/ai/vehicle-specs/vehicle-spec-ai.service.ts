@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
+import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
 import type {
   VehicleSpecAgentStep,
   VehicleSpecContext,
@@ -24,7 +25,10 @@ const CONFIG_ERROR =
 export class VehicleSpecAiService {
   private readonly logger = new Logger(VehicleSpecAiService.name);
 
-  constructor(private readonly llm: LlmGatewayService) {}
+  constructor(
+    private readonly llm: LlmGatewayService,
+    @Optional() private readonly externalAccess?: ExternalAccessEnforcementService,
+  ) {}
 
   isConfigured(): boolean {
     return this.llm.isConfigured();
@@ -33,6 +37,7 @@ export class VehicleSpecAiService {
   async getVehicleSpecs(
     tokenIds?: number[],
     vehicle?: VehicleSpecContext,
+    organizationId?: string,
   ): Promise<VehicleSpecsResult> {
     const steps: VehicleSpecAgentStep[] = [];
 
@@ -45,6 +50,26 @@ export class VehicleSpecAiService {
       return { success: false, configFailure: true, error: 'Not configured', steps };
     }
     steps.push({ step: 'Configuration check', status: 'done', detail: 'AI provider OK' });
+
+    if (organizationId && this.externalAccess) {
+      const auth = await this.externalAccess.checkUseForAi({
+        organizationId,
+        channelKey: 'vehicle_spec_ai',
+        correlationId: `vehicle-spec-ai:${organizationId}:${vehicle?.vin ?? 'unknown'}`,
+      });
+      if (!auth.mayProceed) {
+        steps.push({
+          step: 'Authorization check',
+          status: 'error',
+          detail: 'AI vehicle spec access is not authorized for this organization.',
+        });
+        return {
+          success: false,
+          error: 'AI vehicle spec access is not authorized for this organization.',
+          steps,
+        };
+      }
+    }
 
     const scope = resolveVehicleSpecsScope(tokenIds);
     steps.push({
@@ -112,6 +137,7 @@ export class VehicleSpecAiService {
     tokenIds: number[] | undefined,
     vehicle: VehicleSpecContext | undefined,
     emit: VehicleSpecStreamEmit,
+    organizationId?: string,
   ): Promise<void> {
     if (!this.isConfigured()) {
       emit('step', { step: 'Configuration check', status: 'error', detail: CONFIG_ERROR });
@@ -119,6 +145,23 @@ export class VehicleSpecAiService {
       return;
     }
     emit('step', { step: 'Konfiguration prüfen', status: 'done', detail: 'AI Provider OK' });
+
+    if (organizationId && this.externalAccess) {
+      const auth = await this.externalAccess.checkUseForAi({
+        organizationId,
+        channelKey: 'vehicle_spec_ai',
+        correlationId: `vehicle-spec-ai-stream:${organizationId}:${vehicle?.vin ?? 'unknown'}`,
+      });
+      if (!auth.mayProceed) {
+        emit('step', {
+          step: 'Authorization check',
+          status: 'error',
+          detail: 'AI vehicle spec access is not authorized for this organization.',
+        });
+        emit('error', { message: 'AI vehicle spec access is not authorized for this organization.' });
+        return;
+      }
+    }
 
     const scope = resolveVehicleSpecsScope(tokenIds);
     emit('step', {

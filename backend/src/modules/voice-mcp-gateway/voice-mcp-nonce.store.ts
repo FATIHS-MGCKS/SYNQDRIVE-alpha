@@ -3,6 +3,7 @@ import { RedisService } from '@shared/redis/redis.service';
 
 const ISSUED_PREFIX = 'voice:mcp:issued:';
 const REQUEST_PREFIX = 'voice:mcp:req:';
+const REVOKED_CONV_PREFIX = 'voice:mcp:revoked:conv:';
 
 @Injectable()
 export class VoiceMcpNonceStore {
@@ -19,6 +20,20 @@ export class VoiceMcpNonceStore {
 
   async revokeNonce(nonce: string): Promise<void> {
     await this.redis.del(`${ISSUED_PREFIX}${nonce}`);
+  }
+
+  async revokeConversation(conversationId: string, ttlSeconds = 86_400): Promise<void> {
+    await this.redis.set(`${REVOKED_CONV_PREFIX}${conversationId}`, '1', 'EX', ttlSeconds);
+  }
+
+  async isConversationRevoked(conversationId: string): Promise<boolean> {
+    const value = await this.redis.get(`${REVOKED_CONV_PREFIX}${conversationId}`);
+    return value === '1';
+  }
+
+  async revokeConversationTokens(conversationId: string): Promise<number> {
+    await this.revokeConversation(conversationId);
+    return 1;
   }
 
   async assertFreshRequestId(requestId: string, ttlSeconds = 300): Promise<boolean> {

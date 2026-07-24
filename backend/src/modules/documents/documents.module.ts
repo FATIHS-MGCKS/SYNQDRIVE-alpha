@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import documentsConfig from '@config/documents.config';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
@@ -68,6 +69,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
   imports: [
     forwardRef(() => InvoicesModule),
     forwardRef(() => NotificationsModule),
+    forwardRef(() => DataAuthorizationsModule),
     TasksModule,
     forwardRef(() => BookingDocumentGenerationModule),
   ],

@@ -36,12 +36,13 @@ export class VehicleSpecsController {
       };
     }
 
-    const { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain } =
+    const { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain, organizationId } =
       await this.resolveVehicleParams(vin, tokenIdParam, dimoVehicleId, make, model, yearParam);
 
     const result = await this.vehicleSpecAi.getVehicleSpecs(
       tokenIds.length > 0 ? tokenIds : undefined,
       { vin: resolvedVin, make: resolvedMake, model: resolvedModel, year: resolvedYear, drivetrain },
+      organizationId,
     );
 
     if (result.success) {
@@ -102,7 +103,7 @@ export class VehicleSpecsController {
       return;
     }
 
-    const { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain } =
+    const { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain, organizationId } =
       await this.resolveVehicleParams(vin, tokenIdParam, dimoVehicleId, make, model, yearParam);
 
     const closed = { value: false };
@@ -127,6 +128,7 @@ export class VehicleSpecsController {
           fuelType,
         },
         safeSend,
+        organizationId,
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -212,11 +214,24 @@ export class VehicleSpecsController {
     let resolvedMake = make;
     let resolvedModel = model;
     let resolvedYear = yearParam ? parseInt(yearParam, 10) : undefined;
+    let organizationId: string | undefined;
     const drivetrain: string | undefined = undefined;
 
     if (tokenIdParam) {
       const n = parseInt(tokenIdParam, 10);
       if (!isNaN(n)) tokenIds.push(n);
+    }
+
+    if (tokenIds.length > 0) {
+      try {
+        const linked = await this.prisma.vehicle.findFirst({
+          where: { dimoVehicle: { tokenId: { in: tokenIds } } },
+          select: { organizationId: true },
+        });
+        organizationId = linked?.organizationId;
+      } catch {
+        // optional org resolution for authorization gate
+      }
     }
 
     if (tokenIds.length === 0 && (dimoVehicleId || vin)) {
@@ -227,12 +242,20 @@ export class VehicleSpecsController {
 
         const dv = await this.prisma.dimoVehicle.findFirst({
           where,
-          select: { tokenId: true, vin: true, make: true, model: true, year: true },
+          select: {
+            tokenId: true,
+            vin: true,
+            make: true,
+            model: true,
+            year: true,
+            vehicle: { select: { organizationId: true } },
+          },
         });
         if (dv?.tokenId) {
           tokenIds.push(dv.tokenId);
           this.logger.log(`[VehicleSpecAI] Resolved tokenId=${dv.tokenId} from DB`);
         }
+        organizationId = dv?.vehicle?.organizationId ?? organizationId;
         if (dv?.vin && !resolvedVin) resolvedVin = dv.vin;
         if (dv?.make && !resolvedMake) resolvedMake = dv.make as string;
         if (dv?.model && !resolvedModel) resolvedModel = dv.model as string;
@@ -243,6 +266,6 @@ export class VehicleSpecsController {
       }
     }
 
-    return { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain };
+    return { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain, organizationId };
   }
 }

@@ -1,7 +1,9 @@
 import {
   Controller,
+  ForbiddenException,
   Get,
   Header,
+  Optional,
   Param,
   Post,
   Res,
@@ -21,6 +23,7 @@ import { RentalContractService } from './rental-contract.service';
 import { BookingDocumentGenerationDispatcherService } from './booking-document-generation/booking-document-generation.dispatcher.service';
 import { toBookingDocumentGenerationJobDto } from './booking-document-generation/booking-document-generation.dto';
 import { buildContentDispositionInline } from './storage/document-storage-content-disposition.util';
+import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
 
 /**
  * Booking document lifecycle + document download/metadata/void.
@@ -37,6 +40,7 @@ export class DocumentsController {
     private readonly generated: GeneratedDocumentsService,
     private readonly rentalContract: RentalContractService,
     private readonly documentGeneration: BookingDocumentGenerationDispatcherService,
+    @Optional() private readonly externalAccess?: ExternalAccessEnforcementService,
   ) {}
 
   @Get('bookings/:bookingId/rental-contract')
@@ -51,6 +55,7 @@ export class DocumentsController {
     @Param('bookingId') bookingId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
+    await this.assertExportAllowed(orgId, bookingId, 'generated_document_download');
     const ctx = await this.rentalContract.getDownloadContext(orgId, bookingId);
     const dl = await this.generated.getDownload(orgId, ctx.generatedDocumentId);
     res.set({
@@ -153,11 +158,29 @@ export class DocumentsController {
     @Param('documentId') documentId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
+    await this.assertExportAllowed(orgId, documentId, 'generated_document_download');
     const dl = await this.generated.getDownload(orgId, documentId);
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDispositionInline(dl.fileName),
     });
     return new StreamableFile(dl.stream);
+  }
+
+  private async assertExportAllowed(
+    orgId: string,
+    resourceId: string,
+    channelKey: string,
+  ): Promise<void> {
+    if (!this.externalAccess) return;
+    const auth = await this.externalAccess.checkExport({
+      organizationId: orgId,
+      channelKey,
+      correlationId: `file-export:${orgId}:${resourceId}`,
+      resourceId,
+    });
+    if (!auth.mayProceed) {
+      throw new ForbiddenException('Document export is not authorized for this organization.');
+    }
   }
 }
