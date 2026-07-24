@@ -4187,6 +4187,31 @@ export const api = {
       );
     },
   },
+  evaluations: {
+    reportingBundle: (
+      orgId: string,
+      params?: { stationId?: string; reference?: string },
+    ) => {
+      const search = new URLSearchParams();
+      if (params?.stationId) search.set('stationId', params.stationId);
+      if (params?.reference) search.set('reference', params.reference);
+      const qs = search.toString();
+      return get<import('@synq/evaluations-periods/evaluations-period.contract').EvaluationsReportingPeriodBundle>(
+        `/organizations/${orgId}/evaluations/periods/reporting-bundle${qs ? `?${qs}` : ''}`,
+      );
+    },
+    resolvePeriod: (
+      orgId: string,
+      params: { preset: string; stationId?: string; reference?: string },
+    ) => {
+      const search = new URLSearchParams({ preset: params.preset });
+      if (params.stationId) search.set('stationId', params.stationId);
+      if (params.reference) search.set('reference', params.reference);
+      return get<import('@synq/evaluations-periods/evaluations-period.contract').EvaluationsPeriodWindow>(
+        `/organizations/${orgId}/evaluations/periods/resolve?${search.toString()}`,
+      );
+    },
+  },
   dashboardInsights: {
     get: (orgId: string) => get<{
       generatedAt: string | null;

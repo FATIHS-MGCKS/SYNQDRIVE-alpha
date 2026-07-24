@@ -35,6 +35,81 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-timezone-period-v49805-2026-07-24',
+    version: '4.9.805',
+    title: 'V4.9.805 — Auswertungen Zeitzone & Zeitraummodell (Prompt 7/54)',
+    summary: [
+      'Kanonisches serverseitiges Periodenmodell: Org-Zeitzone, optionale Stations-Zeitzone, MTD/QTD/YTD, Rolling 7–365d, MoM/YoY.',
+      'API: GET `/organizations/:orgId/evaluations/periods/resolve` und `/reporting-bundle` mit Zeitzone + Periodengrenzen in Response.',
+      'FinancialInsightsView + Business Pulse nutzen Server-Perioden statt Browser-`startOfMonth`.',
+      'DST-sichere Grenzen via `zonedStartOfDayToUtc`; MoM jetzt gleicher Vormonatszeitraum (fair compare).',
+      'Doku: `evaluations-timezone-period-model.md`; Tests für DST, Monats-/Jahreswechsel, Leap Year, Station-TZ.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 7 — reproduzierbare geschäftliche Zeiträume ohne Browser-/VPS-Zeitzone.',
+    previousBehavior: 'MTD und MoM in FinancialInsights/Business Pulse via `new Date().getMonth()` (Browser-local); Org.timezone ignoriert.',
+    details:
+      'shared/evaluations-periods/*, backend evaluations-period.{resolver,service,controller}.ts, FinancialInsightsView, businessPulseSliceBuilder, useDashboardViewModel; docs/architecture/analytics/evaluations-timezone-period-model.md.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T15:00:00.000Z',
+  },
+  {
+    id: 'evaluations-calculation-versioning-v49804-2026-07-24',
+    version: '4.9.804',
+    title: 'V4.9.804 — Auswertungen Calculation Versioning (Prompt 6/54)',
+    summary: [
+      'Shared Provenance-Contract: `calculationVersion`, `generatedAt`, `periodStart`/`periodEnd`, `appliedFilters`, `sourceVersions`, `completeness`.',
+      'Business Insights: `calculation_meta` JSONB auf `dashboard_insights` + `dashboard_insight_runs` (nullable — Legacy bleibt null).',
+      'Per-Insight- und Run-Provenance beim Publish; DTOs parsen via `parseCalculationProvenance` ohne erfundene Defaults.',
+      'Financial KPIs: Client-Provenance-Builder vorbereitet (`evaluations-financial-provenance.ts`); UI-Anbindung folgt.',
+      'Tests: Provenance unit, Registry-Sync, Repository legacy/null + round-trip; Doku: `evaluations-calculation-versioning.md`.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 6 — reproduzierbare, versionierte Berechnungen mit Herkunftsmetadaten.',
+    previousBehavior: 'KPIs und Insights ohne persistierte Formelversion, Zeitraum, Filter oder Vollständigkeitsstatus.',
+    details:
+      'shared/evaluations-metrics/evaluations-calculation-provenance.ts, evaluations-metric-calculation-versions.ts, evaluations-financial-provenance.ts; backend: insight-calculation-provenance.ts, dashboard-insights.repository.ts, business-insights.service.ts; migration 20260724130000_dashboard_insight_calculation_meta; docs/architecture/analytics/evaluations-calculation-versioning.md.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T14:00:00.000Z',
+  },
+  {
+    id: 'evaluations-metric-registry-v49803-2026-07-24',
+    version: '4.9.803',
+    title: 'V4.9.803 — Auswertungen Metric Registry (Prompt 5/54)',
+    summary: [
+      'Zentrale typisierte Metric Registry im Backend: `EvaluationsMetricsModule` mit 74 Kennzahlen.',
+      'Shared contract: `shared/evaluations-metrics/` (Types, i18n DE/EN, Legacy-Maps).',
+      'API: GET `/api/v1/evaluations-metrics/registry` und lookup per `?id=`.',
+      'Registry-Tests: eindeutige IDs, Pflichtfelder, Units, Kategorien, metricKinds, i18n, calculationVersion.',
+      'Frontend-Re-Export + KPI-Konstanten; keine UI-Label-Änderung.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 5 — verbindliche Registry als Grundlage für Backend, Frontend, Exporte.',
+    previousBehavior: 'Nur Taxonomie-Dokument (Prompt 4), keine typisierte Registry im Code.',
+    details:
+      'backend/src/modules/evaluations-metrics/*, shared/evaluations-metrics/*, frontend/src/rental/lib/evaluations/evaluations-metric.contract.ts, docs/architecture/analytics/evaluations-metric-registry.md.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T12:30:00.000Z',
+  },
+  {
+    id: 'evaluations-kpi-taxonomy-v49802-2026-07-24',
+    version: '4.9.802',
+    title: 'V4.9.802 — Auswertungen KPI-Taxonomie (Prompt 4/54)',
+    summary: [
+      'Verbindliche fachliche Taxonomie für alle Kennzahlen der Auswertungen-Seite: `docs/architecture/analytics/evaluations-kpi-taxonomy.md`.',
+      '74 metricIds über 19 Domänen (Revenue, Cashflow, Receivables, Costs, Contribution Margin, Bookings, Utilization, Fleet Availability, Downtime, Maintenance, Damage, Compliance, Customers, Stations, Operational Quality, Data Quality, Risks, Recommendations, Forecasts).',
+      'Begriffstrennung: fakturierter vs. periodengerechter Umsatz, Zahlungseingang, Cashflow, Deckungsbeitrag vs. Nettoergebnis, Umsatzpotenzial vs. verlorener Umsatz, regelbasierte Schätzung vs. statistische Prognose.',
+      'Legacy-Mapping dokumentiert (`financialRiskEur`, `lostRevenueEur`, „Net Profit“, „Kritische Buchungen“). Keine UI-Änderung.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 4 — kanonische Grundlage für Backend, Frontend, Exporte und Prognosen.',
+    previousBehavior: 'KPIs nur in Audit-Dokumenten mit teils irreführenden UI-Labels und ohne verbindliche metricIds.',
+    details:
+      'docs/architecture/analytics/evaluations-kpi-taxonomy.md; Cross-Links in evaluations-technical-inventory und evaluations-data-flow-map; ArchitekturView-Eintrag.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',

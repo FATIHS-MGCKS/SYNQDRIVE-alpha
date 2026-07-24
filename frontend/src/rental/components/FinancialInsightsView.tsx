@@ -25,6 +25,9 @@ import {
   paidRevenueInRange,
   sumCents,
 } from '../lib/financial-insights.logic';
+import { useEvaluationsReportingPeriods } from '../lib/evaluations/useEvaluationsReportingPeriods';
+import { reportingBundleToFinancialRanges } from '../lib/evaluations/evaluations-period.client';
+import { zonedDateOnlyFromInstant, zonedDayOfMonth } from '@synq/evaluations-periods/evaluations-zoned-date';
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -99,22 +102,6 @@ const fmtEURFull = (cents: number, locale = 'de-DE'): string =>
 const fmtPct = (value: number, digits = 1): string =>
   `${value >= 0 ? '' : '-'}${Math.abs(value).toFixed(digits)}%`;
 
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
-function startOfPrevMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth() - 1, 1, 0, 0, 0, 0);
-}
-
-function endOfPrevMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 0, 23, 59, 59, 999);
-}
-
-function daysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
-}
-
 function parseDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -163,6 +150,13 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
+  const {
+    bundle: reportingPeriodBundle,
+    loading: periodsLoading,
+    error: periodsError,
+    reload: reloadPeriods,
+  } = useEvaluationsReportingPeriods(orgId);
+
   const load = useCallback(async () => {
     if (!orgId) {
       setInvoices([]);
@@ -196,22 +190,32 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       setInvoices(invoicesArr);
       setCustomers(customersArr);
       setReportingAnchor(new Date());
+      await reloadPeriods();
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, reloadPeriods]);
 
   useEffect(() => {
     setLoading(true);
     void load();
   }, [load]);
 
-  // ─── Derived: time slices ────────────────────────────────────────────
+  // ─── Derived: time slices (server-resolved org timezone) ─────────────
 
-  const now = reportingAnchor;
-  const monthStart = useMemo(() => startOfMonth(now), [now]);
-  const prevMonthStart = useMemo(() => startOfPrevMonth(now), [now]);
-  const prevMonthEnd = useMemo(() => endOfPrevMonth(now), [now]);
+  const reportingRanges = useMemo(() => {
+    if (!reportingPeriodBundle) return null;
+    return reportingBundleToFinancialRanges(reportingPeriodBundle);
+  }, [reportingPeriodBundle]);
+
+  const now = reportingRanges?.reference ?? reportingAnchor;
+  const reportingTimezone = reportingRanges?.timezone ?? 'Europe/Berlin';
+  const monthStart = reportingRanges?.mtd.from ?? reportingAnchor;
+  const prevMonthStart = reportingRanges?.prevMonth.from ?? reportingAnchor;
+  const prevMonthEnd = reportingRanges?.prevMonth.to ?? reportingAnchor;
+  const monthDaysCount = reportingPeriodBundle?.mtd.calendar.monthEndDateOnly
+    ? Number(reportingPeriodBundle.mtd.calendar.monthEndDateOnly.split('-')[2])
+    : 31;
 
   // Bucket invoices by current vs previous month and by direction so we can
   // compute MTD KPIs + month-over-month deltas without re-iterating the list.
@@ -260,7 +264,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // ─── Derived: daily chart series ─────────────────────────────────────
 
   const dailySeries = useMemo(() => {
-    const days = daysInMonth(now.getFullYear(), now.getMonth());
+    const days = monthDaysCount;
     const out: { day: string; dayNum: number; revenue: number; expenses: number; profit: number }[] = [];
     for (let i = 0; i < days; i++) {
       out.push({ day: String(i + 1), dayNum: i + 1, revenue: 0, expenses: 0, profit: 0 });
@@ -268,7 +272,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     for (const inv of bucketed.mtdRevenue) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const dayIdx = d.getDate() - 1;
+      const dayIdx = zonedDayOfMonth(d, reportingTimezone) - 1;
       if (dayIdx >= 0 && dayIdx < out.length) {
         out[dayIdx].revenue += (inv.totalCents ?? 0) / 100;
       }
@@ -276,14 +280,14 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     for (const inv of bucketed.mtdExpense) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const dayIdx = d.getDate() - 1;
+      const dayIdx = zonedDayOfMonth(d, reportingTimezone) - 1;
       if (dayIdx >= 0 && dayIdx < out.length) {
         out[dayIdx].expenses += (inv.totalCents ?? 0) / 100;
       }
     }
     for (const row of out) row.profit = row.revenue - row.expenses;
     return out;
-  }, [bucketed.mtdRevenue, bucketed.mtdExpense, now]);
+  }, [bucketed.mtdRevenue, bucketed.mtdExpense, monthDaysCount, reportingTimezone]);
 
   const hasDailyData = useMemo(
     () => dailySeries.some((d) => d.revenue > 0 || d.expenses > 0),
@@ -351,7 +355,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     for (const inv of rows) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const iso = zonedDateOnlyFromInstant(d, reportingTimezone);
       const existing = map.get(iso);
       if (existing) {
         existing.totalCents += inv.totalCents ?? 0;
@@ -389,7 +393,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   const monthLabel = now.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
 
-  if (loading) {
+  if (loading || periodsLoading || !reportingRanges) {
     return (
       <div className="max-w-[1600px] mx-auto space-y-5">
         <PageHeader title={t('nav.financialInsights')} />

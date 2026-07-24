@@ -26,6 +26,7 @@
     "test:bookings:e2e": "playwright test -c e2e/playwright.config.ts bookings-planner.spec.ts --project=desktop-1280",
     "test:bookings:verify": "bash scripts/test/bookings-verify.sh all",
     "test:bookings:verify:unit": "bash scripts/test/bookings-verify.sh unit",
+    "test:evaluations": "vitest run src/rental/lib/evaluations src/rental/lib/financial-insights.logic src/rental/components/dashboard/runtime/businessPulseSliceBuilder.test.ts",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"
