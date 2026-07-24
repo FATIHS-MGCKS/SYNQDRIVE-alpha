@@ -27,6 +27,10 @@ export interface BuildBusinessPulseSlicesInput {
   locale: string;
   now?: Date;
   currency?: string;
+  /** Org/station timezone for receivable due-date classification. */
+  timezone?: string;
+  /** Canonical reporting window from server (org/station timezone). */
+  reportingPeriod?: { from: Date; to: Date; label: string };
 }
 
 function isDe(locale: string): boolean {
@@ -85,6 +89,11 @@ function monthWindow(now: Date): { from: Date; to: Date } {
     from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
     to: now,
   };
+}
+
+/** @deprecated Browser-local month window — pass `reportingPeriod` from server instead. */
+function legacyMonthWindow(now: Date): { from: Date; to: Date } {
+  return monthWindow(now);
 }
 
 function monthLabel(now: Date, locale: string): string {
@@ -303,8 +312,11 @@ export function buildBusinessPulseSlices(
 ): Record<BusinessMetricId, BusinessPulseSlice> {
   const now = input.now ?? new Date();
   const currency = input.currency ?? 'EUR';
-  const { from: monthStart, to: monthEnd } = monthWindow(now);
-  const periodLabel = monthLabel(now, input.locale);
+  const timezone = input.timezone ?? 'Europe/Berlin';
+  const { from: monthStart, to: monthEnd } = input.reportingPeriod
+    ? { from: input.reportingPeriod.from, to: input.reportingPeriod.to }
+    : legacyMonthWindow(now);
+  const periodLabel = input.reportingPeriod?.label ?? monthLabel(now, input.locale);
 
   const invoiceSlices = input.invoices.map(asInvoiceSlice);
   const rows = input.invoices.map((inv) => invoiceRow(inv, input.locale, now, currency));
@@ -317,8 +329,8 @@ export function buildBusinessPulseSlices(
   const reservedRows = rowsForInvoices(invoicesFromSlices(input.invoices, reservedInvoices), rowByInvoiceId);
   const incomingRows = rowsForInvoices(invoicesFromSlices(input.invoices, expenseInvoices), rowByInvoiceId);
 
-  const openReceivableInvoices = openOutgoingReceivables(invoiceSlices, now);
-  const overdueReceivableInvoices = overdueOutgoingReceivables(invoiceSlices, now);
+  const openReceivableInvoices = openOutgoingReceivables(invoiceSlices, now, currency);
+  const overdueReceivableInvoices = overdueOutgoingReceivables(invoiceSlices, now, timezone, currency);
   const openReceivables = rowsForInvoices(
     invoicesFromSlices(input.invoices, openReceivableInvoices),
     rowByInvoiceId,
@@ -388,7 +400,7 @@ export function buildBusinessPulseSlices(
     }),
     'open-receivables': makeSlice({
       id: 'open-receivables',
-      title: label(input.locale, 'Offene Forderungen', 'Open receivables'),
+      title: label(input.locale, 'Offene Forderungen gesamt', 'Open receivables (total)'),
       rows: openReceivables,
       locale: input.locale,
       valueCents: sumCents(openReceivables),
@@ -396,7 +408,7 @@ export function buildBusinessPulseSlices(
     }),
     'overdue-receivables': makeSlice({
       id: 'overdue-receivables',
-      title: label(input.locale, 'Überfällig', 'Overdue'),
+      title: label(input.locale, 'Überfällige Forderungen', 'Overdue receivables'),
       rows: overdueReceivables.map((row) => ({ ...row, severity: 'critical' as const })),
       locale: input.locale,
       valueCents: sumCents(overdueReceivables),

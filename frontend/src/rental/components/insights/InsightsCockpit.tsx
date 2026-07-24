@@ -1,24 +1,39 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ShieldAlert, TrendingDown, Zap, type LucideIcon } from 'lucide-react';
+import type { Money } from '@synq/money/money.contract';
 import { Icon } from '../ui/Icon';
 import { useDashboardInsights, type DashboardInsight } from '../../DashboardInsightsContext';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { api, type MisuseCaseRecord } from '../../../lib/api';
 import {
-  financialImpactEur,
+  financialImpactMoney,
   insightRecommendation,
   matchesStationIdFilter,
   partitionInsights,
 } from '../../lib/insights-categories';
+import {
+  estimatedFinancialRiskMoney,
+  formatEvaluationsMoneyDisplay,
+  resolveEvaluationsCockpitMoney,
+} from '../../lib/evaluations/evaluations-money';
+import { minorToWholeMajorUnits, zeroMoney } from '@synq/money/money.util';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
   stationId?: string | null;
-  financialRiskEur?: number;
+  /** Canonical open receivables total (minor + currency). */
+  openReceivables?: Money | null;
+  /** Canonical overdue receivables (minor + currency). */
+  overdueReceivables?: Money | null;
+  /** @deprecated Insight-only exposure — use `overdueReceivables` for invoice overdue balances. */
+  financialRisk?: Money | null;
+  /** @deprecated Use `openReceivables` — whole major EUR for backward compatibility. */
   openReceivablesEur?: number;
+  /** @deprecated Use `overdueReceivables` — whole major EUR for backward compatibility. */
+  financialRiskEur?: number;
 }
 
 interface InsightKpiCardProps {
@@ -108,7 +123,9 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDarkMode: boolean }) {
-  const impact = financialImpactEur(insight);
+  const impactMoney = financialImpactMoney(insight);
+  const impact =
+    impactMoney != null ? minorToWholeMajorUnits(impactMoney.amountMinor, impactMoney.currency) : null;
   const rec = insightRecommendation(insight);
   const m = insight.metrics as Record<string, unknown> | null | undefined;
   const bookingId = (m?.bookingId ?? insight.timeContext?.bookingId) as string | undefined;
@@ -253,8 +270,11 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 export function InsightsCockpit({
   isDarkMode,
   stationId = null,
-  financialRiskEur = 0,
+  openReceivables = null,
+  overdueReceivables = null,
+  financialRisk = null,
   openReceivablesEur = 0,
+  financialRiskEur = 0,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
@@ -276,14 +296,21 @@ export function InsightsCockpit({
     [filteredInsights],
   );
 
-  const estimatedRisk = useMemo(() => {
-    let sum = financialRiskEur;
-    for (const i of [...businessRisks, ...revenueLeakage]) {
-      const e = financialImpactEur(i);
-      if (e != null) sum += e;
-    }
-    return sum;
-  }, [businessRisks, revenueLeakage, financialRiskEur]);
+  const resolvedOpenReceivables = useMemo(
+    () => resolveEvaluationsCockpitMoney(openReceivables, openReceivablesEur),
+    [openReceivables, openReceivablesEur],
+  );
+  const resolvedOverdueReceivables = useMemo(
+    () => resolveEvaluationsCockpitMoney(overdueReceivables, financialRiskEur),
+    [overdueReceivables, financialRiskEur],
+  );
+
+  const estimatedInsightExposure = useMemo(() => {
+    return estimatedFinancialRiskMoney(
+      financialRisk ?? zeroMoney(resolvedOpenReceivables.currency),
+      [...businessRisks, ...revenueLeakage],
+    );
+  }, [businessRisks, revenueLeakage, financialRisk, resolvedOpenReceivables.currency]);
 
   const criticalBookings = businessRisks.filter((i) => i.severity === 'CRITICAL').length;
   const hasRun = response?.hasRun ?? false;
@@ -293,7 +320,7 @@ export function InsightsCockpit({
     <div className="space-y-4">
       <RunStateBanner hasRun={hasRun} stale={stale} error={error} loading={loading} />
 
-      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6">
         <InsightKpiCard
           label="Business Risks"
           value={String(businessRisks.length)}
@@ -302,18 +329,25 @@ export function InsightsCockpit({
           accent={businessRisks.length > 0}
         />
         <InsightKpiCard
-          label="Finanzrisiko (geschätzt)"
-          value={`≈ ${estimatedRisk.toLocaleString('de-DE')} €`}
+          label="Geschätzte Insight-Exposition"
+          value={`≈ ${formatEvaluationsMoneyDisplay(estimatedInsightExposure)}`}
           icon={TrendingDown}
           tone="watch"
-          accent={estimatedRisk > 0}
+          accent={estimatedInsightExposure.amountMinor > 0}
         />
         <InsightKpiCard
-          label="Offene Forderungen"
-          value={`${openReceivablesEur.toLocaleString('de-DE')} €`}
+          label="Offene Forderungen gesamt"
+          value={formatEvaluationsMoneyDisplay(resolvedOpenReceivables)}
           icon={Zap}
           tone="info"
-          accent={openReceivablesEur > 0}
+          accent={resolvedOpenReceivables.amountMinor > 0}
+        />
+        <InsightKpiCard
+          label="Überfällige Forderungen"
+          value={formatEvaluationsMoneyDisplay(resolvedOverdueReceivables)}
+          icon={AlertTriangle}
+          tone="critical"
+          accent={resolvedOverdueReceivables.amountMinor > 0}
         />
         <InsightKpiCard
           label="Kritische Buchungen"
