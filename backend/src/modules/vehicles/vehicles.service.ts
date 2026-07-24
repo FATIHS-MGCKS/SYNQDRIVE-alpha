@@ -64,6 +64,7 @@ import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { LiveGpsEnforcementService } from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.service';
+import { ProviderGrantProvisioningService } from '@modules/data-authorizations/provider-grant-consolidation/provider-grant-provisioning.service';
 import {
   LIVE_GPS_PURPOSE,
   LIVE_GPS_SERVICE_IDENTITY,
@@ -291,6 +292,7 @@ export class VehiclesService {
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly providerConsent: VehicleProviderConsentService,
+    @Optional() private readonly grantProvisioning?: ProviderGrantProvisioningService,
     @Inject(forwardRef(() => TireLifecycleService))
     private readonly tireLifecycleService: TireLifecycleService,
     @Inject(forwardRef(() => BrakeRegistrationService))
@@ -2128,15 +2130,33 @@ export class VehiclesService {
       },
     });
 
-    // Record DIMO provider consent grant (fire-and-forget — never blocks vehicle creation)
-    void this.providerConsent.recordDimoConsent({
-      vehicleId: vehicle.id,
-      organizationId: orgId,
-      dimoExternalId: dimoVehicle.externalId,
-      dimoTokenId: dimoVehicle.tokenId ?? null,
-      grantedByUserId: createdByUserId ?? null,
-      metadataJson: { registeredVin: vehicle.vin, dimoVehicleId },
-    });
+    // Record DIMO provider grant (PAG + legacy VPC) — never blocks vehicle creation
+    if (this.grantProvisioning) {
+      void this.grantProvisioning
+        .provisionAndActivate({
+          organizationId: orgId,
+          vehicleId: vehicle.id,
+          provider: 'DIMO',
+          grantMechanism: 'SYSTEM_SYNC',
+          scopes: ['telemetry', 'location', 'dtc', 'snapshot'],
+          providerGrantReference: dimoVehicle.externalId ?? (dimoVehicle.tokenId ? String(dimoVehicle.tokenId) : null),
+          providerAccountReference: dimoVehicle.externalId ?? null,
+          webhookEventId: `dimo-register-${vehicle.id}-${dimoVehicleId}`,
+          actorId: createdByUserId ?? null,
+          actorType: createdByUserId ? 'USER' : 'SYSTEM',
+          legacyVpcMetadata: { registeredVin: vehicle.vin, dimoVehicleId, dimoTokenId: dimoVehicle.tokenId ?? null },
+        })
+        .catch(() => undefined);
+    } else {
+      void this.providerConsent.recordDimoConsent({
+        vehicleId: vehicle.id,
+        organizationId: orgId,
+        dimoExternalId: dimoVehicle.externalId,
+        dimoTokenId: dimoVehicle.tokenId ?? null,
+        grantedByUserId: createdByUserId ?? null,
+        metadataJson: { registeredVin: vehicle.vin, dimoVehicleId },
+      });
+    }
 
     this.capabilityLifecycle?.refreshOnNewIntegration(orgId, vehicle.id);
     void this.batteryCapabilityRefresh?.enqueueForDimoVehicle(

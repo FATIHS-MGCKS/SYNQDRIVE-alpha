@@ -6,7 +6,7 @@ import type { HmWebhookPayloadDto } from './dto/high-mobility.dto';
 import { HmSignalUsageService } from './high-mobility-signal-usage.service';
 import { HighMobilityAppConfigService } from './high-mobility-app-config.service';
 import { extractHmProviderVehicleReference } from './high-mobility-vehicle-reference.util';
-import { VehicleProviderConsentService } from '@modules/vehicles/vehicle-provider-consent.service';
+import { ProviderGrantProvisioningService } from '@modules/data-authorizations/provider-grant-consolidation/provider-grant-provisioning.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
 
@@ -20,7 +20,7 @@ export class HighMobilityWebhookService {
     private readonly prisma: PrismaService,
     private readonly hmConfig: HighMobilityAppConfigService,
     private readonly hmSignalUsage: HmSignalUsageService,
-    private readonly providerConsent: VehicleProviderConsentService,
+    private readonly grantProvisioning: ProviderGrantProvisioningService,
     private readonly audit: AuditService,
   ) {}
 
@@ -138,17 +138,28 @@ export class HighMobilityWebhookService {
         await this.writeHistory(hmRecord.id, 'WEBHOOK_APPROVED', oldStatus, 'APPROVED', payload as any);
         this.logger.log(`HM vehicle ${hmRecord.vin} APPROVED via webhook [${appContainer}]`);
 
-        // Record provider consent when clearance is approved and vehicle is linked
+        // Record provider grant + legacy VPC when clearance is approved and vehicle is linked
         if (hmRecord.synqdriveVehicleId && hmRecord.organizationId) {
-          void this.providerConsent.recordHmConsent({
-            vehicleId: hmRecord.synqdriveVehicleId,
-            organizationId: hmRecord.organizationId,
-            hmVehicleId: hmRecord.id,
-            hmVin: hmRecord.vin,
-            appContainerType: hmRecord.appContainerType ?? appContainer,
-            proofReference: vehicleId ?? null,
-            metadataJson: { event, webhookPayload: payload },
-          });
+          const eventRef = vehicleId ?? event ?? `hm-${hmRecord.id}-${Date.now()}`;
+          void this.grantProvisioning
+            .provisionAndActivate({
+              organizationId: hmRecord.organizationId,
+              vehicleId: hmRecord.synqdriveVehicleId,
+              provider: 'HIGH_MOBILITY',
+              grantMechanism: 'WEBHOOK',
+              scopes: ['health', 'tire_pressure', 'service_info'],
+              providerGrantReference: vehicleId ?? null,
+              providerAccountReference: hmRecord.hmVehicleReference ?? null,
+              webhookEventId: eventRef,
+              actorType: 'SYSTEM',
+              legacyVpcMetadata: { event, appContainer, hmVehicleId: hmRecord.id },
+              vpcGrantType: 'HM_FLEET_CLEARANCE',
+            })
+            .catch((e: Error) =>
+              this.logger.error(
+                `HM grant provisioning failed for vehicle ${hmRecord.synqdriveVehicleId}: ${e?.message}`,
+              ),
+            );
           void this.audit.record({
             action: ActivityAction.APPROVE,
             entity: ActivityEntity.PROVIDER_CONSENT,
@@ -184,12 +195,19 @@ export class HighMobilityWebhookService {
           data: { clearanceStatus: 'REVOKED' as any, clearanceLastCheckedAt: new Date() },
         });
         await this.writeHistory(hmRecord.id, 'WEBHOOK_REVOKED', oldStatus, 'REVOKED', payload as any);
-        if (hmRecord.synqdriveVehicleId) {
-          void this.providerConsent.revokeByProvider({
-            vehicleId: hmRecord.synqdriveVehicleId,
-            provider: 'HIGH_MOBILITY',
-            reason: `HM fleet clearance revoked via webhook event: ${event}`,
-          });
+        if (hmRecord.synqdriveVehicleId && hmRecord.organizationId) {
+          void this.grantProvisioning
+            .revokeForVehicle({
+              organizationId: hmRecord.organizationId,
+              vehicleId: hmRecord.synqdriveVehicleId,
+              provider: 'HIGH_MOBILITY',
+              reason: `HM fleet clearance revoked via webhook event: ${event}`,
+            })
+            .catch((e: Error) =>
+              this.logger.error(
+                `HM grant revoke failed for vehicle ${hmRecord.synqdriveVehicleId}: ${e?.message}`,
+              ),
+            );
         }
         break;
       }

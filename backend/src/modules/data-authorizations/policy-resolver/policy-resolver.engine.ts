@@ -36,6 +36,7 @@ import type {
   ResolvePolicyEngineInput,
 } from './policy-resolver.types';
 import { isPolicyCurrentlyUsable } from '../privacy-domain/policy-lifecycle/policy-lifecycle.transitions';
+import { resolveProviderKeyFromSourceSystem } from '../provider-grant-consolidation/provider-grant-consolidation.constants';
 
 /**
  * Pure policy resolution engine — deterministic, no database access, no mutations.
@@ -117,7 +118,13 @@ function evaluatePolicyStack(
   const processingActivity = evaluateProcessingActivity(candidate, at, blockingReasons);
   const legalBasis = evaluateLegalBasis(candidate, at, blockingReasons);
   const consent = evaluateConsent(candidate, context, legalBasis, at, blockingReasons);
-  const providerGrant = evaluateProviderGrant(candidate, context, at, blockingReasons);
+  const providerGrant = evaluateProviderGrant(
+    candidate,
+    context,
+    at,
+    blockingReasons,
+    candidate.enforcementPolicy.status,
+  );
   const dataSharing = evaluateDataSharing(candidate, context, at, blockingReasons);
   const dpa = evaluateDpa(candidate, context, at, blockingReasons);
   evaluateDpiaGate(candidate, context, legalBasis, blockingReasons);
@@ -289,16 +296,26 @@ function evaluateProviderGrant(
   context: PolicyResolverEvaluatedContext,
   at: Date,
   blockingReasons: PolicyResolverReasonCode[],
+  policyStatus: PrivacyPolicyLifecycleStatus,
 ): PolicyResolverResult['providerGrantStatus'] {
   const needsProvider =
     context.sourceSystem === POLICY_RESOLVER_SOURCE_SYSTEM.DIMO ||
+    context.sourceSystem === POLICY_RESOLVER_SOURCE_SYSTEM.HIGH_MOBILITY ||
     context.processorType === POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM;
 
   if (!needsProvider) {
     return { status: 'NOT_APPLICABLE' };
   }
 
-  const providerKey = context.processorId.toUpperCase();
+  const providerKey = resolveProviderKeyFromSourceSystem(
+    context.sourceSystem,
+    context.processorId,
+  );
+  if (!providerKey) {
+    blockingReasons.push(POLICY_RESOLVER_REASON.PROVIDER_GRANT_MISSING);
+    return { status: 'NOT_FOUND', detail: 'unknown provider source' };
+  }
+
   const grants = candidate.providerAccessGrants.filter((g) => {
     if (g.organizationId !== context.organizationId) return false;
     if (g.provider.toUpperCase() !== providerKey) return false;
@@ -330,6 +347,16 @@ function evaluateProviderGrant(
   if (active.expiresAt && active.expiresAt.getTime() <= at.getTime()) {
     blockingReasons.push(POLICY_RESOLVER_REASON.PROVIDER_GRANT_EXPIRED);
     return { status: ProviderAccessGrantStatus.EXPIRED, entityId: active.id };
+  }
+
+  if (
+    active.providerStatus === ProviderAccessGrantStatus.ACTIVE &&
+    (policyStatus === PrivacyPolicyLifecycleStatus.REVOKED ||
+      policyStatus === PrivacyPolicyLifecycleStatus.SUSPENDED ||
+      policyStatus === PrivacyPolicyLifecycleStatus.EXPIRED)
+  ) {
+    blockingReasons.push(POLICY_RESOLVER_REASON.POLICY_REVOKED_PROVIDER_ACTIVE);
+    blockingReasons.push(POLICY_RESOLVER_REASON.PROVIDER_GRANT_POLICY_CONTRADICTION);
   }
 
   return { status: ProviderAccessGrantStatus.ACTIVE, entityId: active.id };

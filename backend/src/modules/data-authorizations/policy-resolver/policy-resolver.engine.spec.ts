@@ -145,11 +145,40 @@ describe('policy-resolver.engine', () => {
       context: baseContext({
         sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
         processorType: POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM,
-        processorId: 'DIMO',
+        processorId: 'synqdrive-dimo-snapshot-worker',
       }),
       candidates: [candidate],
     });
     expect(result.blockingReasons).toContain(POLICY_RESOLVER_REASON.PROVIDER_GRANT_EXPIRED);
+  });
+
+  it('matches DIMO grant via sourceSystem when processorId is worker identity', () => {
+    const candidate = activePolicy();
+    candidate.providerAccessGrants = [
+      {
+        id: 'grant-dimo',
+        organizationId: ORG,
+        provider: 'DIMO',
+        providerStatus: ProviderAccessGrantStatus.ACTIVE,
+        processingActivityId: ACTIVITY,
+        vehicleId: VEHICLE,
+        grantedAt: new Date('2026-01-01'),
+        expiresAt: null,
+        revokedAt: null,
+        scopeKeys: ['telemetry'],
+      },
+    ];
+    const result = resolvePolicyEngine({
+      context: baseContext({
+        sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+        processorType: POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM,
+        processorId: 'synqdrive-dimo-snapshot-worker',
+        action: POLICY_RESOLVER_ACTION.INGEST,
+      }),
+      candidates: [candidate],
+    });
+    expect(result.decisionCandidate).toBe(POLICY_RESOLVER_DECISION.ALLOW);
+    expect(result.providerGrantStatus.entityId).toBe('grant-dimo');
   });
 
   it('denies on scope mismatch', () => {

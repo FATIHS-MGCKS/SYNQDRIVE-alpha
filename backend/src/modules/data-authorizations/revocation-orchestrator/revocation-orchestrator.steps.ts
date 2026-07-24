@@ -15,6 +15,7 @@ import { LiveGpsEnforcementService } from '../live-gps-enforcement/live-gps-enfo
 import { NotificationEnforcementService } from '../notification-enforcement/notification-enforcement.service';
 import { ExternalAccessEnforcementService } from '../external-access-enforcement/external-access-enforcement.service';
 import { DataAuthorizationAuditOutboxRepository } from '../privacy-domain/audit-log/data-authorization-audit-outbox.repository';
+import { ProviderGrantProvisioningService } from '../provider-grant-consolidation/provider-grant-provisioning.service';
 import { buildAuditIdempotencyKey } from '../privacy-domain/audit-log/data-authorization-audit.constants';
 import {
   REVOCATION_RETENTION_DECISION,
@@ -40,7 +41,10 @@ export interface RevocationProviderRevoker {
 export class DefaultRevocationProviderRevoker implements RevocationProviderRevoker {
   private readonly logger = new Logger(DefaultRevocationProviderRevoker.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly grantProvisioning?: ProviderGrantProvisioningService,
+  ) {}
 
   async revokeProviderAccess(input: {
     organizationId: string;
@@ -50,8 +54,24 @@ export class DefaultRevocationProviderRevoker implements RevocationProviderRevok
     correlationId: string;
     reason?: string | null;
   }): Promise<{ providerRevoked: boolean }> {
+    if (this.grantProvisioning && input.vehicleId) {
+      const result = await this.grantProvisioning.revokeForVehicle({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        provider: input.provider,
+        reason: input.reason ?? `revocation:${input.correlationId}`,
+      });
+      return { providerRevoked: result.grantsRevoked > 0 || result.vpcRevoked };
+    }
+
     if (input.vehicleId) {
       await this.revokeVehicleConsent(input.vehicleId, input.provider, input.reason);
+      await this.revokeProviderAccessGrants(
+        input.organizationId,
+        input.provider,
+        input.vehicleId,
+        input.reason,
+      );
       return { providerRevoked: true };
     }
 
@@ -61,18 +81,73 @@ export class DefaultRevocationProviderRevoker implements RevocationProviderRevok
         provider: input.provider,
         providerStatus: 'ACTIVE',
       },
-      select: { vehicleId: true },
+      select: { vehicleId: true, id: true },
       take: 50,
     });
 
     let revoked = 0;
     for (const grant of grants) {
       if (!grant.vehicleId) continue;
-      await this.revokeVehicleConsent(grant.vehicleId, input.provider, input.reason);
-      revoked++;
+      if (this.grantProvisioning) {
+        const result = await this.grantProvisioning.revokeForVehicle({
+          organizationId: input.organizationId,
+          vehicleId: grant.vehicleId,
+          provider: input.provider,
+          reason: input.reason ?? `revocation:${input.correlationId}`,
+        });
+        if (result.grantsRevoked > 0 || result.vpcRevoked) revoked++;
+      } else {
+        await this.revokeVehicleConsent(grant.vehicleId, input.provider, input.reason);
+        await this.revokeProviderAccessGrants(
+          input.organizationId,
+          input.provider,
+          grant.vehicleId,
+          input.reason,
+        );
+        revoked++;
+      }
     }
 
     return { providerRevoked: revoked > 0 };
+  }
+
+  private async revokeProviderAccessGrants(
+    organizationId: string,
+    provider: string,
+    vehicleId: string,
+    reason?: string | null,
+  ): Promise<void> {
+    try {
+      const revokedAt = new Date();
+      const active = await this.prisma.providerAccessGrant.findMany({
+        where: {
+          organizationId,
+          vehicleId,
+          provider,
+          providerStatus: 'ACTIVE',
+        },
+      });
+      for (const grant of active) {
+        await this.prisma.providerAccessGrant.update({
+          where: { id: grant.id },
+          data: { providerStatus: 'REVOKED', revokedAt },
+        });
+        await this.prisma.providerAccessGrantStatusEvent.create({
+          data: {
+            organizationId,
+            providerAccessGrantId: grant.id,
+            fromStatus: grant.providerStatus,
+            toStatus: 'REVOKED',
+            actorType: 'SYSTEM',
+            reason: reason?.trim() || null,
+          },
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`PAG revoke failed vehicle=${vehicleId}: ${message}`);
+      throw err;
+    }
   }
 
   private async revokeVehicleConsent(

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'provider-grant-consolidation-v49809-2026-07-24',
+    version: '4.9.809',
+    title: 'V4.9.809 — ProviderAccessGrant Konsolidierung (Prompt 26)',
+    summary: [
+      'ProviderGrantProvisioningService — einheitlicher Write-Pfad für DIMO-Onboarding und HM-Webhooks (PAG + VPC).',
+      'Konsistenz-Evaluator: Provider ACTIVE + Policy REVOKED und umgekehrt blockieren.',
+      'Policy Resolver: Provider-Matching über sourceSystem statt Worker processorId.',
+      'Webhook-Idempotenz via webhookIdempotencyKey; tokenExpiresAt nur informativ.',
+      'CI: npm run test:data-auth:provider-grant.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 26 — keine widersprüchlichen Wahrheiten zwischen Provider-Grants und internen Policies.',
+    previousBehavior:
+      'Runtime schrieb nur VehicleProviderConsent; ProviderAccessGrant blieb leer oder PENDING. Worker processorId verhinderte Grant-Matching.',
+    details:
+      'backend/src/modules/data-authorizations/provider-grant-consolidation/. Migration 20260724070000. Doku: docs/architecture/provider-grant-consolidation-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T02:30:00.000Z',
+  },
+  {
     id: 'deny-switch-v49808-2026-07-24',
     version: '4.9.808',
     title: 'V4.9.808 — Sofortiger Fail-closed Deny-Switch (Prompt 25)',

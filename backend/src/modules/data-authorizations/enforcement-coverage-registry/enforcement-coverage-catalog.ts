@@ -546,9 +546,56 @@ export const ENFORCEMENT_COVERAGE_CATALOG: readonly EnforcementFlowCatalogEntry[
     testSpecPath: 'backend/src/modules/data-authorizations/deny-switch/deny-switch.evaluator.spec.ts',
     productive: true,
   }),
+
+  // --- Provider grant consolidation (Prompt 26) ---
+  flow({
+    flowId: 'provider-grant-dimo-onboarding',
+    flowName: 'DIMO onboarding provider grant provisioning',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['TELEMETRY_DATA', 'GPS_LOCATION'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST],
+    responsibleService: 'ProviderGrantProvisioningService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.TELEMETRY_INGEST,
+    processingPath: 'data-auth/provider-grant/dimo-onboarding',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/provider-grant-consolidation/provider-grant-consolidation.integration.spec.ts',
+    productive: true,
+  }),
+  flow({
+    flowId: 'provider-grant-hm-webhook',
+    flowName: 'High Mobility webhook provider grant provisioning',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.HIGH_MOBILITY,
+    dataCategories: ['HEALTH_SIGNALS'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST],
+    responsibleService: 'ProviderGrantProvisioningService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.TELEMETRY_INGEST,
+    processingPath: 'data-auth/provider-grant/hm-webhook',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/provider-grant-consolidation/provider-grant-consolidation.integration.spec.ts',
+    productive: true,
+  }),
+  flow({
+    flowId: 'provider-grant-policy-contradiction',
+    flowName: 'Provider grant vs policy contradiction gate',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['TELEMETRY_DATA'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST, AUTHORIZATION_DECISION_ACTION.READ],
+    responsibleService: 'ProviderGrantConsolidationService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/provider-grant/consolidation-evaluator',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/provider-grant-consolidation/provider-grant-consolidation.integration.spec.ts',
+    productive: true,
+  }),
 ];
 
-export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt25-v1';
+export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt26-v1';
 
 export function getCatalogFlowById(flowId: string): EnforcementFlowCatalogEntry | undefined {
   return ENFORCEMENT_COVERAGE_CATALOG.find((row) => row.flowId === flowId);
