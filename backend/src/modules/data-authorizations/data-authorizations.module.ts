@@ -25,6 +25,12 @@ import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/pol
 import { PolicyLifecycleActivationGuardService } from './privacy-domain/policy-lifecycle/policy-lifecycle-activation-guard.service';
 import { PolicyLifecycleExpiryService } from './privacy-domain/policy-lifecycle/policy-lifecycle-expiry.service';
 import { PolicyLifecycleExpirySchedulerService } from './privacy-domain/policy-lifecycle/policy-lifecycle-expiry.scheduler.service';
+import { ProcessingActivityRegisterController } from './processing-activity-register/processing-activity-register.controller';
+import { ProcessingActivityRegisterService } from './processing-activity-register/processing-activity-register.service';
+import { ProcessingActivityRegisterCompletenessService } from './processing-activity-register/processing-activity-register-completeness.service';
+import { ProcessingActivityRegisterExportService } from './processing-activity-register/processing-activity-register-export.service';
+import { ProcessingActivityRegisterAuditService } from './processing-activity-register/processing-activity-register-audit.service';
+import { ProcessingActivityRegisterExportPurgeSchedulerService } from './processing-activity-register/processing-activity-register-export-purge.scheduler.service';
 import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
 import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
@@ -109,6 +115,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     EnforcementCoverageRegistryController,
     RevocationOrchestratorController,
     DenySwitchController,
+    ProcessingActivityRegisterController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -126,6 +133,11 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     PolicyLifecycleActivationGuardService,
     PolicyLifecycleExpiryService,
     PolicyLifecycleExpirySchedulerService,
+    ProcessingActivityRegisterService,
+    ProcessingActivityRegisterCompletenessService,
+    ProcessingActivityRegisterExportService,
+    ProcessingActivityRegisterAuditService,
+    ProcessingActivityRegisterExportPurgeSchedulerService,
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
@@ -189,6 +201,8 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     PolicyLifecycleService,
     ProcessingActivityLifecycleService,
     PolicyLifecycleExpiryService,
+    ProcessingActivityRegisterService,
+    ProcessingActivityRegisterExportService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,
