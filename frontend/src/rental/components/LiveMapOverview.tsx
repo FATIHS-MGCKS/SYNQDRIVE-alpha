@@ -12,10 +12,17 @@ import {
   type MarkerAnimationPolicy,
   type MarkerAnimationSession,
 } from '../lib/live-map-marker-animation';
+import {
+  captureMapCamera,
+  classifyMapRuntimeError,
+  detachMapInstance,
+  mapErrorMessage,
+  removeMapMarker,
+  resolveLiveMapStyle,
+  restoreMapCamera,
+} from '../lib/live-map-instance';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
-const MAPBOX_STYLE = import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/light-v11';
-const DARK_STYLE = 'mapbox://styles/mapbox/dark-v11';
 const DEFAULT_CENTER: [number, number] = [9.4797, 51.3127];
 const DEFAULT_ZOOM = 16;
 
@@ -71,9 +78,14 @@ export function LiveMapOverview({
   const plateOverlayRef = useRef<HTMLDivElement | null>(null);
   const animationSessionRef = useRef<MarkerAnimationSession | null>(null);
   const animationPolicyRef = useRef(animationPolicy);
+  const styleUrlRef = useRef<string | null>(null);
+  const isDarkModeRef = useRef(isDarkMode);
+  const syncPlateOverlayRef = useRef<(lngLat?: [number, number] | null) => void>(() => {});
   animationPolicyRef.current = animationPolicy;
+  isDarkModeRef.current = isDarkMode;
 
   const [loaded, setLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   const posLat = targetPosition ? targetPosition[1] : null;
   const posLng = targetPosition ? targetPosition[0] : null;
@@ -81,6 +93,9 @@ export function LiveMapOverview({
 
   const displayPositionRef = useRef<[number, number] | null>(null);
   const currentRotationRef = useRef(0);
+  const initialCenterRef = useRef<[number, number]>(
+    targetPosition ?? initialPosition ?? DEFAULT_CENTER,
+  );
 
   const syncPlateOverlay = useCallback((lngLat?: [number, number] | null) => {
     const overlay = plateOverlayRef.current;
@@ -96,6 +111,14 @@ export function LiveMapOverview({
       pos,
     );
   }, [loaded]);
+  syncPlateOverlayRef.current = syncPlateOverlay;
+
+  const removeVehicleMarker = useCallback(() => {
+    removeMapMarker(markerRef.current);
+    markerRef.current = null;
+    markerWrapRef.current = null;
+    sedanMarkerRef.current = null;
+  }, []);
 
   const applyMarkerFrame = useCallback(
     (lngLat: [number, number], rotationDeg: number) => {
@@ -107,7 +130,12 @@ export function LiveMapOverview({
 
       if (!markerRef.current) {
         const wrap = createMarkerWrap();
-        const sedanEl = createSedanMarkerEl(smoothRotation, LIVE_ACCENT, LIVE_GLOW, isDarkMode);
+        const sedanEl = createSedanMarkerEl(
+          smoothRotation,
+          LIVE_ACCENT,
+          LIVE_GLOW,
+          isDarkModeRef.current,
+        );
         wrap.appendChild(sedanEl);
         markerWrapRef.current = wrap;
         sedanMarkerRef.current = sedanEl;
@@ -124,13 +152,17 @@ export function LiveMapOverview({
 
       syncPlateOverlay(lngLat);
     },
-    [isDarkMode, loaded, syncPlateOverlay],
+    [loaded, syncPlateOverlay],
   );
 
   const stopMarkerAnimation = useCallback(() => {
     animationSessionRef.current?.cancel();
     animationSessionRef.current = null;
   }, []);
+  const stopMarkerAnimationRef = useRef(stopMarkerAnimation);
+  const removeVehicleMarkerRef = useRef(removeVehicleMarker);
+  stopMarkerAnimationRef.current = stopMarkerAnimation;
+  removeVehicleMarkerRef.current = removeVehicleMarker;
 
   // ── Core animation loop: GPS interpolation + dead reckoning (imperative, no React state per frame)
   useEffect(() => {
@@ -175,81 +207,200 @@ export function LiveMapOverview({
     if (pos) applyMarkerFrame(pos, heading ?? 0);
   }, [loaded, targetPosition, heading, applyMarkerFrame]);
 
-  // Sync plate overlay on map pan/zoom (no React state)
+  // Update marker arrow palette when theme changes (map instance stays alive)
   useEffect(() => {
-    if (!mapRef.current || !loaded) return;
-    const map = mapRef.current;
-    const onMapChange = () => syncPlateOverlay();
-    syncPlateOverlay();
+    if (!loaded || !sedanMarkerRef.current) return;
+    const parent = sedanMarkerRef.current.parentElement;
+    if (!parent) return;
+    const next = createSedanMarkerEl(
+      currentRotationRef.current,
+      LIVE_ACCENT,
+      LIVE_GLOW,
+      isDarkMode,
+    );
+    parent.replaceChild(next, sedanMarkerRef.current);
+    sedanMarkerRef.current = next;
+  }, [isDarkMode, loaded]);
+
+  // Create map once; register listeners once; cleanup on unmount
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    if (!MAPBOX_TOKEN) {
+      setMapError(mapErrorMessage('missing_token'));
+      setLoaded(false);
+      return;
+    }
+
+    setMapError(null);
+    setLoaded(false);
+
+    let disposed = false;
+    const initialStyle = resolveLiveMapStyle(isDarkModeRef.current);
+    styleUrlRef.current = initialStyle;
+
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: initialStyle,
+        center: initialCenterRef.current,
+        zoom: DEFAULT_ZOOM,
+        pitch: 45,
+        bearing: -10,
+        interactive: true,
+        attributionControl: false,
+      });
+    } catch (err) {
+      setMapError(mapErrorMessage(classifyMapRuntimeError(err)));
+      return;
+    }
+
+    mapRef.current = map;
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+    const onLoad = () => {
+      if (disposed) return;
+      setLoaded(true);
+      setMapError(null);
+      syncPlateOverlayRef.current();
+    };
+
+    const onMapChange = () => {
+      syncPlateOverlayRef.current();
+    };
+
+    const onMapError = (event: mapboxgl.ErrorEvent) => {
+      if (disposed) return;
+      const kind = classifyMapRuntimeError(event.error);
+      setMapError(mapErrorMessage(kind));
+    };
+
+    const onWebGlContextLost = (event: Event) => {
+      event.preventDefault();
+      if (disposed) return;
+      setMapError(mapErrorMessage('webgl_context_lost'));
+      setLoaded(false);
+    };
+
+    map.on('load', onLoad);
+    map.on('error', onMapError);
     map.on('move', onMapChange);
     map.on('zoom', onMapChange);
     map.on('resize', onMapChange);
+
+    const canvas = map.getCanvas();
+    canvas.addEventListener('webglcontextlost', onWebGlContextLost);
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            if (disposed) return;
+            try {
+              map.resize();
+            } catch {
+              // Map may be mid-style-swap or teardown.
+            }
+            syncPlateOverlayRef.current();
+          })
+        : null;
+    resizeObserver?.observe(mapContainerRef.current);
+
     return () => {
+      disposed = true;
+      stopMarkerAnimationRef.current();
+      removeVehicleMarkerRef.current();
+      map.off('load', onLoad);
+      map.off('error', onMapError);
       map.off('move', onMapChange);
       map.off('zoom', onMapChange);
       map.off('resize', onMapChange);
+      canvas.removeEventListener('webglcontextlost', onWebGlContextLost);
+      resizeObserver?.disconnect();
+      detachMapInstance(map);
+      mapRef.current = null;
+      styleUrlRef.current = null;
+      setLoaded(false);
     };
-  }, [loaded, syncPlateOverlay]);
+  }, []);
 
-  // Initial map setup
+  // Controlled style swap on theme change — preserve camera, keep map instance
   useEffect(() => {
-    if (!mapContainerRef.current || !MAPBOX_TOKEN) return;
+    const map = mapRef.current;
+    if (!map || !loaded) return;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    const style = isDarkMode ? DARK_STYLE : MAPBOX_STYLE;
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style,
-      center: targetPosition ?? initialPosition ?? DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      pitch: 45,
-      bearing: -10,
-      interactive: true,
-      attributionControl: false,
-    });
+    const nextStyle = resolveLiveMapStyle(isDarkMode);
+    if (styleUrlRef.current === nextStyle) return;
 
-    map.on('load', () => setLoaded(true));
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-    mapRef.current = map;
+    const camera = captureMapCamera(map);
+    styleUrlRef.current = nextStyle;
+
+    const onStyleLoad = () => {
+      restoreMapCamera(map, camera);
+      syncPlateOverlayRef.current();
+      setMapError(null);
+    };
+
+    const onStyleError = (event: mapboxgl.ErrorEvent) => {
+      const kind = classifyMapRuntimeError(event.error);
+      if (kind === 'style_load' || kind === 'runtime') {
+        setMapError(mapErrorMessage('style_load'));
+      }
+    };
+
+    map.once('style.load', onStyleLoad);
+    map.once('error', onStyleError);
+
+    try {
+      map.setStyle(nextStyle, { diff: false });
+    } catch (err) {
+      setMapError(mapErrorMessage(classifyMapRuntimeError(err)));
+    }
 
     return () => {
-      stopMarkerAnimation();
-      markerRef.current?.remove();
-      markerRef.current = null;
-      markerWrapRef.current = null;
-      sedanMarkerRef.current = null;
-      map.remove();
-      mapRef.current = null;
+      map.off('style.load', onStyleLoad);
+      map.off('error', onStyleError);
     };
-  }, [isDarkMode, stopMarkerAnimation]);
+  }, [isDarkMode, loaded]);
 
   // Gentle camera follow on new GPS target
   useEffect(() => {
-    if (!mapRef.current || !loaded || !targetPosition) return;
+    if (!mapRef.current || !loaded || !targetPosition || mapError) return;
     mapRef.current.easeTo({
       center: targetPosition,
       zoom: mapRef.current.getZoom(),
       duration: MAP_FOLLOW_DURATION_MS,
     });
-  }, [loaded, targetPosition]);
+  }, [loaded, mapError, targetPosition]);
 
   useEffect(() => stopMarkerAnimation, [stopMarkerAnimation]);
 
   if (!MAPBOX_TOKEN) {
     return (
       <div className={`flex items-center justify-center bg-muted text-muted-foreground text-xs ${className}`}>
-        Mapbox token not configured
+        {mapErrorMessage('missing_token')}
       </div>
     );
   }
 
   const isInitialLoading = !loaded || (!targetPosition && !waitingForPosition);
-  const showPlateOverlay = Boolean(licensePlate && !waitingForPosition && loaded);
+  const showPlateOverlay = Boolean(licensePlate && !waitingForPosition && loaded && !mapError);
 
   return (
     <div className={`synq-map-hud-surface relative w-full h-full ${className}`}>
       <div ref={mapContainerRef} className="w-full h-full" />
-      {isInitialLoading && (
+      {mapError && (
+        <div className="sq-map-liquid-overlay rounded-lg">
+          <div className="sq-map-liquid-empty mx-3 max-w-[17.5rem]">
+            <p className="text-xs font-semibold text-foreground">{mapError}</p>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              Live-Positionsanzeige ist vorübergehend nicht verfügbar.
+            </p>
+          </div>
+        </div>
+      )}
+      {isInitialLoading && !mapError && (
         <div className="sq-map-liquid-overlay rounded-lg">
           <div className="sq-map-liquid-loading flex flex-col items-center gap-2">
             <svg className="h-6 w-6 animate-spin text-[color:var(--brand)]" fill="none" viewBox="0 0 24 24">
@@ -260,7 +411,7 @@ export function LiveMapOverview({
           </div>
         </div>
       )}
-      {waitingForPosition && loaded && (
+      {waitingForPosition && loaded && !mapError && (
         <div className="sq-map-liquid-overlay rounded-lg">
           <div className="sq-map-liquid-empty mx-3 max-w-[17.5rem]">
             <p className="text-xs font-semibold text-foreground">
@@ -295,7 +446,7 @@ export function LiveMapOverview({
           </div>
         </div>
       )}
-      {operatorHint && !waitingForPosition && loaded && (
+      {operatorHint && !waitingForPosition && loaded && !mapError && (
         <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 max-w-[11rem] sm:top-3 sm:right-3">
           <LiquidGlassLens
             variant="vehicleHudBadge"
@@ -317,7 +468,7 @@ export function LiveMapOverview({
           </LiquidGlassLens>
         </div>
       )}
-      {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && (
+      {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && !mapError && (
         <div className="pointer-events-none absolute top-2.5 left-2.5 z-10 max-w-[12.5rem] sm:top-3 sm:left-3">
           <LiquidGlassLens
             variant="vehicleHudBadge"
