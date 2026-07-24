@@ -4346,6 +4346,32 @@ export const api = {
         `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/integrations`,
         body,
       ),
+    getLatestImpact: (orgId: string, recommendationId: string) =>
+      get<import('../rental/hooks/useEvaluationsRecommendationImpact').RecommendationImpactRecord | null>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/impact`,
+      ),
+    listImpactVersions: (orgId: string, recommendationId: string) =>
+      get<import('../rental/hooks/useEvaluationsRecommendationImpact').RecommendationImpactRecord[]>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/impact/versions`,
+      ),
+    previewImpact: (
+      orgId: string,
+      recommendationId: string,
+      body: import('../rental/hooks/useEvaluationsRecommendationImpact').MeasureRecommendationImpactInput,
+    ) =>
+      post<import('@synq/evaluations-insights/evaluations-impact-measurement').RecommendationImpactMeasurementResult>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/impact/preview`,
+        body,
+      ),
+    measureImpact: (
+      orgId: string,
+      recommendationId: string,
+      body: import('../rental/hooks/useEvaluationsRecommendationImpact').MeasureRecommendationImpactInput,
+    ) =>
+      post<import('../rental/hooks/useEvaluationsRecommendationImpact').RecommendationImpactRecord>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/impact/measure`,
+        body,
+      ),
   },
   notifications: {
     list: (
