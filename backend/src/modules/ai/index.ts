@@ -222,14 +222,19 @@ export type {
 } from './vehicle-resolution';
 export {
   AI_GET_VEHICLE_LOCATION_TOOL,
+  AI_GET_VEHICLE_TELEMETRY_STATUS_TOOL,
   AiDataAuthorizationProbeAdapter,
   AiGetVehicleLocationTool,
+  AiGetVehicleTelemetryStatusTool,
   AiPrismaVehicleScopeResolver,
 } from './tools';
 export type {
   AiGetVehicleLocationData,
   AiGetVehicleLocationInput,
   AiGetVehicleLocationSource,
+  AiGetVehicleTelemetryStatusData,
+  AiGetVehicleTelemetryStatusInput,
+  AiTelemetryStatusExplanation,
 } from './tools';
 export type {
   StartAiTireSpecJobInput,

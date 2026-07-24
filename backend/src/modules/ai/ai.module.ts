@@ -25,6 +25,7 @@ import { AiVehicleResolutionService } from './vehicle-resolution/ai-vehicle-reso
 import { AiDataAuthorizationProbeAdapter } from './tools/ai-data-authorization.probe';
 import { AiPrismaVehicleScopeResolver } from './tools/ai-prisma-vehicle-scope.resolver';
 import { AiGetVehicleLocationTool } from './tools/get-vehicle-location/ai-get-vehicle-location.tool';
+import { AiGetVehicleTelemetryStatusTool } from './tools/get-vehicle-telemetry-status/ai-get-vehicle-telemetry-status.tool';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
@@ -67,6 +68,7 @@ import { AiHealthController } from './ai-health.controller';
     AiPrismaVehicleScopeResolver,
     AiDataAuthorizationProbeAdapter,
     AiGetVehicleLocationTool,
+    AiGetVehicleTelemetryStatusTool,
     ChatService,
   ],
   exports: [
@@ -82,6 +84,7 @@ import { AiHealthController } from './ai-health.controller';
     AiTireSpecJobService,
     AiVehicleResolutionService,
     AiGetVehicleLocationTool,
+    AiGetVehicleTelemetryStatusTool,
     ChatService,
   ],
 })

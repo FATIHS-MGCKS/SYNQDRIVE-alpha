@@ -118,3 +118,17 @@ must be wrapped as `AiEvidence` with explicit:
   `null` (no backend reverse-geocode SoT per baseline).
 - Partial outcomes on provider timeout with snapshot fallback.
 - Tests: `ai-get-vehicle-location.spec.ts` (11 scenarios).
+
+### Prompt 11 — `get_vehicle_telemetry_status` domain tool (2026-07-24)
+
+- Added `backend/src/modules/ai/tools/get-vehicle-telemetry-status/` — structured
+  telemetry status with signal-group coverage and machine-readable explanations.
+- Reuses `assembleVehicleConnectivityRuntimeBundle`, `buildFleetDataCoverage`,
+  `resolveTelemetryFreshness`, `mapTelemetryToAiEvidenceSemantics` — no duplicate
+  freshness thresholds (`deriveTelemetryState` exported from connectivity builder).
+- Guards: `assertAiToolExecutionAllowed`, `resolveAiVehicleAccess` (no GPS auth —
+  status tool, not coordinate disclosure).
+- Output: all required fields (`telemetryState`, signal groups, connectivity,
+  `explanation`, `isLastKnownTelemetry`) via `AiDomainQueryOutcome`.
+- Partial outcome when provider unlinked but stored snapshot timestamps exist.
+- Tests: `ai-get-vehicle-telemetry-status.spec.ts` (16 scenarios incl. boundaries).

@@ -1131,8 +1131,34 @@ Standort-, Health- oder Booking-Domain-Tools.
 
 **Gesamt nach Prompt 9:** 133/133 PASS (vehicle-resolution 12 + chat 3 + execution 18 + evidence 100).
 
-**Bewusst nicht in Scope:** Standort-, Health-, Booking-Domain-Tools.
+---
+
+## Prompt 10 — `get_vehicle_location` (2026-07-24)
+
+- Modul: `backend/src/modules/ai/tools/get-vehicle-location/`
+- SoT: `VehicleLatestState` + `resolveTelemetryFreshness`; Live nur bei aktivem Tracking
+- Guards: Execution Context + Vehicle Scope + GPS DataAuthorization
+- Adresse: `null` (keine Backend-SoT)
+- Tests: 11/11 PASS
+
+**Gesamt nach Prompt 10:** 201/201 PASS (AI module).
 
 ---
 
-**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 9); Audit-Ergänzung oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.
+## Prompt 11 — `get_vehicle_telemetry_status` (2026-07-24)
+
+- Modul: `backend/src/modules/ai/tools/get-vehicle-telemetry-status/`
+- SoT: `assembleVehicleConnectivityRuntimeBundle` + `buildFleetDataCoverage` +
+  `resolveTelemetryFreshness` / `mapTelemetryToAiEvidenceSemantics`
+- `deriveTelemetryState` exportiert aus `vehicle-connectivity-runtime-state.builder.ts`
+- Guards: Execution Context + Vehicle Scope (kein GPS-DataAuthorization)
+- Strukturierte Erklärung: `explanation` (stateSummary, connectedButQuiet,
+  lastKnownDataPresent, location/health reliability, signal groups)
+- Kein „Fahrzeug offline“ bei nur fehlenden Einzelsignalen; Last-Known explizit
+- Tests: 16/16 PASS (alle Telemetriezustände + 15m/24h/48h Grenzwerte)
+
+**Gesamt nach Prompt 11:** 217/217 PASS (AI module).
+
+---
+
+**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 9–11); Audit-Ergänzung oben. Master Changes View: folgt mit Release-Eintrag.
