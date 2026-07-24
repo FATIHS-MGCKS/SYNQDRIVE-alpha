@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'revocation-queue-control-v49810-2026-07-24',
+    version: '4.9.810',
+    title: 'V4.9.810 — Revocation Queue & Worker Control (Prompt 27)',
+    summary: [
+      'RevocationQueueControlService — scoped BullMQ cancellation (19 Queues), idempotent, kein Queue-Flush.',
+      'WorkerRevocationCheckpointService — PRE_PERSIST Deny-Switch Re-Check für laufende Jobs.',
+      'ScheduledJobRevocationService — Cron/systemd Pause-Tokens pro Org.',
+      'DownstreamRevocationNotifyService — persistente Partner-Widerrufsmitteilung mit Dead-Letter.',
+      'CI: npm run test:data-auth:revocation-queues.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 27 — Worker, Queues und Downstream bei Widerruf kontrolliert stoppen.',
+    previousBehavior:
+      'cancel_queues entfernte nur 3 Queues per Org-Filter; keine Scheduler-Pause, kein Worker-Checkpoint, keine persistente Downstream-Zustellung.',
+    details:
+      'backend/src/modules/data-authorizations/revocation-queue-control/. Migration 20260724080000. Doku: docs/architecture/revocation-queue-control-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T03:30:00.000Z',
+  },
+  {
     id: 'provider-grant-consolidation-v49809-2026-07-24',
     version: '4.9.809',
     title: 'V4.9.809 — ProviderAccessGrant Konsolidierung (Prompt 26)',

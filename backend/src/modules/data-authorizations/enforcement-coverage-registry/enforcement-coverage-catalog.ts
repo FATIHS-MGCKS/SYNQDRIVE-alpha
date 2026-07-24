@@ -593,9 +593,41 @@ export const ENFORCEMENT_COVERAGE_CATALOG: readonly EnforcementFlowCatalogEntry[
       'backend/src/modules/data-authorizations/provider-grant-consolidation/provider-grant-consolidation.integration.spec.ts',
     productive: true,
   }),
+
+  // --- Revocation queue control (Prompt 27) ---
+  flow({
+    flowId: 'revocation-queue-scoped-cancel',
+    flowName: 'Revocation scoped BullMQ job cancellation',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.SYNQDRIVE_SYSTEM,
+    dataCategories: ['TELEMETRY_DATA', 'GPS_LOCATION'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST],
+    responsibleService: 'RevocationQueueControlService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/revocation-queue/scoped-cancel',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/revocation-queue-control/revocation-queue-control.integration.spec.ts',
+    productive: true,
+  }),
+  flow({
+    flowId: 'revocation-worker-checkpoint',
+    flowName: 'Worker revocation checkpoint before persist',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['TELEMETRY_DATA'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST],
+    responsibleService: 'WorkerRevocationCheckpointService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/revocation-queue/worker-checkpoint',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/revocation-queue-control/revocation-queue-control.integration.spec.ts',
+    productive: true,
+  }),
 ];
 
-export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt26-v1';
+export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt27-v1';
 
 export function getCatalogFlowById(flowId: string): EnforcementFlowCatalogEntry | undefined {
   return ENFORCEMENT_COVERAGE_CATALOG.find((row) => row.flowId === flowId);

@@ -11751,6 +11751,8 @@ model DataAuthorizationRevocationWorkflow {
 
   organization Organization                              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   stepEvents   DataAuthorizationRevocationStepEvent[]
+  queueActions DataAuthorizationRevocationQueueAction[]
+  downstreamNotifications DataAuthorizationDownstreamRevocationNotify[]
 
   @@index([organizationId])
   @@index([status, nextRetryAt])
@@ -11775,6 +11777,92 @@ model DataAuthorizationRevocationStepEvent {
   @@index([workflowId])
   @@index([organizationId, createdAt])
   @@map("data_authorization_revocation_step_events")
+}
+
+enum DataAuthorizationRevocationQueueActionType {
+  REMOVED
+  SUPPRESSED
+  CHECKPOINT_REQUIRED
+  ALREADY_REMOVED
+  ENQUEUE_BLOCKED
+}
+
+enum DataAuthorizationRevocationQueueJobState {
+  WAITING
+  DELAYED
+  PAUSED
+  ACTIVE
+  RETRY
+}
+
+/// Append-only log of scoped queue actions during revocation — no blanket queue flush.
+model DataAuthorizationRevocationQueueAction {
+  id              String                                   @id @default(uuid())
+  organizationId  String                                   @map("organization_id")
+  workflowId      String                                   @map("workflow_id")
+  correlationId   String                                   @map("correlation_id")
+  queueName       String                                   @map("queue_name")
+  jobId           String?                                  @map("job_id")
+  jobState        DataAuthorizationRevocationQueueJobState @map("job_state")
+  action          DataAuthorizationRevocationQueueActionType
+  scopeEntityType String?                                  @map("scope_entity_type")
+  scopeEntityId   String?                                  @map("scope_entity_id")
+  idempotencyKey  String                                   @unique @map("idempotency_key")
+  errorMessage    String?                                  @map("error_message")
+  createdAt       DateTime                                 @default(now()) @map("created_at")
+
+  workflow DataAuthorizationRevocationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, workflowId])
+  @@index([queueName, createdAt])
+  @@map("data_authorization_revocation_queue_actions")
+}
+
+enum DataAuthorizationDownstreamRevocationNotifyStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  DEAD_LETTER
+}
+
+/// Persistent downstream revocation notifications (partner webhooks, exports, AI jobs).
+model DataAuthorizationDownstreamRevocationNotify {
+  id             String                                            @id @default(uuid())
+  organizationId String                                            @map("organization_id")
+  workflowId     String                                            @map("workflow_id")
+  correlationId  String                                            @map("correlation_id")
+  recipient      String
+  channel        String
+  status         DataAuthorizationDownstreamRevocationNotifyStatus @default(PENDING)
+  attempts       Int                                               @default(0)
+  maxAttempts    Int                                               @default(8) @map("max_attempts")
+  lastError      String?                                           @map("last_error")
+  deliveredAt    DateTime?                                         @map("delivered_at")
+  deadLetteredAt DateTime?                                         @map("dead_lettered_at")
+  idempotencyKey String                                            @unique @map("idempotency_key")
+  payloadJson    Json                                              @map("payload_json")
+  createdAt      DateTime                                          @default(now()) @map("created_at")
+  updatedAt      DateTime                                          @updatedAt @map("updated_at")
+
+  workflow DataAuthorizationRevocationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([workflowId])
+  @@map("data_authorization_downstream_revocation_notifies")
+}
+
+/// Pause token for cron/systemd schedulers during active revocation scopes.
+model DataAuthorizationScheduledJobPause {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  schedulerKey   String    @map("scheduler_key")
+  correlationId  String    @map("correlation_id")
+  pausedUntil    DateTime? @map("paused_until")
+  idempotencyKey String    @unique @map("idempotency_key")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([organizationId, schedulerKey])
+  @@map("data_authorization_scheduled_job_pauses")
 }
 
 /// Fail-closed deny switch — DB source of truth for immediate DENY on revoke/suspend.

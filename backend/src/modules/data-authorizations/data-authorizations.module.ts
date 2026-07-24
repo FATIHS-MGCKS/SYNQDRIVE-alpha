@@ -70,6 +70,13 @@ import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/
 import { ProviderGrantConsolidationService } from './provider-grant-consolidation/provider-grant-consolidation.service';
 import { ProviderGrantProvisioningService } from './provider-grant-consolidation/provider-grant-provisioning.service';
 import { ProviderGrantVerificationService } from './provider-grant-consolidation/provider-grant-verification.service';
+import { RevocationQueueControlService } from './revocation-queue-control/revocation-queue-control.service';
+import { ScheduledJobRevocationService } from './revocation-queue-control/scheduled-job-revocation.service';
+import { DownstreamRevocationNotifyService } from './revocation-queue-control/downstream-revocation-notify.service';
+import { WorkerRevocationCheckpointService } from './revocation-queue-control/worker-revocation-checkpoint.service';
+import { WorkerRuntimeHealthService } from './revocation-queue-control/worker-runtime-health.service';
+import { QueueEnqueueGuardService } from './revocation-queue-control/queue-enqueue-guard.service';
+import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-queue-catalog';
 
 @Module({
   imports: [
@@ -78,6 +85,12 @@ import { ProviderGrantVerificationService } from './provider-grant-consolidation
       { name: QUEUE_NAMES.DIMO_SNAPSHOT },
       { name: QUEUE_NAMES.DTC_POLL },
       { name: QUEUE_NAMES.TRIP_TRACKING },
+      ...REVOCATION_QUEUE_CATALOG.filter(
+        (e) =>
+          e.queueName !== QUEUE_NAMES.DIMO_SNAPSHOT &&
+          e.queueName !== QUEUE_NAMES.DTC_POLL &&
+          e.queueName !== QUEUE_NAMES.TRIP_TRACKING,
+      ).map((e) => ({ name: e.queueName })),
     ),
   ],
   controllers: [
@@ -150,6 +163,12 @@ import { ProviderGrantVerificationService } from './provider-grant-consolidation
     ProviderGrantConsolidationService,
     ProviderGrantProvisioningService,
     ProviderGrantVerificationService,
+    RevocationQueueControlService,
+    ScheduledJobRevocationService,
+    DownstreamRevocationNotifyService,
+    WorkerRevocationCheckpointService,
+    WorkerRuntimeHealthService,
+    QueueEnqueueGuardService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -189,6 +208,10 @@ import { ProviderGrantVerificationService } from './provider-grant-consolidation
     DenySwitchService,
     ProviderGrantProvisioningService,
     ProviderGrantConsolidationService,
+    RevocationQueueControlService,
+    WorkerRevocationCheckpointService,
+    WorkerRuntimeHealthService,
+    QueueEnqueueGuardService,
   ],
 })
 export class DataAuthorizationsModule {}
