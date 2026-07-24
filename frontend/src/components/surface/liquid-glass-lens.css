@@ -1066,6 +1066,27 @@
   background: color-mix(in srgb, var(--map-glass-highlight) 16%, transparent) !important;
 }
 
+/* Mapbox attribution — visible and license-compliant inside map HUD surfaces */
+.synq-map-hud-surface .mapboxgl-ctrl-attrib {
+  background: color-mix(in srgb, var(--map-glass-fleet-tile-bg) 88%, transparent) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--map-glass-lens-shell-border) 60%, transparent) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--map-glass-shadow) 18%, transparent) !important;
+  backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate)) !important;
+  -webkit-backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate)) !important;
+  color: var(--muted-foreground) !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  margin: 0 8px 8px 0 !important;
+  max-width: calc(100% - 1rem) !important;
+  padding: 2px 6px !important;
+}
+
+.synq-map-hud-surface .mapboxgl-ctrl-attrib a {
+  color: var(--foreground) !important;
+}
+
 @media (prefers-reduced-transparency: reduce) {
   .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='shell'],
   .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] {

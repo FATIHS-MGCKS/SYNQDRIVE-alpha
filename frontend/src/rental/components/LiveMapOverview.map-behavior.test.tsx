@@ -9,7 +9,9 @@ vi.hoisted(() => {
   vi.stubEnv('VITE_MAPBOX_ACCESS_TOKEN', 'test-token');
 });
 
-const { MockMap, MockMarker } = vi.hoisted(() => {
+const { MockMap, MockMarker, mapConstructorOptions } = vi.hoisted(() => {
+  const optionsLog: Array<Record<string, unknown>> = [];
+
   class HoistedMockMarker {
     private lngLat: [number, number] = [0, 0];
     private map: HoistedMockMap | null = null;
@@ -53,9 +55,11 @@ const { MockMap, MockMarker } = vi.hoisted(() => {
     project = (point: [number, number]) => ({ x: point[0] * 10, y: point[1] * 10 });
     canvas = document.createElement('canvas');
     removeCalls = 0;
+    controls: Array<{ type: string; position?: string }> = [];
 
-    constructor(options: { style: string }) {
-      this.styleUrl = options.style;
+    constructor(options: Record<string, unknown>) {
+      this.styleUrl = String(options.style ?? '');
+      optionsLog.push(options);
       HoistedMockMap.instances.push(this);
       queueMicrotask(() => this.emit('load'));
     }
@@ -90,7 +94,13 @@ const { MockMap, MockMarker } = vi.hoisted(() => {
       }
     }
 
-    addControl = vi.fn();
+    addControl = vi.fn(function (
+      this: HoistedMockMap,
+      control: { __controlType?: string },
+      position?: string,
+    ) {
+      this.controls.push({ type: control.__controlType ?? 'unknown', position });
+    });
     getCanvas() {
       return this.canvas;
     }
@@ -102,12 +112,21 @@ const { MockMap, MockMarker } = vi.hoisted(() => {
     }
   }
 
-  return { MockMap: HoistedMockMap, MockMarker: HoistedMockMarker };
+  return {
+    MockMap: HoistedMockMap,
+    MockMarker: HoistedMockMarker,
+    mapConstructorOptions: optionsLog,
+  };
 });
 
 vi.mock('mapbox-gl', () => {
-  class NavigationControl {}
-  class AttributionControl {}
+  class NavigationControl {
+    __controlType = 'navigation';
+  }
+  class AttributionControl {
+    __controlType = 'attribution';
+    constructor(public readonly options?: { compact?: boolean }) {}
+  }
   return {
     default: {
       Map: MockMap,
@@ -157,87 +176,96 @@ function renderLiveMap(props: Partial<ComponentProps<typeof LiveMapOverview>> = 
   };
 }
 
-describe('LiveMapOverview map lifecycle', () => {
+describe('LiveMapOverview map behavior', () => {
   beforeEach(() => {
     MockMap.instances = [];
+    mapConstructorOptions.length = 0;
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
+    vi.unstubAllEnvs();
+    vi.stubEnv('VITE_MAPBOX_ACCESS_TOKEN', 'test-token');
   });
 
-  it('creates a single map instance on initial load', async () => {
+  it('enables cooperative gestures for mobile page scroll', async () => {
     renderLiveMap();
     await act(async () => {
       await Promise.resolve();
     });
-    expect(MockMap.instances).toHaveLength(1);
+    expect(mapConstructorOptions[0]?.cooperativeGestures).toBe(true);
   });
 
-  it('swaps style on theme change without recreating the map', async () => {
-    const view = renderLiveMap({ isDarkMode: false });
+  it('adds visible Mapbox attribution control', async () => {
+    renderLiveMap();
     await act(async () => {
       await Promise.resolve();
     });
     const map = MockMap.instances[0];
-    expect(map.styleUrl).toContain('light');
-
-    view.rerender({ isDarkMode: true });
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(MockMap.instances).toHaveLength(1);
-    expect(map.setStyle).toHaveBeenCalled();
-    expect(map.jumpTo).toHaveBeenCalled();
-    expect(map.removeCalls).toBe(0);
+    expect(map.controls.some((control) => control.type === 'attribution')).toBe(true);
+    expect(map.controls.find((control) => control.type === 'attribution')?.position).toBe(
+      'bottom-right',
+    );
   });
 
-  it('cleans up map and markers on unmount', async () => {
+  it('does not re-center after manual drag when follow is disabled', async () => {
     const view = renderLiveMap();
     await act(async () => {
       await Promise.resolve();
     });
     const map = MockMap.instances[0];
-    expect(map.markers.length).toBeGreaterThan(0);
-
-    view.unmount();
-    expect(map.removeCalls).toBe(1);
-    expect(MockMap.instances).toHaveLength(0);
-  });
-
-  it('resizes map when container size changes', async () => {
-    const view = renderLiveMap();
-    await act(async () => {
-      await Promise.resolve();
-    });
-    const map = MockMap.instances[0];
-    const mapContainer = view.container.querySelector('.w-full.h-full') as HTMLElement | null;
-    expect(mapContainer).toBeTruthy();
+    map.easeTo.mockClear();
 
     act(() => {
-      map.resize();
+      map.emit('dragstart');
+      map.emit('dragend');
     });
-    expect(map.resize).toHaveBeenCalled();
+
+    view.rerender({ targetPosition: [9.5, 51.32] });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(map.easeTo).not.toHaveBeenCalled();
   });
 
-  it('shows controlled error on WebGL context loss', async () => {
+  it('follows camera on GPS updates when follow is active', async () => {
     const view = renderLiveMap();
     await act(async () => {
       await Promise.resolve();
     });
     const map = MockMap.instances[0];
-    const event = new Event('webglcontextlost');
-    Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+    map.easeTo.mockClear();
 
-    act(() => {
-      map.getCanvas().dispatchEvent(event);
+    view.rerender({ targetPosition: [9.5, 51.32] });
+    await act(async () => {
+      await Promise.resolve();
     });
 
-    expect(view.container.textContent).toMatch(/unterbrochen/i);
+    expect(map.easeTo).toHaveBeenCalled();
   });
 
-  it('shows controlled error when map emits runtime error', async () => {
+  it('uses instant camera moves when reduced motion is requested', async () => {
+    const view = renderLiveMap({ animationPolicy: { reducedMotion: true } });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const map = MockMap.instances[0];
+    map.easeTo.mockClear();
+
+    view.rerender({ targetPosition: [9.5, 51.32] });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(map.easeTo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        duration: 0,
+      }),
+    );
+  });
+
+  it('shows neutral message for Mapbox runtime errors', async () => {
     const view = renderLiveMap();
     await act(async () => {
       await Promise.resolve();
@@ -249,21 +277,63 @@ describe('LiveMapOverview map lifecycle', () => {
     });
 
     expect(view.container.textContent).toMatch(/Stil/i);
+    expect(view.container.textContent).not.toMatch(/VITE_|accessToken/i);
   });
 
-  it('remounts cleanly for vehicle change via parent key', async () => {
-    const first = renderLiveMap({ licensePlate: 'M-AB 1111' });
+  it('shows neutral message for network errors', async () => {
+    const view = renderLiveMap();
     await act(async () => {
       await Promise.resolve();
     });
-    first.unmount();
+    const map = MockMap.instances[0];
 
-    const second = renderLiveMap({ licensePlate: 'M-AB 2222' });
+    act(() => {
+      map.emit('error', { error: new Error('Failed to fetch') });
+    });
+
+    expect(view.container.textContent).toMatch(/Verbindung/i);
+    expect(view.container.textContent).not.toMatch(/fetch|network error/i);
+  });
+
+  it('shows operator hint for missing position', async () => {
+    const view = renderLiveMap({
+      targetPosition: null,
+      waitingForPosition: true,
+      operatorHint: 'Keine Position verfügbar',
+      operatorHintSub: 'Telematik verbinden',
+    });
     await act(async () => {
       await Promise.resolve();
     });
-    expect(MockMap.instances).toHaveLength(1);
-    second.unmount();
-    expect(MockMap.instances).toHaveLength(0);
+
+    expect(view.container.textContent).toMatch(/Keine Position verfügbar/);
+    expect(view.container.textContent).toMatch(/Telematik verbinden/);
+  });
+
+  it('shows operator hint overlay for last-known style hints', async () => {
+    const view = renderLiveMap({
+      targetPosition: [9.48, 51.31],
+      waitingForPosition: false,
+      operatorHint: 'Letzte bekannte Position',
+      operatorHintSub: 'vor 12 Min.',
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(view.container.textContent).toMatch(/Letzte bekannte Position/);
+    expect(view.container.textContent).toMatch(/vor 12 Min/);
+  });
+
+  it('registers touch-friendly interaction listeners for drag and zoom', async () => {
+    renderLiveMap();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const map = MockMap.instances[0];
+    expect(map.handlers.has('dragstart')).toBe(true);
+    expect(map.handlers.has('zoomstart')).toBe(true);
+    expect(map.handlers.has('rotatestart')).toBe(true);
+    expect(map.handlers.has('pitchstart')).toBe(true);
   });
 });

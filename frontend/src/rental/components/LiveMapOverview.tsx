@@ -21,6 +21,15 @@ import {
   resolveLiveMapStyle,
   restoreMapCamera,
 } from '../lib/live-map-instance';
+import {
+  createLiveMapFollowState,
+  markUserInteractionEnd,
+  markUserInteractionStart,
+  readPrefersReducedMotion,
+  resolveCameraAnimationDuration,
+  resolveEffectiveReducedMotion,
+  shouldFollowCamera,
+} from '../lib/live-map-behavior';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 const DEFAULT_CENTER: [number, number] = [9.4797, 51.3127];
@@ -44,7 +53,7 @@ export interface LiveMapOverviewProps {
   isDarkMode?: boolean;
   operatorHint?: string | null;
   operatorHintSub?: string | null;
-  /** Reserved for a later reduced-motion prompt. */
+  /** Optional override; defaults to prefers-reduced-motion media query. */
   animationPolicy?: MarkerAnimationPolicy;
 }
 
@@ -78,14 +87,37 @@ export function LiveMapOverview({
   const plateOverlayRef = useRef<HTMLDivElement | null>(null);
   const animationSessionRef = useRef<MarkerAnimationSession | null>(null);
   const animationPolicyRef = useRef(animationPolicy);
+  const followStateRef = useRef(createLiveMapFollowState());
+  const reducedMotionRef = useRef(readPrefersReducedMotion());
   const styleUrlRef = useRef<string | null>(null);
   const isDarkModeRef = useRef(isDarkMode);
   const syncPlateOverlayRef = useRef<(lngLat?: [number, number] | null) => void>(() => {});
   animationPolicyRef.current = animationPolicy;
   isDarkModeRef.current = isDarkMode;
 
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
+    readPrefersReducedMotion(),
+  );
+  const effectiveReducedMotion = resolveEffectiveReducedMotion(
+    prefersReducedMotion,
+    animationPolicy,
+  );
+  reducedMotionRef.current = effectiveReducedMotion;
+
   const [loaded, setLoaded] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string | null>(
+    MAPBOX_TOKEN ? null : mapErrorMessage('missing_token'),
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => {
+      setPrefersReducedMotion(mq.matches);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const posLat = targetPosition ? targetPosition[1] : null;
   const posLng = targetPosition ? targetPosition[0] : null;
@@ -191,14 +223,14 @@ export function LiveMapOverview({
       to,
       heading: currentHeading,
       speedKmh: currentSpeed,
-      reducedMotion: animationPolicyRef.current?.reducedMotion,
+      reducedMotion: reducedMotionRef.current,
       onFrame: ({ position, heading: frameHeading }) => {
         applyMarkerFrame(position, frameHeading);
       },
     });
 
     return stopMarkerAnimation;
-  }, [targetPosition, heading, speedKmh, applyMarkerFrame, stopMarkerAnimation]);
+  }, [targetPosition, heading, speedKmh, applyMarkerFrame, stopMarkerAnimation, effectiveReducedMotion]);
 
   // Sync marker when map becomes loaded
   useEffect(() => {
@@ -251,6 +283,7 @@ export function LiveMapOverview({
         bearing: -10,
         interactive: true,
         attributionControl: false,
+        cooperativeGestures: true,
       });
     } catch (err) {
       setMapError(mapErrorMessage(classifyMapRuntimeError(err)));
@@ -259,6 +292,7 @@ export function LiveMapOverview({
 
     mapRef.current = map;
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
     const onLoad = () => {
       if (disposed) return;
@@ -269,6 +303,14 @@ export function LiveMapOverview({
 
     const onMapChange = () => {
       syncPlateOverlayRef.current();
+    };
+
+    const onUserInteractionStart = () => {
+      markUserInteractionStart(followStateRef.current);
+    };
+
+    const onUserInteractionEnd = () => {
+      markUserInteractionEnd(followStateRef.current);
     };
 
     const onMapError = (event: mapboxgl.ErrorEvent) => {
@@ -289,6 +331,14 @@ export function LiveMapOverview({
     map.on('move', onMapChange);
     map.on('zoom', onMapChange);
     map.on('resize', onMapChange);
+    map.on('dragstart', onUserInteractionStart);
+    map.on('dragend', onUserInteractionEnd);
+    map.on('zoomstart', onUserInteractionStart);
+    map.on('zoomend', onUserInteractionEnd);
+    map.on('rotatestart', onUserInteractionStart);
+    map.on('rotateend', onUserInteractionEnd);
+    map.on('pitchstart', onUserInteractionStart);
+    map.on('pitchend', onUserInteractionEnd);
 
     const canvas = map.getCanvas();
     canvas.addEventListener('webglcontextlost', onWebGlContextLost);
@@ -316,6 +366,14 @@ export function LiveMapOverview({
       map.off('move', onMapChange);
       map.off('zoom', onMapChange);
       map.off('resize', onMapChange);
+      map.off('dragstart', onUserInteractionStart);
+      map.off('dragend', onUserInteractionEnd);
+      map.off('zoomstart', onUserInteractionStart);
+      map.off('zoomend', onUserInteractionEnd);
+      map.off('rotatestart', onUserInteractionStart);
+      map.off('rotateend', onUserInteractionEnd);
+      map.off('pitchstart', onUserInteractionStart);
+      map.off('pitchend', onUserInteractionEnd);
       canvas.removeEventListener('webglcontextlost', onWebGlContextLost);
       resizeObserver?.disconnect();
       detachMapInstance(map);
@@ -364,27 +422,26 @@ export function LiveMapOverview({
     };
   }, [isDarkMode, loaded]);
 
-  // Gentle camera follow on new GPS target
+  // Gentle camera follow on new GPS target — respects manual pan/zoom
   useEffect(() => {
     if (!mapRef.current || !loaded || !targetPosition || mapError) return;
+    if (!shouldFollowCamera(followStateRef.current, true)) return;
+
+    const duration = resolveCameraAnimationDuration(
+      reducedMotionRef.current,
+      MAP_FOLLOW_DURATION_MS,
+    );
     mapRef.current.easeTo({
       center: targetPosition,
       zoom: mapRef.current.getZoom(),
-      duration: MAP_FOLLOW_DURATION_MS,
+      duration,
     });
-  }, [loaded, mapError, targetPosition]);
+  }, [loaded, mapError, targetPosition, effectiveReducedMotion]);
 
   useEffect(() => stopMarkerAnimation, [stopMarkerAnimation]);
 
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className={`flex items-center justify-center bg-muted text-muted-foreground text-xs ${className}`}>
-        {mapErrorMessage('missing_token')}
-      </div>
-    );
-  }
-
-  const isInitialLoading = !loaded || (!targetPosition && !waitingForPosition);
+  const isInitialLoading =
+    Boolean(MAPBOX_TOKEN) && (!loaded || (!targetPosition && !waitingForPosition));
   const showPlateOverlay = Boolean(licensePlate && !waitingForPosition && loaded && !mapError);
 
   return (
