@@ -61,3 +61,29 @@ export {
   parseAiEvidenceIsoTimestampMs,
   validateAiEvidence,
 } from './ai-evidence.validation';
+
+export {
+  AI_EVIDENCE_TELEMETRY_SEMANTICS,
+  TELEMETRY_FRESH_THRESHOLD_MS,
+  TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS,
+  TELEMETRY_STANDBY_THRESHOLD_MS,
+} from './ai-evidence-telemetry.enums';
+export type {
+  AiEvidenceTelemetrySemantics,
+  TelemetryFreshness,
+} from './ai-evidence-telemetry.enums';
+
+export type {
+  AiTelemetryLiveHints,
+  AiTelemetrySemanticsMappingRow,
+  MapTelemetryToAiEvidenceInput,
+  MappedTelemetryAiSemantics,
+} from './ai-evidence-telemetry.types';
+
+export {
+  AI_TELEMETRY_SEMANTICS_MAPPING_TABLE,
+  hasAiTelemetryFreshLiveHint,
+  mapCanonicalTelemetryFreshnessToSemantics,
+  mapDashboardTelemetryStateToSemantics,
+  mapTelemetryToAiEvidenceSemantics,
+} from './ai-evidence-telemetry.mapper';

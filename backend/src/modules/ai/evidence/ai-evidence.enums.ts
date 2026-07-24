@@ -110,6 +110,8 @@ export const AI_EVIDENCE_REASON_CODES = [
   'sensitivity_redacted',
   'invalid_tenant',
   'validation_failed',
+  'signal_not_supported',
+  'provider_outage',
 ] as const;
 
 export type AiEvidenceReasonCode = (typeof AI_EVIDENCE_REASON_CODES)[number];

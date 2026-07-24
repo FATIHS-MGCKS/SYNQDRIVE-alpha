@@ -54,3 +54,12 @@ must be wrapped as `AiEvidence` with explicit:
 
 - Tool layer adapters (telemetry, booking, health) produce `AiEvidence[]`.
 - Chat audit record stores evidence snapshots per assistant turn.
+
+### Prompt 6 — Telemetry freshness mapping (2026-07-24)
+
+- Added `ai-evidence-telemetry.*` — maps canonical `resolveTelemetryFreshness` →
+  `AiEvidenceTelemetrySemantics` + generic `AiEvidence` freshness/availability.
+- **No duplicate thresholds** — re-exports `TELEMETRY_*_THRESHOLD_MS` from
+  `telemetry-freshness.resolver`.
+- Central function: `mapTelemetryToAiEvidenceSemantics`.
+- Tests: `ai-evidence-telemetry.mapper.spec.ts` (28 tests, boundary + transitions).

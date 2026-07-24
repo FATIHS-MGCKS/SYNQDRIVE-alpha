@@ -75,11 +75,28 @@ export type {
   AiEvidenceSource,
   AiEvidenceSourceEntity,
   AiEvidenceSourceEntityKind,
+  AiEvidenceTelemetrySemantics,
   AiEvidenceValidationIssue,
   AiEvidenceValidationOptions,
   AiEvidenceValidationResult,
   AiEvidenceValue,
+  AiTelemetryLiveHints,
+  AiTelemetrySemanticsMappingRow,
   CreateAiEvidenceBaseInput,
+  MapTelemetryToAiEvidenceInput,
+  MappedTelemetryAiSemantics,
+  TelemetryFreshness,
+} from './evidence';
+export {
+  AI_EVIDENCE_TELEMETRY_SEMANTICS,
+  AI_TELEMETRY_SEMANTICS_MAPPING_TABLE,
+  hasAiTelemetryFreshLiveHint,
+  mapCanonicalTelemetryFreshnessToSemantics,
+  mapDashboardTelemetryStateToSemantics,
+  mapTelemetryToAiEvidenceSemantics,
+  TELEMETRY_FRESH_THRESHOLD_MS,
+  TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS,
+  TELEMETRY_STANDBY_THRESHOLD_MS,
 } from './evidence';
 export type {
   StartAiTireSpecJobInput,

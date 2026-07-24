@@ -257,7 +257,9 @@ function validateAvailabilitySemantics(
     if (
       evidence.reasonCode !== 'data_unavailable' &&
       evidence.reasonCode !== 'entity_not_found' &&
-      evidence.reasonCode !== 'pipeline_failure'
+      evidence.reasonCode !== 'pipeline_failure' &&
+      evidence.reasonCode !== 'provider_outage' &&
+      evidence.reasonCode !== 'signal_not_supported'
     ) {
       issues.push(
         issue(
