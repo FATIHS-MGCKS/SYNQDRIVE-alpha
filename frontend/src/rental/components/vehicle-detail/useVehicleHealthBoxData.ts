@@ -42,12 +42,13 @@ const INITIAL_OMIT_BATTERY = {
 export function useVehicleHealthBoxData(
   vehicleId: string | null,
   orgId: string | null | undefined,
+  options?: { livePolling?: boolean },
 ): VehicleHealthBoxData {
   const batteryQuery = useBatteryHealthQuery({
     orgId,
     vehicleId,
     variant: 'summary',
-    livePolling: Boolean(vehicleId && orgId),
+    livePolling: options?.livePolling ?? Boolean(vehicleId && orgId),
   });
 
   const [rest, setRest] = useState(INITIAL_OMIT_BATTERY);

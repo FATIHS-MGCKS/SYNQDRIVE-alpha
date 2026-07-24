@@ -22,14 +22,23 @@ export interface AssertDataAuthorizationParams {
   trackAccess?: boolean;
 }
 
+export type AssertOrganizationDataAuthorizationParams = Omit<
+  AssertDataAuthorizationParams,
+  'vehicleId' | 'customerId' | 'bookingId'
+>;
+
 type AuthorizationRow = OrgDataAuthorization;
 
 /**
  * Enforcement layer for org-level data consent records.
  *
- * Integration status (2026-06):
- * - WIRED: VehiclesService.getLiveGps (DIMO / GPS_LOCATION / LIVE_MAP)
- * - TODO: DIMO telemetry ingestion workers — TELEMETRY_DATA before persist
+ * Integration status (2026-07):
+ * - WIRED via {@link GpsPositionAccessService}:
+ *   - VehiclesService.getLiveGps (LIVE_MAP / GPS_LOCATION)
+ *   - VehiclesService.getVehicleWithTelemetry (TECHNICAL_OVERVIEW / TELEMETRY_DATA)
+ *   - VehiclesService.getFleetMapData (FLEET_ANALYTICS / GPS_LOCATION, before Redis)
+ *   - TripsService.getRouteForTrip (TRIPS / TRIP_DATA)
+ *   - DimoSnapshotProcessor system ingest (TECHNICAL_OVERVIEW / TELEMETRY_DATA)
  * - TODO: Trip behavior enrichment — TRIP_DATA / DRIVING_BEHAVIOR
  * - TODO: Vehicle health signal reads — HEALTH_SIGNALS / DTC_CODES
  * - TODO: Alerts pipeline — ALERTS purpose
@@ -73,6 +82,19 @@ export class DataAuthorizationEnforcementService {
     }
 
     return match;
+  }
+
+  /**
+   * Org-wide consent check (fleet map, org-scoped reads without a single vehicle).
+   * Matches ORGANIZATION scope rows; CONNECTED_VEHICLES / VEHICLE require vehicleId.
+   */
+  async assertOrganizationDataAuthorization(
+    params: AssertOrganizationDataAuthorizationParams,
+  ): Promise<AuthorizationRow> {
+    return this.assertDataAuthorization({
+      ...params,
+      trackAccess: params.trackAccess ?? true,
+    });
   }
 
   /** Non-throwing check for gradual rollout in read paths. */

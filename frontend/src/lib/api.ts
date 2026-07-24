@@ -654,6 +654,39 @@ export function streamChatMessage(
   return controller;
 }
 
+/** HTTP error with status metadata for retry/backoff decisions. */
+export class ApiHttpError extends Error {
+  readonly status: number;
+  readonly retryAfterMs?: number;
+
+  constructor(message: string, status: number, retryAfterMs?: number) {
+    super(message);
+    this.name = 'ApiHttpError';
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+export function parseRetryAfterHeader(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  const seconds = Number(trimmed);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.round(seconds * 1000);
+  }
+  const dateMs = Date.parse(trimmed);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+  return undefined;
+}
+
+export function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === 'AbortError') return true;
+  if (err instanceof Error && err.name === 'AbortError') return true;
+  return false;
+}
+
 /** Normalize NestJS / validation error bodies into a user-visible string. */
 export function formatHttpErrorMessage(
   body: { message?: unknown },
@@ -716,7 +749,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(formatHttpErrorMessage(body, res.status, path));
+    const retryAfterMs =
+      res.status === 429 ? parseRetryAfterHeader(res.headers.get('Retry-After')) : undefined;
+    throw new ApiHttpError(formatHttpErrorMessage(body, res.status, path), res.status, retryAfterMs);
   }
 
   if (res.status === 204) {
@@ -3381,14 +3416,16 @@ export const api = {
       treadFL?: number | null; treadFR?: number | null;
       treadBL?: number | null; treadBR?: number | null;
     }) => put<any>(`/organizations/${orgId}/vehicles/${vehicleId}/tires`, data),
-    telemetry: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}/telemetry`),
-    liveGps: (orgId: string, id: string) => get<{
+    telemetry: (orgId: string, id: string, init?: RequestInit) =>
+      get<any>(`/organizations/${orgId}/vehicles/${id}/telemetry`, init),
+    liveGps: (orgId: string, id: string, init?: RequestInit) =>
+      get<{
       latitude: number | null;
       longitude: number | null;
       speedKmh: number | null;
       lastSeenAt: string | null;
       source: 'dimo' | 'cache';
-    }>(`/organizations/${orgId}/vehicles/${id}/live-gps`),
+    }>(`/organizations/${orgId}/vehicles/${id}/live-gps`, init),
     fleetConnectivity: (
       orgId: string,
       params?: {
@@ -8836,6 +8873,9 @@ export interface FleetMapVehicleResponse {
   latitude: number | null;
   longitude: number | null;
   lastSeenAt: string | null;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  cachedAt?: string | null;
   signalAgeMs: number;
   isFresh: boolean;
   onlineStatus: string;
@@ -8914,10 +8954,9 @@ export type WebhookConfigurationState =
 export interface DeviceConnectionTriggerStateView {
   state: WebhookConfigurationState;
   reasonCode: string | null;
-  triggerId: string | null;
   eventType: 'OBD_DEVICE_UNPLUGGED' | 'OBD_DEVICE_PLUGGED_IN' | null;
   active: boolean | null;
-  callbackUrl: string | null;
+  callbackConfigured?: boolean;
   failureCount: number | null;
 }
 

@@ -144,9 +144,10 @@ export function mapRawVehicleStatusToFleetLabel(status: VehicleStatus): string {
     case 'RESERVED':
       return 'Reserved';
     case 'IN_SERVICE':
-    case 'OUT_OF_SERVICE':
       return 'Maintenance';
+    case 'OUT_OF_SERVICE':
+      return 'Blocked';
     default:
-      return 'Available';
+      return 'Unknown';
   }
 }
