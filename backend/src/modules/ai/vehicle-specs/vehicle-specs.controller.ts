@@ -248,14 +248,17 @@ export class VehicleSpecsController {
             make: true,
             model: true,
             year: true,
-            vehicle: { select: { organizationId: true } },
+            registeredVehicles: {
+              take: 1,
+              select: { organizationId: true },
+            },
           },
         });
         if (dv?.tokenId) {
           tokenIds.push(dv.tokenId);
           this.logger.log(`[VehicleSpecAI] Resolved tokenId=${dv.tokenId} from DB`);
         }
-        organizationId = dv?.vehicle?.organizationId ?? organizationId;
+        organizationId = dv?.registeredVehicles[0]?.organizationId ?? organizationId;
         if (dv?.vin && !resolvedVin) resolvedVin = dv.vin;
         if (dv?.make && !resolvedMake) resolvedMake = dv.make as string;
         if (dv?.model && !resolvedModel) resolvedModel = dv.model as string;

@@ -67,7 +67,7 @@ export class MisuseCaseReconcileService {
         correlationId: `misuse-reconcile:${input.tripId}`,
         tripId: input.tripId,
         effectiveTimestamp: trip?.startTime ?? null,
-        isReprocess: input.trigger !== 'LIVE',
+        isReprocess: input.trigger !== 'EVENT_CONTEXT',
       });
       if (!mayProfile) {
         this.logger.warn(`Misuse reconcile profile denied trip=${input.tripId}`);

@@ -292,7 +292,6 @@ export class VehiclesService {
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly providerConsent: VehicleProviderConsentService,
-    @Optional() private readonly grantProvisioning?: ProviderGrantProvisioningService,
     @Inject(forwardRef(() => TireLifecycleService))
     private readonly tireLifecycleService: TireLifecycleService,
     @Inject(forwardRef(() => BrakeRegistrationService))
@@ -305,6 +304,7 @@ export class VehiclesService {
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
+    @Optional() private readonly grantProvisioning?: ProviderGrantProvisioningService,
     @Optional()
     private readonly billingQuantity?: BillingQuantityVehicleIntegration,
     @Optional()

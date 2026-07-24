@@ -59,7 +59,6 @@ export class TireHealthAlertService {
           newlyOpened: [],
           resolved: [],
           notificationsToEmit: [],
-          suppressedByPolicy: true,
         };
       }
     }

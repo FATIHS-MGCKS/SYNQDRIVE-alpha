@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-migration-text-fix-v49828-2026-07-24',
+    version: '4.9.828',
+    title: 'V4.9.828 — Privacy Migration TEXT Fix + Build Unblock',
+    summary: [
+      'Privacy-Migrationen: organization_id und alle ID-Spalten UUID → TEXT (Production-Kompatibilität).',
+      'Policy Resolver: DPA-Gate nur für EXTERNAL_PARTNER; DIMO/HM über ProviderAccessGrant.',
+      'Build-Fixes: review-workflow Import, register DTO, metrics RETRY, VI/AI Drift, scripts aus tsconfig.build.',
+      'VPS: 280 Migrationen angewendet inkl. privacy_domain_foundation; Deploy nach Build-Fix.',
+    ],
+    reason:
+      'Prompt-42/44 P0-Blocker: organizations.id ist TEXT auf Production; UUID-FKs verhinderten Deploy.',
+    previousBehavior:
+      'Migration 20260723230000_privacy_domain_foundation schlug fehl; 2 Unit-Tests fail; Build 39 TS-Fehler.',
+    details: 'docs/audits/data-authorization-post-remediation-readiness-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T07:35:00.000Z',
+  },
+  {
     id: 'data-auth-post-remediation-audit-v49827-2026-07-24',
     version: '4.9.827',
     title: 'V4.9.827 — Data Auth Post-Remediation Audit (Prompt 44)',

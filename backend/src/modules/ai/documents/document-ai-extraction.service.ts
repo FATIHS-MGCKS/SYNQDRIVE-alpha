@@ -21,6 +21,7 @@ import {
 import { DocumentTextChunk } from './document-chunking.types';
 import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
 import { sanitizeAiPromptContext } from '@modules/data-authorizations/external-access-enforcement/external-access-data-minimizer';
+import { mapAiExtractionFailure } from '@modules/document-extraction/document-extraction.errors';
 
 /**
  * Mistral-backed structured document extraction with page-aware chunking

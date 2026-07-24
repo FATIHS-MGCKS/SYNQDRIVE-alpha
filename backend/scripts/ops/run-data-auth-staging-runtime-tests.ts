@@ -263,10 +263,7 @@ async function main(): Promise<void> {
       `decision=${postDenySwitch.decision} reason=${postDenySwitch.reasonCode}`,
     );
 
-    const queueDenied = denySwitch.isQueueEnqueueDenied({
-      organizationId: orgId,
-      vehicleId,
-    });
+    const queueDenied = denySwitch.isQueueEnqueueDenied(orgId, { vehicleId });
     record(9, 'queue-enqueue-blocked-under-deny-switch', queueDenied === true, `queueDenied=${queueDenied}`);
 
     const grant = await prisma.providerAccessGrant.findFirst({

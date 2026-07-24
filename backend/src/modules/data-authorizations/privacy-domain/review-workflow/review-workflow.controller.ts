@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/comm
 import { ApiTags } from '@nestjs/swagger';
 import {
   DataProcessingReviewDecisionOutcome,
+  DataProcessingReviewEntityType,
   DataProcessingReviewStepType,
 } from '@prisma/client';
 import type { Request } from 'express';

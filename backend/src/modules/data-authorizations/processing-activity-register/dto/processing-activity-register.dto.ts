@@ -3,6 +3,7 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -21,7 +22,7 @@ import {
   ProcessingActivityOwnerRole,
   ProcessingActivityRegisterExportFormat,
 } from '@prisma/client';
-import type { RegisterCompletenessStatus } from './processing-activity-register.constants';
+import type { RegisterCompletenessStatus } from '../processing-activity-register.constants';
 
 export class ListProcessingActivityRegisterQueryDto {
   @IsOptional()

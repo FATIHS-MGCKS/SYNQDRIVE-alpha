@@ -80,7 +80,6 @@ export class DataAuthMetricsRefreshService implements OnModuleInit {
             status: {
               in: [
                 DataAuthorizationAuditOutboxStatus.PENDING,
-                DataAuthorizationAuditOutboxStatus.RETRY,
                 DataAuthorizationAuditOutboxStatus.PROCESSING,
               ],
             },

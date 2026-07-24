@@ -31,6 +31,7 @@ export interface BrakeDtcProducerContext {
   sourceProvider: BrakeDtcSourceProvider;
   sourceTimestamp?: Date | null;
   organizationId?: string | null;
+  isBackfill?: boolean;
 }
 
 export interface BrakeDtcEvidenceSyncResult {

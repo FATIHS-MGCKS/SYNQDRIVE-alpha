@@ -882,11 +882,11 @@ export class TripDetectionOrchestrationService {
               ` adjustedMs=${resolvedStart.adjustedMs}`,
           );
         } else {
-          const orgId = det.organizationId;
+          const tripOrgId = det.organizationId;
           if (
-            orgId &&
+            tripOrgId &&
             !(await this.mayIngestTripLocation(
-              orgId,
+              tripOrgId,
               vehicleId,
               TRIP_LOCATION_PATH.TRIP_CREATE,
               `trip-create:${vehicleId}:${effectiveStartAt.toISOString()}`,
@@ -894,7 +894,7 @@ export class TripDetectionOrchestrationService {
             ))
           ) {
             this.logger.warn(
-              `Trip create ingest denied vehicle=${vehicleId} org=${orgId}`,
+              `Trip create ingest denied vehicle=${vehicleId} org=${tripOrgId}`,
             );
             return;
           }
@@ -953,10 +953,9 @@ export class TripDetectionOrchestrationService {
           );
 
           // Battery V2: delayed START_DIP_PROXY job (policy-gated in producer).
-          const orgId = det.organizationId;
-          if (orgId) {
+          if (tripOrgId) {
             await this.batteryTripStartProducer.enqueueStartProxy({
-              organizationId: orgId,
+              organizationId: tripOrgId,
               vehicleId,
               tripId: trip.id,
               tripStartedAt: effectiveStartAt,

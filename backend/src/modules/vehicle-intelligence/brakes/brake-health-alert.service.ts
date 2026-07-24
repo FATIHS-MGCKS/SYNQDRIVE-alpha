@@ -55,10 +55,10 @@ export class BrakeHealthAlertService {
       if (!mayDerive) {
         this.logger.warn(`Brake alert derive denied vehicle=${args.vehicleId}`);
         return {
+          openAlerts: [],
           newlyOpened: [],
           resolved: [],
-          notificationsEmitted: 0,
-          suppressedByPolicy: true,
+          notificationsToEmit: [],
         };
       }
     }
