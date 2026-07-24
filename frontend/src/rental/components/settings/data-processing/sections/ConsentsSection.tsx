@@ -17,9 +17,10 @@ interface Props {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onRowClick?: (row: DataAuthorizationDto) => void;
 }
 
-export function ConsentsSection({ authorizations, loading, error, onRetry }: Props) {
+export function ConsentsSection({ authorizations, loading, error, onRetry, onRowClick }: Props) {
   const { t } = useLanguage();
   const items = authorizations.filter((a) => !isProviderAuthorization(a));
 
@@ -75,17 +76,22 @@ export function ConsentsSection({ authorizations, loading, error, onRetry }: Pro
     <div className="space-y-3">
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.consents.hint')}</p>
       <div className="hidden md:block">
-        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} />
+        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} onRowClick={onRowClick} />
       </div>
       <div className="md:hidden space-y-2">
         {items.map((row) => (
-          <div key={row.id} className="surface-premium rounded-xl border border-border/70 p-3">
+          <button
+            key={row.id}
+            type="button"
+            onClick={() => onRowClick?.(row)}
+            className="w-full text-left surface-premium rounded-xl border border-border/70 p-3 hover:bg-muted/30"
+          >
             <p className="font-semibold text-foreground">{row.title}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <AuthStatusChip statusKey={row.statusKey} />
               <AuthRiskChip riskKey={row.riskLevelKey} />
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

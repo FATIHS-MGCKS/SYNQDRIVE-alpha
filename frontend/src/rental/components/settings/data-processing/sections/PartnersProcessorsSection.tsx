@@ -16,9 +16,10 @@ interface Props {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onRowClick?: (row: DataProcessingAgreementListItem) => void;
 }
 
-export function PartnersProcessorsSection({ items, loading, error, onRetry }: Props) {
+export function PartnersProcessorsSection({ items, loading, error, onRetry, onRowClick }: Props) {
   const { t } = useLanguage();
 
   const columns: DataTableColumn<DataProcessingAgreementListItem>[] = [
@@ -83,16 +84,21 @@ export function PartnersProcessorsSection({ items, loading, error, onRetry }: Pr
     <div className="space-y-3">
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.partners.hint')}</p>
       <div className="hidden md:block">
-        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} />
+        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} onRowClick={onRowClick} />
       </div>
       <div className="md:hidden space-y-2">
         {items.map((row) => (
-          <div key={row.id} className="surface-premium rounded-xl border border-border/70 p-3">
+          <button
+            key={row.id}
+            type="button"
+            onClick={() => onRowClick?.(row)}
+            className="w-full text-left surface-premium rounded-xl border border-border/70 p-3 hover:bg-muted/30"
+          >
             <p className="font-semibold text-foreground">{row.processorName}</p>
             <StatusChip tone={row.status === 'ACTIVE' ? 'success' : 'neutral'} className="mt-2">
               {LIFECYCLE_STATUS_LABELS[row.status] ?? row.status}
             </StatusChip>
-          </div>
+          </button>
         ))}
       </div>
     </div>
