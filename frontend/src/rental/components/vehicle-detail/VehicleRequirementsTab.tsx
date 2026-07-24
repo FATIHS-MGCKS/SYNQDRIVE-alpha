@@ -117,7 +117,7 @@ export function VehicleRequirementsTab({
   })();
 
   return (
-    <div className="mb-4 animate-fade-up space-y-3">
+    <div className="mb-4 min-w-0 max-w-full animate-fade-up space-y-3 overflow-x-clip" data-testid="vehicle-requirements-view">
       <section className="surface-premium rounded-xl border border-border/70 surface-premium p-3 sm:p-4">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1.5">

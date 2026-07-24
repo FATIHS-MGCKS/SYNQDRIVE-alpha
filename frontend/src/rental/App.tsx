@@ -90,6 +90,11 @@ import {
 } from './components/vehicle-detail';
 import type { ServiceCenterNavState } from './lib/service-center-navigation';
 import {
+  VEHICLE_DETAIL_SCROLL_ROW_CLASS,
+  VEHICLE_DETAIL_TAB_TRIGGER_CLASS,
+  VEHICLE_DETAIL_VIEW_CLASS,
+} from './lib/vehicle-detail-mobile-ui';
+import {
   RentalEntityNavigationProvider,
   type RentalEntityNavigationValue,
 } from './context/RentalEntityNavigationContext';
@@ -796,60 +801,75 @@ function RentalAppContent() {
               onSettingsTabChange={applySettingsTab}
               onFinanceTabChange={setFinanceTab}
             />
-        {/* Header Section - Only show for vehicle detail views */}
-        {showVehicleDetailChrome && selectedVehicle && (
-          <VehicleDetailHeader
-            vehicle={selectedVehicle}
-            vehicleStatus={vehicleStatus}
-            cleaningStatus={cleaningStatus}
-            isStatusDropdownOpen={isStatusDropdownOpen}
-            isCleaningDropdownOpen={isCleaningDropdownOpen}
-            onToggleStatusDropdown={() => setIsStatusDropdownOpen((open) => !open)}
-            onToggleCleaningDropdown={() => setIsCleaningDropdownOpen((open) => !open)}
-            onVehicleStatusChange={handleVehicleStatusChange}
-            onCleaningStatusChange={handleCleaningStatusChange}
-            onBack={handleBackToFleet}
-            onRefreshOperationalStatus={() => {
-              void refreshFleetVehicles();
-            }}
-          />
-        )}
+        {showVehicleDetailChrome ? (
+          <div
+            data-testid="vehicle-detail-view"
+            className={VEHICLE_DETAIL_VIEW_CLASS}
+          >
+            {selectedVehicle ? (
+              <VehicleDetailHeader
+                vehicle={selectedVehicle}
+                vehicleStatus={vehicleStatus}
+                cleaningStatus={cleaningStatus}
+                isStatusDropdownOpen={isStatusDropdownOpen}
+                isCleaningDropdownOpen={isCleaningDropdownOpen}
+                onToggleStatusDropdown={() => setIsStatusDropdownOpen((open) => !open)}
+                onToggleCleaningDropdown={() => setIsCleaningDropdownOpen((open) => !open)}
+                onVehicleStatusChange={handleVehicleStatusChange}
+                onCleaningStatusChange={handleCleaningStatusChange}
+                onBack={handleBackToFleet}
+                onRefreshOperationalStatus={() => {
+                  void refreshFleetVehicles();
+                }}
+              />
+            ) : null}
 
-        {/* Tab Navigation - Only show for vehicle detail views */}
-        {showVehicleDetailChrome && (
-        <div className="mb-4">
-          <div className={chromeTabBarClass('p-1')}>
-            <div className={`${CHROME_TAB_BAR_SCROLL_CLASS} [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
-              {([
-                { key: 'overview', label: 'Overview' },
-                { key: 'trips', label: 'Trips' },
-                { key: 'health-errors', label: 'Health' },
-                { key: 'damages', label: 'Damages' },
-                { key: 'documents', label: 'Documents' },
-                { key: 'vehicle-bookings', label: 'Bookings' },
-                { key: 'vehicle-tasks', label: 'Task List' },
-                { key: 'vehicle-requirements', label: 'Requirements' },
-              ] as const).map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setCurrentView(tab.key as typeof currentView)}
-                  className={chromeTabTriggerClass(currentView === tab.key)}
+            <div className="mb-4 min-w-0 max-w-full">
+              <div className={chromeTabBarClass('p-1')}>
+                <div
+                  className={`${CHROME_TAB_BAR_SCROLL_CLASS} [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
+                  role="tablist"
+                  aria-label="Vehicle detail tabs"
                 >
-                  {tab.label}
-                </button>
-              ))}
+                  {([
+                    { key: 'overview', label: 'Overview' },
+                    { key: 'trips', label: 'Trips' },
+                    { key: 'health-errors', label: 'Health' },
+                    { key: 'damages', label: 'Damages' },
+                    { key: 'documents', label: 'Documents' },
+                    { key: 'vehicle-bookings', label: 'Bookings' },
+                    { key: 'vehicle-tasks', label: 'Task List' },
+                    { key: 'vehicle-requirements', label: 'Requirements' },
+                  ] as const).map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={currentView === tab.key}
+                      onClick={() => setCurrentView(tab.key as typeof currentView)}
+                      className={chromeTabTriggerClass(
+                        currentView === tab.key,
+                        VEHICLE_DETAIL_TAB_TRIGGER_CLASS,
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        )}
+        ) : null}
 
         {/* Filters Bar - Show on Trips and Driving Insights views, above content */}
         {currentView === 'trips' && (
-          <div className="mb-2">
-            <div className="rounded-lg px-2.5 py-1 border border-border surface-premium shadow-sm flex items-center justify-end gap-2">
+          <div className="mb-2 min-w-0 max-w-full">
+            <div
+              className={`rounded-lg border border-border surface-premium px-2.5 py-1 shadow-sm shrink-0 ${VEHICLE_DETAIL_SCROLL_ROW_CLASS}`}
+            >
               {/* Trip Counter - Only show on Trips view */}
               {currentView === 'trips' && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-transparent sq-tone-info mr-auto">
+                <div className="mr-auto flex shrink-0 items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 sq-tone-info">
                   <span className="text-xs font-bold">
                     {tripsCount} {tripsCount === 1 ? 'Trip' : 'Trips'}
                   </span>
@@ -857,10 +877,10 @@ function RentalAppContent() {
               )}
 
               {/* Date Filter */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
+                    className={`flex min-h-11 items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 sm:min-h-0 ${
                     selectedDate
                       ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
                       : 'surface-premium border-border text-foreground hover:bg-muted'
@@ -897,10 +917,10 @@ function RentalAppContent() {
               </div>
 
               {/* Driver Filter */}
-              <div className="relative">
+              <div className="relative shrink-0">
                 <button
                   onClick={() => setIsDriverDropdownOpen(!isDriverDropdownOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
+                  className={`flex min-h-11 items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 sm:min-h-0 ${
                     selectedDriver !== 'all'
                       ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
                       : 'surface-premium border-border text-foreground hover:bg-muted'
@@ -939,7 +959,7 @@ function RentalAppContent() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-transparent transition-all duration-200 sq-tone-critical hover:opacity-90"
+                  className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-transparent px-3 py-1.5 transition-all duration-200 sq-tone-critical hover:opacity-90 sm:min-h-0"
                 >
                   <Icon name="x" className="w-3.5 h-3.5" />
                   <span className="text-xs font-medium">Clear</span>

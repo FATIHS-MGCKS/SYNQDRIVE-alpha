@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-mobile-v49795-2026-07-24',
+    version: '4.9.795',
+    title: 'V4.9.795 — Vehicle Detail mobile readiness (Prompt 27/36)',
+    summary: [
+      'Shared mobile tokens in `vehicle-detail-mobile-ui.ts` (overflow clip, safe-area bottom, 44px touch targets).',
+      'Vehicle detail shell `data-testid="vehicle-detail-view"`; tab bar `role="tablist"`; trips filter row scrolls horizontally on narrow widths.',
+      'Header back/chip triggers and tab triggers meet 44px minimum on sub-sm viewports without desktop layout change.',
+      'Playwright `vehicle-detail-mobile.spec.ts` + baseline fixtures; screenshots for 320–768px + landscape; 200% zoom check.',
+    ],
+    reason:
+      'Vehicle Detail Page needed verified mobile readiness across 320–768px without visual redesign or feature removal.',
+    previousBehavior:
+      'Trips filter bar could overflow on 320–375px; tab/back touch targets below 44px; no per-tab mobile E2E coverage.',
+    details:
+      'vehicle-detail-mobile-ui.ts, App.tsx, VehicleDetailHeader, VehicleTasksView, VehicleRequirementsTab, vehicle-bookings-ui.ts, e2e/vehicle-detail-mobile*.ts, e2e/vehicle-detail-baseline-fixtures.ts, playwright.config.ts (mobile-360, landscape-375), docs/audits/vehicle-detail-page-mobile-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Mobile',
+    createdAt: '2026-07-24T10:45:00.000Z',
+  },
+  {
     id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',
