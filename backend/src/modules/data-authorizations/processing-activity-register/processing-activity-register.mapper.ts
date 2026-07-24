@@ -33,6 +33,11 @@ export const REGISTER_ACTIVITY_INCLUDE = {
     orderBy: { versionNumber: 'desc' as const },
     take: 10,
   },
+  riskAssessments: {
+    where: { isCurrent: true },
+    take: 1,
+    select: { id: true },
+  },
 } satisfies Prisma.ProcessingActivityInclude;
 
 export type RegisterActivityRecord = Prisma.ProcessingActivityGetPayload<{
@@ -68,6 +73,7 @@ export function toCompletenessInput(record: RegisterActivityRecord): RegisterCom
       reviewDate: a.reviewDate,
     })),
     dpiaStatus: record.dpiaStatus,
+    hasCurrentRiskAssessment: record.riskAssessments.length > 0,
     nextReviewDate: record.nextReviewDate,
     ownerUserId: record.ownerUserId,
     ownerRole: record.ownerRole,

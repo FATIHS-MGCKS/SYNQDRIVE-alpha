@@ -31,6 +31,7 @@ export const CRITICAL_LIFECYCLE_EVENTS = new Set([
   'SUSPENDED',
   'APPROVED',
   'REJECTED',
+  'DPIA_REVIEW_DUE',
 ]);
 
 export function buildAuditIdempotencyKey(parts: {

@@ -40,6 +40,7 @@ export interface RegisterCompletenessInput {
     reviewDate: Date | null;
   }>;
   dpiaStatus: ProcessingActivityDpiaStatus;
+  hasCurrentRiskAssessment: boolean;
   nextReviewDate: Date | null;
   ownerUserId: string | null;
   ownerRole: string;
@@ -130,7 +131,12 @@ export class ProcessingActivityRegisterCompletenessService {
       ),
       this.field(
         'dpiaStatus',
-        input.dpiaStatus !== ProcessingActivityDpiaStatus.NOT_ASSESSED,
+        input.hasCurrentRiskAssessment ||
+          input.dpiaStatus === ProcessingActivityDpiaStatus.DPIA_APPROVED ||
+          input.dpiaStatus === ProcessingActivityDpiaStatus.DPIA_IN_PROGRESS ||
+          input.dpiaStatus === ProcessingActivityDpiaStatus.DPIA_REQUIRED ||
+          input.dpiaStatus === ProcessingActivityDpiaStatus.DPIA_REJECTED ||
+          input.dpiaStatus === ProcessingActivityDpiaStatus.DPIA_REVIEW_DUE,
         false,
       ),
       this.field(

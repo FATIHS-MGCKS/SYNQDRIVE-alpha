@@ -31,6 +31,12 @@ import { ProcessingActivityRegisterCompletenessService } from './processing-acti
 import { ProcessingActivityRegisterExportService } from './processing-activity-register/processing-activity-register-export.service';
 import { ProcessingActivityRegisterAuditService } from './processing-activity-register/processing-activity-register-audit.service';
 import { ProcessingActivityRegisterExportPurgeSchedulerService } from './processing-activity-register/processing-activity-register-export-purge.scheduler.service';
+import { DpiaWorkflowController } from './dpia-workflow/dpia-workflow.controller';
+import { PrivacyRiskAssessmentService } from './dpia-workflow/privacy-risk-assessment.service';
+import { DpiaWorkflowService } from './dpia-workflow/dpia-workflow.service';
+import { DpiaDecisionRecorderService } from './dpia-workflow/dpia-decision-recorder.service';
+import { DpiaActivationGateService } from './dpia-workflow/dpia-activation-gate.service';
+import { DpiaReviewDueSchedulerService } from './dpia-workflow/dpia-review-due.scheduler.service';
 import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
 import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
@@ -116,6 +122,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     RevocationOrchestratorController,
     DenySwitchController,
     ProcessingActivityRegisterController,
+    DpiaWorkflowController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -138,6 +145,11 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     ProcessingActivityRegisterExportService,
     ProcessingActivityRegisterAuditService,
     ProcessingActivityRegisterExportPurgeSchedulerService,
+    PrivacyRiskAssessmentService,
+    DpiaWorkflowService,
+    DpiaDecisionRecorderService,
+    DpiaActivationGateService,
+    DpiaReviewDueSchedulerService,
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
@@ -203,6 +215,8 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     PolicyLifecycleExpiryService,
     ProcessingActivityRegisterService,
     ProcessingActivityRegisterExportService,
+    DpiaActivationGateService,
+    DpiaWorkflowService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,
