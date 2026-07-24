@@ -97,7 +97,8 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/fleet-map')
-  @UseGuards(OrgScopingGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'read')
   async getFleetMap(@Param('orgId') orgId: string) {
     return this.vehiclesService.getFleetMapData(orgId);
   }

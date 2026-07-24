@@ -2,10 +2,22 @@ import { VehiclesService } from './vehicles.service';
 
 function makeServiceWithPrisma(prisma: Record<string, unknown>): VehiclesService {
   const stub = (): any => ({});
+  const gpsPositionAccess = {
+    assertVehicleGpsAccess: jest.fn().mockResolvedValue(undefined),
+    assertOrgFleetGpsAccess: jest.fn().mockResolvedValue(undefined),
+    assertSystemGpsIngest: jest.fn().mockResolvedValue(undefined),
+  };
   const service = new (VehiclesService as any)(
     prisma,
     stub(),
     stub(),
+    stub(),
+    stub(),
+    stub(),
+    stub(),
+    stub(),
+    stub(),
+    gpsPositionAccess,
     stub(),
     stub(),
     stub(),

@@ -67,6 +67,7 @@ import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/
 import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
+import { GpsPositionAccessService } from '@modules/data-authorizations/gps-position-access.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
@@ -300,6 +301,7 @@ export class VehiclesService {
     private readonly brakeRegistrationService: BrakeRegistrationService,
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
+    private readonly gpsPositionAccess: GpsPositionAccessService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
@@ -1408,6 +1410,12 @@ export class VehiclesService {
   }
 
   async getFleetMapData(organizationId: string): Promise<FleetMapVehicleDto[]> {
+    await this.gpsPositionAccess.assertOrgFleetGpsAccess({
+      organizationId,
+      purpose: 'FLEET_ANALYTICS',
+      route: 'GET /organizations/:orgId/fleet-map',
+    });
+
     const cacheKey = this.fleetMapCache.cacheKey(organizationId);
     try {
       const cached = await this.redis.get(cacheKey);
@@ -1709,6 +1717,15 @@ export class VehiclesService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
+    if (organizationId) {
+      await this.gpsPositionAccess.assertVehicleGpsAccess({
+        organizationId,
+        vehicleId,
+        purpose: 'TECHNICAL_OVERVIEW',
+        route: 'GET /organizations/:orgId/vehicles/:vehicleId/telemetry',
+      });
+    }
+
     const state = vehicle.latestState;
     let latitude = state?.latitude ?? null;
     let longitude = state?.longitude ?? null;
@@ -1848,6 +1865,15 @@ export class VehiclesService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
+    if (organizationId) {
+      await this.gpsPositionAccess.assertVehicleGpsAccess({
+        organizationId,
+        vehicleId,
+        purpose: 'LIVE_MAP',
+        route: 'GET /organizations/:orgId/vehicles/:vehicleId/live-gps',
+      });
+    }
+
     const tokenId = vehicle.dimoVehicle?.tokenId;
     if (!tokenId) {
       const receivedAt = new Date().toISOString();
@@ -1860,21 +1886,6 @@ export class VehiclesService {
         lastSeenAt: null,
         source: 'cache' as const,
       };
-    }
-
-    if (organizationId) {
-      await this.dataAuthorizations.ensureDimoTelemetryAuthorization(
-        organizationId,
-      );
-      await this.dataAuthEnforcement.assertDataAuthorization({
-        orgId: organizationId,
-        vehicleId,
-        sourceType: 'DIMO',
-        dataCategory: 'GPS_LOCATION',
-        purpose: 'LIVE_MAP',
-        processorType: 'SYNQDRIVE',
-        trackAccess: true,
-      });
     }
 
     try {

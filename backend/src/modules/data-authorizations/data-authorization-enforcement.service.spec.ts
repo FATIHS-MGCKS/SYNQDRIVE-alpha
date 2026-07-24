@@ -68,6 +68,57 @@ describe('DataAuthorizationEnforcementService', () => {
     ).rejects.toBeInstanceOf(DataAuthorizationDeniedException);
   });
 
+  it('allows ORGANIZATION scope for org-wide fleet reads without vehicleId', async () => {
+    prisma.orgDataAuthorization.findMany.mockResolvedValue([
+      {
+        id: 'org-auth',
+        scope: 'ORGANIZATION',
+        processorType: 'SYNQDRIVE',
+        dataCategories: ['GPS_LOCATION'],
+        purposes: ['FLEET_ANALYTICS'],
+        purpose: 'FLEET_ANALYTICS',
+        vehicleIds: [],
+        status: 'ACTIVE',
+        expiresAt: null,
+      },
+    ]);
+
+    await expect(
+      service.assertOrganizationDataAuthorization({
+        orgId: 'org-1',
+        sourceType: 'DIMO',
+        dataCategory: 'GPS_LOCATION',
+        purpose: 'FLEET_ANALYTICS',
+        processorType: 'SYNQDRIVE',
+      }),
+    ).resolves.toMatchObject({ id: 'org-auth' });
+  });
+
+  it('denies CONNECTED_VEHICLES scope without vehicleId on org-wide check', async () => {
+    prisma.orgDataAuthorization.findMany.mockResolvedValue([
+      {
+        id: 'a1',
+        scope: 'CONNECTED_VEHICLES',
+        processorType: 'SYNQDRIVE',
+        dataCategories: ['GPS_LOCATION'],
+        purposes: ['FLEET_ANALYTICS'],
+        purpose: 'FLEET_ANALYTICS',
+        vehicleIds: ['veh-1'],
+        status: 'ACTIVE',
+        expiresAt: null,
+      },
+    ]);
+
+    await expect(
+      service.assertOrganizationDataAuthorization({
+        orgId: 'org-1',
+        sourceType: 'DIMO',
+        dataCategory: 'GPS_LOCATION',
+        purpose: 'FLEET_ANALYTICS',
+      }),
+    ).rejects.toBeInstanceOf(DataAuthorizationDeniedException);
+  });
+
   it('denies expired ACTIVE authorization', async () => {
     prisma.orgDataAuthorization.findMany.mockResolvedValue([
       {

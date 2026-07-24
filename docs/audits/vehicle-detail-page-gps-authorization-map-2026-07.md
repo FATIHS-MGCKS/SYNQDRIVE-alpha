@@ -3,9 +3,9 @@
 | Feld | Wert |
 |------|------|
 | **Audit-Datum** | 2026-07-24 |
-| **Prompt** | 14/36 — GPS-/Positions-Endpunkte inventarisieren |
+| **Prompt** | 14/36 — Inventar; **15/36 — GPS-Autorisierung konsolidiert** |
 | **Vorgänger** | [`vehicle-detail-page-telemetry-timestamps-2026-07.md`](./vehicle-detail-page-telemetry-timestamps-2026-07.md) (Prompts 11–13) |
-| **Scope** | Read-only Inventar — **keine Remediation** in diesem Prompt |
+| **Scope** | Inventar (Prompt 14) + zentrale GPS-Autorisierung (Prompt 15) |
 
 ---
 
@@ -75,7 +75,7 @@ flowchart TB
   MB -.->|Reverse geocode only| VD
 ```
 
-**Kernregel:** Letzte bekannte Fahrzeugposition lebt in `vehicle_latest_states`. Live-GPS (`/live-gps`) ist der einzige HTTP-Pfad mit **harter Data-Authorization** (`GPS_LOCATION` / `LIVE_MAP`). Fleet-Map und Telemetry lesen primär `latestState` (+ optional direkter DIMO-Fetch in Telemetry).
+**Kernregel:** Letzte bekannte Fahrzeugposition lebt in `vehicle_latest_states`. Seit Prompt 15/36 laufen positionsbezogene HTTP-Reads und DIMO-Snapshot-Ingest über **`GpsPositionAccessService`** (`backend/src/modules/data-authorizations/gps-position-access.service.ts`), der den bestehenden **`DataAuthorizationEnforcementService`** wiederverwendet — keine parallele Auth-Architektur.
 
 ---
 
@@ -83,16 +83,16 @@ flowchart TB
 
 | Pfad | Controller / Job | Service | Provider / Cache | Org-Scoping | Permission | Data Authorization | Zweck | Audit Log | Retention |
 |------|------------------|---------|------------------|-------------|------------|-------------------|-------|-----------|-----------|
-| `GET /organizations/:orgId/vehicles/:vehicleId/live-gps` | `VehiclesController.getLiveGps` | `VehiclesService.getLiveGps` → `DimoTelemetryService.fetchLastSeenLocation` | DIMO GraphQL direkt; Fallback `latestState` (`source: cache`) — **kein Redis** | Ja (`id` + `organizationId`) | `fleet:read` + `OrgScopingGuard` | **Ja** — `ensureDimoTelemetryAuthorization` + `assertDataAuthorization(DIMO, GPS_LOCATION, LIVE_MAP, trackAccess)` | Vehicle-Detail-Live-Karte (5s Poll) | `org_data_authorizations.accessCount++` / `lastAccessAt` | Live: ephemeral; Fallback in `vehicle_latest_states` (kein Prune) |
-| `GET /organizations/:orgId/vehicles/:vehicleId/telemetry` | `VehiclesController.getVehicleTelemetry` | `VehiclesService.getVehicleWithTelemetry` | `latestState` + optional DIMO `fetchLastSeenLocation` wenn coords fehlen oder `isLiveTracking` | Ja | `fleet:read` | **Nein** — direkter DIMO-Fetch ohne `assertDataAuthorization` | Vehicle-Detail-Dashboard-Snapshot (30s Poll) | Keiner | `vehicle_latest_states` |
-| `GET /organizations/:orgId/fleet-map` | `VehiclesController.getFleetMap` | `VehiclesService.getFleetMapData` | PG `latestState` + **Redis** `fleet-map:{organizationId}:v1` TTL **5s** | Ja (`withOrgScope`, max 500) | **Nur** `OrgScopingGuard` — **kein** `fleet:read` | **Nein** | Fleet-Map, Dashboard-Fleet, statischer Vehicle-Detail-Fallback (`selectedVehicle.lat/lng`) | Keiner | Redis 5s; PG persistent |
+| `GET /organizations/:orgId/vehicles/:vehicleId/live-gps` | `VehiclesController.getLiveGps` | `VehiclesService.getLiveGps` → `GpsPositionAccessService.assertVehicleGpsAccess(LIVE_MAP)` → `DimoTelemetryService.fetchLastSeenLocation` | DIMO GraphQL direkt; Fallback `latestState` (`source: cache`) — **kein Redis** | Ja (`id` + `organizationId`) | `fleet:read` + `OrgScopingGuard` | **Ja** — `GPS_LOCATION` / `LIVE_MAP` via zentraler Gate | Vehicle-Detail-Live-Karte (5s Poll) | `AuditService` SYNC + `accessCount` auf Consent-Row | Live: ephemeral; Fallback in `vehicle_latest_states` |
+| `GET /organizations/:orgId/vehicles/:vehicleId/telemetry` | `VehiclesController.getVehicleTelemetry` | `VehiclesService.getVehicleWithTelemetry` → `GpsPositionAccessService.assertVehicleGpsAccess(TECHNICAL_OVERVIEW)` vor Read/DIMO | `latestState` + optional DIMO `fetchLastSeenLocation` wenn coords fehlen oder `isLiveTracking` | Ja | `fleet:read` | **Ja** — `TELEMETRY_DATA` / `TECHNICAL_OVERVIEW` | Vehicle-Detail-Dashboard-Snapshot (30s Poll) | `AuditService` SYNC | `vehicle_latest_states` |
+| `GET /organizations/:orgId/fleet-map` | `VehiclesController.getFleetMap` | `VehiclesService.getFleetMapData` → `GpsPositionAccessService.assertOrgFleetGpsAccess(FLEET_ANALYTICS)` **vor** Redis-Read | PG `latestState` + **Redis** `fleet-map:{organizationId}:v1` TTL **5s** | Ja (`withOrgScope`, max 500) | `fleet:read` + `OrgScopingGuard` | **Ja** — org-weit `GPS_LOCATION` / `FLEET_ANALYTICS` | Fleet-Map, Dashboard-Fleet, statischer Vehicle-Detail-Fallback | `AuditService` SYNC (`accessKind: org_fleet`) | Redis 5s; PG persistent |
 | `GET /organizations/:orgId/vehicles` | `VehiclesController.findAllByOrg` | `VehiclesService.findByOrganization` → `mapToVehicleData` | `latestState` lat/lng in List-DTO | Ja | `OrgScopingGuard` only | Nein | Fleet-Listen, Buchungs-Picker, Station-Zuweisung | Keiner | `vehicle_latest_states` |
 | `GET /organizations/:orgId/vehicles/:vehicleId` | `VehiclesController.findOneByOrg` | `VehiclesService.findOne` | `latestState` | Ja | `OrgScopingGuard` only | Nein | Vehicle-Detail-Stammdaten | Keiner | `vehicle_latest_states` |
 | `GET /organizations/:orgId/fleet-connectivity` | `VehiclesController.getFleetConnectivity` | `VehiclesService.getFleetConnectivity` | `latestState` lat/lng in Legacy-Feldern + Runtime-Projection | Ja | `fleet-connectivity:read` | Nein | Fleet Hub Connectivity-Tab (`signals.gps`, `hasLocation`) | Keiner | `vehicle_latest_states` |
 | `GET /organizations/:orgId/fleet-connectivity/:vehicleId` | `VehiclesController.getFleetConnectivityDetail` | `VehiclesService.getFleetConnectivityDetail` | `latestState` + Device-Connection-Summary | Ja | `fleet-connectivity:read` | Nein | Connectivity-Detail-Drawer | Keiner | `vehicle_latest_states` |
 | `GET /organizations/:orgId/vehicles/:vehicleId/device-connection` | `VehiclesController.getDeviceConnection` | `VehiclesService.getDeviceConnection` → `DeviceConnectionQueryService` | Webhook-Inbox / Episoden — **keine Live-Koordinaten** | Ja | **Nur** `OrgScopingGuard` — kein explizites Modul-Permission | Nein | OBD-Plug-Status, Episoden (Vehicle Detail Header) | Keiner | Device-Connection-Tabellen |
 | `GET /vehicles/:vehicleId/trips` | `VehicleIntelligenceController` | `TripsService` | PG `vehicle_trips` (start/end lat/lng) | Ja (`VehicleOwnershipGuard` → `organizationId`) | **Kein** `@RequirePermission` auf Trip-Reads | Nein (TODO in Enforcement-Service) | Trips-Liste Vehicle Detail | Keiner | `vehicle_trips` — kein Default-Prune |
-| `GET /vehicles/:vehicleId/trips/:tripId/route` | `VehicleIntelligenceController` | `TripsService.getRouteForTrip` → `DimoSegmentsService.fetchRouteEnrichment` | DIMO Segments 7s-Buckets; Cache in PG `vehicle_trip_waypoints` | Ja | `VehicleOwnershipGuard` only | Nein | Trips-Route-Map | Keiner | Waypoints: opt-in `RETENTION_TRIP_WAYPOINTS_DAYS` (default 0) |
+| `GET /vehicles/:vehicleId/trips/:tripId/route` | `VehicleIntelligenceController` | `TripsService.getRouteForTrip` → `GpsPositionAccessService.assertVehicleGpsAccess(TRIPS)` → `DimoSegmentsService.fetchRouteEnrichment` | DIMO Segments 7s-Buckets; Cache in PG `vehicle_trip_waypoints` | Ja | `VehicleOwnershipGuard` only | **Ja** — `TRIP_DATA` / `TRIPS` | Trips-Route-Map | `AuditService` SYNC | Waypoints: opt-in `RETENTION_TRIP_WAYPOINTS_DAYS` (default 0) |
 | `GET /vehicles/:vehicleId/trips/:tripId` | `VehicleIntelligenceController` | `TripsService` | PG Trip + optional CH Evidence | Ja | `VehicleOwnershipGuard` only | Nein | Trip-Detail (Start/End-Koordinaten) | Keiner | `vehicle_trips` |
 | `POST /vehicles/:vehicleId/trips/:tripId/enrich` | `VehicleIntelligenceController` | `TripEnrichmentOrchestratorService` → `MapboxService` | Mapbox Map-Matching (extern) | Ja | `VehicleOwnershipGuard` only | Nein | Route-Enrichment / Road-Type | Keiner | Enrichment-Ergebnis in Trip-Metadaten |
 | `GET /vehicles/:vehicleId/trips/:tripId/behavior-events` | `VehicleIntelligenceController` | Unified behavior read model | PG `driving_events` lat/lng | Ja | `VehicleOwnershipGuard` only | Nein | Verhaltens-Events auf Trip-Map | Keiner | `driving_events` — kein Default-Prune |
@@ -103,7 +103,7 @@ flowchart TB
 | `POST /webhooks/dimo` | `DimoWebhookController` | `DeviceConnectionWebhookService`, `DtcService`, `RpmWebhookCandidateService` | DIMO Vehicle Triggers (öffentlich, HMAC/Verification-Token) | Vehicle via `tokenId` → `organizationId` | **Public** (Signatur/Token) | Nein | OBD plug/unplug, DTC, RPM — **keine GPS-Persistenz** | Keiner | Webhook-Inbox / Episoden |
 | `POST /integrations/high-mobility/webhook/telemetry` | `HighMobilityWebhookController` | `HighMobilityTelemetryAppIngestionService` | HM `vehicle_location.get.coordinates` | VIN → Vehicle lookup | **Public** (HMAC) | Nein | HM-Telemetrie-Ingest (Location-Parsing) | `hm_stream_sync_logs` | HM sync logs 14d default |
 | HM MQTT Consumers | `HighMobility*MqttConsumerService` | `HighMobilityTelemetryRoutingService` | HM Stream | VIN-scoped | Worker (intern) | Nein | Telemetry-Routing — **VLS-Write teilweise TODO** | Stream logs | 14–30d logs |
-| BullMQ `dimo.snapshot.poll` | `DimoSnapshotProcessor` | `DimoTelemetryService.fetchLatestVehicleSnapshot` | DIMO → normalisiert lat/lng | Vehicle `organizationId` in Job-Kontext | Worker | **Nein** (TODO dokumentiert) | **Primärer Ingest** für `vehicle_latest_states` + CH Mirror | `dimo_poll_logs` | Poll logs 30d; CH snapshots 180d |
+| BullMQ `dimo.snapshot.poll` | `DimoSnapshotProcessor` | `GpsPositionAccessService.assertSystemGpsIngest` → `DimoTelemetryService.fetchLatestVehicleSnapshot` | DIMO → normalisiert lat/lng | Vehicle `organizationId` in Job-Kontext | Worker | **Ja** — `TELEMETRY_DATA` / `TECHNICAL_OVERVIEW`, `INTERNAL_SYSTEM` | **Primärer Ingest** für `vehicle_latest_states` + CH Mirror | `AuditService` SYNC (`systemJob: dimo.snapshot.poll`) | Poll logs 30d; CH snapshots 180d |
 | BullMQ `dimo.trip-tracking` | `TripTrackingProcessor` | `TripDetectionOrchestrationService` | Snapshot/Trip-FSM → Trip start/end coords, Waypoints | Per `vehicleId` | Worker | Nein | Live-Trip-Erkennung | `dimo_poll_logs` (TRIP_TRACKING) | `vehicle_trips`, waypoints opt-in prune |
 | BullMQ `trip.behavior.enrichment` | `TripBehaviorEnrichmentProcessor` | `HfMirrorService` | DIMO HF → CH `telemetry_hf_points` | Per vehicle/trip | Worker | Nein | Post-Trip-Verhaltensanalyse | Keiner | CH HF TTL 90–365d |
 | `TripReconciliationScheduler` | Scheduler | `TripReconciliationService` | DIMO Segments | Org via vehicle | Worker | Nein | Warm/Cold Trip-Repair | Keiner | `trip_repairs` 365d |
@@ -164,73 +164,86 @@ flowchart TB
 
 ---
 
-## Gezielte Prüfpunkte (Befunde — keine Remediation)
+## Prompt 15/36 — Zentrale GPS-Autorisierung (final verdrahtet)
+
+| Komponente | Pfad |
+|------------|------|
+| Zentraler Gate-Service | `backend/src/modules/data-authorizations/gps-position-access.service.ts` |
+| Purpose-/Category-Konstanten | `backend/src/modules/data-authorizations/gps-position-access.constants.ts` |
+| Org-weite Consent-Prüfung | `backend/src/modules/data-authorizations/data-authorization-enforcement.service.ts` → `assertOrganizationDataAuthorization()` |
+| Module-Export | `backend/src/modules/data-authorizations/data-authorizations.module.ts` |
+| Vehicle Detail Live GPS | `backend/src/modules/vehicles/vehicles.service.ts` → `getLiveGps` |
+| Vehicle Detail Telemetry | `backend/src/modules/vehicles/vehicles.service.ts` → `getVehicleWithTelemetry` |
+| Fleet Map | `backend/src/modules/vehicles/vehicles.service.ts` → `getFleetMapData` (Auth **vor** Redis) |
+| Fleet Map Permission | `backend/src/modules/vehicles/vehicles.controller.ts` → `@RequirePermission('fleet', 'read')` |
+| Trips Route | `backend/src/modules/vehicle-intelligence/trips/trips.service.ts` → `getRouteForTrip` |
+| DIMO Snapshot Ingest | `backend/src/workers/processors/dimo-snapshot.processor.ts` → `assertSystemGpsIngest` |
+| Worker-Modul-Import | `backend/src/workers/workers.module.ts` → `DataAuthorizationsModule` |
+| VI-Modul-Import | `backend/src/modules/vehicle-intelligence/vehicle-intelligence.module.ts` → `DataAuthorizationsModule` |
+| Unit-Tests Gate | `backend/src/modules/data-authorizations/gps-position-access.service.spec.ts` |
+| Unit-Tests Vehicles | `backend/src/modules/vehicles/vehicles.service.gps-authorization.spec.ts` |
+| Unit-Tests Fleet-Cache | `backend/src/modules/vehicles/operational/vehicle-operational-state-v2.fleet-map-cache.spec.ts` |
+| Unit-Tests Enforcement | `backend/src/modules/data-authorizations/data-authorization-enforcement.service.spec.ts` |
+
+**Durchgesetzte Kontrollen pro User-Request:** Authentifizierung + Org-Scoping + Vehicle-Binding + Permission (HTTP-Guards) + Data Authorization + Zweck + serverseitige Durchsetzung + Audit (`AuditService`) + Datenminimierung (bestehende DTO-Grenzen unverändert).
+
+**Cache-Regel:** `getFleetMapData` ruft `assertOrgFleetGpsAccess` auf, **bevor** Redis gelesen wird — Cache-Hit ersetzt keine Berechtigungsprüfung.
+
+**Systemjobs:** `DimoSnapshotProcessor` nutzt `assertSystemGpsIngest` mit dokumentiertem `systemJob: dimo.snapshot.poll` und `documentedPurpose: TECHNICAL_OVERVIEW`.
+
+---
+
+## Gezielte Prüfpunkte (Befunde Prompt 14 — teilweise behoben in Prompt 15)
 
 ### 1. Direkte Provider-Abfragen ohne zentralen Data-Authorization-Service
 
-| Pfad | Befund |
-|------|--------|
-| `GET live-gps` | **Korrekt verdrahtet** — einziger HTTP-Pfad mit `assertDataAuthorization(GPS_LOCATION, LIVE_MAP)` |
-| `GET telemetry` | **Lücke** — ruft bei Bedarf `DimoTelemetryService.fetchLastSeenLocation` direkt auf, **ohne** Data-Authorization |
-| `DimoSnapshotProcessor` | **Lücke** — dokumentiertes TODO in `DataAuthorizationEnforcementService` (Ingest vor Persist) |
-| `TripsService.getRouteForTrip` | **Lücke** — DIMO `fetchRouteEnrichment` ohne Trip-/GPS-Consent-Check |
+| Pfad | Befund (nach Prompt 15) |
+|------|-------------------------|
+| `GET live-gps` | **Verdrahtet** via `GpsPositionAccessService.assertVehicleGpsAccess(LIVE_MAP)` |
+| `GET telemetry` | **Behoben** — Auth vor Read und vor DIMO `fetchLastSeenLocation` (`TECHNICAL_OVERVIEW`) |
+| `DimoSnapshotProcessor` | **Behoben** — `assertSystemGpsIngest` vor Provider-Fetch/Persist |
+| `TripsService.getRouteForTrip` | **Behoben** — `assertVehicleGpsAccess(TRIPS)` vor Route-Enrichment |
 | `WhatsApp getVehicleLocationSummary` | Erbt Enforcement von `getLiveGps` ✓ |
 
 ### 2. Endpunkte ohne explizite Permission (neben Org-Scoping)
 
-| Endpunkt | Guard | Befund |
-|----------|-------|--------|
-| `GET fleet-map` | `OrgScopingGuard` only | **Kein** `fleet:read` — jeder Org-Member mit Zugriff auf Org-Routen erhält alle Fahrzeugpositionen |
-| `GET vehicles` / `GET vehicles/:id` | `OrgScopingGuard` only | Wie oben |
-| `GET device-connection` | `OrgScopingGuard` only | Kein `fleet-connectivity:read` trotz verwandtem Domänenmodell |
-| `GET/POST vehicles/:vehicleId/trips/*` | `VehicleOwnershipGuard` only | **Kein** Modul-Permission (`fleet:read` o.ä.) auf Trip-Route/Enrichment |
-
-### 3. Cache Keys ohne organizationId
-
-| Key | Befund |
-|-----|--------|
-| `fleet-map:{organizationId}:v1` | ✓ Org-scoped |
-| `dimo:vehicle:jwt:{tokenId}:*` | Token-scoped — indirekter Cross-Org-Risiko nur bei Token-Misszuordnung (separates DIMO-Binding-Thema) |
-| Frontend address cache | Client-only, coord-keyed — kein Multi-Tenant-Server-Cache |
-
-### 4. Rückgaben mit mehr Daten als benötigt
-
-| Pfad | Befund |
-|------|--------|
-| `GET fleet-map` | Liefert bis zu **500** Fahrzeuge mit lat/lng, Booking-Kontext, Connectivity-Runtime, Telemetrie-Skalare — breiter als reine Kartenposition |
-| `GET fleet-connectivity` | Legacy-DTO enthält `latitude`/`longitude` zusätzlich zu Signal-Health |
-| `GET telemetry` | Vollständiger Telemetrie-Snapshot inkl. Position — für Overview-HUD beabsichtigt |
-| WhatsApp Tool | Gibt `latitude`, `longitude`, `source` an AI-Kontext zurück |
-
-### 5. Unterschiedliche Zwecke für dieselben Daten
-
-| Datenquelle | Zwecke | Befund |
-|-------------|--------|--------|
-| `vehicle_latest_states` | Fleet-Map, Telemetry, Fleet-List, Connectivity, Station-Geofence, live-gps Fallback | **Eine** kanonische Last-Known-Quelle — gut; Live-GPS ist separater DIMO-Direct-Pfad |
-| DIMO `fetchLastSeenLocation` | live-gps, telemetry (conditional), WhatsApp | Zwei HTTP-Zwecke, nur einer mit Data-Auth |
-| DIMO Segments | Trip-Grenzen, Route-Enrichment, Reconciliation, Energy-Events | Architektonisch kanonisch für Trips — kein Live-Map-Zweck |
+| Endpunkt | Guard | Befund (nach Prompt 15) |
+|----------|-------|-------------------------|
+| `GET fleet-map` | `OrgScopingGuard` + `fleet:read` | **Behoben** |
+| `GET vehicles` / `GET vehicles/:id` | `OrgScopingGuard` only | Offen — List-DTO enthält lat/lng aus `latestState` |
+| `GET device-connection` | `OrgScopingGuard` only | Offen — keine Live-Koordinaten |
+| `GET/POST vehicles/:vehicleId/trips/*` | `VehicleOwnershipGuard` only | Offen — Trip-Route hat Data-Auth, aber kein `fleet:read` |
 
 ### 6. Fehlende Audit-Einträge
 
-| Aktion | ActivityLog | Data-Auth Audit | Befund |
-|--------|-------------|---------------|--------|
-| live-gps Abruf | Nein | `accessCount` / `lastAccessAt` auf Consent-Row | Kein per-User ActivityLog |
-| fleet-map Abruf | Nein | Nein | Kein Audit |
-| telemetry Abruf | Nein | Nein | Kein Audit |
-| Trip route fetch | Nein | Nein | Kein Audit |
-| DIMO Snapshot Ingest | Nein | Nein | Nur `dimo_poll_logs` (technisch, nicht GDPR-Zweck-Audit) |
-| `GET data-authorizations/audit-log` | — | Consent-Änderungen | **Nicht** GPS-Lese-Audit |
+| Aktion | ActivityLog | Data-Auth Audit | Befund (nach Prompt 15) |
+|--------|-------------|---------------|-------------------------|
+| live-gps Abruf | **Ja** (`AuditService` SYNC) | `accessCount` / `lastAccessAt` | Verdrahtet |
+| fleet-map Abruf | **Ja** (`accessKind: org_fleet`) | `accessCount` | Verdrahtet |
+| telemetry Abruf | **Ja** | `accessCount` | Verdrahtet |
+| Trip route fetch | **Ja** | `accessCount` | Verdrahtet |
+| DIMO Snapshot Ingest | **Ja** (`systemJob` meta) | `trackAccess: false` | Verdrahtet |
 
-### 7. Hintergrundjobs mit personenbezogenen Positionen
+---
 
-| Job | Positionsverarbeitung | Zweck klar? | Data-Auth |
-|-----|----------------------|-------------|-----------|
-| `DimoSnapshotProcessor` | Schreibt lat/lng in VLS + CH | Ja — Fleet/Telemetrie-Basis | **Nein** |
-| `TripTrackingProcessor` | Trip start/end, Waypoints | Ja — Fahrtprotokoll | Nein |
-| `TripBehaviorEnrichmentProcessor` | HF lat/lng → CH | Ja — Fahrverhalten | Nein |
-| `TripReconciliationScheduler` | Segment-/Waypoint-Evidence | Ja — Datenqualität | Nein |
-| HM Telemetry Ingestion | Parsed coords | Ja — alternativer Provider | Nein; VLS-Write unvollständig |
-| `MapboxService` (Enrichment) | Sendet Route-Koordinaten an Mapbox | Ja — Straßentyp/Speeding | Externer Processor |
+## Vehicle Detail Page — relevante Pfade (Querschnitt)
+
+| UI-Surface | Backend-Pfad(e) | Autorisierungshinweis |
+|------------|-----------------|----------------------|
+| Overview Live Map | `live-gps` + `telemetry` | Beide via `GpsPositionAccessService` |
+| Overview HUD / Header Badge | Store ← telemetry | Telemetry-Gate (`TECHNICAL_OVERVIEW`) |
+| Trips Tab Map | `trips/:tripId/route` + enrich | Data-Auth `TRIPS` + VehicleOwnership |
+| Device Connection | `device-connection` | Org-Scoping only (kein Positionsbezug) |
+| Fleet-Fallback coords | `fleet-map` (via `FleetContext`) | `fleet:read` + org-weite Data-Auth |
+
+---
+
+## Offene Kandidaten (nach Prompt 15)
+
+1. Permission-Angleichung für `GET vehicles` / Trip-Listen (`fleet:read`)
+2. HM-Telemetry vollständige VLS-Integration + Authorization
+3. Klärung Legacy-Tabelle `vehicle_position_updates`
+4. Trip-Enrichment/Behavior-Jobs — Data-Auth für `TRIP_DATA` / `DRIVING_BEHAVIOR`
 
 ---
 
@@ -238,9 +251,9 @@ flowchart TB
 
 | Query / Service | Datei | Positionsrelevanz |
 |-----------------|-------|-------------------|
-| `last-seen-location.query.ts` | `DimoTelemetryService.fetchLastSeenLocation` | Live GPS |
-| `latest-vehicle-snapshot.query.ts` | Snapshot Processor | Ingest |
-| `route-enrichment.query.ts` | `DimoSegmentsService.fetchRouteEnrichment` | Trip-Route innerhalb Segment-Fenster |
+| `last-seen-location.query.ts` | `DimoTelemetryService.fetchLastSeenLocation` | Live GPS (gate: `LIVE_MAP` / `TECHNICAL_OVERVIEW`) |
+| `latest-vehicle-snapshot.query.ts` | Snapshot Processor | Ingest (gate: `assertSystemGpsIngest`) |
+| `route-enrichment.query.ts` | `DimoSegmentsService.fetchRouteEnrichment` | Trip-Route (gate: `TRIPS`) |
 | `trip-segments.query.ts` | Trip boundaries | Kanonische Trip-Grenzen |
 | `high-frequency.query.ts` | HF mirror | Verhaltensanalyse |
 | `energy-event-segments.query.ts` | Tanken/Laden-Segmente | Start/End-Location |
@@ -255,30 +268,6 @@ flowchart TB
 | Business Insights Detectors | Keine direkten GPS-Pfade gefunden | — |
 | Rental Driving Analysis | Aggregierte Trip-Metriken / Route-Coverage | Keine Roh-GPS-Auslieferung |
 | Data Analyse | CH/PG Signal-Counts, HF-Samples | Operator-Diagnostik; `data-analyse:read` geschützt |
-
----
-
-## Vehicle Detail Page — relevante Pfade (Querschnitt)
-
-| UI-Surface | Backend-Pfad(e) | Autorisierungshinweis |
-|------------|-----------------|----------------------|
-| Overview Live Map | `live-gps` + `telemetry` | Nur live-gps mit Data-Auth |
-| Overview HUD / Header Badge | Store ← telemetry | Kein separater GPS-Endpunkt |
-| Trips Tab Map | `trips/:tripId/route` + enrich | VehicleOwnership only |
-| Device Connection | `device-connection` | Org-Scoping only |
-| Fleet-Fallback coords | `fleet-map` (via `FleetContext`) | Kein fleet:read Permission |
-
----
-
-## Nächste Schritte (außerhalb Prompt 14)
-
-Dieses Dokument dient als Grundlage für spätere Remediation-Prompts. Priorisierte Kandidaten (nur dokumentiert, **nicht umgesetzt**):
-
-1. Data-Authorization für `getVehicleWithTelemetry`-DIMO-Fetch und Snapshot-Ingest
-2. Permission-Angleichung `fleet-map` / `device-connection` / Trip-Reads
-3. GPS-Lese-Audit (ActivityLog oder erweitertes Data-Auth-Tracking) über live-gps hinaus
-4. Klärung Legacy-Tabelle `vehicle_position_updates` (entfernen oder aktivieren)
-5. HM-Telemetry vollständige VLS-Integration + Authorization
 
 ---
 

@@ -1,5 +1,7 @@
 import { VehicleStatus } from '@prisma/client';
+import { DataAuthorizationDeniedException } from '@modules/data-authorizations/data-authorization.exceptions';
 import {
+  makeGpsPositionAccessStub,
   makeOperationalPrismaMocks,
   makeOperationalVehiclesService,
   makeVehicleRow,
@@ -12,17 +14,40 @@ describe('Vehicle Operational State V2 — fleet-map cache', () => {
   it('serves fleet-map from redis cache on hit (read-through)', async () => {
     const redisGet = jest.fn().mockResolvedValue(JSON.stringify(cachedPayload));
     const vehicleFindMany = jest.fn();
+    const gpsPositionAccess = makeGpsPositionAccessStub();
     const service = makeOperationalVehiclesService({
       prisma: { vehicle: { findMany: vehicleFindMany } },
       redis: { get: redisGet, set: jest.fn() },
+      gpsPositionAccess,
     });
 
     const result = await service.getFleetMapData(orgId);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('veh-cached');
     expect(result[0].cachedAt).toEqual(expect.any(String));
+    expect(gpsPositionAccess.assertOrgFleetGpsAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: orgId, purpose: 'FLEET_ANALYTICS' }),
+    );
     expect(redisGet).toHaveBeenCalledWith(`fleet-map:${orgId}:v1`);
     expect(vehicleFindMany).not.toHaveBeenCalled();
+  });
+
+  it('denies fleet-map cache hit when org GPS authorization fails', async () => {
+    const redisGet = jest.fn().mockResolvedValue(JSON.stringify(cachedPayload));
+    const gpsPositionAccess = makeGpsPositionAccessStub();
+    gpsPositionAccess.assertOrgFleetGpsAccess.mockRejectedValue(
+      new DataAuthorizationDeniedException('denied'),
+    );
+    const service = makeOperationalVehiclesService({
+      prisma: { vehicle: { findMany: jest.fn() } },
+      redis: { get: redisGet, set: jest.fn() },
+      gpsPositionAccess,
+    });
+
+    await expect(service.getFleetMapData(orgId)).rejects.toBeInstanceOf(
+      DataAuthorizationDeniedException,
+    );
+    expect(redisGet).not.toHaveBeenCalled();
   });
 
   it('writes fleet-map payload to redis with 5s TTL on miss', async () => {
