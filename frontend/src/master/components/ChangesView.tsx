@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-post-remediation-audit-v49827-2026-07-24',
+    version: '4.9.827',
+    title: 'V4.9.827 — Data Auth Post-Remediation Audit (Prompt 44)',
+    summary: [
+      'Finaler unabhängiger Audit: Repository vollständig (Prompts 1–43), Production NO-GO.',
+      'P0: Migration UUID/TEXT, Commit-Drift (e817af14 vs 51069d1), kein Privacy-Schema auf VPS, Monitoring inaktiv.',
+      'P1: 2 Unit-Test-Fails, Build-TS-Fehler, 21/35 Flows shadow-default PARTIALLY_ENFORCED, Postgres-Integration skipped.',
+      'Tests: Coverage 14/14, Frontend 58/58, E2E 17/17, data-auth 425 pass / 2 fail / 41 skipped.',
+      'Audit: docs/audits/data-authorization-post-remediation-readiness-2026-07.md.',
+    ],
+    reason:
+      'Prompt 44 verlangt abschließenden Production-Readiness-Audit nach 44-prompt Data-Authorization-Remediation.',
+    previousBehavior:
+      'Kein finaler Post-Remediation-Audit; Staging NO-GO und Rollout nicht ausgeführt.',
+    details: 'docs/audits/data-authorization-post-remediation-readiness-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T03:18:00.000Z',
+  },
+  {
     id: 'data-auth-production-rollout-v49826-2026-07-24',
     version: '4.9.826',
     title: 'V4.9.826 — Data Auth Production Rollout Gate (Prompt 43)',
