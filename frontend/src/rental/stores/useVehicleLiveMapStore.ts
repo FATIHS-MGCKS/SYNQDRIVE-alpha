@@ -6,6 +6,11 @@ import type {
 } from '../../lib/liveMapUtils';
 import type { LiveTelemetrySnapshot } from '../lib/telemetry-field-semantics';
 import type { TelemetryFreshness } from '../lib/telemetryFreshness';
+import {
+  isVehicleLiveMapBindingCurrent,
+  mergeVehicleLiveMapState,
+  type VehicleLiveMapBinding,
+} from '../lib/vehicle-live-map-store-merge';
 
 export type LiveGpsSource = 'dimo' | 'cache' | null;
 
@@ -14,6 +19,7 @@ export type { LiveTelemetrySnapshot };
 export interface VehicleLiveMapData {
   boundVehicleId: string | null;
   boundOrgId: string | null;
+  boundGeneration: number;
   snapshot: LiveTelemetrySnapshot | null;
   targetPosition: [number, number] | null;
   lastConfirmedPosition: [number, number] | null;
@@ -42,14 +48,15 @@ export interface VehicleLiveMapData {
   tripDetectionState: string | null;
 }
 
+export type VehicleLiveMapPatch =
+  | Partial<VehicleLiveMapData>
+  | ((state: VehicleLiveMapData) => Partial<VehicleLiveMapData>);
+
 interface VehicleLiveMapStore extends VehicleLiveMapData {
-  patchState: (patch: Partial<VehicleLiveMapData>) => void;
-  bindToVehicle: (vehicleId: string, orgId: string) => void;
-  patchIfBound: (
-    vehicleId: string,
-    orgId: string,
-    patch: Partial<VehicleLiveMapData>,
-  ) => void;
+  patchState: (patch: VehicleLiveMapPatch) => void;
+  bindToVehicle: (vehicleId: string, orgId: string, generation: number) => void;
+  patchIfBound: (binding: VehicleLiveMapBinding, patch: VehicleLiveMapPatch) => void;
+  isBindingCurrent: (binding: VehicleLiveMapBinding) => boolean;
   unbind: () => void;
   reset: () => void;
 }
@@ -58,6 +65,7 @@ function createInitialState(): VehicleLiveMapData {
   return {
     boundVehicleId: null,
     boundOrgId: null,
+    boundGeneration: 0,
     snapshot: null,
     targetPosition: null,
     lastConfirmedPosition: null,
@@ -87,21 +95,11 @@ function createInitialState(): VehicleLiveMapData {
   };
 }
 
-export function createDefaultLiveSnapshot(): LiveTelemetrySnapshot {
-  return {
-    speed: null,
-    fuel: null,
-    coolant: null,
-    battery: null,
-    lvBatteryVoltage: null,
-    odometer: null,
-    engineLoad: null,
-    rangeKm: null,
-    tractionBatteryTemperatureC: null,
-    headingDeg: null,
-    accuracyM: null,
-    ignitionOn: false,
-  };
+function resolvePatch(
+  state: VehicleLiveMapData,
+  patch: VehicleLiveMapPatch,
+): Partial<VehicleLiveMapData> {
+  return typeof patch === 'function' ? patch(state) : patch;
 }
 
 export function isStoreBoundToVehicle(
@@ -119,19 +117,22 @@ export function isStoreBoundToVehicle(
 
 export const useVehicleLiveMapStore = create<VehicleLiveMapStore>((set, get) => ({
   ...createInitialState(),
-  patchState: (patch) => set((state) => ({ ...state, ...patch })),
-  bindToVehicle: (vehicleId, orgId) =>
+  patchState: (patch) =>
+    set((state) => mergeVehicleLiveMapState(state, resolvePatch(state, patch))),
+  bindToVehicle: (vehicleId, orgId, generation) =>
     set({
       ...createInitialState(),
       boundVehicleId: vehicleId,
       boundOrgId: orgId,
+      boundGeneration: generation,
       loading: true,
     }),
-  patchIfBound: (vehicleId, orgId, patch) => {
-    const state = get();
-    if (state.boundVehicleId !== vehicleId || state.boundOrgId !== orgId) return;
-    set({ ...state, ...patch });
-  },
+  isBindingCurrent: (binding) => isVehicleLiveMapBindingCurrent(get(), binding),
+  patchIfBound: (binding, patch) =>
+    set((state) => {
+      if (!isVehicleLiveMapBindingCurrent(state, binding)) return state;
+      return mergeVehicleLiveMapState(state, resolvePatch(state, patch));
+    }),
   unbind: () => set(createInitialState()),
   reset: () => set(createInitialState()),
 }));

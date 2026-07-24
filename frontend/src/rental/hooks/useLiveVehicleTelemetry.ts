@@ -17,10 +17,11 @@ import {
 } from '../lib/telemetry-field-semantics';
 import { isValidGpsCoordinate } from '../lib/overview-map-position';
 import {
-  mergeGpsMeasuredAt,
-  resolveTelemetryDisplayTime,
-  shouldAcceptNewerMeasurement,
-} from '../lib/telemetry-timestamp-semantics';
+  canApplyGpsCoordinates,
+  mergeGpsFreshnessPatch,
+  type VehicleLiveMapBinding,
+} from '../lib/vehicle-live-map-store-merge';
+import { resolveTelemetryDisplayTime } from '../lib/telemetry-timestamp-semantics';
 import { resolveVehicleDetailTelemetryState } from '../lib/vehicle-telemetry-runtime';
 import {
   VEHICLE_DETAIL_POLLING,
@@ -113,19 +114,25 @@ export function useLiveVehicleTelemetry({
     }
   }, []);
 
+  const toStoreBinding = useCallback(
+    (binding: TelemetryRequestBinding): VehicleLiveMapBinding => ({
+      vehicleId: binding.vehicleId,
+      orgId: binding.organizationId,
+      generation: binding.generation,
+    }),
+    [],
+  );
+
   const applyGpsPoint = useCallback(
     (
-      boundVehicleId: string,
-      boundOrgId: string,
+      binding: VehicleLiveMapBinding,
       lat: number,
       lng: number,
       speed: number | null,
       source: 'dimo' | 'cache',
     ) => {
       const store = useVehicleLiveMapStore.getState();
-      if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
-        return;
-      }
+      if (!store.isBindingCurrent(binding)) return;
 
       const newPos: [number, number] = [lng, lat];
       const nextHistory = [...locationHistoryRef.current, newPos].slice(-MAX_HISTORY);
@@ -148,16 +155,16 @@ export function useLiveVehicleTelemetry({
         lastTargetRef.current = newPos;
       }
 
-      store.patchIfBound(boundVehicleId, boundOrgId, {
+      store.patchIfBound(binding, (state) => ({
         locationHistory: nextHistory,
         lastConfirmedPosition: newPos,
         lastLocationAt: Date.now(),
         gpsSource: source,
-        speedKmh: speed ?? store.speedKmh,
-        targetPosition: meaningful ? newPos : store.targetPosition,
-        heading: heading ?? store.heading,
+        speedKmh: speed ?? state.speedKmh,
+        targetPosition: meaningful ? newPos : state.targetPosition,
+        heading: heading ?? state.heading,
         isMoving,
-      });
+      }));
     },
     [],
   );
@@ -194,30 +201,22 @@ export function useLiveVehicleTelemetry({
       }
 
       const store = useVehicleLiveMapStore.getState();
-      if (
-        store.boundVehicleId !== binding.vehicleId ||
-        store.boundOrgId !== binding.organizationId
-      ) {
-        return;
-      }
+      const storeBinding = toStoreBinding(binding);
+      if (!store.isBindingCurrent(storeBinding)) return;
 
-      store.patchIfBound(binding.vehicleId, binding.organizationId, {
+      store.patchIfBound(storeBinding, {
         loading: false,
         error: result.policy.userMessage,
       });
     },
-    [recordAccessBlockFromPolicy],
+    [recordAccessBlockFromPolicy, toStoreBinding],
   );
 
   const applyDashboardData = useCallback(
     (binding: TelemetryRequestBinding, data: DashboardTelemetryData) => {
       const store = useVehicleLiveMapStore.getState();
-      if (
-        store.boundVehicleId !== binding.vehicleId ||
-        store.boundOrgId !== binding.organizationId
-      ) {
-        return;
-      }
+      const storeBinding = toStoreBinding(binding);
+      if (!store.isBindingCurrent(storeBinding)) return;
 
       const speed = parseTelemetrySpeedKmh(data.speed);
       const engineLoad = parseTelemetryNumber(data.engineLoad);
@@ -267,14 +266,14 @@ export function useLiveVehicleTelemetry({
         onlineStatus: data.onlineStatus,
       });
 
-      store.patchIfBound(binding.vehicleId, binding.organizationId, {
+      store.patchIfBound(storeBinding, (state) => ({
         snapshot: snap,
         isLiveTracking: backendLive,
         loading: false,
         error: null,
         measuredAt: displayTime.measuredAt,
         receivedAt: displayTime.receivedAt,
-        lastSignal: displayTime.observedAtIso ?? data.lastSignal ?? store.lastSignal,
+        lastSignal: displayTime.observedAtIso ?? data.lastSignal ?? state.lastSignal,
         signalAgeMs: canonical.signalAgeMs,
         isFresh: canonical.isLive,
         telemetryFreshness: canonical.freshness,
@@ -290,22 +289,24 @@ export function useLiveVehicleTelemetry({
         displayEngineLoad: data.displayEngineLoad ?? snap.engineLoad,
         tripDetectionState: data.tripDetectionState ?? null,
         ...(headingFromApi != null ? { heading: headingFromApi } : {}),
-        speedKmh: speed ?? store.speedKmh,
-      });
+        speedKmh: speed ?? state.speedKmh,
+      }));
 
       if (!backendLive) {
         const lat = data.latitude;
         const lng = data.longitude;
         const incomingMeasuredAt = data.measuredAt ?? data.lastSignal ?? null;
-        const canApplyByTime =
-          incomingMeasuredAt == null ||
-          shouldAcceptNewerMeasurement(store.measuredAt ?? store.lastSignal, incomingMeasuredAt);
-        if (lat != null && lng != null && isValidGpsCoordinate(lat, lng) && canApplyByTime) {
-          applyGpsPoint(binding.vehicleId, binding.organizationId, lat, lng, speed, 'cache');
+        if (
+          lat != null &&
+          lng != null &&
+          isValidGpsCoordinate(lat, lng) &&
+          canApplyGpsCoordinates(useVehicleLiveMapStore.getState(), incomingMeasuredAt)
+        ) {
+          applyGpsPoint(storeBinding, lat, lng, speed, 'cache');
         }
       }
     },
-    [applyGpsPoint],
+    [applyGpsPoint, toStoreBinding],
   );
 
   const applyGpsData = useCallback(
@@ -322,53 +323,46 @@ export function useLiveVehicleTelemetry({
       },
     ) => {
       const store = useVehicleLiveMapStore.getState();
-      if (
-        store.boundVehicleId !== binding.vehicleId ||
-        store.boundOrgId !== binding.organizationId
-      ) {
-        return;
-      }
+      const storeBinding = toStoreBinding(binding);
+      if (!store.isBindingCurrent(storeBinding)) return;
 
       const lat = data.latitude;
       const lng = data.longitude;
       const incomingMeasuredAt = data.measuredAt ?? data.lastSeenAt ?? null;
-      const canApplyByTime =
-        incomingMeasuredAt == null ||
-        shouldAcceptNewerMeasurement(store.measuredAt ?? store.lastSignal, incomingMeasuredAt);
 
-      if (lat != null && lng != null && isValidGpsCoordinate(lat, lng) && canApplyByTime) {
-        applyGpsPoint(
-          binding.vehicleId,
-          binding.organizationId,
-          lat,
-          lng,
-          data.speedKmh,
-          data.source,
-        );
-        const merged = mergeGpsMeasuredAt(store, {
-          measuredAt: data.measuredAt,
-          lastSeenAt: data.lastSeenAt,
-          receivedAt: data.receivedAt,
-          source: data.source,
-        });
-        const displayTime = resolveTelemetryDisplayTime(merged);
-        const canonical = resolveVehicleDetailTelemetryState(merged);
-        store.patchIfBound(binding.vehicleId, binding.organizationId, {
-          measuredAt: displayTime.measuredAt,
-          receivedAt: displayTime.receivedAt,
-          lastSignal: displayTime.observedAtIso ?? store.lastSignal,
-          signalAgeMs: canonical.signalAgeMs,
-          isFresh: canonical.isLive,
-          telemetryFreshness: canonical.freshness,
-          onlineStatus: canonical.isLive
-            ? 'ONLINE'
-            : canonical.isStandby
-              ? 'STANDBY'
-              : 'OFFLINE',
+      if (
+        lat != null &&
+        lng != null &&
+        isValidGpsCoordinate(lat, lng) &&
+        canApplyGpsCoordinates(store, incomingMeasuredAt)
+      ) {
+        applyGpsPoint(storeBinding, lat, lng, data.speedKmh, data.source);
+        store.patchIfBound(storeBinding, (state) => {
+          const freshnessPatch = mergeGpsFreshnessPatch(state, {
+            measuredAt: data.measuredAt,
+            lastSeenAt: data.lastSeenAt,
+            receivedAt: data.receivedAt,
+            source: data.source,
+          });
+          const merged = { ...state, ...freshnessPatch };
+          const displayTime = resolveTelemetryDisplayTime(merged);
+          const canonical = resolveVehicleDetailTelemetryState(merged);
+          return {
+            ...freshnessPatch,
+            lastSignal: displayTime.observedAtIso ?? state.lastSignal,
+            signalAgeMs: canonical.signalAgeMs,
+            isFresh: canonical.isLive,
+            telemetryFreshness: canonical.freshness,
+            onlineStatus: canonical.isLive
+              ? 'ONLINE'
+              : canonical.isStandby
+                ? 'STANDBY'
+                : 'OFFLINE',
+          };
         });
       }
     },
-    [applyGpsPoint],
+    [applyGpsPoint, toStoreBinding],
   );
 
   const fetchGps = useCallback(
@@ -447,9 +441,11 @@ export function useLiveVehicleTelemetry({
     liveRef.current = false;
     setTrackingLive(false);
     clearTimers();
-    coordinator.bind(orgId, vehicleId);
+    const coordinatorBinding = coordinator.bind(orgId, vehicleId);
     useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
-    useVehicleLiveMapStore.getState().bindToVehicle(vehicleId, orgId);
+    useVehicleLiveMapStore
+      .getState()
+      .bindToVehicle(vehicleId, orgId, coordinatorBinding.generation);
 
     return () => {
       coordinator.reset();
@@ -559,6 +555,8 @@ export function useLiveVehicleTelemetry({
     return () => {
       clearTimers();
       coordinatorRef.current?.reset();
+      useVehicleLiveMapStore.getState().unbind();
+      useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
     };
   }, [clearTimers]);
 }

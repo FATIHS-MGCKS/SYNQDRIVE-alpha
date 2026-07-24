@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-store-race-v49793-2026-07-24',
+    version: '4.9.793',
+    title: 'V4.9.793 — Vehicle Detail live map store race conditions (Prompt 25/36)',
+    summary: [
+      'Fixed `patchIfBound` get/set snapshot race — functional updates with domain-aware merge.',
+      '`boundGeneration` synced with telemetry request coordinator; stale responses rejected.',
+      'GPS and dashboard channels merge independently — neither clears the other.',
+      'Provider timestamp ordering prevents older GPS from overwriting newer position.',
+      'Snapshot partial merge preserves non-null fields; no null-default snapshots.',
+      'Unmount/org/vehicle switch resets store binding; audit doc for merge behavior.',
+    ],
+    reason:
+      'Concurrent GPS and dashboard async responses could overwrite each other when patchIfBound read stale state via get() before set().',
+    previousBehavior:
+      '`patchIfBound` spread a get() snapshot; parallel channel updates could drop GPS position or dashboard snapshot fields.',
+    details:
+      'frontend/src/rental/lib/vehicle-live-map-store-merge.ts, stores/useVehicleLiveMapStore.ts, hooks/useLiveVehicleTelemetry.ts, vehicle-live-map-store-merge.test.ts, useLiveVehicleTelemetry.store-race.test.ts, docs/audits/vehicle-detail-page-store-race-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Live Telemetry',
+    createdAt: '2026-07-24T10:15:00.000Z',
+  },
+  {
     id: 'vehicle-detail-selection-sync-v49792-2026-07-24',
     version: '4.9.792',
     title: 'V4.9.792 — Vehicle Detail selectedVehicle & query data sync (Prompt 24/36)',
