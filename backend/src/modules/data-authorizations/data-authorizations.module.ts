@@ -45,6 +45,10 @@ import { NotificationEnforcementService } from './notification-enforcement/notif
 import { NotificationEnforcementMetricsService } from './notification-enforcement/notification-enforcement.metrics';
 import { ExternalAccessEnforcementService } from './external-access-enforcement/external-access-enforcement.service';
 import { ExternalAccessEnforcementMetricsService } from './external-access-enforcement/external-access-enforcement.metrics';
+import { EnforcementCoverageRegistryController } from './enforcement-coverage-registry/enforcement-coverage-registry.controller';
+import { EnforcementCoverageRegistryService } from './enforcement-coverage-registry/enforcement-coverage-registry.service';
+import { EnforcementCoverageHealthService } from './enforcement-coverage-registry/enforcement-coverage-health.service';
+import { EnforcementCoverageRegistryMetricsService } from './enforcement-coverage-registry/enforcement-coverage-registry.metrics';
 
 @Module({
   imports: [RedisModule],
@@ -58,6 +62,7 @@ import { ExternalAccessEnforcementMetricsService } from './external-access-enfor
     PolicyLifecycleController,
     DataProcessingReviewWorkflowController,
     DataAuthorizationAuditController,
+    EnforcementCoverageRegistryController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -97,6 +102,9 @@ import { ExternalAccessEnforcementMetricsService } from './external-access-enfor
     NotificationEnforcementMetricsService,
     ExternalAccessEnforcementService,
     ExternalAccessEnforcementMetricsService,
+    EnforcementCoverageRegistryService,
+    EnforcementCoverageHealthService,
+    EnforcementCoverageRegistryMetricsService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -128,6 +136,9 @@ import { ExternalAccessEnforcementMetricsService } from './external-access-enfor
     NotificationEnforcementMetricsService,
     ExternalAccessEnforcementService,
     ExternalAccessEnforcementMetricsService,
+    EnforcementCoverageRegistryService,
+    EnforcementCoverageHealthService,
+    EnforcementCoverageRegistryMetricsService,
   ],
 })
 export class DataAuthorizationsModule {}

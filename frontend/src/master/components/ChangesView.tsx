@@ -35,13 +35,32 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'enforcement-coverage-registry-v49806-2026-07-24',
+    version: '4.9.806',
+    title: 'V4.9.806 — Enforcement Coverage Registry und Readiness-Status (Prompt 23)',
+    summary: [
+      'EnforcementCoverageRegistryService — zentrale Registry für 25 produktive Datenflüsse (Prompts 16–22).',
+      'Statuslogik: NOT_IMPLEMENTED / PARTIALLY_ENFORCED / ENFORCED / ENFORCEMENT_ERROR / DISABLED.',
+      'API unter data-authorizations/coverage mit data_processing.coverage_view. CI: npm run test:data-auth:coverage.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 23 — Coverage nicht manuell behaupten, sondern test- und runtime-basiert.',
+    previousBehavior:
+      'Enforcement-Pfade fragmentiert über Domain-Konstanten ohne zentrale Readiness-Übersicht.',
+    details:
+      'backend/src/modules/data-authorizations/enforcement-coverage-registry/. Baseline: docs/audits/data/data-authorization-enforcement-coverage-baseline-2026-07.csv. Doku: docs/architecture/enforcement-coverage-registry-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T00:20:00.000Z',
+  },
+  {
     id: 'external-access-enforcement-v49805-2026-07-24',
     version: '4.9.805',
     title: 'V4.9.805 — Exporte, AI, MCP und Partnerzugriffe geschützt (Prompt 22)',
     summary: [
       'ExternalAccessEnforcementService — EXPORT, SHARE, USE_FOR_AI und MCP READ als explizite Aktionen.',
       'Verdrahtet: Fleet Chat AI, Document AI, Vehicle Spec AI, PDF/Legal Downloads, Vehicle File Summary, Voice MCP Tools.',
-      'Datenminimierung für AI-Prompts und MCP-Tool-Outputs. MCP-Token-Revocation bei Widerruf. Bulk-Export erfordert Org-Setting.',
+      'Datenminimierung für AI-Prompts und MCP-Tool-Outputs. MCP-Token-Revocation bei Widerruf. Bulk-Export erfordert DATA_AUTH_BULK_EXPORT_ORG_ALLOWLIST.',
     ],
     reason:
       'Data Authorization Production Readiness Prompt 22 — keine Weitergabe allein aufgrund normaler Read-Permission.',
