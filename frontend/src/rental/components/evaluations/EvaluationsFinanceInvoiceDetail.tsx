@@ -9,10 +9,16 @@ import {
   YAxis,
 } from 'recharts';
 import { EmptyState } from '../../../components/patterns';
+import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { EvaluationsInvoiceDataHookResult } from '../../hooks/useEvaluationsInvoiceData';
 import { customerLabel } from '../../hooks/useEvaluationsInvoiceData';
 import { fmtEurMinor } from '../../lib/evaluations-format';
+import {
+  EVALUATIONS_CHART_DESKTOP_ONLY_CLASS,
+  EVALUATIONS_CHART_MOBILE_HINT_CLASS,
+} from './evaluations-responsive.constants';
+import { EvaluationsChartDataTable } from './charts/EvaluationsChartDataTable';
 
 interface EvaluationsFinanceInvoiceDetailProps {
   invoiceData: EvaluationsInvoiceDataHookResult;
@@ -76,33 +82,38 @@ export function EvaluationsFinanceInvoiceDetail({
       ) : null}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)] lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
+        <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] sm:p-4 lg:col-span-2">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
                 {t('evaluations.ia.sections.finance.dailyChart')}
               </h3>
               <p className="mt-0.5 text-[10px] text-muted-foreground">{monthLabel}</p>
             </div>
-            <div className="flex items-center gap-3 text-xs">
-              <div className="text-right">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="min-w-0 text-left sm:text-right">
                 <div className="text-[10px] font-medium text-muted-foreground">
                   {t('evaluations.ia.kpi.revenueMtd')}
                 </div>
-                <div className="text-[11px] font-bold text-[color:var(--status-success)]">
+                <div className="break-words text-[11px] font-bold tabular-nums text-[color:var(--status-success)] sm:text-xs">
                   {fmtEurMinor(mtdRevenueCents, intlLocale)}
                 </div>
               </div>
-              <div className="text-right">
+              <div className="min-w-0 text-left sm:text-right">
                 <div className="text-[10px] font-medium text-muted-foreground">
                   {t('evaluations.ia.kpi.expensesMtd')}
                 </div>
-                <div className="text-[11px] font-bold text-[color:var(--status-critical)]">
+                <div className="break-words text-[11px] font-bold tabular-nums text-[color:var(--status-critical)] sm:text-xs">
                   {fmtEurMinor(mtdExpenseCents, intlLocale)}
                 </div>
               </div>
             </div>
           </div>
+          {hasDailyData ? (
+            <p className={EVALUATIONS_CHART_MOBILE_HINT_CLASS} data-testid="eval-finance-daily-mobile-hint">
+              {t('evaluations.responsive.chartMobileHint')}
+            </p>
+          ) : null}
           <div className="relative">
             {!hasDailyData ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
@@ -113,7 +124,8 @@ export function EvaluationsFinanceInvoiceDetail({
                 />
               </div>
             ) : null}
-            <ResponsiveContainer width="100%" height={240}>
+            <div className={cn(hasDailyData && EVALUATIONS_CHART_DESKTOP_ONLY_CLASS, 'min-h-[200px] md:min-h-[240px]')}>
+              <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={dailySeries} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                 <defs>
                   <linearGradient id="evalFinRevGrad" x1="0" y1="0" x2="0" y2="1">
@@ -161,6 +173,24 @@ export function EvaluationsFinanceInvoiceDetail({
                 <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={1.5} fill="url(#evalFinExpGrad)" dot={false} connectNulls={false} />
               </AreaChart>
             </ResponsiveContainer>
+            </div>
+            {hasDailyData ? (
+              <div className="mt-3 md:hidden" data-testid="eval-finance-daily-mobile-table">
+                <EvaluationsChartDataTable
+                  caption={t('evaluations.ia.sections.finance.dailyChart')}
+                  columns={[
+                    { key: 'day', label: t('evaluations.responsive.dailyTableDay') },
+                    { key: 'revenue', label: t('evaluations.ia.sections.finance.chartRevenue'), align: 'right' },
+                    { key: 'expenses', label: t('evaluations.ia.sections.finance.chartExpenses'), align: 'right' },
+                  ]}
+                  rows={dailySeries.map((row) => ({
+                    day: row.day,
+                    revenue: row.revenue != null ? fmtEurMinor(Math.round(row.revenue * 100), intlLocale) : '—',
+                    expenses: row.expenses != null ? fmtEurMinor(Math.round(row.expenses * 100), intlLocale) : '—',
+                  }))}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -243,7 +273,9 @@ function RankList({
                 <span className="font-semibold text-foreground">{row.primary}</span>
                 <span className="ml-1 text-muted-foreground">{row.secondary}</span>
               </div>
-              <span className="shrink-0 font-bold text-[color:var(--status-success)]">{row.value}</span>
+              <span className="shrink-0 break-words text-right font-bold tabular-nums text-[color:var(--status-success)]">
+                {row.value}
+              </span>
             </li>
           ))}
         </ul>

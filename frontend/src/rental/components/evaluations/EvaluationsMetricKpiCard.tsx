@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { EvaluationsResolvedMetricState } from '@synq/evaluations-insights/evaluations-metric-state.contract';
 import { cn } from '../../../components/ui/utils';
+import { EVALUATIONS_KPI_VALUE_CLASS } from './evaluations-responsive.constants';
 import { EvaluationsMetricValue } from './EvaluationsMetricValue';
 
 interface EvaluationsMetricKpiCardProps {
@@ -31,7 +32,7 @@ export function EvaluationsMetricKpiCard({
     <div
       className={cn(
         'relative overflow-hidden border text-left',
-        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2',
+        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2 sm:px-3',
         isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
         isWatch && 'border-[color:var(--status-watch)]/30 surface-premium/55',
         isInfo && 'border-[color:var(--status-info)]/30 surface-premium/55',
@@ -47,7 +48,8 @@ export function EvaluationsMetricKpiCard({
           </p>
           <div
             className={cn(
-              'mt-1 text-[21px] font-semibold leading-none tracking-[-0.03em]',
+              'mt-1 break-words',
+              EVALUATIONS_KPI_VALUE_CLASS,
               isCritical && hasPositiveValue && 'text-[color:var(--status-critical)]',
               isWatch && hasPositiveValue && 'text-[color:var(--status-watch)]',
               isInfo && hasPositiveValue && 'text-[color:var(--status-info)]',
@@ -55,12 +57,14 @@ export function EvaluationsMetricKpiCard({
             )}
           >
             {prefix ? (
-              <span className="mr-0.5 text-[15px] font-medium text-muted-foreground">{prefix}</span>
+              <span className="mr-0.5 text-[clamp(0.85rem,3.5vw,0.9375rem)] font-medium text-muted-foreground">
+                {prefix}
+              </span>
             ) : null}
             <EvaluationsMetricValue
               state={state}
               locale={locale}
-              valueClassName="text-[21px] font-semibold"
+              valueClassName={EVALUATIONS_KPI_VALUE_CLASS}
               skeletonClassName="h-7 w-20"
             />
           </div>

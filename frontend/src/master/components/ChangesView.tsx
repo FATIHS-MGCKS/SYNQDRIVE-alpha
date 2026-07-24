@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-mobile-readiness-v49832-2026-07-24',
+    version: 'V4.9.832',
+    title: 'V4.9.832 — Auswertungen Mobile & Responsive Readiness (Prompt 34/54)',
+    summary: [
+      'Vollständiger Responsive-Audit der Auswertungen-Seite: 320–1920 px, Safe Areas, Touch Targets ≥ 44 px.',
+      'Shared Tokens: `evaluations-responsive.constants.ts` (KPI-Grid, Page-Shell, Chart-Mobile-Fallback).',
+      'Charts auf Mobile ausgeblendet (`md+`); tabellarische Alternative + Hinweis; Finanz-Tageschart als Mobile-Tabelle.',
+      'Filterleiste horizontal scrollbar statt Vollseiten-Block; KPI-Werte mit `clamp` + `break-words`.',
+      'E2E: `evaluations-responsive.spec.ts`; Vitest: `EvaluationsMobileReadiness.test.tsx`.',
+      'Doku: `docs/audits/evaluations/evaluations-mobile-readiness-2026-07.md`.',
+    ],
+    reason:
+      'Prompt 34/54 — Auswertungen auf allen Breakpoints ohne horizontales Überlaufen, mit lesbaren KPIs und ohne Hover-only-Informationen.',
+    previousBehavior:
+      'Zweispaltige KPI-Grids ab 320 px, kleine Filter/Chips, komplexe Recharts auf schmalen Displays ohne Mobile-Fallback.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T17:00:00.000Z',
+  },
+  {
     id: 'evaluations-risk-cost-viz-v49831-2026-07-24',
     version: 'V4.9.831',
     title: 'V4.9.831 — Risiko-, Kosten- und Ausfallvisualisierungen (Prompt 33/54)',

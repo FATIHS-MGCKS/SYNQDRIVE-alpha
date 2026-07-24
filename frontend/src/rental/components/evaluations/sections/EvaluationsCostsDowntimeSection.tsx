@@ -2,10 +2,12 @@ import { AlertTriangle, TrendingDown, Wrench } from 'lucide-react';
 import { EvaluationsMetricKpiCard } from '../EvaluationsMetricKpiCard';
 import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
+import { EVALUATIONS_KPI_GRID_CLASS } from '../evaluations-responsive.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAnalyticsHookResult } from '../../../hooks/useEvaluationsAnalyticsSummary.types';
 import { resolveMetricFromEnvelope } from '@synq/evaluations-insights/evaluations-metric-state';
 import { fmtEurMinor, evaluationsIntlLocale } from '../../../lib/evaluations-format';
+import { cn } from '../../../../components/ui/utils';
 import { EvaluationsRiskCostVizPanel } from '../EvaluationsRiskCostVizPanel';
 
 interface EvaluationsCostsDowntimeSectionProps {
@@ -69,7 +71,7 @@ export function EvaluationsCostsDowntimeSection({ analytics, isDarkMode }: Evalu
       errorMessage={costs?.error ?? downtime?.error}
       defaultOpen={false}
     >
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={cn('mb-4', EVALUATIONS_KPI_GRID_CLASS)}>
         <EvaluationsMetricKpiCard
           label={t('evaluations.ia.kpi.fixedCostsMtd')}
           state={costsMetric((d) => d?.fixedCostsMtdMinor ?? null, (v) => fmtEurMinor(v, intlLocale))}

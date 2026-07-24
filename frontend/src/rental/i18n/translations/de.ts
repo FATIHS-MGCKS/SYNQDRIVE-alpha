@@ -341,6 +341,10 @@ export const de: Record<TranslationKey, string> = {
   'evaluations.viz.dimensionComparison.station': 'Stationen',
   'evaluations.viz.dimensionComparison.vehicleClass': 'Fahrzeugklassen',
 
+  'evaluations.responsive.chartMobileHint':
+    'Auf schmalen Displays wird die Tabelle unten angezeigt. Das Diagramm ist ab Tablet-Breite verfügbar.',
+  'evaluations.responsive.dailyTableDay': 'Tag',
+
   // ─── Fleet hub tabs ───
   'fleetTab.status': 'Status',
   'fleetTab.conditionService': 'Zustand & Service',

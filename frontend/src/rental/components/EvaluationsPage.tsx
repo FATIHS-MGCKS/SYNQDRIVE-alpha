@@ -12,6 +12,7 @@ import {
   summaryExportToCsv,
 } from '@synq/evaluations-insights/evaluations-metric-state';
 import type { EvaluationsDataQualityNavigationOptions } from '../lib/evaluations-data-quality-navigation';
+import { EVALUATIONS_PAGE_SHELL_CLASS } from './evaluations/evaluations-responsive.constants';
 import { EvaluationsSectionNav } from './evaluations/EvaluationsSectionNav';
 import { EvaluationsGlobalFiltersSection } from './evaluations/sections/EvaluationsGlobalFiltersSection';
 import { EvaluationsExecutiveSummarySection } from './evaluations/sections/EvaluationsExecutiveSummarySection';
@@ -89,14 +90,14 @@ export function EvaluationsPage({ isDarkMode, onNavigate }: EvaluationsPageProps
   }, [analytics.summary, analyticsLocale]);
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4">
+    <div className={EVALUATIONS_PAGE_SHELL_CLASS} data-testid="evaluations-page">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader title={t('nav.financialInsights')} />
         <button
           type="button"
           onClick={handleExportSummary}
           disabled={!analytics.summary}
-          className="rounded-full px-2.5 py-1 text-[10px] font-semibold sq-tone-neutral disabled:opacity-50"
+          className="min-h-[44px] rounded-full px-3 py-2 text-[11px] font-semibold sq-tone-neutral disabled:opacity-50"
         >
           {t('evaluations.ia.exportCsv')}
         </button>

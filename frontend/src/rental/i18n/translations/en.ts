@@ -340,6 +340,10 @@ export const en = {
   'evaluations.viz.dimensionComparison.station': 'Stations',
   'evaluations.viz.dimensionComparison.vehicleClass': 'Vehicle classes',
 
+  'evaluations.responsive.chartMobileHint':
+    'On narrow screens the table below is shown. The chart is available from tablet width upward.',
+  'evaluations.responsive.dailyTableDay': 'Day',
+
   // ─── Fleet hub tabs ───
   'fleetTab.status': 'Status',
   'fleetTab.conditionService': 'Condition & Service',

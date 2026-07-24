@@ -1,8 +1,10 @@
 import { AlertTriangle, TrendingDown } from 'lucide-react';
+import { cn } from '../../../../components/ui/utils';
 import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import { EvaluationsMetricKpiCard } from '../EvaluationsMetricKpiCard';
 import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
+import { EVALUATIONS_DUAL_GRID_CLASS, EVALUATIONS_KPI_GRID_CLASS } from '../evaluations-responsive.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { EvaluationsInsightListCard } from '../EvaluationsInsightListCard';
 import { EvaluationsRiskCostVizPanel } from '../EvaluationsRiskCostVizPanel';
@@ -46,7 +48,7 @@ export function EvaluationsRisksSection({
       errorMessage={envelope?.error}
       defaultOpen
     >
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={cn('mb-4', EVALUATIONS_KPI_GRID_CLASS)}>
         <EvaluationsMetricKpiCard
           label={t('evaluations.ia.kpi.businessRisks')}
           state={analytics.metrics.businessRiskGroups}
@@ -103,7 +105,7 @@ export function EvaluationsRisksSection({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className={EVALUATIONS_DUAL_GRID_CLASS}>
         <EvaluationsInsightListCard
           title={t('evaluations.ia.sections.risks.businessRisks')}
           loading={insightsLoading}

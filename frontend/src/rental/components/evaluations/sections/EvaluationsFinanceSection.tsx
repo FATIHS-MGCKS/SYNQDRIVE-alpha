@@ -2,11 +2,13 @@ import { ArrowDownLeft, ArrowUpRight, Clock, TrendingUp, Wallet } from 'lucide-r
 import { EvaluationsMetricKpiCard } from '../EvaluationsMetricKpiCard';
 import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
+import { EVALUATIONS_KPI_GRID_CLASS } from '../evaluations-responsive.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAnalyticsHookResult } from '../../../hooks/useEvaluationsAnalyticsSummary.types';
 import { resolveMetricFromEnvelope } from '@synq/evaluations-insights/evaluations-metric-state';
 import { formatCount } from '@synq/evaluations-insights/evaluations-metric-state';
 import { fmtEurMinor, evaluationsIntlLocale } from '../../../lib/evaluations-format';
+import { cn } from '../../../../components/ui/utils';
 import { EvaluationsFinanceInvoiceDetail } from '../EvaluationsFinanceInvoiceDetail';
 import { EvaluationsRiskCostVizPanel } from '../EvaluationsRiskCostVizPanel';
 import type { EvaluationsInvoiceDataHookResult } from '../../../hooks/useEvaluationsInvoiceData';
@@ -78,7 +80,7 @@ export function EvaluationsFinanceSection({
       errorMessage={financial?.error ?? receivables?.error}
       defaultOpen={false}
     >
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={cn('mb-4', EVALUATIONS_KPI_GRID_CLASS)}>
         <EvaluationsMetricKpiCard
           label={t('evaluations.ia.kpi.expensesMtd')}
           state={financialMetric((d) => d?.expensesMtdMinor ?? null, (v) => fmtEurMinor(v, intlLocale))}

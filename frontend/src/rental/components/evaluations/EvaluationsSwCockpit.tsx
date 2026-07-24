@@ -11,6 +11,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import { EvaluationsSwFindingCard } from './EvaluationsSwFindingCard';
 import { EvaluationsSwFindingDetailDrawer } from './EvaluationsSwFindingDetailDrawer';
+import { EVALUATIONS_TOUCH_TARGET_CLASS } from './evaluations-responsive.constants';
 
 const CATEGORY_ORDER: SwCockpitCategory[] = [
   'CRITICAL_RISK',
@@ -115,7 +116,8 @@ export function EvaluationsSwCockpit({ summary, loading }: EvaluationsSwCockpitP
           onClick={() => setCategoryFilter('ALL')}
           onKeyDown={(e) => handleFilterKeyDown(e, 'ALL')}
           className={cn(
-            'shrink-0 snap-start rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors',
+            'shrink-0 snap-start rounded-full px-4 py-2.5 text-[11px] font-semibold transition-colors',
+            EVALUATIONS_TOUCH_TARGET_CLASS,
             categoryFilter === 'ALL'
               ? 'bg-foreground text-background'
               : 'bg-muted/50 text-muted-foreground hover:bg-muted',
@@ -134,7 +136,8 @@ export function EvaluationsSwCockpit({ summary, loading }: EvaluationsSwCockpitP
               onClick={() => setCategoryFilter(cat)}
               onKeyDown={(e) => handleFilterKeyDown(e, cat)}
               className={cn(
-                'shrink-0 snap-start rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors',
+                'shrink-0 snap-start rounded-full px-4 py-2.5 text-[11px] font-semibold transition-colors',
+                EVALUATIONS_TOUCH_TARGET_CLASS,
                 categoryFilter === cat
                   ? 'bg-foreground text-background'
                   : 'bg-muted/50 text-muted-foreground hover:bg-muted',

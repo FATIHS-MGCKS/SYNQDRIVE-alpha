@@ -2,10 +2,12 @@ import { Car, Gauge, TrendingUp } from 'lucide-react';
 import { EvaluationsMetricKpiCard } from '../EvaluationsMetricKpiCard';
 import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
+import { EVALUATIONS_KPI_GRID_CLASS } from '../evaluations-responsive.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAnalyticsHookResult } from '../../../hooks/useEvaluationsAnalyticsSummary.types';
 import { resolveMetricFromEnvelope } from '@synq/evaluations-insights/evaluations-metric-state';
 import { formatCount } from '@synq/evaluations-insights/evaluations-metric-state';
+import { cn } from '../../../../components/ui/utils';
 
 interface EvaluationsFleetSectionProps {
   analytics: EvaluationsAnalyticsHookResult;
@@ -48,7 +50,7 @@ export function EvaluationsFleetSection({ analytics }: EvaluationsFleetSectionPr
       errorMessage={fleet?.error}
       defaultOpen={false}
     >
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={cn('mb-4', EVALUATIONS_KPI_GRID_CLASS)}>
         <EvaluationsMetricKpiCard
           label={t('evaluations.ia.kpi.fleetUtilization')}
           state={fleetMetric((d) => d?.utilizationPercent ?? null, (v) => `${v.toFixed(1)}%`)}

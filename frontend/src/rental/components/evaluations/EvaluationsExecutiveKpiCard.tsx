@@ -12,6 +12,7 @@ import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import { EVALUATIONS_SECTION_IDS } from './evaluations-page.constants';
+import { EVALUATIONS_KPI_VALUE_CLASS, EVALUATIONS_TOUCH_TARGET_CLASS } from './evaluations-responsive.constants';
 import type { ExecutiveKpiDrillDownSection } from '@synq/evaluations-insights/evaluations-executive-kpi-registry.contract';
 
 const DRILL_DOWN_ANCHORS: Record<ExecutiveKpiDrillDownSection, string> = {
@@ -49,7 +50,7 @@ export function EvaluationsExecutiveKpiCard({ card, analyticsLocale }: Evaluatio
   return (
     <article
       className={cn(
-        'group relative flex min-h-[148px] min-w-[min(100%,280px)] snap-start flex-col',
+        'group relative flex min-h-[148px] min-w-0 w-full max-w-full snap-start flex-col',
         'rounded-xl border border-border/45 surface-premium/60 p-3.5 shadow-[var(--shadow-1)]',
         'transition-shadow hover:shadow-[var(--shadow-2)]',
         card.state.showStaleOverlay && 'ring-1 ring-[color:var(--status-watch)]/30',
@@ -69,7 +70,10 @@ export function EvaluationsExecutiveKpiCard({ card, analyticsLocale }: Evaluatio
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className="shrink-0 rounded-md p-0.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  className={cn(
+                    'inline-flex shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                    EVALUATIONS_TOUCH_TARGET_CLASS,
+                  )}
                   aria-label={t('evaluations.executiveKpi.definitionAria')}
                 >
                   <HelpCircle className="h-3.5 w-3.5" />
@@ -98,11 +102,11 @@ export function EvaluationsExecutiveKpiCard({ card, analyticsLocale }: Evaluatio
         </div>
       </header>
 
-      <div className="mb-2 flex items-baseline gap-1.5">
+      <div className="mb-2 flex flex-wrap items-baseline gap-1.5">
         <EvaluationsMetricValue
           state={card.state}
           locale={analyticsLocale}
-          valueClassName="text-[22px] font-semibold leading-none tracking-[-0.03em]"
+          valueClassName={EVALUATIONS_KPI_VALUE_CLASS}
           skeletonClassName="h-8 w-24"
           showBadge={false}
         />

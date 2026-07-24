@@ -7,6 +7,7 @@ import {
 import type { DimensionComparisonMode } from '@synq/evaluations-insights/evaluations-risk-cost-visualizations.contract';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { evaluationsIntlLocale } from '../../lib/evaluations-format';
+import { EVALUATIONS_DUAL_GRID_CLASS } from './evaluations-responsive.constants';
 import { EvaluationsRiskMatrixChart } from './charts/EvaluationsRiskMatrixChart';
 import {
   EvaluationsCostDowntimeSeriesChart,
@@ -97,7 +98,7 @@ export function EvaluationsRiskCostVizPanel({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className={EVALUATIONS_DUAL_GRID_CLASS}>
         <EvaluationsCostWaterfallChart
           data={viz.costWaterfall}
           intlLocale={intlLocale}
@@ -121,7 +122,7 @@ export function EvaluationsRiskCostVizPanel({
           }}
         />
       </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className={EVALUATIONS_DUAL_GRID_CLASS}>
         <EvaluationsCostDowntimeSeriesChart
           data={viz.costDowntimeSeries}
           intlLocale={intlLocale}

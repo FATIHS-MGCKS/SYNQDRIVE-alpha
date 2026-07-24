@@ -21,6 +21,8 @@ import type {
   ReceivablesAgingResult,
 } from '@synq/evaluations-insights/evaluations-risk-cost-visualizations.contract';
 import { fmtEurMinor } from '../../../lib/evaluations-format';
+import { cn } from '../../../../components/ui/utils';
+import { EVALUATIONS_TOUCH_TARGET_CLASS } from '../evaluations-responsive.constants';
 import { EvaluationsChartCard } from './EvaluationsChartCard';
 import { EvaluationsChartDataTable } from './EvaluationsChartDataTable';
 
@@ -461,11 +463,13 @@ export function EvaluationsDimensionComparisonChart({
             role="tab"
             aria-selected={mode === m}
             onClick={() => onModeChange(m)}
-            className={
+            className={cn(
+              'rounded-full px-3 py-2 text-[10px] font-semibold',
+              EVALUATIONS_TOUCH_TARGET_CLASS,
               mode === m
-                ? 'rounded-full bg-foreground px-2.5 py-1 text-[10px] font-semibold text-background'
-                : 'rounded-full bg-muted/50 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground'
-            }
+                ? 'bg-foreground text-background'
+                : 'bg-muted/50 text-muted-foreground',
+            )}
           >
             {m === 'STATION' ? labels.station : labels.vehicleClass}
           </button>

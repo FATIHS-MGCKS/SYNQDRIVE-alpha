@@ -4,6 +4,7 @@ import type { EvaluationsAnalyticsHookResult } from '../../../hooks/useEvaluatio
 import { EvaluationsAnalyticsFilterBar } from '../../insights/EvaluationsAnalyticsFilterBar';
 import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
+import { EVALUATIONS_TOUCH_TARGET_CLASS } from '../evaluations-responsive.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { cn } from '../../../../components/ui/utils';
 
@@ -58,7 +59,10 @@ export function EvaluationsGlobalFiltersSection({
           type="button"
           onClick={() => void analytics.refresh()}
           disabled={analytics.loading}
-          className="inline-flex items-center gap-1 rounded-lg border border-border/50 px-2 py-1 font-semibold hover:bg-muted/50 disabled:opacity-50"
+          className={cn(
+            'inline-flex items-center gap-1 rounded-lg border border-border/50 px-3 py-2 font-semibold hover:bg-muted/50 disabled:opacity-50',
+            EVALUATIONS_TOUCH_TARGET_CLASS,
+          )}
         >
           <RefreshCw className={cn('h-3 w-3', analytics.isRefetching && 'animate-spin')} />
           {t('evaluations.ia.sections.filters.refresh')}
