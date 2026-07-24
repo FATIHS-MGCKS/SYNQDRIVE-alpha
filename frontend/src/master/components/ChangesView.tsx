@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-post-remediation-readiness-v49728-2026-07-24',
+    version: '4.9.728',
+    title: 'V4.9.728 — Auswertungen post-remediation final audit (Prompt 54)',
+    summary: [
+      'Final 54/54 audit: CONDITIONAL GO — finance contract tests pass, VPS insights pipeline healthy (170 runs/24h, 0 failures).',
+      'Blocked: PR #818 E2E/visual and PR #819 observability not on main/VPS; authenticated smoke not run; IAM schema drift on VPS.',
+      'No P0 financial or cross-tenant findings in code; forecast/backtesting N/A by design.',
+      'Audit: docs/audits/evaluations/evaluations-post-remediation-readiness-2026-07.md',
+    ],
+    reason: 'Prompt 54/54: formal Go/No-Go with honest test matrix and rollback plan.',
+    previousBehavior: 'No consolidated post-remediation readiness verdict for the Auswertungen 54-prompt arc.',
+    details:
+      'docs/audits/evaluations/evaluations-post-remediation-readiness-2026-07.md — references VPS audit V4.9.727, observability V4.9.726, E2E branch #818',
+    affectsArchitecture: false,
+    module: 'Business Insights',
+    createdAt: '2026-07-24T22:25:00.000Z',
+  },
+  {
     id: 'evaluations-vps-staging-verification-v49727-2026-07-24',
     version: '4.9.727',
     title: 'V4.9.727 — Auswertungen VPS/staging verification audit (Prompt 53)',
