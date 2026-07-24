@@ -54,6 +54,7 @@ function makeFleetConnectivityService(
     stub(),
     stub(),
     { record: jest.fn() },
+    { record: jest.fn() },
     undefined,
     undefined,
     undefined,

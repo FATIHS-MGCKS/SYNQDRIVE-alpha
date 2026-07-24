@@ -1,11 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
-import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { VehiclesService } from './vehicles.service';
 import { makeGpsPositionAccessStub } from './operational/vehicle-operational-state-v2.test-helpers';
 import { mockConnectivityRuntime } from './connectivity/connectivity-runtime.test-fixture';
 
 describe('VehiclesService.getDeviceConnection security (Prompt 16/36)', () => {
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
+  const vehicleDetailAudit = { record: jest.fn() };
   const deviceConnectionQuery = {
     getVehicleSummary: jest.fn(),
   };
@@ -34,6 +34,7 @@ describe('VehiclesService.getDeviceConnection security (Prompt 16/36)', () => {
       stub(),
       { cacheKey: () => 'k', invalidate: jest.fn() },
       audit,
+      vehicleDetailAudit,
       undefined,
       undefined,
       undefined,
@@ -99,22 +100,29 @@ describe('VehiclesService.getDeviceConnection security (Prompt 16/36)', () => {
     });
 
     await expect(
-      service.getDeviceConnection('org-1', 'veh-foreign', 'user-1'),
+      service.getDeviceConnection('org-1', 'veh-foreign', {
+        actorUserId: 'user-1',
+        organizationId: 'org-1',
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(deviceConnectionQuery.getVehicleSummary).not.toHaveBeenCalled();
   });
 
   it('records audit log and sanitizes provider internals from response', async () => {
     const service = makeService();
-    const result = await service.getDeviceConnection('org-1', 'veh-1', 'user-1');
+    const result = await service.getDeviceConnection('org-1', 'veh-1', {
+      actorUserId: 'user-1',
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+    });
 
-    expect(audit.record).toHaveBeenCalledWith(
+    expect(vehicleDetailAudit.record).toHaveBeenCalledWith(
       expect.objectContaining({
+        auditAction: 'DEVICE_CONNECTION_READ',
         actorUserId: 'user-1',
-        actorOrganizationId: 'org-1',
-        action: ActivityAction.SYNC,
-        entity: ActivityEntity.VEHICLE,
-        entityId: 'veh-1',
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        outcome: 'allowed',
       }),
     );
     expect(result.webhookConfiguration.unplugTriggerState).not.toHaveProperty('callbackUrl');

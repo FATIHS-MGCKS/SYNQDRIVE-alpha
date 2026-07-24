@@ -25,8 +25,6 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
-  ActivityAction,
-  ActivityEntity,
   CleaningStatus,
   HealthStatus,
   VehicleStatus,
@@ -35,10 +33,19 @@ import {
 } from '@prisma/client';
 import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
-import { ActivityLogService } from '@modules/activity-log/activity-log.service';
+import {
+  VehicleDetailAccessAuditAction,
+  VehicleDetailAccessAuditService,
+} from '@modules/activity-log/vehicle-detail-access-audit.service';
 
 interface VehicleStatusAuthRequest {
   user?: { id?: string };
+  requestId?: string;
+  ip?: string;
+  connection?: { remoteAddress?: string };
+  headers?: Record<string, string | string[] | undefined>;
+  method?: string;
+  route?: { path?: string };
 }
 
 type VehicleExteriorView = 'FRONT' | 'LEFT' | 'RIGHT' | 'REAR' | 'ROOF';
@@ -69,7 +76,7 @@ export class VehiclesController {
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
-    private readonly activityLog: ActivityLogService,
+    private readonly vehicleDetailAudit: VehicleDetailAccessAuditService,
   ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
@@ -100,8 +107,13 @@ export class VehiclesController {
   @Get('organizations/:orgId/fleet-map')
   @UseGuards(OrgScopingGuard, PermissionsGuard)
   @RequirePermission('fleet', 'read')
-  async getFleetMap(@Param('orgId') orgId: string) {
-    return this.vehiclesService.getFleetMapData(orgId);
+  async getFleetMap(@Param('orgId') orgId: string, @Req() req: VehicleStatusAuthRequest) {
+    const auditCtx = VehicleDetailAccessAuditService.contextFromRequest(
+      req,
+      orgId,
+      'GET /organizations/:orgId/fleet-map',
+    );
+    return this.vehiclesService.getFleetMapData(orgId, auditCtx);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId')
@@ -119,8 +131,15 @@ export class VehiclesController {
   async getVehicleTelemetry(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
+    @Req() req: VehicleStatusAuthRequest,
   ) {
-    return this.vehiclesService.getVehicleWithTelemetry(vehicleId, orgId);
+    const auditCtx = VehicleDetailAccessAuditService.contextFromRequest(
+      req,
+      orgId,
+      'GET /organizations/:orgId/vehicles/:vehicleId/telemetry',
+    );
+    auditCtx.vehicleId = vehicleId;
+    return this.vehiclesService.getVehicleWithTelemetry(vehicleId, orgId, auditCtx);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/live-gps')
@@ -129,8 +148,15 @@ export class VehiclesController {
   async getLiveGps(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
+    @Req() req: VehicleStatusAuthRequest,
   ) {
-    return this.vehiclesService.getLiveGps(vehicleId, orgId);
+    const auditCtx = VehicleDetailAccessAuditService.contextFromRequest(
+      req,
+      orgId,
+      'GET /organizations/:orgId/vehicles/:vehicleId/live-gps',
+    );
+    auditCtx.vehicleId = vehicleId;
+    return this.vehiclesService.getLiveGps(vehicleId, orgId, auditCtx);
   }
 
   @Post('organizations/:orgId/vehicles')
@@ -297,16 +323,20 @@ export class VehiclesController {
 
     await this.vehiclesService.invalidateFleetMapCache(orgId);
 
+    const auditCtx = VehicleDetailAccessAuditService.contextFromRequest(
+      req,
+      orgId,
+      'PATCH /organizations/:orgId/vehicles/:vehicleId/status',
+    );
+    auditCtx.vehicleId = vehicleId;
+
     if (body.status && previousVehicleStatus && previousVehicleStatus !== body.status) {
-      await this.activityLog.log({
-        organizationId: orgId,
-        userId: req.user?.id,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.VEHICLE,
-        entityId: vehicleId,
-        description: `Vehicle operational status changed from ${previousVehicleStatus} to ${body.status}`,
-        metaJson: {
-          auditAction: 'VEHICLE_OPERATIONAL_STATUS_UPDATE',
+      this.vehicleDetailAudit.record({
+        ...auditCtx,
+        auditAction: VehicleDetailAccessAuditAction.OPERATIONAL_STATUS_UPDATE,
+        outcome: 'allowed',
+        purpose: 'VEHICLE_OPERATIONAL_STATUS_CHANGE',
+        metadata: {
           previousStatus: previousVehicleStatus,
           nextStatus: body.status,
         },
@@ -318,15 +348,12 @@ export class VehiclesController {
       previousCleaningStatus &&
       previousCleaningStatus !== body.cleaningStatus
     ) {
-      await this.activityLog.log({
-        organizationId: orgId,
-        userId: req.user?.id,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.VEHICLE,
-        entityId: vehicleId,
-        description: `Vehicle cleaning status changed from ${previousCleaningStatus} to ${body.cleaningStatus}`,
-        metaJson: {
-          auditAction: 'VEHICLE_CLEANING_STATUS_UPDATE',
+      this.vehicleDetailAudit.record({
+        ...auditCtx,
+        auditAction: VehicleDetailAccessAuditAction.CLEANING_STATUS_UPDATE,
+        outcome: 'allowed',
+        purpose: 'VEHICLE_CLEANING_STATUS_CHANGE',
+        metadata: {
           previousCleaningStatus,
           nextCleaningStatus: body.cleaningStatus,
         },
@@ -377,9 +404,15 @@ export class VehiclesController {
   async getDeviceConnection(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: VehicleStatusAuthRequest,
   ) {
-    return this.vehiclesService.getDeviceConnection(orgId, vehicleId, req.user?.id);
+    const auditCtx = VehicleDetailAccessAuditService.contextFromRequest(
+      req,
+      orgId,
+      'GET /organizations/:orgId/vehicles/:vehicleId/device-connection',
+    );
+    auditCtx.vehicleId = vehicleId;
+    return this.vehiclesService.getDeviceConnection(orgId, vehicleId, auditCtx);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/complaints')

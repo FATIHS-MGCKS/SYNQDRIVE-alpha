@@ -11,8 +11,6 @@ import {
   EnrichmentJobType,
   BatterySourceType,
   BookingStatus,
-  ActivityAction,
-  ActivityEntity,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
@@ -79,6 +77,11 @@ import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { sanitizeDeviceConnectionForClient } from '@modules/dimo/device-connection-client-response';
+import {
+  VehicleDetailAccessAuditAction,
+  VehicleDetailAccessAuditService,
+  type VehicleAccessAuditContext,
+} from '@modules/activity-log/vehicle-detail-access-audit.service';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -312,6 +315,7 @@ export class VehiclesService {
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly audit: AuditService,
+    private readonly vehicleDetailAudit: VehicleDetailAccessAuditService,
     @Optional()
     private readonly billingQuantity?: BillingQuantityVehicleIntegration,
     @Optional()
@@ -1414,11 +1418,18 @@ export class VehiclesService {
     );
   }
 
-  async getFleetMapData(organizationId: string): Promise<FleetMapVehicleDto[]> {
+  async getFleetMapData(
+    organizationId: string,
+    auditCtx?: VehicleAccessAuditContext,
+  ): Promise<FleetMapVehicleDto[]> {
     await this.gpsPositionAccess.assertOrgFleetGpsAccess({
       organizationId,
       purpose: 'FLEET_ANALYTICS',
-      route: 'GET /organizations/:orgId/fleet-map',
+      route: auditCtx?.route ?? 'GET /organizations/:orgId/fleet-map',
+      actorUserId: auditCtx?.actorUserId,
+      requestId: auditCtx?.requestId,
+      ipAddress: auditCtx?.ipAddress,
+      userAgent: auditCtx?.userAgent,
     });
 
     const cacheKey = this.fleetMapCache.cacheKey(organizationId);
@@ -1708,7 +1719,11 @@ export class VehiclesService {
     );
   }
 
-  async getVehicleWithTelemetry(vehicleId: string, organizationId?: string) {
+  async getVehicleWithTelemetry(
+    vehicleId: string,
+    organizationId?: string,
+    auditCtx?: VehicleAccessAuditContext,
+  ) {
     const where = organizationId
       ? { id: vehicleId, organizationId }
       : { id: vehicleId };
@@ -1727,7 +1742,13 @@ export class VehiclesService {
         organizationId,
         vehicleId,
         purpose: 'TECHNICAL_OVERVIEW',
-        route: 'GET /organizations/:orgId/vehicles/:vehicleId/telemetry',
+        route:
+          auditCtx?.route ??
+          'GET /organizations/:orgId/vehicles/:vehicleId/telemetry',
+        actorUserId: auditCtx?.actorUserId,
+        requestId: auditCtx?.requestId,
+        ipAddress: auditCtx?.ipAddress,
+        userAgent: auditCtx?.userAgent,
       });
     }
 
@@ -1856,7 +1877,11 @@ export class VehiclesService {
 
   // ── Live GPS (direct DIMO proxy, no DB caching) ──────────────────
 
-  async getLiveGps(vehicleId: string, organizationId?: string) {
+  async getLiveGps(
+    vehicleId: string,
+    organizationId?: string,
+    auditCtx?: VehicleAccessAuditContext,
+  ) {
     const where = organizationId
       ? { id: vehicleId, organizationId }
       : { id: vehicleId };
@@ -1875,7 +1900,13 @@ export class VehiclesService {
         organizationId,
         vehicleId,
         purpose: 'LIVE_MAP',
-        route: 'GET /organizations/:orgId/vehicles/:vehicleId/live-gps',
+        route:
+          auditCtx?.route ??
+          'GET /organizations/:orgId/vehicles/:vehicleId/live-gps',
+        actorUserId: auditCtx?.actorUserId,
+        requestId: auditCtx?.requestId,
+        ipAddress: auditCtx?.ipAddress,
+        userAgent: auditCtx?.userAgent,
       });
     }
 
@@ -2547,7 +2578,7 @@ export class VehiclesService {
   async getDeviceConnection(
     organizationId: string,
     vehicleId: string,
-    actorUserId?: string | null,
+    auditCtx?: VehicleAccessAuditContext,
   ) {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId },
@@ -2564,16 +2595,21 @@ export class VehiclesService {
       this.connectivityRuntimeProjection.projectForVehicle(organizationId, vehicleId),
     ]);
 
-    void this.audit.record({
-      actorUserId: actorUserId ?? undefined,
-      actorOrganizationId: organizationId,
-      action: ActivityAction.SYNC,
-      entity: ActivityEntity.VEHICLE,
-      entityId: vehicleId,
-      description: 'Device connection read',
-      route: 'GET /organizations/:orgId/vehicles/:vehicleId/device-connection',
-      metaJson: {
-        accessKind: 'device_connection',
+    this.vehicleDetailAudit.record({
+      auditAction: VehicleDetailAccessAuditAction.DEVICE_CONNECTION_READ,
+      organizationId,
+      vehicleId,
+      actorUserId: auditCtx?.actorUserId,
+      route:
+        auditCtx?.route ??
+        'GET /organizations/:orgId/vehicles/:vehicleId/device-connection',
+      requestId: auditCtx?.requestId,
+      ipAddress: auditCtx?.ipAddress,
+      userAgent: auditCtx?.userAgent,
+      outcome: 'allowed',
+      purpose: 'DEVICE_CONNECTION_STATUS',
+      deduplicate: true,
+      metadata: {
         lteR1Capable: summary.lteR1Capable,
         openUnpluggedEpisode: summary.openUnpluggedEpisode,
       },

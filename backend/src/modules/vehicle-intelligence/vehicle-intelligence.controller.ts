@@ -64,6 +64,10 @@ import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usag
 import { ServiceComplianceService } from './service-compliance/service-compliance.service';
 import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
+import {
+  VehicleDetailAccessAuditAction,
+  VehicleDetailAccessAuditService,
+} from '@modules/activity-log/vehicle-detail-access-audit.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
@@ -165,6 +169,7 @@ export class VehicleIntelligenceController {
     private readonly serviceComplianceService: ServiceComplianceService,
     private readonly complianceTaskMaterialize: ComplianceTaskMaterializeService,
     private readonly vehicleFileSummaryService: VehicleFileSummaryService,
+    private readonly vehicleDetailAudit: VehicleDetailAccessAuditService,
     @Inject(forwardRef(() => InvoicesService))
     private readonly invoicesService: InvoicesService,
     @Inject(forwardRef(() => AiTireSpecJobService))
@@ -1755,7 +1760,35 @@ export class VehicleIntelligenceController {
 
   // --- Vehicle file summary (Documents tab read model) ---
   @Get('file-summary')
-  async getVehicleFileSummary(@Param('vehicleId') vehicleId: string) {
+  async getVehicleFileSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req()
+    req: {
+      user?: { id?: string; organizationId?: string };
+      requestId?: string;
+      ip?: string;
+      connection?: { remoteAddress?: string };
+      headers?: Record<string, string | string[] | undefined>;
+      method?: string;
+      route?: { path?: string };
+    },
+  ) {
+    const orgId = req.user?.organizationId;
+    if (orgId) {
+      const auditCtx = VehicleDetailAccessAuditService.contextFromRequest(
+        req,
+        orgId,
+        'GET /vehicles/:vehicleId/file-summary',
+      );
+      this.vehicleDetailAudit.record({
+        ...auditCtx,
+        auditAction: VehicleDetailAccessAuditAction.FILE_SUMMARY_READ,
+        vehicleId,
+        outcome: 'allowed',
+        purpose: 'VEHICLE_DOCUMENTS_TAB',
+        deduplicate: true,
+      });
+    }
     return this.vehicleFileSummaryService.buildSummary(vehicleId);
   }
 

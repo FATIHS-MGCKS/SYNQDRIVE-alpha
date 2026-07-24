@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { AuditService } from '@modules/activity-log/audit.service';
+import {
+  VehicleDetailAccessAuditAction,
+  VehicleDetailAccessAuditService,
+} from '@modules/activity-log/vehicle-detail-access-audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DataAuthorizationDeniedException } from './data-authorization.exceptions';
 import { DataAuthorizationEnforcementService } from './data-authorization-enforcement.service';
@@ -19,6 +22,9 @@ export interface VehicleGpsAccessRequest {
   purpose: GpsPositionAccessPurpose;
   actorUserId?: string | null;
   route?: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
   /** When true (default), increments consent accessCount. */
   trackAccess?: boolean;
   fromCache?: boolean;
@@ -29,6 +35,9 @@ export interface OrgFleetGpsAccessRequest {
   purpose: Extract<GpsPositionAccessPurpose, 'FLEET_ANALYTICS'>;
   actorUserId?: string | null;
   route?: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
   fromCache?: boolean;
 }
 
@@ -42,9 +51,6 @@ export interface SystemGpsIngestRequest {
 /**
  * Central gate for position-related reads and provider-backed GPS fetches.
  * Reuses {@link DataAuthorizationEnforcementService} — no parallel auth architecture.
- *
- * HTTP layers still enforce authentication, org scoping, and permissions via guards.
- * This service adds vehicle binding, data consent, purpose, audit, and minimization hooks.
  */
 @Injectable()
 export class GpsPositionAccessService {
@@ -53,60 +59,54 @@ export class GpsPositionAccessService {
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly audit: AuditService,
+    private readonly vehicleDetailAudit: VehicleDetailAccessAuditService,
   ) {}
 
-  /** Single-vehicle user/API access (live-gps, telemetry DIMO fetch, trip route). */
   async assertVehicleGpsAccess(request: VehicleGpsAccessRequest): Promise<void> {
     await this.assertVehicleInOrg(request.organizationId, request.vehicleId);
     await this.dataAuthorizations.ensureDimoTelemetryAuthorization(request.organizationId);
 
-    await this.dataAuthEnforcement.assertDataAuthorization({
-      orgId: request.organizationId,
-      vehicleId: request.vehicleId,
-      sourceType: 'DIMO',
-      dataCategory: GPS_PURPOSE_DATA_CATEGORY[request.purpose],
-      purpose: request.purpose,
-      processorType: 'SYNQDRIVE',
-      trackAccess: request.trackAccess ?? true,
-    });
+    try {
+      await this.dataAuthEnforcement.assertDataAuthorization({
+        orgId: request.organizationId,
+        vehicleId: request.vehicleId,
+        sourceType: 'DIMO',
+        dataCategory: GPS_PURPOSE_DATA_CATEGORY[request.purpose],
+        purpose: request.purpose,
+        processorType: 'SYNQDRIVE',
+        trackAccess: request.trackAccess ?? true,
+      });
+    } catch (err) {
+      if (err instanceof DataAuthorizationDeniedException) {
+        this.recordAccessAudit(request, 'denied', 'DATA_AUTHORIZATION_DENIED');
+      }
+      throw err;
+    }
 
-    this.recordGpsAccessAudit({
-      organizationId: request.organizationId,
-      vehicleId: request.vehicleId,
-      purpose: request.purpose,
-      actorUserId: request.actorUserId,
-      route: request.route,
-      fromCache: request.fromCache ?? false,
-      accessKind: 'vehicle',
-    });
+    this.recordAccessAudit(request, 'allowed');
   }
 
-  /** Org-wide fleet map read — must run before Redis cache lookup. */
   async assertOrgFleetGpsAccess(request: OrgFleetGpsAccessRequest): Promise<void> {
     await this.dataAuthorizations.ensureDimoTelemetryAuthorization(request.organizationId);
 
-    await this.dataAuthEnforcement.assertOrganizationDataAuthorization({
-      orgId: request.organizationId,
-      sourceType: 'DIMO',
-      dataCategory: GPS_PURPOSE_DATA_CATEGORY[request.purpose],
-      purpose: request.purpose,
-      processorType: 'SYNQDRIVE',
-    });
+    try {
+      await this.dataAuthEnforcement.assertOrganizationDataAuthorization({
+        orgId: request.organizationId,
+        sourceType: 'DIMO',
+        dataCategory: GPS_PURPOSE_DATA_CATEGORY[request.purpose],
+        purpose: request.purpose,
+        processorType: 'SYNQDRIVE',
+      });
+    } catch (err) {
+      if (err instanceof DataAuthorizationDeniedException) {
+        this.recordFleetAudit(request, 'denied', 'DATA_AUTHORIZATION_DENIED');
+      }
+      throw err;
+    }
 
-    this.recordGpsAccessAudit({
-      organizationId: request.organizationId,
-      purpose: request.purpose,
-      actorUserId: request.actorUserId,
-      route: request.route,
-      fromCache: request.fromCache ?? false,
-      accessKind: 'org_fleet',
-    });
+    this.recordFleetAudit(request, 'allowed');
   }
 
-  /**
-   * Background ingest (DIMO snapshot poll) — tenant + documented system purpose.
-   * No user actor; audit uses INTERNAL_SYSTEM metadata.
-   */
   async assertSystemGpsIngest(request: SystemGpsIngestRequest): Promise<void> {
     await this.assertVehicleInOrg(request.organizationId, request.vehicleId);
     await this.dataAuthorizations.ensureDimoTelemetryAuthorization(request.organizationId);
@@ -123,16 +123,18 @@ export class GpsPositionAccessService {
 
     void this.audit.record({
       actorOrganizationId: request.organizationId,
-      action: ActivityAction.SYNC,
-      entity: ActivityEntity.VEHICLE,
+      action: 'SYNC',
+      entity: 'VEHICLE',
       entityId: request.vehicleId,
       description: 'System GPS ingest (DIMO snapshot)',
       route: request.systemJob ?? GPS_SYSTEM_JOB_NAME,
       metaJson: {
+        auditAction: 'SYSTEM_GPS_INGEST',
         systemJob: request.systemJob ?? GPS_SYSTEM_JOB_NAME,
         documentedPurpose: request.documentedPurpose ?? GPS_SYSTEM_INGEST_PURPOSE,
         dataCategory: GPS_SYSTEM_INGEST_CATEGORY,
         processorType: 'INTERNAL_SYSTEM',
+        outcome: 'allowed',
       },
     });
   }
@@ -150,30 +152,71 @@ export class GpsPositionAccessService {
     }
   }
 
-  private recordGpsAccessAudit(input: {
-    organizationId: string;
-    vehicleId?: string;
-    purpose: GpsPositionAccessPurpose;
-    actorUserId?: string | null;
-    route?: string;
-    fromCache: boolean;
-    accessKind: 'vehicle' | 'org_fleet';
-  }): void {
-    void this.audit.record({
-      actorUserId: input.actorUserId ?? undefined,
-      actorOrganizationId: input.organizationId,
-      action: ActivityAction.SYNC,
-      entity: ActivityEntity.VEHICLE,
-      entityId: input.vehicleId,
-      description: `GPS position access (${input.purpose})`,
-      route: input.route,
-      metaJson: {
-        purpose: input.purpose,
-        accessKind: input.accessKind,
-        fromCache: input.fromCache,
-        dataCategory: GPS_PURPOSE_DATA_CATEGORY[input.purpose],
+  private recordAccessAudit(
+    request: VehicleGpsAccessRequest,
+    outcome: 'allowed' | 'denied',
+    errorClass?: string,
+  ): void {
+    this.vehicleDetailAudit.record({
+      auditAction: this.auditActionForPurpose(request.purpose),
+      organizationId: request.organizationId,
+      vehicleId: request.vehicleId,
+      actorUserId: request.actorUserId,
+      purpose: request.purpose,
+      route: request.route,
+      requestId: request.requestId,
+      ipAddress: request.ipAddress,
+      userAgent: request.userAgent,
+      outcome,
+      errorClass,
+      deduplicate: outcome === 'allowed',
+      metadata: {
+        dataCategory: GPS_PURPOSE_DATA_CATEGORY[request.purpose],
+        accessKind: 'vehicle',
       },
     });
+  }
+
+  private recordFleetAudit(
+    request: OrgFleetGpsAccessRequest,
+    outcome: 'allowed' | 'denied',
+    errorClass?: string,
+  ): void {
+    this.vehicleDetailAudit.record({
+      auditAction: VehicleDetailAccessAuditAction.FLEET_MAP_READ,
+      organizationId: request.organizationId,
+      actorUserId: request.actorUserId,
+      purpose: request.purpose,
+      route: request.route,
+      requestId: request.requestId,
+      ipAddress: request.ipAddress,
+      userAgent: request.userAgent,
+      outcome,
+      errorClass,
+      deduplicate: outcome === 'allowed',
+      metadata: {
+        dataCategory: GPS_PURPOSE_DATA_CATEGORY[request.purpose],
+        accessKind: 'org_fleet',
+        fromCache: request.fromCache ?? false,
+      },
+    });
+  }
+
+  private auditActionForPurpose(
+    purpose: GpsPositionAccessPurpose,
+  ): (typeof VehicleDetailAccessAuditAction)[keyof typeof VehicleDetailAccessAuditAction] {
+    switch (purpose) {
+      case 'LIVE_MAP':
+        return VehicleDetailAccessAuditAction.LIVE_GPS_READ;
+      case 'TECHNICAL_OVERVIEW':
+        return VehicleDetailAccessAuditAction.TELEMETRY_READ;
+      case 'TRIPS':
+        return VehicleDetailAccessAuditAction.TRIP_ROUTE_READ;
+      case 'FLEET_ANALYTICS':
+        return VehicleDetailAccessAuditAction.FLEET_MAP_READ;
+      default:
+        return VehicleDetailAccessAuditAction.TELEMETRY_READ;
+    }
   }
 }
 

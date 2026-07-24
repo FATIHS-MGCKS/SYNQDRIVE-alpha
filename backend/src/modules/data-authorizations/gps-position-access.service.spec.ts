@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
-import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { GpsPositionAccessService } from './gps-position-access.service';
 import { DataAuthorizationDeniedException } from './data-authorization.exceptions';
+import { VehicleDetailAccessAuditAction } from '@modules/activity-log/vehicle-detail-access-audit.service';
 
 describe('GpsPositionAccessService', () => {
   const prisma = {
@@ -15,6 +15,7 @@ describe('GpsPositionAccessService', () => {
     assertOrganizationDataAuthorization: jest.fn(),
   };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
+  const vehicleDetailAudit = { record: jest.fn() };
 
   let service: GpsPositionAccessService;
 
@@ -25,6 +26,7 @@ describe('GpsPositionAccessService', () => {
       dataAuthorizations as never,
       dataAuthEnforcement as never,
       audit as never,
+      vehicleDetailAudit as never,
     );
   });
 
@@ -35,6 +37,7 @@ describe('GpsPositionAccessService', () => {
       purpose: 'LIVE_MAP' as const,
       actorUserId: 'user-1',
       route: 'GET /live-gps',
+      requestId: 'req-abc',
     };
 
     it('allows access for vehicle in the correct organization', async () => {
@@ -43,28 +46,15 @@ describe('GpsPositionAccessService', () => {
 
       await expect(service.assertVehicleGpsAccess(baseRequest)).resolves.toBeUndefined();
 
-      expect(prisma.vehicle.findFirst).toHaveBeenCalledWith({
-        where: { id: 'veh-1', organizationId: 'org-1' },
-        select: { id: true },
-      });
-      expect(dataAuthorizations.ensureDimoTelemetryAuthorization).toHaveBeenCalledWith('org-1');
-      expect(dataAuthEnforcement.assertDataAuthorization).toHaveBeenCalledWith(
+      expect(vehicleDetailAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
-          orgId: 'org-1',
+          auditAction: VehicleDetailAccessAuditAction.LIVE_GPS_READ,
+          organizationId: 'org-1',
           vehicleId: 'veh-1',
-          sourceType: 'DIMO',
-          dataCategory: 'GPS_LOCATION',
-          purpose: 'LIVE_MAP',
-          processorType: 'SYNQDRIVE',
-        }),
-      );
-      expect(audit.record).toHaveBeenCalledWith(
-        expect.objectContaining({
           actorUserId: 'user-1',
-          actorOrganizationId: 'org-1',
-          action: ActivityAction.SYNC,
-          entity: ActivityEntity.VEHICLE,
-          entityId: 'veh-1',
+          requestId: 'req-abc',
+          outcome: 'allowed',
+          deduplicate: true,
         }),
       );
     });
@@ -89,7 +79,7 @@ describe('GpsPositionAccessService', () => {
       ).rejects.toThrow('Vehicle not found');
     });
 
-    it('denies when data authorization is disabled', async () => {
+    it('audits data authorization denial without logging coordinates', async () => {
       prisma.vehicle.findFirst.mockResolvedValue({ id: 'veh-1' });
       dataAuthEnforcement.assertDataAuthorization.mockRejectedValue(
         new DataAuthorizationDeniedException('No active data authorization covers this access'),
@@ -97,6 +87,14 @@ describe('GpsPositionAccessService', () => {
 
       await expect(service.assertVehicleGpsAccess(baseRequest)).rejects.toBeInstanceOf(
         DataAuthorizationDeniedException,
+      );
+
+      expect(vehicleDetailAudit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auditAction: VehicleDetailAccessAuditAction.LIVE_GPS_READ,
+          outcome: 'denied',
+          errorClass: 'DATA_AUTHORIZATION_DENIED',
+        }),
       );
     });
 
@@ -131,18 +129,14 @@ describe('GpsPositionAccessService', () => {
         purpose: 'FLEET_ANALYTICS',
         route: 'GET /fleet-map',
         fromCache: true,
+        actorUserId: 'user-1',
       });
 
-      expect(dataAuthEnforcement.assertOrganizationDataAuthorization).toHaveBeenCalledWith(
+      expect(vehicleDetailAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
-          orgId: 'org-1',
-          dataCategory: 'GPS_LOCATION',
-          purpose: 'FLEET_ANALYTICS',
-        }),
-      );
-      expect(audit.record).toHaveBeenCalledWith(
-        expect.objectContaining({
-          metaJson: expect.objectContaining({ accessKind: 'org_fleet', fromCache: true }),
+          auditAction: VehicleDetailAccessAuditAction.FLEET_MAP_READ,
+          outcome: 'allowed',
+          metadata: expect.objectContaining({ accessKind: 'org_fleet', fromCache: true }),
         }),
       );
     });
@@ -158,6 +152,14 @@ describe('GpsPositionAccessService', () => {
           purpose: 'FLEET_ANALYTICS',
         }),
       ).rejects.toBeInstanceOf(DataAuthorizationDeniedException);
+
+      expect(vehicleDetailAudit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auditAction: VehicleDetailAccessAuditAction.FLEET_MAP_READ,
+          outcome: 'denied',
+          errorClass: 'DATA_AUTHORIZATION_DENIED',
+        }),
+      );
     });
   });
 
@@ -173,16 +175,6 @@ describe('GpsPositionAccessService', () => {
         documentedPurpose: 'TECHNICAL_OVERVIEW',
       });
 
-      expect(dataAuthEnforcement.assertDataAuthorization).toHaveBeenCalledWith(
-        expect.objectContaining({
-          orgId: 'org-1',
-          vehicleId: 'veh-1',
-          dataCategory: 'TELEMETRY_DATA',
-          purpose: 'TECHNICAL_OVERVIEW',
-          processorType: 'INTERNAL_SYSTEM',
-          trackAccess: false,
-        }),
-      );
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           route: 'dimo.snapshot.poll',
@@ -193,6 +185,7 @@ describe('GpsPositionAccessService', () => {
           }),
         }),
       );
+      expect(vehicleDetailAudit.record).not.toHaveBeenCalled();
     });
 
     it('denies system ingest for vehicle outside tenant', async () => {

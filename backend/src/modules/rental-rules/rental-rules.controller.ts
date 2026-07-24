@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
@@ -16,6 +17,10 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import type { PermissionActor } from '@shared/auth/permission.util';
 import { RentalRulesService } from './rental-rules.service';
+import {
+  VehicleDetailAccessAuditAction,
+  VehicleDetailAccessAuditService,
+} from '@modules/activity-log/vehicle-detail-access-audit.service';
 import { RequireRentalRulePermission } from './decorators/require-rental-rule-permission.decorator';
 import {
   AssignCategoryVehiclesDto,
@@ -40,7 +45,10 @@ import {
 @Controller()
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class RentalRulesController {
-  constructor(private readonly rentalRules: RentalRulesService) {}
+  constructor(
+    private readonly rentalRules: RentalRulesService,
+    private readonly vehicleDetailAudit: VehicleDetailAccessAuditService,
+  ) {}
 
   @Get('organizations/:orgId/rental-rules/overview')
   @RequireRentalRulePermission('rental_rules.read')
@@ -241,7 +249,30 @@ export class RentalRulesController {
   getVehicleRequirements(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
+    @Req()
+    req: {
+      user?: { id?: string };
+      requestId?: string;
+      ip?: string;
+      connection?: { remoteAddress?: string };
+      headers?: Record<string, string | string[] | undefined>;
+      method?: string;
+      route?: { path?: string };
+    },
   ) {
+    const auditCtx = VehicleDetailAccessAuditService.contextFromRequest(
+      req,
+      orgId,
+      'GET /organizations/:orgId/vehicles/:vehicleId/rental-requirements',
+    );
+    this.vehicleDetailAudit.record({
+      ...auditCtx,
+      auditAction: VehicleDetailAccessAuditAction.RENTAL_REQUIREMENTS_READ,
+      vehicleId,
+      outcome: 'allowed',
+      purpose: 'VEHICLE_RENTAL_REQUIREMENTS',
+      deduplicate: true,
+    });
     return this.rentalRules.getVehicleRequirements(orgId, vehicleId);
   }
 
