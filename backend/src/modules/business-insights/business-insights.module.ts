@@ -27,6 +27,7 @@ import { DashboardInsightsController } from './dashboard-insights.controller';
 import { EvaluationsAccessService } from './access/evaluations-access.service';
 import { EvaluationsPermissionGuard } from './access/evaluations-permission.guard';
 import { EvaluationsExportController } from './access/evaluations-export.controller';
+import { EvaluationsAuditService } from './access/evaluations-audit.service';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { PredictiveFeatureController } from './predictive/predictive-feature.controller';
 import { PredictiveFeatureLoader } from './predictive/predictive-feature.loader';
@@ -79,6 +80,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     BusinessInsightsTriggerService,
     EvaluationsAccessService,
     EvaluationsPermissionGuard,
+    EvaluationsAuditService,
     PredictiveFeatureService,
     PredictiveFeatureRepository,
     PredictiveFeatureLoader,
@@ -115,6 +117,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PredictiveRiskService,
     EvaluationsAccessService,
     EvaluationsPermissionGuard,
+    EvaluationsAuditService,
   ],
 })
 export class BusinessInsightsModule {}
