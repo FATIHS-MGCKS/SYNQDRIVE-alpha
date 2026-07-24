@@ -19,10 +19,12 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { EmptyState } from '../../components/patterns';
 import {
   buildCustomerDisplayLabel,
-  canAccessEvaluationsSurface,
   formatVehicleLabel,
-  resolveEvaluationsPiiTier,
 } from '../lib/evaluations-privacy';
+import {
+  buildEvaluationsPermissionGate,
+  resolveEvaluationsPiiTierFromPermissions,
+} from '../lib/evaluations-permissions';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import { EvaluationsForecastsSection } from './evaluations-forecasts/EvaluationsForecastsSection';
 import {
@@ -132,7 +134,7 @@ function effectiveDateOf(inv: InvoiceLite): Date | null {
 
 function customerLabel(
   c: CustomerLite | undefined,
-  tier: ReturnType<typeof resolveEvaluationsPiiTier>,
+  tier: ReturnType<typeof resolveEvaluationsPiiTierFromPermissions>,
 ): string {
   if (!c) return '—';
   return buildCustomerDisplayLabel({
@@ -156,14 +158,11 @@ function customerLabel(
  */
 export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps) {
   const { orgId, hasPermission, userRole } = useRentalOrg();
-  const canAccess = canAccessEvaluationsSurface({
-    canReadInvoices: hasPermission('invoices', 'read'),
-  });
-  const piiTier = resolveEvaluationsPiiTier({
-    membershipRole: userRole,
-    canReadInvoices: hasPermission('invoices', 'read'),
-    canReadCustomers: hasPermission('customers', 'read'),
-  });
+  const perms = useMemo(() => buildEvaluationsPermissionGate(hasPermission), [hasPermission]);
+  const piiTier = useMemo(
+    () => resolveEvaluationsPiiTierFromPermissions(hasPermission, userRole),
+    [hasPermission, userRole],
+  );
   const { fleetVehicles } = useFleetVehicles();
   const { t, locale } = useLanguage();
 
@@ -183,7 +182,13 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!orgId || !canAccess) {
+    if (!orgId || !perms.canAccessPage) {
+      setInvoices([]);
+      setCustomers([]);
+      setLoading(false);
+      return;
+    }
+    if (!perms.canFinance) {
       setInvoices([]);
       setCustomers([]);
       setLoading(false);
@@ -219,7 +224,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     } finally {
       setLoading(false);
     }
-  }, [orgId, canAccess]);
+  }, [orgId, perms.canAccessPage, perms.canFinance]);
 
   useEffect(() => {
     setLoading(true);
@@ -409,13 +414,13 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   const monthLabel = now.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
 
-  if (!canAccess) {
+  if (!perms.canAccessPage) {
     return (
       <div className="max-w-[1600px] mx-auto space-y-4">
         <PageHeader title={t('nav.financialInsights')} />
         <EmptyState
           title="Auswertungen nicht verfügbar"
-          description="Für diese Ansicht ist die Berechtigung invoices.read erforderlich. Aggregierte Finanz- und Prognosedaten werden nur für autorisierte Rollen bereitgestellt."
+          description="Für diese Ansicht ist die Berechtigung evaluations.read (Executive KPIs) erforderlich."
         />
       </div>
     );
@@ -451,12 +456,16 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <PageHeader title={t('nav.financialInsights')} />
       <InsightsCockpit
         isDarkMode={isDarkMode}
-        openReceivablesEur={Math.round(outstandingCents / 100)}
-        financialRiskEur={Math.round(overdueCents / 100)}
+        openReceivablesEur={perms.canReceivables ? Math.round(outstandingCents / 100) : 0}
+        financialRiskEur={perms.canReceivables ? Math.round(overdueCents / 100) : 0}
+        showDriverSignals={perms.canDriverAnalysis}
+        showRecommendations={perms.canManageRecommendations}
       />
 
-      <EvaluationsForecastsSection isDarkMode={isDarkMode} />
+      {perms.canForecasts && <EvaluationsForecastsSection isDarkMode={isDarkMode} />}
 
+      {perms.canFinance && (
+      <>
       <div className="pt-2 border-t border-border">
         <h2 className="text-[14px] font-bold text-foreground mb-1">Financial Intelligence</h2>
         <p className="text-[11px] text-muted-foreground mb-4">
@@ -801,6 +810,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           piiTier={piiTier}
         />
       )}
+      </>
+      )}
     </div>
   );
 }
@@ -979,7 +990,7 @@ function BreakdownPopup({
   intlLocale: string;
   customerById: Map<string, CustomerLite>;
   vehicleById: Map<string, { license: string; model: string }>;
-  piiTier: ReturnType<typeof resolveEvaluationsPiiTier>;
+  piiTier: ReturnType<typeof resolveEvaluationsPiiTierFromPermissions>;
 }) {
   const totalCls = tone === 'revenue' ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-attention)]';
 

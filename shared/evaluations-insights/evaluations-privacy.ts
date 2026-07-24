@@ -24,25 +24,42 @@ const INSIGHT_PII_REASON_PREFIXES = ['Kunde:', 'Customer:', 'Fahrer:', 'Driver:'
 
 export interface EvaluationsAccessContext {
   membershipRole: string;
-  canReadInvoices: boolean;
-  canReadCustomers: boolean;
+  /** @deprecated use canReadCustomerPii */
+  canReadInvoices?: boolean;
+  /** @deprecated use canReadCustomerPii */
+  canReadCustomers?: boolean;
+  canReadCustomerPii?: boolean;
+  canReadFinance?: boolean;
+  canReadExecutive?: boolean;
 }
 
 export function resolveEvaluationsPiiTier(ctx: EvaluationsAccessContext): EvaluationsPiiTier {
   if (ctx.membershipRole === 'ORG_ADMIN' || ctx.membershipRole === 'MASTER_ADMIN') {
     return 'full';
   }
-  if (ctx.membershipRole === 'SUB_ADMIN' && ctx.canReadInvoices && ctx.canReadCustomers) {
+
+  const canPii =
+    ctx.canReadCustomerPii ??
+    (Boolean(ctx.canReadInvoices) && Boolean(ctx.canReadCustomers));
+
+  if (ctx.membershipRole === 'SUB_ADMIN' && canPii) {
     return 'full';
   }
-  if (ctx.canReadInvoices) {
+  if (canPii) {
+    return 'full';
+  }
+
+  const canFinance = ctx.canReadFinance ?? ctx.canReadInvoices ?? false;
+  if (canFinance) {
     return 'pseudonymous';
   }
   return 'none';
 }
 
-export function canAccessEvaluationsSurface(ctx: Pick<EvaluationsAccessContext, 'canReadInvoices'>): boolean {
-  return ctx.canReadInvoices;
+export function canAccessEvaluationsSurface(
+  ctx: Pick<EvaluationsAccessContext, 'canReadExecutive' | 'canReadInvoices'>,
+): boolean {
+  return Boolean(ctx.canReadExecutive ?? ctx.canReadInvoices);
 }
 
 export function pseudonymizeCustomerId(customerId: string): string {

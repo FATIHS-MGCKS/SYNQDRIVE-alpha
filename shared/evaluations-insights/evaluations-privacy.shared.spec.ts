@@ -14,8 +14,24 @@ describe('evaluations-privacy', () => {
     expect(
       resolveEvaluationsPiiTier({
         membershipRole: 'ORG_ADMIN',
-        canReadInvoices: false,
-        canReadCustomers: false,
+        canReadFinance: false,
+        canReadCustomerPii: false,
+      }),
+    ).toBe('full');
+
+    expect(
+      resolveEvaluationsPiiTier({
+        membershipRole: 'WORKER',
+        canReadFinance: true,
+        canReadCustomerPii: false,
+      }),
+    ).toBe('pseudonymous');
+
+    expect(
+      resolveEvaluationsPiiTier({
+        membershipRole: 'WORKER',
+        canReadFinance: false,
+        canReadCustomerPii: true,
       }),
     ).toBe('full');
 
@@ -26,14 +42,6 @@ describe('evaluations-privacy', () => {
         canReadCustomers: false,
       }),
     ).toBe('pseudonymous');
-
-    expect(
-      resolveEvaluationsPiiTier({
-        membershipRole: 'WORKER',
-        canReadInvoices: false,
-        canReadCustomers: true,
-      }),
-    ).toBe('none');
   });
 
   it('pseudonymizes customer and plate labels', () => {

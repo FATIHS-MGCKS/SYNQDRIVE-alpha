@@ -8,16 +8,20 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { RolesGuard } from '@shared/auth/roles.guard';
+import { EvaluationsPermissionGuard } from '../access/evaluations-permission.guard';
+import { RequireEvaluationsPermission } from '../access/require-evaluations-permission.decorator';
 import { BuildPredictiveFeaturesDto } from './dto/build-predictive-features.dto';
 import { ListPredictiveFeatureSnapshotsDto } from './dto/list-predictive-feature-snapshots.dto';
 import { PredictiveFeatureService } from './predictive-feature.service';
 
 @Controller('organizations/:orgId/business-insights/evaluations/predictive/features')
-@UseGuards(OrgScopingGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, EvaluationsPermissionGuard)
 export class PredictiveFeatureController {
   constructor(private readonly service: PredictiveFeatureService) {}
 
   @Get()
+  @RequireEvaluationsPermission('evaluations.data_quality.read')
   listSnapshots(
     @Param('orgId') organizationId: string,
     @Query() query: ListPredictiveFeatureSnapshotsDto,
@@ -31,11 +35,13 @@ export class PredictiveFeatureController {
   }
 
   @Get('build-runs/latest')
+  @RequireEvaluationsPermission('evaluations.data_quality.read')
   getLatestBuildRun(@Param('orgId') organizationId: string) {
     return this.service.getLatestBuildRun(organizationId);
   }
 
   @Post('build')
+  @RequireEvaluationsPermission('evaluations.admin.manage')
   buildFeatures(
     @Param('orgId') organizationId: string,
     @Body() body: BuildPredictiveFeaturesDto,

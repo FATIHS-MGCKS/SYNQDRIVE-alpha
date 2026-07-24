@@ -24,6 +24,17 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { StorageService } from '@shared/storage/storage.service';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { MembershipRole } from '@prisma/client';
+import {
+  buildEvaluationsAccessContext,
+  resolveEvaluationsPiiTier,
+} from '@synq/evaluations-insights/evaluations-privacy';
+import { EvaluationsAccessService } from '@modules/business-insights/access/evaluations-access.service';
+import { EvaluationsPermissionGuard } from '@modules/business-insights/access/evaluations-permission.guard';
+import { RequireEvaluationsPermission } from '@modules/business-insights/access/require-evaluations-permission.decorator';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 import {
   AddCustomerNoteDto,
   ArchiveCustomerDto,
@@ -37,15 +48,6 @@ import {
   UploadCustomerDocumentDto,
 } from './dto';
 import { PaginationParams } from '@shared/utils/pagination';
-import { PermissionsGuard } from '@shared/auth/permissions.guard';
-import { RequirePermission } from '@shared/decorators/require-permission.decorator';
-import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import { MembershipRole } from '@prisma/client';
-import {
-  buildEvaluationsAccessContext,
-  resolveEvaluationsPiiTier,
-} from '@synq/evaluations-insights/evaluations-privacy';
-import { evaluateModulePermission, normalizeMembershipPermissions } from '@shared/auth/permission.util';
 
 const CUSTOMER_DOCS_DIR = join(process.cwd(), 'uploads', 'customer-documents');
 if (!existsSync(CUSTOMER_DOCS_DIR))
@@ -94,6 +96,7 @@ export class CustomersController {
     private readonly customerDocumentsService: CustomerDocumentsService,
     private readonly customerTimelineService: CustomerTimelineService,
     private readonly storage: StorageService,
+    private readonly evaluationsAccess: EvaluationsAccessService,
   ) {}
 
   @Get('stats')
@@ -140,12 +143,15 @@ export class CustomersController {
   }
 
   @Get('evaluation-labels')
-  @RequirePermission('invoices', 'read')
+  @UseGuards(EvaluationsPermissionGuard)
+  @RequireEvaluationsPermission('evaluations.finance.read')
   async getEvaluationLabels(
     @Param('orgId') orgId: string,
     @Query('ids') ids?: string,
     @CurrentUser() user?: {
+      id?: string;
       membershipRole?: MembershipRole;
+      platformRole?: string;
       permissions?: unknown;
     },
   ) {
@@ -154,11 +160,23 @@ export class CustomersController {
       .map((id) => id.trim())
       .filter(Boolean);
     const permissions = normalizeMembershipPermissions(user?.permissions);
+    const options = {
+      membershipRole: user?.membershipRole,
+      platformRole: user?.platformRole,
+    };
     const tier = resolveEvaluationsPiiTier(
       buildEvaluationsAccessContext({
         membershipRole: user?.membershipRole,
-        canReadInvoices: evaluateModulePermission(permissions, 'invoices', 'read'),
-        canReadCustomers: evaluateModulePermission(permissions, 'customers', 'read'),
+        canReadCustomerPii: this.evaluationsAccess.evaluateEvaluationsPermission(
+          permissions,
+          'evaluations.customer_pii.read',
+          options,
+        ),
+        canReadFinance: this.evaluationsAccess.evaluateEvaluationsPermission(
+          permissions,
+          'evaluations.finance.read',
+          options,
+        ),
       }),
     );
     return this.customersService.findEvaluationLabels(orgId, customerIds, tier);

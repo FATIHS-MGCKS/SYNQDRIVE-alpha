@@ -6,12 +6,12 @@ import {
 } from './evaluations-privacy.policy';
 
 describe('evaluations-privacy.policy', () => {
-  it('redacts dashboard insights for worker with invoice read only', () => {
+  it('redacts dashboard insights for worker with finance read only', () => {
     const tier = resolveEvaluationsPiiTierForMembership(
       buildEvaluationsAccessContext({
         membershipRole: MembershipRole.WORKER,
-        canReadInvoices: true,
-        canReadCustomers: false,
+        canReadFinance: true,
+        canReadCustomerPii: false,
       }),
     );
 

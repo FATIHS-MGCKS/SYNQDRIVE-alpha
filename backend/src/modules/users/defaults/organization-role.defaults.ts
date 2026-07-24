@@ -16,6 +16,16 @@ import {
   rentalRulesReadPermissions,
   rentalRulesViewerPermissions,
 } from '@modules/rental-rules/rental-rules-permission.defaults';
+import {
+  evaluationsExecutiveReadPermissions,
+  evaluationsFinanceOperatorPermissions,
+  evaluationsFullPermissions,
+  evaluationsOperationsViewerPermissions,
+  evaluationsReadOnlyAnalyticsPermissions,
+  evaluationsServiceWorkshopPermissions,
+  evaluationsStationManagerPermissions,
+  evaluationsSubAdminPermissions,
+} from '@modules/business-insights/access/evaluations-permission.defaults';
 
 export interface DefaultRoleTemplate {
   systemKey: string;
@@ -73,6 +83,9 @@ function adminPermissions(): MembershipPermissionsMap {
     'invoices', 'fines', 'price-tariffs', 'tasks', 'vendor-management',
     'ai-assistant', 'workflow-automation', 'document-upload', 'company-info',
     'users-roles', 'fleet-connectivity', 'data-analyse', 'data-authorization', 'billing', 'support',
+    'evaluations', 'evaluations-finance', 'evaluations-receivables', 'evaluations-customer-pii',
+    'evaluations-driver', 'evaluations-costs', 'evaluations-forecasts', 'evaluations-data-quality',
+    'evaluations-recommendations', 'evaluations-assignees', 'evaluations-export', 'evaluations-admin',
   ] as const;
   const perms: MembershipPermissionsMap = {};
   for (const key of keys) {
@@ -88,8 +101,11 @@ function adminPermissions(): MembershipPermissionsMap {
       settingsManage: true,
     })),
     mergePermissions(
-      legalDocumentFullPermissions(),
-      mergePermissions(rentalRulesFullPermissions(), bookingEligibilityFullPermissions()),
+      mergePermissions(
+        legalDocumentFullPermissions(),
+        mergePermissions(rentalRulesFullPermissions(), bookingEligibilityFullPermissions()),
+      ),
+      evaluationsFullPermissions(),
     ),
   );
 }
@@ -107,12 +123,20 @@ function subAdminPermissions(): MembershipPermissionsMap {
     'payments-disputes',
     'payments-connect',
     'payments-settings',
+    'evaluations-export',
+    'evaluations-admin',
   ] as const) {
     delete perms[key];
   }
+  if (perms['data-analyse']) {
+    perms['data-analyse'] = all(true, true, false);
+  }
   return mergePermissions(perms, mergePermissions(
-    legalDocumentReadPermissions(),
-    mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
+    mergePermissions(
+      legalDocumentReadPermissions(),
+      mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
+    ),
+    evaluationsSubAdminPermissions(),
   ));
 }
 
@@ -126,6 +150,9 @@ function workerReadPermissions(extraWrite: string[] = []): MembershipPermissions
     'invoices', 'fines', 'price-tariffs', 'tasks', 'vendor-management',
     'ai-assistant', 'workflow-automation', 'document-upload', 'company-info',
     'users-roles', 'fleet-connectivity', 'data-analyse', 'data-authorization', 'billing', 'support',
+    'evaluations', 'evaluations-finance', 'evaluations-receivables', 'evaluations-customer-pii',
+    'evaluations-driver', 'evaluations-costs', 'evaluations-forecasts', 'evaluations-data-quality',
+    'evaluations-recommendations', 'evaluations-assignees', 'evaluations-export', 'evaluations-admin',
   ]) {
     const canRead = readKeys.includes(key);
     const canWrite = extraWrite.includes(key);
@@ -164,8 +191,11 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
           disputesRead: true,
         }),
         mergePermissions(
-          rentalRulesReadPermissions(),
-          bookingEligibilityOverridePermissions(),
+          mergePermissions(
+            rentalRulesReadPermissions(),
+            bookingEligibilityOverridePermissions(),
+          ),
+          evaluationsOperationsViewerPermissions(),
         ),
       ),
     ),
@@ -186,8 +216,11 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
         }),
       ),
       mergePermissions(
-        legalDocumentReadPermissions(),
-        bookingEligibilityReviewerPermissions(),
+        mergePermissions(
+          legalDocumentReadPermissions(),
+          bookingEligibilityReviewerPermissions(),
+        ),
+        evaluationsFinanceOperatorPermissions(),
       ),
     ),
   },
@@ -205,8 +238,11 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
           disputesRead: true,
         }),
         mergePermissions(
-          rentalRulesFleetOperatorPermissions(),
-          bookingEligibilityOverridePermissions(),
+          mergePermissions(
+            rentalRulesFleetOperatorPermissions(),
+            bookingEligibilityOverridePermissions(),
+          ),
+          evaluationsStationManagerPermissions(),
         ),
       ),
     ),
@@ -259,8 +295,11 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     permissions: mergePermissions(
       workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet']),
       mergePermissions(
-        paymentModulePermissions({ payments: { read: true, write: false } }),
-        rentalRulesViewerPermissions(),
+        mergePermissions(
+          paymentModulePermissions({ payments: { read: true, write: false } }),
+          rentalRulesViewerPermissions(),
+        ),
+        evaluationsServiceWorkshopPermissions(),
       ),
     ),
   },
@@ -275,8 +314,11 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
         paymentModulePermissions({ payments: { read: true, write: false } }),
       ),
       mergePermissions(
-        legalDocumentReadPermissions(),
-        mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
+        mergePermissions(
+          legalDocumentReadPermissions(),
+          mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
+        ),
+        evaluationsReadOnlyAnalyticsPermissions(),
       ),
     ),
   },

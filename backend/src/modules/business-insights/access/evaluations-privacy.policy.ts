@@ -10,13 +10,19 @@ import type { DashboardInsightsResponse } from '../insight.types';
 
 export function buildEvaluationsAccessContext(input: {
   membershipRole?: MembershipRole | string | null;
-  canReadInvoices: boolean;
-  canReadCustomers: boolean;
+  canReadInvoices?: boolean;
+  canReadCustomers?: boolean;
+  canReadCustomerPii?: boolean;
+  canReadFinance?: boolean;
+  canReadExecutive?: boolean;
 }): EvaluationsAccessContext {
   return {
     membershipRole: input.membershipRole ?? MembershipRole.WORKER,
     canReadInvoices: input.canReadInvoices,
     canReadCustomers: input.canReadCustomers,
+    canReadCustomerPii: input.canReadCustomerPii,
+    canReadFinance: input.canReadFinance,
+    canReadExecutive: input.canReadExecutive,
   };
 }
 

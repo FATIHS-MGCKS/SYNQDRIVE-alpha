@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-role-permissions-p47-2026-07-24',
+    version: '4.9.844',
+    title: 'V4.9.844 — Auswertungen Rollen- und Berechtigungsmatrix (Prompt 47)',
+    summary: [
+      '12 granular evaluations permission modules (executive, finance, receivables, customer PII, driver, costs, forecasts, data quality, recommendations, assignees, export, admin).',
+      'Backend: EvaluationsPermissionGuard + EvaluationsAccessService on dashboard-insights, predictive, misuse, export, evaluation-labels.',
+      'Station-scoped access via stationId query + StationAccessService; cross-tenant orgId hardening.',
+      'Frontend: evaluations-permissions gate, FinancialInsightsView section gating, Sidebar + Users-Roles modules.',
+      'Docs: docs/security/evaluations-role-permission-matrix.md; legacy fallbacks for invoices/data-analyse until backfill.',
+    ],
+    reason: 'Prompt 47/54: authoritative role/permission matrix for Auswertungen with separated aggregate vs detail access.',
+    previousBehavior:
+      'Auswertungen relied on coarse invoices.read gating; no dedicated export/admin permissions; aggregate and PII access not separately controllable.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations / Security',
+    createdAt: '2026-07-24T15:00:00.000Z',
+  },
+  {
     id: 'evaluations-gdpr-privacy-p46-2026-07-24',
     version: '4.9.843',
     title: 'V4.9.843 — Auswertungen GDPR Privacy by Design (Prompt 46)',

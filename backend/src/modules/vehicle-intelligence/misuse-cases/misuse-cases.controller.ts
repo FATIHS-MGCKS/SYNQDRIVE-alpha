@@ -3,8 +3,10 @@ import { MisuseCasesService, ListMisuseCasesQuery } from './misuse-cases.service
 import { MisuseCaseLifecycleService } from './misuse-case-lifecycle/misuse-case-lifecycle.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
-import { PermissionsGuard } from '@shared/auth/permissions.guard';
-import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { EvaluationsAccessService } from '@modules/business-insights/access/evaluations-access.service';
+import { EvaluationsPermissionGuard } from '@modules/business-insights/access/evaluations-permission.guard';
+import { RequireEvaluationsPermission } from '@modules/business-insights/access/require-evaluations-permission.decorator';
 
 type MisuseCaseTransitionBody = {
   action: 'CONFIRM' | 'DISMISS' | 'RESOLVE' | 'DOWNGRADE' | 'SUPERSEDE';
@@ -13,29 +15,39 @@ type MisuseCaseTransitionBody = {
 };
 
 @Controller('organizations/:orgId/misuse-cases')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, EvaluationsPermissionGuard)
 export class MisuseCasesController {
   constructor(
     private readonly misuseCasesService: MisuseCasesService,
     private readonly lifecycleService: MisuseCaseLifecycleService,
+    private readonly evaluationsAccess: EvaluationsAccessService,
   ) {}
 
   @Get()
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.executive.read')
   async list(
     @Param('orgId') orgId: string,
     @Query() query: ListMisuseCasesQuery,
+    @CurrentUser() user: { id?: string; platformRole?: string },
   ) {
+    if (query.surface !== 'cockpit') {
+      await this.evaluationsAccess.assertEvaluationsPermission(
+        orgId,
+        user,
+        'evaluations.driver.read',
+      );
+    }
     return this.misuseCasesService.list(orgId, query);
   }
 
   @Get(':id')
-  @RequirePermission('fleet-condition', 'read')
+  @RequireEvaluationsPermission('evaluations.driver.read')
   async getOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.misuseCasesService.getById(orgId, id);
   }
 
   @Post(':id/lifecycle')
+  @RequireEvaluationsPermission('evaluations.recommendations.write')
   async transition(
     @Param('orgId') orgId: string,
     @Param('id') id: string,

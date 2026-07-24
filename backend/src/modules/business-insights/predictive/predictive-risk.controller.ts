@@ -9,8 +9,8 @@ import {
 } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
-import { PermissionsGuard } from '@shared/auth/permissions.guard';
-import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { EvaluationsPermissionGuard } from '../access/evaluations-permission.guard';
+import { RequireEvaluationsPermission } from '../access/require-evaluations-permission.decorator';
 import {
   ListPredictiveRiskForecastsDto,
   RunPredictiveRiskForecastsDto,
@@ -18,12 +18,12 @@ import {
 import { PredictiveRiskService } from './predictive-risk.service';
 
 @Controller('organizations/:orgId/business-insights/evaluations/predictive/risk-forecasts')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, EvaluationsPermissionGuard)
 export class PredictiveRiskController {
   constructor(private readonly service: PredictiveRiskService) {}
 
   @Get()
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.forecasts.read')
   listForecasts(
     @Param('orgId') organizationId: string,
     @Query() query: ListPredictiveRiskForecastsDto,
@@ -32,13 +32,13 @@ export class PredictiveRiskController {
   }
 
   @Get('runs/latest')
-  @RequirePermission('invoices', 'read')
+  @RequireEvaluationsPermission('evaluations.forecasts.read')
   getLatestRun(@Param('orgId') organizationId: string) {
     return this.service.getLatestRun(organizationId);
   }
 
   @Post('run')
-  @RequirePermission('data-analyse', 'manage')
+  @RequireEvaluationsPermission('evaluations.admin.manage')
   runForecasts(
     @Param('orgId') organizationId: string,
     @Body() body: RunPredictiveRiskForecastsDto,
