@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { AuthorizationActorType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuthorizationDecisionService } from '../authorization-decision-engine/authorization-decision.service';
@@ -40,6 +40,7 @@ export class TripLocationEnforcementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationDecision: AuthorizationDecisionService,
+    @Inject(forwardRef(() => LiveGpsEnforcementService))
     private readonly liveGpsEnforcement: LiveGpsEnforcementService,
     private readonly auditService: DataAuthorizationAuditService,
     private readonly metrics: TripLocationEnforcementMetricsService,

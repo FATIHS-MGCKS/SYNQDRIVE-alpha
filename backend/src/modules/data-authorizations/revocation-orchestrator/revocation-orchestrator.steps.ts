@@ -180,8 +180,10 @@ export class RevocationOrchestratorSteps {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => DenySwitchService))
     private readonly denySwitch: DenySwitchService,
+    @Inject(forwardRef(() => LiveGpsEnforcementService))
     private readonly liveGpsEnforcement: LiveGpsEnforcementService,
     private readonly notificationEnforcement: NotificationEnforcementService,
+    @Inject(forwardRef(() => ExternalAccessEnforcementService))
     private readonly externalAccessEnforcement: ExternalAccessEnforcementService,
     private readonly providerRevoker: DefaultRevocationProviderRevoker,
     private readonly queueControl: RevocationQueueControlService,

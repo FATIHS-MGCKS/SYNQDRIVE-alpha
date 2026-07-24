@@ -39,7 +39,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.829',
     title: 'V4.9.829 — Data Auth Nest DI + Frontend Build Fix',
     summary: [
-      'Nest DI: forwardRef für zirkuläre Abhängigkeit DataAuthorizationsService ↔ LiveGpsEnforcementService.',
+      'Nest DI: forwardRef für DataAuthorizationsService ↔ LiveGpsEnforcementService und Revocation/Trip-Kette.',
       'Frontend Build: useLooseLanguage für dynamische i18n-Keys; API-Typen (list.data, audit items, revoke body).',
       'TenantEntityScopePicker Typfix; AuthorizationDecisionAuditPage nextCursor; completeness.warnings.',
       'VPS RC-Deploy + Prompt-42 Staging-Verifikation (15 Runtime-Szenarien).',
