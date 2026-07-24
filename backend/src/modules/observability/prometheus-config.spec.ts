@@ -93,6 +93,26 @@ describe('TripMetricsService label cardinality', () => {
   });
 });
 
+describe('DataAuthMetricsService label cardinality', () => {
+  let metrics: TripMetricsService;
+
+  beforeEach(() => {
+    metrics = new TripMetricsService();
+    const { DataAuthMetricsService } = require('@modules/data-authorizations/observability/data-auth-metrics.service');
+    new DataAuthMetricsService(metrics);
+  });
+
+  it('exposes data authorization metrics without forbidden labels', async () => {
+    const text = await metrics.getMetrics();
+    for (const label of FORBIDDEN_LABELS) {
+      expect(text).not.toMatch(new RegExp(`${label}=`));
+    }
+    expect(text).toContain('data_auth_decision_total');
+    expect(text).toContain('data_auth_build_info');
+    expect(text).toContain('data_auth_decision_latency_seconds');
+  });
+});
+
 describe('Prometheus config files', () => {
   const root = join(__dirname, '../../../monitoring/prometheus');
 

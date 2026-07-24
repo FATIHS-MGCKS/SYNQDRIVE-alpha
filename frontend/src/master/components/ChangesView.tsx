@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-monitoring-ci-v49824-2026-07-24',
+    version: '4.9.824',
+    title: 'V4.9.824 — Data Auth Monitoring, Alerts & CI Gates (Prompt 41)',
+    summary: [
+      'Prometheus data_auth_* Metriken: Decisions, Resolver, Enforcement, Revocation, Audit, Compliance.',
+      'Grafana synqdrive-data-authorization.json mit Build/Commit-Version und Safety-Flags.',
+      'Alert-Gruppe synqdrive_data_auth + Runbooks für kritische Incidents.',
+      'CI workflow data-authorization-production-readiness.yml mit 15 Gates (kein stiller Skip).',
+      'Scripts: migration-test, production-safety-check, verify-data-auth-monitoring.',
+    ],
+    reason:
+      'Prompt 41 verlangt observability und verpflichtende CI-Gates für den Data-Authorization-Stack vor Production.',
+    previousBehavior:
+      'In-process Metriken ohne Prometheus-Export; keine data-auth CI-Workflow; keine dedizierten Alerts/Dashboards.',
+    details: 'docs/architecture/data-auth-monitoring-ci-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T03:00:00.000Z',
+  },
+  {
     id: 'data-processing-e2e-flow-v49823-2026-07-24',
     version: '4.9.823',
     title: 'V4.9.823 — Data Processing E2E Flow Tests (Prompt 40)',

@@ -34,7 +34,7 @@ describe('EnforcementCoverageRegistryService', () => {
   it('evaluates all catalog flows with version binding', () => {
     const summary = service.evaluate('org-1', 'corr-coverage-1');
     expect(summary.totalFlows).toBe(ENFORCEMENT_COVERAGE_CATALOG.length);
-    expect(summary.coverageVersion).toMatch(/2026-07-prompt23-v1@/);
+    expect(summary.coverageVersion).toMatch(/2026-07-prompt27-v1@/);
     expect(summary.evaluatedAt).toBeTruthy();
     expect(summary.flows.every((f) => f.flowId && f.status)).toBe(true);
   });

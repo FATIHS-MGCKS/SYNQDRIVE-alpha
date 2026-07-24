@@ -21,6 +21,7 @@ import {
   evaluateAuthorizationDecision,
 } from './authorization-decision.engine';
 import { DataAuthorizationAuditService } from '../privacy-domain/audit-log/data-authorization-audit.service';
+import { DataAuthMetricsService } from '../observability/data-auth-metrics.service';
 import { DenySwitchService } from '../deny-switch/deny-switch.service';
 import type {
   AuthorizationDecisionRequest,
@@ -42,6 +43,7 @@ export class AuthorizationDecisionService {
     @Optional()
     @Inject(forwardRef(() => DenySwitchService))
     private readonly denySwitch?: DenySwitchService,
+    @Optional() private readonly dataAuthMetrics?: DataAuthMetricsService,
   ) {
     const config = readAuthorizationDecisionConfig();
     this.cache = config.cacheEnabled
@@ -50,16 +52,18 @@ export class AuthorizationDecisionService {
   }
 
   async decide(request: AuthorizationDecisionRequest): Promise<AuthorizationDecisionResult> {
+    const started = process.hrtime.bigint();
     const config = readAuthorizationDecisionConfig();
     const isProduction = (process.env.NODE_ENV ?? '').toLowerCase() === 'production';
     const { request: evaluated, reasonCodes } = buildAuthorizationDecisionContext(request);
 
     if (!evaluated) {
-      return buildInvalidRequestDecision(request.correlationId ?? '', reasonCodes);
+      const invalid = buildInvalidRequestDecision(request.correlationId ?? '', reasonCodes);
+      return invalid;
     }
 
     if (config.globalDenySwitch) {
-      return this.finalize(
+      const finalized = await this.finalize(
         request,
         evaluated,
         evaluateAuthorizationDecision({
@@ -72,6 +76,8 @@ export class AuthorizationDecisionService {
         }),
         config,
       );
+      this.recordDecisionMetrics(evaluated, finalized, started);
+      return finalized;
     }
 
     if (this.denySwitch) {
@@ -102,7 +108,10 @@ export class AuthorizationDecisionService {
           auditEventId: null,
           warnings: [],
         };
-        return this.finalize(request, evaluated, denyResult, config);
+        return this.finalize(request, evaluated, denyResult, config).then((finalized) => {
+          this.recordDecisionMetrics(evaluated, finalized, started);
+          return finalized;
+        });
       }
     }
 
@@ -111,7 +120,9 @@ export class AuthorizationDecisionService {
     if (cacheKey && this.cache) {
       const hit = this.cache.get(cacheKey);
       if (hit) {
-        return { ...hit, correlationId: evaluated.correlationId };
+        const cached = { ...hit, correlationId: evaluated.correlationId };
+        this.recordDecisionMetrics(evaluated, cached, started);
+        return cached;
       }
     }
 
@@ -122,6 +133,7 @@ export class AuthorizationDecisionService {
       resolverResult = await this.policyResolver.resolve(this.toResolverInput(evaluated));
     } catch (error) {
       resolverError = true;
+      this.dataAuthMetrics?.recordResolverError(evaluated.sourceSystem);
       this.logger.error(
         `Policy resolver failed for org=${evaluated.organizationId} correlation=${evaluated.correlationId}`,
         error instanceof Error ? error.stack : String(error),
@@ -138,6 +150,7 @@ export class AuthorizationDecisionService {
     });
 
     const finalized = await this.finalize(request, evaluated, result, config);
+    this.recordDecisionMetrics(evaluated, finalized, started);
 
     if (cacheKey && this.cache && finalized.decision === 'ALLOW' && finalized.resolverResult) {
       const versionKey = buildPolicyVersionKey(finalized.resolverResult);
@@ -145,6 +158,38 @@ export class AuthorizationDecisionService {
     }
 
     return finalized;
+  }
+
+  getCacheStats(): { enabled: boolean; size: number; maxEntries: number } | null {
+    if (!this.cache) return null;
+    const config = readAuthorizationDecisionConfig();
+    return {
+      enabled: true,
+      size: this.cache.size,
+      maxEntries: config.cacheMaxEntries,
+    };
+  }
+
+  private recordDecisionMetrics(
+    evaluated: NonNullable<ReturnType<typeof buildAuthorizationDecisionContext>['request']>,
+    result: AuthorizationDecisionResult,
+    started: bigint,
+  ): void {
+    if (!this.dataAuthMetrics) return;
+
+    this.dataAuthMetrics.recordDecision({
+      decision: result.decision,
+      reasonCode: result.reasonCode,
+      sourceSystem: evaluated.sourceSystem,
+      action: evaluated.action,
+    });
+
+    const elapsedSeconds = Number(process.hrtime.bigint() - started) / 1e9;
+    this.dataAuthMetrics.observeDecisionLatencySeconds(
+      elapsedSeconds,
+      evaluated.sourceSystem,
+      evaluated.action,
+    );
   }
 
   private async finalize(

@@ -1031,3 +1031,215 @@ groups:
           runbook_url: docs/runbooks/iam-data-retention-and-user-rights.md
           clear_condition: no retention failures for 2h.
 
+  - name: synqdrive_data_auth
+    rules:
+      - alert: DataAuthAuditOutboxDeadLetter
+        expr: increase(data_auth_audit_dead_letter_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          owner: data-auth
+        annotations:
+          summary: Data authorization audit outbox dead-letter events detected
+          description: At least one data-auth audit outbox event moved to dead letter in the last 15 minutes — authorization decisions may lack durable audit records.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#audit-outbox-dlq
+          clear_condition: no new dead-letter increments for 30m and backlog processed.
+
+      - alert: DataAuthAuditOutboxRetrySustained
+        expr: increase(data_auth_audit_outbox_failed_total[30m]) >= 5
+        for: 10m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Data authorization audit outbox retries sustained
+          description: Data-auth audit outbox processing failures are retrying repeatedly — inspect worker health and outbox backlog.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#audit-outbox-dlq
+          clear_condition: retry rate below 1 per 30m for 30m.
+
+      - alert: DataAuthDevBypassEnabledInProduction
+        expr: data_auth_dev_bypass_enabled == 1
+        for: 1m
+        labels:
+          severity: critical
+          owner: data-auth
+        annotations:
+          summary: Data authorization development bypass is enabled
+          description: DATA_AUTH_DECISION_DEV_BYPASS=true — disable immediately in production (fail-closed required).
+          runbook_url: docs/runbooks/data-authorization-production-rollout.md#dev-bypass
+          clear_condition: data_auth_dev_bypass_enabled == 0 for 5m.
+
+      - alert: DataAuthEnforcementDisabledInProduction
+        expr: data_auth_enforcement_disabled == 1
+        for: 1m
+        labels:
+          severity: critical
+          owner: data-auth
+        annotations:
+          summary: Data authorization enforcement is disabled
+          description: DATA_AUTH_DECISION_ENFORCEMENT_ENABLED=false — protected data paths may be unenforced.
+          runbook_url: docs/runbooks/data-authorization-production-rollout.md#enforcement-disabled
+          clear_condition: data_auth_enforcement_disabled == 0 for 5m.
+
+      - alert: DataAuthGlobalDenySwitchActive
+        expr: data_auth_global_deny_switch_enabled == 1
+        for: 5m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Global data authorization deny switch active
+          description: DATA_AUTH_DECISION_GLOBAL_DENY=true — all protected access is denied until cleared.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#global-deny
+          clear_condition: data_auth_global_deny_switch_enabled == 0 for 10m.
+
+      - alert: DataAuthResolverErrorsElevated
+        expr: increase(data_auth_resolver_error_total[15m]) >= 10
+        for: 10m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Elevated policy resolver errors
+          description: Ten or more resolver errors in 15 minutes — inspect PostgreSQL health and policy resolver queries.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#resolver-errors
+          clear_condition: resolver error rate below 3 per 15m for 30m.
+
+      - alert: DataAuthDenyRateSpike
+        expr: |
+          (
+            sum(rate(data_auth_decision_total{decision="DENY"}[15m]))
+            /
+            clamp_min(sum(rate(data_auth_decision_total[15m])), 0.001)
+          ) > 0.5
+          and sum(increase(data_auth_decision_total[15m])) > 20
+        for: 15m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Authorization deny rate above 50%
+          description: More than half of authorization decisions are DENY with meaningful volume — verify policy lifecycle and deny-switch state.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#deny-spike
+          clear_condition: deny ratio below 30% for 30m.
+
+      - alert: DataAuthDecisionLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(data_auth_decision_latency_seconds_bucket[10m])) by (le)) > 1
+        for: 15m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Authorization decision p95 latency above 1s
+          description: Decision engine p95 latency exceeds 1 second — check resolver load, cache size, and database performance.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#decision-latency
+          clear_condition: p95 below 500ms for 30m.
+
+      - alert: DataAuthUnregisteredProductivePaths
+        expr: data_auth_unregistered_path_total > 0
+        for: 15m
+        labels:
+          severity: critical
+          owner: data-auth
+        annotations:
+          summary: Unregistered productive data paths detected
+          description: Enforcement coverage registry reports productive processing paths without registered enforcement — block release until catalog is updated.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#unregistered-paths
+          clear_condition: gauge returns to 0.
+
+      - alert: DataAuthWorkerVersionMismatch
+        expr: data_auth_worker_version_mismatch == 1
+        for: 10m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Worker policy engine version mismatch
+          description: At least one worker reports a policy engine version different from the expected WORKER_POLICY_ENGINE_VERSION.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#worker-version
+          clear_condition: gauge returns to 0 for 15m.
+
+      - alert: DataAuthRevocationFailed
+        expr: increase(data_auth_revocation_failed_total[30m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Revocation workflow terminal failures
+          description: One or more revocation workflows reached REVOCATION_FAILED — inspect step errors and provider revocation.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#revocation-failed
+          clear_condition: no new revocation failures for 1h.
+
+      - alert: DataAuthRevocationInProgressElevated
+        expr: data_auth_revocation_in_progress_total > 10
+        for: 30m
+        labels:
+          severity: info
+          owner: data-auth
+        annotations:
+          summary: Elevated revocations in progress
+          description: More than ten revocation workflows are in non-terminal states for 30 minutes — verify orchestrator progress.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#revocation-in-progress
+          clear_condition: gauge below 5 for 30m.
+
+      - alert: DataAuthOverdueReviews
+        expr: data_auth_overdue_review_total > 0
+        for: 1h
+        labels:
+          severity: info
+          owner: data-auth
+        annotations:
+          summary: Overdue processing activity reviews
+          description: Processing activities are past nextReviewDate — schedule review workflow.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#overdue-reviews
+          clear_condition: gauge returns to 0.
+
+      - alert: DataAuthOverdueDpia
+        expr: data_auth_overdue_dpia_total > 0
+        for: 1h
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Overdue DPIA reviews required
+          description: Processing activities require DPIA review — activation may be blocked.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#overdue-dpia
+          clear_condition: gauge returns to 0.
+
+      - alert: DataAuthExpiredPolicies
+        expr: data_auth_expired_policy_total > 0
+        for: 30m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Active policies past validUntil
+          description: Enforcement policies are past validUntil but still ACTIVE — verify expiry scheduler.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#expired-policies
+          clear_condition: gauge returns to 0.
+
+      - alert: DataAuthRetentionJobFailures
+        expr: increase(data_auth_retention_error_total[1h]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Data retention deletion job failures
+          description: Retention deletion jobs reported partial failures — review legal holds before retry.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#retention-failures
+          clear_condition: no retention failures for 2h.
+
+      - alert: DataAuthDenySwitchPropagationSlow
+        expr: histogram_quantile(0.95, sum(rate(data_auth_deny_switch_propagation_latency_seconds_bucket[10m])) by (le)) > 2
+        for: 15m
+        labels:
+          severity: warning
+          owner: data-auth
+        annotations:
+          summary: Deny-switch propagation p95 above 2s
+          description: Cross-instance deny-switch propagation exceeds the 2s target — inspect Redis pub/sub and reconciliation loop.
+          runbook_url: docs/runbooks/data-authorization-incidents.md#deny-switch-propagation
+          clear_condition: p95 below 1s for 30m.
+

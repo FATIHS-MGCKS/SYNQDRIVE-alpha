@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   AuthorizationActorType,
   AuthorizationDecisionEventType,
@@ -14,6 +14,7 @@ import {
 } from './data-authorization-audit.constants';
 import { DataAuthorizationAuditOutboxRepository } from './data-authorization-audit-outbox.repository';
 import { DataAuthorizationAuditOutboxMetricsService } from './data-authorization-audit-outbox.metrics';
+import { DataAuthMetricsService } from '../../observability/data-auth-metrics.service';
 
 @Injectable()
 export class DataAuthorizationAuditOutboxProcessorService {
@@ -23,6 +24,7 @@ export class DataAuthorizationAuditOutboxProcessorService {
     private readonly prisma: PrismaService,
     private readonly outboxRepo: DataAuthorizationAuditOutboxRepository,
     private readonly metrics: DataAuthorizationAuditOutboxMetricsService,
+    @Optional() private readonly prometheusMetrics?: DataAuthMetricsService,
   ) {}
 
   async processOutboxId(
@@ -51,6 +53,7 @@ export class DataAuthorizationAuditOutboxProcessorService {
       if (claimed.attempts >= DATA_AUTHORIZATION_AUDIT_OUTBOX.maxAttempts) {
         await this.outboxRepo.markDeadLetter(claimed.id, message);
         this.metrics.record('dead_letter', claimed.eventKind);
+        this.prometheusMetrics?.recordAuditDeadLetter(claimed.eventKind);
         this.logger.error(`data-auth audit outbox dead-letter id=${claimed.id}: ${message}`);
         return 'dead_letter';
       }
@@ -60,6 +63,7 @@ export class DataAuthorizationAuditOutboxProcessorService {
       );
       await this.outboxRepo.markRetry(claimed.id, message, retryAt);
       this.metrics.record('retry', claimed.eventKind);
+      this.prometheusMetrics?.recordAuditOutboxFailed(claimed.eventKind);
       return 'retry';
     }
   }

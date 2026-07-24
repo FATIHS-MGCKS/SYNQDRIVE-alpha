@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   DataAuthorizationRevocationWorkflowStatus,
@@ -26,6 +27,7 @@ import {
 } from './revocation-orchestrator.constants';
 import { RevocationOrchestratorRepository } from './revocation-orchestrator.repository';
 import { RevocationOrchestratorSteps } from './revocation-orchestrator.steps';
+import { DataAuthMetricsService } from '../observability/data-auth-metrics.service';
 import type {
   RevocationProcessResult,
   RevocationRequestResult,
@@ -54,6 +56,7 @@ export class RevocationOrchestratorService {
     private readonly repo: RevocationOrchestratorRepository,
     private readonly steps: RevocationOrchestratorSteps,
     private readonly auditOutbox: DataAuthorizationAuditOutboxRepository,
+    @Optional() private readonly dataAuthMetrics?: DataAuthMetricsService,
   ) {}
 
   /**
@@ -327,6 +330,7 @@ export class RevocationOrchestratorService {
 
       if (attempts >= workflow.maxAttempts) {
         await this.repo.markFailed(workflowId, message, stepErrors);
+        this.dataAuthMetrics?.recordRevocationFailed(stepKey);
         this.logger.error(`Revocation workflow dead-letter id=${workflowId} step=${stepKey}: ${message}`);
         return {
           workflowId,

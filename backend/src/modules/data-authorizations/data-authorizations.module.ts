@@ -121,6 +121,8 @@ import { WorkerRevocationCheckpointService } from './revocation-queue-control/wo
 import { WorkerRuntimeHealthService } from './revocation-queue-control/worker-runtime-health.service';
 import { QueueEnqueueGuardService } from './revocation-queue-control/queue-enqueue-guard.service';
 import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-queue-catalog';
+import { DataAuthMetricsBridgeService } from './observability/data-auth-metrics-bridge.service';
+import { DataAuthMetricsRefreshService } from './observability/data-auth-metrics-refresh.service';
 
 @Module({
   imports: [
@@ -256,6 +258,8 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     WorkerRevocationCheckpointService,
     WorkerRuntimeHealthService,
     QueueEnqueueGuardService,
+    DataAuthMetricsRefreshService,
+    DataAuthMetricsBridgeService,
   ],
   exports: [
     DataAuthorizationsService,

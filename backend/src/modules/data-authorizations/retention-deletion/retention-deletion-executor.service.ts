@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   ProcessingActivityDeletionDecisionType,
@@ -14,6 +15,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DeletionStoreRegistry } from './deletion-store.adapters';
 import { RETENTION_DELETION_CONFIG } from './retention-deletion.config';
 import { RetentionDeletionAuditService } from './retention-deletion-audit.service';
+import { DataAuthMetricsService } from '../observability/data-auth-metrics.service';
 import type { RunDeletionJobDto } from './dto/retention-deletion.dto';
 
 @Injectable()
@@ -22,6 +24,7 @@ export class RetentionDeletionExecutorService {
     private readonly prisma: PrismaService,
     private readonly stores: DeletionStoreRegistry,
     private readonly audit: RetentionDeletionAuditService,
+    @Optional() private readonly dataAuthMetrics?: DataAuthMetricsService,
   ) {}
 
   async runJob(
@@ -61,7 +64,7 @@ export class RetentionDeletionExecutorService {
       return { ...existing, idempotentReplay: true };
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const job = await this.prisma.$transaction(async (tx) => {
       const job =
         existing ??
         (await tx.processingActivityDeletionJob.create({
@@ -198,6 +201,12 @@ export class RetentionDeletionExecutorService {
 
       return updatedJob;
     });
+
+    if (job.partialFailure) {
+      this.dataAuthMetrics?.recordRetentionError('deletion_job');
+    }
+
+    return job;
   }
 
   private buildIdempotencyKey(

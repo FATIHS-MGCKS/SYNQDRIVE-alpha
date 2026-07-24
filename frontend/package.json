@@ -23,6 +23,7 @@
     "test:legal-documents:verify": "bash scripts/test/legal-documents-verify.sh all",
     "test:legal-documents:verify:unit": "bash scripts/test/legal-documents-verify.sh unit",
     "test:data-processing:e2e": "playwright test -c e2e/playwright.config.ts data-processing-flow.spec.ts --project=desktop-1280 && playwright test -c e2e/playwright.config.ts data-processing-flow-responsive.spec.ts data-processing-a11y.spec.ts --project=mobile-375 --project=mobile-320",
+    "test:data-auth": "vitest run data-processing data-authorization",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"

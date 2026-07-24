@@ -1,0 +1,216 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["synqdrive"],
+      "targetBlank": false,
+      "title": "SynqDrive Ops",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Build & Safety",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "none", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^git_commit$/", "values": false }, "textMode": "value" },
+      "targets": [{ "expr": "data_auth_build_info", "format": "table", "instant": true, "refId": "A" }],
+      "title": "Git commit",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "none", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^build_version$/", "values": false }, "textMode": "value" },
+      "targets": [{ "expr": "data_auth_build_info", "format": "table", "instant": true, "refId": "A" }],
+      "title": "Build version",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "data_auth_dev_bypass_enabled + data_auth_enforcement_disabled + data_auth_global_deny_switch_enabled", "refId": "A" }],
+      "title": "Safety flags (0 = OK)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "Decisions",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 4,
+      "targets": [
+        { "expr": "sum by (decision) (rate(data_auth_decision_total[5m]))", "legendFormat": "{{decision}}", "refId": "A" }
+      ],
+      "title": "Decision rate by outcome",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 5,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(data_auth_decision_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.50, sum(rate(data_auth_decision_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "B" }
+      ],
+      "title": "Decision latency (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 6,
+      "targets": [
+        { "expr": "sum by (reason_category) (rate(data_auth_decision_total{decision=\"DENY\"}[5m]))", "legendFormat": "{{reason_category}}", "refId": "A" }
+      ],
+      "title": "Deny reasons (category)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 7,
+      "targets": [
+        { "expr": "sum(rate(data_auth_resolver_error_total[5m]))", "legendFormat": "resolver errors", "refId": "A" },
+        { "expr": "sum(rate(data_auth_missing_policy_total[5m]))", "legendFormat": "missing policy", "refId": "B" },
+        { "expr": "sum(rate(data_auth_provider_conflict_total[5m]))", "legendFormat": "provider conflict", "refId": "C" }
+      ],
+      "title": "Resolver & policy gaps",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 102,
+      "title": "Enforcement & Coverage",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 23 },
+      "id": 8,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "data_auth_unregistered_path_total", "refId": "A" }],
+      "title": "Unregistered paths",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 23 },
+      "id": 9,
+      "targets": [{ "expr": "sum(rate(data_auth_enforcement_error_total[5m]))", "refId": "A" }],
+      "title": "Enforcement errors/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 23 },
+      "id": 10,
+      "targets": [{ "expr": "data_auth_policy_cache_entries", "refId": "A" }],
+      "title": "Policy cache entries",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 23 },
+      "id": 11,
+      "targets": [{ "expr": "data_auth_worker_version_mismatch", "refId": "A" }],
+      "title": "Worker version mismatch",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "id": 103,
+      "title": "Revocation, Audit & Compliance",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 28 },
+      "id": 12,
+      "targets": [
+        { "expr": "data_auth_revocation_in_progress_total", "legendFormat": "in progress", "refId": "A" },
+        { "expr": "increase(data_auth_revocation_failed_total[1h])", "legendFormat": "failed (1h)", "refId": "B" }
+      ],
+      "title": "Revocation workflows",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 28 },
+      "id": 13,
+      "targets": [
+        { "expr": "sum(rate(data_auth_audit_outbox_failed_total[5m]))", "legendFormat": "retry", "refId": "A" },
+        { "expr": "sum(rate(data_auth_audit_dead_letter_total[5m]))", "legendFormat": "dead letter", "refId": "B" },
+        { "expr": "data_auth_audit_outbox_pending_total", "legendFormat": "pending", "refId": "C" }
+      ],
+      "title": "Audit outbox",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+      "id": 14,
+      "targets": [
+        { "expr": "data_auth_overdue_review_total", "legendFormat": "overdue reviews", "refId": "A" },
+        { "expr": "data_auth_overdue_dpia_total", "legendFormat": "overdue DPIA", "refId": "B" },
+        { "expr": "data_auth_expired_policy_total", "legendFormat": "expired policies", "refId": "C" }
+      ],
+      "title": "Compliance gauges",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "id": 15,
+      "targets": [
+        { "expr": "sum by (outcome) (rate(data_auth_deny_switch_propagation_total[5m]))", "legendFormat": "{{outcome}}", "refId": "A" }
+      ],
+      "title": "Deny-switch propagation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "id": 16,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(data_auth_deny_switch_propagation_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "A" }
+      ],
+      "title": "Deny-switch propagation latency (s)",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "data-auth", "privacy"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SynqDrive Data Authorization",
+  "uid": "synqdrive-data-authorization",
+  "version": 1
+}

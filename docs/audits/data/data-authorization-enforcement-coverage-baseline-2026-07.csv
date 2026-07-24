@@ -29,3 +29,8 @@ revocation-provider-revoke,revocation,true,Prompt 24 baseline
 revocation-partner-notify,revocation,true,Prompt 24 baseline
 deny-switch-decision-gate,revocation,true,Prompt 25 baseline
 deny-switch-queue-guard,revocation,true,Prompt 25 baseline
+provider-grant-dimo-onboarding,provider-grant,true,Prompt 27 baseline
+provider-grant-hm-webhook,provider-grant,true,Prompt 27 baseline
+provider-grant-policy-contradiction,provider-grant,true,Prompt 27 baseline
+revocation-queue-scoped-cancel,revocation-queue,true,Prompt 27 baseline
+revocation-worker-checkpoint,revocation-queue,true,Prompt 27 baseline
