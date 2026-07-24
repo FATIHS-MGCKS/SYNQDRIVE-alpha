@@ -53,6 +53,7 @@
     "test:bookings:integration": "jest booking-pickup-gate.integration booking-wizard-eligibility-e2e-flow",
     "test:bookings:verify": "bash scripts/test/booking-backend-verify.sh all",
     "test:bookings:verify:unit": "bash scripts/test/booking-backend-verify.sh unit",
+    "test:evaluations": "NODE_OPTIONS='--max-old-space-size=8192' jest --runInBand --testPathPattern='business-insights|financial-insights\\.logic|data-analyse\\.utils|dashboard-insights|insight-health-gate|misuse-cases\\.service|evaluations-baseline' --testPathIgnorePatterns='integration|live'",
     "prisma:validate": "DATABASE_URL=${DATABASE_URL:-postgresql://synqdrive:synqdrive@localhost:5432/synqdrive} prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",

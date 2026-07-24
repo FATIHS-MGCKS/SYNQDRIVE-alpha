@@ -729,4 +729,6 @@ Dieses Dokument ist **read-only**. Empfohlene Follow-ups für spätere Prompts:
 
 **Folgedokument (Prompt 2):** [`evaluations-data-flow-map-2026-07.md`](./evaluations-data-flow-map-2026-07.md)
 
+**Folgedokument (Prompt 3):** [`evaluations-baseline-test-report-2026-07.md`](./evaluations-baseline-test-report-2026-07.md)
+
 **Synqdrive Code → Changes / Architektur:** Nicht aktualisiert (reine Audit-Dokumentation, keine Implementierungsänderung).
