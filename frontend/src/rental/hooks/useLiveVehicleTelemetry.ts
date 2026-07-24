@@ -10,6 +10,12 @@ import {
 } from '../../lib/liveMapUtils';
 import {
   type LiveTelemetrySnapshot,
+  mapTelemetryDashboardResponseToLiveSnapshot,
+  parseTelemetryHeadingDeg,
+  parseTelemetryNumber,
+  parseTelemetrySpeedKmh,
+} from '../lib/telemetry-field-semantics';
+import {
   useVehicleLiveMapStore,
 } from '../stores/useVehicleLiveMapStore';
 
@@ -147,11 +153,12 @@ export function useLiveVehicleTelemetry(
           return;
         }
 
-        const speed = typeof data.speed === 'number' ? data.speed : 0;
-        const engineLoad = typeof data.engineLoad === 'number' ? data.engineLoad : 0;
+        const speed = parseTelemetrySpeedKmh(data.speed);
+        const engineLoad = parseTelemetryNumber(data.engineLoad);
         const rawIgnition = data.isIgnitionOn;
         const backendLive = data.isLiveTracking === true;
-        const ignitionOn = rawIgnition === true || (rawIgnition == null && speed > 0);
+        const ignitionOn =
+          rawIgnition === true || (rawIgnition == null && speed != null && speed > 0);
         const onlineStatus: OnlineStatus =
           data.onlineStatus === 'ONLINE' ||
           data.onlineStatus === 'STANDBY' ||
@@ -163,7 +170,11 @@ export function useLiveVehicleTelemetry(
           data.displayState === 'IDLE' ||
           data.displayState === 'PARKED'
             ? data.displayState
-            : deriveVehicleState(speed > 3, ignitionOn, engineLoad);
+            : deriveVehicleState(
+                speed != null && speed > 3,
+                ignitionOn,
+                engineLoad != null && engineLoad > 0,
+              );
         const displayIgnition: DisplayIgnition =
           data.displayIgnition === 'ON' ||
           data.displayIgnition === 'OFF' ||
@@ -172,15 +183,12 @@ export function useLiveVehicleTelemetry(
             : 'UNKNOWN';
 
         const snap: LiveTelemetrySnapshot = {
-          speed,
-          fuel: typeof data.fuel === 'number' ? data.fuel : 0,
-          coolant: typeof data.coolant === 'number' ? data.coolant : 0,
-          battery: typeof data.battery === 'number' ? data.battery : 0,
-          lvBatteryVoltage: typeof data.lvBatteryVoltage === 'number' ? data.lvBatteryVoltage : 0,
-          odometer: typeof data.odometer === 'number' ? data.odometer : 0,
-          engineLoad,
+          ...mapTelemetryDashboardResponseToLiveSnapshot(data),
           ignitionOn,
         };
+        const headingFromApi = parseTelemetryHeadingDeg(
+          typeof data.heading === 'number' ? data.heading : undefined,
+        );
         liveRef.current = backendLive;
 
         store.patchIfBound(boundVehicleId, boundOrgId, {
@@ -195,10 +203,12 @@ export function useLiveVehicleTelemetry(
           onlineStatus,
           displayState,
           displayIgnition,
-          displaySpeed: data.displaySpeed ?? null,
-          displayCoolant: data.displayCoolant ?? null,
-          displayEngineLoad: data.displayEngineLoad ?? null,
+          displaySpeed: data.displaySpeed ?? snap.speed,
+          displayCoolant: data.displayCoolant ?? snap.coolant,
+          displayEngineLoad: data.displayEngineLoad ?? snap.engineLoad,
           tripDetectionState: data.tripDetectionState ?? null,
+          ...(headingFromApi != null ? { heading: headingFromApi } : {}),
+          speedKmh: speed ?? store.speedKmh,
         });
 
         if (!backendLive) {

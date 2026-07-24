@@ -82,13 +82,13 @@ flowchart TB
 | DB | `schema.prisma` `VehicleLatestState` | Alle Skalare `Float?` ✓ |
 | Fleet Derivation | `vehicles.service.ts` `deriveFleetStatusContext` | `odometerKm`, `fuelPercent`, `evSoc` nullable ✓ |
 | State Interpreter | `vehicle-state-interpreter.ts` | `displaySpeed/Coolant/EngineLoad` null wenn stale ✓ |
-| `/telemetry` Response | `vehicles.service.ts` `getVehicleWithTelemetry` | **Legacy-Felder `?? 0`** ✗ |
+| `/telemetry` Response | `vehicles.service.ts` `getVehicleWithTelemetry` | Nullable Skalare + kanonische Felder ✓ (Prompt 10) |
 | `/live-gps` | `getLiveGps` | lat/lng/speed nullable ✓ |
-| `/fleet-map` | `getFleetMapData` | Canonical nullable + legacy zeros |
-| Frontend Hook | `useLiveVehicleTelemetry.ts` | **Coercion zu 0** ✗ |
-| Live Store Type | `LiveTelemetrySnapshot` | **Non-nullable `number`** ✗ |
-| Fleet Mapper | `fleet-map-vehicle-mapper.ts` | Canonical nullable; legacy `odometer ?? 0` |
-| Overview HUD | `OverviewLiveMapCard.tsx` | **`?? 0` für Fuel/Battery** ✗ |
+| `/fleet-map` | `getFleetMapData` | Canonical nullable + legacy nullable (Prompt 10) |
+| Frontend Hook | `useLiveVehicleTelemetry.ts` | Null-preserving mapper ✓ (Prompt 10) |
+| Live Store Type | `LiveTelemetrySnapshot` | Nullable `number \| null` ✓ (Prompt 10) |
+| Fleet Mapper | `fleet-map-vehicle-mapper.ts` | Canonical + legacy nullable ✓ (Prompt 10) |
+| Overview HUD | `OverviewLiveMapCard.tsx` | Formatter aus `telemetry-field-semantics` ✓ (Prompt 10) |
 
 ---
 
@@ -359,54 +359,94 @@ Implementiert in `frontend/src/rental/lib/telemetry-field-semantics.ts`:
 
 | Feld | Parser | Formatter | Missing | Zero |
 |------|--------|-----------|---------|------|
-| speedKmh | `parseTelemetryNumber` | `formatTelemetrySpeedKmh` | — | 0 km/h |
-| odometerKm | `parseTelemetryNumber` + `floorOdometerKm` | `formatTelemetryInteger` | — | 0 km |
-| fuelPercent | `parseTelemetryNumber` + `clampPercent` | `formatTelemetryPercent` | — | 0 % |
-| evSocPercent | `parseTelemetryNumber` + `clampPercent` | `formatTelemetryPercent` | — | 0 % |
-| rangeKm | `parseTelemetryNumber` | `formatTelemetryRangeKm` | — | 0 km |
-| lvBatteryVoltage | `parseTelemetryNumber` | `formatTelemetryVoltage` | — | 0.0 V |
-| engineLoadPercent | `parseTelemetryNumber` | `formatTelemetryPercent` | — | 0 % |
-| coolantTempC | `parseTelemetryNumber` | `formatTelemetryTemperatureC` | — | 0 °C |
-| latitude/longitude | bounds check | map position modes | no marker | valid 0,0 |
-| heading | nullable number | hide bearing if null | no rotation | 0° = north |
+| speedKmh | `parseTelemetrySpeedKmh` (0–500) | `formatTelemetrySpeedKmh` | — | 0 km/h |
+| odometerKm | `parseTelemetryOdometerKm` | `formatTelemetryInteger` | — | 0 km |
+| fuelPercent | `parseTelemetryPercent` | `formatTelemetryPercent` | — | 0 % |
+| evSocPercent | `parseTelemetryPercent` | `formatTelemetryPercent` | — | 0 % |
+| rangeKm | `parseTelemetryRangeKm` | `formatTelemetryRangeKm` | — | 0 km |
+| lvBatteryVoltage | `parseTelemetryVoltage` (0–20 V) | `formatTelemetryVoltage` | — | 0.0 V |
+| engineLoadPercent | `parseTelemetryPercent` | `formatTelemetryPercent` | — | 0 % |
+| coolantTempC | `parseTelemetryTemperatureC` | `formatTelemetryTemperatureC` | — | 0 °C |
+| tractionBatteryTemperatureC | `parseTelemetryTemperatureC` | `formatTelemetryTemperatureC` | — | 0 °C |
+| latitude/longitude | `parseTelemetryLatitude/Longitude` | map position modes | no marker | valid 0,0 |
+| heading | `parseTelemetryHeadingDeg` (0–360) | `formatTelemetryHeadingDeg` | no rotation | 0° |
+| accuracyM | `parseTelemetryAccuracyM` | `formatTelemetryAccuracyM` | — | ±0 m |
 | lastSignal | ISO string / empty | freshness resolver | — / no_signal | N/A |
 
-**Energy-Anzeige Overview:** `resolveEnergyPercentForDisplay({ isElectric, fuelPercent, evSocPercent })` — ein Kanal, nullable.
+**Energy-Anzeige Overview:** `resolveEnergyPercentForDisplay` + `formatTelemetryPercentValue` — ein Kanal, nullable.
 
 ---
 
-## Neue Tests (Prompt 9)
+## Prompt 10/36 — Implementierung (2026-07-24)
+
+### Korrigierte Felder (End-to-End)
+
+| Feld | Backend `/telemetry` | Hook / Store | Overview HUD | Fleet Mapper |
+|------|---------------------|--------------|--------------|--------------|
+| speedKmh | `nullableTelemetryScalar` | `parseTelemetrySpeedKmh` | via `displaySpeed` / store | `null` (kein erfundener 0) |
+| odometerKm | kein `mileageKm`-Fallback | nullable snapshot | `formatTelemetryInteger` | `odometerKm` direkt |
+| fuelPercent | `resolveFuelPercentOrNull` | nullable snapshot | `resolveEnergyPercentForDisplay` | `fuelPercent` direkt |
+| evSoc | nullable, clamped | nullable snapshot | `resolveEnergyPercentForDisplay` | `evSoc` direkt |
+| rangeKm | `state.rangeKm` nullable | snapshot field | — (Battery-Detail nutzt eigenen Pfad) | — |
+| lvBatteryVoltage | nullable | snapshot field | Health wired | — |
+| engineLoad | nullable | snapshot field | `displayEngineLoad` | — |
+| coolantTempC | nullable | snapshot field | `displayCoolant` | `null` |
+| tractionBatteryTemperatureC | nullable | snapshot field | — | — |
+| GPS lat/lng | bereits nullable | `applyGpsPoint` bounds | `deriveOverviewMapPosition` | `lat`/`lng` |
+| heading | `extractHeading(rawPayload)` | API + client history | `LiveMapOverview` | `heading` nullable |
+| accuracyM | `extractGpsAccuracy(rawPayload)` | snapshot field | — | — |
+
+### Geänderte Dateien
+
+| Layer | Datei | Änderung |
+|-------|-------|----------|
+| Semantik | `telemetry-field-semantics.ts` | Bounded Parser, Live-Snapshot-Mapper, Display-Resolver, Formatter |
+| Backend API | `vehicles.service.ts` `getVehicleWithTelemetry` | Alle Skalare nullable; `fuelPercent`/`evSoc`/`odometerKm` kanonisch; `rangeKm`, `heading`, `accuracyM` |
+| Interpreter | `vehicle-state-interpreter.ts` | `displaySpeed: raw.speedKmh` (nicht `?? 0`) |
+| Hook | `useLiveVehicleTelemetry.ts` | `mapTelemetryDashboardResponseToLiveSnapshot`; kein Ignition-Fallback auf fehlende Speed |
+| Store | `useVehicleLiveMapStore.ts` | `LiveTelemetrySnapshot` nullable; `signalAgeMs` initial `null` |
+| Overview | `OverviewLiveMapCard.tsx` | Formatter statt `?? 0` |
+| Fleet | `fleet-map-vehicle-mapper.ts` | Legacy-Felder nullable statt `?? 0` / hardcoded 0 |
+| Types | `vehicles.ts` `VehicleData` | Legacy-Telemetrie `number \| null` |
+
+### Tests (Prompt 10)
 
 | Suite | Datei | Abdeckung |
 |-------|-------|-----------|
-| Feld-Semantik | `telemetry-field-semantics.test.ts` | missing vs 0, Formatter, legacy coercion detector |
-| State Interpreter | `vehicle-state-interpreter.spec.ts` | stale nulls display; fresh zero speed |
+| Feld-Semantik | `telemetry-field-semantics.test.ts` | missing/null/undefined/0/invalid/NaN/bounds für alle Parser |
+| State Interpreter | `vehicle-state-interpreter.spec.ts` | fresh null speed → `displaySpeed: null` |
+| `/telemetry` API | `vehicles.service.telemetry-nullability.spec.ts` | missing → null; measured 0 preserved; kein mileageKm-Fallback |
+| Fleet Mapper | `fleet-map-vehicle-mapper.test.ts` | null telemetry legacy fields |
+| Baseline | `vehicle-detail-baseline.test.ts` | null mapper regression |
+
+### Bewusst nicht geändert
+
+| Bereich | Grund |
+|---------|-------|
+| DB-Schema / Migration | `VehicleLatestState` bereits `Float?` — keine Migration nötig |
+| `mapToFleetVehicle` legacy `odometerLegacy` | Fleet-List/CSV-Aggregationen; kanonische Felder nullable |
+| `vehicle-state-interpreter` State-Machine | intern `speed ?? 0` für MOVING/IDLE-Logik; Display-Felder nullable |
+| `LiveMapOverview` Animation | `heading ?? 0` nur für Marker-Rotation; Dead Reckoning nur bei `speed != null` |
+| HM / ClickHouse | außerhalb Live-UI-Pfad |
+
+### Offene Follow-ups (niedrige Priorität)
+
+1. `mapToFleetVehicle` legacy `odometerLegacy`/`fuelOrEnergyLegacy` für reine Aggregations-Consumer evaluieren
+2. Heading/Accuracy in Fleet GeoJSON / Map-Marker-Badges exposen
+3. `OverviewLiveMapCard` optionale Tiles für Range / 12V / Temperaturen
+
+---
+
+## Tests (Prompt 9 + 10)
+
+| Suite | Datei | Abdeckung |
+|-------|-------|-----------|
+| Feld-Semantik | `telemetry-field-semantics.test.ts` | missing vs 0, bounded parsers, Formatter, legacy coercion detector |
+| State Interpreter | `vehicle-state-interpreter.spec.ts` | stale nulls display; fresh zero speed; fresh null speed |
 | Fleet derivation | `vehicles.service.spec.ts` | bereits `null-preserving telemetry` |
+| `/telemetry` API | `vehicles.service.telemetry-nullability.spec.ts` | nullable response contract |
 | Ziel-Mapper | `mapTelemetryDashboardResponseToNullableSnapshot` | API `{}` → all null; explicit zeros preserved |
-| Legacy-Vergleich | `mapTelemetryDashboardResponseLegacyCoerced` | dokumentiert Hook-Verhalten |
-
-**Noch nicht migriert (bewusst):** `useLiveVehicleTelemetry`, `/telemetry` Response-Shape, `LiveTelemetrySnapshot` Typ, `OverviewLiveMapCard` HUD.
-
----
-
-## Migrations-Reihenfolge (Follow-up Prompts)
-
-1. `/telemetry` Response: nullable Felder + `display*` beibehalten; Legacy-Felder deprecaten
-2. `LiveTelemetrySnapshot` → `NullableLiveTelemetrySnapshot`; Hook auf `mapTelemetryDashboardResponseToNullableSnapshot`
-3. `OverviewLiveMapCard` Formatter aus `telemetry-field-semantics`
-4. `fleet-map-vehicle-mapper` legacy `odometer/fuel/battery/speed` zeros entfernen
-5. Heading: nullable in Mapbox/Fleet GeoJSON
-6. `rangeKm`, `tractionBatteryTemperatureC` optional auf `/telemetry` exposen
-
----
-
-## HM / ClickHouse Hinweise
-
-| Pfad | Status |
-|------|--------|
-| HM MQTT → VLS | Phase 2 — log only, **kein** Live-UI-Feed |
-| ClickHouse `telemetry_snapshots` | Analytics / HF; nicht Vehicle Detail Live |
-| ClickHouse ingest | `(speedKmh ?? 0) > 2` für Bewegung — **nur Analytics** |
+| Legacy-Vergleich | `mapTelemetryDashboardResponseLegacyCoerced` | dokumentiert Pre-Prompt-10 Hook-Verhalten |
 
 ---
 
@@ -414,10 +454,10 @@ Implementiert in `frontend/src/rental/lib/telemetry-field-semantics.ts`:
 
 | Kategorie | Anzahl |
 |-----------|--------|
-| Dokumentierte Konvertierungs-Hotspots (T-01–T-24) | 24 |
-| Coverage-Gaps (G-01–G-04) | 4 |
-| Felder mit korrektem Fleet-null-Pfad | odometerKm, fuelPercent, evSoc |
-| Haupt-Regressionsrisiko | `/telemetry` + Hook + Store erzwingen 0 für fehlende Signale |
-| In diesem Prompt geändert | Audit-Doc + Semantik-Modul + Tests (keine Massen-Migration) |
+| Dokumentierte Konvertierungs-Hotspots (T-01–T-24) | 24 — **T-01–T-07, T-09, T-11 migriert** |
+| Coverage-Gaps (G-01–G-04) | G-01 rangeKm, G-02 heading, G-03 accuracy **geschlossen auf `/telemetry`** |
+| Felder mit korrektem null-Pfad | speed, odometer, fuel, evSoc, range, 12V, engineLoad, coolant, HV temp, GPS, heading, accuracy |
+| Haupt-Regressionsrisiko | behoben auf Live-UI-Pfad (`/telemetry` → Hook → Store → Overview HUD) |
+| In diesem Prompt geändert | End-to-End-Implementierung + Tests + Audit-Update |
 
 **SynqDrive Code → Changes / Architektur:** nicht aktualisiert (externes Workspace; In-Repo-Audit-Dokumentation).

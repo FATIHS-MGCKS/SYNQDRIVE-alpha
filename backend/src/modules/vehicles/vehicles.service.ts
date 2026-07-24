@@ -1269,6 +1269,57 @@ export class VehiclesService {
     return null;
   }
 
+  private extractGpsAccuracy(rawPayload: unknown): number | null {
+    if (!rawPayload || typeof rawPayload !== 'object') return null;
+    const raw = rawPayload as Record<string, unknown>;
+
+    const directKeys = [
+      'accuracy',
+      'accuracyM',
+      'horizontalAccuracy',
+      'gpsAccuracy',
+    ] as const;
+    for (const key of directKeys) {
+      const value = raw[key];
+      if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+        return value;
+      }
+    }
+
+    const nestedCandidates: unknown[] = [
+      raw.currentLocationCoordinates,
+      raw.currentLocationAccuracy,
+      raw.location,
+      raw.position,
+    ];
+
+    for (const candidate of nestedCandidates) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const obj = candidate as Record<string, unknown>;
+      const fromValue = obj.value;
+      if (typeof fromValue === 'number' && Number.isFinite(fromValue) && fromValue >= 0) {
+        return fromValue;
+      }
+      if (fromValue && typeof fromValue === 'object') {
+        const nestedValue = fromValue as Record<string, unknown>;
+        for (const key of directKeys) {
+          const v = nestedValue[key];
+          if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
+        }
+      }
+      for (const key of directKeys) {
+        const v = obj[key];
+        if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
+      }
+    }
+
+    return null;
+  }
+
+  private nullableTelemetryScalar(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  }
+
   // ── CRUD ──────────────────────────────────────────────────────────
 
   async create(
@@ -1696,6 +1747,19 @@ export class VehiclesService {
       }
     }
 
+    const fuelPercent = this.resolveFuelPercentOrNull(
+      state,
+      vehicle.tankCapacityLiters,
+    );
+    const odometerKm =
+      typeof state?.odometerKm === 'number' && Number.isFinite(state.odometerKm)
+        ? Math.floor(state.odometerKm)
+        : null;
+    const evSoc =
+      typeof state?.evSoc === 'number' && Number.isFinite(state.evSoc)
+        ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
+        : null;
+
     return {
       id: vehicle.id,
       vin: vehicle.vin,
@@ -1705,21 +1769,30 @@ export class VehiclesService {
       station: vehicle.homeStation?.name ?? '',
       online: interpreted.isFresh,
       lastSignal: interpreted.lastSignal,
-      speed: state?.speedKmh ?? 0,
-      odometer: state?.odometerKm ?? vehicle.mileageKm ?? 0,
-      fuel: this.resolveFuelPercent(state, vehicle.tankCapacityLiters),
-      battery: state?.evSoc ?? 0,
-      coolant: state?.coolantTempC ?? 0,
+      speed: this.nullableTelemetryScalar(state?.speedKmh),
+      odometer: odometerKm,
+      fuel: fuelPercent,
+      battery: evSoc,
+      coolant: this.nullableTelemetryScalar(state?.coolantTempC),
       /** @deprecated HM telemetry gauge only — not brake health truth. */
-      brakes: state?.brakePadPercent ?? 0,
-      tires: state?.tireHealthPercent ?? 0,
-      engineOil: state?.engineOilPercent ?? 0,
-      oilLevel: state?.oilLevelRelative ?? 0,
-      lvBatteryVoltage: state?.lvBatteryVoltage ?? 0,
-      engineLoad: state?.engineLoad ?? 0,
+      brakes: this.nullableTelemetryScalar(state?.brakePadPercent),
+      tires: this.nullableTelemetryScalar(state?.tireHealthPercent),
+      engineOil: this.nullableTelemetryScalar(state?.engineOilPercent),
+      oilLevel: this.nullableTelemetryScalar(state?.oilLevelRelative),
+      lvBatteryVoltage: this.nullableTelemetryScalar(state?.lvBatteryVoltage),
+      engineLoad: this.nullableTelemetryScalar(state?.engineLoad),
+      rangeKm: this.nullableTelemetryScalar(state?.rangeKm),
+      tractionBatteryTemperatureC: this.nullableTelemetryScalar(
+        state?.tractionBatteryTemperatureC,
+      ),
       isIgnitionOn: state?.isIgnitionOn ?? null,
       latitude,
       longitude,
+      heading: this.extractHeading(state?.rawPayloadJson),
+      accuracyM: this.extractGpsAccuracy(state?.rawPayloadJson),
+      odometerKm,
+      fuelPercent,
+      evSoc,
       signalAgeMs: interpreted.signalAgeMs,
       isFresh: interpreted.isFresh,
       onlineStatus: interpreted.onlineStatus,

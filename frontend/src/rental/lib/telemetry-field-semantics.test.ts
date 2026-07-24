@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   clampPercent,
   floorOdometerKm,
+  formatTelemetryAccuracyM,
+  formatTelemetryHeadingDeg,
   formatTelemetryInteger,
   formatTelemetryPercent,
+  formatTelemetryPercentValue,
   formatTelemetryRangeKm,
   formatTelemetrySpeedKmh,
   formatTelemetryTemperatureC,
@@ -12,9 +15,19 @@ import {
   isTelemetryMissing,
   isTelemetryPresent,
   mapTelemetryDashboardResponseLegacyCoerced,
+  mapTelemetryDashboardResponseToLiveSnapshot,
   mapTelemetryDashboardResponseToNullableSnapshot,
+  parseTelemetryAccuracyM,
+  parseTelemetryHeadingDeg,
   parseTelemetryNumber,
+  parseTelemetryOdometerKm,
+  parseTelemetryPercent,
+  parseTelemetryRangeKm,
+  parseTelemetrySpeedKmh,
+  parseTelemetryTemperatureC,
+  parseTelemetryVoltage,
   resolveEnergyPercentForDisplay,
+  resolveTelemetryScalarForDisplay,
 } from './telemetry-field-semantics';
 
 describe('telemetry-field-semantics — missing vs zero', () => {
@@ -24,6 +37,7 @@ describe('telemetry-field-semantics — missing vs zero', () => {
     expect(parseTelemetryNumber(null)).toBeNull();
     expect(parseTelemetryNumber(undefined)).toBeNull();
     expect(parseTelemetryNumber(Number.NaN)).toBeNull();
+    expect(parseTelemetryNumber(Number.POSITIVE_INFINITY)).toBeNull();
     expect(parseTelemetryNumber('12')).toBeNull();
   });
 
@@ -44,6 +58,12 @@ describe('telemetry-field-semantics — missing vs zero', () => {
       coolantTempC: null,
       lvBatteryVoltage: null,
       engineLoadPercent: null,
+      rangeKm: null,
+      tractionBatteryTemperatureC: null,
+      latitude: null,
+      longitude: null,
+      headingDeg: null,
+      accuracyM: null,
     });
   });
 
@@ -56,19 +76,21 @@ describe('telemetry-field-semantics — missing vs zero', () => {
       coolant: 0,
       lvBatteryVoltage: 0,
       engineLoad: 0,
+      rangeKm: 0,
+      tractionBatteryTemperatureC: 0,
+      heading: 0,
+      accuracyM: 0,
     });
-    expect(snapshot).toEqual({
-      speedKmh: 0,
-      fuelPercent: 0,
-      evSocPercent: 0,
-      odometerKm: 0,
-      coolantTempC: 0,
-      lvBatteryVoltage: 0,
-      engineLoadPercent: 0,
-    });
+    expect(snapshot.speedKmh).toBe(0);
+    expect(snapshot.fuelPercent).toBe(0);
+    expect(snapshot.evSocPercent).toBe(0);
+    expect(snapshot.odometerKm).toBe(0);
+    expect(snapshot.rangeKm).toBe(0);
+    expect(snapshot.headingDeg).toBe(0);
+    expect(snapshot.accuracyM).toBe(0);
   });
 
-  it('legacy coerced mapper documents current hook behavior for missing API fields', () => {
+  it('legacy coerced mapper documents pre-Prompt-10 hook behavior for missing API fields', () => {
     const legacy = mapTelemetryDashboardResponseLegacyCoerced({});
     expect(legacy.speed).toBe(0);
     expect(legacy.fuel).toBe(0);
@@ -79,13 +101,113 @@ describe('telemetry-field-semantics — missing vs zero', () => {
     expect(isLegacyCoercedZero(0, 0)).toBe(false);
   });
 
-  it('legacy coercion detector flags false parked speed from missing signal', () => {
-    const nullable = mapTelemetryDashboardResponseToNullableSnapshot({ speed: undefined });
-    const legacy = mapTelemetryDashboardResponseLegacyCoerced({ speed: undefined });
-    expect(nullable.speedKmh).toBeNull();
-    expect(legacy.speed).toBe(0);
-    expect(isLegacyCoercedZero(legacy.speed, nullable.speedKmh)).toBe(true);
+  it('live snapshot mapper is null-preserving end-to-end', () => {
+    const live = mapTelemetryDashboardResponseToLiveSnapshot({ speed: 0, fuel: null });
+    expect(live.speed).toBe(0);
+    expect(live.fuel).toBeNull();
+    expect(live.rangeKm).toBeNull();
   });
+});
+
+describe('telemetry-field-semantics — bounded parsers', () => {
+  const cases: Array<{
+    name: string;
+    parser: (value: unknown) => number | null;
+    valid: Array<[unknown, number]>;
+    invalid: unknown[];
+  }> = [
+    {
+      name: 'percent',
+      parser: parseTelemetryPercent,
+      valid: [
+        [0, 0],
+        [100, 100],
+        [72.4, 72.4],
+      ],
+      invalid: [null, undefined, NaN, '50', -1, 101, Number.POSITIVE_INFINITY],
+    },
+    {
+      name: 'speed',
+      parser: parseTelemetrySpeedKmh,
+      valid: [
+        [0, 0],
+        [120, 120],
+        [500, 500],
+      ],
+      invalid: [null, undefined, NaN, -1, 501, '80'],
+    },
+    {
+      name: 'odometer',
+      parser: parseTelemetryOdometerKm,
+      valid: [
+        [0, 0],
+        [12345.9, 12345.9],
+      ],
+      invalid: [null, undefined, NaN, -1, 10_000_000],
+    },
+    {
+      name: 'voltage',
+      parser: parseTelemetryVoltage,
+      valid: [
+        [0, 0],
+        [12.4, 12.4],
+        [20, 20],
+      ],
+      invalid: [null, undefined, NaN, -0.1, 20.1],
+    },
+    {
+      name: 'temperature',
+      parser: parseTelemetryTemperatureC,
+      valid: [
+        [0, 0],
+        [-20, -20],
+        [90, 90],
+      ],
+      invalid: [null, undefined, NaN, -51, 151],
+    },
+    {
+      name: 'range',
+      parser: parseTelemetryRangeKm,
+      valid: [
+        [0, 0],
+        [312, 312],
+      ],
+      invalid: [null, undefined, NaN, -1, 2001],
+    },
+    {
+      name: 'heading',
+      parser: parseTelemetryHeadingDeg,
+      valid: [
+        [0, 0],
+        [180, 180],
+        [360, 0],
+      ],
+      invalid: [null, undefined, NaN, -1, 361],
+    },
+    {
+      name: 'accuracy',
+      parser: parseTelemetryAccuracyM,
+      valid: [
+        [0, 0],
+        [12, 12],
+      ],
+      invalid: [null, undefined, NaN, -1, 10_001],
+    },
+  ];
+
+  for (const { name, parser, valid, invalid } of cases) {
+    it(`${name}: accepts valid values including zero`, () => {
+      for (const [input, expected] of valid) {
+        expect(parser(input)).toBe(expected);
+      }
+    });
+
+    it(`${name}: rejects missing and invalid values`, () => {
+      for (const input of invalid) {
+        expect(parser(input)).toBeNull();
+      }
+    });
+  }
 });
 
 describe('telemetry-field-semantics — formatting', () => {
@@ -97,6 +219,8 @@ describe('telemetry-field-semantics — formatting', () => {
     expect(formatTelemetryPercent(undefined)).toBe('—');
     expect(formatTelemetryPercent(0)).toBe('0 %');
     expect(formatTelemetryPercent(72.4)).toBe('72 %');
+    expect(formatTelemetryPercentValue(0)).toBe('0');
+    expect(formatTelemetryPercentValue(null)).toBe('—');
 
     expect(formatTelemetrySpeedKmh(null)).toBe('—');
     expect(formatTelemetrySpeedKmh(0)).toBe('0 km/h');
@@ -109,6 +233,12 @@ describe('telemetry-field-semantics — formatting', () => {
 
     expect(formatTelemetryRangeKm(null)).toBe('—');
     expect(formatTelemetryRangeKm(0)).toBe('0 km');
+
+    expect(formatTelemetryHeadingDeg(null)).toBe('—');
+    expect(formatTelemetryHeadingDeg(45)).toBe('45°');
+
+    expect(formatTelemetryAccuracyM(null)).toBe('—');
+    expect(formatTelemetryAccuracyM(8)).toBe('±8 m');
   });
 
   it('resolveEnergyPercentForDisplay uses canonical nullable fuel vs evSoc', () => {
@@ -140,6 +270,14 @@ describe('telemetry-field-semantics — formatting', () => {
         evSocPercent: 0,
       }),
     ).toBe(0);
+  });
+
+  it('resolveTelemetryScalarForDisplay prefers live then canonical then legacy', () => {
+    expect(resolveTelemetryScalarForDisplay(42, 10, 5)).toBe(42);
+    expect(resolveTelemetryScalarForDisplay(null, 10, 5)).toBe(10);
+    expect(resolveTelemetryScalarForDisplay(undefined, null, 0)).toBe(0);
+    expect(resolveTelemetryScalarForDisplay(null, null, null)).toBeNull();
+    expect(resolveTelemetryScalarForDisplay(0, null, 99)).toBe(0);
   });
 
   it('floorOdometerKm and clampPercent match backend fleet derivation', () => {

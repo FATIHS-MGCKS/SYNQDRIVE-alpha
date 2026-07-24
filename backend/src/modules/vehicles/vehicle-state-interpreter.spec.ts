@@ -91,4 +91,10 @@ describe('interpretVehicleState — missing vs zero scalars', () => {
     expect(idle.displayState).toBe('IDLE');
     expect(idle.displayEngineLoad).toBe(12);
   });
+
+  it('preserves null speed as missing display value when signal is fresh', () => {
+    const s = interpretVehicleState(baseRaw({ speedKmh: null, lastSeenAt: minutesAgo(2) }), null);
+    expect(s.displaySpeed).toBeNull();
+    expect(s.displayState).toBe('PARKED');
+  });
 });

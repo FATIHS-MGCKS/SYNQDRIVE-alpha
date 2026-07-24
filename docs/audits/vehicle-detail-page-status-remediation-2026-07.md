@@ -424,3 +424,62 @@ Identisch zu Prompt 6 (`reason: 'vehicle-status-patch'`).
 | Task-Navigation nach „Needs Cleaning“ | Bestehendes Produktverhalten — keine Rental-Freigabe |
 | Englische UI-Labels „Clean“ / „Needs Cleaning“ | Unverändert — keine visuelle Linie geändert |
 | `cleaningStatus` im selben PATCH wie `status` | Endpoint erlaubt beides; Header sendet getrennte Mutationen |
+
+---
+
+## Prompt 8/36 — Runtime-State-Konsistenz (2026-07-24)
+
+### Ziel
+
+Fleet Page, Vehicle Detail Header, Dashboard Runtime Builder und Cross-Surface-Resolver müssen für dasselbe Fahrzeug dieselbe Kernaussage zu Rental Readiness, Blockern und operativem Status liefern — ohne lokale Überschreibungen.
+
+### Gefundene Inkonsistenzen (vor Remediation)
+
+| ID | Problem | Auswirkung |
+|----|---------|------------|
+| I-01 | Drei parallele Ready-Ableitungen (`deriveIsReadyForRenting`, `resolveRentalDisplay`, `deriveFleetVisualState.readiness`) | Fleet „Nicht bereit“ vs. Dashboard „Bereit“ bei Cleaning/Offline |
+| I-02 | `deriveTelemetryState` → `unknown` bei fehlendem Signal; `resolveTelemetryFreshness` → `no_signal` | Dashboard blockierte Offline nicht; Fleet/Booking schon |
+| I-03 | `resolveRentalDisplay` ignorierte `cleaningStatus` | Reinigung blockierte nur im Dashboard-Runtime |
+| I-04 | `fleetVisualState.isHealthCritical` zu breit (`rental_blocked` ohne Service-Filter) | Service-only Overdue fälschlich als Critical/Blocked |
+| I-05 | Health-Warning erhöhte `primaryStatus` ohne Rental-Block | Sortierung/Attention ≠ Rental Readiness (bewusst getrennt, aber undokumentiert) |
+| I-06 | Vehicle Detail Header nutzte bereits `resolveFleetVehicleDisplayState` | Kein eigener Readiness-Pfad — bestätigt, beibehalten |
+
+### Umsetzung
+
+| Datei | Änderung |
+|-------|----------|
+| `vehicle-rental-health-blockers.ts` | **Neu:** gemeinsame Hard-Blocker-Logik (TÜV/BOKraft ja; Service-only nein) |
+| `vehicle-rental-readiness.ts` | **Neu:** `resolveCrossSurfaceRentalReadiness` — ein Resolver für Fleet + Visual |
+| `vehicle-telemetry-runtime.ts` | **Neu:** `deriveRuntimeTelemetryState` delegiert an `resolveTelemetryFreshness`; `no_signal` → `offline` |
+| `fleetVehicleDisplay.ts` | `resolveRentalDisplay` nutzt Cross-Surface-Resolver + `now`-Parameter |
+| `fleetVisualState.ts` | Readiness + Health-Critical über Shared-Module; Map `no_location` bleibt Sonderfall |
+| `vehicleRuntimeStateBuilder.ts` | `deriveTelemetryState` delegiert an kanonische Telemetrie |
+| `vehicle-runtime-state-consistency.test.ts` | **Neu:** 9 Fixture-Tests über Header, Fleet, Visual, Runtime, Dashboard |
+
+### Durchgesetzte Fachregeln
+
+| Regel | Umsetzung |
+|-------|-----------|
+| Warnung blockiert nicht | Health-Warning allein → `isReadyToRent` bleibt true |
+| Critical ≠ Maintenance | `operationalStatus` bleibt `available`; `isMaintenance` nur bei IN_SERVICE |
+| Service overdue ≠ Rental-Blocker | `hasHardRentalBlockingReasons` filtert Service/Wartung |
+| TÜV/BOKraft Hard-Blocker | `isLegalComplianceBlockingText` + explizite blocking_reasons |
+| Cleaning berücksichtigt | `cleaningStatus !== 'Clean'` → not_ready, nicht blocked |
+| Offline/no_signal | Einheitlich über `resolveTelemetryFreshness` |
+| Unknown bleibt unknown | Fail-closed; kein Available-Fallback |
+
+### Vehicle Detail Header
+
+- Chip zeigt **kanonischen operativen Status** (`statusBadge`) via `resolveFleetVehicleDisplayState` — **keine** eigene Rental-Readiness-Ableitung.
+- Supplement: unreliable → booking → dataQuality (bestehend).
+
+### Tests (Prompt 8)
+
+| Suite | Ergebnis |
+|-------|----------|
+| `vehicle-runtime-state-consistency.test.ts` | 9/9 PASS |
+| `fleetVehicleDisplay.test.ts` | 24/24 PASS |
+| `fleetVisualState.test.ts` | 13/13 PASS |
+| `dashboardRuntime.test.ts` | 27/27 PASS |
+| `vehicle-operational-state-v2-surfaces.test.ts` | 8/8 PASS |
+| `connectivity-cross-surface-regression.test.ts` | 19/19 PASS |

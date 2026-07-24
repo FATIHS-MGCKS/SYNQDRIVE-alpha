@@ -125,10 +125,10 @@ describe('vehicle detail baseline — telemetry freshness', () => {
     expect(freshness.shouldWarnUser).toBe(true);
   });
 
-  it('telemetry-null-values: mapper coerces null odometer/speed to 0 (documented pre-existing)', () => {
+  it('telemetry-null-values: mapper preserves null odometer/speed (Prompt 10/36)', () => {
     const mapped = mapBaselineFleetRowWithNullTelemetry();
-    expect(mapped.odometer).toBe(0);
-    expect(mapped.speed).toBe(0);
+    expect(mapped.odometer).toBeNull();
+    expect(mapped.speed).toBeNull();
     expect(mapped.odometerKm).toBeNull();
     expect(mapped.fuelPercent).toBeNull();
   });
