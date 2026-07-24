@@ -13,6 +13,7 @@ import { ProviderAccessSection } from './sections/ProviderAccessSection';
 import { ConsentsSection } from './sections/ConsentsSection';
 import { PartnersProcessorsSection } from './sections/PartnersProcessorsSection';
 import { AuditDecisionsSection } from './sections/AuditDecisionsSection';
+import { DataProcessingWizardDialog } from './wizard/DataProcessingWizardDialog';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface Props {
@@ -20,11 +21,12 @@ interface Props {
   canManage?: boolean;
 }
 
-export function DataProcessingHub(_props: Props) {
+export function DataProcessingHub({ canWrite, canManage }: Props) {
   const { orgId } = useRentalOrg();
   const permissions = useDataProcessingPermissions();
   const { t } = useLanguage();
   const hub = useDataProcessingHub(orgId, permissions);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const [activeSection, setActiveSection] = useState<DataProcessingSectionId>(
     permissions.visibleSections[0] ?? 'activities',
@@ -35,6 +37,9 @@ export function DataProcessingHub(_props: Props) {
       setActiveSection(permissions.visibleSections[0] ?? 'activities');
     }
   }, [activeSection, permissions.visibleSections]);
+
+  const canOpenWizard =
+    permissions.canCreateAny && (canWrite ?? permissions.canCreateAny) && Boolean(orgId);
 
   if (!permissions.canViewHub) {
     return (
@@ -47,7 +52,12 @@ export function DataProcessingHub(_props: Props) {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 animate-fade-up">
-      <DataProcessingPageHeader readiness={hub.readiness} loading={hub.loading} />
+      <DataProcessingPageHeader
+        readiness={hub.readiness}
+        loading={hub.loading}
+        canCreate={canOpenWizard}
+        onCreate={() => setWizardOpen(true)}
+      />
 
       <DataProcessingReadinessStrip summary={hub.readiness} loading={hub.loading} />
 
@@ -126,6 +136,22 @@ export function DataProcessingHub(_props: Props) {
           />
         ) : null}
       </section>
+
+      {orgId ? (
+        <DataProcessingWizardDialog
+          open={wizardOpen}
+          onOpenChange={setWizardOpen}
+          orgId={orgId}
+          permissions={{
+            ...permissions,
+            canRequestReview: permissions.canRequestReview && (canManage ?? permissions.canRequestReview),
+          }}
+          onSuccess={async () => {
+            await hub.reload();
+            setActiveSection('activities');
+          }}
+        />
+      ) : null}
     </div>
   );
 }

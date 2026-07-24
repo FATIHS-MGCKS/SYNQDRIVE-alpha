@@ -1,5 +1,6 @@
-import { Shield } from 'lucide-react';
+import { Plus, Shield } from 'lucide-react';
 import { PageHeader, StatusChip } from '../../../../components/patterns';
+import { Button } from '../../../../components/ui/button';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { DataProcessingReadinessSummary } from '../../../lib/data-processing-readiness';
 import { formatDataProcessingOverallDetail } from '../../../lib/data-processing-readiness';
@@ -7,9 +8,16 @@ import { formatDataProcessingOverallDetail } from '../../../lib/data-processing-
 interface DataProcessingPageHeaderProps {
   readiness: DataProcessingReadinessSummary;
   loading?: boolean;
+  canCreate?: boolean;
+  onCreate?: () => void;
 }
 
-export function DataProcessingPageHeader({ readiness, loading }: DataProcessingPageHeaderProps) {
+export function DataProcessingPageHeader({
+  readiness,
+  loading,
+  canCreate,
+  onCreate,
+}: DataProcessingPageHeaderProps) {
   const { t } = useLanguage();
 
   return (
@@ -36,6 +44,14 @@ export function DataProcessingPageHeader({ readiness, loading }: DataProcessingP
             ? t('dataProcessing.status.loadingDetail')
             : formatDataProcessingOverallDetail(readiness, t)}
         </p>
+      }
+      actions={
+        canCreate ? (
+          <Button type="button" onClick={onCreate} className="min-h-11">
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            {t('dataProcessing.wizard.createCta')}
+          </Button>
+        ) : undefined
       }
     />
   );
