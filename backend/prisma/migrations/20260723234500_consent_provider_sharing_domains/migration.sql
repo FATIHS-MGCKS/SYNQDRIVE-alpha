@@ -51,7 +51,7 @@ ALTER TABLE "provider_access_grants"
   ADD COLUMN IF NOT EXISTS "provider_grant_reference" TEXT,
   ADD COLUMN IF NOT EXISTS "provider_status" "ProviderAccessGrantStatus",
   ADD COLUMN IF NOT EXISTS "last_verified_at" TIMESTAMP(3),
-  ADD COLUMN IF NOT EXISTS "technical_owner_user_id" UUID,
+  ADD COLUMN IF NOT EXISTS "technical_owner_user_id" TEXT,
   ADD COLUMN IF NOT EXISTS "linked_vehicle_count" INTEGER NOT NULL DEFAULT 0;
 
 UPDATE "provider_access_grants"
@@ -81,7 +81,7 @@ ALTER TABLE "data_sharing_authorizations"
   ADD COLUMN IF NOT EXISTS "recipient" TEXT,
   ADD COLUMN IF NOT EXISTS "recipient_role" "DataSharingRecipientRole",
   ADD COLUMN IF NOT EXISTS "purpose" "PrivacyProcessingPurpose",
-  ADD COLUMN IF NOT EXISTS "legal_basis_assessment_id" UUID,
+  ADD COLUMN IF NOT EXISTS "legal_basis_assessment_id" TEXT,
   ADD COLUMN IF NOT EXISTS "transfer_country" TEXT,
   ADD COLUMN IF NOT EXISTS "transfer_mechanism" "DataTransferMechanism",
   ADD COLUMN IF NOT EXISTS "valid_from" TIMESTAMP(3),
@@ -114,9 +114,9 @@ CREATE INDEX IF NOT EXISTS "data_sharing_authorizations_legal_basis_assessment_i
 
 -- Status event tables (append-only)
 CREATE TABLE IF NOT EXISTS "data_subject_consent_status_events" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "data_subject_consent_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "data_subject_consent_id" TEXT NOT NULL,
   "from_status" "DataSubjectConsentStatus",
   "to_status" "DataSubjectConsentStatus" NOT NULL,
   "actor_type" "AuthorizationActorType" NOT NULL,
@@ -128,20 +128,20 @@ CREATE TABLE IF NOT EXISTS "data_subject_consent_status_events" (
 );
 
 CREATE TABLE IF NOT EXISTS "consent_withdrawal_propagations" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "data_subject_consent_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
-  "enforcement_policy_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "data_subject_consent_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
+  "enforcement_policy_id" TEXT,
   "action" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "consent_withdrawal_propagations_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "provider_access_grant_status_events" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "provider_access_grant_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "provider_access_grant_id" TEXT NOT NULL,
   "from_status" "ProviderAccessGrantStatus",
   "to_status" "ProviderAccessGrantStatus" NOT NULL,
   "actor_type" "AuthorizationActorType" NOT NULL,
@@ -152,18 +152,18 @@ CREATE TABLE IF NOT EXISTS "provider_access_grant_status_events" (
 );
 
 CREATE TABLE IF NOT EXISTS "data_sharing_authorization_categories" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "data_sharing_authorization_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "data_sharing_authorization_id" TEXT NOT NULL,
   "data_category" "PrivacyProcessingDataCategory" NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "data_sharing_authorization_categories_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "data_sharing_authorization_status_events" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "data_sharing_authorization_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "data_sharing_authorization_id" TEXT NOT NULL,
   "from_status" "DataSharingAuthorizationStatus",
   "to_status" "DataSharingAuthorizationStatus" NOT NULL,
   "actor_type" "AuthorizationActorType" NOT NULL,

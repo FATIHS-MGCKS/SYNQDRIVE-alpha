@@ -22,7 +22,7 @@ ALTER TYPE "LegalBasisAssessmentStatus" ADD VALUE IF NOT EXISTS 'EXPIRED';
 
 -- AlterTable legal_basis_assessments
 ALTER TABLE "legal_basis_assessments"
-  ADD COLUMN IF NOT EXISTS "policy_family_id" UUID,
+  ADD COLUMN IF NOT EXISTS "policy_family_id" TEXT,
   ADD COLUMN IF NOT EXISTS "version_number" INTEGER NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS "is_current_version" BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS "legal_reference" TEXT,
@@ -31,7 +31,7 @@ ALTER TABLE "legal_basis_assessments"
   ADD COLUMN IF NOT EXISTS "legitimate_interest_description" TEXT,
   ADD COLUMN IF NOT EXISTS "balancing_test_reference" TEXT,
   ADD COLUMN IF NOT EXISTS "consent_requirement" "LegalBasisConsentRequirement" NOT NULL DEFAULT 'NOT_APPLICABLE',
-  ADD COLUMN IF NOT EXISTS "approved_by_user_id" UUID,
+  ADD COLUMN IF NOT EXISTS "approved_by_user_id" TEXT,
   ADD COLUMN IF NOT EXISTS "approved_at" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "valid_from" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "valid_until" TIMESTAMP(3),
@@ -51,9 +51,9 @@ ALTER TABLE "legal_basis_assessments"
 
 -- CreateTable evidence refs
 CREATE TABLE IF NOT EXISTS "legal_basis_assessment_evidence_refs" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "legal_basis_assessment_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "legal_basis_assessment_id" TEXT NOT NULL,
   "reference" TEXT NOT NULL,
   "label" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

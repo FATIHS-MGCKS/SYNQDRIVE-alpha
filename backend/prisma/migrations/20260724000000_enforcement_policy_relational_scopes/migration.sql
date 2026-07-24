@@ -10,7 +10,7 @@ ALTER TYPE "PrivacyEnforcementScopeType" ADD VALUE IF NOT EXISTS 'STATION';
 
 -- enforcement_policies: versioning columns
 ALTER TABLE "enforcement_policies"
-  ADD COLUMN IF NOT EXISTS "policy_family_id" UUID,
+  ADD COLUMN IF NOT EXISTS "policy_family_id" TEXT,
   ADD COLUMN IF NOT EXISTS "version_number" INTEGER NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS "is_current_version" BOOLEAN NOT NULL DEFAULT true;
 
@@ -30,45 +30,45 @@ CREATE INDEX IF NOT EXISTS "enforcement_policies_policy_family_id_is_current_ver
 
 -- Relational scope tables
 CREATE TABLE "enforcement_policy_vehicles" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "enforcement_policy_id" UUID NOT NULL,
-  "vehicle_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "enforcement_policy_id" TEXT NOT NULL,
+  "vehicle_id" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "enforcement_policy_vehicles_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "enforcement_policy_customers" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "enforcement_policy_id" UUID NOT NULL,
-  "customer_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "enforcement_policy_id" TEXT NOT NULL,
+  "customer_id" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "enforcement_policy_customers_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "enforcement_policy_bookings" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "enforcement_policy_id" UUID NOT NULL,
-  "booking_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "enforcement_policy_id" TEXT NOT NULL,
+  "booking_id" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "enforcement_policy_bookings_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "enforcement_policy_stations" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "enforcement_policy_id" UUID NOT NULL,
-  "station_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "enforcement_policy_id" TEXT NOT NULL,
+  "station_id" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "enforcement_policy_stations_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE "enforcement_policy_scope_migration_findings" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "enforcement_policy_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "enforcement_policy_id" TEXT,
   "legacy_source" "EnforcementPolicyScopeMigrationSource" NOT NULL,
   "resource_type" "EnforcementPolicyScopeResourceType" NOT NULL,
   "reference_fingerprint" TEXT NOT NULL,

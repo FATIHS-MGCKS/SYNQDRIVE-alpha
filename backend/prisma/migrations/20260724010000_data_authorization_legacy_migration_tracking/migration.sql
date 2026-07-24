@@ -18,8 +18,8 @@ CREATE TYPE "DataAuthorizationLegacyMigrationReviewReason" AS ENUM (
 );
 
 CREATE TABLE "data_authorization_legacy_migration_runs" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT,
   "mode" "DataAuthorizationLegacyMigrationMode" NOT NULL,
   "batch_size" INTEGER NOT NULL,
   "status" "DataAuthorizationLegacyMigrationRunStatus" NOT NULL DEFAULT 'RUNNING',
@@ -36,13 +36,13 @@ CREATE TABLE "data_authorization_legacy_migration_runs" (
 );
 
 CREATE TABLE "data_authorization_legacy_migration_entries" (
-  "id" UUID NOT NULL,
-  "run_id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "run_id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
   "source_type" "DataAuthorizationLegacyMigrationSourceType" NOT NULL,
-  "legacy_source_id" UUID NOT NULL,
+  "legacy_source_id" TEXT NOT NULL,
   "target_type" "DataAuthorizationLegacyMigrationTargetType",
-  "target_id" UUID,
+  "target_id" TEXT,
   "status" "DataAuthorizationLegacyMigrationEntryStatus" NOT NULL,
   "review_reasons" "DataAuthorizationLegacyMigrationReviewReason"[] DEFAULT ARRAY[]::"DataAuthorizationLegacyMigrationReviewReason"[],
   "error_code" TEXT,

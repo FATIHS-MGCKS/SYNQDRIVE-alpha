@@ -48,15 +48,15 @@ CREATE TYPE "AuthorizationActorType" AS ENUM ('USER', 'SYSTEM', 'WORKER');
 
 -- CreateTable
 CREATE TABLE "processing_activities" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
   "activity_code" TEXT NOT NULL,
   "title" TEXT NOT NULL,
   "description" TEXT,
   "status" "ProcessingActivityStatus" NOT NULL DEFAULT 'DRAFT',
-  "owner_user_id" UUID,
+  "owner_user_id" TEXT,
   "owner_role" "ProcessingActivityOwnerRole" NOT NULL DEFAULT 'ORG_ADMIN',
-  "legacy_org_data_authorization_id" UUID,
+  "legacy_org_data_authorization_id" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -64,9 +64,9 @@ CREATE TABLE "processing_activities" (
 );
 
 CREATE TABLE "processing_activity_categories" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
   "data_category" "PrivacyProcessingDataCategory" NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -74,9 +74,9 @@ CREATE TABLE "processing_activity_categories" (
 );
 
 CREATE TABLE "processing_activity_purposes" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
   "purpose" "PrivacyProcessingPurpose" NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -84,15 +84,15 @@ CREATE TABLE "processing_activity_purposes" (
 );
 
 CREATE TABLE "legal_basis_assessments" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
   "legal_basis_type" "PrivacyLegalBasisType" NOT NULL,
   "status" "LegalBasisAssessmentStatus" NOT NULL DEFAULT 'DRAFT',
-  "assessed_by_user_id" UUID,
+  "assessed_by_user_id" TEXT,
   "assessed_at" TIMESTAMP(3),
   "rationale_summary" TEXT,
-  "legacy_org_data_authorization_id" UUID,
+  "legacy_org_data_authorization_id" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -100,19 +100,19 @@ CREATE TABLE "legal_basis_assessments" (
 );
 
 CREATE TABLE "data_subject_consents" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
-  "legal_basis_assessment_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
+  "legal_basis_assessment_id" TEXT,
   "status" "DataSubjectConsentStatus" NOT NULL DEFAULT 'PENDING',
   "subject_type" "DataSubjectType" NOT NULL,
-  "subject_ref_id" UUID,
-  "recorded_by_user_id" UUID,
+  "subject_ref_id" TEXT,
+  "recorded_by_user_id" TEXT,
   "granted_at" TIMESTAMP(3),
   "withdrawn_at" TIMESTAMP(3),
   "expires_at" TIMESTAMP(3),
   "withdrawal_reason" TEXT,
-  "legacy_org_data_authorization_id" UUID,
+  "legacy_org_data_authorization_id" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -120,20 +120,20 @@ CREATE TABLE "data_subject_consents" (
 );
 
 CREATE TABLE "provider_access_grants" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID,
-  "vehicle_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT,
+  "vehicle_id" TEXT,
   "provider" TEXT NOT NULL,
   "status" "ProviderAccessGrantStatus" NOT NULL DEFAULT 'PENDING',
   "grant_mechanism" "ProviderAccessGrantMechanism" NOT NULL,
-  "granted_by_user_id" UUID,
+  "granted_by_user_id" TEXT,
   "granted_at" TIMESTAMP(3),
   "revoked_at" TIMESTAMP(3),
   "expires_at" TIMESTAMP(3),
   "proof_reference" TEXT,
-  "legacy_vehicle_provider_consent_id" UUID,
-  "legacy_org_data_authorization_id" UUID,
+  "legacy_vehicle_provider_consent_id" TEXT,
+  "legacy_org_data_authorization_id" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -141,9 +141,9 @@ CREATE TABLE "provider_access_grants" (
 );
 
 CREATE TABLE "provider_access_grant_scopes" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "provider_access_grant_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "provider_access_grant_id" TEXT NOT NULL,
   "scope_key" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -151,17 +151,17 @@ CREATE TABLE "provider_access_grant_scopes" (
 );
 
 CREATE TABLE "data_sharing_authorizations" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
   "partner_label" TEXT NOT NULL,
   "destination_summary" TEXT,
   "status" "DataSharingAuthorizationStatus" NOT NULL DEFAULT 'PENDING',
-  "authorized_by_user_id" UUID,
+  "authorized_by_user_id" TEXT,
   "authorized_at" TIMESTAMP(3),
   "revoked_at" TIMESTAMP(3),
   "expires_at" TIMESTAMP(3),
-  "legacy_org_data_authorization_id" UUID,
+  "legacy_org_data_authorization_id" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -169,18 +169,18 @@ CREATE TABLE "data_sharing_authorizations" (
 );
 
 CREATE TABLE "data_processing_agreements" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT,
   "processor_label" TEXT NOT NULL,
   "agreement_ref" TEXT,
   "status" "DataProcessingAgreementStatus" NOT NULL DEFAULT 'DRAFT',
   "effective_from" TIMESTAMP(3),
   "effective_until" TIMESTAMP(3),
-  "signed_by_user_id" UUID,
+  "signed_by_user_id" TEXT,
   "signed_at" TIMESTAMP(3),
   "terminated_at" TIMESTAMP(3),
-  "legacy_org_data_authorization_id" UUID,
+  "legacy_org_data_authorization_id" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -188,19 +188,19 @@ CREATE TABLE "data_processing_agreements" (
 );
 
 CREATE TABLE "enforcement_policies" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
   "status" "EnforcementPolicyStatus" NOT NULL DEFAULT 'DRAFT',
   "enforcement_mode" "PrivacyEnforcementMode" NOT NULL DEFAULT 'OFF',
   "data_category" "PrivacyProcessingDataCategory" NOT NULL,
   "processing_purpose" "PrivacyProcessingPurpose" NOT NULL,
   "scope_type" "PrivacyEnforcementScopeType" NOT NULL DEFAULT 'ORGANIZATION',
-  "scope_vehicle_id" UUID,
-  "scope_customer_id" UUID,
-  "scope_booking_id" UUID,
+  "scope_vehicle_id" TEXT,
+  "scope_customer_id" TEXT,
+  "scope_booking_id" TEXT,
   "path_id" TEXT,
-  "legacy_org_data_authorization_id" UUID,
+  "legacy_org_data_authorization_id" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -208,15 +208,15 @@ CREATE TABLE "enforcement_policies" (
 );
 
 CREATE TABLE "authorization_decision_events" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID,
-  "enforcement_policy_id" UUID,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT,
+  "enforcement_policy_id" TEXT,
   "event_type" "AuthorizationDecisionEventType" NOT NULL,
   "path_id" TEXT,
   "data_category" "PrivacyProcessingDataCategory",
   "processing_purpose" "PrivacyProcessingPurpose",
-  "vehicle_id" UUID,
+  "vehicle_id" TEXT,
   "actor_type" "AuthorizationActorType" NOT NULL,
   "actor_id" TEXT,
   "decision_reason" TEXT,

@@ -31,11 +31,11 @@ CREATE TYPE "PrivacyPolicyLifecycleEventType" AS ENUM (
 
 -- ProcessingActivity: add versioning + lifecycle columns
 ALTER TABLE "processing_activities"
-  ADD COLUMN IF NOT EXISTS "policy_family_id" UUID,
+  ADD COLUMN IF NOT EXISTS "policy_family_id" TEXT,
   ADD COLUMN IF NOT EXISTS "version_number" INTEGER NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS "is_current_version" BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS "status_new" "PrivacyPolicyLifecycleStatus",
-  ADD COLUMN IF NOT EXISTS "superseded_by_id" UUID,
+  ADD COLUMN IF NOT EXISTS "superseded_by_id" TEXT,
   ADD COLUMN IF NOT EXISTS "valid_from" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "valid_until" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "activated_at" TIMESTAMP(3),
@@ -72,7 +72,7 @@ DROP TYPE IF EXISTS "ProcessingActivityStatus";
 -- LegalBasisAssessment: migrate status enum
 ALTER TABLE "legal_basis_assessments"
   ADD COLUMN IF NOT EXISTS "status_new" "PrivacyPolicyLifecycleStatus",
-  ADD COLUMN IF NOT EXISTS "superseded_by_id" UUID,
+  ADD COLUMN IF NOT EXISTS "superseded_by_id" TEXT,
   ADD COLUMN IF NOT EXISTS "activated_at" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "suspended_at" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "revoked_at" TIMESTAMP(3),
@@ -107,7 +107,7 @@ DROP TYPE IF EXISTS "LegalBasisAssessmentStatus";
 -- EnforcementPolicy: migrate status enum + lifecycle columns
 ALTER TABLE "enforcement_policies"
   ADD COLUMN IF NOT EXISTS "status_new" "PrivacyPolicyLifecycleStatus",
-  ADD COLUMN IF NOT EXISTS "superseded_by_id" UUID,
+  ADD COLUMN IF NOT EXISTS "superseded_by_id" TEXT,
   ADD COLUMN IF NOT EXISTS "valid_from" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "valid_until" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "activated_at" TIMESTAMP(3),
@@ -187,16 +187,16 @@ ALTER TABLE "enforcement_policies"
 
 -- Lifecycle event tables (append-only)
 CREATE TABLE IF NOT EXISTS "processing_activity_lifecycle_events" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "processing_activity_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "processing_activity_id" TEXT NOT NULL,
   "event_type" "PrivacyPolicyLifecycleEventType" NOT NULL,
   "previous_status" "PrivacyPolicyLifecycleStatus",
   "new_status" "PrivacyPolicyLifecycleStatus" NOT NULL,
-  "actor_user_id" UUID,
+  "actor_user_id" TEXT,
   "actor_type" "AuthorizationActorType" NOT NULL DEFAULT 'SYSTEM',
   "reason" TEXT,
-  "superseded_by_id" UUID,
+  "superseded_by_id" TEXT,
   "valid_from" TIMESTAMP(3),
   "valid_until" TIMESTAMP(3),
   "correlation_id" TEXT,
@@ -205,16 +205,16 @@ CREATE TABLE IF NOT EXISTS "processing_activity_lifecycle_events" (
 );
 
 CREATE TABLE IF NOT EXISTS "legal_basis_assessment_lifecycle_events" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "legal_basis_assessment_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "legal_basis_assessment_id" TEXT NOT NULL,
   "event_type" "PrivacyPolicyLifecycleEventType" NOT NULL,
   "previous_status" "PrivacyPolicyLifecycleStatus",
   "new_status" "PrivacyPolicyLifecycleStatus" NOT NULL,
-  "actor_user_id" UUID,
+  "actor_user_id" TEXT,
   "actor_type" "AuthorizationActorType" NOT NULL DEFAULT 'SYSTEM',
   "reason" TEXT,
-  "superseded_by_id" UUID,
+  "superseded_by_id" TEXT,
   "valid_from" TIMESTAMP(3),
   "valid_until" TIMESTAMP(3),
   "correlation_id" TEXT,
@@ -223,16 +223,16 @@ CREATE TABLE IF NOT EXISTS "legal_basis_assessment_lifecycle_events" (
 );
 
 CREATE TABLE IF NOT EXISTS "enforcement_policy_lifecycle_events" (
-  "id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
-  "enforcement_policy_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "enforcement_policy_id" TEXT NOT NULL,
   "event_type" "PrivacyPolicyLifecycleEventType" NOT NULL,
   "previous_status" "PrivacyPolicyLifecycleStatus",
   "new_status" "PrivacyPolicyLifecycleStatus" NOT NULL,
-  "actor_user_id" UUID,
+  "actor_user_id" TEXT,
   "actor_type" "AuthorizationActorType" NOT NULL DEFAULT 'SYSTEM',
   "reason" TEXT,
-  "superseded_by_id" UUID,
+  "superseded_by_id" TEXT,
   "valid_from" TIMESTAMP(3),
   "valid_until" TIMESTAMP(3),
   "correlation_id" TEXT,

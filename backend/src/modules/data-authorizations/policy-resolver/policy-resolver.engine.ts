@@ -429,9 +429,9 @@ function evaluateDpa(
   at: Date,
   blockingReasons: PolicyResolverReasonCode[],
 ): PolicyResolverResult['dpaStatus'] {
+  // DPA gate applies to external partners (Art. 28). DIMO/HM platform ingest is gated by ProviderAccessGrant.
   const needsDpa =
-    context.processorType === POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_PARTNER ||
-    context.processorType === POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM;
+    context.processorType === POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_PARTNER;
 
   if (!needsDpa) {
     return { status: 'NOT_APPLICABLE' };
