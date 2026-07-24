@@ -7,6 +7,8 @@ import type { ActionExecutionContext } from './workflow-action-executor.service'
 import { actionRequiresApproval, classifyActionRisk } from './workflow-action-risk';
 import { maskEmail, sanitizePreviewRecord } from './workflow-preview.util';
 import type { WorkflowPlannedAction } from './workflow-execution-plan.types';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
+import { refsFromActionContext } from './workflow-entity-refs.util';
 
 export interface ActionPreviewInput {
   action: WorkflowActionDef;
@@ -19,7 +21,10 @@ export interface ActionPreviewInput {
 
 @Injectable()
 export class WorkflowActionPreviewService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
+  ) {}
 
   async previewAction(input: ActionPreviewInput): Promise<WorkflowPlannedAction> {
     const { action, index, ctx } = input;
@@ -56,7 +61,17 @@ export class WorkflowActionPreviewService {
       policyBlockers.push('Human approval required before execution');
     }
 
-    switch (actionType) {
+    const entityError = await this.tenantGuard.tryValidateEntityRefs(
+      ctx.organizationId,
+      refsFromActionContext(ctx),
+    );
+    if (entityError) {
+      validationErrors.push(entityError);
+      status = 'ERROR';
+    }
+
+    if (status !== 'ERROR') {
+      switch (actionType) {
       case 'task.create':
         preview = await this.previewTaskCreate(action, ctx, validationErrors);
         break;
@@ -92,6 +107,7 @@ export class WorkflowActionPreviewService {
       default:
         validationErrors.push(`No preview handler for action type: ${actionType}`);
         status = 'ERROR';
+      }
     }
 
     if (validationErrors.length > 0 && status !== 'ERROR') {
@@ -190,14 +206,21 @@ export class WorkflowActionPreviewService {
       return { vehicleId, wouldUpdate: null };
     }
 
+    const entityError = await this.tenantGuard.tryValidateEntityRefs(ctx.organizationId, {
+      vehicleId,
+    });
+    if (entityError) {
+      validationErrors.push(entityError);
+      return { vehicleId, wouldUpdate: null };
+    }
+
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: ctx.organizationId },
       select: { id: true, status: true },
     });
-
     if (!vehicle) {
       validationErrors.push(
-        'Vehicle not found in organization (cross-tenant entities are not resolved)',
+        'Referenced vehicle is not available in this organization',
       );
       return { vehicleId, wouldUpdate: null };
     }

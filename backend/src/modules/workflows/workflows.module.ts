@@ -6,6 +6,7 @@ import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { WorkflowActionPreviewService } from './workflow-action-preview.service';
 import { WorkflowDryRunService } from './workflow-dry-run.service';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     WorkflowActionExecutorService,
     WorkflowActionPreviewService,
     WorkflowDryRunService,
+    WorkflowTenantGuardService,
   ],
   exports: [WorkflowsService, WorkflowEventService, WorkflowEngineService],
 })

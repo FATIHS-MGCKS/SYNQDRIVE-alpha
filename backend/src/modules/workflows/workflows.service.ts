@@ -11,6 +11,7 @@ import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowDryRunService } from './workflow-dry-run.service';
 import type { WorkflowExecutionPlan } from './workflow-execution-plan.types';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -26,6 +27,7 @@ export class WorkflowsService {
     private readonly workflowEvents: WorkflowEventService,
     private readonly workflowEngine: WorkflowEngineService,
     private readonly workflowDryRun: WorkflowDryRunService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -57,6 +59,7 @@ export class WorkflowsService {
 
   async create(orgId: string, dto: CreateWorkflowDto, userId?: string, userName?: string) {
     const validated = validateWorkflowDefinition(dto);
+    await this.tenantGuard.validateScopeDefinition(orgId, validated.scope);
     const status = dto.status ?? 'DRAFT';
     const enabled = status === 'ACTIVE';
 
@@ -102,10 +105,11 @@ export class WorkflowsService {
       actions: (dto.actions ?? existing.actions) as any,
       scope: (dto.scope ?? existing.scope) as any,
     });
+    await this.tenantGuard.validateScopeDefinition(orgId, validated.scope);
 
     const nextStatus = dto.status ?? existing.status;
-    const row = await this.prisma.orgWorkflow.update({
-      where: { id },
+    const updated = await this.prisma.orgWorkflow.updateMany({
+      where: { id, organizationId: orgId },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.description !== undefined ? { description: dto.description } : {}),
@@ -121,7 +125,9 @@ export class WorkflowsService {
         updatedByName: userName,
       },
     });
-    return this.format(row as unknown as Record<string, unknown>);
+    if (updated.count === 0) throw new NotFoundException('Workflow not found');
+    const row = await this.findById(orgId, id);
+    return row;
   }
 
   async toggleStatus(orgId: string, id: string, userId?: string, userName?: string) {
@@ -131,8 +137,8 @@ export class WorkflowsService {
     if (!existing) throw new NotFoundException('Workflow not found');
 
     const newStatus = existing.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
-    const row = await this.prisma.orgWorkflow.update({
-      where: { id },
+    const updated = await this.prisma.orgWorkflow.updateMany({
+      where: { id, organizationId: orgId },
       data: {
         status: newStatus,
         enabled: newStatus === 'ACTIVE',
@@ -140,7 +146,8 @@ export class WorkflowsService {
         updatedByName: userName,
       },
     });
-    return this.format(row as unknown as Record<string, unknown>);
+    if (updated.count === 0) throw new NotFoundException('Workflow not found');
+    return this.findById(orgId, id);
   }
 
   async duplicate(orgId: string, id: string, userId?: string, userName?: string) {
@@ -176,7 +183,10 @@ export class WorkflowsService {
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundException('Workflow not found');
-    await this.prisma.orgWorkflow.delete({ where: { id } });
+    const deleted = await this.prisma.orgWorkflow.deleteMany({
+      where: { id, organizationId: orgId },
+    });
+    if (deleted.count === 0) throw new NotFoundException('Workflow not found');
     return { success: true };
   }
 
@@ -289,8 +299,8 @@ export class WorkflowsService {
       throw new BadRequestException('Action run is not waiting for approval');
     }
 
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
+    await this.prisma.orgWorkflowActionRun.updateMany({
+      where: { id: actionRunId, organizationId: orgId },
       data: {
         status: 'SUCCESS',
         approvedByUserId: userId ?? null,
@@ -319,8 +329,8 @@ export class WorkflowsService {
     });
     if (!actionRun) throw new NotFoundException('Action run not found');
 
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
+    await this.prisma.orgWorkflowActionRun.updateMany({
+      where: { id: actionRunId, organizationId: orgId },
       data: {
         status: 'FAILED',
         errorMessage: reason ?? 'Rejected by reviewer',
@@ -338,8 +348,8 @@ export class WorkflowsService {
       },
     });
 
-    await this.prisma.orgWorkflowRun.update({
-      where: { id: actionRun.workflowRunId },
+    await this.prisma.orgWorkflowRun.updateMany({
+      where: { id: actionRun.workflowRunId, organizationId: orgId },
       data: { status: 'FAILED', errorMessage: 'Action rejected', finishedAt: new Date() },
     });
 

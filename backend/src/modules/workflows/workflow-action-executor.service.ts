@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import {
   Prisma,
@@ -17,6 +16,8 @@ import {
   assertLiveExecution,
   WorkflowExecutionMode,
 } from './workflow-execution-mode';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
+import { refsFromActionContext } from './workflow-entity-refs.util';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -37,6 +38,7 @@ export class WorkflowActionExecutorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
   ) {}
 
   async execute(
@@ -44,6 +46,11 @@ export class WorkflowActionExecutorService {
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
     assertLiveExecution(ctx.executionMode, 'WorkflowActionExecutorService.execute');
+
+    await this.tenantGuard.validateEntityRefs(
+      ctx.organizationId,
+      refsFromActionContext(ctx),
+    );
 
     if (action.requiresApproval) {
       await this.prisma.orgWorkflowApproval.create({
@@ -182,17 +189,8 @@ export class WorkflowActionExecutorService {
     if (!vehicleId) {
       throw new BadRequestException('vehicle.status.update requires payload.vehicleId');
     }
-    // Never cast config straight to VehicleStatus — workflow configs may carry
-    // UI labels ("Maintenance", "In Wartung", …). Normalise defensively so only
-    // valid enum values reach Prisma; invalid input fails the action cleanly.
     const status = normalizeVehicleStatusForPrisma(action.config?.status);
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id: vehicleId, organizationId: ctx.organizationId },
-      select: { id: true },
-    });
-    if (!vehicle) {
-      throw new NotFoundException('Vehicle not found in organization');
-    }
+    await this.tenantGuard.validateEntityRefs(ctx.organizationId, { vehicleId });
     await this.prisma.vehicle.update({
       where: { id: vehicleId },
       data: { status },

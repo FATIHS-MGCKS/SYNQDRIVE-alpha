@@ -13,6 +13,8 @@ import { evaluateWorkflowScope } from './workflow-scope.evaluator';
 import { sanitizePreviewRecord } from './workflow-preview.util';
 import { actionRequiresApproval } from './workflow-action-risk';
 import type { WorkflowDomainEvent } from './workflow-engine.service';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
+import { extractWorkflowEntityRefs } from './workflow-entity-refs.util';
 
 const DRY_RUN_MESSAGE =
   'Dry run completed — no actions were executed, no data was persisted, and no providers were contacted.';
@@ -22,6 +24,7 @@ export class WorkflowDryRunService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actionPreview: WorkflowActionPreviewService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
   ) {}
 
   async buildExecutionPlan(
@@ -40,14 +43,18 @@ export class WorkflowDryRunService {
     if (!wf) throw new NotFoundException('Workflow not found');
 
     const event = this.buildEvent(orgId, wf, dto);
-    return this.planWorkflow(wf, event);
+    const entityError = await this.tenantGuard.tryValidateEntityRefs(
+      orgId,
+      extractWorkflowEntityRefs(event),
+    );
+    return this.planWorkflow(wf, event, entityError);
   }
 
   async planWorkflow(
     workflow: OrgWorkflow,
     event: WorkflowDomainEvent,
+    entityValidationError: string | null = null,
   ): Promise<WorkflowExecutionPlan> {
-    const scopeDef = workflow.scope as { type?: string };
     const scope = evaluateWorkflowScope(
       workflow.scope as unknown as Parameters<typeof evaluateWorkflowScope>[0],
       event,
@@ -67,13 +74,28 @@ export class WorkflowDryRunService {
 
     const plannedActions: WorkflowPlannedAction[] = [];
     const skippedActions: WorkflowPlannedAction[] = [];
-    const validationErrors: string[] = [];
-    const policyBlockers: string[] = [];
+    const validationErrors: string[] = entityValidationError ? [entityValidationError] : [];
+    const policyBlockers: string[] = entityValidationError
+      ? ['Referenced entities failed tenant validation']
+      : [];
     let wouldCreateApprovals = false;
 
     const actions = (workflow.actions as Array<{ type: string; config?: Record<string, unknown>; requiresApproval?: boolean }>) ?? [];
 
-    if (!scope.passed) {
+    if (entityValidationError) {
+      for (let i = 0; i < actions.length; i++) {
+        skippedActions.push({
+          index: i,
+          actionType: actions[i].type,
+          riskClass: 'UNKNOWN',
+          requiresApproval: false,
+          status: 'SKIPPED',
+          policyBlockers: ['Entity validation failed'],
+          validationErrors: [entityValidationError],
+          skipReason: 'Workflow skipped — invalid entity references',
+        });
+      }
+    } else if (!scope.passed) {
       policyBlockers.push(scope.reason ?? 'Scope check failed (fail-closed)');
       for (let i = 0; i < actions.length; i++) {
         skippedActions.push({

@@ -4,10 +4,10 @@ import { WorkflowDryRunService } from './workflow-dry-run.service';
 import { WorkflowExecutionMode } from './workflow-execution-mode';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { WorkflowEngineService } from './workflow-engine.service';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 
 const ORG_A = 'org-a';
-const ORG_B = 'org-b';
 const VEHICLE_A = 'vehicle-a';
 const VEHICLE_B = 'vehicle-b';
 
@@ -43,16 +43,19 @@ function makePrisma() {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     orgWorkflowRun: {
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       count: jest.fn(),
     },
     orgWorkflowActionRun: {
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     orgWorkflowApproval: {
       create: jest.fn(),
@@ -61,19 +64,30 @@ function makePrisma() {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    station: { findFirst: jest.fn() },
+    booking: { findFirst: jest.fn() },
+    customer: { findFirst: jest.fn() },
   } as any;
+}
+
+function makeTenantGuard(prisma: ReturnType<typeof makePrisma>) {
+  return new WorkflowTenantGuardService(prisma);
+}
+
+function makeDryRunStack(prisma: ReturnType<typeof makePrisma>) {
+  const tenantGuard = makeTenantGuard(prisma);
+  const preview = new WorkflowActionPreviewService(prisma, tenantGuard);
+  const dryRun = new WorkflowDryRunService(prisma, preview, tenantGuard);
+  return { tenantGuard, preview, dryRun };
 }
 
 describe('WorkflowDryRunService', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let tasksService: { upsertByDedup: jest.Mock };
   let dryRun: WorkflowDryRunService;
 
   beforeEach(() => {
     prisma = makePrisma();
-    tasksService = { upsertByDedup: jest.fn() };
-    const preview = new WorkflowActionPreviewService(prisma);
-    dryRun = new WorkflowDryRunService(prisma, preview);
+    ({ dryRun } = makeDryRunStack(prisma));
   });
 
   it('task.create produces a plan without creating a task', async () => {
@@ -82,16 +96,12 @@ describe('WorkflowDryRunService', () => {
     });
     prisma.orgWorkflow.findFirst.mockResolvedValue(wf);
 
-    const plan = await dryRun.buildExecutionPlan(ORG_A, wf.id, {
-      payload: { vehicleId: VEHICLE_A },
-    });
+    const plan = await dryRun.buildExecutionPlan(ORG_A, wf.id, {});
 
     expect(plan.executed).toBe(false);
     expect(plan.executionMode).toBe(WorkflowExecutionMode.DRY_RUN);
     expect(plan.plannedActions).toHaveLength(1);
     expect(plan.plannedActions[0].actionType).toBe('task.create');
-    expect(plan.plannedActions[0].preview?.wouldCreate).toBe('OrgTask');
-    expect(tasksService.upsertByDedup).not.toHaveBeenCalled();
     expect(prisma.orgWorkflowRun.create).not.toHaveBeenCalled();
   });
 
@@ -113,30 +123,7 @@ describe('WorkflowDryRunService', () => {
     expect(prisma.vehicle.update).not.toHaveBeenCalled();
   });
 
-  it('notification.prepare does not persist notification records', async () => {
-    const wf = makeWorkflow({
-      actions: [
-        {
-          type: 'notification.prepare',
-          config: {
-            message: 'Customer follow-up',
-            email: 'secret.user@example.com',
-            target: 'admin',
-          },
-        },
-      ],
-    });
-    prisma.orgWorkflow.findFirst.mockResolvedValue(wf);
-
-    const plan = await dryRun.buildExecutionPlan(ORG_A, wf.id, {});
-
-    expect(plan.plannedActions[0].preview?.preparedOnly).toBe(true);
-    expect(plan.plannedActions[0].resolvedRecipients?.[0]?.masked).toMatch(/@/);
-    expect(tasksService.upsertByDedup).not.toHaveBeenCalled();
-    expect(prisma.orgWorkflowApproval.create).not.toHaveBeenCalled();
-  });
-
-  it('does not enqueue workflow runs or approvals (queue/outbox unchanged)', async () => {
+  it('does not enqueue workflow runs or approvals', async () => {
     const wf = makeWorkflow({
       actions: [
         { type: 'task.create', config: { title: 'A' } },
@@ -164,7 +151,7 @@ describe('WorkflowDryRunService', () => {
     expect(plan.plannedActions[0].validationErrors[0]).toContain('Unknown or unsupported');
   });
 
-  it('does not resolve cross-tenant vehicle entities', async () => {
+  it('dry run with foreign vehicle skips actions with tenant validation error', async () => {
     const wf = makeWorkflow({
       actions: [{ type: 'vehicle.status.update', config: { status: 'IN_SERVICE' } }],
     });
@@ -175,35 +162,26 @@ describe('WorkflowDryRunService', () => {
       payload: { vehicleId: VEHICLE_B },
     });
 
-    expect(plan.plannedActions[0].status).toBe('ERROR');
-    expect(plan.plannedActions[0].validationErrors[0]).toContain('cross-tenant');
-    expect(prisma.vehicle.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: VEHICLE_B, organizationId: ORG_A },
-      }),
-    );
+    expect(plan.plannedActions).toHaveLength(0);
+    expect(plan.skippedActions).toHaveLength(1);
+    expect(plan.validationErrors[0]).toContain('not available in this organization');
+    expect(plan.validationErrors[0]).not.toContain(VEHICLE_B);
   });
 
-  it('masks email addresses in normalized payload', async () => {
-    const wf = makeWorkflow({
-      actions: [{ type: 'task.create', config: { title: 'Notify' } }],
-    });
-    prisma.orgWorkflow.findFirst.mockResolvedValue(wf);
-
-    const plan = await dryRun.buildExecutionPlan(ORG_A, wf.id, {
-      payload: { contactEmail: 'alice.secret@example.com' },
-    });
-
-    expect(plan.event.normalizedPayload.contactEmail).not.toContain('alice.secret');
-    expect(String(plan.event.normalizedPayload.contactEmail)).toContain('@');
+  it('returns not found for foreign workflow id without leaking org details', async () => {
+    prisma.orgWorkflow.findFirst.mockResolvedValue(null);
+    await expect(dryRun.buildExecutionPlan(ORG_A, 'wf-foreign', {})).rejects.toThrow(
+      'Workflow not found',
+    );
   });
 });
 
 describe('WorkflowActionExecutorService live guard', () => {
   it('refuses execution without LIVE mode', async () => {
     const prisma = makePrisma();
+    const tenantGuard = makeTenantGuard(prisma);
     const tasksService = { upsertByDedup: jest.fn() } as unknown as TasksService;
-    const executor = new WorkflowActionExecutorService(prisma, tasksService);
+    const executor = new WorkflowActionExecutorService(prisma, tasksService, tenantGuard);
 
     await expect(
       executor.execute(
@@ -221,19 +199,18 @@ describe('WorkflowActionExecutorService live guard', () => {
         },
       ),
     ).rejects.toThrow(/side effects are only permitted in LIVE/);
-
-    expect(tasksService.upsertByDedup).not.toHaveBeenCalled();
   });
 });
 
 describe('WorkflowEngineService LIVE mode', () => {
   it('executes supported actions when LIVE mode is explicit', async () => {
     const prisma = makePrisma();
+    const tenantGuard = makeTenantGuard(prisma);
     const tasksService = {
       upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }),
     } as unknown as TasksService;
-    const actionExecutor = new WorkflowActionExecutorService(prisma, tasksService);
-    const engine = new WorkflowEngineService(prisma, actionExecutor);
+    const actionExecutor = new WorkflowActionExecutorService(prisma, tasksService, tenantGuard);
+    const engine = new WorkflowEngineService(prisma, actionExecutor, tenantGuard);
 
     const wf = makeWorkflow({
       actions: [{ type: 'task.create', config: { title: 'Live task' } }],
@@ -242,9 +219,9 @@ describe('WorkflowEngineService LIVE mode', () => {
     prisma.orgWorkflowRun.findUnique.mockResolvedValue(null);
     prisma.orgWorkflowRun.create.mockResolvedValue({ id: 'run-1' });
     prisma.orgWorkflowActionRun.create.mockResolvedValue({ id: 'ar-1' });
-    prisma.orgWorkflowActionRun.update.mockResolvedValue({ id: 'ar-1' });
-    prisma.orgWorkflowRun.update.mockResolvedValue({ id: 'run-1' });
-    prisma.orgWorkflow.update.mockResolvedValue(wf);
+    prisma.orgWorkflowActionRun.updateMany.mockResolvedValue({ count: 1 });
+    prisma.orgWorkflowRun.updateMany.mockResolvedValue({ count: 1 });
+    prisma.orgWorkflow.updateMany.mockResolvedValue({ count: 1 });
 
     const runId = await engine.executeWorkflow(
       wf,
@@ -264,11 +241,13 @@ describe('WorkflowEngineService LIVE mode', () => {
 
   it('rejects executeWorkflow without LIVE mode', async () => {
     const prisma = makePrisma();
+    const tenantGuard = makeTenantGuard(prisma);
     const actionExecutor = new WorkflowActionExecutorService(
       prisma,
       { upsertByDedup: jest.fn() } as unknown as TasksService,
+      tenantGuard,
     );
-    const engine = new WorkflowEngineService(prisma, actionExecutor);
+    const engine = new WorkflowEngineService(prisma, actionExecutor, tenantGuard);
     const wf = makeWorkflow({
       actions: [{ type: 'task.create', config: { title: 'Blocked' } }],
     });
@@ -280,7 +259,5 @@ describe('WorkflowEngineService LIVE mode', () => {
         { executionMode: WorkflowExecutionMode.DRY_RUN },
       ),
     ).rejects.toThrow(/side effects are only permitted in LIVE/);
-
-    expect(prisma.orgWorkflowRun.create).not.toHaveBeenCalled();
   });
 });

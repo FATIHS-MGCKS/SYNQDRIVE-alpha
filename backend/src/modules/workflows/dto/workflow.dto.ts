@@ -67,6 +67,16 @@ export class WorkflowScopeDto {
   @IsArray()
   @IsString({ each: true })
   vehicleIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bookingIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  customerIds?: string[];
 }
 
 export class CreateWorkflowDto {

@@ -19,6 +19,7 @@ import {
   WorkflowExecutionMode,
 } from './workflow-execution-mode';
 import { evaluateWorkflowScope } from './workflow-scope.evaluator';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
 
 export interface ExecuteWorkflowOptions {
   executionMode: WorkflowExecutionMode;
@@ -41,9 +42,13 @@ export class WorkflowEngineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actionExecutor: WorkflowActionExecutorService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
   ) {}
 
   async processEvent(event: WorkflowDomainEvent): Promise<string[]> {
+    const orgId = this.tenantGuard.assertEventOrganization(event);
+    await this.tenantGuard.validateEventEntities(orgId, event);
+
     const workflows = await this.findMatchingWorkflows(event);
     const runIds: string[] = [];
 
@@ -167,8 +172,8 @@ export class WorkflowEngineService {
         executionMode: WorkflowExecutionMode.LIVE,
       });
 
-      await this.prisma.orgWorkflowActionRun.update({
-        where: { id: actionRun.id },
+      await this.prisma.orgWorkflowActionRun.updateMany({
+        where: { id: actionRun.id, organizationId: event.organizationId },
         data: {
           status: result.status,
           output: (result.output ?? undefined) as unknown as Prisma.InputJsonValue,
@@ -188,8 +193,8 @@ export class WorkflowEngineService {
       }
     }
 
-    await this.prisma.orgWorkflowRun.update({
-      where: { id: run.id },
+    await this.prisma.orgWorkflowRun.updateMany({
+      where: { id: run.id, organizationId: event.organizationId },
       data: {
         status: runStatus,
         errorMessage: runError,
@@ -197,8 +202,8 @@ export class WorkflowEngineService {
       },
     });
 
-    await this.prisma.orgWorkflow.update({
-      where: { id: workflow.id },
+    await this.prisma.orgWorkflow.updateMany({
+      where: { id: workflow.id, organizationId: event.organizationId },
       data: {
         triggerCount: { increment: 1 },
         lastTriggeredAt: new Date(),
