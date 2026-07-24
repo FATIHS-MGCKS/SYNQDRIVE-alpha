@@ -4318,6 +4318,34 @@ export const api = {
         createdAt: string;
       }>(`/organizations/${orgId}/evaluations/insights/${insightId}`),
   },
+  evaluationsAnalytics: {
+    summary: (
+      orgId: string,
+      params?: { stationId?: string; period?: 'mtd' | 'last7d' | 'last30d' },
+    ) => {
+      const qs = new URLSearchParams();
+      if (params?.stationId) qs.set('stationId', params.stationId);
+      if (params?.period) qs.set('period', params.period);
+      const q = qs.toString();
+      return get<{
+        organizationId: string;
+        generatedAt: string;
+        overallStatus: 'OK' | 'PARTIAL' | 'UNAVAILABLE' | 'ERROR';
+        period: { key: string; from: string; to: string; timezone: string };
+        comparisonPeriod: { key: string; from: string; to: string; timezone: string };
+        appliedFilters: { stationId: string | null; period: string };
+        executive: { status: string; data: Record<string, unknown> | null; error: string | null };
+        financial: { status: string; data: Record<string, unknown> | null; error: string | null };
+        receivables: { status: string; data: Record<string, unknown> | null; error: string | null };
+        bookings: { status: string; data: Record<string, unknown> | null; error: string | null };
+        fleetUtilization: { status: string; data: Record<string, unknown> | null; error: string | null };
+        activeRisks: { status: string; data: Record<string, unknown> | null; error: string | null };
+        affectedEntities: { status: string; data: Record<string, unknown> | null; error: string | null };
+        dataQuality: { status: string; data: Record<string, unknown> | null; error: string | null };
+        metadata: { generationDurationMs: number };
+      }>(`/organizations/${orgId}/evaluations/analytics/summary${q ? `?${q}` : ''}`);
+    },
+  },
   notifications: {
     list: (
       orgId: string,

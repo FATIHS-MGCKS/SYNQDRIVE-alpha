@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-analytics-summary-v49815-2026-07-24',
+    version: 'V4.9.815',
+    title: 'V4.9.815 — Kanonischer Auswertungen Analytics-Summary-Endpunkt (Prompt 17/54)',
+    summary: [
+      'Neuer Endpunkt: `GET …/evaluations/analytics/summary` — mandantensichere Gesamtaggregation für die Auswertungen-Seite.',
+      'Liefert Executive KPIs, Finanz-, Forderungs-, Buchungs-, Flotten-, Downtime-, Kosten-, Risiko- und Entity-Sections.',
+      'Section-Envelopes mit `OK`/`PARTIAL`/`UNAVAILABLE`/`ERROR`; Teilfehler machen die gesamte Summary nicht unbrauchbar.',
+      'Service/Repository-Trennung, typisierte DTOs, Stationsfilter, einheitliche Zeitraumlogik (`mtd`/`last7d`/`last30d`).',
+      'Keine personenbezogenen Details; OpenAPI `@ApiTags` auf Controller.',
+      'Doku: `docs/api/evaluations-analytics-summary-api.md`.',
+    ],
+    reason:
+      'Prompt 17/54 — Eine kanonische serverseitige Summary statt fragmentierter Client-Aggregation über Invoices + Insights.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'evaluations-insight-grouping-model-v49814-2026-07-24',
     version: 'V4.9.814',
     title: 'V4.9.814 — Business Insights Gruppierung & Entity-Zählung (Prompt 16/54)',
