@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-baseline-forecasts-p42-2026-07-24',
+    version: '4.9.839',
+    title: 'V4.9.839 — Evaluations Baseline Forecasts: Demand, Revenue, Utilization (Prompt 42)',
+    summary: [
+      'Baseline forecasts for demand, issued revenue (EUR), and utilization at 7/30/60/90-day horizons.',
+      'Shared engine: moving average vs seasonal naive with holdout sMAPE selection; always includes uncertainty intervals.',
+      'Prisma `OrgPredictiveForecast` + `OrgPredictiveForecastRun`; nightly scheduler builds features then forecasts.',
+      'Org API + admin trigger; minimum history gates per target; no cash/payment revenue mixing.',
+      'Docs: `docs/architecture/analytics/evaluations-demand-revenue-utilization-forecast.md`.',
+    ],
+    reason: 'Prompt 42/54: deliver robust statistical baselines before any ML forecasting.',
+    previousBehavior: 'Feature store (Prompt 41) materialized PIT features but produced no forward forecasts.',
+    details:
+      '12 forecasts per org run (3 targets × 4 horizons). Revenue uses `revenue.invoice_issued_minor` only. Status: AVAILABLE, FALLBACK, INSUFFICIENT_HISTORY.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Predictive Analytics',
+    createdAt: '2026-07-24T19:00:00.000Z',
+  },
+  {
     id: 'evaluations-feature-store-p41-2026-07-24',
     version: '4.9.838',
     title: 'V4.9.838 — Evaluations Predictive Feature Store (Prompt 41)',

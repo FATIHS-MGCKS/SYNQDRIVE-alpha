@@ -25,6 +25,15 @@ import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-asse
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
+import { PredictiveFeatureController } from './predictive/predictive-feature.controller';
+import { PredictiveFeatureLoader } from './predictive/predictive-feature.loader';
+import { PredictiveFeatureRepository } from './predictive/predictive-feature.repository';
+import { PredictiveFeatureService } from './predictive/predictive-feature.service';
+import { PredictiveForecastController } from './predictive/predictive-forecast.controller';
+import { PredictiveForecastLoader } from './predictive/predictive-forecast.loader';
+import { PredictiveForecastRepository } from './predictive/predictive-forecast.repository';
+import { PredictiveForecastScheduler } from './predictive/predictive-forecast.scheduler';
+import { PredictiveForecastService } from './predictive/predictive-forecast.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
@@ -40,6 +49,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     DashboardInsightsController,
     InternalBusinessInsightsController,
     PredictiveFeatureController,
+    PredictiveForecastController,
   ],
   providers: [
     BusinessInsightsService,
@@ -54,6 +64,10 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PredictiveFeatureService,
     PredictiveFeatureRepository,
     PredictiveFeatureLoader,
+    PredictiveForecastService,
+    PredictiveForecastRepository,
+    PredictiveForecastLoader,
+    PredictiveForecastScheduler,
     TightHandoverDetector,
     ReturnNeedsInspectionDetector,
     StationShortageDetector,
@@ -72,6 +86,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     BusinessInsightsTriggerService,
     InsightTaskBridgeService,
     PredictiveFeatureService,
+    PredictiveForecastService,
   ],
 })
 export class BusinessInsightsModule {}
