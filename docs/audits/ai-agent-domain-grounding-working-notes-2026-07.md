@@ -687,8 +687,6 @@ Spalten: **Fachinformation** | **Primäre Quelle** | **Fallback** | **Berechnung
 
 ---
 
----
-
 # Prompt 3 — Booking/Return & Vehicle Health Source of Truth
 
 ## 13. Booking/Return — Architekturüberblick
