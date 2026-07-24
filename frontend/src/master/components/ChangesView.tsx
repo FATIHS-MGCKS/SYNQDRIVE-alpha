@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-staging-verification-v49825-2026-07-24',
+    version: '4.9.825',
+    title: 'V4.9.825 — Data Auth Staging Runtime Verification (Prompt 42)',
+    summary: [
+      'VPS RC-Deploy versucht (branch cursor/data-auth-monitoring-ci-26b5 @ 31a1548c); Symlink nicht gewechselt.',
+      'Migration 20260723230000_privacy_domain_foundation fehlgeschlagen: organization_id UUID vs organizations.id TEXT.',
+      'Infra-Checks: Postgres/Redis/PM2/Prometheus OK; keine privacy-domain-Tabellen; 0 data_auth_* Metriken live.',
+      '15 Runtime-Szenarien übersprungen (Schema fehlt); lokale CI-Gates (Monitoring, Safety, Coverage) bestanden.',
+      'Audit: docs/audits/data-authorization-staging-runtime-verification-2026-07.md — NO-GO für Production.',
+    ],
+    reason:
+      'Prompt 42 verlangt kontrollierte Staging-/VPS-Verifikation vor Production-Rollout des Data-Authorization-Stacks.',
+    previousBehavior:
+      'Kein dokumentierter Staging-Lauf; RC-Deploy-Skripte und Runtime-Tests erst in Prompt 41/42 hinzugefügt.',
+    details: 'docs/audits/data-authorization-staging-runtime-verification-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T03:10:00.000Z',
+  },
+  {
     id: 'data-auth-monitoring-ci-v49824-2026-07-24',
     version: '4.9.824',
     title: 'V4.9.824 — Data Auth Monitoring, Alerts & CI Gates (Prompt 41)',
