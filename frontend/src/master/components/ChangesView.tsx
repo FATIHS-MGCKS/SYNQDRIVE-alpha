@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-backend-tests-v49822-2026-07-24',
+    version: '4.9.822',
+    title: 'V4.9.822 — Backend PostgreSQL & Security Tests (Prompt 39)',
+    summary: [
+      'PostgreSQL-Integrationstests mit reproduzierbarer Fixture (Org A/B, vollständiger Privacy-Stack).',
+      'Invariants: Versionierung, Single-Active, Tenant-Isolation, Policy Resolver, Decision Engine, Audit.',
+      'Security-Negativmatrix: fremde IDs, fehlender Purpose/Processor, DPA/DPIA, Widerruf, Fail-closed.',
+      'Verify-Script test:data-auth:verify, Coverage-Report, Architektur-Doku.',
+    ],
+    reason:
+      'Die Data-Authorization-Domain brauchte echte DB-Constraints, Tenant-Isolation und Security-Negativtests neben In-Memory-Specs.',
+    previousBehavior:
+      'Nur In-Memory-Integrationstests; keine opt-in PostgreSQL-Harness für Privacy-Modelle.',
+    details: 'docs/architecture/data-auth-backend-tests-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T04:00:00.000Z',
+  },
+  {
     id: 'data-processing-a11y-i18n-v49821-2026-07-24',
     version: '4.9.821',
     title: 'V4.9.821 — Mobile, i18n & Accessibility (Prompt 38)',
