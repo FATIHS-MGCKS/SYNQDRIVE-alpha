@@ -46,13 +46,40 @@ export interface ResolvedTelemetryFreshness {
 }
 
 export function parseTelemetryTimestampMs(
-  value: Date | string | null | undefined,
+  value: Date | string | number | null | undefined,
 ): number | null {
   if (value == null) return null;
-  const ms =
-    value instanceof Date ? value.getTime() : Date.parse(String(value));
+
+  if (typeof value === 'number') {
+    return normalizeEpochMs(value);
+  }
+
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isFinite(ms) && ms >= 0 ? ms : null;
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) {
+    return normalizeEpochMs(numeric);
+  }
+
+  const ms = Date.parse(raw);
   if (!Number.isFinite(ms) || ms < 0) return null;
   return ms;
+}
+
+/** Accept unix seconds or milliseconds; reject invalid epochs. */
+function normalizeEpochMs(value: number): number | null {
+  if (!Number.isFinite(value) || value < 0) return null;
+  // Values below ~2001-09-09 in ms are treated as unix seconds.
+  if (value < 1_000_000_000_000) {
+    return value * 1000;
+  }
+  return value;
 }
 
 /**

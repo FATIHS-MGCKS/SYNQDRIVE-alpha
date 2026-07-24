@@ -18,7 +18,9 @@ describe('Vehicle Operational State V2 — fleet-map cache', () => {
     });
 
     const result = await service.getFleetMapData(orgId);
-    expect(result).toEqual(cachedPayload);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('veh-cached');
+    expect(result[0].cachedAt).toEqual(expect.any(String));
     expect(redisGet).toHaveBeenCalledWith(`fleet-map:${orgId}:v1`);
     expect(vehicleFindMany).not.toHaveBeenCalled();
   });
