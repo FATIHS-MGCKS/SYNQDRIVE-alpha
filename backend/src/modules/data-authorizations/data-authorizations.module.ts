@@ -58,6 +58,12 @@ import {
   DeletionRedisAdapter,
   DeletionStoreRegistry,
 } from './retention-deletion/deletion-store.adapters';
+import { ComplianceEvidenceController } from './compliance-evidence/compliance-evidence.controller';
+import { ComplianceEvidenceService } from './compliance-evidence/compliance-evidence.service';
+import { ComplianceEvidenceAssemblerService } from './compliance-evidence/compliance-evidence-assembler.service';
+import { ComplianceEvidenceExportService } from './compliance-evidence/compliance-evidence-export.service';
+import { ComplianceEvidenceAuditService } from './compliance-evidence/compliance-evidence-audit.service';
+import { ComplianceEvidenceSchedulerService } from './compliance-evidence/compliance-evidence.scheduler.service';
 import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
 import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
@@ -146,6 +152,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     DpiaWorkflowController,
     ProcessorDpaController,
     RetentionDeletionController,
+    ComplianceEvidenceController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -191,6 +198,11 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     DeletionStoreRegistry,
     RetentionDeletionExecutorService,
     RetentionDeletionSchedulerService,
+    ComplianceEvidenceAuditService,
+    ComplianceEvidenceAssemblerService,
+    ComplianceEvidenceExportService,
+    ComplianceEvidenceService,
+    ComplianceEvidenceSchedulerService,
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
@@ -262,6 +274,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     DpaContractGateService,
     RetentionActivationGateService,
     RetentionDeletionExecutorService,
+    ComplianceEvidenceExportService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,

@@ -38,6 +38,8 @@ export const DATA_PROCESSING_PERMISSION_ACTIONS = [
   'data_processing.retention_edit',
   'data_processing.retention_delete',
   'data_processing.retention_legal_hold',
+  'data_processing.evidence_view',
+  'data_processing.evidence_export',
 ] as const;
 
 export type DataProcessingPermissionAction =
@@ -83,6 +85,8 @@ export const DATA_PROCESSING_PERMISSION_REQUIREMENTS: Readonly<
   'data_processing.retention_edit': { module: 'data-authorization', level: 'write' },
   'data_processing.retention_delete': { module: 'data-authorization', level: 'manage' },
   'data_processing.retention_legal_hold': { module: 'data-authorization', level: 'manage' },
+  'data_processing.evidence_view': { module: 'data-authorization', level: 'read' },
+  'data_processing.evidence_export': { module: 'data-authorization', level: 'manage' },
 };
 
 export const DATA_PROCESSING_REVIEW_STEP_PERMISSION: Readonly<
