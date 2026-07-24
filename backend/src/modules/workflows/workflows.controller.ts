@@ -15,6 +15,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import {
+  ApproveWorkflowActionDto,
   CreateWorkflowDto,
   RejectWorkflowActionDto,
   TestWorkflowDto,
@@ -45,6 +46,12 @@ export class WorkflowsController {
     return this.service.getStats(orgId);
   }
 
+  @Get('action-capabilities')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async actionCapabilities() {
+    return this.service.getActionCapabilities();
+  }
+
   @Get('runs/:runId')
   @Roles(...WORKFLOW_READ_ROLES)
   async getRun(@Param('orgId') orgId: string, @Param('runId') runId: string) {
@@ -56,9 +63,11 @@ export class WorkflowsController {
   async approveAction(
     @Param('orgId') orgId: string,
     @Param('actionRunId') actionRunId: string,
-    @Req() req: { user?: { id?: string } },
+    @Body() body: ApproveWorkflowActionDto,
+    @Req() req: { user?: { id?: string; name?: string; email?: string; roles?: string[] } },
   ) {
-    return this.service.approveActionRun(orgId, actionRunId, req.user?.id);
+    const user = req.user || {};
+    return this.service.approveActionRun(orgId, actionRunId, user, body.comment);
   }
 
   @Post('action-runs/:actionRunId/reject')
@@ -67,9 +76,10 @@ export class WorkflowsController {
     @Param('orgId') orgId: string,
     @Param('actionRunId') actionRunId: string,
     @Body() body: RejectWorkflowActionDto,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: { user?: { id?: string; name?: string; email?: string; roles?: string[] } },
   ) {
-    return this.service.rejectActionRun(orgId, actionRunId, req.user?.id, body.reason);
+    const user = req.user || {};
+    return this.service.rejectActionRun(orgId, actionRunId, user, body.reason);
   }
 
   @Get(':id/runs')
@@ -152,6 +162,12 @@ export class WorkflowsController {
       user.id,
       user.name || user.email || 'System',
     );
+  }
+
+  @Post(':id/preview-actions')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async previewActions(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.service.previewWorkflowActions(orgId, id);
   }
 
   @Post(':id/test')

@@ -9,6 +9,17 @@ import { validateWorkflowDefinition } from './workflow-definition.validator';
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowEngineService } from './workflow-engine.service';
+import {
+  buildWorkflowActionCapabilityPlan,
+  collectWorkflowActionCapabilityIssues,
+  listWorkflowActionCapabilities,
+} from './workflow-action-capabilities';
+import {
+  assessWorkflowActionRemediation,
+  normalizeStoredWorkflowActions,
+} from './workflow-remediation.util';
+import { WorkflowApprovalInterimService } from './workflow-approval-interim.service';
+import { assertWorkflowActivatableWithApprovalPolicy } from './workflow-approval-interim.util';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -23,6 +34,7 @@ export class WorkflowsService {
     private readonly prisma: PrismaService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly workflowEngine: WorkflowEngineService,
+    private readonly approvalInterim: WorkflowApprovalInterimService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -53,8 +65,8 @@ export class WorkflowsService {
   }
 
   async create(orgId: string, dto: CreateWorkflowDto, userId?: string, userName?: string) {
-    const validated = validateWorkflowDefinition(dto);
     const status = dto.status ?? 'DRAFT';
+    const validated = validateWorkflowDefinition({ ...dto, status });
     const enabled = status === 'ACTIVE';
 
     const row = await this.prisma.orgWorkflow.create({
@@ -69,6 +81,9 @@ export class WorkflowsService {
         scope: validated.scope as unknown as Prisma.InputJsonValue,
         status,
         enabled,
+        remediationRequired: false,
+        remediationReason: null,
+        remediationDetectedAt: null,
         version: 1,
         createdById: userId,
         createdByName: userName,
@@ -91,6 +106,7 @@ export class WorkflowsService {
     });
     if (!existing) throw new NotFoundException('Workflow not found');
 
+    const nextStatus = dto.status ?? existing.status;
     const validated = validateWorkflowDefinition({
       name: dto.name ?? existing.name,
       category: dto.category ?? existing.category,
@@ -98,9 +114,9 @@ export class WorkflowsService {
       conditions: (dto.conditions ?? existing.conditions) as any,
       actions: (dto.actions ?? existing.actions) as any,
       scope: (dto.scope ?? existing.scope) as any,
+      status: nextStatus,
     });
 
-    const nextStatus = dto.status ?? existing.status;
     const row = await this.prisma.orgWorkflow.update({
       where: { id },
       data: {
@@ -113,6 +129,9 @@ export class WorkflowsService {
         scope: validated.scope as unknown as Prisma.InputJsonValue,
         status: nextStatus,
         enabled: nextStatus === 'ACTIVE',
+        remediationRequired: false,
+        remediationReason: null,
+        remediationDetectedAt: null,
         version: { increment: 1 },
         updatedById: userId,
         updatedByName: userName,
@@ -128,6 +147,19 @@ export class WorkflowsService {
     if (!existing) throw new NotFoundException('Workflow not found');
 
     const newStatus = existing.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+    if (newStatus === 'ACTIVE') {
+      const actions = normalizeStoredWorkflowActions(existing.actions);
+      const issues = collectWorkflowActionCapabilityIssues(actions, 'activate');
+      if (issues.length > 0) {
+        throw new BadRequestException({
+          message: issues[0].message,
+          code: issues[0].code,
+          issues,
+        });
+      }
+      assertWorkflowActivatableWithApprovalPolicy(actions, newStatus);
+    }
+
     const row = await this.prisma.orgWorkflow.update({
       where: { id },
       data: {
@@ -264,6 +296,20 @@ export class WorkflowsService {
     });
     if (!wf) throw new NotFoundException('Workflow not found');
 
+    const actions = normalizeStoredWorkflowActions(wf.actions);
+    const plan = buildWorkflowActionCapabilityPlan(actions);
+    const blocking = plan.filter((item) => !item.wouldExecute);
+    if (blocking.length > 0) {
+      return {
+        runIds: [],
+        runs: [],
+        executed: false,
+        actionPlan: plan,
+        message: 'Workflow test blocked — invalid or unavailable actions detected',
+        policyBlockers: blocking.map((item) => item.message ?? item.validationErrors.join('; ')),
+      };
+    }
+
     const runId = await this.workflowEngine.executeWorkflow(wf, {
       organizationId: orgId,
       type: 'manual.test',
@@ -283,69 +329,78 @@ export class WorkflowsService {
     return { runIds: [runId], runs: [run] };
   }
 
-  async approveActionRun(orgId: string, actionRunId: string, userId?: string) {
-    const actionRun = await this.prisma.orgWorkflowActionRun.findFirst({
-      where: { id: actionRunId, organizationId: orgId },
+  getActionCapabilities() {
+    return listWorkflowActionCapabilities();
+  }
+
+  async previewWorkflowActions(orgId: string, workflowId: string) {
+    const wf = await this.prisma.orgWorkflow.findFirst({
+      where: { id: workflowId, organizationId: orgId },
     });
-    if (!actionRun) throw new NotFoundException('Action run not found');
-    if (actionRun.status !== 'WAITING_APPROVAL') {
-      throw new BadRequestException('Action run is not waiting for approval');
+    if (!wf) throw new NotFoundException('Workflow not found');
+    const actions = normalizeStoredWorkflowActions(wf.actions);
+    return {
+      workflowId: wf.id,
+      workflowName: wf.name,
+      remediationRequired: wf.remediationRequired,
+      remediationReason: wf.remediationReason,
+      capabilityRevision: listWorkflowActionCapabilities().revision,
+      executed: false,
+      plannedActions: buildWorkflowActionCapabilityPlan(actions),
+    };
+  }
+
+  async remediateOrganizationWorkflows(orgId: string) {
+    const rows = await this.prisma.orgWorkflow.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, actions: true },
+    });
+    const results = rows.map((row) => assessWorkflowActionRemediation(row));
+    for (const result of results) {
+      if (!result.remediationRequired) {
+        await this.prisma.orgWorkflow.update({
+          where: { id: result.workflowId },
+          data: {
+            remediationRequired: false,
+            remediationReason: null,
+            remediationDetectedAt: null,
+          },
+        });
+        continue;
+      }
+      await this.prisma.orgWorkflow.update({
+        where: { id: result.workflowId },
+        data: {
+          status: 'INVALID',
+          enabled: false,
+          remediationRequired: true,
+          remediationReason: result.remediationReason,
+          remediationDetectedAt: new Date(),
+        },
+      });
     }
+    return {
+      scanned: results.length,
+      remediated: results.filter((r) => r.remediationRequired).length,
+      results,
+    };
+  }
 
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
-      data: {
-        status: 'SUCCESS',
-        approvedByUserId: userId ?? null,
-        approvedAt: new Date(),
-        finishedAt: new Date(),
-        output: { approved: true, executedAfterApproval: false },
-      },
-    });
-
-    await this.prisma.orgWorkflowApproval.updateMany({
-      where: { actionRunId, organizationId: orgId, status: 'PENDING' },
-      data: { status: 'APPROVED', approvedByUserId: userId ?? null, decidedAt: new Date() },
-    });
-
-    return this.getRun(orgId, actionRun.workflowRunId);
+  async approveActionRun(
+    orgId: string,
+    actionRunId: string,
+    user?: { id?: string; name?: string; email?: string; roles?: string[] },
+    comment?: string,
+  ) {
+    return this.approvalInterim.approveActionRun(orgId, actionRunId, user, comment);
   }
 
   async rejectActionRun(
     orgId: string,
     actionRunId: string,
-    userId?: string,
+    user?: { id?: string; name?: string; email?: string; roles?: string[] },
     reason?: string,
   ) {
-    const actionRun = await this.prisma.orgWorkflowActionRun.findFirst({
-      where: { id: actionRunId, organizationId: orgId },
-    });
-    if (!actionRun) throw new NotFoundException('Action run not found');
-
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
-      data: {
-        status: 'FAILED',
-        errorMessage: reason ?? 'Rejected by reviewer',
-        finishedAt: new Date(),
-      },
-    });
-
-    await this.prisma.orgWorkflowApproval.updateMany({
-      where: { actionRunId, organizationId: orgId, status: 'PENDING' },
-      data: {
-        status: 'REJECTED',
-        approvedByUserId: userId ?? null,
-        reason: reason ?? null,
-        decidedAt: new Date(),
-      },
-    });
-
-    await this.prisma.orgWorkflowRun.update({
-      where: { id: actionRun.workflowRunId },
-      data: { status: 'FAILED', errorMessage: 'Action rejected', finishedAt: new Date() },
-    });
-
-    return this.getRun(orgId, actionRun.workflowRunId);
+    return this.approvalInterim.rejectActionRun(orgId, actionRunId, user, reason);
   }
 }

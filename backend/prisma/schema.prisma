@@ -10660,11 +10660,13 @@ enum WorkflowActionRunStatus {
   FAILED
   SKIPPED
   WAITING_APPROVAL
+  APPROVED_PENDING_EXECUTION
 }
 
 enum WorkflowApprovalStatus {
   PENDING
   APPROVED
+  APPROVED_PENDING_EXECUTION
   REJECTED
   EXPIRED
 }
@@ -10689,6 +10691,9 @@ model OrgWorkflow {
   lastTriggeredAt DateTime?      @map("last_triggered_at")
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
+  remediationRequired Boolean    @default(false) @map("remediation_required")
+  remediationReason String?      @map("remediation_reason")
+  remediationDetectedAt DateTime? @map("remediation_detected_at")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -10767,7 +10772,9 @@ model OrgWorkflowApproval {
   status            WorkflowApprovalStatus @default(PENDING)
   requestedBySystem Boolean                @default(true) @map("requested_by_system")
   approvedByUserId  String?                @map("approved_by_user_id")
+  decidedByName     String?                @map("decided_by_name")
   reason            String?
+  expiresAt         DateTime?              @map("expires_at")
   createdAt         DateTime               @default(now()) @map("created_at")
   decidedAt         DateTime?              @map("decided_at")
 

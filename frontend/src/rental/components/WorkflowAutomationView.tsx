@@ -28,13 +28,15 @@ interface Workflow {
   lastTriggeredAt: string | null;
   triggerCount: number;
   isTemplate: boolean;
+  remediationRequired?: boolean;
+  remediationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 interface TriggerDef { type: string; config?: Record<string, any>; }
 interface ConditionDef { field?: string; path?: string; operator: string; value: any; }
-interface ActionDef { type: string; config?: Record<string, any>; }
+interface ActionDef { type: string; config?: Record<string, any>; requiresApproval?: boolean; }
 interface ScopeDef { type: string; stationIds?: string[]; vehicleIds?: string[]; }
 
 interface Stats {
@@ -105,19 +107,54 @@ const TRIGGER_TYPES = [
   { key: 'manual.test', label: 'Manual test', category: 'vehicle_return' },
 ] as const;
 
-const ACTION_TYPES = [
-  { key: 'create_alert', label: 'Create alert', icon: Bell, mvp: true },
-  { key: 'create_task', label: 'Create task', icon: ClipboardList, mvp: true },
-  { key: 'change_vehicle_status', label: 'Change vehicle status', icon: Car, mvp: true },
-  { key: 'send_notification', label: 'Prepare notification (draft only)', icon: Bell, mvp: true },
-  { key: 'ai_suggest', label: 'AI: Suggest action (approval required)', icon: Bot, mvp: true },
-  { key: 'request_approval', label: 'Request approval', icon: Shield, mvp: true },
-  { key: 'change_cleaning_status', label: 'Set cleaning status', icon: Sparkles, mvp: false, comingSoon: true },
-  { key: 'ai_execute', label: 'AI: Execute action', icon: Zap, mvp: false, comingSoon: true },
-  { key: 'ai_send_message', label: 'AI: Send customer message', icon: Bot, mvp: false, comingSoon: true },
-  { key: 'ai_book_appointment', label: 'AI: Book appointment', icon: Calendar, mvp: false, comingSoon: true },
-  { key: 'assign_vendor', label: 'Assign vendor / service', icon: Truck, mvp: false, comingSoon: true },
+const ACTION_UI_FALLBACK = [
+  { key: 'create_alert', label: 'Create alert', icon: Bell },
+  { key: 'create_task', label: 'Create task', icon: ClipboardList },
+  { key: 'change_vehicle_status', label: 'Change vehicle status', icon: Car },
+  { key: 'send_notification', label: 'Prepare notification (draft only)', icon: Bell },
+  { key: 'ai_suggest', label: 'AI: Suggest action (approval required)', icon: Bot },
+  { key: 'request_approval', label: 'Request approval', icon: Shield },
+  { key: 'change_cleaning_status', label: 'Set cleaning status', icon: Sparkles },
+  { key: 'ai_execute', label: 'AI: Execute action', icon: Zap },
+  { key: 'ai_send_message', label: 'AI: Send customer message', icon: Bot },
+  { key: 'ai_book_appointment', label: 'AI: Book appointment', icon: Calendar },
+  { key: 'assign_vendor', label: 'Assign vendor / service', icon: Truck },
 ] as const;
+
+type ActionPickerOption = {
+  key: string;
+  label: string;
+  icon: typeof Zap;
+  disabled: boolean;
+  status: string;
+  blockedReason?: string;
+};
+
+function buildActionPickerOptions(
+  capabilities: import('../../lib/api').WorkflowActionCapabilityDto[],
+): ActionPickerOption[] {
+  if (!capabilities.length) {
+    return ACTION_UI_FALLBACK.map((entry) => ({
+      ...entry,
+      disabled: !['create_alert', 'create_task', 'change_vehicle_status', 'send_notification', 'ai_suggest', 'request_approval'].includes(entry.key),
+      status: 'AVAILABLE',
+    }));
+  }
+  return capabilities.map((cap) => {
+    const key = cap.legacyAliases[0] ?? cap.canonicalType;
+    const fallback = ACTION_UI_FALLBACK.find(
+      (entry) => entry.key === key || entry.key === cap.canonicalType,
+    );
+    return {
+      key,
+      label: cap.label,
+      icon: fallback?.icon ?? Zap,
+      disabled: !cap.selectableInUi,
+      status: cap.status,
+      blockedReason: cap.blockedReason,
+    };
+  });
+}
 
 const CONDITION_FIELDS = [
   { key: 'vehicle_status', label: 'Vehicle status' },
@@ -244,11 +281,13 @@ function getCategoryMeta(key: string) {
 function getTriggerLabel(key: string) {
   return TRIGGER_TYPES.find((t) => t.key === key)?.label || key;
 }
-function getActionLabel(key: string) {
-  return ACTION_TYPES.find((a) => a.key === key)?.label || key;
+function getActionLabel(key: string, options?: ActionPickerOption[]) {
+  return options?.find((a) => a.key === key)?.label || ACTION_UI_FALLBACK.find((a) => a.key === key)?.label || key;
 }
-function getActionIcon(key: string) {
-  const a = ACTION_TYPES.find((t) => t.key === key);
+function getActionIcon(key: string, options?: ActionPickerOption[]) {
+  const fromOptions = options?.find((t) => t.key === key)?.icon;
+  if (fromOptions) return fromOptions;
+  const a = ACTION_UI_FALLBACK.find((t) => t.key === key);
   return a?.icon || Zap;
 }
 function getFieldLabel(key: string) {
@@ -284,9 +323,30 @@ const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textCl
   FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
   SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
   WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
+  APPROVED_PENDING_EXECUTION: {
+    label: 'Approved — pending execution',
+    bgClass: 'bg-amber-100 dark:bg-status-attention-soft',
+    textClass: 'text-amber-700 dark:text-status-attention',
+  },
+  EXPIRED: { label: 'Expired', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
   RUNNING: { label: 'Running', bgClass: 'bg-status-info-soft', textClass: 'text-status-info' },
   PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
 };
+
+const APPROVAL_GATED_ACTION_TYPES = new Set([
+  'workflow.approval.request',
+  'ai.suggest_action',
+  'request_approval',
+  'ai_suggest',
+]);
+
+function isApprovalGatedAction(action: ActionDef): boolean {
+  return action.requiresApproval === true || APPROVAL_GATED_ACTION_TYPES.has(action.type) || action.type.startsWith('ai_');
+}
+
+function workflowHasApprovalGatedActions(actions?: ActionDef[]): boolean {
+  return (actions || []).some(isApprovalGatedAction);
+}
 
 // ─── Main Component ──────────────────────────────
 
@@ -307,6 +367,11 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   const [builderData, setBuilderData] = useState<Partial<Workflow> | null>(null);
   const [mainTab, setMainTab] = useState<'workflows' | 'task-automations'>('workflows');
   const [saving, setSaving] = useState(false);
+  const [actionCapabilities, setActionCapabilities] = useState<import('../../lib/api').WorkflowActionCapabilityDto[]>([]);
+  const actionPickerOptions = useMemo(
+    () => buildActionPickerOptions(actionCapabilities),
+    [actionCapabilities],
+  );
 
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
@@ -319,12 +384,14 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     if (!orgId) return;
     setLoading(true);
     try {
-      const [wfRes, stRes] = await Promise.all([
+      const [wfRes, stRes, capRes] = await Promise.all([
         api.workflows.list(orgId),
         api.workflows.stats(orgId),
+        api.workflows.actionCapabilities(orgId),
       ]);
       setWorkflows(wfRes as Workflow[]);
       setStats(stRes);
+      setActionCapabilities(capRes.actions);
     } catch (e) {
       console.error('Failed to load workflows', e);
     } finally {
@@ -470,6 +537,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
       setData={setBuilderData}
       isDarkMode={isDarkMode}
       saving={saving}
+      actionPickerOptions={actionPickerOptions}
       onSave={handleSave}
       onCancel={() => setView('list')}
     />
@@ -824,6 +892,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const [runsLoading, setRunsLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const [testPlan, setTestPlan] = useState<import('../../lib/api').WorkflowActionCapabilityPlanItemDto[] | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -838,11 +907,19 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
     if (!orgId) return;
     setTesting(true);
     setTestError(null);
+    setTestPlan(null);
     try {
       const result = await api.workflows.test(orgId, wf.id, {
         payload: { manualTest: true, workflowName: wf.name },
       });
-      if (result.runs?.length) {
+      if (result.executed === false) {
+        setTestPlan(result.actionPlan ?? null);
+        setTestError(
+          result.policyBlockers?.[0] ||
+            result.message ||
+            'Workflow test blocked — invalid or unavailable actions',
+        );
+      } else if (result.runs?.length) {
         setRuns((prev) => [...(result.runs as WorkflowRun[]), ...prev]);
       } else {
         setTestError(result.message || 'Workflow was skipped (conditions/scope)');
@@ -864,6 +941,10 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const labelClass = `text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`;
   const valueClass = `text-xs font-medium ${textPrimary}`;
   const isAi = wf.category === 'ai_permissions' || wf.actions?.some((a: ActionDef) => a.type.startsWith('ai_'));
+  const hasInterimApprovedRuns = runs.some((run) =>
+    run.actionRuns?.some((ar) => ar.status === 'APPROVED_PENDING_EXECUTION'),
+  );
+  const hasWaitingApprovalRuns = runs.some((run) => run.status === 'WAITING_APPROVAL');
 
   const catColors: Record<string, string> = {
     blue: isDarkMode ? 'text-brand' : 'text-brand',
@@ -893,6 +974,11 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>AI</span>
               )}
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.bgClass} ${st.textClass}`}>{st.label}</span>
+            {wf.remediationRequired && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                Needs remediation
+              </span>
+            )}
             </div>
             <p className={`text-xs ${textSecondary}`}>{wf.description || 'No description'}</p>
           </div>
@@ -923,6 +1009,18 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
         )}
       </div>
 
+      {wf.remediationRequired && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-amber-900/15 border-amber-800/40' : 'bg-amber-50 border-amber-200'}`}>
+          <Icon name="alert-triangle" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`} />
+          <div>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-amber-200' : 'text-amber-900'}`}>Remediation required</p>
+            <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-amber-300/90' : 'text-amber-800'}`}>
+              {wf.remediationReason || 'This workflow contains actions that are no longer production-capable. Edit actions before activation.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* AI Warning */}
       {isAi && (
         <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50 border-purple-200'}`}>
@@ -941,6 +1039,36 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       {testError && (
         <div className={`text-xs px-3 py-2 rounded-lg border ${isDarkMode ? 'bg-amber-900/20 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
           {testError}
+        </div>
+      )}
+
+      {(hasInterimApprovedRuns || hasWaitingApprovalRuns) && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-amber-900/15 border-amber-800/40' : 'bg-amber-50 border-amber-200'}`}>
+          <Icon name="alert-triangle" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`} />
+          <div>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-amber-200' : 'text-amber-900'}`}>
+              Approval interim safeguard active
+            </p>
+            <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-amber-300/90' : 'text-amber-800'}`}>
+              Approving a workflow action does not complete it yet. Legacy approvals remain visible as
+              {' '}<strong>Approved — pending execution</strong> until Phase 5 pause-and-resume ships.
+              Runs stay <strong>Waiting approval</strong> — do not treat them as successful.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {testPlan && testPlan.length > 0 && (
+        <div className={`text-xs px-3 py-3 rounded-lg border space-y-2 ${isDarkMode ? 'bg-slate-900/40 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
+          <p className="font-semibold">Action capability preview — not executed</p>
+          {testPlan.map((item) => (
+            <div key={item.index} className="flex items-start justify-between gap-3">
+              <span>{getActionLabel(item.rawType)} ({item.canonicalType || item.rawType})</span>
+              <span className={item.wouldExecute ? 'text-green-500' : 'text-amber-500'}>
+                {item.wouldExecute ? 'OK' : item.message || item.validationErrors.join('; ')}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -1038,12 +1166,26 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                   {run.errorMessage && (
                     <p className={`text-[10px] mt-1 text-red-500`}>{run.errorMessage}</p>
                   )}
+                  {run.status === 'WAITING_APPROVAL' && !run.errorMessage && (
+                    <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+                      Run is waiting — approval does not mark the workflow as successful.
+                    </p>
+                  )}
                   {run.actionRuns && run.actionRuns.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {run.actionRuns.map((ar) => {
                         const ars = RUN_STATUS_CONFIG[ar.status] || RUN_STATUS_CONFIG.PENDING;
+                        const isInterimApproved = ar.status === 'APPROVED_PENDING_EXECUTION';
                         return (
-                          <span key={ar.id} className={`text-[9px] px-1.5 py-0.5 rounded ${ars.bgClass} ${ars.textClass}`}>
+                          <span
+                            key={ar.id}
+                            title={
+                              isInterimApproved
+                                ? 'Approved but not executed — automatic resume unavailable (Phase 5)'
+                                : undefined
+                            }
+                            className={`text-[9px] px-1.5 py-0.5 rounded ${ars.bgClass} ${ars.textClass}`}
+                          >
                             {ar.actionType} — {ars.label}
                           </span>
                         );
@@ -1062,9 +1204,10 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
 
 // ─── BuilderView ─────────────────────────────────
 
-function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
+function BuilderView({ data, setData, isDarkMode, saving, actionPickerOptions, onSave, onCancel }: {
   data: Partial<Workflow>; setData: (d: Partial<Workflow> | null) => void;
-  isDarkMode: boolean; saving: boolean; onSave: () => void; onCancel: () => void;
+  isDarkMode: boolean; saving: boolean; actionPickerOptions: ActionPickerOption[];
+  onSave: () => void; onCancel: () => void;
 }) {
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
@@ -1108,6 +1251,8 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
   };
 
   const isAiAction = (data.actions || []).some((a: ActionDef) => a.type.startsWith('ai_'));
+  const hasApprovalGatedActions = workflowHasApprovalGatedActions(data.actions as ActionDef[]);
+  const activationBlocked = hasApprovalGatedActions && (data.status === 'ACTIVE');
 
   return (
     <div className="space-y-4">
@@ -1134,10 +1279,10 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
           </select>
           <button
             onClick={onSave}
-            disabled={saving || !data.name}
+            disabled={saving || !data.name || activationBlocked}
             className="px-4 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Workflow'}
+            {saving ? 'Saving...' : activationBlocked ? 'Cannot activate (approval resume pending)' : 'Save Workflow'}
           </button>
         </div>
       </div>
@@ -1150,6 +1295,21 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
             <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>AI Actions Detected</p>
             <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
               This workflow includes AI-powered actions. For customer-facing actions (messaging, bookings), consider adding an "Request approval" action first.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {hasApprovalGatedActions && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-amber-900/15 border-amber-800/40' : 'bg-amber-50 border-amber-200'}`}>
+          <Icon name="alert-triangle" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`} />
+          <div>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-amber-200' : 'text-amber-900'}`}>
+              Approval-gated actions — activation blocked
+            </p>
+            <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-amber-300/90' : 'text-amber-800'}`}>
+              Workflows with approval-gated actions cannot be activated until Phase 5 pause-and-resume is available.
+              Save as <strong>Draft</strong> or remove approval-gated actions to proceed.
             </p>
           </div>
         </div>
@@ -1280,15 +1440,15 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
             ) : (
               <div className="space-y-2">
                 {((data.actions || []) as ActionDef[]).map((a: ActionDef, i: number) => {
-                  const Icon = getActionIcon(a.type);
+                  const ActionIcon = getActionIcon(a.type, actionPickerOptions);
                   return (
                     <div key={i} className={`p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-1.5 mb-1.5">
-                        <Icon className={`w-3.5 h-3.5 ${a.type.startsWith('ai_') ? 'text-purple-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                        <ActionIcon className={`w-3.5 h-3.5 ${a.type.startsWith('ai_') ? 'text-purple-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                         <select value={a.type} onChange={(e) => updateAction(i, { type: e.target.value, config: {} })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-                          {ACTION_TYPES.map((at) => (
-                            <option key={at.key} value={at.key} disabled={'comingSoon' in at && at.comingSoon}>
-                              {at.label}{'comingSoon' in at && at.comingSoon ? ' (Coming soon)' : ''}
+                          {actionPickerOptions.map((at) => (
+                            <option key={at.key} value={at.key} disabled={at.disabled}>
+                              {at.label}{at.disabled ? ` (${at.status})` : ''}
                             </option>
                           ))}
                         </select>

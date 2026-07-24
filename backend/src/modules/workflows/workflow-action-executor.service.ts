@@ -13,6 +13,11 @@ import { TasksService } from '@modules/tasks/tasks.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
 import type { WorkflowActionDef } from './workflow-definition.validator';
+import {
+  assertWorkflowActionsCapable,
+  WORKFLOW_ACTION_ERROR_CODES,
+} from './workflow-action-capabilities';
+import { approvalExpiresAt } from './workflow-approval-interim.util';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -38,6 +43,8 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
+    assertWorkflowActionsCapable([action], 'execute');
+
     if (action.requiresApproval) {
       await this.prisma.orgWorkflowApproval.create({
         data: {
@@ -47,6 +54,7 @@ export class WorkflowActionExecutorService {
           status: 'PENDING',
           requestedBySystem: true,
           reason: `Approval required for ${action.type}`,
+          expiresAt: approvalExpiresAt(),
         },
       });
       return {
@@ -76,7 +84,10 @@ export class WorkflowActionExecutorService {
             output: await this.execAiSuggest(action, ctx),
           };
         default:
-          throw new BadRequestException(`Unsupported action type: ${action.type}`);
+          return {
+            status: 'FAILED',
+            errorMessage: `${WORKFLOW_ACTION_ERROR_CODES.MISSING_HANDLER}: No handler for ${action.type}`,
+          };
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -234,6 +245,7 @@ export class WorkflowActionExecutorService {
         reason:
           (typeof action.config?.message === 'string' && action.config.message) ||
           'Workflow approval requested',
+        expiresAt: approvalExpiresAt(),
       },
     });
     return { waitingApproval: true };
@@ -269,6 +281,7 @@ export class WorkflowActionExecutorService {
         status: 'PENDING',
         requestedBySystem: true,
         reason: 'AI suggestion requires human approval',
+        expiresAt: approvalExpiresAt(),
       },
     });
     return { suggestionTaskId: task.id, suggestionOnly: true };

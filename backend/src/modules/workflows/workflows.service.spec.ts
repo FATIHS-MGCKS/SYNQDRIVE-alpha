@@ -65,6 +65,18 @@ describe('validateWorkflowDefinition', () => {
     expect(result.actions[0].type).toBe('task.create');
     expect(result.trigger.type).toBe('booking.returned');
   });
+
+  it('blocks activating workflows with approval-gated actions until resume ships', () => {
+    expect(() =>
+      validateWorkflowDefinition({
+        name: 'AI',
+        category: 'ai_permissions',
+        trigger: { type: 'manual.test' },
+        actions: [{ type: 'ai.suggest_action', config: { summary: 'test' } }],
+        status: 'ACTIVE',
+      }),
+    ).toThrow(BadRequestException);
+  });
 });
 
 describe('evaluateWorkflowConditions', () => {

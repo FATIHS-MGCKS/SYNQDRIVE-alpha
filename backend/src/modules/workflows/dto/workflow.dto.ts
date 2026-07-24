@@ -173,3 +173,10 @@ export class RejectWorkflowActionDto {
   @MaxLength(2000)
   reason?: string;
 }
+
+export class ApproveWorkflowActionDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  comment?: string;
+}

@@ -2308,8 +2308,48 @@ export interface WorkflowDto {
   lastTriggeredAt: string | null;
   triggerCount: number;
   isTemplate?: boolean;
+  remediationRequired?: boolean;
+  remediationReason?: string | null;
+  remediationDetectedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+export interface WorkflowActionCapabilityDto {
+  canonicalType: string;
+  label: string;
+  status: 'AVAILABLE' | 'INTERNAL_ONLY' | 'EXPERIMENTAL' | 'DISABLED' | 'UNSUPPORTED';
+  legacyAliases: string[];
+  handlerRegistered: boolean;
+  requiresApproval: boolean;
+  description: string;
+  blockedReason?: string;
+  selectableInUi: boolean;
+}
+export interface WorkflowActionCapabilityListDto {
+  revision: string;
+  generatedAt: string;
+  actions: WorkflowActionCapabilityDto[];
+}
+export interface WorkflowActionCapabilityPlanItemDto {
+  index: number;
+  rawType: string;
+  canonicalType: string | null;
+  status: string;
+  handlerRegistered: boolean;
+  selectableInUi: boolean;
+  wouldExecute: boolean;
+  validationErrors: string[];
+  code?: string;
+  message?: string;
+}
+export interface WorkflowActionPreviewDto {
+  workflowId: string;
+  workflowName: string;
+  remediationRequired: boolean;
+  remediationReason: string | null;
+  capabilityRevision: string;
+  executed: false;
+  plannedActions: WorkflowActionCapabilityPlanItemDto[];
 }
 export interface WorkflowStatsDto {
   total: number;
@@ -2381,6 +2421,9 @@ export interface WorkflowTestResultDto {
   runIds: string[];
   runs: WorkflowRunDto[];
   message?: string;
+  executed?: boolean;
+  actionPlan?: WorkflowActionCapabilityPlanItemDto[];
+  policyBlockers?: string[];
 }
 
 // ── Account Self-Service (Settings → Account Information) ───────────────────
@@ -4838,6 +4881,10 @@ export const api = {
       return get<WorkflowDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
     },
     stats: (orgId: string) => get<WorkflowStatsDto>(`/organizations/${orgId}/workflows/stats`),
+    actionCapabilities: (orgId: string) =>
+      get<WorkflowActionCapabilityListDto>(`/organizations/${orgId}/workflows/action-capabilities`),
+    previewActions: (orgId: string, workflowId: string) =>
+      post<WorkflowActionPreviewDto>(`/organizations/${orgId}/workflows/${workflowId}/preview-actions`, {}),
     get: (orgId: string, id: string) => get<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`),
     create: (orgId: string, data: WorkflowCreatePayload) => post<WorkflowDto>(`/organizations/${orgId}/workflows`, data),
     update: (orgId: string, id: string, data: WorkflowUpdatePayload) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`, data),
@@ -4849,8 +4896,8 @@ export const api = {
     getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
     test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
       post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
-    approveActionRun: (orgId: string, actionRunId: string) =>
-      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, {}),
+    approveActionRun: (orgId: string, actionRunId: string, comment?: string) =>
+      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, { comment }),
     rejectActionRun: (orgId: string, actionRunId: string, reason?: string) =>
       post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/reject`, { reason }),
   },

@@ -33,6 +33,7 @@ export const WORKFLOW_CATEGORIES = [
   'support',
 ] as const;
 
+/** Canonical production-capable workflow action types (server allowlist). */
 export const WORKFLOW_ACTION_TYPES = [
   'task.create',
   'alert.create',
