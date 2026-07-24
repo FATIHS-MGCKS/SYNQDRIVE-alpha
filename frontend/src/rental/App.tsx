@@ -1,14 +1,9 @@
 
-import { Icon } from './components/ui/Icon';
-import {
-  chromeTabBarClass,
-  chromeTabTriggerClass,
-  CHROME_TAB_BAR_SCROLL_CLASS,
-} from '../components/patterns/chrome-tab-bar';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useAppTheme } from '../context/AppThemeContext';
+import { Icon } from './components/ui/Icon';
 import { EmptyState } from '../components/patterns';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -83,12 +78,19 @@ import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
   VehicleDetailHeader,
+  VehicleDetailTabBar,
+  VehicleDetailTabPanel,
   VehicleOverviewTab,
   VehicleRequirementsTab,
+  VehicleTripsFilterBar,
   createVehicleOverviewNavigator,
   useVehicleOverviewSummary,
 } from './components/vehicle-detail';
+import type { VehicleDetailTab } from './components/vehicle-detail';
 import type { ServiceCenterNavState } from './lib/service-center-navigation';
+import {
+  VEHICLE_DETAIL_VIEW_CLASS,
+} from './lib/vehicle-detail-mobile-ui';
 import {
   RentalEntityNavigationProvider,
   type RentalEntityNavigationValue,
@@ -204,8 +206,6 @@ function RentalAppContent() {
   const { isDarkMode } = useAppTheme();
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
-  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
-  const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
   const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
@@ -301,6 +301,9 @@ function RentalAppContent() {
       ? selectedVehicle.id
       : null;
   const showVehicleDetailChrome = VEHICLE_DETAIL_VIEWS.has(currentView);
+  const vehicleDetailActiveTab: VehicleDetailTab | null = VEHICLE_DETAIL_VIEWS.has(currentView)
+    ? (currentView as VehicleDetailTab)
+    : null;
   const [activeBookingRef, setActiveBookingRef] = useState<string | null>(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [highlightedVehicleTaskId, setHighlightedVehicleTaskId] = useState<string | null>(null);
@@ -419,8 +422,6 @@ function RentalAppContent() {
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   });
-  const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState(false);
-  const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
 
   // Trip count and driver options for filter bar; TripsView reports via onTripsLoaded
   const [tripsCount, setTripsCount] = useState(0);
@@ -503,9 +504,7 @@ function RentalAppContent() {
   const handleCleaningStatusChange = (newStatus: 'Clean' | 'Needs Cleaning') => {
     if (newStatus === 'Needs Cleaning') {
       setShowCleaningWarning(true);
-      setIsCleaningDropdownOpen(false);
     } else {
-      setIsCleaningDropdownOpen(false);
       void persistCleaningStatus('CLEAN');
     }
   };
@@ -522,10 +521,8 @@ function RentalAppContent() {
     if (vehicleStatus === 'Available' && (newStatus === 'Maintenance' || newStatus === 'Manual Block')) {
       setPendingStatus(newStatus);
       setShowStatusWarning(true);
-      setIsStatusDropdownOpen(false);
     } else {
       setVehicleStatus(newStatus);
-      setIsStatusDropdownOpen(false);
     }
   };
 
@@ -796,158 +793,33 @@ function RentalAppContent() {
               onSettingsTabChange={applySettingsTab}
               onFinanceTabChange={setFinanceTab}
             />
-        {/* Header Section - Only show for vehicle detail views */}
-        {showVehicleDetailChrome && selectedVehicle && (
-          <VehicleDetailHeader
-            vehicle={selectedVehicle}
-            vehicleStatus={vehicleStatus}
-            cleaningStatus={cleaningStatus}
-            isStatusDropdownOpen={isStatusDropdownOpen}
-            isCleaningDropdownOpen={isCleaningDropdownOpen}
-            onToggleStatusDropdown={() => setIsStatusDropdownOpen((open) => !open)}
-            onToggleCleaningDropdown={() => setIsCleaningDropdownOpen((open) => !open)}
-            onVehicleStatusChange={handleVehicleStatusChange}
-            onCleaningStatusChange={handleCleaningStatusChange}
-            onBack={handleBackToFleet}
-            onRefreshOperationalStatus={() => {
-              void refreshFleetVehicles();
-            }}
-          />
-        )}
+        {showVehicleDetailChrome ? (
+          <div
+            data-testid="vehicle-detail-view"
+            className={VEHICLE_DETAIL_VIEW_CLASS}
+          >
+            {selectedVehicle ? (
+              <VehicleDetailHeader
+                vehicle={selectedVehicle}
+                vehicleStatus={vehicleStatus}
+                cleaningStatus={cleaningStatus}
+                onVehicleStatusChange={handleVehicleStatusChange}
+                onCleaningStatusChange={handleCleaningStatusChange}
+                onBack={handleBackToFleet}
+                onRefreshOperationalStatus={() => {
+                  void refreshFleetVehicles();
+                }}
+              />
+            ) : null}
 
-        {/* Tab Navigation - Only show for vehicle detail views */}
-        {showVehicleDetailChrome && (
-        <div className="mb-4">
-          <div className={chromeTabBarClass('p-1')}>
-            <div className={`${CHROME_TAB_BAR_SCROLL_CLASS} [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
-              {([
-                { key: 'overview', label: 'Overview' },
-                { key: 'trips', label: 'Trips' },
-                { key: 'health-errors', label: 'Health' },
-                { key: 'damages', label: 'Damages' },
-                { key: 'documents', label: 'Documents' },
-                { key: 'vehicle-bookings', label: 'Bookings' },
-                { key: 'vehicle-tasks', label: 'Task List' },
-                { key: 'vehicle-requirements', label: 'Requirements' },
-              ] as const).map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setCurrentView(tab.key as typeof currentView)}
-                  className={chromeTabTriggerClass(currentView === tab.key)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            {vehicleDetailActiveTab ? (
+              <VehicleDetailTabBar
+                activeTab={vehicleDetailActiveTab}
+                onTabChange={(tab) => setCurrentView(tab)}
+              />
+            ) : null}
           </div>
-        </div>
-        )}
-
-        {/* Filters Bar - Show on Trips and Driving Insights views, above content */}
-        {currentView === 'trips' && (
-          <div className="mb-2">
-            <div className="rounded-lg px-2.5 py-1 border border-border surface-premium shadow-sm flex items-center justify-end gap-2">
-              {/* Trip Counter - Only show on Trips view */}
-              {currentView === 'trips' && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-transparent sq-tone-info mr-auto">
-                  <span className="text-xs font-bold">
-                    {tripsCount} {tripsCount === 1 ? 'Trip' : 'Trips'}
-                  </span>
-                </div>
-              )}
-
-              {/* Date Filter */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
-                    selectedDate
-                      ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
-                      : 'surface-premium border-border text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Icon name="calendar" className={`w-4 h-4 ${selectedDate ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
-                  <span className="text-xs font-medium">
-                    {selectedDate ? (() => {
-                      // V4.6.71 — Parse as LOCAL date: `new Date("2026-04-19")`
-                      // interprets YYYY-MM-DD as UTC midnight per ES spec, which
-                      // shifts the display one day earlier in western timezones.
-                      // The date picker emits a local calendar day string, so
-                      // the display must parse it the same way.
-                      const [y, m, d] = selectedDate.split('-').map(Number);
-                      return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                    })() : 'All Time'}
-                  </span>
-                  <Icon name="chevron-down" className={`w-3.5 h-3.5 ${selectedDate ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
-                </button>
-
-                {isDateDropdownOpen && (
-                  <div className="absolute top-full mt-2 right-0 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden p-2.5">
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value);
-                        setIsDateDropdownOpen(false);
-                      }}
-                      className="px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)] text-foreground outline-none text-sm font-medium"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Driver Filter */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsDriverDropdownOpen(!isDriverDropdownOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
-                    selectedDriver !== 'all'
-                      ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
-                      : 'surface-premium border-border text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Icon name="user" className={`w-4 h-4 ${selectedDriver !== 'all' ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
-                  <span className="text-xs font-medium">
-                    {selectedDriver === 'all' ? 'All Drivers' : selectedDriver}
-                  </span>
-                  <Icon name="chevron-down" className={`w-3.5 h-3.5 ${selectedDriver !== 'all' ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
-                </button>
-
-                {isDriverDropdownOpen && (
-                  <div className="absolute top-full mt-2 right-0 z-50 min-w-[200px] rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
-                    {['all', ...tripDriverOptions].map((driver) => (
-                      <button
-                        key={driver}
-                        onClick={() => {
-                          setSelectedDriver(driver);
-                          setIsDriverDropdownOpen(false);
-                        }}
-                        className={`w-full px-4 py-2.5 text-left text-sm font-medium transition-colors border-b border-border/60 last:border-b-0 ${
-                          selectedDriver === driver
-                            ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                            : 'text-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {driver === 'all' ? 'All Drivers' : driver}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Clear Filters Button - Only show when filters are active */}
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-transparent transition-all duration-200 sq-tone-critical hover:opacity-90"
-                >
-                  <Icon name="x" className="w-3.5 h-3.5" />
-                  <span className="text-xs font-medium">Clear</span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        ) : null}
 
         {/* V4.6.94 — `MainNavTabs` retired. The horizontal Dashboard /
             Bookings / Fleet / Customers / Stations tab strip duplicated the
@@ -956,22 +828,40 @@ function RentalAppContent() {
             Settings / Trips), and added zero capability the always-visible
             sidebar (incl. its mobile drawer) didn't already cover. */}
         {currentView === 'trips' ? (
-          <TripsView 
-            isDarkMode={isDarkMode} 
-            vehicleId={selectedVehicle?.id}
-            selectedDate={selectedDate || undefined}
-            selectedDriver={selectedDriver}
-            fuelType={selectedVehicle?.fuelType}
-            onOpenBooking={(bookingId) => {
-              setPendingBookingDetailId(bookingId);
-              setCurrentView('bookings');
-            }}
-            onTripsLoaded={(trips) => {
-              setTripsCount(trips.length);
-              const names = [...new Set((trips as { driverName?: string }[]).map((t) => t.driverName).filter(Boolean))] as string[];
-              setTripDriverOptions(names);
-            }}
-          />
+          <VehicleDetailTabPanel tab="trips" activeTab="trips">
+            <VehicleTripsFilterBar
+              tripsCount={tripsCount}
+              selectedDate={selectedDate}
+              selectedDriver={selectedDriver}
+              tripDriverOptions={tripDriverOptions}
+              hasActiveFilters={hasActiveFilters}
+              onSelectedDateChange={setSelectedDate}
+              onSelectedDriverChange={setSelectedDriver}
+              onClearFilters={clearFilters}
+            />
+            <TripsView
+              isDarkMode={isDarkMode}
+              vehicleId={selectedVehicle?.id}
+              selectedDate={selectedDate || undefined}
+              selectedDriver={selectedDriver}
+              fuelType={selectedVehicle?.fuelType}
+              onOpenBooking={(bookingId) => {
+                setPendingBookingDetailId(bookingId);
+                setCurrentView('bookings');
+              }}
+              onTripsLoaded={(trips) => {
+                setTripsCount(trips.length);
+                const names = [
+                  ...new Set(
+                    (trips as { driverName?: string }[])
+                      .map((trip) => trip.driverName)
+                      .filter(Boolean),
+                  ),
+                ] as string[];
+                setTripDriverOptions(names);
+              }}
+            />
+          </VehicleDetailTabPanel>
         ) : (currentView === 'stations' || currentView === 'station-detail') && !stationsFlagsLoading && !stationsUiEnabled ? (
           <EmptyState
             title="Stations"
@@ -1041,31 +931,33 @@ function RentalAppContent() {
             });
           }} initialDetailBookingId={pendingBookingDetailId} onConsumeInitialDetailBookingId={() => setPendingBookingDetailId(null)} />
         ) : currentView === 'health-errors' ? (
-          <HealthErrorsView
-            vehicleId={selectedVehicle?.id}
-            fuelType={selectedVehicle?.fuelType}
-            onOpenServiceCenter={() =>
-              openServiceCenter(
-                selectedVehicle?.id
-                  ? { vehicleId: selectedVehicle.id, tab: 'tasks' }
-                  : undefined,
-              )
-            }
-            onOpenExistingTask={(taskId) => {
-              setHighlightedVehicleTaskId(taskId);
-              setCurrentView('vehicle-tasks');
-            }}
-            onOpenBooking={(bookingId) => {
-              setPendingBookingDetailId(bookingId);
-              setCurrentView('bookings');
-            }}
-            onOpenTrips={(dateIso) => {
-              if (dateIso) {
-                setSelectedDate(dateIso.slice(0, 10));
+          <VehicleDetailTabPanel tab="health-errors" activeTab="health-errors">
+            <HealthErrorsView
+              vehicleId={selectedVehicle?.id}
+              fuelType={selectedVehicle?.fuelType}
+              onOpenServiceCenter={() =>
+                openServiceCenter(
+                  selectedVehicle?.id
+                    ? { vehicleId: selectedVehicle.id, tab: 'tasks' }
+                    : undefined,
+                )
               }
-              setCurrentView('trips');
-            }}
-          />
+              onOpenExistingTask={(taskId) => {
+                setHighlightedVehicleTaskId(taskId);
+                setCurrentView('vehicle-tasks');
+              }}
+              onOpenBooking={(bookingId) => {
+                setPendingBookingDetailId(bookingId);
+                setCurrentView('bookings');
+              }}
+              onOpenTrips={(dateIso) => {
+                if (dateIso) {
+                  setSelectedDate(dateIso.slice(0, 10));
+                }
+                setCurrentView('trips');
+              }}
+            />
+          </VehicleDetailTabPanel>
         ) : currentView === 'financial-insights' ? (
           /* V4.6.93 — Standalone Financial Insights page (replacement for the
              retired Dashboard Finances tab). Aggregates real invoice data
@@ -1097,61 +989,71 @@ function RentalAppContent() {
             onOpenServiceCenter={openServiceCenter}
           />
         ) : currentView === 'damages' ? (
-          <DamagesView
-            isDarkMode={isDarkMode}
-            vehicleId={selectedVehicle?.id}
-            onOpenVehicleTasks={(taskId) => {
-              if (taskId) setHighlightedVehicleTaskId(taskId);
-              setCurrentView('vehicle-tasks');
-            }}
-          />
+          <VehicleDetailTabPanel tab="damages" activeTab="damages">
+            <DamagesView
+              isDarkMode={isDarkMode}
+              vehicleId={selectedVehicle?.id}
+              onOpenVehicleTasks={(taskId) => {
+                if (taskId) setHighlightedVehicleTaskId(taskId);
+                setCurrentView('vehicle-tasks');
+              }}
+            />
+          </VehicleDetailTabPanel>
         ) : currentView === 'documents' ? (
-          <DocumentsView
-            vehicle={selectedVehicle}
-            onOpenLinkedTask={(taskId) => {
-              setHighlightedVehicleTaskId(taskId);
-              setCurrentView('vehicle-tasks');
-            }}
-          />
+          <VehicleDetailTabPanel tab="documents" activeTab="documents">
+            <DocumentsView
+              vehicle={selectedVehicle}
+              onOpenLinkedTask={(taskId) => {
+                setHighlightedVehicleTaskId(taskId);
+                setCurrentView('vehicle-tasks');
+              }}
+            />
+          </VehicleDetailTabPanel>
         ) : currentView === 'vehicle-bookings' ? (
-          <VehicleBookingsView
-            isDarkMode={isDarkMode}
-            vehicle={selectedVehicle}
-            onCreateBooking={() => setCurrentView('new-booking')}
-            onOpenBooking={(bookingId) => {
-              setPendingBookingDetailId(bookingId);
-              setCurrentView('bookings');
-            }}
-            onOpenVehicleTasks={() => setCurrentView('vehicle-tasks')}
-          />
+          <VehicleDetailTabPanel tab="vehicle-bookings" activeTab="vehicle-bookings">
+            <VehicleBookingsView
+              isDarkMode={isDarkMode}
+              vehicle={selectedVehicle}
+              onCreateBooking={() => setCurrentView('new-booking')}
+              onOpenBooking={(bookingId) => {
+                setPendingBookingDetailId(bookingId);
+                setCurrentView('bookings');
+              }}
+              onOpenVehicleTasks={() => setCurrentView('vehicle-tasks')}
+            />
+          </VehicleDetailTabPanel>
         ) : currentView === 'vehicle-tasks' ? (
-          <VehicleTasksView
-            isDarkMode={isDarkMode}
-            vehicle={selectedVehicle}
-            highlightTaskId={highlightedVehicleTaskId}
-            onHighlightConsumed={() => setHighlightedVehicleTaskId(null)}
-            tasksRefreshToken={vehicleTasksRefreshToken}
-            onOpenInGlobalTasks={(taskId) => {
-              setHighlightedTaskId(taskId);
-              handleViewChange('tasks');
-            }}
-            onOpenServiceCenter={() =>
-              openServiceCenter(
-                selectedVehicle?.id
-                  ? { vehicleId: selectedVehicle.id, tab: 'tasks' }
-                  : undefined,
-              )
-            }
-          />
+          <VehicleDetailTabPanel tab="vehicle-tasks" activeTab="vehicle-tasks">
+            <VehicleTasksView
+              isDarkMode={isDarkMode}
+              vehicle={selectedVehicle}
+              highlightTaskId={highlightedVehicleTaskId}
+              onHighlightConsumed={() => setHighlightedVehicleTaskId(null)}
+              tasksRefreshToken={vehicleTasksRefreshToken}
+              onOpenInGlobalTasks={(taskId) => {
+                setHighlightedTaskId(taskId);
+                handleViewChange('tasks');
+              }}
+              onOpenServiceCenter={() =>
+                openServiceCenter(
+                  selectedVehicle?.id
+                    ? { vehicleId: selectedVehicle.id, tab: 'tasks' }
+                    : undefined,
+                )
+              }
+            />
+          </VehicleDetailTabPanel>
         ) : currentView === 'vehicle-requirements' ? (
-          <VehicleRequirementsTab
-            selectedVehicle={selectedVehicle}
-            orgId={orgId}
-            onOpenRentalRulesCenter={() => {
-              setSettingsTab('rental-rules');
-              handleViewChange('settings');
-            }}
-          />
+          <VehicleDetailTabPanel tab="vehicle-requirements" activeTab="vehicle-requirements">
+            <VehicleRequirementsTab
+              selectedVehicle={selectedVehicle}
+              orgId={orgId}
+              onOpenRentalRulesCenter={() => {
+                setSettingsTab('rental-rules');
+                handleViewChange('settings');
+              }}
+            />
+          </VehicleDetailTabPanel>
         ) : currentView === 'customers' ? (
           <CustomersView onOpenCustomerDetail={(c) => { setDetailCustomer(c); setCurrentView('customer-detail'); }} additionalCustomers={newlyCreatedCustomers} />
         ) : currentView === 'customer-detail' && detailCustomer ? (
@@ -1305,22 +1207,24 @@ function RentalAppContent() {
             }}
           />
         ) : currentView === 'overview' ? (
-          <VehicleOverviewTab
-            selectedVehicle={selectedVehicle}
-            orgId={orgId}
-            isDarkMode={isDarkMode}
-            summary={vehicleOverviewSummary}
-            onNavigate={navigateVehicleOverview}
-            onOpenHealthDetails={() => {
-              if (selectedVehicle) setCurrentView('health-errors');
-            }}
-            onOpenServiceCenter={openServiceCenter}
-            onOpenVehicleTask={(taskId) => {
-              setHighlightedVehicleTaskId(taskId);
-              setCurrentView('vehicle-tasks');
-            }}
-            tasksRefreshToken={vehicleTasksRefreshToken}
-          />
+          <VehicleDetailTabPanel tab="overview" activeTab="overview">
+            <VehicleOverviewTab
+              selectedVehicle={selectedVehicle}
+              orgId={orgId}
+              isDarkMode={isDarkMode}
+              summary={vehicleOverviewSummary}
+              onNavigate={navigateVehicleOverview}
+              onOpenHealthDetails={() => {
+                if (selectedVehicle) setCurrentView('health-errors');
+              }}
+              onOpenServiceCenter={openServiceCenter}
+              onOpenVehicleTask={(taskId) => {
+                setHighlightedVehicleTaskId(taskId);
+                setCurrentView('vehicle-tasks');
+              }}
+              tasksRefreshToken={vehicleTasksRefreshToken}
+            />
+          </VehicleDetailTabPanel>
         ) : null}
       {/* Cleaning Status Warning Modal */}
       {showCleaningWarning && (

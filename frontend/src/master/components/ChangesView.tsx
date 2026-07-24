@@ -35,6 +35,47 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-a11y-v49796-2026-07-24',
+    version: '4.9.796',
+    title: 'V4.9.796 — Vehicle Detail accessibility & semantics (Prompt 28/36)',
+    summary: [
+      '`vehicle-detail-a11y.ts` tab/panel ID maps; `VehicleDetailTabBar` with `useRovingTablist` (aria-controls, arrow/Home/End keyboard nav).',
+      'All vehicle detail views wrapped in `VehicleDetailTabPanel` (role=tabpanel, aria-labelledby).',
+      'Header status/cleaning chips migrated to Radix `DropdownMenu` (escape, focus return, aria-expanded/haspopup).',
+      '`VehicleTripsFilterBar` uses Radix Popover + DropdownMenu for date/driver filters with toolbar semantics and live trip count.',
+      'Polite live region for status changes; `motion-reduce:animate-none` on header; Playwright `vehicle-detail-a11y.spec.ts` (axe, keyboard, focus, zoom, touch).',
+    ],
+    reason:
+      'Vehicle Detail Page needed WCAG-aligned tab and dropdown semantics without visual redesign.',
+    previousBehavior:
+      'Manual tab buttons lacked aria-controls/tabpanel wiring and roving keyboard nav; header dropdowns were div overlays without escape/focus return; trips filters used manual popovers.',
+    details:
+      'vehicle-detail-a11y.ts, VehicleDetailTabBar, VehicleDetailTabPanel, VehicleTripsFilterBar, VehicleDetailHeader, App.tsx, e2e/vehicle-detail-a11y*.ts, vehicle-detail-a11y.ui.test.tsx, docs/audits/vehicle-detail-page-a11y-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Accessibility',
+    createdAt: '2026-07-24T10:50:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-mobile-v49795-2026-07-24',
+    version: '4.9.795',
+    title: 'V4.9.795 — Vehicle Detail mobile readiness (Prompt 27/36)',
+    summary: [
+      'Shared mobile tokens in `vehicle-detail-mobile-ui.ts` (overflow clip, safe-area bottom, 44px touch targets).',
+      'Vehicle detail shell `data-testid="vehicle-detail-view"`; tab bar `role="tablist"`; trips filter row scrolls horizontally on narrow widths.',
+      'Header back/chip triggers and tab triggers meet 44px minimum on sub-sm viewports without desktop layout change.',
+      'Playwright `vehicle-detail-mobile.spec.ts` + baseline fixtures; screenshots for 320–768px + landscape; 200% zoom check.',
+    ],
+    reason:
+      'Vehicle Detail Page needed verified mobile readiness across 320–768px without visual redesign or feature removal.',
+    previousBehavior:
+      'Trips filter bar could overflow on 320–375px; tab/back touch targets below 44px; no per-tab mobile E2E coverage.',
+    details:
+      'vehicle-detail-mobile-ui.ts, App.tsx, VehicleDetailHeader, VehicleTasksView, VehicleRequirementsTab, vehicle-bookings-ui.ts, e2e/vehicle-detail-mobile*.ts, e2e/vehicle-detail-baseline-fixtures.ts, playwright.config.ts (mobile-360, landscape-375), docs/audits/vehicle-detail-page-mobile-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Mobile',
+    createdAt: '2026-07-24T10:45:00.000Z',
+  },
+  {
     id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',

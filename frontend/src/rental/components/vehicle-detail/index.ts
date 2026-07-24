@@ -11,6 +11,9 @@ export {
   mapHealthSeverityDisplay,
   mapDataCoverageDisplay,
 } from './vehicle-health-display.mapper';
+export { VehicleDetailTabBar } from './VehicleDetailTabBar';
+export { VehicleDetailTabPanel } from './VehicleDetailTabPanel';
+export { VehicleTripsFilterBar } from './VehicleTripsFilterBar';
 export { VehicleDetailHeader } from './VehicleDetailHeader';
 export type {
   VehicleDetailHeaderProps,
