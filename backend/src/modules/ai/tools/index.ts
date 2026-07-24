@@ -22,5 +22,12 @@ export type {
   AiGetVehicleHealthSummaryInput,
 } from './get-vehicle-health-summary/ai-get-vehicle-health-summary.types';
 export { AiGetVehicleHealthSummaryTool } from './get-vehicle-health-summary/ai-get-vehicle-health-summary.tool';
+export { AI_EXPLAIN_OVERDUE_RETURN_TOOL } from './explain-overdue-return/ai-explain-overdue-return.types';
+export type {
+  AiExplainOverdueReturnData,
+  AiExplainOverdueReturnInput,
+  AiLatestKnownLocationRef,
+} from './explain-overdue-return/ai-explain-overdue-return.types';
+export { AiExplainOverdueReturnTool } from './explain-overdue-return/ai-explain-overdue-return.tool';
 export { AiPrismaVehicleScopeResolver } from './ai-prisma-vehicle-scope.resolver';
 export { AiDataAuthorizationProbeAdapter } from './ai-data-authorization.probe';

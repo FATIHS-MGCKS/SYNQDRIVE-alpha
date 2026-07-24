@@ -132,3 +132,35 @@ must be wrapped as `AiEvidence` with explicit:
   `explanation`, `isLastKnownTelemetry`) via `AiDomainQueryOutcome`.
 - Partial outcome when provider unlinked but stored snapshot timestamps exist.
 - Tests: `ai-get-vehicle-telemetry-status.spec.ts` (16 scenarios incl. boundaries).
+
+### Prompt 12 — `get_vehicle_health_summary` domain tool (2026-07-24)
+
+- Added `backend/src/modules/ai/tools/get-vehicle-health-summary/` — aggregates
+  existing domain results via `RentalHealthService.getVehicleHealth()` without a
+  parallel health engine.
+- Enrichment: `ServiceComplianceService` (service/TÜV/BOKraft), `DamagesService`,
+  `TasksService`, connectivity runtime bundle + fleet data coverage.
+- Guards: `assertAiHealthAccess` + `resolveAiVehicleAccess`.
+- Per-domain `AiHealthDomainSlice` with structured facts; no DTCs ⇒ healthy;
+  unknown data explicitly marked.
+- Tests: `ai-explain-overdue-return.spec.ts` (6) + `overdue-return-explanation.util.spec.ts` (7); **235/235** AI module.
+
+### Prompt 13 — `explain_overdue_return` domain tool (2026-07-24)
+
+- Added `backend/src/modules/ai/tools/explain-overdue-return/` — deterministic
+  explanation for overdue-return display state.
+- Canonical util: `backend/src/modules/bookings/overdue-return/` —
+  `buildOverdueReturnExplanation()` mirrors `buildTodayReturnSignals`,
+  `fleet-booking-context.util`, and pricing-quote `returnAt` for calendar
+  extension (PATCH `endDate`) without a parallel overdue engine.
+- Grace: `BOOKING_RETURN_OVERDUE_GRACE_PERIOD_MINUTES = 0` (immediate at `endDate`).
+- Reason codes: `RETURN_DEADLINE_PASSED`, `GRACE_PERIOD_EXCEEDED`,
+  `RETURN_NOT_COMPLETED`, `NO_APPROVED_EXTENSION`, `HANDOVER_STILL_ACTIVE`,
+  `STATUS_WITHOUT_ACTIVE_BOOKING`, `RETURN_COMPLETED_BUT_RUNTIME_STALE`,
+  `BOOKING_CANCELLED_BUT_MARKED_OVERDUE`, `FLEET_CONTEXT_DIVERGENCE`, …
+- Guards: `assertAiBookingAccess`, `resolveAiVehicleAccess`, optional
+  `assertAiLocationAccess` for `latestKnownLocation`.
+- Only current ACTIVE booking is used as cause; historical `bookingId` flagged
+  `HISTORICAL_BOOKING_NOT_CURRENT`.
+- Tests: `ai-explain-overdue-return.spec.ts` (6) + mapper util (7).
+

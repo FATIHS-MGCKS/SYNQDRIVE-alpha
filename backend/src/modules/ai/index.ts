@@ -224,10 +224,12 @@ export {
   AI_GET_VEHICLE_LOCATION_TOOL,
   AI_GET_VEHICLE_TELEMETRY_STATUS_TOOL,
   AI_GET_VEHICLE_HEALTH_SUMMARY_TOOL,
+  AI_EXPLAIN_OVERDUE_RETURN_TOOL,
   AiDataAuthorizationProbeAdapter,
   AiGetVehicleLocationTool,
   AiGetVehicleTelemetryStatusTool,
   AiGetVehicleHealthSummaryTool,
+  AiExplainOverdueReturnTool,
   AiPrismaVehicleScopeResolver,
 } from './tools';
 export type {
@@ -241,6 +243,9 @@ export type {
   AiGetVehicleHealthSummaryDomains,
   AiHealthDomainSlice,
   AiGetVehicleHealthSummaryInput,
+  AiExplainOverdueReturnData,
+  AiExplainOverdueReturnInput,
+  AiLatestKnownLocationRef,
 } from './tools';
 export type {
   StartAiTireSpecJobInput,

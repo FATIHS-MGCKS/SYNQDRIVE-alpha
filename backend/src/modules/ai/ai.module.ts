@@ -30,6 +30,7 @@ import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle
 import { AiGetVehicleLocationTool } from './tools/get-vehicle-location/ai-get-vehicle-location.tool';
 import { AiGetVehicleTelemetryStatusTool } from './tools/get-vehicle-telemetry-status/ai-get-vehicle-telemetry-status.tool';
 import { AiGetVehicleHealthSummaryTool } from './tools/get-vehicle-health-summary/ai-get-vehicle-health-summary.tool';
+import { AiExplainOverdueReturnTool } from './tools/explain-overdue-return/ai-explain-overdue-return.tool';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
@@ -77,6 +78,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleLocationTool,
     AiGetVehicleTelemetryStatusTool,
     AiGetVehicleHealthSummaryTool,
+    AiExplainOverdueReturnTool,
     ChatService,
   ],
   exports: [
@@ -94,6 +96,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleLocationTool,
     AiGetVehicleTelemetryStatusTool,
     AiGetVehicleHealthSummaryTool,
+    AiExplainOverdueReturnTool,
     ChatService,
   ],
 })
