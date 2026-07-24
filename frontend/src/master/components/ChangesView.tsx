@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-unit-tests-v49797-2026-07-24',
+    version: '4.9.797',
+    title: 'V4.9.797 — Vehicle Detail unit test suite (Prompt 29/36)',
+    summary: [
+      'Consolidated remediation suite `vehicle-detail-remediation.test.ts` maps 22 P0/P1 regression areas with deterministic `now`.',
+      'New tests: `useVehicleLiveMapStore` (binding, out-of-order patch guard), `useLiveVehicleTelemetry` (polling, retry), `liveMapUtils` (movement/heading).',
+      'Extended: fleet-map optimistic merge (P1 R-07), telemetry future/invalid timestamps, permissions UI for Requirements tab.',
+      'npm script `test:vehicle-detail` + `vehicle-detail-verify.sh`; 182 unit tests green.',
+    ],
+    reason:
+      'Vehicle Detail remediation logic needed reproducible unit coverage for status, telemetry, position, store binding, and permissions.',
+    previousBehavior:
+      'Live map store, polling hook, and optimistic fleet merge lacked dedicated unit tests; P0/P1 fixes were only partially covered by scattered suites.',
+    details:
+      'vehicle-detail-remediation.test.ts, useVehicleLiveMapStore.test.ts, useLiveVehicleTelemetry.test.ts, liveMapUtils.test.ts, fleet-map-vehicle-store.utils.test.ts, telemetryFreshness.test.ts, vehicle-detail-permissions.ui.test.tsx, scripts/test/vehicle-detail-verify.sh, docs/audits/vehicle-detail-unit-tests-2026-07.md.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / Tests',
+    createdAt: '2026-07-24T10:55:00.000Z',
+  },
+  {
     id: 'vehicle-detail-a11y-v49796-2026-07-24',
     version: '4.9.796',
     title: 'V4.9.796 — Vehicle Detail accessibility & semantics (Prompt 28/36)',

@@ -26,6 +26,9 @@
     "test:bookings:e2e": "playwright test -c e2e/playwright.config.ts bookings-planner.spec.ts --project=desktop-1280",
     "test:bookings:verify": "bash scripts/test/bookings-verify.sh all",
     "test:bookings:verify:unit": "bash scripts/test/bookings-verify.sh unit",
+    "test:vehicle-detail": "vitest run vehicle-detail-remediation useVehicleLiveMapStore useLiveVehicleTelemetry liveMapUtils overview-map-position telemetryFreshness fleet-map-vehicle-store vehicle-operational-state vehicle-operational-selectors vehicle-operational-unknown-display vehicle-overview-summary vehicle-overview-regression connectivity-cross-surface battery-readiness-display vehicle-health-box vehicle-health-display vehicle-detail-a11y vehicle-detail-mobile-ui vehicle-detail-permissions",
+    "test:vehicle-detail:verify": "bash scripts/test/vehicle-detail-verify.sh all",
+    "test:vehicle-detail:verify:unit": "bash scripts/test/vehicle-detail-verify.sh unit",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"
