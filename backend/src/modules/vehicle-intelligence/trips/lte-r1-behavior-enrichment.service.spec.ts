@@ -381,8 +381,8 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
   });
 
   it('updates legacy trip counters with harsh + extreme acceleration split', async () => {
-    const { service, tx, segments } = makeEnrichTripHarness();
-    segments.fetchDrivingEvents.mockResolvedValue([
+    const { service, tx, brakingIntake } = makeEnrichTripHarness();
+    brakingIntake.fetchDrivingEventsPaginated.mockResolvedValue([
       {
         timestamp: eventTs,
         name: 'behavior.harshAcceleration',

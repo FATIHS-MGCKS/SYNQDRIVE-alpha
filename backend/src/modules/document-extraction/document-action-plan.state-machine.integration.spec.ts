@@ -11,6 +11,14 @@ import { DocumentActionTechnicalError } from './document-action.errors';
 import { ArchiveDocumentActionExecutor } from './executors/archive-document-action.executor';
 
 const archiveObservability = { recordArchive: jest.fn() } as any;
+const followUpSuggestionService = {
+  syncForActionPlan: jest.fn().mockResolvedValue(undefined),
+} as any;
+const extractionObservability = {
+  recordActionPlan: jest.fn(),
+  recordActionExecution: jest.fn(),
+  recordPartialApply: jest.fn(),
+} as any;
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
 import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
 import {
@@ -87,7 +95,8 @@ describe('Document action plan apply lifecycle (integration)', () => {
     } as any),
     new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
     new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
-    { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
+    followUpSuggestionService,
+    extractionObservability,
   );
 
   const baseInput = {
@@ -172,7 +181,8 @@ describe('Document action plan apply lifecycle (integration)', () => {
       } as any),
       new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
       new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
-      { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
+      followUpSuggestionService,
+      extractionObservability,
     );
 
     const confirmedData = {
@@ -253,7 +263,8 @@ describe('Document action plan apply lifecycle (integration)', () => {
       } as any),
       new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
       new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
-      { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
+      followUpSuggestionService,
+      extractionObservability,
     );
 
     const input = { ...baseInput, extractionId: 'ext-lifecycle-retry' };

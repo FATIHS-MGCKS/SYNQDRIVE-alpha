@@ -50,7 +50,7 @@ describe('OrganizationInvitesController security characterization', () => {
       { user: { id: 'admin-1' } },
       { email: 'x@regression.test', membershipRole: MembershipRole.WORKER },
     );
-    expect(result.inviteToken).toBeDefined();
+    expect((result as typeof result & { inviteToken?: string }).inviteToken).toBeDefined();
   });
 
   it('TARGET RED: create response must not include inviteToken or inviteUrl', async () => {

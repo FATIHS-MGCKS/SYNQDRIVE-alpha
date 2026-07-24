@@ -29,6 +29,15 @@ import {
   ApplyTireMeasurementDocumentActionExecutor,
 } from './executors/apply-technical-document-action.executor';
 
+const followUpSuggestionService = {
+  syncForActionPlan: jest.fn().mockResolvedValue(undefined),
+} as any;
+const extractionObservability = {
+  recordActionPlan: jest.fn(),
+  recordActionExecution: jest.fn(),
+  recordPartialApply: jest.fn(),
+} as any;
+
 describe('Document Intake V2 race conditions (integration)', () => {
   const prisma = {
     vehicleDocumentExtraction: {
@@ -94,7 +103,8 @@ describe('Document Intake V2 race conditions (integration)', () => {
     } as any),
     new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
     new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
-    { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
+    followUpSuggestionService,
+    extractionObservability,
   );
 
   const baseInput = {

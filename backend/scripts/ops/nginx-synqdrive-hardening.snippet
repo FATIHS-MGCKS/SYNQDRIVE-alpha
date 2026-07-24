@@ -1,0 +1,18 @@
+# SynqDrive production nginx hardening (VPS-RPXY-001, VPS-RPXY-002)
+#
+# Apply inside the `server { listen 443 ssl; ... }` block in /etc/nginx/sites-enabled/synqdrive
+# BEFORE the catch-all `location / { ... }` block.
+#
+# 1) Block public scrape of root /metrics (SPA was served here). Prometheus uses
+#    /api/v1/metrics on localhost with bearer auth.
+#
+#    location = /metrics {
+#        return 404;
+#    }
+#
+# 2) HSTS at the TLS server block (after ssl_certificate directives):
+#
+#    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+#
+# Note: keep `proxy_hide_header Strict-Transport-Security` in location / so backend
+# does not duplicate; nginx adds HSTS at the edge.

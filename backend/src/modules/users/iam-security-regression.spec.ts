@@ -21,6 +21,7 @@ import {
 import { sessionInvalidationSatisfiesTarget } from './policies/iam-session-invalidation.policy';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
 import {
+  createInviteAcceptServiceHarness,
   createInviteServiceHarness,
   createRoleServiceHarness,
   createUsersServiceHarness,
@@ -157,7 +158,7 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
     });
 
     it('TARGET: org-scoped suspension enqueues membership session invalidation', async () => {
-      const { prisma, sessionPolicy, service } = createUsersServiceHarness();
+      const { prisma, lifecycle, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
       prisma.organizationMembership.update.mockResolvedValue({});
       jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
@@ -169,11 +170,12 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
       );
 
-      expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ eventType: 'MEMBERSHIP_SUSPENDED' }),
+      expect(lifecycle.suspend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: IAM_REGRESSION_IDS.orgA,
+          userId: IAM_REGRESSION_IDS.multiOrgUser,
+        }),
       );
-      expect(sessionPolicy.processIntents).toHaveBeenCalled();
     });
   });
 
@@ -213,7 +215,7 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
 
   describe('D — Session invalidation policy', () => {
     it('membership suspension enqueues ORGANIZATION_MEMBERSHIP_SESSIONS intent', async () => {
-      const { prisma, sessionPolicy, service } = createUsersServiceHarness();
+      const { prisma, lifecycle, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
       prisma.organizationMembership.update.mockResolvedValue({});
       jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
@@ -225,11 +227,10 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
       );
 
-      expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(lifecycle.suspend).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'MEMBERSHIP_SUSPENDED',
           organizationId: IAM_REGRESSION_IDS.orgA,
+          userId: IAM_REGRESSION_IDS.multiOrgUser,
         }),
       );
     });
@@ -241,26 +242,19 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
     });
 
     it('removeOrgUser enqueues MEMBERSHIP_REMOVED session invalidation', async () => {
-      const { prisma, sessionPolicy, service } = createUsersServiceHarness();
-      prisma.organizationMembership.findFirst.mockResolvedValue({
-        id: 'm1',
-        role: MembershipRole.WORKER,
-        status: MembershipStatus.ACTIVE,
-        membershipVersion: 0,
-      });
-      prisma.organizationMembership.count.mockResolvedValue(1);
-      prisma.organizationMembership.update.mockResolvedValue({});
+      const { lifecycle, service } = createUsersServiceHarness();
 
       await service.removeOrgUser(
         IAM_REGRESSION_IDS.orgA,
         IAM_REGRESSION_IDS.multiOrgUser,
       );
 
-      expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ eventType: 'MEMBERSHIP_REMOVED' }),
+      expect(lifecycle.remove).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: IAM_REGRESSION_IDS.orgA,
+          userId: IAM_REGRESSION_IDS.multiOrgUser,
+        }),
       );
-      expect(sessionPolicy.processIntents).toHaveBeenCalled();
     });
   });
 
@@ -391,9 +385,10 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         IAM_REGRESSION_IDS.adminA,
       );
 
-      expect(result.inviteToken).toBeDefined();
-      expect(typeof result.inviteToken).toBe('string');
-      expect(result.inviteToken!.length).toBeGreaterThan(20);
+      const inviteWithToken = result as typeof result & { inviteToken?: string };
+      expect(inviteWithToken.inviteToken).toBeDefined();
+      expect(typeof inviteWithToken.inviteToken).toBe('string');
+      expect(inviteWithToken.inviteToken!.length).toBeGreaterThan(20);
     });
 
     it('TARGET RED: admin invite create response must not include inviteToken', async () => {
@@ -416,13 +411,14 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         IAM_REGRESSION_IDS.adminA,
       );
 
-      expect(result.inviteToken).toBeUndefined();
-      expect(result).not.toHaveProperty('inviteUrl');
+      const inviteWithoutToken = result as typeof result & { inviteToken?: string; inviteUrl?: string };
+      expect(inviteWithoutToken.inviteToken).toBeUndefined();
+      expect(inviteWithoutToken).not.toHaveProperty('inviteUrl');
     });
 
     it('characterization: existing user can accept invite without authenticated session', async () => {
       const { plain, hash } = generateInviteToken();
-      const { prisma, service } = createInviteServiceHarness();
+      const { prisma, service } = createInviteAcceptServiceHarness();
       prisma.organizationUserInvite.findUnique.mockResolvedValue({
         id: IAM_REGRESSION_IDS.invitePending,
         organizationId: IAM_REGRESSION_IDS.orgA,
@@ -449,13 +445,13 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
       prisma.organizationMembership.create.mockResolvedValue({});
       prisma.organizationUserInvite.update.mockResolvedValue({});
 
-      const result = await service.acceptInvite({ token: plain });
+      const result = await service.acceptInvite({ token: plain, confirmed: true }, null);
       expect(result.accepted).toBe(true);
     });
 
     it('TARGET RED: existing user accept requires matching authenticated identity', async () => {
       const { plain, hash } = generateInviteToken();
-      const { prisma, service } = createInviteServiceHarness();
+      const { prisma, service } = createInviteAcceptServiceHarness();
       prisma.organizationUserInvite.findUnique.mockResolvedValue({
         id: IAM_REGRESSION_IDS.invitePending,
         organizationId: IAM_REGRESSION_IDS.orgA,
@@ -479,9 +475,9 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         email: 'existing@regression.test',
       });
 
-      await expect(service.acceptInvite({ token: plain })).rejects.toThrow(
-        /authenticated|re-auth|session/i,
-      );
+      await expect(
+        service.acceptInvite({ token: plain, confirmed: true }, null),
+      ).rejects.toThrow(/authenticated|re-auth|session/i);
     });
 
     it('characterization: resend rotates token hash — old token no longer verifies', async () => {

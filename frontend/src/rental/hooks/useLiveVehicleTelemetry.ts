@@ -56,7 +56,9 @@ export function useLiveVehicleTelemetry(
   const sessionOrgIdRef = useRef<string | null>(null);
   const enableGpsPollingRef = useRef(enableGpsPolling);
 
-  enableGpsPollingRef.current = enableGpsPolling;
+  useEffect(() => {
+    enableGpsPollingRef.current = enableGpsPolling;
+  }, [enableGpsPolling]);
 
   const clearGpsTimer = useCallback(() => {
     if (gpsTimerRef.current) {

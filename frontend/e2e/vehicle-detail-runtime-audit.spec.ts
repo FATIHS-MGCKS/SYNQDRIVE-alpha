@@ -10,13 +10,10 @@ import {
   getTelemetryFetchCount,
   getLiveGpsFetchCount,
   waitForTelemetryPolls,
-  expectTelemetryPollingStalled,
   backToFleet,
   resetVehicleDetailMockState,
   FOREIGN_ORG_ID,
   TEST_ORG_ID,
-  VEH_LIVE,
-  VEH_SECOND,
 } from './vehicle-detail-fixtures';
 
 test.describe.serial('Vehicle Detail — runtime audit measurements', () => {

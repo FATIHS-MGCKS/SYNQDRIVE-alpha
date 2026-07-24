@@ -12,6 +12,7 @@ describe('DocumentIntakeActionRecoveryScheduler', () => {
     staleApplyingThresholdMs: 600_000,
     actionRecoveryBatchSize: 5,
   };
+  const observability = { recordActionRecoveryRun: jest.fn() };
 
   it('delegates to recovery service when enabled', async () => {
     const recoveryService = {
@@ -22,6 +23,7 @@ describe('DocumentIntakeActionRecoveryScheduler', () => {
     const scheduler = new DocumentIntakeActionRecoveryScheduler(
       recoveryService as any,
       docConfig as any,
+      observability as any,
     );
 
     await scheduler.recoverStaleActionApplies();
@@ -38,7 +40,7 @@ describe('DocumentIntakeActionRecoveryScheduler', () => {
     const scheduler = new DocumentIntakeActionRecoveryScheduler(recoveryService as any, {
       ...docConfig,
       actionRecoveryEnabled: false,
-    } as any);
+    } as any, observability as any);
 
     await scheduler.recoverStaleActionApplies();
     expect(recoveryService.recoverStuckApplyingCandidates).not.toHaveBeenCalled();

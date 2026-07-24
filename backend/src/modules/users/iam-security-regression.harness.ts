@@ -3,6 +3,7 @@ import type { PrismaService } from '@shared/database/prisma.service';
 import type { UserAccessAuditService } from './user-access-audit.service';
 import { UsersService } from './users.service';
 import { OrganizationInviteService } from './organization-invite.service';
+import { InviteAcceptService } from './invite-accept.service';
 import { OrganizationRoleService } from './organization-role.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
@@ -91,7 +92,57 @@ export function createUsersServiceHarness() {
     lifecycle as unknown as import('./iam-membership-lifecycle.service').IamMembershipLifecycleService,
     passwordReset as unknown as import('@modules/auth/password-reset.service').PasswordResetService,
   );
-  return { prisma, iamAudit, lifecycle, passwordReset, service };
+  return { prisma, iamAudit, lifecycle, passwordReset, userAudit, sessionPolicy, service };
+}
+
+export function createInviteAcceptServiceHarness() {
+  const prisma: {
+    organizationUserInvite: {
+      findFirst: jest.Mock;
+      findUnique: jest.Mock;
+      update: jest.Mock;
+    };
+    user: { findUnique: jest.Mock; create: jest.Mock };
+    organizationMembership: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+    };
+    $transaction: jest.Mock;
+  } = {
+    organizationUserInvite: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    user: { findUnique: jest.fn(), create: jest.fn() },
+    organizationMembership: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+  prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
+    fn(prisma),
+  );
+  const lifecycle = {
+    join: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
+    reactivate: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
+    applyJoinInTransaction: jest.fn(),
+  };
+  const iamAudit = {
+    enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'outbox-1' }),
+    processOutboxIds: jest.fn().mockResolvedValue(undefined),
+  };
+  const service = new InviteAcceptService(
+    prisma as unknown as PrismaService,
+    lifecycle as unknown as import('./iam-membership-lifecycle.service').IamMembershipLifecycleService,
+    iamAudit as unknown as import('./iam-audit.service').IamAuditService,
+  );
+  return { prisma, lifecycle, iamAudit, service };
 }
 
 export function createInviteServiceHarness() {

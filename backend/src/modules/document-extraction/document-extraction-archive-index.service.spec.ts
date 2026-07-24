@@ -1,13 +1,15 @@
 import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
 
 describe('DocumentExtractionArchiveIndexService', () => {
+  const observability = { recordArchiveIndexUpsert: jest.fn() };
+
   it('upserts denormalized archive index row for extraction record', async () => {
     const upsert = jest.fn().mockResolvedValue({});
     const prisma = {
       documentExtractionArchiveIndex: { upsert },
       vehicleDocumentExtraction: { findMany: jest.fn() },
     };
-    const service = new DocumentExtractionArchiveIndexService(prisma as never);
+    const service = new DocumentExtractionArchiveIndexService(prisma as never, observability as never);
 
     await service.upsertForRecord({
       id: 'ext-1',
@@ -58,7 +60,7 @@ describe('DocumentExtractionArchiveIndexService', () => {
       },
       vehicleDocumentExtraction: { findMany: findManyExtractions },
     };
-    const service = new DocumentExtractionArchiveIndexService(prisma as never);
+    const service = new DocumentExtractionArchiveIndexService(prisma as never, observability as never);
 
     await service.ensureIndexedForOrg('org-1', ['ext-1', 'ext-2']);
 

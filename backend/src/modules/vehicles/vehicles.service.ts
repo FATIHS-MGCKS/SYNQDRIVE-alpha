@@ -382,7 +382,7 @@ export class VehiclesService {
     const orgTimezone = org?.timezone ?? null;
 
     let rows: FleetBookingContextRow[];
-    let loadFailed = false;
+    const loadFailed = false;
     try {
       rows = await this.prisma.booking.findMany({
         where: {

@@ -584,7 +584,6 @@ describe('Legal documents — security negative tests', () => {
       const gate = new BookingPickupGateService(
         prisma as never,
         { evaluateForBooking: jest.fn() } as never,
-        { evaluateForBooking: jest.fn() } as never,
         audit as never,
       );
 

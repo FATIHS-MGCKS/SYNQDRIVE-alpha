@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-ci-nginx-hardening-v49809-2026-07-24',
+    version: '4.9.809',
+    title: 'V4.9.809 — Nginx HSTS/metrics hardening + backend CI typecheck fixes',
+    summary: [
+      'VPS nginx: `location = /metrics` → 404; HSTS `max-age=31536000` on HTTPS responses.',
+      'Ops scripts: `apply-nginx-synqdrive-hardening.sh` + snippet (backup to `/root/`).',
+      'Backend: 16 spec files updated — `tsc --noEmit` zero errors (constructor/mock drift).',
+      'CI: vehicle-detail workflow uses scoped `lint:vehicle-detail` + critical-only audit.',
+    ],
+    reason: 'Close VPS-RPXY-001/002 and unblock Vehicle Detail CI typecheck/lint gates.',
+    previousBehavior: '/metrics returned SPA 200; no HSTS; CI failed on repo-wide lint/typecheck drift.',
+    details:
+      'backend/scripts/ops/apply-nginx-synqdrive-hardening.sh; .github/workflows/vehicle-detail-production-readiness.yml; IAM/document-extraction spec fixes.',
+    affectsArchitecture: false,
+    module: 'Infrastructure / CI',
+    createdAt: '2026-07-24T17:55:00.000Z',
+  },
+  {
     id: 'vehicle-detail-p1-p2-fixes-v49808-2026-07-24',
     version: '4.9.808',
     title: 'V4.9.808 — Vehicle Detail P1/P2 risk fixes (GPS gate, background pause, Mapbox attribution)',

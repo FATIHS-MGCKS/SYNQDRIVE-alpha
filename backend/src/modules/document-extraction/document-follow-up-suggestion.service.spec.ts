@@ -40,12 +40,14 @@ describe('DocumentFollowUpSuggestionService', () => {
       enqueueFailure: jest.fn().mockResolvedValue('outbox-1'),
     };
     const outboxContext = { fromOutbox: false };
+    const observability = { recordFollowUpSuggestion: jest.fn() };
     const service = new DocumentFollowUpSuggestionService(
       prisma as any,
       tasksService as any,
       schemaRegistry as any,
       outboxEnqueue as any,
       outboxContext as any,
+      observability as any,
     );
     return { service, prisma, tasksService, outboxEnqueue };
   }

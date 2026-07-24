@@ -74,10 +74,17 @@ describe('UsersService — security & membership', () => {
       suspend: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
       move: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
     };
+    const passwordReset = {
+      requestAdminReset: jest.fn().mockResolvedValue({
+        status: 'accepted',
+        message: 'If an account exists for this request, password reset instructions will be sent.',
+      }),
+    };
     service = new UsersService(
       prisma as unknown as PrismaService,
       iamAudit as unknown as IamAuditService,
       lifecycle as unknown as IamMembershipLifecycleService,
+      passwordReset as unknown as import('@modules/auth/password-reset.service').PasswordResetService,
     );
   });
 

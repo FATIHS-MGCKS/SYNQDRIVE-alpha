@@ -230,11 +230,14 @@ describe('ResendWebhookService billing delivery states', () => {
     billingEmailSuppression: { upsert: jest.fn() },
   };
 
+  const deliveryEvidence = { recordFromWebhook: jest.fn() };
+
   const createService = () =>
     new ResendWebhookService(
       outboundEmail as any,
       { get: jest.fn(() => '') } as any,
       prisma as any,
+      deliveryEvidence as any,
     );
 
   it('records bounce and suppresses billing recipient', async () => {
