@@ -27,6 +27,7 @@ function makeVehiclesService(deps: {
     stub(),
     stub(),
     { cacheKey: (orgId: string) => `fleet-map:${orgId}:v1`, invalidate: jest.fn() },
+    { record: jest.fn() },
     undefined,
     undefined,
     undefined,

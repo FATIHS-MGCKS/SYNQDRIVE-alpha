@@ -65,6 +65,8 @@ import { ServiceComplianceService } from './service-compliance/service-complianc
 import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
@@ -1431,6 +1433,8 @@ export class VehicleIntelligenceController {
   }
 
   @Get('trips/:tripId/device-connection-evidence')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('fleet-connectivity', 'read')
   async getTripDeviceConnectionEvidence(
     @Param('vehicleId') vehicleId: string,
     @Param('tripId') tripId: string,

@@ -29,6 +29,7 @@ export function makeOperationalVehiclesService(deps: {
     projectForVehicles: jest.fn().mockResolvedValue(new Map()),
   };
   const gpsPositionAccess = deps.gpsPositionAccess ?? makeGpsPositionAccessStub();
+  const audit = { record: jest.fn().mockResolvedValue(undefined) };
   return new (VehiclesService as unknown as {
     new (...args: unknown[]): VehiclesService;
   })(
@@ -47,6 +48,7 @@ export function makeOperationalVehiclesService(deps: {
     stub(),
     stub(),
     fleetMapCache,
+    audit,
     undefined,
     undefined,
     undefined,

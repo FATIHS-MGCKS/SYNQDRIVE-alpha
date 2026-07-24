@@ -26,7 +26,7 @@ export function VehicleConnectionBadge({
   vehicleId?: string | null;
 }) {
   const { orgId } = useRentalOrg();
-  const obdPlugByVehicleId = useFleetObdPlugIndex(orgId);
+  const { map: obdPlugByVehicleId, status: obdIndexStatus } = useFleetObdPlugIndex(orgId);
   const { onlineStatus, measuredAt, receivedAt, signalAgeMs, lastSignal, boundVehicleId } =
     useVehicleLiveMapStore(
     useShallow((state) => ({
@@ -40,9 +40,10 @@ export function VehicleConnectionBadge({
   );
 
   const resolvedVehicleId = vehicleId ?? boundVehicleId;
-  const showObdUnplugged = resolvedVehicleId
-    ? shouldShowObdUnpluggedBadge(obdPlugByVehicleId.get(resolvedVehicleId))
-    : false;
+  const showObdUnplugged =
+    obdIndexStatus === 'ready' && resolvedVehicleId
+      ? shouldShowObdUnpluggedBadge(obdPlugByVehicleId.get(resolvedVehicleId))
+      : false;
 
   const freshness = resolveVehicleDetailTelemetryState({
     measuredAt,

@@ -11,6 +11,8 @@ import {
   EnrichmentJobType,
   BatterySourceType,
   BookingStatus,
+  ActivityAction,
+  ActivityEntity,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
@@ -75,6 +77,8 @@ import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
+import { AuditService } from '@modules/activity-log/audit.service';
+import { sanitizeDeviceConnectionForClient } from '@modules/dimo/device-connection-client-response';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -307,6 +311,7 @@ export class VehiclesService {
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
+    private readonly audit: AuditService,
     @Optional()
     private readonly billingQuantity?: BillingQuantityVehicleIntegration,
     @Optional()
@@ -2539,17 +2544,45 @@ export class VehiclesService {
     return mapFleetConnectivityDetail(mapped);
   }
 
-  async getDeviceConnection(organizationId: string, vehicleId: string) {
+  async getDeviceConnection(
+    organizationId: string,
+    vehicleId: string,
+    actorUserId?: string | null,
+  ) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+      select: { id: true },
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+
     const [summary, runtime] = await Promise.all([
       this.deviceConnectionQuery.getVehicleSummary(organizationId, vehicleId, {
         eventLimit: 20,
       }),
       this.connectivityRuntimeProjection.projectForVehicle(organizationId, vehicleId),
     ]);
-    return {
+
+    void this.audit.record({
+      actorUserId: actorUserId ?? undefined,
+      actorOrganizationId: organizationId,
+      action: ActivityAction.SYNC,
+      entity: ActivityEntity.VEHICLE,
+      entityId: vehicleId,
+      description: 'Device connection read',
+      route: 'GET /organizations/:orgId/vehicles/:vehicleId/device-connection',
+      metaJson: {
+        accessKind: 'device_connection',
+        lteR1Capable: summary.lteR1Capable,
+        openUnpluggedEpisode: summary.openUnpluggedEpisode,
+      },
+    });
+
+    return sanitizeDeviceConnectionForClient({
       ...summary,
       connectivityRuntime: serializeVehicleConnectivityRuntimeState(runtime),
-    };
+    });
   }
 
   async listVehicleComplaints(organizationId: string, vehicleId: string) {

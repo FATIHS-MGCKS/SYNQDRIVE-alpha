@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { VehiclesService } from './vehicles.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
@@ -370,12 +371,15 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/device-connection')
-  @UseGuards(OrgScopingGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet-connectivity', 'read')
+  @Throttle({ default: { ttl: 60_000, limit: 120 } })
   async getDeviceConnection(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.vehiclesService.getDeviceConnection(orgId, vehicleId);
+    return this.vehiclesService.getDeviceConnection(orgId, vehicleId, req.user?.id);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/complaints')

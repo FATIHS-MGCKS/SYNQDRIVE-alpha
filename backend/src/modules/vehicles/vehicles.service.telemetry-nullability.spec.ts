@@ -23,6 +23,7 @@ function makeServiceWithPrisma(prisma: Record<string, unknown>): VehiclesService
     stub(),
     stub(),
     stub(),
+    { record: jest.fn() },
   );
   return service;
 }
