@@ -15,6 +15,7 @@ export const DATA_PROCESSING_PERMISSION_ACTIONS = [
   'data_processing.suspend',
   'data_processing.revoke',
   'data_processing.audit_view',
+  'data_processing.coverage_view',
 ] as const;
 
 export type DataProcessingPermissionAction =
@@ -37,6 +38,7 @@ export const DATA_PROCESSING_PERMISSION_REQUIREMENTS: Readonly<
   'data_processing.suspend': { module: 'data-authorization', level: 'manage' },
   'data_processing.revoke': { module: 'data-authorization', level: 'manage' },
   'data_processing.audit_view': { module: 'data-authorization', level: 'read' },
+  'data_processing.coverage_view': { module: 'data-authorization', level: 'read' },
 };
 
 export const DATA_PROCESSING_REVIEW_STEP_PERMISSION: Readonly<

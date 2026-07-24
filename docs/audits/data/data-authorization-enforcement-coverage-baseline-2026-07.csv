@@ -1,0 +1,26 @@
+flowId,domain,productive,notes
+live-gps-fleet-map-read,live-gps,true,Prompt 16 baseline
+live-gps-trips-route-read,live-gps,true,Prompt 16 baseline
+live-gps-vehicle-telemetry-read,live-gps,true,Prompt 16 baseline
+telemetry-dimo-snapshot-ingest,telemetry-ingest,true,Prompt 17 baseline
+telemetry-dimo-dtc-webhook-ingest,telemetry-ingest,true,Prompt 17 baseline
+telemetry-hm-mqtt-ingest,telemetry-ingest,true,Prompt 17 baseline
+telemetry-trip-backfill-ingest,telemetry-ingest,true,Prompt 17 gap — partial wiring
+trip-create-ingest,trip-location,true,Prompt 18 baseline
+trip-route-read,trip-location,true,Prompt 18 baseline
+trip-enrich-derive,trip-location,true,Prompt 18 baseline
+health-dtc-ingest,vehicle-health,true,Prompt 19 baseline
+health-dtc-read,vehicle-health,true,Prompt 19 baseline
+health-ai-use,vehicle-health,true,Prompt 19 baseline
+health-export,vehicle-health,true,Prompt 19 baseline
+behavior-enrich-derive,driving-behavior,true,Prompt 20 baseline
+misuse-reconcile-profile,driving-behavior,true,Prompt 20 baseline
+driver-score-read,driving-behavior,true,Prompt 20 baseline
+notification-ingest,notification,true,Prompt 21 baseline
+notification-delivery,notification,true,Prompt 21 baseline
+notification-deep-link,notification,true,Prompt 21 baseline
+external-fleet-chat-ai,external-access,true,Prompt 22 baseline
+external-document-download,external-access,true,Prompt 22 baseline
+external-voice-mcp-tool,external-access,true,Prompt 22 baseline
+external-reporting-export,external-access,true,Prompt 22 gap — registry only
+authorization-decision-engine,authorization-decision,true,Prompt 13 baseline

@@ -41,7 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'ExternalAccessEnforcementService — EXPORT, SHARE, USE_FOR_AI und MCP READ als explizite Aktionen.',
       'Verdrahtet: Fleet Chat AI, Document AI, Vehicle Spec AI, PDF/Legal Downloads, Vehicle File Summary, Voice MCP Tools.',
-      'Datenminimierung für AI-Prompts und MCP-Tool-Outputs. MCP-Token-Revocation bei Widerruf. Bulk-Export erfordert Org-Setting.',
+      'Datenminimierung für AI-Prompts und MCP-Tool-Outputs. MCP-Token-Revocation bei Widerruf. Bulk-Export erfordert DATA_AUTH_BULK_EXPORT_ORG_ALLOWLIST.',
     ],
     reason:
       'Data Authorization Production Readiness Prompt 22 — keine Weitergabe allein aufgrund normaler Read-Permission.',

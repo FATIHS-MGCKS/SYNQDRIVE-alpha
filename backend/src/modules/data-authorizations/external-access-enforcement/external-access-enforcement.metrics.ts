@@ -25,6 +25,10 @@ export class ExternalAccessEnforcementMetricsService {
     return this.counts.get(`${channel}:${action}:${outcome}`) ?? 0;
   }
 
+  snapshot(): Record<string, number> {
+    return Object.fromEntries(this.counts.entries());
+  }
+
   reset(): void {
     this.counts.clear();
   }
