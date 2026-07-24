@@ -13,7 +13,7 @@ import { buildMMY } from '../../lib/vehicleMmy';
 import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
 import { Icon } from '../ui/Icon';
-import { VEHICLE_OPERATIONAL_STATUS, selectOperationalStatus } from '../../lib/vehicle-operational-state';
+import { VEHICLE_OPERATIONAL_STATUS, formatVehicleOperationalStatusLabel, selectOperationalStatus } from '../../lib/vehicle-operational-state';
 
 export interface VehiclePickerStationOption {
   id: string;
@@ -47,10 +47,19 @@ export interface VehiclePickerStepProps {
 
 const STATUS_TABS = [
   { label: 'Alle', value: 'all' },
-  { label: 'Verfügbar', value: VEHICLE_OPERATIONAL_STATUS.AVAILABLE },
-  { label: 'Reserviert', value: VEHICLE_OPERATIONAL_STATUS.RESERVED },
+  {
+    label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.AVAILABLE),
+    value: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+  },
+  {
+    label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.RESERVED),
+    value: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+  },
   { label: 'Vermietet', value: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED },
-  { label: 'Wartung', value: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE },
+  {
+    label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.MAINTENANCE),
+    value: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+  },
 ] as const;
 
 function fuelChipClass(fuelType: string): string {

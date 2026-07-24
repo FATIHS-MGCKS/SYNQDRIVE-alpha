@@ -2,10 +2,19 @@ import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { useDocumentDark } from '../../hooks/useDocumentDark';
-import { StatusChip, type StatusTone } from '../../../components/patterns';
+import { StatusChip } from '../../../components/patterns';
 import type { VehicleData } from '../../data/vehicles';
 import { useEffectiveHealth } from '../../FleetContext';
-import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import {
+  resolveVehicleDetailHeaderReadinessChip,
+  type VehicleOperationalUiStatus,
+} from '../../lib/vehicle-detail-header-status';
+import {
+  formatVehicleOperationalEditStatusLabel,
+  mapVehicleOperationalEditStatusToCanonical,
+  operationalStatusIconName,
+  VEHICLE_OPERATIONAL_EDIT_STATUSES,
+} from '../../lib/vehicle-operational-state';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
@@ -14,13 +23,18 @@ import {
   VehicleHealthChip,
 } from './VehicleDetailHeaderBadges';
 
-export type VehicleOperationalUiStatus = 'Available' | 'Manual Block' | 'Maintenance';
-export type VehicleCleaningUiStatus = 'Clean' | 'Needs Cleaning';
+import type { VehicleCleaningUiStatus } from '../../lib/vehicle-cleaning-status-mutation';
+
+export type { VehicleOperationalUiStatus, VehicleCleaningUiStatus };
 
 export interface VehicleDetailHeaderProps {
   vehicle: VehicleData;
   vehicleStatus: VehicleOperationalUiStatus;
+  vehicleStatusBusy?: boolean;
+  canEditOperationalStatus?: boolean;
   cleaningStatus: VehicleCleaningUiStatus;
+  cleaningStatusBusy?: boolean;
+  canEditCleaningStatus?: boolean;
   isStatusDropdownOpen: boolean;
   isCleaningDropdownOpen: boolean;
   onToggleStatusDropdown: () => void;
@@ -45,76 +59,14 @@ function MetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) 
 const backButtonClassName =
   'sq-press shrink-0 rounded-xl border border-border/60 bg-background p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
 
-function readinessChipFromDisplay(
-  vehicleStatus: VehicleOperationalUiStatus,
-  vehicle: VehicleData,
-  rentalHealth: ReturnType<typeof useEffectiveHealth>['health'],
-  locale: string,
-): {
-  label: string;
-  tone: StatusTone;
-  icon: ReactNode;
-  supplement: string | null;
-  supplementDetail: string | null;
-  statusBadge: ReturnType<typeof resolveFleetVehicleDisplayState>['statusBadge'];
-} {
-  if (vehicleStatus === 'Manual Block') {
-    return {
-      label: 'Manual Block',
-      tone: 'critical',
-      icon: <Icon name="x-circle" className="h-3 w-3" />,
-      supplement: null,
-      supplementDetail: null,
-      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
-    };
-  }
-  if (vehicleStatus === 'Maintenance') {
-    return {
-      label: 'Maintenance',
-      tone: 'warning',
-      icon: <Icon name="wrench" className="h-3 w-3" />,
-      supplement: null,
-      supplementDetail: null,
-      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
-    };
-  }
-
-  const display = resolveFleetVehicleDisplayState(vehicle, {
-    rentalHealth,
-    locale,
-    compact: false,
-  });
-  const { statusBadge, bookingSupplement } = display;
-
-  return {
-    label: statusBadge.label,
-    tone: statusBadge.tone,
-    icon:
-      statusBadge.status === 'AVAILABLE' ? (
-        <Icon name="check-circle" className="h-3 w-3" />
-      ) : statusBadge.status === 'ACTIVE_RENTED' ? (
-        <Icon name="car" className="h-3 w-3" />
-      ) : statusBadge.status === 'RESERVED' ? (
-        <Icon name="calendar" className="h-3 w-3" />
-      ) : (
-        <Icon name="alert-triangle" className="h-3 w-3" />
-      ),
-    supplement:
-      statusBadge.unreliableExplanation ??
-      bookingSupplement?.short ??
-      statusBadge.dataQualityHint,
-    supplementDetail:
-      statusBadge.unreliableExplanation ??
-      bookingSupplement?.detail ??
-      statusBadge.dataQualityHint,
-    statusBadge,
-  };
-}
-
 export function VehicleDetailHeader({
   vehicle,
   vehicleStatus,
+  vehicleStatusBusy = false,
+  canEditOperationalStatus = true,
   cleaningStatus,
+  cleaningStatusBusy = false,
+  canEditCleaningStatus = true,
   isStatusDropdownOpen,
   isCleaningDropdownOpen,
   onToggleStatusDropdown,
@@ -128,7 +80,16 @@ export function VehicleDetailHeader({
   const { locale } = useLanguage();
   const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
-  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale);
+  const readinessChip = resolveVehicleDetailHeaderReadinessChip(vehicle, rentalHealth, locale);
+  const statusControlsDisabled = vehicleStatusBusy || !canEditOperationalStatus;
+  const cleaningControlsDisabled = cleaningStatusBusy || !canEditCleaningStatus;
+  const readinessIcon = (
+    <Icon
+      name={operationalStatusIconName(readinessChip.statusBadge.status)}
+      className="h-3 w-3"
+    />
+  );
+  const editLocale = locale.startsWith('de') ? 'de' : 'en';
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const hasLicense = Boolean(vehicle.license);
@@ -191,41 +152,44 @@ export function VehicleDetailHeader({
                 <button
                   type="button"
                   onClick={onToggleStatusDropdown}
-                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  disabled={statusControlsDisabled}
+                  aria-busy={vehicleStatusBusy}
+                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] disabled:cursor-not-allowed disabled:opacity-60"
                   aria-expanded={isStatusDropdownOpen}
                   aria-haspopup="menu"
                 >
-                  <StatusChip tone={readinessChip.tone} icon={readinessChip.icon}>
-                    {readinessChip.label}
+                  <StatusChip tone={readinessChip.tone} icon={readinessIcon}>
+                    {vehicleStatusBusy ? '…' : readinessChip.label}
                   </StatusChip>
                 </button>
 
-                {isStatusDropdownOpen ? (
+                {isStatusDropdownOpen && !statusControlsDisabled ? (
                   <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
-                    <button
-                      type="button"
-                      onClick={() => onVehicleStatusChange('Available')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                    >
-                      <Icon name="check-circle" className="h-3.5 w-3.5 text-[color:var(--status-positive)]" />
-                      <span className="text-[12px] font-medium text-foreground">Available</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onVehicleStatusChange('Manual Block')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                    >
-                      <Icon name="x-circle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                      <span className="text-[12px] font-medium text-foreground">Manual Block</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onVehicleStatusChange('Maintenance')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                    >
-                      <Icon name="wrench" className="h-3.5 w-3.5 text-[color:var(--status-attention)]" />
-                      <span className="text-[12px] font-medium text-foreground">Maintenance</span>
-                    </button>
+                    {VEHICLE_OPERATIONAL_EDIT_STATUSES.map((editStatus) => (
+                      <button
+                        key={editStatus}
+                        type="button"
+                        onClick={() => onVehicleStatusChange(editStatus)}
+                        disabled={vehicleStatusBusy}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Icon
+                          name={operationalStatusIconName(
+                            mapVehicleOperationalEditStatusToCanonical(editStatus),
+                          )}
+                          className={`h-3.5 w-3.5 ${
+                            editStatus === 'Available'
+                              ? 'text-[color:var(--status-positive)]'
+                              : editStatus === 'Maintenance'
+                                ? 'text-[color:var(--status-attention)]'
+                                : 'text-[color:var(--status-critical)]'
+                          }`}
+                        />
+                        <span className="text-[12px] font-medium text-foreground">
+                          {formatVehicleOperationalEditStatusLabel(editStatus, editLocale)}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 ) : null}
               </div>
@@ -234,7 +198,9 @@ export function VehicleDetailHeader({
                 <button
                   type="button"
                   onClick={onToggleCleaningDropdown}
-                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  disabled={cleaningControlsDisabled}
+                  aria-busy={cleaningStatusBusy}
+                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] disabled:cursor-not-allowed disabled:opacity-60"
                   aria-expanded={isCleaningDropdownOpen}
                   aria-haspopup="menu"
                 >
@@ -242,16 +208,17 @@ export function VehicleDetailHeader({
                     tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
                     icon={<Icon name="sparkles" className="h-3 w-3" />}
                   >
-                    {cleaningStatus}
+                    {cleaningStatusBusy ? '…' : cleaningStatus}
                   </StatusChip>
                 </button>
 
-                {isCleaningDropdownOpen ? (
+                {isCleaningDropdownOpen && !cleaningControlsDisabled ? (
                   <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
                     <button
                       type="button"
                       onClick={() => onCleaningStatusChange('Clean')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                      disabled={cleaningStatusBusy}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Icon name="sparkles" className="h-3.5 w-3.5 text-[color:var(--status-info)]" />
                       <span className="text-[12px] font-medium text-foreground">Clean</span>
@@ -259,7 +226,8 @@ export function VehicleDetailHeader({
                     <button
                       type="button"
                       onClick={() => onCleaningStatusChange('Needs Cleaning')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                      disabled={cleaningStatusBusy}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Icon name="alert-triangle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
                       <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>

@@ -48,19 +48,21 @@ export interface VehicleData {
   healthStatus: 'Good Health' | 'Warning' | 'Critical';
   online: boolean;
   lastSignal: string;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  cachedAt?: string | null;
   badge: number;
-  // Legacy numeric telemetry — always a number so existing aggregations /
-  // CSV exports / counters keep working. New code MUST prefer the
-  // nullable canonical fields below, which preserve "no data" as `null`.
-  odometer: number;
-  fuel: number;
+  // Legacy numeric telemetry — nullable since Prompt 10/36. Prefer canonical
+  // fields below for UI empty-state. Aggregations may use `(v.odometer ?? 0)`.
+  odometer: number | null;
+  fuel: number | null;
   fuelLevel?: number | null;
-  battery: number;
-  speed: number;
-  coolant: number;
-  brakes: number;
-  tires: number;
-  engineOil: number;
+  battery: number | null;
+  speed: number | null;
+  coolant: number | null;
+  brakes: number | null;
+  tires: number | null;
+  engineOil: number | null;
   isElectric: boolean;
   hvBatteryCapacityKwh: number | null;
   lat?: number;

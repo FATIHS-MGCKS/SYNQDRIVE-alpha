@@ -33,6 +33,11 @@ import {
   hashProviderDeviceId,
 } from '../../modules/dimo/device-connection-episode.service';
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
+import { GpsPositionAccessService } from '@modules/data-authorizations/gps-position-access.service';
+import {
+  GPS_SYSTEM_INGEST_PURPOSE,
+  GPS_SYSTEM_JOB_NAME,
+} from '@modules/data-authorizations/gps-position-access.constants';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -64,6 +69,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly batteryObservationProducer: BatteryV2SnapshotObservationProducer,
     @Optional() private readonly chTelemetry: ClickHouseTelemetryService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    private readonly gpsPositionAccess: GpsPositionAccessService,
     @Optional()
     private readonly episodeResolution?: DeviceConnectionEpisodeResolutionService,
     @Optional()
@@ -96,6 +102,13 @@ export class DimoSnapshotProcessor extends WorkerHost {
     if (!vehicle?.organizationId) {
       throw new Error(`Vehicle ${vehicleId} missing organizationId — cannot process snapshot`);
     }
+
+    await this.gpsPositionAccess.assertSystemGpsIngest({
+      organizationId: vehicle.organizationId,
+      vehicleId,
+      systemJob: GPS_SYSTEM_JOB_NAME,
+      documentedPurpose: GPS_SYSTEM_INGEST_PURPOSE,
+    });
 
     try {
       const previousState =
