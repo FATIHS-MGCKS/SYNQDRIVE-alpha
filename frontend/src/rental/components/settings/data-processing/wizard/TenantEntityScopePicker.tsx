@@ -28,16 +28,18 @@ function normalizeList<T extends { id?: string; vehicleId?: string }>(
 ): EntityOption[] {
   const list = Array.isArray(rows) ? rows : rows.data ?? [];
   return list
-    .map((row) => {
+    .map((row): EntityOption | null => {
       const id = String(row.id ?? row.vehicleId ?? '');
       if (!id) return null;
-      return {
+      const option: EntityOption = {
         id,
         label: labelFn(row),
-        sublabel: sublabelFn?.(row),
       };
+      const sublabel = sublabelFn?.(row);
+      if (sublabel) option.sublabel = sublabel;
+      return option;
     })
-    .filter((row): row is EntityOption => row != null);
+    .filter((row): row is EntityOption => row !== null);
 }
 
 export function TenantEntityScopePicker({

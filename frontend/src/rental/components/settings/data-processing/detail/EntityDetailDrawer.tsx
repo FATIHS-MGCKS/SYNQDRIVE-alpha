@@ -8,7 +8,7 @@ import type { LifecycleActionKind } from '../../../../lib/data-processing-lifecy
 import { executeLifecycleAction } from '../../../../lib/data-processing-lifecycle.api';
 import { parseLifecycleApiError } from '../../../../lib/data-processing-lifecycle.errors';
 import { mapStatusEventsTimeline } from '../../../../lib/data-processing-timeline.mappers';
-import { useLanguage } from '../../../../i18n/LanguageContext';
+import { useLooseLanguage } from '../../../../lib/data-processing-i18n';
 import { useRentalOrg } from '../../../../RentalContext';
 import { LifecycleActionDialog } from './LifecycleActionDialog';
 import { DetailPanel, DetailRow, DetailSection, SecondaryId } from './shared/DetailPrimitives';
@@ -35,7 +35,7 @@ export function EntityDetailDrawer({
   canManage,
   onUpdated,
 }: Props) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   const { hasPermission } = useRentalOrg();
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,16 +58,16 @@ export function EntityDetailDrawer({
       let d: EntityDetail;
       switch (target.kind) {
         case 'legal-basis':
-          d = (await api.dataProcessing.legalBasis.get(orgId, target.activityId!, target.id)) as EntityDetail;
+          d = (await api.dataProcessing.legalBasis.get(orgId, target.activityId!, target.id)) as unknown as EntityDetail;
           break;
         case 'provider-grant':
-          d = (await api.dataProcessing.providerGrant.get(orgId, target.id)) as EntityDetail;
+          d = (await api.dataProcessing.providerGrant.get(orgId, target.id)) as unknown as EntityDetail;
           break;
         case 'consent':
-          d = (await api.dataProcessing.consent.get(orgId, target.activityId!, target.id)) as EntityDetail;
+          d = (await api.dataProcessing.consent.get(orgId, target.activityId!, target.id)) as unknown as EntityDetail;
           break;
         case 'sharing':
-          d = (await api.dataProcessing.sharing.get(orgId, target.activityId!, target.id)) as EntityDetail;
+          d = (await api.dataProcessing.sharing.get(orgId, target.activityId!, target.id)) as unknown as EntityDetail;
           break;
         default:
           throw new Error(t('dataProcessing.detail.error.unsupportedEntity'));

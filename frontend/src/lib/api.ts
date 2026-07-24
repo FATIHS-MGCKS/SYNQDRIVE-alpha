@@ -9644,6 +9644,7 @@ export interface ProcessingActivityRegisterListItem {
   completeness: {
     status: string;
     blockingGaps: string[];
+    warnings?: string[];
   };
   runtimeCoverage: { enforcedFlows: number; totalFlows: number } | null;
   updatedAt: string;
@@ -9665,7 +9666,6 @@ export interface ProcessingActivityRegisterDetail extends ProcessingActivityRegi
   ownerRole?: string | null;
   nextReviewDate?: string | null;
   deletionStatus?: string | null;
-  dataCategories?: string[];
   processingPurposes?: string[];
   dataSubjectTypes?: string[];
   recipientCategoriesSummary?: string | null;

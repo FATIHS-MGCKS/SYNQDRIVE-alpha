@@ -41,7 +41,7 @@ export function useAuditDecisionsList(input: {
         if (currentRequest !== requestId.current) return;
         const page = res.items ?? [];
         setItems((prev) => (mode === 'append' ? [...prev, ...page] : page));
-        setNextCursor(res.meta?.nextCursor ?? null);
+        setNextCursor(res.nextCursor ?? null);
       } catch (e) {
         if (currentRequest !== requestId.current) return;
         setError(e instanceof Error ? e.message : 'Load failed');

@@ -134,7 +134,7 @@ async function main(): Promise<void> {
 
     const tripDeny = await decisionService.decide({
       organizationId: orgId,
-      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.SYNQDRIVE,
+      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.SYNQDRIVE_SYSTEM,
       dataCategory: 'TRIP_ROUTE',
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.READ,
@@ -154,7 +154,7 @@ async function main(): Promise<void> {
 
     const healthDeny = await decisionService.decide({
       organizationId: orgId,
-      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.SYNQDRIVE,
+      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.SYNQDRIVE_SYSTEM,
       dataCategory: 'VEHICLE_DIAGNOSTICS',
       purpose: 'VEHICLE_HEALTH',
       action: AUTHORIZATION_DECISION_ACTION.USE_FOR_AI,
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
 
     const misuseDeny = await decisionService.decide({
       organizationId: orgId,
-      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.SYNQDRIVE,
+      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.SYNQDRIVE_SYSTEM,
       dataCategory: 'DRIVING_BEHAVIOR',
       purpose: 'DRIVER_SCORING',
       action: AUTHORIZATION_DECISION_ACTION.DERIVE,
@@ -320,7 +320,7 @@ async function main(): Promise<void> {
     );
   } finally {
     if (fixture) {
-      await prisma.dataAuthorizationDenySwitchEntry
+      await prisma.dataAuthorizationDenySwitch
         .deleteMany({ where: { organizationId: { in: [fixture.orgA.id, fixture.orgB.id] } } })
         .catch(() => undefined);
       await cleanupDataAuthPostgresFixture(prisma, fixture).catch(() => undefined);

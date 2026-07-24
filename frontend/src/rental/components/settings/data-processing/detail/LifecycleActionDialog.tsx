@@ -3,7 +3,7 @@ import { useId, useState } from 'react';
 import { FormDialog } from '../../../../../components/patterns';
 import type { LifecycleActionKind } from '../../../../lib/data-processing-lifecycle.types';
 import { LIFECYCLE_ACTION_MATRIX } from '../../../../lib/data-processing-lifecycle.types';
-import { useLanguage } from '../../../../i18n/LanguageContext';
+import { useLooseLanguage } from '../../../../lib/data-processing-i18n';
 
 interface Props {
   open: boolean;
@@ -22,7 +22,7 @@ export function LifecycleActionDialog({
   error,
   onConfirm,
 }: Props) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   const errorSummaryId = useId();
   const reasonId = useId();
   const [reason, setReason] = useState('');

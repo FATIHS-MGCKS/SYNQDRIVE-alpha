@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-di-frontend-build-v49829-2026-07-24',
+    version: '4.9.829',
+    title: 'V4.9.829 — Data Auth Nest DI + Frontend Build Fix',
+    summary: [
+      'Nest DI: forwardRef für zirkuläre Abhängigkeit DataAuthorizationsService ↔ LiveGpsEnforcementService.',
+      'Frontend Build: useLooseLanguage für dynamische i18n-Keys; API-Typen (list.data, audit items, revoke body).',
+      'TenantEntityScopePicker Typfix; AuthorizationDecisionAuditPage nextCursor; completeness.warnings.',
+      'VPS RC-Deploy + Prompt-42 Staging-Verifikation (15 Runtime-Szenarien).',
+    ],
+    reason:
+      'PM2-Switch nach Migration-Deploy scheiterte an Nest DI; Frontend tsc blockierte RC-Build.',
+    previousBehavior:
+      'LiveGpsEnforcementService Index [2] undefined; Frontend ~50 TS-Fehler in Wizard/Lifecycle/API.',
+    details: 'docs/audits/data-authorization-staging-runtime-verification-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T08:45:00.000Z',
+  },
+  {
     id: 'data-auth-migration-text-fix-v49828-2026-07-24',
     version: '4.9.828',
     title: 'V4.9.828 — Privacy Migration TEXT Fix + Build Unblock',

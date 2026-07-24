@@ -4,7 +4,7 @@ import {
   PURPOSE_OPTIONS,
   SCOPE_OPTIONS,
 } from '../../data-authorization/data-authorization.constants';
-import { useLanguage } from '../../../../i18n/LanguageContext';
+import { useLooseLanguage } from '../../../../lib/data-processing-i18n';
 import type { DataProcessingPermissions } from '../../../../lib/data-processing-permissions';
 import {
   DATA_FREQUENCY_OPTIONS,
@@ -69,7 +69,7 @@ export function DataProcessingWizardStepProcedure({
   onChange,
   permissions,
 }: StepProps & { permissions: DataProcessingPermissions }) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   return (
     <div className="space-y-3" data-testid="dp-wizard-step-1">
       <p className="text-xs text-muted-foreground">{t('dataProcessing.wizard.step1.hint')}</p>
@@ -103,7 +103,7 @@ export function DataProcessingWizardStepProcedure({
 }
 
 export function DataProcessingWizardStepPurposeLegal({ form, errors, onChange }: StepProps) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   return (
     <div className="space-y-4" data-testid="dp-wizard-step-2">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -150,7 +150,7 @@ export function DataProcessingWizardStepPurposeLegal({ form, errors, onChange }:
 }
 
 export function DataProcessingWizardStepDataSubjects({ form, errors, onChange }: StepProps) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   const toggle = (key: 'purposes' | 'dataCategories' | 'dataSubjectTypes', value: string) => {
     const current = form[key];
     onChange({
@@ -237,7 +237,7 @@ export function DataProcessingWizardStepResources({
   onChange,
   orgId,
 }: StepProps & { orgId: string }) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   return (
     <div className="space-y-4" data-testid="dp-wizard-step-4">
       <p className="text-xs text-muted-foreground">{t('dataProcessing.wizard.step4.hint')}</p>
@@ -285,7 +285,7 @@ export function DataProcessingWizardStepResources({
 }
 
 export function DataProcessingWizardStepRecipients({ form, errors, onChange }: StepProps) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   const toggleScope = (scope: string) => {
     onChange({
       grantedScopes: form.grantedScopes.includes(scope)
@@ -398,7 +398,7 @@ export function DataProcessingWizardStepRecipients({ form, errors, onChange }: S
 }
 
 export function DataProcessingWizardStepRetention({ form, errors, onChange }: StepProps) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   return (
     <div className="space-y-4" data-testid="dp-wizard-step-6">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -469,7 +469,7 @@ export function DataProcessingWizardStepRiskReview({
   submitError?: string | null;
   submitting?: boolean;
 }) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   return (
     <div className="space-y-4" data-testid="dp-wizard-step-7">
       <div className="grid gap-4 sm:grid-cols-2">

@@ -72,7 +72,7 @@ export async function executeLifecycleAction(
           return api.dataProcessing.lifecycle.revokeSharing(orgId, activityId, entityId, reason);
         }
         if (input.entityKind === 'legacy-authorization') {
-          return api.dataAuthorizations.revoke(orgId, entityId, reason);
+          return api.dataAuthorizations.revoke(orgId, entityId, { reason });
         }
         throw new Error(`revoke not supported for ${input.entityKind}`);
 
@@ -82,7 +82,7 @@ export async function executeLifecycleAction(
           return api.dataProcessing.lifecycle.rejectActivity(orgId, entityId, reason);
         }
         if (input.entityKind === 'legacy-authorization') {
-          return api.dataAuthorizations.revoke(orgId, entityId, reason);
+          return api.dataAuthorizations.revoke(orgId, entityId, { reason });
         }
         throw new Error(`reject not supported for ${input.entityKind}`);
 

@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import type { LifecycleActionKind } from '../../../../../lib/data-processing-lifecycle.types';
 import { LIFECYCLE_ACTION_MATRIX } from '../../../../../lib/data-processing-lifecycle.types';
-import { useLanguage } from '../../../../../i18n/LanguageContext';
+import { useLooseLanguage } from '../../../../../lib/data-processing-i18n';
 
 interface Props {
   actions: LifecycleActionKind[];
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function LifecycleActionFooter({ actions, loadingAction, onAction, readOnly }: Props) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
 
   if (readOnly || actions.length === 0) return null;
 

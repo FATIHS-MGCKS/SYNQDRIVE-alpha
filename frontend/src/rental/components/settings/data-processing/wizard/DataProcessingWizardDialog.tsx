@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react';
 import { Button } from '../../../../../components/ui/button';
 import { ConfirmDialog, FormDialog } from '../../../../../components/patterns';
-import { useLanguage } from '../../../../i18n/LanguageContext';
+import { useLooseLanguage } from '../../../../lib/data-processing-i18n';
 import type { DataProcessingPermissions } from '../../../../lib/data-processing-permissions';
 import { submitDataProcessingWizardDraft, parseDataProcessingApiError } from '../../../../lib/data-processing-wizard.api';
 import { DATA_PROCESSING_WIZARD_STEPS } from '../../../../lib/data-processing-wizard.constants';
@@ -37,7 +37,7 @@ interface Props {
 }
 
 function WizardStepper({ currentStep }: { currentStep: DataProcessingWizardStepId }) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   const total = DATA_PROCESSING_WIZARD_STEPS.length;
   const active = DATA_PROCESSING_WIZARD_STEPS.find((step) => step.id === currentStep);
   const progress = Math.round((currentStep / total) * 100);
@@ -84,7 +84,7 @@ export function DataProcessingWizardDialog({
   permissions,
   onSuccess,
 }: Props) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
   const errorSummaryId = useId();
   const [step, setStep] = useState<DataProcessingWizardStepId>(1);
   const [form, setForm] = useState<DataProcessingWizardForm>(EMPTY_DATA_PROCESSING_WIZARD_FORM);

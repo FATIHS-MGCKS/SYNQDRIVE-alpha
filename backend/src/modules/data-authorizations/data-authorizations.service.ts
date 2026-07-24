@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
   Optional,
@@ -79,6 +81,7 @@ export class DataAuthorizationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    @Inject(forwardRef(() => LiveGpsEnforcementService))
     private readonly liveGpsEnforcement: LiveGpsEnforcementService,
     @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
   ) {}

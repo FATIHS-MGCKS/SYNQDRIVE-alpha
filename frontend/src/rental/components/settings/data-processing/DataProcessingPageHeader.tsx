@@ -1,7 +1,7 @@
 import { Plus, Shield } from 'lucide-react';
 import { PageHeader, StatusChip } from '../../../../components/patterns';
 import { Button } from '../../../../components/ui/button';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLooseLanguage } from '../../../lib/data-processing-i18n';
 import type { DataProcessingReadinessSummary } from '../../../lib/data-processing-readiness';
 import { formatDataProcessingOverallDetail } from '../../../lib/data-processing-readiness';
 
@@ -18,7 +18,7 @@ export function DataProcessingPageHeader({
   canCreate,
   onCreate,
 }: DataProcessingPageHeaderProps) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
 
   return (
     <PageHeader

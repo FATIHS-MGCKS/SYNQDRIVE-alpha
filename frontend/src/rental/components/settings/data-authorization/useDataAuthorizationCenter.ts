@@ -41,7 +41,7 @@ export function useDataAuthorizationCenter(orgId: string | null) {
           api.dataAuthorizations.list(orgId, params),
           api.dataAuthorizations.stats(orgId),
         ]);
-        setAuthorizations(list);
+        setAuthorizations(list.data);
         setStats(st);
       } catch (err) {
         setAuthorizations([]);
@@ -144,7 +144,8 @@ export function useDataAuthorizationCenter(orgId: string | null) {
     async (limit = 30): Promise<DataAuthorizationAuditEntry[]> => {
       if (!orgId) return [];
       try {
-        return await api.dataAuthorizations.auditLog(orgId, limit);
+        const page = await api.dataAuthorizations.auditLog(orgId, { limit });
+        return page.items;
       } catch (err) {
         toast.error('Audit-Verlauf konnte nicht geladen werden.');
         return [];

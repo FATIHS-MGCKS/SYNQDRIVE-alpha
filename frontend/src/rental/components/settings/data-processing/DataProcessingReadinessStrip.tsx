@@ -2,7 +2,7 @@ import { AlertTriangle, ClipboardList, ShieldAlert, ShieldCheck } from 'lucide-r
 import { MetricCard } from '../../../../components/patterns';
 import type { DataProcessingReadinessSummary } from '../../../lib/data-processing-readiness';
 import { formatDataProcessingOverallDetail } from '../../../lib/data-processing-readiness';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLooseLanguage } from '../../../lib/data-processing-i18n';
 
 interface Props {
   summary: DataProcessingReadinessSummary;
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function DataProcessingReadinessStrip({ summary, loading }: Props) {
-  const { t } = useLanguage();
+  const { t } = useLooseLanguage();
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
