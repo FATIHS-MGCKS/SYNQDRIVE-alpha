@@ -5,6 +5,8 @@
 **Scope:** Prompt 1/54 — reine Bestandsaufnahme, keine produktiven Änderungen  
 **Auditor:** Cursor Cloud Agent (read-only Code-Analyse)
 
+**Nachfolger (Prompt 4):** Kanonische KPI-Taxonomie — `docs/architecture/analytics/evaluations-kpi-taxonomy.md`
+
 ---
 
 ## Executive Summary

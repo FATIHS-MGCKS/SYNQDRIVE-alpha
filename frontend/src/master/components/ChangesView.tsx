@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-kpi-taxonomy-v49802-2026-07-24',
+    version: '4.9.802',
+    title: 'V4.9.802 — Auswertungen KPI-Taxonomie (Prompt 4/54)',
+    summary: [
+      'Verbindliche fachliche Taxonomie für alle Kennzahlen der Auswertungen-Seite: `docs/architecture/analytics/evaluations-kpi-taxonomy.md`.',
+      '74 metricIds über 19 Domänen (Revenue, Cashflow, Receivables, Costs, Contribution Margin, Bookings, Utilization, Fleet Availability, Downtime, Maintenance, Damage, Compliance, Customers, Stations, Operational Quality, Data Quality, Risks, Recommendations, Forecasts).',
+      'Begriffstrennung: fakturierter vs. periodengerechter Umsatz, Zahlungseingang, Cashflow, Deckungsbeitrag vs. Nettoergebnis, Umsatzpotenzial vs. verlorener Umsatz, regelbasierte Schätzung vs. statistische Prognose.',
+      'Legacy-Mapping dokumentiert (`financialRiskEur`, `lostRevenueEur`, „Net Profit“, „Kritische Buchungen“). Keine UI-Änderung.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 4 — kanonische Grundlage für Backend, Frontend, Exporte und Prognosen.',
+    previousBehavior: 'KPIs nur in Audit-Dokumenten mit teils irreführenden UI-Labels und ohne verbindliche metricIds.',
+    details:
+      'docs/architecture/analytics/evaluations-kpi-taxonomy.md; Cross-Links in evaluations-technical-inventory und evaluations-data-flow-map; ArchitekturView-Eintrag.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',

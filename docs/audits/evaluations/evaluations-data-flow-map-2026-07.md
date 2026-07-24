@@ -600,7 +600,9 @@ Berechnung: **serverseitig**; Scope: **pro Fahrzeug**, Org via `assertVehicle(or
 
 ## 8. Nächste technische Abhängigkeiten (für Prompt 3+)
 
-1. **Kanonische Finanz-Aggregation** — Entscheidung: Server-Endpoint (stats/aggregate) vs. shared npm package; Abhängigkeit: `invoices` module, `financial-insights.logic.ts`, Dashboard VM.
+**Kanonische KPI-Taxonomie (Prompt 4):** `docs/architecture/analytics/evaluations-kpi-taxonomy.md` — verbindliche `metricId`s, Begriffstrennung (Umsatz/Zahlungseingang/Deckungsbeitrag/Prognose) und Implementierungsstatus.
+
+1. **Kanonische Finanz-Aggregation** — Entscheidung: Server-Endpoint (stats/aggregate) vs. shared npm package; Abhängigkeit: `invoices` module, `financial-insights.logic.ts`, Dashboard VM; **metricIds aus Taxonomie §4.1**.
 2. **Insight Publish Limit** — `maxVisibleInsights` (default 4) vs. Cockpit-Counts; Abhängigkeit: `TenantInsightPolicy`, `InsightsCockpit` UX.
 3. **Customer Label Vollständigkeit** — Batch-Lookup oder dediziertes `customerIds` Endpoint; Abhängigkeit: `customers` module, `FinancialInsightsView.load`.
 4. **Timezone-Policy** — Org-TZ vs. User-TZ vs. UTC für MTD; Abhängigkeit: Frontend date helpers, Backend detectors.
