@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   InsightCandidate,
@@ -8,6 +9,11 @@ import {
   InsightRunSummaryDto,
   InsightRunDetailDto,
 } from './insight.types';
+import {
+  normalizeCandidateEntityReferences,
+  resolvePublishGroupCount,
+} from './insight-entity-reference.util';
+import { buildInsightEntityBreakdown } from '@synq/evaluations-insights/insight-entity-references';
 
 @Injectable()
 export class DashboardInsightsRepository {
@@ -55,8 +61,17 @@ export class DashboardInsightsRepository {
         where: { organizationId, isActive: true },
         data: { isActive: false },
       }),
-      ...candidates.map((c) =>
-        this.prisma.dashboardInsight.create({
+      ...candidates.map((c) => {
+        const entityReferences = normalizeCandidateEntityReferences(c, organizationId);
+        const groupCount = resolvePublishGroupCount(
+          { ...c, entityReferences },
+          organizationId,
+        );
+        const isGrouped =
+          (c.metrics?.groupedCount as number | undefined) != null
+            ? Number(c.metrics?.groupedCount) > 1
+            : groupCount > 1;
+        return this.prisma.dashboardInsight.create({
           data: {
             organizationId,
             runId,
@@ -75,13 +90,14 @@ export class DashboardInsightsRepository {
             confidence: c.confidence,
             dedupeKey: c.dedupeKey,
             groupKey: c.groupKey,
-            isGrouped: (c.entityIds?.length ?? 0) > 1,
-            groupCount: c.entityIds?.length ?? 1,
+            isGrouped,
+            groupCount,
+            entityReferences: entityReferences as unknown as Prisma.InputJsonValue,
             isActive: true,
             expiresAt: c.expiresAt,
           },
-        }),
-      ),
+        });
+      }),
     ]);
   }
 
@@ -130,7 +146,7 @@ export class DashboardInsightsRepository {
         ? Date.now() - lastRunAt.getTime() > staleThresholdMs
         : false;
 
-    const dtos = insights.map((i) => this.toInsightDto(i));
+    const dtos = insights.map((i) => this.toInsightDto(i, organizationId));
 
     const summary = {
       total: allActiveForSummary.length,
@@ -189,29 +205,33 @@ export class DashboardInsightsRepository {
     return ids
       .map((id) => byId.get(id))
       .filter((row): row is NonNullable<typeof row> => row != null)
-      .map((row) => this.toInsightDto(row));
+      .map((row) => this.toInsightDto(row, organizationId));
   }
 
-  toPublicInsightDto(row: {
-    id: string;
-    type: string;
-    severity: string;
-    priority: number;
-    title: string;
-    message: string;
-    actionLabel: string | null;
-    actionType: string | null;
-    entityScope: string;
-    entityIds: unknown;
-    timeContext: unknown;
-    metrics: unknown;
-    reasons: unknown;
-    isGrouped: boolean;
-    groupCount: number;
-    createdAt: Date;
-    calculationMeta?: unknown;
-  }): DashboardInsightDto {
-    return this.toInsightDto(row);
+  toPublicInsightDto(
+    row: {
+      id: string;
+      organizationId?: string;
+      type: string;
+      severity: string;
+      priority: number;
+      title: string;
+      message: string;
+      actionLabel: string | null;
+      actionType: string | null;
+      entityScope: string;
+      entityIds: unknown;
+      timeContext: unknown;
+      metrics: unknown;
+      reasons: unknown;
+      isGrouped: boolean;
+      groupCount: number;
+      entityReferences?: unknown;
+      createdAt: Date;
+    },
+    organizationId: string,
+  ): DashboardInsightDto {
+    return this.toInsightDto({ ...row, organizationId }, organizationId);
   }
 
   // ─── Run history & diagnostics ─────────────────────────────────────
@@ -234,7 +254,7 @@ export class DashboardInsightsRepository {
 
     return {
       ...this.toRunSummaryDto(run),
-      insights: run.insights.map((i) => this.toInsightDto(i)),
+      insights: run.insights.map((i) => this.toInsightDto(i, run.organizationId)),
     };
   }
 
@@ -248,7 +268,24 @@ export class DashboardInsightsRepository {
 
   // ─── Helpers ───────────────────────────────────────────────────────
 
-  private toInsightDto(i: any): DashboardInsightDto {
+  private toInsightDto(i: any, organizationId?: string): DashboardInsightDto {
+    const orgId = organizationId ?? i.organizationId;
+    const breakdown = buildInsightEntityBreakdown(
+      {
+        id: i.id,
+        type: i.type,
+        severity: i.severity,
+        entityScope: i.entityScope,
+        entityIds: i.entityIds as string[] | null,
+        isGrouped: i.isGrouped,
+        groupCount: i.groupCount,
+        organizationId: orgId,
+        entityReferences: i.entityReferences ?? null,
+        metrics: i.metrics as Record<string, unknown> | null,
+        timeContext: i.timeContext as Record<string, string> | null,
+      },
+      orgId,
+    );
     return {
       id: i.id,
       type: i.type,
@@ -264,7 +301,9 @@ export class DashboardInsightsRepository {
       metrics: i.metrics as Record<string, any> | null,
       reasons: i.reasons as string[] | null,
       isGrouped: i.isGrouped,
-      groupCount: i.groupCount,
+      groupCount: breakdown.groupCount,
+      entityReferences: breakdown.references,
+      entityBreakdown: breakdown,
       createdAt: i.createdAt.toISOString(),
     };
   }

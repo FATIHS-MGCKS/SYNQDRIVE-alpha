@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-insight-grouping-model-v49814-2026-07-24',
+    version: 'V4.9.814',
+    title: 'V4.9.814 — Business Insights Gruppierung & Entity-Zählung (Prompt 16/54)',
+    summary: [
+      'Typisiertes Entity-Reference-Modell: `{ entityType, entityId, organizationId, stationId?, relationType }`.',
+      'Getrennte KPIs: Insight-Gruppen, Events, betroffene Fahrzeuge/Buchungen/Kunden/Stationen, `criticalBookings`, `groupCount`.',
+      'Serverseitige Deduplizierung + Cross-Tenant-Sanitisierung; Legacy-Fallback aus `entityScope`/`metrics`.',
+      'Publish speichert `entity_references` (JSON); Grouping merged Referenzen bei `dedupeAndGroup`.',
+      'InsightsCockpit: „Kritische Buchungen“ zählt nur BOOKING-Referenzen; Gruppen-KPIs klar benannt.',
+      'Doku: `docs/architecture/analytics/evaluations-insight-grouping-model.md`.',
+    ],
+    reason:
+      'Prompt 16/54 — Gruppierte Insights mit 20 Fahrzeugen dürfen nicht als ein betroffenes Fahrzeug gezählt werden; Buchungs- vs. organisationsweite Risiken trennen.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T11:00:00.000Z',
+  },
+  {
     id: 'evaluations-summary-detail-separation-v49813-2026-07-24',
     version: 'V4.9.813',
     title: 'V4.9.813 — Summary/Detail-Trennung Auswertungen Insights (Prompt 15/54)',

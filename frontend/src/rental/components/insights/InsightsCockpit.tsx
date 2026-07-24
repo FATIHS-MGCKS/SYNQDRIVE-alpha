@@ -260,7 +260,7 @@ export function InsightsCockpit({
 
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
         <InsightKpiCard
-          label="Business Risks"
+          label="Geschäftsrisiken (Gruppen)"
           value={String(summary?.counts.businessRisks ?? 0)}
           icon={AlertTriangle}
           tone="critical"
@@ -282,13 +282,13 @@ export function InsightsCockpit({
         />
         <InsightKpiCard
           label="Kritische Buchungen"
-          value={String(summary?.counts.criticalBusinessRisks ?? 0)}
+          value={String(summary?.counts.criticalBookings ?? summary?.counts.criticalBusinessRisks ?? 0)}
           icon={AlertTriangle}
           tone="critical"
           accent={(summary?.counts.criticalBusinessRisks ?? 0) > 0}
         />
         <InsightKpiCard
-          label="Revenue Leakage"
+          label="Umsatzverlust (Gruppen)"
           value={String(summary?.counts.revenueLeakage ?? 0)}
           icon={TrendingDown}
           tone="watch"

@@ -10,6 +10,7 @@ import type {
   InsightAnalyticsSortOrder,
   InsightAnalyticsSummaryCounts,
 } from './insights-analytics.contract';
+import { computeInsightEntityCountSummary } from './insight-entity-references';
 
 const RAW_HEALTH_TYPES = new Set<string>(['BATTERY_CRITICAL', 'TIRE_CRITICAL', 'BRAKE_CRITICAL']);
 
@@ -50,6 +51,18 @@ export function matchesStationInsightFilter(
 ): boolean {
   if (!stationId) return true;
   if (!stationVehicleIds || stationVehicleIds.size === 0) return false;
+
+  const refs = insight.entityReferences ?? [];
+  if (refs.length > 0) {
+    const stationMatch = refs.some(
+      (r) =>
+        r.stationId === stationId ||
+        (r.entityType === 'STATION' && r.entityId === stationId) ||
+        (r.entityType === 'VEHICLE' && stationVehicleIds.has(r.entityId)),
+    );
+    if (stationMatch) return true;
+  }
+
   const ids = insight.entityIds ?? [];
   if (ids.length === 0) return true;
   const m = insight.metrics;
@@ -101,13 +114,13 @@ export function sortInsights(
 export function computeInsightAnalyticsSummaryCounts(
   insights: InsightAnalyticsRow[],
   filters: InsightAnalyticsFilters = {},
+  organizationId = 'unknown',
 ): InsightAnalyticsSummaryCounts {
   const visible = insights.filter((i) => matchesInsightAnalyticsFilters(i, filters));
 
   let businessRisks = 0;
   let revenueLeakage = 0;
   let criticalInsights = 0;
-  let criticalBusinessRisks = 0;
   let recommended = 0;
   const bySeverity = { critical: 0, warning: 0, opportunity: 0, info: 0 };
 
@@ -115,10 +128,7 @@ export function computeInsightAnalyticsSummaryCounts(
     const cat = resolveInsightAnalyticsCategory(insight);
     if (cat === 'BUSINESS_RISK') businessRisks += 1;
     if (cat === 'REVENUE_LEAKAGE') revenueLeakage += 1;
-    if (insight.severity === 'CRITICAL') {
-      criticalInsights += 1;
-      if (cat === 'BUSINESS_RISK') criticalBusinessRisks += 1;
-    }
+    if (insight.severity === 'CRITICAL') criticalInsights += 1;
     if (insight.severity === 'CRITICAL' || insight.severity === 'WARNING') {
       recommended += 1;
     }
@@ -138,14 +148,22 @@ export function computeInsightAnalyticsSummaryCounts(
     }
   }
 
+  const entities = computeInsightEntityCountSummary(
+    visible,
+    organizationId,
+    () => true,
+  );
+
   return {
     totalVisible: visible.length,
     businessRisks,
     revenueLeakage,
     criticalInsights,
-    criticalBusinessRisks,
+    criticalBookings: entities.criticalBookings,
+    criticalBusinessRisks: entities.criticalBookings,
     recommended,
     bySeverity,
+    entities,
   };
 }
 

@@ -45,7 +45,7 @@ describe('notification engine — backend characterization', () => {
         makeDrivingAssessmentCandidate('DEGRADED', { priority: 40 }),
         makeDrivingAssessmentCandidate('DEGRADED', { priority: 55 }),
       ];
-      const result = grouping.dedupeAndGroup(dupes);
+      const result = grouping.dedupeAndGroup(dupes, 'org-1');
       expect(result).toHaveLength(1);
       expect(result[0].dedupeKey).toBe(`driving_assessment_device_quality:${VEHICLE_ID}`);
       expect(result[0].priority).toBe(55);
@@ -54,10 +54,10 @@ describe('notification engine — backend characterization', () => {
 
   describe('case 2 — consecutive scheduler runs', () => {
     it('characterization: same dedupeKey across runs implies same fachliche identity', () => {
-      const run1 = grouping.dedupeAndGroup([makeDrivingAssessmentCandidate('DEGRADED')]);
+      const run1 = grouping.dedupeAndGroup([makeDrivingAssessmentCandidate('DEGRADED')], 'org-1');
       const run2 = grouping.dedupeAndGroup([
         makeDrivingAssessmentCandidate('DEGRADED', { title: 'Updated title same key' }),
-      ]);
+      ], 'org-1');
       expect(run1[0].dedupeKey).toBe(run2[0].dedupeKey);
       expect(run1[0].entityIds).toEqual(run2[0].entityIds);
     });
@@ -67,7 +67,7 @@ describe('notification engine — backend characterization', () => {
       for (const run of [1, 2, 3]) {
         const published = grouping.dedupeAndGroup([
           makeDrivingAssessmentCandidate('DEGRADED', { priority: 50 + run }),
-        ]);
+        ], 'org-1');
         keys.add(published[0].dedupeKey);
       }
       expect(keys.size).toBe(1);
@@ -96,7 +96,7 @@ describe('notification engine — backend characterization', () => {
         makeDrivingAssessmentCandidate('DEGRADED'),
       );
       const results = await Promise.all(
-        Array.from({ length: 4 }, () => Promise.resolve(grouping.dedupeAndGroup(batch))),
+        Array.from({ length: 4 }, () => Promise.resolve(grouping.dedupeAndGroup(batch, 'org-1'))),
       );
       for (const result of results) {
         expect(result).toHaveLength(1);
@@ -109,7 +109,7 @@ describe('notification engine — backend characterization', () => {
       const high = makeDrivingAssessmentCandidate('DEGRADED', { priority: 80 });
       const results = await Promise.all(
         Array.from({ length: 10 }, () =>
-          Promise.resolve(grouping.dedupeAndGroup([low, high])),
+          Promise.resolve(grouping.dedupeAndGroup([low, high], 'org-1')),
         ),
       );
       for (const result of results) {

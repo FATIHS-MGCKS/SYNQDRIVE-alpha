@@ -3,6 +3,8 @@
  * Summary and detail list endpoints use the same filter definitions.
  */
 
+import type { InsightEntityCountSummary } from './insight-entity-references.contract';
+
 export type InsightAnalyticsCategory =
   | 'BUSINESS_RISK'
   | 'REVENUE_LEAKAGE'
@@ -18,7 +20,12 @@ export interface InsightAnalyticsRow {
   type: string;
   severity: string;
   priority: number;
+  entityScope?: string | null;
   entityIds?: string[] | null;
+  isGrouped?: boolean;
+  groupCount?: number;
+  organizationId?: string;
+  entityReferences?: import('./insight-entity-references.contract').InsightEntityReference[] | null;
   metrics?: Record<string, unknown> | null;
   timeContext?: Record<string, string> | null;
   createdAt?: string | Date;
@@ -40,10 +47,14 @@ export interface InsightAnalyticsListQuery extends InsightAnalyticsFilters {
 }
 
 export interface InsightAnalyticsSummaryCounts {
+  /** Visible insight groups (rows), not individual events. */
   totalVisible: number;
   businessRisks: number;
   revenueLeakage: number;
   criticalInsights: number;
+  /** Unique CRITICAL booking entities — not insight groups. */
+  criticalBookings: number;
+  /** @deprecated Use criticalBookings — kept for backward-compatible API clients. */
   criticalBusinessRisks: number;
   recommended: number;
   bySeverity: {
@@ -52,6 +63,7 @@ export interface InsightAnalyticsSummaryCounts {
     opportunity: number;
     info: number;
   };
+  entities: InsightEntityCountSummary;
 }
 
 export interface InsightAnalyticsSummary {

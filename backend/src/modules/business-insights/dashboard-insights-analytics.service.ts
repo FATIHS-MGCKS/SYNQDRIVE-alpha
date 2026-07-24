@@ -30,7 +30,7 @@ export class DashboardInsightsAnalyticsService {
     const runMeta = await this.repo.getRunMetadata(organizationId);
     const resolvedFilters = await this.resolveFilters(organizationId, filters);
     const insights = await this.loadActiveInsightRows(organizationId);
-    const counts = computeInsightAnalyticsSummaryCounts(insights, resolvedFilters);
+    const counts = computeInsightAnalyticsSummaryCounts(insights, resolvedFilters, organizationId);
     const exposure = estimateInsightFinancialExposureMinor(insights, resolvedFilters);
 
     return {
@@ -73,7 +73,7 @@ export class DashboardInsightsAnalyticsService {
       where: { id: insightId, organizationId, isActive: true },
     });
     if (!row) return null;
-    return this.repo.toPublicInsightDto(row);
+    return this.repo.toPublicInsightDto(row, organizationId);
   }
 
   private async loadActiveInsightRows(organizationId: string): Promise<InsightAnalyticsRow[]> {
@@ -85,7 +85,11 @@ export class DashboardInsightsAnalyticsService {
         type: true,
         severity: true,
         priority: true,
+        entityScope: true,
         entityIds: true,
+        isGrouped: true,
+        groupCount: true,
+        entityReferences: true,
         metrics: true,
         timeContext: true,
         createdAt: true,
@@ -98,7 +102,12 @@ export class DashboardInsightsAnalyticsService {
       type: row.type,
       severity: row.severity,
       priority: row.priority,
+      entityScope: row.entityScope,
       entityIds: (row.entityIds as string[] | null) ?? null,
+      isGrouped: row.isGrouped,
+      groupCount: row.groupCount,
+      organizationId,
+      entityReferences: (row.entityReferences as InsightAnalyticsRow['entityReferences']) ?? null,
       metrics: (row.metrics as Record<string, unknown> | null) ?? null,
       timeContext: (row.timeContext as Record<string, string> | null) ?? null,
       createdAt: row.createdAt,
