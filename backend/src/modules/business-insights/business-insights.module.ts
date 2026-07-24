@@ -38,6 +38,11 @@ import { PredictiveRiskController } from './predictive/predictive-risk.controlle
 import { PredictiveRiskLoader } from './predictive/predictive-risk.loader';
 import { PredictiveRiskRepository } from './predictive/predictive-risk.repository';
 import { PredictiveRiskService } from './predictive/predictive-risk.service';
+import { PredictiveBacktestController, PredictiveBacktestAdminController } from './predictive/predictive-backtest.controller';
+import { PredictiveBacktestLoader } from './predictive/predictive-backtest.loader';
+import { PredictiveBacktestRepository } from './predictive/predictive-backtest.repository';
+import { PredictiveBacktestScheduler } from './predictive/predictive-backtest.scheduler';
+import { PredictiveBacktestService } from './predictive/predictive-backtest.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
@@ -55,6 +60,8 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PredictiveFeatureController,
     PredictiveForecastController,
     PredictiveRiskController,
+    PredictiveBacktestController,
+    PredictiveBacktestAdminController,
   ],
   providers: [
     BusinessInsightsService,
@@ -76,6 +83,10 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PredictiveRiskService,
     PredictiveRiskRepository,
     PredictiveRiskLoader,
+    PredictiveBacktestService,
+    PredictiveBacktestRepository,
+    PredictiveBacktestLoader,
+    PredictiveBacktestScheduler,
     TightHandoverDetector,
     ReturnNeedsInspectionDetector,
     StationShortageDetector,

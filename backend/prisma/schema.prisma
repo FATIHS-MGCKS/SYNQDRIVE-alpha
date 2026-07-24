@@ -1681,6 +1681,10 @@ model Organization {
   predictiveForecastRuns                 OrgPredictiveForecastRun[]
   predictiveRiskForecasts                OrgPredictiveRiskForecast[]
   predictiveRiskForecastRuns             OrgPredictiveRiskForecastRun[]
+  predictiveModelRegistry                OrgPredictiveModelRegistry[]
+  predictiveBacktestRuns                 OrgPredictiveBacktestRun[]
+  predictiveBacktestResults              OrgPredictiveBacktestResult[]
+  predictiveDriftSnapshots               OrgPredictiveDriftSnapshot[]
   userAccountPreferences                 UserAccountPreference[]
   userNotificationPreferences            UserNotificationPreference[]
   orgInvoiceSequences                    OrgInvoiceSequence[]
@@ -14017,4 +14021,141 @@ model OrgPredictiveRiskForecastRun {
 
   @@index([organizationId, startedAt])
   @@map("org_predictive_risk_forecast_runs")
+}
+
+// ── Evaluations backtesting & drift monitoring (Prompt 44/54) ──
+
+enum PredictiveModelScopeMode {
+  GLOBAL_SEGMENT
+  ORG_SPECIFIC
+}
+
+enum PredictiveModelRegistryStatus {
+  DRAFT
+  SHADOW
+  APPROVED
+  DISABLED
+  ROLLED_BACK
+}
+
+enum PredictiveBacktestRunStatus {
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+enum PredictiveBacktestResultStatus {
+  PASSED
+  FAILED
+  INSUFFICIENT_DATA
+}
+
+enum PredictiveDriftSeverity {
+  STABLE
+  WARNING
+  CRITICAL
+}
+
+enum PredictiveDriftRecommendedAction {
+  NONE
+  FALLBACK
+  DISABLE
+}
+
+model OrgPredictiveModelRegistry {
+  id                  String                        @id @default(uuid())
+  organizationId      String                        @map("organization_id")
+  modelFamily         String                        @map("model_family")
+  modelKey            String                        @map("model_key")
+  modelVersion        String                        @map("model_version")
+  featureSetVersion   String                        @map("feature_set_version")
+  scopeMode           PredictiveModelScopeMode      @map("scope_mode")
+  scopeKey            String                        @default("fleet") @map("scope_key")
+  horizonDays         Int?                          @map("horizon_days")
+  status              PredictiveModelRegistryStatus
+  backtestMetrics     Json                          @default("{}") @map("backtest_metrics")
+  releaseGates        Json                          @default("[]") @map("release_gates")
+  lastBacktestAt      DateTime?                     @map("last_backtest_at")
+  lastDriftAt         DateTime?                     @map("last_drift_at")
+  approvedAt          DateTime?                     @map("approved_at")
+  disabledAt          DateTime?                     @map("disabled_at")
+  fallbackModelVersion String?                      @map("fallback_model_version")
+  driftSeverity       PredictiveDriftSeverity?      @map("drift_severity")
+  metadata            Json                          @default("{}")
+  createdAt           DateTime                      @default(now()) @map("created_at")
+  updatedAt           DateTime                      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, modelFamily, modelKey, modelVersion, scopeKey, horizonDays])
+  @@index([organizationId, modelKey, status])
+  @@map("org_predictive_model_registry")
+}
+
+model OrgPredictiveBacktestRun {
+  id                String                      @id @default(uuid())
+  organizationId    String                      @map("organization_id")
+  modelFamily       String                      @map("model_family")
+  featureSetVersion String                      @map("feature_set_version")
+  asOfDate          String                      @map("as_of_date")
+  status            PredictiveBacktestRunStatus
+  modelsEvaluated   Int                         @default(0) @map("models_evaluated")
+  resultsWritten    Int                         @default(0) @map("results_written")
+  errorMessage      String?                     @map("error_message")
+  trigger           String?
+  startedAt         DateTime                    @default(now()) @map("started_at")
+  completedAt       DateTime?                   @map("completed_at")
+
+  organization Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  results      OrgPredictiveBacktestResult[]
+
+  @@index([organizationId, startedAt])
+  @@map("org_predictive_backtest_runs")
+}
+
+model OrgPredictiveBacktestResult {
+  id              String                         @id @default(uuid())
+  organizationId  String                         @map("organization_id")
+  backtestRunId   String                         @map("backtest_run_id")
+  modelFamily     String                         @map("model_family")
+  modelKey        String                         @map("model_key")
+  modelVersion    String                         @map("model_version")
+  horizonDays     Int                            @map("horizon_days")
+  scopeMode       PredictiveModelScopeMode       @map("scope_mode")
+  scopeKey        String                         @default("fleet") @map("scope_key")
+  status          PredictiveBacktestResultStatus
+  metrics         Json                           @default("{}")
+  baselineMetrics Json                           @default("{}") @map("baseline_metrics")
+  releaseGates    Json                           @default("[]") @map("release_gates")
+  gatesPassed     Boolean                        @default(false) @map("gates_passed")
+  foldCount       Int                            @default(0) @map("fold_count")
+  evaluatedAt     DateTime                       @map("evaluated_at")
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  backtestRun  OrgPredictiveBacktestRun   @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+
+  @@unique([backtestRunId, modelKey, horizonDays, scopeKey])
+  @@index([organizationId, modelKey, evaluatedAt])
+  @@map("org_predictive_backtest_results")
+}
+
+model OrgPredictiveDriftSnapshot {
+  id                 String                           @id @default(uuid())
+  organizationId     String                           @map("organization_id")
+  modelFamily        String                           @map("model_family")
+  modelKey           String                           @map("model_key")
+  modelVersion       String                           @map("model_version")
+  scopeKey           String                           @default("fleet") @map("scope_key")
+  severity           PredictiveDriftSeverity
+  recommendedAction  PredictiveDriftRecommendedAction @map("recommended_action")
+  inputDrift         Json                             @default("[]") @map("input_drift")
+  errorDrift         Json                             @default("{}") @map("error_drift")
+  backtestBaseline   Json                             @default("{}") @map("backtest_baseline")
+  evaluatedAt        DateTime                         @map("evaluated_at")
+  createdAt          DateTime                         @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, modelKey, evaluatedAt])
+  @@map("org_predictive_drift_snapshots")
 }
