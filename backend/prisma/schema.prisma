@@ -1762,6 +1762,12 @@ model Organization {
   dataProcessingAgreementTransferCountries                  DataProcessingAgreementTransferCountry[]
   dataProcessingAgreementSharingLinks                       DataProcessingAgreementSharingLink[]
   dataProcessingAgreementAuditEvents                        DataProcessingAgreementAuditEvent[]
+  processingActivityRetentionPolicies                       ProcessingActivityRetentionPolicy[]
+  processingActivityRetentionExceptions                     ProcessingActivityRetentionException[]
+  processingActivityDeletionDecisions                       ProcessingActivityDeletionDecision[]
+  processingActivityDeletionJobs                            ProcessingActivityDeletionJob[]
+  processingActivityDeletionJobSteps                        ProcessingActivityDeletionJobStep[]
+  processingActivityDeletionEvidence                        ProcessingActivityDeletionEvidence[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
 
@@ -10890,6 +10896,71 @@ enum ProcessingActivityDeletionStatus {
   RETAINED_LEGAL_HOLD
 }
 
+enum ProcessingActivityRetentionClass {
+  OPERATIONAL
+  TELEMETRY
+  ANALYTICS
+  AUDIT_EVIDENCE
+  LEGAL_EVIDENCE
+  CUSTOMER_DATA
+  FINANCIAL
+}
+
+enum RetentionStartEvent {
+  PROCESSING_START
+  PROCESSING_END
+  CONSENT_WITHDRAWAL
+  CONTRACT_END
+  LAST_ACTIVITY
+  MANUAL_ANCHOR
+}
+
+enum ProcessingActivityDeletionMethod {
+  HARD_DELETE
+  ANONYMIZE
+  REDACT
+  ARCHIVE_THEN_DELETE
+}
+
+enum ProcessingActivityDeletionJobStatus {
+  PLANNED
+  DRY_RUN_COMPLETED
+  IN_PROGRESS
+  COMPLETED
+  PARTIAL_FAILURE
+  FAILED
+  CANCELLED
+}
+
+enum ProcessingActivityDeletionStepTarget {
+  POSTGRESQL
+  CLICKHOUSE
+  OBJECT_STORAGE
+  REDIS_CACHE
+  DERIVED_DATA
+}
+
+enum ProcessingActivityDeletionStepStatus {
+  PENDING
+  SKIPPED
+  COMPLETED
+  FAILED
+  NOT_APPLICABLE
+}
+
+enum ProcessingActivityDeletionDecisionType {
+  RETENTION_CONFIGURED
+  RETENTION_EVALUATED
+  DELETION_SCHEDULED
+  DELETION_BLOCKED_LEGAL_HOLD
+  DELETION_APPROVED
+  DELETION_EXECUTED
+  DELETION_DEFERRED
+  REVOCATION_ASSESSED
+  ANONYMIZATION_SELECTED
+  DRY_RUN_COMPLETED
+}
+
 enum ProcessingActivityRegisterExportFormat {
   CSV
   PDF
@@ -11197,6 +11268,9 @@ model ProcessingActivity {
   registerAuditEvents         ProcessingActivityRegisterAuditEvent[]
   riskAssessments             ProcessingActivityRiskAssessment[]
   dpiaRecords                 ProcessingActivityDpia[]
+  retentionPolicies           ProcessingActivityRetentionPolicy[]
+  deletionDecisions           ProcessingActivityDeletionDecision[]
+  deletionJobs                ProcessingActivityDeletionJob[]
 
   @@unique([policyFamilyId, versionNumber])
   @@unique([organizationId, activityCode, versionNumber])
@@ -11380,6 +11454,146 @@ model ProcessingActivityDpiaDecision {
 
   @@index([organizationId, dpiaId, createdAt])
   @@map("processing_activity_dpia_decisions")
+}
+
+/// Per-activity / per-category retention policy — no global hardcoded default.
+model ProcessingActivityRetentionPolicy {
+  id                    String                           @id @default(uuid())
+  organizationId        String                           @map("organization_id")
+  processingActivityId  String                           @map("processing_activity_id")
+  dataCategory          PrivacyProcessingDataCategory?   @map("data_category")
+  retentionClass        ProcessingActivityRetentionClass @map("retention_class")
+  retentionDurationDays Int?                             @map("retention_duration_days")
+  retentionStartEvent   RetentionStartEvent              @map("retention_start_event")
+  deletionMethod        ProcessingActivityDeletionMethod @map("deletion_method")
+  anonymizationAllowed  Boolean                          @default(false) @map("anonymization_allowed")
+  legalHold             Boolean                          @default(false) @map("legal_hold")
+  legalHoldReason       String?                          @map("legal_hold_reason") @db.Text
+  legalHoldOwnerUserId  String?                          @map("legal_hold_owner_user_id")
+  deletionDueAt         DateTime?                        @map("deletion_due_at")
+  deletionCompletedAt   DateTime?                        @map("deletion_completed_at")
+  isConfigured          Boolean                          @default(false) @map("is_configured")
+  ownerUserId           String?                          @map("owner_user_id")
+  reviewDate            DateTime?                        @map("review_date")
+  createdAt             DateTime                         @default(now()) @map("created_at")
+  updatedAt             DateTime                         @updatedAt @map("updated_at")
+
+  organization       Organization                            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity ProcessingActivity                        @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+  exceptions         ProcessingActivityRetentionException[]
+  deletionJobs       ProcessingActivityDeletionJob[]
+  deletionDecisions  ProcessingActivityDeletionDecision[]
+
+  @@unique([processingActivityId, dataCategory, retentionClass])
+  @@index([organizationId, processingActivityId])
+  @@index([organizationId, legalHold])
+  @@index([organizationId, deletionDueAt])
+  @@map("processing_activity_retention_policies")
+}
+
+model ProcessingActivityRetentionException {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  retentionPolicyId String  @map("retention_policy_id")
+  reason           String   @db.Text
+  extendsUntil     DateTime? @map("extends_until")
+  approvedByUserId String?  @map("approved_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization    Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  retentionPolicy ProcessingActivityRetentionPolicy @relation(fields: [retentionPolicyId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, retentionPolicyId])
+  @@map("processing_activity_retention_exceptions")
+}
+
+/// Append-only governance decisions — separate from technical deletion steps.
+model ProcessingActivityDeletionDecision {
+  id                   String                               @id @default(uuid())
+  organizationId       String                               @map("organization_id")
+  processingActivityId String                               @map("processing_activity_id")
+  retentionPolicyId    String?                              @map("retention_policy_id")
+  decisionType         ProcessingActivityDeletionDecisionType @map("decision_type")
+  actorUserId          String?                              @map("actor_user_id")
+  outcome              String
+  reason               String?                              @db.Text
+  metadata             Json?
+  createdAt            DateTime                             @default(now()) @map("created_at")
+
+  organization       Organization                       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity ProcessingActivity                   @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+  retentionPolicy    ProcessingActivityRetentionPolicy?   @relation(fields: [retentionPolicyId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, processingActivityId, createdAt])
+  @@map("processing_activity_deletion_decisions")
+}
+
+/// Idempotent deletion job — dry-run or apply, tenant-scoped batches.
+model ProcessingActivityDeletionJob {
+  id                   String                              @id @default(uuid())
+  organizationId       String                              @map("organization_id")
+  processingActivityId String                              @map("processing_activity_id")
+  retentionPolicyId    String?                             @map("retention_policy_id")
+  idempotencyKey       String                              @unique @map("idempotency_key")
+  dryRun               Boolean                             @default(true) @map("dry_run")
+  status               ProcessingActivityDeletionJobStatus @default(PLANNED)
+  trigger              String                              @default("manual")
+  batchIndex           Int                                 @default(0) @map("batch_index")
+  deletionDueAt        DateTime?                           @map("deletion_due_at")
+  partialFailure       Boolean                             @default(false) @map("partial_failure")
+  retryCount           Int                                 @default(0) @map("retry_count")
+  startedAt            DateTime?                           @map("started_at")
+  completedAt          DateTime?                           @map("completed_at")
+  report               Json?
+  createdAt            DateTime                            @default(now()) @map("created_at")
+  updatedAt            DateTime                            @updatedAt @map("updated_at")
+
+  organization       Organization                       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity ProcessingActivity                   @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+  retentionPolicy    ProcessingActivityRetentionPolicy?   @relation(fields: [retentionPolicyId], references: [id], onDelete: SetNull)
+  steps              ProcessingActivityDeletionJobStep[]
+  evidence           ProcessingActivityDeletionEvidence[]
+
+  @@index([organizationId, processingActivityId, status])
+  @@index([organizationId, createdAt])
+  @@map("processing_activity_deletion_jobs")
+}
+
+model ProcessingActivityDeletionJobStep {
+  id             String                               @id @default(uuid())
+  organizationId String                               @map("organization_id")
+  jobId          String                               @map("job_id")
+  target         ProcessingActivityDeletionStepTarget
+  status         ProcessingActivityDeletionStepStatus @default(PENDING)
+  rowsAffected   Int?                                 @map("rows_affected")
+  errorCode      String?                              @map("error_code")
+  errorMessage   String?                              @map("error_message")
+  executedAt     DateTime?                            @map("executed_at")
+  stepKey        String                               @map("step_key")
+  metadata       Json?
+
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  job          ProcessingActivityDeletionJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+
+  @@unique([jobId, target, stepKey])
+  @@index([organizationId, jobId])
+  @@map("processing_activity_deletion_job_steps")
+}
+
+/// Deletion evidence — counts/hashes only, no re-stored PII.
+model ProcessingActivityDeletionEvidence {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  jobId          String   @map("job_id")
+  evidenceType   String   @map("evidence_type")
+  evidenceValue  String   @map("evidence_value")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  job          ProcessingActivityDeletionJob @relation(fields: [jobId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, jobId])
+  @@map("processing_activity_deletion_evidence")
 }
 
 /// Rechtsgrundlage — versionierte, unveränderliche Bewertung nach Freigabe.
