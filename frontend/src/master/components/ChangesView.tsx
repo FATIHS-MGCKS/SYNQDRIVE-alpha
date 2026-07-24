@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-url-sync-v49791-2026-07-24',
+    version: '4.9.791',
+    title: 'V4.9.791 — Vehicle Detail URL sync for vehicleId and tab (Prompt 23/36)',
+    summary: [
+      'Vehicle detail deep links via `?vehicleId=` + `vdTab=` (legacy alias `vehicleTab`) on `/rental`.',
+      'Central `openVehicleDetail()` in App.tsx syncs URL on fleet open, tab change, and entity navigation.',
+      'Browser back/forward via `popstate`; reload resolves vehicle after fleet-map fetch completes.',
+      'Invalid vehicleId / missing fleet permission → toast + fleet view; no fallback to first vehicle.',
+      'Invalid tab falls back to `overview`; cold deep-link defers tab until vehicle is resolved.',
+      'Unit + E2E tests for deep link, reload, history, invalid id, close, and vehicle switch.',
+    ],
+    reason:
+      'Wire existing vehicle detail state to the URL without new routing libraries — shareable links, reload persistence, and browser history.',
+    previousBehavior:
+      'Vehicle detail was local React state only (`selectedVehicle` + `currentView`); no deep links, reload, or back/forward for vehicle/tab.',
+    details:
+      'frontend/src/rental/lib/vehicle-detail-navigation.ts, rental/App.tsx, RentalEntityNavigationContext.tsx, vehicle-detail-navigation.test.ts, e2e/vehicle-detail-url-sync.spec.ts, docs/audits/vehicle-detail-page-url-sync-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Routing',
+    createdAt: '2026-07-24T10:05:00.000Z',
+  },
+  {
     id: 'vehicle-detail-livemap-behavior-attribution-v49790-2026-07-24',
     version: '4.9.790',
     title: 'V4.9.790 — Vehicle Detail live map behavior, attribution & error states (Prompt 22/36)',

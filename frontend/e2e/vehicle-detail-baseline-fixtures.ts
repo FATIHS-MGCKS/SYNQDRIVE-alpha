@@ -304,12 +304,63 @@ export async function installVehicleDetailApiMocks(page: Page) {
       });
     }
 
+    if (url.match(/\/admin\/vehicles\/[^/?]+$/) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: url.split('/admin/vehicles/')[1]?.split(/[/?]/)[0] ?? 'veh-mock',
+          licensePlate: 'MOCK-1',
+          make: 'VW',
+          model: 'Golf',
+        }),
+      });
+    }
+
     if (method === 'GET' && url.includes('/api/v1/vehicles/')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
     }
 
     return route.fallback();
   });
+}
+
+export async function openVehicleDetailDeepLink(
+  page: Page,
+  vehicleId: string,
+  tab: string = 'overview',
+  options?: { readOnly?: boolean },
+) {
+  resetFleetOperationalMockState();
+  const user = options?.readOnly ? mockReadOnlyUser : mockUser;
+  await page.addInitScript(
+    ({ token, user: u, locale }) => {
+      localStorage.setItem('synqdrive_token', token);
+      localStorage.setItem('synqdrive_user', JSON.stringify(u));
+      localStorage.setItem('synqdrive.locale', locale);
+    },
+    {
+      token: options?.readOnly ? 'vd-baseline-readonly-token' : 'fleet-op-e2e-token',
+      user,
+      locale: 'de',
+    },
+  );
+  await installFleetOperationalMocks(page);
+  await installVehicleDetailApiMocks(page);
+
+  const params = new URLSearchParams({ vehicleId });
+  if (tab !== 'overview') params.set('vdTab', tab);
+
+  await page.goto(`/rental?${params.toString()}`, { waitUntil: 'load' });
+  await page
+    .waitForResponse(
+      (response) =>
+        response.url().includes(`/organizations/${TEST_ORG_ID}/fleet-map`) &&
+        response.request().method() === 'GET' &&
+        response.ok(),
+      { timeout: 30_000 },
+    )
+    .catch(() => undefined);
 }
 
 export async function openVehicleDetailBaselineRental(

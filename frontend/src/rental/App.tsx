@@ -111,21 +111,18 @@ import {
   RentalEntityNavigationProvider,
   type RentalEntityNavigationValue,
 } from './context/RentalEntityNavigationContext';
+import type { VehicleDetailTab } from './lib/vehicle-overview.types';
+import {
+  applyVehicleDetailToUrl,
+  clearVehicleDetailFromUrl,
+  parseVehicleDetailFromUrl,
+  VEHICLE_DETAIL_VIEWS,
+} from './lib/vehicle-detail-navigation';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
 // Last-Signal indicator stays populated across tabs — not just Overview.
-// Keep in sync with the header/tabs guards further below in RentalAppContent.
-const VEHICLE_DETAIL_VIEWS = new Set<string>([
-  'overview',
-  'trips',
-  'health-errors',
-  'damages',
-  'documents',
-  'vehicle-bookings',
-  'vehicle-tasks',
-  'vehicle-requirements',
-]);
+// Keep in sync with `VEHICLE_DETAIL_TAB_KEYS` in vehicle-overview-navigation.ts.
 
 function VehicleLiveTelemetryBinder({
   vehicleId,
@@ -237,6 +234,8 @@ function readPersistedSettingsView(): boolean {
 function RentalAppContent() {
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles, loading: fleetLoading, refresh: refreshFleetVehicles } = useFleetVehicles();
+  const fleetLastFetchedAt = useFleetMapStore((state) => state.lastFetchedAt);
+  const fleetFetchError = useFleetMapStore((state) => state.error);
   const { uiEnabled: stationsUiEnabled, loading: stationsFlagsLoading } = useStationsV2FeatureFlags();
 
   useEffect(() => {
@@ -260,8 +259,13 @@ function RentalAppContent() {
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
   const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
-    const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
-    if (financeView) return financeView;
+    if (typeof window !== 'undefined') {
+      const vehicleDetail = parseVehicleDetailFromUrl(window.location.search);
+      // Defer deep-link tab until fleet resolves the vehicle — avoids mounting tab views without vehicleId.
+      if (vehicleDetail) return 'overview';
+      const financeView = parseFinanceViewFromUrl(window.location.search);
+      if (financeView) return financeView;
+    }
     return readPersistedSettingsView() ? 'settings' : 'dashboard';
   });
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
@@ -375,18 +379,118 @@ function RentalAppContent() {
   const navigateVehicleOverview = useMemo(
     () =>
       createVehicleOverviewNavigator({
-        setCurrentView: (view) => setCurrentView(view),
+        setCurrentView: (view) => {
+          if (selectedVehicle) {
+            openVehicleDetailRef.current(selectedVehicle, view);
+          } else {
+            setCurrentView(view);
+          }
+        },
         setHighlightedVehicleTaskId,
         setPendingBookingDetailId,
       }),
-    [setCurrentView, setHighlightedVehicleTaskId, setPendingBookingDetailId],
+    [selectedVehicle, setHighlightedVehicleTaskId, setPendingBookingDetailId],
   );
+
+  const skipVehicleDetailUrlSync = useRef(false);
+  const didInitialVehicleDetailUrlSync = useRef(false);
+  const urlVehicleResolvedRef = useRef(
+    typeof window === 'undefined' ? true : !parseVehicleDetailFromUrl(window.location.search),
+  );
+  const openVehicleDetailRef = useRef(
+    (_vehicle: VehicleData, _tab: VehicleDetailTab = 'overview') => {},
+  );
+
+  const openVehicleDetail = useCallback(
+    (vehicle: VehicleData, tab: VehicleDetailTab = 'overview') => {
+      setSelectedVehicle(vehicle);
+      setVehicleStatus(deriveVehicleDetailHeaderEditStatus(vehicle));
+      setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(vehicle));
+      setCurrentStation(vehicle.station);
+      setCurrentView(tab);
+
+      if (skipVehicleDetailUrlSync.current) {
+        skipVehicleDetailUrlSync.current = false;
+        return;
+      }
+      if (!didInitialVehicleDetailUrlSync.current) {
+        didInitialVehicleDetailUrlSync.current = true;
+        applyVehicleDetailToUrl({ vehicleId: vehicle.id, tab }, { replace: true });
+        return;
+      }
+      applyVehicleDetailToUrl({ vehicleId: vehicle.id, tab });
+    },
+    [],
+  );
+  openVehicleDetailRef.current = openVehicleDetail;
+
+  const resolveVehicleDetailFromUrl = useCallback(() => {
+    const fromUrl = parseVehicleDetailFromUrl(window.location.search);
+    if (!fromUrl) {
+      urlVehicleResolvedRef.current = true;
+      return;
+    }
+
+    if (!orgId) return;
+
+    if (!canReadFleetTelemetry) {
+      toast.error('Keine Berechtigung', {
+        description: 'Zum Öffnen von Fahrzeugdetails ist Fleet-Leserecht erforderlich.',
+      });
+      clearVehicleDetailFromUrl({ replace: true });
+      setCurrentView('fleet');
+      setFleetTab('status');
+      urlVehicleResolvedRef.current = true;
+      return;
+    }
+
+    if (fleetLoading || (!fleetLastFetchedAt && !fleetFetchError)) return;
+
+    if (fleetFetchError) {
+      toast.info('Fahrzeug konnte nicht geöffnet werden.');
+      clearVehicleDetailFromUrl({ replace: true });
+      setCurrentView('fleet');
+      setFleetTab('status');
+      urlVehicleResolvedRef.current = true;
+      return;
+    }
+
+    const match = fleetVehicles.find((vehicle) => vehicle.id === fromUrl.vehicleId);
+    if (match) {
+      skipVehicleDetailUrlSync.current = true;
+      setSelectedVehicle(match);
+      setVehicleStatus(deriveVehicleDetailHeaderEditStatus(match));
+      setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(match));
+      setCurrentStation(match.station);
+      setCurrentView(fromUrl.tab);
+      urlVehicleResolvedRef.current = true;
+      return;
+    }
+
+    toast.info('Fahrzeug konnte nicht geöffnet werden.');
+    clearVehicleDetailFromUrl({ replace: true });
+    setCurrentView('fleet');
+    setFleetTab('status');
+    urlVehicleResolvedRef.current = true;
+  }, [canReadFleetTelemetry, fleetFetchError, fleetLastFetchedAt, fleetLoading, fleetVehicles, orgId]);
   
   useEffect(() => {
-    if (!fleetLoading && fleetVehicles.length > 0 && !selectedVehicle) {
+    resolveVehicleDetailFromUrl();
+  }, [resolveVehicleDetailFromUrl]);
+
+  useEffect(() => {
+    const fromUrl = parseVehicleDetailFromUrl(window.location.search);
+    if (fromUrl?.vehicleId) return;
+    if (!urlVehicleResolvedRef.current) return;
+    if (
+      !fleetLoading &&
+      fleetLastFetchedAt &&
+      fleetVehicles.length > 0 &&
+      !selectedVehicle
+    ) {
       setSelectedVehicle(fleetVehicles[0]);
     }
-  }, [fleetLoading, fleetVehicles, selectedVehicle]);
+  }, [fleetLastFetchedAt, fleetLoading, fleetVehicles, selectedVehicle]);
 
   useEffect(() => {
     if (!selectedVehicle?.id) return;
@@ -673,16 +777,13 @@ function RentalAppContent() {
 
   // Handle vehicle selection from Fleet
   const handleVehicleSelect = (vehicle: VehicleData) => {
-    setSelectedVehicle(vehicle);
-    setVehicleStatus(deriveVehicleDetailHeaderEditStatus(vehicle));
-    setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(vehicle));
-    setCurrentStation(vehicle.station);
-    setCurrentView('overview');
+    openVehicleDetail(vehicle, 'overview');
   };
 
   const handleBackToFleet = () => {
     setCurrentView('fleet');
     setFleetTab('status');
+    clearVehicleDetailFromUrl({ replace: true });
   };
 
   const setFleetHealthServiceNavNormalized = useCallback(
@@ -709,11 +810,10 @@ function RentalAppContent() {
 
   const rentalEntityNavigation = useMemo<RentalEntityNavigationValue>(
     () => ({
-      openVehicleById: (vehicleId) => {
+      openVehicleById: (vehicleId, tab = 'overview') => {
         const match = fleetVehicles.find((vehicle) => vehicle.id === vehicleId);
         if (match) {
-          setSelectedVehicle(match);
-          setCurrentView('overview');
+          openVehicleDetail(match, tab);
           return;
         }
         toast.info('Fahrzeug konnte nicht geöffnet werden.');
@@ -738,14 +838,20 @@ function RentalAppContent() {
       openDocumentById: (_documentId, options) => {
         if (options?.vehicleId) {
           const match = fleetVehicles.find((vehicle) => vehicle.id === options.vehicleId);
-          if (match) setSelectedVehicle(match);
+          if (match) {
+            openVehicleDetail(match, 'documents');
+            return;
+          }
         }
         setCurrentView('documents');
       },
       openAlertById: (_alertId, options) => {
         if (options?.vehicleId) {
           const match = fleetVehicles.find((vehicle) => vehicle.id === options.vehicleId);
-          if (match) setSelectedVehicle(match);
+          if (match) {
+            openVehicleDetail(match, 'health-errors');
+            return;
+          }
         }
         setCurrentView('health-errors');
       },
@@ -763,7 +869,7 @@ function RentalAppContent() {
         setCurrentView('vendor-detail');
       },
     }),
-    [fleetVehicles, openServiceCenter, selectedVehicle?.id],
+    [fleetVehicles, openServiceCenter, openVehicleDetail, selectedVehicle?.id],
   );
 
   /** Central view router — maps legacy views to the new IA. */
@@ -782,15 +888,28 @@ function RentalAppContent() {
       }
       if (view === 'overview' && entry.returnEntityId) {
         const match = fleetVehicles.find((vehicle) => vehicle.id === entry.returnEntityId);
-        if (match) setSelectedVehicle(match);
+        if (match) {
+          openVehicleDetail(match, 'overview');
+          return;
+        }
       }
       if (view === 'health-errors' && entry.returnEntityId) {
         const match = fleetVehicles.find((vehicle) => vehicle.id === entry.returnEntityId);
-        if (match) setSelectedVehicle(match);
+        if (match) {
+          openVehicleDetail(match, 'health-errors');
+          return;
+        }
+      }
+      if (view === 'documents' && entry.returnEntityId) {
+        const match = fleetVehicles.find((vehicle) => vehicle.id === entry.returnEntityId);
+        if (match) {
+          openVehicleDetail(match, 'documents');
+          return;
+        }
       }
       setCurrentView(view as typeof currentView);
     },
-    [fleetVehicles],
+    [fleetVehicles, openVehicleDetail],
   );
 
   const handleViewChange = (view: string) => {
@@ -814,6 +933,9 @@ function RentalAppContent() {
     }
     if (view === 'fleet') {
       setFleetTab('status');
+    }
+    if (!VEHICLE_DETAIL_VIEWS.has(view)) {
+      clearVehicleDetailFromUrl({ replace: true });
     }
     setCurrentView(view as typeof currentView);
     try {
@@ -867,13 +989,78 @@ function RentalAppContent() {
   useEffect(() => {
     const onPopState = () => {
       const fromUrl = parseFleetHealthServiceNavFromSearch(window.location.search);
-      if (!fromUrl) return;
-      skipFleetHealthNavUrlSync.current = true;
-      setFleetHealthServiceNav(fromUrl);
+      if (fromUrl) {
+        skipFleetHealthNavUrlSync.current = true;
+        setFleetHealthServiceNav(fromUrl);
+      }
+
+      const vehicleDetail = parseVehicleDetailFromUrl(window.location.search);
+      skipVehicleDetailUrlSync.current = true;
+      if (!vehicleDetail) {
+        if (VEHICLE_DETAIL_VIEWS.has(currentView)) {
+          setCurrentView('fleet');
+          setFleetTab('status');
+        }
+        return;
+      }
+
+      if (!canReadFleetTelemetry) {
+        clearVehicleDetailFromUrl({ replace: true });
+        setCurrentView('fleet');
+        setFleetTab('status');
+        return;
+      }
+
+      const match = fleetVehicles.find((vehicle) => vehicle.id === vehicleDetail.vehicleId);
+      if (match) {
+        setSelectedVehicle(match);
+        setVehicleStatus(deriveVehicleDetailHeaderEditStatus(match));
+        setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(match));
+        setCurrentStation(match.station);
+        setCurrentView(vehicleDetail.tab);
+        return;
+      }
+
+      if (!fleetLoading && fleetLastFetchedAt && !match) {
+        toast.info('Fahrzeug konnte nicht geöffnet werden.');
+        clearVehicleDetailFromUrl({ replace: true });
+        setCurrentView('fleet');
+        setFleetTab('status');
+      }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [canReadFleetTelemetry, currentView, fleetLastFetchedAt, fleetLoading, fleetVehicles]);
+
+  useEffect(() => {
+    if (!showVehicleDetailChrome || !selectedVehicle?.id) return;
+    if (!VEHICLE_DETAIL_VIEWS.has(currentView)) return;
+    if (skipVehicleDetailUrlSync.current) {
+      skipVehicleDetailUrlSync.current = false;
+      return;
+    }
+
+    const fromUrl = parseVehicleDetailFromUrl(window.location.search);
+    if (
+      fromUrl?.vehicleId === selectedVehicle.id &&
+      fromUrl.tab === currentView
+    ) {
+      return;
+    }
+
+    if (!didInitialVehicleDetailUrlSync.current) {
+      didInitialVehicleDetailUrlSync.current = true;
+      applyVehicleDetailToUrl(
+        { vehicleId: selectedVehicle.id, tab: currentView as VehicleDetailTab },
+        { replace: true },
+      );
+      return;
+    }
+    applyVehicleDetailToUrl({
+      vehicleId: selectedVehicle.id,
+      tab: currentView as VehicleDetailTab,
+    });
+  }, [currentView, selectedVehicle?.id, showVehicleDetailChrome]);
 
   // Handle station change
   const handleStationChange = (newStation: string) => {
@@ -930,7 +1117,7 @@ function RentalAppContent() {
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
             <TopBar
               onViewChange={handleViewChange}
-              onVehicleSelect={setSelectedVehicle}
+              onVehicleSelect={(vehicle) => openVehicleDetail(vehicle, 'overview')}
               onSettingsTabChange={applySettingsTab}
               onFinanceTabChange={setFinanceTab}
             />
@@ -980,7 +1167,13 @@ function RentalAppContent() {
               ] as const).map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => setCurrentView(tab.key as typeof currentView)}
+                  onClick={() => {
+                    if (selectedVehicle) {
+                      openVehicleDetail(selectedVehicle, tab.key);
+                    } else {
+                      setCurrentView(tab.key as typeof currentView);
+                    }
+                  }}
                   className={chromeTabTriggerClass(currentView === tab.key)}
                 >
                   {tab.label}
@@ -1140,10 +1333,10 @@ function RentalAppContent() {
           />
         ) : currentView === 'dashboard' ? (
           <DashboardView
-            onVehicleSelect={(vehicle) => { setSelectedVehicle(vehicle); setCurrentView('overview'); }}
+            onVehicleSelect={(vehicle) => openVehicleDetail(vehicle, 'overview')}
             onOpenVehicleById={(vehicleId) => {
               const v = fleetVehicles.find((fv) => fv.id === vehicleId);
-              if (v) { setSelectedVehicle(v); setCurrentView('overview'); }
+              if (v) openVehicleDetail(v, 'overview');
             }}
             onOpenRentalView={(view) => handleViewChange(view)}
             onOpenSettingsTab={(tab) => {
@@ -1339,10 +1532,7 @@ function RentalAppContent() {
               },
               onOpenVehicle: (vehicleId) => {
                 const v = fleetVehicles.find((vehicle) => vehicle.id === vehicleId);
-                if (v) {
-                  setSelectedVehicle(v);
-                  setCurrentView('overview');
-                }
+                if (v) openVehicleDetail(v, 'overview');
               },
             }}
           />
@@ -1411,7 +1601,7 @@ function RentalAppContent() {
         ) : currentView === 'insurances' ? (
           <InsurancesView onNavigateToVehicleDocuments={(vehicleId) => {
             const v = fleetVehicles.find((fv: any) => fv.id === vehicleId);
-            if (v) { setSelectedVehicle(v); setCurrentView('documents'); }
+            if (v) openVehicleDetail(v, 'documents');
           }} />
         ) : currentView === 'ai-voice-assistant' ? (
           <VoiceAssistantView isDarkMode={isDarkMode} />
@@ -1460,12 +1650,16 @@ function RentalAppContent() {
             summary={vehicleOverviewSummary}
             onNavigate={navigateVehicleOverview}
             onOpenHealthDetails={() => {
-              if (selectedVehicle) setCurrentView('health-errors');
+              if (selectedVehicle) openVehicleDetail(selectedVehicle, 'health-errors');
             }}
             onOpenServiceCenter={openServiceCenter}
             onOpenVehicleTask={(taskId) => {
               setHighlightedVehicleTaskId(taskId);
-              setCurrentView('vehicle-tasks');
+              if (selectedVehicle) {
+                openVehicleDetail(selectedVehicle, 'vehicle-tasks');
+              } else {
+                setCurrentView('vehicle-tasks');
+              }
             }}
             tasksRefreshToken={vehicleTasksRefreshToken}
           />

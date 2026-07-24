@@ -1,7 +1,8 @@
 import { createContext, useContext, type ReactNode } from 'react';
+import type { VehicleDetailTab } from '../lib/vehicle-overview.types';
 
 export interface RentalEntityNavigationValue {
-  openVehicleById: (vehicleId: string) => void;
+  openVehicleById: (vehicleId: string, tab?: VehicleDetailTab) => void;
   openBookingById: (bookingId: string) => void;
   openCustomerById: (customerId: string) => void;
   openInvoiceById: (invoiceId: string) => void;
