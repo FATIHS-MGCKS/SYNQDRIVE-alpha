@@ -6,12 +6,14 @@ import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAnalyticsHookResult } from '../../../hooks/useEvaluationsAnalyticsSummary.types';
 import { resolveMetricFromEnvelope } from '@synq/evaluations-insights/evaluations-metric-state';
 import { fmtEurMinor, evaluationsIntlLocale } from '../../../lib/evaluations-format';
+import { EvaluationsRiskCostVizPanel } from '../EvaluationsRiskCostVizPanel';
 
 interface EvaluationsCostsDowntimeSectionProps {
   analytics: EvaluationsAnalyticsHookResult;
+  isDarkMode: boolean;
 }
 
-export function EvaluationsCostsDowntimeSection({ analytics }: EvaluationsCostsDowntimeSectionProps) {
+export function EvaluationsCostsDowntimeSection({ analytics, isDarkMode }: EvaluationsCostsDowntimeSectionProps) {
   const { t, locale } = useLanguage();
   const intlLocale = evaluationsIntlLocale(locale);
   const analyticsLocale = locale === 'en' ? 'en' : 'de';
@@ -99,6 +101,8 @@ export function EvaluationsCostsDowntimeSection({ analytics }: EvaluationsCostsD
           locale={analyticsLocale}
         />
       </div>
+
+      <EvaluationsRiskCostVizPanel summary={analytics.summary} isDarkMode={isDarkMode} variant="costs" />
 
       {costModelMetrics.length > 0 ? (
         <div className="rounded-xl border border-border/40 px-3 py-2">

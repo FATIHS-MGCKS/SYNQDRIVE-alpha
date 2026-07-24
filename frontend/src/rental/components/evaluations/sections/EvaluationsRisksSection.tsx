@@ -5,6 +5,7 @@ import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { EvaluationsInsightListCard } from '../EvaluationsInsightListCard';
+import { EvaluationsRiskCostVizPanel } from '../EvaluationsRiskCostVizPanel';
 import type { EvaluationsAnalyticsHookResult } from '../../../hooks/useEvaluationsAnalyticsSummary.types';
 
 interface EvaluationsRisksSectionProps {
@@ -80,6 +81,12 @@ export function EvaluationsRisksSection({
           locale={analyticsLocale}
         />
       </div>
+
+      <EvaluationsRiskCostVizPanel
+        summary={analytics.summary}
+        isDarkMode={isDarkMode}
+        variant="risks"
+      />
 
       {forecasts.length > 0 ? (
         <div className="mb-4 rounded-xl border border-border/40 px-3 py-2">

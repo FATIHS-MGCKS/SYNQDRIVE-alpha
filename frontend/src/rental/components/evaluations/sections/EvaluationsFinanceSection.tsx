@@ -8,6 +8,7 @@ import { resolveMetricFromEnvelope } from '@synq/evaluations-insights/evaluation
 import { formatCount } from '@synq/evaluations-insights/evaluations-metric-state';
 import { fmtEurMinor, evaluationsIntlLocale } from '../../../lib/evaluations-format';
 import { EvaluationsFinanceInvoiceDetail } from '../EvaluationsFinanceInvoiceDetail';
+import { EvaluationsRiskCostVizPanel } from '../EvaluationsRiskCostVizPanel';
 import type { EvaluationsInvoiceDataHookResult } from '../../../hooks/useEvaluationsInvoiceData';
 
 interface EvaluationsFinanceSectionProps {
@@ -112,6 +113,8 @@ export function EvaluationsFinanceSection({
           locale={analyticsLocale}
         />
       </div>
+
+      <EvaluationsRiskCostVizPanel summary={analytics.summary} isDarkMode={isDarkMode} variant="finance" />
 
       <EvaluationsFinanceInvoiceDetail
         invoiceData={invoiceData}

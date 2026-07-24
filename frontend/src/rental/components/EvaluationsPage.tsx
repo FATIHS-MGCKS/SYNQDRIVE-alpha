@@ -127,7 +127,7 @@ export function EvaluationsPage({ isDarkMode, onNavigate }: EvaluationsPageProps
           vehicleLabelById={vehicleLabelById}
         />
         <EvaluationsFleetSection analytics={analytics} />
-        <EvaluationsCostsDowntimeSection analytics={analytics} />
+        <EvaluationsCostsDowntimeSection analytics={analytics} isDarkMode={isDarkMode} />
         <EvaluationsActionsSection
           businessRisks={businessRisks}
           revenueLeakage={revenueLeakage}

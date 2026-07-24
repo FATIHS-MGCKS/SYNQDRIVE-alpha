@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-risk-cost-viz-v49831-2026-07-24',
+    version: 'V4.9.831',
+    title: 'V4.9.831 — Risiko-, Kosten- und Ausfallvisualisierungen (Prompt 33/54)',
+    summary: [
+      '7 fachliche Charts: Risikomatrix, Kosten-Waterfall, Pareto, Kosten/Downtime-Zeitreihe, Forderungs-Aging, Flottenausfalltrend, Station/Klassenvergleich.',
+      'Jede Visualisierung beantwortet eine konkrete Management-Frage; Einheiten/Zeitraum sichtbar; Schätzungen gekennzeichnet.',
+      'Null-Lücken statt Nullwerte; tabellarische Screenreader-Alternative unter jedem Chart.',
+      'Shared: `evaluations-risk-cost-visualizations.*`; UI `EvaluationsRiskCostVizPanel`, `EvaluationsChartCard`.',
+      'Drill-down (Risiko-Anker) und Filterinteraktion (Station/Klasse-Toggle).',
+      'Doku: `docs/frontend/evaluations-risk-cost-visualizations.md`.',
+    ],
+    reason:
+      'Prompt 33/54 — Risiken, Kosten und Ausfälle visuell analysierbar machen ohne dekorative Charts.',
+    previousBehavior: 'Risiken/Kosten-Sektionen nur KPI-Karten und Listen; keine Matrix, Waterfall, Pareto oder Aging.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T16:00:00.000Z',
+  },
+  {
     id: 'evaluations-sw-cockpit-v49830-2026-07-24',
     version: 'V4.9.830',
     title: 'V4.9.830 — Stärken- und Schwächen-Cockpit (Prompt 32/54)',
