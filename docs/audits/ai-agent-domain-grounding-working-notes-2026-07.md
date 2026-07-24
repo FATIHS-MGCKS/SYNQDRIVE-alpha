@@ -2,7 +2,7 @@
 
 | Feld | Wert |
 |------|------|
-| **Phase** | Prompt 1–2 von 32 — Ist-Audit Chat-Runtime + Telemetrie Source of Truth (read-only) |
+| **Phase** | Prompt 1–3 von 32 — Ist-Audit: Chat-Runtime, Telemetrie, Booking/Return, Vehicle Health (read-only) |
 | **Datum** | 2026-07-24 (UTC) |
 | **Repository** | `https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **HEAD (Audit)** | `f5a5b4e3` — `fix(infra): Nginx HSTS/metrics hardening + CI typecheck drift (V4.9.809)` |
@@ -463,6 +463,15 @@ ChatController
 | `connectivity-cross-surface-regression.test.ts` | 19/19 PASS |
 | `DimoSnapshotProcessor` → `VehicleLatestState` upsert | Einziger Schreibpfad (verifiziert) |
 
+### Prompt 3
+
+| Prüfung | Ergebnis |
+|---------|----------|
+| `booking-lifecycle-status.matrix.spec.ts` | PASS |
+| `rental-health.service.spec.ts` | PASS (inkl. fail-closed gate) |
+| Grep `HandoverStatus` / `ReturnStatus` in Prisma | **Kein Enum** — nur abgeleitet |
+| Grep `RentalHealth` in `backend/src/modules/ai/chat` | 0 Treffer — AI-Chat ohne Health/Booking |
+
 ## Anhang C — Änderungshistorie (relevant)
 
 Aus `frontend/src/master/components/ChangesView.tsx`:
@@ -678,28 +687,301 @@ Spalten: **Fachinformation** | **Primäre Quelle** | **Fallback** | **Berechnung
 
 ---
 
-## 12. Offene Fragen (Prompt 3+)
+---
 
-1. Welche Felder aus der Matrix sollen als **erste AI-Tools** priorisiert werden (VLS-Snapshot vs. Live-GPS)?
-2. Soll AI die **kanonische Freshness** (`resolveTelemetryFreshness`) pro Antwort mitliefern?
-3. Einheitliche **Kennzeichen-Normalisierung** über AI, Voice, Docs — welche Funktion wird Standard?
-4. Soll **Adresse** serverseitig persistiert/gecached werden für AI und Ops?
-5. Wie mit **OBD-Episode vs. Live-Telemetrie-Konflikt** in AI-Antworten umgehen?
-6. Dürfen **VIN/Kennzeichen/Koordinaten** an Mistral — Tenant-DPA-Klärung?
-7. Soll AI **Trip/Segment-Daten** lesen dürfen (DIMO Segments als kanonische Grenze)?
+# Prompt 3 — Booking/Return & Vehicle Health Source of Truth
+
+## 13. Booking/Return — Architekturüberblick
+
+```mermaid
+flowchart TB
+  subgraph Persisted["Persistiert (Source of Truth)"]
+    B["Booking: status, startDate, endDate, stations"]
+    HP["BookingHandoverProtocol: kind PICKUP|RETURN, performedAt"]
+    VS["Vehicle.status — sekundär, nicht allein authoritative"]
+  end
+
+  subgraph DerivedBE["Backend abgeleitet"]
+    FBC["fleet-booking-context.util"]
+    DFS["vehicles.service deriveFleetStatusContext"]
+    OPS["fleet-operational-state.util"]
+  end
+
+  subgraph DerivedFE["Frontend abgeleitet"]
+    VRS["vehicleRuntimeStateBuilder"]
+    DSB["dashboardSliceBuilder + todaysOperationalSlice"]
+    TILES["BookingsService findTodaysPickups/Returns"]
+  end
+
+  B --> FBC --> DFS
+  HP --> B
+  B --> DFS
+  DFS --> VRS
+  TILES --> DSB
+```
+
+**Kernregel:** `Booking.status` + `BookingHandoverProtocol` sind die Lifecycle-Wahrheit. Fleet-Operational-State (`Active Rented`, `Reserved`, …) wird aus offenen Buchungen abgeleitet — **nicht** aus `Vehicle.status` allein. Es gibt **kein** Prisma-Enum `HandoverStatus` / `ReturnStatus`; diese Labels sind berechnet.
+
+### 13.1 Zentrale Backend-Klassen
+
+| Pfad | Klasse / Funktion | Rolle |
+|------|-------------------|-------|
+| `backend/prisma/schema.prisma` | `Booking`, `BookingHandoverProtocol`, `BookingStatus`, `HandoverKind` | Persistenz |
+| `backend/src/modules/bookings/booking-lifecycle-status.matrix.ts` | `resolvePatchStatusTransition`, `resolveHandoverStatusTransition`, `resolveNoShowTransition`, `resolveCancelTransition` | Transition-Matrix + Reason Codes |
+| `backend/src/modules/bookings/bookings.service.ts` | `create`, `update`, `cancel`, `markNoShow`, `findTodaysPickups`, `findTodaysReturns`, `buildTodayReturnSignals` | CRUD + Today-Tiles |
+| `backend/src/modules/bookings/bookings-handover.service.ts` | `createHandover` | Pickup/Return → Status + Vehicle + Station |
+| `backend/src/modules/bookings/booking-conflict.util.ts` | Overlap-Prüfung | Verhindert parallele ACTIVE-Buchungen |
+| `backend/src/modules/vehicles/operational/fleet-booking-context.util.ts` | `buildFleetBookingContextFromRows`, `isCanonicalPickupReservationDay` | Pro-Fahrzeug Booking-Buckets |
+| `backend/src/modules/vehicles/vehicles.service.ts` | `deriveFleetStatusContext`, `buildBookingContextMap` | Kanonischer Fleet-Operational-State |
+| `backend/src/modules/vehicles/operational/fleet-operational-state.util.ts` | `buildFleetOperationalStateDto` | Operational DTO |
+| `backend/src/modules/business-insights/detectors/pickup-overdue.detector.ts` | `PickupOverdueDetector` | Persistierte Insights (nur Pickup) |
+| `backend/src/modules/vehicles/diagnostic/vehicle-booking-handover-diagnostic.service.ts` | Org-weiter Konsistenz-Scan | Booking vs. Vehicle vs. Derivation |
+| `backend/src/modules/vehicles/diagnostic/vehicle-booking-handover-repair.service.ts` | Stale RESERVED/RENTED Repair | Datenhygiene |
+
+### 13.2 Zentrale Frontend-Klassen
+
+| Pfad | Rolle |
+|------|-------|
+| `frontend/src/rental/lib/vehicle-operational-state/selectors.ts` | Kanonische Operational-Selectors, Ghost-Erkennung |
+| `frontend/src/rental/components/dashboard/runtime/vehicleRuntimeStateBuilder.ts` | `deriveBookingState`, `RuntimeReason`, Ready-to-Rent |
+| `frontend/src/rental/components/dashboard/runtime/dashboardSliceBuilder.ts` | Slices: `overdue-returns`, `overdue-pickups`, `active-rented`, … |
+| `frontend/src/rental/components/dashboard/runtime/todaysOperationalSlice.ts` | Multi-Membership Today-Groups |
+| `frontend/src/rental/lib/bookingHandoverGates.ts` | UI Pickup/Return Gates (advisory) |
+| `frontend/src/rental/lib/vehicle-booking-agenda.utils.ts` | Fahrzeug-Agenda, Overdue-Anreicherung |
+| `frontend/src/rental/components/booking-detail/bookingActionRules.ts` | Operator-Aktionsmatrix |
 
 ---
 
-## Anhang D — Statische Prüfungen Prompt 2
+## 14. Booking/Return — Source-of-Truth-Matrix
 
-| Prüfung | Ergebnis |
-|---------|----------|
-| `telemetry-freshness.resolver.spec.ts` | PASS |
-| `vehicle-state-interpreter.spec.ts` | PASS |
-| `vehicle-connectivity-runtime-state.builder.spec.ts` | PASS |
-| `connectivity-cross-surface-regression.test.ts` (Frontend) | 19/19 PASS |
-| Grep `fetchLatestVehicleSnapshot` in `backend/src` | 2 Produktions-Call-Sites (Processor + Tests) |
-| Grep `VehicleLatestState` upsert | `DimoSnapshotProcessor` (sole writer) |
+Spalten: **Zustand** | **Primäre Quelle** | **Fallback** | **Berechnung** | **Events** | **UI** | **Backend** | **AI?** | **Reason Codes** | **Inkonsistenzen**
+
+| Zustand | Primäre Quelle | Fallback | Berechnung | Events / Änderung | UI | Backend-Services | AI? | Reason Codes | Inkonsistenzen |
+|---------|----------------|----------|------------|-------------------|-----|------------------|-----|--------------|----------------|
+| **Buchungsstatus** | `Booking.status` (`BookingStatus` enum) | — | `booking-lifecycle-status.matrix.ts` erzwingt Transitionen; PATCH darf nicht ACTIVE/COMPLETED setzen | create/confirm, handover, cancel, no-show | Booking list/detail, Operator | `BookingsService`, `BookingsHandoverService` | WhatsApp/Voice: Status+Daten; Chat: ❌ | `BOOKING_ACTIVATION_REQUIRES_HANDOVER`, `HANDOVER_PICKUP_WRONG_STATUS`, … | Operator UI erlaubt teils `pending` für No-Show; Backend verlangt `CONFIRMED` |
+| **Aktive Buchung** | `Booking` mit `status=ACTIVE` | — | `buildFleetBookingContextFromRows` → `activeBookingId` | Pickup-Handover | Fleet, Dashboard `active-rented` | `fleet-booking-context.util`, `deriveFleetStatusContext` | Voice: indirekt via Fleet; Chat: ❌ | Runtime `active_rented` | `Vehicle.status=RENTED` ohne ACTIVE → Ghost Guard |
+| **Geplante Abholung** | `Booking.startDate`, `pickupStationId` | — | Bei Create/Update gesetzt | Booking CRUD | Booking Detail, Today Pickups | `BookingsService` | WhatsApp: ✅ | — | — |
+| **Geplante Rückgabe** | `Booking.endDate`, `returnStationId` | — | Bei Create/Update; Verlängerung = PATCH `endDate` | Booking CRUD, overlap check | Booking Detail, Today Returns | `BookingsService`, `booking-conflict.util` | WhatsApp: ✅ | — | Kein separates „Extension“-Modell |
+| **Tatsächliche Übergabe** | `BookingHandoverProtocol` (`kind=PICKUP`, `performedAt`) | — | `createHandover('PICKUP')`; backdatable max 7 Tage vor `startDate` | `PICKUP_COMPLETED` Audit | Handover UI, Tile `done` | `BookingsHandoverService` | ❌ | Pickup-Gate Audit (`BookingPickupGateAuditEvent`) | Frontend Gates advisory; Backend authoritative |
+| **Tatsächliche Rücknahme** | `BookingHandoverProtocol` (`kind=RETURN`, `performedAt`) | — | `createHandover('RETURN')` → `COMPLETED`, `completedAt`, `kmDriven` | `RETURN_COMPLETED` | Handover UI, Tile `done` | `BookingsHandoverService` | ❌ | — | `returnProtocolStatus` nur auf Today-Returns API |
+| **Karenzzeiten** | **Keine org-konfigurierbar** | Hardcoded Schwellen | Pickup Insight: ≥30 min (`PickupOverdueDetector`); Dashboard due-soon: 60 min; Return overdue: **0** (sofort bei `endDate < now`) | — | Dashboard, Insights | Detector vs. Tiles | ❌ | Insight severity tiers | **30 min Grace nur Insights**, nicht Dashboard-Tiles |
+| **Genehmigte Verlängerung** | PATCH `Booking.endDate` | — | `booking-conflict.util` Overlap-Check | Booking update | Booking Detail | `BookingsService` | ❌ | — | `BookingEligibilityApproval` = Kunden-Eligibility, **nicht** Kalenderverlängerung |
+| **Storniert** | `status=CANCELLED`, `cancelledAt` | — | `resolveCancelTransition`; nicht aus ACTIVE | `BookingsService.cancel` | Booking actions | `BookingsService` | Teilweise | `BOOKING_CANCEL_ACTIVE` | `cancelledAt` shared mit No-Show |
+| **No-Show** | `status=NO_SHOW`, `cancelledAt` | — | `resolveNoShowTransition`: nur CONFIRMED, `startDate` past | `markNoShow` | Operator No-Show Sheet | `BookingsService` | ❌ | `BOOKING_NO_SHOW_TOO_EARLY` | UI/Backend Status-Mismatch möglich |
+| **Verspätete Abholung** | Abgeleitet | — | CONFIRMED, kein PICKUP-Protocol, `startDate < now`; Fleet: `reservedIsOverdue` | Zeit | Today Pickups, Agenda, Slice `overdue-pickups` | `findTodaysPickups`, `PickupOverdueDetector`, `fleet-booking-context` | ❌ | Insight `PICKUP_OVERDUE` | Mehrfach berechnet; Schwellen differieren |
+| **Überfällige Rückgabe** | Abgeleitet | — | ACTIVE, kein RETURN-Protocol, `endDate < now`; `activeIsOverdue` | Zeit | Today Returns, Slice `overdue-returns`, `return_overdue` runtime | `buildTodayReturnSignals`, `fleet-booking-context`, `vehicleRuntimeStateBuilder` | ❌ | Notification keys `return_overdue`; **kein** `InsightType.RETURN_OVERDUE` | Kein Backend-Insight-Detector; nur Frontend/Runtime |
+| **Handover-Status** | **Nicht persistiert** | Protocol-Existenz | `HandoverSideSummary.status: completed` wenn Row existiert | Protocol create | Booking Detail, Tiles | `BookingsService` (detail DTO) | ❌ | — | Kein DB-Feld |
+| **Return-Status (Today API)** | Abgeleitet | — | `buildTodayReturnSignals`: COMPLETED wenn Return-Protocol; PENDING wenn ACTIVE | — | Dashboard Returns Tile | `BookingsService` | ❌ | — | `findTodaysReturns` inkl. `CONFIRMED` Edge Case |
+| **Runtime Booking State** | Frontend `BookingRuntimeState` | Backend `operationalState` | `deriveBookingState` + `resolveVehicleRuntimeOperationalBlock` | Today tiles + fleet context | Dashboard Runtime Board | — (FE) | ❌ | `RuntimeReason` mit `category`, `severity`, `blocking` | FE-only; nicht in Chat |
+| **Operational Fleet Status** | `deriveFleetStatusContext` | `Vehicle.status` (mit Ghost Guard) | Maintenance > Booking-derived > DB map | Handover, cancel, no-show | Fleet Map, Vehicle Cards | `VehiclesService` | Voice: Labels; Chat: ❌ | Ghost-State Log-Warnung | `Vehicle.status=RESERVED` wird bei Confirm **nicht** auto-gesetzt |
+| **Dashboard Slice overdue-returns** | `returnItems` where `isOverdue && !done` | — | `dashboardSliceBuilder` + `todaysOperationalSlice` | Today-Returns API | Dashboard | — (FE) | ❌ | `booking-runtime:return-overdue` | Multi-Slice-Membership erlaubt |
+| **Station Abholung** | `Booking.pickupStationId` → `actualPickupStationId` | — | Actual bei Pickup-Handover | Handover | `BookingStationPanel` | `BookingsHandoverService` | WhatsApp: Station name | `hasPickupDeviation` auf Detail DTO | — |
+| **Station Rückgabe** | `Booking.returnStationId` → `actualReturnStationId` | — | Actual bei Return-Handover | Handover | Booking Detail | `BookingsHandoverService` | WhatsApp: ✅ | `hasReturnDeviation` | — |
+| **Fahrzeug-Station (physisch)** | `Vehicle.currentStationId` | — | Handover setzt `HANDOVER_PICKUP` / `HANDOVER_RETURN` | Handover | Fleet, Stations | `BookingsHandoverService` | ❌ | — | Orthogonal zu Booking-Station |
+
+---
+
+## 15. Vehicle Health — Architekturüberblick
+
+SynqDrive hat **drei Health-Schichten**:
+
+| Schicht | Rolle | Kanonisch für |
+|---------|-------|---------------|
+| **Rental Health V1** | `RentalHealthService.getVehicleHealth()` — Aggregator über 7 Module | `overall_state`, `rental_blocked`, Booking-Gates |
+| **Domain Health Services** | Battery, Tires, Brakes, DTC, Service Compliance, … | Modul-Detail, Rental-Health-Inputs |
+| **Presentation / Runtime** | Health Tab Summary, AI Care, Dashboard Ready-to-Rent | UI-Narrative, nicht Booking-Gate |
+
+**Booking-Gate (hard):** `RentalHealthService.isRentalBlocked()` — fail-closed bei `availability !== 'ready'` oder `rental_blocked === null`.
+
+**Deprecated:** `Vehicle.healthStatus` (Prisma) — explizit nicht für UI oder Gates verwenden.
+
+```mermaid
+flowchart TB
+  subgraph Domain["Domain Services + Persistenz"]
+    BAT[CanonicalBatteryHealthService]
+    TIR[TireHealthService]
+    BRK[BrakeHealthService]
+    DTC[DtcService]
+    SVC[ServiceComplianceService]
+    HM[HmSignalUsageService]
+    CMP[VehicleComplaint]
+  end
+
+  subgraph Aggregate["Rental Health V1 — kanonisches Gate"]
+    RHS[RentalHealthService.getVehicleHealth]
+    BLOCK[collectBlockingReasons]
+  end
+
+  subgraph Presentation["Read Models — nicht Gate"]
+    TAB[VehicleHealthTabSummaryService]
+    AI[AiHealthCareAggregationService]
+    REDIS[RentalHealthSummaryCache 45s]
+  end
+
+  Domain --> RHS --> BLOCK
+  RHS --> REDIS
+  RHS --> TAB
+  Domain --> AI
+  RHS --> BookingsGate[BookingsService.enforceRentalHealthGate]
+```
+
+### 15.1 Zentrale Backend-Klassen
+
+| Pfad | Rolle |
+|------|-------|
+| `backend/src/modules/rental-health/rental-health.service.ts` | `getVehicleHealth`, `isRentalBlocked`, `collectBlockingReasons` |
+| `backend/src/modules/rental-health/rental-health.types.ts` | `VehicleHealth`, `computeOverallState`, `resolveRentalBlockedState` |
+| `backend/src/modules/rental-health/rental-health-summary-cache.service.ts` | Redis `rental-health-summary:{orgId}:{vehicleId}:v1`, TTL 45s |
+| `backend/src/modules/rental-health/tire-rental-health.policy.ts` | `buildTireModuleHealth`, `isTireRentalHardBlocked`, `TireRentalReasonCode` |
+| `backend/src/modules/rental-health/brake-rental-health.policy.ts` | `buildBrakeModuleHealth`, `BrakeRentalReasonCode` |
+| `backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts` | Kanonische Batterie |
+| `backend/src/modules/vehicle-intelligence/battery-health/battery-readiness.policy.ts` | `evaluateBatteryReadiness`, Rental-Block-Entscheid |
+| `backend/src/modules/vehicle-intelligence/tires/tire-health.service.ts` | Reifen-Domain |
+| `backend/src/modules/vehicle-intelligence/brakes/brake-health.service.ts` | Bremsen-Domain |
+| `backend/src/modules/vehicle-intelligence/dtc/dtc.service.ts` | DTC Summary |
+| `backend/src/modules/vehicle-intelligence/service-compliance/service-compliance.service.ts` | TÜV, BOKraft, Next Service |
+| `backend/src/modules/vehicle-intelligence/health-summary/vehicle-health-tab-summary.service.ts` | Health-Tab (re-reads Rental Health + dataQuality) |
+| `backend/src/modules/vehicle-intelligence/health-summary/health-summary.service.ts` | AI Agent Input (parallel, nicht Gate) |
+| `backend/src/modules/vehicle-intelligence/health-summary/ai-health-care-aggregation.service.ts` | AI Care Narrative |
+| `backend/src/modules/technical-observations/technical-observations.service.ts` | `VehicleComplaint` CRUD |
+
+### 15.2 Zentrale Frontend-Klassen
+
+| Pfad | Rolle |
+|------|-------|
+| `frontend/src/rental/hooks/useVehicleHealth.ts` | `api.rentalHealth.getVehicle` |
+| `frontend/src/rental/lib/rental-health-status.ts` | `unknown` → Label „Limited data“ |
+| `frontend/src/rental/lib/rental-health-availability.ts` | `ready` / `partial` / `unavailable` |
+| `frontend/src/rental/components/dashboard/runtime/rentalReadiness.ts` | `deriveIsReadyForRenting` |
+| `frontend/src/rental/lib/booking-vehicle-preflight.ts` | Booking-Fahrzeugauswahl Gate |
+| `frontend/src/rental/lib/damage-rental-impact.ts` | Schäden — **nur Frontend**, nicht in `collectBlockingReasons` |
+
+---
+
+## 16. Vehicle Health — Source-of-Truth-Matrix
+
+| Fachinformation | Primäre Quelle | Fallback | Berechnung | Events | UI | Backend | AI? | Reason Codes | Inkonsistenzen |
+|-----------------|----------------|----------|------------|--------|-----|---------|-----|--------------|----------------|
+| **Gesamtzustand** | `RentalHealthService` → `computeOverallState(modules)` | — | worst wins: critical > warning > **unknown** (nie → good) > good | Domain-Updates | `VehicleHealthBoxWired`, Fleet Badge | `rental-health.service.ts` | AI Care separat (`good/watch/attention`) | `ModuleHealth.reason` pro Modul | AI-Narrative ≠ `rental_blocked` |
+| **Rental blocked** | `collectBlockingReasons` + `resolveRentalBlockedState` | fail-closed wenn `availability !== 'ready'` | Siehe Blocking-Liste unten | Module-Recalc, Overrides | Booking preflight, Badge | `isRentalBlocked()` | Chat: ❌; Booking Detail: ✅ warnings | `blocking_reasons[]` strings | `rental_blocked: null` bei partial — **nie „sicher frei“** |
+| **Availability / Limited Data** | `computeRentalHealthAvailability` | — | `ready` / `partial` / `unavailable`; partial → `rental_blocked: null` | Pipeline failures | `rental-health-availability.ts` | `rental-health.types.ts` | ❌ | `degradation.message` | „Limited data“ Label bei `unknown` — korrekt, nicht „gesund“ |
+| **Batterie** | `CanonicalBatteryHealthService.getSummary` | HM Dashboard lights | `evaluateBattery` + `battery-readiness.policy` | Snapshot worker, Battery V2, Docs | Battery Health Tab | `mapRentalBatteryModule` | AI: `HealthSummaryService` | `BatteryReadinessEvaluation.reason`, blocks/hardBlock | Legacy endpoints noch vorhanden |
+| **Reifen** | `TireHealthService.getSummary` | TPMS HM/DIMO | `tire-rental-health.policy` | Tire recalc worker, trips, docs | Tire modals | `TireRentalReasonCode`, `rentalBlockingEvidence` | AI: tread/confidence | `TREAD_MEASURED_BELOW_LEGAL_MIN`, `PRESSURE_TPMS_CRITICAL`, … | Estimated tread **nie** allein hard-block |
+| **Bremsen** | `BrakeHealthService.getSummary` | DTC brake evidence | `brake-rental-health.policy` | Brake recalc, service apply | Brake detail UI | `BrakeRentalReasonCode`, `structuredReasonCodes` | AI: pad % | `WEAR_MEASURED_CRITICAL`, `SAFETY_DTC_CRITICAL`, … | Legacy `brake-status` endpoint |
+| **DTCs / Fehlercodes** | `DtcService.getSummary` | `VehicleLatestState` poll meta | `evaluateErrorCodes`; stale 6h | `dimo-dtc.processor` | `HealthErrorsView` | `dtc-severity.util` | AI: activeCount | Block nur **safety-critical** bands | Non-safety critical → severity, kein block |
+| **Warnleuchten (OEM)** | `evaluateVehicleAlerts` (limp, oil) | `DashboardWarningLightsService` (TODO) | HM `getAiHealthCareSignals` | HM polling | Health tab OEM | `rental-health.service.ts` | AI Care | Limp/oil in `blocking_reasons` | Migration TODO zu `DashboardWarningLightsService` |
+| **Connectivity (Health-Kontext)** | `VehicleHealthTabSummary.sourceStatus` | Telemetry freshness | `resolveHmFreshness`, `resolveDimoFreshness` | Telemetry ingest | Health tab data quality | `vehicle-health-tab-summary.service.ts` | Indirekt in dataQuality | reasons in `dataQuality.reasons[]` | Nicht Rental-Health-Modul; Ready blockt bei `telemetry offline` |
+| **Serviceintervalle** | `ServiceComplianceService` | HM next service | `evaluateNextService` | HM sync, manual dates | Service tab | `service-compliance.service.ts` | AI: trackingStatus | HM CRITICAL → module critical, **nicht** rental block | `nextService.blocksRental` **nicht** in `collectBlockingReasons` |
+| **TÜV** | `Vehicle.nextTuvDate` | — | `evaluateTuvBokraft` overdue | Manual update, docs | Compliance UI | `service-compliance` | AI: overdue flag | `TÜV abgelaufen seit N Tagen` in blocking | — |
+| **BOKraft** | `Vehicle.nextBokraftDate` | — | same | same | same | same | same | `BOKraft abgelaufen…` | — |
+| **Schäden** | `VehicleDamage.rentalImpact` | Default by severity mapper | `deriveDamageRentalImpact` (FE) | Damage CRUD | Damages view | `damages.service.ts` | ❌ | `BLOCK_RENTAL`, `SAFETY_CRITICAL` | **Gap:** nicht in `collectBlockingReasons` |
+| **Technische Beobachtungen** | `VehicleComplaint` | — | `evaluateComplaints` | Observation CRUD | Observations UI | `technical-observations.service.ts` | ❌ | Block nur wenn `blocksRental=true` | Severity alone **never** blocks |
+| **Offene Tasks** | `Task` model | Service cases | Health-task-bridge, compliance materialize | Task/workflow events | Health task panels | Various | ❌ | Task titles | Tasks allein blockieren **nicht** `rental_blocked` |
+| **Service Cases** | `ServiceCase.blocksRental` | — | Dashboard runtime only | Service case lifecycle | Dashboard ready slice | Prisma | ❌ | `service-case:{id}` runtime reason | **Parallel gate** außerhalb Rental Health V1 |
+| **Confidence / Datenabdeckung** | Domain: `confidenceScore`, `confidenceLabel` | — | Per-module; Tab: `computeDataQuality` | Measurements, recalc | Health tab, module detail | Domain + tab summary | AI: `dataConfidence` | `evidence_type`, structured codes | Fleet cache 45s stale |
+| **Ready-to-Rent** | Frontend `deriveIsReadyForRenting` | Backend `isRentalBlocked` | Composite: available + clean + telemetry + no blockers | Runtime rebuild | Dashboard `ready-to-rent` slice | FE + `RentalHealthService` | ❌ | `RuntimeReason` categories | Strenger als Backend-Gate (cleaning, telemetry) |
+| **Warning / Critical / Maintenance** | `overall_state` (health) vs `operationalStatus` (fleet) | — | Orthogonale Achsen | Various | Fleet + Health UIs | Separate services | ❌ | Verschiedene Vokabulare | Maintenance ≠ health warning |
+
+### 16.1 `collectBlockingReasons` — kanonische Blocking-Reihenfolge
+
+Quelle: `rental-health.service.ts` → `collectBlockingReasons`
+
+1. TÜV overdue  
+2. BOKraft overdue  
+3. `VehicleComplaint.blocksRental === true`  
+4. Limp Mode aktiv (HM)  
+5. Bremsen hard block (`isBrakeRentalHardBlocked`)  
+6. Reifen hard block (`isTireRentalHardBlocked`)  
+7. Batterie block (`evaluateBatteryReadiness` / warning light / safety DTC)  
+8. Safety-critical DTCs  
+9. Motoröl LOW/MINIMUM  
+
+**Explizit nicht blockierend (trotz module severity):** HM next service overdue, non-safety DTCs, complaint urgency ohne `blocksRental`, damages (`rentalImpact`), service tasks.
+
+### 16.2 `computeOverallState` — kein „gesund bei fehlenden Daten“
+
+```147:155:backend/src/modules/rental-health/rental-health.types.ts
+export function computeOverallState(
+  modules: Array<Pick<ModuleHealth, 'state'>>,
+): HealthState {
+  const applicable = modules.filter((m) => m.state !== 'n_a');
+  if (applicable.length === 0) return 'unknown';
+  if (applicable.some((m) => m.state === 'critical')) return 'critical';
+  if (applicable.some((m) => m.state === 'warning')) return 'warning';
+  if (applicable.some((m) => m.state === 'unknown')) return 'unknown';
+  return 'good';
+}
+```
+
+`unknown` wird **nie** zu `good` promotet — korrektes Fail-Safe für Limited Data.
+
+---
+
+## 17. Kritische Befunde (Prompt 3 — für AI Grounding)
+
+| ID | Befund | Schwere | Evidenz |
+|----|--------|---------|---------|
+| **K1** | **Fleet AI Chat ohne Booking- und Health-Daten** | Kritisch | `ChatService` lädt nur `Vehicle` Stammdaten; kein `RentalHealthService`, kein `Booking` |
+| **K2** | **UI verspricht Buchungs-/Finanz-Capabilities** | Kritisch | `aiChat.cap.bookings/finance` vs. fehlende Backend-Tools (Prompt 1) |
+| **K3** | **Return overdue ohne Backend-Insight** | Hoch | `InsightType` hat `PICKUP_OVERDUE`, nicht `RETURN_OVERDUE`; nur FE/Runtime |
+| **K4** | **Pickup overdue Schwellen divergieren** | Hoch | Tiles: sofort bei `startDate < now`; Insights: ≥30 min |
+| **K5** | **Ghost Vehicle.status ohne Booking** | Mittel | Ghost Guard in `deriveFleetStatusContext`; Repair-Scripts existieren |
+| **K6** | **Schäden blockieren Rental nur im Frontend** | Hoch | `damage-rental-impact.ts` Hook-Kommentar; nicht in `collectBlockingReasons` |
+| **K7** | **ServiceCase.blocksRental parallel zu Rental Health** | Mittel | Dashboard blockt; Backend Health Gate kennt es nicht |
+| **K8** | **AI Health Care ≠ Rental Health Gate** | Hoch | `AiHealthCareAggregationService` kann „watch“ sagen während `rental_blocked=false` |
+| **K9** | **Availability partial → rental_blocked null** | Mittel | Korrekt fail-closed, aber AI könnte „nicht blockiert“ falsch interpretieren |
+| **K10** | **Status ohne Reason auf Booking-Ebene** | Mittel | Overdue ist zeitabgeleitet, kein `Booking.overdueReason` Feld |
+| **K11** | **WhatsApp/Voice haben mehr Booking-Kontext als Chat** | Hoch | `findDetail` / `get_booking_status` vs. leerer Chat |
+| **K12** | **HM Next Service critical ohne Rental-Block** | Niedrig | Bewusst; UI zeigt Warnung, Gate lässt durch |
+
+---
+
+## 18. AI-Zugriff — Booking & Health (Zusammenfassung)
+
+| Datenklasse | Fleet AI Chat | WhatsApp AI | Voice MCP | Booking Gate |
+|-------------|---------------|-------------|-----------|--------------|
+| Booking status/dates/stations | ❌ | ✅ `findDetail` | ✅ `get_booking_status` | — |
+| Handover / overdue | ❌ | ❌ | ❌ | — |
+| Fleet operational state | ❌ | ❌ | ✅ teilweise `get_vehicle_status` | — |
+| `rental_blocked` / blocking_reasons | ❌ | ❌ | ❌ | ✅ `isRentalBlocked` |
+| Module health / overall_state | ❌ | ❌ | ❌ | ✅ indirekt |
+| AI Health Care narrative | ❌ | ❌ | ❌ | ❌ (nicht Gate) |
+| Ready-to-rent composite | ❌ | ❌ | ❌ | ❌ (FE only) |
+
+**API-Routen für künftige AI-Tools (existieren, ungenutzt vom Chat):**
+
+- `GET /organizations/:orgId/vehicles/:vehicleId/rental-health` — kanonisches Health Gate  
+- `GET /organizations/:orgId/rental-health/fleet` — Fleet-Batch (Redis cache)  
+- `GET /organizations/:orgId/bookings/:id` / detail DTO — Buchung + `rentalBlocked` warnings  
+- `GET /organizations/:orgId/bookings/today/pickups|returns` — Dashboard-Tiles  
+- `GET /vehicles/:vehicleId/health/summary` — Tab + dataQuality  
+- `GET /vehicles/:vehicleId/health/ai-health-care` — AI Narrative (nicht Gate)
+
+---
+
+## 19. Redundante Berechnungen (Querschnitt Prompt 3)
+
+| Thema | Stellen | Risiko |
+|-------|---------|--------|
+| Pickup overdue | `findTodaysPickups`, `PickupOverdueDetector`, `reservedIsOverdue`, FE agenda, runtime | Schwellen-Inkonsistenz |
+| Return overdue | `buildTodayReturnSignals`, `activeIsOverdue`, `deriveBookingState`, notifications | Kein single backend detector |
+| Operational status | `Vehicle.status`, `deriveFleetStatusContext`, FE selectors | Ghost states |
+| Health overall | `RentalHealthService`, `VehicleHealthTabSummaryService`, `HealthSummaryService`, AI Care | Narrative vs. Gate drift |
+| Ready-to-rent | `isRentalBlocked` (BE) vs `deriveIsReadyForRenting` (FE) | FE strenger |
+| Rental health cache | Live detail vs Redis 45s fleet | Stale badges möglich |
+
+---
+
+## 20. Offene Fragen (Prompt 4+)
+
+1. Welche **Booking-Felder** sollen als erstes AI-Tool exponiert werden (active booking, overdue flags, handover status)?
+2. Soll AI **`rental_blocked` + `blocking_reasons`** als Pflicht-Kontext bei Fahrzeugfragen laden?
+3. **Return overdue** — Backend-Insight-Detector nachrüsten oder bewusst Runtime-only lassen?
+4. **Damages → `collectBlockingReasons`** — Gap schließen für AI/Booking-Konsistenz?
+5. Soll AI **`availability: partial`** als „unbekannt / nicht vermietbar“ kommunizieren (nie „OK“)?
+6. Einheitliches **Reason-Code-Objekt** für AI (structured) statt string `blocking_reasons`?
+7. **ServiceCase.blocksRental** in Rental Health V1 integrieren oder getrennt dokumentieren?
+8. Soll AI Health Care Narrative **explizit vom Gate disclaimed** werden („nicht vermietungsrelevant“)?
 
 ---
 
