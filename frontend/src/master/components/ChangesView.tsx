@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-vps-staging-verification-v49727-2026-07-24',
+    version: '4.9.727',
+    title: 'V4.9.727 — Auswertungen VPS/staging verification audit (Prompt 53)',
+    summary: [
+      'Read-only production VPS verification via SSH + HTTPS: health, TLS, Redis, Postgres, Prisma, BullMQ, insights scheduler.',
+      '170 insight runs / 24h with 0 failures; notification.evaluation queue lag 0; required DB indexes present.',
+      'Prompt 52 observability not yet on VPS (PR #819); authenticated smoke tests deferred (no Clerk session).',
+      'Audit: docs/audits/evaluations/evaluations-vps-staging-verification-2026-07.md',
+    ],
+    reason: 'Prompt 53/54: production-near verification with explicit pass/fail/blocked matrix before final sign-off.',
+    previousBehavior: 'No formal VPS verification record for Auswertungen pipeline in July 2026.',
+    details:
+      'docs/audits/evaluations/evaluations-vps-staging-verification-2026-07.md — deployed f5a5b4e, release 20260724175939_v4994',
+    affectsArchitecture: false,
+    module: 'Business Insights',
+    createdAt: '2026-07-24T22:20:00.000Z',
+  },
+  {
     id: 'evaluations-observability-v49726-2026-07-24',
     version: '4.9.726',
     title: 'V4.9.726 — Auswertungen & Forecast pipeline observability (Prompt 52)',
