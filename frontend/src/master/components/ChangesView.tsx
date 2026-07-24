@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-e2e-p31-2026-07-24',
+    version: '4.9.802',
+    title: 'V4.9.802 — Vehicle Detail Playwright E2E suite (Prompt 31)',
+    summary: [
+      'Dedizierte Playwright-Suite für Vehicle Detail: `vehicle-detail-flow.spec.ts` (24 Flows), `vehicle-detail-responsive.spec.ts` (Mobile/Tablet/Landscape), `vehicle-detail-a11y.spec.ts` (Keyboard, Axe, Reduced Motion).',
+      'Isolierte Fixtures `vehicle-detail-fixtures.ts` mit kontrollierten API-Mocks (Fleet, Telemetry, Live-GPS, Device-Connection, Rental-Health, Status-PATCH) — keine Produktionsprovider.',
+      'Abdeckung: Fleet-Öffnung, Search-Direct-Entry, Reload, Fahrzeugwechsel, alle Tabs, Cleaning-Mutation Erfolg/Fehler, Read-only, Fremd-Org 403, Live/Standby/Delayed/Offline/Last-known/No-position, Null- und Nullwerte, Device-Connection Loading/Error/Empty, Mapbox-Fallback, Polling-Stopp, Background-Tab.',
+      'npm script `test:vehicle-detail:e2e`; Traces/Screenshots nur bei Fehlern (Playwright-Default).',
+    ],
+    reason: 'Prompt 31/36: End-to-End-Verifikation der Vehicle-Detail-Seite mit kontrollierten Testdaten.',
+    previousBehavior: 'Keine dedizierte Playwright-Suite für Vehicle Detail mit Telemetry-/Map-/Device-Connection-Szenarien.',
+    details:
+      'e2e/vehicle-detail-fixtures.ts, e2e/vehicle-detail-flow.spec.ts, e2e/vehicle-detail-responsive.spec.ts, e2e/vehicle-detail-a11y.spec.ts, package.json test:vehicle-detail:e2e.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / E2E',
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',
