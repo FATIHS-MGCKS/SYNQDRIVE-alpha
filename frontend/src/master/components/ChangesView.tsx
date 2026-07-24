@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-a11y-i18n-v49833-2026-07-24',
+    version: 'V4.9.833',
+    title: 'V4.9.833 — Auswertungen Accessibility & i18n (Prompt 35/54)',
+    summary: [
+      'Vollständiger A11y-/i18n-Audit der Auswertungen: semantische Landmarks, Tablist-SW-Cockpit, Tastatur-Navigation, Focus-Ringe, Screenreader-Texte.',
+      'Filterleiste als `<fieldset>` mit i18n-`aria-label`; Sektions-Collapse mit `hidden` + benannten `aria-label`.',
+      'Risikomatrix: dekoratives Grid `aria-hidden`, tabellarische Alternative mit lokalisierten Confidence-Werten.',
+      'Neue Übersetzungsschlüssel `evaluations.filters.*`, `evaluations.a11y.*`, `evaluations.viz.table.*` (DE + EN).',
+      'Tests: `evaluations.a11y.ui.test.tsx`, Playwright `evaluations-a11y.spec.ts` (+ axe).',
+      'Audit: `docs/audits/evaluations/evaluations-accessibility-i18n-2026-07.md`.',
+    ],
+    reason:
+      'Prompt 35/54 verlangt barrierefreie Auswertungen und vollständige DE/EN-Übersetzungen ohne gemischte UI-Sprachen.',
+    previousBehavior:
+      'Teils hardcodierte deutsche Filtertexte, fehlende Tablist-Semantik im SW-Cockpit, Risikomatrix mit `role="grid"`, rohe Enum-Labels.',
+    details: null,
+    affectsArchitecture: true,
+    module: null,
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'evaluations-mobile-readiness-v49832-2026-07-24',
     version: 'V4.9.832',
     title: 'V4.9.832 — Auswertungen Mobile & Responsive Readiness (Prompt 34/54)',

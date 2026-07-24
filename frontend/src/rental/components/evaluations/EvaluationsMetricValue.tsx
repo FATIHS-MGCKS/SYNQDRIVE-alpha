@@ -3,6 +3,7 @@ import { Skeleton } from '../../../components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../../components/ui/tooltip';
 import { cn } from '../../../components/ui/utils';
 import { EvaluationsMetricStateBadge } from './EvaluationsMetricStateBadge';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface EvaluationsMetricValueProps {
   state: EvaluationsResolvedMetricState;
@@ -25,6 +26,7 @@ export function EvaluationsMetricValue({
   placeholder = PLACEHOLDER,
   showBadge = true,
 }: EvaluationsMetricValueProps) {
+  const { t } = useLanguage();
   const isLoading = state.fetchPhase === 'loading';
   const display = state.canShowValue ? state.displayValue : placeholder;
 
@@ -58,8 +60,8 @@ export function EvaluationsMetricValue({
         <EvaluationsMetricStateBadge kind={state.kind} locale={locale} />
       ) : null}
       {state.showStaleOverlay && state.fetchPhase === 'refetching' ? (
-        <span className="text-[9px] font-medium text-[color:var(--status-watch)]">
-          {locale === 'en' ? 'Refreshing…' : 'Aktualisiere…'}
+        <span className="text-[9px] font-medium text-[color:var(--status-watch)]" role="status">
+          {t('evaluations.metricValue.refreshing')}
         </span>
       ) : null}
     </div>

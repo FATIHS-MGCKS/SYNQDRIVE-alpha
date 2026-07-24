@@ -60,7 +60,7 @@ export function EvaluationsSwFindingCard({ finding, onSelect, isSelected }: Eval
     <button
       type="button"
       onClick={() => onSelect(finding)}
-      aria-pressed={isSelected}
+      aria-label={t('evaluations.a11y.findingCard', { title: finding.title })}
       className={cn(
         'group w-full rounded-xl border p-3.5 text-left transition-shadow',
         'hover:shadow-[var(--shadow-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40',
@@ -138,7 +138,7 @@ export function EvaluationsSwFindingCard({ finding, onSelect, isSelected }: Eval
 
       <span className="mt-2.5 inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-[color:var(--brand)]">
         {t('evaluations.swCockpit.drillDown')}
-        <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </span>
     </button>
   );

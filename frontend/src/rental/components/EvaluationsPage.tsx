@@ -84,13 +84,13 @@ export function EvaluationsPage({ isDarkMode, onNavigate }: EvaluationsPageProps
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `auswertungen-summary-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${t('evaluations.export.filename', { date: new Date().toISOString().slice(0, 10) })}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [analytics.summary, analyticsLocale]);
+  }, [analytics.summary, analyticsLocale, t]);
 
   return (
-    <div className={EVALUATIONS_PAGE_SHELL_CLASS} data-testid="evaluations-page">
+    <main className={EVALUATIONS_PAGE_SHELL_CLASS} data-testid="evaluations-page">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader title={t('nav.financialInsights')} />
         <button
@@ -137,6 +137,6 @@ export function EvaluationsPage({ isDarkMode, onNavigate }: EvaluationsPageProps
         />
         <EvaluationsDataQualitySection analytics={analytics} onNavigate={onNavigate} />
       </div>
-    </div>
+    </main>
   );
 }

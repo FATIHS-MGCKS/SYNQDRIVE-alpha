@@ -1,5 +1,7 @@
 import type { EvaluationsAnalyticsFiltersQuery } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 import { EVALUATIONS_FILTER_SELECT_CLASS } from '../evaluations/evaluations-responsive.constants';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 interface EvaluationsAnalyticsFilterBarProps {
   filters: EvaluationsAnalyticsFiltersQuery;
@@ -7,51 +9,42 @@ interface EvaluationsAnalyticsFilterBarProps {
   stationOptions?: Array<{ id: string; label: string }>;
 }
 
-const PERIOD_OPTIONS = [
-  { value: 'mtd', label: 'Monat' },
-  { value: 'last7d', label: '7 Tage' },
-  { value: 'last30d', label: '30 Tage' },
-] as const;
+const PERIOD_VALUES = ['mtd', 'last7d', 'last30d'] as const;
 
-const INSIGHT_STATUS_OPTIONS = [
-  { value: '', label: 'Alle Status' },
-  { value: 'CRITICAL', label: 'Kritisch' },
-  { value: 'WARNING', label: 'Warnung' },
-  { value: 'OPPORTUNITY', label: 'Chance' },
-  { value: 'INFO', label: 'Info' },
-] as const;
+const INSIGHT_STATUS_VALUES = ['', 'CRITICAL', 'WARNING', 'OPPORTUNITY', 'INFO'] as const;
 
-const RISK_OPTIONS = [
-  { value: '', label: 'Alle Risiken' },
-  { value: 'BUSINESS_RISK', label: 'Geschäftsrisiko' },
-  { value: 'REVENUE_LEAKAGE', label: 'Umsatzverlust' },
-  { value: 'OPERATIONAL_RECOMMENDATION', label: 'Operativ' },
-] as const;
+const RISK_VALUES = ['', 'BUSINESS_RISK', 'REVENUE_LEAKAGE', 'OPERATIONAL_RECOMMENDATION'] as const;
 
 export function EvaluationsAnalyticsFilterBar({
   filters,
   onPatch,
   stationOptions = [],
 }: EvaluationsAnalyticsFilterBarProps) {
+  const { t } = useLanguage();
+
   return (
-    <div
+    <fieldset
       className="rounded-xl border border-border/50 bg-muted/20 px-2 py-2 sm:px-3"
       data-testid="evaluations-filter-bar"
     >
-      <div className="overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]">
+      <legend className="sr-only">{t('evaluations.filters.legend')}</legend>
+      <div className="overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]" tabIndex={0}>
         <div className="flex min-w-max items-center gap-2 pr-1">
-          <span className="shrink-0 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Filter
+          <span
+            className="shrink-0 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            aria-hidden
+          >
+            {t('evaluations.filters.legend')}
           </span>
           <select
             className={EVALUATIONS_FILTER_SELECT_CLASS}
             value={filters.period ?? 'mtd'}
             onChange={(e) => onPatch({ period: e.target.value as EvaluationsAnalyticsFiltersQuery['period'] })}
-            aria-label="Zeitraum"
+            aria-label={t('evaluations.filters.period.label')}
           >
-            {PERIOD_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            {PERIOD_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {t(`evaluations.filters.period.${value}` as TranslationKey)}
               </option>
             ))}
           </select>
@@ -60,9 +53,9 @@ export function EvaluationsAnalyticsFilterBar({
               className={EVALUATIONS_FILTER_SELECT_CLASS}
               value={filters.stationId ?? ''}
               onChange={(e) => onPatch({ stationId: e.target.value || null })}
-              aria-label="Station"
+              aria-label={t('evaluations.filters.station.label')}
             >
-              <option value="">Alle Stationen</option>
+              <option value="">{t('evaluations.filters.station.all')}</option>
               {stationOptions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}
@@ -76,11 +69,15 @@ export function EvaluationsAnalyticsFilterBar({
             onChange={(e) =>
               onPatch({ riskCategory: (e.target.value || null) as EvaluationsAnalyticsFiltersQuery['riskCategory'] })
             }
-            aria-label="Risikokategorie"
+            aria-label={t('evaluations.filters.riskCategory.label')}
           >
-            {RISK_OPTIONS.map((opt) => (
-              <option key={opt.value || 'all'} value={opt.value}>
-                {opt.label}
+            {RISK_VALUES.map((value) => (
+              <option key={value || 'all'} value={value}>
+                {t(
+                  (value
+                    ? `evaluations.filters.riskCategory.${value}`
+                    : 'evaluations.filters.riskCategory.all') as TranslationKey,
+                )}
               </option>
             ))}
           </select>
@@ -90,16 +87,20 @@ export function EvaluationsAnalyticsFilterBar({
             onChange={(e) =>
               onPatch({ insightStatus: (e.target.value || null) as EvaluationsAnalyticsFiltersQuery['insightStatus'] })
             }
-            aria-label="Insight-Status"
+            aria-label={t('evaluations.filters.insightStatus.label')}
           >
-            {INSIGHT_STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value || 'all'} value={opt.value}>
-                {opt.label}
+            {INSIGHT_STATUS_VALUES.map((value) => (
+              <option key={value || 'all'} value={value}>
+                {t(
+                  (value
+                    ? `evaluations.filters.insightStatus.${value}`
+                    : 'evaluations.filters.insightStatus.all') as TranslationKey,
+                )}
               </option>
             ))}
           </select>
         </div>
       </div>
-    </div>
+    </fieldset>
   );
 }

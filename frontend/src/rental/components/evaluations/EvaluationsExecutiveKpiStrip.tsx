@@ -10,7 +10,7 @@ interface EvaluationsExecutiveKpiStripProps {
 }
 
 export function EvaluationsExecutiveKpiStrip({ analytics }: EvaluationsExecutiveKpiStripProps) {
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const analyticsLocale = locale === 'en' ? 'en' : 'de';
 
   const strip = useMemo(
@@ -33,7 +33,8 @@ export function EvaluationsExecutiveKpiStrip({ analytics }: EvaluationsExecutive
     <div
       className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-thin md:grid md:grid-cols-2 md:overflow-visible md:snap-none xl:grid-cols-4"
       role="list"
-      aria-label="Executive KPIs"
+      tabIndex={0}
+      aria-label={t('evaluations.executiveKpi.stripLabel')}
     >
       {strip.cards.map((card) => (
         <div key={card.id} role="listitem" className="shrink-0 md:shrink">

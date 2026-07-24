@@ -6,6 +6,7 @@ import {
 } from '@synq/evaluations-insights/evaluations-risk-cost-visualizations';
 import type { DimensionComparisonMode } from '@synq/evaluations-insights/evaluations-risk-cost-visualizations.contract';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { evaluationsIntlLocale } from '../../lib/evaluations-format';
 import { EVALUATIONS_DUAL_GRID_CLASS } from './evaluations-responsive.constants';
 import { EvaluationsRiskMatrixChart } from './charts/EvaluationsRiskMatrixChart';
@@ -50,6 +51,23 @@ export function EvaluationsRiskCostVizPanel({
     emptyTitle: t('evaluations.viz.emptyTitle'),
     emptyDescription: t('evaluations.viz.emptyDescription'),
     tableCaption: t('evaluations.viz.tableCaption'),
+    table: {
+      step: t('evaluations.viz.table.step'),
+      status: t('evaluations.viz.table.status'),
+      driver: t('evaluations.viz.table.driver'),
+      sharePercent: t('evaluations.viz.table.sharePercent'),
+      cumulativePercent: t('evaluations.viz.table.cumulativePercent'),
+      cumulativeLegend: t('evaluations.viz.table.cumulativeLegend'),
+      period: t('evaluations.viz.table.period'),
+      bucket: t('evaluations.viz.table.bucket'),
+      count: t('evaluations.viz.table.count'),
+      percent: t('evaluations.viz.table.percent'),
+      dimension: t('evaluations.viz.table.dimension'),
+      vehicles: t('evaluations.viz.table.vehicles'),
+      deltaVsOrg: t('evaluations.viz.table.deltaVsOrg'),
+      downtimePercent: t('evaluations.viz.table.downtimePercent'),
+      dimensionFilter: t('evaluations.viz.dimensionComparison.filterLabel'),
+    },
   };
 
   if (variant === 'risks') {
@@ -66,12 +84,18 @@ export function EvaluationsRiskCostVizPanel({
             period: viz.periodContext.period.label,
             unit: t('evaluations.viz.riskMatrix.unit'),
             colProbability: t('evaluations.viz.riskMatrix.colCategory'),
+            colProbabilityShort: t('evaluations.viz.riskMatrix.colProbabilityShort'),
             colImpact: t('evaluations.viz.riskMatrix.colImpact'),
             colExposure: t('evaluations.viz.riskMatrix.colExposure'),
             colGroups: t('evaluations.viz.riskMatrix.colGroups'),
             colConfidence: t('evaluations.viz.riskMatrix.colConfidence'),
             axisImpact: t('evaluations.viz.riskMatrix.axisImpact'),
             axisProbability: t('evaluations.viz.riskMatrix.axisProbability'),
+            axisScale: t('evaluations.viz.riskMatrix.axisScale'),
+            cellAriaTemplate: t('evaluations.viz.riskMatrix.cellAria'),
+            pointTitleTemplate: t('evaluations.viz.riskMatrix.pointTitle'),
+            formatConfidence: (level) =>
+              t(`evaluations.swCockpit.confidence.${level}` as TranslationKey) || level,
           }}
         />
       </div>

@@ -6,8 +6,8 @@ interface EvaluationsChartDataTableProps {
 
 export function EvaluationsChartDataTable({ columns, rows, caption }: EvaluationsChartDataTableProps) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[280px] border-collapse text-[10.5px]" role="table">
+    <div className="overflow-x-auto" tabIndex={0}>
+      <table className="w-full min-w-[280px] border-collapse text-[10.5px]">
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
           <tr className="border-b border-border/50 text-left text-muted-foreground">

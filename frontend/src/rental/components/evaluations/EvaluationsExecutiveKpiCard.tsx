@@ -146,7 +146,14 @@ export function EvaluationsExecutiveKpiCard({ card, analyticsLocale }: Evaluatio
                 ) : (
                   <Minus className="h-3 w-3" aria-hidden />
                 )}
-                <span>
+                <span className="sr-only">
+                  {card.percentDelta > 0
+                    ? t('evaluations.executiveKpi.deltaUp')
+                    : card.percentDelta < 0
+                      ? t('evaluations.executiveKpi.deltaDown')
+                      : t('evaluations.executiveKpi.deltaFlat')}
+                </span>
+                <span aria-hidden={card.percentDelta === 0}>
                   {card.percentDelta >= 0 ? '+' : '−'}
                   {Math.abs(card.percentDelta).toFixed(1)}%
                 </span>
@@ -169,10 +176,11 @@ export function EvaluationsExecutiveKpiCard({ card, analyticsLocale }: Evaluatio
 
         <a
           href={`#${anchor}`}
-          className="inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-[color:var(--brand)] hover:underline"
+          className="inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-[color:var(--brand)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] rounded-sm"
+          aria-label={t('evaluations.executiveKpi.drillDownAria', { title: t(titleKey) })}
         >
           {t('evaluations.executiveKpi.drillDown')}
-          <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+          <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
         </a>
       </div>
     </article>

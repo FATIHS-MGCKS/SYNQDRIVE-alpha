@@ -23,6 +23,7 @@ import type {
 import { fmtEurMinor } from '../../../lib/evaluations-format';
 import { cn } from '../../../../components/ui/utils';
 import { EVALUATIONS_TOUCH_TARGET_CLASS } from '../evaluations-responsive.constants';
+import { EVAL_DIM_TAB_STATION_ID, EVAL_DIM_TAB_VEHICLE_CLASS_ID } from '../evaluations-a11y';
 import { EvaluationsChartCard } from './EvaluationsChartCard';
 import { EvaluationsChartDataTable } from './EvaluationsChartDataTable';
 
@@ -42,6 +43,23 @@ interface ChartLabels {
   emptyTitle: string;
   emptyDescription: string;
   tableCaption: string;
+  table: {
+    step: string;
+    status: string;
+    driver: string;
+    sharePercent: string;
+    cumulativePercent: string;
+    cumulativeLegend: string;
+    period: string;
+    bucket: string;
+    count: string;
+    percent: string;
+    dimension: string;
+    vehicles: string;
+    deltaVsOrg: string;
+    downtimePercent: string;
+    dimensionFilter: string;
+  };
 }
 
 interface EvaluationsCostWaterfallChartProps {
@@ -82,9 +100,9 @@ export function EvaluationsCostWaterfallChart({
       tableAlternative={
         <EvaluationsChartDataTable
           columns={[
-            { key: 'step', label: 'Step' },
+            { key: 'step', label: labels.table.step },
             { key: 'value', label: labels.unit, align: 'right' },
-            { key: 'status', label: 'Status' },
+            { key: 'status', label: labels.table.status },
           ]}
           rows={data.steps.map((s) => ({
             step: s.label,
@@ -171,10 +189,10 @@ export function EvaluationsCostParetoChart({
       tableAlternative={
         <EvaluationsChartDataTable
           columns={[
-            { key: 'label', label: 'Driver' },
+            { key: 'label', label: labels.table.driver },
             { key: 'value', label: labels.unit, align: 'right' },
-            { key: 'share', label: '%', align: 'right' },
-            { key: 'cumulative', label: 'Cum. %', align: 'right' },
+            { key: 'share', label: labels.table.sharePercent, align: 'right' },
+            { key: 'cumulative', label: labels.table.cumulativePercent, align: 'right' },
           ]}
           rows={data.items.map((i) => ({
             label: i.label,
@@ -194,7 +212,7 @@ export function EvaluationsCostParetoChart({
           <Tooltip contentStyle={{ backgroundColor: colors.tooltipBg, border: 'none', borderRadius: '12px', fontSize: '11px' }} />
           <Legend wrapperStyle={{ fontSize: '10px' }} />
           <Bar yAxisId="left" dataKey="value" fill="#3b82f6" name={labels.unit} radius={[3, 3, 0, 0]} />
-          <Line yAxisId="right" type="monotone" dataKey="cumulative" stroke="#f59e0b" strokeWidth={2} dot={false} name="Cumulative %" connectNulls={false} />
+          <Line yAxisId="right" type="monotone" dataKey="cumulative" stroke="#f59e0b" strokeWidth={2} dot={false} name={labels.table.cumulativeLegend} connectNulls={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </EvaluationsChartCard>
@@ -236,7 +254,7 @@ export function EvaluationsCostDowntimeSeriesChart({
       tableAlternative={
         <EvaluationsChartDataTable
           columns={[
-            { key: 'period', label: 'Period' },
+            { key: 'period', label: labels.table.period },
             { key: 'costs', label: labels.costsLabel, align: 'right' },
             { key: 'downtime', label: labels.downtimeLabel, align: 'right' },
           ]}
@@ -298,10 +316,10 @@ export function EvaluationsReceivablesAgingChart({
       tableAlternative={
         <EvaluationsChartDataTable
           columns={[
-            { key: 'bucket', label: 'Bucket' },
+            { key: 'bucket', label: labels.table.bucket },
             { key: 'amount', label: labels.unit, align: 'right' },
-            { key: 'count', label: 'Count', align: 'right' },
-            { key: 'share', label: '%', align: 'right' },
+            { key: 'count', label: labels.table.count, align: 'right' },
+            { key: 'share', label: labels.table.percent, align: 'right' },
           ]}
           rows={data.buckets.map((b) => ({
             bucket: b.label,
@@ -358,11 +376,11 @@ export function EvaluationsFleetFailureTrendChart({
       tableAlternative={
         <EvaluationsChartDataTable
           columns={[
-            { key: 'period', label: 'Period' },
+            { key: 'period', label: labels.table.period },
             { key: 'maintenance', label: labels.maintenance, align: 'right' },
             { key: 'blocked', label: labels.blocked, align: 'right' },
             { key: 'cleaning', label: labels.cleaning, align: 'right' },
-            { key: 'downtime', label: 'Downtime %', align: 'right' },
+            { key: 'downtime', label: labels.table.downtimePercent, align: 'right' },
           ]}
           rows={data.points.map((p) => ({
             period: p.label,
@@ -436,10 +454,10 @@ export function EvaluationsDimensionComparisonChart({
       tableAlternative={
         <EvaluationsChartDataTable
           columns={[
-            { key: 'label', label: 'Dimension' },
-            { key: 'value', label: isCurrency ? labels.unit : '%', align: 'right' },
-            { key: 'vehicles', label: 'Vehicles', align: 'right' },
-            { key: 'delta', label: 'Δ vs org', align: 'right' },
+            { key: 'label', label: labels.table.dimension },
+            { key: 'value', label: isCurrency ? labels.unit : labels.table.percent, align: 'right' },
+            { key: 'vehicles', label: labels.table.vehicles, align: 'right' },
+            { key: 'delta', label: labels.table.deltaVsOrg, align: 'right' },
           ]}
           rows={data.items.map((i) => ({
             label: i.label,
@@ -455,16 +473,17 @@ export function EvaluationsDimensionComparisonChart({
         />
       }
     >
-      <div className="mb-2 flex gap-2" role="toolbar" aria-label="Dimension filter">
+      <div className="mb-2 flex gap-2" role="tablist" aria-label={labels.table.dimensionFilter}>
         {(['STATION', 'VEHICLE_CLASS'] as const).map((m) => (
           <button
             key={m}
             type="button"
+            id={m === 'STATION' ? EVAL_DIM_TAB_STATION_ID : EVAL_DIM_TAB_VEHICLE_CLASS_ID}
             role="tab"
             aria-selected={mode === m}
             onClick={() => onModeChange(m)}
             className={cn(
-              'rounded-full px-3 py-2 text-[10px] font-semibold',
+              'rounded-full px-3 py-2 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
               EVALUATIONS_TOUCH_TARGET_CLASS,
               mode === m
                 ? 'bg-foreground text-background'

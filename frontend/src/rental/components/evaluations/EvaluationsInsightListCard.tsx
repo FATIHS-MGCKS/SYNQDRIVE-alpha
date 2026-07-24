@@ -3,8 +3,14 @@ import { financialImpactEur, insightRecommendation } from '../../lib/insights-ca
 import { EmptyState } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { evaluationsIntlLocale } from '../../lib/evaluations-format';
+import type { TranslationKey } from '../../i18n/translations/en';
+
+const INSIGHT_SEVERITIES = new Set(['CRITICAL', 'WARNING', 'OPPORTUNITY', 'INFO']);
 
 function SeverityBadge({ severity }: { severity: string }) {
+  const { t } = useLanguage();
+  const severityKey = `evaluations.insight.severity.${severity}` as TranslationKey;
+  const label = INSIGHT_SEVERITIES.has(severity) ? t(severityKey) : severity;
   const cls =
     severity === 'CRITICAL'
       ? 'sq-tone-critical'
@@ -15,7 +21,7 @@ function SeverityBadge({ severity }: { severity: string }) {
           : 'sq-tone-neutral';
   return (
     <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${cls}`}>
-      {severity}
+      {label}
     </span>
   );
 }

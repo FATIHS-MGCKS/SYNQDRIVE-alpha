@@ -17,17 +17,30 @@ interface EvaluationsRiskMatrixChartProps {
     emptyDescription: string;
     tableCaption: string;
     colProbability: string;
+    colProbabilityShort: string;
     colImpact: string;
     colExposure: string;
     colGroups: string;
     colConfidence: string;
     axisImpact: string;
     axisProbability: string;
+    axisScale: string;
     estimate: string;
+    cellAriaTemplate: string;
+    pointTitleTemplate: string;
+    formatConfidence: (level: string) => string;
   };
 }
 
 const MATRIX_SIZE = 5;
+
+function interpolate(template: string, vars: Record<string, string | number>): string {
+  let text = template;
+  for (const [key, value] of Object.entries(vars)) {
+    text = text.replace(`{${key}}`, String(value));
+  }
+  return text;
+}
 
 function cellTone(probability: number, impact: number): string {
   const score = probability + impact;
@@ -72,7 +85,7 @@ export function EvaluationsRiskMatrixChart({
           caption={labels.tableCaption}
           columns={[
             { key: 'label', label: labels.colProbability },
-            { key: 'probability', label: 'P' },
+            { key: 'probability', label: labels.colProbabilityShort },
             { key: 'impact', label: labels.colImpact },
             { key: 'groups', label: labels.colGroups },
             { key: 'exposure', label: labels.colExposure, align: 'right' },
@@ -84,38 +97,33 @@ export function EvaluationsRiskMatrixChart({
             impact: p.impact,
             groups: p.groupCount,
             exposure: p.exposureMinor != null ? fmtEurMinor(p.exposureMinor, intlLocale) : '—',
-            confidence: p.confidence,
+            confidence: p.confidence ? labels.formatConfidence(p.confidence) : '—',
           }))}
         />
       }
     >
-      <div className="flex gap-3">
+      <div className="flex gap-3" aria-hidden="true">
         <div className="flex flex-col justify-between py-6 text-[9px] font-medium text-muted-foreground">
           <span>{labels.axisImpact}</span>
-          <span className="rotate-180 [writing-mode:vertical-rl]">5 → 1</span>
+          <span className="rotate-180 [writing-mode:vertical-rl]">{labels.axisScale}</span>
         </div>
         <div className="flex-1">
-          <div
-            className="grid grid-cols-5 gap-1"
-            role="grid"
-            aria-label={labels.title}
-          >
+          <div className="grid grid-cols-5 gap-1">
             {gridCells.map((cell, idx) => (
               <div
                 key={idx}
-                role="gridcell"
                 className={cn(
                   'relative flex min-h-[52px] flex-col items-center justify-center rounded-md border p-1',
                   cellTone(cell.probability, cell.impact),
                 )}
-                aria-label={`P${cell.probability} I${cell.impact}`}
               >
                 {cell.points.map((p) => (
                   <a
                     key={p.id}
                     href={`#auswertungen-risiken`}
                     className="mb-0.5 w-full truncate rounded px-1 py-0.5 text-center text-[8.5px] font-semibold bg-background/80 hover:underline"
-                    title={`${p.label}: ${p.groupCount} groups`}
+                    title={interpolate(labels.pointTitleTemplate, { label: p.label, count: p.groupCount })}
+                    tabIndex={-1}
                   >
                     {p.label}
                   </a>

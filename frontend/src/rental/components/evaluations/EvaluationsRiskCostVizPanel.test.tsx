@@ -125,8 +125,8 @@ describe('EvaluationsRiskCostVizPanel', () => {
       <EvaluationsRiskCostVizPanel summary={summary} isDarkMode={false} variant="risks" />,
     );
     expect(html).toContain('Risikomatrix');
-    expect(html).toContain('role="grid"');
     expect(html).toContain('Tabellarische Alternative');
+    expect(html).toContain('<table');
   });
 
   it('renders costs charts with dimension filter tabs', () => {

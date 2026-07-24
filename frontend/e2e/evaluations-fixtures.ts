@@ -250,10 +250,38 @@ export function buildMockAnalyticsSummary() {
     }),
     dataQuality: envelope({
       calculationVersion: 'dq-v1',
-      rollupStatus: 'OK',
+      period,
+      rollupStatus: 'GOOD',
       overallStatus: 'OK',
-      sources: [{ sourceKey: 'invoices', label: 'Rechnungen', status: 'OK' }],
+      sources: [
+        {
+          sourceKey: 'INVOICES',
+          label: 'Rechnungen',
+          period,
+          integrationConnected: true,
+          overallState: 'GOOD',
+          dimensions: [],
+          expectedRecordCount: 100,
+          presentRecordCount: 100,
+          coveragePercent: 100,
+          lastSuccessfulUpdateAt: ts,
+          knownErrors: [],
+          affectedMetrics: [],
+          recommendedRemediation: [],
+        },
+      ],
       metricBindings: [],
+      crossCuttingIssues: [],
+      thresholds: {
+        completeness: { goodMinPercent: 95, limitedMinPercent: 70 },
+        freshness: { goodMaxAgeHours: 24, staleMaxAgeHours: 72 },
+      },
+      insightsStale: false,
+      insightsLastRunAt: ts,
+      invoiceDataComplete: true,
+      fleetDataComplete: true,
+      partialSections: [],
+      unavailableSections: [],
     }),
     lineage: envelope({
       calculationVersion: 'lineage-v1',
@@ -486,7 +514,7 @@ export async function saveEvaluationsScreenshot(
 
   const fs = await import('node:fs/promises');
   const path = await import('node:path');
-  const dir = path.join(process.cwd(), 'e2e', 'artifacts', 'evaluations');
+  const dir = path.join(process.cwd(), 'artifacts', 'evaluations');
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, `${name}.png`), screenshot);
 }

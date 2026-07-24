@@ -28,6 +28,7 @@ export function EvaluationsSectionNav({ className }: EvaluationsSectionNavProps)
       aria-label={t('evaluations.ia.nav.label')}
       className={cn(EVALUATIONS_STICKY_NAV_CLASS, className)}
       data-testid="evaluations-section-nav"
+      tabIndex={0}
     >
       <ul className="flex min-w-max items-center gap-1.5 snap-x snap-mandatory">
         {EVALUATIONS_SECTION_ORDER.map((sectionId) => (

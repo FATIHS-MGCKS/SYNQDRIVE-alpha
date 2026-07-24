@@ -12,6 +12,11 @@ import type { TranslationKey } from '../../i18n/translations/en';
 import { EvaluationsSwFindingCard } from './EvaluationsSwFindingCard';
 import { EvaluationsSwFindingDetailDrawer } from './EvaluationsSwFindingDetailDrawer';
 import { EVALUATIONS_TOUCH_TARGET_CLASS } from './evaluations-responsive.constants';
+import {
+  EVAL_SW_COCKPIT_PANEL_ID,
+  EVAL_SW_COCKPIT_TAB_ALL_ID,
+  evalSwCategoryTabId,
+} from './evaluations-a11y';
 
 const CATEGORY_ORDER: SwCockpitCategory[] = [
   'CRITICAL_RISK',
@@ -62,15 +67,28 @@ export function EvaluationsSwCockpit({ summary, loading }: EvaluationsSwCockpitP
     if (!open) setSelectedFinding(null);
   }, []);
 
-  const handleFilterKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLButtonElement>, filter: CategoryFilter) => {
-      if (event.key === 'Enter' || event.key === ' ') {
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, tabs: CategoryFilter[], current: CategoryFilter) => {
+      const idx = tabs.indexOf(current);
+      if (idx < 0) return;
+      if (event.key === 'ArrowRight') {
         event.preventDefault();
-        setCategoryFilter(filter);
+        setCategoryFilter(tabs[(idx + 1) % tabs.length]);
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setCategoryFilter(tabs[(idx - 1 + tabs.length) % tabs.length]);
       }
     },
     [],
   );
+
+  const activeTabs = useMemo((): CategoryFilter[] => {
+    const tabs: CategoryFilter[] = ['ALL'];
+    for (const cat of CATEGORY_ORDER) {
+      if (cockpit.categoryCounts[cat] > 0) tabs.push(cat);
+    }
+    return tabs;
+  }, [cockpit.categoryCounts]);
 
   if (loading && !summary) {
     return (
@@ -106,17 +124,19 @@ export function EvaluationsSwCockpit({ summary, loading }: EvaluationsSwCockpitP
     <div className="space-y-4">
       <div
         className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin snap-x snap-mandatory"
-        role="toolbar"
+        role="tablist"
         aria-label={t('evaluations.swCockpit.filterLabel')}
       >
         <button
           type="button"
+          id={EVAL_SW_COCKPIT_TAB_ALL_ID}
           role="tab"
           aria-selected={categoryFilter === 'ALL'}
+          aria-controls={EVAL_SW_COCKPIT_PANEL_ID}
           onClick={() => setCategoryFilter('ALL')}
-          onKeyDown={(e) => handleFilterKeyDown(e, 'ALL')}
+          onKeyDown={(e) => handleTabKeyDown(e, activeTabs, 'ALL')}
           className={cn(
-            'shrink-0 snap-start rounded-full px-4 py-2.5 text-[11px] font-semibold transition-colors',
+            'shrink-0 snap-start rounded-full px-4 py-2.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
             EVALUATIONS_TOUCH_TARGET_CLASS,
             categoryFilter === 'ALL'
               ? 'bg-foreground text-background'
@@ -131,12 +151,14 @@ export function EvaluationsSwCockpit({ summary, loading }: EvaluationsSwCockpitP
             <button
               key={cat}
               type="button"
+              id={evalSwCategoryTabId(cat)}
               role="tab"
               aria-selected={categoryFilter === cat}
+              aria-controls={EVAL_SW_COCKPIT_PANEL_ID}
               onClick={() => setCategoryFilter(cat)}
-              onKeyDown={(e) => handleFilterKeyDown(e, cat)}
+              onKeyDown={(e) => handleTabKeyDown(e, activeTabs, cat)}
               className={cn(
-                'shrink-0 snap-start rounded-full px-4 py-2.5 text-[11px] font-semibold transition-colors',
+                'shrink-0 snap-start rounded-full px-4 py-2.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
                 EVALUATIONS_TOUCH_TARGET_CLASS,
                 categoryFilter === cat
                   ? 'bg-foreground text-background'
@@ -149,9 +171,15 @@ export function EvaluationsSwCockpit({ summary, loading }: EvaluationsSwCockpitP
         })}
       </div>
 
-      <ul className="space-y-3" role="list" aria-label={t('evaluations.swCockpit.listLabel')}>
+      <ul
+        id={EVAL_SW_COCKPIT_PANEL_ID}
+        role="tabpanel"
+        aria-labelledby={categoryFilter === 'ALL' ? EVAL_SW_COCKPIT_TAB_ALL_ID : evalSwCategoryTabId(categoryFilter)}
+        className="space-y-3"
+        aria-label={t('evaluations.a11y.swFindingsPanel')}
+      >
         {visibleFindings.map((finding) => (
-          <li key={finding.key} role="listitem">
+          <li key={finding.key}>
             <EvaluationsSwFindingCard
               finding={finding}
               onSelect={handleSelect}

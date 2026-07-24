@@ -5,8 +5,11 @@ import { EvaluationsAnalyticsFilterBar } from '../../insights/EvaluationsAnalyti
 import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
 import { EVALUATIONS_TOUCH_TARGET_CLASS } from '../evaluations-responsive.constants';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { cn } from '../../../../components/ui/utils';
+
+const OVERALL_STATUS_KEYS = new Set(['OK', 'PARTIAL', 'ERROR', 'UNAVAILABLE']);
 
 interface EvaluationsGlobalFiltersSectionProps {
   filters: EvaluationsAnalyticsFiltersQuery;
@@ -50,8 +53,17 @@ export function EvaluationsGlobalFiltersSection({
             <span className="font-medium text-foreground">{generatedAt ?? '—'}</span>
           </span>
           {summary ? (
-            <span className="rounded-full px-2 py-0.5 sq-tone-neutral font-semibold uppercase tracking-wide text-[9px]">
-              {summary.overallStatus}
+            <span
+              className="rounded-full px-2 py-0.5 sq-tone-neutral font-semibold uppercase tracking-wide text-[9px]"
+              aria-label={
+                OVERALL_STATUS_KEYS.has(summary.overallStatus)
+                  ? t(`evaluations.overallStatus.${summary.overallStatus}` as TranslationKey)
+                  : summary.overallStatus
+              }
+            >
+              {OVERALL_STATUS_KEYS.has(summary.overallStatus)
+                ? t(`evaluations.overallStatus.${summary.overallStatus}` as TranslationKey)
+                : summary.overallStatus}
             </span>
           ) : null}
         </div>
@@ -64,7 +76,7 @@ export function EvaluationsGlobalFiltersSection({
             EVALUATIONS_TOUCH_TARGET_CLASS,
           )}
         >
-          <RefreshCw className={cn('h-3 w-3', analytics.isRefetching && 'animate-spin')} />
+          <RefreshCw className={cn('h-3 w-3', analytics.isRefetching && 'animate-spin')} aria-hidden />
           {t('evaluations.ia.sections.filters.refresh')}
         </button>
       </div>

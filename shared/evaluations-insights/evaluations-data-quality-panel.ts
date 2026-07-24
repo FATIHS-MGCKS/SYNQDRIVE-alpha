@@ -35,20 +35,26 @@ export function isEvaluationsDataQualityAdmin(
   return membershipRole === 'ORG_ADMIN';
 }
 
+function safeKnownErrors(source: EvaluationsDataSourceQualityAssessment): EvaluationsDataSourceQualityAssessment['knownErrors'] {
+  return source.knownErrors ?? [];
+}
+
 function connectionStatus(source: EvaluationsDataSourceQualityAssessment): EvaluationsDataQualityConnectionStatus {
+  const knownErrors = safeKnownErrors(source);
   if (!source.integrationConnected) return 'not_connected';
   if (source.overallState === 'INVALID' || source.overallState === 'STALE') return 'degraded';
-  if (source.knownErrors.some((e) => e.severity === 'CRITICAL')) return 'degraded';
+  if (knownErrors.some((e) => e.severity === 'CRITICAL')) return 'degraded';
   return 'connected';
 }
 
 function issueKind(source: EvaluationsDataSourceQualityAssessment): EvaluationsDataQualityIssueKind {
+  const knownErrors = safeKnownErrors(source);
   if (!source.integrationConnected || source.overallState === 'NOT_CONNECTED') {
     return 'missing_integration';
   }
   if (
     source.overallState === 'INVALID' ||
-    source.knownErrors.some((e) => e.severity === 'CRITICAL' && /LOADER|FAILED|ERROR/i.test(e.code))
+    knownErrors.some((e) => e.severity === 'CRITICAL' && /LOADER|FAILED|ERROR/i.test(e.code))
   ) {
     return 'technical_error';
   }
@@ -59,9 +65,10 @@ function issueKind(source: EvaluationsDataSourceQualityAssessment): EvaluationsD
 }
 
 function deriveErrorRatePercent(source: EvaluationsDataSourceQualityAssessment): number | null {
+  const knownErrors = safeKnownErrors(source);
   if (!source.integrationConnected) return null;
-  const critical = source.knownErrors.filter((e) => e.severity === 'CRITICAL').length;
-  const warning = source.knownErrors.filter((e) => e.severity === 'WARNING').length;
+  const critical = knownErrors.filter((e) => e.severity === 'CRITICAL').length;
+  const warning = knownErrors.filter((e) => e.severity === 'WARNING').length;
   if (source.coveragePercent != null && source.coveragePercent < 100) {
     return Math.min(100, Math.round(100 - source.coveragePercent));
   }
@@ -109,7 +116,7 @@ function aggregateLineageForSource(
 
   const excludedRecordCount = metrics.reduce((sum, m) => sum + m.excludedRecordCount, 0);
   const exclusionSummaries = [
-    ...new Set(metrics.flatMap((m) => m.exclusionReasons.map((e) => e.reason))),
+    ...new Set(metrics.flatMap((m) => (m.exclusionReasons ?? []).map((e) => e.reason))),
   ];
 
   const freshnessState = failedMetric?.freshness.state ?? metrics[0]?.freshness.state ?? null;
@@ -143,10 +150,10 @@ export function buildAdminSourceRow(
     affectedMetrics: source.affectedMetrics,
     excludedRecordCount: lineageAgg.excludedRecordCount,
     exclusionSummaries: lineageAgg.exclusionSummaries,
-    recommendedActions: source.recommendedRemediation,
+    recommendedActions: source.recommendedRemediation ?? [],
     remediationTarget: REMEDIATION_BY_SOURCE[source.sourceKey],
     issueKind: kind,
-    knownIssueSummaries: source.knownErrors.map((e) => e.message).slice(0, 5),
+    knownIssueSummaries: safeKnownErrors(source).map((e) => e.message).slice(0, 5),
   };
 }
 

@@ -48,6 +48,9 @@ export function EvaluationsSection({
   const { t } = useLanguage();
   const [open, setOpen] = useState(defaultOpen);
   const badgeKey = statusBadgeKey(sectionStatus);
+  const toggleLabel = open
+    ? t('evaluations.section.collapseNamed', { title })
+    : t('evaluations.section.expandNamed', { title });
 
   return (
     <section
@@ -75,31 +78,30 @@ export function EvaluationsSection({
             type="button"
             onClick={() => setOpen((v) => !v)}
             className={cn(
-              'inline-flex items-center gap-1 rounded-lg border border-border/50 px-3 py-2 text-[11px] font-semibold hover:bg-muted/50',
+              'inline-flex items-center gap-1 rounded-lg border border-border/50 px-3 py-2 text-[11px] font-semibold hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
               EVALUATIONS_TOUCH_TARGET_CLASS,
             )}
             aria-expanded={open}
             aria-controls={`${id}-body`}
+            aria-label={toggleLabel}
           >
-            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} />
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
           </button>
         </div>
       </header>
 
-      {open ? (
-        <div id={`${id}-body`} className="p-3 sm:p-4">
-          {surfaceState === 'loading' ? (
-            <SkeletonMetricGrid count={4} className="max-w-3xl" />
-          ) : null}
-          {surfaceState === 'error' ? (
-            <ErrorState compact title={emptyTitle ?? title} description={errorMessage ?? emptyDescription} />
-          ) : null}
-          {surfaceState === 'empty' ? (
-            <EmptyState compact title={emptyTitle ?? title} description={emptyDescription} />
-          ) : null}
-          {surfaceState === 'ready' || surfaceState === 'partial' ? children : null}
-        </div>
-      ) : null}
+      <div id={`${id}-body`} className={cn('p-3 sm:p-4', !open && 'hidden')} hidden={!open}>
+        {surfaceState === 'loading' ? (
+          <SkeletonMetricGrid count={4} className="max-w-3xl" />
+        ) : null}
+        {surfaceState === 'error' ? (
+          <ErrorState compact title={emptyTitle ?? title} description={errorMessage ?? emptyDescription} />
+        ) : null}
+        {surfaceState === 'empty' ? (
+          <EmptyState compact title={emptyTitle ?? title} description={emptyDescription} />
+        ) : null}
+        {surfaceState === 'ready' || surfaceState === 'partial' ? children : null}
+      </div>
     </section>
   );
 }

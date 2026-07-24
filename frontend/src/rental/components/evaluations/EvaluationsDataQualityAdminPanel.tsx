@@ -58,9 +58,9 @@ export function EvaluationsDataQualityAdminPanel({
             <Database className="h-4 w-4" aria-hidden />
           </div>
           <div>
-            <h2 id="evaluations-dq-admin-heading" className="text-[13px] font-semibold text-foreground">
+            <h3 id="evaluations-dq-admin-heading" className="text-[13px] font-semibold text-foreground">
               {t('evaluations.dataQuality.admin.title')}
-            </h2>
+            </h3>
             <p className="text-[10px] text-muted-foreground">{t('evaluations.dataQuality.admin.subtitle')}</p>
           </div>
         </div>

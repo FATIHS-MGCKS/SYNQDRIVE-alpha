@@ -214,7 +214,7 @@ describe('EvaluationsSwCockpit', () => {
     const html = renderToStaticMarkup(
       <EvaluationsSwCockpit summary={mockSummary() as never} loading={false} />,
     );
-    expect(html).toContain('role="toolbar"');
+    expect(html).toContain('role="tablist"');
     expect(html).toContain('aria-selected');
   });
 
