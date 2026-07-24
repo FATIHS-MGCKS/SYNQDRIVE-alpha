@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useFleetMapStore } from '../stores/useFleetMapStore';
 import {
   applyFleetOperationalOptimisticPatch,
+  isFleetOptimisticPatchReflected,
   mapFleetMapVehicleResponse,
+  mergeFleetMapFetchWithOptimisticPatches,
 } from './fleet-map-vehicle-store.utils';
 import {
   VEHICLE_DATA_QUALITY_STATE,
@@ -153,5 +155,59 @@ describe('fleet-map-vehicle-store.utils', () => {
       reservedBookingId: null,
     });
     expect(patched.operationalState.dataQualityState).toBe(VEHICLE_DATA_QUALITY_STATE.RELIABLE);
+  });
+
+  it('mergeFleetMapFetchWithOptimisticPatches reapplies pending patch when server lags (P1 R-07)', () => {
+    const vehicle = seedVehicle();
+    const pending = new Map([
+      [
+        'session-1',
+        {
+          patches: new Map([
+            [
+              'veh-1',
+              {
+                status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+                activeBookingId: 'bk-live',
+                activeCustomerName: 'Live Customer',
+              },
+            ],
+          ]),
+        },
+      ],
+    ]);
+
+    const merged = mergeFleetMapFetchWithOptimisticPatches([vehicle], pending);
+    expect(merged[0].operationalState.status).toBe(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED);
+    expect(merged[0].activeBookingId).toBe('bk-live');
+  });
+
+  it('mergeFleetMapFetchWithOptimisticPatches skips patch when server already reflects it', () => {
+    const vehicle = applyFleetOperationalOptimisticPatch(seedVehicle(), {
+      status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+      reservedBookingId: null,
+    });
+    const pending = new Map([
+      [
+        'session-1',
+        {
+          patches: new Map([
+            ['veh-1', { status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE, reservedBookingId: null }],
+          ]),
+        },
+      ],
+    ]);
+
+    const merged = mergeFleetMapFetchWithOptimisticPatches([vehicle], pending);
+    expect(merged[0]).toBe(vehicle);
+  });
+
+  it('isFleetOptimisticPatchReflected detects active booking drift', () => {
+    const vehicle = seedVehicle();
+    expect(
+      isFleetOptimisticPatchReflected(vehicle, {
+        activeBookingId: 'bk-missing',
+      }),
+    ).toBe(false);
   });
 });

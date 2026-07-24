@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyTelemetryFreshness,
+  parseTelemetryTimestampMs,
+  resolveCanonicalTelemetryObservedAtMs,
   resolveTelemetryFreshness,
   TELEMETRY_DELAYED_MAX_MS,
   TELEMETRY_LIVE_MAX_MS,
@@ -101,5 +103,19 @@ describe('resolveTelemetryFreshness', () => {
   it('localizes labels (de) for standby', () => {
     const f = resolveTelemetryFreshness({ lastSignal: hoursAgo(3) }, { locale: 'de' });
     expect(f.label.toLowerCase()).toContain('standby');
+  });
+
+  it('rejects invalid and empty timestamp strings', () => {
+    expect(parseTelemetryTimestampMs('')).toBeNull();
+    expect(parseTelemetryTimestampMs('invalid')).toBeNull();
+    expect(resolveCanonicalTelemetryObservedAtMs({ lastSignal: 'invalid' })).toBeNull();
+  });
+
+  it('clamps future observed timestamps to age 0 at fixed now', () => {
+    const now = Date.parse('2026-07-24T12:00:00.000Z');
+    const future = new Date(now + 3_600_000).toISOString();
+    const state = resolveTelemetryFreshness({ providerObservedAt: future }, { now });
+    expect(state.signalAgeMs).toBe(0);
+    expect(state.freshness).toBe('live');
   });
 });
