@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-backend-security-v49802-2026-07-24',
+    version: '4.9.802',
+    title: 'V4.9.802 — Vehicle Detail backend security & integration tests (Prompt 30/36)',
+    summary: [
+      'Security characterization for vehicle detail endpoints (findOne, telemetry, live-gps, device-connection, status PATCH, fleet-map).',
+      'Negative matrix: auth, org scoping, fleet.read/write, data authorization, foreign vehicleId, cache tenant isolation, provider fallback, secrets redaction.',
+      'Service integration: null-preserving telemetry, stale-not-live, live GPS measuredAt, device-connection receivedAt, status persistence + cleaning task side effects.',
+      'Rental requirements vehicle routes: rental_rules.read / overrides.write enforcement. npm `test:vehicles:security` + verify script. 62 tests green.',
+    ],
+    reason: 'Prompt 30/36 — backend integration and security regression gate for Vehicle Detail page APIs.',
+    previousBehavior: 'Vehicle detail endpoints lacked consolidated security characterization and service-level integration coverage.',
+    details:
+      'vehicles.controller.security.characterization.spec.ts, vehicles-security-negative.spec.ts, vehicles.service.detail-integration.spec.ts, vehicles-rental-requirements.security.spec.ts, vehicles.controller.status-patch.spec.ts, scripts/test/vehicle-detail-backend-verify.sh, docs/audits/vehicle-detail-backend-security-2026-07.md.',
+    affectsArchitecture: false,
+    module: 'Fleet / Vehicle Detail',
+    createdAt: '2026-07-24T11:05:00.000Z',
+  },
+  {
     id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',
