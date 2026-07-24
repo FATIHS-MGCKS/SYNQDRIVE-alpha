@@ -60,3 +60,41 @@ describe('interpretVehicleState — telemetryFreshness (additive)', () => {
     expect(s.onlineStatus).toBe('OFFLINE');
   });
 });
+
+describe('interpretVehicleState — missing vs zero scalars', () => {
+  it('preserves measured zero speed when signal is fresh', () => {
+    const s = interpretVehicleState(baseRaw({ speedKmh: 0, lastSeenAt: minutesAgo(2) }), null);
+    expect(s.displaySpeed).toBe(0);
+    expect(s.displayState).toBe('PARKED');
+  });
+
+  it('nulls display scalars when signal is stale even if raw speed was 0', () => {
+    const s = interpretVehicleState(
+      baseRaw({ speedKmh: 0, coolantTempC: 0, engineLoad: 0, lastSeenAt: hoursAgo(49) }),
+      null,
+    );
+    expect(s.displaySpeed).toBeNull();
+    expect(s.displayCoolant).toBeNull();
+    expect(s.displayEngineLoad).toBeNull();
+  });
+
+  it('keeps null coolant/engine load distinct from coerced-zero speed for IDLE logic', () => {
+    const parked = interpretVehicleState(
+      baseRaw({ speedKmh: 0, engineLoad: null, isIgnitionOn: false }),
+      null,
+    );
+    const idle = interpretVehicleState(
+      baseRaw({ speedKmh: 0, engineLoad: 12, isIgnitionOn: true }),
+      null,
+    );
+    expect(parked.displayState).toBe('PARKED');
+    expect(idle.displayState).toBe('IDLE');
+    expect(idle.displayEngineLoad).toBe(12);
+  });
+
+  it('preserves null speed as missing display value when signal is fresh', () => {
+    const s = interpretVehicleState(baseRaw({ speedKmh: null, lastSeenAt: minutesAgo(2) }), null);
+    expect(s.displaySpeed).toBeNull();
+    expect(s.displayState).toBe('PARKED');
+  });
+});

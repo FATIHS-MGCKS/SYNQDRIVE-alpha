@@ -4,6 +4,7 @@ import {
   deriveHvBatteryStatusFromDetail,
   useBatteryHealthQuery,
 } from '../lib/battery-health-query';
+import { useDocumentVisible } from './useBrowserTabSignals';
 
 export function useHealthTabBatteryData(input: {
   orgId: string | null | undefined;
@@ -12,13 +13,14 @@ export function useHealthTabBatteryData(input: {
   enabled?: boolean;
 }) {
   const { orgId, vehicleId, isEv, enabled = true } = input;
+  const isDocumentVisible = useDocumentVisible();
 
   const query = useBatteryHealthQuery({
     orgId,
     vehicleId,
     variant: 'detail',
     enabled,
-    livePolling: enabled,
+    livePolling: enabled && isDocumentVisible,
   });
 
   const detail = query.data;

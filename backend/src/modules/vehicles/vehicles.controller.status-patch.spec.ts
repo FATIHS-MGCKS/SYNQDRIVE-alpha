@@ -3,6 +3,7 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { CleaningStatus, HealthStatus, VehicleStatus } from '@prisma/client';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { VehicleDetailAccessAuditAction } from '@modules/activity-log/vehicle-detail-access-audit.service';
 import { VehiclesController } from './vehicles.controller';
 
 describe('VehiclesController — operational status write guard', () => {
@@ -11,16 +12,24 @@ describe('VehiclesController — operational status write guard', () => {
 
   const vehiclesService = {
     update: jest.fn().mockResolvedValue({ id: vehicleId, status: VehicleStatus.AVAILABLE }),
+    findOne: jest
+      .fn()
+      .mockResolvedValue({ id: vehicleId, status: VehicleStatus.AVAILABLE }),
+    invalidateFleetMapCache: jest.fn().mockResolvedValue(undefined),
   };
   const vehicleCleaningTasks = {
     ensureCleaningTask: jest.fn(),
     completeOpenCleaningTasks: jest.fn(),
+  };
+  const vehicleDetailAudit = {
+    record: jest.fn(),
   };
 
   const controller = new VehiclesController(
     vehiclesService as any,
     {} as any,
     vehicleCleaningTasks as any,
+    vehicleDetailAudit as any,
   );
 
   beforeEach(() => {
@@ -88,6 +97,62 @@ describe('VehiclesController — operational status write guard', () => {
         healthStatus: HealthStatus.GOOD,
       }),
       orgId,
+    );
+  });
+
+  it('writes vehicle detail audit for operational status changes', async () => {
+    vehiclesService.findOne.mockResolvedValueOnce({
+      id: vehicleId,
+      status: VehicleStatus.AVAILABLE,
+    });
+
+    await controller.updateVehicleStatus(
+      orgId,
+      vehicleId,
+      { user: { id: 'u1' }, requestId: 'req-1' },
+      {
+        status: VehicleStatus.IN_SERVICE,
+      },
+    );
+
+    expect(vehicleDetailAudit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditAction: VehicleDetailAccessAuditAction.OPERATIONAL_STATUS_UPDATE,
+        organizationId: orgId,
+        vehicleId,
+        actorUserId: 'u1',
+        requestId: 'req-1',
+        outcome: 'allowed',
+        metadata: expect.objectContaining({
+          previousStatus: VehicleStatus.AVAILABLE,
+          nextStatus: VehicleStatus.IN_SERVICE,
+        }),
+      }),
+    );
+  });
+
+  it('writes vehicle detail audit for cleaning status changes', async () => {
+    vehiclesService.findOne.mockResolvedValueOnce({
+      id: vehicleId,
+      cleaningStatus: CleaningStatus.NEEDS_CLEANING,
+    });
+
+    await controller.updateVehicleStatus(orgId, vehicleId, { user: { id: 'u1' } }, {
+      cleaningStatus: CleaningStatus.CLEAN,
+    });
+
+    expect(vehicleDetailAudit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditAction: VehicleDetailAccessAuditAction.CLEANING_STATUS_UPDATE,
+        organizationId: orgId,
+        vehicleId,
+        actorUserId: 'u1',
+        outcome: 'allowed',
+        metadata: expect.objectContaining({
+          previousCleaningStatus: CleaningStatus.NEEDS_CLEANING,
+          nextCleaningStatus: CleaningStatus.CLEAN,
+        }),
+      }),
     );
   });
 });

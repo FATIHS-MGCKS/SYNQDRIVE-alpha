@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { api } from '../../lib/api';
 import {
   isMeaningfulMovement,
@@ -10,40 +10,108 @@ import {
 } from '../../lib/liveMapUtils';
 import {
   type LiveTelemetrySnapshot,
-  useVehicleLiveMapStore,
-} from '../stores/useVehicleLiveMapStore';
+  mapTelemetryDashboardResponseToLiveSnapshot,
+  parseTelemetryHeadingDeg,
+  parseTelemetryNumber,
+  parseTelemetrySpeedKmh,
+} from '../lib/telemetry-field-semantics';
+import { isValidGpsCoordinate } from '../lib/overview-map-position';
+import {
+  mergeGpsMeasuredAt,
+  resolveTelemetryDisplayTime,
+  shouldAcceptNewerMeasurement,
+} from '../lib/telemetry-timestamp-semantics';
+import { resolveVehicleDetailTelemetryState } from '../lib/vehicle-telemetry-runtime';
+import {
+  VEHICLE_DETAIL_POLLING,
+  type VehicleDetailPollingGates,
+} from '../lib/vehicle-detail-polling-policy';
+import {
+  VehicleTelemetryRequestCoordinator,
+  type TelemetryRequestBinding,
+  type TelemetryRequestRunResult,
+} from '../lib/vehicle-telemetry-request-coordinator';
+import { VEHICLE_TELEMETRY_RETRY } from '../lib/vehicle-telemetry-retry';
+import { useVehicleDetailPollingStore } from '../stores/useVehicleDetailPollingStore';
+import { useVehicleLiveMapStore } from '../stores/useVehicleLiveMapStore';
 
-const GPS_POLL_MS = 5_000;
-const DASHBOARD_POLL_MS = 30_000;
 const MAX_HISTORY = 10;
 const JITTER_THRESHOLD_M = 8;
 
+export interface LiveVehicleTelemetryOptions {
+  vehicleId: string | null;
+  orgId: string;
+  gates: VehicleDetailPollingGates;
+}
+
+type DashboardTelemetryData = {
+  latitude?: number | null;
+  longitude?: number | null;
+  speed?: number;
+  fuel?: number;
+  coolant?: number;
+  battery?: number;
+  lvBatteryVoltage?: number;
+  odometer?: number;
+  engineLoad?: number;
+  isIgnitionOn?: boolean | null;
+  lastSignal?: string;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  signalAgeMs?: number;
+  isFresh?: boolean;
+  onlineStatus?: OnlineStatus;
+  displayState?: VehicleStateLabel;
+  displayIgnition?: DisplayIgnition;
+  isLiveTracking?: boolean;
+  displaySpeed?: number | null;
+  displayCoolant?: number | null;
+  displayEngineLoad?: number | null;
+  tripDetectionState?: string | null;
+  heading?: number;
+  [k: string]: unknown;
+};
+
 /**
- * Adaptive live-telemetry hook for the Vehicle Detail Overview tab.
+ * Demand-driven live telemetry for the Vehicle Detail Page.
  *
- * Two independent polling cycles:
- *  1. GPS cycle: every 5s → /live-gps (direct DIMO proxy, no DB)
- *     Only runs when isLiveTracking is true.
- *  2. Dashboard cycle: every 30s → /telemetry (full snapshot from DB)
- *     Always runs to keep fuel, EV SoC (`battery`), ignition, etc. current.
- *
- * When not live tracking, GPS comes from the dashboard cycle (30s).
- *
- * Store updates are scoped to the active vehicleId/orgId binding so stale
- * responses from a previous vehicle cannot leak into the UI.
+ * - GPS (5s): only when `gates.gpsHighFrequency` and backend `isLiveTracking`.
+ * - Dashboard: interval from `gates.dashboardIntervalMs` while `gates.dashboardTelemetry`.
+ * - Requests are aborted on vehicle change, unmount, tab/gate close; retries use backoff.
  */
-export function useLiveVehicleTelemetry(
-  vehicleId: string | null,
-  orgId: string,
-): void {
+export function useLiveVehicleTelemetry({
+  vehicleId,
+  orgId,
+  gates,
+}: LiveVehicleTelemetryOptions): void {
   const lastTargetRef = useRef<[number, number] | null>(null);
   const locationHistoryRef = useRef<Array<[number, number]>>([]);
   const liveRef = useRef(false);
+  const [trackingLive, setTrackingLive] = useState(false);
   const gpsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelledRef = useRef(false);
-  const sessionVehicleIdRef = useRef<string | null>(null);
-  const sessionOrgIdRef = useRef<string | null>(null);
+  const coordinatorRef = useRef<VehicleTelemetryRequestCoordinator | null>(null);
+  if (!coordinatorRef.current) {
+    coordinatorRef.current = new VehicleTelemetryRequestCoordinator();
+  }
+  const gatesRef = useRef(gates);
+  gatesRef.current = gates;
+
+  const gpsLoopIdRef = useRef(0);
+  const dashLoopIdRef = useRef(0);
+
+  const clearTimers = useCallback(() => {
+    dashLoopIdRef.current += 1;
+    gpsLoopIdRef.current += 1;
+    if (gpsTimerRef.current) {
+      clearTimeout(gpsTimerRef.current);
+      gpsTimerRef.current = null;
+    }
+    if (dashTimerRef.current) {
+      clearTimeout(dashTimerRef.current);
+      dashTimerRef.current = null;
+    }
+  }, []);
 
   const applyGpsPoint = useCallback(
     (
@@ -94,211 +162,405 @@ export function useLiveVehicleTelemetry(
     [],
   );
 
-  const fetchGps = useCallback(
-    async (boundVehicleId: string, boundOrgId: string) => {
-      try {
-        const data = await api.vehicles.liveGps(boundOrgId, boundVehicleId);
-        const store = useVehicleLiveMapStore.getState();
-        if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
-          return;
-        }
+  const recordAccessBlockFromPolicy = useCallback(
+    (result: TelemetryRequestRunResult<unknown>) => {
+      if (!result.policy) return;
+      if (result.policy.kind === 'permission') {
+        useVehicleDetailPollingStore.getState().setTelemetryAccessBlock('permission');
+        return;
+      }
+      if (result.policy.kind === 'data_authorization') {
+        useVehicleDetailPollingStore.getState().setTelemetryAccessBlock('data_authorization');
+      }
+    },
+    [],
+  );
+
+  const clearAccessBlock = useCallback(() => {
+    useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
+  }, []);
+
+  const surfaceDashboardFailure = useCallback(
+    (binding: TelemetryRequestBinding, result: TelemetryRequestRunResult<unknown>) => {
+      if (result.aborted || result.stale || !result.policy) return;
+
+      recordAccessBlockFromPolicy(result);
+
+      if (
+        result.failureStreak < VEHICLE_TELEMETRY_RETRY.ERROR_SURFACE_AFTER ||
+        !result.policy.userMessage
+      ) {
+        return;
+      }
+
+      const store = useVehicleLiveMapStore.getState();
+      if (
+        store.boundVehicleId !== binding.vehicleId ||
+        store.boundOrgId !== binding.organizationId
+      ) {
+        return;
+      }
+
+      store.patchIfBound(binding.vehicleId, binding.organizationId, {
+        loading: false,
+        error: result.policy.userMessage,
+      });
+    },
+    [recordAccessBlockFromPolicy],
+  );
+
+  const applyDashboardData = useCallback(
+    (binding: TelemetryRequestBinding, data: DashboardTelemetryData) => {
+      const store = useVehicleLiveMapStore.getState();
+      if (
+        store.boundVehicleId !== binding.vehicleId ||
+        store.boundOrgId !== binding.organizationId
+      ) {
+        return;
+      }
+
+      const speed = parseTelemetrySpeedKmh(data.speed);
+      const engineLoad = parseTelemetryNumber(data.engineLoad);
+      const rawIgnition = data.isIgnitionOn;
+      const backendLive = data.isLiveTracking === true;
+      const ignitionOn =
+        rawIgnition === true || (rawIgnition == null && speed != null && speed > 0);
+      const displayState: VehicleStateLabel =
+        data.displayState === 'MOVING' ||
+        data.displayState === 'IDLE' ||
+        data.displayState === 'PARKED'
+          ? data.displayState
+          : deriveVehicleState(
+              speed != null && speed > 3,
+              ignitionOn,
+              engineLoad != null && engineLoad > 0,
+            );
+      const displayIgnition: DisplayIgnition =
+        data.displayIgnition === 'ON' ||
+        data.displayIgnition === 'OFF' ||
+        data.displayIgnition === 'UNKNOWN'
+          ? data.displayIgnition
+          : 'UNKNOWN';
+
+      const snap: LiveTelemetrySnapshot = {
+        ...mapTelemetryDashboardResponseToLiveSnapshot(data),
+        ignitionOn,
+      };
+      const headingFromApi = parseTelemetryHeadingDeg(
+        typeof data.heading === 'number' ? data.heading : undefined,
+      );
+      liveRef.current = backendLive;
+      setTrackingLive(backendLive);
+
+      const displayTime = resolveTelemetryDisplayTime({
+        measuredAt: data.measuredAt ?? null,
+        receivedAt: data.receivedAt ?? null,
+        lastSignal: data.lastSignal ?? null,
+        signalAgeMs: typeof data.signalAgeMs === 'number' ? data.signalAgeMs : null,
+        onlineStatus: data.onlineStatus,
+      });
+      const canonical = resolveVehicleDetailTelemetryState({
+        measuredAt: data.measuredAt ?? null,
+        receivedAt: data.receivedAt ?? null,
+        lastSignal: data.lastSignal ?? null,
+        signalAgeMs: typeof data.signalAgeMs === 'number' ? data.signalAgeMs : null,
+        onlineStatus: data.onlineStatus,
+      });
+
+      store.patchIfBound(binding.vehicleId, binding.organizationId, {
+        snapshot: snap,
+        isLiveTracking: backendLive,
+        loading: false,
+        error: null,
+        measuredAt: displayTime.measuredAt,
+        receivedAt: displayTime.receivedAt,
+        lastSignal: displayTime.observedAtIso ?? data.lastSignal ?? store.lastSignal,
+        signalAgeMs: canonical.signalAgeMs,
+        isFresh: canonical.isLive,
+        telemetryFreshness: canonical.freshness,
+        onlineStatus: canonical.isLive
+          ? 'ONLINE'
+          : canonical.isStandby
+            ? 'STANDBY'
+            : 'OFFLINE',
+        displayState,
+        displayIgnition,
+        displaySpeed: data.displaySpeed ?? snap.speed,
+        displayCoolant: data.displayCoolant ?? snap.coolant,
+        displayEngineLoad: data.displayEngineLoad ?? snap.engineLoad,
+        tripDetectionState: data.tripDetectionState ?? null,
+        ...(headingFromApi != null ? { heading: headingFromApi } : {}),
+        speedKmh: speed ?? store.speedKmh,
+      });
+
+      if (!backendLive) {
         const lat = data.latitude;
         const lng = data.longitude;
-        if (lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          applyGpsPoint(boundVehicleId, boundOrgId, lat, lng, data.speedKmh, data.source);
+        const incomingMeasuredAt = data.measuredAt ?? data.lastSignal ?? null;
+        const canApplyByTime =
+          incomingMeasuredAt == null ||
+          shouldAcceptNewerMeasurement(store.measuredAt ?? store.lastSignal, incomingMeasuredAt);
+        if (lat != null && lng != null && isValidGpsCoordinate(lat, lng) && canApplyByTime) {
+          applyGpsPoint(binding.vehicleId, binding.organizationId, lat, lng, speed, 'cache');
         }
-      } catch {
-        // Keep previous position on GPS-only errors.
       }
     },
     [applyGpsPoint],
+  );
+
+  const applyGpsData = useCallback(
+    (
+      binding: TelemetryRequestBinding,
+      data: {
+        latitude: number | null;
+        longitude: number | null;
+        speedKmh: number | null;
+        source: 'dimo' | 'cache';
+        measuredAt?: string | null;
+        lastSeenAt?: string | null;
+        receivedAt?: string | null;
+      },
+    ) => {
+      const store = useVehicleLiveMapStore.getState();
+      if (
+        store.boundVehicleId !== binding.vehicleId ||
+        store.boundOrgId !== binding.organizationId
+      ) {
+        return;
+      }
+
+      const lat = data.latitude;
+      const lng = data.longitude;
+      const incomingMeasuredAt = data.measuredAt ?? data.lastSeenAt ?? null;
+      const canApplyByTime =
+        incomingMeasuredAt == null ||
+        shouldAcceptNewerMeasurement(store.measuredAt ?? store.lastSignal, incomingMeasuredAt);
+
+      if (lat != null && lng != null && isValidGpsCoordinate(lat, lng) && canApplyByTime) {
+        applyGpsPoint(
+          binding.vehicleId,
+          binding.organizationId,
+          lat,
+          lng,
+          data.speedKmh,
+          data.source,
+        );
+        const merged = mergeGpsMeasuredAt(store, {
+          measuredAt: data.measuredAt,
+          lastSeenAt: data.lastSeenAt,
+          receivedAt: data.receivedAt,
+          source: data.source,
+        });
+        const displayTime = resolveTelemetryDisplayTime(merged);
+        const canonical = resolveVehicleDetailTelemetryState(merged);
+        store.patchIfBound(binding.vehicleId, binding.organizationId, {
+          measuredAt: displayTime.measuredAt,
+          receivedAt: displayTime.receivedAt,
+          lastSignal: displayTime.observedAtIso ?? store.lastSignal,
+          signalAgeMs: canonical.signalAgeMs,
+          isFresh: canonical.isLive,
+          telemetryFreshness: canonical.freshness,
+          onlineStatus: canonical.isLive
+            ? 'ONLINE'
+            : canonical.isStandby
+              ? 'STANDBY'
+              : 'OFFLINE',
+        });
+      }
+    },
+    [applyGpsPoint],
+  );
+
+  const fetchGps = useCallback(
+    async (binding: TelemetryRequestBinding) => {
+      if (!gatesRef.current.gpsHighFrequency) return null;
+
+      const coordinator = coordinatorRef.current!;
+      const result = await coordinator.run({
+        channel: 'gps',
+        binding,
+        normalIntervalMs: VEHICLE_DETAIL_POLLING.GPS_MS,
+        timeoutMs: VEHICLE_TELEMETRY_RETRY.GPS_FETCH_TIMEOUT_MS,
+        execute: (signal) =>
+          api.vehicles.liveGps(binding.organizationId, binding.vehicleId, { signal }),
+      });
+
+      if (result.aborted || result.stale) return result;
+
+      if (result.ok && result.data) {
+        clearAccessBlock();
+        applyGpsData(binding, result.data);
+        return result;
+      }
+
+      recordAccessBlockFromPolicy(result);
+      return result;
+    },
+    [applyGpsData, clearAccessBlock, recordAccessBlockFromPolicy],
   );
 
   const fetchDashboard = useCallback(
-    async (boundVehicleId: string, boundOrgId: string) => {
-      try {
-        const data = (await api.vehicles.telemetry(boundOrgId, boundVehicleId)) as {
-          latitude?: number | null;
-          longitude?: number | null;
-          speed?: number;
-          fuel?: number;
-          coolant?: number;
-          battery?: number;
-          lvBatteryVoltage?: number;
-          odometer?: number;
-          engineLoad?: number;
-          isIgnitionOn?: boolean | null;
-          lastSignal?: string;
-          signalAgeMs?: number;
-          isFresh?: boolean;
-          onlineStatus?: OnlineStatus;
-          displayState?: VehicleStateLabel;
-          displayIgnition?: DisplayIgnition;
-          isLiveTracking?: boolean;
-          displaySpeed?: number | null;
-          displayCoolant?: number | null;
-          displayEngineLoad?: number | null;
-          tripDetectionState?: string | null;
-          [k: string]: unknown;
-        };
+    async (binding: TelemetryRequestBinding) => {
+      if (!gatesRef.current.dashboardTelemetry) return null;
 
-        const store = useVehicleLiveMapStore.getState();
-        if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
-          return;
-        }
+      const coordinator = coordinatorRef.current!;
+      const result = await coordinator.run({
+        channel: 'dashboard',
+        binding,
+        normalIntervalMs: gatesRef.current.dashboardIntervalMs,
+        timeoutMs: VEHICLE_TELEMETRY_RETRY.DASHBOARD_FETCH_TIMEOUT_MS,
+        execute: (signal) =>
+          api.vehicles.telemetry(binding.organizationId, binding.vehicleId, { signal }),
+      });
 
-        const speed = typeof data.speed === 'number' ? data.speed : 0;
-        const engineLoad = typeof data.engineLoad === 'number' ? data.engineLoad : 0;
-        const rawIgnition = data.isIgnitionOn;
-        const backendLive = data.isLiveTracking === true;
-        const ignitionOn = rawIgnition === true || (rawIgnition == null && speed > 0);
-        const onlineStatus: OnlineStatus =
-          data.onlineStatus === 'ONLINE' ||
-          data.onlineStatus === 'STANDBY' ||
-          data.onlineStatus === 'OFFLINE'
-            ? data.onlineStatus
-            : 'OFFLINE';
-        const displayState: VehicleStateLabel =
-          data.displayState === 'MOVING' ||
-          data.displayState === 'IDLE' ||
-          data.displayState === 'PARKED'
-            ? data.displayState
-            : deriveVehicleState(speed > 3, ignitionOn, engineLoad);
-        const displayIgnition: DisplayIgnition =
-          data.displayIgnition === 'ON' ||
-          data.displayIgnition === 'OFF' ||
-          data.displayIgnition === 'UNKNOWN'
-            ? data.displayIgnition
-            : 'UNKNOWN';
+      if (result.aborted || result.stale) return result;
 
-        const snap: LiveTelemetrySnapshot = {
-          speed,
-          fuel: typeof data.fuel === 'number' ? data.fuel : 0,
-          coolant: typeof data.coolant === 'number' ? data.coolant : 0,
-          battery: typeof data.battery === 'number' ? data.battery : 0,
-          lvBatteryVoltage: typeof data.lvBatteryVoltage === 'number' ? data.lvBatteryVoltage : 0,
-          odometer: typeof data.odometer === 'number' ? data.odometer : 0,
-          engineLoad,
-          ignitionOn,
-        };
-        liveRef.current = backendLive;
-
-        store.patchIfBound(boundVehicleId, boundOrgId, {
-          snapshot: snap,
-          isLiveTracking: backendLive,
-          loading: false,
-          error: null,
-          lastSignal: data.lastSignal ?? store.lastSignal,
-          signalAgeMs:
-            typeof data.signalAgeMs === 'number' ? data.signalAgeMs : store.signalAgeMs,
-          isFresh: typeof data.isFresh === 'boolean' ? data.isFresh : store.isFresh,
-          onlineStatus,
-          displayState,
-          displayIgnition,
-          displaySpeed: data.displaySpeed ?? null,
-          displayCoolant: data.displayCoolant ?? null,
-          displayEngineLoad: data.displayEngineLoad ?? null,
-          tripDetectionState: data.tripDetectionState ?? null,
-        });
-
-        if (!backendLive) {
-          const lat = data.latitude;
-          const lng = data.longitude;
-          if (
-            lat != null &&
-            lng != null &&
-            Number.isFinite(lat) &&
-            Number.isFinite(lng) &&
-            lat >= -90 &&
-            lat <= 90 &&
-            lng >= -180 &&
-            lng <= 180
-          ) {
-            applyGpsPoint(boundVehicleId, boundOrgId, lat, lng, speed, 'cache');
-          }
-        }
-      } catch (error) {
-        const store = useVehicleLiveMapStore.getState();
-        if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
-          return;
-        }
-        store.patchIfBound(boundVehicleId, boundOrgId, {
-          loading: false,
-          error:
-            error instanceof Error ? error.message : 'Failed to refresh live telemetry',
-        });
+      if (result.ok && result.data) {
+        clearAccessBlock();
+        applyDashboardData(binding, result.data as DashboardTelemetryData);
+        return result;
       }
+
+      surfaceDashboardFailure(binding, result);
+      return result;
     },
-    [applyGpsPoint],
+    [applyDashboardData, clearAccessBlock, surfaceDashboardFailure],
   );
 
   useEffect(() => {
+    const coordinator = coordinatorRef.current!;
+
     if (!vehicleId || !orgId) {
-      sessionVehicleIdRef.current = null;
-      sessionOrgIdRef.current = null;
       lastTargetRef.current = null;
       locationHistoryRef.current = [];
       liveRef.current = false;
+      setTrackingLive(false);
+      clearTimers();
+      coordinator.reset();
       useVehicleLiveMapStore.getState().unbind();
+      useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
       return;
     }
 
-    cancelledRef.current = false;
-    sessionVehicleIdRef.current = vehicleId;
-    sessionOrgIdRef.current = orgId;
     lastTargetRef.current = null;
     locationHistoryRef.current = [];
     liveRef.current = false;
+    setTrackingLive(false);
+    clearTimers();
+    coordinator.bind(orgId, vehicleId);
+    useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
     useVehicleLiveMapStore.getState().bindToVehicle(vehicleId, orgId);
 
-    const scheduleDash = () => {
-      if (cancelledRef.current) return;
-      dashTimerRef.current = setTimeout(async () => {
-        if (cancelledRef.current) return;
-        const vid = sessionVehicleIdRef.current;
-        const oid = sessionOrgIdRef.current;
-        if (!vid || !oid) return;
-        await fetchDashboard(vid, oid);
-        scheduleDash();
-      }, DASHBOARD_POLL_MS);
+    return () => {
+      coordinator.reset();
     };
+  }, [vehicleId, orgId, clearTimers]);
 
-    const scheduleGps = () => {
-      if (cancelledRef.current) return;
-      gpsTimerRef.current = setTimeout(async () => {
-        if (cancelledRef.current) return;
-        const vid = sessionVehicleIdRef.current;
-        const oid = sessionOrgIdRef.current;
-        if (!vid || !oid) return;
-        if (liveRef.current) {
-          await fetchGps(vid, oid);
-        }
-        scheduleGps();
-      }, GPS_POLL_MS);
-    };
-
-    fetchDashboard(vehicleId, orgId).then(() => {
-      if (cancelledRef.current) return;
-      scheduleDash();
-      if (liveRef.current) {
-        fetchGps(vehicleId, orgId).then(() => {
-          if (!cancelledRef.current) scheduleGps();
-        });
-      } else {
-        scheduleGps();
+  useEffect(() => {
+    if (!vehicleId || !orgId || !gates.dashboardTelemetry) {
+      dashLoopIdRef.current += 1;
+      coordinatorRef.current?.abortChannel('dashboard');
+      if (dashTimerRef.current) {
+        clearTimeout(dashTimerRef.current);
+        dashTimerRef.current = null;
       }
-    });
+      return;
+    }
+
+    const coordinator = coordinatorRef.current!;
+    const loopId = dashLoopIdRef.current + 1;
+    dashLoopIdRef.current = loopId;
+
+    const runDashboardLoop = async () => {
+      if (loopId !== dashLoopIdRef.current) return;
+
+      const binding = coordinator.snapshotBinding();
+      if (!binding.vehicleId || !binding.organizationId) return;
+
+      const result = await fetchDashboard(binding);
+      if (loopId !== dashLoopIdRef.current || !gatesRef.current.dashboardTelemetry) return;
+
+      const delay =
+        result && !result.ok && !result.aborted && !result.stale
+          ? result.nextDelayMs
+          : gatesRef.current.dashboardIntervalMs;
+
+      dashTimerRef.current = setTimeout(() => {
+        void runDashboardLoop();
+      }, delay);
+    };
+
+    void runDashboardLoop();
 
     return () => {
-      cancelledRef.current = true;
-      if (gpsTimerRef.current) {
-        clearTimeout(gpsTimerRef.current);
-        gpsTimerRef.current = null;
-      }
+      dashLoopIdRef.current += 1;
+      coordinator.abortChannel('dashboard');
       if (dashTimerRef.current) {
         clearTimeout(dashTimerRef.current);
         dashTimerRef.current = null;
       }
     };
-  }, [vehicleId, orgId, fetchDashboard, fetchGps]);
+  }, [
+    vehicleId,
+    orgId,
+    gates.dashboardTelemetry,
+    gates.dashboardIntervalMs,
+    fetchDashboard,
+  ]);
+
+  useEffect(() => {
+    if (!vehicleId || !orgId || !gates.gpsHighFrequency || !trackingLive) {
+      gpsLoopIdRef.current += 1;
+      coordinatorRef.current?.abortChannel('gps');
+      if (gpsTimerRef.current) {
+        clearTimeout(gpsTimerRef.current);
+        gpsTimerRef.current = null;
+      }
+      return;
+    }
+    if (gpsTimerRef.current) return;
+
+    const coordinator = coordinatorRef.current!;
+    const gpsLoopId = gpsLoopIdRef.current + 1;
+    gpsLoopIdRef.current = gpsLoopId;
+
+    const runGps = async () => {
+      if (gpsLoopId !== gpsLoopIdRef.current || !liveRef.current) return;
+
+      const binding = coordinator.snapshotBinding();
+      if (!binding.vehicleId || !binding.organizationId) return;
+
+      const result = await fetchGps(binding);
+      if (gpsLoopId !== gpsLoopIdRef.current) return;
+
+      const delay =
+        result && !result.ok && !result.aborted && !result.stale
+          ? result.nextDelayMs
+          : VEHICLE_DETAIL_POLLING.GPS_MS;
+
+      gpsTimerRef.current = setTimeout(() => {
+        void runGps();
+      }, delay);
+    };
+
+    void runGps();
+
+    return () => {
+      gpsLoopIdRef.current += 1;
+      coordinator.abortChannel('gps');
+      if (gpsTimerRef.current) {
+        clearTimeout(gpsTimerRef.current);
+        gpsTimerRef.current = null;
+      }
+    };
+  }, [vehicleId, orgId, gates.gpsHighFrequency, trackingLive, fetchGps]);
+
+  useEffect(() => {
+    return () => {
+      clearTimers();
+      coordinatorRef.current?.reset();
+    };
+  }, [clearTimers]);
 }
+
+export { VEHICLE_DETAIL_POLLING };

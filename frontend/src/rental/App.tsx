@@ -55,18 +55,36 @@ import { CustomerDetailView } from './components/CustomerDetailView';
 import { VehicleBookingsView } from './components/VehicleBookingsView';
 import { VehicleTasksView } from './components/VehicleTasksView';
 import { VehicleData } from './data/vehicles';
-import { normalizeFleetStatusKey } from './lib/vehicle-status';
-import { VEHICLE_OPERATIONAL_STATUS } from './lib/vehicle-operational-state';
+import { deriveVehicleDetailHeaderEditStatus } from './lib/vehicle-detail-header-status';
+import type { VehicleOperationalUiStatus } from './lib/vehicle-detail-header-status';
+import {
+  classifyVehicleCleaningStatusMutationError,
+  deriveVehicleDetailHeaderCleaningStatus,
+  mutateVehicleCleaningStatus,
+  resolveCleaningStatusMutationSideEffects,
+  shouldWarnBeforeCleaningStatusChange,
+  type VehicleCleaningUiStatus,
+} from './lib/vehicle-cleaning-status-mutation';
+import {
+  classifyVehicleOperationalStatusMutationError,
+  mutateVehicleOperationalStatus,
+  shouldWarnBeforeVehicleOperationalStatusChange,
+  vehicleOperationalStatusMutationSuccessMessage,
+} from './lib/vehicle-operational-status-mutation';
 import {
   invalidateVehicleOperationalAfterBookingChange,
   invalidateVehicleOperationalState,
 } from './lib/vehicle-operational-query';
 import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles } from './FleetContext';
+import { useFleetMapStore } from './stores/useFleetMapStore';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
+import { useDocumentVisible, useNetworkOnline } from './hooks/useBrowserTabSignals';
+import { resolveVehicleDetailPollingGates } from './lib/vehicle-detail-polling-policy';
+import { useVehicleDetailPollingStore } from './stores/useVehicleDetailPollingStore';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { pushDocumentIntakeEntry, type DocumentIntakeEntryState } from './lib/document-intake-entry';
@@ -112,11 +130,45 @@ const VEHICLE_DETAIL_VIEWS = new Set<string>([
 function VehicleLiveTelemetryBinder({
   vehicleId,
   orgId,
+  isOverviewTab,
+  canReadFleet,
 }: {
   vehicleId: string | null;
   orgId: string;
+  isOverviewTab: boolean;
+  canReadFleet: boolean;
 }) {
-  useLiveVehicleTelemetry(vehicleId, orgId);
+  const isDocumentVisible = useDocumentVisible();
+  const isOnline = useNetworkOnline();
+  const isOverviewMapVisible = useVehicleDetailPollingStore((s) => s.overviewMapVisible);
+  const accessBlockReason = useVehicleDetailPollingStore((s) => s.telemetryAccessBlock);
+
+  const gates = useMemo(
+    () =>
+      resolveVehicleDetailPollingGates({
+        vehicleId,
+        orgId,
+        isVehicleDetailOpen: Boolean(vehicleId),
+        isOverviewTab,
+        isOverviewMapVisible,
+        isDocumentVisible,
+        isOnline,
+        canReadFleet,
+        accessBlockReason,
+      }),
+    [
+      vehicleId,
+      orgId,
+      isOverviewTab,
+      isOverviewMapVisible,
+      isDocumentVisible,
+      isOnline,
+      canReadFleet,
+      accessBlockReason,
+    ],
+  );
+
+  useLiveVehicleTelemetry({ vehicleId, orgId, gates });
   return null;
 }
 
@@ -202,8 +254,8 @@ function RentalAppContent() {
     return () => window.clearInterval(id);
   }, [orgId]);
   const { isDarkMode } = useAppTheme();
-  const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
-  const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
+  const [cleaningStatus, setCleaningStatus] = useState<VehicleCleaningUiStatus>('Clean');
+  const [vehicleStatus, setVehicleStatus] = useState<VehicleOperationalUiStatus>('Available');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
@@ -306,6 +358,10 @@ function RentalAppContent() {
   const [highlightedVehicleTaskId, setHighlightedVehicleTaskId] = useState<string | null>(null);
   const [vehicleTasksRefreshToken, setVehicleTasksRefreshToken] = useState(0);
   const [cleaningStatusBusy, setCleaningStatusBusy] = useState(false);
+  const [vehicleStatusBusy, setVehicleStatusBusy] = useState(false);
+  const canEditVehicleOperationalStatus = hasPermission('fleet', 'write');
+  const canEditCleaningStatus = hasPermission('fleet', 'write');
+  const canReadFleetTelemetry = hasPermission('fleet', 'read');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const overviewSummaryEnabled = currentView === 'overview' && Boolean(selectedVehicle?.id);
@@ -343,16 +399,20 @@ function RentalAppContent() {
       return;
     }
     setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
-    const normalized = normalizeFleetStatusKey(fresh.status);
-    setVehicleStatus(
-      normalized === VEHICLE_OPERATIONAL_STATUS.AVAILABLE
-        ? 'Available'
-        : normalized === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
-          ? 'Maintenance'
-          : 'Manual Block',
-    );
-    setCleaningStatus(fresh.cleaningStatus);
-  }, [fleetVehicles, selectedVehicle?.id, selectedVehicle?.status, selectedVehicle?.cleaningStatus]);
+    if (!vehicleStatusBusy) {
+      setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
+    }
+    if (!cleaningStatusBusy) {
+      setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(fresh));
+    }
+  }, [
+    cleaningStatusBusy,
+    fleetVehicles,
+    selectedVehicle?.id,
+    selectedVehicle?.status,
+    selectedVehicle?.cleaningStatus,
+    vehicleStatusBusy,
+  ]);
 
   // Shared new customers (created in NewBookingView, shown in CustomersView)
   const [newlyCreatedCustomers, setNewlyCreatedCustomers] = useState<any[]>([]);
@@ -400,7 +460,7 @@ function RentalAppContent() {
   // Warning modals
   const [showCleaningWarning, setShowCleaningWarning] = useState(false);
   const [showStatusWarning, setShowStatusWarning] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState<'Manual Block' | 'Maintenance' | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<VehicleOperationalUiStatus | null>(null);
   
   // Available stations
   const availableStations: string[] = [];
@@ -435,114 +495,187 @@ function RentalAppContent() {
   // Check if any filter is active
   const hasActiveFilters = selectedDriver !== 'all' || selectedDate !== '';
 
-  // Handle cleaning status change
   const persistCleaningStatus = useCallback(
-    async (apiStatus: 'CLEAN' | 'NEEDS_CLEANING') => {
+    async (nextUiStatus: VehicleCleaningUiStatus) => {
       if (!orgId || !selectedVehicle?.id || cleaningStatusBusy) return;
-      setCleaningStatusBusy(true);
-      try {
-        const res = await api.vehicles.updateOperationalStatus(orgId, selectedVehicle.id, {
-          cleaningStatus: apiStatus,
+      if (!canEditCleaningStatus) {
+        toast.error('Keine Berechtigung', {
+          description: 'Zum Ändern des Reinigungsstatus ist Fleet-Schreibrecht erforderlich.',
         });
-        const uiStatus = apiStatus === 'NEEDS_CLEANING' ? 'Needs Cleaning' : 'Clean';
-        setCleaningStatus(uiStatus);
-        setSelectedVehicle((prev) => (prev ? { ...prev, cleaningStatus: uiStatus } : prev));
-        setVehicleTasksRefreshToken((t) => t + 1);
-        void invalidateVehicleOperationalState({
+        return;
+      }
+
+      const confirmedUiStatus = deriveVehicleDetailHeaderCleaningStatus(selectedVehicle);
+      if (nextUiStatus === confirmedUiStatus) {
+        setIsCleaningDropdownOpen(false);
+        setShowCleaningWarning(false);
+        return;
+      }
+
+      setCleaningStatusBusy(true);
+      setIsCleaningDropdownOpen(false);
+      try {
+        const result = await mutateVehicleCleaningStatus({
+          orgId,
+          vehicleId: selectedVehicle.id,
+          uiStatus: nextUiStatus,
+        });
+        await invalidateVehicleOperationalState({
           orgId,
           vehicleIds: [selectedVehicle.id],
           reason: 'vehicle-status-patch',
           optimistic: 'none',
         });
+        await refreshFleetVehicles();
+        const fresh = useFleetMapStore
+          .getState()
+          .vehicles.find((vehicle) => vehicle.id === selectedVehicle.id);
+        if (fresh) {
+          setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
+          setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(fresh));
+        }
+        setVehicleTasksRefreshToken((t) => t + 1);
 
-        const action = res.cleaningTask?.action;
-        if (apiStatus === 'NEEDS_CLEANING') {
-          if (action === 'created') {
-            toast.success('Reinigungsaufgabe erstellt', {
-              description: 'Die Aufgabe erscheint im Task-Tab dieses Fahrzeugs.',
-            });
-            if (res.cleaningTask?.taskId) {
-              setHighlightedVehicleTaskId(res.cleaningTask.taskId);
-              setCurrentView('vehicle-tasks');
-            }
-          } else if (action === 'existing') {
-            toast.info('Offene Reinigungsaufgabe bereits vorhanden', {
-              description: 'Es wurde keine Duplikat-Aufgabe erstellt.',
-            });
-            if (res.cleaningTask?.taskId) {
-              setHighlightedVehicleTaskId(res.cleaningTask.taskId);
-              setCurrentView('vehicle-tasks');
-            }
+        const sideEffect = resolveCleaningStatusMutationSideEffects(
+          result.prismaStatus,
+          result,
+        );
+        if (sideEffect) {
+          const { toast: toastPayload, highlightedTaskId, openVehicleTasks } = sideEffect;
+          if (toastPayload.type === 'success') {
+            toast.success(toastPayload.title, { description: toastPayload.description });
+          } else if (toastPayload.type === 'info') {
+            toast.info(toastPayload.title, { description: toastPayload.description });
           } else {
-            toast.warning('Reinigungsstatus gespeichert', {
-              description: 'Die Reinigungsaufgabe konnte nicht angelegt werden.',
-            });
+            toast.warning(toastPayload.title, { description: toastPayload.description });
           }
-        } else if (action === 'completed') {
-          toast.success('Reinigungsaufgabe abgeschlossen', {
-            description:
-              (res.cleaningTask?.completedCount ?? 0) > 1
-                ? `${res.cleaningTask?.completedCount} offene Reinigungsaufgaben wurden abgeschlossen.`
-                : 'Fahrzeug als sauber markiert.',
-          });
-        } else {
-          toast.success('Fahrzeug als sauber markiert');
+          if (highlightedTaskId) {
+            setHighlightedVehicleTaskId(highlightedTaskId);
+          }
+          if (openVehicleTasks) {
+            setCurrentView('vehicle-tasks');
+          }
         }
       } catch (err) {
+        setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(selectedVehicle));
         toast.error('Reinigungsstatus konnte nicht gespeichert werden', {
-          description: err instanceof Error ? err.message : 'Unbekannter Fehler',
+          description: classifyVehicleCleaningStatusMutationError(err, 'de'),
         });
-        throw err;
       } finally {
         setCleaningStatusBusy(false);
+        setShowCleaningWarning(false);
       }
     },
-    [cleaningStatusBusy, orgId, selectedVehicle?.id],
+    [
+      canEditCleaningStatus,
+      cleaningStatusBusy,
+      orgId,
+      refreshFleetVehicles,
+      selectedVehicle,
+    ],
   );
 
-  const handleCleaningStatusChange = (newStatus: 'Clean' | 'Needs Cleaning') => {
-    if (newStatus === 'Needs Cleaning') {
+  const handleCleaningStatusChange = (newStatus: VehicleCleaningUiStatus) => {
+    if (cleaningStatusBusy) return;
+    if (shouldWarnBeforeCleaningStatusChange(newStatus)) {
       setShowCleaningWarning(true);
       setIsCleaningDropdownOpen(false);
-    } else {
-      setIsCleaningDropdownOpen(false);
-      void persistCleaningStatus('CLEAN');
+      return;
     }
+    void persistCleaningStatus(newStatus);
   };
 
-  // Confirm cleaning status change
   const confirmCleaningChange = () => {
-    setShowCleaningWarning(false);
-    void persistCleaningStatus('NEEDS_CLEANING');
+    void persistCleaningStatus('Needs Cleaning');
   };
+
+  const persistVehicleOperationalStatus = useCallback(
+    async (editStatus: VehicleOperationalUiStatus) => {
+      if (!orgId || !selectedVehicle?.id || vehicleStatusBusy) return;
+      if (!canEditVehicleOperationalStatus) {
+        toast.error('Keine Berechtigung', {
+          description: 'Zum Ändern des Fahrzeugstatus ist Fleet-Schreibrecht erforderlich.',
+        });
+        return;
+      }
+
+      const confirmedEditStatus = deriveVehicleDetailHeaderEditStatus(selectedVehicle);
+      if (editStatus === confirmedEditStatus) {
+        setIsStatusDropdownOpen(false);
+        return;
+      }
+
+      setVehicleStatusBusy(true);
+      setIsStatusDropdownOpen(false);
+      try {
+        await mutateVehicleOperationalStatus({
+          orgId,
+          vehicleId: selectedVehicle.id,
+          editStatus,
+        });
+        await invalidateVehicleOperationalState({
+          orgId,
+          vehicleIds: [selectedVehicle.id],
+          reason: 'vehicle-status-patch',
+          optimistic: 'none',
+        });
+        await refreshFleetVehicles();
+        const fresh = useFleetMapStore
+          .getState()
+          .vehicles.find((vehicle) => vehicle.id === selectedVehicle.id);
+        if (fresh) {
+          setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
+          setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
+        }
+        toast.success(vehicleOperationalStatusMutationSuccessMessage(editStatus, 'de'));
+      } catch (err) {
+        setVehicleStatus(deriveVehicleDetailHeaderEditStatus(selectedVehicle));
+        toast.error('Fahrzeugstatus konnte nicht gespeichert werden', {
+          description: classifyVehicleOperationalStatusMutationError(err, 'de'),
+        });
+      } finally {
+        setVehicleStatusBusy(false);
+        setPendingStatus(null);
+        setShowStatusWarning(false);
+      }
+    },
+    [
+      canEditVehicleOperationalStatus,
+      orgId,
+      refreshFleetVehicles,
+      selectedVehicle,
+      vehicleStatusBusy,
+    ],
+  );
 
   // Handle vehicle status change
-  const handleVehicleStatusChange = (newStatus: 'Available' | 'Manual Block' | 'Maintenance') => {
-    // Show warning if changing from Available to Maintenance or Manual Block
-    if (vehicleStatus === 'Available' && (newStatus === 'Maintenance' || newStatus === 'Manual Block')) {
+  const handleVehicleStatusChange = (newStatus: VehicleOperationalUiStatus) => {
+    if (vehicleStatusBusy) return;
+    if (
+      shouldWarnBeforeVehicleOperationalStatusChange(vehicleStatus, newStatus)
+    ) {
       setPendingStatus(newStatus);
       setShowStatusWarning(true);
       setIsStatusDropdownOpen(false);
-    } else {
-      setVehicleStatus(newStatus);
-      setIsStatusDropdownOpen(false);
+      return;
     }
+    void persistVehicleOperationalStatus(newStatus);
   };
 
   // Confirm vehicle status change
   const confirmStatusChange = () => {
     if (pendingStatus) {
-      setVehicleStatus(pendingStatus);
-      setPendingStatus(null);
+      void persistVehicleOperationalStatus(pendingStatus);
+    } else {
+      setShowStatusWarning(false);
     }
-    setShowStatusWarning(false);
   };
 
   // Handle vehicle selection from Fleet
   const handleVehicleSelect = (vehicle: VehicleData) => {
     setSelectedVehicle(vehicle);
-    setVehicleStatus(vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ? 'Available' : vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ? 'Maintenance' : 'Available');
-    setCleaningStatus(vehicle.cleaningStatus);
+    setVehicleStatus(deriveVehicleDetailHeaderEditStatus(vehicle));
+    setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(vehicle));
     setCurrentStation(vehicle.station);
     setCurrentView('overview');
   };
@@ -788,7 +921,12 @@ function RentalAppContent() {
       />
       )}
     >
-      <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
+      <VehicleLiveTelemetryBinder
+        vehicleId={liveTelemetryVehicleId}
+        orgId={orgId}
+        isOverviewTab={currentView === 'overview'}
+        canReadFleet={canReadFleetTelemetry}
+      />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
             <TopBar
               onViewChange={handleViewChange}
@@ -801,11 +939,21 @@ function RentalAppContent() {
           <VehicleDetailHeader
             vehicle={selectedVehicle}
             vehicleStatus={vehicleStatus}
+            vehicleStatusBusy={vehicleStatusBusy}
+            canEditOperationalStatus={canEditVehicleOperationalStatus}
             cleaningStatus={cleaningStatus}
+            cleaningStatusBusy={cleaningStatusBusy}
+            canEditCleaningStatus={canEditCleaningStatus}
             isStatusDropdownOpen={isStatusDropdownOpen}
             isCleaningDropdownOpen={isCleaningDropdownOpen}
-            onToggleStatusDropdown={() => setIsStatusDropdownOpen((open) => !open)}
-            onToggleCleaningDropdown={() => setIsCleaningDropdownOpen((open) => !open)}
+            onToggleStatusDropdown={() => {
+              if (vehicleStatusBusy || !canEditVehicleOperationalStatus) return;
+              setIsStatusDropdownOpen((open) => !open);
+            }}
+            onToggleCleaningDropdown={() => {
+              if (cleaningStatusBusy || !canEditCleaningStatus) return;
+              setIsCleaningDropdownOpen((open) => !open);
+            }}
             onVehicleStatusChange={handleVehicleStatusChange}
             onCleaningStatusChange={handleCleaningStatusChange}
             onBack={handleBackToFleet}
@@ -1384,22 +1532,25 @@ function RentalAppContent() {
             <div className="flex gap-2">
               <button
                 onClick={() => {
+                  if (vehicleStatusBusy) return;
                   setShowStatusWarning(false);
                   setPendingStatus(null);
                 }}
-                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press"
+                disabled={vehicleStatusBusy}
+                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmStatusChange}
-                className={`flex-1 px-3 py-2 text-white rounded-md font-semibold transition-all duration-200 shadow-sm sq-press hover:opacity-90 ${
+                disabled={vehicleStatusBusy}
+                className={`flex-1 px-3 py-2 text-white rounded-md font-semibold transition-all duration-200 shadow-sm sq-press hover:opacity-90 disabled:opacity-60 ${
                   pendingStatus === 'Manual Block'
                     ? 'bg-[color:var(--status-critical)]'
                     : 'bg-[color:var(--status-warning)]'
                 }`}
               >
-                Confirm
+                {vehicleStatusBusy ? 'Wird gespeichert…' : 'Confirm'}
               </button>
             </div>
           </div>
