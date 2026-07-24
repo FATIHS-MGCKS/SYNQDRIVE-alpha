@@ -159,7 +159,11 @@ describe('useLiveVehicleTelemetry polling lifecycle', () => {
     rerender({ vehicleId: 'veh-2' });
     await vi.runOnlyPendingTimersAsync();
     await Promise.resolve();
-    expect(telemetry).toHaveBeenCalledWith('org-1', 'veh-2');
+    expect(telemetry).toHaveBeenCalledWith(
+      'org-1',
+      'veh-2',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
 
     rerender({ vehicleId: null });
     await vi.runOnlyPendingTimersAsync();
