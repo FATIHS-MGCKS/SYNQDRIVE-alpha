@@ -3,6 +3,7 @@ import {
   AuthorizationActorType,
   Prisma,
   ProviderAccessGrantStatus,
+  VehicleProviderConsentStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
@@ -145,6 +146,21 @@ export class ProviderAccessGrantService {
           reason: dto.reason?.trim() || null,
         },
       });
+
+      if (updated.vehicleId) {
+        await tx.vehicleProviderConsent.updateMany({
+          where: {
+            vehicleId: updated.vehicleId,
+            provider: updated.provider,
+            status: VehicleProviderConsentStatus.ACTIVE,
+          },
+          data: {
+            status: VehicleProviderConsentStatus.REVOKED,
+            revokedAt,
+            revokedByUserId: actorUserId,
+          },
+        });
+      }
 
       return updated;
     }).then(async (updated) => {

@@ -67,6 +67,9 @@ import {
   RevocationOrchestratorSteps,
 } from './revocation-orchestrator/revocation-orchestrator.steps';
 import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/revocation-orchestrator.enqueue.service';
+import { ProviderGrantConsolidationService } from './provider-grant-consolidation/provider-grant-consolidation.service';
+import { ProviderGrantProvisioningService } from './provider-grant-consolidation/provider-grant-provisioning.service';
+import { ProviderGrantVerificationService } from './provider-grant-consolidation/provider-grant-verification.service';
 
 @Module({
   imports: [
@@ -144,6 +147,9 @@ import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/
     DenySwitchPropagationService,
     DenySwitchService,
     DenySwitchStartupService,
+    ProviderGrantConsolidationService,
+    ProviderGrantProvisioningService,
+    ProviderGrantVerificationService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -181,6 +187,8 @@ import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/
     RevocationOrchestratorService,
     RevocationOrchestratorEnqueueService,
     DenySwitchService,
+    ProviderGrantProvisioningService,
+    ProviderGrantConsolidationService,
   ],
 })
 export class DataAuthorizationsModule {}
