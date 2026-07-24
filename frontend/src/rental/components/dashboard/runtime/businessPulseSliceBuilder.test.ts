@@ -204,12 +204,12 @@ describe('buildBusinessPulseSlices invoice classification', () => {
       ],
     });
 
-    expect(slices.revenue.valueCents).toBe(9_000);
-    expect(slices.revenue.count).toBe(1);
+    expect(slices.revenue.valueCents).toBe(0);
+    expect(slices.revenue.count).toBe(0);
     expect(slices['reserved-revenue'].valueCents).toBe(15_000);
     expect(slices['reserved-revenue'].count).toBe(1);
-    expect(slices.profit.valueCents).toBe(9_000);
-    expect(slices.revenue.rows[0]?.title).not.toContain('outgoing');
+    expect(slices.profit.valueCents).toBe(0);
+    expect(slices.revenue.rows).toHaveLength(0);
   });
 });
 

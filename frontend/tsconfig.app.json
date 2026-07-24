@@ -28,9 +28,10 @@
       "@synq/evaluations-metrics/*": ["../shared/evaluations-metrics/*"],
       "@synq/evaluations-periods/*": ["../shared/evaluations-periods/*"],
       "@synq/money/*": ["../shared/money/*"],
-      "@synq/receivables/*": ["../shared/receivables/*"]
+      "@synq/receivables/*": ["../shared/receivables/*"],
+      "@synq/finance/*": ["../shared/finance/*"]
     }
   },
-  "include": ["src", "../shared/evaluations-metrics/**/*.ts", "../shared/evaluations-periods/**/*.ts", "../shared/money/**/*.ts", "../shared/receivables/**/*.ts"],
+  "include": ["src", "../shared/evaluations-metrics/**/*.ts", "../shared/evaluations-periods/**/*.ts", "../shared/money/**/*.ts", "../shared/receivables/**/*.ts", "../shared/finance/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }

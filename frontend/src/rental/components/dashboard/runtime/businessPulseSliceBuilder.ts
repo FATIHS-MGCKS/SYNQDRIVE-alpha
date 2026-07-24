@@ -1,8 +1,9 @@
 import type { DashboardInvoice } from '../dashboardTypes';
 import { bookingRef } from '../../bookings/bookingUtils';
 import {
+  computeRevenueCashflowContribution,
   expensesInRange,
-  mtdRevenueInRange,
+  issuedRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
   reservedRevenueInRange,
@@ -322,7 +323,7 @@ export function buildBusinessPulseSlices(
   const rows = input.invoices.map((inv) => invoiceRow(inv, input.locale, now, currency));
   const rowByInvoiceId = new Map(rows.map((row) => [row.invoiceId, row]));
 
-  const revenueInvoices = mtdRevenueInRange(invoiceSlices, monthStart, monthEnd);
+  const revenueInvoices = issuedRevenueInRange(invoiceSlices, monthStart, monthEnd);
   const reservedInvoices = reservedRevenueInRange(invoiceSlices, monthStart, monthEnd);
   const expenseInvoices = expensesInRange(invoiceSlices, monthStart, monthEnd);
   const outgoingRows = rowsForInvoices(invoicesFromSlices(input.invoices, revenueInvoices), rowByInvoiceId);
@@ -348,9 +349,18 @@ export function buildBusinessPulseSlices(
   const draftInvoices = rows.filter((row) => row.state === 'draft');
   const failedPayments = rows.filter((row) => row.state === 'failed' || row.state === 'disputed');
 
-  const revenueCents = sumCents(outgoingRows);
-  const expensesCents = sumCents(incomingRows);
-  const profitCents = revenueCents - expensesCents;
+  const revenueCashflow = computeRevenueCashflowContribution({
+    invoices: invoiceSlices,
+    periodStart: monthStart,
+    periodEndInclusive: monthEnd,
+    timezone,
+    reportingCurrency: currency,
+  });
+  const revenueCents = revenueCashflow.metrics.periodRevenue.netAmountMinor;
+  const expensesCents = revenueCashflow.metrics.operatingExpenses.amountMinor;
+  const profitCents = revenueCashflow.completeness.operatingResultVisible
+    ? revenueCashflow.metrics.operatingResult?.netAmountMinor ?? revenueCents - expensesCents
+    : revenueCashflow.metrics.periodRevenue.netAmountMinor - expensesCents;
 
   return {
     revenue: makeSlice({

@@ -8,6 +8,8 @@ import {
   resolveOutstandingMinor,
 } from '@synq/receivables/receivables-analytics';
 import type { ReceivablesAnalyticsResult } from '@synq/receivables/receivables-invoice.contract';
+import { computeRevenueCashflowContribution } from '@synq/finance/revenue-cashflow-contribution';
+import type { RevenueCashflowContributionResult } from '@synq/finance/revenue-cashflow-contribution.contract';
 import { moneyFromMinor, sumMoney } from '@synq/money/money.util';
 
 import {
@@ -25,6 +27,8 @@ export interface InvoiceSlice {
   type: string;
   status: string;
   totalCents: number | null;
+  subtotalCents?: number | null;
+  taxCents?: number | null;
   paidCents?: number | null;
   outstandingCents?: number | null;
   currency: string | null;
@@ -32,6 +36,8 @@ export interface InvoiceSlice {
   dueDate: string | null;
   paidAt: string | null;
   createdAt: string | null;
+  cancelledAt?: string | null;
+  creditedAt?: string | null;
   customerId?: string | null;
   vehicleId?: string | null;
   bookingId?: string | null;
@@ -45,9 +51,10 @@ export {
   isRevenueInvoice,
   isExpenseInvoice,
   computeReceivablesAnalytics,
+  computeRevenueCashflowContribution,
   resolveOutstandingMinor,
 };
-export type { ReceivablesAnalyticsResult };
+export type { ReceivablesAnalyticsResult, RevenueCashflowContributionResult };
 
 export function isEurInvoice(inv: InvoiceSlice): boolean {
   const c = (inv.currency ?? 'EUR').toUpperCase();
@@ -155,7 +162,7 @@ export function preIssuedBookingRevenueInRange<T extends InvoiceSlice & { type?:
   });
 }
 
-/** Dashboard MTD revenue (Option A) — issued outgoing + cash collected in range; no DRAFT. */
+/** @deprecated Mixed union (issued ∪ paid) — use `computeRevenueCashflowContribution` for separated metrics. */
 export function mtdRevenueInRange<T extends InvoiceSlice>(
   invoices: T[],
   from: Date,

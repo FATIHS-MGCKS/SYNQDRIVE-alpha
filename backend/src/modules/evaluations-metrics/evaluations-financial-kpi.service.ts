@@ -16,18 +16,16 @@ import { resolveEvaluationsMetricCalculationVersion } from '@synq/evaluations-me
 import { EvaluationsPeriodService } from './evaluations-period.service';
 import {
   computeReceivablesAnalytics,
-  expensesInRange,
+  computeRevenueCashflowContribution,
   FINANCIAL_KPI_EXCLUSIONS,
   isEurInvoice,
   latestInvoiceSourceAt,
-  mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
-  paidRevenueInRange,
-  sumCents,
   sumOutstandingCents,
   type FinancialKpiInvoiceRow,
   type ReceivablesAnalyticsResult,
+  type RevenueCashflowContributionResult,
 } from './financial-kpi.logic';
 
 const SOURCE_STALE_MS = 24 * 60 * 60 * 1000;
@@ -43,6 +41,7 @@ export interface FinancialMtdKpiBundle {
   } | null;
   metrics: EvaluationsMetricResponse[];
   receivablesAnalytics: ReceivablesAnalyticsResult | null;
+  revenueCashflowContribution: RevenueCashflowContributionResult | null;
 }
 
 @Injectable()
@@ -89,11 +88,23 @@ export class EvaluationsFinancialKpiService {
         timezone: periodBundle.timezone.effective,
       };
 
-      const mtdRevenueRows = mtdRevenueInRange(invoices, mtdFrom, mtdTo);
-      const prevRevenueRows = mtdRevenueInRange(invoices, prevFrom, prevTo);
-      const mtdExpenseRows = expensesInRange(invoices, mtdFrom, mtdTo);
-      const mtdPaidRows = paidRevenueInRange(invoices, mtdFrom, mtdTo);
       const timezone = periodBundle.timezone.effective;
+
+      const revenueCashflowContribution = computeRevenueCashflowContribution({
+        invoices,
+        periodStart: mtdFrom,
+        periodEndInclusive: mtdTo,
+        timezone,
+        reportingCurrency: 'EUR',
+      });
+      const prevRevenueCashflow = computeRevenueCashflowContribution({
+        invoices,
+        periodStart: prevFrom,
+        periodEndInclusive: prevTo,
+        timezone,
+        reportingCurrency: 'EUR',
+      });
+
       const receivablesAnalytics = computeReceivablesAnalytics({
         invoices,
         reference,
@@ -103,11 +114,20 @@ export class EvaluationsFinancialKpiService {
       const openRows = openOutgoingReceivables(invoices, reference, 'EUR');
       const overdueRows = overdueOutgoingReceivables(invoices, reference, timezone, 'EUR');
 
-      const mtdRevenueCents = sumCents(mtdRevenueRows);
-      const mtdExpenseCents = sumCents(mtdExpenseRows);
-      const mtdNetCents = mtdRevenueCents - mtdExpenseCents;
+      const rcx = revenueCashflowContribution.metrics;
+      const periodRevenueCents = rcx.periodRevenue.netAmountMinor;
+      const invoicedRevenueCents = rcx.invoicedRevenue.amountMinor;
+      const paymentReceiptsCents = rcx.paymentReceipts.amountMinor;
+      const mtdExpenseCents = rcx.operatingExpenses.amountMinor;
+      const netCashflowCents = rcx.netCashflow.amountMinor;
+      const contributionCents = rcx.contributionMargin.netAmountMinor;
+      const operatingResultCents = revenueCashflowContribution.completeness.operatingResultVisible
+        ? rcx.operatingResult?.netAmountMinor ?? null
+        : null;
       const profitMargin =
-        mtdRevenueCents > 0 ? (mtdNetCents / mtdRevenueCents) * 100 : 0;
+        operatingResultCents != null && periodRevenueCents > 0
+          ? (operatingResultCents / periodRevenueCents) * 100
+          : 0;
 
       const baseCoverage = {
         rowsObserved: invoices.length,
@@ -116,6 +136,9 @@ export class EvaluationsFinancialKpiService {
           ...(nonEurCount > 0 ? [FINANCIAL_KPI_EXCLUSIONS.nonEur] : []),
           ...(receivablesAnalytics.dataQuality.missingDueDateCount > 0
             ? ['receivables_missing_due_date']
+            : []),
+          ...(revenueCashflowContribution.completeness.costBasis === 'PARTIAL'
+            ? revenueCashflowContribution.completeness.reasons
             : []),
         ],
         ratio:
@@ -164,6 +187,8 @@ export class EvaluationsFinancialKpiService {
           });
         }
 
+        const rcxPartial = revenueCashflowContribution.completeness.costBasis === 'PARTIAL';
+
         if (isStale) {
           return buildStaleMetric({
             ...payload,
@@ -172,7 +197,7 @@ export class EvaluationsFinancialKpiService {
           });
         }
 
-        if (nonEurCount > 0) {
+        if (nonEurCount > 0 || rcxPartial) {
           return buildPartialMetric({
             ...payload,
             value: cents,
@@ -181,6 +206,42 @@ export class EvaluationsFinancialKpiService {
         }
 
         return buildAvailableMetric({ ...payload, value: cents });
+      };
+
+      const buildOperatingResultMetric = (): EvaluationsMetricResponse => {
+        const metricId = 'fin.mtd_net_result';
+        const calcVersion = resolveEvaluationsMetricCalculationVersion(metricId);
+        const payload = {
+          metricId,
+          unit: 'EUR_CENTS' as const,
+          currency: 'EUR',
+          generatedAt,
+          period: mtdPeriod,
+          calculationVersion: calcVersion,
+          exclusions,
+          dataCoverage: baseCoverage,
+          sourceFreshness: freshness,
+          comparison: null,
+        };
+        if (invoices.length === 0) {
+          return buildUnavailableMetric({ ...payload, reason: 'No invoice rows available for organization' });
+        }
+        if (!revenueCashflowContribution.completeness.operatingResultVisible || operatingResultCents == null) {
+          return buildPartialMetric({
+            ...payload,
+            value: 0,
+            dataCoverage: baseCoverage,
+            warnings: ['operating_result_hidden_incomplete_cost_basis'],
+          });
+        }
+        if (isStale) {
+          return buildStaleMetric({
+            ...payload,
+            value: operatingResultCents,
+            sourceFreshness: { ...freshness, isStale: true, reason: freshness.reason! },
+          });
+        }
+        return buildAvailableMetric({ ...payload, value: operatingResultCents });
       };
 
       const profitMarginMetric = (): EvaluationsMetricResponse => {
@@ -201,6 +262,14 @@ export class EvaluationsFinancialKpiService {
         if (invoices.length === 0) {
           return buildUnavailableMetric({ ...payload, reason: 'No invoice rows available for organization' });
         }
+        if (!revenueCashflowContribution.completeness.operatingResultVisible) {
+          return buildPartialMetric({
+            ...payload,
+            value: 0,
+            dataCoverage: baseCoverage,
+            warnings: ['profit_margin_hidden_incomplete_cost_basis'],
+          });
+        }
         if (isStale) {
           return buildStaleMetric({
             ...payload,
@@ -212,16 +281,20 @@ export class EvaluationsFinancialKpiService {
       };
 
       const metrics: EvaluationsMetricResponse[] = [
-        buildMoney('fin.mtd_issued_revenue', mtdRevenueCents, mtdPeriod, {
+        buildMoney('fin.mtd_issued_revenue', periodRevenueCents, mtdPeriod, {
           comparison: buildComparison({
             type: 'mom',
-            currentValue: mtdRevenueCents,
-            priorValue: sumCents(prevRevenueRows),
+            currentValue: periodRevenueCents,
+            priorValue: prevRevenueCashflow.metrics.periodRevenue.netAmountMinor,
           }),
         }),
-        buildMoney('fin.mtd_paid_revenue', sumCents(mtdPaidRows), mtdPeriod),
+        buildMoney('fin.issued_revenue_strict_mtd', invoicedRevenueCents, mtdPeriod),
+        buildMoney('fin.mtd_paid_revenue', paymentReceiptsCents, mtdPeriod),
+        buildMoney('fin.cash_inflow_mtd', paymentReceiptsCents, mtdPeriod),
+        buildMoney('fin.cashflow_net_mtd', netCashflowCents, mtdPeriod),
         buildMoney('fin.mtd_expenses', mtdExpenseCents, mtdPeriod),
-        buildMoney('fin.mtd_net_result', mtdNetCents, mtdPeriod),
+        buildMoney('fin.contribution_margin_mtd', contributionCents, mtdPeriod),
+        buildOperatingResultMetric(),
         profitMarginMetric(),
         buildMoney('fin.open_receivables', sumOutstandingCents(openRows), snapshotPeriod),
         buildMoney('fin.overdue_receivables', sumOutstandingCents(overdueRows), snapshotPeriod),
@@ -243,6 +316,7 @@ export class EvaluationsFinancialKpiService {
         },
         metrics,
         receivablesAnalytics,
+        revenueCashflowContribution,
       };
     } catch (err: unknown) {
       this.logger.warn(
@@ -282,6 +356,7 @@ export class EvaluationsFinancialKpiService {
           errorMetric('fin.mtd_net_result'),
         ],
         receivablesAnalytics: null,
+        revenueCashflowContribution: null,
       };
     }
   }
@@ -294,12 +369,16 @@ export class EvaluationsFinancialKpiService {
         type: true,
         status: true,
         totalCents: true,
+        subtotalCents: true,
+        taxCents: true,
         paidCents: true,
         outstandingCents: true,
         currency: true,
         invoiceDate: true,
         dueDate: true,
         paidAt: true,
+        cancelledAt: true,
+        creditedAt: true,
         createdAt: true,
         updatedAt: true,
       },

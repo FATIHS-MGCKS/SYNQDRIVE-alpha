@@ -1,6 +1,6 @@
 import { ArrowDownLeft, ArrowUpRight, Clock, Receipt, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Area,
   AreaChart,
@@ -20,13 +20,16 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import {
   computeReceivablesAnalytics,
+  computeRevenueCashflowContribution,
   expensesInRange,
+  issuedRevenueInRange,
   mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
   paidRevenueInRange,
   sumCents,
 } from '../lib/financial-insights.logic';
+import { FinanceMetricHint, financeMetricLabelForLocale } from './finance/FinanceMetricHint';
 import type { ReceivablesAgingBucket } from '@synq/receivables/receivables-invoice.contract';
 import { useEvaluationsReportingPeriods } from '../lib/evaluations/useEvaluationsReportingPeriods';
 import { reportingBundleToFinancialRanges } from '../lib/evaluations/evaluations-period.client';
@@ -53,15 +56,17 @@ interface InvoiceLite {
   bookingId: string | null;
   title: string | null;
   totalCents: number | null;
-  paidCents?: number | null;
-  outstandingCents?: number | null;
   subtotalCents: number | null;
   taxCents: number | null;
+  paidCents?: number | null;
+  outstandingCents?: number | null;
   currency: string | null;
   invoiceDate: string | null;
   dueDate: string | null;
   paidAt: string | null;
   createdAt: string | null;
+  cancelledAt?: string | null;
+  creditedAt?: string | null;
 }
 
 interface CustomerLite {
@@ -234,13 +239,38 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   // Bucket invoices by current vs previous month and by direction so we can
   // compute MTD KPIs + month-over-month deltas without re-iterating the list.
+  const metricLocale = locale === 'de' ? 'de' : 'en';
+
+  const revenueCashflow = useMemo(
+    () =>
+      computeRevenueCashflowContribution({
+        invoices,
+        periodStart: monthStart,
+        periodEndInclusive: now,
+        timezone: reportingTimezone,
+        reportingCurrency: 'EUR',
+      }),
+    [invoices, monthStart, now, reportingTimezone],
+  );
+
+  const prevRevenueCashflow = useMemo(
+    () =>
+      computeRevenueCashflowContribution({
+        invoices,
+        periodStart: prevMonthStart,
+        periodEndInclusive: prevMonthEnd,
+        timezone: reportingTimezone,
+        reportingCurrency: 'EUR',
+      }),
+    [invoices, prevMonthStart, prevMonthEnd, reportingTimezone],
+  );
   const bucketed = useMemo(() => {
     const openTotal = openOutgoingReceivables(invoices, now);
     const overdueRevenue = overdueOutgoingReceivables(invoices, now, reportingTimezone);
-    const mtdRevenueRows = mtdRevenueInRange(invoices, monthStart, now);
+    const mtdRevenueRows = issuedRevenueInRange(invoices, monthStart, now);
     const mtdPaid = paidRevenueInRange(invoices, monthStart, now);
     const mtdExpenseRows = expensesInRange(invoices, monthStart, now);
-    const prevRevenueRows = mtdRevenueInRange(invoices, prevMonthStart, prevMonthEnd);
+    const prevRevenueRows = issuedRevenueInRange(invoices, prevMonthStart, prevMonthEnd);
 
     return {
       mtdRevenue: mtdRevenueRows,
@@ -265,11 +295,23 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     [invoices, now, reportingTimezone],
   );
 
-  const mtdRevenueCents = useMemo(() => sumCents(bucketed.mtdRevenue), [bucketed.mtdRevenue]);
-  const mtdPaidRevenueCents = useMemo(() => sumCents(bucketed.mtdPaid), [bucketed.mtdPaid]);
-  const mtdExpenseCents = useMemo(() => sumCents(bucketed.mtdExpense), [bucketed.mtdExpense]);
-  const prevRevenueCents = useMemo(() => sumCents(bucketed.prevRevenue), [bucketed.prevRevenue]);
-  const prevExpenseCents = useMemo(() => sumCents(bucketed.prevExpense), [bucketed.prevExpense]);
+  const rcx = revenueCashflow.metrics;
+  const periodRevenueCents = rcx.periodRevenue.netAmountMinor;
+  const invoicedRevenueCents = rcx.invoicedRevenue.amountMinor;
+  const paymentReceiptsCents = rcx.paymentReceipts.amountMinor;
+  const mtdExpenseCents = rcx.operatingExpenses.amountMinor;
+  const netCashflowCents = rcx.netCashflow.amountMinor;
+  const contributionCents = rcx.contributionMargin.netAmountMinor;
+  const taxCollectedCents = rcx.invoicedRevenue.taxAmountMinor;
+  const operatingResultCents = revenueCashflow.completeness.operatingResultVisible
+    ? rcx.operatingResult?.netAmountMinor ?? null
+    : null;
+  const prevPeriodRevenueCents = prevRevenueCashflow.metrics.periodRevenue.netAmountMinor;
+  const prevExpenseCents = prevRevenueCashflow.metrics.operatingExpenses.netAmountMinor;
+
+  const mtdRevenueCents = periodRevenueCents;
+  const mtdPaidRevenueCents = paymentReceiptsCents;
+  const prevRevenueCents = prevPeriodRevenueCents;
   const outstandingCents = useMemo(
     () => receivablesAnalytics.metrics.openTotal.amountMinor,
     [receivablesAnalytics],
@@ -282,8 +324,12 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     () => receivablesAnalytics.metrics.overdue.amountMinor,
     [receivablesAnalytics],
   );
-  const profitCents = mtdRevenueCents - mtdExpenseCents;
-  const profitMargin = mtdRevenueCents > 0 ? (profitCents / mtdRevenueCents) * 100 : 0;
+  const profitCents = operatingResultCents ?? 0;
+  const profitMargin =
+    operatingResultCents != null && periodRevenueCents > 0
+      ? (operatingResultCents / periodRevenueCents) * 100
+      : 0;
+  const showOperatingResult = revenueCashflow.completeness.operatingResultVisible;
   const mtdOpenInvoices = useMemo(
     () => bucketed.mtdInvoices.filter((inv) => inv.status !== 'PAID' && inv.status !== 'CANCELLED').length,
     [bucketed.mtdInvoices],
@@ -486,7 +532,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <div className="pt-2 border-t border-border">
         <h2 className="text-[14px] font-bold text-foreground mb-1">Financial Intelligence</h2>
         <p className="text-[11px] text-muted-foreground mb-4">
-          Ausgestellte Rechnungen (Issued) nach Rechnungsdatum · Cashflow nur bei erfasstem Zahlungsdatum
+          Getrennte Kennzahlen: fakturierter Umsatz, periodengerechter Umsatz, Zahlungseingänge und Cashflow —
+          Gewinn nur bei vollständiger Kostenbasis.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -505,38 +552,60 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         </div>
       )}
 
+      {revenueCashflow.completeness.costBasis === 'PARTIAL' && (
+        <div className="rounded-xl p-3 flex items-start gap-2 sq-tone-warning">
+          <Icon name="alert-circle" className="w-4 h-4 mt-0.5 shrink-0" />
+          <div className="text-xs">
+            <p className="font-semibold">PARTIAL — unvollständige Kostenbasis</p>
+            <p className="text-muted-foreground mt-0.5">
+              Operatives Ergebnis / Gewinn wird ausgeblendet. {revenueCashflow.completeness.reasons.join(' · ')}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ─── KPI Row ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         <KpiCard
-          label="Issued Revenue MTD"
-          value={fmtEUR(mtdRevenueCents, intlLocale)}
+          label={<FinanceMetricHint metricId="periodRevenue" locale={metricLocale} />}
+          value={fmtEUR(periodRevenueCents, intlLocale)}
           icon={ArrowUpRight}
           color="green"
           isDarkMode={isDarkMode}
           delta={revenueDeltaPct}
-          subtle={`${bucketed.mtdRevenue.length} Umsatzpositionen (MTD)`}
+          subtle={`${bucketed.mtdRevenue.length} fakturiert · netto`}
           onClick={() => setActivePopup('revenue')}
           clickable
         />
         <KpiCard
-          label="Expenses MTD"
+          label={<FinanceMetricHint metricId="operatingExpenses" locale={metricLocale} />}
           value={fmtEUR(mtdExpenseCents, intlLocale)}
           icon={ArrowDownLeft}
           color="red"
           isDarkMode={isDarkMode}
           delta={expenseDeltaPct}
           deltaInverted
-          subtle={`${bucketed.mtdExpense.length} invoices`}
+          subtle={`${bucketed.mtdExpense.length} Eingangsrechnungen`}
           onClick={() => setActivePopup('expenses')}
           clickable
         />
         <KpiCard
-          label="Net Profit MTD"
-          value={fmtEUR(profitCents, intlLocale)}
+          label={
+            showOperatingResult ? (
+              <FinanceMetricHint metricId="operatingResult" locale={metricLocale} />
+            ) : (
+              financeMetricLabelForLocale('operatingResult', locale) + ' (PARTIAL)'
+            )
+          }
+          value={showOperatingResult ? fmtEUR(profitCents, intlLocale) : '—'}
           icon={Wallet}
           color={profitCents >= 0 ? 'blue' : 'red'}
           isDarkMode={isDarkMode}
-          subtle={`Margin ${fmtPct(profitMargin, 1)} · basierend auf Issued Revenue`}
+          subtle={
+            showOperatingResult
+              ? `Marge ${fmtPct(profitMargin, 1)}`
+              : 'Kostenbasis unvollständig'
+          }
         />
         <KpiCard
           label={locale === 'de' ? 'Offene Forderungen gesamt' : 'Open receivables (total)'}
@@ -553,6 +622,29 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           color="red"
           isDarkMode={isDarkMode}
           subtle={`${receivablesAnalytics.metrics.overdue.invoiceCount} ${locale === 'de' ? 'überfällig' : 'overdue'}`}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <SummaryCard
+          label={financeMetricLabelForLocale('invoicedRevenue', locale)}
+          value={fmtEUR(invoicedRevenueCents, intlLocale)}
+          hint={`MwSt. ${fmtEUR(taxCollectedCents, intlLocale)}`}
+        />
+        <SummaryCard
+          label={financeMetricLabelForLocale('paymentReceipts', locale)}
+          value={fmtEUR(mtdPaidRevenueCents, intlLocale)}
+          hint="nach paidAt"
+        />
+        <SummaryCard
+          label={financeMetricLabelForLocale('netCashflow', locale)}
+          value={fmtEUR(netCashflowCents, intlLocale)}
+          hint={financeMetricLabelForLocale('refunds', locale)}
+        />
+        <SummaryCard
+          label={financeMetricLabelForLocale('contributionMargin', locale)}
+          value={`${fmtEUR(contributionCents, intlLocale)} (PARTIAL)`}
+          hint="variable Kosten nicht klassifiziert"
         />
       </div>
 
@@ -913,7 +1005,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 function KpiCard({
   label, value, icon: Icon, color, delta, deltaInverted, subtle, onClick, clickable,
 }: {
-  label: string;
+  label: ReactNode;
   value: string;
   icon: typeof ArrowUpRight;
   color: 'green' | 'red' | 'blue' | 'purple';

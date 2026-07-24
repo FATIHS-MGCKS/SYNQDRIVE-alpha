@@ -16,29 +16,29 @@ export const EVALUATIONS_METRIC_I18N: Record<string, EvaluationsMetricI18nEntry>
   'evaluations.metrics.fin.mtd_issued_revenue': {
     label: { de: 'Periodengerechter Umsatz (MTD)', en: 'Periodic Revenue MTD' },
     description: {
-      de: 'Summe fakturierter und im Monat bezahlter Ausgangs-Umsätze (dedupliziert).',
-      en: 'Sum of invoiced and cash-collected outgoing revenue in month (deduplicated).',
+      de: 'Nettoumsatz nach Leistungsabgrenzung (Rechnungsdatum) abzüglich Storno/Gutschrift im Zeitraum — ohne Zahlungsdatum-Vermischung.',
+      en: 'Net revenue by accrual (invoice date) minus period adjustments — no payment-date mixing.',
     },
   },
   'evaluations.metrics.fin.issued_revenue_strict_mtd': {
     label: { de: 'Fakturierter Umsatz (MTD)', en: 'Invoiced Revenue MTD' },
     description: {
-      de: 'Nur nach Rechnungsdatum ausgestellte Ausgangs-Umsätze.',
-      en: 'Outgoing revenue by invoice date only.',
+      de: 'Ausgestellter Ausgangs-Umsatz nach Rechnungsdatum (brutto); Zahlungen aus Vormonaten zählen nicht.',
+      en: 'Issued outgoing revenue by invoice date (gross); prior-month payments excluded.',
     },
   },
   'evaluations.metrics.fin.mtd_paid_revenue': {
-    label: { de: 'Zahlungseingang Umsatz (MTD)', en: 'Cash Collected Revenue MTD' },
+    label: { de: 'Zahlungseingänge Umsatz (MTD)', en: 'Payment Receipts MTD' },
     description: {
-      de: 'Bezahlte Ausgangs-Umsätze nach paidAt (Invoice-Proxy, kein Bankkonto).',
-      en: 'Paid outgoing revenue by paidAt (invoice proxy, not bank ledger).',
+      de: 'Eingegangene Zahlungen nach paidAt — unabhängig vom Rechnungsdatum.',
+      en: 'Cash collected by paidAt — regardless of invoice date.',
     },
   },
   'evaluations.metrics.fin.cash_inflow_mtd': {
-    label: { de: 'Zahlungseingang (MTD)', en: 'Cash Inflow MTD' },
+    label: { de: 'Zahlungseingänge (MTD)', en: 'Cash Inflow MTD' },
     description: {
-      de: 'Alias für bezahlten Umsatz — Zahlungseingangs-Proxy über Invoice paidAt.',
-      en: 'Alias for paid revenue — cash inflow proxy via invoice paidAt.',
+      de: 'Alias für Zahlungseingänge nach paidAt (Invoice-Proxy).',
+      en: 'Alias for payment receipts by paidAt (invoice proxy).',
     },
   },
   'evaluations.metrics.fin.reserved_revenue_mtd': {
@@ -74,7 +74,10 @@ export const EVALUATIONS_METRIC_I18N: Record<string, EvaluationsMetricI18nEntry>
   },
   'evaluations.metrics.fin.cashflow_net_mtd': {
     label: { de: 'Netto-Cashflow (MTD)', en: 'Net Cashflow MTD' },
-    description: { de: 'Einzahlungen minus Auszahlungen (geplant, Ledger).', en: 'Cash in minus cash out (planned, ledger).' },
+    description: {
+      de: 'Zahlungseingänge minus Auszahlungen (bezahlte Eingangsrechnungen) minus Rückzahlungen im Zeitraum.',
+      en: 'Payment receipts minus cash out (paid expenses) minus refunds in period.',
+    },
   },
   'evaluations.metrics.fin.open_receivables': {
     label: { de: 'Offene Forderungen', en: 'Open Receivables' },
@@ -101,15 +104,18 @@ export const EVALUATIONS_METRIC_I18N: Record<string, EvaluationsMetricI18nEntry>
     description: { de: 'Prozentuale Ausgabenänderung vs. Vormonat.', en: 'Percent expense change vs. previous month.' },
   },
   'evaluations.metrics.fin.mtd_net_result': {
-    label: { de: 'Vereinfachtes Nettoergebnis (MTD)', en: 'Simplified Net Result MTD' },
+    label: { de: 'Operatives Ergebnis (MTD)', en: 'Operating Result MTD' },
     description: {
-      de: 'Periodengerechter Umsatz minus Ausgaben — kein Deckungsbeitrag.',
-      en: 'Periodic revenue minus expenses — not contribution margin.',
+      de: 'Periodengerechter Nettoumsatz minus operative Ausgaben — nur bei vollständiger Kostenbasis (sonst PARTIAL).',
+      en: 'Periodic net revenue minus operating expenses — only with complete cost basis (else PARTIAL).',
     },
   },
   'evaluations.metrics.fin.profit_margin_mtd': {
-    label: { de: 'Ergebnismarge (MTD)', en: 'Net Result Margin MTD' },
-    description: { de: 'Nettoergebnis geteilt durch periodengerechten Umsatz.', en: 'Net result divided by periodic revenue.' },
+    label: { de: 'Ergebnismarge (MTD)', en: 'Operating Result Margin MTD' },
+    description: {
+      de: 'Operatives Ergebnis geteilt durch periodengerechten Nettoumsatz.',
+      en: 'Operating result divided by periodic net revenue.',
+    },
   },
   'evaluations.metrics.fin.daily_net_result_mtd': {
     label: { de: 'Tagesergebnis (MTD)', en: 'Daily Net Result MTD' },
@@ -117,7 +123,10 @@ export const EVALUATIONS_METRIC_I18N: Record<string, EvaluationsMetricI18nEntry>
   },
   'evaluations.metrics.fin.contribution_margin_mtd': {
     label: { de: 'Deckungsbeitrag (MTD)', en: 'Contribution Margin MTD' },
-    description: { de: 'Umsatz minus variable Kosten (geplant).', en: 'Revenue minus variable costs (planned).' },
+    description: {
+      de: 'Periodengerechter Nettoumsatz minus direkte variable Kosten (PARTIAL ohne Kostenklassifikation).',
+      en: 'Periodic net revenue minus direct variable costs (PARTIAL without cost classification).',
+    },
   },
   'evaluations.metrics.fin.recent_invoice_activity': {
     label: { de: 'Letzte Rechnungsaktivität', en: 'Recent Invoice Activity' },

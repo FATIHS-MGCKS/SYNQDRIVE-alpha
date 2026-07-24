@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'revenue-cashflow-contribution-v49810-2026-07-24',
+    version: '4.9.810',
+    title: 'V4.9.810 — Umsatz/Cashflow/Ergebnis getrennt (Prompt 12/54)',
+    summary: [
+      'Kanonisches Modul `shared/finance/revenue-cashflow-contribution`: fakturierter Umsatz, periodengerechter Umsatz, Zahlungseingänge, Rückzahlungen, Ausgaben, Netto-Cashflow, Deckungsbeitrag, operatives Ergebnis.',
+      'Leistungsabgrenzung: Rechnungsdatum netto − Anpassungen; Zahlungen aus Vormonaten zählen nicht als fakturierter Umsatz.',
+      'Steuern getrennt (net/tax/gross); Gewinn nur bei vollständiger Kostenbasis, sonst PARTIAL.',
+      'API-Bundle: `revenueCashflowContribution`; neue/aktive Metriken inkl. `fin.cashflow_net_mtd`, `fin.contribution_margin_mtd`.',
+      'UI: `FinanceMetricHint` Tooltips, getrennte KPI-Zeilen in FinancialInsightsView.',
+      'Doku: `docs/architecture/finance/revenue-cashflow-contribution-model.md`.',
+    ],
+    reason: 'Auswertungen vermischte fakturierten Umsatz, Zahlungseingänge und Gewinn — Vormonatsrechnungen mit Zahlung im aktuellen Monat verfälschten KPIs.',
+    previousBehavior: '`mtdRevenueInRange` = issued ∪ paid; Net Profit immer angezeigt; Cashflow nicht getrennt.',
+    details:
+      'shared/finance/*, financial-kpi.logic.ts, evaluations-financial-kpi.service.ts, FinancialInsightsView, FinanceMetricHint, businessPulseSliceBuilder, evaluations-metric.i18n.',
+    affectsArchitecture: true,
+    module: 'Finance / Auswertungen',
+    createdAt: '2026-07-24T23:00:00.000Z',
+  },
+  {
     id: 'receivables-analytics-v49809-2026-07-24',
     version: '4.9.809',
     title: 'V4.9.809 — Forderungslogik Auswertungen (Prompt 11/54)',

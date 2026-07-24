@@ -214,7 +214,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: ['mom'],
     dataClassification: 'AGGREGATE',
     metricKind: 'OBSERVED',
-    implementationStatus: 'planned',
+    implementationStatus: 'active',
   }),
 
   // ─── Receivables ───────────────────────────────────────────────────────
@@ -362,7 +362,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: ['mom'],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'planned',
+    implementationStatus: 'active',
   }),
 
   // ─── Bookings / invoice counts ─────────────────────────────────────────

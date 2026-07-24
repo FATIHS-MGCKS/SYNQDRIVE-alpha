@@ -161,7 +161,8 @@
       "^@synq/evaluations-metrics/(.*)$": "<rootDir>/../../shared/evaluations-metrics/$1",
       "^@synq/evaluations-periods/(.*)$": "<rootDir>/../../shared/evaluations-periods/$1",
       "^@synq/money/(.*)$": "<rootDir>/../../shared/money/$1",
-      "^@synq/receivables/(.*)$": "<rootDir>/../../shared/receivables/$1"
+      "^@synq/receivables/(.*)$": "<rootDir>/../../shared/receivables/$1",
+      "^@synq/finance/(.*)$": "<rootDir>/../../shared/finance/$1"
     }
   }
 }

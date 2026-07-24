@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeReceivablesAnalytics,
+  computeRevenueCashflowContribution,
   expensesInRange,
+  issuedRevenueInRange,
   mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
@@ -34,15 +36,18 @@ describe('financial-insights scenarios (characterization)', () => {
     expect(sumCents(mtdRevenueInRange(invoices, FIXTURE_MONTH_START, FIXTURE_NOW))).toBe(0);
   });
 
-  it('full organisation MTD revenue includes issued rows in month (incl. open SENT)', () => {
-    const mtd = mtdRevenueInRange(SCENARIO_FULL.invoices, FIXTURE_MONTH_START, FIXTURE_NOW);
-    const ids = mtd.map((r) => r.id).sort();
-    expect(ids).toContain('rev-1');
-    expect(ids).toContain('rev-2');
-    expect(ids).toContain('paid-1');
-    expect(ids).toContain('open-1');
-    // characterization: open SENT outgoing in MTD counts toward issued revenue (not only paid/closed)
-    expect(sumCents(mtd)).toBe(112_000);
+  it('strict invoiced MTD excludes prior-month invoice paid in current month', () => {
+    const issued = issuedRevenueInRange(SCENARIO_FULL.invoices, FIXTURE_MONTH_START, FIXTURE_NOW);
+    const rcx = computeRevenueCashflowContribution({
+      invoices: SCENARIO_FULL.invoices,
+      periodStart: FIXTURE_MONTH_START,
+      periodEndInclusive: FIXTURE_NOW,
+      timezone: 'Europe/Berlin',
+    });
+    expect(issued.map((r) => r.id).sort()).toEqual(['open-1', 'rev-1', 'rev-2']);
+    expect(sumCents(issued)).toBe(92_000);
+    expect(rcx.metrics.paymentReceipts.amountMinor).toBe(20_000);
+    expect(rcx.dataQuality.priorMonthInvoicePaidInPeriodCount).toBe(1);
   });
 
   it('full organisation expenses MTD sums incoming EUR in month', () => {
@@ -96,9 +101,14 @@ describe('financial-insights scenarios (characterization)', () => {
     expect(analytics.metrics.openTotal.amountMinor).toBe(35_000);
   });
 
-  it('profit characterization: revenue minus expenses for full scenario', () => {
-    const revenue = sumCents(mtdRevenueInRange(SCENARIO_FULL.invoices, FIXTURE_MONTH_START, FIXTURE_NOW));
-    const expenses = sumCents(expensesInRange(SCENARIO_FULL.invoices, FIXTURE_MONTH_START, FIXTURE_NOW));
-    expect(revenue - expenses).toBe(97_000);
+  it('profit characterization: periodic net minus expenses when cost basis complete', () => {
+    const rcx = computeRevenueCashflowContribution({
+      invoices: SCENARIO_FULL.invoices,
+      periodStart: FIXTURE_MONTH_START,
+      periodEndInclusive: FIXTURE_NOW,
+      timezone: 'Europe/Berlin',
+    });
+    const expenses = rcx.metrics.operatingExpenses.netAmountMinor;
+    expect(rcx.metrics.periodRevenue.netAmountMinor - expenses).toBe(77_000);
   });
 });

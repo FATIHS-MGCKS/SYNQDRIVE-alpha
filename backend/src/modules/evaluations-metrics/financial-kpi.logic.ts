@@ -22,9 +22,13 @@ import {
 } from '@synq/receivables/receivables-analytics';
 
 export type FinancialKpiInvoiceRow = ReceivableInvoiceRow & {
+  subtotalCents?: number | null;
+  taxCents?: number | null;
   invoiceDate: Date | string | null;
   createdAt: Date | string | null;
   updatedAt?: Date | string | null;
+  cancelledAt?: Date | string | null;
+  creditedAt?: Date | string | null;
 };
 
 export {
@@ -34,7 +38,9 @@ export {
   filterOverdueReceivables,
   resolveOutstandingMinor,
 };
-export type { ReceivablesAnalyticsResult };
+export { computeRevenueCashflowContribution } from '@synq/finance/revenue-cashflow-contribution';
+export type { ReceivablesAnalyticsResult } from '@synq/receivables/receivables-invoice.contract';
+export type { RevenueCashflowContributionResult } from '@synq/finance/revenue-cashflow-contribution.contract';
 
 export function isEurInvoice(inv: FinancialKpiInvoiceRow): boolean {
   const c = (inv.currency ?? 'EUR').toUpperCase();
@@ -146,6 +152,7 @@ export function paidRevenueInRange(
   });
 }
 
+/** @deprecated Mixed union (issued ∪ paid) — use `computeRevenueCashflowContribution` for separated metrics. */
 export function mtdRevenueInRange(
   invoices: FinancialKpiInvoiceRow[],
   from: Date,
