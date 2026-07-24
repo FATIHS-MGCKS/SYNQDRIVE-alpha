@@ -16,6 +16,9 @@ import { PageHeader } from '../../components/patterns';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { stationFilterToDashboardId } from '../lib/fleet-station-filter';
+import { useFleetMapStore } from '../stores/useFleetMapStore';
+import { filterFleetByStation } from './dashboard/dashboardUtils';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import {
   expensesInRange,
@@ -147,6 +150,15 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const { t, locale } = useLanguage();
+  const stationFilter = useFleetMapStore((state) => state.filters.stationId);
+  const selectedStationId = useMemo(
+    () => stationFilterToDashboardId(stationFilter),
+    [stationFilter],
+  );
+  const scopedVehicleIds = useMemo(() => {
+    if (!selectedStationId) return null;
+    return new Set(filterFleetByStation(fleetVehicles, selectedStationId).map((v) => v.id));
+  }, [fleetVehicles, selectedStationId]);
 
   const localeMap: Record<string, string> = {
     en: 'en-US', de: 'de-DE', fr: 'fr-FR', nl: 'nl-NL',
@@ -162,6 +174,11 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
+
+  const scopedInvoices = useMemo(() => {
+    if (!scopedVehicleIds) return invoices;
+    return invoices.filter((inv) => inv.vehicleId && scopedVehicleIds.has(inv.vehicleId));
+  }, [invoices, scopedVehicleIds]);
 
   const load = useCallback(async () => {
     if (!orgId) {
@@ -216,24 +233,24 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // Bucket invoices by current vs previous month and by direction so we can
   // compute MTD KPIs + month-over-month deltas without re-iterating the list.
   const bucketed = useMemo(() => {
-    const outstandingRevenue = openOutgoingReceivables(invoices, now);
-    const overdueRevenue = overdueOutgoingReceivables(invoices, now);
-    const mtdRevenueRows = mtdRevenueInRange(invoices, monthStart, now);
-    const mtdPaid = paidRevenueInRange(invoices, monthStart, now);
-    const mtdExpenseRows = expensesInRange(invoices, monthStart, now);
-    const prevRevenueRows = mtdRevenueInRange(invoices, prevMonthStart, prevMonthEnd);
+    const outstandingRevenue = openOutgoingReceivables(scopedInvoices, now);
+    const overdueRevenue = overdueOutgoingReceivables(scopedInvoices, now);
+    const mtdRevenueRows = mtdRevenueInRange(scopedInvoices, monthStart, now);
+    const mtdPaid = paidRevenueInRange(scopedInvoices, monthStart, now);
+    const mtdExpenseRows = expensesInRange(scopedInvoices, monthStart, now);
+    const prevRevenueRows = mtdRevenueInRange(scopedInvoices, prevMonthStart, prevMonthEnd);
 
     return {
       mtdRevenue: mtdRevenueRows,
       mtdExpense: mtdExpenseRows,
       prevRevenue: prevRevenueRows,
-      prevExpense: expensesInRange(invoices, prevMonthStart, prevMonthEnd),
+      prevExpense: expensesInRange(scopedInvoices, prevMonthStart, prevMonthEnd),
       outstandingRevenue,
       overdueRevenue,
       mtdPaid,
       mtdInvoices: mtdRevenueRows,
     };
-  }, [invoices, monthStart, prevMonthStart, prevMonthEnd, now]);
+  }, [scopedInvoices, monthStart, prevMonthStart, prevMonthEnd, now]);
 
   const mtdRevenueCents = useMemo(() => sumCents(bucketed.mtdRevenue), [bucketed.mtdRevenue]);
   const mtdPaidRevenueCents = useMemo(() => sumCents(bucketed.mtdPaid), [bucketed.mtdPaid]);
@@ -375,7 +392,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // ─── Derived: recent activity (whole org, last 8) ────────────────────
 
   const recentActivity = useMemo(() => {
-    return [...invoices]
+    return [...scopedInvoices]
       .filter((inv) => isOutgoingInvoice(inv.type) || isIncomingInvoice(inv.type))
       .sort((a, b) => {
         const da = effectiveDateOf(a)?.getTime() ?? 0;
@@ -383,7 +400,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         return db - da;
       })
       .slice(0, 8);
-  }, [invoices]);
+  }, [scopedInvoices]);
 
   // ─── Render ──────────────────────────────────────────────────────────
 
@@ -405,7 +422,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     return (
       <div className="max-w-[1600px] mx-auto space-y-4">
         <PageHeader title={t('nav.financialInsights')} />
-        <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} />
+        <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} stationId={selectedStationId} />
         <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
           <Icon name="alert-circle" className="w-5 h-5" />
           {invoiceError}
@@ -419,6 +436,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <PageHeader title={t('nav.financialInsights')} />
       <InsightsCockpit
         isDarkMode={isDarkMode}
+        stationId={selectedStationId}
         openReceivablesEur={Math.round(outstandingCents / 100)}
         financialRiskEur={Math.round(overdueCents / 100)}
       />
@@ -434,7 +452,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           {monthLabel}
         </span>
         <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-brand">
-          {invoices.length} invoices
+          {scopedInvoices.length} invoices
         </span>
       </div>
 
