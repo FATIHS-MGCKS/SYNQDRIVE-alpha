@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { buildDailyRateMetrics, buildLostRevenueMetrics } from '@synq/money/money-insight-metrics';
+import { majorUnitsNumberToMinor } from '@synq/money/money.util';
 import { InsightCandidate, InsightDetector, DetectorContext, InsightType, InsightSeverity, InsightEntityScope } from '../insight.types';
 
 @Injectable()
@@ -62,21 +64,27 @@ export class LowUtilizationDetector implements InsightDetector {
 
       if (recent > 0 || upcoming > 0) continue;
 
-      const dailyRate = v.dailyRateEur ?? 0;
-      const lostRevenue = Math.round(dailyRate * lookbackDays);
+      const dailyRateEur = v.dailyRateEur ?? 0;
+      const dailyRateAmountMinor = majorUnitsNumberToMinor(dailyRateEur, 'EUR');
+      const lostRevenueAmountMinor = dailyRateAmountMinor * lookbackDays;
       const label = v.licensePlate || `${v.make} ${v.model}`;
 
       candidates.push({
         type: this.type,
         severity: InsightSeverity.OPPORTUNITY,
-        priority: 40 + Math.min(lostRevenue / 10, 20),
+        priority: 40 + Math.min(Math.round(lostRevenueAmountMinor / 1000), 20),
         title: 'Low Utilization',
         message: `${label} idle for ${lookbackDays}+ days, no upcoming bookings.`,
         actionLabel: 'Review vehicle',
         actionType: 'navigate_vehicle',
         entityScope: InsightEntityScope.VEHICLE,
         entityIds: [v.id],
-        metrics: { idleDays: lookbackDays, lostRevenueEur: lostRevenue, dailyRateEur: dailyRate, entityLabel: label },
+        metrics: {
+          idleDays: lookbackDays,
+          entityLabel: label,
+          ...buildLostRevenueMetrics(lostRevenueAmountMinor, 'EUR'),
+          ...buildDailyRateMetrics(dailyRateAmountMinor, 'EUR'),
+        },
         reasons: [`No bookings in past ${lookbackDays} days`, 'No upcoming bookings in next 7 days'],
         confidence: 1.0,
         dedupeKey: `low_utilization:${v.id}`,
