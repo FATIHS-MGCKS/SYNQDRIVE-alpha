@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-a11y-mobile-v49796-2026-07-23',
+    version: '4.9.796',
+    title: 'V4.9.796 — Booking mobile, touch & accessibility (Prompt 31)',
+    summary: [
+      'Semantische Korrekturen ohne visuelles Redesign: keine verschachtelten Buttons im Kalender, Keyboard-Navigation für Tabellenzeilen, sichtbare Focus-Rings.',
+      'Touch-Ziele ~44 CSS px für Toolbar, Tabellen-Aktionen, Kalender-Tagesliste, Timeline-Balken (mobile), Wizard-Stepper und Footer.',
+      'BookingEditDialog → FormDialog (Focus Trap, Escape, Fokus-Rückgabe); BookingDossier Cancel/No-Show → ConfirmDialog.',
+      'Detail Quick Actions: DropdownMenu statt hover-only Menü; DataTable sticky Actions-Spalte bei horizontalem Scroll.',
+      'Timeline: iOS-Safari-freundliches horizontales Scrollen (`-webkit-overflow-scrolling: touch`) + sticky Fahrzeugspalte.',
+    ],
+    reason: 'Booking Production Readiness Prompt 31 — Mobile-, Touch-, Accessibility- und semantische HTML-Probleme der Booking Page.',
+    previousBehavior:
+      'Kleine Icon-Only-Aktionen ohne aria-label; Kalender-Tag als Button in gridcell; Edit/Confirm als Custom-Overlays ohne Focus Trap; Quick Actions nur per Hover.',
+    details:
+      'bookings-a11y.ts, BookingsTableView, BookingsCalendarView, BookingsTimelineView, BookingsToolbar, BookingWizardStepper, MobileBookingFooter, BookingEditDialog, BookingDossier, BookingDetailHeader, data-table. Tests: bookings-a11y.ui.test.ts. Architektur: architecture/BOOKING_A11Y_MOBILE_2026-07-23.md.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:30:00.000Z',
+  },
+  {
     id: 'booking-calendar-timeline-v49795-2026-07-23',
     version: '4.9.795',
     title: 'V4.9.795 — Booking calendar & timeline functional fixes (Prompt 30)',

@@ -92,7 +92,13 @@ export function DataTable<T>({
                 {col.header}
               </th>
             ))}
-            {rowActions && <th className="w-px text-right" aria-label="Actions" />}
+            {rowActions && (
+              <th
+                scope="col"
+                className="sticky right-0 z-20 w-px bg-[color:var(--surface-premium)] text-right shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]"
+                aria-label="Aktionen"
+              />
+            )}
           </tr>
         </thead>
         <tbody>
@@ -125,12 +131,24 @@ export function DataTable<T>({
                 key={getRowKey(row, index)}
                 ref={rowRef ? (el) => rowRef(row, el) : undefined}
                 data-testid={getRowTestId?.(row, index)}
+                tabIndex={onRowClick ? 0 : undefined}
                 className={cn(
                   'sq-table-row border-b border-border/60 last:border-0',
-                  onRowClick && 'cursor-pointer',
+                  onRowClick &&
+                    'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
                   getRowClassName?.(row, index),
                 )}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onRowClick(row);
+                        }
+                      }
+                    : undefined
+                }
               >
                 {columns.map((col) => (
                   <td
@@ -147,7 +165,13 @@ export function DataTable<T>({
                   </td>
                 ))}
                 {rowActions && (
-                  <td className={cn(cellPad, 'text-right')} onClick={(e) => e.stopPropagation()}>
+                  <td
+                    className={cn(
+                      cellPad,
+                      'sticky right-0 z-10 bg-[color:var(--surface-premium)] text-right shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]',
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {rowActions(row)}
                   </td>
                 )}

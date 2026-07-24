@@ -5,6 +5,12 @@ import type { BookingUiRow } from '../../lib/entityMappers';
 import type { BookingTableSortBy, BookingTableSortOrder } from './bookingTypes';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, formatCents, rowStatus } from './bookingUtils';
+import {
+  BOOKING_FOCUS_RING,
+  BOOKING_TOUCH_TARGET,
+  bookingRowActionAria,
+  bookingSortHeaderAria,
+} from './bookings-a11y';
 
 interface BookingsTableViewProps {
   rows: BookingUiRow[];
@@ -50,7 +56,10 @@ function SortableHeader({
     <button
       type="button"
       onClick={() => onSortChange(column)}
-      className={`inline-flex items-center gap-1 font-semibold ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+      aria-label={bookingSortHeaderAria(label, column, sortBy, sortOrder)}
+      className={`inline-flex items-center gap-1 rounded-md px-1 py-1 font-semibold ${BOOKING_FOCUS_RING} ${
+        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+      }`}
     >
       {label}
       {active && (
@@ -178,8 +187,9 @@ export function BookingsTableView({
         rowActions={(b) => {
           const status = rowStatus(b);
           if (status !== 'pending' && status !== 'confirmed') return null;
+          const ref = bookingRef(b.id);
           return (
-            <div className="flex gap-1">
+            <div className="flex gap-0.5">
               {onEdit && (
                 <button
                   type="button"
@@ -187,10 +197,10 @@ export function BookingsTableView({
                     e.stopPropagation();
                     onEdit(b.id);
                   }}
-                  className="p-1 rounded-lg sq-tone-brand text-[10px]"
-                  title="Bearbeiten"
+                  aria-label={bookingRowActionAria(ref, 'edit')}
+                  className={`${BOOKING_TOUCH_TARGET} rounded-lg sq-tone-brand text-[10px] ${BOOKING_FOCUS_RING}`}
                 >
-                  <Icon name="pencil" className="w-3 h-3" />
+                  <Icon name="pencil" className="w-3.5 h-3.5" aria-hidden />
                 </button>
               )}
               {onCancel && (
@@ -200,10 +210,10 @@ export function BookingsTableView({
                     e.stopPropagation();
                     onCancel(b.id);
                   }}
-                  className="p-1 rounded-lg sq-tone-critical text-[10px]"
-                  title="Stornieren"
+                  aria-label={bookingRowActionAria(ref, 'cancel')}
+                  className={`${BOOKING_TOUCH_TARGET} rounded-lg sq-tone-critical text-[10px] ${BOOKING_FOCUS_RING}`}
                 >
-                  <Icon name="trash-2" className="w-3 h-3" />
+                  <Icon name="trash-2" className="w-3.5 h-3.5" aria-hidden />
                 </button>
               )}
             </div>
@@ -227,7 +237,8 @@ export function BookingsTableView({
               type="button"
               disabled={page <= 1 || loading}
               onClick={() => onPageChange(Math.max(1, page - 1))}
-              className="px-2 py-1 rounded border border-border disabled:opacity-40"
+              aria-label="Vorherige Seite"
+              className={`min-h-11 px-3 rounded border border-border disabled:opacity-40 ${BOOKING_FOCUS_RING}`}
             >
               Zurück
             </button>
@@ -235,7 +246,8 @@ export function BookingsTableView({
               type="button"
               disabled={!hasNextPage || loading}
               onClick={() => onPageChange(page + 1)}
-              className="px-2 py-1 rounded border border-border disabled:opacity-40"
+              aria-label="Nächste Seite"
+              className={`min-h-11 px-3 rounded border border-border disabled:opacity-40 ${BOOKING_FOCUS_RING}`}
             >
               Weiter
             </button>

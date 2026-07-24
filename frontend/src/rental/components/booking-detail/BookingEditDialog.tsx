@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Icon } from '../ui/Icon';
+import { Button } from '../../../components/ui/button';
+import { FormDialog } from '../../../components/patterns';
 import type { BookingDetailDto, Station } from '../../../lib/api';
 import { api } from '../../../lib/api';
 import { StationSelectFields } from '../stations/StationSelectFields';
@@ -12,13 +13,20 @@ import { useBookingMutations } from '../../hooks/useBookingMutations';
 import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 
 interface BookingEditDialogProps {
+  open: boolean;
   orgId: string;
   detail: BookingDetailDto;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }
 
-export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEditDialogProps) {
+export function BookingEditDialog({
+  open,
+  orgId,
+  detail,
+  onOpenChange,
+  onSaved,
+}: BookingEditDialogProps) {
   const { timezone } = useOrgTimezone(orgId);
   const baseline = bookingEditBaselineFromDetail(detail);
   const [form, setForm] = useState<BookingEditFormState>(() =>
@@ -28,11 +36,13 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
   const { mutating, error, clearError, updateBookingFields } = useBookingMutations();
 
   useEffect(() => {
+    if (!open) return;
     setForm(bookingEditFormFromDetail(detail, timezone));
     clearError();
-  }, [detail, timezone, clearError]);
+  }, [detail, timezone, clearError, open]);
 
   useEffect(() => {
+    if (!open) return;
     let cancelled = false;
     api.stations
       .list(orgId)
@@ -45,7 +55,7 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
     return () => {
       cancelled = true;
     };
-  }, [orgId]);
+  }, [orgId, open]);
 
   const save = async () => {
     const result = await updateBookingFields(baseline, form, {
@@ -54,113 +64,111 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
         onSaved();
       },
     });
-    if (result) onClose();
+    if (result) onOpenChange(false);
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 overlay-scrim" />
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg mx-4 rounded-lg shadow-2xl border surface-premium border-border overflow-hidden"
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-bold">Buchung bearbeiten</h3>
-          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-muted">
-            <Icon name="x" className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="p-4 space-y-4 text-xs">
-          <p className="text-muted-foreground">
-            {detail.core.bookingNumber} · Kunde #{detail.customer.customerId.slice(0, 8)} · Fahrzeug #
-            {detail.vehicle.vehicleId.slice(0, 8)}
-          </p>
-
-          {error && (
-            <div className="rounded-lg p-3 sq-tone-critical text-[11px]">
-              <p className="font-semibold">{error.title}</p>
-              <p className="mt-1">{error.description}</p>
-            </div>
-          )}
-
-          <Field label="Abholung">
-            <input
-              type="datetime-local"
-              value={form.startLocal}
-              onChange={(e) => setForm((f) => ({ ...f, startLocal: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
-            />
-          </Field>
-          <Field label="Rückgabe">
-            <input
-              type="datetime-local"
-              value={form.endLocal}
-              onChange={(e) => setForm((f) => ({ ...f, endLocal: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
-            />
-          </Field>
-          <Field label="Km inklusive">
-            <input
-              type="number"
-              value={form.kmIncluded}
-              onChange={(e) => setForm((f) => ({ ...f, kmIncluded: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
-            />
-          </Field>
-          <Field label="Stationen">
-            <StationSelectFields
-              stations={stations}
-              pickupStationId={form.pickupStationId}
-              returnStationId={form.returnStationId}
-              sameReturnStation={form.sameReturnStation}
-              onPickupChange={(id) => {
-                setForm((f) => ({
-                  ...f,
-                  pickupStationId: id,
-                  returnStationId: f.sameReturnStation ? id : f.returnStationId,
-                }));
-              }}
-              onReturnChange={(id) => setForm((f) => ({ ...f, returnStationId: id }))}
-              onSameReturnChange={(same) =>
-                setForm((f) => ({
-                  ...f,
-                  sameReturnStation: same,
-                  returnStationId: same ? f.pickupStationId : f.returnStationId,
-                }))
-              }
-              compact
-            />
-          </Field>
-          <Field label="Notizen">
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              rows={4}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)] resize-none"
-            />
-          </Field>
-        </div>
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-border">
-          <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg text-xs border border-border hover:bg-muted">
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Buchung bearbeiten"
+      description={`${detail.core.bookingNumber} · Kunde #${detail.customer.customerId.slice(0, 8)} · Fahrzeug #${detail.vehicle.vehicleId.slice(0, 8)}`}
+      bodyClassName="text-xs"
+      footer={
+        <>
+          <Button type="button" variant="neutral" size="sm" disabled={mutating} onClick={() => onOpenChange(false)}>
             Abbrechen
-          </button>
-          <button
-            type="button"
-            disabled={mutating}
-            onClick={() => void save()}
-            className="px-4 py-2 rounded-lg text-xs font-semibold sq-tone-brand disabled:opacity-60"
-          >
+          </Button>
+          <Button type="button" size="sm" disabled={mutating} onClick={() => void save()}>
             {mutating ? 'Speichern…' : 'Speichern'}
-          </button>
+          </Button>
+        </>
+      }
+    >
+      {error && (
+        <div className="rounded-lg p-3 sq-tone-critical text-[11px] mb-4" role="alert">
+          <p className="font-semibold">{error.title}</p>
+          <p className="mt-1">{error.description}</p>
         </div>
+      )}
+
+      <div className="space-y-4">
+        <Field label="Abholung" htmlFor="booking-edit-start">
+          <input
+            id="booking-edit-start"
+            type="datetime-local"
+            value={form.startLocal}
+            onChange={(e) => setForm((f) => ({ ...f, startLocal: e.target.value }))}
+            className="w-full min-h-11 px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
+          />
+        </Field>
+        <Field label="Rückgabe" htmlFor="booking-edit-end">
+          <input
+            id="booking-edit-end"
+            type="datetime-local"
+            value={form.endLocal}
+            onChange={(e) => setForm((f) => ({ ...f, endLocal: e.target.value }))}
+            className="w-full min-h-11 px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
+          />
+        </Field>
+        <Field label="Km inklusive" htmlFor="booking-edit-km">
+          <input
+            id="booking-edit-km"
+            type="number"
+            value={form.kmIncluded}
+            onChange={(e) => setForm((f) => ({ ...f, kmIncluded: e.target.value }))}
+            className="w-full min-h-11 px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)]"
+          />
+        </Field>
+        <Field label="Stationen">
+          <StationSelectFields
+            stations={stations}
+            pickupStationId={form.pickupStationId}
+            returnStationId={form.returnStationId}
+            sameReturnStation={form.sameReturnStation}
+            onPickupChange={(id) => {
+              setForm((f) => ({
+                ...f,
+                pickupStationId: id,
+                returnStationId: f.sameReturnStation ? id : f.returnStationId,
+              }));
+            }}
+            onReturnChange={(id) => setForm((f) => ({ ...f, returnStationId: id }))}
+            onSameReturnChange={(same) =>
+              setForm((f) => ({
+                ...f,
+                sameReturnStation: same,
+                returnStationId: same ? f.pickupStationId : f.returnStationId,
+              }))
+            }
+            compact
+          />
+        </Field>
+        <Field label="Notizen" htmlFor="booking-edit-notes">
+          <textarea
+            id="booking-edit-notes"
+            value={form.notes}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+            rows={4}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)] resize-none"
+          />
+        </Field>
       </div>
-    </div>
+    </FormDialog>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="block space-y-1">
+    <label className="block space-y-1" htmlFor={htmlFor}>
       <span className="font-semibold text-foreground">{label}</span>
       {children}
     </label>

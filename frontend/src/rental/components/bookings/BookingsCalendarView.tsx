@@ -10,6 +10,11 @@ import {
 import { bookingOverlapsHalfOpenWindow } from './bookingPlannerOverlap';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, rowStatus } from './bookingUtils';
+import {
+  BOOKING_FOCUS_RING,
+  bookingChipAriaLabel,
+  bookingPlannerNavButtonClass,
+} from './bookings-a11y';
 
 interface BookingsCalendarViewProps {
   rows: BookingUiRow[];
@@ -23,10 +28,6 @@ interface BookingsCalendarViewProps {
   onDayClick: (day: number | null) => void;
   onBookingClick: (id: string) => void;
   onMonthChange?: (month: number, year: number) => void;
-}
-
-function navButtonClass(): string {
-  return 'px-2 py-1 text-[10px] rounded border border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
 }
 
 export function BookingsCalendarView({
@@ -176,7 +177,7 @@ export function BookingsCalendarView({
           <div className="flex gap-1" role="group" aria-label="Monat wechseln">
             <button
               type="button"
-              className={navButtonClass()}
+              className={bookingPlannerNavButtonClass()}
               aria-label="Vorheriger Monat"
               onClick={() => goMonth(-1)}
             >
@@ -184,7 +185,7 @@ export function BookingsCalendarView({
             </button>
             <button
               type="button"
-              className={navButtonClass()}
+              className={bookingPlannerNavButtonClass()}
               aria-label="Nächster Monat"
               onClick={() => goMonth(1)}
             >
@@ -217,6 +218,9 @@ export function BookingsCalendarView({
           const isToday = cell.dateOnly === todayDateOnly;
           const isSelected = selectedDay === day;
           const isFocused = focusedDay === day;
+          const visibleInCell = list.slice(0, 1);
+          const overflowCount = Math.max(0, list.length - visibleInCell.length);
+
           return (
             <div
               key={day}
@@ -224,9 +228,11 @@ export function BookingsCalendarView({
               data-cal-day={day}
               tabIndex={isFocused || (focusedDay == null && day === 1) ? 0 : -1}
               aria-selected={isSelected}
+              aria-label={`Tag ${day}${isToday ? ', heute' : ''}${list.length ? `, ${list.length} Buchung${list.length === 1 ? '' : 'en'}` : ''}`}
               onKeyDown={(e) => handleDayKeyDown(day, e)}
               onFocus={() => setFocusedDay(day)}
-              className={`min-h-[72px] rounded-lg border p-1 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${
+              onClick={() => onDayClick(isSelected ? null : day)}
+              className={`min-h-[72px] rounded-lg border p-1 text-left transition-colors cursor-pointer ${BOOKING_FOCUS_RING} ${
                 isSelected
                   ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]'
                   : isToday
@@ -234,35 +240,40 @@ export function BookingsCalendarView({
                     : 'border-border/50 hover:bg-muted/30'
               }`}
             >
-              <button
-                type="button"
-                className="text-[10px] font-semibold w-full text-left rounded px-0.5 hover:bg-muted/50 focus-visible:outline-none"
-                aria-label={`Tag ${day}${isToday ? ', heute' : ''}`}
-                onClick={() => onDayClick(isSelected ? null : day)}
-              >
-                {day}
-              </button>
-              <div className="mt-1 space-y-0.5" role="list">
-                {list.slice(0, 2).map((b) => (
+              <span className="text-[10px] font-semibold block px-0.5">{day}</span>
+              <div className="mt-1 space-y-0.5" role="list" aria-label={`Buchungen am ${day}.`}>
+                {visibleInCell.map((b) => (
                   <button
                     key={b.id}
                     type="button"
                     role="listitem"
+                    aria-label={bookingChipAriaLabel(bookingRef(b.id), b.customer)}
                     aria-pressed={selectedBookingId === b.id}
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
                       onBookingClick(b.id);
                     }}
-                    className={`w-full text-left truncate text-[8px] px-1 py-0.5 rounded hover:bg-muted ${
+                    className={`w-full text-left truncate text-[9px] sm:text-[8px] px-1 min-h-9 sm:min-h-7 flex items-center rounded hover:bg-muted ${BOOKING_FOCUS_RING} ${
                       selectedBookingId === b.id ? 'bg-muted ring-1 ring-[color:var(--brand)]' : 'bg-muted/80'
                     }`}
                   >
                     {bookingRef(b.id)}
                   </button>
                 ))}
-                {list.length > 2 && (
-                  <span className="text-[8px] text-muted-foreground">+{list.length - 2}</span>
+                {overflowCount > 0 && (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDayClick(day);
+                    }}
+                    className={`w-full text-left text-[9px] text-muted-foreground px-1 min-h-9 sm:min-h-7 flex items-center rounded hover:bg-muted/60 ${BOOKING_FOCUS_RING}`}
+                    aria-label={`${overflowCount} weitere Buchung${overflowCount === 1 ? '' : 'en'} am ${day}. Tag auswählen`}
+                  >
+                    +{overflowCount}
+                  </button>
                 )}
               </div>
             </div>
@@ -270,7 +281,7 @@ export function BookingsCalendarView({
         })}
       </div>
       {selectedDay != null && (byDay.get(selectedDay) ?? []).length > 0 && (
-        <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
+        <div className="mt-4 pt-3 border-t border-border/60 space-y-2" role="region" aria-label={`Buchungen am ${selectedDay}. ${monthLabel}`}>
           <p className="text-[10px] font-semibold text-muted-foreground uppercase">
             {selectedDay}. {monthLabel}
           </p>
@@ -278,9 +289,10 @@ export function BookingsCalendarView({
             <button
               key={b.id}
               type="button"
+              aria-label={bookingChipAriaLabel(bookingRef(b.id), b.customer)}
               aria-pressed={selectedBookingId === b.id}
               onClick={() => onBookingClick(b.id)}
-              className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${
+              className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2 min-h-11 text-left hover:bg-muted/40 ${BOOKING_FOCUS_RING} ${
                 selectedBookingId === b.id
                   ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]'
                   : 'border-border/60'

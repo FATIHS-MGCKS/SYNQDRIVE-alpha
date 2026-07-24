@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import type { MobileBookingFooterProps } from './types';
+import { BOOKING_FOCUS_RING } from '../bookings/bookings-a11y';
 
 export function MobileBookingFooter({
   currentStep,
@@ -15,7 +16,7 @@ export function MobileBookingFooter({
         <button
           type="button"
           onClick={onBackStep}
-          className="sq-3d-btn sq-3d-btn--neutral flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs"
+          className={`sq-3d-btn sq-3d-btn--neutral flex min-h-11 flex-1 items-center justify-center gap-2 px-3 py-2 text-xs ${BOOKING_FOCUS_RING}`}
         >
           <Icon name="arrow-left" className="h-5 w-5" />
           Zurück
@@ -26,7 +27,7 @@ export function MobileBookingFooter({
           type="button"
           onClick={onNextStep}
           disabled={!canProceed}
-          className="sq-3d-btn sq-3d-btn--primary flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          className={`sq-3d-btn sq-3d-btn--primary flex min-h-11 flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${BOOKING_FOCUS_RING}`}
         >
           Weiter
           <Icon name="arrow-right" className="h-5 w-5" />
@@ -36,7 +37,7 @@ export function MobileBookingFooter({
           type="button"
           onClick={onConfirm}
           disabled={!canProceed || isSavingBooking}
-          className="sq-3d-btn sq-3d-btn--success flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          className={`sq-3d-btn sq-3d-btn--success flex min-h-11 flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${BOOKING_FOCUS_RING}`}
         >
           <Icon name="check" className="h-5 w-5" />
           {isSavingBooking ? 'Speichert…' : 'Buchung bestätigen'}

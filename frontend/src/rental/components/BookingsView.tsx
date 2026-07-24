@@ -1318,7 +1318,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                   setDetailBookingId(popupBooking.id);
                   handleClosePopup();
                 }}
-                className="sq-press flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold sq-tone-brand"
+                className="sq-press flex min-h-11 items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold sq-tone-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
               >
                 <Icon name="maximize-2" className="w-4 h-4" />
                 Full detail

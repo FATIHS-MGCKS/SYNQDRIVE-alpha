@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
 import { useRentalOrg } from '../../RentalContext';
 import { useHandover } from '../../HandoverContext';
-import { SkeletonCard } from '../../../components/patterns';
+import { ConfirmDialog, SkeletonCard } from '../../../components/patterns';
 import { BookingDetailHeader } from './BookingDetailHeader';
 import { BookingOverviewTab } from './BookingOverviewTab';
 import { BookingFinanceDocumentsTab } from './BookingFinanceDocumentsTab';
@@ -165,13 +165,15 @@ export function BookingDossier({
         onNoShow={() => matrix.no_show.allowed && setNoShowOpen(true)}
       />
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-border mb-4 -mx-1 px-1">
+      <nav className="flex gap-1 overflow-x-auto border-b border-border mb-4 -mx-1 px-1" aria-label="Buchungsakte Tabs">
         {BOOKING_DETAIL_TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
+            role="tab"
+            aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`shrink-0 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${
+            className={`shrink-0 min-h-11 px-3 py-2 text-xs font-semibold border-b-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${
               activeTab === tab.key
                 ? 'border-[color:var(--brand)] text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -215,11 +217,12 @@ export function BookingDossier({
         <BookingTasksTimelineTab orgId={orgId} detail={detail} isDarkMode={isDarkMode} />
       )}
 
-      {editOpen && orgId && (
+      {orgId && (
         <BookingEditDialog
+          open={editOpen}
           orgId={orgId}
           detail={detail}
-          onClose={() => setEditOpen(false)}
+          onOpenChange={setEditOpen}
           onSaved={() => {
             setEditOpen(false);
             refresh();
@@ -228,48 +231,49 @@ export function BookingDossier({
         />
       )}
 
-      {cancelOpen && (
-        <ConfirmModal
-          title="Buchung stornieren?"
-          description="Die Buchung wird als storniert markiert."
-          confirmLabel="Stornieren"
-          tone="critical"
-          submitting={mutating}
-          onClose={() => setCancelOpen(false)}
-          onConfirm={executeCancel}
-        >
-          <SummaryRows
-            rows={[
-              ['Kunde', detail.customer.fullName],
-              ['Fahrzeug', `${detail.vehicle.displayName} · ${detail.vehicle.licensePlate}`],
-              ['Zeitraum', `${formatDateTime(detail.core.startDate, timezone, locale)} – ${formatDateTime(detail.core.endDate, timezone, locale)}`],
-            ]}
-          />
-        </ConfirmModal>
-      )}
+      <ConfirmDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        title="Buchung stornieren?"
+        description="Die Buchung wird als storniert markiert."
+        confirmLabel="Stornieren"
+        cancelLabel="Zurück"
+        tone="critical"
+        loading={mutating}
+        onConfirm={executeCancel}
+      >
+        <SummaryRows
+          rows={[
+            ['Kunde', detail.customer.fullName],
+            ['Fahrzeug', `${detail.vehicle.displayName} · ${detail.vehicle.licensePlate}`],
+            ['Zeitraum', `${formatDateTime(detail.core.startDate, timezone, locale)} – ${formatDateTime(detail.core.endDate, timezone, locale)}`],
+          ]}
+        />
+      </ConfirmDialog>
 
-      {noShowOpen && (
-        <ConfirmModal
-          title="Kunde nicht erschienen?"
-          description="Die Buchung wird auf No-Show gesetzt — getrennt von einer Stornierung."
-          confirmLabel={mutating ? 'Wird gesetzt …' : 'Als No-Show markieren'}
-          tone="critical"
-          submitting={mutating}
-          onClose={() => {
-            setNoShowOpen(false);
-            setNoShowReason('');
-          }}
-          onConfirm={executeNoShow}
-        >
-          <textarea
-            value={noShowReason}
-            onChange={(e) => setNoShowReason(e.target.value)}
-            rows={3}
-            placeholder="Grund (optional)"
-            className="w-full px-2.5 py-2 rounded-md border border-border bg-[color:var(--input-background)] text-xs outline-none resize-none mb-3"
-          />
-        </ConfirmModal>
-      )}
+      <ConfirmDialog
+        open={noShowOpen}
+        onOpenChange={(open) => {
+          setNoShowOpen(open);
+          if (!open) setNoShowReason('');
+        }}
+        title="Kunde nicht erschienen?"
+        description="Die Buchung wird auf No-Show gesetzt — getrennt von einer Stornierung."
+        confirmLabel={mutating ? 'Wird gesetzt …' : 'Als No-Show markieren'}
+        cancelLabel="Zurück"
+        tone="critical"
+        loading={mutating}
+        onConfirm={executeNoShow}
+      >
+        <textarea
+          value={noShowReason}
+          onChange={(e) => setNoShowReason(e.target.value)}
+          rows={3}
+          placeholder="Grund (optional)"
+          aria-label="No-Show Grund"
+          className="w-full min-h-11 px-2.5 py-2 rounded-md border border-border bg-[color:var(--input-background)] text-xs outline-none resize-none mb-3"
+        />
+      </ConfirmDialog>
     </div>
   );
 }
@@ -283,63 +287,6 @@ function SummaryRows({ rows }: { rows: [string, string][] }) {
           <span className="text-foreground text-right">{v}</span>
         </div>
       ))}
-    </div>
-  );
-}
-
-function ConfirmModal({
-  title,
-  description,
-  confirmLabel,
-  tone,
-  submitting,
-  onClose,
-  onConfirm,
-  children,
-}: {
-  title: string;
-  description: string;
-  confirmLabel: string;
-  tone: 'critical';
-  submitting: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 overlay-scrim" />
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden surface-frosted border-border"
-      >
-        <div className="p-8 text-center">
-          <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center sq-tone-${tone}`}>
-            <Icon name="alert-triangle" className="w-5 h-5 text-[color:var(--status-critical)]" />
-          </div>
-          <h3 className="text-base mb-2 text-foreground">{title}</h3>
-          <p className="text-xs mb-1 text-muted-foreground">{description}</p>
-          {children}
-          <div className="flex gap-3 mt-4">
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={onClose}
-              className="flex-1 px-3 py-2.5 rounded-lg text-xs border surface-premium border-border hover:bg-muted"
-            >
-              Zurück
-            </button>
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={onConfirm}
-              className="flex-1 px-3 py-2.5 rounded-lg text-xs bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60"
-            >
-              {confirmLabel}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
