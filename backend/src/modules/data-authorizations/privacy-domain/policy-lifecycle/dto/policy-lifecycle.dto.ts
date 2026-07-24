@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class PolicyLifecycleReasonDto {
   @IsString()
@@ -11,4 +11,17 @@ export class PolicyLifecycleRejectDto extends PolicyLifecycleReasonDto {}
 export class PolicyLifecycleScheduleDto {
   @IsDateString()
   validFrom!: string;
+}
+
+export class PolicyLifecycleExtendDto {
+  @IsDateString()
+  validUntil!: string;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
 }

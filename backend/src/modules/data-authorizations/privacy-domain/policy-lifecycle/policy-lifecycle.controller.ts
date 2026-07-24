@@ -8,7 +8,9 @@ import { RequirePermission } from '@shared/decorators/require-permission.decorat
 import { EnforcementPolicyLifecycleService } from './enforcement-policy-lifecycle.service';
 import { ProcessingActivityLifecycleService } from './processing-activity-lifecycle.service';
 import { LegalBasisAssessmentService } from '../legal-basis-assessment/legal-basis-assessment.service';
+import { DataProcessingPermissionService } from '../review-workflow/data-processing-permission.service';
 import {
+  PolicyLifecycleExtendDto,
   PolicyLifecycleRejectDto,
   PolicyLifecycleReasonDto,
   PolicyLifecycleScheduleDto,
@@ -23,10 +25,16 @@ export class PolicyLifecycleController {
     private readonly processingActivityLifecycle: ProcessingActivityLifecycleService,
     private readonly enforcementPolicyLifecycle: EnforcementPolicyLifecycleService,
     private readonly legalBasisAssessment: LegalBasisAssessmentService,
+    private readonly permissions: DataProcessingPermissionService,
   ) {}
 
   private actorUserId(req: Request): string {
     return (req as Request & { user?: { id?: string } }).user?.id ?? 'system';
+  }
+
+  private actor(req: Request) {
+    const user = (req as Request & { user?: { id?: string; platformRole?: string } }).user;
+    return { id: user?.id, platformRole: user?.platformRole };
   }
 
   @Post('processing-activities/:id/submit-for-review')
@@ -78,6 +86,34 @@ export class PolicyLifecycleController {
     return this.processingActivityLifecycle.suspend(orgId, id, dto.reason);
   }
 
+  @Post('processing-activities/:id/resume')
+  async resumeProcessingActivity(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() dto: PolicyLifecycleReasonDto,
+  ) {
+    await this.permissions.assert(this.actor(req), orgId, 'data_processing.resume');
+    return this.processingActivityLifecycle.resume(orgId, id, {
+      actorUserId: this.actorUserId(req),
+      reason: dto.reason,
+    });
+  }
+
+  @Post('processing-activities/:id/extend')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
+  extendProcessingActivity(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() dto: PolicyLifecycleExtendDto,
+  ) {
+    return this.processingActivityLifecycle.extendViaNewVersion(orgId, id, {
+      validUntil: new Date(dto.validUntil),
+      title: dto.title,
+      description: dto.description,
+    });
+  }
+
   @Post('processing-activities/:id/revoke')
   @RequirePermission(DATA_AUTH_MODULE, 'manage')
   revokeProcessingActivity(
@@ -125,6 +161,20 @@ export class PolicyLifecycleController {
     @Body() dto: PolicyLifecycleReasonDto,
   ) {
     return this.enforcementPolicyLifecycle.suspend(orgId, id, dto.reason);
+  }
+
+  @Post('enforcement-policies/:id/resume')
+  async resumeEnforcementPolicy(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() dto: PolicyLifecycleReasonDto,
+  ) {
+    await this.permissions.assert(this.actor(req), orgId, 'data_processing.resume');
+    return this.enforcementPolicyLifecycle.resume(orgId, id, {
+      actorUserId: this.actorUserId(req),
+      reason: dto.reason,
+    });
   }
 
   @Post('enforcement-policies/:id/revoke')

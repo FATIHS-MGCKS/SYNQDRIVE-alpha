@@ -15,6 +15,9 @@ import {
 import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
 import { DenySwitchService } from '../../deny-switch/deny-switch.service';
 import { randomUUID } from 'crypto';
+import { PolicyLifecycleActivationGuardService } from './policy-lifecycle-activation-guard.service';
+import { enrichPolicyWithStatusSemantics } from './policy-lifecycle-status-semantics';
+import { POLICY_LIFECYCLE_REASON_CODES } from './policy-lifecycle-semantics.constants';
 
 type EnforcementPolicyRecord = Prisma.EnforcementPolicyGetPayload<{
   include: {
@@ -40,6 +43,7 @@ export class EnforcementPolicyLifecycleService {
     private readonly events: PolicyLifecycleEventsService,
     @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
     @Optional() private readonly denySwitch?: DenySwitchService,
+    @Optional() private readonly activationGuard?: PolicyLifecycleActivationGuardService,
   ) {}
 
   async submitForReview(orgId: string, id: string, actorUserId: string): Promise<EnforcementPolicyRecord> {
@@ -132,7 +136,15 @@ export class EnforcementPolicyLifecycleService {
 
   async activate(orgId: string, id: string, input: PolicyActivationInput = {}): Promise<EnforcementPolicyRecord> {
     const record = await this.findOrThrow(orgId, id);
-    return this.lifecycle.activateVersion({
+    if (this.activationGuard) {
+      await this.activationGuard.assertActivationPrerequisites({
+        orgId,
+        processingActivityId: record.processingActivityId,
+        lifecycleStatus: record.status,
+        versionNumber: record.versionNumber,
+      });
+    }
+    const activated = await this.lifecycle.activateVersion({
       entityKind: 'ENFORCEMENT_POLICY',
       orgId,
       record,
@@ -169,6 +181,55 @@ export class EnforcementPolicyLifecycleService {
           validFrom: event.input?.validFrom,
         }),
     });
+    return enrichPolicyWithStatusSemantics(activated);
+  }
+
+  async resume(orgId: string, id: string, input: PolicyTransitionInput = {}): Promise<EnforcementPolicyRecord> {
+    const record = await this.findOrThrow(orgId, id);
+    if (record.status !== PrivacyPolicyLifecycleStatus.SUSPENDED) {
+      throw new PolicyNotFoundException('EnforcementPolicy');
+    }
+
+    const resumed = await this.lifecycle.transitionVersion({
+      orgId,
+      record,
+      toStatus: PrivacyPolicyLifecycleStatus.ACTIVE,
+      input: {
+        ...input,
+        reason: input.reason ?? POLICY_LIFECYCLE_REASON_CODES.RESUMED.SUSPENSION_LIFTED,
+      },
+      patch: { suspendedAt: null, suspensionReason: null },
+      loadCurrent: (tx, policyId) =>
+        tx.enforcementPolicy.findFirst({
+          where: { id: policyId, organizationId: orgId },
+          include: SCOPE_INCLUDE,
+        }),
+      applyTransition: (tx, current, toStatus, patch) =>
+        tx.enforcementPolicy.update({
+          where: { id: current.id },
+          data: { status: toStatus, ...patch },
+          include: SCOPE_INCLUDE,
+        }),
+      recordEvent: (tx, current, event) =>
+        this.events.recordEnforcementPolicyEvent(tx, current.id, {
+          organizationId: orgId,
+          eventType: event.eventType,
+          previousStatus: event.previousStatus,
+          newStatus: event.newStatus,
+          actorUserId: event.input?.actorUserId,
+          reason: event.input?.reason,
+        }),
+    });
+
+    if (this.denySwitch) {
+      await this.denySwitch.deactivateForSuspensionResume({
+        organizationId: orgId,
+        enforcementPolicyId: resumed.id,
+        processingActivityId: resumed.processingActivityId,
+      });
+    }
+
+    return enrichPolicyWithStatusSemantics(resumed);
   }
 
   async suspend(orgId: string, id: string, reason: string, input: PolicyTransitionInput = {}): Promise<EnforcementPolicyRecord> {

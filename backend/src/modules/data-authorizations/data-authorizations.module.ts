@@ -22,6 +22,9 @@ import { PolicyLifecycleEventsService } from './privacy-domain/policy-lifecycle/
 import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from './privacy-domain/policy-lifecycle/policy-lifecycle.service';
 import { ProcessingActivityLifecycleService } from './privacy-domain/policy-lifecycle/processing-activity-lifecycle.service';
 import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/policy-lifecycle.controller';
+import { PolicyLifecycleActivationGuardService } from './privacy-domain/policy-lifecycle/policy-lifecycle-activation-guard.service';
+import { PolicyLifecycleExpiryService } from './privacy-domain/policy-lifecycle/policy-lifecycle-expiry.service';
+import { PolicyLifecycleExpirySchedulerService } from './privacy-domain/policy-lifecycle/policy-lifecycle-expiry.scheduler.service';
 import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
 import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
 import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
@@ -120,6 +123,9 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     PolicyLifecycleTransitionValidator,
     PolicyLifecycleService,
     PolicyLifecycleEventsService,
+    PolicyLifecycleActivationGuardService,
+    PolicyLifecycleExpiryService,
+    PolicyLifecycleExpirySchedulerService,
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
@@ -182,6 +188,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
     DataAuthorizationLegacyMigrationService,
     PolicyLifecycleService,
     ProcessingActivityLifecycleService,
+    PolicyLifecycleExpiryService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,

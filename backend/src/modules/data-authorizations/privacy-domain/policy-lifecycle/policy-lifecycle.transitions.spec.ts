@@ -17,6 +17,7 @@ describe('policy-lifecycle.transitions', () => {
     [PrivacyPolicyLifecycleStatus.SCHEDULED, PrivacyPolicyLifecycleStatus.ACTIVE, true],
     [PrivacyPolicyLifecycleStatus.ACTIVE, PrivacyPolicyLifecycleStatus.SUSPENDED, true],
     [PrivacyPolicyLifecycleStatus.SUSPENDED, PrivacyPolicyLifecycleStatus.ACTIVE, true],
+    [PrivacyPolicyLifecycleStatus.SUSPENDED, PrivacyPolicyLifecycleStatus.EXPIRED, true],
     [PrivacyPolicyLifecycleStatus.ACTIVE, PrivacyPolicyLifecycleStatus.REVOKED, true],
     [PrivacyPolicyLifecycleStatus.REVOKED, PrivacyPolicyLifecycleStatus.ACTIVE, false],
     [PrivacyPolicyLifecycleStatus.REJECTED, PrivacyPolicyLifecycleStatus.ACTIVE, false],

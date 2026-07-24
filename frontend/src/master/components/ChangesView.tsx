@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'policy-lifecycle-semantics-v49811-2026-07-24',
+    version: '4.9.811',
+    title: 'V4.9.811 — Policy Lifecycle Status Semantics (Prompt 28)',
+    summary: [
+      'Klare fachliche Trennung: REJECTED (nie aktiv), SUSPENDED (temporär), REVOKED (war wirksam), EXPIRED (zeitlich), SUPERSEDED (ersetzt).',
+      'PolicyLifecycleExpiryService — idempotenter Ablaufjob mit Lifecycle-Event und Cache-Invalidierung.',
+      'PolicyLifecycleActivationGuardService — blockiert geplante Aktivierung bei ungültigem Legal-Basis-Assessment.',
+      'Resume-Endpunkte mit data_processing.resume; Rollback-Guard verhindert Reaktivierung kompromittierter Policies.',
+      'CI: npm run test:data-auth:policy-lifecycle (58 Tests).',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 28 — eindeutige Statussemantik, Ablauf, Suspendierung, Ablehnung und Rollback-Regeln.',
+    previousBehavior:
+      'Kein Ablaufjob; SUSPENDED→EXPIRED fehlte; createNewVersion erlaubte REVOKED/SUPERSEDED; kein Resume-Permission; REJECTED/REVOKED nicht API-seitig differenziert.',
+    details:
+      'backend/src/modules/data-authorizations/privacy-domain/policy-lifecycle/. Doku: docs/architecture/policy-lifecycle-semantics-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T04:00:00.000Z',
+  },
+  {
     id: 'revocation-queue-control-v49810-2026-07-24',
     version: '4.9.810',
     title: 'V4.9.810 — Revocation Queue & Worker Control (Prompt 27)',

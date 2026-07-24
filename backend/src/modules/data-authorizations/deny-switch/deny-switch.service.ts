@@ -270,6 +270,35 @@ export class DenySwitchService {
     return results;
   }
 
+  async deactivateForSuspensionResume(input: {
+    organizationId: string;
+    processingActivityId?: string | null;
+    enforcementPolicyId?: string | null;
+  }): Promise<number> {
+    let deactivated = 0;
+    if (input.processingActivityId) {
+      deactivated += await this.repo.deactivateScope({
+        organizationId: input.organizationId,
+        scopeType: DENY_SWITCH_SCOPE.PROCESSING_ACTIVITY,
+        scopeEntityId: input.processingActivityId,
+        trigger: 'SUSPENDED',
+      });
+    }
+    if (input.enforcementPolicyId) {
+      deactivated += await this.repo.deactivateScope({
+        organizationId: input.organizationId,
+        scopeType: DENY_SWITCH_SCOPE.ENFORCEMENT_POLICY,
+        scopeEntityId: input.enforcementPolicyId,
+        trigger: 'SUSPENDED',
+      });
+    }
+    if (deactivated > 0) {
+      await this.reconcileFromDatabase();
+      this.authorizationDecision.invalidateOrganizationCache(input.organizationId);
+    }
+    return deactivated;
+  }
+
   evaluate(ctx: DenySwitchEvaluationContext): DenySwitchEvaluationResult | null {
     return evaluateDenySwitchLocal(
       ctx,

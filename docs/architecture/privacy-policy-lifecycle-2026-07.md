@@ -22,7 +22,7 @@ Shared enum: `PrivacyPolicyLifecycleStatus`
 | APPROVED | — | — | — | ✓ | ✓ | — | ✓* | — | — |
 | SCHEDULED | — | ✓ | — | — | ✓ | — | ✓* | — | — |
 | ACTIVE | — | — | — | — | — | ✓ | ✓* | ✓ | ✓ |
-| SUSPENDED | — | — | — | — | ✓ | — | — | — | — |
+| SUSPENDED | — | — | — | — | ✓ | — | — | — | ✓ |
 | REJECTED | — | — | — | — | **✗** | — | — | — | — |
 | REVOKED | — | — | — | — | **✗** | — | — | — | — |
 | SUPERSEDED / EXPIRED | — | — | — | — | **✗** | — | — | — | — |

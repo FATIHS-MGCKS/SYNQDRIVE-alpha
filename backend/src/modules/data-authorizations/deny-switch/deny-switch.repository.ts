@@ -127,4 +127,26 @@ export class DenySwitchRepository {
       })
     );
   }
+
+  async deactivateScope(input: {
+    organizationId: string;
+    scopeType: DataAuthorizationDenySwitchScopeType;
+    scopeEntityId: string;
+    trigger?: 'SUSPENDED';
+  }): Promise<number> {
+    const result = await this.prisma.dataAuthorizationDenySwitch.updateMany({
+      where: {
+        organizationId: input.organizationId,
+        scopeType: input.scopeType,
+        scopeEntityId: input.scopeEntityId,
+        active: true,
+        ...(input.trigger ? { trigger: input.trigger } : {}),
+      },
+      data: {
+        active: false,
+        deactivatedAt: new Date(),
+      },
+    });
+    return result.count;
+  }
 }
