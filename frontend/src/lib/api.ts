@@ -4796,6 +4796,14 @@ export const api = {
           `/organizations/${orgId}/data-authorizations/processing-activity-register${qs ? `?${qs}` : ''}`,
         );
       },
+      get: (orgId: string, id: string) =>
+        get<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/processing-activity-register/${encodeURIComponent(id)}`,
+        ),
+      versions: (orgId: string, id: string) =>
+        get<ProcessingActivityVersionItem[]>(
+          `/organizations/${orgId}/data-authorizations/processing-activity-register/${encodeURIComponent(id)}/versions`,
+        ),
       create: (orgId: string, data: CreateProcessingActivityRegisterPayload) =>
         post<ProcessingActivityRegisterDetail>(
           `/organizations/${orgId}/data-authorizations/processing-activity-register`,
@@ -4803,6 +4811,10 @@ export const api = {
         ),
     },
     legalBasis: {
+      get: (orgId: string, activityId: string, assessmentId: string) =>
+        get<LegalBasisAssessmentDetail>(
+          `/organizations/${orgId}/processing-activities/${encodeURIComponent(activityId)}/legal-basis-assessments/${encodeURIComponent(assessmentId)}`,
+        ),
       create: (
         orgId: string,
         activityId: string,
@@ -4825,10 +4837,18 @@ export const api = {
         ),
     },
     providerGrant: {
+      get: (orgId: string, grantId: string) =>
+        get<ProviderAccessGrantDetail>(
+          `/organizations/${orgId}/provider-access-grants/${encodeURIComponent(grantId)}`,
+        ),
       create: (orgId: string, data: CreateProviderAccessGrantPayload) =>
         post<ProviderAccessGrantDetail>(`/organizations/${orgId}/provider-access-grants`, data),
     },
     consent: {
+      get: (orgId: string, activityId: string, consentId: string) =>
+        get<DataSubjectConsentDetail>(
+          `/organizations/${orgId}/processing-activities/${encodeURIComponent(activityId)}/data-subject-consents/${encodeURIComponent(consentId)}`,
+        ),
       create: (
         orgId: string,
         activityId: string,
@@ -4839,11 +4859,137 @@ export const api = {
           data,
         ),
     },
+    sharing: {
+      get: (orgId: string, activityId: string, authorizationId: string) =>
+        get<DataSharingAuthorizationDetail>(
+          `/organizations/${orgId}/processing-activities/${encodeURIComponent(activityId)}/data-sharing-authorizations/${encodeURIComponent(authorizationId)}`,
+        ),
+    },
     review: {
       submitActivity: (orgId: string, activityId: string) =>
         post<ProcessingActivityRegisterDetail>(
           `/organizations/${orgId}/data-authorizations/review-workflow/processing-activities/${activityId}/submit`,
           {},
+        ),
+      getCycle: (orgId: string, cycleId: string) =>
+        get<ReviewCycleDetail>(
+          `/organizations/${orgId}/data-authorizations/review-workflow/cycles/${encodeURIComponent(cycleId)}`,
+        ),
+      recordDecision: (
+        orgId: string,
+        cycleId: string,
+        data: { stepType: string; outcome: string; reason?: string },
+      ) =>
+        post<ReviewCycleDetail>(
+          `/organizations/${orgId}/data-authorizations/review-workflow/cycles/${encodeURIComponent(cycleId)}/decisions`,
+          data,
+        ),
+      rejectActivity: (orgId: string, activityId: string, reason: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/review-workflow/processing-activities/${encodeURIComponent(activityId)}/reject`,
+          { reason },
+        ),
+    },
+    revocation: {
+      get: (orgId: string, workflowId: string) =>
+        get<RevocationWorkflowDetail>(
+          `/organizations/${orgId}/data-authorizations/revocation-workflows/${encodeURIComponent(workflowId)}`,
+        ),
+    },
+    lifecycle: {
+      submitForReview: (orgId: string, activityId: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/submit-for-review`,
+          {},
+        ),
+      approveActivity: (orgId: string, activityId: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/approve`,
+          {},
+        ),
+      rejectActivity: (orgId: string, activityId: string, reason: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/reject`,
+          { reason },
+        ),
+      scheduleActivity: (orgId: string, activityId: string, validFrom: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/schedule`,
+          { validFrom },
+        ),
+      activateActivity: (orgId: string, activityId: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/activate`,
+          {},
+        ),
+      suspendActivity: (orgId: string, activityId: string, reason: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/suspend`,
+          { reason },
+        ),
+      resumeActivity: (orgId: string, activityId: string, reason?: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/resume`,
+          reason ? { reason } : {},
+        ),
+      extendActivity: (
+        orgId: string,
+        activityId: string,
+        data: { validUntil: string; title?: string; description?: string },
+      ) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/extend`,
+          data,
+        ),
+      revokeActivity: (orgId: string, activityId: string, reason: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/policy-lifecycle/processing-activities/${encodeURIComponent(activityId)}/revoke`,
+          { reason },
+        ),
+      activateDpa: (orgId: string, dpaId: string) =>
+        post<DataProcessingAgreementDetail>(
+          `/organizations/${orgId}/data-processing-agreements/${encodeURIComponent(dpaId)}/activate`,
+          {},
+        ),
+      terminateDpa: (orgId: string, dpaId: string, reason: string) =>
+        post<DataProcessingAgreementDetail>(
+          `/organizations/${orgId}/data-processing-agreements/${encodeURIComponent(dpaId)}/terminate`,
+          { reason },
+        ),
+      createDpaVersion: (orgId: string, dpaId: string) =>
+        post<DataProcessingAgreementDetail>(
+          `/organizations/${orgId}/data-processing-agreements/${encodeURIComponent(dpaId)}/versions`,
+          {},
+        ),
+      activateProviderGrant: (orgId: string, grantId: string) =>
+        post<ProviderAccessGrantDetail>(
+          `/organizations/${orgId}/provider-access-grants/${encodeURIComponent(grantId)}/activate`,
+          {},
+        ),
+      revokeProviderGrant: (orgId: string, grantId: string, reason: string) =>
+        post<ProviderAccessGrantDetail>(
+          `/organizations/${orgId}/provider-access-grants/${encodeURIComponent(grantId)}/revoke`,
+          { reason },
+        ),
+      grantConsent: (orgId: string, activityId: string, consentId: string) =>
+        post<DataSubjectConsentDetail>(
+          `/organizations/${orgId}/processing-activities/${encodeURIComponent(activityId)}/data-subject-consents/${encodeURIComponent(consentId)}/grant`,
+          {},
+        ),
+      withdrawConsent: (orgId: string, activityId: string, consentId: string, reason: string) =>
+        post<DataSubjectConsentDetail>(
+          `/organizations/${orgId}/processing-activities/${encodeURIComponent(activityId)}/data-subject-consents/${encodeURIComponent(consentId)}/withdraw`,
+          { reason },
+        ),
+      authorizeSharing: (orgId: string, activityId: string, authorizationId: string) =>
+        post<DataSharingAuthorizationDetail>(
+          `/organizations/${orgId}/processing-activities/${encodeURIComponent(activityId)}/data-sharing-authorizations/${encodeURIComponent(authorizationId)}/authorize`,
+          {},
+        ),
+      revokeSharing: (orgId: string, activityId: string, authorizationId: string, reason: string) =>
+        post<DataSharingAuthorizationDetail>(
+          `/organizations/${orgId}/processing-activities/${encodeURIComponent(activityId)}/data-sharing-authorizations/${encodeURIComponent(authorizationId)}/revoke`,
+          { reason },
         ),
     },
     coverage: {
@@ -4853,6 +4999,10 @@ export const api = {
     dpa: {
       list: (orgId: string) =>
         get<DataProcessingAgreementListItem[]>(`/organizations/${orgId}/data-processing-agreements`),
+      get: (orgId: string, id: string) =>
+        get<DataProcessingAgreementDetail>(
+          `/organizations/${orgId}/data-processing-agreements/${encodeURIComponent(id)}`,
+        ),
       create: (orgId: string, data: CreateDataProcessingAgreementPayload) =>
         post<DataProcessingAgreementDetail>(`/organizations/${orgId}/data-processing-agreements`, data),
     },
@@ -9431,6 +9581,65 @@ export interface ProcessingActivityRegisterListItem {
 export interface ProcessingActivityRegisterDetail extends ProcessingActivityRegisterListItem {
   description?: string | null;
   purposeSummary?: string | null;
+  statusSemantics?: {
+    status: string;
+    label: string;
+    description: string;
+    wasEverOperational: boolean;
+    isTerminal: boolean;
+    isReversible: boolean;
+    displayCategory: string;
+  };
+  ownerUserId?: string | null;
+  ownerRole?: string | null;
+  nextReviewDate?: string | null;
+  deletionStatus?: string | null;
+  dataCategories?: string[];
+  processingPurposes?: string[];
+  dataSubjectTypes?: string[];
+  recipientCategoriesSummary?: string | null;
+  internationalTransfers?: Array<{
+    recipient: string;
+    country?: string | null;
+    mechanism?: string | null;
+    status: string;
+  }>;
+  retention?: { description?: string | null; periodDays?: number | null };
+  technicalOrganizationalMeasures?: string | null;
+  controllerReference?: string | null;
+  jointControllerSummary?: string | null;
+  processors?: Array<{ id: string; label: string; status: string; agreementRef?: string | null }>;
+  legalBasisAssessments?: Array<{
+    id: string;
+    status: string;
+    legalBasisType: string;
+    reviewDate?: string | null;
+    versionNumber: number;
+  }>;
+  enforcementPolicies?: Array<{
+    id: string;
+    status: string;
+    dataCategory?: string | null;
+    processingPurpose?: string | null;
+    versionNumber: number;
+  }>;
+  providerAccessSummary?: {
+    total: number;
+    active: number;
+    pending: number;
+    revoked: number;
+    conflicts?: number;
+  };
+  dataSharingAuthorizations?: Array<{
+    id: string;
+    recipient: string;
+    recipientRole?: string | null;
+    status: string;
+    transferCountry?: string | null;
+    transferMechanism?: string | null;
+  }>;
+  activeReviewCycleId?: string | null;
+  disclaimer?: string;
 }
 
 export interface CreateProcessingActivityRegisterPayload {
@@ -9465,8 +9674,18 @@ export interface CreateLegalBasisAssessmentPayload {
 
 export interface LegalBasisAssessmentDetail {
   id: string;
+  processingActivityId?: string;
   legalBasisType: string;
   status: string;
+  versionNumber?: number;
+  isCurrentVersion?: boolean;
+  legalReference?: string | null;
+  necessityAssessment?: string | null;
+  proportionalityAssessment?: string | null;
+  reviewDate?: string | null;
+  ownerUserId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface UpsertRetentionPolicyPayload {
@@ -9503,6 +9722,16 @@ export interface ProviderAccessGrantDetail {
   id: string;
   provider: string;
   providerStatus: string;
+  processingActivityId?: string | null;
+  vehicleId?: string | null;
+  grantedScopes?: Array<{ scopeKey: string }>;
+  providerAccountReference?: string | null;
+  technicalOwnerUserId?: string | null;
+  linkedVehicleCount?: number;
+  legacyVehicleProviderConsentId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  statusEvents?: Array<{ toStatus: string; createdAt: string }>;
 }
 
 export interface CreateDataSubjectConsentPayload {
@@ -9516,7 +9745,73 @@ export interface CreateDataSubjectConsentPayload {
 
 export interface DataSubjectConsentDetail {
   id: string;
+  processingActivityId?: string;
   status: string;
+  dataSubjectReference?: string;
+  subjectType?: string;
+  purpose?: string;
+  consentTextVersion?: string;
+  privacyNoticeVersion?: string;
+  grantedAt?: string | null;
+  withdrawnAt?: string | null;
+  expiresAt?: string | null;
+}
+
+export interface DataSharingAuthorizationDetail {
+  id: string;
+  processingActivityId?: string;
+  recipient: string;
+  recipientRole?: string | null;
+  status: string;
+  transferCountry?: string | null;
+  transferMechanism?: string | null;
+  authorizedAt?: string | null;
+  revokedAt?: string | null;
+}
+
+export interface ProcessingActivityVersionItem {
+  id: string;
+  versionNumber: number;
+  isCurrentVersion: boolean;
+  status: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewCycleDetail {
+  id: string;
+  status: string;
+  riskLevel?: string | null;
+  entityVersionNumber: number;
+  fourEyesRequired?: boolean;
+  decisions: Array<{
+    id: string;
+    stepType: string;
+    outcome: string;
+    actorUserId?: string | null;
+    reason?: string | null;
+    decidedAt: string;
+  }>;
+}
+
+export interface RevocationWorkflowDetail {
+  workflow: {
+    id: string;
+    status: string;
+    entityType: string;
+    entityId: string;
+    reason?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  stepEvents: Array<{
+    id: string;
+    stepKey: string;
+    status: string;
+    detail?: string | null;
+    createdAt: string;
+  }>;
 }
 
 export interface CreateDataProcessingAgreementPayload {
@@ -9541,7 +9836,23 @@ export interface CreateDataProcessingAgreementPayload {
 export interface DataProcessingAgreementDetail {
   id: string;
   processorName: string;
+  processorRole?: string;
   status: string;
+  versionNumber?: number;
+  isCurrentVersion?: boolean;
+  contractReference?: string | null;
+  transferAssessmentStatus?: string | null;
+  primaryTransferMechanism?: string | null;
+  effectiveFrom?: string | null;
+  effectiveUntil?: string | null;
+  reviewDate?: string | null;
+  ownerUserId?: string | null;
+  linkedActivities?: Array<{ processingActivity: { id: string; title: string; activityCode: string } }>;
+  subprocessors?: Array<{ id: string; name: string; status: string }>;
+  transferCountries?: Array<{ countryCode: string; transferMechanism: string; assessmentStatus?: string | null }>;
+  auditEvents?: Array<{ id: string; eventType: string; summary: string; createdAt: string }>;
+  governance?: { blockers?: string[]; warnings?: string[] };
+  disclaimer?: string;
 }
 
 export interface ProcessingActivityRegisterListResponse {

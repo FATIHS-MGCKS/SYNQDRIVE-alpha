@@ -16,9 +16,10 @@ interface Props {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onRowClick?: (row: ProcessingActivityRegisterListItem) => void;
 }
 
-export function ProcessingActivitiesSection({ items, loading, error, onRetry }: Props) {
+export function ProcessingActivitiesSection({ items, loading, error, onRetry, onRowClick }: Props) {
   const { t } = useLanguage();
 
   const columns: DataTableColumn<ProcessingActivityRegisterListItem>[] = [
@@ -94,11 +95,16 @@ export function ProcessingActivitiesSection({ items, loading, error, onRetry }: 
     <div className="space-y-3">
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.activities.hint')}</p>
       <div className="hidden md:block">
-        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} />
+        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} onRowClick={onRowClick} />
       </div>
       <div className="md:hidden space-y-2">
         {items.map((row) => (
-          <div key={row.id} className="surface-premium rounded-xl border border-border/70 p-3">
+          <button
+            key={row.id}
+            type="button"
+            onClick={() => onRowClick?.(row)}
+            className="w-full text-left surface-premium rounded-xl border border-border/70 p-3 hover:bg-muted/30"
+          >
             <p className="font-semibold text-foreground">{row.title}</p>
             <p className="text-[11px] text-muted-foreground">{row.activityCode} · v{row.versionNumber}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -106,7 +112,7 @@ export function ProcessingActivitiesSection({ items, loading, error, onRetry }: 
                 {row.hasBlockingGaps ? t('dataProcessing.activities.gapsShort') : t('dataProcessing.activities.complete')}
               </StatusChip>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

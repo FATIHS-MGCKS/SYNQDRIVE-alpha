@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ErrorState } from '../../../../components/patterns';
+import { api, type DataAuthorizationDto } from '../../../../lib/api';
+import type { DataProcessingDetailTarget } from '../../../lib/data-processing-detail.types';
 import { useRentalOrg } from '../../../RentalContext';
 import { useDataProcessingPermissions } from '../../../hooks/useDataProcessingPermissions';
 import type { DataProcessingSectionId } from './data-processing.constants';
+import { DataProcessingDetailHost } from './detail/DataProcessingDetailHost';
 import { DataProcessingPageHeader } from './DataProcessingPageHeader';
 import { DataProcessingReadinessStrip } from './DataProcessingReadinessStrip';
 import { DataProcessingSubNav } from './DataProcessingSubNav';
@@ -27,6 +30,48 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
   const { t } = useLanguage();
   const hub = useDataProcessingHub(orgId, permissions);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<DataProcessingDetailTarget | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [legacyAuth, setLegacyAuth] = useState<DataAuthorizationDto | null>(null);
+  const [legacyActionLoading, setLegacyActionLoading] = useState(false);
+
+  const openDetail = (target: DataProcessingDetailTarget) => {
+    setDetailTarget(target);
+    setDetailOpen(true);
+    if (target.kind === 'legacy-authorization') {
+      const found = hub.legacyAuthorizations.find((a) => a.id === target.id) ?? null;
+      setLegacyAuth(found);
+      if (!found && orgId) {
+        void api.dataAuthorizations.get(orgId, target.id).then(setLegacyAuth).catch(() => setLegacyAuth(null));
+      }
+    }
+  };
+
+  const handleLegacyGrant = async () => {
+    if (!orgId || !legacyAuth) return;
+    setLegacyActionLoading(true);
+    try {
+      const updated = await api.dataAuthorizations.grant(orgId, legacyAuth.id);
+      setLegacyAuth(updated);
+      await hub.reload();
+    } finally {
+      setLegacyActionLoading(false);
+    }
+  };
+
+  const handleLegacyRevoke = async () => {
+    if (!orgId || !legacyAuth) return;
+    setLegacyActionLoading(true);
+    try {
+      const updated = await api.dataAuthorizations.revoke(orgId, legacyAuth.id, {
+        reason: 'Revoked from detail view',
+      });
+      setLegacyAuth(updated);
+      await hub.reload();
+    } finally {
+      setLegacyActionLoading(false);
+    }
+  };
 
   const [activeSection, setActiveSection] = useState<DataProcessingSectionId>(
     permissions.visibleSections[0] ?? 'activities',
@@ -87,6 +132,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
             loading={hub.loading}
             error={hub.sectionErrors.activities ?? null}
             onRetry={() => void hub.reload()}
+            onRowClick={(row) => openDetail({ kind: 'processing-activity', id: row.id })}
           />
         ) : null}
 
@@ -106,6 +152,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
             loading={hub.loading}
             error={hub.sectionErrors.providers ?? null}
             onRetry={() => void hub.reload()}
+            onRowClick={(row) => openDetail({ kind: 'legacy-authorization', id: row.id })}
           />
         ) : null}
 
@@ -115,6 +162,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
             loading={hub.loading}
             error={hub.sectionErrors.consents ?? null}
             onRetry={() => void hub.reload()}
+            onRowClick={(row) => openDetail({ kind: 'legacy-authorization', id: row.id })}
           />
         ) : null}
 
@@ -124,6 +172,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
             loading={hub.loading}
             error={hub.sectionErrors.partners ?? null}
             onRetry={() => void hub.reload()}
+            onRowClick={(row) => openDetail({ kind: 'dpa', id: row.id })}
           />
         ) : null}
 
@@ -138,19 +187,34 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
       </section>
 
       {orgId ? (
-        <DataProcessingWizardDialog
-          open={wizardOpen}
-          onOpenChange={setWizardOpen}
-          orgId={orgId}
-          permissions={{
-            ...permissions,
-            canRequestReview: permissions.canRequestReview && (canManage ?? permissions.canRequestReview),
-          }}
-          onSuccess={async () => {
-            await hub.reload();
-            setActiveSection('activities');
-          }}
-        />
+        <>
+          <DataProcessingWizardDialog
+            open={wizardOpen}
+            onOpenChange={setWizardOpen}
+            orgId={orgId}
+            permissions={{
+              ...permissions,
+              canRequestReview: permissions.canRequestReview && (canManage ?? permissions.canRequestReview),
+            }}
+            onSuccess={async () => {
+              await hub.reload();
+              setActiveSection('activities');
+            }}
+          />
+          <DataProcessingDetailHost
+            target={detailTarget}
+            orgId={orgId}
+            open={detailOpen}
+            onOpenChange={setDetailOpen}
+            canManage={canManage ?? permissions.canRequestReview}
+            onUpdated={() => void hub.reload()}
+            legacyAuth={legacyAuth}
+            legacyActionLoading={legacyActionLoading}
+            onLegacyGrant={() => void handleLegacyGrant()}
+            onLegacyRevoke={() => void handleLegacyRevoke()}
+            onNavigate={(t) => openDetail(t)}
+          />
+        </>
       ) : null}
     </div>
   );

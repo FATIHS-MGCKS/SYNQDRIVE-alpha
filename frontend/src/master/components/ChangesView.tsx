@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-processing-wizard-v49818-2026-07-24',
+    version: '4.9.818',
+    title: 'V4.9.818 — Geführter Erstellungs-Wizard (Prompt 35)',
+    summary: [
+      '7-Schritt-Assistent ersetzt einfachen Create-Dialog: Vorgangstyp, Zweck/Rechtsgrundlage, Daten, Ressourcen, Empfänger, Retention, Risiko/Review.',
+      'Tenant-geprüfte Entity-Suche (Fahrzeuge, Kunden, Buchungen, Stationen).',
+      'Entwurf speichern oder Review anfordern — keine direkte Aktivierung, kein Doppel-Submit.',
+      'Keine Auto-Defaults für requestingEntity/destination; client- und serverseitige Validierung.',
+      'API-Orchestrierung: Register, Legal Basis, Retention, Provider Grant, DPA, Legacy Auth, Consent, Review.',
+      'Frontend-Tests: 34/34 data-processing suite.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 35 — geführte mutierende Erstellung vor Edit-Workflows (P36).',
+    previousBehavior: 'Einzelner DataAuthorizationCreateDialog ohne Schritte, Scope-Auswahl oder Register-Anbindung.',
+    details:
+      'frontend/src/rental/components/settings/data-processing/wizard/. Doku: docs/architecture/data-processing-wizard-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-24T02:45:00.000Z',
+  },
+  {
     id: 'data-processing-ia-v49817-2026-07-24',
     version: '4.9.817',
     title: 'V4.9.817 — Datenverarbeitung & Freigaben IA (Prompt 34)',
