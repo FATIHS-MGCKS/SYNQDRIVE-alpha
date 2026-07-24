@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import {
   Notification,
   NotificationEventKind,
@@ -44,6 +39,12 @@ import { isManualResolutionAllowed } from './api/notification-manual-resolution.
 import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
 import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
 import { NotificationDeliverySchedulerService } from './delivery/notification-delivery-scheduler.service';
+import { NotificationEnforcementService } from '@modules/data-authorizations/notification-enforcement/notification-enforcement.service';
+import {
+  attachAuthDecisionToParams,
+} from '@modules/data-authorizations/notification-enforcement/notification-preview-minimizer';
+import { createNotificationAuthCache } from '@modules/data-authorizations/notification-enforcement/notification-enforcement.types';
+import { getActiveNotificationAuthCache } from './runtime/notification-run-context';
 
 @Injectable()
 export class NotificationCoreService {
@@ -55,6 +56,7 @@ export class NotificationCoreService {
     private readonly deliveryEnqueue: NotificationDeliveryEnqueueService,
     private readonly deliveryPolicy: NotificationDeliveryPolicyService,
     private readonly deliveryScheduler: NotificationDeliverySchedulerService,
+    @Optional() private readonly notificationEnforcement?: NotificationEnforcementService,
   ) {}
 
   isEnabled(): boolean {
@@ -69,6 +71,66 @@ export class NotificationCoreService {
       this.logOperation('skipped_flag_off', candidate, { runId: options.runId });
       recordNotificationIngestOperation('skipped_flag_off');
       return { enabled: false, operation: 'skipped_flag_off' };
+    }
+
+    if (this.notificationEnforcement) {
+      const authCache = options.authCache ?? getActiveNotificationAuthCache() ?? createNotificationAuthCache();
+      const vehicleId = this.notificationEnforcement.extractVehicleIdFromCandidate({
+        entityType: candidate.entityType,
+        entityId: candidate.entityId,
+        actionTarget: candidate.actionTarget as unknown as Record<string, unknown>,
+        templateParams: candidate.templateParams as Record<string, unknown>,
+      });
+      const auth = await this.notificationEnforcement.checkIngest(
+        {
+          organizationId: candidate.organizationId,
+          eventType: candidate.eventType,
+          vehicleId,
+          bookingId:
+            typeof candidate.actionTarget?.bookingId === 'string'
+              ? candidate.actionTarget.bookingId
+              : null,
+          customerId:
+            typeof candidate.actionTarget?.customerId === 'string'
+              ? candidate.actionTarget.customerId
+              : null,
+          tripId:
+            typeof candidate.actionTarget?.tripId === 'string'
+              ? candidate.actionTarget.tripId
+              : null,
+          entityType: candidate.entityType,
+          entityId: candidate.entityId,
+          correlationId: `notification-ingest:${candidate.eventType}:${candidate.entityId}:${options.runId ?? 'direct'}`,
+          effectiveTimestamp: candidate.occurredAt,
+          upstreamAllowed: options.upstreamAllowed,
+          upstreamDecisionId: options.upstreamDecisionId ?? null,
+        },
+        authCache,
+      );
+
+      if (!auth.mayProceed) {
+        this.logOperation('skipped_auth_denied', candidate, {
+          runId: options.runId,
+          reason: auth.reasonCode,
+        });
+        recordNotificationIngestOperation('skipped_auth_denied');
+        return {
+          enabled: true,
+          operation: 'skipped_auth_denied',
+          reason: auth.reasonCode,
+        };
+      }
+
+      candidate = {
+        ...candidate,
+        templateParams: attachAuthDecisionToParams(candidate.templateParams, {
+          correlationId: auth.correlationId,
+          auditEventId: auth.auditEventId,
+          reasonCode: auth.reasonCode,
+          gateKind: auth.gateKind,
+        }),
+      };
+      options = { ...options, authCache };
     }
 
     try {

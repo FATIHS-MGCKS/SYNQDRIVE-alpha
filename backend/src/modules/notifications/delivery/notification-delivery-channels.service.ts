@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   NotificationDeliveryChannel,
   OutboundEmailEventType,
@@ -10,6 +10,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { OutboundEmailPolicyService } from '@modules/outbound-email/outbound-email-policy.service';
 import { OutboundEmailService } from '@modules/outbound-email/outbound-email.service';
 import { EmailProviderRegistry } from '@modules/outbound-email/providers/email-provider.registry';
+import { NotificationEnforcementService } from '@modules/data-authorizations/notification-enforcement/notification-enforcement.service';
+import {
+  minimizeNotificationDeliveryBody,
+} from '@modules/data-authorizations/notification-enforcement/notification-preview-minimizer';
 
 export interface ChannelDeliveryResult {
   success: boolean;
@@ -26,6 +30,7 @@ export class NotificationEmailChannelService {
     private readonly policy: OutboundEmailPolicyService,
     private readonly outboundEmail: OutboundEmailService,
     private readonly providers: EmailProviderRegistry,
+    @Optional() private readonly notificationEnforcement?: NotificationEnforcementService,
   ) {}
 
   async deliver(row: NotificationDeliveryOutbox): Promise<ChannelDeliveryResult> {
@@ -64,11 +69,42 @@ export class NotificationEmailChannelService {
     }
 
     const identity = await this.policy.resolveIdentity(row.organizationId);
-    const subject = `[SynqDrive] ${notification.titleKey}`;
-    const bodyText = this.renderBody(
+    const templateParams = (notification.templateParams ?? {}) as Record<
+      string,
+      string | number | boolean | null
+    >;
+
+    let deliveryAllowed = true;
+    if (this.notificationEnforcement) {
+      const vehicleId =
+        notification.entityType === 'VEHICLE'
+          ? notification.entityId
+          : (notification.actionTarget as Record<string, unknown> | null)?.vehicleId as
+              | string
+              | undefined;
+      const auth = await this.notificationEnforcement.checkDelivery({
+        organizationId: row.organizationId,
+        eventType: notification.eventType,
+        vehicleId: vehicleId ?? null,
+        entityType: notification.entityType,
+        entityId: notification.entityId,
+        correlationId: `notification-email:${row.id}`,
+      });
+      deliveryAllowed = auth.mayProceed;
+    }
+
+    const minimized = minimizeNotificationDeliveryBody(
       notification.titleKey,
       notification.bodyKey,
-      notification.templateParams,
+      templateParams,
+      deliveryAllowed,
+    );
+
+    const subject = `[SynqDrive] ${minimized.titleKey}`;
+    const bodyText = this.renderBody(
+      minimized.titleKey,
+      minimized.bodyKey,
+      minimized.params,
     );
     const bodyHtml = `<p>${this.escapeHtml(bodyText)}</p>`;
 

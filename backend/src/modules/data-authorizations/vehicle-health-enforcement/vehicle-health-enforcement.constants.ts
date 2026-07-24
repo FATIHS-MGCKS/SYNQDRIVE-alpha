@@ -6,6 +6,7 @@ export const VEHICLE_HEALTH_ACTION = {
   READ: AUTHORIZATION_DECISION_ACTION.READ,
   EXPORT: AUTHORIZATION_DECISION_ACTION.EXPORT,
   USE_FOR_AI: AUTHORIZATION_DECISION_ACTION.USE_FOR_AI,
+  NOTIFY: AUTHORIZATION_DECISION_ACTION.NOTIFY,
 } as const;
 
 /** Distinct health data categories — no blanket org-wide allow. */
@@ -47,6 +48,7 @@ export const VEHICLE_HEALTH_PATH = {
   HEALTH_SUMMARY_READ: 'health-summary-read',
   HEALTH_AI: 'health-ai',
   HEALTH_EXPORT: 'health-export',
+  HEALTH_NOTIFY: 'health-notify',
   MANUAL_OBSERVATION: 'manual-observation',
   TELEMETRY_OBSERVATION: 'telemetry-observation',
 } as const;

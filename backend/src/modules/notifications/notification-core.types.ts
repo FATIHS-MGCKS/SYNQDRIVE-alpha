@@ -7,7 +7,8 @@ export type NotificationCoreOperation =
   | 'resolved'
   | 'reopened'
   | 'ignored'
-  | 'skipped_flag_off';
+  | 'skipped_flag_off'
+  | 'skipped_auth_denied';
 
 export interface IngestCandidateResult {
   enabled: boolean;
@@ -25,6 +26,11 @@ export interface MaterializeResult {
 export interface IngestCandidateOptions {
   referenceNow?: Date;
   runId?: string;
+  /** In-process decision cache — avoids duplicate decision requests per evaluation run. */
+  authCache?: import('@modules/data-authorizations/notification-enforcement/notification-enforcement.types').NotificationAuthCache;
+  /** When false, notification ingest is blocked (derived data already denied upstream). */
+  upstreamAllowed?: boolean;
+  upstreamDecisionId?: string | null;
 }
 
 export interface ResolveByFingerprintOptions {

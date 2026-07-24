@@ -1,11 +1,16 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import type { NotificationEvaluationRunStats } from './notification-evaluation.types';
 import { EMPTY_RUN_STATS } from './notification-evaluation.types';
+import {
+  createNotificationAuthCache,
+  type NotificationAuthCache,
+} from '@modules/data-authorizations/notification-enforcement/notification-enforcement.types';
 
 export interface ActiveNotificationRunContext {
   runId: string;
   organizationId: string;
   stats: NotificationEvaluationRunStats;
+  authCache: NotificationAuthCache;
 }
 
 export const notificationRunContextStorage = new AsyncLocalStorage<ActiveNotificationRunContext>();
@@ -15,7 +20,7 @@ export function getActiveNotificationRunStats(): NotificationEvaluationRunStats 
 }
 
 export function recordNotificationIngestOperation(
-  operation: 'created' | 'updated' | 'resolved' | 'ignored' | 'skipped_flag_off',
+  operation: 'created' | 'updated' | 'resolved' | 'ignored' | 'skipped_flag_off' | 'skipped_auth_denied',
 ): void {
   const stats = getActiveNotificationRunStats();
   if (!stats) return;
@@ -31,11 +36,16 @@ export function recordNotificationIngestOperation(
       stats.resolvedCount++;
       break;
     case 'ignored':
+    case 'skipped_auth_denied':
       stats.deduplicatedCount++;
       break;
     default:
       break;
   }
+}
+
+export function getActiveNotificationAuthCache(): NotificationAuthCache | null {
+  return notificationRunContextStorage.getStore()?.authCache ?? null;
 }
 
 export function recordNotificationFailure(): void {
@@ -44,11 +54,15 @@ export function recordNotificationFailure(): void {
 }
 
 export function runWithNotificationRunContext<T>(
-  ctx: ActiveNotificationRunContext,
+  ctx: Omit<ActiveNotificationRunContext, 'authCache'> & { authCache?: NotificationAuthCache },
   fn: () => Promise<T>,
 ): Promise<T> {
   return notificationRunContextStorage.run(
-    { ...ctx, stats: { ...EMPTY_RUN_STATS(), ...ctx.stats } },
+    {
+      ...ctx,
+      stats: { ...EMPTY_RUN_STATS(), ...ctx.stats },
+      authCache: ctx.authCache ?? createNotificationAuthCache(),
+    },
     fn,
   );
 }

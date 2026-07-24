@@ -66,6 +66,10 @@ export class VehicleHealthEnforcementService {
     return (await this.evaluate({ ...ctx, action: VEHICLE_HEALTH_ACTION.EXPORT })).mayProceed;
   }
 
+  async mayNotify(ctx: Omit<VehicleHealthGateContext, 'action'>): Promise<boolean> {
+    return (await this.evaluate({ ...ctx, action: VEHICLE_HEALTH_ACTION.NOTIFY })).mayProceed;
+  }
+
   async assertExport(
     ctx: Omit<VehicleHealthGateContext, 'action'>,
   ): Promise<VehicleHealthGateResult> {
@@ -117,7 +121,7 @@ export class VehicleHealthEnforcementService {
 
   private async evaluateMutating(
     ctx: VehicleHealthGateContext,
-    kind: 'ingest' | 'derive' | 'read' | 'export' | 'use_for_ai',
+    kind: 'ingest' | 'derive' | 'read' | 'export' | 'use_for_ai' | 'notify',
   ): Promise<VehicleHealthGateResult> {
     const config = readVehicleHealthEnforcementConfig();
 
@@ -266,7 +270,7 @@ export class VehicleHealthEnforcementService {
 
   private kindForAction(
     action: VehicleHealthGateContext['action'],
-  ): 'ingest' | 'derive' | 'read' | 'export' | 'use_for_ai' {
+  ): 'ingest' | 'derive' | 'read' | 'export' | 'use_for_ai' | 'notify' {
     switch (action) {
       case AUTHORIZATION_DECISION_ACTION.DERIVE:
         return 'derive';
@@ -276,6 +280,8 @@ export class VehicleHealthEnforcementService {
         return 'export';
       case AUTHORIZATION_DECISION_ACTION.USE_FOR_AI:
         return 'use_for_ai';
+      case AUTHORIZATION_DECISION_ACTION.NOTIFY:
+        return 'notify';
       default:
         return 'ingest';
     }

@@ -126,6 +126,11 @@ export const AUTHORIZATION_KNOWN_SERVICE_IDENTITIES = new Set([
   'synqdrive-behavior-export-api',
   'synqdrive-behavior-ai',
   'synqdrive-behavior-notify',
+  'synqdrive-notification-core',
+  'synqdrive-notification-delivery',
+  'synqdrive-notification-api',
+  'synqdrive-notification-task-bridge',
+  'synqdrive-connectivity-notify',
 ]);
 
 /** Default cache TTL for high-frequency ingestion paths (ms). */
