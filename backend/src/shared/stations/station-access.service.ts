@@ -80,7 +80,7 @@ export class StationAccessService {
   assertStationReadable(access: StationAccessContext, stationId: string): void {
     if (access.bypassScope || access.allowedStationIds === null) return;
     if (!access.allowedStationIds.includes(stationId)) {
-      throw new NotFoundException(`Station ${stationId} not found`);
+      throw new NotFoundException('Station not found');
     }
   }
 
