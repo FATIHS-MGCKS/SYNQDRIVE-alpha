@@ -212,6 +212,41 @@ export const de: Record<TranslationKey, string> = {
   'evaluations.ia.kpi.maintenanceVehicles': 'In Wartung',
   'evaluations.ia.kpi.downtimePercent': 'Ausfallanteil',
 
+  // ─── Executive KPI Strip (Prompt 31/54) ───
+  'evaluations.executiveKpi.definitionAria': 'Kennzahlendefinition',
+  'evaluations.executiveKpi.estimateBadge': 'Schätzung',
+  'evaluations.executiveKpi.forecastBadge': 'Prognose',
+  'evaluations.executiveKpi.vsPeriod': 'vs. {period}',
+  'evaluations.executiveKpi.vsIssuedRevenue': 'vs. ausgestellter Umsatz',
+  'evaluations.executiveKpi.comparison': 'Vergleich',
+  'evaluations.executiveKpi.collectionRate': '{rate} eingezogen',
+  'evaluations.executiveKpi.drillDown': 'Details anzeigen',
+  'evaluations.executiveKpi.revenue_mtd.title': 'Umsatz (Periode)',
+  'evaluations.executiveKpi.revenue_mtd.definition':
+    'Ausgestellter Ausgangsrechnungsumsatz im gewählten Zeitraum (Rechnungsdatum), in EUR.',
+  'evaluations.executiveKpi.paid_revenue_mtd.title': 'Zahlungseingänge',
+  'evaluations.executiveKpi.paid_revenue_mtd.definition':
+    'Ausgangsumsatz mit erfasstem Zahlungsdatum in der Periode — Cashflow, nicht ausgestellter Umsatz.',
+  'evaluations.executiveKpi.contribution_margin.title': 'Deckungsbeitrag',
+  'evaluations.executiveKpi.contribution_margin.definition':
+    'Nettomarge in der Periode: ausgestellter Umsatz minus erfasste Ausgaben (EUR).',
+  'evaluations.executiveKpi.fleet_utilization.title': 'Auslastung',
+  'evaluations.executiveKpi.fleet_utilization.definition':
+    'Anteil der operativen Flottenkapazität, der in der Periode vermietet war. Kontext: Saison und Stationen.',
+  'evaluations.executiveKpi.fleet_availability.title': 'Flottenverfügbarkeit',
+  'evaluations.executiveKpi.fleet_availability.definition':
+    'Anteil der Fahrzeuge, die vermietbar sind (nicht in Wartung, gesperrt oder mit Reinigungsrückstand).',
+  'evaluations.executiveKpi.unplanned_downtime.title': 'Ungeplante Downtime',
+  'evaluations.executiveKpi.unplanned_downtime.definition':
+    'Anteil der Flotte in Wartung, gesperrt oder mit Reinigungsbedarf — reduziert vermietbare Kapazität.',
+  'evaluations.executiveKpi.financial_risk_exposure.title': 'Erwartetes Finanzrisiko',
+  'evaluations.executiveKpi.financial_risk_exposure.definition':
+    'Modellierte Exposition aus aktiven Geschäftsrisiken und Leakage-Insights — Schätzung, keine geprüften Ist-Werte.',
+  'evaluations.executiveKpi.overdue_receivables.title': 'Überfällige Forderungen',
+  'evaluations.executiveKpi.overdue_receivables.definition':
+    'Offene Ausgangsrechnungen nach Fälligkeit — Inkassorisiko, keine Umsatzprognose.',
+
+  // ─── Fleet hub tabs ───
   'fleetTab.status': 'Status',
   'fleetTab.conditionService': 'Zustand & Service',
   'fleetTab.connectivity': 'Connectivity',

@@ -211,6 +211,40 @@ export const en = {
   'evaluations.ia.kpi.maintenanceVehicles': 'In maintenance',
   'evaluations.ia.kpi.downtimePercent': 'Downtime share',
 
+  // ─── Executive KPI strip (Prompt 31/54) ───
+  'evaluations.executiveKpi.definitionAria': 'Metric definition',
+  'evaluations.executiveKpi.estimateBadge': 'Estimate',
+  'evaluations.executiveKpi.forecastBadge': 'Forecast',
+  'evaluations.executiveKpi.vsPeriod': 'vs. {period}',
+  'evaluations.executiveKpi.vsIssuedRevenue': 'vs. issued revenue',
+  'evaluations.executiveKpi.comparison': 'Comparison',
+  'evaluations.executiveKpi.collectionRate': '{rate} collected',
+  'evaluations.executiveKpi.drillDown': 'View details',
+  'evaluations.executiveKpi.revenue_mtd.title': 'Revenue (period)',
+  'evaluations.executiveKpi.revenue_mtd.definition':
+    'Issued outgoing invoice revenue in the selected period (invoice date), in EUR.',
+  'evaluations.executiveKpi.paid_revenue_mtd.title': 'Cash collections',
+  'evaluations.executiveKpi.paid_revenue_mtd.definition':
+    'Outgoing revenue with a recorded payment date in the period — cashflow, not issued revenue.',
+  'evaluations.executiveKpi.contribution_margin.title': 'Contribution margin',
+  'evaluations.executiveKpi.contribution_margin.definition':
+    'Net margin in the period: issued revenue minus recorded expenses (EUR).',
+  'evaluations.executiveKpi.fleet_utilization.title': 'Fleet utilization',
+  'evaluations.executiveKpi.fleet_utilization.definition':
+    'Share of operational fleet capacity rented in the period. Interpret with seasonality and station mix.',
+  'evaluations.executiveKpi.fleet_availability.title': 'Fleet availability',
+  'evaluations.executiveKpi.fleet_availability.definition':
+    'Share of fleet vehicles ready to rent (not in maintenance, blocked, or cleaning backlog).',
+  'evaluations.executiveKpi.unplanned_downtime.title': 'Unplanned downtime',
+  'evaluations.executiveKpi.unplanned_downtime.definition':
+    'Share of fleet in maintenance, blocked, or cleaning-required states — reduces rentable capacity.',
+  'evaluations.executiveKpi.financial_risk_exposure.title': 'Estimated financial risk',
+  'evaluations.executiveKpi.financial_risk_exposure.definition':
+    'Modelled exposure from active business risks and leakage insights — estimate, not audited actuals.',
+  'evaluations.executiveKpi.overdue_receivables.title': 'Overdue receivables',
+  'evaluations.executiveKpi.overdue_receivables.definition':
+    'Open outgoing invoices past due date — collection risk, not forecast revenue.',
+
   // ─── Fleet hub tabs ───
   'fleetTab.status': 'Status',
   'fleetTab.conditionService': 'Condition & Service',
