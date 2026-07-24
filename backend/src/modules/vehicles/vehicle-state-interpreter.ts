@@ -154,7 +154,7 @@ export function interpretVehicleState(
     displayState,
     displayIgnition,
     isLiveTracking,
-    displaySpeed: speed,
+    displaySpeed: raw.speedKmh,
     displayCoolant: raw.coolantTempC,
     displayEngineLoad: raw.engineLoad,
     tripDetectionState: tripDetState,

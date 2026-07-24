@@ -225,6 +225,26 @@ describe('mapFleetMapVehicleResponse', () => {
     expect(selectFleetActiveReturnAt(mapped)).toBe('2026-07-12T08:00:00.000Z');
   });
 
+  it('preserves null telemetry legacy fields without coercing to zero', () => {
+    const raw: FleetMapVehicleResponse = {
+      ...BASE_ROW,
+      odometerKm: null,
+      fuelPercent: null,
+      evSoc: null,
+    };
+
+    const mapped = mapFleetMapVehicleResponse(raw);
+
+    expect(mapped.odometer).toBeNull();
+    expect(mapped.fuel).toBeNull();
+    expect(mapped.battery).toBeNull();
+    expect(mapped.speed).toBeNull();
+    expect(mapped.coolant).toBeNull();
+    expect(mapped.odometerKm).toBeNull();
+    expect(mapped.fuelPercent).toBeNull();
+    expect(mapped.evSoc).toBeNull();
+  });
+
   it('does not derive RESERVED from futureBookingCount alone', () => {
     const raw: FleetMapVehicleResponse = {
       ...BASE_ROW,

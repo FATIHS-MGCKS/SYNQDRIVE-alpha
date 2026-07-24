@@ -4,19 +4,11 @@ import type {
   OnlineStatus,
   VehicleStateLabel,
 } from '../../lib/liveMapUtils';
+import type { LiveTelemetrySnapshot } from '../lib/telemetry-field-semantics';
 
 export type LiveGpsSource = 'dimo' | 'cache' | null;
 
-export interface LiveTelemetrySnapshot {
-  speed: number;
-  fuel: number;
-  coolant: number;
-  battery: number;
-  lvBatteryVoltage: number;
-  odometer: number;
-  engineLoad?: number;
-  ignitionOn?: boolean;
-}
+export type { LiveTelemetrySnapshot };
 
 export interface VehicleLiveMapData {
   boundVehicleId: string | null;
@@ -34,7 +26,10 @@ export interface VehicleLiveMapData {
   lastLocationAt: number | null;
   isMoving: boolean;
   lastSignal: string;
-  signalAgeMs: number;
+  measuredAt: string | null;
+  receivedAt: string | null;
+  cachedAt: string | null;
+  signalAgeMs: number | null;
   isFresh: boolean;
   onlineStatus: OnlineStatus;
   displayState: VehicleStateLabel;
@@ -74,7 +69,10 @@ function createInitialState(): VehicleLiveMapData {
     lastLocationAt: null,
     isMoving: false,
     lastSignal: '',
-    signalAgeMs: 0,
+    measuredAt: null,
+    receivedAt: null,
+    cachedAt: null,
+    signalAgeMs: null,
     isFresh: false,
     onlineStatus: 'OFFLINE',
     displayState: 'PARKED',
@@ -88,13 +86,17 @@ function createInitialState(): VehicleLiveMapData {
 
 export function createDefaultLiveSnapshot(): LiveTelemetrySnapshot {
   return {
-    speed: 0,
-    fuel: 0,
-    coolant: 0,
-    battery: 0,
-    lvBatteryVoltage: 0,
-    odometer: 0,
-    engineLoad: 0,
+    speed: null,
+    fuel: null,
+    coolant: null,
+    battery: null,
+    lvBatteryVoltage: null,
+    odometer: null,
+    engineLoad: null,
+    rangeKm: null,
+    tractionBatteryTemperatureC: null,
+    headingDeg: null,
+    accuracyM: null,
     ignitionOn: false,
   };
 }
@@ -124,21 +126,9 @@ export const useVehicleLiveMapStore = create<VehicleLiveMapStore>((set, get) => 
     }),
   patchIfBound: (vehicleId, orgId, patch) => {
     const state = get();
-    if (!isStoreBoundToVehicle(state, vehicleId, orgId)) return;
+    if (state.boundVehicleId !== vehicleId || state.boundOrgId !== orgId) return;
     set({ ...state, ...patch });
   },
   unbind: () => set(createInitialState()),
   reset: () => set(createInitialState()),
 }));
-
-export const selectLiveSnapshot = (state: VehicleLiveMapStore) => state.snapshot;
-export const selectLiveTargetPosition = (state: VehicleLiveMapStore) =>
-  state.targetPosition;
-export const selectLiveLastConfirmedPosition = (state: VehicleLiveMapStore) =>
-  state.lastConfirmedPosition;
-export const selectLiveHeading = (state: VehicleLiveMapStore) => state.heading;
-export const selectLiveGpsSource = (state: VehicleLiveMapStore) => state.gpsSource;
-export const selectIsLiveTracking = (state: VehicleLiveMapStore) =>
-  state.isLiveTracking;
-export const selectLiveLoading = (state: VehicleLiveMapStore) => state.loading;
-export const selectLiveError = (state: VehicleLiveMapStore) => state.error;

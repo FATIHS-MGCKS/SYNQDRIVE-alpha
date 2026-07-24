@@ -61,12 +61,33 @@ export interface TelemetryFreshnessState {
 }
 
 export function parseTelemetryTimestampMs(
-  value: string | null | undefined,
+  value: string | number | null | undefined,
 ): number | null {
-  if (!value) return null;
-  const ms = Date.parse(value);
+  if (value == null) return null;
+
+  if (typeof value === 'number') {
+    return normalizeEpochMs(value);
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) {
+    return normalizeEpochMs(numeric);
+  }
+
+  const ms = Date.parse(raw);
   if (!Number.isFinite(ms) || ms < 0) return null;
   return ms;
+}
+
+function normalizeEpochMs(value: number): number | null {
+  if (!Number.isFinite(value) || value < 0) return null;
+  if (value < 1_000_000_000_000) {
+    return value * 1000;
+  }
+  return value;
 }
 
 /**

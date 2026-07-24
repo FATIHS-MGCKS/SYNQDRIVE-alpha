@@ -1,7 +1,11 @@
 import { Icon } from '../ui/Icon';
 import { HealthStatusChip, StatusChip } from '../../../components/patterns';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
-import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
+import {
+  mergeGpsMeasuredAt,
+  resolveTelemetryDisplayTime,
+  formatTelemetryAgeShort,
+} from '../../lib/telemetry-timestamp-semantics';
 import { useEffectiveHealth } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
@@ -24,9 +28,13 @@ export function VehicleConnectionBadge({
 }) {
   const { orgId } = useRentalOrg();
   const obdPlugByVehicleId = useFleetObdPlugIndex(orgId);
-  const { onlineStatus, lastSignal, boundVehicleId } = useVehicleLiveMapStore(
+  const { onlineStatus, measuredAt, receivedAt, signalAgeMs, lastSignal, boundVehicleId } =
+    useVehicleLiveMapStore(
     useShallow((state) => ({
       onlineStatus: state.onlineStatus,
+      measuredAt: state.measuredAt,
+      receivedAt: state.receivedAt,
+      signalAgeMs: state.signalAgeMs,
       lastSignal: state.lastSignal,
       boundVehicleId: state.boundVehicleId,
     })),
@@ -37,18 +45,15 @@ export function VehicleConnectionBadge({
     ? shouldShowObdUnpluggedBadge(obdPlugByVehicleId.get(resolvedVehicleId))
     : false;
 
-  const freshness = resolveTelemetryFreshness({ lastSignal, onlineStatus });
-  let timeAgo = '—';
-  if (freshness.signalAgeMs != null) {
-    const mins = Math.floor(freshness.signalAgeMs / 60000);
-    if (mins < 1) timeAgo = 'just now';
-    else if (mins < 60) timeAgo = `${mins}m ago`;
-    else {
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) timeAgo = `${hrs}h ago`;
-      else timeAgo = `${Math.floor(hrs / 24)}d ago`;
-    }
-  }
+  const displayTime = resolveTelemetryDisplayTime({
+    measuredAt,
+    receivedAt,
+    lastSignal,
+    signalAgeMs,
+    onlineStatus,
+  });
+  const freshness = displayTime.freshness;
+  const timeAgo = formatTelemetryAgeShort(freshness);
 
   const dotColor = freshness.isLive
     ? 'text-[color:var(--status-positive)] fill-[color:var(--status-positive)] animate-online-pulse'

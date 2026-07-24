@@ -936,7 +936,7 @@ describe('dashboard runtime model', () => {
       now: NOW,
     })[0];
 
-    expect(state?.telemetryState).toBe('unknown');
-    expect(deriveTelemetryState(vehicle({ lastSignal: '' }), NOW)).toBe('unknown');
+    expect(state?.telemetryState).toBe('offline');
+    expect(deriveTelemetryState(vehicle({ lastSignal: '' }), NOW)).toBe('offline');
   });
 });
