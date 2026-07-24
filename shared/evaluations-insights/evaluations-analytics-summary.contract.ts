@@ -15,6 +15,7 @@ import type { EvaluationsCostModelSummary } from './evaluations-cost-model.contr
 import type { EvaluationsUtilizationModelSummary } from './evaluations-utilization-model.contract';
 import type { EvaluationsStrengthDetectionSummary } from './evaluations-strength-detection.contract';
 import type { EvaluationsWeaknessDetectionSummary } from './evaluations-weakness-detection.contract';
+import type { EvaluationsRiskDriverOutcome, EvaluationsDriverAnalysisSummary } from './evaluations-driver-analysis.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
@@ -115,6 +116,8 @@ export interface EvaluationsActiveRisksSummary {
   exposureCurrency: string;
   orgWideRisks: number;
   bookingScopedRisks: number;
+  /** Per-category Ursachen- und Einflussanalyse (Prompt 25/54). */
+  driverOutcomes?: EvaluationsRiskDriverOutcome[];
 }
 
 export interface EvaluationsHighlightItem {
@@ -155,6 +158,7 @@ export interface EvaluationsAnalyticsSummaryResponse {
   affectedEntities: EvaluationsSectionEnvelope<InsightEntityCountSummary>;
   strengths: EvaluationsSectionEnvelope<EvaluationsStrengthDetectionSummary>;
   weaknesses: EvaluationsSectionEnvelope<EvaluationsWeaknessDetectionSummary>;
+  driverAnalysis: EvaluationsSectionEnvelope<EvaluationsDriverAnalysisSummary>;
   dataQuality: EvaluationsSectionEnvelope<EvaluationsDataQualitySummary>;
   insights: EvaluationsSectionEnvelope<Pick<InsightAnalyticsSummary, 'hasRun' | 'lastRunAt' | 'stale' | 'error'>>;
   metadata: {
@@ -183,6 +187,15 @@ export interface EvaluationsWeaknessDetectionResponse {
   comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
   appliedFilters: EvaluationsAnalyticsSummaryFilters;
   weaknesses: EvaluationsSectionEnvelope<EvaluationsWeaknessDetectionSummary>;
+}
+
+export interface EvaluationsDriverAnalysisResponse {
+  organizationId: string;
+  generatedAt: string;
+  period: EvaluationsAnalyticsPeriodWindow;
+  comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
+  appliedFilters: EvaluationsAnalyticsSummaryFilters;
+  driverAnalysis: EvaluationsSectionEnvelope<EvaluationsDriverAnalysisSummary>;
 }
 
 export interface EvaluationsAnalyticsSummaryQuery {

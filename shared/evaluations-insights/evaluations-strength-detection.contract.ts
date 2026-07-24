@@ -4,6 +4,7 @@
  */
 import type { EvaluationsTimePeriod } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsHighlightItem } from './evaluations-analytics-summary.contract';
+import type { EvaluationsDriverAnalysis } from './evaluations-driver-analysis.contract';
 
 export const EVALUATIONS_STRENGTH_DETECTION_VERSION = 'strength-detection-v1';
 
@@ -60,6 +61,8 @@ export interface EvaluationsDetectedStrength {
   confidence: EvaluationsStrengthConfidence;
   dataCoverage: EvaluationsStrengthDataCoverage;
   rationale: string;
+  /** Ursachen- und Einflussanalyse when sufficient data exists (Prompt 25/54). */
+  driverAnalysis?: EvaluationsDriverAnalysis | null;
 }
 
 export interface EvaluationsSuppressedStrengthRule {

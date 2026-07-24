@@ -4,6 +4,7 @@
  */
 import type { EvaluationsTimePeriod } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsHighlightItem } from './evaluations-analytics-summary.contract';
+import type { EvaluationsDriverAnalysis } from './evaluations-driver-analysis.contract';
 
 export const EVALUATIONS_WEAKNESS_DETECTION_VERSION = 'weakness-detection-v1';
 
@@ -99,6 +100,8 @@ export interface EvaluationsDetectedWeakness {
   recommendedNextAnalysis: string;
   /** Lower = higher priority after severity sort. */
   priority: number;
+  /** Ursachen- und Einflussanalyse when sufficient data exists (Prompt 25/54). */
+  driverAnalysis?: EvaluationsDriverAnalysis | null;
 }
 
 export interface EvaluationsSuppressedWeaknessRule {

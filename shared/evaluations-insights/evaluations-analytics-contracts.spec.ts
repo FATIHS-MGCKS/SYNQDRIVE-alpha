@@ -93,7 +93,7 @@ describe('evaluations-analytics-contract-validation', () => {
   it('detects analytics summary schema drift via required keys', () => {
     expect(EVALUATIONS_ANALYTICS_SUMMARY_REQUIRED_KEYS).toContain('activeRisks');
     expect(EVALUATIONS_ANALYTICS_SUMMARY_REQUIRED_KEYS).toContain('costModel');
-    expect(EVALUATIONS_ANALYTICS_SUMMARY_REQUIRED_KEYS).toContain('utilizationModel');
+    expect(EVALUATIONS_ANALYTICS_SUMMARY_REQUIRED_KEYS).toContain('driverAnalysis');
     expect(INSIGHT_ANALYTICS_SUMMARY_REQUIRED_KEYS).toContain('estimatedFinancialExposureMinor');
 
     const invalid = validateEvaluationsAnalyticsSummaryResponse({

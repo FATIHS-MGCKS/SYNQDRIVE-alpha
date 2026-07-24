@@ -3,6 +3,7 @@ import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summ
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
 import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
+import { EvaluationsDriverAnalysisService } from './evaluations-driver-analysis.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -197,6 +198,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
         EvaluationsAnalyticsSummaryService,
         EvaluationsStrengthDetectionService,
         EvaluationsWeaknessDetectionService,
+        EvaluationsDriverAnalysisService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
         { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },
@@ -222,6 +224,8 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     expect(result.strengths.data?.highlights.length).toBeGreaterThan(0);
     expect(result.weaknesses.data?.calculationVersion).toBe('weakness-detection-v1');
     expect(result.weaknesses.data?.weaknesses.length).toBeGreaterThan(0);
+    expect(result.driverAnalysis.data?.calculationVersion).toBe('driver-analysis-v1');
+    expect(result.driverAnalysis.data?.disclaimer).toContain('Correlation');
   });
 
   it('passes resolved filters to repository loaders', async () => {

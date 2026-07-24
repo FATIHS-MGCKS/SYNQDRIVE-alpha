@@ -12,3 +12,4 @@ export * from './evaluations-cost-model.contract';
 export * from './evaluations-utilization-model.contract';
 export * from './evaluations-strength-detection.contract';
 export * from './evaluations-weakness-detection.contract';
+export * from './evaluations-driver-analysis.contract';

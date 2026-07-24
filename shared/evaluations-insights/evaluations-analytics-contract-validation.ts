@@ -129,6 +129,7 @@ const SUMMARY_SECTION_KEYS = [
   'affectedEntities',
   'strengths',
   'weaknesses',
+  'driverAnalysis',
   'dataQuality',
   'insights',
 ] as const;
@@ -173,6 +174,9 @@ export function validateEvaluationsAnalyticsSummaryResponse(
     }
     if (sectionKey === 'weaknesses' && section.data != null) {
       validateWeaknessDetectionSummary(section.data, `${sectionKey}.data`, issues);
+    }
+    if (sectionKey === 'driverAnalysis' && section.data != null) {
+      validateDriverAnalysisSummary(section.data, `${sectionKey}.data`, issues);
     }
   }
   if (!isRecord(value.metadata) || !isNumber(value.metadata.generationDurationMs)) {
@@ -240,6 +244,35 @@ function validateStrengthDetectionSummary(
   }
   if (!isRecord(value.comparisonPeriod) || !isString(value.comparisonPeriod.from)) {
     push(issues, `${path}.comparisonPeriod`, 'Invalid comparison period');
+  }
+}
+
+function validateDriverAnalysisSummary(
+  value: unknown,
+  path: string,
+  issues: ContractValidationIssue[],
+): void {
+  if (!isRecord(value)) {
+    push(issues, path, 'Expected driver analysis summary object');
+    return;
+  }
+  if (!isString(value.calculationVersion)) {
+    push(issues, `${path}.calculationVersion`, 'Required string');
+  }
+  if (!isString(value.disclaimer)) {
+    push(issues, `${path}.disclaimer`, 'Required disclaimer');
+  }
+  if (!Array.isArray(value.strengthDrivers)) {
+    push(issues, `${path}.strengthDrivers`, 'Required array');
+  }
+  if (!Array.isArray(value.weaknessDrivers)) {
+    push(issues, `${path}.weaknessDrivers`, 'Required array');
+  }
+  if (!Array.isArray(value.riskDrivers)) {
+    push(issues, `${path}.riskDrivers`, 'Required array');
+  }
+  if (!isNumber(value.analysesProduced)) {
+    push(issues, `${path}.analysesProduced`, 'Required number');
   }
 }
 

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { EvaluationsAnalyticsSummaryResponse, EvaluationsStrengthDetectionResponse, EvaluationsWeaknessDetectionResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import type { EvaluationsAnalyticsSummaryResponse, EvaluationsDriverAnalysisResponse, EvaluationsStrengthDetectionResponse, EvaluationsWeaknessDetectionResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
 import type { InsightAnalyticsSummary } from '@synq/evaluations-insights/insights-analytics.contract';
 import type { EvaluationsInsightDetail } from '@synq/evaluations-insights/evaluations-insight-detail.contract';
 
@@ -97,6 +97,9 @@ export class EvaluationsAnalyticsSummaryResponseDto implements EvaluationsAnalyt
   weaknesses!: EvaluationsAnalyticsSummaryResponse['weaknesses'];
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
+  driverAnalysis!: EvaluationsAnalyticsSummaryResponse['driverAnalysis'];
+
+  @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
   dataQuality!: EvaluationsAnalyticsSummaryResponse['dataQuality'];
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
@@ -144,6 +147,26 @@ export class EvaluationsWeaknessDetectionResponseDto implements EvaluationsWeakn
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
   weaknesses!: EvaluationsWeaknessDetectionResponse['weaknesses'];
+}
+
+export class EvaluationsDriverAnalysisResponseDto implements EvaluationsDriverAnalysisResponse {
+  @ApiProperty()
+  organizationId!: string;
+
+  @ApiProperty()
+  generatedAt!: string;
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  period!: EvaluationsDriverAnalysisResponse['period'];
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  comparisonPeriod!: EvaluationsDriverAnalysisResponse['comparisonPeriod'];
+
+  @ApiProperty({ type: Object })
+  appliedFilters!: EvaluationsDriverAnalysisResponse['appliedFilters'];
+
+  @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
+  driverAnalysis!: EvaluationsDriverAnalysisResponse['driverAnalysis'];
 }
 
 export class InsightAnalyticsSummaryResponseDto implements InsightAnalyticsSummary {

@@ -34,8 +34,10 @@ import {
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
 import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
+import { EvaluationsDriverAnalysisService } from './evaluations-driver-analysis.service';
 import type { EvaluationsStrengthDetectionSummary } from '@synq/evaluations-insights/evaluations-strength-detection.contract';
 import type { EvaluationsWeaknessDetectionSummary } from '@synq/evaluations-insights/evaluations-weakness-detection.contract';
+import type { EvaluationsDriverAnalysisSummary } from '@synq/evaluations-insights/evaluations-driver-analysis.contract';
 import type { EvaluationsSectionEnvelope } from '@synq/evaluations-insights/evaluations-analytics-primitives.contract';
 
 @Injectable()
@@ -48,6 +50,7 @@ export class EvaluationsAnalyticsSummaryService {
     private readonly utilizationSnapshot: EvaluationsUtilizationSnapshotService,
     private readonly strengthDetection: EvaluationsStrengthDetectionService,
     private readonly weaknessDetection: EvaluationsWeaknessDetectionService,
+    private readonly driverAnalysis: EvaluationsDriverAnalysisService,
   ) {}
 
   async getSummary(
@@ -189,10 +192,49 @@ export class EvaluationsAnalyticsSummaryService {
     });
     const weaknessStatus = this.weaknessDetection.sectionStatus(weaknessSummary);
 
+    const comparisonPeriodWindow = {
+      key: resolved.comparisonPeriod.key,
+      label: `Previous ${resolved.comparisonPeriod.key}`,
+      from: resolved.comparisonPeriod.from,
+      to: resolved.comparisonPeriod.to,
+      timezone: resolved.comparisonPeriod.timezone,
+    };
+
+    const driverInput = {
+      period: periodWindow,
+      comparisonPeriod: comparisonPeriodWindow,
+      financial,
+      fleet,
+      costModelSummary,
+      costModelSnapshot,
+      utilizationModelSummary,
+      utilizationSnapshot,
+      activeRisks,
+      affectedEntities,
+      dataQuality,
+      overlappingBookingCount: utilizationSnapshot?.overlappingBookingIds.length ?? 0,
+      strengths: strengthSummary.strengths,
+      weaknesses: weaknessSummary.weaknesses,
+    };
+
+    const driverSnapshot = this.driverAnalysis.buildSnapshot(driverInput);
+    const enrichedStrengthSummary = this.driverAnalysis.enrichStrengths(strengthSummary, driverSnapshot);
+    const enrichedWeaknessSummary = this.driverAnalysis.enrichWeaknesses(weaknessSummary, driverSnapshot);
+    const enrichedActiveRisks = activeRisks
+      ? this.driverAnalysis.enrichRisks(activeRisks, driverSnapshot)
+      : null;
+    const driverAnalysisSummary = this.driverAnalysis.analyze({
+      ...driverInput,
+      strengths: enrichedStrengthSummary.strengths,
+      weaknesses: enrichedWeaknessSummary.weaknesses,
+    });
+    const driverAnalysisStatus = this.driverAnalysis.sectionStatus(driverAnalysisSummary);
+
     const sectionDefs: Array<{ key: string; status: EvaluationsSectionStatus }> = [
       ...loaderSectionDefs,
       { key: 'strengths', status: strengthStatus },
       { key: 'weaknesses', status: weaknessStatus },
+      { key: 'driverAnalysis', status: driverAnalysisStatus },
     ];
 
     return {
@@ -268,7 +310,7 @@ export class EvaluationsAnalyticsSummaryService {
         utilizationResult.ok ? null : utilizationResult.error,
       ),
       activeRisks: wrapSection(
-        activeRisks,
+        enrichedActiveRisks,
         sectionStatusFromResult(insightsResult),
         generatedAt,
         insightsResult.ok ? null : insightsResult.error,
@@ -279,8 +321,9 @@ export class EvaluationsAnalyticsSummaryService {
         generatedAt,
         insightsResult.ok ? null : insightsResult.error,
       ),
-      strengths: wrapSection(strengthSummary, strengthStatus, generatedAt),
-      weaknesses: wrapSection(weaknessSummary, weaknessStatus, generatedAt),
+      strengths: wrapSection(enrichedStrengthSummary, strengthStatus, generatedAt),
+      weaknesses: wrapSection(enrichedWeaknessSummary, weaknessStatus, generatedAt),
+      driverAnalysis: wrapSection(driverAnalysisSummary, driverAnalysisStatus, generatedAt),
       dataQuality: wrapSection(dataQuality, dataQuality.overallStatus, generatedAt),
       insights: wrapSection(
         insights
@@ -344,6 +387,28 @@ export class EvaluationsAnalyticsSummaryService {
       comparisonPeriod: summary.comparisonPeriod,
       appliedFilters: summary.appliedFilters,
       weaknesses: summary.weaknesses,
+    };
+  }
+
+  async getDriverAnalysis(
+    organizationId: string,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+  ): Promise<{
+    organizationId: string;
+    generatedAt: string;
+    period: EvaluationsDriverAnalysisSummary['period'];
+    comparisonPeriod: EvaluationsDriverAnalysisSummary['comparisonPeriod'];
+    appliedFilters: ReturnType<typeof toAppliedFilters>;
+    driverAnalysis: EvaluationsSectionEnvelope<EvaluationsDriverAnalysisSummary>;
+  }> {
+    const summary = await this.getSummary(organizationId, resolved);
+    return {
+      organizationId: summary.organizationId,
+      generatedAt: summary.generatedAt,
+      period: summary.period,
+      comparisonPeriod: summary.comparisonPeriod,
+      appliedFilters: summary.appliedFilters,
+      driverAnalysis: summary.driverAnalysis,
     };
   }
 

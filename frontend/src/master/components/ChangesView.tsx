@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-driver-analysis-v49823-2026-07-24',
+    version: 'V4.9.823',
+    title: 'V4.9.823 — Ursachen- und Einflussanalyse Auswertungen (Prompt 25/54)',
+    summary: [
+      'Neue `driverAnalysis`-Section + eingebettete Attribution auf Stärken, Schwächen und Risiken.',
+      'Datenbasierte Faktoren: primär/sekundär, quantitative Beiträge, betroffene Stationen/Klassen/Fahrzeuge, Trend, historischer Vergleich, Confounder, Datenqualitätswarnungen.',
+      'Disclaimer: Korrelation ≠ Kausalität; OBSERVATION/ESTIMATE/FORECAST gekennzeichnet.',
+      'Dedicated API: `GET …/evaluations/analytics/driver-analysis`.',
+      'Shared: `evaluations-driver-analysis.*`; Backend `EvaluationsDriverAnalysisService`.',
+      'Doku: `docs/architecture/analytics/evaluations-driver-analysis.md`.',
+    ],
+    reason:
+      'Prompt 25/54 — Transparente, nachvollziehbare Attribution ohne unbelegte KI-Erklärungen.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T23:45:00.000Z',
+  },
+  {
     id: 'evaluations-weakness-detection-v49822-2026-07-24',
     version: 'V4.9.822',
     title: 'V4.9.822 — Unternehmensschwächen & Verbesserungspotenziale (Prompt 24/54)',

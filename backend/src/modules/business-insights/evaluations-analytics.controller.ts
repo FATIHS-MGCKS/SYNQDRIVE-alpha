@@ -8,7 +8,7 @@ import {
   EvaluationsAnalyticsSummaryQueryDto,
   normalizeAnalyticsFilterQuery,
 } from './dto/evaluations-analytics-filters.dto';
-import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsStrengthDetectionResponseDto, EvaluationsWeaknessDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
+import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsDriverAnalysisResponseDto, EvaluationsStrengthDetectionResponseDto, EvaluationsWeaknessDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
 
 @ApiTags('Evaluations Analytics')
 @Controller('organizations/:orgId/evaluations/analytics')
@@ -83,5 +83,27 @@ export class EvaluationsAnalyticsController {
       { allowDataQualitySectionFilters: true },
     );
     return this.summaryService.getWeaknessDetection(orgId, resolved);
+  }
+
+  @Get('driver-analysis')
+  @ApiOperation({
+    summary: 'Data-based driver analysis for strengths, weaknesses, and risks',
+    description:
+      'Transparent Ursachen- und Einflussanalyse — correlation is not causation. Same filter contract as summary.',
+  })
+  @ApiParam({ name: 'orgId', description: 'Organization ID' })
+  @ApiOkResponse({ type: EvaluationsDriverAnalysisResponseDto })
+  async getDriverAnalysis(
+    @Param('orgId') orgId: string,
+    @Query() query: EvaluationsAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+      { allowDataQualitySectionFilters: true },
+    );
+    return this.summaryService.getDriverAnalysis(orgId, resolved);
   }
 }
