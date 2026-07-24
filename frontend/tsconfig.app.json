@@ -24,9 +24,12 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@synq/evaluations-metrics/*": ["../shared/evaluations-metrics/*"],
+      "@synq/evaluations-periods/*": ["../shared/evaluations-periods/*"],
+      "@synq/money/*": ["../shared/money/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../shared/evaluations-metrics/**/*.ts", "../shared/evaluations-periods/**/*.ts", "../shared/money/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }

@@ -85,6 +85,8 @@ import {
   type DashboardRuntimeModel,
   type DashboardSliceId,
 } from './runtime';
+import { useEvaluationsReportingPeriods } from '../../lib/evaluations/useEvaluationsReportingPeriods';
+import { reportingBundleToFinancialRanges } from '../../lib/evaluations/evaluations-period.client';
 import { buildRentalBlockingServiceCaseMap } from '../fleet-health-service/fleet-health-service-vehicle-overview';
 import { useNotifications } from '../../hooks/useNotifications';
 import {
@@ -207,6 +209,10 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     () => stationFilterToDashboardId(stationFilter),
     [stationFilter],
   );
+
+  const { bundle: reportingPeriodBundle } = useEvaluationsReportingPeriods(orgId, {
+    stationId: selectedStationId,
+  });
   const [stationsApi, setStationsApi] = useState<Station[]>([]);
   const [isStationDropdownOpen, setIsStationDropdownOpen] = useState(false);
   const stationDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -818,14 +824,29 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     ],
   );
 
+  const reportingRanges = useMemo(() => {
+    if (!reportingPeriodBundle) return null;
+    return reportingBundleToFinancialRanges(reportingPeriodBundle);
+  }, [reportingPeriodBundle]);
+
   const businessPulseSlices = useMemo<Record<BusinessMetricId, BusinessPulseSlice>>(
     () =>
       buildBusinessPulseSlices({
         invoices: invoicesApi,
         locale,
         now: dashboardNow,
+        reportingPeriod: reportingRanges
+          ? {
+              from: reportingRanges.mtd.from,
+              to: reportingRanges.mtd.to,
+              label: new Date(reportingPeriodBundle!.mtd.periodStart).toLocaleDateString(
+                locale === 'de' ? 'de-DE' : 'en-US',
+                { month: 'long', year: 'numeric', timeZone: reportingRanges.timezone },
+              ),
+            }
+          : undefined,
       }),
-    [invoicesApi, locale, dashboardNow],
+    [invoicesApi, locale, dashboardNow, reportingRanges, reportingPeriodBundle],
   );
 
   const unassignedTariffVehicles = useMemo(() => {

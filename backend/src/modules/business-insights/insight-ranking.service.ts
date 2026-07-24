@@ -1,4 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import {
+  INSIGHT_MONEY_FIELDS,
+  resolveInsightLostRevenueMoney,
+} from '@synq/money/money-insight-metrics';
 import { InsightCandidate, InsightSeverity, InsightType } from './insight.types';
 
 const SEVERITY_BASE: Record<InsightSeverity, number> = {
@@ -78,8 +82,12 @@ export class InsightRankingService {
     const urgency = this.timeUrgencyBonus(c);
     s += urgency;
 
-    const revMetric = (c.metrics?.lostRevenueEur as number) ?? (c.metrics?.dailyRateEur as number) ?? 0;
-    if (revMetric > 0) s += Math.min(revMetric / 50, 10);
+    const lostRevenue = resolveInsightLostRevenueMoney(c.metrics ?? null, 'EUR');
+    const dailyRateMinor = c.metrics?.[INSIGHT_MONEY_FIELDS.dailyRateAmountMinor];
+    const revMetric =
+      lostRevenue?.amountMinor ??
+      (typeof dailyRateMinor === 'number' ? dailyRateMinor : 0);
+    if (revMetric > 0) s += Math.min(revMetric / 5000, 10);
 
     if (c.entityIds.length > 1) s += Math.min(c.entityIds.length * 2, 12);
 

@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 
 import { api } from '../../lib/api';
+import { formatMoneyMinor, moneyFromMinor } from '../../lib/money';
 import { PageHeader } from '../../components/patterns';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
@@ -25,6 +26,10 @@ import {
   paidRevenueInRange,
   sumCents,
 } from '../lib/financial-insights.logic';
+import { useEvaluationsReportingPeriods } from '../lib/evaluations/useEvaluationsReportingPeriods';
+import { reportingBundleToFinancialRanges } from '../lib/evaluations/evaluations-period.client';
+import { chartMajorFromMinor } from '../lib/evaluations/evaluations-money';
+import { zonedDateOnlyFromInstant, zonedDayOfMonth } from '@synq/evaluations-periods/evaluations-zoned-date';
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -91,29 +96,13 @@ const STATUS_META: Record<string, { label: string; tone: 'paid' | 'unpaid' | 'ov
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 const fmtEUR = (cents: number, locale = 'de-DE'): string =>
-  new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(cents / 100);
+  formatMoneyMinor(cents, 'EUR', locale);
 
 const fmtEURFull = (cents: number, locale = 'de-DE'): string =>
-  new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(cents / 100);
+  formatMoneyMinor(cents, 'EUR', locale);
 
 const fmtPct = (value: number, digits = 1): string =>
   `${value >= 0 ? '' : '-'}${Math.abs(value).toFixed(digits)}%`;
-
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
-function startOfPrevMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth() - 1, 1, 0, 0, 0, 0);
-}
-
-function endOfPrevMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 0, 23, 59, 59, 999);
-}
-
-function daysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
-}
 
 function parseDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
@@ -163,6 +152,13 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
+  const {
+    bundle: reportingPeriodBundle,
+    loading: periodsLoading,
+    error: periodsError,
+    reload: reloadPeriods,
+  } = useEvaluationsReportingPeriods(orgId);
+
   const load = useCallback(async () => {
     if (!orgId) {
       setInvoices([]);
@@ -196,22 +192,32 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       setInvoices(invoicesArr);
       setCustomers(customersArr);
       setReportingAnchor(new Date());
+      await reloadPeriods();
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, reloadPeriods]);
 
   useEffect(() => {
     setLoading(true);
     void load();
   }, [load]);
 
-  // ─── Derived: time slices ────────────────────────────────────────────
+  // ─── Derived: time slices (server-resolved org timezone) ─────────────
 
-  const now = reportingAnchor;
-  const monthStart = useMemo(() => startOfMonth(now), [now]);
-  const prevMonthStart = useMemo(() => startOfPrevMonth(now), [now]);
-  const prevMonthEnd = useMemo(() => endOfPrevMonth(now), [now]);
+  const reportingRanges = useMemo(() => {
+    if (!reportingPeriodBundle) return null;
+    return reportingBundleToFinancialRanges(reportingPeriodBundle);
+  }, [reportingPeriodBundle]);
+
+  const now = reportingRanges?.reference ?? reportingAnchor;
+  const reportingTimezone = reportingRanges?.timezone ?? 'Europe/Berlin';
+  const monthStart = reportingRanges?.mtd.from ?? reportingAnchor;
+  const prevMonthStart = reportingRanges?.prevMonth.from ?? reportingAnchor;
+  const prevMonthEnd = reportingRanges?.prevMonth.to ?? reportingAnchor;
+  const monthDaysCount = reportingPeriodBundle?.mtd.calendar.monthEndDateOnly
+    ? Number(reportingPeriodBundle.mtd.calendar.monthEndDateOnly.split('-')[2])
+    : 31;
 
   // Bucket invoices by current vs previous month and by direction so we can
   // compute MTD KPIs + month-over-month deltas without re-iterating the list.
@@ -260,30 +266,50 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // ─── Derived: daily chart series ─────────────────────────────────────
 
   const dailySeries = useMemo(() => {
-    const days = daysInMonth(now.getFullYear(), now.getMonth());
-    const out: { day: string; dayNum: number; revenue: number; expenses: number; profit: number }[] = [];
+    const days = monthDaysCount;
+    const out: {
+      day: string;
+      dayNum: number;
+      revenueCents: number;
+      expensesCents: number;
+      revenue: number;
+      expenses: number;
+      profit: number;
+    }[] = [];
     for (let i = 0; i < days; i++) {
-      out.push({ day: String(i + 1), dayNum: i + 1, revenue: 0, expenses: 0, profit: 0 });
+      out.push({
+        day: String(i + 1),
+        dayNum: i + 1,
+        revenueCents: 0,
+        expensesCents: 0,
+        revenue: 0,
+        expenses: 0,
+        profit: 0,
+      });
     }
     for (const inv of bucketed.mtdRevenue) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const dayIdx = d.getDate() - 1;
+      const dayIdx = zonedDayOfMonth(d, reportingTimezone) - 1;
       if (dayIdx >= 0 && dayIdx < out.length) {
-        out[dayIdx].revenue += (inv.totalCents ?? 0) / 100;
+        out[dayIdx].revenueCents += inv.totalCents ?? 0;
       }
     }
     for (const inv of bucketed.mtdExpense) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const dayIdx = d.getDate() - 1;
+      const dayIdx = zonedDayOfMonth(d, reportingTimezone) - 1;
       if (dayIdx >= 0 && dayIdx < out.length) {
-        out[dayIdx].expenses += (inv.totalCents ?? 0) / 100;
+        out[dayIdx].expensesCents += inv.totalCents ?? 0;
       }
     }
-    for (const row of out) row.profit = row.revenue - row.expenses;
+    for (const row of out) {
+      row.revenue = chartMajorFromMinor(row.revenueCents, 'EUR');
+      row.expenses = chartMajorFromMinor(row.expensesCents, 'EUR');
+      row.profit = row.revenue - row.expenses;
+    }
     return out;
-  }, [bucketed.mtdRevenue, bucketed.mtdExpense, now]);
+  }, [bucketed.mtdRevenue, bucketed.mtdExpense, monthDaysCount, reportingTimezone]);
 
   const hasDailyData = useMemo(
     () => dailySeries.some((d) => d.revenue > 0 || d.expenses > 0),
@@ -351,7 +377,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     for (const inv of rows) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const iso = zonedDateOnlyFromInstant(d, reportingTimezone);
       const existing = map.get(iso);
       if (existing) {
         existing.totalCents += inv.totalCents ?? 0;
@@ -389,7 +415,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   const monthLabel = now.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
 
-  if (loading) {
+  if (loading || periodsLoading || !reportingRanges) {
     return (
       <div className="max-w-[1600px] mx-auto space-y-5">
         <PageHeader title={t('nav.financialInsights')} />
@@ -405,7 +431,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     return (
       <div className="max-w-[1600px] mx-auto space-y-4">
         <PageHeader title={t('nav.financialInsights')} />
-        <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} />
+        <InsightsCockpit isDarkMode={isDarkMode} openReceivables={moneyFromMinor(0, 'EUR')} />
         <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
           <Icon name="alert-circle" className="w-5 h-5" />
           {invoiceError}
@@ -419,8 +445,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <PageHeader title={t('nav.financialInsights')} />
       <InsightsCockpit
         isDarkMode={isDarkMode}
-        openReceivablesEur={Math.round(outstandingCents / 100)}
-        financialRiskEur={Math.round(overdueCents / 100)}
+        openReceivables={moneyFromMinor(outstandingCents, 'EUR')}
+        financialRisk={moneyFromMinor(overdueCents, 'EUR')}
       />
 
       <div className="pt-2 border-t border-border">

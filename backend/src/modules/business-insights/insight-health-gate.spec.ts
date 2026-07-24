@@ -60,7 +60,8 @@ describe('insight-health-gate', () => {
     expect(out[0].title).toBe('Ausfallrisiko vor Buchung');
     expect(out[0].metrics?.category).toBe('BUSINESS_RISK');
     expect(out[0].metrics?.bookingId).toBe('book-1');
-    expect(out[0].metrics?.financialImpactCents).toBe(14_900);
+    expect(out[0].metrics?.financialImpactAmountMinor).toBe(14_900);
+    expect(out[0].metrics?.financialImpactCurrency).toBe('EUR');
   });
 
   it('passes non-health candidates through with category tag', () => {
