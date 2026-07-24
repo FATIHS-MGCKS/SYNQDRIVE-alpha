@@ -2,6 +2,73 @@
 
 | Field | Value |
 |-------|-------|
+| **RC branch** | `cursor/data-auth-migration-fix-26b5` |
+| **Target commit** | `3e043bb8` (PR [#753](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/753)) |
+| **Live VPS release** | `20260724084334_data-auth-rc` @ `5f76e378` (DI fix); ops scripts @ `3e043bb8` |
+| **Verified at** | 2026-07-24 UTC (re-run after remediation) |
+| **Verifier** | Cloud Agent Prompt 42 (re-verification) |
+| **Environment** | Production VPS — **RC deploy + read-only infra checks + synthetic tenant runtime** |
+
+---
+
+## Executive summary (re-verification 2026-07-24)
+
+| Verdict | **CONDITIONAL GO** — staging RC live; Prompt 43 may proceed with noted gap |
+|---------|-----------------------------------------------------------------------------|
+
+After migration TEXT fix, Nest DI `forwardRef` chain, and frontend build repair, RC deploy **succeeded**. PM2 health OK on `5f76e378`. **280 Prisma migrations** applied; privacy schema present. **`data_auth_*` metrics** exported; `synqdrive_data_auth` alert group loaded. **14/15** controlled runtime scenarios pass on synthetic tenant. **Scenario 1** (`allowed-telemetry-decision`) fails with `DENY` + `DATABASE_ERROR` (resolver DB path — likely remaining schema drift on consent/legal-basis linkage columns vs Prisma client). Fail-closed behavior validated across deny-switch, queue guard, coverage registry (35 flows), and audit outbox.
+
+### Prior attempt (2026-07-24 AM) — superseded
+
+| Verdict | **NO-GO** (migration UUID/TEXT mismatch; symlink not switched) |
+
+<details>
+<summary>Original NO-GO report (click to expand)</summary>
+
+| Field | Value |
+|-------|-------|
+| **RC branch** | `cursor/data-auth-monitoring-ci-26b5` |
+| **Target commit** | `31a1548c` |
+| **PR** | [#749](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/749) |
+
+Data Authorization RC staging deploy **failed at Prisma migration** `20260723230000_privacy_domain_foundation` due to `organization_id` UUID vs TEXT mismatch. Live traffic remained on `51069d1`.
+
+</details>
+
+---
+
+## Re-verification results (2026-07-24 PM)
+
+| Check | Result |
+|-------|--------|
+| RC deploy (`vps-deploy-data-auth-staging.sh`) | ✅ Release `20260724084334_data-auth-rc` |
+| PM2 health | ✅ `{"status":"ok"}` |
+| Prisma migrate | ✅ 280 migrations, up to date |
+| Privacy tables | ✅ `processing_activities`, `enforcement_policies`, `data_authorization_deny_switches`, … |
+| `data_auth_*` metrics | ✅ Scraped on `:3001/api/v1/metrics` |
+| Prometheus `synqdrive_data_auth` | ✅ Group present; reload OK |
+| Monitoring refresh | ✅ `vps-refresh-monitoring.sh` during deploy |
+| Runtime scenarios (15) | **14 pass / 1 fail** — see below |
+
+### Runtime scenario summary
+
+```
+pass=14 fail=1 skip=0
+```
+
+| # | Scenario | Status | Detail |
+|---|----------|--------|--------|
+| 1 | allowed-telemetry-decision | ❌ | `DENY` / `DATABASE_ERROR` |
+| 2–15 | deny paths, deny-switch, queue, provider grant, cache, audit, worker, coverage | ✅ | All pass |
+
+**Scenario 1 gap:** Provider allow path hits resolver `DATABASE_ERROR` (fail-closed → DENY). Production `data_subject_consents` lacks `legal_basis_assessment_id` column expected by Prisma client — follow-up migration/schema alignment required before full allow-path soak.
+
+---
+
+## Original report (2026-07-24 AM — NO-GO)
+
+| Field | Value |
+|-------|-------|
 | **RC branch** | `cursor/data-auth-monitoring-ci-26b5` |
 | **Target commit** | `31a1548c` (`31a1548c32ef7c9854faea73a2693bf309d3decb`) |
 | **PR** | [#749](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/749) |
@@ -11,7 +78,7 @@
 
 ---
 
-## Executive summary
+## Executive summary (original)
 
 | Verdict | **NO-GO for production rollout** |
 |---------|----------------------------------|

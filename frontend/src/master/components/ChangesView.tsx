@@ -35,7 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'data-auth-di-frontend-build-v49829-2026-07-24',
+    title: 'V4.9.830 — Data Auth Staging RC Live (Prompt 42 Re-run)',
+    summary: [
+      'VPS RC deploy erfolgreich: 5f76e378 @ 20260724084334_data-auth-rc; PM2 health OK.',
+      'data_auth_* Metriken live; synqdrive_data_auth Alerts refreshed.',
+      'Prompt 42 Re-run: 14/15 Runtime-Szenarien PASS; Scenario 1 DATABASE_ERROR (Schema-Drift consent/legal_basis).',
+      'Verdict: CONDITIONAL GO — Prompt 43 mit dokumentiertem Allow-Path-Gap.',
+    ],
+    reason: 'Nach Nest-DI + Frontend-Build-Fix war Staging-Verifikation erneut erforderlich.',
+    previousBehavior: 'NO-GO: Migration UUID/TEXT, PM2 DI-Crash, 0 data_auth Metriken.',
+    details: 'docs/audits/data-authorization-staging-runtime-verification-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T09:05:00.000Z',
+  },
+  {
     version: '4.9.829',
     title: 'V4.9.829 — Data Auth Nest DI + Frontend Build Fix',
     summary: [
