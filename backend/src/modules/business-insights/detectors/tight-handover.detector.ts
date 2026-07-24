@@ -72,6 +72,7 @@ export class TightHandoverDetector implements InsightDetector {
             gapMinutes: gapMin,
             bufferRequired: ctx.policy.handoverBufferMin,
             hoursUntilNextPickup: hoursUntilNext,
+            bookingIds: [current.id, next.id],
           },
           reasons: [
             `Gap between bookings is ${gapMin} min, below ${ctx.policy.handoverBufferMin} min buffer`,

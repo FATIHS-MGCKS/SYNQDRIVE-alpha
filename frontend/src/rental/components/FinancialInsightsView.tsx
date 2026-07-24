@@ -17,6 +17,7 @@ import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { InsightsCockpit } from './insights/InsightsCockpit';
+import { useEvaluationsAnalyticsFilters } from '../hooks/useEvaluationsAnalyticsFilters';
 import {
   expensesInRange,
   mtdRevenueInRange,
@@ -154,7 +155,9 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   };
   const intlLocale = localeMap[locale] || 'en-US';
 
+  const { filters, filterKey, patchFilters } = useEvaluationsAnalyticsFilters();
   const [loading, setLoading] = useState(true);
+  const [stationOptions, setStationOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [customerLoadWarning, setCustomerLoadWarning] = useState<string | null>(null);
   const [reportingAnchor, setReportingAnchor] = useState(() => new Date());
@@ -173,6 +176,15 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     setInvoiceError(null);
     setCustomerLoadWarning(null);
     try {
+      let stationsArr: Array<{ id: string; name: string }> = [];
+      try {
+        const stations = await api.stations.list(orgId);
+        stationsArr = Array.isArray(stations) ? stations : [];
+        setStationOptions(stationsArr.map((s) => ({ id: s.id, label: s.name })));
+      } catch {
+        setStationOptions([]);
+      }
+
       let invoicesArr: InvoiceLite[] = [];
       try {
         const iList = await api.invoices.list(orgId);
@@ -405,7 +417,14 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     return (
       <div className="max-w-[1600px] mx-auto space-y-4">
         <PageHeader title={t('nav.financialInsights')} />
-        <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} />
+        <InsightsCockpit
+          isDarkMode={isDarkMode}
+          filters={filters}
+          filterKey={filterKey}
+          onPatchFilters={patchFilters}
+          stationOptions={stationOptions}
+          openReceivablesEur={0}
+        />
         <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
           <Icon name="alert-circle" className="w-5 h-5" />
           {invoiceError}
@@ -419,6 +438,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <PageHeader title={t('nav.financialInsights')} />
       <InsightsCockpit
         isDarkMode={isDarkMode}
+        filters={filters}
+        filterKey={filterKey}
+        onPatchFilters={patchFilters}
+        stationOptions={stationOptions}
         openReceivablesEur={Math.round(outstandingCents / 100)}
         financialRiskEur={Math.round(overdueCents / 100)}
       />
