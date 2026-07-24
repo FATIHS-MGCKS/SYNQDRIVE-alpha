@@ -16,6 +16,13 @@ import { PageHeader } from '../../components/patterns';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { EmptyState } from '../../components/patterns';
+import {
+  buildCustomerDisplayLabel,
+  canAccessEvaluationsSurface,
+  formatVehicleLabel,
+  resolveEvaluationsPiiTier,
+} from '../lib/evaluations-privacy';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import { EvaluationsForecastsSection } from './evaluations-forecasts/EvaluationsForecastsSection';
 import {
@@ -58,10 +65,7 @@ interface InvoiceLite {
 
 interface CustomerLite {
   id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  name?: string | null;
-  email?: string | null;
+  displayLabel: string;
 }
 
 interface FinancialInsightsViewProps {
@@ -126,10 +130,16 @@ function effectiveDateOf(inv: InvoiceLite): Date | null {
   return parseDate(inv.invoiceDate) || parseDate(inv.createdAt);
 }
 
-function customerLabel(c: CustomerLite | undefined): string {
+function customerLabel(
+  c: CustomerLite | undefined,
+  tier: ReturnType<typeof resolveEvaluationsPiiTier>,
+): string {
   if (!c) return '—';
-  const composed = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
-  return c.name || composed || c.email || c.id.slice(0, 8);
+  return buildCustomerDisplayLabel({
+    id: c.id,
+    displayLabel: c.displayLabel,
+    tier,
+  });
 }
 
 // ─── Component ─────────────────────────────────────────────────────────
@@ -145,7 +155,15 @@ function customerLabel(c: CustomerLite | undefined): string {
  * lists, no fabricated AI commentary.
  */
 export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps) {
-  const { orgId } = useRentalOrg();
+  const { orgId, hasPermission, userRole } = useRentalOrg();
+  const canAccess = canAccessEvaluationsSurface({
+    canReadInvoices: hasPermission('invoices', 'read'),
+  });
+  const piiTier = resolveEvaluationsPiiTier({
+    membershipRole: userRole,
+    canReadInvoices: hasPermission('invoices', 'read'),
+    canReadCustomers: hasPermission('customers', 'read'),
+  });
   const { fleetVehicles } = useFleetVehicles();
   const { t, locale } = useLanguage();
 
@@ -165,7 +183,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!orgId) {
+    if (!orgId || !canAccess) {
       setInvoices([]);
       setCustomers([]);
       setLoading(false);
@@ -185,13 +203,14 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
       let customersArr: CustomerLite[] = [];
       try {
-        const cList = await api.customers.list(orgId);
-        customersArr = Array.isArray(cList)
-          ? (cList as CustomerLite[])
-          : ((cList as { data?: CustomerLite[] })?.data ?? []);
+        const customerIds = [
+          ...new Set(invoicesArr.map((inv) => inv.customerId).filter(Boolean) as string[]),
+        ];
+        const labels = await api.customers.evaluationLabels(orgId, customerIds);
+        customersArr = Array.isArray(labels) ? labels : [];
       } catch {
         customersArr = [];
-        setCustomerLoadWarning('Kundendaten konnten nicht geladen werden — Zuordnungen können unvollständig sein.');
+        setCustomerLoadWarning('Kundenzuordnungen konnten nicht geladen werden — Anzeige bleibt pseudonymisiert.');
       }
 
       setInvoices(invoicesArr);
@@ -200,7 +219,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, canAccess]);
 
   useEffect(() => {
     setLoading(true);
@@ -389,6 +408,18 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // ─── Render ──────────────────────────────────────────────────────────
 
   const monthLabel = now.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-[1600px] mx-auto space-y-4">
+        <PageHeader title={t('nav.financialInsights')} />
+        <EmptyState
+          title="Auswertungen nicht verfügbar"
+          description="Für diese Ansicht ist die Berechtigung invoices.read erforderlich. Aggregierte Finanz- und Prognosedaten werden nur für autorisierte Rollen bereitgestellt."
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -656,7 +687,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
             <ListRow
               key={row.id}
               rank={idx + 1}
-              primary={customerLabel(customerById.get(row.id))}
+              primary={customerLabel(customerById.get(row.id), piiTier)}
               secondary={`${row.invoiceCount} invoice${row.invoiceCount === 1 ? '' : 's'}`}
               value={fmtEUR(row.revenueCents, intlLocale)}
               valueTone="positive"
@@ -675,12 +706,13 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         >
           {topVehicles.map((row, idx) => {
             const v = vehicleById.get(row.id);
+            const vehicleLabel = formatVehicleLabel(v, row.id, piiTier);
             return (
               <ListRow
                 key={row.id}
                 rank={idx + 1}
-                primary={v?.license || row.id.slice(0, 8)}
-                secondary={v?.model || `${row.invoiceCount} invoice${row.invoiceCount === 1 ? '' : 's'}`}
+                primary={vehicleLabel.primary}
+                secondary={vehicleLabel.secondary || `${row.invoiceCount} invoice${row.invoiceCount === 1 ? '' : 's'}`}
                 value={fmtEUR(row.revenueCents, intlLocale)}
                 valueTone="positive"
                 isDarkMode={isDarkMode}
@@ -724,7 +756,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
                   <p className="text-[10.5px] text-muted-foreground truncate">
                     {d ? d.toLocaleDateString(intlLocale, { day: '2-digit', month: 'short' }) : '—'}
                     {' · '}
-                    {inv.vendorName || customerLabel(inv.customerId ? customerById.get(inv.customerId) : undefined)}
+                    {inv.vendorName || customerLabel(inv.customerId ? customerById.get(inv.customerId) : undefined, piiTier)}
                   </p>
                 </div>
                 <div className="flex flex-col items-end shrink-0">
@@ -766,6 +798,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           intlLocale={intlLocale}
           customerById={customerById}
           vehicleById={vehicleById}
+          piiTier={piiTier}
         />
       )}
     </div>
@@ -932,7 +965,7 @@ function ListRow({
 
 function BreakdownPopup({
   title, monthLabel, totalCents, tone, days, expandedDay, onExpand, onClose,
-  isDarkMode, intlLocale, customerById, vehicleById,
+  isDarkMode, intlLocale, customerById, vehicleById, piiTier,
 }: {
   title: string;
   monthLabel: string;
@@ -946,6 +979,7 @@ function BreakdownPopup({
   intlLocale: string;
   customerById: Map<string, CustomerLite>;
   vehicleById: Map<string, { license: string; model: string }>;
+  piiTier: ReturnType<typeof resolveEvaluationsPiiTier>;
 }) {
   const totalCls = tone === 'revenue' ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-attention)]';
 
@@ -1012,8 +1046,11 @@ function BreakdownPopup({
                         const meta = TYPE_META[inv.type] ?? { label: inv.type, icon: Receipt, tone: 'expense' as const };
                         const status = STATUS_META[inv.status] ?? STATUS_META.DRAFT;
                         const partyLabel = inv.vendorName
-                          || (inv.customerId ? customerLabel(customerById.get(inv.customerId)) : null);
+                          || (inv.customerId ? customerLabel(customerById.get(inv.customerId), piiTier) : null);
                         const vehicle = inv.vehicleId ? vehicleById.get(inv.vehicleId) : null;
+                        const vehicleLabel = vehicle
+                          ? formatVehicleLabel(vehicle, inv.vehicleId!, piiTier).primary
+                          : null;
                         return (
                           <div key={inv.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/40">
                             <div className="flex-1 min-w-0">
@@ -1026,7 +1063,7 @@ function BreakdownPopup({
                                 </span>
                               </div>
                               <div className="text-[10px] text-muted-foreground truncate">
-                                {[partyLabel, vehicle?.license].filter(Boolean).join(' · ') || '—'}
+                                {[partyLabel, vehicleLabel].filter(Boolean).join(' · ') || '—'}
                               </div>
                             </div>
                             <div className="flex flex-col items-end shrink-0">

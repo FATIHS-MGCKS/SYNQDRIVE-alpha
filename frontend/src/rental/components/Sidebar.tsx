@@ -37,6 +37,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const { hasPermission } = useRentalOrg();
   const { uiEnabled: stationsUiEnabled, loading: stationsFlagsLoading } = useStationsV2FeatureFlags();
   const canDataAnalyse = hasPermission('data-analyse', 'read');
+  const canEvaluations = hasPermission('invoices', 'read');
   const canWorkflowAutomation = hasPermission('workflow-automation', 'read');
   const canCustomerPayments = hasPermission('payments-connect', 'read');
   const canBillingSubscription = hasPermission('billing', 'read');
@@ -163,9 +164,11 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
       </div>
       {expandedSections.includes('finance') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
+          {canEvaluations && (
           <button onClick={() => handleViewChange('financial-insights')} className={subNavBtnClass(currentView === 'financial-insights')}>
             <DollarSign className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.financialInsights')}</span>
           </button>
+          )}
           <button onClick={() => handleViewChange('invoices')} className={subNavBtnClass(currentView === 'invoices')}>
             <FileText className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.customerInvoices')}</span>
           </button>
@@ -430,10 +433,12 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
 
               <div className="w-4 h-px my-1.5 bg-border" />
 
+              {canEvaluations && (
               <button onClick={() => handleViewChange('financial-insights')} className={collapsedBtnClass(currentView === 'financial-insights')}>
                 <DollarSign className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.financialInsights')} />
               </button>
+              )}
               <button onClick={() => handleViewChange('invoices')} className={collapsedBtnClass(currentView === 'invoices')}>
                 <FileText className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.customerInvoices')} />

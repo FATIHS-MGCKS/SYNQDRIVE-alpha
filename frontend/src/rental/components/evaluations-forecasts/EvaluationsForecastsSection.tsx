@@ -37,7 +37,7 @@ export function EvaluationsForecastsSection({
           </h2>
           <p className="text-[11px] text-muted-foreground mt-1 max-w-2xl">
             Statistische und regelbasierte Baselines — klar getrennt von Istwerten. Nur freigegebene
-            Modelle (Release Gate) werden angezeigt.
+            Modelle (Release Gate) werden angezeigt. Flottenaggregate ohne personenbezogene Daten.
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
             <span className="rounded-full px-2 py-0.5 sq-tone-neutral font-semibold">

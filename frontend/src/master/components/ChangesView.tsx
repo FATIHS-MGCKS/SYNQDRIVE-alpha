@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-gdpr-privacy-p46-2026-07-24',
+    version: '4.9.843',
+    title: 'V4.9.843 — Auswertungen GDPR Privacy by Design (Prompt 46)',
+    summary: [
+      'Privacy-by-design audit for Auswertungen: role-tier PII redaction, pseudonymous customer labels, API permission gates.',
+      'Shared evaluations-privacy contract; dashboard-insights redaction; customers/evaluation-labels minimal endpoint.',
+      'Misuse cockpit list uses surface=cockpit (no raw evidence). Predictive GET endpoints require invoices.read.',
+      'FinancialInsightsView: no bulk customers.list; pseudonymous rankings; sidebar gated on invoices.read.',
+      'Compliance doc: docs/compliance/evaluations-gdpr-privacy-by-design.md',
+    ],
+    reason: 'DSGVO data minimization and privacy-by-design for evaluations/analytics surfaces.',
+    previousBehavior:
+      'Auswertungen exposed customer names/emails in rankings, full customer PII via bulk list, unredacted insight messages, misuse evidence in network responses, and lacked invoices.read gate.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-24T14:00:00.000Z',
+  },
+  {
     id: 'evaluations-forecast-ux-p45-2026-07-24',
     version: '4.9.842',
     title: 'V4.9.842 — Auswertungen Prognose-UI: Transparente Forecast-Darstellung (Prompt 45)',

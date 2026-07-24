@@ -30,6 +30,10 @@ import { buildCustomerNormalizedFields } from './utils/customer-normalizer.util'
 import { CustomerTimelineService } from './customer-timeline.service';
 import { CustomerEligibilityService } from './customer-eligibility.service';
 import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
+import {
+  buildCustomerDisplayLabel,
+  type EvaluationsPiiTier,
+} from '@synq/evaluations-insights/evaluations-privacy';
 
 export type DuplicateMatch = {
   customerId: string;
@@ -202,6 +206,36 @@ export class CustomersService {
     });
 
     return buildPaginatedResult(mapped, total, params || {});
+  }
+
+  async findEvaluationLabels(
+    orgId: string,
+    customerIds: string[],
+    tier: EvaluationsPiiTier,
+  ): Promise<Array<{ id: string; displayLabel: string }>> {
+    const uniqueIds = [...new Set(customerIds.filter(Boolean))].slice(0, 250);
+    if (uniqueIds.length === 0) return [];
+
+    const rows = await this.prisma.customer.findMany({
+      where: { organizationId: orgId, id: { in: uniqueIds } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        company: true,
+      },
+    });
+
+    return rows.map((customer) => ({
+      id: customer.id,
+      displayLabel: buildCustomerDisplayLabel({
+        id: customer.id,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        name: customer.company,
+        tier,
+      }),
+    }));
   }
 
   async findById(orgId: string, id: string) {
