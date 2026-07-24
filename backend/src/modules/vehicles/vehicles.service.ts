@@ -98,17 +98,15 @@ const VEHICLE_STATUS_MAP: Record<VehicleStatus, string> = {
   RESERVED: 'Reserved',
 };
 
-// Rental Fleet/Dashboard status keys. Deliberately collapses BOTH IN_SERVICE
-// and OUT_OF_SERVICE into a single `Maintenance` bucket — the rental UI does
-// not distinguish "scheduled service" from "operational block" at the tab
-// level. Must stay in sync with the frontend `PRISMA_TO_FLEET_STATUS_KEY`
-// (frontend/src/rental/lib/vehicle-status.ts), which mirrors this mapping.
+// Rental Fleet/Dashboard status keys. IN_SERVICE → Maintenance (scheduled service),
+// OUT_OF_SERVICE → Blocked (operational block). Must stay aligned with frontend
+// `PRISMA_TO_VEHICLE_OPERATIONAL_STATUS` in vehicle-operational-state/normalize.ts.
 const RENTAL_STATUS_MAP: Record<VehicleStatus, string> = {
   AVAILABLE: 'Available',
   RENTED: 'Active Rented',
   RESERVED: 'Reserved',
   IN_SERVICE: 'Maintenance',
-  OUT_OF_SERVICE: 'Maintenance',
+  OUT_OF_SERVICE: 'Blocked',
 };
 
 const HEALTH_STATUS_MAP: Record<HealthStatus, string> = {
@@ -1054,7 +1052,7 @@ export class VehiclesService {
     }
 
     const dbStatus =
-      RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Available';
+      RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Unknown';
     const bookingDerived: 'Active Rented' | 'Reserved' | null =
       bookingCtx && bookingCtx.activeBookingId
         ? 'Active Rented'
@@ -1062,14 +1060,14 @@ export class VehiclesService {
           ? 'Reserved'
           : null;
 
-    // V4.6.90 — Ghost-state guard. `Maintenance` always wins (true
-    // operational block). Otherwise the booking-derived bucket wins.
+    // V4.6.90 — Ghost-state guard. Maintenance and Blocked always win
+    // (true operational blocks). Otherwise the booking-derived bucket wins.
     // If the DB column says `RENTED` / `RESERVED` but no booking truth
     // backs it, demote to `Available` and log once per vehicle — we
     // never render an operational state from a db-only row.
     let status: string;
-    if (dbStatus === 'Maintenance') {
-      status = 'Maintenance';
+    if (dbStatus === 'Maintenance' || dbStatus === 'Blocked') {
+      status = dbStatus;
     } else if (bookingDerived) {
       status = bookingDerived;
     } else if (dbStatus === 'Active Rented' || dbStatus === 'Reserved') {
@@ -1083,7 +1081,7 @@ export class VehiclesService {
       status = dbStatus;
     }
     const maintenanceCtx: FleetVehicleMaintenanceContextDto =
-      status === 'Maintenance'
+      status === 'Maintenance' || status === 'Blocked'
         ? this.deriveMaintenanceContext(vehicle.status)
         : {
             maintenanceReason: null,

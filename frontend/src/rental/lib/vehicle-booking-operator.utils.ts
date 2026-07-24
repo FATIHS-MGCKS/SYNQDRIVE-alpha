@@ -64,7 +64,9 @@ const REALIZED_STATUSES: BookingUiStatus[] = ['active', 'completed'];
 
 export function isVehicleOperationallyBlocked(vehicle?: VehicleData | null): boolean {
   if (!vehicle) return false;
-  if (selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
+  const status = selectOperationalStatus(vehicle);
+  if (status === VEHICLE_OPERATIONAL_STATUS.BLOCKED) return true;
+  if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
   return vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK';
 }
 

@@ -2,10 +2,14 @@ import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { useDocumentDark } from '../../hooks/useDocumentDark';
-import { StatusChip, type StatusTone } from '../../../components/patterns';
+import { StatusChip } from '../../../components/patterns';
 import type { VehicleData } from '../../data/vehicles';
 import { useEffectiveHealth } from '../../FleetContext';
-import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import {
+  resolveVehicleDetailHeaderReadinessChip,
+  type VehicleOperationalUiStatus,
+} from '../../lib/vehicle-detail-header-status';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
@@ -14,7 +18,7 @@ import {
   VehicleHealthChip,
 } from './VehicleDetailHeaderBadges';
 
-export type VehicleOperationalUiStatus = 'Available' | 'Manual Block' | 'Maintenance';
+export type { VehicleOperationalUiStatus };
 export type VehicleCleaningUiStatus = 'Clean' | 'Needs Cleaning';
 
 export interface VehicleDetailHeaderProps {
@@ -45,70 +49,19 @@ function MetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) 
 const backButtonClassName =
   'sq-press shrink-0 rounded-xl border border-border/60 bg-background p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
 
-function readinessChipFromDisplay(
-  vehicleStatus: VehicleOperationalUiStatus,
-  vehicle: VehicleData,
-  rentalHealth: ReturnType<typeof useEffectiveHealth>['health'],
-  locale: string,
-): {
-  label: string;
-  tone: StatusTone;
-  icon: ReactNode;
-  supplement: string | null;
-  supplementDetail: string | null;
-  statusBadge: ReturnType<typeof resolveFleetVehicleDisplayState>['statusBadge'];
-} {
-  if (vehicleStatus === 'Manual Block') {
-    return {
-      label: 'Manual Block',
-      tone: 'critical',
-      icon: <Icon name="x-circle" className="h-3 w-3" />,
-      supplement: null,
-      supplementDetail: null,
-      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
-    };
+function readinessChipIcon(
+  status: ReturnType<typeof resolveVehicleDetailHeaderReadinessChip>['statusBadge']['status'],
+): ReactNode {
+  if (status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
+    return <Icon name="check-circle" className="h-3 w-3" />;
   }
-  if (vehicleStatus === 'Maintenance') {
-    return {
-      label: 'Maintenance',
-      tone: 'warning',
-      icon: <Icon name="wrench" className="h-3 w-3" />,
-      supplement: null,
-      supplementDetail: null,
-      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
-    };
+  if (status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
+    return <Icon name="car" className="h-3 w-3" />;
   }
-
-  const display = resolveFleetVehicleDisplayState(vehicle, {
-    rentalHealth,
-    locale,
-    compact: false,
-  });
-  const { statusBadge, bookingSupplement } = display;
-
-  return {
-    label: statusBadge.label,
-    tone: statusBadge.tone,
-    icon:
-      statusBadge.status === 'AVAILABLE' ? (
-        <Icon name="check-circle" className="h-3 w-3" />
-      ) : statusBadge.status === 'ACTIVE_RENTED' ? (
-        <Icon name="car" className="h-3 w-3" />
-      ) : statusBadge.status === 'RESERVED' ? (
-        <Icon name="calendar" className="h-3 w-3" />
-      ) : (
-        <Icon name="alert-triangle" className="h-3 w-3" />
-      ),
-    supplement:
-      statusBadge.unreliableExplanation ??
-      bookingSupplement?.short ??
-      statusBadge.dataQualityHint,
-    supplementDetail:
-      statusBadge.unreliableExplanation ??
-      bookingSupplement?.detail ??
-      statusBadge.dataQualityHint,
-    statusBadge,
-  };
+  if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
+    return <Icon name="calendar" className="h-3 w-3" />;
+  }
+  return <Icon name="alert-triangle" className="h-3 w-3" />;
 }
 
 export function VehicleDetailHeader({
@@ -128,7 +81,8 @@ export function VehicleDetailHeader({
   const { locale } = useLanguage();
   const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
-  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale);
+  const readinessChip = resolveVehicleDetailHeaderReadinessChip(vehicle, rentalHealth, locale);
+  const readinessIcon = readinessChipIcon(readinessChip.statusBadge.status);
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const hasLicense = Boolean(vehicle.license);
@@ -195,7 +149,7 @@ export function VehicleDetailHeader({
                   aria-expanded={isStatusDropdownOpen}
                   aria-haspopup="menu"
                 >
-                  <StatusChip tone={readinessChip.tone} icon={readinessChip.icon}>
+                  <StatusChip tone={readinessChip.tone} icon={readinessIcon}>
                     {readinessChip.label}
                   </StatusChip>
                 </button>

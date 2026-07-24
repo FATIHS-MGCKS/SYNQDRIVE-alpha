@@ -55,8 +55,8 @@ import { CustomerDetailView } from './components/CustomerDetailView';
 import { VehicleBookingsView } from './components/VehicleBookingsView';
 import { VehicleTasksView } from './components/VehicleTasksView';
 import { VehicleData } from './data/vehicles';
-import { normalizeFleetStatusKey } from './lib/vehicle-status';
-import { VEHICLE_OPERATIONAL_STATUS } from './lib/vehicle-operational-state';
+import { deriveVehicleDetailHeaderEditStatus } from './lib/vehicle-detail-header-status';
+import type { VehicleOperationalUiStatus } from './lib/vehicle-detail-header-status';
 import {
   invalidateVehicleOperationalAfterBookingChange,
   invalidateVehicleOperationalState,
@@ -203,7 +203,7 @@ function RentalAppContent() {
   }, [orgId]);
   const { isDarkMode } = useAppTheme();
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
-  const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
+  const [vehicleStatus, setVehicleStatus] = useState<VehicleOperationalUiStatus>('Available');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
@@ -343,14 +343,7 @@ function RentalAppContent() {
       return;
     }
     setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
-    const normalized = normalizeFleetStatusKey(fresh.status);
-    setVehicleStatus(
-      normalized === VEHICLE_OPERATIONAL_STATUS.AVAILABLE
-        ? 'Available'
-        : normalized === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
-          ? 'Maintenance'
-          : 'Manual Block',
-    );
+    setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
     setCleaningStatus(fresh.cleaningStatus);
   }, [fleetVehicles, selectedVehicle?.id, selectedVehicle?.status, selectedVehicle?.cleaningStatus]);
 
@@ -517,7 +510,7 @@ function RentalAppContent() {
   };
 
   // Handle vehicle status change
-  const handleVehicleStatusChange = (newStatus: 'Available' | 'Manual Block' | 'Maintenance') => {
+  const handleVehicleStatusChange = (newStatus: VehicleOperationalUiStatus) => {
     // Show warning if changing from Available to Maintenance or Manual Block
     if (vehicleStatus === 'Available' && (newStatus === 'Maintenance' || newStatus === 'Manual Block')) {
       setPendingStatus(newStatus);
@@ -541,7 +534,7 @@ function RentalAppContent() {
   // Handle vehicle selection from Fleet
   const handleVehicleSelect = (vehicle: VehicleData) => {
     setSelectedVehicle(vehicle);
-    setVehicleStatus(vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ? 'Available' : vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ? 'Maintenance' : 'Available');
+    setVehicleStatus(deriveVehicleDetailHeaderEditStatus(vehicle));
     setCleaningStatus(vehicle.cleaningStatus);
     setCurrentStation(vehicle.station);
     setCurrentView('overview');
