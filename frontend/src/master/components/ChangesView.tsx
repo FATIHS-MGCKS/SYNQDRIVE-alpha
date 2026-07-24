@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-calculation-versioning-v49804-2026-07-24',
+    version: '4.9.804',
+    title: 'V4.9.804 — Auswertungen Calculation Versioning (Prompt 6/54)',
+    summary: [
+      'Shared Provenance-Contract: `calculationVersion`, `generatedAt`, `periodStart`/`periodEnd`, `appliedFilters`, `sourceVersions`, `completeness`.',
+      'Business Insights: `calculation_meta` JSONB auf `dashboard_insights` + `dashboard_insight_runs` (nullable — Legacy bleibt null).',
+      'Per-Insight- und Run-Provenance beim Publish; DTOs parsen via `parseCalculationProvenance` ohne erfundene Defaults.',
+      'Financial KPIs: Client-Provenance-Builder vorbereitet (`evaluations-financial-provenance.ts`); UI-Anbindung folgt.',
+      'Tests: Provenance unit, Registry-Sync, Repository legacy/null + round-trip; Doku: `evaluations-calculation-versioning.md`.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 6 — reproduzierbare, versionierte Berechnungen mit Herkunftsmetadaten.',
+    previousBehavior: 'KPIs und Insights ohne persistierte Formelversion, Zeitraum, Filter oder Vollständigkeitsstatus.',
+    details:
+      'shared/evaluations-metrics/evaluations-calculation-provenance.ts, evaluations-metric-calculation-versions.ts, evaluations-financial-provenance.ts; backend: insight-calculation-provenance.ts, dashboard-insights.repository.ts, business-insights.service.ts; migration 20260724130000_dashboard_insight_calculation_meta; docs/architecture/analytics/evaluations-calculation-versioning.md.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T14:00:00.000Z',
+  },
+  {
     id: 'evaluations-metric-registry-v49803-2026-07-24',
     version: '4.9.803',
     title: 'V4.9.803 — Auswertungen Metric Registry (Prompt 5/54)',

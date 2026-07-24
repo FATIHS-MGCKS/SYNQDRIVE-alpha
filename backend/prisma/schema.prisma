@@ -12995,6 +12995,7 @@ model DashboardInsightRun {
   candidateCount Int       @default(0) @map("candidate_count")
   publishedCount Int       @default(0) @map("published_count")
   errorMessage   String?   @map("error_message")
+  calculationMeta Json?    @map("calculation_meta")
   createdAt      DateTime  @default(now()) @map("created_at")
 
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -13028,6 +13029,7 @@ model DashboardInsight {
   groupCount     Int                @default(1) @map("group_count")
   isActive       Boolean            @default(true) @map("is_active")
   expiresAt      DateTime?          @map("expires_at")
+  calculationMeta Json?             @map("calculation_meta")
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
 
