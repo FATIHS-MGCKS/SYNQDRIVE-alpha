@@ -21,6 +21,12 @@ import type {
   VehicleDataQualityState,
   VehicleBookingReference,
 } from '../rental/lib/vehicle-operational-state';
+import type {
+  EvaluationsAnalyticsSummaryResponse,
+  EvaluationsInsightDetail,
+  EvaluationsInsightListResponse,
+  InsightAnalyticsSummary,
+} from '../rental/lib/evaluations-analytics-api.types';
 
 export type {
   AddDamageImageInput,
@@ -4215,6 +4221,53 @@ export const api = {
         createdAt: string;
       }>;
     }>(`/organizations/${orgId}/dashboard-insights`),
+  },
+  evaluationsInsights: {
+    summary: (
+      orgId: string,
+      params?: Record<string, string | number | null | undefined>,
+    ) => {
+      const qs = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
+      const q = qs.toString();
+      return get<InsightAnalyticsSummary>(`/organizations/${orgId}/evaluations/insights/summary${q ? `?${q}` : ''}`);
+    },
+    list: (
+      orgId: string,
+      params?: Record<string, string | number | null | undefined>,
+    ) => {
+      const qs = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
+      const q = qs.toString();
+      return get<EvaluationsInsightListResponse>(`/organizations/${orgId}/evaluations/insights${q ? `?${q}` : ''}`);
+    },
+    getById: (orgId: string, insightId: string) =>
+      get<EvaluationsInsightDetail>(`/organizations/${orgId}/evaluations/insights/${insightId}`),
+  },
+  evaluationsAnalytics: {
+    summary: (
+      orgId: string,
+      params?: Record<string, string | number | null | undefined>,
+    ) => {
+      const qs = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
+      const q = qs.toString();
+      return get<EvaluationsAnalyticsSummaryResponse>(
+        `/organizations/${orgId}/evaluations/analytics/summary${q ? `?${q}` : ''}`,
+      );
+    },
   },
   notifications: {
     list: (
