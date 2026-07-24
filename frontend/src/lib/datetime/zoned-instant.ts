@@ -250,22 +250,6 @@ export function zonedCalendarMonthRange(
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-/** Half-open Sunday-based week `[start, end)` containing `reference` in org timezone. */
-export function zonedWeekRange(
-  reference: Date = new Date(),
-  timeZone: string = DEFAULT_ORG_TIMEZONE,
-): HalfOpenUtcRange {
-  const today = zonedPartsFromInstant(reference, timeZone);
-  const todayDateOnly = `${today.year}-${pad2(today.month)}-${pad2(today.day)}`;
-  let weekStart = zonedStartOfDayToUtc(todayDateOnly, timeZone);
-  for (let i = 0; i < today.weekday; i++) {
-    const prevDateOnly = zonedDateOnly(new Date(weekStart.getTime() - 12 * 60 * 60_000), timeZone);
-    weekStart = zonedStartOfDayToUtc(prevDateOnly, timeZone);
-  }
-  const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60_000);
-  return { from: weekStart.toISOString(), to: weekEnd.toISOString() };
-}
-
 /** Half-open org calendar day `[start, end)` for a `YYYY-MM-DD` date. */
 export function zonedDayRange(
   dateOnly: string,

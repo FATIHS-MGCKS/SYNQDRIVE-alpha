@@ -14,12 +14,11 @@ import {
 } from '../../lib/bookings-pagination';
 import { buildBookingPlannerListParams } from '../../lib/bookings-query.utils';
 import { BOOKINGS_LIST_INVALIDATED_EVENT } from '../lib/bookings-invalidation';
+import { DEFAULT_ORG_TIMEZONE, resolveWeekStartsOn } from '../../lib/datetime';
 import {
-  DEFAULT_ORG_TIMEZONE,
-  orgCalendarMonthYear,
-  zonedCalendarMonthRange,
-  zonedWeekRange,
-} from '../../lib/datetime';
+  defaultTimelineAnchorDateOnly,
+  resolvePlannerVisibleRange,
+} from '../lib/bookings-planner-range.utils';
 
 const TABLE_PAGE_SIZE = 50;
 const RANGE_PAGE_SIZE = 100;
@@ -28,11 +27,14 @@ const SEARCH_DEBOUNCE_MS = 300;
 export interface UseBookingsPlannerDataInput {
   orgId: string | null | undefined;
   timeZone?: string;
+  locale?: string;
+  weekStartsOn?: number;
   view: BookingPlannerView;
   filters: BookingFiltersState;
   timelineRange: 'week' | 'month';
   calendarMonth: number;
   calendarYear: number;
+  timelineAnchorDateOnly: string;
   tablePage: number;
   sortBy: BookingTableSortBy;
   sortOrder: BookingTableSortOrder;
@@ -42,11 +44,14 @@ export interface UseBookingsPlannerDataInput {
 export function useBookingsPlannerData({
   orgId,
   timeZone = DEFAULT_ORG_TIMEZONE,
+  locale = 'de-DE',
+  weekStartsOn,
   view,
   filters,
   timelineRange,
   calendarMonth,
   calendarYear,
+  timelineAnchorDateOnly,
   tablePage,
   sortBy,
   sortOrder,
@@ -64,21 +69,34 @@ export function useBookingsPlannerData({
 
   rowsRef.current = rows;
 
+  const resolvedWeekStartsOn = weekStartsOn ?? resolveWeekStartsOn(locale);
+
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(filters.search), SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [filters.search]);
 
-  const visibleRange = useMemo(() => {
-    if (view === 'calendar') {
-      return zonedCalendarMonthRange(calendarYear, calendarMonth, timeZone);
-    }
-    if (timelineRange === 'week') {
-      return zonedWeekRange(new Date(), timeZone);
-    }
-    const { month, year } = orgCalendarMonthYear(timeZone);
-    return zonedCalendarMonthRange(year, month, timeZone);
-  }, [view, timelineRange, calendarMonth, calendarYear, timeZone]);
+  const visibleRange = useMemo(
+    () =>
+      resolvePlannerVisibleRange({
+        view,
+        timelineRange,
+        calendarMonth,
+        calendarYear,
+        timelineAnchorDateOnly,
+        timeZone,
+        weekStartsOn: resolvedWeekStartsOn,
+      }),
+    [
+      view,
+      timelineRange,
+      calendarMonth,
+      calendarYear,
+      timelineAnchorDateOnly,
+      timeZone,
+      resolvedWeekStartsOn,
+    ],
+  );
 
   const listParams = useMemo(
     () =>
@@ -177,5 +195,8 @@ export function useBookingsPlannerData({
     truncated,
     refresh,
     tablePageSize: TABLE_PAGE_SIZE,
+    visibleRange,
   };
 }
+
+export { defaultTimelineAnchorDateOnly };

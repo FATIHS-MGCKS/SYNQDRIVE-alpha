@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
-import { BookingStatusBadge, bookingTimelineSolidBarClass, type BookingUiStatus } from './bookingStatus';
+import {
+  DEFAULT_ORG_TIMEZONE,
+  iterHalfOpenZonedDays,
+} from '../../../lib/datetime';
+import { clipBookingToHalfOpenWindow } from './bookingPlannerOverlap';
+import { BookingStatusBadge, bookingTimelineSolidBarClass } from './bookingStatus';
 import { bookingEndIso, bookingRef, bookingStartIso, parseIso, rowStatus } from './bookingUtils';
-
-const MS_DAY = 86_400_000;
 
 function vehicleLabel(v: VehicleData): string {
   const head = [v.make, v.model].filter(Boolean).join(' ').trim();
@@ -16,7 +19,16 @@ interface BookingsTimelineViewProps {
   bookings: BookingUiRow[];
   rangeStart: Date;
   rangeEnd: Date;
+  timeZone?: string;
+  locale?: string;
+  rangeLabel?: string;
+  onNavigatePrev?: () => void;
+  onNavigateNext?: () => void;
   onSelectBooking: (id: string) => void;
+}
+
+function navButtonClass(): string {
+  return 'px-2 py-1 text-[10px] rounded border border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
 }
 
 export function BookingsTimelineView({
@@ -24,29 +36,34 @@ export function BookingsTimelineView({
   bookings,
   rangeStart,
   rangeEnd,
+  timeZone = DEFAULT_ORG_TIMEZONE,
+  locale = 'de-DE',
+  rangeLabel,
+  onNavigatePrev,
+  onNavigateNext,
   onSelectBooking,
 }: BookingsTimelineViewProps) {
-  const totalMs = Math.max(MS_DAY, rangeEnd.getTime() - rangeStart.getTime());
+  const rangeStartMs = rangeStart.getTime();
+  const rangeEndMs = rangeEnd.getTime();
+  const totalMs = Math.max(1, rangeEndMs - rangeStartMs);
+
   const dayMarkers = useMemo(() => {
-    const out: { left: number; label: string }[] = [];
-    const cursor = new Date(rangeStart);
-    cursor.setHours(0, 0, 0, 0);
-    while (cursor <= rangeEnd) {
-      const left = ((cursor.getTime() - rangeStart.getTime()) / totalMs) * 100;
-      out.push({
-        left,
-        label: cursor.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
-      });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return out;
-  }, [rangeStart, rangeEnd, totalMs]);
+    const days = iterHalfOpenZonedDays(rangeStart.toISOString(), rangeEnd.toISOString(), timeZone);
+    return days.map((day) => ({
+      left: ((day.start.getTime() - rangeStartMs) / totalMs) * 100,
+      label: day.start.toLocaleDateString(locale, {
+        timeZone,
+        day: '2-digit',
+        month: '2-digit',
+      }),
+    }));
+  }, [rangeStart, rangeEnd, rangeStartMs, totalMs, timeZone, locale]);
 
   const nowLeft = useMemo(() => {
     const now = Date.now();
-    if (now < rangeStart.getTime() || now > rangeEnd.getTime()) return null;
-    return ((now - rangeStart.getTime()) / totalMs) * 100;
-  }, [rangeStart, rangeEnd, totalMs]);
+    if (now < rangeStartMs || now >= rangeEndMs) return null;
+    return ((now - rangeStartMs) / totalMs) * 100;
+  }, [rangeStartMs, rangeEndMs, totalMs]);
 
   const byVehicle = useMemo(() => {
     const map = new Map<string, BookingUiRow[]>();
@@ -59,6 +76,19 @@ export function BookingsTimelineView({
     return map;
   }, [bookings]);
 
+  const handleHeaderKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        onNavigatePrev?.();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        onNavigateNext?.();
+      }
+    },
+    [onNavigatePrev, onNavigateNext],
+  );
+
   if (vehicles.length === 0) {
     return (
       <p className="text-xs text-muted-foreground p-6 text-center">
@@ -69,14 +99,36 @@ export function BookingsTimelineView({
 
   return (
     <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] overflow-hidden">
+      {(rangeLabel || onNavigatePrev || onNavigateNext) && (
+        <div
+          className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border/60"
+          tabIndex={onNavigatePrev || onNavigateNext ? 0 : undefined}
+          onKeyDown={handleHeaderKeyDown}
+          aria-label="Zeitraum Navigation"
+        >
+          <div className="flex gap-1" role="group" aria-label="Zeitraum wechseln">
+            {onNavigatePrev && (
+              <button type="button" className={navButtonClass()} aria-label="Vorheriger Zeitraum" onClick={onNavigatePrev}>
+                ‹
+              </button>
+            )}
+            {onNavigateNext && (
+              <button type="button" className={navButtonClass()} aria-label="Nächster Zeitraum" onClick={onNavigateNext}>
+                ›
+              </button>
+            )}
+          </div>
+          {rangeLabel && <p className="text-[11px] font-semibold text-foreground">{rangeLabel}</p>}
+        </div>
+      )}
       <div className="overflow-x-auto">
         <div className="min-w-[900px]">
           <div className="grid grid-cols-[200px_1fr] border-b border-border/60 bg-muted/30">
             <div className="px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground">Fahrzeug</div>
             <div className="relative h-8 border-l border-border/40">
-              {dayMarkers.map((m) => (
+              {dayMarkers.map((m, index) => (
                 <span
-                  key={m.label + m.left}
+                  key={`${m.label}-${index}`}
                   className="absolute top-1 text-[9px] text-muted-foreground -translate-x-1/2"
                   style={{ left: `${m.left}%` }}
                 >
@@ -105,18 +157,18 @@ export function BookingsTimelineView({
                     const start = parseIso(bookingStartIso(booking));
                     const end = parseIso(bookingEndIso(booking));
                     if (!start || !end) return null;
-                    const clipStart = Math.max(start.getTime(), rangeStart.getTime());
-                    const clipEnd = Math.min(end.getTime(), rangeEnd.getTime());
-                    if (clipEnd <= clipStart) return null;
-                    const left = ((clipStart - rangeStart.getTime()) / totalMs) * 100;
-                    const width = Math.max(1.5, ((clipEnd - clipStart) / totalMs) * 100);
+                    const clip = clipBookingToHalfOpenWindow(start, end, rangeStart, rangeEnd);
+                    if (!clip) return null;
+                    const left = ((clip.clipStart - rangeStartMs) / totalMs) * 100;
+                    const width = Math.max(1.5, ((clip.clipEnd - clip.clipStart) / totalMs) * 100);
                     const status = rowStatus(booking);
                     return (
                       <button
                         key={booking.id}
                         type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => onSelectBooking(booking.id)}
-                        className={`absolute top-2 h-7 rounded-md px-1.5 text-[9px] font-semibold text-white truncate shadow-sm hover:opacity-90 ${bookingTimelineSolidBarClass(status)}`}
+                        className={`absolute top-2 h-7 rounded-md px-1.5 text-[9px] font-semibold text-white truncate shadow-sm hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${bookingTimelineSolidBarClass(status)}`}
                         style={{ left: `${left}%`, width: `${width}%`, minWidth: '48px' }}
                         title={`${bookingRef(booking.id)} · ${booking.customer}`}
                       >

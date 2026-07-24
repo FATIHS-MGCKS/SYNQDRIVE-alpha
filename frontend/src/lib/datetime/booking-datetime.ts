@@ -16,14 +16,25 @@ export {
   parseOrgDateTimeLocalValue,
   todayDateOnlyInZone,
   zonedCalendarMonthRange,
-  zonedWeekRange,
-  zonedDayRange,
   zonedDateOnly,
-  zonedStartOfDayToUtc,
+  zonedDayRange,
   zonedPartsFromInstant,
+  zonedStartOfDayToUtc,
   overlapsHalfOpen,
   type HalfOpenUtcRange,
 } from './zoned-instant';
+
+export {
+  zonedWeekRange,
+  zonedWeekRangeForDateOnly,
+  countHalfOpenZonedDays,
+  iterHalfOpenZonedDays,
+  resolveWeekStartsOn,
+  weekdayLabelsForLocale,
+  buildOrgCalendarGrid,
+  shiftDateOnlyByWeeks,
+  shiftDateOnlyByMonths,
+} from './planner-range';
 
 export { resolveOrgTimezone, resolveOrgLocale } from './org-timezone';
 

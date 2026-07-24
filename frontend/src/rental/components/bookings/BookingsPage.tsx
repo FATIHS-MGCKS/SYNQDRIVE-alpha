@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageHeader, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import type { VehicleData } from '../../data/vehicles';
@@ -12,12 +12,16 @@ import { BookingsToolbar } from './BookingsToolbar';
 import { BookingsTimelineView } from './BookingsTimelineView';
 import { BookingsTableView } from './BookingsTableView';
 import { BookingsCalendarView } from './BookingsCalendarView';
-import { useBookingsPlannerData } from '../../hooks/useBookingsPlannerData';
+import {
+  defaultTimelineAnchorDateOnly,
+  useBookingsPlannerData,
+} from '../../hooks/useBookingsPlannerData';
 import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 import {
   orgCalendarMonthYear,
-  zonedCalendarMonthRange,
-  zonedWeekRange,
+  resolveWeekStartsOn,
+  shiftDateOnlyByMonths,
+  shiftDateOnlyByWeeks,
 } from '../../../lib/datetime';
 
 interface StationOption {
@@ -36,6 +40,24 @@ export interface BookingsPageProps {
   refreshToken?: number;
 }
 
+function formatTimelineRangeLabel(
+  fromIso: string,
+  toIso: string,
+  timeZone: string,
+  locale: string,
+  mode: 'week' | 'month',
+): string {
+  const from = new Date(fromIso);
+  const toExclusive = new Date(toIso);
+  const toInclusive = new Date(toExclusive.getTime() - 1);
+  if (mode === 'month') {
+    return from.toLocaleDateString(locale, { timeZone, month: 'long', year: 'numeric' });
+  }
+  const fromLabel = from.toLocaleDateString(locale, { timeZone, day: '2-digit', month: '2-digit' });
+  const toLabel = toInclusive.toLocaleDateString(locale, { timeZone, day: '2-digit', month: '2-digit', year: 'numeric' });
+  return `${fromLabel} – ${toLabel}`;
+}
+
 export function BookingsPage({
   orgId,
   fleetVehicles,
@@ -46,13 +68,18 @@ export function BookingsPage({
   onCancelBooking,
   refreshToken = 0,
 }: BookingsPageProps) {
-  const { timezone } = useOrgTimezone(orgId);
+  const { timezone, locale } = useOrgTimezone(orgId);
+  const weekStartsOn = resolveWeekStartsOn(locale);
   const initialOrgCalendar = orgCalendarMonthYear(timezone);
   const [view, setView] = useState<BookingPlannerView>('timeline');
   const [timelineRange, setTimelineRange] = useState<'week' | 'month'>('week');
   const [calendarMonth, setCalendarMonth] = useState(() => initialOrgCalendar.month);
   const [calendarYear, setCalendarYear] = useState(() => initialOrgCalendar.year);
+  const [timelineAnchorDateOnly, setTimelineAnchorDateOnly] = useState(() =>
+    defaultTimelineAnchorDateOnly(timezone),
+  );
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [tablePage, setTablePage] = useState(1);
   const [sortBy, setSortBy] = useState<BookingTableSortBy>('startDate');
   const [sortOrder, setSortOrder] = useState<BookingTableSortOrder>('desc');
@@ -66,23 +93,32 @@ export function BookingsPage({
     showTerminal: false,
   });
 
-  const { rows, meta, loading, error, truncated, refresh, tablePageSize } = useBookingsPlannerData({
-    orgId,
-    timeZone: timezone,
-    view,
-    filters,
-    timelineRange,
-    calendarMonth,
-    calendarYear,
-    tablePage,
-    sortBy,
-    sortOrder,
-    refreshToken,
-  });
+  const { rows, meta, loading, error, truncated, refresh, tablePageSize, visibleRange } =
+    useBookingsPlannerData({
+      orgId,
+      timeZone: timezone,
+      locale,
+      weekStartsOn,
+      view,
+      filters,
+      timelineRange,
+      calendarMonth,
+      calendarYear,
+      timelineAnchorDateOnly,
+      tablePage,
+      sortBy,
+      sortOrder,
+      refreshToken,
+    });
 
   useEffect(() => {
     setTablePage(1);
   }, [filters, view, sortBy, sortOrder]);
+
+  useEffect(() => {
+    setSelectedCalendarDay(null);
+    setSelectedBookingId(null);
+  }, [calendarMonth, calendarYear]);
 
   const handleSortChange = (nextSortBy: BookingTableSortBy) => {
     if (sortBy === nextSortBy) {
@@ -93,28 +129,48 @@ export function BookingsPage({
     setSortOrder(nextSortBy === 'startDate' ? 'desc' : 'asc');
   };
 
-  const { rangeStart, rangeEnd } = useMemo(() => {
-    if (view === 'calendar') {
-      const range = zonedCalendarMonthRange(calendarYear, calendarMonth, timezone);
-      return {
-        rangeStart: new Date(range.from),
-        rangeEnd: new Date(range.to),
-      };
-    }
-    if (timelineRange === 'week') {
-      const range = zonedWeekRange(new Date(), timezone);
-      return {
-        rangeStart: new Date(range.from),
-        rangeEnd: new Date(range.to),
-      };
-    }
-    const { month, year } = orgCalendarMonthYear(timezone);
-    const range = zonedCalendarMonthRange(year, month, timezone);
-    return {
-      rangeStart: new Date(range.from),
-      rangeEnd: new Date(range.to),
-    };
-  }, [view, timelineRange, calendarMonth, calendarYear, timezone]);
+  const rangeStart = useMemo(() => new Date(visibleRange.from), [visibleRange.from]);
+  const rangeEnd = useMemo(() => new Date(visibleRange.to), [visibleRange.to]);
+
+  const timelineRangeLabel = useMemo(
+    () =>
+      view === 'timeline'
+        ? formatTimelineRangeLabel(visibleRange.from, visibleRange.to, timezone, locale, timelineRange)
+        : undefined,
+    [view, visibleRange.from, visibleRange.to, timezone, locale, timelineRange],
+  );
+
+  const navigateTimeline = useCallback(
+    (direction: -1 | 1) => {
+      setTimelineAnchorDateOnly((current) => {
+        if (timelineRange === 'week') {
+          return shiftDateOnlyByWeeks(current, direction, timezone);
+        }
+        return shiftDateOnlyByMonths(current, direction, timezone);
+      });
+    },
+    [timelineRange, timezone],
+  );
+
+  const handleMonthChange = useCallback((month: number, year: number) => {
+    setCalendarMonth(month);
+    setCalendarYear(year);
+    setSelectedCalendarDay(null);
+    setSelectedBookingId(null);
+  }, []);
+
+  const handleDayClick = useCallback((day: number | null) => {
+    setSelectedCalendarDay(day);
+    setSelectedBookingId(null);
+  }, []);
+
+  const handleBookingClick = useCallback(
+    (bookingId: string) => {
+      setSelectedBookingId(bookingId);
+      onOpenDrawer(bookingId);
+    },
+    [onOpenDrawer],
+  );
 
   const vehiclesForTimeline = useMemo(() => {
     if (filters.vehicleId) {
@@ -191,7 +247,12 @@ export function BookingsPage({
               bookings={rows}
               rangeStart={rangeStart}
               rangeEnd={rangeEnd}
-              onSelectBooking={onOpenDrawer}
+              timeZone={timezone}
+              locale={locale}
+              rangeLabel={timelineRangeLabel}
+              onNavigatePrev={() => navigateTimeline(-1)}
+              onNavigateNext={() => navigateTimeline(1)}
+              onSelectBooking={handleBookingClick}
             />
           )}
           {view === 'table' && (
@@ -217,13 +278,13 @@ export function BookingsPage({
               month={calendarMonth}
               year={calendarYear}
               timeZone={timezone}
+              locale={locale}
+              weekStartsOn={weekStartsOn}
               selectedDay={selectedCalendarDay}
-              onDayClick={setSelectedCalendarDay}
-              onBookingClick={onOpenDrawer}
-              onMonthChange={(month, year) => {
-                setCalendarMonth(month);
-                setCalendarYear(year);
-              }}
+              selectedBookingId={selectedBookingId}
+              onDayClick={handleDayClick}
+              onBookingClick={handleBookingClick}
+              onMonthChange={handleMonthChange}
             />
           )}
         </>

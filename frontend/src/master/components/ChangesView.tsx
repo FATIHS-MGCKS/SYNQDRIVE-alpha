@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-calendar-timeline-v49795-2026-07-23',
+    version: '4.9.795',
+    title: 'V4.9.795 — Booking calendar & timeline functional fixes (Prompt 30)',
+    summary: [
+      'Wochenfenster exakt 7 Org-Kalendertage (halb-offen `[from,to)`), kein 8-Tage-Off-by-one; DST-sichere Tag-Iteration statt `+7*24h` oder Browser-`setDate`.',
+      'Wochenstart locale-aware (`resolveWeekStartsOn` — Montag für de-DE, Sonntag für en-US); Kalendergrid in Org-Zeitzone.',
+      'Timeline-Navigation (‹/› + Pfeiltasten) mit `timelineAnchorDateOnly`; Fetch-Fenster = sichtbares Fenster via `resolvePlannerVisibleRange`.',
+      'Kalender: getrennte Tag-/Buchungsauswahl, `pointerdown`-Isolation für Touch, Keyboard-Grid (Pfeile/Home/End/Enter).',
+      'Halb-offene Overlap-/Clip-Logik für Timeline-Balken und Kalendertage — keine Doppelungen an Grenzen.',
+    ],
+    reason: 'Booking Production Readiness Prompt 30 — funktionale Bugs in Calendar/Timeline ohne visuelles Redesign.',
+    previousBehavior:
+      'Timeline ohne Navigation und mit Browser-local Day-Markern (`<= rangeEnd` → 8 Tage); Woche via feste Millisekunden; verschachtelte Day/Booking-Buttons; Fetch und Render-Fenster divergierten.',
+    details:
+      '`lib/datetime/planner-range.ts`, `bookings-planner-range.utils.ts`, `bookingPlannerOverlap.ts`, `BookingsPage`, `BookingsCalendarView`, `BookingsTimelineView`, `useBookingsPlannerData`. Tests: planner-range, bookings-planner-range, bookingPlannerOverlap.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:05:00.000Z',
+  },
+  {
     id: 'booking-timezone-v49794-2026-07-23',
     version: '4.9.794',
     title: 'V4.9.794 — Canonical booking timezone strategy (Prompt 29)',

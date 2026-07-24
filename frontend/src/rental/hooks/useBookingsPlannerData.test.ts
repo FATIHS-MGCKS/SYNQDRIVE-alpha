@@ -43,6 +43,7 @@ const baseInput = {
   timelineRange: 'week' as const,
   calendarMonth: 6,
   calendarYear: 2026,
+  timelineAnchorDateOnly: '2026-07-15',
   tablePage: 1,
   sortBy: 'startDate' as const,
   sortOrder: 'desc' as const,
