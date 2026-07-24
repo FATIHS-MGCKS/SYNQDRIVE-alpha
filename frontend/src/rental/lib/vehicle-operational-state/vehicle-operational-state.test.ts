@@ -44,6 +44,9 @@ describe('normalizeVehicleOperationalStatus', () => {
     expect(normalizeVehicleOperationalStatusKey('IN_SERVICE')).toBe(
       VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
     );
+    expect(normalizeVehicleOperationalStatusKey('OUT_OF_SERVICE')).toBe(
+      VEHICLE_OPERATIONAL_STATUS.BLOCKED,
+    );
   });
 
   it('maps unknown backend values to UNKNOWN — never AVAILABLE', () => {

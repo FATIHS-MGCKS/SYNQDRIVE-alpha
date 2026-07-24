@@ -1,14 +1,22 @@
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
 import { cn } from '../../../components/ui/utils';
+import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { LiveMapOverview } from '../LiveMapOverview';
 import type { VehicleData } from '../../data/vehicles';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
+import { useVehicleDetailPollingStore } from '../../stores/useVehicleDetailPollingStore';
 import {
   deriveOverviewMapPosition,
   type OverviewMapPositionMode,
 } from '../../lib/overview-map-position';
+import {
+  formatTelemetryInteger,
+  formatTelemetryPercentValue,
+  resolveEnergyPercentForDisplay,
+  resolveTelemetryScalarForDisplay,
+} from '../../lib/telemetry-field-semantics';
 
 export interface OverviewLiveMapCardProps {
   selectedVehicle: VehicleData | null;
@@ -43,6 +51,26 @@ export function OverviewLiveMapCard({
   orgId,
   isDarkMode,
 }: OverviewLiveMapCardProps) {
+  const mapSurfaceRef = useRef<HTMLDivElement>(null);
+  const setOverviewMapVisible = useVehicleDetailPollingStore((s) => s.setOverviewMapVisible);
+
+  useEffect(() => {
+    const el = mapSurfaceRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setOverviewMapVisible(Boolean(entry?.isIntersecting && entry.intersectionRatio > 0));
+      },
+      { threshold: [0, 0.1, 0.25] },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      setOverviewMapVisible(false);
+    };
+  }, [setOverviewMapVisible]);
+
   const liveTelemetry = useVehicleLiveMapStore(
     useShallow((state) => ({
       boundVehicleId: state.boundVehicleId,
@@ -56,8 +84,12 @@ export function OverviewLiveMapCard({
       displayState: state.displayState,
       loading: state.loading,
       error: state.error,
-      isFresh: state.isFresh,
       gpsSource: state.gpsSource,
+      measuredAt: state.measuredAt,
+      lastSignal: state.lastSignal,
+      signalAgeMs: state.signalAgeMs,
+      receivedAt: state.receivedAt,
+      onlineStatus: state.onlineStatus,
     })),
   );
 
@@ -74,8 +106,12 @@ export function OverviewLiveMapCard({
     loading: liveTelemetry.loading,
     error: liveTelemetry.error,
     isLiveTracking: liveTelemetry.isLiveTracking,
-    isFresh: liveTelemetry.isFresh,
     gpsSource: liveTelemetry.gpsSource,
+    measuredAt: liveTelemetry.measuredAt,
+    lastSignal: liveTelemetry.lastSignal,
+    signalAgeMs: liveTelemetry.signalAgeMs,
+    receivedAt: liveTelemetry.receivedAt,
+    onlineStatus: liveTelemetry.onlineStatus,
   });
 
   const hudSnapshot = positionView.isBoundToCurrentVehicle ? liveTelemetry.snapshot : null;
@@ -92,26 +128,33 @@ export function OverviewLiveMapCard({
         ? 'text-[color:var(--status-watch)]'
         : 'text-muted-foreground';
 
-  const fuelOrEnergy = Math.round(
-    selectedVehicle?.isElectric
-      ? (hudSnapshot?.battery ?? selectedVehicle?.battery ?? 0)
-      : (hudSnapshot?.fuel ?? selectedVehicle?.fuel ?? 0),
+  const fuelOrEnergy = formatTelemetryPercentValue(
+    resolveEnergyPercentForDisplay({
+      isElectric: selectedVehicle?.isElectric === true,
+      fuelPercent: resolveTelemetryScalarForDisplay(
+        hudSnapshot?.fuel,
+        selectedVehicle?.fuelPercent,
+        selectedVehicle?.fuel,
+      ),
+      evSocPercent: resolveTelemetryScalarForDisplay(
+        hudSnapshot?.battery,
+        selectedVehicle?.evSoc,
+        selectedVehicle?.battery,
+      ),
+    }),
   );
 
-  const odometerRaw = selectedVehicle
-    ? (hudSnapshot?.odometer ?? selectedVehicle.odometer)
-    : null;
-  const odometerValue =
-    odometerRaw != null
-      ? Math.round(odometerRaw).toLocaleString('de-DE', {
-          maximumFractionDigits: 0,
-          minimumFractionDigits: 0,
-        })
-      : '—';
+  const odometerValue = formatTelemetryInteger(
+    resolveTelemetryScalarForDisplay(
+      hudSnapshot?.odometer,
+      selectedVehicle?.odometerKm,
+      selectedVehicle?.odometer,
+    ),
+  );
   const odometerCompact = odometerValue.length > 6;
 
   return (
-    <div className="surface-premium rounded-xl p-3">
+    <div className="surface-premium rounded-xl p-3" ref={mapSurfaceRef}>
       <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300 synq-map-hud-surface">
         <LiveMapOverview
           key={vehicleId ?? 'no-vehicle'}
@@ -122,7 +165,7 @@ export function OverviewLiveMapCard({
           speedKmh={positionView.isBoundToCurrentVehicle ? liveTelemetry.speedKmh : null}
           licensePlate={selectedVehicle?.license ?? ''}
           waitingForPosition={positionView.showEmptyState}
-          isLiveTracking={positionView.isBoundToCurrentVehicle && liveTelemetry.isLiveTracking}
+          isLiveTracking={positionView.positionClass === 'live'}
           isDarkMode={isDarkMode}
           operatorHint={positionView.operatorHint}
           operatorHintSub={positionView.operatorHintSub}
@@ -183,7 +226,9 @@ export function OverviewLiveMapCard({
                 </span>
                 <span className="liquid-glass-lens__tile-value-row">
                   <span className="liquid-glass-lens__tile-value">{fuelOrEnergy}</span>
-                  <span className="liquid-glass-lens__tile-unit">%</span>
+                  {fuelOrEnergy !== '—' ? (
+                    <span className="liquid-glass-lens__tile-unit">%</span>
+                  ) : null}
                 </span>
               </div>
             </LiquidGlassLens>
@@ -208,7 +253,9 @@ export function OverviewLiveMapCard({
                   >
                     {odometerValue}
                   </span>
-                  <span className="liquid-glass-lens__tile-unit">km</span>
+                  {odometerValue !== '—' ? (
+                    <span className="liquid-glass-lens__tile-unit">km</span>
+                  ) : null}
                 </span>
               </div>
             </LiquidGlassLens>

@@ -3,6 +3,7 @@ export type FleetOperationalStatusToken =
   | 'RESERVED'
   | 'ACTIVE_RENTED'
   | 'MAINTENANCE'
+  | 'BLOCKED'
   | 'UNKNOWN';
 
 export type FleetDataQualityState = 'RELIABLE' | 'DEGRADED' | 'UNAVAILABLE';
@@ -22,6 +23,7 @@ const DISPLAY_TO_TOKEN: Record<string, FleetOperationalStatusToken> = {
   Reserved: 'RESERVED',
   'Active Rented': 'ACTIVE_RENTED',
   Maintenance: 'MAINTENANCE',
+  Blocked: 'BLOCKED',
   Unknown: 'UNKNOWN',
 };
 

@@ -8836,6 +8836,9 @@ export interface FleetMapVehicleResponse {
   latitude: number | null;
   longitude: number | null;
   lastSeenAt: string | null;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  cachedAt?: string | null;
   signalAgeMs: number;
   isFresh: boolean;
   onlineStatus: string;
@@ -8914,10 +8917,9 @@ export type WebhookConfigurationState =
 export interface DeviceConnectionTriggerStateView {
   state: WebhookConfigurationState;
   reasonCode: string | null;
-  triggerId: string | null;
   eventType: 'OBD_DEVICE_UNPLUGGED' | 'OBD_DEVICE_PLUGGED_IN' | null;
   active: boolean | null;
-  callbackUrl: string | null;
+  callbackConfigured?: boolean;
   failureCount: number | null;
 }
 
