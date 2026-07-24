@@ -10,6 +10,7 @@ import {
   getTelemetryFetchCount,
   openAllVehicleDetailTabs,
   openCleaningDropdown,
+  selectCleaningStatus,
   openVehicleBySearch,
   openVehicleDetailRental,
   openVehicleFromFleet,
@@ -79,10 +80,9 @@ test.describe('Vehicle Detail — flows (mocked API)', () => {
   test('7 — cleaning status mutation succeeds', async ({ page }) => {
     await openVehicleDetailRental(page);
     await openVehicleFromFleet(page, 'VD-LIVE');
-    await openCleaningDropdown(page);
-    await page.getByRole('button', { name: 'Needs Cleaning', exact: true }).click();
+    await selectCleaningStatus(page, 'Needs Cleaning');
     await confirmCleaningNeedsCleaning(page);
-    await expect(page.getByRole('button', { name: 'Needs Cleaning', exact: true }).first()).toBeVisible({
+    await expect(page.getByTestId('vehicle-detail-cleaning-trigger')).toContainText('Needs Cleaning', {
       timeout: 15_000,
     });
   });
@@ -90,8 +90,7 @@ test.describe('Vehicle Detail — flows (mocked API)', () => {
   test('8 — cleaning status mutation surfaces API error', async ({ page }) => {
     await openVehicleDetailRental(page, { profile: 'status-patch-fail' });
     await openVehicleFromFleet(page, 'VD-LIVE');
-    await openCleaningDropdown(page);
-    await page.getByRole('button', { name: 'Needs Cleaning', exact: true }).click();
+    await selectCleaningStatus(page, 'Needs Cleaning');
     await confirmCleaningNeedsCleaning(page);
     await expect(
       page.getByText(/Reinigungsstatus konnte nicht gespeichert werden|Missing permission: fleet\.write/i).first(),
@@ -103,14 +102,10 @@ test.describe('Vehicle Detail — flows (mocked API)', () => {
   test('9 — cleaning status can be set back to Clean', async ({ page }) => {
     await openVehicleDetailRental(page);
     await openVehicleFromFleet(page, 'VD-LIVE');
-    await openCleaningDropdown(page);
-    await page.getByRole('button', { name: 'Needs Cleaning', exact: true }).click();
+    await selectCleaningStatus(page, 'Needs Cleaning');
     await confirmCleaningNeedsCleaning(page);
-    await page.getByRole('button', { name: 'Needs Cleaning', exact: true }).first().click();
-    const cleanOption = page.locator('.sq-overlay').getByRole('button', { name: 'Clean', exact: true });
-    await expect(cleanOption).toBeVisible({ timeout: 10_000 });
-    await cleanOption.click({ force: true });
-    await expect(page.getByRole('button', { name: 'Clean', exact: true }).first()).toBeVisible({
+    await selectCleaningStatus(page, 'Clean');
+    await expect(page.getByTestId('vehicle-detail-cleaning-trigger')).toContainText('Clean', {
       timeout: 15_000,
     });
   });
@@ -118,8 +113,7 @@ test.describe('Vehicle Detail — flows (mocked API)', () => {
   test('10 — read-only role blocks cleaning PATCH', async ({ page }) => {
     await openVehicleDetailRental(page, { profile: 'read-only' });
     await openVehicleFromFleet(page, 'VD-LIVE');
-    await openCleaningDropdown(page);
-    await page.getByRole('button', { name: 'Needs Cleaning', exact: true }).click();
+    await selectCleaningStatus(page, 'Needs Cleaning');
     await confirmCleaningNeedsCleaning(page);
     await expect(
       page.getByText(/Reinigungsstatus konnte nicht gespeichert werden|Missing permission: fleet\.write/i).first(),

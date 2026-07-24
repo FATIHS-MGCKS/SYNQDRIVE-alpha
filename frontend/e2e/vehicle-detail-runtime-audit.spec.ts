@@ -87,7 +87,7 @@ test.describe.serial('Vehicle Detail — runtime audit measurements', () => {
       description: JSON.stringify({ telDelta, gpsDelta, note: 'foreground detail while bg dashboard' }),
     });
     await page.bringToFront();
-    await expect(page.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toBeVisible();
     await bg.close();
     expect(telDelta).toBeLessThanOrEqual(1);
     expect(gpsDelta).toBeGreaterThanOrEqual(1);

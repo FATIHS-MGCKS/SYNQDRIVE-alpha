@@ -909,7 +909,7 @@ export async function openVehicleFromFleet(page: Page, plate: string) {
   await expect(row.first()).toBeVisible({ timeout: 20_000 });
   await row.first().getByRole('button', { name: 'Open vehicle details' }).click();
   await expect(page.getByRole('heading', { name: /VW Golf/ })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toBeVisible();
 }
 
 export async function openVehicleBySearch(page: Page, query: string) {
@@ -923,7 +923,7 @@ export async function openVehicleBySearch(page: Page, query: string) {
 }
 
 export function vehicleDetailTab(page: Page, label: string) {
-  return page.getByRole('button', { name: label, exact: true });
+  return page.getByRole('tab', { name: label, exact: true });
 }
 
 export async function openAllVehicleDetailTabs(page: Page) {
@@ -1010,7 +1010,12 @@ export function visibleLiveBadge(page: Page) {
 }
 
 export async function openCleaningDropdown(page: Page, currentStatus: 'Clean' | 'Needs Cleaning' = 'Clean') {
-  await page.getByRole('button', { name: currentStatus, exact: true }).first().click();
+  await page.getByTestId('vehicle-detail-cleaning-trigger').click();
+}
+
+export async function selectCleaningStatus(page: Page, status: 'Clean' | 'Needs Cleaning') {
+  await openCleaningDropdown(page);
+  await page.getByRole('menuitem', { name: status, exact: true }).click();
 }
 
 export async function confirmCleaningNeedsCleaning(page: Page) {
