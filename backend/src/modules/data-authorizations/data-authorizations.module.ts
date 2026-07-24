@@ -3,7 +3,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { RedisModule } from '@shared/redis/redis.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { DataAuthorizationsController } from './data-authorizations.controller';
+import { DataProcessingHubMetricsController } from './data-processing-hub-metrics.controller';
 import { DataAuthorizationsService } from './data-authorizations.service';
+import { DataProcessingHubMetricsService } from './data-processing-hub-metrics.service';
 import { DataAuthorizationEnforcementService } from './data-authorization-enforcement.service';
 import { EnforcementPolicyScopeController } from './privacy-domain/enforcement-policy-scope/enforcement-policy-scope.controller';
 import { EnforcementPolicyScopeService } from './privacy-domain/enforcement-policy-scope/enforcement-policy-scope.service';
@@ -137,6 +139,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
   ],
   controllers: [
     DataAuthorizationsController,
+    DataProcessingHubMetricsController,
     LegalBasisAssessmentController,
     DataSubjectConsentController,
     ProviderAccessGrantController,
@@ -156,6 +159,7 @@ import { REVOCATION_QUEUE_CATALOG } from './revocation-queue-control/revocation-
   ],
   providers: [
     DataAuthorizationsService,
+    DataProcessingHubMetricsService,
     DataAuthorizationEnforcementService,
     LegalBasisAssessmentService,
     DataSubjectConsentService,

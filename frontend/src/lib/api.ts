@@ -4745,15 +4745,44 @@ export const api = {
     },
   },
   dataAuthorizations: {
-    list: (orgId: string, params?: { status?: string; moduleOrigin?: string; scope?: string; sourceType?: string; q?: string }) => {
+    list: (
+      orgId: string,
+      params?: {
+        status?: string;
+        moduleOrigin?: string;
+        scope?: string;
+        sourceType?: string;
+        q?: string;
+        riskLevel?: string;
+        dataCategory?: string;
+        expiringSoon?: boolean;
+        revokedOrExpired?: boolean;
+        revocationInProgress?: boolean;
+        cursor?: string;
+        limit?: number;
+        sort?: 'createdAt' | 'title' | 'expiresAt';
+        dir?: 'asc' | 'desc';
+      },
+    ) => {
       const q = new URLSearchParams();
       if (params?.status) q.set('status', params.status);
       if (params?.moduleOrigin) q.set('moduleOrigin', params.moduleOrigin);
       if (params?.scope) q.set('scope', params.scope);
       if (params?.sourceType) q.set('sourceType', params.sourceType);
       if (params?.q) q.set('q', params.q);
+      if (params?.riskLevel) q.set('riskLevel', params.riskLevel);
+      if (params?.dataCategory) q.set('dataCategory', params.dataCategory);
+      if (params?.expiringSoon) q.set('expiringSoon', 'true');
+      if (params?.revokedOrExpired) q.set('revokedOrExpired', 'true');
+      if (params?.revocationInProgress) q.set('revocationInProgress', 'true');
+      if (params?.cursor) q.set('cursor', params.cursor);
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.sort) q.set('sort', params.sort);
+      if (params?.dir) q.set('dir', params.dir);
       const qs = q.toString();
-      return get<DataAuthorizationDto[]>(`/organizations/${orgId}/data-authorizations${qs ? `?${qs}` : ''}`);
+      return get<DataAuthorizationListResponse>(
+        `/organizations/${orgId}/data-authorizations${qs ? `?${qs}` : ''}`,
+      );
     },
     stats: (orgId: string) => get<DataAuthorizationStatsDto>(`/organizations/${orgId}/data-authorizations/stats`),
     get: (orgId: string, id: string) => get<DataAuthorizationDto>(`/organizations/${orgId}/data-authorizations/${id}`),
@@ -4768,12 +4797,25 @@ export const api = {
     /** Alias for syncSystem */
     syncSystemAuthorizations: (orgId: string) =>
       post<DataAuthorizationDto[]>(`/organizations/${orgId}/data-authorizations/sync-system-authorizations`, {}),
-    auditLog: (orgId: string, limit?: number) => {
-      const q = limit ? `?limit=${limit}` : '';
-      return get<DataAuthorizationAuditEntry[]>(`/organizations/${orgId}/data-authorizations/audit-log${q}`);
+    auditLog: (
+      orgId: string,
+      params?: { limit?: number; entityId?: string; cursor?: string },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.entityId) q.set('entityId', params.entityId);
+      if (params?.cursor) q.set('cursor', params.cursor);
+      const qs = q.toString();
+      return get<DataAuthorizationAuditPage>(
+        `/organizations/${orgId}/data-authorizations/audit-log${qs ? `?${qs}` : ''}`,
+      );
     },
   },
   dataProcessing: {
+    hubMetrics: (orgId: string) =>
+      get<DataProcessingHubMetricsDto>(
+        `/organizations/${orgId}/data-authorizations/hub-metrics`,
+      ),
     register: {
       list: (
         orgId: string,
@@ -4781,16 +4823,24 @@ export const api = {
           q?: string;
           status?: string;
           completeness?: string;
+          kpiFilter?: string;
+          hasBlockingGaps?: boolean;
           limit?: number;
           cursor?: string;
+          sort?: string;
+          dir?: 'asc' | 'desc';
         },
       ) => {
         const q = new URLSearchParams();
         if (params?.q) q.set('q', params.q);
         if (params?.status) q.set('status', params.status);
         if (params?.completeness) q.set('completeness', params.completeness);
+        if (params?.kpiFilter) q.set('kpiFilter', params.kpiFilter);
+        if (params?.hasBlockingGaps) q.set('hasBlockingGaps', 'true');
         if (params?.limit) q.set('limit', String(params.limit));
         if (params?.cursor) q.set('cursor', params.cursor);
+        if (params?.sort) q.set('sort', params.sort);
+        if (params?.dir) q.set('dir', params.dir);
         const qs = q.toString();
         return get<ProcessingActivityRegisterListResponse>(
           `/organizations/${orgId}/data-authorizations/processing-activity-register${qs ? `?${qs}` : ''}`,
@@ -9529,6 +9579,26 @@ export interface DataAuthorizationStatsDto {
   expiringSoon: number;
 }
 
+export interface DataAuthorizationListResponse {
+  data: DataAuthorizationDto[];
+  meta: { limit: number; nextCursor: string | null };
+}
+
+export interface DataAuthorizationAuditPage {
+  items: DataAuthorizationAuditEntry[];
+  meta: { limit: number; nextCursor: string | null };
+}
+
+export interface DataProcessingHubMetricsDto {
+  activeProcessingActivities: number;
+  blockingControlGaps: number;
+  reviewsDue: number;
+  revocationsInProgress: number;
+  enforcementErrors: number;
+  dpiaOverdue: number;
+  legacy: DataAuthorizationStatsDto;
+}
+
 export interface CreateDataAuthorizationPayload {
   title: string;
   moduleOrigin: string;
@@ -9570,6 +9640,7 @@ export interface ProcessingActivityRegisterListItem {
   isCurrentVersion: boolean;
   dpiaStatus: string;
   hasBlockingGaps: boolean;
+  dataCategories: string[];
   completeness: {
     status: string;
     blockingGaps: string[];

@@ -87,6 +87,64 @@ export function buildDataProcessingReadinessSummary(input: {
   };
 }
 
+export function buildDataProcessingReadinessFromMetrics(input: {
+  metrics: {
+    activeProcessingActivities: number;
+    blockingControlGaps: number;
+    enforcementErrors: number;
+    dpiaOverdue: number;
+  } | null;
+  coverage: EnforcementCoverageSummaryDto | null;
+  partners: DataProcessingAgreementListItem[];
+}): DataProcessingReadinessSummary {
+  const coverageTotal = input.coverage?.totalFlows ?? 0;
+  const coverageGaps =
+    (input.coverage?.notImplementedCount ?? 0) + (input.coverage?.enforcementErrorCount ?? 0);
+  const partnersTotal = input.partners.length;
+  const partnerGaps = input.partners.filter(
+    (p) => p.transferAssessmentStatus === 'NOT_ASSESSED' || p.status !== 'ACTIVE',
+  ).length;
+
+  const activitiesTotal = input.metrics?.activeProcessingActivities ?? 0;
+  const activitiesWithGaps = input.metrics?.blockingControlGaps ?? 0;
+  const noData = activitiesTotal === 0 && partnersTotal === 0;
+  const hasActivityGaps = activitiesWithGaps > 0 || (input.metrics?.dpiaOverdue ?? 0) > 0;
+  const hasCoverageGaps = coverageGaps > 0 || (input.metrics?.enforcementErrors ?? 0) > 0;
+  const hasPartnerGaps = partnerGaps > 0 && partnersTotal > 0;
+
+  let overallTone: StatusTone = 'success';
+  let overallKey: DataProcessingOverallReadinessKey = 'traceable';
+  let overallDetailParams: DataProcessingReadinessSummary['overallDetailParams'];
+
+  if (noData) {
+    overallTone = 'neutral';
+    overallKey = 'noData';
+  } else if (hasActivityGaps || hasCoverageGaps) {
+    overallTone = 'critical';
+    overallKey = 'blockingGaps';
+    overallDetailParams = {
+      activitiesWithGaps: hasActivityGaps ? activitiesWithGaps : undefined,
+      coverageGaps: hasCoverageGaps ? coverageGaps + (input.metrics?.enforcementErrors ?? 0) : undefined,
+    };
+  } else if (hasPartnerGaps) {
+    overallTone = 'watch';
+    overallKey = 'partnerReview';
+  }
+
+  return {
+    overallTone,
+    overallKey,
+    overallDetailParams,
+    activitiesWithGaps,
+    activitiesTotal,
+    coverageGaps,
+    coverageTotal,
+    partnerGaps,
+    partnersTotal,
+    blockingGapLabels: [],
+  };
+}
+
 export function formatDataProcessingOverallDetail(
   summary: Pick<DataProcessingReadinessSummary, 'overallKey' | 'overallDetailParams'>,
   t: (key: string, vars?: Record<string, string | number>) => string,

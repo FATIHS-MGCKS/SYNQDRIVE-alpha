@@ -5,6 +5,7 @@ import {
 import {
   Prisma,
   PrivacyPolicyLifecycleStatus,
+  ProcessingActivityDpiaStatus,
   ProcessingActivityRegisterAuditAction,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -33,6 +34,7 @@ import type {
   UpdateProcessingActivityRegisterDto,
 } from './dto/processing-activity-register.dto';
 import { computeProcessingActivityFingerprint } from '../privacy-domain/review-workflow/review-workflow.fingerprint';
+import { REVOCATION_IN_PROGRESS_STATUSES } from '../revocation-orchestrator/revocation-in-progress.constants';
 
 @Injectable()
 export class ProcessingActivityRegisterService {
@@ -56,6 +58,28 @@ export class ProcessingActivityRegisterService {
     const where: Prisma.ProcessingActivityWhereInput = {
       organizationId: orgId,
       ...(query.status ? { status: query.status } : {}),
+      ...(query.kpiFilter === 'active' ? { status: PrivacyPolicyLifecycleStatus.ACTIVE } : {}),
+      ...(query.kpiFilter === 'review_due'
+        ? {
+            nextReviewDate: { lte: new Date() },
+            status: {
+              notIn: [
+                PrivacyPolicyLifecycleStatus.REVOKED,
+                PrivacyPolicyLifecycleStatus.REJECTED,
+              ],
+            },
+          }
+        : {}),
+      ...(query.kpiFilter === 'dpia_overdue'
+        ? {
+            dpiaStatus: {
+              in: [
+                ProcessingActivityDpiaStatus.DPIA_REQUIRED,
+                ProcessingActivityDpiaStatus.DPIA_REVIEW_DUE,
+              ],
+            },
+          }
+        : {}),
       ...(query.currentVersionOnly !== false ? { isCurrentVersion: true } : {}),
       ...(query.q?.trim()
         ? {
@@ -67,6 +91,25 @@ export class ProcessingActivityRegisterService {
         : {}),
       ...(query.cursor ? buildRegisterCursorWhere(decodeRegisterListCursor(query.cursor)) : {}),
     };
+
+    if (query.kpiFilter === 'revocations_in_progress') {
+      const workflows = await this.prisma.dataAuthorizationRevocationWorkflow.findMany({
+        where: {
+          organizationId: orgId,
+          status: { in: REVOCATION_IN_PROGRESS_STATUSES },
+          processingActivityId: { not: null },
+        },
+        select: { processingActivityId: true },
+      });
+      const activityIds = [
+        ...new Set(
+          workflows
+            .map((w) => w.processingActivityId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      where.id = { in: activityIds.length > 0 ? activityIds : ['__no_match__'] };
+    }
 
     const rows = await this.prisma.processingActivity.findMany({
       where,
@@ -80,6 +123,103 @@ export class ProcessingActivityRegisterService {
       enforcedFlows: coverage.enforcedCount,
       totalFlows: coverage.totalFlows,
     };
+
+    const needsPostFilter =
+      query.completeness != null ||
+      query.hasBlockingGaps === true ||
+      query.kpiFilter === 'blocking_gaps';
+
+    if (needsPostFilter) {
+      const batchSize = Math.max(limit * 3, 50);
+      const collected: ReturnType<typeof mapRegisterListItem>[] = [];
+      let scanCursor = query.cursor;
+      let nextCursor: string | null = null;
+
+      for (let attempt = 0; attempt < 8 && collected.length < limit; attempt++) {
+        const batchWhere: Prisma.ProcessingActivityWhereInput = {
+          ...where,
+          ...(scanCursor ? buildRegisterCursorWhere(decodeRegisterListCursor(scanCursor)) : {}),
+        };
+        const batchRows = await this.prisma.processingActivity.findMany({
+          where: batchWhere,
+          include: REGISTER_ACTIVITY_INCLUDE,
+          orderBy: buildRegisterListOrderBy(sort, dir),
+          take: batchSize + 1,
+        });
+
+        if (batchRows.length === 0) break;
+
+        let pageRows = batchRows;
+        if (batchRows.length > batchSize) {
+          pageRows = batchRows.slice(0, batchSize);
+          const last = pageRows[pageRows.length - 1]!;
+          scanCursor = encodeRegisterListCursor({
+            v: 1,
+            id: last.id,
+            sort,
+            dir,
+            title: last.title,
+            updatedAt: last.updatedAt.toISOString(),
+            nextReviewDate: last.nextReviewDate?.toISOString() ?? null,
+            status: last.status,
+          });
+        } else {
+          scanCursor = undefined;
+        }
+
+        const mappedBatch = pageRows.map((r) =>
+          mapRegisterListItem(r, this.completeness, coverageSummary),
+        );
+
+        for (const item of mappedBatch) {
+          if (query.completeness != null && item.completeness.status !== query.completeness) {
+            continue;
+          }
+          if ((query.hasBlockingGaps || query.kpiFilter === 'blocking_gaps') && !item.hasBlockingGaps) {
+            continue;
+          }
+          collected.push(item);
+          if (collected.length >= limit) break;
+        }
+
+        if (!scanCursor) break;
+      }
+
+      if (collected.length > limit) {
+        collected.length = limit;
+      }
+
+      if (scanCursor && collected.length === limit) {
+        const last = collected[collected.length - 1]!;
+        nextCursor = encodeRegisterListCursor({
+          v: 1,
+          id: last.id,
+          sort,
+          dir,
+          title: last.title,
+          updatedAt:
+            typeof last.updatedAt === 'string'
+              ? last.updatedAt
+              : new Date(last.updatedAt).toISOString(),
+          nextReviewDate:
+            last.nextReviewDate == null
+              ? null
+              : typeof last.nextReviewDate === 'string'
+                ? last.nextReviewDate
+                : new Date(last.nextReviewDate).toISOString(),
+          status: last.status,
+        });
+      }
+
+      await this.audit.record({
+        organizationId: orgId,
+        action: ProcessingActivityRegisterAuditAction.VIEW_LIST,
+        actorUserId,
+        metadata: { count: collected.length, filters: query },
+      });
+
+      return { data: collected, meta: { limit, nextCursor } };
+    }
 
     let page = rows;
     let nextCursor: string | null = null;
@@ -99,19 +239,15 @@ export class ProcessingActivityRegisterService {
     }
 
     const mapped = page.map((r) => mapRegisterListItem(r, this.completeness, coverageSummary));
-    const filtered =
-      query.completeness != null
-        ? mapped.filter((m) => m.completeness.status === query.completeness)
-        : mapped;
 
     await this.audit.record({
       organizationId: orgId,
       action: ProcessingActivityRegisterAuditAction.VIEW_LIST,
       actorUserId,
-      metadata: { count: filtered.length, filters: query },
+      metadata: { count: mapped.length, filters: query },
     });
 
-    return { data: filtered, meta: { limit, nextCursor } };
+    return { data: mapped, meta: { limit, nextCursor } };
   }
 
   async getById(orgId: string, id: string, actorUserId?: string) {

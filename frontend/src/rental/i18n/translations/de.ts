@@ -556,6 +556,37 @@ export const de: Record<TranslationKey, string> = {
   'dataProcessing.audit.empty.title': 'Keine Audit-Einträge',
   'dataProcessing.audit.empty.description': 'Runtime-Entscheidungen erscheinen nach ersten Enforcement-Events.',
 
+  'dataProcessing.kpi.active_activities': 'Aktive Verarbeitungstätigkeiten',
+  'dataProcessing.kpi.blocking_gaps': 'Blockierende Kontrolllücken',
+  'dataProcessing.kpi.reviews_due': 'Reviews fällig',
+  'dataProcessing.kpi.revocations_in_progress': 'Widerrufe in Bearbeitung',
+  'dataProcessing.kpi.enforcement_errors': 'Enforcement-Fehler',
+  'dataProcessing.kpi.dpia_overdue': 'DPIA überfällig',
+  'dataProcessing.kpi.legacy_active': 'Aktive Freigaben',
+  'dataProcessing.kpi.legacy_pending': 'Ausstehende Freigaben',
+  'dataProcessing.kpi.legacy_expiring_soon': 'Läuft bald ab',
+  'dataProcessing.kpi.legacy_revoked_expired': 'Widerrufen / abgelaufen',
+  'dataProcessing.kpi.legacy_high_risk': 'Hohes Risiko',
+
+  'dataProcessing.filters.search': 'Suche',
+  'dataProcessing.filters.searchPlaceholder': 'Nach Titel oder Code suchen…',
+  'dataProcessing.filters.active': 'Aktive Filter',
+  'dataProcessing.filters.clear': 'Filter zurücksetzen',
+
+  'dataProcessing.pagination.loadMore': 'Mehr laden',
+
+  'dataProcessing.savedViews.save': 'Ansicht speichern',
+  'dataProcessing.savedViews.delete': 'Gespeicherte Ansicht löschen',
+  'dataProcessing.savedViews.namePlaceholder': 'Filteransicht benennen…',
+
+  'dataProcessing.activities.col.categories': 'Datenkategorien',
+  'dataProcessing.providers.col.categories': 'Datenkategorien',
+  'dataProcessing.consents.col.categories': 'Datenkategorien',
+
+  'dataProcessing.enforcement.empty.errors.title': 'Keine Enforcement-Fehler',
+  'dataProcessing.enforcement.empty.errors.description':
+    'Alle überwachten Flows laufen in der aktuellen Ansicht ohne Enforcement-Fehler.',
+
   'dataProcessing.detail.loading': 'Details werden geladen…',
   'dataProcessing.detail.notEditable': 'Aktive Datensätze können nicht direkt bearbeitet werden. Legen Sie stattdessen eine neue Version an.',
   'dataProcessing.detail.historicalVersion': 'Historische Version (nur Lesen)',

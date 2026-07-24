@@ -10,6 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import {
   DataSubjectType,
   PrivacyPolicyLifecycleStatus,
@@ -55,6 +56,19 @@ export class ListProcessingActivityRegisterQueryDto {
 
   @IsOptional()
   currentVersionOnly?: boolean;
+
+  @IsOptional()
+  @IsIn(['active', 'blocking_gaps', 'review_due', 'dpia_overdue', 'revocations_in_progress'])
+  kpiFilter?:
+    | 'active'
+    | 'blocking_gaps'
+    | 'review_due'
+    | 'dpia_overdue'
+    | 'revocations_in_progress';
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  hasBlockingGaps?: boolean;
 }
 
 export class CreateProcessingActivityRegisterDto {

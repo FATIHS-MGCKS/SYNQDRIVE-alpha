@@ -56,9 +56,15 @@ export class DataAuthorizationsController {
   async auditLog(
     @Param('orgId') orgId: string,
     @Query('limit') limit?: string,
+    @Query('entityId') entityId?: string,
+    @Query('cursor') cursor?: string,
   ) {
     const parsed = limit ? parseInt(limit, 10) : 50;
-    return this.service.getAuditLog(orgId, Number.isFinite(parsed) ? parsed : 50);
+    return this.service.getAuditLog(orgId, {
+      limit: Number.isFinite(parsed) ? parsed : 50,
+      entityId,
+      cursor,
+    });
   }
 
   @Post('sync-system-authorizations')

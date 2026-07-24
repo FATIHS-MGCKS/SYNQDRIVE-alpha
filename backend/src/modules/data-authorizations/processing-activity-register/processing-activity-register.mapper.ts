@@ -101,6 +101,7 @@ export function mapRegisterListItem(
     deletionStatus: record.deletionStatus,
     completeness,
     hasBlockingGaps: completeness.blockingGaps.length > 0,
+    dataCategories: record.dataCategories.map((c) => c.dataCategory),
     updatedAt: record.updatedAt,
     runtimeCoverage: runtimeCoverageSummary ?? null,
   };

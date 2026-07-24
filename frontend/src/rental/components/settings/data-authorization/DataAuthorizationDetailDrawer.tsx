@@ -2,7 +2,8 @@ import { AlertTriangle, Loader2, ShieldOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DetailDrawer, StatusChip, Timeline, type TimelineItem } from '../../../../components/patterns';
 import { SupportContextButton } from '../../../../components/support/SupportContextButton';
-import { api, type DataAuthorizationAuditEntry, type DataAuthorizationDto } from '../../../../lib/api';
+import { api, type DataAuthorizationDto } from '../../../../lib/api';
+import { resolveAuthorizationScopeEntities } from '../../../lib/resolve-authorization-scope-entities';
 import {
   DIMO_REVOKE_IMPACT,
   isDimoTelemetryAuth,
@@ -17,10 +18,14 @@ import { affectedObjectsSummary, formatAuthDate, labelScopeStatus } from './data
 
 interface VehicleRow {
   id: string;
-  make?: string;
-  model?: string;
-  licensePlate?: string | null;
-  vin?: string;
+  label: string;
+  sublabel?: string;
+}
+
+interface ScopeEntityRow {
+  id: string;
+  label: string;
+  sublabel?: string;
 }
 
 function DetailSection({
@@ -71,12 +76,16 @@ export function DataAuthorizationDetailDrawer({
   onRevoke,
 }: DataAuthorizationDetailDrawerProps) {
   const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
+  const [customers, setCustomers] = useState<ScopeEntityRow[]>([]);
+  const [bookings, setBookings] = useState<ScopeEntityRow[]>([]);
   const [showAllVehicles, setShowAllVehicles] = useState(false);
-  const [audit, setAudit] = useState<DataAuthorizationAuditEntry[]>([]);
+  const [audit, setAudit] = useState<Array<{ id: string; description: string; createdAt: string; changeSummary?: string | null; action: string }>>([]);
 
   useEffect(() => {
     if (!open || !auth) {
       setVehicles([]);
+      setCustomers([]);
+      setBookings([]);
       setAudit([]);
       setShowAllVehicles(false);
       return;
@@ -84,25 +93,28 @@ export function DataAuthorizationDetailDrawer({
 
     void (async () => {
       try {
-        const logs = await api.dataAuthorizations.auditLog(orgId, 40);
-        setAudit(logs.filter((l) => l.entityId === auth.id));
+        const page = await api.dataAuthorizations.auditLog(orgId, {
+          entityId: auth.id,
+          limit: 50,
+        });
+        setAudit(page.items ?? []);
       } catch {
         setAudit([]);
       }
 
-      const ids = auth.vehicleIds ?? [];
-      if (ids.length === 0) {
-        setVehicles([]);
-        return;
-      }
-
       try {
-        const res = await api.vehicles.listByOrg(orgId, { limit: 500 });
-        const all = (res.data ?? res) as VehicleRow[];
-        const map = new Map(all.map((v) => [v.id, v]));
-        setVehicles(ids.map((id) => map.get(id) ?? { id }));
+        const resolved = await resolveAuthorizationScopeEntities(orgId, {
+          vehicleIds: auth.vehicleIds ?? [],
+          customerIds: auth.customerIds ?? [],
+          bookingIds: auth.bookingIds ?? [],
+        });
+        setVehicles(resolved.vehicles);
+        setCustomers(resolved.customers);
+        setBookings(resolved.bookings);
       } catch {
-        setVehicles(ids.map((id) => ({ id })));
+        setVehicles((auth.vehicleIds ?? []).map((id) => ({ id, label: id.slice(0, 8) })));
+        setCustomers([]);
+        setBookings([]);
       }
     })();
   }, [open, auth, orgId]);
@@ -264,12 +276,10 @@ export function DataAuthorizationDetailDrawer({
                   key={v.id}
                   className="surface-premium rounded-lg border border-border/60 px-3 py-2 text-[12px]"
                 >
-                  <p className="font-semibold text-foreground">
-                    {v.make && v.model ? `${v.make} ${v.model}` : `Fahrzeug ${v.id.slice(0, 8)}`}
-                  </p>
-                  <p className="text-muted-foreground font-mono text-[11px] mt-0.5">
-                    {v.licensePlate ?? '—'} · {v.vin ?? v.id.slice(0, 8)}
-                  </p>
+                  <p className="font-semibold text-foreground">{v.label}</p>
+                  {v.sublabel ? (
+                    <p className="text-muted-foreground font-mono text-[11px] mt-0.5">{v.sublabel}</p>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -282,6 +292,31 @@ export function DataAuthorizationDetailDrawer({
                 Alle {vehicles.length} Fahrzeuge anzeigen
               </button>
             )}
+          </DetailSection>
+        )}
+
+        {customers.length > 0 && (
+          <DetailSection title="Betroffene Kunden">
+            <ul className="space-y-1.5">
+              {customers.map((c) => (
+                <li key={c.id} className="text-[12px] font-medium text-foreground">
+                  {c.label}
+                </li>
+              ))}
+            </ul>
+          </DetailSection>
+        )}
+
+        {bookings.length > 0 && (
+          <DetailSection title="Betroffene Buchungen">
+            <ul className="space-y-1.5">
+              {bookings.map((b) => (
+                <li key={b.id} className="text-[12px] font-medium text-foreground">
+                  {b.label}
+                  {b.sublabel ? <span className="text-muted-foreground ml-2">{b.sublabel}</span> : null}
+                </li>
+              ))}
+            </ul>
           </DetailSection>
         )}
 

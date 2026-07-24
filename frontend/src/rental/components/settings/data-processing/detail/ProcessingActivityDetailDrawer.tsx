@@ -13,6 +13,7 @@ import {
 import { useLanguage } from '../../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../../RentalContext';
 import { LIFECYCLE_STATUS_LABELS } from '../data-processing.constants';
+import { labelDataCategory } from '../../data-authorization/data-authorization.constants';
 import { LifecycleActionDialog } from './LifecycleActionDialog';
 import { DetailPanel, DetailRow, DetailSection, SecondaryId } from './shared/DetailPrimitives';
 import { FourEyesBanner } from './shared/FourEyesBanner';
@@ -237,7 +238,7 @@ export function ProcessingActivityDetailDrawer({
               <div className="flex flex-wrap gap-1.5">
                 {(detail.dataCategories ?? []).map((c) => (
                   <StatusChip key={c} tone="neutral">
-                    {c}
+                    {labelDataCategory(c)}
                   </StatusChip>
                 ))}
               </div>
