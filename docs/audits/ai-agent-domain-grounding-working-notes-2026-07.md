@@ -2,11 +2,11 @@
 
 | Feld | Wert |
 |------|------|
-| **Phase** | Prompt 1 von 32 — Vollständiger Ist-Audit (read-only) |
+| **Phase** | Prompt 1–2 von 32 — Ist-Audit Chat-Runtime + Telemetrie Source of Truth (read-only) |
 | **Datum** | 2026-07-24 (UTC) |
 | **Repository** | `https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **HEAD (Audit)** | `f5a5b4e3` — `fix(infra): Nginx HSTS/metrics hardening + CI typecheck drift (V4.9.809)` |
-| **Methode** | Statische Code-Analyse, Architektur-/Changelog-Querprüfung, gezielte Unit-Tests (`chat.service.spec.ts`, `iam-endpoint-enforcement-triage.security.spec.ts` — 14/14 PASS). **Keine produktiven Code-Änderungen.** |
+| **Methode** | Statische Code-Analyse, Architektur-/Changelog-Querprüfung, gezielte Unit-Tests (siehe Anhang B). **Keine produktiven Code-Änderungen.** |
 
 > **Scope:** Fleet AI Assistant (Text-Chat im Rental-SPA). Verwandte, aber **separate** Assistenten-Pfade (Voice MCP/ElevenLabs, WhatsApp AI, Document Extraction, Vehicle/Tire Specs, DTC Research) werden als Kontext und Abgrenzung dokumentiert — nicht als Ziel dieser Prompt-Reihe umgebaut.
 
@@ -457,6 +457,237 @@ Aus `frontend/src/master/components/ChangesView.tsx`:
 
 - **v4.9.143–146:** Migration Fleet Chat von DIMO Agents → Mistral `LlmGatewayService`
 - **v4.9.146:** Final DIMO Agents cleanup; `GET /api/v1/ai/health` ersetzt `GET /dimo/agents/health`
+
+---
+
+# Prompt 2 — Fahrzeug- & Telemetrie Source of Truth
+
+## 7. Telemetrie-Architektur (Schichtenmodell)
+
+```mermaid
+flowchart TB
+  subgraph Provider["DIMO (Provider of Record)"]
+    GQL["GraphQL Telemetry API<br/>signalsLatest · signals · segments"]
+    Identity["Identity API<br/>tokenId · VIN VC"]
+    Webhooks["Vehicle Triggers<br/>OBD plug/unplug"]
+  end
+
+  subgraph Ingest["Ingest (~30 s)"]
+    Sched["DimoSnapshotScheduler<br/>@Interval(30000)"]
+    Proc["DimoSnapshotProcessor<br/>normalizeSnapshot → upsert"]
+  end
+
+  subgraph PG["PostgreSQL — operative Wahrheit"]
+    V["Vehicle — Stammdaten"]
+    DV["DimoVehicle — Provider-Spiegel"]
+    VLS["VehicleLatestState — Latest Telemetry"]
+    Trip["Trip — Segment-Grenzen"]
+    Episodes["DeviceConnectionEpisodes"]
+  end
+
+  subgraph LiveAPI["On-Demand Live (kein DB-Write)"]
+    LiveGps["GET /vehicles/:id/live-gps<br/>fetchLastSeenLocation"]
+    TelOverlay["getVehicleWithTelemetry<br/>optional fetchLastSeenLocation"]
+  end
+
+  subgraph CH["ClickHouse — Analytics-Spiegel"]
+    SnapCH["telemetry_snapshots"]
+    HF["telemetry_hf_points/events"]
+    WP["telemetry_waypoints"]
+  end
+
+  subgraph Cache["Redis / Client"]
+    FMCache["fleet-map:{orgId}:v1 — 5 s TTL"]
+    Addr["addressService.ts — Mapbox in-memory"]
+  end
+
+  GQL --> Proc
+  Sched --> Proc
+  Proc --> VLS
+  Proc --> SnapCH
+  Identity --> DV
+  Webhooks --> Episodes
+  VLS --> FMCache
+  VLS --> LiveAPI
+  GQL --> LiveAPI
+  DV -.->|"lastSignal (sync only, kann laggen)"| VLS
+```
+
+### 7.1 Kanonische Schreib- und Lesepfade
+
+| Schicht | Mechanismus | Cadence | Persistenz | Primärer Consumer |
+|---------|-------------|---------|------------|-------------------|
+| **Snapshot-Poll** | `DimoSnapshotProcessor` → `DimoTelemetryService.fetchLatestVehicleSnapshot` | ~30 s (`DimoSnapshotScheduler`) | `VehicleLatestState` (+ optional CH `telemetry_snapshots`) | Fleet Map, Connectivity, Trip-FSM, Battery V2 |
+| **Live-GPS-Proxy** | `VehiclesService.getLiveGps` → `fetchLastSeenLocation` | Frontend 5 s bei Tracking | **Kein DB-Write** | `OverviewLiveMapCard`, `useLiveVehicleTelemetry` |
+| **Telemetry-Detail** | `GET /vehicles/:id/telemetry` → `getVehicleWithTelemetry` | Frontend ~30 s | Liest VLS; optional Live-GPS-Overlay | Vehicle Detail (alle Tabs) |
+| **Identity-Sync** | `DimoApiSyncService` → `fetchVehicleSummary` | Bei Pairing/Sync | `DimoVehicle.*` Spiegel | Master DIMO-Views, initiale Spiegelung |
+| **Segment-Historie** | `DimoSegmentsService` GraphQL `segments` | On-demand / Reconciliation | PostgreSQL `Trip` | Trip Detail, Route, Verhalten |
+| **Signal-Historie** | DIMO `signals(interval: …)` innerhalb Trip-Fenster | On-demand | DIMO API (+ CH HF wenn `HF_MIRROR_ENABLED`) | Trip Enrichment, Data Analyse, Battery |
+| **Fleet-Map-Bulk** | `GET /fleet-map` → `getFleetMapData` | Redis 5 s Cache | Liest VLS + `deriveFleetStatusContext` | `FleetHubView`, Dashboard |
+
+**Regel:** Für operative UI und Backend-Logik ist **`VehicleLatestState` (geschrieben durch `DimoSnapshotProcessor`) die kanonische Latest-Telemetrie**. ClickHouse ist ein fire-and-forget Analytics-Spiegel — nie für Live-UI. `getLiveGps` ist ein bewusster DIMO-Direktpfad für Sub-30s-Kartenanimation ohne Persistenz.
+
+### 7.2 Zentrale Methoden (verifizierte Namen)
+
+| Methode | Datei | Zweck |
+|---------|-------|-------|
+| `fetchLatestVehicleSnapshot` | `backend/src/modules/dimo/dimo-telemetry.service.ts` | Vollständiges `signalsLatest` (Snapshot-Poll) |
+| `fetchLastSeenLocation` | `backend/src/modules/dimo/dimo-telemetry.service.ts` | Leichtgewicht GPS + Speed (Live-Map) |
+| `fetchVehicleSummary` | `backend/src/modules/dimo/dimo-telemetry.service.ts` | Odometer, SOC, Fuel, Speed für Identity-Sync |
+| `normalizeSnapshot` | `backend/src/workers/processors/dimo-snapshot.processor.ts` | DIMO → `VehicleLatestState` Feld-Mapping |
+| `interpretVehicleState` | `backend/src/modules/vehicles/vehicle-state-interpreter.ts` | Display-State (MOVING/IDLE/PARKED), 3-State `onlineStatus` |
+| `classifyTelemetryFreshness` | `backend/src/modules/vehicles/vehicle-state-interpreter.ts` | 5-State Freshness (<15m / <24h / <48h) |
+| `resolveCanonicalTelemetryObservedAtMs` | `backend/src/modules/vehicles/telemetry-freshness.resolver.ts` | Timestamp-Priorität für Freshness |
+| `resolveTelemetryFreshness` | `backend/src/modules/vehicles/telemetry-freshness.resolver.ts` | Backend-kanonische Freshness-Auflösung |
+| `deriveFleetStatusContext` | `backend/src/modules/vehicles/vehicles.service.ts` | Fleet-Status, Odometer, Fuel/SOC, Booking-Kontext |
+| `resolveFuelPercent` / `resolveFuelPercentOrNull` | `backend/src/modules/vehicles/vehicles.service.ts` | Tankstand-Berechnung aus rel/abs Signalen |
+| `VehicleConnectivityRuntimeStateBuilder.build` | `backend/src/modules/vehicles/connectivity/domain/vehicle-connectivity-runtime-state.builder.ts` | Connectivity Runtime (inkl. `resolveTelemetryState`) |
+| `deriveTelemetryState` | `frontend/src/rental/components/dashboard/runtime/vehicleRuntimeStateBuilder.ts` | Dashboard 4-State (`live`/`standby`/`soft_offline`/`offline`/`unknown`) |
+| `resolveTelemetryFreshness` | `frontend/src/rental/lib/telemetryFreshness.ts` | Frontend-kanonische 5-State Freshness |
+| `normalizePlate` | `backend/src/modules/ai/chat/fleet-chat-context.util.ts` | AI-Chat Kennzeichen (kompakt, ohne Leerzeichen) |
+| `normalizeVehiclePlate` | `backend/src/modules/document-extraction/vehicle-candidate-matching.util.ts` | Document Intake (strip `[\s\-._/]+`) |
+
+---
+
+## 8. Source-of-Truth-Matrix
+
+Spalten: **Fachinformation** | **Primäre Quelle** | **Fallback** | **Berechnungslogik** | **Freshness-Regel** | **UI-Seiten** | **Backend-Services** | **AI verfügbar?** | **Inkonsistenzen**
+
+### 8.1 Identität & Stammdaten
+
+| Fachinformation | Primäre Quelle | Fallback | Berechnungslogik | Freshness | UI-Seiten | Backend-Services | AI? | Inkonsistenzen |
+|-----------------|----------------|----------|------------------|-----------|-----------|------------------|-----|----------------|
+| **Interne Fahrzeug-ID** | `Vehicle.id` (UUID) | — | Bei Registrierung vergeben | Statisch | Alle Vehicle-Views, Bookings, Tasks | `VehiclesService`, Prisma | Nur indirekt (nicht im Prompt) | — |
+| **Kennzeichen** | `Vehicle.licensePlate` | — | Manuell / Document Intake | Statisch bis Edit | Fleet Map, Detail-Header, Bookings, Invoices | `VehiclesService`, Document Extraction | ✅ Text im Fleet-Context | **3 Normalisierungen:** `normalizePlate` (AI, kompakt), `normalizeVehiclePlate` (Docs), Voice MCP `equals insensitive` (exakt) |
+| **VIN** | `Vehicle.vin` (Registrierung) | `DimoVehicle.vin` via `fetchVehicleVin` (Sync) | Operator-Eingabe gewinnt bei Register | Bei DIMO-Sync | Vehicle Detail, Settings, Document Intake | `DimoApiSyncService`, `VehiclesService` | ✅ Text im Fleet-Context | Mirror kann hinter `Vehicle.vin` liegen |
+| **Make / Model / Year** | `Vehicle.make/model/year` | `DimoVehicle.*` (Sync) | Registrierung + DIMO Mirror | Statisch / Sync | Fleet, Detail, Bookings | `VehiclesService`, `DimoVehicleSyncService` | ✅ Text im Fleet-Context | — |
+| **Fahrzeugname** | `Vehicle.vehicleName` | — | Manuell | Statisch | Fleet, Detail | `VehiclesService` | ✅ Text + Resolution-Hint | — |
+| **Kraftstofftyp** | `Vehicle.fuelType` (Enum) | `DimoVehicle.fuelType` / `powertrainType` | Registrierung | Statisch | Fleet, Detail, Fuel/EV UI | `VehiclesService` | ✅ `fuel={fuelType}` im Prompt | EV vs. Verbrenner steuert Fuel vs. SOC Anzeige |
+| **DIMO Token ID** | `DimoVehicle.tokenId` | `rawJson.syntheticDevice.tokenId` (Display) | Pairing / Identity Sync | Bei Sync | Master Fleet Connection (maskiert) | `DimoApiSyncService`, Snapshot Processor | ✅ `tokenId=N` im Fleet-Context | Ohne tokenId: System-Hint „keine Live-Telemetrie“ — aber keine echten Daten geladen |
+| **Provider-Link / Pairing** | `DimoVehicle.connectionStatus` + `Vehicle.dimoVehicleId` | — | DIMO Identity + Auth | Bei Sync | Fleet Connectivity, Master | `DimoApiSyncService`, Connectivity Runtime | ❌ Nur Existenz von tokenId | `DimoVehicle.lastSignal` kann hinter VLS liegen |
+
+### 8.2 Position & Adresse
+
+| Fachinformation | Primäre Quelle | Fallback | Berechnungslogik | Freshness | UI-Seiten | Backend-Services | AI? | Inkonsistenzen |
+|-----------------|----------------|----------|------------------|-----------|-----------|------------------|-----|----------------|
+| **Koordinaten (operativ)** | `VehicleLatestState.latitude/longitude` | `getLiveGps` → DIMO `currentLocationCoordinates`; `getVehicleWithTelemetry` → `fetchLastSeenLocation` wenn fehlend oder `isLiveTracking` | `normalizeSnapshot` aus `signalsLatest.currentLocationCoordinates` | `lastSeenAt` / `sourceTimestamp`; Live-GPS = Echtzeit | Fleet Map, Overview Map, Connectivity Detail | `DimoSnapshotProcessor`, `VehiclesService.getLiveGps`, `getVehicleWithTelemetry` | ❌ | Live-GPS schreibt nicht in DB; Map kann neuer sein als Fleet-List |
+| **Letzter bekannter Standort (Zeit)** | `VehicleLatestState.lastSeenAt` | `VehicleLatestState.sourceTimestamp` (Provider-observed) | DIMO `signalsLatest.lastSeen` → `normalizeSnapshot` | Siehe Freshness-Matrix | Fleet, Detail, Connectivity | Snapshot Processor, `telemetry-freshness.resolver` | ❌ | `interpretVehicleState` nutzt nur `lastSeenAt`, nicht volle Timestamp-Priorität |
+| **Geschwindigkeit** | `VehicleLatestState.speedKmh` | `getLiveGps` speed; Legacy `0` in DTOs | `numVal(signals.speed)`; Display: `null` wenn stale | Fresh wenn `<15 min` für `displaySpeed` | Fleet Map, Detail Telemetry, Live Map | `normalizeSnapshot`, `interpretVehicleState` | ❌ | Legacy `speed` Feld = `0` statt `null` in `getVehicleWithTelemetry` |
+| **Aufgelöste Adresse** | **Keine Backend-Quelle** | Frontend `addressService.ts` → Mapbox Reverse Geocode | Client-seitig aus Koordinaten | Mapbox-Cache; Stale-Hint 15 min | Map Popups, Overview | — (nur Client) | ❌ | Adresse existiert nirgends serverseitig; AI kann sie nicht kennen |
+
+### 8.3 Betriebszustand
+
+| Fachinformation | Primäre Quelle | Fallback | Berechnungslogik | Freshness | UI-Seiten | Backend-Services | AI? | Inkonsistenzen |
+|-----------------|----------------|----------|------------------|-----------|-----------|------------------|-----|----------------|
+| **Zündung** | `VehicleLatestState.isIgnitionOn` | — | DIMO `isIgnitionOn >= 0.5` | Nur wenn fresh (`<15 min`): sonst `UNKNOWN` | Detail Telemetry, Dashboard | `normalizeSnapshot`, `interpretVehicleState` | ❌ | EVs oft `null`; getrennt von OBD-Plug-Signal |
+| **Kilometerstand (live)** | `VehicleLatestState.odometerKm` | `Vehicle.mileageKm` (manuell); `DimoVehicle.odometerKm` (Sync-Spiegel) | `powertrainTransmissionTravelledDistance`; `deriveFleetStatusContext` → `Math.floor` | Snapshot ~30 s | Fleet, Detail, Active Booking km-Delta | `normalizeSnapshot`, `deriveFleetStatusContext`, `fetchPickupOdometerMap` | ❌ | **Dual source:** manuell vs. Telemetrie; Document Extraction bevorzugt `latestState` dann `mileageKm` |
+| **Tankstand (Verbrenner)** | `VehicleLatestState.fuelLevelRelative` + `fuelLevelAbsolute` | `DimoVehicle.fuelPercent` (nur Sync) | `resolveFuelPercent`: Timestamp-Vergleich rel/abs; inferierte Tankkapazität; Default 50 L | Signal-Timestamps in `rawPayloadJson` | Fleet Map Marker, Detail | `resolveFuelPercent`, `resolveFuelPercentOrNull` | ❌ | Legacy `fuel` = `0` wenn unbekannt; kanonisch nullable `fuelPercent` |
+| **Ladezustand (EV SOC)** | `VehicleLatestState.evSoc` | `DimoVehicle.batteryPercent` (Sync) | `mapDimoBatterySignals` → traction battery SOC | Snapshot ~30 s | Fleet, Detail, Battery Health | `normalizeSnapshot`, Battery-Module | ❌ | Sync-Spiegel kann laggen |
+| **Außentemperatur** | **Nicht in VLS** | DIMO `exteriorAirTemperature` via `buildEnvironmentTemperatureQuery` (Trip-Scoped) | 2-Min-Buckets innerhalb Segment-Fenster | Trip-/Segment-Zeit | Battery Health (trip-derived), Trip Detail | `DimoSegmentsService` | ❌ | **Kein Live-Feld** — nur historisch pro Trip |
+| **Kühlmitteltemp.** | `VehicleLatestState.coolantTempC` | — | `powertrainCombustionEngineECT` | Nur wenn fresh für Display | Detail Telemetry | `normalizeSnapshot`, `interpretVehicleState` | ❌ | — |
+
+### 8.4 Connectivity & Freshness
+
+| Fachinformation | Primäre Quelle | Fallback | Berechnungslogik | Freshness | UI-Seiten | Backend-Services | AI? | Inkonsistenzen |
+|-----------------|----------------|----------|------------------|-----------|-----------|------------------|-----|----------------|
+| **Telemetrie-Freshness (5-State)** | `resolveTelemetryFreshness` / `classifyTelemetryFreshness` | — | `<15m live`, `<24h standby`, `<48h signal_delayed`, `≥48h offline`, kein TS → `no_signal` | Timestamp-Priorität: `sourceTimestamp` → `lastValidTelemetryAt` → `receivedAt`* → `DimoVehicle.lastSignal` → `lastSeenAt`/`updatedAt` (*mit Backfill-Guard 15 min) | Fleet Connectivity, Detail Badges, Dashboard | `telemetry-freshness.resolver.ts`, `vehicle-state-interpreter.ts`, FE `telemetryFreshness.ts` | ❌ | `interpretVehicleState` klassifiziert nur über `lastSeenAt`, nicht volle Evidence-Kette |
+| **Legacy `onlineStatus` (3-State)** | `interpretVehicleState` | — | ONLINE `<15m`, STANDBY `<24h`, sonst OFFLINE | Nur `lastSeenAt` | Ältere API-Felder, Fleet DTOs | `vehicle-state-interpreter.ts` | ❌ | **Standby + signal_delayed** beide → OFFLINE in 3-State |
+| **Dashboard `telemetryState` (4-State)** | `deriveTelemetryState` (Frontend) | `unknown` wenn kein Timestamp | `live` / `standby` / `soft_offline` / `offline`; `hasFreshLiveHint` kann live erzwingen | `max(lastSignal, lastSeen, …)` — **ohne** Backfill-Guard | Dashboard Runtime Board, Station Command | `vehicleRuntimeStateBuilder.ts` | ❌ | `soft_offline` ≠ Backend `signal_delayed` (Naming); Timestamp-Input einfacher |
+| **Connectivity `overallState`** | `VehicleConnectivityRuntimeStateBuilder` | — | Komposition: Provider-Link + `telemetryState` + OBD-Episodes + Data Coverage | `resolveTelemetryState` → `classifyTelemetryFreshness` auf `lastTelemetryAt` | Fleet Connectivity Tab | `vehicle-connectivity-runtime-state.builder.ts`, `VehicleConnectivityRuntimeProjectionService` | ❌ | OBD unplug episodes können offen bleiben trotz Live-Telemetrie (P0-Audit-Risiko) |
+| **OBD Plug-Status** | Webhook `DeviceConnectionEpisodes` + Runtime Builder | Snapshot `rawPayloadJson.obdIsPluggedIn` | `extractObdPlugSignalFromSnapshot`; Episode-Reconciliation | Episode-basiert + Snapshot-Recovery | Fleet Connectivity, Device Connection Card | `DeviceConnectionEpisodeResolutionService`, Connectivity Runtime | ❌ | **Drei Wahrheiten:** Snapshot raw, Webhook episodes, Runtime synthesis |
+| **Letztes Signal (Mirror)** | `DimoVehicle.lastSignal` | `VehicleLatestState.lastSeenAt` | `fetchVehicleSummary` bei Identity-Sync | Nur bei Sync aktualisiert (~nicht 30s) | Master DIMO Views | `DimoApiSyncService` | ❌ | Kann **stunden** hinter VLS liegen |
+| **Provider `online` Boolean** | `VehicleLatestState.online` | `interpreted.isFresh` | Processor setzt aus Freshness | `<15 min` | Fleet DTO `online` | Snapshot Processor + Interpreter | ❌ | `online:false` möglich bei `telemetryFreshness: standby` |
+
+### 8.5 Historische & Analytische Daten
+
+| Fachinformation | Primäre Quelle | Fallback | Berechnungslogik | Freshness | UI-Seiten | Backend-Services | AI? | Inkonsistenzen |
+|-----------------|----------------|----------|------------------|-----------|-----------|------------------|-----|----------------|
+| **Trip-Grenzen** | DIMO Segments → PostgreSQL `Trip` | — | `DimoSegmentsService` + Reconciliation | Segment `startedAt`/`endedAt` | Trip Detail, Fleet Trips | `DimoSegmentsService`, Trip Module | ❌ | Architektur-Regel: Segments = kanonisch |
+| **Route-Geometrie** | DIMO `signals` innerhalb Trip-Fenster | ClickHouse `telemetry_waypoints` | Historische Signal-Rekonstruktion | Trip-Zeitfenster | Trip Map | `DimoSegmentsService`, CH Waypoints | ❌ | CH optional / best-effort |
+| **HF-Verhalten (1s)** | DIMO HF Query | ClickHouse `telemetry_hf_*` wenn `HF_MIRROR_ENABLED` | Post-Trip Enrichment | Trip-abgeschlossen | Data Analyse, Trip Evidence | `TripBehaviorEnrichmentService`, `ClickHouseHfService` | ❌ | CH ≠ operative Wahrheit |
+| **Snapshot-Historie** | ClickHouse `telemetry_snapshots` | — | Dual-Write aus Processor (fire-and-forget) | `recordedAt` | Data Analyse, Ops | `ClickHouseTelemetryService` | ❌ | Leerer CH ≠ fehlende PG-Daten |
+| **Position-Updates (PG)** | `VehiclePositionUpdate` | — | Separates Modell (nicht primärer Live-Pfad) | `recordedAt` | — | Prisma | ❌ | Parallel zu VLS; nicht Haupt-UI-Pfad |
+
+### 8.6 Caches
+
+| Cache | Key / Ort | TTL | Inhalt | Invalidierung |
+|-------|-----------|-----|--------|---------------|
+| Fleet Map | Redis `fleet-map:{orgId}:v1` | ~5 s (set in `getFleetMapData`) | Serialisierte `FleetMapVehicleDto[]` | `FleetMapCacheService.invalidate` |
+| DIMO Vehicle JWT | Redis via `DimoAuthService` | Token-Lifetime | Vehicle-scoped JWT | Auth refresh |
+| Rental Health Summary | Redis `rental-health:summary:{orgId}:{vehicleId}` | Config-driven | Health summary per vehicle | Cache service |
+| Reverse Geocode | Client `Map` in `addressService.ts` | Pro Koordinaten-Key | Mapbox-Adresse | Client-only |
+| Fleet Map (kein Redis) | — | — | `/telemetry`, `/live-gps` uncached | — |
+
+---
+
+## 9. API-Live-Abfrage vs. gespeicherte Daten
+
+| Aspekt | Gespeichert (`VehicleLatestState`) | Live-API (`getLiveGps` / `fetchLastSeenLocation`) |
+|--------|-----------------------------------|--------------------------------------------------|
+| **Schreibpfad** | `DimoSnapshotProcessor` alle ~30 s | Kein Write |
+| **Latenz** | Bis ~30 s + Queue | Echtzeit DIMO Round-Trip |
+| **Auth** | Worker (intern) | `DataAuthorization` GPS_LOCATION für Org |
+| **Felder** | Vollständiger Snapshot (Speed, Fuel, Ignition, …) | Primär GPS + Speed |
+| **Verwendung** | Fleet Map Bulk, Connectivity, Fleet List | Overview Live Map Animation |
+| **`getVehicleWithTelemetry`** | Liest VLS primär | Ruft `fetchLastSeenLocation` wenn coords fehlen **oder** `isLiveTracking` |
+
+**Regel für künftige AI-Tools:** Operative Antworten sollten **`VehicleLatestState` + `resolveTelemetryFreshness`** als Default nutzen; Live-GPS nur wenn Freshness `live` und Sub-30s-Genauigkeit nötig — mit explizitem `source: 'live'` vs. `'snapshot'` in der Tool-Antwort.
+
+---
+
+## 10. Duplizierte Berechnungen & Inkonsistenzen (Querschnitt)
+
+| # | Thema | Stellen | Auswirkung |
+|---|-------|---------|------------|
+| I1 | **Drei Freshness-Vokabulare** | BE 5-State (`signal_delayed`), FE Dashboard 4-State (`soft_offline`), Legacy 3-State (`onlineStatus`) | Gleiche Schwellen (15m/24h/48h), unterschiedliche Namen und Timestamp-Inputs |
+| I2 | **Timestamp-Priorität** | `telemetry-freshness.resolver` (voll) vs. `interpretVehicleState` (nur `lastSeenAt`) vs. `deriveTelemetryState` (max mehrerer Felder) | Dashboard/Fleet können bei Backfill-Ingest divergieren |
+| I3 | **Kennzeichen-Normalisierung** | AI `normalizePlate`, Docs `normalizeVehiclePlate`, Voice Prisma `insensitive` | Cross-Module Matching kann scheitern (`M-AB 123` vs. `MAB123`) |
+| I4 | **Dual Odometer** | `Vehicle.mileageKm` vs. `VehicleLatestState.odometerKm` vs. `DimoVehicle.odometerKm` | UI: Telemetrie first; Docs: latestState then mileageKm |
+| I5 | **Dual Fuel/SOC Mirror** | VLS (30 s) vs. `DimoVehicle` (Sync) | Master-Views können veraltete Werte zeigen |
+| I6 | **Legacy `0` vs. `null`** | `mapToVehicleData.fuel/speed` vs. `fuelPercent`/`displaySpeed` | „0%“ statt „—“ in älteren Consumern |
+| I7 | **OBD Plug drei Wahrheiten** | Snapshot raw, Webhook episodes, Runtime builder | Bekanntes P0 in Fleet-Connectivity-Audits |
+| I8 | **Adresse nur Client** | `addressService.ts` | Backend/AI haben keine strukturierte Adresse |
+| I9 | **Außentemp. nur Trip-Scoped** | Kein VLS-Feld | Live-Fragen zu Außentemp. nicht beantwortbar |
+| I10 | **AI Chat vs. Rest** | Nur `Vehicle` Stammdaten, kein VLS | Größte Domain-Grounding-Lücke für Prompt-Reihe |
+
+---
+
+## 11. AI-Verfügbarkeit — Zusammenfassung (Prompt 2)
+
+| Datenklasse | Fleet AI Chat (`ChatService`) | Voice MCP (`get_vehicle_status`) | WhatsApp AI (`WhatsAppAiToolsService`) |
+|-------------|------------------------------|----------------------------------|----------------------------------------|
+| Stammdaten (Plate, VIN, Make, tokenId) | ✅ Im Prompt-Text | ✅ Via `findOne` | ✅ Kontextabhängig |
+| Live Telemetrie (GPS, Speed, Odo, Fuel) | ❌ | ❌ (nur Status-Labels) | ✅ GPS/DTC via `VehiclesService` (limitiert) |
+| Connectivity / Freshness | ❌ | Teilweise (operational labels) | ✅ GPS stale check (`STALE_GPS_MS` 2h) |
+| Historische Trips / Segments | ❌ | ❌ | ❌ |
+| Adresse | ❌ | ❌ | ❌ |
+
+`ChatService.buildContext` berechnet `tokenIds` via `resolveChatVehicleTokenIds`, nutzt sie aber **nur für Logging** — kein nachgelagerter DIMO- oder VLS-Lookup.
+
+---
+
+## 12. Offene Fragen (Prompt 3+)
+
+1. Welche Felder aus der Matrix sollen als **erste AI-Tools** priorisiert werden (VLS-Snapshot vs. Live-GPS)?
+2. Soll AI die **kanonische Freshness** (`resolveTelemetryFreshness`) pro Antwort mitliefern?
+3. Einheitliche **Kennzeichen-Normalisierung** über AI, Voice, Docs — welche Funktion wird Standard?
+4. Soll **Adresse** serverseitig persistiert/gecached werden für AI und Ops?
+5. Wie mit **OBD-Episode vs. Live-Telemetrie-Konflikt** in AI-Antworten umgehen?
+6. Dürfen **VIN/Kennzeichen/Koordinaten** an Mistral — Tenant-DPA-Klärung?
+7. Soll AI **Trip/Segment-Daten** lesen dürfen (DIMO Segments als kanonische Grenze)?
+
+---
+
+## Anhang D — Statische Prüfungen Prompt 2
+
+| Prüfung | Ergebnis |
+|---------|----------|
+| `telemetry-freshness.resolver.spec.ts` | PASS |
+| `vehicle-state-interpreter.spec.ts` | PASS |
+| `vehicle-connectivity-runtime-state.builder.spec.ts` | PASS |
+| `connectivity-cross-surface-regression.test.ts` (Frontend) | 19/19 PASS |
+| Grep `fetchLatestVehicleSnapshot` in `backend/src` | 2 Produktions-Call-Sites (Processor + Tests) |
+| Grep `VehicleLatestState` upsert | `DimoSnapshotProcessor` (sole writer) |
 
 ---
 
