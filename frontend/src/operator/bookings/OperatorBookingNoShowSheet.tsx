@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { api, type BookingDetailDto } from '../../lib/api';
 import { bookingStatusLabel, normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { useOrgTimezone } from '../../rental/hooks/useOrgTimezone';
 import { StatusChip } from '../../components/patterns';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -17,6 +18,7 @@ interface OperatorBookingNoShowSheetProps {
 
 export function OperatorBookingNoShowSheet({ action }: OperatorBookingNoShowSheetProps) {
   const { orgId } = useRentalOrg();
+  const { timezone } = useOrgTimezone(orgId);
   const { closeSheet } = useOperatorShell();
   const { mutating, error, clearError, markNoShow } = useOperatorBookingMutations();
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
@@ -92,7 +94,7 @@ export function OperatorBookingNoShowSheet({ action }: OperatorBookingNoShowShee
               </div>
               <div>
                 <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Geplanter Pickup</dt>
-                <dd>{toLocalDateTimeInput(detail.core.startDate).replace('T', ' ')}</dd>
+                <dd>{toLocalDateTimeInput(detail.core.startDate, timezone).replace('T', ' ')}</dd>
               </div>
             </dl>
           </OperatorGlassCard>

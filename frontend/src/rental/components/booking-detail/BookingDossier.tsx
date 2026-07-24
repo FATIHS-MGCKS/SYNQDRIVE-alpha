@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
-import { api } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { useHandover } from '../../HandoverContext';
 import { SkeletonCard } from '../../../components/patterns';
@@ -17,6 +16,8 @@ import { BookingEditDialog } from './BookingEditDialog';
 import { BOOKING_DETAIL_TABS, type BookingDetailTab } from './bookingDetailTypes';
 import { getBookingActionMatrix, getPrimaryBookingAction } from './bookingActionRules';
 import { useBookingDetail } from './useBookingDetail';
+import { useBookingMutations } from '../../hooks/useBookingMutations';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 import { formatDateTime } from './bookingDetailUtils';
 
 interface BookingDossierProps {
@@ -39,14 +40,15 @@ export function BookingDossier({
   onOpenVehicle,
 }: BookingDossierProps) {
   const { orgId } = useRentalOrg();
+  const { timezone, locale } = useOrgTimezone(orgId);
   const { openHandover } = useHandover();
   const { detail, loading, error, refresh } = useBookingDetail(orgId, bookingId);
+  const { mutating, cancelBooking, markNoShow } = useBookingMutations();
   const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview');
   const [editOpen, setEditOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [noShowReason, setNoShowReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   const matrix = useMemo(() => (detail ? getBookingActionMatrix(detail) : null), [detail]);
   const primary = useMemo(
@@ -92,40 +94,33 @@ export function BookingDossier({
   };
 
   const executeCancel = async () => {
-    if (!orgId || !detail || submitting) return;
-    setSubmitting(true);
-    try {
-      await api.bookings.cancel(orgId, bookingId);
-      toast.success('Buchung storniert');
-      onBookingCancelled?.(bookingId);
-      onRefreshList?.();
-      setCancelOpen(false);
-      refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Stornierung fehlgeschlagen';
-      toast.error(msg);
-    } finally {
-      setSubmitting(false);
-    }
+    if (!detail || mutating) return;
+    const ok = await cancelBooking(bookingId, {
+      vehicleId: detail.vehicle.vehicleId,
+      onSuccess: async () => {
+        onBookingCancelled?.(bookingId);
+        onRefreshList?.();
+        setCancelOpen(false);
+        await refresh();
+      },
+    });
+    if (!ok) return;
   };
 
   const executeNoShow = async () => {
-    if (!orgId || !detail || submitting) return;
-    setSubmitting(true);
-    try {
-      await api.bookings.markNoShow(orgId, bookingId, noShowReason.trim() || null);
-      toast.success('Als No-Show markiert');
-      onBookingCancelled?.(bookingId);
-      onRefreshList?.();
-      setNoShowOpen(false);
-      setNoShowReason('');
-      refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'No-Show konnte nicht gesetzt werden';
-      toast.error(msg);
-    } finally {
-      setSubmitting(false);
-    }
+    if (!detail || mutating) return;
+    const ok = await markNoShow(bookingId, {
+      reason: noShowReason.trim() || null,
+      vehicleId: detail.vehicle.vehicleId,
+      onSuccess: async () => {
+        onBookingCancelled?.(bookingId);
+        onRefreshList?.();
+        setNoShowOpen(false);
+        setNoShowReason('');
+        await refresh();
+      },
+    });
+    if (!ok) return;
   };
 
   if (loading && !detail) {
@@ -239,7 +234,7 @@ export function BookingDossier({
           description="Die Buchung wird als storniert markiert."
           confirmLabel="Stornieren"
           tone="critical"
-          submitting={submitting}
+          submitting={mutating}
           onClose={() => setCancelOpen(false)}
           onConfirm={executeCancel}
         >
@@ -247,7 +242,7 @@ export function BookingDossier({
             rows={[
               ['Kunde', detail.customer.fullName],
               ['Fahrzeug', `${detail.vehicle.displayName} · ${detail.vehicle.licensePlate}`],
-              ['Zeitraum', `${formatDateTime(detail.core.startDate)} – ${formatDateTime(detail.core.endDate)}`],
+              ['Zeitraum', `${formatDateTime(detail.core.startDate, timezone, locale)} – ${formatDateTime(detail.core.endDate, timezone, locale)}`],
             ]}
           />
         </ConfirmModal>
@@ -257,9 +252,9 @@ export function BookingDossier({
         <ConfirmModal
           title="Kunde nicht erschienen?"
           description="Die Buchung wird auf No-Show gesetzt — getrennt von einer Stornierung."
-          confirmLabel={submitting ? 'Wird gesetzt …' : 'Als No-Show markieren'}
+          confirmLabel={mutating ? 'Wird gesetzt …' : 'Als No-Show markieren'}
           tone="critical"
-          submitting={submitting}
+          submitting={mutating}
           onClose={() => {
             setNoShowOpen(false);
             setNoShowReason('');

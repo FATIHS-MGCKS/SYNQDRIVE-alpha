@@ -1,6 +1,7 @@
 import { api } from '../../../lib/api';
 import { EntityTasksSection } from '../EntityTasksSection';
 import type { BookingDetailDto } from '../../../lib/api';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 import { formatDateTime, EM_DASH } from './bookingDetailUtils';
 import { bd } from './booking-detail-ui';
 
@@ -11,6 +12,7 @@ interface BookingTasksTimelineTabProps {
 }
 
 export function BookingTasksTimelineTab({ orgId, detail, isDarkMode }: BookingTasksTimelineTabProps) {
+  const { timezone, locale } = useOrgTimezone(orgId);
   const bookingId = detail.core.bookingId;
 
   return (
@@ -37,7 +39,7 @@ export function BookingTasksTimelineTab({ orgId, detail, isDarkMode }: BookingTa
           <ul className="space-y-3">
             {detail.activity.map((ev) => (
               <li key={ev.id} className="flex gap-3 text-xs border-b border-border/50 pb-3 last:border-0">
-                <time className="text-muted-foreground shrink-0 w-36">{formatDateTime(ev.createdAt)}</time>
+                <time className="text-muted-foreground shrink-0 w-36">{formatDateTime(ev.createdAt, timezone, locale)}</time>
                 <div>
                   <div className="font-semibold text-foreground">{ev.action}</div>
                   <div className="text-muted-foreground mt-0.5">{ev.description || EM_DASH}</div>

@@ -137,6 +137,8 @@ export interface BookingListMeta {
   page: number;
   limit: number;
   totalPages: number;
+  hasNextPage: boolean;
+  nextCursor: string | null;
 }
 
 export function unwrapBookingListMeta(res: unknown): BookingListMeta | null {

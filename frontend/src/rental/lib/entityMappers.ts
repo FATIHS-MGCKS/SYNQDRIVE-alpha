@@ -3,6 +3,7 @@
 // in lock-step with the backend enums + response shapes.
 
 import { api } from '../../lib/api';
+import { bookingLocalDateTimeToIso } from '../../lib/datetime';
 import {
   verificationPlanToApiPayload,
   type CustomerVerificationPlanState,
@@ -568,6 +569,8 @@ export interface BuildBookingCreatePayloadArgs {
   pickupTime: string;
   returnDate: string;
   returnTime: string;
+  /** IANA org timezone — local date/time strings are interpreted in this zone. */
+  timeZone: string;
   pickupStationId?: string | null;
   returnStationId?: string | null;
   /** Legacy hints — backend Pricing Service is source of truth. */
@@ -590,8 +593,16 @@ export interface BuildBookingCreatePayloadArgs {
 }
 
 export function buildBookingCreatePayload(args: BuildBookingCreatePayloadArgs) {
-  const startIso = new Date(`${args.pickupDate}T${args.pickupTime || '10:00'}:00`).toISOString();
-  const endIso = new Date(`${args.returnDate}T${args.returnTime || '10:00'}:00`).toISOString();
+  const startIso = bookingLocalDateTimeToIso(
+    args.pickupDate,
+    args.pickupTime || '10:00',
+    args.timeZone,
+  );
+  const endIso = bookingLocalDateTimeToIso(
+    args.returnDate,
+    args.returnTime || '10:00',
+    args.timeZone,
+  );
   return {
     customer: { connect: { id: args.customerId } },
     vehicle: { connect: { id: args.vehicleId } },

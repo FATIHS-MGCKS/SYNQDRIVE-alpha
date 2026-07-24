@@ -5,6 +5,13 @@ import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { useRentalRulesPermissions } from '../hooks/useRentalRulesPermissions';
+import { useOrgTimezone } from '../hooks/useOrgTimezone';
+import {
+  bookingLocalDateTimeToIso,
+  formatOrgDateOnly,
+  orgCalendarMonthYear,
+  todayDateOnlyInZone,
+} from '../../lib/datetime';
 import { mapBookingEligibilityLoadError } from '../lib/rental-rules-permissions';
 import { api, type BookingDocumentBundleView, type WizardCheckoutContext } from '../../lib/api';
 import { resolveDrivingStressScore } from '../lib/scoreFormat';
@@ -138,6 +145,7 @@ export function NewBookingView({
   const isDarkMode = useDocumentDark();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
+  const { timezone, locale } = useOrgTimezone(orgId);
   const { canReviewEligibility, canOverrideEligibility } = useRentalRulesPermissions();
   const { catalog, loading: catalogLoading } = usePriceTariffs(orgId);
   const taxRatePercent = catalog?.priceBook?.taxRatePercent ?? 19;
@@ -253,7 +261,7 @@ export function NewBookingView({
     }
     let cancelled = false;
     const startIso = pickupDate
-      ? new Date(`${pickupDate}T${pickupTime || '10:00'}`).toISOString()
+      ? bookingLocalDateTimeToIso(pickupDate, pickupTime || '10:00', timezone)
       : undefined;
     api.customers
       .eligibility(orgId, selectedCustomer.id, startIso)
@@ -266,7 +274,7 @@ export function NewBookingView({
     return () => {
       cancelled = true;
     };
-  }, [orgId, selectedCustomer?.id, pickupDate, pickupTime]);
+  }, [orgId, selectedCustomer?.id, pickupDate, pickupTime, timezone]);
 
   const [showPickupTimePicker, setShowPickupTimePicker] = useState(false);
   const [showReturnTimePicker, setShowReturnTimePicker] = useState(false);
@@ -308,8 +316,9 @@ export function NewBookingView({
   const lastSyncedQuoteIdRef = useRef<string | null>(null);
   // V4.6.67 — Default the calendar to TODAY (was hardcoded to March 2026).
   // Tracks both month and year so the calendar keeps working past 2026.
-  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
+  const initialOrgCalendar = orgCalendarMonthYear(timezone);
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => initialOrgCalendar.month);
+  const [calendarYear, setCalendarYear] = useState<number>(() => initialOrgCalendar.year);
   const [calendarSelectMode, setCalendarSelectMode] = useState<'pickup' | 'return'>('pickup');
 
   // Customer Detail Modal state
@@ -414,7 +423,7 @@ export function NewBookingView({
       setCustomers(prev => [bookingCustomer, ...prev.filter(c => c.id !== bookingCustomer.id)]);
       setSelectedCustomer(bookingCustomer);
       const startIso = pickupDate
-        ? new Date(`${pickupDate}T${pickupTime || '10:00'}`).toISOString()
+        ? bookingLocalDateTimeToIso(pickupDate, pickupTime || '10:00', timezone)
         : undefined;
       api.customers.eligibility(orgId, customerId, startIso).then(setCustomerEligibility).catch(() => setCustomerEligibility(null));
       if (onCustomerCreated) {
@@ -526,6 +535,8 @@ export function NewBookingView({
     ? pickerHealthMap.get(selectedVehicle.id) ?? null
     : null;
 
+  const todayMin = todayDateOnlyInZone(timezone);
+
   const rentalDays = useMemo(() => {
     if (!pickupDate || !returnDate) return 0;
     const d1 = new Date(pickupDate);
@@ -534,21 +545,16 @@ export function NewBookingView({
   }, [pickupDate, returnDate]);
 
   const pickupAtIso = pickupDate
-    ? new Date(`${pickupDate}T${pickupTime || '10:00'}:00`).toISOString()
+    ? bookingLocalDateTimeToIso(pickupDate, pickupTime || '10:00', timezone)
     : '';
   const returnAtIso = returnDate
-    ? new Date(`${returnDate}T${returnTime || '10:00'}:00`).toISOString()
+    ? bookingLocalDateTimeToIso(returnDate, returnTime || '10:00', timezone)
     : '';
 
   const bookingPeriodLabel = useMemo(() => {
     if (!pickupDate || !returnDate) return null;
-    const fmt = (isoDate: string) => {
-      const d = new Date(`${isoDate}T12:00:00`);
-      if (Number.isNaN(d.getTime())) return isoDate;
-      return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
-    return `${fmt(pickupDate)} – ${fmt(returnDate)}`;
-  }, [pickupDate, returnDate]);
+    return `${formatOrgDateOnly(pickupDate, locale, timezone)} – ${formatOrgDateOnly(returnDate, locale, timezone)}`;
+  }, [pickupDate, returnDate, locale, timezone]);
 
   useEffect(() => {
     if (!orgId || !selectedVehicle?.id || !selectedCustomer?.id || !pickupAtIso) {
@@ -1667,6 +1673,7 @@ export function NewBookingView({
                 vehicleBlockedInfo={vehicleBlockedInfo}
                 hoveredDay={hoveredDay}
                 rangeHasConflict={rangeHasConflict}
+                todayMin={todayMin}
                 onPickupDateChange={setPickupDate}
                 onReturnDateChange={setReturnDate}
                 onPickupTimeChange={setPickupTime}
