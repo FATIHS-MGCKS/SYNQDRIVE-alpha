@@ -38,6 +38,7 @@ import {
   buildOverlapWhere,
 } from './booking-conflict.util';
 import type { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
+import { fromPrismaBookingPaymentIntent } from './booking-payment-intent.types';
 import type {
   BookingDetailDto,
   BookingStationContext,
@@ -560,6 +561,7 @@ export class BookingsService {
       isOneWayRental: b.isOneWayRental ?? false,
       actualPickupStationId: b.actualPickupStationId ?? null,
       actualReturnStationId: b.actualReturnStationId ?? null,
+      paymentIntent: fromPrismaBookingPaymentIntent(b.paymentIntent),
     };
   }
 

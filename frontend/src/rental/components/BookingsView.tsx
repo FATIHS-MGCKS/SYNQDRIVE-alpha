@@ -15,6 +15,8 @@ import { BookingsPage } from './bookings/BookingsPage';
 import { BookingDossier } from './booking-detail/BookingDossier';
 import { StationSelectFields } from './stations/StationSelectFields';
 import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerStatusTone } from './bookings/bookingStatus';
+import { useLanguage } from '../i18n/LanguageContext';
+import { paymentIntentLabelOrUnknown } from '../lib/booking-payment-intent.labels';
 // V4.6.76 Rental Health V1 — surface the rental_blocked gate on the
 // "Pickup bestätigen" flow so dispatchers can't even try to hand over a
 // vehicle that the backend will refuse. The BookingsService.create gate
@@ -52,8 +54,6 @@ const buildMMY = (v: { make?: string | null; model?: string | null; year?: numbe
 
 const bookingStatusTone = (status: string): StatusTone => plannerStatusTone(status as any);
 
-const bookingStatusLabel = (status: string): string => plannerStatusLabel(status as any) || status;
-
 const metricToneToStatus = (tone: 'brand' | 'success' | 'warning' | 'neutral'): StatusTone => {
   if (tone === 'brand') return 'info';
   if (tone === 'success') return 'success';
@@ -80,6 +80,8 @@ interface BookingsViewProps {
 }
 
 export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, onCreateNewBooking, additionalBookings = [], onBookingUpdated, onBookingCancelled, initialDetailBookingId, onConsumeInitialDetailBookingId }: BookingsViewProps) {
+  const { t } = useLanguage();
+  const bookingStatusLabel = (status: string): string => plannerStatusLabel(status as any, t);
   const { orgId } = useRentalOrg();
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
@@ -275,7 +277,6 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   );
 
   const insuranceOptions = ['Vollkasko', 'Teilkasko', 'Haftpflicht', 'Premium Vollkasko'];
-  const paymentOptions = ['Kreditkarte', 'EC-Karte', 'PayPal', 'Lastschrift', 'Rechnung', 'Bar'];
   const sourceOptions = ['Website', 'App', 'Telefon', 'Walk-in', 'Partner'];
   const kmPackageOptions = [
     { km: 500, label: 'Basis' },
@@ -495,6 +496,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       returnLocation: booking.returnLocation,
       insurance: booking.insurance,
       paymentMethod: booking.paymentMethod,
+      paymentIntent: booking.paymentIntent,
       bookingSource: booking.bookingSource,
       bookedBy: booking.bookedBy,
       pickupHandoverBy: booking.pickupHandoverBy || '',
@@ -710,7 +712,8 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       pickupStationId: pickupId,
       returnStationId: returnId || pickupId,
       insurance: booking.insurance,
-      paymentMethod: booking.paymentMethod || 'Kreditkarte',
+      paymentMethod: '',
+      paymentIntent: booking.paymentIntent,
       notes: booking.notes || '',
       customer: booking.customer || '',
       vehicle: booking.vehicle || '',
@@ -1417,8 +1420,8 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                                   <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
                                     <Icon name="credit-card" className={`w-5 h-5 text-muted-foreground`} />
                                     <div>
-                                      <div className={`text-xs text-muted-foreground`}>Zahlungsart</div>
-                                      <div className={`text-xs font-semibold text-foreground`}>{popupBooking.paymentMethod}</div>
+                                      <div className={`text-xs text-muted-foreground`}>{t('bookings.paymentIntent')}</div>
+                                      <div className={`text-xs font-semibold text-foreground`}>{paymentIntentLabelOrUnknown(popupBooking.paymentIntent, t)}</div>
                                     </div>
                                   </div>
                                   <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
@@ -1709,16 +1712,6 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                       <option value="Teilkasko">Teilkasko</option>
                       <option value="Haftpflicht">Haftpflicht</option>
                       <option value="Premium Vollkasko">Premium Vollkasko</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Zahlungsmethode</label>
-                    <select value={editForm.paymentMethod} onChange={(e) => setEditForm(f => ({ ...f, paymentMethod: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
-                      <option value="Kreditkarte">Kreditkarte</option>
-                      <option value="PayPal">PayPal</option>
-                      <option value="Überweisung">Überweisung</option>
-                      <option value="Lastschrift">Lastschrift</option>
-                      <option value="Bar">Bar</option>
                     </select>
                   </div>
                 </div>

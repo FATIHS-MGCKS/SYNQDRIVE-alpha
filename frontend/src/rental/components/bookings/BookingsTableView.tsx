@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { DataTable, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, formatCents, rowStatus } from './bookingUtils';
@@ -20,11 +21,13 @@ export function BookingsTableView({
   onEdit,
   onCancel,
 }: BookingsTableViewProps) {
+  const { t } = useLanguage();
+
   const columns = useMemo(
     () => [
       {
         key: 'ref',
-        header: 'Buchung',
+        header: t('bookings.table.booking'),
         cell: (b: BookingUiRow) => (
           <div>
             <div className="font-mono text-[11px] font-semibold">{bookingRef(b.id)}</div>
@@ -34,12 +37,12 @@ export function BookingsTableView({
       },
       {
         key: 'status',
-        header: 'Status',
+        header: t('bookings.status'),
         cell: (b: BookingUiRow) => <BookingStatusBadge status={rowStatus(b)} />,
       },
       {
         key: 'vehicle',
-        header: 'Fahrzeug',
+        header: t('bookings.vehicle'),
         cell: (b: BookingUiRow) => (
           <div className="text-xs">
             <div className="font-medium">{b.vehicle}</div>
@@ -49,7 +52,7 @@ export function BookingsTableView({
       },
       {
         key: 'period',
-        header: 'Zeitraum',
+        header: t('bookings.period'),
         cell: (b: BookingUiRow) => (
           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
             {b.startDate} – {b.endDate}
@@ -58,14 +61,14 @@ export function BookingsTableView({
       },
       {
         key: 'stations',
-        header: 'Station',
+        header: t('bookings.station'),
         cell: (b: BookingUiRow) => (
           <span className="text-[10px] text-muted-foreground">{b.pickupLocation || '—'}</span>
         ),
       },
       {
         key: 'payment',
-        header: 'Betrag',
+        header: t('bookings.amount'),
         align: 'right' as const,
         numeric: true,
         cell: (b: BookingUiRow) => (
@@ -76,16 +79,16 @@ export function BookingsTableView({
       },
       {
         key: 'handover',
-        header: 'Übergabe',
+        header: t('bookings.handover'),
         cell: (b: BookingUiRow) => (
           <span className="text-[10px] text-muted-foreground">
-            {b.pickupProtocol ? 'Pickup ✓' : '—'}
-            {b.returnProtocol ? ' · Return ✓' : ''}
+            {b.pickupProtocol ? t('bookings.handover.pickupDone') : '—'}
+            {b.returnProtocol ? ` · ${t('bookings.handover.returnDone')}` : ''}
           </span>
         ),
       },
     ],
-    [],
+    [t],
   );
 
   return (
@@ -101,6 +104,7 @@ export function BookingsTableView({
         rowActions={(b) => {
           const status = rowStatus(b);
           if (status !== 'pending' && status !== 'confirmed') return null;
+          const ref = bookingRef(b.id);
           return (
             <div className="flex gap-1">
               {onEdit && (
@@ -111,9 +115,10 @@ export function BookingsTableView({
                     onEdit(b.id);
                   }}
                   className="p-1 rounded-lg sq-tone-brand text-[10px]"
-                  title="Bearbeiten"
+                  title={t('bookings.editAction', { ref })}
+                  aria-label={t('bookings.editAction', { ref })}
                 >
-                  <Icon name="pencil" className="w-3 h-3" />
+                  <Icon name="pencil" className="w-3 h-3" aria-hidden />
                 </button>
               )}
               {onCancel && (
@@ -124,9 +129,10 @@ export function BookingsTableView({
                     onCancel(b.id);
                   }}
                   className="p-1 rounded-lg sq-tone-critical text-[10px]"
-                  title="Stornieren"
+                  title={t('bookings.cancelAction', { ref })}
+                  aria-label={t('bookings.cancelAction', { ref })}
                 >
-                  <Icon name="trash-2" className="w-3 h-3" />
+                  <Icon name="trash-2" className="w-3 h-3" aria-hidden />
                 </button>
               )}
             </div>
@@ -136,7 +142,7 @@ export function BookingsTableView({
           <EmptyState
             compact
             icon={<Icon name="calendar" className="w-5 h-5" />}
-            title="Keine Buchungen für die aktuellen Filter"
+            title={t('bookings.table.empty')}
           />
         }
       />

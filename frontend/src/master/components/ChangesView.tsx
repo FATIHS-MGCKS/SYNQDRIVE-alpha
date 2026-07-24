@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-i18n-payment-v49797-2026-07-24',
+    version: '4.9.797',
+    title: 'V4.9.797 — Booking i18n & payment intent taxonomy (Prompt 32)',
+    summary: [
+      'Kanoniche Payment-Intent-Taxonomie (`payment_link`, `pay_on_pickup`, `cash`, `invoice`) — Labels über i18n (`booking.paymentIntent.*`), getrennt von Wire/Prisma-Werten.',
+      'Planner/Status/Toolbar/Table/Timeline auf `useLanguage()` umgestellt; DE/EN-Mischungen bereinigt.',
+      '`mapApiBooking` nutzt `paymentIntent` statt `Kreditkarte`-Fallback; List-API liefert `paymentIntent`.',
+      'Legacy Edit-Modal: nicht persistierte Zahlungsmethoden-Auswahl entfernt; Drawer zeigt `paymentIntent`-Label.',
+      'Wizard-Notizen locale-aware; TERMINAL-DB-Migration → PAY_ON_PICKUP.',
+    ],
+    reason: 'Booking Production Readiness Prompt 32 — sprachliche/fachliche Konsistenz und einheitliche Zahlungsabsicht.',
+    previousBehavior:
+      'Hardcodierte DE-Texte im Planner; `paymentMethod: Kreditkarte` Default; `paymentIntentNotesLabel` immer DE; Edit-UI mit nicht gespeicherten Zahlungsarten.',
+    details:
+      'booking-payment-intent.ts, booking-payment-intent.labels.ts, entityMappers, BookingsToolbar/Table/Timeline/Page, bookingStatus, NewBookingView, BookingsView, CheckoutStep, bookings.service mapBookingListRow, migration 20260724010000.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T01:00:00.000Z',
+  },
+  {
     id: 'fleet-rental-crash-task-pagination-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',
