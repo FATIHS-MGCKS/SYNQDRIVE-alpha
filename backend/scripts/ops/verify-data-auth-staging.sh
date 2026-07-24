@@ -74,14 +74,14 @@ WHERE schemaname = 'public'
   AND (
     tablename IN (
       'processing_activities', 'enforcement_policies', 'data_authorization_audit_outbox',
-      'data_authorization_revocation_workflows', 'deny_switch_entries'
+      'data_authorization_revocation_workflows', 'data_authorization_deny_switches'
     )
     OR tablename LIKE 'processing_activity_%'
   )
 ORDER BY 1;
 " | tee "${OUT}/data-auth-tables.txt"
 
-for tbl in processing_activities enforcement_policies data_authorization_audit_outbox data_authorization_revocation_workflows deny_switch_entries; do
+for tbl in processing_activities enforcement_policies data_authorization_audit_outbox data_authorization_revocation_workflows data_authorization_deny_switches; do
   if ! sudo -u postgres psql -d synqdrive -tAc "SELECT to_regclass('public.${tbl}')" | grep -q "${tbl}"; then
     fail "Missing table ${tbl}"
   fi
