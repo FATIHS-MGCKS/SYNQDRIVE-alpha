@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-production-deploy-p35-2026-07-24',
+    version: '4.9.806',
+    title: 'V4.9.806 — Vehicle Detail controlled production deploy (Prompt 35)',
+    summary: [
+      'Consolidated Vehicle Detail remediation (Prompts 1–34) merged to `main` and deployed via official `vps-deploy-release.sh`.',
+      'Deployed commit `4e16a386` → release `20260724122936_v4994` on production VPS.',
+      'Pre-deploy backup `db-pre-deploy-20260724122936.sql.gz`; no pending migrations; PM2 controlled restart.',
+      'Post-deploy: health 200 (local + public), SPA 200, auth probes 401, E2E/security/unit green on release commit.',
+      'Rollback target documented: `20260724084334_data-auth-rc` (`5f76e37`). Report: `docs/audits/vehicle-detail-page-production-deploy-2026-07.md`.',
+    ],
+    reason: 'Prompt 35/36: controlled production deployment of fully tested Vehicle Detail remediation.',
+    previousBehavior: 'Production ran feature branch `cursor/data-auth-migration-fix-26b5` with dirty release tree; Vehicle Detail remediation not on main.',
+    details:
+      'Deploy via cloud-agent-deploy.sh. P1 accepted: PM2 cumulative restarts, GPS-on-documents design. No migrations applied.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / Deployment',
+    createdAt: '2026-07-24T12:40:00.000Z',
+  },
+  {
     id: 'vehicle-detail-vps-runtime-p34-2026-07-24',
     version: '4.9.805',
     title: 'V4.9.805 — Vehicle Detail VPS runtime audit (Prompt 34)',
