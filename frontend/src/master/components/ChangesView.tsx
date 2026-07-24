@@ -35,6 +35,47 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-processing-kpi-filters-v49820-2026-07-24',
+    version: '4.9.820',
+    title: 'V4.9.820 — KPI, Filter, Pagination & Performance (Prompt 37)',
+    summary: [
+      'Hub-KPIs serverseitig über GET hub-metrics; jede KPI filtert exakt ihre Kennzahl (inkl. expiringSoon, revokedOrExpired, revocations_in_progress).',
+      'Cursor-Pagination für Register, Legacy-Freigaben und Audit-Entscheidungen; debounced Suche; URL-synchronisierte Filter.',
+      'Tenant-gebundene Saved Views; aktive Filter-Chips; vollständige Datenkategorien in Listen.',
+      'Detail-Drawer: Entity-Auflösung nur per ID (kein 500-Fahrzeug-Load); Audit-Timeline entity-scoped.',
+    ],
+    reason:
+      'Listen und KPIs waren unvollständig oder clientseitig gefiltert; große Mandanten brauchen serverseitige Pagination und klare Readiness-Kennzahlen.',
+    previousBehavior:
+      '„Läuft bald ab“ filterte nur ACTIVE; „Widerrufen/Abgelaufen“ nur REVOKED; Audit clientseitig; bis zu 500 Fahrzeuge im Drawer.',
+    details:
+      'docs/architecture/data-processing-kpi-filters-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T02:00:00.000Z',
+  },
+  {
+    id: 'data-processing-detail-views-v49819-2026-07-24',
+    version: '4.9.819',
+    title: 'V4.9.819 — Detail-, Review-, Versions- und Widerrufsansichten (Prompt 36)',
+    summary: [
+      'Professionelle Detail-Drawer für ProcessingActivity, LegalBasis, DPA, ProviderGrant, Consent, Sharing; Legacy-Auth weiter über DataAuthorizationDetailDrawer.',
+      'Getrennte Lifecycle-Dialoge: Review, Änderungen, Genehmigen, Planen, Aktivieren, Aussetzen, Widerruf, Ablehnen, Ersetzen — REJECT ≠ REVOKE.',
+      'Vier-Augen-Banner, DPIA/AVV-Blocker, Versionshistorie read-only, Provider-Widersprüche, Audit-Timeline, keine optimistische Statusanzeige.',
+      'HTTP-409-Konflikte über parseLifecycleApiError; Widerrufsgrund verpflichtend; Auswirkungen vor Bestätigung.',
+      'Hub-Zeilenklicks (Activities, Partner/AVV, Provider, Consents); api.dataProcessing GET + lifecycle erweitert.',
+      'Frontend-Tests: 53/53 data-processing suite.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 36 — Detail-, Review-, Versions- und Widerrufsansichten vor List-Edit-Workflows.',
+    previousBehavior: 'Hub-Sektionen nur lesend ohne Zeilenklick/Detail-Drawer; keine Lifecycle-Action-UI am Register.',
+    details:
+      'frontend/src/rental/components/settings/data-processing/detail/. Doku: docs/architecture/data-processing-detail-views-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-24T03:00:00.000Z',
+  },
+  {
     id: 'data-processing-wizard-v49818-2026-07-24',
     version: '4.9.818',
     title: 'V4.9.818 — Geführter Erstellungs-Wizard (Prompt 35)',

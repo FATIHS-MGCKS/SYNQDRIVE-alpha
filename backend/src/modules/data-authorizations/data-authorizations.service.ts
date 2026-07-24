@@ -29,6 +29,7 @@ import {
 import type { CreateDataAuthorizationDto } from './dto/create-data-authorization.dto';
 import type { GrantDataAuthorizationDto } from './dto/grant-data-authorization.dto';
 import type { ListDataAuthorizationsQueryDto } from './dto/list-data-authorizations-query.dto';
+import { REVOCATION_IN_PROGRESS_STATUSES } from './revocation-orchestrator/revocation-in-progress.constants';
 import type { RevokeDataAuthorizationDto } from './dto/revoke-data-authorization.dto';
 import { LiveGpsEnforcementService } from './live-gps-enforcement/live-gps-enforcement.service';
 import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/revocation-orchestrator.enqueue.service';
@@ -371,7 +372,8 @@ export class DataAuthorizationsService {
 
   async syncSystemAuthorizations(orgId: string) {
     await this.ensureDimoTelemetryAuthorization(orgId);
-    return this.findByOrg(orgId);
+    const result = await this.findByOrg(orgId, { limit: 100 });
+    return result.data;
   }
 
   async findByOrg(
@@ -380,30 +382,34 @@ export class DataAuthorizationsService {
   ) {
     await this.ensureDimoTelemetryAuthorization(orgId);
 
+    const limit = Math.min(Math.max(filters?.limit ?? 50, 1), 100);
+    const sort = filters?.sort ?? 'createdAt';
+    const dir = filters?.dir === 'asc' ? 'asc' : 'desc';
+    const now = new Date();
+    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
     const where: Prisma.OrgDataAuthorizationWhereInput = {
       organizationId: orgId,
     };
 
-    if (filters?.status) {
-      if (
-        filters.status !== 'ACTIVE' &&
-        filters.status !== 'EXPIRED'
-      ) {
+    if (filters?.riskLevel) {
+      where.riskLevel = filters.riskLevel as any;
+    }
+
+    if (filters?.status && !filters.expiringSoon && !filters.revokedOrExpired) {
+      if (filters.status !== 'ACTIVE' && filters.status !== 'EXPIRED') {
         where.status = filters.status as DataAuthorizationStatus;
       } else if (filters.status === 'ACTIVE') {
         where.status = 'ACTIVE';
       }
-      // EXPIRED: post-filter includes ACTIVE rows past expiresAt
     }
-    if (filters?.moduleOrigin) {
-      where.moduleOrigin = filters.moduleOrigin;
-    }
-    if (filters?.scope) {
-      where.scope = filters.scope as DataAuthorizationScope;
-    }
+
+    if (filters?.moduleOrigin) where.moduleOrigin = filters.moduleOrigin;
+    if (filters?.scope) where.scope = filters.scope as DataAuthorizationScope;
     if (filters?.sourceType) {
       where.sourceType = filters.sourceType as DataAuthorizationSourceType;
     }
+
     if (filters?.q?.trim()) {
       const q = filters.q.trim();
       where.OR = [
@@ -415,26 +421,101 @@ export class DataAuthorizationsService {
       ];
     }
 
+    if (filters?.expiringSoon) {
+      where.status = 'ACTIVE';
+      where.expiresAt = { gt: now, lte: in30Days };
+    }
+
+    if (filters?.revokedOrExpired) {
+      where.OR = [
+        { status: 'REVOKED' },
+        { status: 'EXPIRED' },
+        { status: 'ACTIVE', expiresAt: { lte: now } },
+      ];
+    }
+
+    if (filters?.revocationInProgress) {
+      const workflows = await this.prisma.dataAuthorizationRevocationWorkflow.findMany({
+        where: {
+          organizationId: orgId,
+          status: { in: REVOCATION_IN_PROGRESS_STATUSES },
+          legacyOrgAuthId: { not: null },
+        },
+        select: { legacyOrgAuthId: true },
+      });
+      const authIds = [
+        ...new Set(
+          workflows
+            .map((w) => w.legacyOrgAuthId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      where.id = { in: authIds.length > 0 ? authIds : ['__no_match__'] };
+    }
+
+    if (filters?.cursor) {
+      try {
+        const decoded = JSON.parse(
+          Buffer.from(filters.cursor, 'base64url').toString('utf8'),
+        ) as { id: string; createdAt: string };
+        const cursorDate = new Date(decoded.createdAt);
+        where.AND = [
+          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+          {
+            OR: [
+              { createdAt: dir === 'desc' ? { lt: cursorDate } : { gt: cursorDate } },
+              {
+                createdAt: cursorDate,
+                id: dir === 'desc' ? { lt: decoded.id } : { gt: decoded.id },
+              },
+            ],
+          },
+        ];
+      } catch {
+        // ignore invalid cursor
+      }
+    }
+
+    const orderBy: Prisma.OrgDataAuthorizationOrderByWithRelationInput[] =
+      sort === 'title'
+        ? [{ title: dir }]
+        : sort === 'expiresAt'
+          ? [{ expiresAt: dir }]
+          : [{ isSystemGenerated: 'desc' }, { createdAt: dir }];
+
     const rows = await this.prisma.orgDataAuthorization.findMany({
       where,
-      orderBy: [{ isSystemGenerated: 'desc' }, { createdAt: 'desc' }],
+      orderBy,
+      take: limit + 1,
     });
 
-    const now = new Date();
-    const filtered =
-      filters?.status === 'ACTIVE'
-        ? rows.filter(
-            (r) =>
-              this.effectiveStatus(r, now) === 'ACTIVE',
-          )
-        : filters?.status === 'EXPIRED'
-          ? rows.filter(
-              (r) =>
-                this.effectiveStatus(r, now) === 'EXPIRED',
-            )
-          : rows;
+    let page = rows;
+    let nextCursor: string | null = null;
+    if (rows.length > limit) {
+      page = rows.slice(0, limit);
+      const last = page[page.length - 1]!;
+      nextCursor = Buffer.from(
+        JSON.stringify({ id: last.id, createdAt: last.createdAt.toISOString() }),
+        'utf8',
+      ).toString('base64url');
+    }
 
-    return filtered.map((r) => this.format(r, now));
+    const mapped = page.map((r) => this.format(r, now));
+
+    const categoryFiltered = filters?.dataCategory
+      ? mapped.filter((r) =>
+          (r.dataCategories ?? []).includes(filters.dataCategory!),
+        )
+      : mapped;
+
+    const filtered =
+      filters?.status === 'ACTIVE' && !filters.expiringSoon && !filters.revokedOrExpired
+        ? categoryFiltered.filter((r) => r.statusKey === 'ACTIVE')
+        : filters?.status === 'EXPIRED' && !filters.revokedOrExpired
+          ? categoryFiltered.filter((r) => r.statusKey === 'EXPIRED')
+          : categoryFiltered;
+
+    return { data: filtered, meta: { limit, nextCursor } };
   }
 
   async findById(orgId: string, id: string) {
@@ -794,14 +875,41 @@ export class DataAuthorizationsService {
     };
   }
 
-  async getAuditLog(orgId: string, limit = 50) {
+  async getAuditLog(
+    orgId: string,
+    options?: { limit?: number; entityId?: string; cursor?: string },
+  ) {
+    const limit = Math.min(Math.max(options?.limit ?? 50, 1), 200);
+
+    const where: Prisma.ActivityLogWhereInput = {
+      organizationId: orgId,
+      entity: 'DATA_AUTHORIZATION',
+      ...(options?.entityId ? { entityId: options.entityId } : {}),
+    };
+
+    if (options?.cursor) {
+      try {
+        const decoded = JSON.parse(
+          Buffer.from(options.cursor, 'base64url').toString('utf8'),
+        ) as { id: string; createdAt: string };
+        const cursorDate = new Date(decoded.createdAt);
+        where.AND = [
+          {
+            OR: [
+              { createdAt: { lt: cursorDate } },
+              { createdAt: cursorDate, id: { lt: decoded.id } },
+            ],
+          },
+        ];
+      } catch {
+        // ignore invalid cursor
+      }
+    }
+
     const rows = await this.prisma.activityLog.findMany({
-      where: {
-        organizationId: orgId,
-        entity: 'DATA_AUTHORIZATION',
-      },
-      orderBy: { createdAt: 'desc' },
-      take: Math.min(Math.max(limit, 1), 200),
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
       include: {
         user: {
           select: { id: true, name: true, email: true },
@@ -809,23 +917,37 @@ export class DataAuthorizationsService {
       },
     });
 
-    return rows.map((log) => ({
-      id: log.id,
-      action: log.action,
-      description: log.description,
-      changeSummary: log.changeSummary,
-      entityId: log.entityId,
-      level: log.level,
-      createdAt: log.createdAt,
-      actor: log.user
-        ? {
-            id: log.user.id,
-            name: log.user.name,
-            email: log.user.email,
-          }
-        : null,
-      metaJson: log.metaJson,
-    }));
+    let page = rows;
+    let nextCursor: string | null = null;
+    if (rows.length > limit) {
+      page = rows.slice(0, limit);
+      const last = page[page.length - 1]!;
+      nextCursor = Buffer.from(
+        JSON.stringify({ id: last.id, createdAt: last.createdAt.toISOString() }),
+        'utf8',
+      ).toString('base64url');
+    }
+
+    return {
+      items: page.map((log) => ({
+        id: log.id,
+        action: log.action,
+        description: log.description,
+        changeSummary: log.changeSummary,
+        entityId: log.entityId,
+        level: log.level,
+        createdAt: log.createdAt,
+        actor: log.user
+          ? {
+              id: log.user.id,
+              name: log.user.name,
+              email: log.user.email,
+            }
+          : null,
+        metaJson: log.metaJson,
+      })),
+      meta: { limit, nextCursor },
+    };
   }
 
   private async assertVehiclesBelongToOrg(

@@ -1,13 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ErrorState } from '../../../../components/patterns';
 import { api, type DataAuthorizationDto } from '../../../../lib/api';
 import type { DataProcessingDetailTarget } from '../../../lib/data-processing-detail.types';
+import type { DataProcessingKpiKey } from '../../../lib/data-processing-list-state';
+import { readDataProcessingFiltersFromUrl } from '../../../lib/data-processing-list-state';
+import { buildDataProcessingReadinessFromMetrics } from '../../../lib/data-processing-readiness';
+import {
+  buildLegacyFetcher,
+  buildRegisterFetcher,
+  useDataProcessingSectionList,
+} from '../../../lib/useDataProcessingSectionList';
 import { useRentalOrg } from '../../../RentalContext';
 import { useDataProcessingPermissions } from '../../../hooks/useDataProcessingPermissions';
 import type { DataProcessingSectionId } from './data-processing.constants';
+import { DataProcessingActiveFilters } from './DataProcessingActiveFilters';
 import { DataProcessingDetailHost } from './detail/DataProcessingDetailHost';
+import { DataProcessingKpiStrip } from './DataProcessingKpiStrip';
 import { DataProcessingPageHeader } from './DataProcessingPageHeader';
-import { DataProcessingReadinessStrip } from './DataProcessingReadinessStrip';
 import { DataProcessingSubNav } from './DataProcessingSubNav';
 import { useDataProcessingHub } from './useDataProcessingHub';
 import { ProcessingActivitiesSection } from './sections/ProcessingActivitiesSection';
@@ -16,8 +25,11 @@ import { ProviderAccessSection } from './sections/ProviderAccessSection';
 import { ConsentsSection } from './sections/ConsentsSection';
 import { PartnersProcessorsSection } from './sections/PartnersProcessorsSection';
 import { AuditDecisionsSection } from './sections/AuditDecisionsSection';
+import { DataProcessingSavedViews } from './DataProcessingSavedViews';
+import { useAuditDecisionsList } from '../../../lib/useAuditDecisionsList';
 import { DataProcessingWizardDialog } from './wizard/DataProcessingWizardDialog';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import { isProviderAuthorization } from './sections/ProviderAccessSection';
 
 interface Props {
   canWrite?: boolean;
@@ -34,14 +46,98 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [legacyAuth, setLegacyAuth] = useState<DataAuthorizationDto | null>(null);
   const [legacyActionLoading, setLegacyActionLoading] = useState(false);
+  const [enforcementErrorsOnly, setEnforcementErrorsOnly] = useState(false);
+
+  const [activeSection, setActiveSection] = useState<DataProcessingSectionId>(
+    permissions.visibleSections[0] ?? 'activities',
+  );
+
+  const urlFilters = useMemo(() => readDataProcessingFiltersFromUrl(), []);
+
+  const activitiesList = useDataProcessingSectionList({
+    orgId,
+    enabled: activeSection === 'activities' && permissions.canViewActivities,
+    initialFilters: urlFilters,
+    syncUrl: true,
+    fetchPage: buildRegisterFetcher(),
+  });
+
+  const providersList = useDataProcessingSectionList({
+    orgId,
+    enabled: activeSection === 'providers' && permissions.canViewProviders,
+    initialFilters: urlFilters,
+    syncUrl: true,
+    fetchPage: async (orgId, filters) => {
+      const result = await buildLegacyFetcher()(orgId, filters);
+      return {
+        items: result.items.filter(isProviderAuthorization),
+        nextCursor: result.nextCursor,
+      };
+    },
+  });
+
+  const consentsList = useDataProcessingSectionList({
+    orgId,
+    enabled: activeSection === 'consents' && permissions.canViewConsents,
+    initialFilters: urlFilters,
+    syncUrl: true,
+    fetchPage: buildLegacyFetcher(),
+  });
+
+  const readiness = useMemo(
+    () =>
+      buildDataProcessingReadinessFromMetrics({
+        metrics: hub.metrics,
+        coverage: hub.coverage,
+        partners: hub.partners,
+      }),
+    [hub.metrics, hub.coverage, hub.partners],
+  );
+
+  const auditList = useAuditDecisionsList({
+    orgId,
+    enabled: activeSection === 'audit' && permissions.canViewAudit,
+    limit: 25,
+  });
+
+  const kpiSection =
+    activeSection === 'providers' || activeSection === 'consents'
+      ? activeSection
+      : activeSection === 'enforcement'
+        ? 'enforcement'
+        : 'activities';
+
+  const activeList =
+    activeSection === 'activities'
+      ? activitiesList
+      : activeSection === 'providers'
+        ? providersList
+        : activeSection === 'consents'
+          ? consentsList
+          : null;
+
+  const handleKpiClick = (kpi: DataProcessingKpiKey) => {
+    if (activeSection === 'enforcement' && kpi === 'enforcement_errors') {
+      setEnforcementErrorsOnly((prev) => !prev);
+      return;
+    }
+    if (!activeList) return;
+    activeList.setFilters({
+      kpi: activeList.filters.kpi === kpi ? null : kpi,
+      status: '',
+      riskLevel: '',
+      dataCategory: '',
+    });
+  };
 
   const openDetail = (target: DataProcessingDetailTarget) => {
     setDetailTarget(target);
     setDetailOpen(true);
-    if (target.kind === 'legacy-authorization') {
-      const found = hub.legacyAuthorizations.find((a) => a.id === target.id) ?? null;
+    if (target.kind === 'legacy-authorization' && orgId) {
+      const pool = [...providersList.items, ...consentsList.items];
+      const found = pool.find((a) => a.id === target.id) ?? null;
       setLegacyAuth(found);
-      if (!found && orgId) {
+      if (!found) {
         void api.dataAuthorizations.get(orgId, target.id).then(setLegacyAuth).catch(() => setLegacyAuth(null));
       }
     }
@@ -53,7 +149,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
     try {
       const updated = await api.dataAuthorizations.grant(orgId, legacyAuth.id);
       setLegacyAuth(updated);
-      await hub.reload();
+      await Promise.all([hub.reload(), providersList.reload(), consentsList.reload()]);
     } finally {
       setLegacyActionLoading(false);
     }
@@ -67,15 +163,11 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
         reason: 'Revoked from detail view',
       });
       setLegacyAuth(updated);
-      await hub.reload();
+      await Promise.all([hub.reload(), providersList.reload(), consentsList.reload()]);
     } finally {
       setLegacyActionLoading(false);
     }
   };
-
-  const [activeSection, setActiveSection] = useState<DataProcessingSectionId>(
-    permissions.visibleSections[0] ?? 'activities',
-  );
 
   useEffect(() => {
     if (!permissions.visibleSections.includes(activeSection)) {
@@ -98,13 +190,44 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 animate-fade-up">
       <DataProcessingPageHeader
-        readiness={hub.readiness}
+        readiness={readiness}
         loading={hub.loading}
         canCreate={canOpenWizard}
         onCreate={() => setWizardOpen(true)}
       />
 
-      <DataProcessingReadinessStrip summary={hub.readiness} loading={hub.loading} />
+      <DataProcessingKpiStrip
+        metrics={hub.metrics}
+        loading={hub.loading}
+        section={kpiSection}
+        activeKpi={
+          activeSection === 'enforcement' && enforcementErrorsOnly
+            ? 'enforcement_errors'
+            : activeList?.filters.kpi ?? null
+        }
+        onKpiClick={
+          activeList || activeSection === 'enforcement' ? handleKpiClick : undefined
+        }
+      />
+
+      {activeList && orgId ? (
+        <DataProcessingSavedViews
+          orgId={orgId}
+          section={
+            activeSection === 'providers'
+              ? 'providers'
+              : activeSection === 'consents'
+                ? 'consents'
+                : 'activities'
+          }
+          filters={activeList.filters}
+          onApply={(patch) => activeList.setFilters(patch)}
+        />
+      ) : null}
+
+      {activeList ? (
+        <DataProcessingActiveFilters filters={activeList.filters} onClear={activeList.resetFilters} />
+      ) : null}
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">{t('dataProcessing.disclaimer')}</p>
 
@@ -128,10 +251,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
       >
         {activeSection === 'activities' && permissions.canViewActivities ? (
           <ProcessingActivitiesSection
-            items={hub.activities}
-            loading={hub.loading}
-            error={hub.sectionErrors.activities ?? null}
-            onRetry={() => void hub.reload()}
+            list={activitiesList}
             onRowClick={(row) => openDetail({ kind: 'processing-activity', id: row.id })}
           />
         ) : null}
@@ -143,25 +263,21 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
             loading={hub.loading}
             error={hub.sectionErrors.enforcement ?? null}
             onRetry={() => void hub.reload()}
+            enforcementErrorsOnly={enforcementErrorsOnly}
           />
         ) : null}
 
         {activeSection === 'providers' && permissions.canViewProviders ? (
           <ProviderAccessSection
-            authorizations={hub.legacyAuthorizations}
-            loading={hub.loading}
-            error={hub.sectionErrors.providers ?? null}
-            onRetry={() => void hub.reload()}
+            list={providersList}
             onRowClick={(row) => openDetail({ kind: 'legacy-authorization', id: row.id })}
           />
         ) : null}
 
         {activeSection === 'consents' && permissions.canViewConsents ? (
           <ConsentsSection
-            authorizations={hub.legacyAuthorizations}
-            loading={hub.loading}
-            error={hub.sectionErrors.consents ?? null}
-            onRetry={() => void hub.reload()}
+            list={consentsList}
+            filterFn={(a) => !isProviderAuthorization(a)}
             onRowClick={(row) => openDetail({ kind: 'legacy-authorization', id: row.id })}
           />
         ) : null}
@@ -178,10 +294,13 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
 
         {activeSection === 'audit' && permissions.canViewAudit ? (
           <AuditDecisionsSection
-            items={hub.auditDecisions}
-            loading={hub.loading}
-            error={hub.sectionErrors.audit ?? null}
-            onRetry={() => void hub.reload()}
+            items={auditList.items}
+            loading={auditList.loading}
+            error={auditList.error}
+            onRetry={() => void auditList.reload()}
+            nextCursor={auditList.nextCursor}
+            onLoadMore={() => void auditList.loadMore()}
+            itemCount={auditList.items.length}
           />
         ) : null}
       </section>
@@ -197,7 +316,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
               canRequestReview: permissions.canRequestReview && (canManage ?? permissions.canRequestReview),
             }}
             onSuccess={async () => {
-              await hub.reload();
+              await Promise.all([hub.reload(), activitiesList.reload()]);
               setActiveSection('activities');
             }}
           />
@@ -207,7 +326,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
             open={detailOpen}
             onOpenChange={setDetailOpen}
             canManage={canManage ?? permissions.canRequestReview}
-            onUpdated={() => void hub.reload()}
+            onUpdated={() => void Promise.all([hub.reload(), activitiesList.reload()])}
             legacyAuth={legacyAuth}
             legacyActionLoading={legacyActionLoading}
             onLegacyGrant={() => void handleLegacyGrant()}

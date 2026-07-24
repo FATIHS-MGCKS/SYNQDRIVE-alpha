@@ -17,6 +17,7 @@ describe('DataAuthorizationsService', () => {
       update: jest.fn(),
       count: jest.fn(),
     },
+    dataAuthorizationRevocationWorkflow: { findMany: jest.fn() },
     activityLog: { findMany: jest.fn() },
   };
 
@@ -157,6 +158,60 @@ describe('DataAuthorizationsService', () => {
         highRisk: 1,
         expiringSoon: 1,
       });
+    });
+  });
+
+  describe('findByOrg filters', () => {
+    beforeEach(() => {
+      prisma.vehicle.findMany.mockResolvedValue([]);
+      prisma.orgDataAuthorization.findUnique.mockResolvedValue({
+        id: 'sys',
+        status: 'ACTIVE',
+      });
+      prisma.orgDataAuthorization.update.mockResolvedValue({});
+      prisma.dataAuthorizationRevocationWorkflow.findMany.mockResolvedValue([]);
+    });
+
+    it('applies expiringSoon server filter for active records within 30 days', async () => {
+      prisma.orgDataAuthorization.findMany.mockResolvedValue([]);
+      await service.findByOrg('org-1', { expiringSoon: true, limit: 25 });
+      expect(prisma.orgDataAuthorization.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'ACTIVE',
+            expiresAt: expect.objectContaining({ gt: expect.any(Date), lte: expect.any(Date) }),
+          }),
+        }),
+      );
+    });
+
+    it('applies revokedOrExpired server filter including active past expiry', async () => {
+      prisma.orgDataAuthorization.findMany.mockResolvedValue([]);
+      await service.findByOrg('org-1', { revokedOrExpired: true, limit: 25 });
+      expect(prisma.orgDataAuthorization.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              { status: 'REVOKED' },
+              { status: 'EXPIRED' },
+              { status: 'ACTIVE', expiresAt: { lte: expect.any(Date) } },
+            ]),
+          }),
+        }),
+      );
+    });
+
+    it('scopes revocationInProgress to legacy authorizations linked to workflows', async () => {
+      prisma.dataAuthorizationRevocationWorkflow.findMany.mockResolvedValue([
+        { legacyOrgAuthId: 'auth-1' },
+      ]);
+      prisma.orgDataAuthorization.findMany.mockResolvedValue([]);
+      await service.findByOrg('org-1', { revocationInProgress: true, limit: 25 });
+      expect(prisma.orgDataAuthorization.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: { in: ['auth-1'] } }),
+        }),
+      );
     });
   });
 });

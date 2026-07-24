@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
 } from '../../../../../components/patterns';
 import type { AuthorizationDecisionAuditItem } from '../../../../../lib/api';
+import { DataProcessingListPagination } from '../DataProcessingListPagination';
 import { useLanguage } from '../../../../i18n/LanguageContext';
 
 function eventTone(eventType: string): 'success' | 'critical' | 'watch' | 'neutral' {
@@ -22,9 +23,20 @@ interface Props {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  nextCursor?: string | null;
+  onLoadMore?: () => void;
+  itemCount?: number;
 }
 
-export function AuditDecisionsSection({ items, loading, error, onRetry }: Props) {
+export function AuditDecisionsSection({
+  items,
+  loading,
+  error,
+  onRetry,
+  nextCursor,
+  onLoadMore,
+  itemCount,
+}: Props) {
   const { t } = useLanguage();
 
   const columns: DataTableColumn<AuthorizationDecisionAuditItem>[] = [
@@ -92,6 +104,13 @@ export function AuditDecisionsSection({ items, loading, error, onRetry }: Props)
           </div>
         ))}
       </div>
+      <DataProcessingListPagination
+        loading={loading}
+        hasMore={Boolean(nextCursor)}
+        onLoadMore={onLoadMore}
+        itemCount={itemCount ?? items.length}
+        label={t('dataProcessing.pagination.loadMore')}
+      />
     </div>
   );
 }

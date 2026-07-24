@@ -24,6 +24,7 @@ interface Props {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  enforcementErrorsOnly?: boolean;
 }
 
 export function EnforcementPoliciesSection({
@@ -32,8 +33,13 @@ export function EnforcementPoliciesSection({
   loading,
   error,
   onRetry,
+  enforcementErrorsOnly,
 }: Props) {
   const { t } = useLanguage();
+
+  const visibleFlows = enforcementErrorsOnly
+    ? flows.filter((f) => f.status === 'ENFORCEMENT_ERROR')
+    : flows;
 
   const columns: DataTableColumn<EnforcementFlowCoverageRowDto>[] = [
     {
@@ -81,12 +87,20 @@ export function EnforcementPoliciesSection({
 
   if (loading) return <SkeletonRows rows={6} />;
 
-  if (flows.length === 0) {
+  if (visibleFlows.length === 0) {
     return (
       <EmptyState
         icon={<Radar className="h-8 w-8" />}
-        title={t('dataProcessing.enforcement.empty.title')}
-        description={t('dataProcessing.enforcement.empty.description')}
+        title={
+          enforcementErrorsOnly
+            ? t('dataProcessing.enforcement.empty.errors.title')
+            : t('dataProcessing.enforcement.empty.title')
+        }
+        description={
+          enforcementErrorsOnly
+            ? t('dataProcessing.enforcement.empty.errors.description')
+            : t('dataProcessing.enforcement.empty.description')
+        }
       />
     );
   }
@@ -100,10 +114,10 @@ export function EnforcementPoliciesSection({
       ) : null}
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.enforcement.hint')}</p>
       <div className="hidden md:block">
-        <DataTable columns={columns} rows={flows} getRowKey={(r) => r.flowId} />
+        <DataTable columns={columns} rows={visibleFlows} getRowKey={(r) => r.flowId} />
       </div>
       <div className="md:hidden space-y-2">
-        {flows.map((row) => (
+        {visibleFlows.map((row) => (
           <div key={row.flowId} className="surface-premium rounded-xl border border-border/70 p-3">
             <p className="font-medium text-foreground">{row.flowName}</p>
             <StatusChip tone={statusTone(row.status)} className="mt-2">

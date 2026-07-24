@@ -19,7 +19,11 @@ export function LifecycleBlockersPanel({
   const gaps = blockingGaps ?? [];
   const warns = warnings ?? [];
   const dpa = dpaBlockers ?? [];
-  const dpiaBlocked = dpiaStatus === 'REQUIRED_NOT_DONE' || dpiaStatus === 'BLOCKED';
+  const dpiaBlocked =
+    dpiaStatus === 'DPIA_REQUIRED' ||
+    dpiaStatus === 'DPIA_REVIEW_DUE' ||
+    dpiaStatus === 'REQUIRED_NOT_DONE' ||
+    dpiaStatus === 'BLOCKED';
 
   if (!gaps.length && !warns.length && !dpa.length && !dpiaBlocked) return null;
 

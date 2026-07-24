@@ -487,6 +487,37 @@ export const en = {
   'dataProcessing.audit.empty.title': 'No audit entries',
   'dataProcessing.audit.empty.description': 'Runtime decisions appear after first enforcement events.',
 
+  'dataProcessing.kpi.active_activities': 'Active processing activities',
+  'dataProcessing.kpi.blocking_gaps': 'Blocking control gaps',
+  'dataProcessing.kpi.reviews_due': 'Reviews due',
+  'dataProcessing.kpi.revocations_in_progress': 'Revocations in progress',
+  'dataProcessing.kpi.enforcement_errors': 'Enforcement errors',
+  'dataProcessing.kpi.dpia_overdue': 'DPIA overdue',
+  'dataProcessing.kpi.legacy_active': 'Active approvals',
+  'dataProcessing.kpi.legacy_pending': 'Pending approvals',
+  'dataProcessing.kpi.legacy_expiring_soon': 'Expiring soon',
+  'dataProcessing.kpi.legacy_revoked_expired': 'Revoked / expired',
+  'dataProcessing.kpi.legacy_high_risk': 'High risk',
+
+  'dataProcessing.filters.search': 'Search',
+  'dataProcessing.filters.searchPlaceholder': 'Search by title or code…',
+  'dataProcessing.filters.active': 'Active filters',
+  'dataProcessing.filters.clear': 'Clear filters',
+
+  'dataProcessing.pagination.loadMore': 'Load more',
+
+  'dataProcessing.savedViews.save': 'Save view',
+  'dataProcessing.savedViews.delete': 'Delete saved view',
+  'dataProcessing.savedViews.namePlaceholder': 'Name this filter view…',
+
+  'dataProcessing.activities.col.categories': 'Data categories',
+  'dataProcessing.providers.col.categories': 'Data categories',
+  'dataProcessing.consents.col.categories': 'Data categories',
+
+  'dataProcessing.enforcement.empty.errors.title': 'No enforcement errors',
+  'dataProcessing.enforcement.empty.errors.description':
+    'All monitored flows are running without enforcement errors in the current view.',
+
   'dataProcessing.detail.loading': 'Loading details…',
   'dataProcessing.detail.notEditable': 'Active records cannot be edited directly. Create a new version instead.',
   'dataProcessing.detail.historicalVersion': 'Historical version (read-only)',
