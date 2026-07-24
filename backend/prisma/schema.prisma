@@ -10638,9 +10638,11 @@ model OrgDataAuthorization {
 // ─── Workflow Automation ──────────────────────────
 
 enum WorkflowStatus {
-  ACTIVE
   DRAFT
+  PUBLISHED
+  ACTIVE
   DISABLED
+  ARCHIVED
   INVALID
 }
 
@@ -10689,6 +10691,13 @@ model OrgWorkflow {
   lastTriggeredAt DateTime?      @map("last_triggered_at")
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
+  publishedAt     DateTime?      @map("published_at")
+  publishedById   String?        @map("published_by_id")
+  publishedByName String?        @map("published_by_name")
+  archivedAt      DateTime?      @map("archived_at")
+  archivedById    String?        @map("archived_by_id")
+  archivedByName  String?        @map("archived_by_name")
+  archiveReason   String?        @map("archive_reason")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -10697,6 +10706,7 @@ model OrgWorkflow {
   @@index([organizationId])
   @@index([organizationId, status])
   @@index([organizationId, enabled])
+  @@index([organizationId, archivedAt])
   @@index([status])
   @@index([category])
   @@map("org_workflows")
@@ -10719,7 +10729,7 @@ model OrgWorkflowRun {
   finishedAt      DateTime?         @map("finished_at")
   createdAt       DateTime          @default(now()) @map("created_at")
 
-  workflow   OrgWorkflow            @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow   OrgWorkflow            @relation(fields: [workflowId], references: [id], onDelete: Restrict)
   actionRuns OrgWorkflowActionRun[]
   approvals  OrgWorkflowApproval[]
 

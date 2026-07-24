@@ -85,12 +85,26 @@ describe('WorkflowsService tenant isolation', () => {
     );
   });
 
-  it('remove uses organizationId in deleteMany', async () => {
-    prisma.orgWorkflow.findFirst.mockResolvedValue({ id: 'wf-1' });
-    prisma.orgWorkflow.deleteMany.mockResolvedValue({ count: 1 });
-    await service.remove(ORG_A, 'wf-1');
-    expect(prisma.orgWorkflow.deleteMany).toHaveBeenCalledWith({
-      where: { id: 'wf-1', organizationId: ORG_A },
+  it('discardDraft uses organizationId and draft guards in deleteMany', async () => {
+    prisma.orgWorkflow.findFirst.mockResolvedValue({
+      id: 'wf-1',
+      organizationId: ORG_A,
+      status: 'DRAFT',
+      publishedAt: null,
+      triggerCount: 0,
     });
+    prisma.orgWorkflowRun.count.mockResolvedValue(0);
+    prisma.orgWorkflow.deleteMany.mockResolvedValue({ count: 1 });
+    await service.discardDraft(ORG_A, 'wf-1');
+    expect(prisma.orgWorkflow.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'wf-1', organizationId: ORG_A, status: 'DRAFT', publishedAt: null },
+    });
+  });
+
+  it('archive rejects foreign workflow id', async () => {
+    prisma.orgWorkflow.findFirst.mockResolvedValue(null);
+    await expect(service.archive(ORG_B, 'wf-foreign', 'u1', 'Admin', 'reason')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-lifecycle-archive-v49813-2026-07-24',
+    version: '4.9.813',
+    title: 'V4.9.813 — Workflow lifecycle archive (no hard delete of published workflows)',
+    summary: [
+      '**Lifecycle**: `DRAFT` → `PUBLISHED` → `ACTIVE`/`DISABLED` → `ARCHIVED`; pure drafts may be discarded only without runs/triggers/publish metadata.',
+      '**API**: `POST /workflows/:id/publish`, `POST /workflows/:id/archive` (audit: actor, timestamp, reason when published/executed); `DELETE /:id` → draft discard only.',
+      '**DB**: migration `20260724210000_workflow_lifecycle_archive` — publish/archive columns, backfill `published_at`, `org_workflow_runs` FK `ON DELETE RESTRICT`.',
+      '**Engine**: archived workflows excluded from matching (`archivedAt: null`). Default lists hide `ARCHIVED`; filter `?status=ARCHIVED` or `?includeArchived=true`.',
+      '**Frontend**: Archive / Discard draft instead of Delete; archive filter in `WorkflowAutomationView`.',
+      '**Tests**: `workflow-lifecycle.util.spec.ts`, `workflow-lifecycle.service.spec.ts`.',
+      '**Docs**: `docs/architecture/WORKFLOW_LIFECYCLE_2026-07.md`.',
+    ],
+    reason:
+      'Hard-deleting workflow definitions cascaded away audit history and allowed removal of published/executed automations.',
+    previousBehavior:
+      '`DELETE /workflows/:id` physically removed any workflow; `org_workflow_runs` FK used `ON DELETE CASCADE`.',
+    details:
+      'backend/prisma/schema.prisma, migration 20260724210000, workflow-lifecycle.util.ts, workflows.service/controller, workflow-engine.service.ts, dto/workflow.dto.ts; frontend WorkflowAutomationView.tsx, lib/api.ts.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-25T00:00:00.000Z',
+  },
+  {
     id: 'workflow-tenant-isolation-v49812-2026-07-24',
     version: '4.9.812',
     title: 'V4.9.812 — Workflow tenant isolation & fail-closed scope enforcement',
