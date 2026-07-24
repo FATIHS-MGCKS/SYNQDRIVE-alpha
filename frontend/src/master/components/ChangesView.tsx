@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-metric-response-v49806-2026-07-24',
+    version: '4.9.806',
+    title: 'V4.9.806 — Auswertungen KPI Status & Metadatenvertrag (Prompt 8/54)',
+    summary: [
+      'Einheitlicher `EvaluationsMetricResponse`-Vertrag: metricId, value, unit, status, period, comparison, dataCoverage, sourceFreshness, calculationVersion, exclusions, warnings.',
+      'Status: AVAILABLE, PARTIAL, STALE, UNAVAILABLE, ERROR, NOT_APPLICABLE — 0 ist echter Wert; ERROR/UNAVAILABLE nie als Null-Placeholder.',
+      'Builder + Validator + Legacy-Mapping (Business Pulse, Trust-Layer, Display-Tokens).',
+      'Neuer Endpoint: GET `/organizations/:orgId/evaluations/kpis/financial-mtd` (7 Finanz-KPIs).',
+      'Doku + Tests pro Status; Frontend-Re-Export `evaluations-metric-response.ts`.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 8 — konsistente KPI-Metadaten für UI und Exporte.',
+    previousBehavior: 'Finanz-KPIs ohne Statussemantik; Fehler als `—` oder fälschlich €0; keine dataCoverage/sourceFreshness.',
+    details:
+      'shared/evaluations-metrics/evaluations-metric-response.*, backend evaluations-financial-kpi.service.ts, evaluations-kpi.controller.ts; docs/architecture/analytics/evaluations-metric-response-contract.md.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T16:00:00.000Z',
+  },
+  {
     id: 'evaluations-timezone-period-v49805-2026-07-24',
     version: '4.9.805',
     title: 'V4.9.805 — Auswertungen Zeitzone & Zeitraummodell (Prompt 7/54)',

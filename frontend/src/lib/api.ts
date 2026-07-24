@@ -4211,6 +4211,22 @@ export const api = {
         `/organizations/${orgId}/evaluations/periods/resolve?${search.toString()}`,
       );
     },
+    financialMtd: (
+      orgId: string,
+      params?: { stationId?: string; reference?: string },
+    ) => {
+      const search = new URLSearchParams();
+      if (params?.stationId) search.set('stationId', params.stationId);
+      if (params?.reference) search.set('reference', params.reference);
+      const qs = search.toString();
+      return get<{
+        schemaVersion: string;
+        generatedAt: string;
+        timezone: import('@synq/evaluations-periods/evaluations-period.contract').EvaluationsTimezoneContext;
+        periods: unknown;
+        metrics: import('@synq/evaluations-metrics/evaluations-metric-response.contract').EvaluationsMetricResponse[];
+      }>(`/organizations/${orgId}/evaluations/kpis/financial-mtd${qs ? `?${qs}` : ''}`);
+    },
   },
   dashboardInsights: {
     get: (orgId: string) => get<{
