@@ -407,6 +407,28 @@ export function buildMockRecommendations() {
       updatedAt: ts,
       calculationVersion: 'recommendation-v1',
     },
+    {
+      id: 'rec-e2e-3',
+      organizationId: TEST_ORG_ID,
+      sourceType: 'EVALUATIONS_RISK',
+      sourceId: 'risk-e2e-2',
+      category: 'FLEET_UTILIZATION',
+      title: 'Auslastung Q3 steigern',
+      description: 'Maßnahme wurde umgesetzt — Wirkung messen.',
+      rationale: 'Preisanpassung und Marketing-Kampagne gestartet.',
+      expectedBenefit: { amountMinor: 30_000, currency: 'EUR' },
+      estimatedCost: { amountMinor: 6_000, currency: 'EUR' },
+      expectedNetBenefit: { amountMinor: 24_000, currency: 'EUR' },
+      confidence: 'HIGH',
+      priority: 55,
+      affectedEntities: [{ entityType: 'station', entityId: 'st-berlin', label: 'Berlin' }],
+      ownerId: 'user-fleet-manager',
+      dueAt: null,
+      status: 'IMPLEMENTED',
+      createdAt: ts,
+      updatedAt: ts,
+      calculationVersion: 'recommendation-v1',
+    },
   ];
 }
 
@@ -439,6 +461,13 @@ export async function installEvaluationsMocks(page: Page) {
         createdAt: ts,
       },
     ],
+  };
+
+  const impactState: Record<string, unknown | null> = {
+    'rec-e2e-3': null,
+  };
+  const impactVersions: Record<string, unknown[]> = {
+    'rec-e2e-3': [],
   };
 
   await page.route('**/api/**', async (route) => {
@@ -561,6 +590,27 @@ export async function installEvaluationsMocks(page: Page) {
     }
 
     if (url.includes(`/organizations/${TEST_ORG_ID}/evaluations/recommendations`) && method === 'GET') {
+      const impactVersionsMatch = url.match(/\/recommendations\/([^/]+)\/impact\/versions/);
+      if (impactVersionsMatch) {
+        const recId = impactVersionsMatch[1];
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(impactVersions[recId!] ?? []),
+        });
+      }
+
+      const impactMatch = url.match(/\/recommendations\/([^/]+)\/impact$/);
+      if (impactMatch) {
+        const recId = impactMatch[1];
+        const row = impactState[recId!] ?? null;
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(row),
+        });
+      }
+
       const integrationsMatch = url.match(/\/recommendations\/([^/]+)\/integrations/);
       if (integrationsMatch) {
         return route.fulfill({
@@ -613,6 +663,68 @@ export async function installEvaluationsMocks(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(recommendationState),
+      });
+    }
+
+    if (
+      url.includes(`/organizations/${TEST_ORG_ID}/evaluations/recommendations/`) &&
+      url.includes('/impact/measure') &&
+      method === 'POST'
+    ) {
+      const recId = url.match(/\/recommendations\/([^/]+)\/impact\/measure/)?.[1];
+      const body = route.request().postDataJSON() as {
+        baselineValue?: number;
+        targetValue?: number;
+        actualKpiValue?: number;
+        actualBenefit?: { amountMinor: number; currency: string };
+        actualCost?: { amountMinor: number; currency: string };
+        baselinePeriod?: { from: string; to: string };
+        measurementPeriod?: { from: string; to: string };
+        dataCoveragePercent?: number;
+        implementationStatus?: string;
+      };
+      const version = (impactVersions[recId!]?.length ?? 0) + 1;
+      const saved = {
+        id: `impact-e2e-${version}`,
+        recommendationId: recId,
+        organizationId: TEST_ORG_ID,
+        version,
+        isLatest: true,
+        baselineKpiKey: 'fleetUtilization.utilizationPercent',
+        baselineKpiLabel: 'Fleet utilization %',
+        baselineValue: body.baselineValue ?? null,
+        targetValue: body.targetValue ?? null,
+        actualKpiValue: body.actualKpiValue ?? null,
+        expectedBenefit: { amountMinor: 30_000, currency: 'EUR' },
+        expectedCost: { amountMinor: 6_000, currency: 'EUR' },
+        actualBenefit: body.actualBenefit ?? null,
+        actualCost: body.actualCost ?? null,
+        varianceFromExpected:
+          body.actualBenefit != null
+            ? { amountMinor: body.actualBenefit.amountMinor - 30_000, currency: 'EUR' }
+            : null,
+        baselinePeriod: body.baselinePeriod,
+        measurementPeriod: body.measurementPeriod,
+        dataCoveragePercent: body.dataCoveragePercent ?? null,
+        outcomeStatus: (body.dataCoveragePercent ?? 100) < 50 ? 'INSUFFICIENT_DATA' : 'SUCCESS',
+        implementationStatus: body.implementationStatus ?? 'FULL',
+        trend: 'IMPROVING',
+        confidence: 'HIGH',
+        limitations: [],
+        deviationExplanation: null,
+        correlationDisclaimer:
+          'Die Messung zeigt eine zeitliche Korrelation im gewählten Vergleichszeitraum.',
+        calculationVersion: 'impact-measurement-v1',
+        periodComparable: true,
+        measuredAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      impactState[recId!] = saved;
+      impactVersions[recId!] = [...(impactVersions[recId!] ?? []), saved];
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(saved),
       });
     }
 

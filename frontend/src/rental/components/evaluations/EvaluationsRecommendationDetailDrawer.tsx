@@ -15,6 +15,7 @@ import {
   formatRecommendationMoney,
 } from '../../lib/evaluations-recommendations-format';
 import { EvaluationsRecommendationIntegrations } from './EvaluationsRecommendationIntegrations';
+import { EvaluationsRecommendationImpactPanel } from './EvaluationsRecommendationImpactPanel';
 import type { EvaluationsDataQualityNavigationOptions } from '../../lib/evaluations-data-quality-navigation';
 
 const STATUS_KEYS: Record<EvaluationsRecommendationStatus, TranslationKey> = {
@@ -286,6 +287,11 @@ export function EvaluationsRecommendationDetailDrawer({
           onNavigate={onNavigate}
           onOpenTask={onOpenTask}
           onOpenServiceCase={onOpenServiceCase}
+        />
+
+        <EvaluationsRecommendationImpactPanel
+          recommendation={recommendation}
+          analyticsLocale={analyticsLocale}
         />
 
         <section aria-labelledby="eval-rec-history-title">

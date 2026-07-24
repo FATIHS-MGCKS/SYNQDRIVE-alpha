@@ -43,6 +43,8 @@ import { OrgRecommendationsRepository } from './recommendations/org-recommendati
 import { OrgRecommendationsService } from './recommendations/org-recommendations.service';
 import { RecommendationEntityValidationService } from './recommendations/recommendation-entity-validation.service';
 import { RecommendationIntegrationsService } from './recommendations/recommendation-integrations.service';
+import { RecommendationImpactRepository } from './recommendations/recommendation-impact.repository';
+import { RecommendationImpactService } from './recommendations/recommendation-impact.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
@@ -88,6 +90,8 @@ import { WorkflowsModule } from '../workflows/workflows.module';
     OrgRecommendationsService,
     RecommendationEntityValidationService,
     RecommendationIntegrationsService,
+    RecommendationImpactRepository,
+    RecommendationImpactService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
     TightHandoverDetector,

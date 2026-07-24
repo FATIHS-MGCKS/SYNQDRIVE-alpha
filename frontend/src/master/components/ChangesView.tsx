@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-impact-measurement-p39-2026-07-24',
+    version: '4.9.836',
+    title: 'V4.9.836 — Evaluations Wirkungsmessung (Prompt 39)',
+    summary: [
+      'Versioned `OrgRecommendationImpact` model with baseline KPI, target, expected/actual benefit & cost, measurement periods, variance, data coverage, outcome status, trend, confidence.',
+      'Shared calculation `impact-measurement-v1`: comparable periods, no causal claims, insufficient-data guardrails, cancelled/partial handling.',
+      'API: GET latest/versions, POST preview/measure + `IMPACT_MEASURED` audit event.',
+      'UI: `EvaluationsRecommendationImpactPanel` — expectation vs actual, trend, limitations, correlation disclaimer.',
+      'Docs: `docs/architecture/analytics/evaluations-impact-measurement.md`.',
+    ],
+    reason: 'Prompt 39/54: traceable impact measurement for implemented recommendations.',
+    previousBehavior: 'Recommendations could be integrated and tracked by status, but had no structured before/after impact record.',
+    details:
+      'recommendation-impact.service.ts, shared/evaluations-impact-measurement.ts, EvaluationsRecommendationImpactPanel.tsx.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Impact Measurement',
+    createdAt: '2026-07-24T16:00:00.000Z',
+  },
+  {
     id: 'evaluations-action-integrations-p38-2026-07-24',
     version: '4.9.835',
     title: 'V4.9.835 — Evaluations Empfehlungs-Verknüpfungen (Prompt 38)',

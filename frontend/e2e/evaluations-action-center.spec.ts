@@ -54,4 +54,23 @@ test.describe('Evaluations action center', () => {
     await expect(actionCenter.getByText('Bremsen prüfen lassen')).not.toBeVisible();
     await assertNoHorizontalOverflow(page);
   });
+
+  test('shows impact measurement panel for implemented recommendations', async ({ page }) => {
+    await openEvaluationsPage(page);
+
+    await page.getByTestId('evaluations-section-nav').getByRole('link', { name: /Maßnahmen|Actions/i }).click();
+    const actionCenter = page.getByTestId('evaluations-action-center');
+    await expect(actionCenter).toBeVisible({ timeout: 15000 });
+
+    await actionCenter.getByRole('button', { name: /Auslastung Q3 steigern/i }).click();
+    await expect(page.getByTestId('evaluations-recommendation-impact')).toBeVisible();
+    await expect(page.getByText(/Wirkungsmessung|Impact measurement/i)).toBeVisible();
+    await expect(page.getByText(/Korrelation|correlation/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Wirkungsmessung erfassen|Record impact measurement/i }).click();
+    await page.getByRole('button', { name: /Messung speichern|Save measurement/i }).click();
+
+    await expect(page.getByText(/Erfolg|Success/i)).toBeVisible({ timeout: 10000 });
+    await assertNoHorizontalOverflow(page);
+  });
 });

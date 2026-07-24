@@ -21,8 +21,10 @@ import {
   UpdateRecommendationDto,
 } from './dto/recommendation.dto';
 import { ExecuteRecommendationIntegrationDto } from './dto/recommendation-integration.dto';
+import { MeasureRecommendationImpactDto } from './dto/recommendation-impact.dto';
 import { OrgRecommendationsService } from './org-recommendations.service';
 import { RecommendationIntegrationsService } from './recommendation-integrations.service';
+import { RecommendationImpactService } from './recommendation-impact.service';
 import { canManageEvaluationsRecommendationsFromRole } from '@synq/evaluations-insights/evaluations-recommendations';
 
 interface RecommendationAuthRequest extends Request {
@@ -35,6 +37,7 @@ export class OrgRecommendationsController {
   constructor(
     private readonly recommendations: OrgRecommendationsService,
     private readonly integrations: RecommendationIntegrationsService,
+    private readonly impact: RecommendationImpactService,
   ) {}
 
   @Get()
@@ -72,6 +75,43 @@ export class OrgRecommendationsController {
   ) {
     const canManage = canManageEvaluationsRecommendationsFromRole(req.user?.membershipRole);
     return this.integrations.listIntegrations(orgId, recommendationId, canManage);
+  }
+
+  @Get(':recommendationId/impact')
+  async getLatestImpact(
+    @Param('orgId') orgId: string,
+    @Param('recommendationId') recommendationId: string,
+  ) {
+    return this.impact.getLatest(orgId, recommendationId);
+  }
+
+  @Get(':recommendationId/impact/versions')
+  async listImpactVersions(
+    @Param('orgId') orgId: string,
+    @Param('recommendationId') recommendationId: string,
+  ) {
+    return this.impact.listVersions(orgId, recommendationId);
+  }
+
+  @Post(':recommendationId/impact/preview')
+  async previewImpact(
+    @Param('orgId') orgId: string,
+    @Param('recommendationId') recommendationId: string,
+    @Body() body: MeasureRecommendationImpactDto,
+  ) {
+    return this.impact.preview(orgId, recommendationId, body);
+  }
+
+  @Post(':recommendationId/impact/measure')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('tasks', 'write')
+  async measureImpact(
+    @Param('orgId') orgId: string,
+    @Param('recommendationId') recommendationId: string,
+    @Body() body: MeasureRecommendationImpactDto,
+    @Req() req: RecommendationAuthRequest,
+  ) {
+    return this.impact.measure(orgId, recommendationId, body, req.user?.id ?? null);
   }
 
   @Post(':recommendationId/integrations')

@@ -1630,6 +1630,7 @@ model Organization {
   insights                               DashboardInsight[]
   recommendations                        OrgRecommendation[]
   recommendationEvents                   OrgRecommendationEvent[]
+  recommendationImpacts                  OrgRecommendationImpact[]
   providerConsents                       VehicleProviderConsent[]
   generatedDocuments                     GeneratedDocument[]
   legalDocuments                         OrganizationLegalDocument[]
@@ -13115,6 +13116,7 @@ model OrgRecommendation {
 
   organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   events       OrgRecommendationEvent[]
+  impactMeasurements OrgRecommendationImpact[]
 
   @@unique([organizationId, dedupKey], name: "org_recommendations_org_dedup_key")
   @@index([organizationId, status])
@@ -13142,6 +13144,79 @@ model OrgRecommendationEvent {
   @@index([recommendationId, createdAt])
   @@index([organizationId, createdAt])
   @@map("org_recommendation_events")
+}
+
+enum RecommendationImpactOutcomeStatus {
+  INSUFFICIENT_DATA
+  INCONCLUSIVE
+  PARTIAL_SUCCESS
+  SUCCESS
+  BELOW_EXPECTATION
+  NEGATIVE
+  CANCELLED
+  PARTIALLY_IMPLEMENTED
+}
+
+enum RecommendationImplementationStatus {
+  FULL
+  PARTIAL
+  CANCELLED
+  NOT_STARTED
+}
+
+enum RecommendationImpactTrend {
+  IMPROVING
+  STABLE
+  DECLINING
+  UNKNOWN
+}
+
+/// Versioned impact measurement for an implemented recommendation (Prompt 39/54).
+model OrgRecommendationImpact {
+  id                       String                            @id @default(uuid())
+  recommendationId         String                            @map("recommendation_id")
+  organizationId           String                            @map("organization_id")
+  version                  Int
+  isLatest                 Boolean                           @default(true) @map("is_latest")
+  baselineKpiKey           String                            @map("baseline_kpi_key")
+  baselineKpiLabel         String?                           @map("baseline_kpi_label")
+  baselineValue            Float?                            @map("baseline_value")
+  targetValue              Float?                            @map("target_value")
+  actualKpiValue             Float?                            @map("actual_kpi_value")
+  expectedBenefitCents       Int?                              @map("expected_benefit_cents")
+  expectedBenefitCurrency    String?                           @map("expected_benefit_currency")
+  expectedCostCents          Int?                              @map("expected_cost_cents")
+  expectedCostCurrency       String?                           @map("expected_cost_currency")
+  actualCostCents            Int?                              @map("actual_cost_cents")
+  actualCostCurrency         String?                           @map("actual_cost_currency")
+  actualBenefitCents         Int?                              @map("actual_benefit_cents")
+  actualBenefitCurrency      String?                           @map("actual_benefit_currency")
+  varianceCents              Int?                              @map("variance_cents")
+  varianceCurrency           String?                           @map("variance_currency")
+  baselinePeriodStart        DateTime                          @map("baseline_period_start")
+  baselinePeriodEnd          DateTime                          @map("baseline_period_end")
+  measurementPeriodStart     DateTime                          @map("measurement_period_start")
+  measurementPeriodEnd       DateTime                          @map("measurement_period_end")
+  dataCoveragePercent        Float?                            @map("data_coverage_percent")
+  outcomeStatus              RecommendationImpactOutcomeStatus @map("outcome_status")
+  implementationStatus       RecommendationImplementationStatus @map("implementation_status")
+  trend                      RecommendationImpactTrend
+  confidence                 RecommendationConfidence
+  calculationVersion         String                            @map("calculation_version")
+  limitations                Json                              @default("[]")
+  deviationExplanation       String?                           @map("deviation_explanation")
+  correlationDisclaimer      String                            @map("correlation_disclaimer")
+  periodComparable           Boolean                           @default(false) @map("period_comparable")
+  measuredAt                 DateTime                          @default(now()) @map("measured_at")
+  createdByUserId            String?                           @map("created_by_user_id")
+  createdAt                  DateTime                          @default(now()) @map("created_at")
+
+  recommendation OrgRecommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([recommendationId, version])
+  @@index([organizationId, recommendationId, isLatest])
+  @@map("org_recommendation_impacts")
 }
 
 // ── Notification Engine (V4.9.351) — persistent lifecycle notifications ──
