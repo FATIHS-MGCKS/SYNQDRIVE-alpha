@@ -18,6 +18,13 @@ export type OverviewMapPositionMode =
   | 'telemetryUnavailable'
   | 'trackingUnavailable';
 
+export type OverviewMapHintKey =
+  | 'telemetryUnavailable'
+  | 'noCoordinates'
+  | 'noLiveTracking';
+
+export type OverviewMapHintSubKey = 'lastKnownShown' | 'noCoordinates';
+
 export interface OverviewMapPositionView {
   /** Canonical classification used for live badge / animation decisions. */
   positionClass: OverviewPositionClass;
@@ -25,8 +32,8 @@ export interface OverviewMapPositionView {
   mapTargetPosition: [number, number] | null;
   mapInitialPosition: [number, number] | null;
   showEmptyState: boolean;
-  operatorHint: string | null;
-  operatorHintSub: string | null;
+  operatorHintKey: OverviewMapHintKey | null;
+  operatorHintSubKey: OverviewMapHintSubKey | null;
   isBoundToCurrentVehicle: boolean;
 }
 
@@ -186,8 +193,8 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
   const empty = (
     mode: OverviewMapPositionMode,
     positionClass: OverviewPositionClass,
-    hint: string | null,
-    sub: string | null = null,
+    hintKey: OverviewMapHintKey | null,
+    subKey: OverviewMapHintSubKey | null = null,
   ): OverviewMapPositionView =>
     buildView({
       positionClass,
@@ -195,8 +202,8 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
       mapTargetPosition: null,
       mapInitialPosition: staticPosition,
       showEmptyState: true,
-      operatorHint: hint,
-      operatorHintSub: sub,
+      operatorHintKey: hintKey,
+      operatorHintSubKey: subKey,
       isBoundToCurrentVehicle: isBound,
     });
 
@@ -212,8 +219,8 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
         mapTargetPosition: staticPosition,
         mapInitialPosition: staticPosition,
         showEmptyState: false,
-        operatorHint: null,
-        operatorHintSub: null,
+        operatorHintKey: null,
+        operatorHintSubKey: null,
         isBoundToCurrentVehicle: false,
       });
     }
@@ -223,8 +230,8 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
       mapTargetPosition: null,
       mapInitialPosition: null,
       showEmptyState: false,
-      operatorHint: null,
-      operatorHintSub: null,
+      operatorHintKey: null,
+      operatorHintSubKey: null,
       isBoundToCurrentVehicle: false,
     });
   }
@@ -252,17 +259,12 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
         mapTargetPosition: fallbackPosition,
         mapInitialPosition: staticPosition ?? fallbackPosition,
         showEmptyState: false,
-        operatorHint: 'Telemetry temporarily unavailable',
-        operatorHintSub: 'Last known position shown',
+        operatorHintKey: 'telemetryUnavailable',
+        operatorHintSubKey: 'lastKnownShown',
         isBoundToCurrentVehicle: true,
       });
     }
-    return empty(
-      'telemetryUnavailable',
-      'none',
-      'Telemetry temporarily unavailable',
-      'No coordinates available',
-    );
+    return empty('telemetryUnavailable', 'none', 'telemetryUnavailable', 'noCoordinates');
   }
 
   if (positionClass === 'live' && liveTarget) {
@@ -272,8 +274,8 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
       mapTargetPosition: liveTarget,
       mapInitialPosition: staticPosition ?? liveTarget,
       showEmptyState: false,
-      operatorHint: null,
-      operatorHintSub: null,
+      operatorHintKey: null,
+      operatorHintSubKey: null,
       isBoundToCurrentVehicle: true,
     });
   }
@@ -286,8 +288,8 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
       mapTargetPosition: fallbackPosition,
       mapInitialPosition: staticPosition ?? fallbackPosition,
       showEmptyState: false,
-      operatorHint: fromStaticOnly && !loading ? 'No live tracking available' : null,
-      operatorHintSub: 'Last known position shown',
+      operatorHintKey: fromStaticOnly && !loading ? 'noLiveTracking' : null,
+      operatorHintSubKey: 'lastKnownShown',
       isBoundToCurrentVehicle: true,
     });
   }
@@ -299,20 +301,15 @@ export function deriveOverviewMapPosition(input: OverviewMapPositionInput): Over
       mapTargetPosition: null,
       mapInitialPosition: null,
       showEmptyState: false,
-      operatorHint: null,
-      operatorHintSub: null,
+      operatorHintKey: null,
+      operatorHintSubKey: null,
       isBoundToCurrentVehicle: true,
     });
   }
 
   if (!isLiveTracking) {
-    return empty(
-      'trackingUnavailable',
-      'none',
-      'No live tracking available',
-      'No coordinates available',
-    );
+    return empty('trackingUnavailable', 'none', 'noLiveTracking', 'noCoordinates');
   }
 
-  return empty('noPosition', 'none', 'No coordinates available');
+  return empty('noPosition', 'none', 'noCoordinates');
 }

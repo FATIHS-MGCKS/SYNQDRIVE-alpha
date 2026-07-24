@@ -145,8 +145,8 @@ describe('vehicle detail baseline — map position modes', () => {
   it('last-known-position: telemetry error falls back to last known', () => {
     const view = resolveBaselineMapPosition('last-known');
     expect(view.mode).toBe('telemetryUnavailable');
-    expect(view.operatorHint).toBe('Telemetry temporarily unavailable');
-    expect(view.operatorHintSub).toBe('Last known position shown');
+    expect(view.operatorHintKey).toBe('telemetryUnavailable');
+    expect(view.operatorHintSubKey).toBe('lastKnownShown');
     expect(view.mapTargetPosition).toEqual([9.479, 51.312]);
   });
 

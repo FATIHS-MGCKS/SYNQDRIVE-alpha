@@ -16,6 +16,7 @@ import {
   VEHICLE_OPERATIONAL_EDIT_STATUSES,
 } from '../../lib/vehicle-operational-state';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { translateCleaningStatus } from '../../lib/vehicle-detail-i18n';
 import { useRentalOrg } from '../../RentalContext';
 import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
 import {
@@ -77,7 +78,7 @@ export function VehicleDetailHeader({
   onRefreshOperationalStatus,
 }: VehicleDetailHeaderProps) {
   const isDarkMode = useDocumentDark();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
   const readinessChip = resolveVehicleDetailHeaderReadinessChip(vehicle, rentalHealth, locale);
@@ -106,8 +107,8 @@ export function VehicleDetailHeader({
                 type="button"
                 onClick={onBack}
                 className={`${backButtonClassName} sm:hidden`}
-                title="Back to Fleet"
-                aria-label="Back to Fleet"
+                title={t('vehicle.backToFleet')}
+                aria-label={t('vehicle.backToFleet')}
               >
                 <Icon name="arrow-left" className="h-4 w-4" />
               </button>
@@ -127,7 +128,7 @@ export function VehicleDetailHeader({
                   </MetaItem>
                 ) : null}
                 {!hasLicense && !hasStation ? (
-                  <span className="truncate text-[11px] font-medium text-muted-foreground">Vehicle</span>
+                  <span className="truncate text-[11px] font-medium text-muted-foreground">{t('vehicleDetail.header.vehicleFallback')}</span>
                 ) : null}
               </div>
             </div>
@@ -208,7 +209,7 @@ export function VehicleDetailHeader({
                     tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
                     icon={<Icon name="sparkles" className="h-3 w-3" />}
                   >
-                    {cleaningStatusBusy ? '…' : cleaningStatus}
+                    {vehicleStatusBusy ? '…' : translateCleaningStatus(cleaningStatus, t)}
                   </StatusChip>
                 </button>
 
@@ -221,7 +222,7 @@ export function VehicleDetailHeader({
                       className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Icon name="sparkles" className="h-3.5 w-3.5 text-[color:var(--status-info)]" />
-                      <span className="text-[12px] font-medium text-foreground">Clean</span>
+                      <span className="text-[12px] font-medium text-foreground">{t('status.clean')}</span>
                     </button>
                     <button
                       type="button"
@@ -230,7 +231,7 @@ export function VehicleDetailHeader({
                       className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Icon name="alert-triangle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                      <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>
+                      <span className="text-[12px] font-medium text-foreground">{t('status.needsCleaning')}</span>
                     </button>
                   </div>
                 ) : null}
@@ -270,8 +271,8 @@ export function VehicleDetailHeader({
           type="button"
           onClick={onBack}
           className={`${backButtonClassName} hidden sm:inline-flex`}
-          title="Back to Fleet"
-          aria-label="Back to Fleet"
+          title={t('vehicle.backToFleet')}
+          aria-label={t('vehicle.backToFleet')}
         >
           <Icon name="arrow-left" className="h-4 w-4" />
         </button>

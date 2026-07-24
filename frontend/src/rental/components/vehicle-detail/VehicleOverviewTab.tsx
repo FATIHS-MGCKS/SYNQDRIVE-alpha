@@ -1,5 +1,6 @@
 import type { VehicleData } from '../../data/vehicles';
 import type { VehicleOverviewSummary } from '../../lib/vehicle-overview.types';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { NavigateVehicleOverviewTarget } from '../../lib/vehicle-overview-navigation';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
 import { formatVehicleIssueEntityLabel } from '../../lib/operational-issues';
@@ -47,6 +48,7 @@ export function VehicleOverviewTab({
   onOpenVehicleTask,
   tasksRefreshToken,
 }: VehicleOverviewTabProps) {
+  const { t } = useLanguage();
   const vehicleLabel = selectedVehicle
     ? formatVehicleIssueEntityLabel(selectedVehicle)
     : '';
@@ -63,7 +65,7 @@ export function VehicleOverviewTab({
         />
       )}
 
-      <section className={vo.mainSection} aria-label="Live vehicle status">
+      <section className={vo.mainSection} aria-label={t('vehicleDetail.overview.liveStatusAria')}>
         <div className={vo.mainGrid}>
           <div className={vo.mapColumn}>
             <OverviewLiveMapCard

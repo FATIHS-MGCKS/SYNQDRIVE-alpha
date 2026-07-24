@@ -3,12 +3,13 @@ import type {
   VehicleOverviewCardStatus,
   VehicleOverviewLoadState,
 } from '../../lib/vehicle-overview.types';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translateOverviewCardStatus } from '../../lib/vehicle-detail-i18n';
 import { Icon } from '../ui/Icon';
 import {
   cardStatusAccentBorder,
   cardStatusDotClass,
   cardStatusPillClass,
-  cardStatusShortLabel,
   vo,
 } from './vehicle-overview-ui';
 
@@ -40,11 +41,17 @@ export function VehicleOverviewQuickCard({
   targetTab,
   onNavigate,
 }: VehicleOverviewQuickCardProps) {
+  const { t } = useLanguage();
   const isLoading = loadState === 'loading';
   const isUnavailable = loadState === 'unavailable' || loadState === 'error';
-  const statusText = cardStatusShortLabel(status);
+  const statusText = translateOverviewCardStatus(status, t);
   const showSubline = hasVisibleSubline(subline, headline);
-  const ariaLabel = `${label}: ${headline}${showSubline && subline ? `, ${subline}` : ''}. Status ${statusText}. Open ${label} tab.`;
+  const ariaLabel = t('vehicleDetail.overview.quickCardAria', {
+    label,
+    headline,
+    subline: showSubline && subline ? `, ${subline}` : '',
+    status: statusText,
+  });
 
   return (
     <button
@@ -100,7 +107,7 @@ export function VehicleOverviewQuickCard({
         ) : null}
 
         {isUnavailable ? (
-          <span className="sr-only">Data temporarily unavailable</span>
+          <span className="sr-only">{t('vehicleDetail.overview.dataUnavailable')}</span>
         ) : null}
       </div>
     </button>

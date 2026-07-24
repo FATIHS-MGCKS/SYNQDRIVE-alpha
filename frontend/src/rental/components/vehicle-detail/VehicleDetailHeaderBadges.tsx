@@ -1,9 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { HealthStatusChip, StatusChip } from '../../../components/patterns';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
-import {
-  formatTelemetryAgeShort,
-} from '../../lib/telemetry-timestamp-semantics';
 import { resolveVehicleDetailTelemetryState } from '../../lib/vehicle-telemetry-runtime';
 import { useEffectiveHealth } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
@@ -17,6 +14,11 @@ import {
   mapHealthSeverityDisplay,
 } from './vehicle-health-display.mapper';
 import { useShallow } from 'zustand/react/shallow';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  translateTelemetryAgeShort,
+  translateTelemetryFreshnessShort,
+} from '../../lib/vehicle-detail-i18n';
 
 export function VehicleConnectionBadge({
   compact = false,
@@ -25,6 +27,7 @@ export function VehicleConnectionBadge({
   compact?: boolean;
   vehicleId?: string | null;
 }) {
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { map: obdPlugByVehicleId, status: obdIndexStatus } = useFleetObdPlugIndex(orgId);
   const { onlineStatus, measuredAt, receivedAt, signalAgeMs, lastSignal, boundVehicleId } =
@@ -52,7 +55,12 @@ export function VehicleConnectionBadge({
     signalAgeMs,
     onlineStatus,
   });
-  const timeAgo = formatTelemetryAgeShort(freshness);
+  const statusLabel = translateTelemetryFreshnessShort(freshness.freshness, t);
+  const timeAgo = translateTelemetryAgeShort(freshness.signalAgeMs, freshness.isLive, t);
+  const title = t('vehicleDetail.header.signalTitle', {
+    status: statusLabel,
+    age: timeAgo,
+  }) + (showObdUnplugged ? ` · ${t('vehicleDetail.header.obdUnplugged')}` : '');
 
   const dotColor = freshness.isLive
     ? 'text-[color:var(--status-positive)] fill-[color:var(--status-positive)] animate-online-pulse'
@@ -71,12 +79,12 @@ export function VehicleConnectionBadge({
     return (
       <div
         className="inline-flex max-w-[52vw] flex-wrap items-center justify-end gap-1 sm:max-w-none"
-        title={`${freshness.label} · Last signal ${timeAgo}${showObdUnplugged ? ' · OBD unplugged' : ''}`}
+        title={title}
       >
         <div className="inline-flex max-w-full items-center gap-1 rounded-md border border-border surface-premium px-1.5 py-0.5 shadow-sm">
           <Icon name="circle" className={`h-1.5 w-1.5 shrink-0 ${dotColor}`} />
           <span className={`truncate text-[9.5px] font-semibold leading-none ${labelColor}`}>
-            {freshness.shortLabel}
+            {statusLabel}
           </span>
           <span className="text-[9px] text-muted-foreground/70">·</span>
           <span className="truncate text-[9.5px] font-bold tabular-nums leading-none text-foreground">
@@ -95,12 +103,14 @@ export function VehicleConnectionBadge({
         <div className="flex items-center gap-1.5">
           <Icon name="circle" className={`h-2 w-2 ${dotColor}`} />
           <span className={`text-[10px] font-semibold tracking-[-0.003em] ${labelColor}`}>
-            {freshness.shortLabel}
+            {statusLabel}
           </span>
         </div>
         <div className="h-4 w-px bg-border" />
         <div className="flex items-center gap-1">
-          <span className="text-[10.5px] font-semibold text-muted-foreground">Last Signal</span>
+          <span className="text-[10.5px] font-semibold text-muted-foreground">
+            {t('vehicleDetail.header.lastSignal')}
+          </span>
           <span className="text-[10.5px] font-bold tabular-nums text-foreground">{timeAgo}</span>
         </div>
       </div>
@@ -111,14 +121,16 @@ export function VehicleConnectionBadge({
 }
 
 export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
+  const { t, locale } = useLanguage();
   const { health, loading } = useEffectiveHealth(vehicleId);
+  const reasonLocale = locale.startsWith('de') ? 'de' : 'en';
   const reasons: string[] = [];
   if (health?.rental_blocked && health.blocking_reasons.length > 0) {
     reasons.push(
       ...health.blocking_reasons.map((reason) =>
         formatUserFacingReasonLabel(
           { title: reason, category: 'rental', issueType: 'rental_blocked' },
-          'de',
+          reasonLocale,
         ),
       ),
     );
@@ -133,7 +145,7 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
               source: `rental-health:${name}`,
               category: name === 'error_codes' ? 'dtc' : name,
             },
-            'de',
+            reasonLocale,
           ),
         );
       }
@@ -145,9 +157,9 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
     return (
       <HealthStatusChip
         state="unknown"
-        label="Loading…"
+        label={t('vehicleDetail.health.loading')}
         icon={<Icon name="heart" className="h-3 w-3" />}
-        title="Loading rental health…"
+        title={t('vehicleDetail.health.loadingTitle')}
       />
     );
   }
@@ -164,7 +176,7 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
       return (
         <HealthStatusChip
           state="critical"
-          label="Critical"
+          label={t('vehicleDetail.health.critical')}
           icon={<Icon name="heart" className="h-3 w-3" />}
           title={severity.title ?? title}
         />
@@ -174,7 +186,7 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
       return (
         <HealthStatusChip
           state="warning"
-          label="Warning"
+          label={t('vehicleDetail.health.warning')}
           icon={<Icon name="heart" className="h-3 w-3" />}
           title={severity.title ?? title}
         />
@@ -184,7 +196,7 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
       return (
         <HealthStatusChip
           state="good"
-          label="Good"
+          label={t('vehicleDetail.health.good')}
           icon={<Icon name="heart" className="h-3 w-3" />}
           title={severity.title ?? title}
         />
@@ -193,9 +205,9 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
     return (
       <HealthStatusChip
         state="no_data"
-        label={severity.label}
+        label={severity.label === 'No Data' ? t('vehicleDetail.health.noData') : severity.label}
         icon={<Icon name="heart" className="h-3 w-3" />}
-        title={severity.title ?? title ?? 'Insufficient rental health data'}
+        title={severity.title ?? title ?? t('vehicleDetail.health.insufficientData')}
       />
     );
   })();
@@ -204,15 +216,20 @@ export function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
     return severityChip;
   }
 
+  const coverageLabel =
+    coverage.label === 'Limited Data'
+      ? t('vehicleDetail.health.limitedData')
+      : coverage.label;
+
   return (
     <div className="inline-flex max-w-full items-center gap-1">
       {severityChip}
       <StatusChip
         tone="neutral"
         className="!hidden !px-1.5 !py-0.5 !text-[9px] !font-semibold sm:!inline-flex"
-        title="Data coverage — not a health severity"
+        title={t('vehicleDetail.health.dataCoverageTitle')}
       >
-        {coverage.label}
+        {coverageLabel}
       </StatusChip>
     </div>
   );

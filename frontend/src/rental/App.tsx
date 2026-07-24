@@ -85,7 +85,7 @@ import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { useDocumentVisible, useNetworkOnline } from './hooks/useBrowserTabSignals';
 import { resolveVehicleDetailPollingGates } from './lib/vehicle-detail-polling-policy';
 import { useVehicleDetailPollingStore } from './stores/useVehicleDetailPollingStore';
-import { LanguageProvider } from './i18n/LanguageContext';
+import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { pushDocumentIntakeEntry, type DocumentIntakeEntryState } from './lib/document-intake-entry';
 import { AIAssistantView } from './components/AIAssistantView';
@@ -124,6 +124,7 @@ import {
   shouldClearVehicleDetailSelectionOnOrgChange,
   shouldHandleSelectedVehicleUnavailable,
 } from './lib/vehicle-detail-selection-sync';
+import { translateVehicleDetailTab } from './lib/vehicle-detail-i18n';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
@@ -239,6 +240,7 @@ function readPersistedSettingsView(): boolean {
 
 function RentalAppContent() {
   const { orgId, hasPermission } = useRentalOrg();
+  const { t } = useLanguage();
   const { fleetVehicles, loading: fleetLoading, refresh: refreshFleetVehicles } = useFleetVehicles();
   const fleetLastFetchedAt = useFleetMapStore((state) => state.lastFetchedAt);
   const fleetFetchError = useFleetMapStore((state) => state.error);
@@ -1229,14 +1231,14 @@ function RentalAppContent() {
           <div className={chromeTabBarClass('p-1')}>
             <div className={`${CHROME_TAB_BAR_SCROLL_CLASS} [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
               {([
-                { key: 'overview', label: 'Overview' },
-                { key: 'trips', label: 'Trips' },
-                { key: 'health-errors', label: 'Health' },
-                { key: 'damages', label: 'Damages' },
-                { key: 'documents', label: 'Documents' },
-                { key: 'vehicle-bookings', label: 'Bookings' },
-                { key: 'vehicle-tasks', label: 'Task List' },
-                { key: 'vehicle-requirements', label: 'Requirements' },
+                { key: 'overview' },
+                { key: 'trips' },
+                { key: 'health-errors' },
+                { key: 'damages' },
+                { key: 'documents' },
+                { key: 'vehicle-bookings' },
+                { key: 'vehicle-tasks' },
+                { key: 'vehicle-requirements' },
               ] as const).map((tab) => (
                 <button
                   key={tab.key}
@@ -1249,7 +1251,7 @@ function RentalAppContent() {
                   }}
                   className={chromeTabTriggerClass(currentView === tab.key)}
                 >
-                  {tab.label}
+                  {translateVehicleDetailTab(tab.key, t)}
                 </button>
               ))}
             </div>

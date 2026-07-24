@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-i18n-v49794-2026-07-24',
+    version: '4.9.794',
+    title: 'V4.9.794 — Vehicle Detail UI terminology & i18n consistency (Prompt 26/36)',
+    summary: [
+      'New `vehicleDetail.*` i18n namespace + `vehicle-detail-i18n.ts` helpers.',
+      'Tab bar, header, connection/health badges, map HUD, device connection card wired to `useLanguage().t()`.',
+      'Canonical telemetry labels: Live, Standby, Soft-offline, Offline aligned with fleetConnectivity.',
+      'Cleaning uses `status.clean` / `status.needsCleaning`; map hints use translation keys not hardcoded strings.',
+      'Static test validates all vehicleDetail keys in EN + DE catalogs.',
+    ],
+    reason:
+      'Vehicle Detail mixed hardcoded English and German strings; operators saw inconsistent terminology for telemetry states and map position hints.',
+    previousBehavior:
+      'Tabs, badges, map HUD, and device connection card used inline EN/DE strings outside the i18n system.',
+    details:
+      'frontend/src/rental/lib/vehicle-detail-i18n.ts, i18n/translations/en.ts, de.ts, VehicleDetailHeader*, OverviewLiveMapCard, VehicleDeviceConnectionCard, overview-map-position hint keys, vehicle-detail-i18n.test.ts, docs/audits/vehicle-detail-page-i18n-2026-07.md.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / i18n',
+    createdAt: '2026-07-24T10:22:00.000Z',
+  },
+  {
     id: 'vehicle-detail-store-race-v49793-2026-07-24',
     version: '4.9.793',
     title: 'V4.9.793 — Vehicle Detail live map store race conditions (Prompt 25/36)',

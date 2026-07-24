@@ -17,6 +17,13 @@ import {
   resolveEnergyPercentForDisplay,
   resolveTelemetryScalarForDisplay,
 } from '../../lib/telemetry-field-semantics';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  translateMapOperatorHint,
+  translateMapOperatorHintSub,
+  translateMapPositionBadge,
+  translateVehicleDisplayStateLabel,
+} from '../../lib/vehicle-detail-i18n';
 
 export interface OverviewLiveMapCardProps {
   selectedVehicle: VehicleData | null;
@@ -24,33 +31,12 @@ export interface OverviewLiveMapCardProps {
   isDarkMode: boolean;
 }
 
-function trackingBadge(
-  mode: OverviewMapPositionMode,
-  isLiveTracking: boolean,
-): { label: string; tone: 'live' | 'watch' | 'muted' } | null {
-  switch (mode) {
-    case 'livePosition':
-      return { label: 'Live', tone: 'live' };
-    case 'lastKnownPosition':
-      return { label: 'Last known', tone: 'watch' };
-    case 'staticPositionOnly':
-      return { label: 'Last known', tone: 'watch' };
-    case 'telemetryUnavailable':
-      return { label: 'Signal issue', tone: 'muted' };
-    case 'trackingUnavailable':
-      return { label: 'No tracking', tone: 'muted' };
-    case 'noPosition':
-      return isLiveTracking ? { label: 'Acquiring', tone: 'watch' } : null;
-    default:
-      return null;
-  }
-}
-
 export function OverviewLiveMapCard({
   selectedVehicle,
   orgId,
   isDarkMode,
 }: OverviewLiveMapCardProps) {
+  const { t } = useLanguage();
   const mapSurfaceRef = useRef<HTMLDivElement>(null);
   const setOverviewMapVisible = useVehicleDetailPollingStore((s) => s.setOverviewMapVisible);
 
@@ -116,10 +102,13 @@ export function OverviewLiveMapCard({
 
   const hudSnapshot = positionView.isBoundToCurrentVehicle ? liveTelemetry.snapshot : null;
   const hudDisplayState = positionView.isBoundToCurrentVehicle ? liveTelemetry.displayState : 'PARKED';
-  const statusBadge = trackingBadge(
+  const statusBadge = translateMapPositionBadge(
     positionView.mode,
     positionView.isBoundToCurrentVehicle && liveTelemetry.isLiveTracking,
+    t,
   );
+  const operatorHint = translateMapOperatorHint(positionView.operatorHintKey, t);
+  const operatorHintSub = translateMapOperatorHintSub(positionView.operatorHintSubKey, t);
 
   const stateColor =
     hudDisplayState === 'MOVING'
@@ -167,8 +156,8 @@ export function OverviewLiveMapCard({
           waitingForPosition={positionView.showEmptyState}
           isLiveTracking={positionView.positionClass === 'live'}
           isDarkMode={isDarkMode}
-          operatorHint={positionView.operatorHint}
-          operatorHintSub={positionView.operatorHintSub}
+          operatorHint={operatorHint}
+          operatorHintSub={operatorHintSub}
         />
 
         {statusBadge && !positionView.showEmptyState && (
@@ -201,9 +190,9 @@ export function OverviewLiveMapCard({
                 <span className="liquid-glass-lens__tile-icon">
                   <Icon name="circle" className={`h-3 w-3 ${stateColor}`} />
                 </span>
-                <span className="liquid-glass-lens__tile-label">State</span>
+                <span className="liquid-glass-lens__tile-label">{t('vehicleDetail.map.hud.state')}</span>
                 <span className={`liquid-glass-lens__tile-state ${stateColor}`}>
-                  {hudDisplayState}
+                  {translateVehicleDisplayStateLabel(hudDisplayState, t)}
                 </span>
               </div>
             </LiquidGlassLens>
@@ -222,7 +211,9 @@ export function OverviewLiveMapCard({
                   />
                 </span>
                 <span className="liquid-glass-lens__tile-label">
-                  {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
+                  {selectedVehicle?.isElectric
+                    ? t('vehicleDetail.map.hud.energy')
+                    : t('vehicleDetail.map.hud.fuel')}
                 </span>
                 <span className="liquid-glass-lens__tile-value-row">
                   <span className="liquid-glass-lens__tile-value">{fuelOrEnergy}</span>
@@ -243,7 +234,7 @@ export function OverviewLiveMapCard({
                 <span className="liquid-glass-lens__tile-icon">
                   <Icon name="gauge" className="h-3 w-3 text-muted-foreground" />
                 </span>
-                <span className="liquid-glass-lens__tile-label">Odometer</span>
+                <span className="liquid-glass-lens__tile-label">{t('vehicleDetail.map.hud.odometer')}</span>
                 <span className="liquid-glass-lens__tile-value-row">
                   <span
                     className={cn(
@@ -254,7 +245,7 @@ export function OverviewLiveMapCard({
                     {odometerValue}
                   </span>
                   {odometerValue !== '—' ? (
-                    <span className="liquid-glass-lens__tile-unit">km</span>
+                    <span className="liquid-glass-lens__tile-unit">{t('vehicleDetail.map.hud.km')}</span>
                   ) : null}
                 </span>
               </div>

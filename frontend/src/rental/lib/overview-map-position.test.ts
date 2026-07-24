@@ -261,7 +261,7 @@ describe('deriveOverviewMapPosition', () => {
     expect(view.positionClass).toBe('live');
     expect(view.mode).toBe('livePosition');
     expect(view.mapTargetPosition).toEqual([9.48, 51.31]);
-    expect(view.operatorHint).toBeNull();
+    expect(view.operatorHintKey).toBeNull();
   });
 
   it('treats null island coordinates as no usable position', () => {
@@ -309,8 +309,8 @@ describe('deriveOverviewMapPosition', () => {
 
     expect(view.positionClass).toBe('lastKnown');
     expect(view.mode).toBe('telemetryUnavailable');
-    expect(view.operatorHint).toBe('Telemetry temporarily unavailable');
-    expect(view.operatorHintSub).toBe('Last known position shown');
+    expect(view.operatorHintKey).toBe('telemetryUnavailable');
+    expect(view.operatorHintSubKey).toBe('lastKnownShown');
     expect(view.showEmptyState).toBe(false);
   });
 
@@ -329,7 +329,7 @@ describe('deriveOverviewMapPosition', () => {
     expect(view.positionClass).toBe('none');
     expect(view.mode).toBe('trackingUnavailable');
     expect(view.showEmptyState).toBe(true);
-    expect(view.operatorHint).toBe('No live tracking available');
+    expect(view.operatorHintKey).toBe('noLiveTracking');
   });
 
   it('shows loading state without live badge eligibility', () => {
