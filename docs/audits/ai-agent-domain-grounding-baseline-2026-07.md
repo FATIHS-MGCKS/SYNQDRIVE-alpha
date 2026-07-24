@@ -942,4 +942,134 @@ Zusätzlich: Transition-Walk live→standby→soft_offline→stale; Timestamp-Pr
 
 ---
 
-**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 6); Audit-Ergänzung oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.
+## Prompt 7 — Fehler- & Fallback-Vertrag (2026-07-24)
+
+**Implementiert:** Zentraler typsicherer AI-Domain-Error-Vertrag unter `backend/src/modules/ai/evidence/ai-domain-error.*`.
+
+### Error Codes (13)
+
+| Code | Öffentliche Bedeutung | Retry | HTTP | Severity | Audit Event |
+|------|----------------------|-------|------|----------|-------------|
+| `vehicle_not_found` | Fahrzeug nicht in Org gefunden | non_retryable | 404 | warning | `ai.domain_query.vehicle_not_found` |
+| `vehicle_ambiguous` | Mehrdeutige Bezeichnung | non_retryable | 400 | warning | `ai.domain_query.vehicle_ambiguous` |
+| `data_not_available` | Keine Daten | non_retryable | 404 | warning | `ai.domain_query.data_not_available` |
+| `data_too_old` | Daten zu alt | non_retryable | 400 | warning | `ai.domain_query.data_too_old` |
+| `integration_not_connected` | Integration nicht verbunden | non_retryable | 400 | warning | `ai.domain_query.integration_not_connected` |
+| `integration_temporarily_unavailable` | Provider temporär down | **retryable** | 503 | error | `ai.domain_query.integration_unavailable` |
+| `signal_not_supported` | Signal nicht unterstützt | non_retryable | 400 | informational | `ai.domain_query.signal_not_supported` |
+| `permission_denied` | Berechtigung fehlt (maskiert) | non_retryable | 403 | warning | `ai.domain_query.permission_denied` |
+| `role_restricted` | Rolle schränkt ein (maskiert) | non_retryable | 403 | warning | `ai.domain_query.role_restricted` |
+| `domain_status_inconsistent` | Domain-Inkonsistenz | non_retryable | 500 | error | `ai.domain_query.domain_inconsistent` |
+| `timeout` | Zeitüberschreitung | **retryable** | 504 | error | `ai.domain_query.timeout` |
+| `invalid_input` | Ungültige Eingabe | non_retryable | 400 | warning | `ai.domain_query.invalid_input` |
+| `internal_processing_failed` | Interner Fehler | **retryable** | 500 | critical | `ai.domain_query.internal_failed` |
+
+### Sicherheitsregeln
+
+- **Keine Stacktraces/Secrets** in LLM- oder Frontend-Projektion (`serializeAiDomainErrorForLlm`, `toAiDomainErrorApiView`).
+- **`resolveSecureVehicleAccessError`:** ohne `canReadVehicles` immer `permission_denied` — nie `vehicle_not_found` bei existierendem Fahrzeug.
+- **`maskEntityExistence: true`** für `permission_denied` und `role_restricted`.
+- **`blockLlmInference: true`** für alle Fehler — kein Erfinden von Antworten.
+- **Partielle Ergebnisse:** `AiDomainQueryOutcome<T>` mit `partial: true`, `allowLlmInference: false` bei blocking errors.
+- **Fremde Orgs:** `redactForeignOrganizationReferences` in Audit-Payloads.
+
+### Evidence-Bridge
+
+`mapEvidenceReasonCodeToDomainErrorCode` verbindet Prompt-5-`AiEvidenceReasonCode` mit Domain-Errors (z. B. `provider_outage` → `integration_temporarily_unavailable`).
+
+### Tests
+
+**99/99 PASS** gesamt (`ai-domain-error.spec.ts` 54 + evidence 45) — je Error-Code, Secure-Access, Sanitization, Partial Outcomes.
+
+**Bewusst nicht in Scope:** Konkrete Domain-Tools (folgen später).
+
+---
+
+## Prompt 8 — AI Execution Context & Access Guards (2026-07-24)
+
+### Ziel
+
+Zentraler, verpflichtender `AiExecutionContext` für alle künftigen AI-Tool-Aufrufe.
+Keine Tool-Ausführung ohne validierten Context. Keine parallele RBAC-Logik im AI-Modul.
+
+### Modul
+
+`backend/src/modules/ai/execution/`
+
+| Datei | Rolle |
+|-------|-------|
+| `ai-execution-context.enums.ts` | Channel, Purpose, Scope-Mode, Access-Kinds |
+| `ai-execution-context.types.ts` | `AiExecutionContext`, Resolver-Interfaces |
+| `ai-execution-context.builder.ts` | `buildAiExecutionContext` aus verifiziertem Auth |
+| `ai-execution-context.validation.ts` | Schema-Validierung + `resolveAiExecutionContextError` |
+| `ai-execution-context.access.ts` | Guards: vehicle, location, health, booking, customer, summary |
+| `index.ts` | Barrel export |
+
+### Trust Boundary
+
+| Feld | Quelle | Verboten |
+|------|--------|----------|
+| `organizationId` | JWT + OrgScopingGuard | Request body, LLM, Prompt |
+| `userId` | JWT / Session | Request body, LLM, Prompt |
+| `role`, `permissions` | Membership / `computeEffectiveAccess` | Tool-Args |
+| `allowedVehicleScope` | `computeEffectiveAccess` station scope | Ad-hoc vehicle lists from LLM |
+| `correlationId`, `requestId` | Controller / `x-request-id` header | LLM |
+
+### Guards (Wiederverwendung bestehender RBAC)
+
+| Guard | Modul-Permission | Zusatz |
+|-------|------------------|--------|
+| `assertAiToolExecutionAllowed` | `ai-assistant.read` | Pflicht vor jedem Tool |
+| `resolveAiVehicleAccess` | `fleet.read` | Org-bound resolver + station scope + `resolveSecureVehicleAccessError` |
+| `assertAiLocationAccess` | `fleet.read` | `AiDataAuthorizationProbe` (GPS_LOCATION) |
+| `assertAiHealthAccess` | `fleet-condition.read` | — |
+| `assertAiBookingAccess` | `bookings.read` | — |
+| `assertAiCustomerDataAccess` | `customers.read` | PII-Gate |
+| `assertAiFleetSummaryAccess` | `fleet.read` **oder** `dashboard.read` | Org-weite Aggregation |
+
+### Sicherheitsarchitektur
+
+```mermaid
+flowchart TD
+  JWT[JWT AuthGuard] --> ORG[OrgScopingGuard]
+  ORG --> PERM[PermissionsGuard ai-assistant]
+  PERM --> BUILD[buildAiExecutionContext]
+  BUILD --> CTX[AiExecutionContext immutable]
+  CTX --> GATE[assertAiToolExecutionAllowed]
+  GATE --> GUARD{Domain Guard}
+  GUARD -->|vehicle| VEH[resolveAiVehicleAccess + resolver]
+  GUARD -->|location| LOC[fleet.read + data auth probe]
+  GUARD -->|health/booking/customer| MOD[evaluateModulePermission]
+  VEH --> ERR[AiDomainError blockLlmInference]
+  LOC --> ERR
+  MOD --> ERR
+```
+
+- **Fahrzeuge:** immer organisationsgebunden via `AiVehicleScopeResolver`; manipulierte `organizationId` in Tool-Args → `permission_denied`.
+- **Station-Scope:** `allowedVehicleScope.mode === 'restricted'` → Fahrzeug muss `currentStationId ∈ effectiveStationIds`.
+- **Existenz-Leak:** ohne `fleet.read` → `permission_denied` (maskiert), nie `vehicle_not_found` bei existierendem Fahrzeug.
+- **Standort:** sensible Flottendaten — RBAC + explizite Data-Authorization (`GPS_LOCATION`).
+- **Korrelation:** `aiExecutionContextLogFields(ctx)` für Controller → Orchestrator → Tool → Audit.
+
+### Tests
+
+`ai-execution-context.spec.ts` — 18 Szenarien:
+
+| Szenario | Erwartung |
+|----------|-----------|
+| Korrekter Zugriff | allow |
+| Fehlender Context | `internal_processing_failed` / `AI_EXECUTION_CONTEXT_MISSING` |
+| Fehlende `ai-assistant.read` | `permission_denied` |
+| Manipulierte `organizationId` | `permission_denied` |
+| Manipulierte `vehicleId` | `vehicle_not_found` |
+| Eingeschränkte Station | `vehicle_not_found` (scope) |
+| Customer PII ohne `customers.read` | `permission_denied` |
+| Location ohne Data-Auth | `permission_denied` |
+
+**Gesamt nach Prompt 8:** 117/117 PASS (evidence 99 + execution 18).
+
+**Bewusst nicht in Scope:** ChatController-Wiring, konkrete Domain-Tools.
+
+---
+
+**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 8); Audit-Ergänzung oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.

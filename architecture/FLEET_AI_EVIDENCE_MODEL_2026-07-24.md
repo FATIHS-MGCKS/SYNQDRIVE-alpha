@@ -73,3 +73,20 @@ must be wrapped as `AiEvidence` with explicit:
 - `AiDomainQueryOutcome<T>` — partial tool results with `allowLlmInference`.
 - Bridge: `mapEvidenceReasonCodeToDomainErrorCode`.
 - Tests: `ai-domain-error.spec.ts` (54 tests, one per error code + security).
+
+### Prompt 8 — AI execution context & access guards (2026-07-24)
+
+- Added `backend/src/modules/ai/execution/` — mandatory `AiExecutionContext`
+  for all future AI tool calls (no domain tools wired yet).
+- Context fields: `organizationId`, `userId`, `role`, `permissions`,
+  `allowedVehicleScope`, `locale`, `timezone`, `correlationId`, `requestId`,
+  `channel`, `dataAccessPurpose`, optional `sessionId`.
+- **Trust boundary:** `organizationId` / `userId` only from verified backend auth
+  (`buildAiExecutionContext` after OrgScopingGuard + membership load) — never
+  from LLM, request body, or prompt.
+- Reuses `computeEffectiveAccess` + `evaluateModulePermission` — no parallel RBAC.
+- Guards: vehicle (org-bound + station scope), location (fleet.read + data auth
+  probe), health, booking, customer PII, fleet summary, tool entry gate.
+- Correlation preserved via `aiExecutionContextLogFields` for controller →
+  orchestrator → tool → audit.
+- Tests: `ai-execution-context.spec.ts` (18 tests: allow/deny matrix).
