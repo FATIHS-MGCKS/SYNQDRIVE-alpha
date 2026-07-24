@@ -24,6 +24,12 @@ export const DATA_PROCESSING_PERMISSION_ACTIONS = [
   'data_processing.register_view',
   'data_processing.register_edit',
   'data_processing.register_export',
+  'data_processing.dpia_view',
+  'data_processing.dpia_assess',
+  'data_processing.dpia_edit',
+  'data_processing.dpia_review_privacy',
+  'data_processing.dpia_review_security',
+  'data_processing.dpia_approve',
 ] as const;
 
 export type DataProcessingPermissionAction =
@@ -55,6 +61,12 @@ export const DATA_PROCESSING_PERMISSION_REQUIREMENTS: Readonly<
   'data_processing.register_view': { module: 'data-authorization', level: 'read' },
   'data_processing.register_edit': { module: 'data-authorization', level: 'write' },
   'data_processing.register_export': { module: 'data-authorization', level: 'manage' },
+  'data_processing.dpia_view': { module: 'data-authorization', level: 'read' },
+  'data_processing.dpia_assess': { module: 'data-authorization', level: 'write' },
+  'data_processing.dpia_edit': { module: 'data-authorization', level: 'write' },
+  'data_processing.dpia_review_privacy': { module: 'data-authorization', level: 'manage' },
+  'data_processing.dpia_review_security': { module: 'data-authorization', level: 'manage' },
+  'data_processing.dpia_approve': { module: 'data-authorization', level: 'manage' },
 };
 
 export const DATA_PROCESSING_REVIEW_STEP_PERMISSION: Readonly<

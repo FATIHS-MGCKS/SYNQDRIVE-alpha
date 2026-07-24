@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dpia-workflow-v49813-2026-07-24',
+    version: '4.9.813',
+    title: 'V4.9.813 — DPIA-Workflow & Privacy Risk Assessment (Prompt 30)',
+    summary: [
+      'Privacy-Risk-Assessment mit 15+ gewichteten Faktoren — Risiko-Score getrennt von juristischer DPIA-Entscheidung.',
+      'DPIA-Workflow: Reviewer/Approver getrennt, Rest-Risiko explizit akzeptieren, append-only Decisions.',
+      'Activation Gate blockiert bei DPIA_REQUIRED/IN_PROGRESS/REJECTED/REVIEW_DUE.',
+      'HIGH/CRITICAL Risiko triggert DPIA-Gate; konfigurierbare Schwellenwerte via Env.',
+      'Review-Due Scheduler mit Audit-Notification und optionaler Suspendierung.',
+      'CI: npm run test:data-auth:dpia.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 30 — professioneller DPIA-Workflow statt einfachem Risiko-Badge.',
+    previousBehavior:
+      'Einfacher dpiaStatus-Badge ohne Risk Assessment, ohne Reviewer-Trennung, ohne Activation Gate auf DPIA-Status.',
+    details:
+      'backend/src/modules/data-authorizations/dpia-workflow/. Migration 20260724100000. Doku: docs/architecture/dpia-workflow-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T06:00:00.000Z',
+  },
+  {
     id: 'processing-activity-register-v49812-2026-07-24',
     version: '4.9.812',
     title: 'V4.9.812 — Verzeichnis der Verarbeitungstätigkeiten (Prompt 29)',
