@@ -1675,6 +1675,8 @@ model Organization {
   drivingAnalysisStages                  DrivingAnalysisStage[]
   drivingIntelligenceJobs                DrivingIntelligenceJob[]
   orgInvoices                            OrgInvoice[]
+  predictiveFeatureSnapshots             OrgPredictiveFeatureSnapshot[]
+  predictiveFeatureBuildRuns             OrgPredictiveFeatureBuildRun[]
   userAccountPreferences                 UserAccountPreference[]
   userNotificationPreferences            UserNotificationPreference[]
   orgInvoiceSequences                    OrgInvoiceSequence[]
@@ -13777,4 +13779,70 @@ model HighMobilityCompatibilitySignal {
   @@index([app])
   @@index([coverage])
   @@map("hm_compatibility_signals")
+}
+
+// ── Evaluations predictive feature store (Prompt 41/54) ──
+
+enum PredictiveFeatureGrain {
+  DAILY
+}
+
+enum PredictiveFeatureDataQualityStatus {
+  COMPLETE
+  PARTIAL
+  DELAYED
+  INSUFFICIENT
+}
+
+enum PredictiveFeatureBuildRunStatus {
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+model OrgPredictiveFeatureSnapshot {
+  id                  String                            @id @default(uuid())
+  organizationId      String                            @map("organization_id")
+  featureSetVersion   String                            @map("feature_set_version")
+  grain               PredictiveFeatureGrain
+  observationDate     String                            @map("observation_date")
+  asOfUtc             DateTime                          @map("as_of_utc")
+  timezone            String
+  scopeKey            String                            @map("scope_key")
+  scopeType           String                            @map("scope_type")
+  scopeStationId      String?                           @map("scope_station_id")
+  scopeVehicleClassId String?                           @map("scope_vehicle_class_id")
+  features            Json
+  dataQuality         PredictiveFeatureDataQualityStatus @map("data_quality")
+  dataQualityMeta     Json                              @default("{}") @map("data_quality_meta")
+  lineage             Json                              @default("{}")
+  buildRunId          String?                           @map("build_run_id")
+  createdAt           DateTime                          @default(now()) @map("created_at")
+
+  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  buildRun     OrgPredictiveFeatureBuildRun? @relation(fields: [buildRunId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, featureSetVersion, grain, observationDate, scopeKey])
+  @@index([organizationId, observationDate])
+  @@index([organizationId, featureSetVersion, observationDate])
+  @@map("org_predictive_feature_snapshots")
+}
+
+model OrgPredictiveFeatureBuildRun {
+  id                String                          @id @default(uuid())
+  organizationId    String                          @map("organization_id")
+  featureSetVersion String                          @map("feature_set_version")
+  fromDate          String                          @map("from_date")
+  toDate            String                          @map("to_date")
+  status            PredictiveFeatureBuildRunStatus
+  snapshotsWritten  Int                             @default(0) @map("snapshots_written")
+  errorMessage      String?                         @map("error_message")
+  startedAt         DateTime                        @default(now()) @map("started_at")
+  completedAt       DateTime?                       @map("completed_at")
+
+  organization Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  snapshots    OrgPredictiveFeatureSnapshot[]
+
+  @@index([organizationId, startedAt])
+  @@map("org_predictive_feature_build_runs")
 }

@@ -5,6 +5,10 @@ import { BusinessInsightsService } from './business-insights.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
+import { PredictiveFeatureController } from './predictive/predictive-feature.controller';
+import { PredictiveFeatureLoader } from './predictive/predictive-feature.loader';
+import { PredictiveFeatureRepository } from './predictive/predictive-feature.repository';
+import { PredictiveFeatureService } from './predictive/predictive-feature.service';
 import { PolicyUpdatePayload } from './insight.types';
 
 @Controller('admin/business-insights')
@@ -16,6 +20,7 @@ export class InternalBusinessInsightsController {
     private readonly repo: DashboardInsightsRepository,
     private readonly policyService: TenantInsightPolicyService,
     private readonly triggerService: BusinessInsightsTriggerService,
+    private readonly predictiveFeatureService: PredictiveFeatureService,
   ) {}
 
   // ─── Run triggers ──────────────────────────────────────────────────
@@ -45,6 +50,16 @@ export class InternalBusinessInsightsController {
   async triggerDebouncedRerun(@Param('orgId') orgId: string) {
     await this.triggerService.requestDebouncedRerun(orgId, 'manual_debounced_trigger');
     return { status: 'queued', message: 'Debounced rerun requested, will execute after debounce window' };
+  }
+
+  @Post('predictive-features/run/:orgId')
+  async runPredictiveFeatureBuild(@Param('orgId') orgId: string) {
+    const result = await this.predictiveFeatureService.buildFeatures({
+      organizationId: orgId,
+      lookbackDays: 7,
+      trigger: 'manual_admin',
+    });
+    return { trigger: 'manual_admin', ...result };
   }
 
   // ─── Active insights ──────────────────────────────────────────────
