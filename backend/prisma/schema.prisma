@@ -13026,6 +13026,7 @@ model DashboardInsight {
   groupKey       String?            @map("group_key")
   isGrouped      Boolean            @default(false) @map("is_grouped")
   groupCount     Int                @default(1) @map("group_count")
+  entityReferences Json?            @map("entity_references")
   isActive       Boolean            @default(true) @map("is_active")
   expiresAt      DateTime?          @map("expires_at")
   createdAt      DateTime           @default(now()) @map("created_at")
@@ -13035,6 +13036,7 @@ model DashboardInsight {
   run          DashboardInsightRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, isActive])
+  @@index([organizationId, isActive, priority])
   @@index([runId])
   @@index([dedupeKey])
   @@index([type])

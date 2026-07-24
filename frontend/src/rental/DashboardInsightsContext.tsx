@@ -41,7 +41,7 @@ export type InsightType =
   | 'RETURN_OVERDUE'
   | 'DRIVING_ASSESSMENT_DEVICE_QUALITY';
 
-export interface InsightEntityBreakdown {
+export interface InsightGroupMemberPreview {
   id: string;
   severity?: InsightSeverity;
   title?: string;
@@ -49,6 +49,9 @@ export interface InsightEntityBreakdown {
   metrics?: Record<string, unknown> | null;
   reasons?: string[] | null;
 }
+
+/** @deprecated Use InsightGroupMemberPreview — UI-only grouped member preview, not analytics entity breakdown. */
+export type InsightEntityBreakdown = InsightGroupMemberPreview;
 
 export interface DashboardInsight {
   id: string;

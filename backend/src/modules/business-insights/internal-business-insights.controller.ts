@@ -65,10 +65,13 @@ export class InternalBusinessInsightsController {
     return this.repo.getRunHistory(orgId, take);
   }
 
-  @Get('run-detail/:runId')
-  async getRunDetail(@Param('runId') runId: string) {
-    const detail = await this.repo.getRunDetail(runId);
-    if (!detail) throw new NotFoundException(`Run ${runId} not found`);
+  @Get('run-detail/:orgId/:runId')
+  async getRunDetail(
+    @Param('orgId') orgId: string,
+    @Param('runId') runId: string,
+  ) {
+    const detail = await this.repo.getRunDetailForOrg(orgId, runId);
+    if (!detail) throw new NotFoundException('Run not found');
     return detail;
   }
 
