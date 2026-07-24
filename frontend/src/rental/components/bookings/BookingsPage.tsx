@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PageHeader, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
 import type { BookingFiltersState, BookingPlannerView } from './bookingTypes';
@@ -40,6 +41,7 @@ export function BookingsPage({
   onOpenDrawer,
   onCancelBooking,
 }: BookingsPageProps) {
+  const { t } = useLanguage();
   const [view, setView] = useState<BookingPlannerView>('timeline');
   const [timelineRange, setTimelineRange] = useState<'week' | 'month'>('week');
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
@@ -92,7 +94,7 @@ export function BookingsPage({
 
   return (
     <div className="max-w-[1800px] mx-auto space-y-4">
-      <PageHeader title="Buchungen" />
+      <PageHeader title={t('bookings.title')} />
 
       <BookingsToolbar
         filters={filters}
@@ -110,14 +112,14 @@ export function BookingsPage({
         <div className="rounded-xl p-4 sq-tone-critical flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex items-center gap-2 text-sm font-medium flex-1">
             <Icon name="alert-circle" className="w-5 h-5 shrink-0" />
-            {error}
+            {t('bookings.error.title')}: {error}
           </div>
           <button
             type="button"
             onClick={onRetry}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-current"
           >
-            Erneut laden
+            {t('bookings.error.retry')}
           </button>
         </div>
       )}
@@ -125,17 +127,17 @@ export function BookingsPage({
       {loading && !error ? (
         <div className="py-16 flex flex-col items-center gap-2 text-muted-foreground">
           <Icon name="loader-2" className="w-8 h-8 animate-spin" />
-          <p className="text-xs">Buchungen werden geladen…</p>
+          <p className="text-xs">{t('bookings.loading')}</p>
         </div>
       ) : !error && filtered.length === 0 ? (
         <EmptyState
           icon={<Icon name="calendar" className="w-6 h-6" />}
-          title="Keine Buchungen für die aktuellen Filter"
-          description="Passen Sie Filter an oder legen Sie eine neue Buchung an."
+          title={t('bookings.table.empty')}
+          description={t('bookings.emptyHint')}
           action={
             onCreateNewBooking ? (
               <button type="button" onClick={onCreateNewBooking} className="text-xs font-semibold sq-tone-brand px-3 py-1.5 rounded-lg">
-                Neue Buchung
+                {t('bookings.newBooking')}
               </button>
             ) : undefined
           }

@@ -3,6 +3,7 @@
 // in lock-step with the backend enums + response shapes.
 
 import { api } from '../../lib/api';
+import { normalizeBookingPaymentIntent, type BookingPaymentIntent } from './booking-payment-intent';
 import {
   verificationPlanToApiPayload,
   type CustomerVerificationPlanState,
@@ -412,6 +413,9 @@ export interface BookingUiRow {
   status: BookingUiStatus;
   bookingRef: string;
   insurance: string;
+  /** Canonical checkout payment intent (wire format). */
+  paymentIntent: BookingPaymentIntent | null;
+  /** @deprecated use paymentIntent + paymentIntentLabel() */
   paymentMethod: string;
   fuelLevel: string;
   mileageStart: number | null;
@@ -507,6 +511,7 @@ export function mapApiBooking(api: any): BookingUiRow {
   const fuelLevel = pickupProtocol
     ? formatFuelPercent(pickupProtocol.fuelPercent, pickupProtocol.fuelFull)
     : api.fuelLevel ?? 'Voll';
+  const paymentIntent = normalizeBookingPaymentIntent(api.paymentIntent ?? api.paymentMethod);
   return {
     id: api.id,
     vehicleId: api.vehicleId ?? api.vehicle?.id ?? null,
@@ -535,7 +540,8 @@ export function mapApiBooking(api: any): BookingUiRow {
     insurance: Array.isArray(api.insuranceOptions) && api.insuranceOptions.length > 0
       ? api.insuranceOptions.map((i: any) => (typeof i === 'string' ? i : i?.name ?? i?.id ?? '')).filter(Boolean).join(', ')
       : 'Haftpflicht',
-    paymentMethod: api.paymentMethod ?? 'Kreditkarte',
+    paymentIntent,
+    paymentMethod: '',
     fuelLevel,
     mileageStart: pickupProtocol?.odometerKm ?? null,
     mileageEnd: returnProtocol?.odometerKm ?? null,
@@ -556,10 +562,6 @@ export function mapApiBooking(api: any): BookingUiRow {
     _raw: api,
   };
 }
-
-// ------------------------------------------------
-// Booking create payload (UI form → API body)
-// ------------------------------------------------
 
 export interface BuildBookingCreatePayloadArgs {
   customerId: string;

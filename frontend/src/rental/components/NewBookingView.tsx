@@ -68,6 +68,7 @@ import { PeriodStep } from './new-booking/PeriodStep';
 import { ExtrasStep } from './new-booking/ExtrasStep';
 import { CustomerStep } from './new-booking/CustomerStep';
 import { CheckoutStep } from './new-booking/CheckoutStep';
+import { useLanguage } from '../i18n/LanguageContext';
 import { paymentIntentNotesLabel } from './new-booking/payment-intent';
 import type {
   BookingCustomer,
@@ -136,6 +137,7 @@ export function NewBookingView({
   initialCustomerId = null,
 }: NewBookingViewProps) {
   const isDarkMode = useDocumentDark();
+  const { t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
   const { canReviewEligibility, canOverrideEligibility } = useRentalRulesPermissions();
@@ -810,14 +812,19 @@ export function NewBookingView({
   );
 
   const buildWizardDraftNotes = useCallback(() => {
-    const paymentLabel = paymentIntentNotesLabel(paymentIntent);
+    const paymentLabel = paymentIntentNotesLabel(paymentIntent, t);
     const pickupName = orgStations.find((s) => s.id === pickupStationId)?.name ?? '';
     const effectiveReturnStationId = sameReturnStation ? pickupStationId : returnStationId;
     const returnName = orgStations.find((s) => s.id === effectiveReturnStationId)?.name ?? '';
     const vehicleStation = selectedVehicle?.station ?? '';
-    return `Abholung: ${pickupName || vehicleStation} • Rückgabe: ${returnName || pickupName || vehicleStation} • Zahlung: ${paymentLabel}`;
+    return t('booking.notes.wizardStationsPayment', {
+      pickup: pickupName || vehicleStation,
+      return: returnName || pickupName || vehicleStation,
+      payment: paymentLabel,
+    });
   }, [
     paymentIntent,
+    t,
     orgStations,
     pickupStationId,
     returnStationId,
@@ -1067,7 +1074,7 @@ export function NewBookingView({
       const insuranceLabel = selectedInsurances.length > 0
         ? insuranceOptions.filter((i) => selectedInsurances.includes(i.id)).map((i) => i.label).join(', ')
         : 'Haftpflicht';
-      const paymentLabel = paymentIntentNotesLabel(paymentIntent);
+      const paymentLabel = paymentIntentNotesLabel(paymentIntent, t);
       const targetStatus =
         wizardEligibilityPreview?.canConfirm === true ? 'CONFIRMED' : 'PENDING';
 
@@ -1096,7 +1103,7 @@ export function NewBookingView({
       }
       setCreatedBookingRef(uiBooking.bookingRef ?? uiBooking.id ?? null);
       setBookingConfirmed(true);
-      toast.success('Buchung erfolgreich erstellt!', {
+      toast.success(t('newBooking.bookingCreated'), {
         description: `${buildMMY(selectedVehicle)} • ${selectedCustomer.name} • ${rentalDays} Tage`,
         duration: 5000,
       });
@@ -1120,6 +1127,7 @@ export function NewBookingView({
           status: uiBooking.status,
           bookingRef: uiBooking.bookingRef,
           insurance: insuranceLabel,
+          paymentIntent: confirmed.paymentIntent ?? paymentIntent,
           paymentMethod: paymentLabel,
           fuelLevel: 'Voll',
           mileageStart: selectedVehicle.odometer || 10000,

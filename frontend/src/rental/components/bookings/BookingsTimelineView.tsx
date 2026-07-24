@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
-import { BookingStatusBadge, bookingTimelineSolidBarClass, type BookingUiStatus } from './bookingStatus';
+import { BookingStatusBadge, bookingStatusLabel, bookingTimelineSolidBarClass } from './bookingStatus';
 import { bookingEndIso, bookingRef, bookingStartIso, parseIso, rowStatus } from './bookingUtils';
 
 const MS_DAY = 86_400_000;
@@ -26,6 +27,7 @@ export function BookingsTimelineView({
   rangeEnd,
   onSelectBooking,
 }: BookingsTimelineViewProps) {
+  const { t, locale } = useLanguage();
   const totalMs = Math.max(MS_DAY, rangeEnd.getTime() - rangeStart.getTime());
   const dayMarkers = useMemo(() => {
     const out: { left: number; label: string }[] = [];
@@ -35,12 +37,12 @@ export function BookingsTimelineView({
       const left = ((cursor.getTime() - rangeStart.getTime()) / totalMs) * 100;
       out.push({
         left,
-        label: cursor.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+        label: cursor.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', { day: '2-digit', month: '2-digit' }),
       });
       cursor.setDate(cursor.getDate() + 1);
     }
     return out;
-  }, [rangeStart, rangeEnd, totalMs]);
+  }, [rangeStart, rangeEnd, totalMs, locale]);
 
   const nowLeft = useMemo(() => {
     const now = Date.now();
@@ -62,7 +64,7 @@ export function BookingsTimelineView({
   if (vehicles.length === 0) {
     return (
       <p className="text-xs text-muted-foreground p-6 text-center">
-        Keine Fahrzeuge in der Flotte — Timeline benötigt Fahrzeugdaten.
+        {t('bookings.timeline.noVehicles')}
       </p>
     );
   }
@@ -72,7 +74,7 @@ export function BookingsTimelineView({
       <div className="overflow-x-auto">
         <div className="min-w-[900px]">
           <div className="grid grid-cols-[200px_1fr] border-b border-border/60 bg-muted/30">
-            <div className="px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground">Fahrzeug</div>
+            <div className="px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground">{t('bookings.timeline.vehicle')}</div>
             <div className="relative h-8 border-l border-border/40">
               {dayMarkers.map((m) => (
                 <span
@@ -131,10 +133,10 @@ export function BookingsTimelineView({
         </div>
       </div>
       <div className="px-3 py-2 flex flex-wrap gap-3 border-t border-border/40 text-[10px] text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--brand)]" /> Aktiv</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-attention)]" /> Bestätigt</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Ausstehend</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-success)]" /> Abgeschlossen</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--brand)]" /> {bookingStatusLabel('active', t)}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-attention)]" /> {bookingStatusLabel('confirmed', t)}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {bookingStatusLabel('pending', t)}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-success)]" /> {bookingStatusLabel('completed', t)}</span>
       </div>
     </div>
   );

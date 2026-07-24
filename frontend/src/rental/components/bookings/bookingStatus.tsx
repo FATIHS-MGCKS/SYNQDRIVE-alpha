@@ -1,5 +1,8 @@
 import type { StatusTone } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { en } from '../../i18n/translations/en';
 import type { BookingApiStatus } from './bookingTypes';
 
 export type BookingUiStatus =
@@ -9,6 +12,15 @@ export type BookingUiStatus =
   | 'completed'
   | 'cancelled'
   | 'no_show';
+
+const STATUS_LABEL_KEYS: Record<BookingUiStatus, TranslationKey> = {
+  pending: 'booking.status.pending',
+  confirmed: 'booking.status.confirmed',
+  active: 'booking.status.active',
+  completed: 'booking.status.completed',
+  cancelled: 'booking.status.cancelled',
+  no_show: 'booking.status.noShow',
+};
 
 export function normalizeBookingStatus(
   statusEnum?: string | null,
@@ -31,23 +43,21 @@ export function normalizeBookingStatus(
   return 'pending';
 }
 
-export function bookingStatusLabel(status: BookingUiStatus): string {
-  switch (status) {
-    case 'pending':
-      return 'Ausstehend';
-    case 'confirmed':
-      return 'Bestätigt';
-    case 'active':
-      return 'Aktiv';
-    case 'completed':
-      return 'Abgeschlossen';
-    case 'cancelled':
-      return 'Storniert';
-    case 'no_show':
-      return 'No-Show';
-    default:
-      return status;
-  }
+export function bookingStatusLabel(
+  status: BookingUiStatus,
+  t?: (key: TranslationKey) => string,
+): string {
+  const translate = t ?? ((key: TranslationKey) => en[key] ?? key);
+  return translate(STATUS_LABEL_KEYS[status]);
+}
+
+export function bookingStatusAriaLabel(
+  status: BookingUiStatus,
+  customerName?: string,
+  t?: (key: TranslationKey) => string,
+): string {
+  const label = bookingStatusLabel(status, t);
+  return customerName ? `${label}: ${customerName}` : label;
 }
 
 export function bookingStatusTone(status: BookingUiStatus): StatusTone {
@@ -146,15 +156,11 @@ export function bookingTimelineSolidBarClass(status: BookingUiStatus): string {
   }
 }
 
-export function bookingStatusAriaLabel(status: BookingUiStatus, customerName?: string): string {
-  const label = bookingStatusLabel(status);
-  return customerName ? `Buchung ${label}: ${customerName}` : `Buchungsstatus ${label}`;
-}
-
 export function BookingStatusBadge({ status }: { status: BookingUiStatus }) {
+  const { t } = useLanguage();
   return (
     <StatusChip tone={bookingStatusTone(status)} dot={status === 'active'}>
-      {bookingStatusLabel(status)}
+      {bookingStatusLabel(status, t)}
     </StatusChip>
   );
 }

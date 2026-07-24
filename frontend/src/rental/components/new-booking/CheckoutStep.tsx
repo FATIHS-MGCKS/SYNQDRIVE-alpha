@@ -6,17 +6,16 @@ import { BookingStepCard } from './BookingStepCard';
 import { CheckoutDocumentsPanel } from './CheckoutDocumentsPanel';
 import { formatBookingAmount } from './format';
 import { formatCheckoutExpiryDays, paymentIntentLabel } from './payment-intent';
+import { BOOKING_CHECKOUT_PAYMENT_INTENTS } from '../../lib/booking-payment-intent';
 import type { BookingPaymentIntent, CheckoutStepProps } from './types';
 
 const PAYMENT_OPTIONS: Array<{
   id: BookingPaymentIntent;
   icon: typeof CreditCard;
-}> = [
-  { id: 'payment_link', icon: Mail },
-  { id: 'pay_on_pickup', icon: Store },
-  { id: 'cash', icon: Banknote },
-  { id: 'invoice', icon: FileText },
-];
+}> = BOOKING_CHECKOUT_PAYMENT_INTENTS.map((id) => ({
+  id,
+  icon: id === 'payment_link' ? Mail : id === 'pay_on_pickup' ? Store : id === 'cash' ? Banknote : FileText,
+}));
 
 function eligibilityReasonMessage(
   reason: string,

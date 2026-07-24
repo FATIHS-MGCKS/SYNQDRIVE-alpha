@@ -15,8 +15,9 @@ import type { CustomerVerificationPlanState } from '../add-customer/AddCustomerV
 import type { PendingCustomerDocumentFiles } from '../../lib/entityMappers';
 import type { CustomerVerificationEligibility } from '../../lib/customer-verification';
 import type { BookingDocumentBundleView, WizardCheckoutContext } from '../../../lib/api';
+import type { BookingPaymentIntent } from '../../lib/booking-payment-intent';
 
-export type BookingPaymentIntent = 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+export type { BookingPaymentIntent };
 
 /** @deprecated use BookingPaymentIntent */
 export type BookingPaymentMethod = BookingPaymentIntent;
