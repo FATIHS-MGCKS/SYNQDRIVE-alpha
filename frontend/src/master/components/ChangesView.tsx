@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-forecast-ux-p45-2026-07-24',
+    version: '4.9.842',
+    title: 'V4.9.842 — Auswertungen Prognose-UI: Transparente Forecast-Darstellung (Prompt 45)',
+    summary: [
+      'EvaluationsForecastsSection on Auswertungen page: forecast cards, uncertainty bands, table view, drill-down.',
+      'Shows only APPROVED models (release gate); separates Prognose vs Istwert vs Schätzung.',
+      'Each card: target, horizon, point estimate, interval, model type/version, data basis, coverage, quality, factors.',
+      'API client for predictive forecasts, risk forecasts, registry, backtest results.',
+      'Docs: `docs/frontend/evaluations-forecast-ux.md`.',
+    ],
+    reason: 'Prompt 45/54: make statistical forecasts understandable and trustworthy in the evaluations UI.',
+    previousBehavior: 'Forecasts existed via API (Prompts 42–44) but had no rental UI surface.',
+    details:
+      'Pure view-model `evaluations-forecast-view-model.ts` handles visibility, confidence, stale, and gate rules. Mobile bottom-sheet drill-down; accessibility tooltips and table caption.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Predictive Analytics',
+    createdAt: '2026-07-24T22:00:00.000Z',
+  },
+  {
+    id: 'evaluations-forecast-backtesting-p44-2026-07-24',
+    version: '4.9.841',
+    title: 'V4.9.841 — Evaluations Forecast Backtesting & Drift Monitoring (Prompt 44)',
+    summary: [
+      'Rolling-origin backtesting for operational forecasts (DEMAND/REVENUE/UTILIZATION) and risk models with MAE, RMSE, MAPE/sMAPE, bias, PIC, calibration, precision/recall.',
+      'Release gates (Go/No-Go) per model family; model registry lifecycle DRAFT → SHADOW → APPROVED with admin approval.',
+      'Weekly drift monitoring: input + error drift with auto ROLLED_BACK/DISABLE on critical degradation.',
+      'Prisma: model registry, backtest runs/results, drift snapshots; org + admin diagnostics APIs.',
+      'Docs: `docs/architecture/analytics/evaluations-forecast-backtesting.md`.',
+    ],
+    reason: 'Prompt 44/54: reproducible model evaluation and monitoring before production forecast surfaces.',
+    previousBehavior: 'Forecasts (Prompts 42–43) had inline holdout metrics only; no rolling backtest, registry, or drift automation.',
+    details:
+      'Shared `runOperationalForecastBacktest`, `runRiskRegressionBacktest`, `runRiskClassificationBacktest`, `evaluateDrift`. Jobs: Sun 03:30 UTC backtest, Mon 04:00 UTC drift.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Predictive Analytics',
+    createdAt: '2026-07-24T21:00:00.000Z',
+  },
+  {
     id: 'evaluations-maintenance-risk-forecasts-p43-2026-07-24',
     version: '4.9.840',
     title: 'V4.9.840 — Evaluations Maintenance & Failure Risk Forecasts (Prompt 43)',
