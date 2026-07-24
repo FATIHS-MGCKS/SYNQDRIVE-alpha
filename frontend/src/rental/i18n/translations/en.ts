@@ -517,6 +517,54 @@ export const en = {
   'dataProcessing.enforcement.empty.errors.title': 'No enforcement errors',
   'dataProcessing.enforcement.empty.errors.description':
     'All monitored flows are running without enforcement errors in the current view.',
+  'dataProcessing.enforcement.tableLabel': 'Technical access policy coverage table',
+
+  'dataProcessing.error.unknown': 'An unexpected error occurred.',
+  'dataProcessing.error.loadFailed': 'Could not load list data.',
+
+  'dataProcessing.a11y.statusPrefix': 'Status',
+  'dataProcessing.a11y.completenessPrefix': 'Completeness',
+  'dataProcessing.a11y.kpiGroup': 'Readiness metrics',
+  'dataProcessing.a11y.kpiFilter': 'Filter list: {label} ({count})',
+  'dataProcessing.a11y.kpiLoading': 'Loading metrics',
+  'dataProcessing.a11y.paginationLoading': 'Loading more items',
+  'dataProcessing.a11y.errorSummary': 'Form errors',
+
+  'dataProcessing.activities.tableLabel': 'Processing activities table',
+  'dataProcessing.providers.tableLabel': 'Provider access table',
+  'dataProcessing.consents.tableLabel': 'Consents and approvals table',
+  'dataProcessing.audit.tableLabel': 'Authorization decision audit table',
+  'dataProcessing.partners.tableLabel': 'Partners and DPA table',
+
+  'dataProcessing.status.lifecycle.DRAFT': 'Draft',
+  'dataProcessing.status.lifecycle.IN_REVIEW': 'In review',
+  'dataProcessing.status.lifecycle.APPROVED': 'Approved',
+  'dataProcessing.status.lifecycle.SCHEDULED': 'Scheduled',
+  'dataProcessing.status.lifecycle.ACTIVE': 'Active',
+  'dataProcessing.status.lifecycle.SUSPENDED': 'Suspended',
+  'dataProcessing.status.lifecycle.SUPERSEDED': 'Superseded',
+  'dataProcessing.status.lifecycle.REVOKED': 'Revoked',
+  'dataProcessing.status.lifecycle.EXPIRED': 'Expired',
+  'dataProcessing.status.lifecycle.REJECTED': 'Rejected',
+
+  'dataProcessing.status.enforcement.ENFORCED': 'Enforced',
+  'dataProcessing.status.enforcement.PARTIALLY_ENFORCED': 'Partially enforced',
+  'dataProcessing.status.enforcement.NOT_IMPLEMENTED': 'Not implemented',
+  'dataProcessing.status.enforcement.ENFORCEMENT_ERROR': 'Enforcement error',
+  'dataProcessing.status.enforcement.DISABLED': 'Disabled',
+
+  'dataProcessing.terms.legalBasis.title': 'Legal basis',
+  'dataProcessing.terms.legalBasis.hint':
+    'Documents why processing is permitted — distinct from consent or provider access.',
+  'dataProcessing.terms.consent.title': 'Consent',
+  'dataProcessing.terms.consent.hint':
+    'Records data-subject consent — not the same as legal basis or technical provider access.',
+  'dataProcessing.terms.providerAccess.title': 'Provider access',
+  'dataProcessing.terms.providerAccess.hint':
+    'Technical access granted to an integration provider — separate from consent and legal basis.',
+
+  'dataProcessing.lifecycle.revokeFromDetail': 'Revoked from detail view',
+  'dataProcessing.detail.error.unsupportedEntity': 'This entity type is not supported in the detail view.',
 
   'dataProcessing.detail.loading': 'Loading details…',
   'dataProcessing.detail.notEditable': 'Active records cannot be edited directly. Create a new version instead.',

@@ -43,6 +43,10 @@ export interface DataTableProps<T> {
   getRowClassName?: (row: T, index: number) => string | undefined;
   /** Optional stable Playwright selector per row. */
   getRowTestId?: (row: T, index: number) => string | undefined;
+  /** Accessible name for the table (recommended when no visible caption). */
+  ariaLabel?: string;
+  /** Visible or screen-reader-only table caption. */
+  caption?: ReactNode;
   /** Optional per-row ref (e.g. scroll-into-view on deep link). */
   rowRef?: (row: T, el: HTMLTableRowElement | null) => void;
 }
@@ -69,13 +73,16 @@ export function DataTable<T>({
   getRowClassName,
   getRowTestId,
   rowRef,
+  ariaLabel,
+  caption,
 }: DataTableProps<T>) {
   const cellPad = dense ? 'px-3 py-2' : 'px-3 py-2.5';
   const totalCols = columns.length + (rowActions ? 1 : 0);
 
   const body = (
     <div className="w-full overflow-x-auto">
-      <table className="w-full border-collapse text-[13px]">
+      <table className="w-full border-collapse text-[13px]" aria-label={ariaLabel}>
+        {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead className={cn('sq-table-head', stickyHeader && 'sticky top-0 z-10')}>
           <tr>
             {columns.map((col) => (
@@ -130,7 +137,18 @@ export function DataTable<T>({
                   onRowClick && 'cursor-pointer',
                   getRowClassName?.(row, index),
                 )}
+                tabIndex={onRowClick ? 0 : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onRowClick(row);
+                        }
+                      }
+                    : undefined
+                }
               >
                 {columns.map((col) => (
                   <td

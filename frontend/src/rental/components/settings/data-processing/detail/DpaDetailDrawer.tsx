@@ -9,7 +9,7 @@ import { parseLifecycleApiError } from '../../../../lib/data-processing-lifecycl
 import { mapDpaAuditTimeline } from '../../../../lib/data-processing-timeline.mappers';
 import { useLanguage } from '../../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../../RentalContext';
-import { LIFECYCLE_STATUS_LABELS } from '../data-processing.constants';
+import { labelLifecycleStatus } from '../../../../lib/data-processing-status-labels';
 import { LifecycleActionDialog } from './LifecycleActionDialog';
 import { DetailPanel, DetailRow, DetailSection, SecondaryId } from './shared/DetailPrimitives';
 import { LifecycleActionFooter } from './shared/LifecycleActionFooter';
@@ -198,7 +198,7 @@ export function DpaDetailDrawer({
                   {detail.subprocessors.map((s) => (
                     <li key={s.id} className="text-[12px] flex items-center gap-2">
                       <span className="font-medium">{s.name}</span>
-                      <StatusChip tone="neutral">{LIFECYCLE_STATUS_LABELS[s.status] ?? s.status}</StatusChip>
+                      <StatusChip tone="neutral">{labelLifecycleStatus(s.status, t)}</StatusChip>
                     </li>
                   ))}
                 </ul>

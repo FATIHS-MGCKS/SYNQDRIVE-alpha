@@ -4,8 +4,9 @@ import {
   type DataProcessingAgreementListItem,
   type DataProcessingHubMetricsDto,
   type EnforcementCoverageSummaryDto,
-} from '../../../lib/api';
+} from '../../../../lib/api';
 import type { DataProcessingPermissions } from '../../../lib/data-processing-permissions';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { DataProcessingSectionId } from './data-processing.constants';
 
 export interface DataProcessingHubState {
@@ -22,6 +23,7 @@ export function useDataProcessingHub(
   orgId: string | null,
   permissions: DataProcessingPermissions,
 ): DataProcessingHubState {
+  const { t } = useLanguage();
   const [metrics, setMetrics] = useState<DataProcessingHubMetricsDto | null>(null);
   const [coverage, setCoverage] = useState<EnforcementCoverageSummaryDto | null>(null);
   const [partners, setPartners] = useState<DataProcessingAgreementListItem[]>([]);
@@ -79,11 +81,11 @@ export function useDataProcessingHub(
       await Promise.all(tasks);
       setSectionErrors(errors);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
+      setError(e instanceof Error ? e.message : t('dataProcessing.error.unknown'));
     } finally {
       setLoading(false);
     }
-  }, [orgId, permissions]);
+  }, [orgId, permissions, t]);
 
   useEffect(() => {
     void reload();

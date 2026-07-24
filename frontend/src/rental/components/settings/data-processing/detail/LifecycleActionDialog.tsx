@@ -1,5 +1,5 @@
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { FormDialog } from '../../../../../components/patterns';
 import type { LifecycleActionKind } from '../../../../lib/data-processing-lifecycle.types';
 import { LIFECYCLE_ACTION_MATRIX } from '../../../../lib/data-processing-lifecycle.types';
@@ -23,6 +23,8 @@ export function LifecycleActionDialog({
   onConfirm,
 }: Props) {
   const { t } = useLanguage();
+  const errorSummaryId = useId();
+  const reasonId = useId();
   const [reason, setReason] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
   const [extendValidUntil, setExtendValidUntil] = useState('');
@@ -50,6 +52,7 @@ export function LifecycleActionDialog({
       title={t(def.labelKey)}
       description={t(def.descriptionKey)}
       maxWidthClassName="sm:max-w-md"
+      closeAriaLabel={t('common.close')}
       footer={
         <>
           <button
@@ -82,6 +85,16 @@ export function LifecycleActionDialog({
       }
     >
       <div className="space-y-4">
+        {error ? (
+          <div
+            id={errorSummaryId}
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-[12px] text-destructive"
+          >
+            {error}
+          </div>
+        ) : null}
+
         {def.impactKey ? (
           <div
             className={`rounded-xl border p-3 flex gap-2.5 ${
@@ -132,7 +145,7 @@ export function LifecycleActionDialog({
         ) : null}
 
         {requiresReason ? (
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={reasonId}>
             <span className="text-[12px] font-medium">
               {t('dataProcessing.lifecycle.reason')}
               <span className="text-destructive ml-0.5" aria-hidden>
@@ -140,21 +153,18 @@ export function LifecycleActionDialog({
               </span>
             </span>
             <textarea
+              id={reasonId}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
               required
               aria-required="true"
+              aria-invalid={reasonMissing || undefined}
+              aria-describedby={error ? errorSummaryId : undefined}
               placeholder={t('dataProcessing.lifecycle.reasonPlaceholder')}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none"
             />
           </label>
-        ) : null}
-
-        {error ? (
-          <p className="text-[12px] text-destructive" role="alert">
-            {error}
-          </p>
         ) : null}
       </div>
     </FormDialog>

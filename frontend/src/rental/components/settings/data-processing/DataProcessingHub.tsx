@@ -13,6 +13,7 @@ import {
 import { useRentalOrg } from '../../../RentalContext';
 import { useDataProcessingPermissions } from '../../../hooks/useDataProcessingPermissions';
 import type { DataProcessingSectionId } from './data-processing.constants';
+import { DATA_PROCESSING_MAIN_ID, DP_SECTION_PANEL_ID, DP_SECTION_TAB_ID } from './data-processing-a11y';
 import { DataProcessingActiveFilters } from './DataProcessingActiveFilters';
 import { DataProcessingDetailHost } from './detail/DataProcessingDetailHost';
 import { DataProcessingKpiStrip } from './DataProcessingKpiStrip';
@@ -160,7 +161,7 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
     setLegacyActionLoading(true);
     try {
       const updated = await api.dataAuthorizations.revoke(orgId, legacyAuth.id, {
-        reason: 'Revoked from detail view',
+        reason: t('dataProcessing.lifecycle.revokeFromDetail'),
       });
       setLegacyAuth(updated);
       await Promise.all([hub.reload(), providersList.reload(), consentsList.reload()]);
@@ -188,7 +189,11 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-5 animate-fade-up">
+    <div
+      id={DATA_PROCESSING_MAIN_ID}
+      className="mx-auto max-w-[1600px] space-y-5 motion-safe:animate-fade-up"
+      data-testid="data-processing-main"
+    >
       <DataProcessingPageHeader
         readiness={readiness}
         loading={hub.loading}
@@ -246,8 +251,11 @@ export function DataProcessingHub({ canWrite, canManage }: Props) {
       />
 
       <section
-        className="surface-premium rounded-2xl border border-border/70 p-4 sm:p-5"
-        aria-label={t(`dataProcessing.sections.${activeSection}`)}
+        role="tabpanel"
+        id={DP_SECTION_PANEL_ID[activeSection]}
+        aria-labelledby={DP_SECTION_TAB_ID[activeSection]}
+        tabIndex={0}
+        className="surface-premium rounded-2xl border border-border/70 p-4 sm:p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2"
       >
         {activeSection === 'activities' && permissions.canViewActivities ? (
           <ProcessingActivitiesSection

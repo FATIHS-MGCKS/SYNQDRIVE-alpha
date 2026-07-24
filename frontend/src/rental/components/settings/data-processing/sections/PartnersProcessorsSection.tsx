@@ -8,7 +8,7 @@ import {
   type DataTableColumn,
 } from '../../../../../components/patterns';
 import type { DataProcessingAgreementListItem } from '../../../../../lib/api';
-import { LIFECYCLE_STATUS_LABELS } from '../data-processing.constants';
+import { labelLifecycleStatus } from '../../../../lib/data-processing-status-labels';
 import { useLanguage } from '../../../../i18n/LanguageContext';
 
 interface Props {
@@ -46,7 +46,8 @@ export function PartnersProcessorsSection({ items, loading, error, onRetry, onRo
       header: t('dataProcessing.partners.col.status'),
       cell: (row) => (
         <StatusChip tone={row.status === 'ACTIVE' ? 'success' : 'neutral'}>
-          {LIFECYCLE_STATUS_LABELS[row.status] ?? row.status}
+          <span className="sr-only">{t('dataProcessing.a11y.statusPrefix')}: </span>
+          {labelLifecycleStatus(row.status, t)}
         </StatusChip>
       ),
     },
@@ -84,7 +85,14 @@ export function PartnersProcessorsSection({ items, loading, error, onRetry, onRo
     <div className="space-y-3">
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.partners.hint')}</p>
       <div className="hidden md:block">
-        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} onRowClick={onRowClick} />
+        <DataTable
+          columns={columns}
+          rows={items}
+          getRowKey={(r) => r.id}
+          onRowClick={onRowClick}
+          ariaLabel={t('dataProcessing.partners.tableLabel')}
+          caption={t('dataProcessing.partners.tableLabel')}
+        />
       </div>
       <div className="md:hidden space-y-2">
         {items.map((row) => (
@@ -96,7 +104,8 @@ export function PartnersProcessorsSection({ items, loading, error, onRetry, onRo
           >
             <p className="font-semibold text-foreground">{row.processorName}</p>
             <StatusChip tone={row.status === 'ACTIVE' ? 'success' : 'neutral'} className="mt-2">
-              {LIFECYCLE_STATUS_LABELS[row.status] ?? row.status}
+              <span className="sr-only">{t('dataProcessing.a11y.statusPrefix')}: </span>
+              {labelLifecycleStatus(row.status, t)}
             </StatusChip>
           </button>
         ))}

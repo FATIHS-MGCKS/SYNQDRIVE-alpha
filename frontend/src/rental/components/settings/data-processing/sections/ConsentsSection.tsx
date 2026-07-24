@@ -89,6 +89,10 @@ export function ConsentsSection({ list, filterFn, onRowClick }: Props) {
         />
       </div>
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.consents.hint')}</p>
+      <p className="text-[11px] text-muted-foreground" title={t('dataProcessing.terms.consent.hint')}>
+        <span className="font-semibold text-foreground/80">{t('dataProcessing.terms.consent.title')}:</span>{' '}
+        {t('dataProcessing.terms.consent.hint')}
+      </p>
       {loading && items.length === 0 ? <SkeletonRows rows={4} /> : null}
       {!loading && items.length === 0 ? (
         <EmptyState
@@ -100,7 +104,14 @@ export function ConsentsSection({ list, filterFn, onRowClick }: Props) {
       {items.length > 0 ? (
         <>
           <div className="hidden md:block">
-            <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} onRowClick={onRowClick} />
+            <DataTable
+              columns={columns}
+              rows={items}
+              getRowKey={(r) => r.id}
+              onRowClick={onRowClick}
+              ariaLabel={t('dataProcessing.consents.tableLabel')}
+              caption={t('dataProcessing.consents.tableLabel')}
+            />
           </div>
           <div className="md:hidden space-y-2">
             {items.map((row) => (

@@ -10,7 +10,7 @@ import {
 import type { ProcessingActivityRegisterListItem } from '../../../../../lib/api';
 import type { PaginatedListResult } from '../../../../lib/useDataProcessingSectionList';
 import { labelDataCategory } from '../../data-authorization/data-authorization.constants';
-import { LIFECYCLE_STATUS_LABELS } from '../data-processing.constants';
+import { labelLifecycleStatus } from '../../../../lib/data-processing-status-labels';
 import { DataProcessingListPagination } from '../DataProcessingListPagination';
 import { useLanguage } from '../../../../i18n/LanguageContext';
 
@@ -61,7 +61,8 @@ export function ProcessingActivitiesSection({ list, onRowClick }: Props) {
       header: t('dataProcessing.activities.col.status'),
       cell: (row) => (
         <StatusChip tone={row.status === 'ACTIVE' ? 'success' : 'neutral'}>
-          {LIFECYCLE_STATUS_LABELS[row.status] ?? row.status}
+          <span className="sr-only">{t('dataProcessing.a11y.statusPrefix')}: </span>
+          {labelLifecycleStatus(row.status, t)}
         </StatusChip>
       ),
     },
@@ -70,6 +71,7 @@ export function ProcessingActivitiesSection({ list, onRowClick }: Props) {
       header: t('dataProcessing.activities.col.completeness'),
       cell: (row) => (
         <StatusChip tone={row.hasBlockingGaps ? 'critical' : 'success'}>
+          <span className="sr-only">{t('dataProcessing.a11y.completenessPrefix')}: </span>
           {row.hasBlockingGaps
             ? t('dataProcessing.activities.gaps', { count: row.completeness.blockingGaps.length })
             : t('dataProcessing.activities.complete')}
@@ -123,7 +125,14 @@ export function ProcessingActivitiesSection({ list, onRowClick }: Props) {
       {items.length > 0 ? (
         <>
           <div className="hidden md:block">
-            <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} onRowClick={onRowClick} />
+            <DataTable
+              columns={columns}
+              rows={items}
+              getRowKey={(r) => r.id}
+              onRowClick={onRowClick}
+              ariaLabel={t('dataProcessing.activities.tableLabel')}
+              caption={t('dataProcessing.activities.tableLabel')}
+            />
           </div>
           <div className="md:hidden space-y-2">
             {items.map((row) => (
@@ -151,6 +160,7 @@ export function ProcessingActivitiesSection({ list, onRowClick }: Props) {
             onLoadMore={() => void loadMore()}
             itemCount={items.length}
             label={t('dataProcessing.pagination.loadMore')}
+            loadingLabel={t('dataProcessing.a11y.paginationLoading')}
           />
         </>
       ) : null}
