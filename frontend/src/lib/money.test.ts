@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  addMoney,
   formatMoneyCents,
-  formatMoneyMajorUnits,
+  formatMoneyMinor,
+  majorUnitsFromCents,
+  moneyFromMinor,
   normalizeCurrencyCode,
   resolvePricingCurrency,
 } from './money';
@@ -25,7 +28,7 @@ describe('money', () => {
   });
 
   it('formats major units from simulation totals', () => {
-    expect(formatMoneyMajorUnits(177.5, 'EUR')).toMatch(/177,50\s*€/);
+    expect(formatMoneyCents(17750, 'EUR')).toMatch(/177,50\s*€/);
   });
 
   it('rejects invalid currency codes for display', () => {
@@ -36,5 +39,21 @@ describe('money', () => {
   it('returns null when pricing currency is missing', () => {
     expect(resolvePricingCurrency(null, null)).toBeNull();
     expect(resolvePricingCurrency({}, { currency: '' })).toBeNull();
+  });
+});
+
+describe('shared money domain (frontend re-export)', () => {
+  it('adds money in minor units', () => {
+    expect(addMoney(moneyFromMinor(100, 'EUR'), moneyFromMinor(250, 'EUR'))).toEqual(
+      moneyFromMinor(350, 'EUR'),
+    );
+  });
+
+  it('exposes display-only major unit conversion', () => {
+    expect(majorUnitsFromCents(999, 'EUR')).toBe(9.99);
+  });
+
+  it('formats JPY without cent assumption', () => {
+    expect(formatMoneyMinor(1000, 'JPY', 'de-DE')).toMatch(/1\.000/);
   });
 });

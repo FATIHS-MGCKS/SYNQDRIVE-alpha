@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'money-domain-model-v49807-2026-07-24',
+    version: '4.9.807',
+    title: 'V4.9.807 — Kanonisches Money-Domain-Modell (Prompt 9/54)',
+    summary: [
+      'Shared `Money` Typ (`amountMinor` + ISO-4217 `currency`) in `shared/money/`.',
+      'Zentrale Ops: add/subtract/compare/sum, majorUnitsStringToMinor, roundMinorToCurrency — keine Float-Arithmetik, keine Währungsmischung.',
+      'Legacy-Insight-Resolver ersetzt Magnitude-Heuristik (`>1000` → /100) durch Feldsemantik (`financialImpactCents` = minor, `lostRevenueEur` = major).',
+      '`formatMetricCentsDisplay` und `sumCents` auf Money-Helfer umgestellt.',
+      'Doku: `docs/architecture/finance/money-domain-model.md`; Tests in `money-domain.spec.ts` + `money.test.ts`.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 9 — fehleranfällige Geldwert-Behandlung zentral absichern vor kontrollierter Migration (Prompt 10).',
+    previousBehavior: 'Insights mischten Cent/Euro per Betragshöhe; KPI-Formatierung hardcoded `/100`; naive `reduce` ohne Währungsprüfung.',
+    details:
+      'shared/money/*, backend/src/shared/money/index.ts, frontend/src/lib/money.ts, insights-categories.ts, financial-kpi.logic.ts, evaluations-metric-response.ts.',
+    affectsArchitecture: true,
+    module: 'Finance / Auswertungen',
+    createdAt: '2026-07-24T18:00:00.000Z',
+  },
+  {
     id: 'evaluations-metric-response-v49806-2026-07-24',
     version: '4.9.806',
     title: 'V4.9.806 — Auswertungen KPI Status & Metadatenvertrag (Prompt 8/54)',

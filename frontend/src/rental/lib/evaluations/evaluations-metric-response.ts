@@ -42,6 +42,7 @@ export {
 
 import type { EvaluationsMetricResponse } from '@synq/evaluations-metrics/evaluations-metric-response.contract';
 import { isDisplayableMetricValue } from '@synq/evaluations-metrics/evaluations-metric-response.validator';
+import { formatMoneyMinor } from '@synq/money/money.format';
 
 /** Format money metric for UI — returns null when value must not be shown as zero. */
 export function formatMetricCentsDisplay(
@@ -50,9 +51,5 @@ export function formatMetricCentsDisplay(
 ): string | null {
   if (!isDisplayableMetricValue(metric)) return null;
   if (typeof metric.value !== 'number') return null;
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: metric.currency ?? 'EUR',
-    maximumFractionDigits: 0,
-  }).format(metric.value / 100);
+  return formatMoneyMinor(metric.value, metric.currency ?? 'EUR', locale);
 }

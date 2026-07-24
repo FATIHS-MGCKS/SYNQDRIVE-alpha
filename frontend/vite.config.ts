@@ -10,6 +10,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@synq/evaluations-metrics': path.resolve(__dirname, '../shared/evaluations-metrics'),
       '@synq/evaluations-periods': path.resolve(__dirname, '../shared/evaluations-periods'),
+      '@synq/money': path.resolve(__dirname, '../shared/money'),
     },
   },
   server: {

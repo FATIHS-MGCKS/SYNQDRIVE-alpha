@@ -58,24 +58,32 @@ describe('insights-categories (characterization)', () => {
     expect(isVisibleOnInsightsPage(visible)).toBe(true);
   });
 
-  describe('financialImpactEur legacy behavior', () => {
-    it('characterization: treats values above 1000 as cents and divides by 100', () => {
+  describe('financialImpactEur (money domain)', () => {
+    it('treats financialImpactCents as minor units', () => {
       const row = insight({
         id: 'impact-cents',
         type: 'BATTERY_CRITICAL',
         metrics: { financialImpactCents: 12_500 },
       });
-      // Legacy heuristic — documented for later correction, not endorsed as correct business logic.
       expect(financialImpactEur(row)).toBe(125);
     });
 
-    it('characterization: treats values at or below 1000 as whole EUR (lostRevenueEur path)', () => {
+    it('treats lostRevenueEur as whole major EUR units', () => {
       const row = insight({
         id: 'impact-eur',
         type: 'LOW_UTILIZATION',
         metrics: { lostRevenueEur: 350 },
       });
       expect(financialImpactEur(row)).toBe(350);
+    });
+
+    it('does not use magnitude heuristics for ambiguous values', () => {
+      const row = insight({
+        id: 'impact-small-cents',
+        type: 'BATTERY_CRITICAL',
+        metrics: { financialImpactCents: 500 },
+      });
+      expect(financialImpactEur(row)).toBe(5);
     });
   });
 

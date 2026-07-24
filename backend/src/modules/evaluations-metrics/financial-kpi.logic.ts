@@ -10,6 +10,7 @@ import {
   REVENUE_EXCLUDED_STATUSES,
 } from '@modules/invoices/invoice-domain.util';
 import type { OrgInvoiceStatus } from '@prisma/client';
+import { moneyFromMinor, sumMoney } from '@synq/money/money.util';
 
 export interface FinancialKpiInvoiceRow {
   id: string;
@@ -65,8 +66,12 @@ export function isOverdueReceivable(inv: FinancialKpiInvoiceRow, now: Date): boo
   return !Number.isNaN(due.getTime()) && due.getTime() < now.getTime();
 }
 
-export function sumCents(rows: FinancialKpiInvoiceRow[]): number {
-  return rows.reduce((acc, r) => acc + (r.totalCents ?? 0), 0);
+export function sumCents(rows: FinancialKpiInvoiceRow[], currency = 'EUR'): number {
+  const amounts = rows
+    .filter((row) => row.totalCents != null)
+    .map((row) => moneyFromMinor(row.totalCents ?? 0, row.currency ?? currency));
+  if (amounts.length === 0) return 0;
+  return sumMoney(amounts).amountMinor;
 }
 
 export function issuedRevenueInRange(
