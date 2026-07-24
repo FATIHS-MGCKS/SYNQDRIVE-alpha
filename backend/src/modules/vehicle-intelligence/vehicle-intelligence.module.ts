@@ -122,6 +122,7 @@ import { ServiceOverdueTaskService } from './service-compliance/service-overdue-
 import { BatteryTaskService } from './battery-health/battery-task.service';
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { TasksModule } from '../tasks/tasks.module';
+import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { DimoAvailableSignalsPreflightService } from './driving-capability/dimo-available-signals-preflight.service';
 import { VehicleDrivingCapabilityRepository } from './driving-capability/vehicle-driving-capability.repository';
@@ -228,6 +229,7 @@ import {
     forwardRef(() => RentalDrivingAnalysisModule),
     forwardRef(() => NotificationsModule),
     TasksModule,
+    DataAuthorizationsModule,
     BatteryV2JobsProducerModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },

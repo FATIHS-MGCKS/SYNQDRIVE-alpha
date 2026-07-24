@@ -15,6 +15,7 @@ import {
   scopedVehicleTripWhere,
 } from '../tenant/vehicle-intelligence-tenant.scope';
 import { resolveEnrichmentDistanceKm } from './trip-distance.helpers';
+import { GpsPositionAccessService } from '@modules/data-authorizations/gps-position-access.service';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -61,6 +62,7 @@ export class TripsService {
     @Inject(ROUTE_MAP_MATCHER)
     private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
+    private readonly gpsPositionAccess: GpsPositionAccessService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -127,6 +129,13 @@ export class TripsService {
     if (scopedVehicleId !== vehicleId) {
       return [];
     }
+
+    await this.gpsPositionAccess.assertVehicleGpsAccess({
+      organizationId,
+      vehicleId,
+      purpose: 'TRIPS',
+      route: 'GET /vehicles/:vehicleId/trips/:tripId/route',
+    });
 
     const trip = await this.prisma.vehicleTrip.findFirst({
       where: { id: tripId, vehicle: { organizationId } },

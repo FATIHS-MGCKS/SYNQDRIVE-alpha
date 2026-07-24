@@ -10,8 +10,19 @@ import {
 } from '../../lib/liveMapUtils';
 import {
   type LiveTelemetrySnapshot,
-  useVehicleLiveMapStore,
-} from '../stores/useVehicleLiveMapStore';
+  mapTelemetryDashboardResponseToLiveSnapshot,
+  parseTelemetryHeadingDeg,
+  parseTelemetryNumber,
+  parseTelemetrySpeedKmh,
+} from '../lib/telemetry-field-semantics';
+import { isValidGpsCoordinate } from '../lib/overview-map-position';
+import {
+  mergeGpsMeasuredAt,
+  resolveTelemetryDisplayTime,
+  shouldAcceptNewerMeasurement,
+} from '../lib/telemetry-timestamp-semantics';
+import { resolveVehicleDetailTelemetryState } from '../lib/vehicle-telemetry-runtime';
+import { useVehicleLiveMapStore } from '../stores/useVehicleLiveMapStore';
 
 const GPS_POLL_MS = 5_000;
 const DASHBOARD_POLL_MS = 30_000;
@@ -104,8 +115,36 @@ export function useLiveVehicleTelemetry(
         }
         const lat = data.latitude;
         const lng = data.longitude;
-        if (lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        const incomingMeasuredAt =
+          (data as { measuredAt?: string | null }).measuredAt ??
+          (data as { lastSeenAt?: string | null }).lastSeenAt ??
+          null;
+        const canApplyByTime =
+          incomingMeasuredAt == null ||
+          shouldAcceptNewerMeasurement(store.measuredAt ?? store.lastSignal, incomingMeasuredAt);
+        if (lat != null && lng != null && isValidGpsCoordinate(lat, lng) && canApplyByTime) {
           applyGpsPoint(boundVehicleId, boundOrgId, lat, lng, data.speedKmh, data.source);
+          const merged = mergeGpsMeasuredAt(store, {
+            measuredAt: (data as { measuredAt?: string | null }).measuredAt,
+            lastSeenAt: (data as { lastSeenAt?: string | null }).lastSeenAt,
+            receivedAt: (data as { receivedAt?: string | null }).receivedAt,
+            source: data.source,
+          });
+          const displayTime = resolveTelemetryDisplayTime(merged);
+          const canonical = resolveVehicleDetailTelemetryState(merged);
+          store.patchIfBound(boundVehicleId, boundOrgId, {
+            measuredAt: displayTime.measuredAt,
+            receivedAt: displayTime.receivedAt,
+            lastSignal: displayTime.observedAtIso ?? store.lastSignal,
+            signalAgeMs: canonical.signalAgeMs,
+            isFresh: canonical.isLive,
+            telemetryFreshness: canonical.freshness,
+            onlineStatus: canonical.isLive
+              ? 'ONLINE'
+              : canonical.isStandby
+                ? 'STANDBY'
+                : 'OFFLINE',
+          });
         }
       } catch {
         // Keep previous position on GPS-only errors.
@@ -129,6 +168,8 @@ export function useLiveVehicleTelemetry(
           engineLoad?: number;
           isIgnitionOn?: boolean | null;
           lastSignal?: string;
+          measuredAt?: string | null;
+          receivedAt?: string | null;
           signalAgeMs?: number;
           isFresh?: boolean;
           onlineStatus?: OnlineStatus;
@@ -147,11 +188,12 @@ export function useLiveVehicleTelemetry(
           return;
         }
 
-        const speed = typeof data.speed === 'number' ? data.speed : 0;
-        const engineLoad = typeof data.engineLoad === 'number' ? data.engineLoad : 0;
+        const speed = parseTelemetrySpeedKmh(data.speed);
+        const engineLoad = parseTelemetryNumber(data.engineLoad);
         const rawIgnition = data.isIgnitionOn;
         const backendLive = data.isLiveTracking === true;
-        const ignitionOn = rawIgnition === true || (rawIgnition == null && speed > 0);
+        const ignitionOn =
+          rawIgnition === true || (rawIgnition == null && speed != null && speed > 0);
         const onlineStatus: OnlineStatus =
           data.onlineStatus === 'ONLINE' ||
           data.onlineStatus === 'STANDBY' ||
@@ -163,7 +205,11 @@ export function useLiveVehicleTelemetry(
           data.displayState === 'IDLE' ||
           data.displayState === 'PARKED'
             ? data.displayState
-            : deriveVehicleState(speed > 3, ignitionOn, engineLoad);
+            : deriveVehicleState(
+                speed != null && speed > 3,
+                ignitionOn,
+                engineLoad != null && engineLoad > 0,
+              );
         const displayIgnition: DisplayIgnition =
           data.displayIgnition === 'ON' ||
           data.displayIgnition === 'OFF' ||
@@ -172,48 +218,65 @@ export function useLiveVehicleTelemetry(
             : 'UNKNOWN';
 
         const snap: LiveTelemetrySnapshot = {
-          speed,
-          fuel: typeof data.fuel === 'number' ? data.fuel : 0,
-          coolant: typeof data.coolant === 'number' ? data.coolant : 0,
-          battery: typeof data.battery === 'number' ? data.battery : 0,
-          lvBatteryVoltage: typeof data.lvBatteryVoltage === 'number' ? data.lvBatteryVoltage : 0,
-          odometer: typeof data.odometer === 'number' ? data.odometer : 0,
-          engineLoad,
+          ...mapTelemetryDashboardResponseToLiveSnapshot(data),
           ignitionOn,
         };
+        const headingFromApi = parseTelemetryHeadingDeg(
+          typeof data.heading === 'number' ? data.heading : undefined,
+        );
         liveRef.current = backendLive;
+
+        const displayTime = resolveTelemetryDisplayTime({
+          measuredAt: data.measuredAt ?? null,
+          receivedAt: data.receivedAt ?? null,
+          lastSignal: data.lastSignal ?? null,
+          signalAgeMs:
+            typeof data.signalAgeMs === 'number' ? data.signalAgeMs : null,
+          onlineStatus: data.onlineStatus,
+        });
+        const canonical = resolveVehicleDetailTelemetryState({
+          measuredAt: data.measuredAt ?? null,
+          receivedAt: data.receivedAt ?? null,
+          lastSignal: data.lastSignal ?? null,
+          signalAgeMs:
+            typeof data.signalAgeMs === 'number' ? data.signalAgeMs : null,
+          onlineStatus: data.onlineStatus,
+        });
 
         store.patchIfBound(boundVehicleId, boundOrgId, {
           snapshot: snap,
           isLiveTracking: backendLive,
           loading: false,
           error: null,
-          lastSignal: data.lastSignal ?? store.lastSignal,
-          signalAgeMs:
-            typeof data.signalAgeMs === 'number' ? data.signalAgeMs : store.signalAgeMs,
-          isFresh: typeof data.isFresh === 'boolean' ? data.isFresh : store.isFresh,
-          onlineStatus,
+          measuredAt: displayTime.measuredAt,
+          receivedAt: displayTime.receivedAt,
+          lastSignal: displayTime.observedAtIso ?? data.lastSignal ?? store.lastSignal,
+          signalAgeMs: canonical.signalAgeMs,
+          isFresh: canonical.isLive,
+          telemetryFreshness: canonical.freshness,
+          onlineStatus: canonical.isLive
+            ? 'ONLINE'
+            : canonical.isStandby
+              ? 'STANDBY'
+              : 'OFFLINE',
           displayState,
           displayIgnition,
-          displaySpeed: data.displaySpeed ?? null,
-          displayCoolant: data.displayCoolant ?? null,
-          displayEngineLoad: data.displayEngineLoad ?? null,
+          displaySpeed: data.displaySpeed ?? snap.speed,
+          displayCoolant: data.displayCoolant ?? snap.coolant,
+          displayEngineLoad: data.displayEngineLoad ?? snap.engineLoad,
           tripDetectionState: data.tripDetectionState ?? null,
+          ...(headingFromApi != null ? { heading: headingFromApi } : {}),
+          speedKmh: speed ?? store.speedKmh,
         });
 
         if (!backendLive) {
           const lat = data.latitude;
           const lng = data.longitude;
-          if (
-            lat != null &&
-            lng != null &&
-            Number.isFinite(lat) &&
-            Number.isFinite(lng) &&
-            lat >= -90 &&
-            lat <= 90 &&
-            lng >= -180 &&
-            lng <= 180
-          ) {
+          const incomingMeasuredAt = data.measuredAt ?? data.lastSignal ?? null;
+          const canApplyByTime =
+            incomingMeasuredAt == null ||
+            shouldAcceptNewerMeasurement(store.measuredAt ?? store.lastSignal, incomingMeasuredAt);
+          if (lat != null && lng != null && isValidGpsCoordinate(lat, lng) && canApplyByTime) {
             applyGpsPoint(boundVehicleId, boundOrgId, lat, lng, speed, 'cache');
           }
         }

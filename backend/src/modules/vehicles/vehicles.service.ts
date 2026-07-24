@@ -11,6 +11,8 @@ import {
   EnrichmentJobType,
   BatterySourceType,
   BookingStatus,
+  ActivityAction,
+  ActivityEntity,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
@@ -27,6 +29,10 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 import { interpretVehicleState } from './vehicle-state-interpreter';
+import {
+  projectTelemetryTimestampsFromLatestState,
+  rehydrateFleetMapTelemetryFreshness,
+} from './telemetry-timestamp.projection';
 import {
   buildFleetBookingContextFromRows,
   emptyFleetBookingSupplement,
@@ -63,6 +69,7 @@ import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/
 import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
+import { GpsPositionAccessService } from '@modules/data-authorizations/gps-position-access.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
@@ -70,6 +77,8 @@ import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
+import { AuditService } from '@modules/activity-log/audit.service';
+import { sanitizeDeviceConnectionForClient } from '@modules/dimo/device-connection-client-response';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -98,17 +107,15 @@ const VEHICLE_STATUS_MAP: Record<VehicleStatus, string> = {
   RESERVED: 'Reserved',
 };
 
-// Rental Fleet/Dashboard status keys. Deliberately collapses BOTH IN_SERVICE
-// and OUT_OF_SERVICE into a single `Maintenance` bucket — the rental UI does
-// not distinguish "scheduled service" from "operational block" at the tab
-// level. Must stay in sync with the frontend `PRISMA_TO_FLEET_STATUS_KEY`
-// (frontend/src/rental/lib/vehicle-status.ts), which mirrors this mapping.
+// Rental Fleet/Dashboard status keys. IN_SERVICE → Maintenance (scheduled service),
+// OUT_OF_SERVICE → Blocked (operational block). Must stay aligned with frontend
+// `PRISMA_TO_VEHICLE_OPERATIONAL_STATUS` in vehicle-operational-state/normalize.ts.
 const RENTAL_STATUS_MAP: Record<VehicleStatus, string> = {
   AVAILABLE: 'Available',
   RENTED: 'Active Rented',
   RESERVED: 'Reserved',
   IN_SERVICE: 'Maintenance',
-  OUT_OF_SERVICE: 'Maintenance',
+  OUT_OF_SERVICE: 'Blocked',
 };
 
 const HEALTH_STATUS_MAP: Record<HealthStatus, string> = {
@@ -256,6 +263,12 @@ export interface FleetMapVehicleDto
   latitude: number | null;
   longitude: number | null;
   lastSeenAt: string | null;
+  /** Provider measurement instant (canonical). */
+  measuredAt?: string | null;
+  /** SynqDrive ingest instant — diagnostic only. */
+  receivedAt?: string | null;
+  /** Fleet-map redis serve instant — diagnostic only. */
+  cachedAt?: string | null;
   signalAgeMs: number;
   isFresh: boolean;
   onlineStatus: string;
@@ -292,11 +305,13 @@ export class VehiclesService {
     private readonly brakeRegistrationService: BrakeRegistrationService,
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
+    private readonly gpsPositionAccess: GpsPositionAccessService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
+    private readonly audit: AuditService,
     @Optional()
     private readonly billingQuantity?: BillingQuantityVehicleIntegration,
     @Optional()
@@ -1054,7 +1069,7 @@ export class VehiclesService {
     }
 
     const dbStatus =
-      RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Available';
+      RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Unknown';
     const bookingDerived: 'Active Rented' | 'Reserved' | null =
       bookingCtx && bookingCtx.activeBookingId
         ? 'Active Rented'
@@ -1062,14 +1077,14 @@ export class VehiclesService {
           ? 'Reserved'
           : null;
 
-    // V4.6.90 — Ghost-state guard. `Maintenance` always wins (true
-    // operational block). Otherwise the booking-derived bucket wins.
+    // V4.6.90 — Ghost-state guard. Maintenance and Blocked always win
+    // (true operational blocks). Otherwise the booking-derived bucket wins.
     // If the DB column says `RENTED` / `RESERVED` but no booking truth
     // backs it, demote to `Available` and log once per vehicle — we
     // never render an operational state from a db-only row.
     let status: string;
-    if (dbStatus === 'Maintenance') {
-      status = 'Maintenance';
+    if (dbStatus === 'Maintenance' || dbStatus === 'Blocked') {
+      status = dbStatus;
     } else if (bookingDerived) {
       status = bookingDerived;
     } else if (dbStatus === 'Active Rented' || dbStatus === 'Reserved') {
@@ -1083,7 +1098,7 @@ export class VehiclesService {
       status = dbStatus;
     }
     const maintenanceCtx: FleetVehicleMaintenanceContextDto =
-      status === 'Maintenance'
+      status === 'Maintenance' || status === 'Blocked'
         ? this.deriveMaintenanceContext(vehicle.status)
         : {
             maintenanceReason: null,
@@ -1271,6 +1286,57 @@ export class VehiclesService {
     return null;
   }
 
+  private extractGpsAccuracy(rawPayload: unknown): number | null {
+    if (!rawPayload || typeof rawPayload !== 'object') return null;
+    const raw = rawPayload as Record<string, unknown>;
+
+    const directKeys = [
+      'accuracy',
+      'accuracyM',
+      'horizontalAccuracy',
+      'gpsAccuracy',
+    ] as const;
+    for (const key of directKeys) {
+      const value = raw[key];
+      if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+        return value;
+      }
+    }
+
+    const nestedCandidates: unknown[] = [
+      raw.currentLocationCoordinates,
+      raw.currentLocationAccuracy,
+      raw.location,
+      raw.position,
+    ];
+
+    for (const candidate of nestedCandidates) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const obj = candidate as Record<string, unknown>;
+      const fromValue = obj.value;
+      if (typeof fromValue === 'number' && Number.isFinite(fromValue) && fromValue >= 0) {
+        return fromValue;
+      }
+      if (fromValue && typeof fromValue === 'object') {
+        const nestedValue = fromValue as Record<string, unknown>;
+        for (const key of directKeys) {
+          const v = nestedValue[key];
+          if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
+        }
+      }
+      for (const key of directKeys) {
+        const v = obj[key];
+        if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
+      }
+    }
+
+    return null;
+  }
+
+  private nullableTelemetryScalar(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  }
+
   // ── CRUD ──────────────────────────────────────────────────────────
 
   async create(
@@ -1349,11 +1415,21 @@ export class VehiclesService {
   }
 
   async getFleetMapData(organizationId: string): Promise<FleetMapVehicleDto[]> {
+    await this.gpsPositionAccess.assertOrgFleetGpsAccess({
+      organizationId,
+      purpose: 'FLEET_ANALYTICS',
+      route: 'GET /organizations/:orgId/fleet-map',
+    });
+
     const cacheKey = this.fleetMapCache.cacheKey(organizationId);
     try {
       const cached = await this.redis.get(cacheKey);
       if (cached) {
-        return JSON.parse(cached) as FleetMapVehicleDto[];
+        const parsed = JSON.parse(cached) as FleetMapVehicleDto[];
+        const cachedAtIso = new Date().toISOString();
+        return parsed.map((row) =>
+          rehydrateFleetMapTelemetryFreshness(row, Date.now(), cachedAtIso),
+        );
       }
     } catch (err: any) {
       this.logger.debug(`Fleet-map cache read failed (${err?.message ?? err})`);
@@ -1390,6 +1466,9 @@ export class VehiclesService {
             latitude: true,
             longitude: true,
             lastSeenAt: true,
+            sourceTimestamp: true,
+            providerFetchedAt: true,
+            updatedAt: true,
             speedKmh: true,
             isIgnitionOn: true,
             engineLoad: true,
@@ -1460,6 +1539,8 @@ export class VehiclesService {
         vehicle.fuelType === FuelType.ELECTRIC ||
         vehicle.fuelType === FuelType.PLUGIN_HYBRID;
 
+      const timestamps = projectTelemetryTimestampsFromLatestState(state);
+
       return {
         id: vehicle.id,
         licensePlate: vehicle.licensePlate ?? null,
@@ -1492,11 +1573,13 @@ export class VehiclesService {
         expectedStationId: vehicle.expectedStationId ?? null,
         latitude: state?.latitude ?? null,
         longitude: state?.longitude ?? null,
-        lastSeenAt: state?.lastSeenAt?.toISOString() ?? null,
-        signalAgeMs: interpreted.signalAgeMs,
-        isFresh: interpreted.isFresh,
-        onlineStatus: interpreted.onlineStatus,
-        telemetryFreshness: interpreted.telemetryFreshness,
+        lastSeenAt: timestamps.observedAtIso,
+        measuredAt: timestamps.measuredAt,
+        receivedAt: timestamps.receivedAt,
+        signalAgeMs: timestamps.signalAgeMs,
+        isFresh: timestamps.isFresh,
+        onlineStatus: timestamps.onlineStatus,
+        telemetryFreshness: timestamps.telemetryFreshness,
         displayState: interpreted.displayState,
         displayIgnition: interpreted.displayIgnition,
         isLiveTracking: interpreted.isLiveTracking,
@@ -1639,6 +1722,15 @@ export class VehiclesService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
+    if (organizationId) {
+      await this.gpsPositionAccess.assertVehicleGpsAccess({
+        organizationId,
+        vehicleId,
+        purpose: 'TECHNICAL_OVERVIEW',
+        route: 'GET /organizations/:orgId/vehicles/:vehicleId/telemetry',
+      });
+    }
+
     const state = vehicle.latestState;
     let latitude = state?.latitude ?? null;
     let longitude = state?.longitude ?? null;
@@ -1698,6 +1790,21 @@ export class VehiclesService {
       }
     }
 
+    const fuelPercent = this.resolveFuelPercentOrNull(
+      state,
+      vehicle.tankCapacityLiters,
+    );
+    const odometerKm =
+      typeof state?.odometerKm === 'number' && Number.isFinite(state.odometerKm)
+        ? Math.floor(state.odometerKm)
+        : null;
+    const evSoc =
+      typeof state?.evSoc === 'number' && Number.isFinite(state.evSoc)
+        ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
+        : null;
+
+    const timestamps = projectTelemetryTimestampsFromLatestState(state);
+
     return {
       id: vehicle.id,
       vin: vehicle.vin,
@@ -1705,27 +1812,38 @@ export class VehiclesService {
       model: vehicle.model,
       year: vehicle.year,
       station: vehicle.homeStation?.name ?? '',
-      online: interpreted.isFresh,
-      lastSignal: interpreted.lastSignal,
-      speed: state?.speedKmh ?? 0,
-      odometer: state?.odometerKm ?? vehicle.mileageKm ?? 0,
-      fuel: this.resolveFuelPercent(state, vehicle.tankCapacityLiters),
-      battery: state?.evSoc ?? 0,
-      coolant: state?.coolantTempC ?? 0,
+      online: timestamps.isFresh,
+      lastSignal: timestamps.lastSignal,
+      measuredAt: timestamps.measuredAt,
+      receivedAt: timestamps.receivedAt,
+      speed: this.nullableTelemetryScalar(state?.speedKmh),
+      odometer: odometerKm,
+      fuel: fuelPercent,
+      battery: evSoc,
+      coolant: this.nullableTelemetryScalar(state?.coolantTempC),
       /** @deprecated HM telemetry gauge only — not brake health truth. */
-      brakes: state?.brakePadPercent ?? 0,
-      tires: state?.tireHealthPercent ?? 0,
-      engineOil: state?.engineOilPercent ?? 0,
-      oilLevel: state?.oilLevelRelative ?? 0,
-      lvBatteryVoltage: state?.lvBatteryVoltage ?? 0,
-      engineLoad: state?.engineLoad ?? 0,
+      brakes: this.nullableTelemetryScalar(state?.brakePadPercent),
+      tires: this.nullableTelemetryScalar(state?.tireHealthPercent),
+      engineOil: this.nullableTelemetryScalar(state?.engineOilPercent),
+      oilLevel: this.nullableTelemetryScalar(state?.oilLevelRelative),
+      lvBatteryVoltage: this.nullableTelemetryScalar(state?.lvBatteryVoltage),
+      engineLoad: this.nullableTelemetryScalar(state?.engineLoad),
+      rangeKm: this.nullableTelemetryScalar(state?.rangeKm),
+      tractionBatteryTemperatureC: this.nullableTelemetryScalar(
+        state?.tractionBatteryTemperatureC,
+      ),
       isIgnitionOn: state?.isIgnitionOn ?? null,
       latitude,
       longitude,
-      signalAgeMs: interpreted.signalAgeMs,
-      isFresh: interpreted.isFresh,
-      onlineStatus: interpreted.onlineStatus,
-      telemetryFreshness: interpreted.telemetryFreshness,
+      heading: this.extractHeading(state?.rawPayloadJson),
+      accuracyM: this.extractGpsAccuracy(state?.rawPayloadJson),
+      odometerKm,
+      fuelPercent,
+      evSoc,
+      signalAgeMs: timestamps.signalAgeMs,
+      isFresh: timestamps.isFresh,
+      onlineStatus: timestamps.onlineStatus,
+      telemetryFreshness: timestamps.telemetryFreshness,
       displayState: interpreted.displayState,
       displayIgnition: interpreted.displayIgnition,
       isLiveTracking: interpreted.isLiveTracking,
@@ -1752,30 +1870,27 @@ export class VehiclesService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
+    if (organizationId) {
+      await this.gpsPositionAccess.assertVehicleGpsAccess({
+        organizationId,
+        vehicleId,
+        purpose: 'LIVE_MAP',
+        route: 'GET /organizations/:orgId/vehicles/:vehicleId/live-gps',
+      });
+    }
+
     const tokenId = vehicle.dimoVehicle?.tokenId;
     if (!tokenId) {
+      const receivedAt = new Date().toISOString();
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
         speedKmh: null,
+        measuredAt: null,
+        receivedAt,
         lastSeenAt: null,
         source: 'cache' as const,
       };
-    }
-
-    if (organizationId) {
-      await this.dataAuthorizations.ensureDimoTelemetryAuthorization(
-        organizationId,
-      );
-      await this.dataAuthEnforcement.assertDataAuthorization({
-        orgId: organizationId,
-        vehicleId,
-        sourceType: 'DIMO',
-        dataCategory: 'GPS_LOCATION',
-        purpose: 'LIVE_MAP',
-        processorType: 'SYNQDRIVE',
-        trackAccess: true,
-      });
     }
 
     try {
@@ -1787,10 +1902,13 @@ export class VehiclesService {
         : data?.signalsLatest;
 
       if (!signals) {
+        const receivedAt = new Date().toISOString();
         return {
           latitude: vehicle.latestState?.latitude ?? null,
           longitude: vehicle.latestState?.longitude ?? null,
           speedKmh: null,
+          measuredAt: null,
+          receivedAt,
           lastSeenAt: null,
           source: 'cache' as const,
         };
@@ -1806,25 +1924,48 @@ export class VehiclesService {
       const lat = loc?.value?.latitude;
       const lng = loc?.value?.longitude;
       const speedKmh = typeof speedSig?.value === 'number' ? speedSig.value : null;
-      const lastSeenAt = signals.lastSeen ?? loc?.timestamp ?? null;
+      const providerMeasured = signals.lastSeen ?? loc?.timestamp ?? null;
+      const receivedAt = new Date().toISOString();
+      const measuredAt =
+        providerMeasured != null
+          ? projectTelemetryTimestampsFromLatestState({
+              lastSeenAt:
+                providerMeasured instanceof Date
+                  ? providerMeasured
+                  : new Date(providerMeasured),
+            }).measuredAt
+          : null;
 
       if (typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng)) {
-        return { latitude: lat, longitude: lng, speedKmh, lastSeenAt, source: 'dimo' as const };
+        return {
+          latitude: lat,
+          longitude: lng,
+          speedKmh,
+          measuredAt,
+          receivedAt,
+          lastSeenAt: measuredAt,
+          source: 'dimo' as const,
+        };
       }
 
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
         speedKmh,
-        lastSeenAt,
+        measuredAt,
+        receivedAt,
+        lastSeenAt: measuredAt,
         source: 'cache' as const,
       };
     } catch (err) {
       this.logger.warn(`Live GPS DIMO fetch failed for ${vehicleId}: ${(err as Error).message}`);
+      const receivedAt = new Date().toISOString();
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
         speedKmh: null,
+        measuredAt: null,
+        receivedAt,
         lastSeenAt: null,
         source: 'cache' as const,
       };
@@ -2403,17 +2544,45 @@ export class VehiclesService {
     return mapFleetConnectivityDetail(mapped);
   }
 
-  async getDeviceConnection(organizationId: string, vehicleId: string) {
+  async getDeviceConnection(
+    organizationId: string,
+    vehicleId: string,
+    actorUserId?: string | null,
+  ) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+      select: { id: true },
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+
     const [summary, runtime] = await Promise.all([
       this.deviceConnectionQuery.getVehicleSummary(organizationId, vehicleId, {
         eventLimit: 20,
       }),
       this.connectivityRuntimeProjection.projectForVehicle(organizationId, vehicleId),
     ]);
-    return {
+
+    void this.audit.record({
+      actorUserId: actorUserId ?? undefined,
+      actorOrganizationId: organizationId,
+      action: ActivityAction.SYNC,
+      entity: ActivityEntity.VEHICLE,
+      entityId: vehicleId,
+      description: 'Device connection read',
+      route: 'GET /organizations/:orgId/vehicles/:vehicleId/device-connection',
+      metaJson: {
+        accessKind: 'device_connection',
+        lteR1Capable: summary.lteR1Capable,
+        openUnpluggedEpisode: summary.openUnpluggedEpisode,
+      },
+    });
+
+    return sanitizeDeviceConnectionForClient({
       ...summary,
       connectivityRuntime: serializeVehicleConnectivityRuntimeState(runtime),
-    };
+    });
   }
 
   async listVehicleComplaints(organizationId: string, vehicleId: string) {

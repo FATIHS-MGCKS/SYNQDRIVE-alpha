@@ -2,10 +2,19 @@ import { VehicleStatus } from '@prisma/client';
 import { VehiclesService } from '../vehicles.service';
 import { FleetMapCacheService } from '../fleet-map-cache.service';
 
+export function makeGpsPositionAccessStub() {
+  return {
+    assertVehicleGpsAccess: jest.fn().mockResolvedValue(undefined),
+    assertOrgFleetGpsAccess: jest.fn().mockResolvedValue(undefined),
+    assertSystemGpsIngest: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 /** Lean VehiclesService for operational-state unit/integration specs. */
 export function makeOperationalVehiclesService(deps: {
   prisma?: Record<string, unknown>;
   redis?: { get?: jest.Mock; set?: jest.Mock; del?: jest.Mock };
+  gpsPositionAccess?: ReturnType<typeof makeGpsPositionAccessStub>;
 } = {}): VehiclesService {
   const stub = (): unknown => ({});
   const prisma = deps.prisma ?? {};
@@ -16,6 +25,11 @@ export function makeOperationalVehiclesService(deps: {
     ...deps.redis,
   };
   const fleetMapCache = new FleetMapCacheService(redis as never);
+  const connectivityRuntimeProjection = {
+    projectForVehicles: jest.fn().mockResolvedValue(new Map()),
+  };
+  const gpsPositionAccess = deps.gpsPositionAccess ?? makeGpsPositionAccessStub();
+  const audit = { record: jest.fn().mockResolvedValue(undefined) };
   return new (VehiclesService as unknown as {
     new (...args: unknown[]): VehiclesService;
   })(
@@ -28,10 +42,15 @@ export function makeOperationalVehiclesService(deps: {
     stub(),
     stub(),
     stub(),
+    gpsPositionAccess,
     stub(),
+    connectivityRuntimeProjection,
     stub(),
     stub(),
     fleetMapCache,
+    audit,
+    undefined,
+    undefined,
     undefined,
   );
 }
@@ -122,12 +141,3 @@ export function buildFutureBookingSupplement(
     futureBookingCount: future.length,
   };
 }
-
-export const FLEET_STATUS_FIELDS = [
-  'status',
-  'reservedBookingId',
-  'activeBookingId',
-  'reservedPickupAt',
-  'activeReturnAt',
-  'maintenanceReasonCode',
-] as const;

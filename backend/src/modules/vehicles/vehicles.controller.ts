@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { VehiclesService } from './vehicles.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
@@ -24,6 +25,8 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
+  ActivityAction,
+  ActivityEntity,
   CleaningStatus,
   HealthStatus,
   VehicleStatus,
@@ -32,6 +35,7 @@ import {
 } from '@prisma/client';
 import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
+import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 
 interface VehicleStatusAuthRequest {
   user?: { id?: string };
@@ -65,6 +69,7 @@ export class VehiclesController {
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
@@ -93,7 +98,8 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/fleet-map')
-  @UseGuards(OrgScopingGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'read')
   async getFleetMap(@Param('orgId') orgId: string) {
     return this.vehiclesService.getFleetMapData(orgId);
   }
@@ -264,20 +270,68 @@ export class VehiclesController {
     },
   ) {
     const data: Prisma.VehicleUpdateInput = {};
+    let previousVehicleStatus: VehicleStatus | null = null;
+    let previousCleaningStatus: CleaningStatus | null = null;
+    const needsExistingSnapshot = Boolean(body.status || body.cleaningStatus);
+    const existingVehicle = needsExistingSnapshot
+      ? await this.vehiclesService.findOne(orgId, vehicleId)
+      : null;
+
     if (body.status) {
       if (!VehiclesController.ADMIN_WRITABLE_VEHICLE_STATES.has(body.status)) {
         throw new BadRequestException(
           `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
         );
       }
+      previousVehicleStatus = (existingVehicle?.status as VehicleStatus | undefined) ?? null;
       data.status = body.status;
     }
-    if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
+    if (body.cleaningStatus) {
+      previousCleaningStatus =
+        (existingVehicle?.cleaningStatus as CleaningStatus | undefined) ?? null;
+      data.cleaningStatus = body.cleaningStatus;
+    }
     if (body.healthStatus) data.healthStatus = body.healthStatus;
 
     const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
 
     await this.vehiclesService.invalidateFleetMapCache(orgId);
+
+    if (body.status && previousVehicleStatus && previousVehicleStatus !== body.status) {
+      await this.activityLog.log({
+        organizationId: orgId,
+        userId: req.user?.id,
+        action: ActivityAction.UPDATE,
+        entity: ActivityEntity.VEHICLE,
+        entityId: vehicleId,
+        description: `Vehicle operational status changed from ${previousVehicleStatus} to ${body.status}`,
+        metaJson: {
+          auditAction: 'VEHICLE_OPERATIONAL_STATUS_UPDATE',
+          previousStatus: previousVehicleStatus,
+          nextStatus: body.status,
+        },
+      });
+    }
+
+    if (
+      body.cleaningStatus &&
+      previousCleaningStatus &&
+      previousCleaningStatus !== body.cleaningStatus
+    ) {
+      await this.activityLog.log({
+        organizationId: orgId,
+        userId: req.user?.id,
+        action: ActivityAction.UPDATE,
+        entity: ActivityEntity.VEHICLE,
+        entityId: vehicleId,
+        description: `Vehicle cleaning status changed from ${previousCleaningStatus} to ${body.cleaningStatus}`,
+        metaJson: {
+          auditAction: 'VEHICLE_CLEANING_STATUS_UPDATE',
+          previousCleaningStatus,
+          nextCleaningStatus: body.cleaningStatus,
+        },
+      });
+    }
 
     let cleaningTask: Awaited<
       ReturnType<VehicleCleaningTaskService['ensureCleaningTask']>
@@ -317,12 +371,15 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/device-connection')
-  @UseGuards(OrgScopingGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet-connectivity', 'read')
+  @Throttle({ default: { ttl: 60_000, limit: 120 } })
   async getDeviceConnection(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.vehiclesService.getDeviceConnection(orgId, vehicleId);
+    return this.vehiclesService.getDeviceConnection(orgId, vehicleId, req.user?.id);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/complaints')

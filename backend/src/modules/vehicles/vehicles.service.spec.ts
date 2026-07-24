@@ -92,7 +92,7 @@ describe('VehiclesService.deriveFleetStatusContext (V4.6.86)', () => {
       expect(result.bookingDto.activeCustomerName).toBeNull();
     });
 
-    it('returns Maintenance when Vehicle.status=OUT_OF_SERVICE (urgent)', () => {
+    it('returns Blocked when Vehicle.status=OUT_OF_SERVICE (urgent)', () => {
       const result = service.deriveFleetStatusContext({
         vehicle: { id: 'v2', status: VehicleStatus.OUT_OF_SERVICE },
         state: null,
@@ -100,11 +100,12 @@ describe('VehiclesService.deriveFleetStatusContext (V4.6.86)', () => {
         pickupOdoByBooking: new Map(),
       });
 
-      expect(result.status).toBe('Maintenance');
+      expect(result.status).toBe('Blocked');
       expect(result.maintenanceCtx.maintenanceReasonCode).toBe(
         'OPERATIONAL_BLOCK',
       );
       expect(result.maintenanceCtx.maintenanceUrgency).toBe('urgent');
+      expect(result.operationalState.status).toBe('BLOCKED');
     });
 
     it('returns Active Rented when an ACTIVE booking exists and vehicle is AVAILABLE', () => {
@@ -168,6 +169,19 @@ describe('VehiclesService.deriveFleetStatusContext (V4.6.86)', () => {
       expect(result.status).toBe('Available');
       expect(result.bookingDto).toEqual(EMPTY_BOOKING);
       expect(result.maintenanceCtx.maintenanceReason).toBeNull();
+    });
+
+    it('returns Unknown for unrecognised Vehicle.status — never Available', () => {
+      const result = service.deriveFleetStatusContext({
+        vehicle: { id: 'v-unknown', status: 'GARBAGE_STATUS' as VehicleStatus },
+        state: null,
+        bookingCtx: null,
+        pickupOdoByBooking: new Map(),
+      });
+
+      expect(result.status).toBe('Unknown');
+      expect(result.status).not.toBe('Available');
+      expect(result.operationalState.status).toBe('UNKNOWN');
     });
   });
 
