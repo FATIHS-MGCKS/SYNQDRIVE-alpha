@@ -3,6 +3,7 @@ import {
   formatTelemetryAgeShort,
   mergeGpsMeasuredAt,
   resolveTelemetryDisplayTime,
+  shouldAcceptNewerMeasurement,
 } from './telemetry-timestamp-semantics';
 import { parseTelemetryTimestampMs } from './telemetryFreshness';
 
@@ -79,5 +80,38 @@ describe('telemetry-timestamp-semantics', () => {
     );
     expect(display.freshness.freshness).toBe('offline');
     expect(display.freshness.shouldWarnUser).toBe(true);
+  });
+
+  describe('shouldAcceptNewerMeasurement', () => {
+    const current = new Date(NOW - 5 * 60_000).toISOString();
+    const newer = new Date(NOW - 2 * 60_000).toISOString();
+    const older = new Date(NOW - 10 * 60_000).toISOString();
+
+    it('accepts first measurement when none exists', () => {
+      expect(shouldAcceptNewerMeasurement(null, newer)).toBe(true);
+    });
+
+    it('accepts equal or newer timestamps', () => {
+      expect(shouldAcceptNewerMeasurement(current, newer)).toBe(true);
+      expect(shouldAcceptNewerMeasurement(current, current)).toBe(true);
+    });
+
+    it('rejects older out-of-order timestamps', () => {
+      expect(shouldAcceptNewerMeasurement(current, older)).toBe(false);
+    });
+
+    it('rejects invalid incoming timestamps', () => {
+      expect(shouldAcceptNewerMeasurement(current, 'invalid')).toBe(false);
+    });
+  });
+
+  it('mergeGpsMeasuredAt rejects out-of-order dimo measurements', () => {
+    const current = new Date(NOW - 2 * 60_000).toISOString();
+    const older = new Date(NOW - 10 * 60_000).toISOString();
+    const merged = mergeGpsMeasuredAt(
+      { measuredAt: current, lastSignal: current },
+      { source: 'dimo', measuredAt: older },
+    );
+    expect(merged.measuredAt).toBe(current);
   });
 });

@@ -1,8 +1,212 @@
 import { describe, expect, it } from 'vitest';
-import { deriveOverviewMapPosition } from './overview-map-position';
+import { TELEMETRY_LIVE_MAX_MS } from './telemetryFreshness';
+import {
+  classifyOverviewPositionClass,
+  deriveOverviewMapPosition,
+  isLivePositionEligible,
+  isNullIslandCoordinate,
+  isPlausibleMeasuredAt,
+  isValidGpsCoordinate,
+  isWithinLiveFreshnessWindow,
+  parseLngLat,
+  type OverviewMapPositionInput,
+} from './overview-map-position';
 
 const ORG = 'org-1';
 const VEHICLE = 'veh-1';
+const NOW = new Date('2026-07-18T12:00:00.000Z').getTime();
+const RECENT_MEASURED_AT = new Date(NOW - 2 * 60_000).toISOString();
+const STALE_MEASURED_AT = new Date(NOW - TELEMETRY_LIVE_MAX_MS - 60_000).toISOString();
+
+function baseInput(
+  overrides: Partial<OverviewMapPositionInput> = {},
+): OverviewMapPositionInput {
+  return {
+    boundVehicleId: VEHICLE,
+    boundOrgId: ORG,
+    vehicleId: VEHICLE,
+    orgId: ORG,
+    targetPosition: [9.48, 51.31],
+    lastConfirmedPosition: [9.48, 51.31],
+    staticLat: null,
+    staticLng: null,
+    loading: false,
+    error: null,
+    isLiveTracking: true,
+    isFresh: true,
+    gpsSource: 'dimo',
+    measuredAt: RECENT_MEASURED_AT,
+    signalAgeMs: 2 * 60_000,
+    now: NOW,
+    ...overrides,
+  };
+}
+
+describe('coordinate validation helpers', () => {
+  it('rejects null island (0,0)', () => {
+    expect(isNullIslandCoordinate(0, 0)).toBe(true);
+    expect(isValidGpsCoordinate(0, 0)).toBe(false);
+    expect(parseLngLat([0, 0])).toBeNull();
+  });
+
+  it('rejects out-of-bounds latitude and longitude', () => {
+    expect(isValidGpsCoordinate(91, 0)).toBe(false);
+    expect(isValidGpsCoordinate(0, 181)).toBe(false);
+    expect(parseLngLat([181, 0])).toBeNull();
+    expect(parseLngLat([0, 91])).toBeNull();
+  });
+
+  it('accepts valid coordinates', () => {
+    expect(isValidGpsCoordinate(51.31, 9.48)).toBe(true);
+    expect(parseLngLat([9.48, 51.31])).toEqual([9.48, 51.31]);
+  });
+});
+
+describe('isPlausibleMeasuredAt', () => {
+  it('rejects missing and far-future timestamps', () => {
+    expect(isPlausibleMeasuredAt(null, NOW)).toBe(false);
+    expect(isPlausibleMeasuredAt(new Date(NOW + 120_000).toISOString(), NOW)).toBe(false);
+  });
+
+  it('accepts recent past timestamps within skew tolerance', () => {
+    expect(isPlausibleMeasuredAt(RECENT_MEASURED_AT, NOW)).toBe(true);
+    expect(isPlausibleMeasuredAt(new Date(NOW + 30_000).toISOString(), NOW)).toBe(true);
+  });
+});
+
+describe('isWithinLiveFreshnessWindow', () => {
+  it('requires isFresh and measuredAt within 15 min', () => {
+    expect(
+      isWithinLiveFreshnessWindow({
+        isFresh: true,
+        measuredAt: RECENT_MEASURED_AT,
+        now: NOW,
+      }),
+    ).toBe(true);
+    expect(
+      isWithinLiveFreshnessWindow({
+        isFresh: true,
+        measuredAt: STALE_MEASURED_AT,
+        now: NOW,
+      }),
+    ).toBe(false);
+  });
+
+  it('falls back to signalAgeMs when measuredAt absent', () => {
+    expect(
+      isWithinLiveFreshnessWindow({
+        isFresh: true,
+        signalAgeMs: 5 * 60_000,
+      }),
+    ).toBe(true);
+    expect(
+      isWithinLiveFreshnessWindow({
+        isFresh: false,
+        signalAgeMs: 5 * 60_000,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('isLivePositionEligible', () => {
+  const eligibleBase = {
+    isBound: true,
+    isLiveTracking: true,
+    targetPosition: [9.48, 51.31] as [number, number],
+    gpsSource: 'dimo' as const,
+    isFresh: true,
+    measuredAt: RECENT_MEASURED_AT,
+    signalAgeMs: 2 * 60_000,
+    now: NOW,
+  };
+
+  it('requires all live criteria', () => {
+    expect(isLivePositionEligible(eligibleBase)).toBe(true);
+  });
+
+  it('rejects cache source even when fresh', () => {
+    expect(isLivePositionEligible({ ...eligibleBase, gpsSource: 'cache' })).toBe(false);
+  });
+
+  it('rejects stale measuredAt', () => {
+    expect(
+      isLivePositionEligible({
+        ...eligibleBase,
+        measuredAt: STALE_MEASURED_AT,
+        signalAgeMs: TELEMETRY_LIVE_MAX_MS + 60_000,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects missing measuredAt', () => {
+    expect(
+      isLivePositionEligible({
+        ...eligibleBase,
+        measuredAt: null,
+        signalAgeMs: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects invalid coordinates', () => {
+    expect(
+      isLivePositionEligible({
+        ...eligibleBase,
+        targetPosition: [0, 0],
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects when not live tracking', () => {
+    expect(isLivePositionEligible({ ...eligibleBase, isLiveTracking: false })).toBe(false);
+  });
+});
+
+describe('classifyOverviewPositionClass', () => {
+  it('returns live, lastKnown, or none', () => {
+    expect(
+      classifyOverviewPositionClass({
+        isBound: true,
+        isLiveTracking: true,
+        targetPosition: [9.48, 51.31],
+        gpsSource: 'dimo',
+        isFresh: true,
+        measuredAt: RECENT_MEASURED_AT,
+        signalAgeMs: 2 * 60_000,
+        now: NOW,
+        lastKnownPosition: [9.48, 51.31],
+        staticPosition: null,
+      }),
+    ).toBe('live');
+
+    expect(
+      classifyOverviewPositionClass({
+        isBound: true,
+        isLiveTracking: true,
+        targetPosition: [9.48, 51.31],
+        gpsSource: 'cache',
+        isFresh: true,
+        measuredAt: RECENT_MEASURED_AT,
+        signalAgeMs: 2 * 60_000,
+        now: NOW,
+        lastKnownPosition: [9.48, 51.31],
+        staticPosition: null,
+      }),
+    ).toBe('lastKnown');
+
+    expect(
+      classifyOverviewPositionClass({
+        isBound: true,
+        isLiveTracking: false,
+        targetPosition: null,
+        gpsSource: null,
+        isFresh: false,
+        lastKnownPosition: null,
+        staticPosition: null,
+      }),
+    ).toBe('none');
+  });
+});
 
 describe('deriveOverviewMapPosition', () => {
   it('uses static coordinates when not yet bound to vehicle', () => {
@@ -23,6 +227,7 @@ describe('deriveOverviewMapPosition', () => {
     });
 
     expect(view.isBoundToCurrentVehicle).toBe(false);
+    expect(view.positionClass).toBe('lastKnown');
     expect(view.mapTargetPosition).toEqual([9.48, 51.31]);
     expect(view.showEmptyState).toBe(false);
   });
@@ -42,72 +247,100 @@ describe('deriveOverviewMapPosition', () => {
       isLiveTracking: true,
       isFresh: true,
       gpsSource: 'dimo',
+      measuredAt: RECENT_MEASURED_AT,
+      now: NOW,
     });
 
     expect(view.mapTargetPosition).toEqual([9.48, 51.31]);
     expect(view.mode).toBe('staticPositionOnly');
+    expect(view.positionClass).toBe('lastKnown');
   });
 
   it('does not label cache-sourced GPS as live even when telemetry is fresh', () => {
-    const view = deriveOverviewMapPosition({
-      boundVehicleId: VEHICLE,
-      boundOrgId: ORG,
-      vehicleId: VEHICLE,
-      orgId: ORG,
-      targetPosition: [9.48, 51.31],
-      lastConfirmedPosition: [9.48, 51.31],
-      staticLat: null,
-      staticLng: null,
-      loading: false,
-      error: null,
-      isLiveTracking: true,
-      isFresh: true,
-      gpsSource: 'cache',
-    });
+    const view = deriveOverviewMapPosition(baseInput({ gpsSource: 'cache' }));
 
+    expect(view.positionClass).not.toBe('live');
     expect(view.mode).not.toBe('livePosition');
     expect(view.mode).toBe('lastKnownPosition');
   });
 
-  it('shows live position when bound and tracking', () => {
-    const view = deriveOverviewMapPosition({
-      boundVehicleId: VEHICLE,
-      boundOrgId: ORG,
-      vehicleId: VEHICLE,
-      orgId: ORG,
-      targetPosition: [9.48, 51.31],
-      lastConfirmedPosition: [9.48, 51.31],
-      staticLat: null,
-      staticLng: null,
-      loading: false,
-      error: null,
-      isLiveTracking: true,
-      isFresh: true,
-      gpsSource: 'dimo',
-    });
+  it('does not label stale measuredAt as live even with dimo source', () => {
+    const view = deriveOverviewMapPosition(
+      baseInput({
+        measuredAt: STALE_MEASURED_AT,
+        signalAgeMs: TELEMETRY_LIVE_MAX_MS + 60_000,
+        isFresh: false,
+      }),
+    );
 
+    expect(view.positionClass).toBe('lastKnown');
+    expect(view.mode).toBe('lastKnownPosition');
+  });
+
+  it('does not label dimo without measuredAt as live', () => {
+    const view = deriveOverviewMapPosition(
+      baseInput({
+        measuredAt: null,
+        signalAgeMs: null,
+      }),
+    );
+
+    expect(view.positionClass).toBe('lastKnown');
+    expect(view.mode).toBe('lastKnownPosition');
+  });
+
+  it('shows live position when all criteria met', () => {
+    const view = deriveOverviewMapPosition(baseInput());
+
+    expect(view.positionClass).toBe('live');
     expect(view.mode).toBe('livePosition');
     expect(view.mapTargetPosition).toEqual([9.48, 51.31]);
     expect(view.operatorHint).toBeNull();
   });
 
-  it('shows telemetry error with last known fallback', () => {
-    const view = deriveOverviewMapPosition({
-      boundVehicleId: VEHICLE,
-      boundOrgId: ORG,
-      vehicleId: VEHICLE,
-      orgId: ORG,
-      targetPosition: [9.48, 51.31],
-      lastConfirmedPosition: [9.48, 51.31],
-      staticLat: null,
-      staticLng: null,
-      loading: false,
-      error: 'Network error',
-      isLiveTracking: true,
-      isFresh: false,
-      gpsSource: 'cache',
-    });
+  it('treats null island coordinates as no usable position', () => {
+    const view = deriveOverviewMapPosition(
+      baseInput({
+        targetPosition: [0, 0],
+        lastConfirmedPosition: [0, 0],
+        staticLat: null,
+        staticLng: null,
+        isLiveTracking: false,
+      }),
+    );
 
+    expect(view.positionClass).toBe('none');
+    expect(view.mode).toBe('trackingUnavailable');
+    expect(view.showEmptyState).toBe(true);
+  });
+
+  it('falls back to static for null island when static exists', () => {
+    const view = deriveOverviewMapPosition(
+      baseInput({
+        targetPosition: [0, 0],
+        lastConfirmedPosition: null,
+        staticLat: 51.31,
+        staticLng: 9.48,
+        isLiveTracking: true,
+        gpsSource: 'dimo',
+      }),
+    );
+
+    expect(view.positionClass).toBe('lastKnown');
+    expect(view.mode).toBe('staticPositionOnly');
+    expect(view.mapTargetPosition).toEqual([9.48, 51.31]);
+  });
+
+  it('shows telemetry error with last known fallback', () => {
+    const view = deriveOverviewMapPosition(
+      baseInput({
+        error: 'Network error',
+        isFresh: false,
+        gpsSource: 'cache',
+      }),
+    );
+
+    expect(view.positionClass).toBe('lastKnown');
     expect(view.mode).toBe('telemetryUnavailable');
     expect(view.operatorHint).toBe('Telemetry temporarily unavailable');
     expect(view.operatorHintSub).toBe('Last known position shown');
@@ -115,24 +348,34 @@ describe('deriveOverviewMapPosition', () => {
   });
 
   it('shows empty state when no coordinates exist', () => {
-    const view = deriveOverviewMapPosition({
-      boundVehicleId: VEHICLE,
-      boundOrgId: ORG,
-      vehicleId: VEHICLE,
-      orgId: ORG,
-      targetPosition: null,
-      lastConfirmedPosition: null,
-      staticLat: null,
-      staticLng: null,
-      loading: false,
-      error: null,
-      isLiveTracking: false,
-      isFresh: false,
-      gpsSource: null,
-    });
+    const view = deriveOverviewMapPosition(
+      baseInput({
+        targetPosition: null,
+        lastConfirmedPosition: null,
+        isLiveTracking: false,
+        isFresh: false,
+        gpsSource: null,
+        measuredAt: null,
+      }),
+    );
 
+    expect(view.positionClass).toBe('none');
     expect(view.mode).toBe('trackingUnavailable');
     expect(view.showEmptyState).toBe(true);
     expect(view.operatorHint).toBe('No live tracking available');
+  });
+
+  it('shows loading state without live badge eligibility', () => {
+    const view = deriveOverviewMapPosition(
+      baseInput({
+        targetPosition: null,
+        lastConfirmedPosition: null,
+        loading: true,
+      }),
+    );
+
+    expect(view.positionClass).toBe('none');
+    expect(view.mode).toBe('noPosition');
+    expect(view.showEmptyState).toBe(false);
   });
 });

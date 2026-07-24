@@ -104,12 +104,30 @@ export function mergeGpsMeasuredAt(
   }
   const measuredAt = gps.measuredAt ?? gps.lastSeenAt ?? null;
   if (!measuredAt) return current;
+  if (!shouldAcceptNewerMeasurement(current.measuredAt ?? current.lastSignal, measuredAt)) {
+    return current;
+  }
   return {
     ...current,
     measuredAt,
     lastSignal: measuredAt,
     receivedAt: gps.receivedAt ?? current.receivedAt ?? null,
   };
+}
+
+/**
+ * Reject out-of-order provider measurements — older timestamps must not
+ * move the map marker or rejuvenate freshness.
+ */
+export function shouldAcceptNewerMeasurement(
+  currentMeasuredAt: string | null | undefined,
+  incomingMeasuredAt: string | null | undefined,
+): boolean {
+  const incomingMs = parseTelemetryTimestampMs(incomingMeasuredAt ?? null);
+  if (incomingMs == null) return false;
+  const currentMs = parseTelemetryTimestampMs(currentMeasuredAt ?? null);
+  if (currentMs == null) return true;
+  return incomingMs >= currentMs;
 }
 
 export { parseTelemetryTimestampMs };

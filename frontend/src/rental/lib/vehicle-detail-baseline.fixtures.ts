@@ -242,6 +242,7 @@ export function resolveBaselineMapPosition(
 ) {
   const orgId = VEHICLE_DETAIL_BASELINE_ORG_ID;
   const coords: [number, number] = [9.479, 51.312];
+  const liveMeasuredAt = minutesAgoIso(2);
 
   switch (mode) {
     case 'live':
@@ -259,6 +260,8 @@ export function resolveBaselineMapPosition(
         isLiveTracking: true,
         isFresh: true,
         gpsSource: 'dimo',
+        measuredAt: liveMeasuredAt,
+        signalAgeMs: 2 * 60_000,
       });
     case 'last-known':
       return deriveOverviewMapPosition({

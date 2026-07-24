@@ -64,6 +64,8 @@ export function OverviewLiveMapCard({
       error: state.error,
       isFresh: state.isFresh,
       gpsSource: state.gpsSource,
+      measuredAt: state.measuredAt,
+      signalAgeMs: state.signalAgeMs,
     })),
   );
 
@@ -82,6 +84,8 @@ export function OverviewLiveMapCard({
     isLiveTracking: liveTelemetry.isLiveTracking,
     isFresh: liveTelemetry.isFresh,
     gpsSource: liveTelemetry.gpsSource,
+    measuredAt: liveTelemetry.measuredAt,
+    signalAgeMs: liveTelemetry.signalAgeMs,
   });
 
   const hudSnapshot = positionView.isBoundToCurrentVehicle ? liveTelemetry.snapshot : null;
@@ -135,7 +139,7 @@ export function OverviewLiveMapCard({
           speedKmh={positionView.isBoundToCurrentVehicle ? liveTelemetry.speedKmh : null}
           licensePlate={selectedVehicle?.license ?? ''}
           waitingForPosition={positionView.showEmptyState}
-          isLiveTracking={positionView.isBoundToCurrentVehicle && liveTelemetry.isLiveTracking}
+          isLiveTracking={positionView.positionClass === 'live'}
           isDarkMode={isDarkMode}
           operatorHint={positionView.operatorHint}
           operatorHintSub={positionView.operatorHintSub}
