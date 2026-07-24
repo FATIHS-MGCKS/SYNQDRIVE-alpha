@@ -31,6 +31,10 @@ export class NotificationEnforcementMetricsService {
     return this.counts.get(`${phase}:${eventType}:${outcome}`) ?? 0;
   }
 
+  snapshot(): Record<string, number> {
+    return Object.fromEntries(this.counts.entries());
+  }
+
   reset(): void {
     this.counts.clear();
   }
