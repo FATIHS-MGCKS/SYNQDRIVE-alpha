@@ -1,11 +1,21 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BusinessInsightsService } from './business-insights.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
 import { InsightFormatterService } from './insight-formatter.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
+import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
+import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
+import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
+import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
+import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
+import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
+import { EvaluationsDriverAnalysisService } from './evaluations-driver-analysis.service';
+import { EvaluationsDataQualityService } from './evaluations-data-quality.service';
+import { EvaluationsLineageService } from './evaluations-lineage.service';
 import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { BusinessInsightsScheduler } from './business-insights-scheduler.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
@@ -24,6 +34,9 @@ import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-assessment-device-quality.detector';
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
+import { EvaluationsInsightsController } from './evaluations-insights.controller';
+import { EvaluationsAnalyticsController } from './evaluations-analytics.controller';
+import { EvaluationsAnalyticsFilterService } from './evaluations-analytics-filter.service';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { OrgRecommendationsController } from './recommendations/org-recommendations.controller';
 import { OrgRecommendationsRepository } from './recommendations/org-recommendations.repository';
@@ -38,9 +51,12 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => RentalHealthModule),
+    forwardRef(() => VehiclesModule),
   ],
   controllers: [
     DashboardInsightsController,
+    EvaluationsInsightsController,
+    EvaluationsAnalyticsController,
     InternalBusinessInsightsController,
     OrgRecommendationsController,
   ],
@@ -51,6 +67,16 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightGroupingService,
     InsightFormatterService,
     DashboardInsightsRepository,
+    DashboardInsightsAnalyticsService,
+    EvaluationsAnalyticsFilterService,
+    EvaluationsAnalyticsSummaryRepository,
+    EvaluationsAnalyticsSummaryService,
+    EvaluationsUtilizationSnapshotService,
+    EvaluationsStrengthDetectionService,
+    EvaluationsWeaknessDetectionService,
+    EvaluationsDriverAnalysisService,
+    EvaluationsDataQualityService,
+    EvaluationsLineageService,
     InsightTaskBridgeService,
     OrgRecommendationsRepository,
     OrgRecommendationsService,
@@ -74,6 +100,8 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     BusinessInsightsTriggerService,
     InsightTaskBridgeService,
     OrgRecommendationsService,
+    DashboardInsightsAnalyticsService,
+    EvaluationsAnalyticsSummaryService,
   ],
 })
 export class BusinessInsightsModule {}

@@ -1,0 +1,107 @@
+import { useState, type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { EmptyState, ErrorState, SkeletonMetricGrid } from '../../../components/patterns';
+import { cn } from '../../../components/ui/utils';
+import { EVALUATIONS_TOUCH_TARGET_CLASS } from './evaluations-responsive.constants';
+import type { EvaluationsMetricStatus } from '@synq/evaluations-insights/evaluations-analytics-primitives.contract';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../i18n/LanguageContext';
+
+export type EvaluationsSectionSurfaceState = 'ready' | 'loading' | 'empty' | 'error' | 'partial';
+
+interface EvaluationsSectionProps {
+  id: string;
+  title: string;
+  subtitle?: string;
+  sectionStatus?: EvaluationsMetricStatus | null;
+  surfaceState?: EvaluationsSectionSurfaceState;
+  errorMessage?: string | null;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  defaultOpen?: boolean;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}
+
+function statusBadgeKey(status: EvaluationsMetricStatus | null | undefined): string | null {
+  if (!status || status === 'OK') return null;
+  if (status === 'PARTIAL') return 'evaluations.ia.sectionStatus.partial';
+  if (status === 'ERROR') return 'evaluations.ia.sectionStatus.error';
+  return 'evaluations.ia.sectionStatus.unavailable';
+}
+
+export function EvaluationsSection({
+  id,
+  title,
+  subtitle,
+  sectionStatus,
+  surfaceState = 'ready',
+  errorMessage,
+  emptyTitle,
+  emptyDescription,
+  defaultOpen = true,
+  actions,
+  children,
+  className,
+}: EvaluationsSectionProps) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(defaultOpen);
+  const badgeKey = statusBadgeKey(sectionStatus);
+  const toggleLabel = open
+    ? t('evaluations.section.collapseNamed', { title })
+    : t('evaluations.section.expandNamed', { title });
+
+  return (
+    <section
+      id={id}
+      aria-labelledby={`${id}-title`}
+      className={cn('surface-premium rounded-2xl border border-border/45 shadow-[var(--shadow-1)] scroll-mt-20 sm:scroll-mt-24', className)}
+    >
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/40 px-3 py-3 sm:px-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id={`${id}-title`} className="text-[13px] font-semibold text-foreground tracking-[-0.01em]">
+              {title}
+            </h2>
+            {badgeKey ? (
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide sq-tone-warning">
+                {t(badgeKey as TranslationKey)}
+              </span>
+            ) : null}
+          </div>
+          {subtitle ? <p className="mt-0.5 text-[10.5px] text-muted-foreground">{subtitle}</p> : null}
+        </div>
+        <div className="flex items-center gap-2">
+          {actions}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-lg border border-border/50 px-3 py-2 text-[11px] font-semibold hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+              EVALUATIONS_TOUCH_TARGET_CLASS,
+            )}
+            aria-expanded={open}
+            aria-controls={`${id}-body`}
+            aria-label={toggleLabel}
+          >
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
+          </button>
+        </div>
+      </header>
+
+      <div id={`${id}-body`} className={cn('p-3 sm:p-4', !open && 'hidden')} hidden={!open}>
+        {surfaceState === 'loading' ? (
+          <SkeletonMetricGrid count={4} className="max-w-3xl" />
+        ) : null}
+        {surfaceState === 'error' ? (
+          <ErrorState compact title={emptyTitle ?? title} description={errorMessage ?? emptyDescription} />
+        ) : null}
+        {surfaceState === 'empty' ? (
+          <EmptyState compact title={emptyTitle ?? title} description={emptyDescription} />
+        ) : null}
+        {surfaceState === 'ready' || surfaceState === 'partial' ? children : null}
+      </div>
+    </section>
+  );
+}

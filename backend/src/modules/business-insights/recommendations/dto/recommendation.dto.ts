@@ -179,6 +179,10 @@ export class TransitionRecommendationStatusDto {
     'CANCELLED',
   ])
   status!: RecommendationStatus;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }
 
 export class ListRecommendationsQueryDto {

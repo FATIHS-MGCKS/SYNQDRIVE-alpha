@@ -55,8 +55,16 @@ export default defineConfig({
       use: { ...mobileChromium, viewport: { width: 812, height: 375 } },
     },
     {
+      name: 'tablet-1024-landscape',
+      use: { ...mobileChromium, viewport: { width: 1024, height: 768 } },
+    },
+    {
       name: 'desktop-1280',
       use: { viewport: { width: 1280, height: 800 } },
+    },
+    {
+      name: 'desktop-1920',
+      use: { viewport: { width: 1920, height: 1080 } },
     },
   ],
 });

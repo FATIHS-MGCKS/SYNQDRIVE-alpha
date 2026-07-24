@@ -12,6 +12,8 @@ import {
 import type { Request } from 'express';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import {
   CreateRecommendationDto,
   ListRecommendationsQueryDto,
@@ -57,6 +59,8 @@ export class OrgRecommendationsController {
   }
 
   @Post()
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('tasks', 'write')
   async create(
     @Param('orgId') orgId: string,
     @Body() body: CreateRecommendationDto,
@@ -87,6 +91,8 @@ export class OrgRecommendationsController {
   }
 
   @Patch(':recommendationId')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('tasks', 'write')
   async update(
     @Param('orgId') orgId: string,
     @Param('recommendationId') recommendationId: string,
@@ -97,6 +103,8 @@ export class OrgRecommendationsController {
   }
 
   @Post(':recommendationId/status')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('tasks', 'write')
   async transitionStatus(
     @Param('orgId') orgId: string,
     @Param('recommendationId') recommendationId: string,
@@ -108,6 +116,7 @@ export class OrgRecommendationsController {
       recommendationId,
       body.status,
       req.user?.id ?? null,
+      body.reason,
     );
   }
 }

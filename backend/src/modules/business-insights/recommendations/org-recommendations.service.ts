@@ -260,9 +260,15 @@ export class OrgRecommendationsService {
     id: string,
     status: RecommendationStatus,
     actorUserId?: string | null,
+    reason?: string | null,
   ): Promise<RecommendationRecord> {
     const existing = await this.getById(organizationId, id);
     assertRecommendationStatusTransition(existing.status, status);
+
+    const metadata =
+      status === 'REJECTED' && reason?.trim()
+        ? { rejectionReason: reason.trim() }
+        : undefined;
 
     const updated = await this.repo.updateWithEvent(
       organizationId,
@@ -273,6 +279,7 @@ export class OrgRecommendationsService {
         actorUserId,
         previousStatus: existing.status,
         newStatus: status,
+        metadata,
       },
     );
 

@@ -1,4 +1,6 @@
 import { InsightType, InsightSeverity, InsightEntityScope } from '@prisma/client';
+import type { InsightEntityReference } from '@synq/evaluations-insights/insight-entity-references.contract';
+import type { InsightEntityBreakdown } from '@synq/evaluations-insights/insight-entity-references.contract';
 
 export { InsightType, InsightSeverity, InsightEntityScope };
 
@@ -23,6 +25,7 @@ export interface InsightCandidate {
   dedupeKey: string;
   groupKey?: string;
   expiresAt?: Date;
+  entityReferences?: InsightEntityReference[];
 }
 
 export interface DetectorContext {
@@ -109,6 +112,8 @@ export interface DashboardInsightDto {
   reasons?: string[] | null;
   isGrouped: boolean;
   groupCount: number;
+  entityReferences?: InsightEntityReference[] | null;
+  entityBreakdown?: InsightEntityBreakdown | null;
   createdAt: string;
 }
 

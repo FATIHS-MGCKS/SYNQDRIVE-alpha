@@ -1,4 +1,9 @@
 import type { DashboardInsight, InsightType } from '../DashboardInsightsContext';
+import {
+  isVisibleAnalyticsInsight,
+  matchesStationInsightFilter,
+  resolveInsightAnalyticsCategory,
+} from '@synq/evaluations-insights/insights-analytics';
 
 export type InsightDisplayCategory =
   | 'BUSINESS_RISK'
@@ -7,40 +12,14 @@ export type InsightDisplayCategory =
   | 'MISUSE_ABUSE'
   | 'OPERATIONAL_RECOMMENDATION';
 
-const RAW_HEALTH_TYPES = new Set<InsightType>([
-  'BATTERY_CRITICAL',
-  'TIRE_CRITICAL',
-  'BRAKE_CRITICAL',
-]);
-
-const BUSINESS_RISK_TYPES = new Set<InsightType>([
-  'TIGHT_HANDOVER',
-  'RETURN_NEEDS_INSPECTION',
-  'STATION_SHORTAGE',
-  'SERVICE_BEFORE_BOOKING',
-  'SERVICE_WINDOW',
-  'PICKUP_OVERDUE',
-  'SERVICE_OVERDUE',
-  'TUV_OVERDUE',
-  'BOKRAFT_OVERDUE',
-]);
-
-const REVENUE_LEAKAGE_TYPES = new Set<InsightType>(['LOW_UTILIZATION']);
-
 /** Hide raw technical health alerts from the operator cockpit. */
 export function isVisibleOnInsightsPage(insight: DashboardInsight): boolean {
-  if (!RAW_HEALTH_TYPES.has(insight.type)) return true;
-  const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const tc = insight.timeContext;
-  return !!(m?.bookingId || tc?.bookingId);
+  return isVisibleAnalyticsInsight(insight);
 }
 
 export function resolveInsightCategory(insight: DashboardInsight): InsightDisplayCategory {
-  const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const cat = m?.category;
+  const cat = resolveInsightAnalyticsCategory(insight);
   if (cat === 'BUSINESS_RISK' || cat === 'REVENUE_LEAKAGE') return cat;
-  if (REVENUE_LEAKAGE_TYPES.has(insight.type)) return 'REVENUE_LEAKAGE';
-  if (BUSINESS_RISK_TYPES.has(insight.type)) return 'BUSINESS_RISK';
   return 'OPERATIONAL_RECOMMENDATION';
 }
 
@@ -50,7 +29,7 @@ export function insightRecommendation(insight: DashboardInsight): string {
     return m.recommendation.trim();
   }
   if (insight.actionLabel?.trim()) return insight.actionLabel.trim();
-  switch (insight.type) {
+  switch (insight.type as InsightType) {
     case 'PICKUP_OVERDUE':
       return 'Kunde kontaktieren und Übergabe nachhalten.';
     case 'RETURN_NEEDS_INSPECTION':
@@ -68,10 +47,10 @@ export function insightRecommendation(insight: DashboardInsight): string {
 
 export function financialImpactEur(insight: DashboardInsight): number | null {
   const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const cents = m?.financialImpactCents ?? m?.lostRevenueEur;
-  if (typeof cents === 'number' && Number.isFinite(cents)) {
-    return cents > 1000 ? Math.round(cents / 100) : Math.round(cents);
-  }
+  if (!m) return null;
+  if (typeof m.financialImpactEur === 'number') return m.financialImpactEur;
+  if (typeof m.financialImpactCents === 'number') return Math.round(m.financialImpactCents / 100);
+  if (typeof m.financialExposureMinor === 'number') return Math.round(m.financialExposureMinor / 100);
   return null;
 }
 
@@ -81,15 +60,11 @@ export function matchesStationIdFilter(
   vehicleStationById: Map<string, string | null | undefined>,
 ): boolean {
   if (!stationId) return true;
-  const ids = insight.entityIds ?? [];
-  if (ids.length === 0) return true;
-  const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const vehicleId =
-    (typeof m?.affectedVehicleId === 'string' ? m.affectedVehicleId : null) ??
-    ids.find((id) => vehicleStationById.has(id));
-  if (!vehicleId) return true;
-  const vs = vehicleStationById.get(vehicleId);
-  return vs === stationId;
+  const stationVehicleIds = new Set<string>();
+  for (const [vehicleId, sid] of vehicleStationById) {
+    if (sid === stationId) stationVehicleIds.add(vehicleId);
+  }
+  return matchesStationInsightFilter(insight, stationId, stationVehicleIds);
 }
 
 export function partitionInsights(insights: DashboardInsight[]) {

@@ -21,6 +21,16 @@ import type {
   VehicleDataQualityState,
   VehicleBookingReference,
 } from '../rental/lib/vehicle-operational-state';
+import type {
+  EvaluationsAnalyticsSummaryResponse,
+  EvaluationsInsightDetail,
+  EvaluationsInsightListResponse,
+  InsightAnalyticsSummary,
+} from '../rental/lib/evaluations-analytics-api.types';
+import type {
+  EvaluationsRecommendationEventRecord,
+  EvaluationsRecommendationRecord,
+} from '../rental/lib/evaluations-recommendations-api.types';
 
 export type {
   AddDamageImageInput,
@@ -4215,6 +4225,109 @@ export const api = {
         createdAt: string;
       }>;
     }>(`/organizations/${orgId}/dashboard-insights`),
+  },
+  evaluationsInsights: {
+    summary: (
+      orgId: string,
+      params?: Record<string, string | number | null | undefined>,
+    ) => {
+      const qs = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
+      const q = qs.toString();
+      return get<InsightAnalyticsSummary>(`/organizations/${orgId}/evaluations/insights/summary${q ? `?${q}` : ''}`);
+    },
+    list: (
+      orgId: string,
+      params?: Record<string, string | number | null | undefined>,
+    ) => {
+      const qs = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
+      const q = qs.toString();
+      return get<EvaluationsInsightListResponse>(`/organizations/${orgId}/evaluations/insights${q ? `?${q}` : ''}`);
+    },
+    getById: (orgId: string, insightId: string) =>
+      get<EvaluationsInsightDetail>(`/organizations/${orgId}/evaluations/insights/${insightId}`),
+  },
+  evaluationsAnalytics: {
+    summary: (
+      orgId: string,
+      params?: Record<string, string | number | null | undefined>,
+    ) => {
+      const qs = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
+      const q = qs.toString();
+      return get<EvaluationsAnalyticsSummaryResponse>(
+        `/organizations/${orgId}/evaluations/analytics/summary${q ? `?${q}` : ''}`,
+      );
+    },
+  },
+  evaluationsRecommendations: {
+    list: (
+      orgId: string,
+      params?: {
+        status?: string;
+        sourceType?: string;
+        sourceId?: string;
+        ownerId?: string;
+        limit?: number;
+      },
+    ) => {
+      const qs = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
+      const q = qs.toString();
+      return get<EvaluationsRecommendationRecord[]>(
+        `/organizations/${orgId}/evaluations/recommendations${q ? `?${q}` : ''}`,
+      );
+    },
+    getById: (orgId: string, recommendationId: string) =>
+      get<EvaluationsRecommendationRecord>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}`,
+      ),
+    getEvents: (orgId: string, recommendationId: string) =>
+      get<EvaluationsRecommendationEventRecord[]>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/events`,
+      ),
+    update: (
+      orgId: string,
+      recommendationId: string,
+      body: Partial<{
+        ownerId: string | null;
+        dueAt: string | null;
+        title: string;
+        description: string;
+        rationale: string;
+        priority: number;
+      }>,
+    ) =>
+      patch<EvaluationsRecommendationRecord>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}`,
+        body,
+      ),
+    transitionStatus: (
+      orgId: string,
+      recommendationId: string,
+      body: { status: string; reason?: string },
+    ) =>
+      post<EvaluationsRecommendationRecord>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/status`,
+        body,
+      ),
   },
   notifications: {
     list: (
