@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-production-rollout-v49826-2026-07-24',
+    version: '4.9.826',
+    title: 'V4.9.826 — Data Auth Production Rollout Gate (Prompt 43)',
+    summary: [
+      'Production-Rollout nicht ausgeführt — Prompt-42-Gate NO-GO (Migration UUID/TEXT, 0/15 Runtime-Szenarien).',
+      '18-Schritt-Rolloutplan dokumentiert: Backup, Shadow-Mode, schrittweise Fail-closed pro Enforcement-Domain.',
+      'Production-Baseline erfasst: Commit 51069d1, PM2 synqdrive online, Health ok, Rollback bereit.',
+      'Doku: docs/operations/data-authorization-production-rollout-2026-07.md.',
+    ],
+    reason:
+      'Prompt 43 erlaubt kontrollierten Production-Rollout nur nach eindeutigem Prompt-42-GO; Gate nicht erfüllt.',
+    previousBehavior:
+      'Kein dokumentierter Production-Rollout-Plan; Staging-Audit endete mit NO-GO.',
+    details: 'docs/operations/data-authorization-production-rollout-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T03:12:00.000Z',
+  },
+  {
     id: 'data-auth-staging-verification-v49825-2026-07-24',
     version: '4.9.825',
     title: 'V4.9.825 — Data Auth Staging Runtime Verification (Prompt 42)',
