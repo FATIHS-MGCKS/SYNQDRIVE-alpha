@@ -717,7 +717,7 @@ export async function saveEvaluationsScreenshot(
   await fs.writeFile(path.join(dir, `${name}.png`), screenshot);
 
   if (options?.copyToDocs) {
-    const docsDir = path.join(process.cwd(), '..', 'docs', 'frontend', 'artifacts');
+    const docsDir = path.join(process.cwd(), '..', '..', 'docs', 'frontend', 'artifacts');
     await fs.mkdir(docsDir, { recursive: true });
     await fs.writeFile(path.join(docsDir, options.copyToDocs), screenshot);
   }
