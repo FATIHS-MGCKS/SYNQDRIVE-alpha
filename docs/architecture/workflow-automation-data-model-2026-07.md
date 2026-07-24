@@ -703,3 +703,85 @@ Activation block for approval-gated workflows becomes a **publish-time check** a
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 1.0 | 2026-07-25 | Phase 3 Prompt 9 | Initial canonical data model design |
+| 2.0 | 2026-07-25 | Phase 3 Prompt 10 | Prisma schema + migration `20260725200000_workflow_canonical_runtime` implemented |
+
+---
+
+## 15. Implemented schema (Prompt 10)
+
+### Prisma models → PostgreSQL tables
+
+| Prisma model | Table | Notes |
+|--------------|-------|-------|
+| `WorkflowDefinition` | `workflow_definitions` | `legacyOrgWorkflowId` bridges to `org_workflows.id` |
+| `WorkflowVersion` | `workflow_versions` | Immutable after `PUBLISHED` — service-layer enforced |
+| `WorkflowTrigger` | `workflow_triggers` | 1:1 per version |
+| `WorkflowScope` | `workflow_scopes` | 1:1 per version |
+| `WorkflowScopeBinding` | `workflow_scope_bindings` | Normalized station/vehicle IDs |
+| `WorkflowConditionGroup` | `workflow_condition_groups` | Partial unique: one root per version |
+| `WorkflowCondition` | `workflow_conditions` | Typed value columns + optional `valueJson` |
+| `WorkflowAction` | `workflow_actions` | `config` JSON — no secrets |
+| `WorkflowPolicySnapshot` | `workflow_policy_snapshots` | Dedup `(organizationId, contentHash)` |
+| `WorkflowRun` | `workflow_runs` | `definitionSnapshot` + `inputPayload` JSON |
+| `WorkflowActionRun` | `workflow_action_runs` | Own `idempotencyKey` |
+| `WorkflowApproval` | `workflow_approvals` | Unique `actionRunId` |
+| `WorkflowDelivery` | `workflow_deliveries` | `payloadRef` IDs only |
+| `WorkflowEventOutbox` | `workflow_event_outbox` | Worker index `(status, availableAt)` |
+| `WorkflowTimer` | `workflow_timers` | Scheduler index `(status, fireAt)` |
+| `WorkflowRevision` | `workflow_revisions` | Optional `businessAuditOutboxId` |
+| `WorkflowFeatureFlag` | `workflow_feature_flags` | Partial uniques per scope in SQL |
+| `WorkflowRolloutScope` | `workflow_rollout_scopes` | |
+
+### Runtime enums (canonical — distinct from legacy)
+
+| Enum | Used by |
+|------|---------|
+| `WorkflowDefinitionLifecycleStatus` | `WorkflowDefinition.lifecycleStatus` |
+| `WorkflowVersionStatus` | `WorkflowVersion.status` |
+| `WorkflowRuntimeRunStatus` | `WorkflowRun.status` |
+| `WorkflowRuntimeActionRunStatus` | `WorkflowActionRun.status` |
+| `WorkflowRuntimeApprovalStatus` | `WorkflowApproval.status` |
+| `WorkflowDeliveryStatus` | `WorkflowDelivery.status` |
+| `WorkflowEventOutboxStatus` | `WorkflowEventOutbox.status` |
+| `WorkflowTimerStatus` | `WorkflowTimer.status` |
+
+Legacy enums (`WorkflowStatus`, `WorkflowRunStatus`, `WorkflowActionRunStatus`, `WorkflowApprovalStatus`) remain on deprecated `org_workflow*` models.
+
+### Legacy models (deprecated, retained)
+
+| Model | Table | Status |
+|-------|-------|--------|
+| `OrgWorkflow` | `org_workflows` | `@deprecated` — still used by live engine |
+| `OrgWorkflowRun` | `org_workflow_runs` | `@deprecated` |
+| `OrgWorkflowActionRun` | `org_workflow_action_runs` | `@deprecated` |
+| `OrgWorkflowApproval` | `org_workflow_approvals` | `@deprecated` |
+
+### Migration
+
+- **Name:** `20260725200000_workflow_canonical_runtime`
+- **Type:** Additive `CREATE TABLE` / `CREATE TYPE` only
+- **Rollback doc:** `backend/prisma/migrations/20260725200000_workflow_canonical_runtime/ROLLBACK.md`
+- **Tests:** `backend/src/modules/workflows/workflow-runtime.schema.spec.ts`
+
+### Published-version immutability
+
+Prisma cannot enforce row-level immutability after publish. Enforcement points:
+
+1. Service layer rejects updates to `PUBLISHED`/`RETIRED`/`INVALID` version graph rows.
+2. `WorkflowVersion.definitionSnapshot` written once at publish.
+3. Optional DB trigger (future) — not in this migration to avoid lock risk on large fleets.
+
+### JSON field bindings (implemented)
+
+| Field | Model | Purpose | PII / secrets |
+|-------|-------|---------|---------------|
+| `config` | `WorkflowTrigger`, `WorkflowAction` | Version-bound operational config | Entity IDs only; **no secrets** |
+| `definitionSnapshot` | `WorkflowVersion`, `WorkflowRun` | Frozen graph at publish / run start | May reference entity IDs |
+| `inputPayload` | `WorkflowRun` | Domain event payload | **PII possible** — minimize at write |
+| `conditionResult` | `WorkflowRun` | Evaluation audit | Low |
+| `input` / `output` | `WorkflowActionRun` | Action I/O | **PII possible** |
+| `requestedPolicy` | `WorkflowApproval` | Approver role metadata | No secrets |
+| `policyPayload` | `WorkflowPolicySnapshot` | Frozen capability/feature flags | No secrets |
+| `payloadRef` | `WorkflowDelivery` | Notification/email IDs | No bodies/tokens |
+| `payload` | `WorkflowEventOutbox`, `WorkflowTimer` | Event/timer opaque data | Event-dependent |
+| `valueJson` | `WorkflowCondition` | Complex `in` lists | No secrets |

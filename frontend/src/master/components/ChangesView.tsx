@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-canonical-prisma-v49817-2026-07-25',
+    version: '4.9.817',
+    title: 'V4.9.817 — Workflow canonical Prisma schema + additive migration',
+    summary: [
+      '**Schema**: 17 canonical `workflow_*` models parallel to deprecated `org_workflow*` legacy tables.',
+      '**Migration**: `20260725200000_workflow_canonical_runtime` — CREATE only, RESTRICT on runtime lineage, partial indexes for matcher/expiry/timer/outbox.',
+      '**Tenant**: `organizationId` on all runtime tables; idempotency uniques on runs, action runs, outbox, timers, deliveries.',
+      '**Bridge**: `WorkflowDefinition.legacyOrgWorkflowId` for dual-write/backfill.',
+      '**Tests**: `workflow-runtime.schema.spec.ts` — validate, relations, additive SQL checks.',
+      '**Docs**: ADR updated §15 with final table/enum names; ROLLBACK.md in migration folder.',
+    ],
+    reason:
+      'Approved canonical data model (Prompt 9) needed production-safe Prisma implementation without breaking existing workflow engine.',
+    previousBehavior:
+      'Design-only ADR; live data only in legacy `org_workflows` JSON + CASCADE runtime tables.',
+    details:
+      'prisma/schema.prisma, migration 20260725200000_workflow_canonical_runtime, workflow-runtime.schema.spec.ts, docs/architecture/workflow-automation-data-model-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-25T20:00:00.000Z',
+  },
+  {
     id: 'workflow-runtime-data-model-v49816-2026-07-25',
     version: '4.9.816',
     title: 'V4.9.816 — Workflow runtime canonical data model (Phase 3 design)',
