@@ -34,6 +34,10 @@ import { PredictiveForecastLoader } from './predictive/predictive-forecast.loade
 import { PredictiveForecastRepository } from './predictive/predictive-forecast.repository';
 import { PredictiveForecastScheduler } from './predictive/predictive-forecast.scheduler';
 import { PredictiveForecastService } from './predictive/predictive-forecast.service';
+import { PredictiveRiskController } from './predictive/predictive-risk.controller';
+import { PredictiveRiskLoader } from './predictive/predictive-risk.loader';
+import { PredictiveRiskRepository } from './predictive/predictive-risk.repository';
+import { PredictiveRiskService } from './predictive/predictive-risk.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
@@ -50,6 +54,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InternalBusinessInsightsController,
     PredictiveFeatureController,
     PredictiveForecastController,
+    PredictiveRiskController,
   ],
   providers: [
     BusinessInsightsService,
@@ -68,6 +73,9 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PredictiveForecastRepository,
     PredictiveForecastLoader,
     PredictiveForecastScheduler,
+    PredictiveRiskService,
+    PredictiveRiskRepository,
+    PredictiveRiskLoader,
     TightHandoverDetector,
     ReturnNeedsInspectionDetector,
     StationShortageDetector,
@@ -87,6 +95,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightTaskBridgeService,
     PredictiveFeatureService,
     PredictiveForecastService,
+    PredictiveRiskService,
   ],
 })
 export class BusinessInsightsModule {}
