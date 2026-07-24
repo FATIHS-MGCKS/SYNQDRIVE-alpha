@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-predictive-analytics-arch-p40-2026-07-24',
+    version: '4.9.837',
+    title: 'V4.9.837 — Evaluations Predictive Analytics Zielarchitektur (Prompt 40)',
+    summary: [
+      'Target architecture for nine business forecasts: demand, revenue, utilization, fleet capacity, maintenance costs, vehicle failure, downtime, receivables default, liquidity.',
+      'Four inference tiers: OBSERVED, RULE_BASED, STATISTICAL, ML — statistical baselines before ML; no untested forecasts in production UI.',
+      'Platform design: feature snapshots, model registry, backtesting gates, drift monitoring, rollback, tenant isolation, explainability, cost/runtime limits.',
+      'Per-forecast specs: target variable, horizon, min history, sources, granularity, refresh, baseline model, metric, fallback, suppress conditions.',
+      'Docs: `docs/architecture/analytics/evaluations-predictive-analytics-architecture.md`.',
+    ],
+    reason: 'Prompt 40/54: define credible predictive analytics architecture before implementing individual models.',
+    previousBehavior: 'Auswertungen delivered descriptive KPIs and rule-based insights; `FORECAST` evidence kind and `DEMAND_FORECAST` lineage source were reserved but unused.',
+    details:
+      'Architecture-only — no production forecast endpoints or UI. Implementation order and feasibility matrix documented.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Predictive Analytics',
+    createdAt: '2026-07-24T17:00:00.000Z',
+  },
+  {
     id: 'vehicle-detail-production-deploy-p35-2026-07-24',
     version: '4.9.806',
     title: 'V4.9.806 — Vehicle Detail controlled production deploy (Prompt 35)',
