@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-selection-sync-v49792-2026-07-24',
+    version: '4.9.792',
+    title: 'V4.9.792 — Vehicle Detail selectedVehicle & query data sync (Prompt 24/36)',
+    summary: [
+      'Vehicle detail selection is id-based (`selectedVehicleId`); metadata derived from latest fleet-map query.',
+      'Removed narrow status/cleaning-only merge — plate, station, odometer, fuel, telemetry stay fresh on poll.',
+      'Header draft sync respects mutation busy flags; no stale object copy as second truth.',
+      'Deleted/inaccessible vehicle → toast + clear selection/URL + fleet view.',
+      'Org change clears bound selection; fleet-map `selectedVehicleId` kept in sync.',
+      'Unit tests for refetch, switch, delete, org change, and header gating.',
+    ],
+    reason:
+      'Prevent vehicle detail UI from showing stale metadata when fleet-map refreshes but only status/cleaning triggered partial merges.',
+    previousBehavior:
+      '`selectedVehicle` was a copied snapshot merged only when status/cleaning changed; other fields could stay stale for 30s+.',
+    details:
+      'frontend/src/rental/lib/vehicle-detail-selection-sync.ts, rental/App.tsx, vehicle-detail-selection-sync.test.ts, docs/audits/vehicle-detail-page-selection-sync-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail / Fleet',
+    createdAt: '2026-07-24T10:12:00.000Z',
+  },
+  {
     id: 'vehicle-detail-url-sync-v49791-2026-07-24',
     version: '4.9.791',
     title: 'V4.9.791 — Vehicle Detail URL sync for vehicleId and tab (Prompt 23/36)',

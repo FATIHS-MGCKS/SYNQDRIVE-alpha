@@ -118,6 +118,12 @@ import {
   parseVehicleDetailFromUrl,
   VEHICLE_DETAIL_VIEWS,
 } from './lib/vehicle-detail-navigation';
+import {
+  deriveSelectedVehicleFromFleet,
+  mergeVehicleDetailHeaderDraft,
+  shouldClearVehicleDetailSelectionOnOrgChange,
+  shouldHandleSelectedVehicleUnavailable,
+} from './lib/vehicle-detail-selection-sync';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
@@ -346,7 +352,15 @@ function RentalAppContent() {
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
     return financeView ?? 'invoices';
   });
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return parseVehicleDetailFromUrl(window.location.search)?.vehicleId ?? null;
+  });
+  const setFleetMapSelectedVehicleId = useFleetMapStore((state) => state.setSelectedVehicleId);
+  const selectedVehicle = useMemo(
+    () => deriveSelectedVehicleFromFleet(fleetVehicles, selectedVehicleId),
+    [fleetVehicles, selectedVehicleId],
+  );
   // Poll live telemetry on every vehicle-detail tab that shows the header badge
   // (Overview, Trips, Health, Damages, Documents, Bookings, Task List). Before
   // this gate was limited to `overview`, causing `VehicleConnectionBadge` to
@@ -401,9 +415,22 @@ function RentalAppContent() {
     (_vehicle: VehicleData, _tab: VehicleDetailTab = 'overview') => {},
   );
 
+  const bindVehicleDetailSelection = useCallback(
+    (vehicleId: string) => {
+      setSelectedVehicleId(vehicleId);
+      setFleetMapSelectedVehicleId(vehicleId);
+    },
+    [setFleetMapSelectedVehicleId],
+  );
+
+  const clearVehicleDetailSelection = useCallback(() => {
+    setSelectedVehicleId(null);
+    setFleetMapSelectedVehicleId(null);
+  }, [setFleetMapSelectedVehicleId]);
+
   const openVehicleDetail = useCallback(
     (vehicle: VehicleData, tab: VehicleDetailTab = 'overview') => {
-      setSelectedVehicle(vehicle);
+      bindVehicleDetailSelection(vehicle.id);
       setVehicleStatus(deriveVehicleDetailHeaderEditStatus(vehicle));
       setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(vehicle));
       setCurrentStation(vehicle.station);
@@ -420,7 +447,7 @@ function RentalAppContent() {
       }
       applyVehicleDetailToUrl({ vehicleId: vehicle.id, tab });
     },
-    [],
+    [bindVehicleDetailSelection],
   );
   openVehicleDetailRef.current = openVehicleDetail;
 
@@ -458,7 +485,7 @@ function RentalAppContent() {
     const match = fleetVehicles.find((vehicle) => vehicle.id === fromUrl.vehicleId);
     if (match) {
       skipVehicleDetailUrlSync.current = true;
-      setSelectedVehicle(match);
+      bindVehicleDetailSelection(fromUrl.vehicleId);
       setVehicleStatus(deriveVehicleDetailHeaderEditStatus(match));
       setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(match));
       setCurrentStation(match.station);
@@ -472,7 +499,7 @@ function RentalAppContent() {
     setCurrentView('fleet');
     setFleetTab('status');
     urlVehicleResolvedRef.current = true;
-  }, [canReadFleetTelemetry, fleetFetchError, fleetLastFetchedAt, fleetLoading, fleetVehicles, orgId]);
+  }, [bindVehicleDetailSelection, canReadFleetTelemetry, fleetFetchError, fleetLastFetchedAt, fleetLoading, fleetVehicles, orgId]);
   
   useEffect(() => {
     resolveVehicleDetailFromUrl();
@@ -486,37 +513,72 @@ function RentalAppContent() {
       !fleetLoading &&
       fleetLastFetchedAt &&
       fleetVehicles.length > 0 &&
-      !selectedVehicle
+      !selectedVehicleId
     ) {
-      setSelectedVehicle(fleetVehicles[0]);
+      bindVehicleDetailSelection(fleetVehicles[0].id);
     }
-  }, [fleetLastFetchedAt, fleetLoading, fleetVehicles, selectedVehicle]);
+  }, [
+    bindVehicleDetailSelection,
+    fleetLastFetchedAt,
+    fleetLoading,
+    fleetVehicles,
+    selectedVehicleId,
+  ]);
 
   useEffect(() => {
-    if (!selectedVehicle?.id) return;
-    const fresh = fleetVehicles.find((v) => v.id === selectedVehicle.id);
-    if (!fresh) return;
+    if (!selectedVehicle) return;
+    const draft = mergeVehicleDetailHeaderDraft(selectedVehicle, {
+      vehicleStatusBusy,
+      cleaningStatusBusy,
+    });
+    if (draft.operationalStatus !== undefined) {
+      setVehicleStatus(draft.operationalStatus);
+    }
+    if (draft.cleaningStatus !== undefined) {
+      setCleaningStatus(draft.cleaningStatus);
+    }
+    if (draft.station !== undefined) {
+      setCurrentStation(draft.station);
+    }
+  }, [cleaningStatusBusy, selectedVehicle, vehicleStatusBusy]);
+
+  useEffect(() => {
     if (
-      fresh.status === selectedVehicle.status &&
-      fresh.cleaningStatus === selectedVehicle.cleaningStatus
+      !shouldHandleSelectedVehicleUnavailable({
+        selectedVehicleId,
+        fleetVehicles,
+        fleetLoading,
+        fleetLastFetchedAt,
+      })
     ) {
       return;
     }
-    setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
-    if (!vehicleStatusBusy) {
-      setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
+
+    if (VEHICLE_DETAIL_VIEWS.has(currentView)) {
+      toast.info('Fahrzeug konnte nicht geöffnet werden.');
+      clearVehicleDetailFromUrl({ replace: true });
+      setCurrentView('fleet');
+      setFleetTab('status');
     }
-    if (!cleaningStatusBusy) {
-      setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(fresh));
-    }
+    clearVehicleDetailSelection();
   }, [
-    cleaningStatusBusy,
+    clearVehicleDetailSelection,
+    currentView,
+    fleetLastFetchedAt,
+    fleetLoading,
     fleetVehicles,
-    selectedVehicle?.id,
-    selectedVehicle?.status,
-    selectedVehicle?.cleaningStatus,
-    vehicleStatusBusy,
+    selectedVehicleId,
   ]);
+
+  const previousOrgIdRef = useRef(orgId);
+  useEffect(() => {
+    if (
+      shouldClearVehicleDetailSelectionOnOrgChange(previousOrgIdRef.current, orgId)
+    ) {
+      clearVehicleDetailSelection();
+    }
+    previousOrgIdRef.current = orgId;
+  }, [clearVehicleDetailSelection, orgId]);
 
   // Shared new customers (created in NewBookingView, shown in CustomersView)
   const [newlyCreatedCustomers, setNewlyCreatedCustomers] = useState<any[]>([]);
@@ -631,11 +693,11 @@ function RentalAppContent() {
           optimistic: 'none',
         });
         await refreshFleetVehicles();
-        const fresh = useFleetMapStore
-          .getState()
-          .vehicles.find((vehicle) => vehicle.id === selectedVehicle.id);
+        const fresh = deriveSelectedVehicleFromFleet(
+          useFleetMapStore.getState().vehicles,
+          selectedVehicleId,
+        );
         if (fresh) {
-          setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
           setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(fresh));
         }
         setVehicleTasksRefreshToken((t) => t + 1);
@@ -675,7 +737,7 @@ function RentalAppContent() {
       cleaningStatusBusy,
       orgId,
       refreshFleetVehicles,
-      selectedVehicle,
+      selectedVehicleId,
     ],
   );
 
@@ -724,11 +786,11 @@ function RentalAppContent() {
           optimistic: 'none',
         });
         await refreshFleetVehicles();
-        const fresh = useFleetMapStore
-          .getState()
-          .vehicles.find((vehicle) => vehicle.id === selectedVehicle.id);
+        const fresh = deriveSelectedVehicleFromFleet(
+          useFleetMapStore.getState().vehicles,
+          selectedVehicleId,
+        );
         if (fresh) {
-          setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
           setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
         }
         toast.success(vehicleOperationalStatusMutationSuccessMessage(editStatus, 'de'));
@@ -747,7 +809,7 @@ function RentalAppContent() {
       canEditVehicleOperationalStatus,
       orgId,
       refreshFleetVehicles,
-      selectedVehicle,
+      selectedVehicleId,
       vehicleStatusBusy,
     ],
   );
@@ -784,6 +846,7 @@ function RentalAppContent() {
     setCurrentView('fleet');
     setFleetTab('status');
     clearVehicleDetailFromUrl({ replace: true });
+    clearVehicleDetailSelection();
   };
 
   const setFleetHealthServiceNavNormalized = useCallback(
@@ -1001,6 +1064,7 @@ function RentalAppContent() {
           setCurrentView('fleet');
           setFleetTab('status');
         }
+        clearVehicleDetailSelection();
         return;
       }
 
@@ -1013,7 +1077,7 @@ function RentalAppContent() {
 
       const match = fleetVehicles.find((vehicle) => vehicle.id === vehicleDetail.vehicleId);
       if (match) {
-        setSelectedVehicle(match);
+        bindVehicleDetailSelection(vehicleDetail.vehicleId);
         setVehicleStatus(deriveVehicleDetailHeaderEditStatus(match));
         setCleaningStatus(deriveVehicleDetailHeaderCleaningStatus(match));
         setCurrentStation(match.station);
@@ -1026,11 +1090,20 @@ function RentalAppContent() {
         clearVehicleDetailFromUrl({ replace: true });
         setCurrentView('fleet');
         setFleetTab('status');
+        clearVehicleDetailSelection();
       }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [canReadFleetTelemetry, currentView, fleetLastFetchedAt, fleetLoading, fleetVehicles]);
+  }, [
+    bindVehicleDetailSelection,
+    canReadFleetTelemetry,
+    clearVehicleDetailSelection,
+    currentView,
+    fleetLastFetchedAt,
+    fleetLoading,
+    fleetVehicles,
+  ]);
 
   useEffect(() => {
     if (!showVehicleDetailChrome || !selectedVehicle?.id) return;
