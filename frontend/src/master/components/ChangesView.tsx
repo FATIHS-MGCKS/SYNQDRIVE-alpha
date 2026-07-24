@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-processing-e2e-flow-v49823-2026-07-24',
+    version: '4.9.823',
+    title: 'V4.9.823 — Data Processing E2E Flow Tests (Prompt 40)',
+    summary: [
+      'Playwright E2E für Wizard, Lifecycle, Enforcement-Simulation (30 Szenarien, mocked API).',
+      'Fixtures: stateful register/review/lifecycle/consent/provider mocks + simulateAuthorizationCheck.',
+      'Desktop serial suite + mobile wizard DE/EN + Axe; Traces/Screenshots bei Fehlern.',
+      'npm run test:data-processing:e2e; Doku docs/architecture/data-processing-e2e-flow-2026-07.md.',
+    ],
+    reason:
+      'Prompt 40 verlangt vollständige Frontend-/E2E-Abdeckung der Data-Processing-Seite und Enforcement-Wirkung ohne Produktionsdaten.',
+    previousBehavior:
+      'Nur a11y-Spot-Checks (Prompt 38); keine durchgängige Lifecycle-/Enforcement-E2E-Suite.',
+    details: 'docs/architecture/data-processing-e2e-flow-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T02:45:00.000Z',
+  },
+  {
     id: 'data-auth-backend-tests-v49822-2026-07-24',
     version: '4.9.822',
     title: 'V4.9.822 — Backend PostgreSQL & Security Tests (Prompt 39)',
