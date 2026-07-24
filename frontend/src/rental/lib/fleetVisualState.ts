@@ -13,6 +13,13 @@ import {
   type VehicleOperationalStatus,
 } from './vehicle-operational-state';
 import { resolveTelemetryFreshness } from './telemetryFreshness';
+import {
+  hasHardRentalBlockingReasons,
+  hasNonServiceCriticalHealthModule,
+  isRentalHealthCritical,
+  isRentalHealthWarning,
+} from './vehicle-rental-health-blockers';
+import { resolveCrossSurfaceRentalReadiness } from './vehicle-rental-readiness';
 
 export type FleetVisualStatus =
   | 'ready'
@@ -96,6 +103,7 @@ export type FleetVisualStateVehicle = Pick<
   | 'reservedIsOverdue'
   | 'maintenanceUrgency'
   | 'maintenanceReasonCode'
+  | 'cleaningStatus'
 > & {
   heading?: number | null;
 };
@@ -191,50 +199,27 @@ function deriveRentalStatus(vehicle: FleetVisualStateVehicle): FleetRentalStatus
 function hasNonServiceCriticalModule(
   rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
 ): boolean {
-  if (!rentalHealth?.modules) return false;
-  for (const [name, mod] of Object.entries(rentalHealth.modules) as Array<
-    [keyof VehicleHealthResponse['modules'], RentalHealthModule]
-  >) {
-    if (name === 'service_compliance') continue;
-    if (mod.state === 'critical') return true;
-  }
-  return false;
+  return hasNonServiceCriticalHealthModule(rentalHealth);
 }
 
 function isHealthCritical(
   vehicle: FleetVisualStateVehicle,
   rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
 ): boolean {
-  if (rentalHealth?.rental_blocked) return true;
-  if (hasNonServiceCriticalModule(rentalHealth)) return true;
-  return vehicle.healthStatus === 'Critical';
+  return isRentalHealthCritical(vehicle, rentalHealth);
 }
 
 function isHealthWarning(
   vehicle: FleetVisualStateVehicle,
   rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
 ): boolean {
-  return (
-    rentalHealth?.overall_state === 'warning' || vehicle.healthStatus === 'Warning'
-  );
+  return isRentalHealthWarning(vehicle, rentalHealth);
 }
 
 function hasExplicitRentalBlocker(
   rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
 ): boolean {
-  const reasons = rentalHealth?.blocking_reasons ?? [];
-  if (reasons.length === 0) return rentalHealth?.rental_blocked === true;
-  return reasons.some((reason) => {
-    const normalized = reason.toLowerCase();
-    if (
-      normalized.includes('tüv') ||
-      normalized.includes('tuv') ||
-      normalized.includes('bokraft')
-    ) {
-      return true;
-    }
-    return !normalized.includes('service') && !normalized.includes('wartung');
-  });
+  return hasHardRentalBlockingReasons(rentalHealth);
 }
 
 // Soft-offline ("signal delayed") detection: 24–48h since last signal. This is
@@ -426,18 +411,17 @@ export function deriveFleetVisualState(
   }
 
   let readiness: FleetReadiness;
+  const crossSurface = resolveCrossSurfaceRentalReadiness(vehicle, { rentalHealth });
   if (operationalUnknown) {
     readiness = 'unknown';
-  } else if (isBlocked) {
+  } else if (crossSurface.readiness === 'blocked') {
     readiness = 'blocked';
-  } else if (isOffline) {
+  } else if (crossSurface.isTelemetryBlocked) {
     readiness = 'offline';
-  } else if (
-    rentalStatus === 'available' &&
-    (!requireLocation || hasLocation)
-  ) {
-    readiness = 'ready';
-  } else if (rentalStatus === 'available') {
+  } else if (crossSurface.readiness === 'ready') {
+    readiness =
+      requireLocation && !hasLocation && rentalStatus === 'available' ? 'not_ready' : 'ready';
+  } else if (crossSurface.readiness === 'not_ready') {
     readiness = 'not_ready';
   } else {
     readiness = 'unknown';
