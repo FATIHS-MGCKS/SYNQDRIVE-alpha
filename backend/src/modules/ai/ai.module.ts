@@ -19,6 +19,7 @@ import { AiTireSpecJobService } from './vehicle-specs/ai-tire-spec-job.service';
 import { VehicleSpecsController } from './vehicle-specs/vehicle-specs.controller';
 import { ChatService } from './chat/chat.service';
 import { ChatController } from './chat/chat.controller';
+import { AiVehicleResolutionService } from './vehicle-resolution/ai-vehicle-resolution.service';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
@@ -55,6 +56,7 @@ import { AiHealthController } from './ai-health.controller';
     VehicleSpecAiService,
     TireSpecAiService,
     AiTireSpecJobService,
+    AiVehicleResolutionService,
     ChatService,
   ],
   exports: [
@@ -68,6 +70,7 @@ import { AiHealthController } from './ai-health.controller';
     VehicleSpecAiService,
     TireSpecAiService,
     AiTireSpecJobService,
+    AiVehicleResolutionService,
     ChatService,
   ],
 })

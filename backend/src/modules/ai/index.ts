@@ -146,11 +146,6 @@ export type {
   AiDomainQueryOutcome,
   CreateAiDomainErrorInput,
 } from './evidence';
-export type {
-  StartAiTireSpecJobInput,
-  AiTireSpecJobStatus,
-  AiTireSpecApplyResult,
-} from './vehicle-specs/ai-tire-spec-job.service';
 export {
   AI_DATA_ACCESS_PURPOSES,
   AI_EXECUTION_ACCESS_KINDS,
@@ -197,3 +192,36 @@ export type {
   DocumentAiField,
   DocumentAiVehicleContext,
 } from './documents/document-ai-extraction.types';
+export {
+  AI_VEHICLE_AMBIGUITY_DELTA,
+  AI_VEHICLE_MATCH_BASE_SCORE,
+  AI_VEHICLE_MATCH_TYPES,
+  AI_VEHICLE_MIN_CONFIDENCE,
+  AiVehicleResolutionService,
+  buildEnrichedChatMessage,
+  buildAiVehicleDisplayName,
+  extractAiVehicleResolutionHints,
+  FLEET_CHAT_SYSTEM_PROMPT,
+  formatChatScopeLog,
+  normalizePlate,
+  resolveAiVehicleFromMessage,
+  resolveChatVehicleTokenIds,
+  sanitizeAiVehicleLlmField,
+  sanitizeAiVehicleUserText,
+  toLlmSafeVehicleCandidate,
+} from './vehicle-resolution';
+export type {
+  AiVehicleAllowedDataScope,
+  AiVehicleMatchType,
+  AiVehicleResolutionAmbiguity,
+  AiVehicleResolutionCandidate,
+  AiVehicleResolutionHints,
+  AiVehicleResolutionRecord,
+  AiVehicleResolutionResult,
+  ResolveAiVehicleFromMessageInput,
+} from './vehicle-resolution';
+export type {
+  StartAiTireSpecJobInput,
+  AiTireSpecJobStatus,
+  AiTireSpecApplyResult,
+} from './vehicle-specs/ai-tire-spec-job.service';

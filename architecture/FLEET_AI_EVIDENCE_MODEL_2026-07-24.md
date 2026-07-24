@@ -90,3 +90,17 @@ must be wrapped as `AiEvidence` with explicit:
 - Correlation preserved via `aiExecutionContextLogFields` for controller →
   orchestrator → tool → audit.
 - Tests: `ai-execution-context.spec.ts` (18 tests: allow/deny matrix).
+
+### Prompt 9 — AI vehicle resolution (2026-07-24)
+
+- Added `backend/src/modules/ai/vehicle-resolution/` — org-bound structured resolver
+  for Fleet Chat and future AI tools.
+- Reuses `normalizeVehiclePlate` / `normalizeVehicleVin` from document-extraction
+  candidate matching (no duplicate normalization).
+- Match types: internal id, license plate (exact/in-message), VIN, DIMO token id,
+  vehicle name, make/model, optional booking assignment.
+- Ambiguity: no arbitrary pick when multiple candidates ≥ min confidence; returns
+  LLM-safe candidate list without VIN/internal ids.
+- `ChatService` integrated via `AiVehicleResolutionService` — enriched messages no
+  longer dump full VIN/tokenId fleet lists to Mistral.
+- Tests: `ai-vehicle-resolution.spec.ts` + `chat.service.spec.ts` integration.

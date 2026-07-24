@@ -1072,4 +1072,67 @@ flowchart TD
 
 ---
 
-**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 8); Audit-Ergänzung oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.
+## Prompt 9 — AI Vehicle Resolution (2026-07-24)
+
+### Ziel
+
+Strukturierte, organisationsgebundene Fahrzeugauflösung für Fleet Chat — ohne
+Standort-, Health- oder Booking-Domain-Tools.
+
+### Modul
+
+`backend/src/modules/ai/vehicle-resolution/`
+
+| Datei | Rolle |
+|-------|------|
+| `ai-vehicle-resolution.hints.ts` | Hint-Extraktion + Injection-Sanitization |
+| `ai-vehicle-resolution.matcher.ts` | Scoring, Ambiguität, `allowedDataScope` |
+| `ai-vehicle-resolution.llm.ts` | LLM-sichere Fleet-Enrichment-Nachricht |
+| `ai-vehicle-resolution.service.ts` | Prisma-Laden + Booking-Zuordnung |
+| `ai-vehicle-resolution.enums.ts` | Match-Typen, Confidence-Schwellen |
+
+### Unterstützte Identifier (org-gebunden)
+
+| Typ | Match | Min-Confidence |
+|-----|-------|----------------|
+| Interne UUID | `internal_id` | 1.0 |
+| Kennzeichen exakt | `license_plate_exact` | 0.95 |
+| Kennzeichen in Freitext | `license_plate_in_message` | 0.72 |
+| VIN | `vin_exact` | 0.98 |
+| DIMO Token ID | `dimo_token_id` | 0.95 |
+| Fahrzeugname | `vehicle_name_exact` | 0.88 |
+| Make+Model | `make_model_exact` | 0.78 |
+| Modell allein | `make_model_partial` | 0.55 |
+| Buchungszuordnung | `booking_assignment` | 0.90 |
+
+### Sicherheitsregeln
+
+- **Normalisierung:** `normalizeVehiclePlate` / `normalizeVehicleVin` aus Document-Extraction (kein Duplikat).
+- **Kein Fuzzy ohne Schwellwert:** `AI_VEHICLE_MIN_CONFIDENCE = 0.55`.
+- **Mehrdeutigkeit:** ≥2 Kandidaten innerhalb `AI_VEHICLE_AMBIGUITY_DELTA` → `resolvedVehicleId = null` + Kandidatenliste.
+- **Keine Fremd-Org:** Fleet-Query + Filter auf `organizationId`.
+- **LLM-Redaktion:** Keine VIN, interne IDs oder TokenIds im Fleet-Kontext; Injection-Zeichen werden entfernt.
+- **Stillgelegt:** `OUT_OF_SERVICE` wird aufgelöst, `allowedDataScope.operational = false`.
+
+### Chat-Integration
+
+`ChatService.buildContext()` → `AiVehicleResolutionService.resolveFromMessage()` → strukturiertes `AiVehicleResolutionResult` → `buildEnrichedChatMessage()`.
+
+### Tests
+
+| Szenario | Erwartung |
+|----------|-----------|
+| `WOB L 7503`, `wobl7503` | Eindeutige Plate-Auflösung |
+| `Tiguan` (2 Fahrzeuge) | Ambiguität, keine Willkür-Auswahl |
+| Fremde Org in Fleet-Input | Kein Treffer |
+| Station-Scope | `outside_station_scope` |
+| Injection in Name/Message | Newlines/Control-Chars entfernt |
+| ChatService Integration | Resolved hint ohne VIN/UUID im Prompt |
+
+**Gesamt nach Prompt 9:** 133/133 PASS (vehicle-resolution 12 + chat 3 + execution 18 + evidence 100).
+
+**Bewusst nicht in Scope:** Standort-, Health-, Booking-Domain-Tools.
+
+---
+
+**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 9); Audit-Ergänzung oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.
