@@ -53,6 +53,41 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-24T23:10:00.000Z',
   },
   {
+    id: 'evaluations-post-remediation-readiness-v49728-2026-07-24',
+    version: '4.9.728',
+    title: 'V4.9.728 — Auswertungen post-remediation final audit (Prompt 54)',
+    summary: [
+      'Final 54/54 audit updated to GO after production release: observability + E2E merged, IAM migration applied, station filter wired.',
+      'Finance contract tests pass; VPS insights pipeline healthy; no P0 financial or cross-tenant findings.',
+      'Audit: docs/audits/evaluations/evaluations-post-remediation-readiness-2026-07.md',
+    ],
+    reason: 'Prompt 54/54: formal Go/No-Go with honest test matrix and rollback plan.',
+    previousBehavior: 'CONDITIONAL GO — open PRs and IAM schema drift blocked unconditional release.',
+    details:
+      'docs/audits/evaluations/evaluations-post-remediation-readiness-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Business Insights',
+    createdAt: '2026-07-24T22:25:00.000Z',
+  },
+  {
+    id: 'evaluations-vps-staging-verification-v49727-2026-07-24',
+    version: '4.9.727',
+    title: 'V4.9.727 — Auswertungen VPS/staging verification audit (Prompt 53)',
+    summary: [
+      'Read-only production VPS verification via SSH + HTTPS: health, TLS, Redis, Postgres, Prisma, BullMQ, insights scheduler.',
+      '170 insight runs / 24h with 0 failures; notification.evaluation queue lag 0; required DB indexes present.',
+      'Prompt 52 observability not yet on VPS at audit time (merged in V4.9.810); authenticated smoke tests deferred.',
+      'Audit: docs/audits/evaluations/evaluations-vps-staging-verification-2026-07.md',
+    ],
+    reason: 'Prompt 53/54: production-near verification with explicit pass/fail/blocked matrix before final sign-off.',
+    previousBehavior: 'No formal VPS verification record for Auswertungen pipeline in July 2026.',
+    details:
+      'docs/audits/evaluations/evaluations-vps-staging-verification-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Business Insights',
+    createdAt: '2026-07-24T22:20:00.000Z',
+  },
+  {
     id: 'evaluations-observability-v49726-2026-07-24',
     version: '4.9.726',
     title: 'V4.9.726 — Auswertungen & Forecast pipeline observability (Prompt 52)',
