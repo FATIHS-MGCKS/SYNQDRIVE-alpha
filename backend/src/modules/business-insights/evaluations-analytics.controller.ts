@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { EvaluationsAnalyticsFilterService } from './evaluations-analytics-filter.service';
@@ -8,6 +8,7 @@ import {
   EvaluationsAnalyticsSummaryQueryDto,
   normalizeAnalyticsFilterQuery,
 } from './dto/evaluations-analytics-filters.dto';
+import { EvaluationsAnalyticsSummaryResponseDto } from './dto/evaluations-analytics-response.dto';
 
 @ApiTags('Evaluations Analytics')
 @Controller('organizations/:orgId/evaluations/analytics')
@@ -22,9 +23,10 @@ export class EvaluationsAnalyticsController {
   @ApiOperation({
     summary: 'Canonical Auswertungen analytics summary',
     description:
-      'Unified filter contract applies across summary, insights, charts, and drill-downs. See docs/architecture/analytics/evaluations-filter-contract.md.',
+      'Unified filter contract applies across summary, insights, charts, and drill-downs. See docs/api/evaluations-analytics-contracts.md.',
   })
   @ApiParam({ name: 'orgId', description: 'Organization ID' })
+  @ApiOkResponse({ type: EvaluationsAnalyticsSummaryResponseDto })
   async getAnalyticsSummary(
     @Param('orgId') orgId: string,
     @Query() query: EvaluationsAnalyticsSummaryQueryDto,

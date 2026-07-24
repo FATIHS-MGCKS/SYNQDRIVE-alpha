@@ -1,4 +1,5 @@
 import { Controller, Get, NotFoundException, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
@@ -8,7 +9,12 @@ import {
   EvaluationsInsightAnalyticsSummaryQueryDto,
   normalizeAnalyticsFilterQuery,
 } from './dto/evaluations-analytics-filters.dto';
+import {
+  EvaluationsInsightDetailDto,
+  InsightAnalyticsSummaryResponseDto,
+} from './dto/evaluations-analytics-response.dto';
 
+@ApiTags('Evaluations Insights Analytics')
 @Controller('organizations/:orgId/evaluations/insights')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class EvaluationsInsightsController {
@@ -18,6 +24,8 @@ export class EvaluationsInsightsController {
   ) {}
 
   @Get('summary')
+  @ApiOperation({ summary: 'Insight analytics summary for Auswertungen' })
+  @ApiOkResponse({ type: InsightAnalyticsSummaryResponseDto })
   async getAnalyticsSummary(
     @Param('orgId') orgId: string,
     @Query() query: EvaluationsInsightAnalyticsSummaryQueryDto,
@@ -51,6 +59,9 @@ export class EvaluationsInsightsController {
   }
 
   @Get(':insightId')
+  @ApiOperation({ summary: 'Single insight detail (station-scoped)' })
+  @ApiParam({ name: 'insightId', description: 'Insight UUID' })
+  @ApiOkResponse({ type: EvaluationsInsightDetailDto })
   async getAnalyticsInsightById(
     @Param('orgId') orgId: string,
     @Param('insightId') insightId: string,

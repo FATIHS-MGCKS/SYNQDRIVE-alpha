@@ -21,6 +21,12 @@ import type {
   VehicleDataQualityState,
   VehicleBookingReference,
 } from '../rental/lib/vehicle-operational-state';
+import type {
+  EvaluationsAnalyticsSummaryResponse,
+  EvaluationsInsightDetail,
+  EvaluationsInsightListResponse,
+  InsightAnalyticsSummary,
+} from '../rental/lib/evaluations-analytics-api.types';
 
 export type {
   AddDamageImageInput,
@@ -4228,42 +4234,7 @@ export const api = {
         }
       }
       const q = qs.toString();
-      return get<{
-        generatedAt: string | null;
-        hasRun: boolean;
-        lastRunAt: string | null;
-        stale: boolean;
-        error: string | null;
-        counts: {
-          totalVisible: number;
-          businessRisks: number;
-          revenueLeakage: number;
-          criticalInsights: number;
-          criticalBookings: number;
-          criticalBusinessRisks: number;
-          entities: {
-            insightGroups: number;
-            events: number;
-            affectedVehicles: number;
-            affectedBookings: number;
-            affectedCustomers: number;
-            affectedStations: number;
-            uniqueEntities: number;
-            criticalBookings: number;
-            orgWideRisks: number;
-            bookingScopedRisks: number;
-          };
-          recommended: number;
-          bySeverity: {
-            critical: number;
-            warning: number;
-            opportunity: number;
-            info: number;
-          };
-        };
-        estimatedFinancialExposureMinor: number;
-        estimatedFinancialExposureCurrency: string;
-      }>(`/organizations/${orgId}/evaluations/insights/summary${q ? `?${q}` : ''}`);
+      return get<InsightAnalyticsSummary>(`/organizations/${orgId}/evaluations/insights/summary${q ? `?${q}` : ''}`);
     },
     list: (
       orgId: string,
@@ -4276,39 +4247,10 @@ export const api = {
         }
       }
       const q = qs.toString();
-      return get<{
-        data: Array<{
-          id: string;
-          type: string;
-          severity: string;
-          priority: number;
-          title: string;
-          message: string;
-          actionLabel?: string | null;
-          actionType?: string | null;
-          entityScope: string;
-          entityIds?: string[] | null;
-          timeContext?: Record<string, string> | null;
-          metrics?: Record<string, unknown> | null;
-          reasons?: string[] | null;
-          isGrouped: boolean;
-          groupCount: number;
-          createdAt: string;
-        }>;
-        meta: { total: number; page: number; limit: number; totalPages: number };
-      }>(`/organizations/${orgId}/evaluations/insights${q ? `?${q}` : ''}`);
+      return get<EvaluationsInsightListResponse>(`/organizations/${orgId}/evaluations/insights${q ? `?${q}` : ''}`);
     },
     getById: (orgId: string, insightId: string) =>
-      get<{
-        id: string;
-        type: string;
-        severity: string;
-        priority: number;
-        title: string;
-        message: string;
-        entityScope: string;
-        createdAt: string;
-      }>(`/organizations/${orgId}/evaluations/insights/${insightId}`),
+      get<EvaluationsInsightDetail>(`/organizations/${orgId}/evaluations/insights/${insightId}`),
   },
   evaluationsAnalytics: {
     summary: (
@@ -4322,23 +4264,9 @@ export const api = {
         }
       }
       const q = qs.toString();
-      return get<{
-        organizationId: string;
-        generatedAt: string;
-        overallStatus: 'OK' | 'PARTIAL' | 'UNAVAILABLE' | 'ERROR';
-        period: { key: string; from: string; to: string; timezone: string };
-        comparisonPeriod: { key: string; from: string; to: string; timezone: string };
-        appliedFilters: { stationId: string | null; period: string };
-        executive: { status: string; data: Record<string, unknown> | null; error: string | null };
-        financial: { status: string; data: Record<string, unknown> | null; error: string | null };
-        receivables: { status: string; data: Record<string, unknown> | null; error: string | null };
-        bookings: { status: string; data: Record<string, unknown> | null; error: string | null };
-        fleetUtilization: { status: string; data: Record<string, unknown> | null; error: string | null };
-        activeRisks: { status: string; data: Record<string, unknown> | null; error: string | null };
-        affectedEntities: { status: string; data: Record<string, unknown> | null; error: string | null };
-        dataQuality: { status: string; data: Record<string, unknown> | null; error: string | null };
-        metadata: { generationDurationMs: number };
-      }>(`/organizations/${orgId}/evaluations/analytics/summary${q ? `?${q}` : ''}`);
+      return get<EvaluationsAnalyticsSummaryResponse>(
+        `/organizations/${orgId}/evaluations/analytics/summary${q ? `?${q}` : ''}`,
+      );
     },
   },
   notifications: {

@@ -5,29 +5,21 @@
 import type { InsightAnalyticsSummary } from './insights-analytics.contract';
 import type { InsightEntityCountSummary } from './insight-entity-references.contract';
 import type { EvaluationsAnalyticsAppliedFilters } from './evaluations-analytics-filters.contract';
+import type {
+  EvaluationsDataQuality,
+  EvaluationsMetricStatus,
+  EvaluationsSectionEnvelope,
+  EvaluationsTimePeriod,
+} from './evaluations-analytics-primitives.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
-export type EvaluationsSectionStatus = 'OK' | 'PARTIAL' | 'UNAVAILABLE' | 'ERROR';
+/** @deprecated Use EvaluationsMetricStatus from primitives — kept for legacy imports. */
+export type EvaluationsSectionStatus = EvaluationsMetricStatus;
 
-export interface EvaluationsAnalyticsPeriodWindow {
-  key: EvaluationsAnalyticsPeriod;
-  label: string;
-  from: string;
-  to: string;
-  timezone: string;
-}
+export type EvaluationsAnalyticsPeriodWindow = EvaluationsTimePeriod;
 
-export interface EvaluationsSectionEnvelope<T> {
-  status: EvaluationsSectionStatus;
-  data: T | null;
-  error: string | null;
-  generatedAt: string;
-  freshness?: {
-    stale: boolean;
-    lastUpdatedAt?: string | null;
-  };
-}
+export type { EvaluationsSectionEnvelope, EvaluationsMetricStatus };
 
 export interface EvaluationsExecutiveKpis {
   revenueMtdMinor: number;
@@ -127,15 +119,13 @@ export interface EvaluationsHighlightItem {
   metric?: string;
 }
 
-export interface EvaluationsDataQualitySummary {
-  overallStatus: EvaluationsSectionStatus;
-  insightsStale: boolean;
-  insightsLastRunAt: string | null;
-  invoiceDataComplete: boolean;
-  fleetDataComplete: boolean;
-  partialSections: string[];
-  unavailableSections: string[];
-}
+/** Strength highlight derived in summary — maps to EvaluationsStrength with text metric. */
+export type EvaluationsStrengthItem = EvaluationsHighlightItem & { severity: 'positive' };
+
+/** Weakness highlight derived in summary — maps to EvaluationsWeakness with text metric. */
+export type EvaluationsWeaknessItem = EvaluationsHighlightItem & { severity: 'negative' };
+
+export type EvaluationsDataQualitySummary = EvaluationsDataQuality;
 
 export type EvaluationsAnalyticsSummaryFilters = EvaluationsAnalyticsAppliedFilters;
 

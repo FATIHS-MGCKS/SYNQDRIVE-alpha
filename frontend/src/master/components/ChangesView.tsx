@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-analytics-contracts-v49818-2026-07-24',
+    version: 'V4.9.818',
+    title: 'V4.9.818 — Analytics-DTOs und API-Contracts konsolidiert (Prompt 20/54)',
+    summary: [
+      'Neue Shared-Primitives: MetricValue, Money, TimePeriod, Comparison, TimeSeries, Ranking, Risk, Forecast, DataQuality, DrillDown.',
+      'Zentrale Contracts in `shared/evaluations-insights/` + Runtime-Validierung (`evaluations-analytics-contract-validation.ts`).',
+      'Frontend-Duplikate entfernt: `api.ts` und `useEvaluationsInsightsAnalytics` nutzen Shared-Typen.',
+      'OpenAPI Response-DTOs für Summary/Insights; `@ApiOkResponse` auf Evaluations-Controllern.',
+      'Contract-Tests erkennen Schema-Abweichungen; `InsightEntityBreakdown` UI-Alias → `InsightGroupMemberPreview`.',
+      'Doku: `docs/api/evaluations-analytics-contracts.md`.',
+    ],
+    reason:
+      'Prompt 20/54 — Eine kanonische Contract-Schicht statt redundanter Frontend-Typen und loser API-Inline-Types.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T18:00:00.000Z',
+  },
+  {
     id: 'evaluations-tenant-isolation-v49817-2026-07-24',
     version: 'V4.9.817',
     title: 'V4.9.817 — Auswertungen Mandantenisolation gehärtet (Prompt 19/54)',
