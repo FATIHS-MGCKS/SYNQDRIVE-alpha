@@ -1,0 +1,10 @@
+/**
+ * Barrel export for Auswertungen analytics contracts (Prompt 20/54).
+ * Import from specific modules when tree-shaking matters; use this for documentation discovery.
+ */
+export * from './evaluations-analytics-primitives.contract';
+export * from './evaluations-analytics-filters.contract';
+export * from './evaluations-insight-detail.contract';
+export * from './insights-analytics.contract';
+export * from './insight-entity-references.contract';
+export * from './evaluations-analytics-summary.contract';
