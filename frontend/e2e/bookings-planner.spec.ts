@@ -19,7 +19,7 @@ test.describe('Booking planner E2E', () => {
 
   test('2 — search filter narrows results', async ({ page }) => {
     await openBookingsPage(page);
-    const search = page.getByPlaceholder(/Kunde, Fahrzeug|Customer, vehicle/i);
+    const search = page.getByPlaceholder(/Kunde, Fahrzeug|Customer, vehicle|Search bookings/i);
     await search.fill('Anna Schmidt');
     await expectBookingVisible(page, 'Anna Schmidt');
     await expect(page.getByText('Max Müller')).toHaveCount(0);
@@ -33,7 +33,7 @@ test.describe('Booking planner E2E', () => {
     await expect(page.getByRole('cell', { name: /Anna Schmidt/i })).toBeVisible({ timeout: 10000 });
 
     await page.getByRole('button', { name: /Timeline/i }).click();
-    await expect(page.getByText(/2 Buchungen|2 bookings/i)).toBeVisible();
+    await expect(page.getByText(/2 Buchung|2 booking/i)).toBeVisible();
 
     await page.getByRole('button', { name: /Kalender|Calendar/i }).click();
     await expect(page.getByRole('button', { name: /Tabelle|Table/i })).toBeVisible();
@@ -55,7 +55,7 @@ test.describe('Booking planner E2E', () => {
 
   test('6 — empty state when filter matches nothing', async ({ page }) => {
     await openBookingsPage(page);
-    const search = page.getByPlaceholder(/Kunde, Fahrzeug|Customer, vehicle/i);
+    const search = page.getByPlaceholder(/Kunde, Fahrzeug|Customer, vehicle|Search bookings/i);
     await search.fill('___no-match___');
     await expect(page.getByText(/Keine Buchungen|No bookings/i)).toBeVisible({ timeout: 10000 });
   });
