@@ -134,6 +134,7 @@ export function EvaluationsPage({ isDarkMode, onNavigate }: EvaluationsPageProps
           revenueLeakage={revenueLeakage}
           insightsLoading={insights.loading}
           isDarkMode={isDarkMode}
+          onNavigate={onNavigate}
         />
         <EvaluationsDataQualitySection analytics={analytics} onNavigate={onNavigate} />
       </div>

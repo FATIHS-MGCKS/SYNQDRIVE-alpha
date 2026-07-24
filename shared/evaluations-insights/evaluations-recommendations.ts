@@ -115,6 +115,13 @@ export function canManageEvaluationsRecommendations(input: {
   return input.hasPermission('tasks', 'manage') || input.hasPermission('tasks', 'write');
 }
 
+export function canManageEvaluationsRecommendationsFromRole(
+  userRole: string | null | undefined,
+): boolean {
+  const role = userRole?.toUpperCase() ?? '';
+  return role === 'ORG_ADMIN' || role === 'MASTER_ADMIN' || role === 'SUB_ADMIN';
+}
+
 export function canReadEvaluationsRecommendations(): boolean {
   return true;
 }

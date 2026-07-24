@@ -3,12 +3,14 @@ import { useLanguage } from '../../../i18n/LanguageContext';
 import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
 import { EvaluationsActionCenter } from '../EvaluationsActionCenter';
+import type { EvaluationsDataQualityNavigationOptions } from '../../../lib/evaluations-data-quality-navigation';
 
 interface EvaluationsActionsSectionProps {
   businessRisks: DashboardInsight[];
   revenueLeakage: DashboardInsight[];
   insightsLoading: boolean;
   isDarkMode: boolean;
+  onNavigate?: (view: string, options?: EvaluationsDataQualityNavigationOptions) => void;
 }
 
 export function EvaluationsActionsSection({
@@ -16,6 +18,7 @@ export function EvaluationsActionsSection({
   revenueLeakage: _revenueLeakage,
   insightsLoading,
   isDarkMode,
+  onNavigate,
 }: EvaluationsActionsSectionProps) {
   const { t } = useLanguage();
 
@@ -29,7 +32,7 @@ export function EvaluationsActionsSection({
       emptyDescription={t('evaluations.ia.sections.actions.emptyDescription')}
       defaultOpen
     >
-      <EvaluationsActionCenter isDarkMode={isDarkMode} />
+      <EvaluationsActionCenter isDarkMode={isDarkMode} onNavigate={onNavigate} />
     </EvaluationsSection>
   );
 }

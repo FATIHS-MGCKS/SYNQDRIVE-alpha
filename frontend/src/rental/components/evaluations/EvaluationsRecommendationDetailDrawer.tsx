@@ -14,6 +14,8 @@ import {
   formatRecommendationDueDate,
   formatRecommendationMoney,
 } from '../../lib/evaluations-recommendations-format';
+import { EvaluationsRecommendationIntegrations } from './EvaluationsRecommendationIntegrations';
+import type { EvaluationsDataQualityNavigationOptions } from '../../lib/evaluations-data-quality-navigation';
 
 const STATUS_KEYS: Record<EvaluationsRecommendationStatus, TranslationKey> = {
   NEW: 'evaluations.actionCenter.status.NEW',
@@ -55,6 +57,9 @@ interface EvaluationsRecommendationDetailDrawerProps {
     patch: Partial<Pick<EvaluationsRecommendationRecord, 'ownerId' | 'dueAt' | 'priority'>>,
   ) => Promise<void>;
   analyticsLocale: string;
+  onNavigate?: (view: string, options?: EvaluationsDataQualityNavigationOptions) => void;
+  onOpenTask?: (taskId: string) => void;
+  onOpenServiceCase?: (serviceCaseId: string, vehicleId?: string) => void;
 }
 
 function DetailBlock({ label, children }: { label: string; children: ReactNode }) {
@@ -79,6 +84,9 @@ export function EvaluationsRecommendationDetailDrawer({
   onTransition,
   onUpdate,
   analyticsLocale,
+  onNavigate,
+  onOpenTask,
+  onOpenServiceCase,
 }: EvaluationsRecommendationDetailDrawerProps) {
   const { t } = useLanguage();
   const [rejectReason, setRejectReason] = useState('');
@@ -272,6 +280,13 @@ export function EvaluationsRecommendationDetailDrawer({
             </ul>
           </DetailBlock>
         ) : null}
+
+        <EvaluationsRecommendationIntegrations
+          recommendation={recommendation}
+          onNavigate={onNavigate}
+          onOpenTask={onOpenTask}
+          onOpenServiceCase={onOpenServiceCase}
+        />
 
         <section aria-labelledby="eval-rec-history-title">
           <h3

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-action-integrations-p38-2026-07-24',
+    version: '4.9.835',
+    title: 'V4.9.835 — Evaluations Empfehlungs-Verknüpfungen (Prompt 38)',
+    summary: [
+      'Recommendation integrations API: create task, service case, reminder, workflow, owner assignment; navigate to vehicle/booking/customer/invoice/settings.',
+      'Reuses TasksService.upsertByDedup, ServiceCasesService, WorkflowEventService — no parallel systems.',
+      'Tenant-safe entity validation, duplicate detection, audit events TASK_LINKED / SERVICE_CASE_LINKED / WORKFLOW_STARTED.',
+      'UI: EvaluationsRecommendationIntegrations panel in detail drawer with i18n + mobile touch targets.',
+      'Docs: `docs/architecture/analytics/evaluations-action-integrations.md`.',
+    ],
+    reason: 'Prompt 38/54: link recommendations to canonical SynqDrive operational modules.',
+    previousBehavior: 'Action center showed workflow/status only — no module bridges from recommendations.',
+    details:
+      'recommendation-integrations.service.ts, shared/evaluations-recommendation-integrations.ts, EvaluationsRecommendationIntegrations.tsx.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Integrations',
+    createdAt: '2026-07-24T15:00:00.000Z',
+  },
+  {
     id: 'evaluations-action-center-p37-2026-07-24',
     version: '4.9.834',
     title: 'V4.9.834 — Evaluations Maßnahmen-Center UI (Prompt 37)',

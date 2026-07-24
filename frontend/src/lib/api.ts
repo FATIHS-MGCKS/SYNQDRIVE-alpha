@@ -4328,6 +4328,24 @@ export const api = {
         `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/status`,
         body,
       ),
+    listIntegrations: (orgId: string, recommendationId: string) =>
+      get<import('@synq/evaluations-insights/evaluations-recommendation-integrations').EvaluationsRecommendationIntegrationDescriptor[]>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/integrations`,
+      ),
+    executeIntegration: (
+      orgId: string,
+      recommendationId: string,
+      body: {
+        action: string;
+        entityId?: string;
+        ownerId?: string;
+        dueAt?: string;
+      },
+    ) =>
+      post<Record<string, unknown>>(
+        `/organizations/${orgId}/evaluations/recommendations/${recommendationId}/integrations`,
+        body,
+      ),
   },
   notifications: {
     list: (

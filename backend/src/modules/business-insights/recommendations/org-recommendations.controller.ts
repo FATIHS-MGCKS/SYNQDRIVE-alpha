@@ -20,16 +20,22 @@ import {
   TransitionRecommendationStatusDto,
   UpdateRecommendationDto,
 } from './dto/recommendation.dto';
+import { ExecuteRecommendationIntegrationDto } from './dto/recommendation-integration.dto';
 import { OrgRecommendationsService } from './org-recommendations.service';
+import { RecommendationIntegrationsService } from './recommendation-integrations.service';
+import { canManageEvaluationsRecommendationsFromRole } from '@synq/evaluations-insights/evaluations-recommendations';
 
 interface RecommendationAuthRequest extends Request {
-  user?: { id?: string };
+  user?: { id?: string; membershipRole?: string };
 }
 
 @Controller('organizations/:orgId/evaluations/recommendations')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class OrgRecommendationsController {
-  constructor(private readonly recommendations: OrgRecommendationsService) {}
+  constructor(
+    private readonly recommendations: OrgRecommendationsService,
+    private readonly integrations: RecommendationIntegrationsService,
+  ) {}
 
   @Get()
   async list(@Param('orgId') orgId: string, @Query() query: ListRecommendationsQueryDto) {
@@ -56,6 +62,34 @@ export class OrgRecommendationsController {
     @Param('recommendationId') recommendationId: string,
   ) {
     return this.recommendations.getEvents(orgId, recommendationId);
+  }
+
+  @Get(':recommendationId/integrations')
+  async listIntegrations(
+    @Param('orgId') orgId: string,
+    @Param('recommendationId') recommendationId: string,
+    @Req() req: RecommendationAuthRequest,
+  ) {
+    const canManage = canManageEvaluationsRecommendationsFromRole(req.user?.membershipRole);
+    return this.integrations.listIntegrations(orgId, recommendationId, canManage);
+  }
+
+  @Post(':recommendationId/integrations')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('tasks', 'write')
+  async executeIntegration(
+    @Param('orgId') orgId: string,
+    @Param('recommendationId') recommendationId: string,
+    @Body() body: ExecuteRecommendationIntegrationDto,
+    @Req() req: RecommendationAuthRequest,
+  ) {
+    return this.integrations.executeIntegration(
+      orgId,
+      recommendationId,
+      body,
+      req.user?.id ?? null,
+      true,
+    );
   }
 
   @Post()

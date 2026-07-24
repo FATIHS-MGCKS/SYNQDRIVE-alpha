@@ -561,6 +561,33 @@ export async function installEvaluationsMocks(page: Page) {
     }
 
     if (url.includes(`/organizations/${TEST_ORG_ID}/evaluations/recommendations`) && method === 'GET') {
+      const integrationsMatch = url.match(/\/recommendations\/([^/]+)\/integrations/);
+      if (integrationsMatch) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              action: 'CREATE_TASK',
+              mode: 'execute',
+              state: 'AVAILABLE',
+            },
+            {
+              action: 'OPEN_SERVICE_CASE',
+              mode: 'execute',
+              state: 'AVAILABLE',
+              entity: { entityType: 'vehicle', entityId: 'veh-e2e-1', label: 'B-EV 1' },
+            },
+            {
+              action: 'OPEN_VEHICLE',
+              mode: 'navigate',
+              state: 'AVAILABLE',
+              entity: { entityType: 'vehicle', entityId: 'veh-e2e-1', label: 'B-EV 1' },
+            },
+          ]),
+        });
+      }
+
       const recMatch = url.match(/\/recommendations\/([^/?]+)(?:\/events)?/);
       if (recMatch && url.includes('/events')) {
         const recId = recMatch[1];
@@ -586,6 +613,24 @@ export async function installEvaluationsMocks(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(recommendationState),
+      });
+    }
+
+    if (
+      url.includes(`/organizations/${TEST_ORG_ID}/evaluations/recommendations/`) &&
+      url.includes('/integrations') &&
+      method === 'POST'
+    ) {
+      const recId = url.match(/\/recommendations\/([^/]+)\/integrations/)?.[1];
+      const body = route.request().postDataJSON() as { action?: string };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          action: body.action,
+          taskId: 'task-e2e-from-rec',
+          duplicate: false,
+        }),
       });
     }
 

@@ -23,6 +23,8 @@ import {
 } from '../../lib/evaluations-recommendations-format';
 import { EvaluationsRecommendationDetailDrawer } from './EvaluationsRecommendationDetailDrawer';
 import { api } from '../../../lib/api';
+import { useRentalEntityNavigation } from '../../context/RentalEntityNavigationContext';
+import type { EvaluationsDataQualityNavigationOptions } from '../../lib/evaluations-data-quality-navigation';
 
 const STATUS_KEYS: Record<EvaluationsRecommendationStatus, TranslationKey> = {
   NEW: 'evaluations.actionCenter.status.NEW',
@@ -63,11 +65,13 @@ const STATUS_TONE: Record<EvaluationsRecommendationStatus, string> = {
 
 interface EvaluationsActionCenterProps {
   isDarkMode: boolean;
+  onNavigate?: (view: string, options?: EvaluationsDataQualityNavigationOptions) => void;
 }
 
-export function EvaluationsActionCenter({ isDarkMode }: EvaluationsActionCenterProps) {
+export function EvaluationsActionCenter({ isDarkMode, onNavigate }: EvaluationsActionCenterProps) {
   const { t, locale } = useLanguage();
   const { orgId, userRole, hasPermission } = useRentalOrg();
+  const entityNavigation = useRentalEntityNavigation();
   const analyticsLocale = locale === 'en' ? 'en' : 'de';
   const canManage = canManageEvaluationsRecommendations({ userRole, hasPermission });
 
@@ -380,6 +384,11 @@ export function EvaluationsActionCenter({ isDarkMode }: EvaluationsActionCenterP
         onTransition={handleTransition}
         onUpdate={handleUpdate}
         analyticsLocale={analyticsLocale}
+        onNavigate={onNavigate}
+        onOpenTask={() => onNavigate?.('tasks')}
+        onOpenServiceCase={(serviceCaseId, vehicleId) =>
+          entityNavigation.openServiceCaseById(serviceCaseId, { vehicleId })
+        }
       />
     </div>
   );

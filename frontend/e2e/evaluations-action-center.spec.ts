@@ -30,6 +30,9 @@ test.describe('Evaluations action center', () => {
     await expect(page.getByRole('dialog').getByText(/Geprüft|Reviewed/i)).toBeVisible({
       timeout: 10000,
     });
+    await expect(page.getByTestId('evaluations-recommendation-integrations')).toBeVisible();
+    await expect(page.getByText(/Verknüpfungen|Links & actions/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Aufgabe erstellen|Create task/i })).toBeVisible();
     await assertNoHorizontalOverflow(page);
 
     if (testInfo.project.name === 'desktop-1280') {

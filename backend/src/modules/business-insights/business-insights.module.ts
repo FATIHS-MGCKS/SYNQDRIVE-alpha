@@ -41,13 +41,19 @@ import { InternalBusinessInsightsController } from './internal-business-insights
 import { OrgRecommendationsController } from './recommendations/org-recommendations.controller';
 import { OrgRecommendationsRepository } from './recommendations/org-recommendations.repository';
 import { OrgRecommendationsService } from './recommendations/org-recommendations.service';
+import { RecommendationEntityValidationService } from './recommendations/recommendation-entity-validation.service';
+import { RecommendationIntegrationsService } from './recommendations/recommendation-integrations.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
+import { ServiceCasesModule } from '../service-cases/service-cases.module';
+import { WorkflowsModule } from '../workflows/workflows.module';
 
 @Module({
   imports: [
     TasksModule,
+    ServiceCasesModule,
+    WorkflowsModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => RentalHealthModule),
@@ -80,6 +86,8 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightTaskBridgeService,
     OrgRecommendationsRepository,
     OrgRecommendationsService,
+    RecommendationEntityValidationService,
+    RecommendationIntegrationsService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
     TightHandoverDetector,
