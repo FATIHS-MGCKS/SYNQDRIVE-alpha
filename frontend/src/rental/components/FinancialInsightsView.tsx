@@ -29,6 +29,10 @@ import {
   chartSeriesHasValues,
   mergeRevenueExpenseChartSeries,
 } from '@synq/evaluations-insights/evaluations-chart-series';
+import { buildUserDataQualityHint, isEvaluationsDataQualityAdmin } from '@synq/evaluations-insights/evaluations-data-quality-panel';
+import { EvaluationsDataQualityAdminPanel } from './evaluations/EvaluationsDataQualityAdminPanel';
+import { EvaluationsDataQualityUserHint } from './evaluations/EvaluationsDataQualityUserHint';
+import type { EvaluationsDataQualityNavigationOptions } from '../lib/evaluations-data-quality-navigation';
 import {
   expensesInRange,
   mtdRevenueInRange,
@@ -77,6 +81,7 @@ interface CustomerLite {
 
 interface FinancialInsightsViewProps {
   isDarkMode: boolean;
+  onNavigate?: (view: string, options?: EvaluationsDataQualityNavigationOptions) => void;
 }
 
 import {
@@ -155,8 +160,8 @@ function customerLabel(c: CustomerLite | undefined): string {
  * `/organizations/:orgId/invoices` endpoint — no mock data, no synthetic timeseries, no hardcoded category
  * lists, no fabricated AI commentary.
  */
-export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps) {
-  const { orgId } = useRentalOrg();
+export function FinancialInsightsView({ isDarkMode, onNavigate }: FinancialInsightsViewProps) {
+  const { orgId, userRole } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const { t, locale } = useLanguage();
 
@@ -364,6 +369,16 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     URL.revokeObjectURL(url);
   }, [analytics.summary, analyticsLocale]);
 
+  const isDqAdmin = isEvaluationsDataQualityAdmin(userRole);
+  const userDataQualityHint = useMemo(
+    () =>
+      buildUserDataQualityHint(
+        analytics.summary?.dataQuality?.data ?? null,
+        analytics.summary?.dataQuality?.status,
+      ),
+    [analytics.summary?.dataQuality],
+  );
+
   // ─── Derived: lookups ────────────────────────────────────────────────
 
   const customerById = useMemo(() => {
@@ -487,6 +502,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           stationOptions={stationOptions}
           analytics={analytics}
         />
+        {!isDqAdmin ? <EvaluationsDataQualityUserHint hint={userDataQualityHint} /> : null}
         <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
           <Icon name="alert-circle" className="w-5 h-5" />
           {invoiceError}
@@ -505,6 +521,17 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         onPatchFilters={patchFilters}
         stationOptions={stationOptions}
         analytics={analytics}
+      />
+
+      {!isDqAdmin ? <EvaluationsDataQualityUserHint hint={userDataQualityHint} /> : null}
+
+      <EvaluationsDataQualityAdminPanel
+        dataQualityEnvelope={analytics.summary?.dataQuality}
+        lineageData={analytics.summary?.lineage?.data ?? null}
+        loading={analytics.loading}
+        error={analytics.error}
+        onRefresh={() => void analytics.refresh()}
+        onNavigate={onNavigate}
       />
 
       <div className="flex flex-wrap items-center justify-end gap-2">

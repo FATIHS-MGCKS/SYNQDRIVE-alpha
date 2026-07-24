@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-data-quality-panel-v49827-2026-07-24',
+    version: 'V4.9.827',
+    title: 'V4.9.827 — Datenqualitätsbereich für Administratoren (Prompt 29/54)',
+    summary: [
+      'Rollenabhängiger Datenqualitäts- und Diagnosebereich in Auswertungen: Vollansicht für ORG_ADMIN, reduzierte Hinweise für Standardnutzer.',
+      'Pro Quelle: Verbindung, Freshness, Abdeckung, Fehlerrate, letzter Import, fehlgeschlagener Job, betroffene Kennzahlen, Ausschlüsse, Maßnahmen, Drill-down.',
+      'Shared: `evaluations-data-quality-panel.*`; Frontend `EvaluationsDataQualityAdminPanel`, `EvaluationsDataQualityUserHint`.',
+      'Drill-downs: Datenfreigaben, Flotte/Konnektivität, Rechnungen, Buchungen, Schäden, Aufgaben.',
+      'Doku: `docs/frontend/evaluations-data-quality-panel.md`.',
+    ],
+    reason:
+      'Prompt 29/54 — Transparente Datenqualitätsdiagnose für Admins ohne Credentials, Logs oder Stacktraces im UI.',
+    previousBehavior: 'Kein dedizierter DQ-Bereich in Auswertungen — nur Backend-Modell (Prompt 26).',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'evaluations-metric-state-ux-v49826-2026-07-24',
     version: 'V4.9.826',
     title: 'V4.9.826 — Metric State UX Auswertungen (Prompt 28/54)',
