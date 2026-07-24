@@ -1071,7 +1071,28 @@ function RentalAppContent() {
              retired Dashboard Finances tab). Aggregates real invoice data
              (`/organizations/:orgId/invoices*`) end-to-end without mock
              fallbacks. Lives next to other Insights pages, not under Finance. */
-          <FinancialInsightsView isDarkMode={isDarkMode} />
+          <FinancialInsightsView
+            isDarkMode={isDarkMode}
+            onNavigate={(view, options) => {
+              if (options?.settingsTab) {
+                setSettingsTab(options.settingsTab);
+                try {
+                  sessionStorage.setItem(RENTAL_SETTINGS_TAB_KEY, options.settingsTab);
+                } catch {
+                  /* ignore */
+                }
+              }
+              handleViewChange(view);
+              if (options?.fleetTab) {
+                setFleetTab(options.fleetTab);
+                try {
+                  sessionStorage.setItem(RENTAL_FLEET_TAB_KEY, options.fleetTab);
+                } catch {
+                  /* ignore */
+                }
+              }
+            }}
+          />
         ) : currentView === 'fleet' ? (
           <FleetHubView
             activeTab={fleetTab}

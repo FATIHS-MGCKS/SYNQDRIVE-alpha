@@ -600,6 +600,91 @@ export class VehiclesService {
   }
 
   /**
+   * Derived operational status tokens for a scoped vehicle set (Auswertungen utilization).
+   */
+  async deriveOperationalTokensForVehicles(
+    organizationId: string,
+    vehicleIds: string[],
+  ): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (vehicleIds.length === 0) return result;
+
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { organizationId, id: { in: vehicleIds } },
+      select: {
+        id: true,
+        status: true,
+        tankCapacityLiters: true,
+        latestState: {
+          select: {
+            odometerKm: true,
+            evSoc: true,
+            fuelLevelRelative: true,
+            fuelLevelAbsolute: true,
+            rawPayloadJson: true,
+          },
+        },
+      },
+    });
+
+    const bundle = await this.buildBookingContextMap(organizationId, vehicleIds);
+    const activeBookingIds = Array.from(bundle.map.values())
+      .map((ctx) => ctx.activeBookingId)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
+    );
+
+    for (const vehicle of vehicles) {
+      const bookingCtx = bundle.map.get(vehicle.id) ?? null;
+      const fleetCtx = this.deriveFleetStatusContext({
+        vehicle,
+        state: vehicle.latestState,
+        bookingCtx,
+        pickupOdoByBooking,
+        bookingContextLoadFailed: bundle.loadFailed,
+      });
+      result.set(vehicle.id, fleetCtx.operationalState.status);
+    }
+
+    return result;
+  }
+
+  /**
+   * Aggregate derived rental fleet status counts for a scoped vehicle set.
+   */
+  async aggregateDerivedFleetStatusCountsForVehicles(
+    organizationId: string,
+    vehicleIds: string[],
+  ): Promise<{
+    total: number;
+    available: number;
+    rented: number;
+    reserved: number;
+    maintenance: number;
+    unknown: number;
+  }> {
+    const tokens = await this.deriveOperationalTokensForVehicles(organizationId, vehicleIds);
+    const counts = {
+      total: tokens.size,
+      available: 0,
+      rented: 0,
+      reserved: 0,
+      maintenance: 0,
+      unknown: 0,
+    };
+    for (const token of tokens.values()) {
+      if (token === 'UNKNOWN') counts.unknown += 1;
+      else if (token === 'ACTIVE_RENTED') counts.rented += 1;
+      else if (token === 'RESERVED') counts.reserved += 1;
+      else if (token === 'MAINTENANCE') counts.maintenance += 1;
+      else counts.available += 1;
+    }
+    return counts;
+  }
+
+  /**
    * V4.6.84 — Maintenance reason is derived from `Vehicle.status` only.
    * We intentionally do NOT fabricate reasons from health state — health
    * warnings already surface via the RentalHealthBadge on every card.

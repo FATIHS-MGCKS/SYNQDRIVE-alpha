@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InsightCandidate, InsightType, InsightSeverity } from './insight.types';
+import {
+  mergeCandidateEntityReferences,
+  normalizeCandidateEntityReferences,
+} from './insight-entity-reference.util';
 
 const GROUP_TEMPLATES: Partial<Record<InsightType, (count: number) => string>> = {
   [InsightType.LOW_UTILIZATION]: (n) => `${n} vehicles idle with no recent or upcoming bookings.`,
@@ -22,7 +26,7 @@ const GROUP_TEMPLATES: Partial<Record<InsightType, (count: number) => string>> =
 
 @Injectable()
 export class InsightGroupingService {
-  dedupeAndGroup(candidates: InsightCandidate[]): InsightCandidate[] {
+  dedupeAndGroup(candidates: InsightCandidate[], organizationId: string): InsightCandidate[] {
     const byKey = new Map<string, InsightCandidate>();
     for (const c of candidates) {
       const existing = byKey.get(c.dedupeKey);
@@ -60,6 +64,7 @@ export class InsightGroupingService {
       const allReasons = [...new Set(items.flatMap((i) => i.reasons))];
       const highestSeverity = this.pickHighestSeverity(items);
       const templateFn = GROUP_TEMPLATES[best.type];
+      const entityReferences = mergeCandidateEntityReferences(items, organizationId);
 
       const totalRevenue = items.reduce((s, i) => s + ((i.metrics?.lostRevenueEur as number) ?? 0), 0);
 
@@ -77,7 +82,7 @@ export class InsightGroupingService {
         })),
       );
 
-      result.push({
+      const groupedCandidate: InsightCandidate = {
         ...best,
         severity: highestSeverity,
         message: templateFn ? templateFn(items.length) : `${items.length} items: ${best.message}`,
@@ -86,11 +91,21 @@ export class InsightGroupingService {
         metrics: {
           ...best.metrics,
           groupedCount: items.length,
+          eventCount: items.length,
           ...(totalRevenue > 0 ? { totalLostRevenueEur: totalRevenue } : {}),
           entities,
         },
+        entityReferences,
         dedupeKey: `grouped:${best.groupKey}`,
-      });
+      };
+
+      result.push(groupedCandidate);
+    }
+
+    for (const c of result) {
+      if (!c.entityReferences?.length) {
+        c.entityReferences = normalizeCandidateEntityReferences(c, organizationId);
+      }
     }
 
     return result;

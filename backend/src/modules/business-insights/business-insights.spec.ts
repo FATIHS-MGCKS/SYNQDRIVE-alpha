@@ -110,6 +110,7 @@ describe('InsightRankingService', () => {
 
 describe('InsightGroupingService', () => {
   const service = new InsightGroupingService();
+  const orgId = 'org-test';
 
   it('deduplicates by dedupeKey keeping higher priority', () => {
     const input = [
@@ -117,7 +118,7 @@ describe('InsightGroupingService', () => {
       makeCandidate({ dedupeKey: 'same', priority: 80 }),
       makeCandidate({ dedupeKey: 'other', priority: 50 }),
     ];
-    const result = service.dedupeAndGroup(input);
+    const result = service.dedupeAndGroup(input, orgId);
     expect(result).toHaveLength(2);
     const kept = result.find((c) => c.dedupeKey === 'same');
     expect(kept?.priority).toBe(80);
@@ -129,7 +130,7 @@ describe('InsightGroupingService', () => {
       makeCandidate({ dedupeKey: 'b', groupKey: 'station_x', entityIds: ['v2'], type: InsightType.LOW_UTILIZATION }),
       makeCandidate({ dedupeKey: 'c', groupKey: 'station_x', entityIds: ['v3'], type: InsightType.LOW_UTILIZATION }),
     ];
-    const result = service.dedupeAndGroup(input);
+    const result = service.dedupeAndGroup(input, orgId);
     expect(result).toHaveLength(1);
     expect(result[0].entityIds).toEqual(expect.arrayContaining(['v1', 'v2', 'v3']));
     expect(result[0].dedupeKey).toBe('grouped:station_x');
@@ -140,7 +141,7 @@ describe('InsightGroupingService', () => {
       makeCandidate({ dedupeKey: 'x' }),
       makeCandidate({ dedupeKey: 'y' }),
     ];
-    const result = service.dedupeAndGroup(input);
+    const result = service.dedupeAndGroup(input, orgId);
     expect(result).toHaveLength(2);
   });
 
@@ -148,7 +149,7 @@ describe('InsightGroupingService', () => {
     const input = [
       makeCandidate({ dedupeKey: 'only', groupKey: 'alone', entityIds: ['v1'] }),
     ];
-    const result = service.dedupeAndGroup(input);
+    const result = service.dedupeAndGroup(input, orgId);
     expect(result).toHaveLength(1);
     expect(result[0].dedupeKey).toBe('only');
   });
@@ -158,7 +159,7 @@ describe('InsightGroupingService', () => {
       makeCandidate({ dedupeKey: 'a', groupKey: 'g', entityIds: ['v1'], type: InsightType.LOW_UTILIZATION }),
       makeCandidate({ dedupeKey: 'b', groupKey: 'g', entityIds: ['v2'], type: InsightType.LOW_UTILIZATION }),
     ];
-    const result = service.dedupeAndGroup(input);
+    const result = service.dedupeAndGroup(input, orgId);
     expect(result[0].message).toContain('2 vehicles idle');
   });
 
@@ -167,7 +168,7 @@ describe('InsightGroupingService', () => {
       makeCandidate({ dedupeKey: 'a', groupKey: 'g', entityIds: ['v1', 'v2'] }),
       makeCandidate({ dedupeKey: 'b', groupKey: 'g', entityIds: ['v2', 'v3'] }),
     ];
-    const result = service.dedupeAndGroup(input);
+    const result = service.dedupeAndGroup(input, orgId);
     expect(new Set(result[0].entityIds).size).toBe(3);
   });
 });
