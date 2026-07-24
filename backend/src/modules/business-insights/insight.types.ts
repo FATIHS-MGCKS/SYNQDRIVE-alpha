@@ -23,6 +23,7 @@ export interface InsightCandidate {
   dedupeKey: string;
   groupKey?: string;
   expiresAt?: Date;
+  calculationMeta?: import('@synq/evaluations-metrics/evaluations-calculation-provenance').EvaluationsCalculationProvenance;
 }
 
 export interface DetectorContext {
@@ -110,6 +111,8 @@ export interface DashboardInsightDto {
   isGrouped: boolean;
   groupCount: number;
   createdAt: string;
+  /** Null for records persisted before calculation versioning (Prompt 6). */
+  calculationMeta?: import('@synq/evaluations-metrics/evaluations-calculation-provenance').EvaluationsCalculationProvenance | null;
 }
 
 // ─── Run History / Diagnostics DTOs ──────────────────────────────────
@@ -124,6 +127,7 @@ export interface InsightRunSummaryDto {
   candidateCount: number;
   publishedCount: number;
   errorMessage: string | null;
+  calculationMeta?: import('@synq/evaluations-metrics/evaluations-calculation-provenance').EvaluationsCalculationProvenance | null;
 }
 
 export interface InsightRunDetailDto extends InsightRunSummaryDto {

@@ -24,9 +24,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@synq/evaluations-metrics/*": ["../shared/evaluations-metrics/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../shared/evaluations-metrics/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }

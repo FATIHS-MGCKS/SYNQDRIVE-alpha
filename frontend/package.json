@@ -33,6 +33,11 @@
     "test:vehicle-detail:e2e": "playwright test -c e2e/playwright.config.ts vehicle-detail-flow.spec.ts vehicle-detail-a11y.spec.ts --project=desktop-1280 && playwright test -c e2e/playwright.config.ts vehicle-detail-responsive.spec.ts",
     "test:vehicle-detail:a11y": "playwright test -c e2e/playwright.config.ts vehicle-detail-a11y.spec.ts --project=desktop-1280",
     "test:vehicle-detail:unit": "vitest run src/rental/lib/vehicle-detail-observability.test.ts src/rental/lib/overview-map-position.test.ts src/rental/components/vehicle-detail/vehicle-health-box.mapper.test.ts",
+    "test:evaluations": "vitest run src/rental/lib/evaluations src/rental/lib/financial-insights.logic src/rental/components/dashboard/runtime/businessPulseSliceBuilder.test.ts",
+    "test:evaluations:e2e": "playwright test -c e2e/playwright.config.ts evaluations-flow.spec.ts evaluations-a11y.spec.ts --project=desktop-1280 && playwright test -c e2e/playwright.config.ts evaluations-visual.spec.ts --project=mobile-320 --project=tablet-768 --project=desktop-1280 --project=desktop-1920",
+    "test:evaluations:e2e:all-viewports": "playwright test -c e2e/playwright.config.ts evaluations-visual.spec.ts",
+    "test:evaluations:e2e:flow": "playwright test -c e2e/playwright.config.ts evaluations-flow.spec.ts --project=desktop-1280",
+    "test:evaluations:e2e:a11y": "playwright test -c e2e/playwright.config.ts evaluations-a11y.spec.ts --project=desktop-1280",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"

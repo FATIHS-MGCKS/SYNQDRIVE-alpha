@@ -40,6 +40,11 @@ import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-asse
 import { EvaluationsObservabilityService } from '@modules/evaluations-observability/evaluations-observability.service';
 import { classifyInsightsTrigger } from '@modules/evaluations-observability/evaluations-trigger-class.util';
 import { sourcesForDetector } from '@modules/evaluations-observability/evaluations-detector-sources';
+import {
+  attachInsightCalculationProvenance,
+  buildInsightRunProvenance,
+  INSIGHT_TYPE_METRIC_ID,
+} from '@modules/evaluations-metrics/insight-calculation-provenance';
 
 @Injectable()
 export class BusinessInsightsService {
@@ -139,6 +144,8 @@ export class BusinessInsightsService {
         }),
       );
 
+      const detectorFailures: InsightType[] = [];
+
       for (let i = 0; i < detectorResults.length; i++) {
         const r = detectorResults[i];
         const type = enabledDetectors[i].type;
@@ -146,6 +153,7 @@ export class BusinessInsightsService {
           allCandidates.push(...r.value.results);
         } else {
           detectorFailureCount++;
+          detectorFailures.push(type);
           this.logger.warn(
             `Detector ${type} failed for org ${organizationId}: ${r.reason?.message ?? r.reason}`,
           );
@@ -157,9 +165,32 @@ export class BusinessInsightsService {
       const grouped = this.grouping.dedupeAndGroup(gatedCandidates);
       const ranked = this.ranking.rank(grouped);
       const formatted = this.formatter.format(ranked.slice(0, policy.maxVisibleInsights), policy.useLlmFormatting);
+      const publishedWithProvenance = attachInsightCalculationProvenance(formatted, ctx, ctx.now);
 
-      await this.repo.publishInsights(organizationId, run.id, formatted);
-      await this.repo.completeRun(run.id, gatedCandidates.length, formatted.length);
+      await this.repo.publishInsights(organizationId, run.id, publishedWithProvenance);
+
+      const runProvenance = buildInsightRunProvenance({
+        organizationId,
+        trigger,
+        startedAt: run.startedAt,
+        finishedAt: new Date(),
+        policy: {
+          enabledTypes: policy.enabledTypes,
+          maxVisibleInsights: policy.maxVisibleInsights,
+          refreshIntervalMin: policy.refreshIntervalMin,
+        },
+        detectorFailures,
+        publishedMetricIds: publishedWithProvenance.map((c) => INSIGHT_TYPE_METRIC_ID[c.type]),
+        rankedCandidateCount: ranked.length,
+      });
+
+      await this.repo.completeRun(
+        run.id,
+        gatedCandidates.length,
+        publishedWithProvenance.length,
+        undefined,
+        runProvenance,
+      );
 
       // Materialize actionable per-vehicle candidates into escalating OrgTasks.
       // Uses the raw (pre-group, pre-limit) candidate list so every overdue
@@ -233,9 +264,9 @@ export class BusinessInsightsService {
       );
 
       this.logger.log(
-        `Insights run [${trigger}] for org ${organizationId}: ${gatedCandidates.length} candidates → ${grouped.length} grouped → ${formatted.length} published`,
+        `Insights run [${trigger}] for org ${organizationId}: ${gatedCandidates.length} candidates → ${grouped.length} grouped → ${publishedWithProvenance.length} published`,
       );
-      return { runId: run.id, published: formatted.length };
+      return { runId: run.id, published: publishedWithProvenance.length };
     } catch (err: any) {
       await this.repo.completeRun(run.id, 0, 0, err.message);
       this.evaluationsObservability?.observeInsightsRun(

@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@synq/evaluations-metrics': path.resolve(__dirname, '../shared/evaluations-metrics'),
     },
   },
   server: {
