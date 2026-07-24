@@ -43,6 +43,13 @@ const permissionsState = vi.hoisted(() => ({
   canViewConsents: true,
   canViewPartners: true,
   canViewAudit: true,
+  canCreateAny: true,
+  canCreateInternal: true,
+  canCreateProvider: true,
+  canCreatePartnerSharing: true,
+  canCreateConsent: true,
+  canCreateProcessor: true,
+  canRequestReview: true,
   visibleSections: [
     'activities',
     'enforcement',
@@ -119,8 +126,9 @@ describe('DataProcessingHub UI', () => {
   });
 
   it('renders page header, readiness strip, disclaimer and six-section subnav', () => {
-    const html = renderToStaticMarkup(<DataProcessingHub />);
+    const html = renderToStaticMarkup(<DataProcessingHub canWrite canManage />);
     expect(html).toContain('dataProcessing.title');
+    expect(html).toContain('dataProcessing.wizard.createCta');
     expect(html).toContain('dataProcessing.subtitle');
     expect(html).toContain('dataProcessing.disclaimer');
     expect(html).toContain('dataProcessing.readiness.overall');

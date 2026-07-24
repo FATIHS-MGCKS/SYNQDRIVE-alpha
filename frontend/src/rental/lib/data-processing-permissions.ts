@@ -6,6 +6,13 @@ export interface DataProcessingPermissions {
   canViewConsents: boolean;
   canViewPartners: boolean;
   canViewAudit: boolean;
+  canCreateAny: boolean;
+  canCreateInternal: boolean;
+  canCreateProvider: boolean;
+  canCreatePartnerSharing: boolean;
+  canCreateConsent: boolean;
+  canCreateProcessor: boolean;
+  canRequestReview: boolean;
   visibleSections: Array<'activities' | 'enforcement' | 'providers' | 'consents' | 'partners' | 'audit'>;
 }
 
@@ -19,6 +26,18 @@ export function buildDataProcessingPermissions(hasPermission: PermissionCheck): 
   const canViewConsents = canViewHub;
   const canViewPartners = canViewHub;
   const canViewAudit = canViewHub;
+  const canCreateInternal = hasPermission('data-authorization', 'write');
+  const canCreateProvider = hasPermission('data-authorization', 'write');
+  const canCreatePartnerSharing = hasPermission('data-authorization', 'write');
+  const canCreateConsent = hasPermission('data-authorization', 'write');
+  const canCreateProcessor = hasPermission('data-authorization', 'write');
+  const canRequestReview = hasPermission('data-authorization', 'manage');
+  const canCreateAny =
+    canCreateInternal ||
+    canCreateProvider ||
+    canCreatePartnerSharing ||
+    canCreateConsent ||
+    canCreateProcessor;
 
   const visibleSections: DataProcessingPermissions['visibleSections'] = [];
   if (canViewActivities) visibleSections.push('activities');
@@ -36,6 +55,13 @@ export function buildDataProcessingPermissions(hasPermission: PermissionCheck): 
     canViewConsents,
     canViewPartners,
     canViewAudit,
+    canCreateAny,
+    canCreateInternal,
+    canCreateProvider,
+    canCreatePartnerSharing,
+    canCreateConsent,
+    canCreateProcessor,
+    canRequestReview,
     visibleSections,
   };
 }

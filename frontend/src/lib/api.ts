@@ -4796,6 +4796,55 @@ export const api = {
           `/organizations/${orgId}/data-authorizations/processing-activity-register${qs ? `?${qs}` : ''}`,
         );
       },
+      create: (orgId: string, data: CreateProcessingActivityRegisterPayload) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/processing-activity-register`,
+          data,
+        ),
+    },
+    legalBasis: {
+      create: (
+        orgId: string,
+        activityId: string,
+        data: CreateLegalBasisAssessmentPayload,
+      ) =>
+        post<LegalBasisAssessmentDetail>(
+          `/organizations/${orgId}/processing-activities/${activityId}/legal-basis-assessments`,
+          data,
+        ),
+    },
+    retention: {
+      upsertPolicy: (
+        orgId: string,
+        activityId: string,
+        data: UpsertRetentionPolicyPayload,
+      ) =>
+        post<RetentionPolicyDetail>(
+          `/organizations/${orgId}/processing-activities/${activityId}/retention-deletion/policies`,
+          data,
+        ),
+    },
+    providerGrant: {
+      create: (orgId: string, data: CreateProviderAccessGrantPayload) =>
+        post<ProviderAccessGrantDetail>(`/organizations/${orgId}/provider-access-grants`, data),
+    },
+    consent: {
+      create: (
+        orgId: string,
+        activityId: string,
+        data: CreateDataSubjectConsentPayload,
+      ) =>
+        post<DataSubjectConsentDetail>(
+          `/organizations/${orgId}/processing-activities/${activityId}/data-subject-consents`,
+          data,
+        ),
+    },
+    review: {
+      submitActivity: (orgId: string, activityId: string) =>
+        post<ProcessingActivityRegisterDetail>(
+          `/organizations/${orgId}/data-authorizations/review-workflow/processing-activities/${activityId}/submit`,
+          {},
+        ),
     },
     coverage: {
       get: (orgId: string) =>
@@ -4804,6 +4853,8 @@ export const api = {
     dpa: {
       list: (orgId: string) =>
         get<DataProcessingAgreementListItem[]>(`/organizations/${orgId}/data-processing-agreements`),
+      create: (orgId: string, data: CreateDataProcessingAgreementPayload) =>
+        post<DataProcessingAgreementDetail>(`/organizations/${orgId}/data-processing-agreements`, data),
     },
     audit: {
       authorizationDecisions: (
@@ -9375,6 +9426,122 @@ export interface ProcessingActivityRegisterListItem {
   };
   runtimeCoverage: { enforcedFlows: number; totalFlows: number } | null;
   updatedAt: string;
+}
+
+export interface ProcessingActivityRegisterDetail extends ProcessingActivityRegisterListItem {
+  description?: string | null;
+  purposeSummary?: string | null;
+}
+
+export interface CreateProcessingActivityRegisterPayload {
+  activityCode: string;
+  title: string;
+  description?: string;
+  purposeSummary?: string;
+  dataCategories?: string[];
+  purposes?: string[];
+  dataSubjectTypes?: string[];
+  recipientCategoriesSummary?: string;
+  retentionDescription?: string;
+  retentionPeriodDays?: number;
+  technicalOrganizationalMeasures?: string;
+  dpiaStatus?: string;
+  ownerRole?: string;
+  ownerUserId?: string;
+}
+
+export interface CreateLegalBasisAssessmentPayload {
+  legalBasisType: string;
+  legalReference?: string;
+  necessityAssessment?: string;
+  proportionalityAssessment?: string;
+  legitimateInterestDescription?: string;
+  consentRequirement?: string;
+  validFrom?: string;
+  validUntil?: string;
+  reviewDate?: string;
+  evidenceReferences?: string[];
+}
+
+export interface LegalBasisAssessmentDetail {
+  id: string;
+  legalBasisType: string;
+  status: string;
+}
+
+export interface UpsertRetentionPolicyPayload {
+  dataCategory?: string;
+  retentionClass: string;
+  retentionDurationDays?: number;
+  retentionStartEvent: string;
+  deletionMethod: string;
+  anonymizationAllowed?: boolean;
+  legalHold?: boolean;
+  legalHoldReason?: string;
+  deletionDueAt?: string;
+  reviewDate?: string;
+  ownerUserId?: string;
+}
+
+export interface RetentionPolicyDetail {
+  id: string;
+  retentionClass: string;
+}
+
+export interface CreateProviderAccessGrantPayload {
+  provider: string;
+  providerAccountReference?: string;
+  providerGrantReference?: string;
+  grantedScopes: string[];
+  grantMechanism?: string;
+  processingActivityId?: string;
+  vehicleId?: string;
+  legacyVehicleProviderConsentId?: string;
+}
+
+export interface ProviderAccessGrantDetail {
+  id: string;
+  provider: string;
+  providerStatus: string;
+}
+
+export interface CreateDataSubjectConsentPayload {
+  dataSubjectReference: string;
+  subjectType: string;
+  purpose: string;
+  consentTextVersion: string;
+  privacyNoticeVersion: string;
+  expiresAt?: string;
+}
+
+export interface DataSubjectConsentDetail {
+  id: string;
+  status: string;
+}
+
+export interface CreateDataProcessingAgreementPayload {
+  processorName: string;
+  processorRole: string;
+  contractReference?: string;
+  processingActivityIds?: string[];
+  processingActivityId?: string;
+  safeguards?: string;
+  primaryTransferMechanism?: string;
+  effectiveFrom?: string;
+  effectiveUntil?: string;
+  reviewDate?: string;
+  transferCountries?: Array<{
+    countryCode: string;
+    transferMechanism: string;
+    assessmentStatus?: string;
+    safeguards?: string;
+  }>;
+}
+
+export interface DataProcessingAgreementDetail {
+  id: string;
+  processorName: string;
+  status: string;
 }
 
 export interface ProcessingActivityRegisterListResponse {
