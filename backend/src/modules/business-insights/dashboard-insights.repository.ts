@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { EvaluationsObservabilityService } from '@modules/evaluations-observability/evaluations-observability.service';
 import {
   InsightCandidate,
   InsightSeverity,
@@ -13,7 +14,10 @@ import {
 export class DashboardInsightsRepository {
   private readonly logger = new Logger(DashboardInsightsRepository.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
+  ) {}
 
   // ─── Run lifecycle ─────────────────────────────────────────────────
 
@@ -98,52 +102,68 @@ export class DashboardInsightsRepository {
   // ─── Dashboard read (persisted, no recalculation) ──────────────────
 
   async getActiveInsights(organizationId: string, limit: number): Promise<DashboardInsightsResponse> {
-    await this.expireStaleInsights(organizationId);
+    const started = Date.now();
+    try {
+      await this.expireStaleInsights(organizationId);
 
-    const insights = await this.prisma.dashboardInsight.findMany({
-      where: { organizationId, isActive: true },
-      orderBy: { priority: 'desc' },
-      take: limit,
-    });
+      const insights = await this.prisma.dashboardInsight.findMany({
+        where: { organizationId, isActive: true },
+        orderBy: { priority: 'desc' },
+        take: limit,
+      });
 
-    const lastRun = await this.prisma.dashboardInsightRun.findFirst({
-      where: { organizationId, finishedAt: { not: null } },
-      orderBy: { finishedAt: 'desc' },
-      select: { finishedAt: true, errorMessage: true, startedAt: true },
-    });
+      const lastRun = await this.prisma.dashboardInsightRun.findFirst({
+        where: { organizationId, finishedAt: { not: null } },
+        orderBy: { finishedAt: 'desc' },
+        select: { finishedAt: true, errorMessage: true, startedAt: true },
+      });
 
-    const policy = await this.prisma.tenantInsightPolicy.findUnique({
-      where: { organizationId },
-      select: { refreshIntervalMin: true },
-    });
-    const refreshMin = policy?.refreshIntervalMin ?? 30;
-    const staleThresholdMs = refreshMin * 60_000 * 2;
-    const lastRunAt = lastRun?.finishedAt ?? null;
-    const stale =
-      lastRunAt != null
-        ? Date.now() - lastRunAt.getTime() > staleThresholdMs
-        : false;
+      const policy = await this.prisma.tenantInsightPolicy.findUnique({
+        where: { organizationId },
+        select: { refreshIntervalMin: true },
+      });
+      const refreshMin = policy?.refreshIntervalMin ?? 30;
+      const staleThresholdMs = refreshMin * 60_000 * 2;
+      const lastRunAt = lastRun?.finishedAt ?? null;
+      const stale =
+        lastRunAt != null
+          ? Date.now() - lastRunAt.getTime() > staleThresholdMs
+          : false;
 
-    const dtos = insights.map((i) => this.toInsightDto(i));
+      this.evaluationsObservability?.recordSourceFreshness(
+        'insights_snapshot',
+        stale ? 'stale' : lastRunAt ? 'fresh' : 'missing',
+      );
+      this.evaluationsObservability?.recordCache('insights_read', 'miss');
+      this.evaluationsObservability?.observeDbQuery(
+        'insights_active_read',
+        Date.now() - started,
+      );
 
-    const summary = {
-      total: insights.length,
-      critical: insights.filter((i) => i.severity === InsightSeverity.CRITICAL).length,
-      warning: insights.filter((i) => i.severity === InsightSeverity.WARNING).length,
-      opportunity: insights.filter((i) => i.severity === InsightSeverity.OPPORTUNITY).length,
-      info: insights.filter((i) => i.severity === InsightSeverity.INFO).length,
-    };
+      const dtos = insights.map((i) => this.toInsightDto(i));
 
-    return {
-      generatedAt: lastRunAt?.toISOString() ?? null,
-      hasRun: lastRunAt != null,
-      lastRunAt: lastRunAt?.toISOString() ?? null,
-      stale,
-      activeInsightCount: insights.length,
-      error: lastRun?.errorMessage ?? null,
-      summary,
-      insights: dtos,
-    };
+      const summary = {
+        total: insights.length,
+        critical: insights.filter((i) => i.severity === InsightSeverity.CRITICAL).length,
+        warning: insights.filter((i) => i.severity === InsightSeverity.WARNING).length,
+        opportunity: insights.filter((i) => i.severity === InsightSeverity.OPPORTUNITY).length,
+        info: insights.filter((i) => i.severity === InsightSeverity.INFO).length,
+      };
+
+      return {
+        generatedAt: lastRunAt?.toISOString() ?? null,
+        hasRun: lastRunAt != null,
+        lastRunAt: lastRunAt?.toISOString() ?? null,
+        stale,
+        activeInsightCount: insights.length,
+        error: lastRun?.errorMessage ?? null,
+        summary,
+        insights: dtos,
+      };
+    } catch (err) {
+      this.evaluationsObservability?.observeDbQuery('insights_active_read', Date.now() - started, err);
+      throw err;
+    }
   }
 
   // ─── Run history & diagnostics ─────────────────────────────────────

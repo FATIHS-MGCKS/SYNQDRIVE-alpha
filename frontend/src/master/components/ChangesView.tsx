@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-observability-v49726-2026-07-24',
+    version: '4.9.726',
+    title: 'V4.9.726 — Auswertungen & Forecast pipeline observability (Prompt 52)',
+    summary: [
+      'Global `evaluations-observability` module: Prometheus metrics (`synqdrive_evaluations_*`), structured logs, correlation IDs (`eval-*`).',
+      'Instrumented business-insights detectors/runs, scheduler enqueue, notification.evaluation jobs, dashboard-insights API interceptor, DB slow-query tracking.',
+      'Grafana dashboard `synqdrive-evaluations`, Prometheus alert group `synqdrive_evaluations`, runbook `docs/operations/evaluations-observability-runbook.md`.',
+      'No org/PII metric labels; forecast metrics forward-compatible until fc.* backend ships.',
+    ],
+    reason: 'Prompt 52/54: production-ready observability for Auswertungen and forecast pipeline with bounded cardinality and anti-alert-flood thresholds.',
+    previousBehavior:
+      'Business insights and notification evaluation had unstructured logs only; no dedicated evaluations metrics, dashboard, or runbook.',
+    details:
+      'backend/src/modules/evaluations-observability/*, business-insights.service.ts, business-insights-scheduler.service.ts, notification-evaluation.service.ts, dashboard-insights.repository.ts, app.module.ts, backend/monitoring/grafana/dashboards/synqdrive-evaluations.json, backend/monitoring/prometheus/alerts.yml, evaluations-* spec + prometheus-config.spec.ts',
+    affectsArchitecture: true,
+    module: 'Business Insights',
+    createdAt: '2026-07-24T22:30:00.000Z',
+  },
+  {
     id: 'iam-full-integration-production-v49725-2026-07-22',
     version: '4.9.725',
     title: 'V4.9.725 — IAM full integration + direct production rollout (Prompts 1–22)',

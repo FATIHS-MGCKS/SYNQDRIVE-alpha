@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigType } from '@nestjs/config';
@@ -23,6 +23,7 @@ import type {
 } from './notification-evaluation.types';
 import { EMPTY_RUN_STATS } from './notification-evaluation.types';
 import { NotificationEvaluationObservabilityService } from './notification-evaluation-observability.service';
+import { EvaluationsObservabilityService } from '@modules/evaluations-observability/evaluations-observability.service';
 import { runWithNotificationRunContext } from './notification-run-context';
 
 @Injectable()
@@ -39,19 +40,26 @@ export class NotificationEvaluationService {
     private readonly observability: NotificationEvaluationObservabilityService,
     @Inject(forwardRef(() => BusinessInsightsService))
     private readonly insightsService: BusinessInsightsService,
+    @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
   ) {}
 
   async executeRun(job: NotificationEvaluationJobData): Promise<NotificationEvaluationRunResult> {
     const startedAt = new Date();
     const stats = EMPTY_RUN_STATS();
+    const evalCtx = {
+      correlationId: this.evaluationsObservability?.createCorrelationId(job.runId) ?? job.runId,
+      runId: job.runId,
+      triggerClass: job.triggerClass,
+    };
     const lockKey = this.lockService.lockKeyForOrganization(job.organizationId);
     const lockResult = await this.lockService.acquire(lockKey, this.config.lockTtlMs);
 
     if (!lockResult.acquired) {
       if (lockResult.reason === 'contended') {
         this.observability.logLockContention(job.organizationId, job.runId, job.triggerClass);
+        this.evaluationsObservability?.recordCache('coalesce', 'hit');
         await this.markFollowUp(job.organizationId);
-        return {
+        const skippedResult: NotificationEvaluationRunResult = {
           runId: job.runId,
           organizationId: job.organizationId,
           triggerType: job.triggerType,
@@ -60,12 +68,21 @@ export class NotificationEvaluationService {
           followUpScheduled: true,
           stats,
         };
+        this.evaluationsObservability?.observeEvaluationJob(
+          evalCtx,
+          job.triggerClass,
+          'success',
+          Date.now() - startedAt.getTime(),
+          true,
+        );
+        return skippedResult;
       }
 
+      this.evaluationsObservability?.recordRedisFailure('lock_acquire', evalCtx);
       this.logger.warn(
         `Redis unavailable — cannot acquire eval lock for org ${job.organizationId}`,
       );
-      return {
+      const unavailableResult: NotificationEvaluationRunResult = {
         runId: job.runId,
         organizationId: job.organizationId,
         triggerType: job.triggerType,
@@ -73,6 +90,14 @@ export class NotificationEvaluationService {
         skipReason: 'lock_redis_unavailable',
         stats,
       };
+      this.evaluationsObservability?.observeEvaluationJob(
+        evalCtx,
+        job.triggerClass,
+        'error',
+        Date.now() - startedAt.getTime(),
+        true,
+      );
+      return unavailableResult;
     }
 
     this.observability.logLockAcquired(job.organizationId, job.runId);
@@ -112,9 +137,21 @@ export class NotificationEvaluationService {
 
       this.observability.observeRunDuration(result.durationMs ?? 0);
       this.observability.logRunCompleted(result);
+      this.evaluationsObservability?.observeEvaluationJob(
+        evalCtx,
+        job.triggerClass,
+        'success',
+        result.durationMs ?? Date.now() - startedAt.getTime(),
+      );
       return result;
     } catch (err) {
       stats.failureCount++;
+      this.evaluationsObservability?.observeEvaluationJob(
+        evalCtx,
+        job.triggerClass,
+        'error',
+        Date.now() - startedAt.getTime(),
+      );
       throw err;
     } finally {
       this.stopLockHeartbeat(lockKey);
@@ -127,6 +164,7 @@ export class NotificationEvaluationService {
     try {
       await this.redis.rpush(pendingKey, eventSource);
     } catch (err) {
+      this.evaluationsObservability?.recordRedisFailure('pending_events_rpush');
       this.logger.error(`Failed to queue pending event for org ${organizationId}: ${err}`);
       return;
     }
@@ -194,11 +232,13 @@ export class NotificationEvaluationService {
       const state = await existing.getState();
       if (state === 'active') {
         this.observability.logJobCoalesced(input.organizationId, input.triggerClass, 'active_run');
+        this.evaluationsObservability?.recordCache('coalesce', 'hit');
         await this.markFollowUp(input.organizationId);
         return;
       }
       if (state === 'waiting' || state === 'delayed') {
         this.observability.logJobCoalesced(input.organizationId, input.triggerClass, 'already_queued');
+        this.evaluationsObservability?.recordCache('coalesce', 'hit');
         return;
       }
       if (state === 'completed' || state === 'failed') {
@@ -231,6 +271,7 @@ export class NotificationEvaluationService {
       const message = (err as Error).message ?? String(err);
       if (message.includes('Job') && message.includes('exists')) {
         this.observability.logJobCoalesced(input.organizationId, input.triggerClass, 'duplicate_job_id');
+        this.evaluationsObservability?.recordCache('coalesce', 'hit');
         return;
       }
       throw err;
@@ -250,6 +291,7 @@ export class NotificationEvaluationService {
     try {
       await this.redis.set(followUpKey(organizationId), '1', 'PX', this.config.debounceWindowMs * 2);
     } catch (err) {
+      this.evaluationsObservability?.recordRedisFailure('follow_up_mark');
       this.logger.warn(`Failed to mark follow-up for org ${organizationId}: ${(err as Error).message}`);
     }
   }
@@ -276,6 +318,7 @@ export class NotificationEvaluationService {
       const merged = [...(seed ?? []), ...events];
       return [...new Set(merged)];
     } catch {
+      this.evaluationsObservability?.recordRedisFailure('pending_events_drain');
       return [...new Set(seed ?? [])];
     }
   }

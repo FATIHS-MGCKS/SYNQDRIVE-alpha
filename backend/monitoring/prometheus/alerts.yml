@@ -1031,3 +1031,190 @@ groups:
           runbook_url: docs/runbooks/iam-data-retention-and-user-rights.md
           clear_condition: no retention failures for 2h.
 
+  - name: synqdrive_evaluations_slo
+    rules:
+      - record: job:synqdrive_evaluations_api_error_ratio:rate15m
+        expr: |
+          sum(rate(synqdrive_evaluations_api_requests_total{result="error"}[15m]))
+          / clamp_min(sum(rate(synqdrive_evaluations_api_requests_total[15m])), 0.001)
+      - record: job:synqdrive_evaluations_insights_failure_ratio:rate30m
+        expr: |
+          sum(rate(synqdrive_evaluations_insights_runs_total{result="error"}[30m]))
+          / clamp_min(sum(rate(synqdrive_evaluations_insights_runs_total[30m])), 0.001)
+
+  - name: synqdrive_evaluations
+    rules:
+      - alert: EvaluationsApiLatencyP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(synqdrive_evaluations_api_request_duration_seconds_bucket[10m]))
+          ) > 2
+          and sum(rate(synqdrive_evaluations_api_requests_total[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Auswertungen API p95 latency above 2s
+          description: Dashboard-insights or data-analyse API p95 latency exceeds warning threshold for 10 minutes.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsapilatencyp95high
+          clear_condition: p95 below 1.5s for 15m.
+
+      - alert: EvaluationsApiLatencyP95Critical
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(synqdrive_evaluations_api_request_duration_seconds_bucket[10m]))
+          ) > 5
+          and sum(rate(synqdrive_evaluations_api_requests_total[10m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          owner: evaluations
+        annotations:
+          summary: Auswertungen API p95 latency above 5s
+          description: Critical API latency on Auswertungen endpoints — check DB load and insights read path.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsapilatencyp95critical
+          clear_condition: p95 below 3s for 15m.
+
+      - alert: EvaluationsApiErrorRateHigh
+        expr: job:synqdrive_evaluations_api_error_ratio:rate15m > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Auswertungen API error rate above 5%
+          description: More than 5% of Auswertungen API requests are failing over 15 minutes.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsapierrorratehigh
+          clear_condition: error ratio below 2% for 15m.
+
+      - alert: EvaluationsInsightsRunFailureRateHigh
+        expr: job:synqdrive_evaluations_insights_failure_ratio:rate30m > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Business insights run failure rate above 10%
+          description: Insights evaluation runs are failing at an elevated rate — inspect detector errors and DB connectivity.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsinsightsrunfailureratehigh
+          clear_condition: failure ratio below 5% for 30m.
+
+      - alert: EvaluationsDetectorFailuresSustained
+        expr: |
+          sum(rate(synqdrive_evaluations_detector_runs_total{result="error"}[30m])) > 0.05
+          and sum(rate(synqdrive_evaluations_detector_runs_total[30m])) > 0.1
+        for: 20m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Sustained business-insights detector failures
+          description: One or more insight detectors are failing repeatedly — check upstream data sources and logs with correlationId eval-*.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsdetectorfailuressustained
+          clear_condition: detector error rate below 0.01/s for 30m.
+
+      - alert: EvaluationsSlowDbQueriesElevated
+        expr: increase(synqdrive_evaluations_db_slow_queries_total[15m]) >= 10
+        for: 10m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Elevated slow DB queries in Auswertungen path
+          description: Ten or more insights DB queries exceeded 1s in 15 minutes.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsslowdbquerieselevated
+          clear_condition: fewer than 3 slow queries in 30m.
+
+      - alert: EvaluationsNotificationEvaluationQueueLagHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(synqdrive_queue_lag_seconds_bucket{queue="notification.evaluation"}[10m]))
+          ) > 300
+        for: 10m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: notification.evaluation queue lag p95 above 5 minutes
+          description: Evaluation jobs are waiting too long — check worker concurrency and per-org lock contention.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsnotificationevaluationqueuelaghigh
+          clear_condition: p95 lag below 180s for 15m.
+
+      - alert: EvaluationsSchedulerFailures
+        expr: increase(synqdrive_evaluations_scheduler_runs_total{result="error"}[1h]) >= 2
+        for: 5m
+        labels:
+          severity: critical
+          owner: evaluations
+        annotations:
+          summary: Business insights scheduler enqueue failures
+          description: Scheduled evaluation enqueue failed at least twice in one hour — tenants may miss insight refreshes.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsschedulerfailures
+          clear_condition: no scheduler errors for 2h.
+
+      - alert: EvaluationsRedisErrorsSustained
+        expr: increase(synqdrive_evaluations_redis_errors_total[15m]) >= 5
+        for: 10m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Redis errors in evaluations pipeline
+          description: Redis lock, coalesce, or pending-events operations are failing in the insights evaluation path.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsrediserrorssustained
+          clear_condition: no redis errors for 30m.
+
+      - alert: EvaluationsDataSourceMissingElevated
+        expr: increase(synqdrive_evaluations_source_missing_total[30m]) >= 5
+        for: 15m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Missing data sources during insights runs
+          description: Required insight data sources reported missing — verify bookings, fleet, telemetry, and health feeds.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsdatasourcesmissingelevated
+          clear_condition: no missing-source increments for 1h.
+
+      - alert: EvaluationsKpiJumpSevere
+        expr: increase(synqdrive_evaluations_kpi_jump_total{severity="severe"}[1h]) >= 3
+        for: 15m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Severe insight-count KPI jumps detected
+          description: Unusual published-insight count changes across runs — may indicate detector regression or data anomaly.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationskpijumpsevere
+          clear_condition: no severe jumps for 2h.
+
+      - alert: EvaluationsForecastErrors
+        expr: |
+          sum(rate(synqdrive_evaluations_forecast_total{result=~"error|unavailable"}[30m])) > 0
+          and sum(rate(synqdrive_evaluations_forecast_total[30m])) > 0.01
+        for: 30m
+        labels:
+          severity: info
+          owner: evaluations
+        annotations:
+          summary: Forecast pipeline errors or unavailable state
+          description: Forecast metrics report errors/unavailable — expected until fc.* backend ships; investigate when forecast is enabled.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsforecasterrors
+          clear_condition: no forecast errors for 1h or forecast disabled.
+
+      - alert: EvaluationsForecastDriftCritical
+        expr: increase(synqdrive_evaluations_forecast_drift_total{level="critical"}[6h]) >= 1
+        for: 15m
+        labels:
+          severity: warning
+          owner: evaluations
+        annotations:
+          summary: Critical forecast model drift detected
+          description: Forecast drift monitor reported critical level — review model inputs and published KPIs.
+          runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsforecastdriftcritical
+          clear_condition: no critical drift for 12h.
+
