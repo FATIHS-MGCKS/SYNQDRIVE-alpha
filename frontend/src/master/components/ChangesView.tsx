@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-processing-ia-v49817-2026-07-24',
+    version: '4.9.817',
+    title: 'V4.9.817 — Datenverarbeitung & Freigaben IA (Prompt 34)',
+    summary: [
+      'Neuer Verwaltungs-Hub „Datenverarbeitung & Freigaben“ mit 6 fachlichen Unterbereichen.',
+      'Page Header, Readiness Summary (Register, Runtime Coverage, Partner), Sub-Navigation.',
+      'Read-only Listen: Verarbeitungstätigkeiten, Enforcement Coverage, Provider, Einwilligungen, DPA, Audit.',
+      'Loading-, Error-, Empty-States; responsive Mobile/Tablet/Desktop; keine pauschale DSGVO-Behauptung.',
+      'Frontend-Tests: data-processing-readiness + data-processing.ui.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 34 — klare Informationsarchitektur vor mutierenden Workflows (P35/P36).',
+    previousBehavior: 'Einzelner Data-Authorization-Tab ohne strukturierte Unterbereiche und Readiness-Ansicht.',
+    details:
+      'Module frontend/src/rental/components/settings/data-processing/. Doku: docs/architecture/data-processing-information-architecture-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-24T02:15:00.000Z',
+  },
+  {
     id: 'compliance-evidence-v49816-2026-07-24',
     version: '4.9.816',
     title: 'V4.9.816 — Compliance Evidence & prüfbare Reports (Prompt 33)',
