@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusChip } from '../../../components/patterns';
 import { api, type DeviceConnectionSummary, getErrorMessage } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
+import { useVehicleDetailOverviewPollingEnabled } from '../../hooks/useVehicleDetailOverviewPollingEnabled';
+import { usePollingWhen } from '../../hooks/usePollingWhen';
+import { VEHICLE_DETAIL_POLLING } from '../../lib/vehicle-detail-polling-policy';
 import {
   DEVICE_CONNECTION_LABELS,
   deviceConnectionEventLabel,
@@ -27,6 +30,7 @@ export function VehicleDeviceConnectionCard({
 }: VehicleDeviceConnectionCardProps) {
   const { hasPermission } = useRentalOrg();
   const canRead = hasPermission('fleet-connectivity', 'read');
+  const overviewPollingEnabled = useVehicleDetailOverviewPollingEnabled(vehicleId);
   const [summary, setSummary] = useState<DeviceConnectionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +69,15 @@ export function VehicleDeviceConnectionCard({
   }, [canRead, orgId, vehicleId]);
 
   useEffect(() => {
+    if (overviewPollingEnabled && canRead) return;
     void load();
-  }, [load]);
+  }, [load, overviewPollingEnabled, canRead]);
+
+  usePollingWhen(
+    load,
+    VEHICLE_DETAIL_POLLING.DEVICE_CONNECTION_MS,
+    overviewPollingEnabled && canRead,
+  );
 
   const cardState = useMemo(
     () =>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../../lib/api';
 import { buildObdPlugIndex } from '../lib/obd-plug-status';
 import { isDeviceConnectionForbiddenError } from '../lib/device-connection-ui';
+import { useDocumentVisible } from './useBrowserTabSignals';
 
 const CACHE_TTL_MS = 90_000;
 const orgCache = new Map<string, { map: Map<string, boolean | null>; fetchedAt: number }>();
@@ -19,7 +20,10 @@ export interface FleetObdPlugIndexResult {
  */
 export function useFleetObdPlugIndex(
   orgId: string | null | undefined,
+  options?: { enabled?: boolean },
 ): FleetObdPlugIndexResult {
+  const isDocumentVisible = useDocumentVisible();
+  const enabled = (options?.enabled ?? true) && isDocumentVisible;
   const [map, setMap] = useState<Map<string, boolean | null>>(() => {
     if (!orgId) return new Map();
     const cached = orgCache.get(orgId);
@@ -28,9 +32,11 @@ export function useFleetObdPlugIndex(
   const [status, setStatus] = useState<FleetObdPlugIndexStatus>('idle');
 
   useEffect(() => {
-    if (!orgId) {
-      setMap(new Map());
-      setStatus('idle');
+    if (!orgId || !enabled) {
+      if (!orgId) {
+        setMap(new Map());
+        setStatus('idle');
+      }
       return;
     }
 
@@ -64,7 +70,7 @@ export function useFleetObdPlugIndex(
     return () => {
       cancelled = true;
     };
-  }, [orgId]);
+  }, [orgId, enabled]);
 
   return { map, status };
 }

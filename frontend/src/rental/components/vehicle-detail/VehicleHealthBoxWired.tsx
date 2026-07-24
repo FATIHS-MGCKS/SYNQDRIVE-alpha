@@ -1,5 +1,6 @@
 import { useEffectiveHealth, useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
+import { useVehicleDetailOverviewPollingEnabled } from '../../hooks/useVehicleDetailOverviewPollingEnabled';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
 import type { VehicleData } from '../../data/vehicles';
 import { VehicleHealthBox } from './VehicleHealthBox';
@@ -26,7 +27,10 @@ export function VehicleHealthBoxWired({
   const lvBatteryVoltage = useVehicleLiveMapStore((state) =>
     state.boundVehicleId === vehicleId ? state.snapshot?.lvBatteryVoltage ?? null : null,
   );
-  const boxData = useVehicleHealthBoxData(vehicleId, orgId);
+  const overviewPollingEnabled = useVehicleDetailOverviewPollingEnabled(vehicleId);
+  const boxData = useVehicleHealthBoxData(vehicleId, orgId, {
+    livePolling: overviewPollingEnabled,
+  });
 
   return (
     <VehicleHealthBox

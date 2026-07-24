@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { api } from '../../lib/api';
 import {
   isMeaningfulMovement,
@@ -22,39 +22,61 @@ import {
   shouldAcceptNewerMeasurement,
 } from '../lib/telemetry-timestamp-semantics';
 import { resolveVehicleDetailTelemetryState } from '../lib/vehicle-telemetry-runtime';
+import { classifyTelemetryAccessError } from '../lib/telemetry-access-errors';
+import {
+  VEHICLE_DETAIL_POLLING,
+  type VehicleDetailPollingGates,
+} from '../lib/vehicle-detail-polling-policy';
+import { useVehicleDetailPollingStore } from '../stores/useVehicleDetailPollingStore';
 import { useVehicleLiveMapStore } from '../stores/useVehicleLiveMapStore';
 
-const GPS_POLL_MS = 5_000;
-const DASHBOARD_POLL_MS = 30_000;
 const MAX_HISTORY = 10;
 const JITTER_THRESHOLD_M = 8;
 
+export interface LiveVehicleTelemetryOptions {
+  vehicleId: string | null;
+  orgId: string;
+  gates: VehicleDetailPollingGates;
+}
+
 /**
- * Adaptive live-telemetry hook for the Vehicle Detail Overview tab.
+ * Demand-driven live telemetry for the Vehicle Detail Page.
  *
- * Two independent polling cycles:
- *  1. GPS cycle: every 5s → /live-gps (direct DIMO proxy, no DB)
- *     Only runs when isLiveTracking is true.
- *  2. Dashboard cycle: every 30s → /telemetry (full snapshot from DB)
- *     Always runs to keep fuel, EV SoC (`battery`), ignition, etc. current.
- *
- * When not live tracking, GPS comes from the dashboard cycle (30s).
- *
- * Store updates are scoped to the active vehicleId/orgId binding so stale
- * responses from a previous vehicle cannot leak into the UI.
+ * - GPS (5s): only when `gates.gpsHighFrequency` and backend `isLiveTracking`.
+ * - Dashboard: interval from `gates.dashboardIntervalMs` while `gates.dashboardTelemetry`.
+ * - Timers are cleared when gates close, on vehicle change, or unmount.
  */
-export function useLiveVehicleTelemetry(
-  vehicleId: string | null,
-  orgId: string,
-): void {
+export function useLiveVehicleTelemetry({
+  vehicleId,
+  orgId,
+  gates,
+}: LiveVehicleTelemetryOptions): void {
   const lastTargetRef = useRef<[number, number] | null>(null);
   const locationHistoryRef = useRef<Array<[number, number]>>([]);
   const liveRef = useRef(false);
+  const [trackingLive, setTrackingLive] = useState(false);
   const gpsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelledRef = useRef(false);
   const sessionVehicleIdRef = useRef<string | null>(null);
   const sessionOrgIdRef = useRef<string | null>(null);
+  const gatesRef = useRef(gates);
+  gatesRef.current = gates;
+
+  const gpsLoopIdRef = useRef(0);
+  const dashLoopIdRef = useRef(0);
+
+  const clearTimers = useCallback(() => {
+    dashLoopIdRef.current += 1;
+    gpsLoopIdRef.current += 1;
+    if (gpsTimerRef.current) {
+      clearTimeout(gpsTimerRef.current);
+      gpsTimerRef.current = null;
+    }
+    if (dashTimerRef.current) {
+      clearTimeout(dashTimerRef.current);
+      dashTimerRef.current = null;
+    }
+  }, []);
 
   const applyGpsPoint = useCallback(
     (
@@ -105,10 +127,23 @@ export function useLiveVehicleTelemetry(
     [],
   );
 
+  const recordAccessBlock = useCallback((err: unknown) => {
+    const reason = classifyTelemetryAccessError(err);
+    if (reason) {
+      useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(reason);
+    }
+  }, []);
+
+  const clearAccessBlock = useCallback(() => {
+    useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
+  }, []);
+
   const fetchGps = useCallback(
     async (boundVehicleId: string, boundOrgId: string) => {
+      if (!gatesRef.current.gpsHighFrequency) return;
       try {
         const data = await api.vehicles.liveGps(boundOrgId, boundVehicleId);
+        clearAccessBlock();
         const store = useVehicleLiveMapStore.getState();
         if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
           return;
@@ -146,15 +181,16 @@ export function useLiveVehicleTelemetry(
                 : 'OFFLINE',
           });
         }
-      } catch {
-        // Keep previous position on GPS-only errors.
+      } catch (err) {
+        recordAccessBlock(err);
       }
     },
-    [applyGpsPoint],
+    [applyGpsPoint, clearAccessBlock, recordAccessBlock],
   );
 
   const fetchDashboard = useCallback(
     async (boundVehicleId: string, boundOrgId: string) => {
+      if (!gatesRef.current.dashboardTelemetry) return;
       try {
         const data = (await api.vehicles.telemetry(boundOrgId, boundVehicleId)) as {
           latitude?: number | null;
@@ -183,6 +219,8 @@ export function useLiveVehicleTelemetry(
           [k: string]: unknown;
         };
 
+        clearAccessBlock();
+
         const store = useVehicleLiveMapStore.getState();
         if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
           return;
@@ -194,12 +232,6 @@ export function useLiveVehicleTelemetry(
         const backendLive = data.isLiveTracking === true;
         const ignitionOn =
           rawIgnition === true || (rawIgnition == null && speed != null && speed > 0);
-        const onlineStatus: OnlineStatus =
-          data.onlineStatus === 'ONLINE' ||
-          data.onlineStatus === 'STANDBY' ||
-          data.onlineStatus === 'OFFLINE'
-            ? data.onlineStatus
-            : 'OFFLINE';
         const displayState: VehicleStateLabel =
           data.displayState === 'MOVING' ||
           data.displayState === 'IDLE' ||
@@ -225,6 +257,7 @@ export function useLiveVehicleTelemetry(
           typeof data.heading === 'number' ? data.heading : undefined,
         );
         liveRef.current = backendLive;
+        setTrackingLive(backendLive);
 
         const displayTime = resolveTelemetryDisplayTime({
           measuredAt: data.measuredAt ?? null,
@@ -281,6 +314,7 @@ export function useLiveVehicleTelemetry(
           }
         }
       } catch (error) {
+        recordAccessBlock(error);
         const store = useVehicleLiveMapStore.getState();
         if (store.boundVehicleId !== boundVehicleId || store.boundOrgId !== boundOrgId) {
           return;
@@ -292,7 +326,7 @@ export function useLiveVehicleTelemetry(
         });
       }
     },
-    [applyGpsPoint],
+    [applyGpsPoint, clearAccessBlock, recordAccessBlock],
   );
 
   useEffect(() => {
@@ -302,66 +336,97 @@ export function useLiveVehicleTelemetry(
       lastTargetRef.current = null;
       locationHistoryRef.current = [];
       liveRef.current = false;
+      setTrackingLive(false);
+      clearTimers();
       useVehicleLiveMapStore.getState().unbind();
+      useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
       return;
     }
 
-    cancelledRef.current = false;
     sessionVehicleIdRef.current = vehicleId;
     sessionOrgIdRef.current = orgId;
     lastTargetRef.current = null;
     locationHistoryRef.current = [];
     liveRef.current = false;
+    setTrackingLive(false);
+    clearTimers();
+    useVehicleDetailPollingStore.getState().setTelemetryAccessBlock(null);
     useVehicleLiveMapStore.getState().bindToVehicle(vehicleId, orgId);
+  }, [vehicleId, orgId, clearTimers]);
 
-    const scheduleDash = () => {
-      if (cancelledRef.current) return;
-      dashTimerRef.current = setTimeout(async () => {
-        if (cancelledRef.current) return;
-        const vid = sessionVehicleIdRef.current;
-        const oid = sessionOrgIdRef.current;
-        if (!vid || !oid) return;
-        await fetchDashboard(vid, oid);
-        scheduleDash();
-      }, DASHBOARD_POLL_MS);
-    };
-
-    const scheduleGps = () => {
-      if (cancelledRef.current) return;
-      gpsTimerRef.current = setTimeout(async () => {
-        if (cancelledRef.current) return;
-        const vid = sessionVehicleIdRef.current;
-        const oid = sessionOrgIdRef.current;
-        if (!vid || !oid) return;
-        if (liveRef.current) {
-          await fetchGps(vid, oid);
-        }
-        scheduleGps();
-      }, GPS_POLL_MS);
-    };
-
-    fetchDashboard(vehicleId, orgId).then(() => {
-      if (cancelledRef.current) return;
-      scheduleDash();
-      if (liveRef.current) {
-        fetchGps(vehicleId, orgId).then(() => {
-          if (!cancelledRef.current) scheduleGps();
-        });
-      } else {
-        scheduleGps();
+  useEffect(() => {
+    if (!vehicleId || !orgId || !gates.dashboardTelemetry) {
+      if (dashTimerRef.current) {
+        clearTimeout(dashTimerRef.current);
+        dashTimerRef.current = null;
       }
-    });
+      dashLoopIdRef.current += 1;
+      return;
+    }
+
+    const loopId = dashLoopIdRef.current + 1;
+    dashLoopIdRef.current = loopId;
+
+    const runDashboardLoop = async () => {
+      if (loopId !== dashLoopIdRef.current) return;
+      await fetchDashboard(vehicleId, orgId);
+      if (loopId !== dashLoopIdRef.current || !gatesRef.current.dashboardTelemetry) return;
+
+      dashTimerRef.current = setTimeout(() => {
+        void runDashboardLoop();
+      }, gatesRef.current.dashboardIntervalMs);
+    };
+
+    void runDashboardLoop();
 
     return () => {
-      cancelledRef.current = true;
-      if (gpsTimerRef.current) {
-        clearTimeout(gpsTimerRef.current);
-        gpsTimerRef.current = null;
-      }
+      dashLoopIdRef.current += 1;
       if (dashTimerRef.current) {
         clearTimeout(dashTimerRef.current);
         dashTimerRef.current = null;
       }
     };
-  }, [vehicleId, orgId, fetchDashboard, fetchGps]);
+  }, [
+    vehicleId,
+    orgId,
+    gates.dashboardTelemetry,
+    gates.dashboardIntervalMs,
+    fetchDashboard,
+  ]);
+
+  useEffect(() => {
+    if (!vehicleId || !orgId || !gates.gpsHighFrequency || !trackingLive) {
+      gpsLoopIdRef.current += 1;
+      if (gpsTimerRef.current) {
+        clearTimeout(gpsTimerRef.current);
+        gpsTimerRef.current = null;
+      }
+      return;
+    }
+    if (gpsTimerRef.current) return;
+
+    const gpsLoopId = gpsLoopIdRef.current + 1;
+    gpsLoopIdRef.current = gpsLoopId;
+
+    const runGps = async () => {
+      if (gpsLoopId !== gpsLoopIdRef.current || !liveRef.current) return;
+      await fetchGps(vehicleId, orgId);
+      if (gpsLoopId !== gpsLoopIdRef.current) return;
+      gpsTimerRef.current = setTimeout(() => {
+        void runGps();
+      }, VEHICLE_DETAIL_POLLING.GPS_MS);
+    };
+
+    void runGps();
+
+    return () => {
+      gpsLoopIdRef.current += 1;
+      if (gpsTimerRef.current) {
+        clearTimeout(gpsTimerRef.current);
+        gpsTimerRef.current = null;
+      }
+    };
+  }, [vehicleId, orgId, gates.gpsHighFrequency, trackingLive, fetchGps]);
 }
+
+export { VEHICLE_DETAIL_POLLING };

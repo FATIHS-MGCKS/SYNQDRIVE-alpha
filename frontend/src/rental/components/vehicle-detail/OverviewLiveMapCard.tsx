@@ -1,10 +1,12 @@
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
 import { cn } from '../../../components/ui/utils';
+import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { LiveMapOverview } from '../LiveMapOverview';
 import type { VehicleData } from '../../data/vehicles';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
+import { useVehicleDetailPollingStore } from '../../stores/useVehicleDetailPollingStore';
 import {
   deriveOverviewMapPosition,
   type OverviewMapPositionMode,
@@ -49,6 +51,26 @@ export function OverviewLiveMapCard({
   orgId,
   isDarkMode,
 }: OverviewLiveMapCardProps) {
+  const mapSurfaceRef = useRef<HTMLDivElement>(null);
+  const setOverviewMapVisible = useVehicleDetailPollingStore((s) => s.setOverviewMapVisible);
+
+  useEffect(() => {
+    const el = mapSurfaceRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setOverviewMapVisible(Boolean(entry?.isIntersecting && entry.intersectionRatio > 0));
+      },
+      { threshold: [0, 0.1, 0.25] },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      setOverviewMapVisible(false);
+    };
+  }, [setOverviewMapVisible]);
+
   const liveTelemetry = useVehicleLiveMapStore(
     useShallow((state) => ({
       boundVehicleId: state.boundVehicleId,
@@ -132,7 +154,7 @@ export function OverviewLiveMapCard({
   const odometerCompact = odometerValue.length > 6;
 
   return (
-    <div className="surface-premium rounded-xl p-3">
+    <div className="surface-premium rounded-xl p-3" ref={mapSurfaceRef}>
       <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300 synq-map-hud-surface">
         <LiveMapOverview
           key={vehicleId ?? 'no-vehicle'}

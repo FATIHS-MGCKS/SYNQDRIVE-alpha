@@ -82,6 +82,9 @@ import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
+import { useDocumentVisible, useNetworkOnline } from './hooks/useBrowserTabSignals';
+import { resolveVehicleDetailPollingGates } from './lib/vehicle-detail-polling-policy';
+import { useVehicleDetailPollingStore } from './stores/useVehicleDetailPollingStore';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { pushDocumentIntakeEntry, type DocumentIntakeEntryState } from './lib/document-intake-entry';
@@ -127,11 +130,45 @@ const VEHICLE_DETAIL_VIEWS = new Set<string>([
 function VehicleLiveTelemetryBinder({
   vehicleId,
   orgId,
+  isOverviewTab,
+  canReadFleet,
 }: {
   vehicleId: string | null;
   orgId: string;
+  isOverviewTab: boolean;
+  canReadFleet: boolean;
 }) {
-  useLiveVehicleTelemetry(vehicleId, orgId);
+  const isDocumentVisible = useDocumentVisible();
+  const isOnline = useNetworkOnline();
+  const isOverviewMapVisible = useVehicleDetailPollingStore((s) => s.overviewMapVisible);
+  const accessBlockReason = useVehicleDetailPollingStore((s) => s.telemetryAccessBlock);
+
+  const gates = useMemo(
+    () =>
+      resolveVehicleDetailPollingGates({
+        vehicleId,
+        orgId,
+        isVehicleDetailOpen: Boolean(vehicleId),
+        isOverviewTab,
+        isOverviewMapVisible,
+        isDocumentVisible,
+        isOnline,
+        canReadFleet,
+        accessBlockReason,
+      }),
+    [
+      vehicleId,
+      orgId,
+      isOverviewTab,
+      isOverviewMapVisible,
+      isDocumentVisible,
+      isOnline,
+      canReadFleet,
+      accessBlockReason,
+    ],
+  );
+
+  useLiveVehicleTelemetry({ vehicleId, orgId, gates });
   return null;
 }
 
@@ -324,6 +361,7 @@ function RentalAppContent() {
   const [vehicleStatusBusy, setVehicleStatusBusy] = useState(false);
   const canEditVehicleOperationalStatus = hasPermission('fleet', 'write');
   const canEditCleaningStatus = hasPermission('fleet', 'write');
+  const canReadFleetTelemetry = hasPermission('fleet', 'read');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const overviewSummaryEnabled = currentView === 'overview' && Boolean(selectedVehicle?.id);
@@ -883,7 +921,12 @@ function RentalAppContent() {
       />
       )}
     >
-      <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
+      <VehicleLiveTelemetryBinder
+        vehicleId={liveTelemetryVehicleId}
+        orgId={orgId}
+        isOverviewTab={currentView === 'overview'}
+        canReadFleet={canReadFleetTelemetry}
+      />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
             <TopBar
               onViewChange={handleViewChange}
