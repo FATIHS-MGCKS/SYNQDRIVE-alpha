@@ -20,7 +20,6 @@ import {
   buildSummaryMetadata,
   buildVehicleAvailabilitySummary,
   computeOverallStatus,
-  deriveStrengthsAndWeaknesses,
   sectionStatusFromResult,
   unwrapSectionResult,
   wrapSection,
@@ -34,7 +33,9 @@ import {
 } from '@synq/evaluations-insights/evaluations-utilization-model';
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
+import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import type { EvaluationsStrengthDetectionSummary } from '@synq/evaluations-insights/evaluations-strength-detection.contract';
+import type { EvaluationsWeaknessDetectionSummary } from '@synq/evaluations-insights/evaluations-weakness-detection.contract';
 import type { EvaluationsSectionEnvelope } from '@synq/evaluations-insights/evaluations-analytics-primitives.contract';
 
 @Injectable()
@@ -46,6 +47,7 @@ export class EvaluationsAnalyticsSummaryService {
     private readonly insightsAnalytics: DashboardInsightsAnalyticsService,
     private readonly utilizationSnapshot: EvaluationsUtilizationSnapshotService,
     private readonly strengthDetection: EvaluationsStrengthDetectionService,
+    private readonly weaknessDetection: EvaluationsWeaknessDetectionService,
   ) {}
 
   async getSummary(
@@ -111,16 +113,6 @@ export class EvaluationsAnalyticsSummaryService {
         ? buildExecutiveKpis(financial, bookings, fleet, activeRisks)
         : null;
 
-    const weaknesses =
-      financial && fleet && activeRisks && fleetUtilization
-        ? deriveStrengthsAndWeaknesses({
-            financial,
-            fleet,
-            risks: activeRisks,
-            fleetUtilization,
-          }).weaknesses
-        : [];
-
     const loaderSectionDefs: Array<{ key: string; status: EvaluationsSectionStatus }> = [
       { key: 'executive', status: executive ? 'OK' : sectionStatusFromResult(financialResult) },
       { key: 'financial', status: sectionStatusFromResult(financialResult) },
@@ -176,7 +168,26 @@ export class EvaluationsAnalyticsSummaryService {
       dataQuality,
     });
     const strengthStatus = this.strengthDetection.sectionStatus(strengthSummary);
-    const weaknessStatus: EvaluationsSectionStatus = executive ? 'OK' : 'PARTIAL';
+    const weaknessSummary = this.weaknessDetection.detect({
+      period: periodWindow,
+      comparisonPeriod: {
+        key: resolved.comparisonPeriod.key,
+        label: `Previous ${resolved.comparisonPeriod.key}`,
+        from: resolved.comparisonPeriod.from,
+        to: resolved.comparisonPeriod.to,
+        timezone: resolved.comparisonPeriod.timezone,
+      },
+      financial,
+      fleet,
+      costModelSummary,
+      costModelSnapshot,
+      utilizationModelSummary,
+      utilizationSnapshot,
+      activeRisks,
+      affectedEntities,
+      dataQuality,
+    });
+    const weaknessStatus = this.weaknessDetection.sectionStatus(weaknessSummary);
 
     const sectionDefs: Array<{ key: string; status: EvaluationsSectionStatus }> = [
       ...loaderSectionDefs,
@@ -269,7 +280,7 @@ export class EvaluationsAnalyticsSummaryService {
         insightsResult.ok ? null : insightsResult.error,
       ),
       strengths: wrapSection(strengthSummary, strengthStatus, generatedAt),
-      weaknesses: wrapSection(weaknesses, weaknessStatus, generatedAt),
+      weaknesses: wrapSection(weaknessSummary, weaknessStatus, generatedAt),
       dataQuality: wrapSection(dataQuality, dataQuality.overallStatus, generatedAt),
       insights: wrapSection(
         insights
@@ -311,6 +322,28 @@ export class EvaluationsAnalyticsSummaryService {
       comparisonPeriod: summary.comparisonPeriod,
       appliedFilters: summary.appliedFilters,
       strengths: summary.strengths,
+    };
+  }
+
+  async getWeaknessDetection(
+    organizationId: string,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+  ): Promise<{
+    organizationId: string;
+    generatedAt: string;
+    period: EvaluationsWeaknessDetectionSummary['period'];
+    comparisonPeriod: EvaluationsWeaknessDetectionSummary['comparisonPeriod'];
+    appliedFilters: ReturnType<typeof toAppliedFilters>;
+    weaknesses: EvaluationsSectionEnvelope<EvaluationsWeaknessDetectionSummary>;
+  }> {
+    const summary = await this.getSummary(organizationId, resolved);
+    return {
+      organizationId: summary.organizationId,
+      generatedAt: summary.generatedAt,
+      period: summary.period,
+      comparisonPeriod: summary.comparisonPeriod,
+      appliedFilters: summary.appliedFilters,
+      weaknesses: summary.weaknesses,
     };
   }
 

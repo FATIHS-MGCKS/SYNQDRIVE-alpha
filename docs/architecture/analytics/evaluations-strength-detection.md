@@ -106,7 +106,7 @@ Covered in `evaluations-strength-detection.spec.ts`:
 | Limit | Reason |
 |-------|--------|
 | Org targets not persisted | Uses `DEFAULT_STRENGTH_ORG_TARGETS` constants until org goal storage exists |
-| `weaknesses` unchanged | Still uses legacy `deriveStrengthsAndWeaknesses` highlight cards |
+| `weaknesses` unchanged | Now uses rich `EvaluationsWeaknessDetectionSummary` (was legacy highlight cards in Prompt 23) |
 | No person rankings | By design — fleet/org/station/class dimensions only |
 | `GOOD_DATA_QUALITY` excludes strengths/weaknesses from partial count | Avoids circular dependency during detection |
 | Zero damage costs | `LOW_DAMAGE_RATE` may fire with LOW confidence when no repair records exist |

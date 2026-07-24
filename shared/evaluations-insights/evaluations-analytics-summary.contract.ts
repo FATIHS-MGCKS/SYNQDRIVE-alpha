@@ -14,6 +14,7 @@ import type {
 import type { EvaluationsCostModelSummary } from './evaluations-cost-model.contract';
 import type { EvaluationsUtilizationModelSummary } from './evaluations-utilization-model.contract';
 import type { EvaluationsStrengthDetectionSummary } from './evaluations-strength-detection.contract';
+import type { EvaluationsWeaknessDetectionSummary } from './evaluations-weakness-detection.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
@@ -107,6 +108,7 @@ export interface EvaluationsCostsSummary {
 export interface EvaluationsActiveRisksSummary {
   businessRiskGroups: number;
   revenueLeakageGroups: number;
+  complianceInsightGroups: number;
   criticalInsights: number;
   criticalBookings: number;
   estimatedExposureMinor: number;
@@ -152,7 +154,7 @@ export interface EvaluationsAnalyticsSummaryResponse {
   activeRisks: EvaluationsSectionEnvelope<EvaluationsActiveRisksSummary>;
   affectedEntities: EvaluationsSectionEnvelope<InsightEntityCountSummary>;
   strengths: EvaluationsSectionEnvelope<EvaluationsStrengthDetectionSummary>;
-  weaknesses: EvaluationsSectionEnvelope<EvaluationsHighlightItem[]>;
+  weaknesses: EvaluationsSectionEnvelope<EvaluationsWeaknessDetectionSummary>;
   dataQuality: EvaluationsSectionEnvelope<EvaluationsDataQualitySummary>;
   insights: EvaluationsSectionEnvelope<Pick<InsightAnalyticsSummary, 'hasRun' | 'lastRunAt' | 'stale' | 'error'>>;
   metadata: {
@@ -172,6 +174,15 @@ export interface EvaluationsStrengthDetectionResponse {
   comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
   appliedFilters: EvaluationsAnalyticsSummaryFilters;
   strengths: EvaluationsSectionEnvelope<EvaluationsStrengthDetectionSummary>;
+}
+
+export interface EvaluationsWeaknessDetectionResponse {
+  organizationId: string;
+  generatedAt: string;
+  period: EvaluationsAnalyticsPeriodWindow;
+  comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
+  appliedFilters: EvaluationsAnalyticsSummaryFilters;
+  weaknesses: EvaluationsSectionEnvelope<EvaluationsWeaknessDetectionSummary>;
 }
 
 export interface EvaluationsAnalyticsSummaryQuery {

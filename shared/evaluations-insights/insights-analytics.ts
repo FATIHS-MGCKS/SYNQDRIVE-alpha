@@ -150,14 +150,22 @@ export function computeInsightAnalyticsSummaryCounts(
 
   let businessRisks = 0;
   let revenueLeakage = 0;
+  let complianceRisks = 0;
   let criticalInsights = 0;
   let recommended = 0;
   const bySeverity = { critical: 0, warning: 0, opportunity: 0, info: 0 };
+
+  const COMPLIANCE_TYPES = new Set<string>([
+    'TUV_OVERDUE',
+    'BOKRAFT_OVERDUE',
+    'HM_SERVICE_NO_TRACKING',
+  ]);
 
   for (const insight of visible) {
     const cat = resolveInsightAnalyticsCategory(insight);
     if (cat === 'BUSINESS_RISK') businessRisks += 1;
     if (cat === 'REVENUE_LEAKAGE') revenueLeakage += 1;
+    if (COMPLIANCE_TYPES.has(insight.type)) complianceRisks += 1;
     if (insight.severity === 'CRITICAL') criticalInsights += 1;
     if (insight.severity === 'CRITICAL' || insight.severity === 'WARNING') {
       recommended += 1;
@@ -188,6 +196,7 @@ export function computeInsightAnalyticsSummaryCounts(
     totalVisible: visible.length,
     businessRisks,
     revenueLeakage,
+    complianceRisks,
     criticalInsights,
     criticalBookings: entities.criticalBookings,
     criticalBusinessRisks: entities.criticalBookings,

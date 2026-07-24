@@ -44,6 +44,7 @@ export function validateInsightAnalyticsSummary(
       'totalVisible',
       'businessRisks',
       'revenueLeakage',
+      'complianceRisks',
       'criticalInsights',
       'criticalBookings',
     ] as const) {
@@ -170,6 +171,9 @@ export function validateEvaluationsAnalyticsSummaryResponse(
     if (sectionKey === 'strengths' && section.data != null) {
       validateStrengthDetectionSummary(section.data, `${sectionKey}.data`, issues);
     }
+    if (sectionKey === 'weaknesses' && section.data != null) {
+      validateWeaknessDetectionSummary(section.data, `${sectionKey}.data`, issues);
+    }
   }
   if (!isRecord(value.metadata) || !isNumber(value.metadata.generationDurationMs)) {
     push(issues, 'metadata.generationDurationMs', 'Required number');
@@ -237,6 +241,60 @@ function validateStrengthDetectionSummary(
   if (!isRecord(value.comparisonPeriod) || !isString(value.comparisonPeriod.from)) {
     push(issues, `${path}.comparisonPeriod`, 'Invalid comparison period');
   }
+}
+
+function validateWeaknessDetectionSummary(
+  value: unknown,
+  path: string,
+  issues: ContractValidationIssue[],
+): void {
+  if (!isRecord(value)) {
+    push(issues, path, 'Expected weakness detection summary object');
+    return;
+  }
+  if (!isString(value.calculationVersion)) {
+    push(issues, `${path}.calculationVersion`, 'Required string');
+  }
+  if (!isNumber(value.rulesEvaluated)) {
+    push(issues, `${path}.rulesEvaluated`, 'Required number');
+  }
+  if (!Array.isArray(value.weaknesses)) {
+    push(issues, `${path}.weaknesses`, 'Required array');
+  } else {
+    value.weaknesses.forEach((item, index) => {
+      if (!isRecord(item) || !isString(item.id) || !isString(item.title)) {
+        push(issues, `${path}.weaknesses[${index}]`, 'Invalid detected weakness');
+      }
+    });
+  }
+  if (!Array.isArray(value.rulesSuppressed)) {
+    push(issues, `${path}.rulesSuppressed`, 'Required array');
+  }
+  if (!Array.isArray(value.highlights)) {
+    push(issues, `${path}.highlights`, 'Required array');
+  }
+}
+
+export function validateEvaluationsWeaknessDetectionResponse(
+  value: unknown,
+): { ok: true; data: import('./evaluations-analytics-summary.contract').EvaluationsWeaknessDetectionResponse } | { ok: false; issues: ContractValidationIssue[] } {
+  const issues: ContractValidationIssue[] = [];
+  if (!isRecord(value)) {
+    return { ok: false, issues: [{ path: '', message: 'Expected object' }] };
+  }
+  for (const key of ['organizationId', 'generatedAt'] as const) {
+    if (!isString(value[key])) push(issues, key, 'Required string');
+  }
+  if (!isRecord(value.weaknesses)) {
+    push(issues, 'weaknesses', 'Required section envelope');
+  } else if (value.weaknesses.data != null) {
+    validateWeaknessDetectionSummary(value.weaknesses.data, 'weaknesses.data', issues);
+  }
+  if (issues.length > 0) return { ok: false, issues };
+  return {
+    ok: true,
+    data: value as unknown as import('./evaluations-analytics-summary.contract').EvaluationsWeaknessDetectionResponse,
+  };
 }
 
 export function validateEvaluationsStrengthDetectionResponse(

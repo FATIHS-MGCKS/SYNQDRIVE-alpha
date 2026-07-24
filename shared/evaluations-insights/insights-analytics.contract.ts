@@ -53,6 +53,8 @@ export interface InsightAnalyticsSummaryCounts {
   totalVisible: number;
   businessRisks: number;
   revenueLeakage: number;
+  /** TÜV/BOKraft/HM compliance-related insight groups. */
+  complianceRisks: number;
   criticalInsights: number;
   /** Unique CRITICAL booking entities — not insight groups. */
   criticalBookings: number;

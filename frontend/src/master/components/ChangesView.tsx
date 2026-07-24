@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-weakness-detection-v49822-2026-07-24',
+    version: 'V4.9.822',
+    title: 'V4.9.822 — Unternehmensschwächen & Verbesserungspotenziale (Prompt 24/54)',
+    summary: [
+      'Neue `weaknesses`-Section: 13 regelbasierte Schwächen mit Kategorie, Severity, KPIs, Abweichung, Confidence und empfohlener Folgeanalyse.',
+      'Deduplizierung und Priorisierung (Severity + finanzielle Auswirkung); OBSERVATION/ESTIMATE/FORECAST klar gekennzeichnet.',
+      'Datenqualitätsprobleme als `POOR_DATA_QUALITY` — nicht als fiktive Umsatz-/Auslastungsverschlechterung.',
+      'Dedicated API: `GET …/evaluations/analytics/weaknesses`; `complianceRisks` in Insight-Counts.',
+      'Shared: `evaluations-weakness-detection.*`; Backend `EvaluationsWeaknessDetectionService`.',
+      'Doku: `docs/architecture/analytics/evaluations-weakness-detection.md`.',
+    ],
+    reason:
+      'Prompt 24/54 — Nachvollziehbare Erkennung von Unternehmensschwächen ohne Doppelzählung und ohne Datenfehler als Geschäftsverschlechterung.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T23:30:00.000Z',
+  },
+  {
     id: 'evaluations-strength-detection-v49821-2026-07-24',
     version: 'V4.9.821',
     title: 'V4.9.821 — Regelbasierte Unternehmensstärken Auswertungen (Prompt 23/54)',

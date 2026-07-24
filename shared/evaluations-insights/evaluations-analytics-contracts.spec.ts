@@ -20,6 +20,7 @@ describe('evaluations-analytics-contract-validation', () => {
         totalVisible: 3,
         businessRisks: 2,
         revenueLeakage: 1,
+        complianceRisks: 0,
         criticalInsights: 1,
         criticalBookings: 0,
         criticalBusinessRisks: 0,

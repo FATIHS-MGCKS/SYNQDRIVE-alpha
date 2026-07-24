@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
+import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -116,6 +117,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
         totalVisible: 5,
         businessRisks: 2,
         revenueLeakage: 1,
+        complianceRisks: 0,
         criticalInsights: 1,
         criticalBookings: 1,
         criticalBusinessRisks: 1,
@@ -194,6 +196,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
       providers: [
         EvaluationsAnalyticsSummaryService,
         EvaluationsStrengthDetectionService,
+        EvaluationsWeaknessDetectionService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
         { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },
@@ -217,6 +220,8 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     expect(result.strengths.data?.calculationVersion).toBe('strength-detection-v1');
     expect(result.strengths.data?.strengths.length).toBeGreaterThan(0);
     expect(result.strengths.data?.highlights.length).toBeGreaterThan(0);
+    expect(result.weaknesses.data?.calculationVersion).toBe('weakness-detection-v1');
+    expect(result.weaknesses.data?.weaknesses.length).toBeGreaterThan(0);
   });
 
   it('passes resolved filters to repository loaders', async () => {

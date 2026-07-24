@@ -12,6 +12,7 @@ import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-s
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
+import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { BusinessInsightsScheduler } from './business-insights-scheduler.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
@@ -65,6 +66,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     EvaluationsAnalyticsSummaryService,
     EvaluationsUtilizationSnapshotService,
     EvaluationsStrengthDetectionService,
+    EvaluationsWeaknessDetectionService,
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,

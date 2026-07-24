@@ -5,6 +5,7 @@ import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsStrengthDetectionService } from './evaluations-strength-detection.service';
+import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -143,6 +144,7 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
           totalVisible: insightGroups,
           businessRisks: 18,
           revenueLeakage: 6,
+          complianceRisks: 2,
           criticalInsights: 4,
           criticalBookings: 3,
           criticalBusinessRisks: 3,
@@ -223,6 +225,7 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
       providers: [
         EvaluationsAnalyticsSummaryService,
         EvaluationsStrengthDetectionService,
+        EvaluationsWeaknessDetectionService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
         { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },

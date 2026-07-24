@@ -8,7 +8,7 @@ import {
   EvaluationsAnalyticsSummaryQueryDto,
   normalizeAnalyticsFilterQuery,
 } from './dto/evaluations-analytics-filters.dto';
-import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsStrengthDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
+import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsStrengthDetectionResponseDto, EvaluationsWeaknessDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
 
 @ApiTags('Evaluations Analytics')
 @Controller('organizations/:orgId/evaluations/analytics')
@@ -61,5 +61,27 @@ export class EvaluationsAnalyticsController {
       { allowDataQualitySectionFilters: true },
     );
     return this.summaryService.getStrengthDetection(orgId, resolved);
+  }
+
+  @Get('weaknesses')
+  @ApiOperation({
+    summary: 'Rule-based organizational weakness detection for Auswertungen',
+    description:
+      'Detects traceable Unternehmensschwächen and improvement potentials with severity, deduplication, and financial impact labeling.',
+  })
+  @ApiParam({ name: 'orgId', description: 'Organization ID' })
+  @ApiOkResponse({ type: EvaluationsWeaknessDetectionResponseDto })
+  async getWeaknessDetection(
+    @Param('orgId') orgId: string,
+    @Query() query: EvaluationsAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+      { allowDataQualitySectionFilters: true },
+    );
+    return this.summaryService.getWeaknessDetection(orgId, resolved);
   }
 }

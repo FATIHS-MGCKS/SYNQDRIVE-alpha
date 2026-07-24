@@ -191,6 +191,7 @@ export function buildActiveRisksSummary(
   return {
     businessRiskGroups: insightSummary.counts.businessRisks,
     revenueLeakageGroups: insightSummary.counts.revenueLeakage,
+    complianceInsightGroups: insightSummary.counts.complianceRisks,
     criticalInsights: insightSummary.counts.criticalInsights,
     criticalBookings: insightSummary.counts.criticalBookings,
     estimatedExposureMinor: insightSummary.estimatedFinancialExposureMinor,

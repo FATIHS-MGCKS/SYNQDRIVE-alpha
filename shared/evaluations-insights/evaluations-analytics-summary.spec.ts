@@ -86,6 +86,7 @@ describe('evaluations-analytics-summary (shared)', () => {
       risks: {
         businessRiskGroups: 2,
         revenueLeakageGroups: 1,
+        complianceInsightGroups: 0,
         criticalInsights: 3,
         criticalBookings: 1,
         estimatedExposureMinor: 50_000,
@@ -128,6 +129,7 @@ describe('evaluations-analytics-summary (shared)', () => {
     const executive = buildExecutiveKpis(financial, bookings, fleet, {
       businessRiskGroups: 1,
       revenueLeakageGroups: 0,
+      complianceInsightGroups: 0,
       criticalInsights: 2,
       criticalBookings: 1,
       estimatedExposureMinor: 10_000,
