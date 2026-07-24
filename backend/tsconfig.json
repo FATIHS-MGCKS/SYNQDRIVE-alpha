@@ -21,7 +21,8 @@
       "@shared/*": ["src/shared/*"],
       "@modules/*": ["src/modules/*"],
       "@workers/*": ["src/workers/*"],
-      "@config/*": ["src/config/*"]
+      "@config/*": ["src/config/*"],
+      "@synq/evaluations-insights/*": ["../shared/evaluations-insights/*"]
     }
   }
 }
