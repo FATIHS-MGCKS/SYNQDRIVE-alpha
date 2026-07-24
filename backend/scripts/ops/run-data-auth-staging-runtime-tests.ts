@@ -11,7 +11,7 @@ import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { NestFactory } from '@nestjs/core';
 import { PrismaClient } from '@prisma/client';
-import { PrismaService } from '../../src/shared/database/prisma.service';
+import { PrismaService } from '@shared/database/prisma.service';
 import { AppModule } from '../../src/app.module';
 import {
   AUTHORIZATION_DECISION_ACTION,
@@ -73,10 +73,11 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, {
     logger: ['error', 'warn'],
   });
-  const prisma = app.get(PrismaService) as unknown as PrismaClient;
+  const prisma = app.get(PrismaService);
   const decisionService = app.get(AuthorizationDecisionService);
   const coverageRegistry = app.get(EnforcementCoverageRegistryService);
   const workerHealth = app.get(WorkerRuntimeHealthService);
