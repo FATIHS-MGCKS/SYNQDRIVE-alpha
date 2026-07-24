@@ -854,7 +854,28 @@ cd frontend && npm test -- --run connectivity-cross-surface-regression
 | `backend/src/modules/whatsapp/whatsapp-ai-tools.service.ts` | Referenz-Tool-Muster |
 | `backend/src/modules/voice-mcp-gateway/voice-mcp-tools.registry.ts` | Referenz-Tool-Registry |
 | `architecture/DTC_KNOWLEDGE_BASE_2026-06-13.md` | Knowledge-Base-Muster (DTC) |
+| `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` | AI Evidence Model (Prompt 5) |
+| `backend/src/modules/ai/evidence/` | Evidence types, validation, DTOs, factories |
 
 ---
 
-**Changes / Architektur aktualisiert:** Nein — reiner Ist-Audit und Baseline-Dokumentation in `docs/audits/` only. Produktive Architektur- und Changes-Einträge folgen mit Implementierung ab Prompt 5.
+## Prompt 5 — AI Evidence Model (2026-07-24)
+
+**Implementiert:** Zentrales typsicheres `AiEvidence`-Modell unter `backend/src/modules/ai/evidence/`.
+
+| Komponente | Pfad |
+|------------|------|
+| Enums | `ai-evidence.enums.ts` — Source, Freshness, Availability, Confidence, Sensitivity, ReasonCode, FactKind |
+| Core type | `ai-evidence.types.ts` — `AiEvidence`, `AiEvidenceValue` (JSON-safe, kein `any`) |
+| Validation | `ai-evidence.validation.ts` — Tenant-Pflicht, Fact-Kind-Timestamps, stale/unavailable/permission_denied |
+| DTO / OpenAPI | `ai-evidence.dto.ts` — class-validator + `@ApiProperty` |
+| LLM serialization | `ai-evidence.serialization.ts` — PII-Redaktion |
+| Factories | `ai-evidence.factory.ts` — observed / calculated / static / unavailable / permission_denied |
+
+**Tests:** 17/17 PASS (`ai-evidence.validation.spec.ts`) — gültige Evidence, fehlende Tenant-ID, unavailable, stale, permission_denied, inkonsistente Zeitstempel, Sensitivity/PII.
+
+**Bewusst nicht in Scope:** Standort-, Health- und Booking-Tools (folgen in späteren Prompts).
+
+---
+
+**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md`; Audit-Ergänzung Prompt 5 oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.
