@@ -22,8 +22,7 @@
       "@modules/*": ["src/modules/*"],
       "@workers/*": ["src/workers/*"],
       "@config/*": ["src/config/*"],
-      "@synq/evaluations-metrics/*": ["../shared/evaluations-metrics/*"]
+      "@synq/evaluations-metrics/*": ["src/synq/evaluations-metrics/*"]
     }
-  },
-  "include": ["src", "../shared/evaluations-metrics/**/*.ts"]
+  }
 }
