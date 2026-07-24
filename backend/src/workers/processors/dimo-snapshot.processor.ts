@@ -41,6 +41,8 @@ import {
   hashProviderDeviceId,
 } from '../../modules/dimo/device-connection-episode.service';
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
+import { WorkerRevocationCheckpointService } from '@modules/data-authorizations/revocation-queue-control/worker-revocation-checkpoint.service';
+import { REVOCATION_CHECKPOINT } from '@modules/data-authorizations/revocation-queue-control/revocation-queue-control.constants';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -80,6 +82,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly resolutionOutboxProcessor?: DeviceConnectionEpisodeResolutionOutboxProcessorService,
     @Optional()
     private readonly ingestGate?: TelemetryIngestionEnforcementService,
+    @Optional()
+    private readonly revocationCheckpoint?: WorkerRevocationCheckpointService,
   ) {
     super();
   }
@@ -105,6 +109,34 @@ export class DimoSnapshotProcessor extends WorkerHost {
     });
     if (!vehicle?.organizationId) {
       throw new Error(`Vehicle ${vehicleId} missing organizationId — cannot process snapshot`);
+    }
+
+    if (this.revocationCheckpoint) {
+      const checkpoint = await this.revocationCheckpoint.assertMayProceed({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        checkpoint: REVOCATION_CHECKPOINT.PRE_PERSIST,
+        correlationId: `snapshot:${vehicleId}:${job.id}`,
+      });
+      if (!checkpoint.allowed) {
+        const finishedAt = new Date();
+        await this.prisma.dimoPollLog.create({
+          data: {
+            vehicleId,
+            jobType: DimoPollJobType.SNAPSHOT,
+            status: DimoPollStatus.SKIPPED,
+            startedAt,
+            finishedAt,
+            durationMs: finishedAt.getTime() - startedAt.getTime(),
+            errorMessage: `REVOCATION_CHECKPOINT:${checkpoint.reasonCode}`,
+          },
+        });
+        this.logger.warn(
+          `Snapshot checkpoint denied vehicle=${vehicleId} reason=${checkpoint.reasonCode}`,
+        );
+        this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'skipped' });
+        return;
+      }
     }
 
     try {

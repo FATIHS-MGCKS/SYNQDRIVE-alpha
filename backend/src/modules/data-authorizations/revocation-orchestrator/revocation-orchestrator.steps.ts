@@ -1,22 +1,18 @@
 import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
 import {
-  DataAuthorizationAuditEventKind,
   DataAuthorizationAuditOutboxStatus,
   NotificationDeliveryOutboxStatus,
   VehicleProviderConsentStatus,
 } from '@prisma/client';
-import type { Queue } from 'bullmq';
 import { PrismaService } from '@shared/database/prisma.service';
-import { QUEUE_NAMES } from '@workers/queues/queue-names';
-import { AuthorizationDecisionService } from '../authorization-decision-engine/authorization-decision.service';
 import { DenySwitchService } from '../deny-switch/deny-switch.service';
 import { LiveGpsEnforcementService } from '../live-gps-enforcement/live-gps-enforcement.service';
 import { NotificationEnforcementService } from '../notification-enforcement/notification-enforcement.service';
 import { ExternalAccessEnforcementService } from '../external-access-enforcement/external-access-enforcement.service';
-import { DataAuthorizationAuditOutboxRepository } from '../privacy-domain/audit-log/data-authorization-audit-outbox.repository';
 import { ProviderGrantProvisioningService } from '../provider-grant-consolidation/provider-grant-provisioning.service';
-import { buildAuditIdempotencyKey } from '../privacy-domain/audit-log/data-authorization-audit.constants';
+import { RevocationQueueControlService } from '../revocation-queue-control/revocation-queue-control.service';
+import { ScheduledJobRevocationService } from '../revocation-queue-control/scheduled-job-revocation.service';
+import { DownstreamRevocationNotifyService } from '../revocation-queue-control/downstream-revocation-notify.service';
 import {
   REVOCATION_RETENTION_DECISION,
   REVOCATION_STEP_KEY,
@@ -182,17 +178,15 @@ export class RevocationOrchestratorSteps {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly authorizationDecision: AuthorizationDecisionService,
     @Inject(forwardRef(() => DenySwitchService))
     private readonly denySwitch: DenySwitchService,
     private readonly liveGpsEnforcement: LiveGpsEnforcementService,
     private readonly notificationEnforcement: NotificationEnforcementService,
     private readonly externalAccessEnforcement: ExternalAccessEnforcementService,
-    private readonly auditOutbox: DataAuthorizationAuditOutboxRepository,
     private readonly providerRevoker: DefaultRevocationProviderRevoker,
-    @Optional() @InjectQueue(QUEUE_NAMES.DIMO_SNAPSHOT) private readonly dimoSnapshotQueue?: Queue,
-    @Optional() @InjectQueue(QUEUE_NAMES.DTC_POLL) private readonly dtcPollQueue?: Queue,
-    @Optional() @InjectQueue(QUEUE_NAMES.TRIP_TRACKING) private readonly tripTrackingQueue?: Queue,
+    private readonly queueControl: RevocationQueueControlService,
+    private readonly scheduledJobRevocation: ScheduledJobRevocationService,
+    private readonly downstreamNotify: DownstreamRevocationNotifyService,
   ) {}
 
   async executeDenySwitch(ctx: RevocationStepContext): Promise<RevocationStepOutcome> {
@@ -283,7 +277,6 @@ export class RevocationOrchestratorSteps {
 
   async executeCancelQueues(ctx: RevocationStepContext): Promise<RevocationStepOutcome> {
     let cancelledDeliveries = 0;
-    let cancelledBullJobs = 0;
 
     for (const category of ctx.dataCategories) {
       const notif = await this.notificationEnforcement.handleRevocation({
@@ -313,9 +306,19 @@ export class RevocationOrchestratorSteps {
       },
     });
 
-    cancelledBullJobs += await this.removeOrgJobsFromQueue(this.dimoSnapshotQueue, ctx.organizationId);
-    cancelledBullJobs += await this.removeOrgJobsFromQueue(this.dtcPollQueue, ctx.organizationId);
-    cancelledBullJobs += await this.removeOrgJobsFromQueue(this.tripTrackingQueue, ctx.organizationId);
+    const schedulersPaused = await this.scheduledJobRevocation.pauseSchedulersForOrganization({
+      organizationId: ctx.organizationId,
+      correlationId: ctx.correlationId,
+    });
+
+    const queueResult = await this.queueControl.cancelScopedJobs({
+      workflowId: ctx.workflowId,
+      organizationId: ctx.organizationId,
+      correlationId: ctx.correlationId,
+      processingActivityId: ctx.processingActivityId,
+      enforcementPolicyId: ctx.enforcementPolicyId,
+      vehicleIds: ctx.vehicleIds,
+    });
 
     const deliverySuppressed = await this.prisma.notificationDeliveryOutbox.updateMany({
       where: {
@@ -337,7 +340,11 @@ export class RevocationOrchestratorSteps {
         revokedTokens: ext.revokedTokens,
         auditSuppressed: auditSuppressed.count,
         deliverySuppressed: deliverySuppressed.count,
-        bullJobsRemoved: cancelledBullJobs,
+        schedulersPaused,
+        queueRemoved: queueResult.removed,
+        queueCheckpointRequired: queueResult.checkpointRequired,
+        queueAlreadyRemoved: queueResult.alreadyRemoved,
+        queueByCategory: queueResult.byQueue,
       },
     };
   }
@@ -362,32 +369,29 @@ export class RevocationOrchestratorSteps {
       recipient = sharing?.recipient ?? null;
     }
 
-    await this.auditOutbox.enqueue({
+    const notify = await this.downstreamNotify.dispatch({
       organizationId: ctx.organizationId,
-      idempotencyKey: buildAuditIdempotencyKey({
-        eventKind: DataAuthorizationAuditEventKind.LIFECYCLE_CHANGE,
-        organizationId: ctx.organizationId,
-        correlationId: `${ctx.correlationId}:partner-notify`,
-      }),
-      eventKind: DataAuthorizationAuditEventKind.LIFECYCLE_CHANGE,
+      workflowId: ctx.workflowId,
       correlationId: ctx.correlationId,
-      payload: {
-        entityType: 'DATA_SHARING_AUTHORIZATION',
-        entityId: ctx.dataSharingAuthId ?? ctx.correlationId,
-        eventType: 'REVOKED',
-        newStatus: 'PARTNER_NOTIFIED',
-        metadata: {
-          partnerNotification: 'dispatched',
-          recipient,
-          dataCategories: ctx.dataCategories,
-        },
+      recipient: recipient ?? 'unknown-partner',
+      channel: 'partner_webhook',
+      dataCategories: ctx.dataCategories,
+      metadata: {
+        dataSharingAuthId: ctx.dataSharingAuthId,
+        triggerType: ctx.triggerType,
       },
     });
 
     return {
       stepKey: REVOCATION_STEP_KEY.NOTIFY_PARTNER,
       outcome: 'success',
-      detail: { recipient, partnerNotified: true },
+      detail: {
+        recipient,
+        partnerNotified: notify.status === 'DELIVERED',
+        notifyId: notify.notifyId,
+        idempotentReplay: notify.idempotentReplay,
+        status: notify.status,
+      },
     };
   }
 
@@ -418,26 +422,22 @@ export class RevocationOrchestratorSteps {
       };
     }
 
-    await this.auditOutbox.enqueue({
-      organizationId: ctx.organizationId,
-      idempotencyKey: buildAuditIdempotencyKey({
-        eventKind: DataAuthorizationAuditEventKind.LIFECYCLE_CHANGE,
+    await this.prisma.dataAuthorizationDownstreamRevocationNotify.create({
+      data: {
         organizationId: ctx.organizationId,
-        correlationId: `${ctx.correlationId}:deletion-scheduled`,
-      }),
-      eventKind: DataAuthorizationAuditEventKind.LIFECYCLE_CHANGE,
-      correlationId: ctx.correlationId,
-      payload: {
-        entityType: 'REVOCATION_WORKFLOW',
-        entityId: ctx.workflowId,
-        eventType: 'DELETION_SCHEDULED',
-        newStatus: 'SCHEDULED',
-        metadata: {
+        workflowId: ctx.workflowId,
+        correlationId: ctx.correlationId,
+        recipient: 'retention-scheduler',
+        channel: 'audit',
+        status: 'DELIVERED',
+        deliveredAt: new Date(),
+        idempotencyKey: `revocation-deletion-scheduled:${ctx.workflowId}`,
+        payloadJson: {
           note: 'Deletion scheduled after explicit retention decision — no automatic purge',
           retentionDecision: ctx.retentionDecision,
         },
       },
-    });
+    }).catch(() => undefined);
 
     return {
       stepKey: REVOCATION_STEP_KEY.SCHEDULE_DELETION,
@@ -486,29 +486,5 @@ export class RevocationOrchestratorSteps {
       outcome: 'success',
       detail: { checks },
     };
-  }
-
-  private async removeOrgJobsFromQueue(
-    queue: Queue | undefined,
-    organizationId: string,
-  ): Promise<number> {
-    if (!queue) return 0;
-    let removed = 0;
-    try {
-      const jobs = await queue.getJobs(['waiting', 'delayed', 'paused'], 0, 200);
-      for (const job of jobs) {
-        const data = job.data as Record<string, unknown> | undefined;
-        if (data?.organizationId === organizationId) {
-          await job.remove();
-          removed++;
-        }
-      }
-    } catch (err) {
-      this.logger.warn(
-        `BullMQ job removal failed queue=${queue.name}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      throw err;
-    }
-    return removed;
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Interval } from '@nestjs/schedule';
@@ -8,6 +8,7 @@ import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '@modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { QueueEnqueueGuardService } from '@modules/data-authorizations/revocation-queue-control/queue-enqueue-guard.service';
 
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
@@ -71,6 +72,7 @@ export class DimoSnapshotScheduler {
     @InjectQueue(QUEUE_NAMES.DIMO_SNAPSHOT) private readonly queue: Queue,
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
+    @Optional() private readonly enqueueGuard?: QueueEnqueueGuardService,
   ) {}
 
   @Interval(30000)
@@ -114,6 +116,19 @@ export class DimoSnapshotScheduler {
     for (const v of vehicles) {
       const tokenId = v.dimoVehicle?.tokenId;
       if (tokenId == null) continue;
+
+      if (this.enqueueGuard) {
+        const mayEnqueue = await this.enqueueGuard.mayEnqueue({
+          organizationId: v.organizationId,
+          vehicleId: v.id,
+          schedulerKey: 'dimo-snapshot.scheduler',
+          context: 'dimo-snapshot',
+        });
+        if (!mayEnqueue) {
+          skipped += 1;
+          continue;
+        }
+      }
 
       const jobId = `snapshot-${v.id}`;
 

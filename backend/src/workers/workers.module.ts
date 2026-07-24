@@ -34,6 +34,7 @@ import { BatteryV2Processor } from './processors/battery-v2.processor';
 import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
 import { DeviceConnectionWebhookProcessor } from './processors/device-connection-webhook.processor';
 import { BookingDocumentGenerationProcessor } from './processors/booking-document-generation.processor';
+import { WorkerRuntimeHealthBootstrapService } from './worker-runtime-health-bootstrap.service';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -112,6 +113,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     VoiceWebhookProcessor,
     DeviceConnectionWebhookProcessor,
     BookingDocumentGenerationProcessor,
+    WorkerRuntimeHealthBootstrapService,
 
     // Schedulers
     DimoSnapshotScheduler,

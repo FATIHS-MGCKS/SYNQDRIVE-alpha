@@ -32,6 +32,7 @@
     "test:data-auth:revocation": "jest --testPathPattern='revocation-orchestrator'",
     "test:data-auth:deny-switch": "jest --testPathPattern='deny-switch'",
     "test:data-auth:provider-grant": "jest --testPathPattern='provider-grant-consolidation'",
+    "test:data-auth:revocation-queues": "jest --testPathPattern='revocation-queue-control'",
     "test:voice:security": "jest --testPathPattern='voice-(tenant-isolation|resilience)\\.security|voice-structured-log|voice-secrets-startup|voice-retention|voice-metrics|voice-mcp-gateway\\.security|voice-mcp-privacy|voice-webhook-ingestion\\.(pipeline|util)|twilio-webhook\\.controller\\.characterization|org-scoping\\.voice'",
     "test:voice:staging-e2e": "jest voice-staging-e2e.matrix voice-e2e.config",
     "audit:dependencies": "bash ../scripts/audits/audit-dependencies.sh",
