@@ -1,11 +1,17 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { interpolateLngLat, easeInOutCubic, distanceM, bearingDeg } from '../../lib/liveMapUtils';
 import { useAddress } from '../../lib/useAddress';
 import { createSedanMarkerEl, updateSedanRotation, shortestRotation } from '../../lib/vehicleMarker';
 import { LiquidGlassLens } from '../../components/surface';
 import { cn } from '../../components/ui/utils';
+import {
+  projectLngLatToScreen,
+  shouldSnapMarkerMove,
+  startMarkerAnimation,
+  type MarkerAnimationPolicy,
+  type MarkerAnimationSession,
+} from '../lib/live-map-marker-animation';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 const MAPBOX_STYLE = import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/light-v11';
@@ -16,12 +22,6 @@ const DEFAULT_ZOOM = 16;
 const LIVE_ACCENT = '#3b82f6';
 const LIVE_GLOW = 'rgba(59,130,246,0.35)';
 
-/** How long to animate between two real GPS points (ms). Slightly less than poll interval. */
-const GPS_INTERP_DURATION_MS = 4500;
-/** Dead reckoning: max seconds to predict beyond last GPS point */
-const DR_MAX_PREDICT_S = 6;
-/** Minimum speed (km/h) to engage dead reckoning */
-const DR_MIN_SPEED_KMH = 3;
 /** Camera follow duration */
 const MAP_FOLLOW_DURATION_MS = 2000;
 
@@ -37,6 +37,8 @@ export interface LiveMapOverviewProps {
   isDarkMode?: boolean;
   operatorHint?: string | null;
   operatorHintSub?: string | null;
+  /** Reserved for a later reduced-motion prompt. */
+  animationPolicy?: MarkerAnimationPolicy;
 }
 
 function createMarkerWrap(): HTMLDivElement {
@@ -45,24 +47,6 @@ function createMarkerWrap(): HTMLDivElement {
   wrap.style.width = '32px';
   wrap.style.height = '32px';
   return wrap;
-}
-
-/**
- * Project a GPS position forward using speed + heading (dead reckoning).
- * Returns [lng, lat] offset from `from` after `dtSeconds`.
- */
-function deadReckon(
-  from: [number, number],
-  headingDeg: number,
-  speedKmh: number,
-  dtSeconds: number,
-): [number, number] {
-  const distKm = (speedKmh / 3600) * dtSeconds;
-  const distDeg = distKm / 111.32;
-  const rad = (headingDeg * Math.PI) / 180;
-  const dLng = distDeg * Math.sin(rad) / Math.cos((from[1] * Math.PI) / 180);
-  const dLat = distDeg * Math.cos(rad);
-  return [from[0] + dLng, from[1] + dLat];
 }
 
 export function LiveMapOverview({
@@ -77,13 +61,19 @@ export function LiveMapOverview({
   isDarkMode = false,
   operatorHint = null,
   operatorHintSub = null,
+  animationPolicy,
 }: LiveMapOverviewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const markerWrapRef = useRef<HTMLDivElement | null>(null);
+  const sedanMarkerRef = useRef<HTMLDivElement | null>(null);
+  const plateOverlayRef = useRef<HTMLDivElement | null>(null);
+  const animationSessionRef = useRef<MarkerAnimationSession | null>(null);
+  const animationPolicyRef = useRef(animationPolicy);
+  animationPolicyRef.current = animationPolicy;
+
   const [loaded, setLoaded] = useState(false);
-  const [markerScreen, setMarkerScreen] = useState<{ x: number; y: number } | null>(null);
 
   const posLat = targetPosition ? targetPosition[1] : null;
   const posLng = targetPosition ? targetPosition[0] : null;
@@ -91,140 +81,106 @@ export function LiveMapOverview({
 
   const displayPositionRef = useRef<[number, number] | null>(null);
   const currentRotationRef = useRef(0);
-  const rafRef = useRef<number>(0);
 
-  // Track when the last real GPS target arrived (for dead reckoning timing)
-  const lastGpsArrivalRef = useRef<number>(0);
-  const lastGpsTargetRef = useRef<[number, number] | null>(null);
-  const prevGpsTargetRef = useRef<[number, number] | null>(null);
+  const syncPlateOverlay = useCallback((lngLat?: [number, number] | null) => {
+    const overlay = plateOverlayRef.current;
+    const map = mapRef.current;
+    const pos = lngLat ?? displayPositionRef.current;
+    if (!overlay || !map || !loaded || !pos) {
+      if (overlay) overlay.style.visibility = 'hidden';
+      return;
+    }
+    overlay.style.visibility = 'visible';
+    overlay.style.transform = projectLngLatToScreen(
+      (point) => map.project(point),
+      pos,
+    );
+  }, [loaded]);
 
-  const syncMarkerScreen = useCallback(
-    (lngLat?: [number, number]) => {
-      const map = mapRef.current;
-      const pos = lngLat ?? displayPositionRef.current ?? targetPosition;
-      if (!map || !loaded || !pos) {
-        setMarkerScreen(null);
-        return;
-      }
-      const projected = map.project(pos);
-      setMarkerScreen({ x: projected.x, y: projected.y });
-    },
-    [loaded, targetPosition],
-  );
-
-  const updateMarker = useCallback(
+  const applyMarkerFrame = useCallback(
     (lngLat: [number, number], rotationDeg: number) => {
       if (!mapRef.current || !loaded) return;
-      const map = mapRef.current;
+
       const smoothRotation = shortestRotation(currentRotationRef.current, rotationDeg);
       currentRotationRef.current = smoothRotation;
+      displayPositionRef.current = lngLat;
 
       if (!markerRef.current) {
         const wrap = createMarkerWrap();
         const sedanEl = createSedanMarkerEl(smoothRotation, LIVE_ACCENT, LIVE_GLOW, isDarkMode);
         wrap.appendChild(sedanEl);
         markerWrapRef.current = wrap;
+        sedanMarkerRef.current = sedanEl;
 
         const marker = new mapboxgl.Marker({ element: wrap, anchor: 'center' })
           .setLngLat(lngLat)
-          .addTo(map);
+          .addTo(mapRef.current);
         markerRef.current = marker;
-        syncMarkerScreen(lngLat);
-        return;
+      } else {
+        markerRef.current.setLngLat(lngLat);
+        const sedanEl = sedanMarkerRef.current;
+        if (sedanEl) updateSedanRotation(sedanEl, smoothRotation);
       }
 
-      markerRef.current.setLngLat(lngLat);
-      const wrap = markerWrapRef.current;
-      if (wrap) {
-        const sedanWrap = wrap.querySelector('.synq-sedan-marker') as HTMLDivElement | null;
-        if (sedanWrap) updateSedanRotation(sedanWrap, smoothRotation);
-      }
-      syncMarkerScreen(lngLat);
+      syncPlateOverlay(lngLat);
     },
-    [loaded, isDarkMode, syncMarkerScreen],
+    [isDarkMode, loaded, syncPlateOverlay],
   );
 
-  // ── Core animation loop: GPS interpolation + dead reckoning ────────
+  const stopMarkerAnimation = useCallback(() => {
+    animationSessionRef.current?.cancel();
+    animationSessionRef.current = null;
+  }, []);
+
+  // ── Core animation loop: GPS interpolation + dead reckoning (imperative, no React state per frame)
   useEffect(() => {
     if (!targetPosition) return;
 
-    const now = Date.now();
-    const prevTarget = lastGpsTargetRef.current;
+    stopMarkerAnimation();
 
-    // Track GPS arrivals
-    prevGpsTargetRef.current = prevTarget;
-    lastGpsTargetRef.current = targetPosition;
-    lastGpsArrivalRef.current = now;
+    const currentHeading = heading ?? 0;
+    const currentSpeed = speedKmh ?? 0;
 
-    // First point ever: snap
     if (displayPositionRef.current == null) {
-      displayPositionRef.current = targetPosition;
-      updateMarker(targetPosition, heading ?? 0);
+      applyMarkerFrame(targetPosition, currentHeading);
       return;
     }
 
     const from = displayPositionRef.current;
     const to = targetPosition;
-    const distM = distanceM(from, to);
 
-    // Tiny move or teleport: snap
-    if (distM < 0.5 || distM > 2000) {
-      displayPositionRef.current = to;
-      updateMarker(to, heading ?? 0);
+    if (shouldSnapMarkerMove(from, to)) {
+      applyMarkerFrame(to, currentHeading);
       return;
     }
 
-    // Animate from current display position to new target
-    const animStart = now;
-    const currentHeading = heading ?? 0;
-    const currentSpeed = speedKmh ?? 0;
-    const canDeadReckon = currentSpeed >= DR_MIN_SPEED_KMH && heading != null;
+    animationSessionRef.current = startMarkerAnimation({
+      from,
+      to,
+      heading: currentHeading,
+      speedKmh: currentSpeed,
+      reducedMotion: animationPolicyRef.current?.reducedMotion,
+      onFrame: ({ position, heading: frameHeading }) => {
+        applyMarkerFrame(position, frameHeading);
+      },
+    });
 
-    const tick = () => {
-      const elapsed = Date.now() - animStart;
-
-      if (elapsed < GPS_INTERP_DURATION_MS) {
-        // Phase 1: Interpolate toward the real GPS target
-        const t = easeInOutCubic(Math.min(elapsed / GPS_INTERP_DURATION_MS, 1));
-        const pos = interpolateLngLat(from, to, t) as [number, number];
-        displayPositionRef.current = pos;
-        updateMarker(pos, currentHeading);
-        rafRef.current = requestAnimationFrame(tick);
-      } else if (canDeadReckon) {
-        // Phase 2: Dead reckoning beyond the real GPS point
-        const drTime = (elapsed - GPS_INTERP_DURATION_MS) / 1000;
-        if (drTime < DR_MAX_PREDICT_S) {
-          // Decelerate prediction over time (less confident the further we predict)
-          const confidence = 1 - (drTime / DR_MAX_PREDICT_S) * 0.6;
-          const predictedSpeed = currentSpeed * confidence;
-          const pos = deadReckon(to, currentHeading, predictedSpeed, drTime);
-          displayPositionRef.current = pos;
-          updateMarker(pos, currentHeading);
-          rafRef.current = requestAnimationFrame(tick);
-        }
-        // After max predict time: stop, wait for next GPS
-      }
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [targetPosition, heading, speedKmh, updateMarker]);
+    return stopMarkerAnimation;
+  }, [targetPosition, heading, speedKmh, applyMarkerFrame, stopMarkerAnimation]);
 
   // Sync marker when map becomes loaded
   useEffect(() => {
     if (!loaded || !mapRef.current) return;
     const pos = displayPositionRef.current ?? targetPosition;
-    if (pos) updateMarker(pos, heading ?? 0);
-  }, [loaded, targetPosition, heading, updateMarker]);
+    if (pos) applyMarkerFrame(pos, heading ?? 0);
+  }, [loaded, targetPosition, heading, applyMarkerFrame]);
 
-  // Sync marker screen position for liquid-glass plate HUD on map pan/zoom
+  // Sync plate overlay on map pan/zoom (no React state)
   useEffect(() => {
     if (!mapRef.current || !loaded) return;
     const map = mapRef.current;
-    const onMapChange = () => syncMarkerScreen();
-    syncMarkerScreen();
+    const onMapChange = () => syncPlateOverlay();
+    syncPlateOverlay();
     map.on('move', onMapChange);
     map.on('zoom', onMapChange);
     map.on('resize', onMapChange);
@@ -233,7 +189,7 @@ export function LiveMapOverview({
       map.off('zoom', onMapChange);
       map.off('resize', onMapChange);
     };
-  }, [loaded, syncMarkerScreen]);
+  }, [loaded, syncPlateOverlay]);
 
   // Initial map setup
   useEffect(() => {
@@ -257,14 +213,15 @@ export function LiveMapOverview({
     mapRef.current = map;
 
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      stopMarkerAnimation();
       markerRef.current?.remove();
       markerRef.current = null;
       markerWrapRef.current = null;
+      sedanMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
-  }, [isDarkMode]);
+  }, [isDarkMode, stopMarkerAnimation]);
 
   // Gentle camera follow on new GPS target
   useEffect(() => {
@@ -276,6 +233,8 @@ export function LiveMapOverview({
     });
   }, [loaded, targetPosition]);
 
+  useEffect(() => stopMarkerAnimation, [stopMarkerAnimation]);
+
   if (!MAPBOX_TOKEN) {
     return (
       <div className={`flex items-center justify-center bg-muted text-muted-foreground text-xs ${className}`}>
@@ -285,6 +244,7 @@ export function LiveMapOverview({
   }
 
   const isInitialLoading = !loaded || (!targetPosition && !waitingForPosition);
+  const showPlateOverlay = Boolean(licensePlate && !waitingForPosition && loaded);
 
   return (
     <div className={`synq-map-hud-surface relative w-full h-full ${className}`}>
@@ -317,12 +277,11 @@ export function LiveMapOverview({
           </div>
         </div>
       )}
-      {licensePlate && markerScreen && !waitingForPosition && loaded && (
+      {showPlateOverlay && (
         <div
+          ref={plateOverlayRef}
           className="pointer-events-none absolute left-0 top-0 z-10"
-          style={{
-            transform: `translate(${markerScreen.x}px, ${markerScreen.y - 20}px) translate(-50%, -100%)`,
-          }}
+          style={{ visibility: 'hidden' }}
         >
           <div className="liquid-glass-lens__plate-anchor">
             <LiquidGlassLens
