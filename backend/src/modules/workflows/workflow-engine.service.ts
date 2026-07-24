@@ -14,6 +14,15 @@ import {
   type WorkflowScopeDef,
 } from './workflow-definition.validator';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import {
+  assertLiveExecution,
+  WorkflowExecutionMode,
+} from './workflow-execution-mode';
+import { evaluateWorkflowScope } from './workflow-scope.evaluator';
+
+export interface ExecuteWorkflowOptions {
+  executionMode: WorkflowExecutionMode;
+}
 
 export interface WorkflowDomainEvent {
   organizationId: string;
@@ -39,7 +48,9 @@ export class WorkflowEngineService {
     const runIds: string[] = [];
 
     for (const workflow of workflows) {
-      const runId = await this.executeWorkflow(workflow, event);
+      const runId = await this.executeWorkflow(workflow, event, {
+        executionMode: WorkflowExecutionMode.LIVE,
+      });
       if (runId) runIds.push(runId);
     }
     return runIds;
@@ -62,28 +73,21 @@ export class WorkflowEngineService {
     });
   }
 
-  private matchesScope(scope: WorkflowScopeDef, event: WorkflowDomainEvent): boolean {
-    if (!scope || scope.type === 'organization') return true;
-    const vehicleId =
-      event.entityType === 'vehicle'
-        ? event.entityId
-        : (event.payload.vehicleId as string | undefined);
-    if (scope.type === 'vehicle' && scope.vehicleIds?.length) {
-      return !!vehicleId && scope.vehicleIds.includes(vehicleId);
-    }
-    if (scope.type === 'station' && scope.stationIds?.length) {
-      const stationId = event.payload.stationId as string | undefined;
-      return !!stationId && scope.stationIds.includes(stationId);
-    }
-    return true;
-  }
-
   async executeWorkflow(
     workflow: OrgWorkflow,
     event: WorkflowDomainEvent,
+    options: ExecuteWorkflowOptions,
   ): Promise<string | null> {
-    const scope = workflow.scope as unknown as WorkflowScopeDef;
-    if (!this.matchesScope(scope, event)) {
+    assertLiveExecution(
+      options.executionMode,
+      'WorkflowEngineService.executeWorkflow',
+    );
+
+    const scopeResult = evaluateWorkflowScope(
+      workflow.scope as unknown as WorkflowScopeDef,
+      event,
+    );
+    if (!scopeResult.passed) {
       return null;
     }
 
@@ -160,6 +164,7 @@ export class WorkflowEngineService {
         entityId: event.entityId,
         payload: event.payload,
         idempotencyKey,
+        executionMode: WorkflowExecutionMode.LIVE,
       });
 
       await this.prisma.orgWorkflowActionRun.update({

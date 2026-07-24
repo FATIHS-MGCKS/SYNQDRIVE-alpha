@@ -9,6 +9,8 @@ import { validateWorkflowDefinition } from './workflow-definition.validator';
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowEngineService } from './workflow-engine.service';
+import { WorkflowDryRunService } from './workflow-dry-run.service';
+import type { WorkflowExecutionPlan } from './workflow-execution-plan.types';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -23,6 +25,7 @@ export class WorkflowsService {
     private readonly prisma: PrismaService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly workflowEngine: WorkflowEngineService,
+    private readonly workflowDryRun: WorkflowDryRunService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -254,33 +257,27 @@ export class WorkflowsService {
     return run;
   }
 
+  async dryRunWorkflow(
+    orgId: string,
+    workflowId: string,
+    dto: { payload?: Record<string, unknown>; entityType?: string; entityId?: string },
+  ): Promise<WorkflowExecutionPlan> {
+    return this.workflowDryRun.buildExecutionPlan(orgId, workflowId, dto);
+  }
+
   async testWorkflow(
     orgId: string,
     workflowId: string,
     dto: { payload?: Record<string, unknown>; entityType?: string; entityId?: string },
   ) {
-    const wf = await this.prisma.orgWorkflow.findFirst({
-      where: { id: workflowId, organizationId: orgId },
-    });
-    if (!wf) throw new NotFoundException('Workflow not found');
-
-    const runId = await this.workflowEngine.executeWorkflow(wf, {
-      organizationId: orgId,
-      type: 'manual.test',
-      entityType: dto.entityType,
-      entityId: dto.entityId,
-      payload: {
-        ...(dto.payload ?? {}),
-        manualTest: true,
-      },
-      idempotencyKey: `manual.test:${workflowId}:${Date.now()}`,
-    });
-
-    if (!runId) {
-      return { runIds: [], runs: [], message: 'Workflow skipped (scope/conditions)' };
-    }
-    const run = await this.getRun(orgId, runId);
-    return { runIds: [runId], runs: [run] };
+    const plan = await this.dryRunWorkflow(orgId, workflowId, dto);
+    return {
+      executed: false as const,
+      plan,
+      message: plan.message,
+      runIds: [] as string[],
+      runs: [] as unknown[],
+    };
   }
 
   async approveActionRun(orgId: string, actionRunId: string, userId?: string) {

@@ -13,6 +13,10 @@ import { TasksService } from '@modules/tasks/tasks.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
 import type { WorkflowActionDef } from './workflow-definition.validator';
+import {
+  assertLiveExecution,
+  WorkflowExecutionMode,
+} from './workflow-execution-mode';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -25,6 +29,7 @@ export interface ActionExecutionContext {
   entityId?: string | null;
   payload: Record<string, unknown>;
   idempotencyKey: string;
+  executionMode: WorkflowExecutionMode;
 }
 
 @Injectable()
@@ -38,6 +43,8 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
+    assertLiveExecution(ctx.executionMode, 'WorkflowActionExecutorService.execute');
+
     if (action.requiresApproval) {
       await this.prisma.orgWorkflowApproval.create({
         data: {

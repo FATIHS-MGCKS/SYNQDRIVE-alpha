@@ -2377,10 +2377,54 @@ export interface WorkflowTestPayload {
   entityType?: string;
   entityId?: string;
 }
+export interface WorkflowPlannedActionDto {
+  index: number;
+  actionType: string;
+  riskClass: 'INTERNAL' | 'EXTERNAL' | 'HUMAN' | 'UNKNOWN';
+  requiresApproval: boolean;
+  status: 'PLANNED' | 'SKIPPED' | 'BLOCKED' | 'ERROR';
+  policyBlockers: string[];
+  resolvedRecipients?: Array<{ channel: string; masked: string }>;
+  preview?: Record<string, unknown>;
+  validationErrors: string[];
+  expectedFallback?: string;
+  skipReason?: string;
+}
+export interface WorkflowExecutionPlanDto {
+  executionMode: 'DRY_RUN';
+  executed: false;
+  message: string;
+  workflowId: string;
+  workflowVersion: number;
+  workflowName: string;
+  event: {
+    type: string;
+    entityType?: string | null;
+    entityId?: string | null;
+    normalizedPayload: Record<string, unknown>;
+  };
+  scope: {
+    passed: boolean;
+    scopeType: string;
+    reason?: string;
+    details?: Record<string, unknown>;
+  };
+  conditions: {
+    passed: boolean;
+    results: Array<{ path: string; operator: string; passed: boolean }>;
+  };
+  plannedActions: WorkflowPlannedActionDto[];
+  skippedActions: WorkflowPlannedActionDto[];
+  validationErrors: string[];
+  policyBlockers: string[];
+  wouldCreateApprovals: boolean;
+}
 export interface WorkflowTestResultDto {
+  executed: false;
+  plan: WorkflowExecutionPlanDto;
+  message: string;
   runIds: string[];
   runs: WorkflowRunDto[];
-  message?: string;
 }
 
 // ── Account Self-Service (Settings → Account Information) ───────────────────
@@ -4847,6 +4891,8 @@ export const api = {
     listRuns: (orgId: string, workflowId: string, limit = 25) =>
       get<WorkflowRunDto[]>(`/organizations/${orgId}/workflows/${workflowId}/runs?limit=${limit}`),
     getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
+    dryRun: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
+      post<WorkflowExecutionPlanDto>(`/organizations/${orgId}/workflows/${workflowId}/dry-run`, data ?? {}),
     test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
       post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
     approveActionRun: (orgId: string, actionRunId: string) =>
