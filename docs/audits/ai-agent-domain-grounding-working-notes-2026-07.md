@@ -445,11 +445,23 @@ ChatController
 
 ## Anhang B — Statische Prüfungen (ausgeführt)
 
+### Prompt 1
+
 | Prüfung | Ergebnis |
 |---------|----------|
 | `npm test --testPathPattern='chat\.service\|iam-endpoint-enforcement-triage'` | 14/14 PASS |
 | Grep `DimoAgentsService` / `agents.dimo.zone` in `backend/src` | 0 Treffer |
 | Grep `FLEET_CHAT_SYSTEM_PROMPT` | 1 Definition, 1 Verwendung (`chat.service.ts`) |
+
+### Prompt 2
+
+| Prüfung | Ergebnis |
+|---------|----------|
+| `telemetry-freshness.resolver.spec.ts` | PASS |
+| `vehicle-state-interpreter.spec.ts` | PASS |
+| `vehicle-connectivity-runtime-state.builder.spec.ts` | 42/42 PASS (3 Suites) |
+| `connectivity-cross-surface-regression.test.ts` | 19/19 PASS |
+| `DimoSnapshotProcessor` → `VehicleLatestState` upsert | Einziger Schreibpfad (verifiziert) |
 
 ## Anhang C — Änderungshistorie (relevant)
 
