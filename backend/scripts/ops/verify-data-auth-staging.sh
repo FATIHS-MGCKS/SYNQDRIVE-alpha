@@ -106,9 +106,8 @@ fi
 curl -sf http://127.0.0.1:9090/-/healthy >/dev/null && echo "prometheus_healthy=yes" | tee "${OUT}/prometheus-health.txt" || warn "prometheus not reachable on :9090"
 
 log "==> CI safety scripts (unit-level)"
-VERIFY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-bash "${VERIFY_ROOT}/scripts/test/verify-data-auth-monitoring.sh" 2>&1 | tee "${OUT}/monitoring-verify.txt"
-bash "${VERIFY_ROOT}/scripts/test/data-auth-production-safety-check.sh" 2>&1 | tee "${OUT}/production-safety.txt"
+bash scripts/test/verify-data-auth-monitoring.sh 2>&1 | tee "${OUT}/monitoring-verify.txt"
+bash scripts/test/data-auth-production-safety-check.sh 2>&1 | tee "${OUT}/production-safety.txt"
 
 log "==> Controlled runtime scenarios (isolated test tenant)"
 npx ts-node -r tsconfig-paths/register scripts/ops/run-data-auth-staging-runtime-tests.ts 2>&1 | tee "${OUT}/runtime-tests.jsonl"
