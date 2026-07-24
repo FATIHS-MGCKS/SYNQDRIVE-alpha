@@ -63,3 +63,13 @@ must be wrapped as `AiEvidence` with explicit:
   `telemetry-freshness.resolver`.
 - Central function: `mapTelemetryToAiEvidenceSemantics`.
 - Tests: `ai-evidence-telemetry.mapper.spec.ts` (28 tests, boundary + transitions).
+
+### Prompt 7 — Domain error & fallback contract (2026-07-24)
+
+- Added `ai-domain-error.*` — standardized error codes, safe public messages,
+  internal diagnostics, retry policy, severity, HTTP mapping, audit events.
+- `resolveSecureVehicleAccessError` — permission_denied masks existence vs
+  vehicle_not_found when authorized.
+- `AiDomainQueryOutcome<T>` — partial tool results with `allowLlmInference`.
+- Bridge: `mapEvidenceReasonCodeToDomainErrorCode`.
+- Tests: `ai-domain-error.spec.ts` (54 tests, one per error code + security).

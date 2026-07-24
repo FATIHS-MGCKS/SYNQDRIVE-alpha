@@ -878,4 +878,68 @@ cd frontend && npm test -- --run connectivity-cross-surface-regression
 
 ---
 
-**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md`; Audit-Ergänzung Prompt 5 oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.
+## Prompt 6 — Telemetrie- & Freshness-Mapping (2026-07-24)
+
+**Implementiert:** Einheitliche Abbildung der SynqDrive-Telemetrie-Semantik auf AI Evidence unter `backend/src/modules/ai/evidence/ai-evidence-telemetry.*`.
+
+### Verwendete Source of Truth
+
+| Schicht | Quelle | Rolle |
+|---------|--------|-------|
+| **Schwellenwerte** | `vehicle-state-interpreter.ts` → `TELEMETRY_*_THRESHOLD_MS` (15 min / 24 h / 48 h) | Einzige Grenzwerte — nicht dupliziert |
+| **Timestamp-Priorität** | `telemetry-freshness.resolver.ts` → `resolveCanonicalTelemetryObservedAtMs` | Beobachtete Zeit |
+| **Freshness-Klassifikation** | `classifyTelemetryFreshness` / `resolveTelemetryFreshness` | Kanonische 5-State: live, standby, signal_delayed, offline, no_signal |
+| **Connectivity Runtime** | `vehicle-connectivity-runtime-state.builder.ts` → `resolveTelemetryState` | Nutzt dieselbe `classifyTelemetryFreshness` |
+| **AI Mapping** | `mapTelemetryToAiEvidenceSemantics` | Übersetzt Domain → `AiEvidenceTelemetrySemantics` + Evidence freshness/availability |
+
+### Mapping-Tabelle (Domain → AI)
+
+| Kanonisch (`TelemetryFreshness`) | AI `telemetrySemantics` | AI `freshness` (Evidence) | AI `availability` | Bedingung |
+|----------------------------------|-------------------------|---------------------------|-------------------|-----------|
+| `live` | `live` | `live` | `available` | Alter < 15 min, keine Live-Hints |
+| `live` | `fresh` | `live` | `available` | Alter < 15 min + Live-Tracking/Movement-Hints |
+| `standby` | `standby` | `standby` | `available` | 15 min .. 24 h |
+| `standby` | `stale` | `standby` | `partial` | Historischer Snapshot / Last-Known |
+| `signal_delayed` | `soft_offline` | `signal_delayed` | `partial` | 24 h .. 48 h |
+| `signal_delayed` | `stale` | `signal_delayed` | `partial` | Last-Known-Position explizit |
+| `offline` | `offline` | `offline` | `partial` | ≥ 48 h, kein Last-Known |
+| `offline` | `stale` | `offline` | `partial` | ≥ 48 h mit Last-Known |
+| `no_signal` | `unknown` | `no_signal` | `unavailable` | Kein Timestamp |
+| — | `unavailable` | `no_signal` / `not_applicable` | `unavailable` | Kein Provider-Link / Provider-Ausfall |
+| — | `not_supported` | `not_applicable` | `unavailable` | Signal für Fahrzeugtyp nicht anwendbar |
+| — | `permission_denied` | `not_applicable` | `permission_denied` | IAM / DataAuthorization |
+
+Vollständige Dokumentationstabelle: `AI_TELEMETRY_SEMANTICS_MAPPING_TABLE` in `ai-evidence-telemetry.mapper.ts`.
+
+### Getestete Grenzwerte
+
+| Grenze | Wert | Erwartung (kanonisch) |
+|--------|------|------------------------|
+| Live-Obergrenze | 15 min − 1 ms | `live` |
+| Standby-Start | 15 min | `standby` |
+| Standby-Obergrenze | 24 h − 1 min | `standby` |
+| Soft-Offline-Start | 24 h | `signal_delayed` → `soft_offline` |
+| Soft-Offline-Obergrenze | 48 h − 1 min | `signal_delayed` |
+| Offline-Start | 48 h | `offline` (ohne Last-Known) |
+| Kein Timestamp | — | `no_signal` → `unknown` |
+
+Zusätzlich: Transition-Walk live→standby→soft_offline→stale; Timestamp-Priorität (providerObservedAt > receivedAt); live vs. fresh Hints; permission_denied / not_supported / provider_outage.
+
+**Tests:** 45/45 PASS (`ai-evidence.validation.spec.ts` + `ai-evidence-telemetry.mapper.spec.ts`).
+
+### FE/BE-Terminologie — offene Inkonsistenzen (nur dokumentiert, keine UI-Änderung)
+
+| Bereich | Backend / Kanonisch | Frontend Dashboard | AI Evidence (neu) | Spätere UI-Anpassung |
+|---------|---------------------|--------------------|--------------------|----------------------|
+| Soft-Offline | `signal_delayed` | `soft_offline` (`deriveTelemetryState`) | `soft_offline` | Dashboard könnte kanonischen Namen exposen |
+| Kein Signal | `no_signal` | `unknown` (`deriveTelemetryState` bei fehlendem Alter) | `unknown` | `unknown` vs. `no_signal` vereinheitlichen |
+| Fresh vs. Live | `live` + `isFresh` boolean | `live` (+ `hasFreshLiveHint`) | `fresh` / `live` getrennt | Optional Badge „Fresh“ im Fleet UI |
+| Legacy 3-State | `onlineStatus` ONLINE/STANDBY/OFFLINE | Fallback in `telemetryFreshness.ts` | nicht verwendet | Deprecation dokumentieren |
+| FE `telemetryFreshness.ts` | identische Schwellen | `signal_delayed` | mapped zu `soft_offline` | bereits aligned |
+| Last-Known | implizit in VLS | nicht als eigener State | `stale` | UI-Hinweis „Last known“ bei partial |
+
+**Hilfsfunktionen:** `mapDashboardTelemetryStateToSemantics`, `mapCanonicalTelemetryFreshnessToSemantics`.
+
+---
+
+**Changes / Architektur aktualisiert:** Ja — `architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md` (Prompt 6); Audit-Ergänzung oben. Master Changes View: folgt mit nächstem Frontend-Release-Eintrag.

@@ -87,3 +87,72 @@ export {
   mapDashboardTelemetryStateToSemantics,
   mapTelemetryToAiEvidenceSemantics,
 } from './ai-evidence-telemetry.mapper';
+
+export {
+  AI_DOMAIN_AUDIT_EVENTS,
+  AI_DOMAIN_ERROR_CODES,
+  AI_DOMAIN_ERROR_RETRY_POLICY,
+  AI_DOMAIN_ERROR_SEVERITY,
+  AI_DOMAIN_HTTP_STATUS,
+} from './ai-domain-error.enums';
+export type {
+  AiDomainAuditEvent,
+  AiDomainErrorCode,
+  AiDomainErrorRetryPolicy,
+  AiDomainErrorSeverity,
+  AiDomainHttpStatus,
+} from './ai-domain-error.enums';
+
+export {
+  AI_DOMAIN_ERROR_CATALOG,
+  describeAiDomainErrorCode,
+  getAiDomainErrorCatalogEntry,
+  isAiDomainAuditEvent,
+  isAiDomainErrorCode,
+  listAiDomainErrorCatalogEntries,
+} from './ai-domain-error.catalog';
+
+export {
+  AI_DOMAIN_ERROR_FACTORIES,
+  buildAiDomainQueryOutcome,
+  buildPartialAiDomainQueryOutcome,
+  createAiDomainError,
+  createDataNotAvailableError,
+  createDataTooOldError,
+  createDomainStatusInconsistentError,
+  createIntegrationNotConnectedError,
+  createIntegrationTemporarilyUnavailableError,
+  createInternalProcessingFailedError,
+  createInvalidInputError,
+  createPermissionDeniedError,
+  createRoleRestrictedError,
+  createSignalNotSupportedError,
+  createTimeoutError,
+  createVehicleAmbiguousError,
+  createVehicleNotFoundError,
+  resolveSecureVehicleAccessError,
+  toAiDomainQueryOutcomeForLlm,
+} from './ai-domain-error.factory';
+
+export {
+  assertNoDiagnosticsInPublicView,
+  mapEvidenceReasonCodeToDomainErrorCode,
+  redactForeignOrganizationReferences,
+  sanitizeAiDomainDiagnosticText,
+  sanitizeInternalThrowable,
+  serializeAiDomainErrorForLlm,
+  serializeAiDomainErrorsForLlm,
+  toAiDomainErrorApiView,
+  toAiDomainErrorAuditPayload,
+  toAiDomainErrorPublicView,
+} from './ai-domain-error.serialization';
+
+export type {
+  AiDomainError,
+  AiDomainErrorApiView,
+  AiDomainErrorDiagnostics,
+  AiDomainErrorPublicView,
+  AiDomainQueryOutcome,
+  CreateAiDomainErrorInput,
+  AiDomainErrorCatalogEntry,
+} from './ai-domain-error.types';
