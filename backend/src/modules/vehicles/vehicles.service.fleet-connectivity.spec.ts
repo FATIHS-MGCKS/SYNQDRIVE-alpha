@@ -1,6 +1,7 @@
 import { VehiclesService } from './vehicles.service';
 import { FLEET_CONNECTIVITY_HARD_LIMIT } from './fleet-connectivity.util';
 import { mockConnectivityRuntime } from './connectivity/connectivity-runtime.test-fixture';
+import { makeGpsPositionAccessStub } from './operational/vehicle-operational-state-v2.test-helpers';
 
 function makeFleetConnectivityService(
   prisma: { vehicle: { findMany: jest.Mock } },
@@ -46,12 +47,17 @@ function makeFleetConnectivityService(
     stub(),
     stub(),
     stub(),
+    makeGpsPositionAccessStub(),
     deviceConnectionQuery,
     connectivityRuntimeProjection,
     stub(),
     stub(),
     stub(),
-    stub(),
+    { record: jest.fn() },
+    { record: jest.fn() },
+    undefined,
+    undefined,
+    undefined,
   );
 }
 

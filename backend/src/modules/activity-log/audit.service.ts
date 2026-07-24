@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
+import { scrubPiiJson, scrubPiiString } from '@shared/utils/audit-pii.util';
 
 export interface AuditContext {
   actorUserId?: string;
@@ -50,12 +51,12 @@ export class AuditService {
           action: ctx.action,
           entity: ctx.entity,
           entityId: ctx.entityId ?? null,
-          description: ctx.description,
-          changeSummary: ctx.changeSummary ?? null,
+          description: scrubPiiString(ctx.description),
+          changeSummary: ctx.changeSummary ? scrubPiiString(ctx.changeSummary) : null,
           route: ctx.route ?? null,
           userAgent: ctx.userAgent ?? null,
           level: ctx.level ?? 'INFO',
-          metaJson: ctx.metaJson as any ?? undefined,
+          metaJson: scrubPiiJson(ctx.metaJson) as any ?? undefined,
           ipAddress: ctx.ipAddress ?? null,
         },
       });
@@ -80,13 +81,17 @@ export class AuditService {
   }
 
   /** Extract audit context from an HTTP request object. */
-  static contextFromRequest(req: any): Pick<AuditContext, 'actorUserId' | 'actorOrganizationId' | 'ipAddress' | 'userAgent' | 'route'> {
+  static contextFromRequest(req: any): Pick<
+    AuditContext,
+    'actorUserId' | 'actorOrganizationId' | 'ipAddress' | 'userAgent' | 'route'
+  > & { requestId?: string } {
     return {
       actorUserId: req?.user?.id,
       actorOrganizationId: req?.user?.organizationId ?? req?.tenantId,
       ipAddress: req?.ip ?? req?.connection?.remoteAddress,
       userAgent: req?.headers?.['user-agent'],
       route: req?.route?.path ? `${req.method} ${req.route.path}` : undefined,
+      requestId: req?.requestId,
     };
   }
 }

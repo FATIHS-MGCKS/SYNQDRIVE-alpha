@@ -629,7 +629,7 @@ export function ActionQueue({
   } = vm;
   const { orgId } = useRentalOrg();
   const { t } = useLanguage();
-  const obdPlugByVehicleId = useFleetObdPlugIndex(orgId);
+  const { map: obdPlugByVehicleId } = useFleetObdPlugIndex(orgId);
   const de = locale === 'de';
   const [filterTab, setFilterTab] = useState<ActionQueueFilterTab>('all');
   const [isExpanded, setIsExpanded] = useState(true);

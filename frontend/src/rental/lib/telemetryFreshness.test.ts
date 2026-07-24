@@ -102,4 +102,47 @@ describe('resolveTelemetryFreshness', () => {
     const f = resolveTelemetryFreshness({ lastSignal: hoursAgo(3) }, { locale: 'de' });
     expect(f.label.toLowerCase()).toContain('standby');
   });
+
+  it('rejects far-future provider timestamp as no_signal', () => {
+    const f = resolveTelemetryFreshness(
+      { measuredAt: new Date(Date.now() + 2 * 3_600_000).toISOString() },
+    );
+    expect(f.freshness).toBe('no_signal');
+    expect(f.isLive).toBe(false);
+  });
+
+  it('rejects invalid timestamp as no_signal', () => {
+    const f = resolveTelemetryFreshness({ measuredAt: 'invalid-date', lastSignal: '' });
+    expect(f.freshness).toBe('no_signal');
+  });
+
+  it('exactly at live boundary classifies as standby', () => {
+    const now = Date.now();
+    const measuredAt = new Date(now - TELEMETRY_LIVE_MAX_MS).toISOString();
+    const f = resolveTelemetryFreshness(
+      { providerObservedAt: measuredAt, lastSignal: measuredAt },
+      { now },
+    );
+    expect(f.freshness).toBe('standby');
+  });
+
+  it('exactly at 24h boundary classifies as signal_delayed', () => {
+    const now = Date.now();
+    const measuredAt = new Date(now - TELEMETRY_STANDBY_MAX_MS).toISOString();
+    const f = resolveTelemetryFreshness(
+      { providerObservedAt: measuredAt, lastSignal: measuredAt },
+      { now },
+    );
+    expect(f.freshness).toBe('signal_delayed');
+  });
+
+  it('exactly at 48h boundary classifies as offline', () => {
+    const now = Date.now();
+    const measuredAt = new Date(now - TELEMETRY_DELAYED_MAX_MS).toISOString();
+    const f = resolveTelemetryFreshness(
+      { providerObservedAt: measuredAt, lastSignal: measuredAt },
+      { now },
+    );
+    expect(f.freshness).toBe('offline');
+  });
 });
