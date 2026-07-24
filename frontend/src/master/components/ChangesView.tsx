@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'external-access-enforcement-v49805-2026-07-24',
+    version: '4.9.805',
+    title: 'V4.9.805 — Exporte, AI, MCP und Partnerzugriffe geschützt (Prompt 22)',
+    summary: [
+      'ExternalAccessEnforcementService — EXPORT, SHARE, USE_FOR_AI und MCP READ als explizite Aktionen.',
+      'Verdrahtet: Fleet Chat AI, Document AI, Vehicle Spec AI, PDF/Legal Downloads, Vehicle File Summary, Voice MCP Tools.',
+      'Datenminimierung für AI-Prompts und MCP-Tool-Outputs. MCP-Token-Revocation bei Widerruf. Bulk-Export erfordert Org-Setting.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 22 — keine Weitergabe allein aufgrund normaler Read-Permission.',
+    previousBehavior:
+      'Exports und AI-Aufrufe ohne zentrale Privacy-Gates; MCP-Tools nur Capability-Permissions ohne Policy Decision Engine.',
+    details:
+      'backend/src/modules/data-authorizations/external-access-enforcement/. Doku: docs/architecture/external-access-enforcement-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T00:30:00.000Z',
+  },
+  {
     id: 'notification-authorization-v49804-2026-07-23',
     version: '4.9.804',
     title: 'V4.9.804 — Alerts und Notifications authorization-aware (Prompt 21)',

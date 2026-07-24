@@ -1,0 +1,91 @@
+import { AUTHORIZATION_DECISION_ACTION } from '../authorization-decision-engine/authorization-decision.constants';
+import { POLICY_RESOLVER_PROCESSOR_TYPE } from '../policy-resolver/policy-resolver.constants';
+
+export const EXTERNAL_ACCESS_ACTION = {
+  READ: AUTHORIZATION_DECISION_ACTION.READ,
+  EXPORT: AUTHORIZATION_DECISION_ACTION.EXPORT,
+  SHARE: AUTHORIZATION_DECISION_ACTION.SHARE,
+  USE_FOR_AI: AUTHORIZATION_DECISION_ACTION.USE_FOR_AI,
+} as const;
+
+export const EXTERNAL_ACCESS_CHANNEL = {
+  FILE_EXPORT: 'FILE_EXPORT',
+  AI_INFERENCE: 'AI_INFERENCE',
+  MCP_TOOL: 'MCP_TOOL',
+  PARTNER_API: 'PARTNER_API',
+  REPORTING: 'REPORTING',
+  WEBHOOK_EGRESS: 'WEBHOOK_EGRESS',
+  SUPPORT_ACCESS: 'SUPPORT_ACCESS',
+  BULK_EXPORT: 'BULK_EXPORT',
+} as const;
+
+export type ExternalAccessChannel =
+  (typeof EXTERNAL_ACCESS_CHANNEL)[keyof typeof EXTERNAL_ACCESS_CHANNEL];
+
+export const EXTERNAL_ACCESS_PATH = {
+  FILE_DOWNLOAD: 'file-download',
+  LEGAL_DOC_DOWNLOAD: 'legal-doc-download',
+  FLEET_CHAT_AI: 'fleet-chat-ai',
+  DOCUMENT_AI_EXTRACTION: 'document-ai-extraction',
+  VEHICLE_SPEC_AI: 'vehicle-spec-ai',
+  VOICE_MCP_TOOL: 'voice-mcp-tool',
+  PARTNER_API_EGRESS: 'partner-api-egress',
+  WEBHOOK_EGRESS: 'webhook-egress',
+  REPORTING_EXPORT: 'reporting-export',
+  BULK_EXPORT: 'bulk-export',
+  SUPPORT_BREAK_GLASS: 'support-break-glass',
+  REVOCATION: 'external-access-revocation',
+} as const;
+
+export const EXTERNAL_ACCESS_SERVICE_IDENTITY = {
+  FILE_EXPORT_API: 'synqdrive-file-export-api',
+  LEGAL_DOC_EXPORT_API: 'synqdrive-legal-doc-export-api',
+  FLEET_CHAT_AI: 'synqdrive-fleet-chat-ai',
+  DOCUMENT_AI: 'synqdrive-document-ai',
+  VEHICLE_SPEC_AI: 'synqdrive-vehicle-spec-ai',
+  VOICE_MCP_GATEWAY: 'synqdrive-voice-mcp-gateway',
+  PARTNER_API: 'synqdrive-partner-api',
+  WEBHOOK_EGRESS: 'synqdrive-webhook-egress',
+  REPORTING_API: 'synqdrive-reporting-api',
+  BULK_EXPORT_API: 'synqdrive-bulk-export-api',
+  MASTER_ADMIN_SUPPORT: 'synqdrive-master-admin-support',
+} as const;
+
+export const EXTERNAL_ACCESS_PURPOSE = {
+  FLEET_ANALYTICS: 'FLEET_ANALYTICS',
+  DOCUMENT_PROCESSING: 'DOCUMENT_PROCESSING',
+  VEHICLE_HEALTH: 'VEHICLE_HEALTH',
+  PARTNER_SERVICE: 'PARTNER_SERVICE',
+  TECHNICAL_OVERVIEW: 'TECHNICAL_OVERVIEW',
+  TRIPS: 'TRIPS',
+  RENTAL_ANALYTICS: 'RENTAL_ANALYTICS',
+} as const;
+
+export const EXTERNAL_ACCESS_DATA_CATEGORY = {
+  TELEMETRY_DATA: 'TELEMETRY_DATA',
+  HEALTH_SIGNALS: 'HEALTH_SIGNALS',
+  DTC_CODES: 'DTC_CODES',
+  GPS_LOCATION: 'GPS_LOCATION',
+  TRIP_DATA: 'TRIP_DATA',
+  DRIVING_BEHAVIOR: 'DRIVING_BEHAVIOR',
+  CUSTOMER_DATA: 'CUSTOMER_DATA',
+  OPERATIONAL_DATA: 'OPERATIONAL_DATA',
+} as const;
+
+export const EXTERNAL_PARTNER_PROCESSOR = POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_PARTNER;
+
+export const EXTERNAL_ACCESS_DENY_REASON = {
+  EXPORT_DENIED: 'EXTERNAL_EXPORT_DENIED',
+  AI_DENIED: 'EXTERNAL_AI_DENIED',
+  SHARE_DENIED: 'EXTERNAL_SHARE_DENIED',
+  MCP_DENIED: 'EXTERNAL_MCP_DENIED',
+  SUPPORT_DENIED: 'EXTERNAL_SUPPORT_DENIED',
+  BULK_EXPORT_DENIED: 'EXTERNAL_BULK_EXPORT_DENIED',
+  WEBHOOK_DENIED: 'EXTERNAL_WEBHOOK_DENIED',
+  TENANT_MISMATCH: 'EXTERNAL_TENANT_MISMATCH',
+  SHARING_AUTH_MISSING: 'EXTERNAL_SHARING_AUTH_MISSING',
+  TOKEN_REVOKED: 'EXTERNAL_TOKEN_REVOKED',
+} as const;
+
+/** Optional injection token for MCP conversation token revocation (wired in VoiceMcpGatewayModule). */
+export const MCP_TOKEN_REVOCATION = Symbol('MCP_TOKEN_REVOCATION');

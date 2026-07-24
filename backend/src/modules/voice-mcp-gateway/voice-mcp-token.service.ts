@@ -93,6 +93,11 @@ export class VoiceMcpTokenService {
       throw new VoiceMcpError('InvalidToken', 'The MCP access token is missing replay protection metadata.');
     }
 
+    const conversationId = String(decoded.cid ?? decoded.sub ?? '');
+    if (conversationId && (await this.nonceStore.isConversationRevoked(conversationId))) {
+      throw new VoiceMcpError('InvalidToken', 'The MCP access token has been revoked.');
+    }
+
     const nonceKnown = await this.nonceStore.assertIssuedNonce(nonce);
     if (!nonceKnown) {
       throw new VoiceMcpError('InvalidToken', 'The MCP access token has been revoked or was never issued.');

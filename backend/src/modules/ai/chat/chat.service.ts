@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
 import {
@@ -9,6 +9,8 @@ import {
   resolveChatVehicleTokenIds,
   tryResolveVehicle,
 } from './fleet-chat-context.util';
+import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
+import { minimizeRecordFields } from '@modules/data-authorizations/external-access-enforcement/external-access-data-minimizer';
 
 export interface ChatMessageResult {
   id?: string;
@@ -30,6 +32,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly llm: LlmGatewayService,
+    @Optional() private readonly externalAccess?: ExternalAccessEnforcementService,
   ) {}
 
   isConfigured(): boolean {
@@ -88,6 +91,9 @@ export class ChatService {
     if (error) return this.persistAssistant(orgId, error);
 
     await this.saveUserMessage(orgId, content);
+    const aiDenied = await this.assertAiAllowed(orgId);
+    if (aiDenied) return this.persistAssistant(orgId, aiDenied);
+
     const { enrichedMessage, tokenIds } = await this.buildContext(orgId, content);
 
     const result = await this.callLlm(enrichedMessage);
@@ -113,6 +119,13 @@ export class ChatService {
     if (!isClosed()) emit('status', { agentReady: true });
 
     await this.saveUserMessage(orgId, content);
+    const aiDenied = await this.assertAiAllowed(orgId);
+    if (aiDenied) {
+      const saved = await this.persistAssistant(orgId, aiDenied);
+      if (!isClosed()) emit('result', this.toResultDto(saved));
+      return;
+    }
+
     const { enrichedMessage, tokenIds } = await this.buildContext(orgId, content);
 
     const result = await this.callLlm(enrichedMessage, (chunk) => {
@@ -183,14 +196,33 @@ export class ChatService {
     }
   }
 
+  private async assertAiAllowed(orgId: string): Promise<string | null> {
+    if (!this.externalAccess) return null;
+    const auth = await this.externalAccess.checkUseForAi({
+      organizationId: orgId,
+      channelKey: 'fleet_chat',
+      correlationId: `fleet-chat-ai:${orgId}:${Date.now()}`,
+    });
+    if (auth.mayProceed) return null;
+    this.logger.warn(`[Chat] AI access denied org=${orgId} reason=${auth.reasonCode}`);
+    return 'AI fleet assistant access is not authorized for this organization.';
+  }
+
   private async buildContext(
     orgId: string,
     content: string,
   ): Promise<{ enrichedMessage: string; tokenIds?: number[] }> {
     const fleet = await this.getOrgFleetInfo(orgId);
-    const resolvedVehicle = tryResolveVehicle(content, fleet);
+    const minimizationSpec = this.externalAccess?.resolveChannelSpec('fleet_chat')?.minimization;
+    const scopedFleet = minimizationSpec
+      ? fleet.map((vehicle) => ({
+          ...vehicle,
+          ...minimizeRecordFields(vehicle as unknown as Record<string, unknown>, minimizationSpec),
+        }))
+      : fleet;
+    const resolvedVehicle = tryResolveVehicle(content, scopedFleet);
     const tokenIds = resolveChatVehicleTokenIds(resolvedVehicle?.tokenId);
-    const enrichedMessage = buildEnrichedChatMessage(content, fleet, resolvedVehicle);
+    const enrichedMessage = buildEnrichedChatMessage(content, scopedFleet, resolvedVehicle);
     this.logger.log(`[Chat] ${formatChatScopeLog(orgId, tokenIds)}`);
     return { enrichedMessage, tokenIds };
   }

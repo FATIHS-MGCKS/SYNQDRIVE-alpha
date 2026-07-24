@@ -27,6 +27,8 @@ export interface DocumentAiStructuredInput {
 }
 
 export interface DocumentAiExtractInput {
+  organizationId?: string;
+  documentId?: string;
   documentType: string;
   fields: DocumentAiField[];
   /** @deprecated Prefer documentContent — kept for backward compatibility in tests. */

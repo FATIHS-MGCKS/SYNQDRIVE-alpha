@@ -126,6 +126,7 @@ import {
   TRIP_LOCATION_SERVICE_IDENTITY,
 } from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.constants';
 import { VehicleHealthEnforcementService } from '@modules/data-authorizations/vehicle-health-enforcement/vehicle-health-enforcement.service';
+import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
 import {
   VEHICLE_HEALTH_DATA_CATEGORY,
   VEHICLE_HEALTH_PATH,
@@ -197,6 +198,7 @@ export class VehicleIntelligenceController {
     private readonly tripLocationEnforcement: TripLocationEnforcementService,
     private readonly healthEnforcement: VehicleHealthEnforcementService,
     private readonly behaviorEnforcement: DrivingBehaviorEnforcementService,
+    private readonly externalAccess: ExternalAccessEnforcementService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1964,16 +1966,13 @@ export class VehicleIntelligenceController {
     @Req() req: { user?: { organizationId?: string; platformRole?: string } },
   ) {
     const organizationId = await this.resolveOrganizationId(req, vehicleId);
-    const exportAllowed = await this.healthEnforcement.mayExport({
+    const exportAuth = await this.externalAccess.checkExport({
       organizationId,
       vehicleId,
-      dataCategory: VEHICLE_HEALTH_DATA_CATEGORY.HEALTH_SIGNALS,
-      purpose: VEHICLE_HEALTH_PURPOSE.VEHICLE_HEALTH,
-      processingPath: VEHICLE_HEALTH_PATH.HEALTH_EXPORT,
-      serviceIdentity: VEHICLE_HEALTH_SERVICE_IDENTITY.HEALTH_EXPORT,
+      channelKey: 'vehicle_file_summary',
       correlationId: `health-export:${vehicleId}`,
     });
-    if (!exportAllowed) {
+    if (!exportAuth.mayProceed) {
       return {
         accessDenied: true,
         vehicleId,

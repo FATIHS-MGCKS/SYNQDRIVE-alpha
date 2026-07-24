@@ -43,6 +43,8 @@ import { DrivingBehaviorEnforcementService } from './driving-behavior-enforcemen
 import { DrivingBehaviorEnforcementMetricsService } from './driving-behavior-enforcement/driving-behavior-enforcement.metrics';
 import { NotificationEnforcementService } from './notification-enforcement/notification-enforcement.service';
 import { NotificationEnforcementMetricsService } from './notification-enforcement/notification-enforcement.metrics';
+import { ExternalAccessEnforcementService } from './external-access-enforcement/external-access-enforcement.service';
+import { ExternalAccessEnforcementMetricsService } from './external-access-enforcement/external-access-enforcement.metrics';
 
 @Module({
   imports: [RedisModule],
@@ -93,6 +95,8 @@ import { NotificationEnforcementMetricsService } from './notification-enforcemen
     DrivingBehaviorEnforcementMetricsService,
     NotificationEnforcementService,
     NotificationEnforcementMetricsService,
+    ExternalAccessEnforcementService,
+    ExternalAccessEnforcementMetricsService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -122,6 +126,8 @@ import { NotificationEnforcementMetricsService } from './notification-enforcemen
     DrivingBehaviorEnforcementMetricsService,
     NotificationEnforcementService,
     NotificationEnforcementMetricsService,
+    ExternalAccessEnforcementService,
+    ExternalAccessEnforcementMetricsService,
   ],
 })
 export class DataAuthorizationsModule {}

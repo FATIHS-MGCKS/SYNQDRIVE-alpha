@@ -53,6 +53,8 @@ import { PartsAccessoriesModule } from '@modules/parts-accessories/parts-accesso
 import { InsurancesModule } from '@modules/insurances/insurances.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { VoiceMcpGatewayModule } from '@modules/voice-mcp-gateway/voice-mcp-gateway.module';
+import { VoiceMcpNonceStore } from '@modules/voice-mcp-gateway/voice-mcp-nonce.store';
+import { MCP_TOKEN_REVOCATION } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.constants';
 import { VoiceCallOrchestrationModule } from '@modules/voice-call-orchestration/voice-call-orchestration.module';
 import { VoiceBillingModule } from '@modules/voice-billing/voice-billing.module';
 import { VoiceProtectionModule } from '@modules/voice-protection/voice-protection.module';
@@ -134,6 +136,10 @@ export class AppModule {
         {
           provide: APP_INTERCEPTOR,
           useClass: AuditInterceptor,
+        },
+        {
+          provide: MCP_TOKEN_REVOCATION,
+          useExisting: VoiceMcpNonceStore,
         },
       ],
       imports: [

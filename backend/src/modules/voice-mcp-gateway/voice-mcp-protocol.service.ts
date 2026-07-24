@@ -1,6 +1,8 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
+import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
+import { minimizeMcpToolOutput } from '@modules/data-authorizations/external-access-enforcement/external-access-data-minimizer';
 import { resolveVoiceMcpToolTimeoutMs } from './voice-mcp-gateway.config';
 import {
   VOICE_MCP_CORRELATION_ID_HEADER,
@@ -48,6 +50,7 @@ export class VoiceMcpProtocolService {
     private readonly nonceStore: VoiceMcpNonceStore,
     private readonly rateLimitService: VoiceMcpRateLimitService,
     @Optional() private readonly voiceMetrics?: VoiceMetricsService,
+    @Optional() private readonly externalAccess?: ExternalAccessEnforcementService,
   ) {}
 
   resolveRequestIds(headers: Record<string, string | string[] | undefined>): {
@@ -171,6 +174,50 @@ export class VoiceMcpProtocolService {
         : {};
 
     await this.middleware.assertToolAllowed(context, name);
+
+    if (this.externalAccess) {
+      const auth = await this.externalAccess.checkMcpTool({
+        organizationId: context.organizationId,
+        toolName: name,
+        conversationId: context.conversationId,
+        correlationId: context.correlationId,
+      });
+      if (!auth.mayProceed) {
+        throw new VoiceMcpError(
+          'PermissionDenied',
+          'This MCP tool is not authorized for the current data authorization policy.',
+        );
+      }
+
+      try {
+        const result = await this.withTimeout(this.toolsService.execute(context, { name, arguments: args }));
+        const minimized = minimizeMcpToolOutput(result, auth.spec?.minimization);
+        await this.auditService.recordToolInvocation(context, name, args, 'SUCCEEDED');
+        return {
+          content: [{ type: 'text', text: JSON.stringify(minimized) }],
+          isError: false,
+        };
+      } catch (error) {
+        if (isVoiceMcpError(error) && error.code === 'ConfirmationRequired') {
+          return {
+            content: [{ type: 'text', text: JSON.stringify(error.details ?? { code: error.code, message: error.message }) }],
+            isError: false,
+          };
+        }
+        if (isVoiceMcpError(error) && (error.code === 'ApprovalPending' || error.code === 'ApprovalDenied' || error.code === 'ApprovalExpired')) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ code: error.code, message: error.message, ...(error.details ?? {}) }) }],
+            isError: error.code !== 'ApprovalPending',
+          };
+        }
+        await this.auditService.recordToolInvocation(context, name, args, 'FAILED');
+        const payload = toMcpToolErrorPayload(error);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(payload) }],
+          isError: true,
+        };
+      }
+    }
 
     try {
       const result = await this.withTimeout(this.toolsService.execute(context, { name, arguments: args }));

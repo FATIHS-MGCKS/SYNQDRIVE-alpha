@@ -19,7 +19,8 @@ import {
   DocumentExtractionMergeService,
 } from './document-extraction-merge.service';
 import { DocumentTextChunk } from './document-chunking.types';
-import { mapAiExtractionFailure } from '@modules/document-extraction/document-extraction.errors';
+import { ExternalAccessEnforcementService } from '@modules/data-authorizations/external-access-enforcement/external-access-enforcement.service';
+import { sanitizeAiPromptContext } from '@modules/data-authorizations/external-access-enforcement/external-access-data-minimizer';
 
 /**
  * Mistral-backed structured document extraction with page-aware chunking
@@ -36,6 +37,7 @@ export class DocumentAiExtractionService {
     @Optional()
     @Inject(documentExtractionConfig.KEY)
     private readonly conf?: ConfigType<typeof documentExtractionConfig>,
+    @Optional() private readonly externalAccess?: ExternalAccessEnforcementService,
   ) {}
 
   isEnabled(): boolean {
@@ -46,6 +48,23 @@ export class DocumentAiExtractionService {
   async extract(input: DocumentAiExtractInput): Promise<DocumentAiExtractResult> {
     const startedAt = Date.now();
     const dimoContextAvailable = typeof input.dimoTokenId === 'number';
+
+    if (input.organizationId && this.externalAccess) {
+      const auth = await this.externalAccess.checkUseForAi({
+        organizationId: input.organizationId,
+        channelKey: 'document_ai_extraction',
+        correlationId: `document-ai:${input.organizationId}:${input.documentId ?? 'unknown'}`,
+      });
+      if (!auth.mayProceed) {
+        return {
+          success: false,
+          fields: {},
+          recommendedHumanReviewNotes: [],
+          dimoContextAvailable,
+          error: 'AI document extraction is not authorized for this organization.',
+        };
+      }
+    }
 
     if (!this.isEnabled()) {
       return {
@@ -59,6 +78,14 @@ export class DocumentAiExtractionService {
     }
 
     const structured = this.resolveStructuredContent(input);
+    const minimizationSpec = this.externalAccess?.resolveChannelSpec('document_ai_extraction')?.minimization;
+    const vehicleContext = input.vehicleContext
+      ? (sanitizeAiPromptContext(
+          input.vehicleContext as Record<string, unknown>,
+          minimizationSpec,
+        ) as DocumentAiExtractInput['vehicleContext'])
+      : undefined;
+    const extractionInput = vehicleContext ? { ...input, vehicleContext } : input;
     const chunking = this.chunking.chunk({
       pages: structured.pages,
       limits: {
@@ -90,7 +117,7 @@ export class DocumentAiExtractionService {
     const providerId = this.llm.activeProviderId;
 
     for (const chunk of chunking.chunks) {
-      const chunkResult = await this.extractChunk(input, chunk, chunking.chunks.length);
+      const chunkResult = await this.extractChunk(extractionInput, chunk, chunking.chunks.length);
       if (!chunkResult.success) {
         return {
           ...chunkResult,
@@ -106,7 +133,7 @@ export class DocumentAiExtractionService {
       });
     }
 
-    const merged = this.mergeService.merge(input.fields, chunkPayloads);
+    const merged = this.mergeService.merge(extractionInput.fields, chunkPayloads);
     const notes = [
       ...chunking.warnings,
       ...merged.recommendedHumanReviewNotes,
