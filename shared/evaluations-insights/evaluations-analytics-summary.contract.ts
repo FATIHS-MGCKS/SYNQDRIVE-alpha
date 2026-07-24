@@ -4,8 +4,9 @@
  */
 import type { InsightAnalyticsSummary } from './insights-analytics.contract';
 import type { InsightEntityCountSummary } from './insight-entity-references.contract';
+import type { EvaluationsAnalyticsAppliedFilters } from './evaluations-analytics-filters.contract';
 
-export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d';
+export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
 export type EvaluationsSectionStatus = 'OK' | 'PARTIAL' | 'UNAVAILABLE' | 'ERROR';
 
@@ -136,10 +137,7 @@ export interface EvaluationsDataQualitySummary {
   unavailableSections: string[];
 }
 
-export interface EvaluationsAnalyticsSummaryFilters {
-  stationId: string | null;
-  period: EvaluationsAnalyticsPeriod;
-}
+export type EvaluationsAnalyticsSummaryFilters = EvaluationsAnalyticsAppliedFilters;
 
 export interface EvaluationsAnalyticsSummaryResponse {
   organizationId: string;

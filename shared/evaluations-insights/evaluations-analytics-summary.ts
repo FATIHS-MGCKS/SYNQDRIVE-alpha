@@ -29,6 +29,7 @@ const PERIOD_LABELS: Record<EvaluationsAnalyticsPeriod, string> = {
   mtd: 'Month to date',
   last7d: 'Last 7 days',
   last30d: 'Last 30 days',
+  custom: 'Custom range',
 };
 
 export function resolveAnalyticsPeriodWindows(
@@ -56,6 +57,8 @@ export function resolveAnalyticsPeriodWindows(
       previousTo = new Date(from.getTime() - 1);
       previousFrom = new Date(previousTo.getTime() - 30 * 86400_000);
       break;
+    case 'custom':
+      throw new Error('Custom periods require explicit from/to bounds');
     case 'mtd':
     default:
       from = startOfMonth(to);

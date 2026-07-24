@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import type { InsightAnalyticsRow } from '@synq/evaluations-insights/insights-analytics.contract';
+import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 
 function insightRow(id: string, overrides: Partial<InsightAnalyticsRow> = {}): InsightAnalyticsRow {
   return {
@@ -20,6 +21,37 @@ function insightRow(id: string, overrides: Partial<InsightAnalyticsRow> = {}): I
 describe('DashboardInsightsAnalyticsService', () => {
   const orgId = 'org-analytics-test';
   let rows: InsightAnalyticsRow[] = [];
+
+  const baseResolved = (
+    overrides: Partial<ResolvedEvaluationsAnalyticsFilters> = {},
+  ): ResolvedEvaluationsAnalyticsFilters => ({
+    organizationId: orgId,
+    period: {
+      key: 'mtd',
+      from: '2026-06-01T00:00:00.000Z',
+      to: '2026-06-16T12:00:00.000Z',
+      timezone: 'Europe/Berlin',
+    },
+    comparisonPeriod: {
+      key: 'mtd',
+      from: '2026-05-01T00:00:00.000Z',
+      to: '2026-05-31T23:59:59.999Z',
+      timezone: 'Europe/Berlin',
+    },
+    stationId: null,
+    vehicleId: null,
+    vehicleClassId: null,
+    vehicleStatus: null,
+    bookingStatus: null,
+    customerSegment: null,
+    currency: 'EUR',
+    riskCategory: null,
+    insightStatus: null,
+    dataQualityStatus: null,
+    scopedVehicleIds: null,
+    stationVehicleIds: null,
+    ...overrides,
+  });
 
   const prisma = {
     dashboardInsight: {
@@ -127,7 +159,7 @@ describe('DashboardInsightsAnalyticsService', () => {
   });
 
   it('summary with 0 insights returns zero counts', async () => {
-    const summary = await service.getAnalyticsSummary(orgId);
+    const summary = await service.getAnalyticsSummary(orgId, baseResolved());
     expect(summary.counts.totalVisible).toBe(0);
     expect(summary.counts.businessRisks).toBe(0);
   });
@@ -136,9 +168,9 @@ describe('DashboardInsightsAnalyticsService', () => {
     rows = Array.from({ length: 5 }, (_, i) =>
       insightRow(`ins-${i}`, { type: 'TIGHT_HANDOVER', priority: 100 - i }),
     );
-    const summary = await service.getAnalyticsSummary(orgId);
-    const page1 = await service.listAnalyticsInsights(orgId, { page: 1, limit: 2 });
-    const page2 = await service.listAnalyticsInsights(orgId, { page: 2, limit: 2 });
+    const summary = await service.getAnalyticsSummary(orgId, baseResolved());
+    const page1 = await service.listAnalyticsInsights(orgId, baseResolved(), { page: 1, limit: 2 });
+    const page2 = await service.listAnalyticsInsights(orgId, baseResolved(), { page: 2, limit: 2 });
 
     expect(summary.counts.businessRisks).toBe(5);
     expect(page1.data).toHaveLength(2);
@@ -155,7 +187,7 @@ describe('DashboardInsightsAnalyticsService', () => {
         priority: i,
       }),
     );
-    const summary = await service.getAnalyticsSummary(orgId);
+    const summary = await service.getAnalyticsSummary(orgId, baseResolved());
     expect(summary.counts.totalVisible).toBe(100);
     expect(summary.counts.revenueLeakage).toBe(25);
     expect(summary.counts.businessRisks).toBe(75);
@@ -168,7 +200,7 @@ describe('DashboardInsightsAnalyticsService', () => {
       insightRow('mid', { priority: 50 }),
       insightRow('top', { priority: 100 }),
     ];
-    const list = await service.listAnalyticsInsights(orgId, {
+    const list = await service.listAnalyticsInsights(orgId, baseResolved(), {
       page: 1,
       limit: 2,
       sortBy: 'priority',
@@ -190,9 +222,8 @@ describe('DashboardInsightsAnalyticsService', () => {
       insightRow('br', { type: 'PICKUP_OVERDUE' }),
       insightRow('rl', { type: 'LOW_UTILIZATION', metrics: null }),
     ];
-    const summary = await service.getAnalyticsSummary(orgId, { category: 'REVENUE_LEAKAGE' });
-    const list = await service.listAnalyticsInsights(orgId, {
-      category: 'REVENUE_LEAKAGE',
+    const summary = await service.getAnalyticsSummary(orgId, baseResolved({ riskCategory: 'REVENUE_LEAKAGE' }));
+    const list = await service.listAnalyticsInsights(orgId, baseResolved({ riskCategory: 'REVENUE_LEAKAGE' }), {
       page: 1,
       limit: 10,
     });

@@ -4,17 +4,21 @@ import { buildPaginatedResult, parsePagination } from '@shared/utils/pagination'
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import type { DashboardInsightDto } from './insight.types';
 import type {
-  InsightAnalyticsFilters,
   InsightAnalyticsListQuery,
   InsightAnalyticsRow,
   InsightAnalyticsSummary,
 } from '@synq/evaluations-insights/insights-analytics.contract';
+import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 import {
   computeInsightAnalyticsSummaryCounts,
   estimateInsightFinancialExposureMinor,
-  matchesInsightAnalyticsFilters,
   sortInsights,
 } from '@synq/evaluations-insights/insights-analytics';
+import {
+  matchesDataQualityInsightFilter,
+  matchesResolvedInsightFilters,
+  toAppliedFilters,
+} from '@synq/evaluations-insights/evaluations-analytics-filters';
 
 @Injectable()
 export class DashboardInsightsAnalyticsService {
@@ -25,13 +29,23 @@ export class DashboardInsightsAnalyticsService {
 
   async getAnalyticsSummary(
     organizationId: string,
-    filters: InsightAnalyticsFilters = {},
+    resolved: ResolvedEvaluationsAnalyticsFilters,
   ): Promise<InsightAnalyticsSummary> {
     const runMeta = await this.repo.getRunMetadata(organizationId);
-    const resolvedFilters = await this.resolveFilters(organizationId, filters);
     const insights = await this.loadActiveInsightRows(organizationId);
-    const counts = computeInsightAnalyticsSummaryCounts(insights, resolvedFilters, organizationId);
-    const exposure = estimateInsightFinancialExposureMinor(insights, resolvedFilters);
+    const filtered = this.filterInsights(insights, resolved, runMeta.stale);
+    const legacyFilters = {
+      category: resolved.riskCategory ?? undefined,
+      severity: resolved.insightStatus ?? undefined,
+      stationId: resolved.stationId,
+      stationVehicleIds: resolved.stationVehicleIds,
+    };
+    const counts = computeInsightAnalyticsSummaryCounts(
+      filtered,
+      legacyFilters,
+      organizationId,
+    );
+    const exposure = estimateInsightFinancialExposureMinor(filtered, legacyFilters);
 
     return {
       generatedAt: runMeta.lastRunAt,
@@ -42,17 +56,18 @@ export class DashboardInsightsAnalyticsService {
       counts,
       estimatedFinancialExposureMinor: exposure.amountMinor,
       estimatedFinancialExposureCurrency: exposure.currency,
-      appliedFilters: this.serializeFilters(resolvedFilters),
+      appliedFilters: toAppliedFilters(resolved) as unknown as InsightAnalyticsSummary['appliedFilters'],
     };
   }
 
   async listAnalyticsInsights(
     organizationId: string,
-    query: InsightAnalyticsListQuery = {},
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+    query: Pick<InsightAnalyticsListQuery, 'page' | 'limit' | 'sortBy' | 'sortOrder'> = {},
   ) {
-    const resolvedFilters = await this.resolveFilters(organizationId, query);
+    const runMeta = await this.repo.getRunMetadata(organizationId);
     const insights = await this.loadActiveInsightRows(organizationId);
-    const filtered = insights.filter((row) => matchesInsightAnalyticsFilters(row, resolvedFilters));
+    const filtered = this.filterInsights(insights, resolved, runMeta.stale);
     const sorted = sortInsights(filtered, query.sortBy ?? 'priority', query.sortOrder ?? 'desc');
     const { skip, take } = parsePagination(query);
     const pageRows = sorted.slice(skip, skip + take);
@@ -60,7 +75,7 @@ export class DashboardInsightsAnalyticsService {
 
     return {
       ...buildPaginatedResult(dtos, filtered.length, query),
-      appliedFilters: this.serializeFilters(resolvedFilters),
+      appliedFilters: toAppliedFilters(resolved),
     };
   }
 
@@ -74,6 +89,18 @@ export class DashboardInsightsAnalyticsService {
     });
     if (!row) return null;
     return this.repo.toPublicInsightDto(row, organizationId);
+  }
+
+  private filterInsights(
+    insights: InsightAnalyticsRow[],
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+    insightStale: boolean,
+  ): InsightAnalyticsRow[] {
+    return insights.filter(
+      (row) =>
+        matchesResolvedInsightFilters(row, resolved) &&
+        matchesDataQualityInsightFilter(insightStale, resolved.dataQualityStatus),
+    );
   }
 
   private async loadActiveInsightRows(organizationId: string): Promise<InsightAnalyticsRow[]> {
@@ -112,36 +139,5 @@ export class DashboardInsightsAnalyticsService {
       timeContext: (row.timeContext as Record<string, string> | null) ?? null,
       createdAt: row.createdAt,
     }));
-  }
-
-  private async resolveFilters(
-    organizationId: string,
-    filters: InsightAnalyticsFilters,
-  ): Promise<InsightAnalyticsFilters> {
-    if (!filters.stationId) {
-      return { ...filters, stationVehicleIds: null };
-    }
-    const vehicles = await this.prisma.vehicle.findMany({
-      where: {
-        organizationId,
-        OR: [
-          { homeStationId: filters.stationId },
-          { currentStationId: filters.stationId },
-        ],
-      },
-      select: { id: true },
-    });
-    return {
-      ...filters,
-      stationVehicleIds: new Set(vehicles.map((v) => v.id)),
-    };
-  }
-
-  private serializeFilters(filters: InsightAnalyticsFilters): InsightAnalyticsFilters {
-    return {
-      category: filters.category,
-      severity: filters.severity,
-      stationId: filters.stationId ?? null,
-    };
   }
 }

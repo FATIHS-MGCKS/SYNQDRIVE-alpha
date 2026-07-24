@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
+import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 import type {
-  EvaluationsAnalyticsPeriod,
-  EvaluationsAnalyticsSummaryQuery,
   EvaluationsAnalyticsSummaryResponse,
   EvaluationsSectionStatus,
 } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
@@ -22,12 +21,12 @@ import {
   buildVehicleAvailabilitySummary,
   computeOverallStatus,
   deriveStrengthsAndWeaknesses,
-  resolveAnalyticsPeriodWindows,
   sectionStatusFromResult,
   unwrapSectionResult,
   wrapSection,
   type EvaluationsSectionResult,
 } from '@synq/evaluations-insights/evaluations-analytics-summary';
+import { toAppliedFilters } from '@synq/evaluations-insights/evaluations-analytics-filters';
 
 @Injectable()
 export class EvaluationsAnalyticsSummaryService {
@@ -40,45 +39,17 @@ export class EvaluationsAnalyticsSummaryService {
 
   async getSummary(
     organizationId: string,
-    query: EvaluationsAnalyticsSummaryQuery = {},
+    resolved: ResolvedEvaluationsAnalyticsFilters,
   ): Promise<EvaluationsAnalyticsSummaryResponse> {
     const startedAt = Date.now();
     const generatedAt = new Date().toISOString();
-    const period: EvaluationsAnalyticsPeriod = query.period ?? 'mtd';
-    const stationId = query.stationId ?? null;
 
-    const timezone = await this.repository.resolveOrgTimezone(organizationId);
-    const { current, previous } = resolveAnalyticsPeriodWindows(period, timezone);
-
-    const stationVehicleIds = stationId
-      ? await this.repository.resolveStationVehicleIds(organizationId, stationId)
-      : null;
-
-    const scope = {
-      organizationId,
-      stationId,
-      stationVehicleIds,
-    };
-
-    const [
-      financialResult,
-      bookingResult,
-      fleetResult,
-      insightsResult,
-    ] = await Promise.all([
-      this.safeSection('financial', () =>
-        this.repository.loadFinancialSnapshot(scope, current, previous),
-      ),
-      this.safeSection('bookings', () =>
-        this.repository.loadBookingSnapshot(scope, current, previous, timezone),
-      ),
-      this.safeSection('fleet', () =>
-        this.repository.loadFleetSnapshot(scope, 7, timezone),
-      ),
+    const [financialResult, bookingResult, fleetResult, insightsResult] = await Promise.all([
+      this.safeSection('financial', () => this.repository.loadFinancialSnapshot(resolved)),
+      this.safeSection('bookings', () => this.repository.loadBookingSnapshot(resolved)),
+      this.safeSection('fleet', () => this.repository.loadFleetSnapshot(resolved, 7)),
       this.safeSection('insights', () =>
-        this.insightsAnalytics.getAnalyticsSummary(organizationId, {
-          stationId,
-        }),
+        this.insightsAnalytics.getAnalyticsSummary(organizationId, resolved),
       ),
     ]);
 
@@ -139,12 +110,24 @@ export class EvaluationsAnalyticsSummaryService {
       fleetOk: fleetResult.ok,
     });
 
-    const response: EvaluationsAnalyticsSummaryResponse = {
+    return {
       organizationId,
       generatedAt,
-      period: current,
-      comparisonPeriod: previous,
-      appliedFilters: { stationId, period },
+      period: {
+        key: resolved.period.key,
+        label: resolved.period.key === 'mtd' ? 'Month to date' : resolved.period.key,
+        from: resolved.period.from,
+        to: resolved.period.to,
+        timezone: resolved.period.timezone,
+      },
+      comparisonPeriod: {
+        key: resolved.comparisonPeriod.key,
+        label: `Previous ${resolved.comparisonPeriod.key}`,
+        from: resolved.comparisonPeriod.from,
+        to: resolved.comparisonPeriod.to,
+        timezone: resolved.comparisonPeriod.timezone,
+      },
+      appliedFilters: toAppliedFilters(resolved),
       overallStatus: computeOverallStatus(sectionDefs),
       executive: wrapSection(executive, executive ? 'OK' : 'PARTIAL', generatedAt),
       financial: wrapSection(
@@ -216,17 +199,13 @@ export class EvaluationsAnalyticsSummaryService {
         sectionStatusFromResult(insightsResult),
         generatedAt,
         insightsResult.ok ? null : insightsResult.error,
-        insights
-          ? { stale: insights.stale, lastUpdatedAt: insights.lastRunAt }
-          : undefined,
+        insights ? { stale: insights.stale, lastUpdatedAt: insights.lastRunAt } : undefined,
       ),
       metadata: buildSummaryMetadata(
         sectionDefs.map((s) => ({ status: s.status })),
         Date.now() - startedAt,
       ),
     };
-
-    return response;
   }
 
   private async safeSection<T>(

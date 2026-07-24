@@ -55,6 +55,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightFormatterService,
     DashboardInsightsRepository,
     DashboardInsightsAnalyticsService,
+    EvaluationsAnalyticsFilterService,
     EvaluationsAnalyticsSummaryRepository,
     EvaluationsAnalyticsSummaryService,
     InsightTaskBridgeService,

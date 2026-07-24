@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-filter-contract-v49816-2026-07-24',
+    version: 'V4.9.816',
+    title: 'V4.9.816 — Einheitliche Auswertungen-Filterarchitektur (Prompt 18/54)',
+    summary: [
+      'Zentrale Filter-DTO/Schema-Definition in `shared/evaluations-insights/evaluations-analytics-filters.*`.',
+      'Serverseitige Validierung via `EvaluationsAnalyticsFilterService`; keine freien Prisma-Filter aus Clientdaten.',
+      'Migriert: `GET …/evaluations/analytics/summary` und `GET …/evaluations/insights/*` auf einheitliche Filter.',
+      'URL-kompatible Filter (`useEvaluationsAnalyticsFilters`), Filterleiste im Insights-Cockpit, Stale-State-Clear bei Wechsel.',
+      'Station-/Org-Rechte begrenzen auswählbare Werte; fremde Station → 404; `bookingChannel` abgelehnt.',
+      'Tests: einzelne/kombinierte Filter, ungültige IDs, Zeitzonen, große Zeiträume, nicht unterstützte Kombinationen.',
+      'Doku: `docs/architecture/analytics/evaluations-filter-contract.md`.',
+    ],
+    reason:
+      'Prompt 18/54 — Summary, Charts, Rankings und Drill-downs müssen dieselben validierten Filter anwenden.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T14:00:00.000Z',
+  },
+  {
     id: 'evaluations-analytics-summary-v49815-2026-07-24',
     version: 'V4.9.815',
     title: 'V4.9.815 — Kanonischer Auswertungen Analytics-Summary-Endpunkt (Prompt 17/54)',

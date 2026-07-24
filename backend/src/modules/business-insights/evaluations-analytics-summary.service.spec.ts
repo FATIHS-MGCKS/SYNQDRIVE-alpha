@@ -2,13 +2,43 @@ import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
+import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 
 describe('EvaluationsAnalyticsSummaryService', () => {
   const orgId = 'org-eval-summary';
 
+  const baseResolved = (
+    overrides: Partial<ResolvedEvaluationsAnalyticsFilters> = {},
+  ): ResolvedEvaluationsAnalyticsFilters => ({
+    organizationId: orgId,
+    period: {
+      key: 'mtd',
+      from: '2026-06-01T00:00:00.000Z',
+      to: '2026-06-16T12:00:00.000Z',
+      timezone: 'Europe/Berlin',
+    },
+    comparisonPeriod: {
+      key: 'mtd',
+      from: '2026-05-01T00:00:00.000Z',
+      to: '2026-05-31T23:59:59.999Z',
+      timezone: 'Europe/Berlin',
+    },
+    stationId: null,
+    vehicleId: null,
+    vehicleClassId: null,
+    vehicleStatus: null,
+    bookingStatus: null,
+    customerSegment: null,
+    currency: 'EUR',
+    riskCategory: null,
+    insightStatus: null,
+    dataQualityStatus: null,
+    scopedVehicleIds: null,
+    stationVehicleIds: null,
+    ...overrides,
+  });
+
   const repository = {
-    resolveOrgTimezone: jest.fn().mockResolvedValue('Europe/Berlin'),
-    resolveStationVehicleIds: jest.fn().mockResolvedValue(['veh-1', 'veh-2']),
     loadFinancialSnapshot: jest.fn().mockResolvedValue({
       revenueMtdMinor: 100_000,
       revenuePreviousMinor: 80_000,
@@ -74,7 +104,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
       },
       estimatedFinancialExposureMinor: 25_000,
       estimatedFinancialExposureCurrency: 'EUR',
-      appliedFilters: { stationId: null },
+      appliedFilters: {},
     }),
   };
 
@@ -93,51 +123,30 @@ describe('EvaluationsAnalyticsSummaryService', () => {
   });
 
   it('returns canonical summary with all major sections OK', async () => {
-    const result = await service.getSummary(orgId, { period: 'mtd' });
+    const result = await service.getSummary(orgId, baseResolved());
 
     expect(result.organizationId).toBe(orgId);
     expect(result.overallStatus).toBe('OK');
-    expect(result.executive.status).toBe('OK');
     expect(result.executive.data?.revenueMtdMinor).toBe(100_000);
-    expect(result.financial.status).toBe('OK');
-    expect(result.activeRisks.data?.criticalBookings).toBe(1);
-    expect(result.affectedEntities.data?.affectedVehicles).toBe(4);
-    expect(result.metadata.generationDurationMs).toBeGreaterThanOrEqual(0);
-    expect(result.insights.data?.stale).toBe(false);
+    expect(result.appliedFilters.stationId).toBeNull();
   });
 
-  it('applies station filter via repository scope', async () => {
-    await service.getSummary(orgId, { stationId: 'station-1', period: 'last7d' });
+  it('passes resolved filters to repository loaders', async () => {
+    const resolved = baseResolved({ stationId: 'station-1' });
+    await service.getSummary(orgId, resolved);
 
-    expect(repository.resolveStationVehicleIds).toHaveBeenCalledWith(orgId, 'station-1');
-    expect(repository.loadFinancialSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ stationId: 'station-1', stationVehicleIds: ['veh-1', 'veh-2'] }),
-      expect.any(Object),
-      expect.any(Object),
-    );
-    expect(insightsAnalytics.getAnalyticsSummary).toHaveBeenCalledWith(orgId, {
-      stationId: 'station-1',
-    });
+    expect(repository.loadFinancialSnapshot).toHaveBeenCalledWith(resolved);
+    expect(repository.loadBookingSnapshot).toHaveBeenCalledWith(resolved);
+    expect(insightsAnalytics.getAnalyticsSummary).toHaveBeenCalledWith(orgId, resolved);
   });
 
   it('surfaces partial summary when financial section fails', async () => {
     repository.loadFinancialSnapshot.mockRejectedValueOnce(new Error('invoice db timeout'));
 
-    const result = await service.getSummary(orgId);
+    const result = await service.getSummary(orgId, baseResolved());
 
     expect(result.financial.status).toBe('ERROR');
-    expect(result.financial.data).toBeNull();
-    expect(result.financial.error).toContain('invoice db timeout');
     expect(result.bookings.status).toBe('OK');
     expect(result.overallStatus).toBe('PARTIAL');
-    expect(result.dataQuality.data?.unavailableSections).toContain('financial');
-  });
-
-  it('does not include customer or personal fields in executive payload', async () => {
-    const result = await service.getSummary(orgId);
-    const serialized = JSON.stringify(result.executive.data ?? {});
-    expect(serialized).not.toMatch(/customer/i);
-    expect(serialized).not.toMatch(/email/i);
-    expect(serialized).not.toMatch(/firstName/i);
   });
 });

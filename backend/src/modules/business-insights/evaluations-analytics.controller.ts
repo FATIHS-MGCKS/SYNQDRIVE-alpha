@@ -1,37 +1,41 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { EvaluationsAnalyticsFilterService } from './evaluations-analytics-filter.service';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
-import { EvaluationsAnalyticsSummaryQueryDto } from './dto/evaluations-analytics-query.dto';
+import {
+  EvaluationsAnalyticsSummaryQueryDto,
+  normalizeAnalyticsFilterQuery,
+} from './dto/evaluations-analytics-filters.dto';
 
 @ApiTags('Evaluations Analytics')
 @Controller('organizations/:orgId/evaluations/analytics')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class EvaluationsAnalyticsController {
-  constructor(private readonly summaryService: EvaluationsAnalyticsSummaryService) {}
+  constructor(
+    private readonly summaryService: EvaluationsAnalyticsSummaryService,
+    private readonly filterService: EvaluationsAnalyticsFilterService,
+  ) {}
 
   @Get('summary')
   @ApiOperation({
     summary: 'Canonical Auswertungen analytics summary',
     description:
-      'Tenant-scoped executive KPIs, financial/receivables/booking/fleet sections, active risks, affected entities, strengths/weaknesses, and data-quality metadata. Partial source failures surface as section-level ERROR/PARTIAL/UNAVAILABLE without failing the entire payload.',
+      'Unified filter contract applies across summary, insights, charts, and drill-downs. See docs/architecture/analytics/evaluations-filter-contract.md.',
   })
   @ApiParam({ name: 'orgId', description: 'Organization ID' })
-  @ApiQuery({ name: 'stationId', required: false, description: 'Optional station filter (UUID)' })
-  @ApiQuery({
-    name: 'period',
-    required: false,
-    enum: ['mtd', 'last7d', 'last30d'],
-    description: 'Comparison window (default: mtd)',
-  })
-  getAnalyticsSummary(
+  async getAnalyticsSummary(
     @Param('orgId') orgId: string,
     @Query() query: EvaluationsAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.summaryService.getSummary(orgId, {
-      stationId: query.stationId ?? null,
-      period: query.period,
-    });
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+      { allowDataQualitySectionFilters: true },
+    );
+    return this.summaryService.getSummary(orgId, resolved);
   }
 }

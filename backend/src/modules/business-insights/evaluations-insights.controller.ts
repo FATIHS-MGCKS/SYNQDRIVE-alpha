@@ -1,37 +1,50 @@
-import { Controller, Get, NotFoundException, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
+import { EvaluationsAnalyticsFilterService } from './evaluations-analytics-filter.service';
 import {
-  InsightAnalyticsListQueryDto,
-  InsightAnalyticsSummaryQueryDto,
-} from './dto/insight-analytics-query.dto';
+  EvaluationsInsightAnalyticsListQueryDto,
+  EvaluationsInsightAnalyticsSummaryQueryDto,
+  normalizeAnalyticsFilterQuery,
+} from './dto/evaluations-analytics-filters.dto';
 
 @Controller('organizations/:orgId/evaluations/insights')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class EvaluationsInsightsController {
-  constructor(private readonly analytics: DashboardInsightsAnalyticsService) {}
+  constructor(
+    private readonly analytics: DashboardInsightsAnalyticsService,
+    private readonly filterService: EvaluationsAnalyticsFilterService,
+  ) {}
 
   @Get('summary')
-  getAnalyticsSummary(
+  async getAnalyticsSummary(
     @Param('orgId') orgId: string,
-    @Query() query: InsightAnalyticsSummaryQueryDto,
+    @Query() query: EvaluationsInsightAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.analytics.getAnalyticsSummary(orgId, {
-      category: query.category,
-      severity: query.severity,
-      stationId: query.stationId ?? null,
-    });
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+    );
+    return this.analytics.getAnalyticsSummary(orgId, resolved);
   }
 
   @Get()
-  listAnalyticsInsights(@Param('orgId') orgId: string, @Query() query: InsightAnalyticsListQueryDto) {
-    return this.analytics.listAnalyticsInsights(orgId, {
+  async listAnalyticsInsights(
+    @Param('orgId') orgId: string,
+    @Query() query: EvaluationsInsightAnalyticsListQueryDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+    );
+    return this.analytics.listAnalyticsInsights(orgId, resolved, {
       page: query.page,
       limit: query.limit,
-      category: query.category,
-      severity: query.severity,
-      stationId: query.stationId ?? null,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
     });

@@ -4219,12 +4219,14 @@ export const api = {
   evaluationsInsights: {
     summary: (
       orgId: string,
-      params?: { category?: string; severity?: string; stationId?: string },
+      params?: Record<string, string | number | null | undefined>,
     ) => {
       const qs = new URLSearchParams();
-      if (params?.category) qs.set('category', params.category);
-      if (params?.severity) qs.set('severity', params.severity);
-      if (params?.stationId) qs.set('stationId', params.stationId);
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
       const q = qs.toString();
       return get<{
         generatedAt: string | null;
@@ -4265,24 +4267,14 @@ export const api = {
     },
     list: (
       orgId: string,
-      params?: {
-        page?: number;
-        limit?: number;
-        category?: string;
-        severity?: string;
-        stationId?: string;
-        sortBy?: 'priority' | 'createdAt';
-        sortOrder?: 'asc' | 'desc';
-      },
+      params?: Record<string, string | number | null | undefined>,
     ) => {
       const qs = new URLSearchParams();
-      if (params?.page) qs.set('page', String(params.page));
-      if (params?.limit) qs.set('limit', String(params.limit));
-      if (params?.category) qs.set('category', params.category);
-      if (params?.severity) qs.set('severity', params.severity);
-      if (params?.stationId) qs.set('stationId', params.stationId);
-      if (params?.sortBy) qs.set('sortBy', params.sortBy);
-      if (params?.sortOrder) qs.set('sortOrder', params.sortOrder);
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
       const q = qs.toString();
       return get<{
         data: Array<{
@@ -4321,11 +4313,14 @@ export const api = {
   evaluationsAnalytics: {
     summary: (
       orgId: string,
-      params?: { stationId?: string; period?: 'mtd' | 'last7d' | 'last30d' },
+      params?: Record<string, string | number | null | undefined>,
     ) => {
       const qs = new URLSearchParams();
-      if (params?.stationId) qs.set('stationId', params.stationId);
-      if (params?.period) qs.set('period', params.period);
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value != null && value !== '') qs.set(key, String(value));
+        }
+      }
       const q = qs.toString();
       return get<{
         organizationId: string;

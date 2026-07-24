@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import type { EvaluationsAnalyticsFiltersQuery } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
+import { serializeFiltersToSearchParams } from '@synq/evaluations-insights/evaluations-analytics-filters';
 
 export interface EvaluationsInsightsSummary {
   generatedAt: string | null;
@@ -59,13 +61,26 @@ export interface EvaluationsInsightListItem {
 
 interface UseEvaluationsInsightsAnalyticsOptions {
   orgId: string | null;
-  stationId?: string | null;
+  filters: EvaluationsAnalyticsFiltersQuery;
+  filterKey: string;
   listLimit?: number;
+}
+
+function toQueryString(filters: EvaluationsAnalyticsFiltersQuery, extra?: Record<string, string>): string {
+  const params = serializeFiltersToSearchParams(filters);
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value) params.set(key, value);
+    }
+  }
+  const q = params.toString();
+  return q ? `?${q}` : '';
 }
 
 export function useEvaluationsInsightsAnalytics({
   orgId,
-  stationId = null,
+  filters,
+  filterKey,
   listLimit = 50,
 }: UseEvaluationsInsightsAnalyticsOptions) {
   const [summary, setSummary] = useState<EvaluationsInsightsSummary | null>(null);
@@ -78,40 +93,54 @@ export function useEvaluationsInsightsAnalytics({
     if (!orgId) return;
     setLoading(true);
     setError(null);
+    setSummary(null);
+    setBusinessRisks([]);
+    setRevenueLeakage([]);
     try {
-      const stationQuery = stationId ? { stationId } : {};
       const [summaryRes, businessRes, leakageRes] = await Promise.all([
-        api.evaluationsInsights.summary(orgId, stationQuery),
+        api.evaluationsInsights.summary(orgId, filters as Record<string, string | number | null | undefined>),
         api.evaluationsInsights.list(orgId, {
-          ...stationQuery,
-          category: 'BUSINESS_RISK',
+          ...(filters as Record<string, string | number | null | undefined>),
+          riskCategory: 'BUSINESS_RISK',
           page: 1,
           limit: listLimit,
           sortBy: 'priority',
           sortOrder: 'desc',
         }),
         api.evaluationsInsights.list(orgId, {
-          ...stationQuery,
-          category: 'REVENUE_LEAKAGE',
+          ...(filters as Record<string, string | number | null | undefined>),
+          riskCategory: 'REVENUE_LEAKAGE',
           page: 1,
           limit: listLimit,
           sortBy: 'priority',
           sortOrder: 'desc',
         }),
       ]);
-      setSummary(summaryRes);
-      setBusinessRisks(businessRes.data);
-      setRevenueLeakage(leakageRes.data);
+      setSummary(summaryRes as EvaluationsInsightsSummary);
+      setBusinessRisks(
+        Array.isArray((businessRes as { data?: EvaluationsInsightListItem[] })?.data)
+          ? (businessRes as { data: EvaluationsInsightListItem[] }).data
+          : Array.isArray(businessRes)
+            ? (businessRes as EvaluationsInsightListItem[])
+            : [],
+      );
+      setRevenueLeakage(
+        Array.isArray((leakageRes as { data?: EvaluationsInsightListItem[] })?.data)
+          ? (leakageRes as { data: EvaluationsInsightListItem[] }).data
+          : Array.isArray(leakageRes)
+            ? (leakageRes as EvaluationsInsightListItem[])
+            : [],
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Insights analytics failed');
     } finally {
       setLoading(false);
     }
-  }, [orgId, stationId, listLimit]);
+  }, [orgId, filters, listLimit]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, filterKey]);
 
   return {
     summary,

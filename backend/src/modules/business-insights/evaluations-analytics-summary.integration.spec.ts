@@ -5,6 +5,7 @@ import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
+import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 
 function buildFinancialSnapshot(scale: number) {
   return {
@@ -25,6 +26,37 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
   const orgId = 'org-scale-test';
   const vehicleCount = 120;
   const insightGroups = 45;
+
+  const baseResolved = (
+    overrides: Partial<ResolvedEvaluationsAnalyticsFilters> = {},
+  ): ResolvedEvaluationsAnalyticsFilters => ({
+    organizationId: orgId,
+    period: {
+      key: 'mtd',
+      from: '2026-06-01T00:00:00.000Z',
+      to: '2026-06-16T12:00:00.000Z',
+      timezone: 'Europe/Berlin',
+    },
+    comparisonPeriod: {
+      key: 'mtd',
+      from: '2026-05-01T00:00:00.000Z',
+      to: '2026-05-31T23:59:59.999Z',
+      timezone: 'Europe/Berlin',
+    },
+    stationId: null,
+    vehicleId: null,
+    vehicleClassId: null,
+    vehicleStatus: null,
+    bookingStatus: null,
+    customerSegment: null,
+    currency: 'EUR',
+    riskCategory: null,
+    insightStatus: null,
+    dataQualityStatus: null,
+    scopedVehicleIds: null,
+    stationVehicleIds: null,
+    ...overrides,
+  });
 
   const repository = {
     resolveOrgTimezone: jest.fn().mockResolvedValue('Europe/Berlin'),
@@ -117,10 +149,10 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
 
   it('composes full summary under performance budget with realistic fleet/insight counts', async () => {
     const started = Date.now();
-    const result = await service.getSummary(orgId, {
-      stationId: 'station-a',
-      period: 'mtd',
-    });
+    const result = await service.getSummary(
+      orgId,
+      baseResolved({ stationId: 'station-a' }),
+    );
     const elapsed = Date.now() - started;
 
     expect(result.overallStatus).toBe('OK');
@@ -134,7 +166,7 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
   it('remains PARTIAL (not total failure) when insights source errors', async () => {
     insightsAnalytics.getAnalyticsSummary.mockRejectedValueOnce(new Error('insights unavailable'));
 
-    const result = await service.getSummary(orgId);
+    const result = await service.getSummary(orgId, baseResolved());
 
     expect(result.activeRisks.status).toBe('ERROR');
     expect(result.financial.status).toBe('OK');

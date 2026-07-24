@@ -11,18 +11,12 @@ import {
   isOutgoingInvoiceType,
   REVENUE_EXCLUDED_STATUSES,
 } from '@modules/invoices/invoice-domain.util';
+import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 import type {
-  EvaluationsAnalyticsPeriodWindow,
   EvaluationsBookingSnapshot,
   EvaluationsFinancialSnapshot,
   EvaluationsFleetSnapshot,
 } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
-
-export interface EvaluationsAnalyticsScope {
-  organizationId: string;
-  stationId?: string | null;
-  stationVehicleIds?: string[] | null;
-}
 
 interface InvoiceRow {
   type: string;
@@ -65,18 +59,20 @@ export class EvaluationsAnalyticsSummaryRepository {
   }
 
   async loadFinancialSnapshot(
-    scope: EvaluationsAnalyticsScope,
-    current: EvaluationsAnalyticsPeriodWindow,
-    previous: EvaluationsAnalyticsPeriodWindow,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
   ): Promise<EvaluationsFinancialSnapshot> {
     const now = new Date();
-    const vehicleFilter = scope.stationVehicleIds?.length
-      ? { vehicleId: { in: scope.stationVehicleIds } }
-      : {};
+    const vehicleIds = resolved.scopedVehicleIds
+      ? [...resolved.scopedVehicleIds]
+      : resolved.stationVehicleIds
+        ? [...resolved.stationVehicleIds]
+        : null;
+
+    const vehicleFilter = vehicleIds?.length ? { vehicleId: { in: vehicleIds } } : {};
 
     const invoices = await this.prisma.orgInvoice.findMany({
       where: {
-        organizationId: scope.organizationId,
+        organizationId: resolved.organizationId,
         ...vehicleFilter,
       },
       select: {
@@ -94,10 +90,10 @@ export class EvaluationsAnalyticsSummaryRepository {
       },
     });
 
-    const currentFrom = new Date(current.from);
-    const currentTo = new Date(current.to);
-    const previousFrom = new Date(previous.from);
-    const previousTo = new Date(previous.to);
+    const currentFrom = new Date(resolved.period.from);
+    const currentTo = new Date(resolved.period.to);
+    const previousFrom = new Date(resolved.comparisonPeriod.from);
+    const previousTo = new Date(resolved.comparisonPeriod.to);
 
     let revenueMtdMinor = 0;
     let revenuePreviousMinor = 0;
@@ -182,34 +178,37 @@ export class EvaluationsAnalyticsSummaryRepository {
   }
 
   async loadBookingSnapshot(
-    scope: EvaluationsAnalyticsScope,
-    current: EvaluationsAnalyticsPeriodWindow,
-    previous: EvaluationsAnalyticsPeriodWindow,
-    timezone: string,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
   ): Promise<EvaluationsBookingSnapshot> {
+    const timezone = resolved.period.timezone;
     const now = new Date();
     const { todayStart, todayEnd } = resolveZonedCalendarDayWindow(now, timezone);
-    const currentFrom = new Date(current.from);
-    const currentTo = new Date(current.to);
-    const previousFrom = new Date(previous.from);
-    const previousTo = new Date(previous.to);
+    const currentFrom = new Date(resolved.period.from);
+    const currentTo = new Date(resolved.period.to);
+    const previousFrom = new Date(resolved.comparisonPeriod.from);
+    const previousTo = new Date(resolved.comparisonPeriod.to);
 
-    const stationFilter = scope.stationId
-      ? {
-          OR: [
-            { pickupStationId: scope.stationId },
-            { returnStationId: scope.stationId },
-            ...(scope.stationVehicleIds?.length
-              ? [{ vehicleId: { in: scope.stationVehicleIds } }]
-              : []),
-          ],
-        }
-      : {};
-
-    const baseWhere = {
-      organizationId: scope.organizationId,
-      ...stationFilter,
-    };
+    const andFilters: Array<Record<string, unknown>> = [{ organizationId: resolved.organizationId }];
+    if (resolved.bookingStatus) {
+      andFilters.push({ status: resolved.bookingStatus });
+    }
+    if (resolved.stationId) {
+      andFilters.push({
+        OR: [
+          { pickupStationId: resolved.stationId },
+          { returnStationId: resolved.stationId },
+        ],
+      });
+    }
+    if (resolved.vehicleId) {
+      andFilters.push({ vehicleId: resolved.vehicleId });
+    } else if (resolved.scopedVehicleIds?.size) {
+      andFilters.push({ vehicleId: { in: [...resolved.scopedVehicleIds] } });
+    }
+    if (resolved.customerSegment) {
+      andFilters.push({ customer: { customerType: resolved.customerSegment } });
+    }
+    const baseWhere = { AND: andFilters };
 
     const [active, pending, completed, completedToday, completedMtd, completedPrevious] =
       await Promise.all([
@@ -263,26 +262,35 @@ export class EvaluationsAnalyticsSummaryRepository {
   }
 
   async loadFleetSnapshot(
-    scope: EvaluationsAnalyticsScope,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
     lookbackDays = 7,
-    timezone: string,
   ): Promise<EvaluationsFleetSnapshot> {
-    const stationVehicleFilter = scope.stationVehicleIds?.length
-      ? { id: { in: scope.stationVehicleIds } }
-      : scope.stationId
-        ? {
-            OR: [
-              { homeStationId: scope.stationId },
-              { currentStationId: scope.stationId },
-            ],
-          }
-        : {};
+    const timezone = resolved.period.timezone;
+    const andFilters: Array<Record<string, unknown>> = [
+      { organizationId: resolved.organizationId },
+    ];
+    if (resolved.stationId) {
+      andFilters.push({
+        OR: [
+          { homeStationId: resolved.stationId },
+          { currentStationId: resolved.stationId },
+        ],
+      });
+    }
+    if (resolved.vehicleClassId) {
+      andFilters.push({ rentalCategoryId: resolved.vehicleClassId });
+    }
+    if (resolved.vehicleStatus) {
+      andFilters.push({ status: resolved.vehicleStatus });
+    }
+    if (resolved.vehicleId) {
+      andFilters.push({ id: resolved.vehicleId });
+    } else if (resolved.scopedVehicleIds?.size) {
+      andFilters.push({ id: { in: [...resolved.scopedVehicleIds] } });
+    }
 
     const vehicles = await this.prisma.vehicle.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        ...stationVehicleFilter,
-      },
+      where: { AND: andFilters },
       select: { id: true, status: true, cleaningStatus: true },
     });
 
@@ -334,7 +342,7 @@ export class EvaluationsAnalyticsSummaryRepository {
         this.prisma.booking.groupBy({
           by: ['vehicleId'],
           where: {
-            organizationId: scope.organizationId,
+            organizationId: resolved.organizationId,
             vehicleId: { in: vehicleIds },
             status: { notIn: ['CANCELLED', 'NO_SHOW'] },
             endDate: { gte: lookbackStart },
@@ -345,7 +353,7 @@ export class EvaluationsAnalyticsSummaryRepository {
         this.prisma.booking.groupBy({
           by: ['vehicleId'],
           where: {
-            organizationId: scope.organizationId,
+            organizationId: resolved.organizationId,
             vehicleId: { in: vehicleIds },
             status: { in: ['CONFIRMED', 'PENDING'] },
             startDate: { gte: new Date(), lte: lookAhead },

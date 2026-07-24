@@ -5,12 +5,17 @@ import { useRentalOrg } from '../../RentalContext';
 import { api, type MisuseCaseRecord } from '../../../lib/api';
 import { financialImpactEur, insightRecommendation } from '../../lib/insights-categories';
 import { useEvaluationsInsightsAnalytics } from '../../hooks/useEvaluationsInsightsAnalytics';
+import type { EvaluationsAnalyticsFiltersQuery } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
+import { EvaluationsAnalyticsFilterBar } from './EvaluationsAnalyticsFilterBar';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
-  stationId?: string | null;
+  filters: EvaluationsAnalyticsFiltersQuery;
+  filterKey: string;
+  onPatchFilters: (patch: Partial<EvaluationsAnalyticsFiltersQuery>) => void;
+  stationOptions?: Array<{ id: string; label: string }>;
   financialRiskEur?: number;
   openReceivablesEur?: number;
 }
@@ -228,14 +233,18 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 
 export function InsightsCockpit({
   isDarkMode,
-  stationId = null,
+  filters,
+  filterKey,
+  onPatchFilters,
+  stationOptions = [],
   financialRiskEur = 0,
   openReceivablesEur = 0,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
   const { summary, businessRisks, revenueLeakage, loading, error } = useEvaluationsInsightsAnalytics({
     orgId,
-    stationId,
+    filters,
+    filterKey,
     listLimit: 50,
   });
 
@@ -256,6 +265,11 @@ export function InsightsCockpit({
 
   return (
     <div className="space-y-4">
+      <EvaluationsAnalyticsFilterBar
+        filters={filters}
+        onPatch={onPatchFilters}
+        stationOptions={stationOptions}
+      />
       <RunStateBanner hasRun={hasRun} stale={stale} error={error} loading={loading} />
 
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
