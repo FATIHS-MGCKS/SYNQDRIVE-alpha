@@ -2,6 +2,8 @@ import type { StatusTone } from '../../components/patterns';
 import type { BookingUiStatus } from '../components/bookings/bookingStatus';
 import type { VehicleData } from '../data/vehicles';
 import {
+  formatVehicleOperationalStatusLabel,
+  operationalStatusToneFor,
   selectActiveBooking,
   selectOperationalStatus,
   selectReservedBooking,
@@ -64,7 +66,9 @@ const REALIZED_STATUSES: BookingUiStatus[] = ['active', 'completed'];
 
 export function isVehicleOperationallyBlocked(vehicle?: VehicleData | null): boolean {
   if (!vehicle) return false;
-  if (selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
+  const status = selectOperationalStatus(vehicle);
+  if (status === VEHICLE_OPERATIONAL_STATUS.BLOCKED) return true;
+  if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
   return vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK';
 }
 
@@ -158,14 +162,14 @@ export function deriveVehicleBookingOperatorSnapshot(
   let operatorState: VehicleOperatorState = 'available';
   let operatorLabel = 'Frei';
   let operatorNowLabel = 'Frei';
-  let operatorTone: StatusTone = 'success';
+  let operatorTone: StatusTone = operationalStatusToneFor(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
   let operatorDetail = 'Keine aktive oder unmittelbar bevorstehende Buchung im Horizont.';
 
   if (blocked) {
     operatorState = 'blocked';
-    operatorLabel = 'Blockiert';
-    operatorNowLabel = 'Blockiert';
-    operatorTone = 'critical';
+    operatorLabel = formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.BLOCKED);
+    operatorNowLabel = operatorLabel;
+    operatorTone = operationalStatusToneFor(VEHICLE_OPERATIONAL_STATUS.BLOCKED);
     operatorDetail =
       vehicle?.maintenanceReason?.trim() ||
       'Fahrzeug ist für Vermietung gesperrt (Wartung/operativer Block).';
@@ -185,9 +189,9 @@ export function deriveVehicleBookingOperatorSnapshot(
         : 'Rückgabe überfällig laut Fahrzeugstatus.';
   } else if (activeBooking || fleetActive) {
     operatorState = 'active';
-    operatorLabel = 'Aktiv vermietet';
+    operatorLabel = formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED);
     operatorNowLabel = 'Aktiv';
-    operatorTone = 'info';
+    operatorTone = operationalStatusToneFor(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED);
     if (activeBooking) {
       operatorDetail = `${activeBooking.customerName} · Rückgabe ${formatOperatorDateTime(activeBooking.endDate)}`;
     } else if (selectFleetActiveReturnAt(vehicle ?? ({} as VehicleData))) {
@@ -200,8 +204,8 @@ export function deriveVehicleBookingOperatorSnapshot(
     }
   } else if (nextPickup || fleetReserved) {
     operatorState = 'reserved';
-    operatorLabel = 'Reserviert';
-    operatorNowLabel = 'Reserviert';
+    operatorLabel = formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.RESERVED);
+    operatorNowLabel = operatorLabel;
     operatorTone = 'watch';
     if (nextPickup) {
       operatorDetail = `Nächster Pickup ${formatOperatorDateTime(nextPickup.startDate)} · ${nextPickup.customerName}`;

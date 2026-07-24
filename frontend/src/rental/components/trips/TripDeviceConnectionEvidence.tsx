@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { StatusChip } from '../../../components/patterns';
-import { api, type TripDeviceConnectionEvidenceItem } from '../../../lib/api';
+import { api, getErrorMessage, type TripDeviceConnectionEvidenceItem } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
 import {
   DEVICE_CONNECTION_LABELS,
   formatDeviceConnectionTimestamp,
   formatDurationMs,
+  isDeviceConnectionForbiddenError,
   tripEvidenceHeadline,
   tripEvidenceStatusLabel,
 } from '../../lib/device-connection-ui';
@@ -21,21 +22,34 @@ export function TripDeviceConnectionEvidence({
 }: TripDeviceConnectionEvidenceProps) {
   const [events, setEvents] = useState<TripDeviceConnectionEvidenceItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!vehicleId || !tripId) {
       setEvents([]);
+      setForbidden(false);
+      setError(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
+    setForbidden(false);
+    setError(false);
     void api.vehicleIntelligence
       .tripDeviceConnectionEvidence(vehicleId, tripId)
       .then((res) => {
         if (!cancelled) setEvents(res.events ?? []);
       })
-      .catch(() => {
-        if (!cancelled) setEvents([]);
+      .catch((err) => {
+        if (cancelled) return;
+        setEvents([]);
+        const message = getErrorMessage(err);
+        if (isDeviceConnectionForbiddenError(message)) {
+          setForbidden(true);
+        } else {
+          setError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -51,6 +65,22 @@ export function TripDeviceConnectionEvidence({
         <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
         Telematik-Evidenz wird geladen…
       </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        {DEVICE_CONNECTION_LABELS.cardForbidden}
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        {DEVICE_CONNECTION_LABELS.cardError}
+      </p>
     );
   }
 

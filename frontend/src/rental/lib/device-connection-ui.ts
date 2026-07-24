@@ -23,7 +23,54 @@ export const DEVICE_CONNECTION_LABELS = {
   tripEvidenceTitle: 'Telematikgerät während Buchung getrennt',
   evidenceStatusOpen: 'Offen',
   evidenceStatusRecovered: 'Wieder verbunden',
+  cardLoading: 'Geräteverbindung wird geladen…',
+  cardForbidden: 'Keine Berechtigung für Geräteverbindungsdaten.',
+  cardError: 'Geräteverbindung konnte nicht geladen werden.',
+  cardEmpty: 'Keine Geräteverbindungsereignisse für dieses Fahrzeug.',
+  cardStaleHint: 'Verbindungsstatus kann veraltet sein.',
+  retry: 'Erneut versuchen',
 } as const;
+
+export type DeviceConnectionCardLoadState =
+  | 'loading'
+  | 'forbidden'
+  | 'error'
+  | 'empty'
+  | 'ready';
+
+export function isDeviceConnectionForbiddenError(message: string): boolean {
+  return /Missing permission:\s*fleet-connectivity\.read/i.test(message);
+}
+
+export function resolveDeviceConnectionCardState(input: {
+  loading: boolean;
+  forbidden: boolean;
+  error: string | null;
+  summary: DeviceConnectionSummary | null | undefined;
+}): DeviceConnectionCardLoadState {
+  if (input.loading) return 'loading';
+  if (input.forbidden) return 'forbidden';
+  if (input.error) return 'error';
+  if (!shouldShowVehicleDeviceConnection(input.summary)) return 'empty';
+  return 'ready';
+}
+
+export function isDeviceConnectionRuntimeStale(
+  summary: DeviceConnectionSummary | null | undefined,
+): boolean {
+  const runtime = summary?.connectivityRuntime;
+  if (!runtime) return false;
+  if (
+    runtime.attentionState === 'WATCH' ||
+    runtime.attentionState === 'ACTION_REQUIRED' ||
+    runtime.attentionState === 'CRITICAL'
+  ) {
+    return true;
+  }
+  const calculatedAt = runtime.calculatedAt ? Date.parse(runtime.calculatedAt) : NaN;
+  if (!Number.isFinite(calculatedAt)) return false;
+  return Date.now() - calculatedAt > 15 * 60_000;
+}
 
 export function deviceConnectionStatusLabel(
   status: DeviceConnectionStatus,

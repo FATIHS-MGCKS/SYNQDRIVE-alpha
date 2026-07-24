@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 
 import { QUEUE_NAMES } from './queues/queue-names';
 import { DimoModule } from '@modules/dimo/dimo.module';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
@@ -77,6 +78,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
       { name: QUEUE_NAMES.BOOKING_DOCUMENT_GENERATION },
     ),
     DimoModule,
+    DataAuthorizationsModule,
     VehicleIntelligenceModule,
     HighMobilityModule,
     NotificationsModule,
