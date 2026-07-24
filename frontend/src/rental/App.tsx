@@ -115,11 +115,13 @@ const VEHICLE_DETAIL_VIEWS = new Set<string>([
 function VehicleLiveTelemetryBinder({
   vehicleId,
   orgId,
+  enableGpsPolling,
 }: {
   vehicleId: string | null;
   orgId: string;
+  enableGpsPolling: boolean;
 }) {
-  useLiveVehicleTelemetry(vehicleId, orgId);
+  useLiveVehicleTelemetry(vehicleId, orgId, { enableGpsPolling });
   return null;
 }
 
@@ -292,11 +294,9 @@ function RentalAppContent() {
     return financeView ?? 'invoices';
   });
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
-  // Poll live telemetry on every vehicle-detail tab that shows the header badge
-  // (Overview, Trips, Health, Damages, Documents, Bookings, Task List). Before
-  // this gate was limited to `overview`, causing `VehicleConnectionBadge` to
-  // render "Last Signal —" on every other tab because the hook's cleanup
-  // resets the store when vehicleId becomes null.
+  // Poll live telemetry on every vehicle-detail tab that shows the header badge.
+  // High-frequency GPS (5s) is limited to Overview where the live map is shown;
+  // other tabs keep the 30s dashboard cycle for connection badge freshness.
   const liveTelemetryVehicleId =
     selectedVehicle?.id && VEHICLE_DETAIL_VIEWS.has(currentView)
       ? selectedVehicle.id
@@ -787,7 +787,11 @@ function RentalAppContent() {
       />
       )}
     >
-      <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
+      <VehicleLiveTelemetryBinder
+        vehicleId={liveTelemetryVehicleId}
+        orgId={orgId}
+        enableGpsPolling={currentView === 'overview'}
+      />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
             <TopBar
               onViewChange={handleViewChange}

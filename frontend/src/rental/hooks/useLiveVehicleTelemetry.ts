@@ -16,17 +16,23 @@ import { recordVehicleDetailClientSignal } from '../lib/vehicle-detail-observabi
 
 const GPS_POLL_MS = 5_000;
 const DASHBOARD_POLL_MS = 30_000;
+const BACKGROUND_DASHBOARD_POLL_MS = 120_000;
 const MAX_HISTORY = 10;
 const JITTER_THRESHOLD_M = 8;
+
+export type LiveVehicleTelemetryOptions = {
+  /** 5s live-gps polling — only needed on Overview (map). Telemetry badge uses 30s dashboard cycle. */
+  enableGpsPolling?: boolean;
+};
 
 /**
  * Adaptive live-telemetry hook for the Vehicle Detail Overview tab.
  *
  * Two independent polling cycles:
  *  1. GPS cycle: every 5s → /live-gps (direct DIMO proxy, no DB)
- *     Only runs when isLiveTracking is true.
+ *     Only runs when `enableGpsPolling` is true and `isLiveTracking` is true.
  *  2. Dashboard cycle: every 30s → /telemetry (full snapshot from DB)
- *     Always runs to keep fuel, EV SoC (`battery`), ignition, etc. current.
+ *     Runs on all vehicle-detail tabs; stretches to 120s when the document is hidden.
  *
  * When not live tracking, GPS comes from the dashboard cycle (30s).
  *
@@ -36,15 +42,40 @@ const JITTER_THRESHOLD_M = 8;
 export function useLiveVehicleTelemetry(
   vehicleId: string | null,
   orgId: string,
+  options: LiveVehicleTelemetryOptions = {},
 ): void {
+  const enableGpsPolling = options.enableGpsPolling ?? false;
   const lastTargetRef = useRef<[number, number] | null>(null);
   const locationHistoryRef = useRef<Array<[number, number]>>([]);
   const liveRef = useRef(false);
   const gpsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
+  const pausedRef = useRef(false);
   const sessionVehicleIdRef = useRef<string | null>(null);
   const sessionOrgIdRef = useRef<string | null>(null);
+  const enableGpsPollingRef = useRef(enableGpsPolling);
+
+  enableGpsPollingRef.current = enableGpsPolling;
+
+  const clearGpsTimer = useCallback(() => {
+    if (gpsTimerRef.current) {
+      clearTimeout(gpsTimerRef.current);
+      gpsTimerRef.current = null;
+    }
+  }, []);
+
+  const clearDashTimer = useCallback(() => {
+    if (dashTimerRef.current) {
+      clearTimeout(dashTimerRef.current);
+      dashTimerRef.current = null;
+    }
+  }, []);
+
+  const dashboardIntervalMs = useCallback(
+    () => (pausedRef.current ? BACKGROUND_DASHBOARD_POLL_MS : DASHBOARD_POLL_MS),
+    [],
+  );
 
   const applyGpsPoint = useCallback(
     (
@@ -97,6 +128,7 @@ export function useLiveVehicleTelemetry(
 
   const fetchGps = useCallback(
     async (boundVehicleId: string, boundOrgId: string) => {
+      if (!enableGpsPollingRef.current || pausedRef.current) return;
       try {
         const data = await api.vehicles.liveGps(boundOrgId, boundVehicleId);
         const store = useVehicleLiveMapStore.getState();
@@ -119,6 +151,7 @@ export function useLiveVehicleTelemetry(
 
   const fetchDashboard = useCallback(
     async (boundVehicleId: string, boundOrgId: string) => {
+      if (pausedRef.current) return;
       try {
         const data = (await api.vehicles.telemetry(boundOrgId, boundVehicleId)) as {
           latitude?: number | null;
@@ -244,12 +277,14 @@ export function useLiveVehicleTelemetry(
       lastTargetRef.current = null;
       locationHistoryRef.current = [];
       liveRef.current = false;
+      pausedRef.current = false;
       useVehicleLiveMapStore.getState().unbind();
       recordVehicleDetailClientSignal('polling_unbound');
       return;
     }
 
     cancelledRef.current = false;
+    pausedRef.current = typeof document !== 'undefined' ? document.hidden : false;
     sessionVehicleIdRef.current = vehicleId;
     sessionOrgIdRef.current = orgId;
     lastTargetRef.current = null;
@@ -260,6 +295,7 @@ export function useLiveVehicleTelemetry(
 
     const scheduleDash = () => {
       if (cancelledRef.current) return;
+      clearDashTimer();
       dashTimerRef.current = setTimeout(async () => {
         if (cancelledRef.current) return;
         const vid = sessionVehicleIdRef.current;
@@ -267,13 +303,14 @@ export function useLiveVehicleTelemetry(
         if (!vid || !oid) return;
         await fetchDashboard(vid, oid);
         scheduleDash();
-      }, DASHBOARD_POLL_MS);
+      }, dashboardIntervalMs());
     };
 
     const scheduleGps = () => {
-      if (cancelledRef.current) return;
+      if (cancelledRef.current || !enableGpsPollingRef.current) return;
+      clearGpsTimer();
       gpsTimerRef.current = setTimeout(async () => {
-        if (cancelledRef.current) return;
+        if (cancelledRef.current || !enableGpsPollingRef.current) return;
         const vid = sessionVehicleIdRef.current;
         const oid = sessionOrgIdRef.current;
         if (!vid || !oid) return;
@@ -284,30 +321,94 @@ export function useLiveVehicleTelemetry(
       }, GPS_POLL_MS);
     };
 
-    fetchDashboard(vehicleId, orgId).then(() => {
-      if (cancelledRef.current) return;
-      scheduleDash();
+    const kickGpsCycle = () => {
+      if (!enableGpsPollingRef.current || pausedRef.current) {
+        clearGpsTimer();
+        return;
+      }
       if (liveRef.current) {
-        fetchGps(vehicleId, orgId).then(() => {
+        void fetchGps(vehicleId, orgId).then(() => {
           if (!cancelledRef.current) scheduleGps();
         });
       } else {
         scheduleGps();
       }
+    };
+
+    const onVisibilityChange = () => {
+      if (cancelledRef.current) return;
+      const hidden = document.hidden;
+      if (hidden === pausedRef.current) return;
+      pausedRef.current = hidden;
+      if (hidden) {
+        clearGpsTimer();
+        clearDashTimer();
+        recordVehicleDetailClientSignal('polling_paused');
+        return;
+      }
+      recordVehicleDetailClientSignal('polling_resumed');
+      const vid = sessionVehicleIdRef.current;
+      const oid = sessionOrgIdRef.current;
+      if (!vid || !oid) return;
+      void fetchDashboard(vid, oid).then(() => {
+        if (!cancelledRef.current) {
+          scheduleDash();
+          kickGpsCycle();
+        }
+      });
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    void fetchDashboard(vehicleId, orgId).then(() => {
+      if (cancelledRef.current) return;
+      scheduleDash();
+      kickGpsCycle();
     });
 
     return () => {
       cancelledRef.current = true;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       recordVehicleDetailClientSignal('telemetry_poll_aborted');
       recordVehicleDetailClientSignal('gps_poll_aborted');
-      if (gpsTimerRef.current) {
-        clearTimeout(gpsTimerRef.current);
-        gpsTimerRef.current = null;
-      }
-      if (dashTimerRef.current) {
-        clearTimeout(dashTimerRef.current);
-        dashTimerRef.current = null;
-      }
+      clearGpsTimer();
+      clearDashTimer();
     };
-  }, [vehicleId, orgId, fetchDashboard, fetchGps]);
+  }, [
+    vehicleId,
+    orgId,
+    fetchDashboard,
+    fetchGps,
+    clearGpsTimer,
+    clearDashTimer,
+    dashboardIntervalMs,
+  ]);
+
+  useEffect(() => {
+    if (!vehicleId || !orgId || cancelledRef.current) return;
+    if (!enableGpsPolling) {
+      clearGpsTimer();
+      return;
+    }
+    if (liveRef.current && !pausedRef.current) {
+      void fetchGps(vehicleId, orgId);
+      if (!gpsTimerRef.current) {
+        const scheduleGps = () => {
+          if (cancelledRef.current || !enableGpsPollingRef.current) return;
+          clearGpsTimer();
+          gpsTimerRef.current = setTimeout(async () => {
+            if (cancelledRef.current || !enableGpsPollingRef.current) return;
+            const vid = sessionVehicleIdRef.current;
+            const oid = sessionOrgIdRef.current;
+            if (!vid || !oid) return;
+            if (liveRef.current) {
+              await fetchGps(vid, oid);
+            }
+            scheduleGps();
+          }, GPS_POLL_MS);
+        };
+        scheduleGps();
+      }
+    }
+  }, [enableGpsPolling, vehicleId, orgId, fetchGps, clearGpsTimer]);
 }

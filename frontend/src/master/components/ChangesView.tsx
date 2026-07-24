@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-p1-p2-fixes-v49808-2026-07-24',
+    version: '4.9.808',
+    title: 'V4.9.808 — Vehicle Detail P1/P2 risk fixes (GPS gate, background pause, Mapbox attribution)',
+    summary: [
+      'GPS 5s polling gated to Overview tab only; 30s telemetry dashboard cycle retained on all vehicle-detail tabs for connection badge.',
+      '`visibilitychange` pauses polling when document hidden; dashboard stretches to 120s in background.',
+      'Mapbox attribution control re-enabled on `LiveMapOverview`.',
+      'Runtime E2E RT-2/RT-3 updated; unit test for `enableGpsPolling: false`.',
+    ],
+    reason: 'Close accepted P1/P2 findings from post-remediation audit (VD-RT-002, VD-RT-003, VD-MAP-ATTR).',
+    previousBehavior: 'GPS polled every 5s on all VD tabs; no background pause; attributionControl disabled.',
+    details:
+      'useLiveVehicleTelemetry.ts, App.tsx, LiveMapOverview.tsx, vehicle-detail-observability.ts, runtime-audit.spec.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / Polling',
+    createdAt: '2026-07-24T13:15:00.000Z',
+  },
+  {
     id: 'vehicle-detail-post-remediation-audit-p36-2026-07-24',
     version: '4.9.807',
     title: 'V4.9.807 — Vehicle Detail post-remediation production readiness audit (Prompt 36)',

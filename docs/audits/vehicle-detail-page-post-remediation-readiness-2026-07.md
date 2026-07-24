@@ -21,6 +21,8 @@ This audit independently re-verifies the Vehicle Detail Page remediation track (
 
 ## **2. PRODUCTION READY WITH ACCEPTED RESIDUAL RISKS**
 
+*(V4.9.808 resolves VD-RT-002, VD-RT-003, VD-MAP-ATTR; remaining accepted: PM2 restart history, `/metrics` nginx routing.)*
+
 | Release criterion | Result |
 |-------------------|--------|
 | No open P0 | ✅ 22/22 remediation areas verified |
@@ -155,8 +157,8 @@ This audit independently re-verifies the Vehicle Detail Page remediation track (
 | **VPS-DEPL-003** | P1 | PM2 **2800+** cumulative restarts | **2801** after controlled deploy; unstable restarts **0** | `pm2 describe` | Historical restart debt; monitor IAM outbox | **teilweise** | **nein (accepted P1)** |
 | **VPS-DEPL-009** | P1 | VD observability not deployed | `vehicles/observability/` on production commit | Code in release; `/api/v1/metrics` 401 | Metrics populate after scrape | **behoben** | nein |
 | **VPS-RPXY-002** | P1 | `/metrics` publicly reachable | Root `/metrics` → SPA 200; Prometheus at `/api/v1/metrics` (401) | curl probes | Pre-existing routing; not Prometheus leak | **teilweise** | **nein (accepted P1)** |
-| **VD-RT-002** | P1 | GPS 5s continues on Documents tab | Intentional V4.6.44+ badge UX | RT-2-documents | Extra DIMO load on non-map tabs | **teilweise** | **nein (accepted P1)** |
-| **VD-RT-003** | P2 | No `visibilitychange` background pause | Unchanged — polling continues in background | RT-3 | Battery/perf, not security | **offen** | nein |
+| **VD-RT-002** | P1 | GPS 5s on non-Overview tabs | Gated to Overview; 30s telemetry on all VD tabs | RT-2 E2E pass | None | **behoben** | nein |
+| **VD-RT-003** | P2 | No background tab pause | `visibilitychange` pause + 120s dashboard when hidden | RT-3 E2E pass | None | **behoben** | nein |
 | **VD-RT-008** | P1 | No `synqdrive_vehicle_detail_*` on VPS | Metrics code deployed; requires bearer scrape | `/api/v1/metrics` 401 | Series appear after traffic/scrape | **behoben** | nein |
 | **VD-RT-009** | P1 | PM2 restart stability | Same as VPS-DEPL-003 | PM2 online | Accepted — see §5 | **teilweise** | **nein (accepted P1)** |
 | **VD-RT-010** | P2 | Node heap >90% | ~51 MiB RSS at probe; 13 GiB RAM free | `free -h`, pm2 monit | Monitor under load | **teilweise** | nein |
@@ -168,8 +170,9 @@ This audit independently re-verifies the Vehicle Detail Page remediation track (
 | ID | Acceptance rationale | Owner action |
 |----|---------------------|--------------|
 | VPS-DEPL-003 / VD-RT-009 | Cumulative restarts pre-date VD deploy; +1 controlled restart; instance stable (`unstable restarts: 0`) | Monitor 24–48h; investigate IAM outbox errors |
-| VD-RT-002 | GPS on all VD tabs supports connection badge UX since V4.6.44 | Product decision documented; optional future gate to overview-only |
-| VPS-RPXY-002 | Public `/metrics` serves SPA; authenticated API path for Prometheus | Ops runbook: scrape `/api/v1/metrics` with bearer |
+| VPS-RPXY-002 | Public `/metrics` serves SPA; authenticated API path for Prometheus | Ops runbook: scrape `/api/v1/metrics` with bearer; Nginx hardening follow-up |
+
+**Resolved in V4.9.808:** VD-RT-002 (GPS overview-only), VD-RT-003 (background pause), VD-MAP-ATTR (Mapbox attribution).
 
 ---
 
@@ -229,12 +232,10 @@ Pre-deploy backup: `db-pre-deploy-20260724122936.sql.gz`
 
 ## 9. Remaining Non-Blockers (P2 / follow-up)
 
-| ID | Item | Severity | Recommendation |
-|----|------|----------|----------------|
-| VD-RT-003 | Background tab polling pause | P2 | Add `visibilitychange` handler to pause GPS timer |
-| VD-A11Y-001 | Cleaning/status modals not Radix Dialog | P2 | Convert in follow-up pass |
-| VD-A11Y-002 | Hardcoded EN tab labels | P2 | i18n Prompt 26 follow-up |
-| VD-MAP-ATTR | `attributionControl: false` — no © OSM text control | P2 | Add compact custom attribution overlay |
+| ID | Item | Severity | Status |
+|----|------|----------|--------|
+| VD-RT-003 | Background tab polling pause | P2 | **behoben** (V4.9.808) |
+| VD-MAP-ATTR | Mapbox attribution control | P2 | **behoben** (V4.9.808) |
 | VPS-RPXY-001 | HSTS header absent | P2 | Nginx `Strict-Transport-Security` |
 | VPS-RES-006 | IAM outbox Prisma errors in PM2 log | P2 | Investigate background job failures |
 | DEPLOY-SMOKE | No authenticated prod UI soak with real DIMO | P2 | Operator verification in test org |

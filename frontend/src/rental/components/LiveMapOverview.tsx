@@ -254,7 +254,7 @@ export function LiveMapOverview({
       pitch: 45,
       bearing: -10,
       interactive: true,
-      attributionControl: false,
+      attributionControl: true,
     });
 
     map.on('load', () => {

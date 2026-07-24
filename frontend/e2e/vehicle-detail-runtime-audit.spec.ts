@@ -67,16 +67,21 @@ test.describe.serial('Vehicle Detail — runtime audit measurements', () => {
       description: JSON.stringify({ telDelta, gpsDelta, tab: 'Documents' }),
     });
     expect(telDelta).toBeLessThanOrEqual(1);
-    expect(gpsDelta).toBeGreaterThanOrEqual(2);
+    expect(gpsDelta).toBeLessThanOrEqual(1);
   });
 
-  test('RT-3 background tab stability', async ({ page, context }) => {
+  test('RT-3 background tab pauses high-frequency polling', async ({ page }) => {
     test.setTimeout(60_000);
     await openVehicleFromFleet(page, 'VD-LIVE');
     await waitForTelemetryPolls(1);
-    const bg = await context.newPage();
-    await openVehicleDetailRental(bg);
-    await bg.getByRole('button', { name: /^(Dashboard|Übersicht)$/ }).first().waitFor({ state: 'visible' });
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', {
+        configurable: true,
+        get: () => true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.waitForTimeout(500);
     const tel0 = getTelemetryFetchCount();
     const gps0 = getLiveGpsFetchCount();
     await page.waitForTimeout(12_000);
@@ -84,13 +89,17 @@ test.describe.serial('Vehicle Detail — runtime audit measurements', () => {
     const gpsDelta = getLiveGpsFetchCount() - gps0;
     test.info().annotations.push({
       type: 'measurement',
-      description: JSON.stringify({ telDelta, gpsDelta, note: 'foreground detail while bg dashboard' }),
+      description: JSON.stringify({ telDelta, gpsDelta, note: 'document.hidden simulated' }),
     });
-    await page.bringToFront();
-    await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toBeVisible();
-    await bg.close();
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', {
+        configurable: true,
+        get: () => false,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
     expect(telDelta).toBeLessThanOrEqual(1);
-    expect(gpsDelta).toBeGreaterThanOrEqual(1);
+    expect(gpsDelta).toBe(0);
   });
 
   test('RT-4 slow provider does not retry-storm', async ({ page }) => {

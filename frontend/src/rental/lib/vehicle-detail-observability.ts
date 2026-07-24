@@ -11,6 +11,8 @@ export type VehicleDetailClientSignal =
   | 'gps_poll_aborted'
   | 'polling_bound'
   | 'polling_unbound'
+  | 'polling_paused'
+  | 'polling_resumed'
   | 'map_init_success'
   | 'map_init_error'
   | 'map_token_missing'
@@ -28,6 +30,8 @@ const counters: ClientCounterMap = {
   gps_poll_aborted: 0,
   polling_bound: 0,
   polling_unbound: 0,
+  polling_paused: 0,
+  polling_resumed: 0,
   map_init_success: 0,
   map_init_error: 0,
   map_token_missing: 0,

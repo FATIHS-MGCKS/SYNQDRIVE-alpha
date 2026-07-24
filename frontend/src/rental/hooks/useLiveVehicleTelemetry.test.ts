@@ -67,7 +67,9 @@ describe('useLiveVehicleTelemetry — polling lifecycle', () => {
   });
 
   it('binds store and loads dashboard telemetry on mount', async () => {
-    const { unmount } = renderHook(() => useLiveVehicleTelemetry(VEH_A, ORG));
+    const { unmount } = renderHook(() =>
+      useLiveVehicleTelemetry(VEH_A, ORG, { enableGpsPolling: true }),
+    );
 
     await waitForHook(() => useVehicleLiveMapStore.getState().boundVehicleId === VEH_A);
     expect(api.vehicles.telemetry).toHaveBeenCalledWith(ORG, VEH_A);
@@ -129,7 +131,9 @@ describe('useLiveVehicleTelemetry — polling lifecycle', () => {
     });
     vi.mocked(api.vehicles.liveGps).mockRejectedValue(new Error('GPS timeout'));
 
-    const { unmount } = renderHook(() => useLiveVehicleTelemetry(VEH_A, ORG));
+    const { unmount } = renderHook(() =>
+      useLiveVehicleTelemetry(VEH_A, ORG, { enableGpsPolling: true }),
+    );
     await waitForHook(() => useVehicleLiveMapStore.getState().lastConfirmedPosition != null);
 
     const before = useVehicleLiveMapStore.getState().lastConfirmedPosition;
@@ -165,6 +169,20 @@ describe('useLiveVehicleTelemetry — polling lifecycle', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(api.vehicles.telemetry.mock.calls.length).toBeGreaterThan(initialCalls);
 
+    unmount();
+  });
+
+  it('does not poll live-gps when enableGpsPolling is false', async () => {
+    vi.mocked(api.vehicles.telemetry).mockResolvedValue(
+      telemetryFixture({ isLiveTracking: true }) as never,
+    );
+    vi.useFakeTimers();
+    const { unmount } = renderHook(() =>
+      useLiveVehicleTelemetry(VEH_A, ORG, { enableGpsPolling: false }),
+    );
+    await vi.runOnlyPendingTimersAsync();
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(api.vehicles.liveGps).not.toHaveBeenCalled();
     unmount();
   });
 });
