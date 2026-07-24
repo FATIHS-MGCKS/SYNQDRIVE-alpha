@@ -21,6 +21,9 @@ export const DATA_PROCESSING_PERMISSION_ACTIONS = [
   'data_processing.revocation_resume',
   'data_processing.deny_switch_view',
   'data_processing.deny_switch_manage',
+  'data_processing.register_view',
+  'data_processing.register_edit',
+  'data_processing.register_export',
 ] as const;
 
 export type DataProcessingPermissionAction =
@@ -49,6 +52,9 @@ export const DATA_PROCESSING_PERMISSION_REQUIREMENTS: Readonly<
   'data_processing.revocation_resume': { module: 'data-authorization', level: 'manage' },
   'data_processing.deny_switch_view': { module: 'data-authorization', level: 'read' },
   'data_processing.deny_switch_manage': { module: 'data-authorization', level: 'manage' },
+  'data_processing.register_view': { module: 'data-authorization', level: 'read' },
+  'data_processing.register_edit': { module: 'data-authorization', level: 'write' },
+  'data_processing.register_export': { module: 'data-authorization', level: 'manage' },
 };
 
 export const DATA_PROCESSING_REVIEW_STEP_PERMISSION: Readonly<

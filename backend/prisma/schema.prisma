@@ -1752,6 +1752,8 @@ model Organization {
   dataAuthorizationRevocationWorkflows                    DataAuthorizationRevocationWorkflow[]
   dataAuthorizationDenySwitches                           DataAuthorizationDenySwitch[]
   processingActivityLifecycleEvents                         ProcessingActivityLifecycleEvent[]
+  processingActivityRegisterExports                         ProcessingActivityRegisterExport[]
+  processingActivityRegisterAuditEvents                     ProcessingActivityRegisterAuditEvent[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
 
@@ -10810,6 +10812,34 @@ enum ProcessingActivityOwnerRole {
   SYSTEM
 }
 
+enum ProcessingActivityDpiaStatus {
+  NOT_ASSESSED
+  NOT_REQUIRED
+  REQUIRED_PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ProcessingActivityDeletionStatus {
+  ACTIVE
+  DELETION_SCHEDULED
+  DELETED
+  RETAINED_LEGAL_HOLD
+}
+
+enum ProcessingActivityRegisterExportFormat {
+  CSV
+  PDF
+}
+
+enum ProcessingActivityRegisterAuditAction {
+  VIEW_LIST
+  VIEW_DETAIL
+  UPDATE
+  EXPORT_CREATED
+  EXPORT_DOWNLOADED
+}
+
 /// Review workflow step types — server-configured per risk level, not client-supplied.
 enum DataProcessingReviewStepType {
   BUSINESS_OWNER
@@ -11031,6 +11061,16 @@ model ProcessingActivity {
   rejectionReason              String?                      @map("rejection_reason") @db.Text
   revocationReason             String?                      @map("revocation_reason") @db.Text
   suspensionReason             String?                      @map("suspension_reason") @db.Text
+  purposeSummary               String?                      @map("purpose_summary") @db.Text
+  recipientCategoriesSummary   String?                      @map("recipient_categories_summary") @db.Text
+  retentionDescription         String?                      @map("retention_description") @db.Text
+  retentionPeriodDays          Int?                         @map("retention_period_days")
+  technicalOrganizationalMeasures String?                   @map("technical_organizational_measures") @db.Text
+  controllerReference          String?                      @map("controller_reference")
+  jointControllerSummary       String?                      @map("joint_controller_summary") @db.Text
+  nextReviewDate               DateTime?                    @map("next_review_date")
+  dpiaStatus                   ProcessingActivityDpiaStatus @default(NOT_ASSESSED) @map("dpia_status")
+  deletionStatus               ProcessingActivityDeletionStatus @default(ACTIVE) @map("deletion_status")
   legacyOrgDataAuthorizationId String?                      @unique @map("legacy_org_data_authorization_id")
   createdAt                    DateTime                     @default(now()) @map("created_at")
   updatedAt                    DateTime                     @updatedAt @map("updated_at")
@@ -11041,6 +11081,7 @@ model ProcessingActivity {
   supersedes                  ProcessingActivity[]         @relation("ProcessingActivitySupersession")
   dataCategories              ProcessingActivityCategory[]
   purposes                    ProcessingActivityPurpose[]
+  dataSubjectTypes            ProcessingActivityDataSubjectType[]
   legalBasisAssessments       LegalBasisAssessment[]
   dataSubjectConsents         DataSubjectConsent[]
   providerAccessGrants        ProviderAccessGrant[]
@@ -11050,6 +11091,8 @@ model ProcessingActivity {
   authorizationDecisionEvents AuthorizationDecisionEvent[]
   lifecycleEvents             ProcessingActivityLifecycleEvent[]
   reviewCycles                DataProcessingReviewCycle[]    @relation("ProcessingActivityReviewCycles")
+  registerExports             ProcessingActivityRegisterExport[]
+  registerAuditEvents         ProcessingActivityRegisterAuditEvent[]
 
   @@unique([policyFamilyId, versionNumber])
   @@unique([organizationId, activityCode, versionNumber])
@@ -11085,6 +11128,64 @@ model ProcessingActivityPurpose {
   @@unique([processingActivityId, purpose])
   @@index([organizationId])
   @@map("processing_activity_purposes")
+}
+
+model ProcessingActivityDataSubjectType {
+  id                   String           @id @default(uuid())
+  organizationId       String           @map("organization_id")
+  processingActivityId String           @map("processing_activity_id")
+  subjectType          DataSubjectType  @map("subject_type")
+  createdAt            DateTime         @default(now()) @map("created_at")
+
+  processingActivity ProcessingActivity @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
+
+  @@unique([processingActivityId, subjectType])
+  @@index([organizationId])
+  @@map("processing_activity_data_subject_types")
+}
+
+/// Time-limited Art. 30 register export artifacts (tenant-scoped).
+model ProcessingActivityRegisterExport {
+  id              String                               @id @default(uuid())
+  organizationId  String                               @map("organization_id")
+  requestedByUserId String?                              @map("requested_by_user_id")
+  format          ProcessingActivityRegisterExportFormat
+  fileName        String                               @map("file_name")
+  filePath        String                               @map("file_path")
+  mimeType        String                               @map("mime_type")
+  dataSnapshotAt  DateTime                             @map("data_snapshot_at")
+  activityCount   Int                                  @map("activity_count")
+  recordVersion   String                               @map("record_version")
+  checksumSha256  String                               @map("checksum_sha256")
+  expiresAt       DateTime                             @map("expires_at")
+  createdAt       DateTime                             @default(now()) @map("created_at")
+
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity  ProcessingActivity?   @relation(fields: [processingActivityId], references: [id], onDelete: SetNull)
+  processingActivityId String?              @map("processing_activity_id")
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, expiresAt])
+  @@map("processing_activity_register_exports")
+}
+
+/// Append-only audit for register views and exports.
+model ProcessingActivityRegisterAuditEvent {
+  id                   String                              @id @default(uuid())
+  organizationId       String                              @map("organization_id")
+  action               ProcessingActivityRegisterAuditAction
+  actorUserId          String?                             @map("actor_user_id")
+  processingActivityId String?                             @map("processing_activity_id")
+  exportId             String?                             @map("export_id")
+  metadata             Json?
+  createdAt            DateTime                            @default(now()) @map("created_at")
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  processingActivity ProcessingActivity? @relation(fields: [processingActivityId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, action])
+  @@map("processing_activity_register_audit_events")
 }
 
 /// Rechtsgrundlage — versionierte, unveränderliche Bewertung nach Freigabe.

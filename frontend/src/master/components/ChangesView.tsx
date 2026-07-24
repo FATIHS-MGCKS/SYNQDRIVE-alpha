@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'processing-activity-register-v49812-2026-07-24',
+    version: '4.9.812',
+    title: 'V4.9.812 — Verzeichnis der Verarbeitungstätigkeiten (Prompt 29)',
+    summary: [
+      'ProcessingActivity Register API — Art.-30-orientiertes Verzeichnis mit Cursor-Pagination, Filter, Sortierung.',
+      'Vollständigkeitsservice aus konkreten Pflichtfeldern (Rechtsgrundlage + Retention blockierend).',
+      'CSV/PDF-Export mit dataSnapshotAt, TTL 72h, eigener Permission data_processing.register_export.',
+      'Append-only Register-Audit; keine tenantübergreifenden Reports.',
+      'CI: npm run test:data-auth:register.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 29 — technische Grundlage für Verarbeitungsverzeichnis ohne juristische Auto-Vollständigkeit.',
+    previousBehavior:
+      'Keine Register-List/Detail-API; keine Vollständigkeitsbewertung; keine strukturierten Exporte; Kategorien/Zwecke nur via Migration.',
+    details:
+      'backend/src/modules/data-authorizations/processing-activity-register/. Migration 20260724090000. Doku: docs/architecture/processing-activity-register-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T05:00:00.000Z',
+  },
+  {
     id: 'policy-lifecycle-semantics-v49811-2026-07-24',
     version: '4.9.811',
     title: 'V4.9.811 — Policy Lifecycle Status Semantics (Prompt 28)',
