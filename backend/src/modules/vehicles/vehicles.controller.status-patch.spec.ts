@@ -11,6 +11,7 @@ describe('VehiclesController — operational status write guard', () => {
 
   const vehiclesService = {
     update: jest.fn().mockResolvedValue({ id: vehicleId, status: VehicleStatus.AVAILABLE }),
+    invalidateFleetMapCache: jest.fn().mockResolvedValue(undefined),
   };
   const vehicleCleaningTasks = {
     ensureCleaningTask: jest.fn(),
@@ -89,5 +90,40 @@ describe('VehiclesController — operational status write guard', () => {
       }),
       orgId,
     );
+  });
+
+  it('invalidates fleet-map cache after status mutation', async () => {
+    await controller.updateVehicleStatus(orgId, vehicleId, { user: { id: 'u1' } }, {
+      status: VehicleStatus.IN_SERVICE,
+    });
+    expect(vehiclesService.invalidateFleetMapCache).toHaveBeenCalledWith(orgId);
+  });
+
+  it('materializes cleaning task when cleaningStatus becomes NEEDS_CLEANING', async () => {
+    const cleaningTask = { taskId: 'task-1', created: true };
+    vehicleCleaningTasks.ensureCleaningTask.mockResolvedValue(cleaningTask);
+
+    const result = await controller.updateVehicleStatus(orgId, vehicleId, { user: { id: 'u1' } }, {
+      cleaningStatus: CleaningStatus.NEEDS_CLEANING,
+    });
+
+    expect(vehicleCleaningTasks.ensureCleaningTask).toHaveBeenCalledWith(orgId, vehicleId);
+    expect(result.cleaningTask).toEqual(cleaningTask);
+  });
+
+  it('completes open cleaning tasks when cleaningStatus becomes CLEAN', async () => {
+    const completed = { taskId: 'task-1', completed: true };
+    vehicleCleaningTasks.completeOpenCleaningTasks.mockResolvedValue(completed);
+
+    const result = await controller.updateVehicleStatus(orgId, vehicleId, { user: { id: 'u2' } }, {
+      cleaningStatus: CleaningStatus.CLEAN,
+    });
+
+    expect(vehicleCleaningTasks.completeOpenCleaningTasks).toHaveBeenCalledWith(
+      orgId,
+      vehicleId,
+      'u2',
+    );
+    expect(result.cleaningTask).toEqual(completed);
   });
 });
