@@ -109,7 +109,7 @@ async function main(): Promise<void> {
       'allowed-telemetry-decision',
       allowDecision.decision === AUTHORIZATION_DECISION_OUTCOME.ALLOW ||
         allowDecision.decision === AUTHORIZATION_DECISION_OUTCOME.SHADOW_WOULD_DENY,
-      `decision=${allowDecision.decision}`,
+      `decision=${allowDecision.decision} reason=${allowDecision.reasonCode}`,
     );
 
     const denyDecision = await decisionService.decide({

@@ -426,6 +426,21 @@ export async function createDataAuthStagingRuntimeFixture(
     },
   });
 
+  await prisma.legalBasisAssessment.create({
+    data: {
+      organizationId: orgA.id,
+      processingActivityId: processingActivityA.id,
+      policyFamilyId: randomUUID(),
+      versionNumber: 1,
+      isCurrentVersion: true,
+      legalBasisType: PrivacyLegalBasisType.CONTRACT,
+      consentRequirement: LegalBasisConsentRequirement.NOT_APPLICABLE,
+      status: PrivacyPolicyLifecycleStatus.ACTIVE,
+      activatedAt: now,
+      validFrom: now,
+    },
+  });
+
   await prisma.enforcementPolicy.create({
     data: {
       organizationId: orgA.id,
@@ -472,6 +487,7 @@ export async function cleanupDataAuthStagingRuntimeFixture(
   await prisma.providerAccessGrant.deleteMany({ where: { organizationId: { in: orgIds } } });
   await prisma.enforcementPolicyVehicle.deleteMany({ where: { organizationId: { in: orgIds } } });
   await prisma.enforcementPolicy.deleteMany({ where: { organizationId: { in: orgIds } } });
+  await prisma.legalBasisAssessment.deleteMany({ where: { organizationId: { in: orgIds } } });
   await prisma.processingActivityCategory.deleteMany({ where: { organizationId: { in: orgIds } } });
   await prisma.processingActivityPurpose.deleteMany({ where: { organizationId: { in: orgIds } } });
   await prisma.processingActivity.deleteMany({ where: { organizationId: { in: orgIds } } });
