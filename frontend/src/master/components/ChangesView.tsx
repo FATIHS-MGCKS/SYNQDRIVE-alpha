@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'revocation-orchestrator-v49807-2026-07-24',
+    version: '4.9.807',
+    title: 'V4.9.807 — Persistenter Revocation Orchestrator (Prompt 24)',
+    summary: [
+      'RevocationOrchestratorService — belastbarer Widerrufsworkflow mit 14 persistierten Status.',
+      'Synchroner Deny-Switch als erster Schritt; Provider- und Partner-Schritte getrennt.',
+      'Idempotente Schritte, Retry/Backoff, Dead-Letter, manuelle Wiederaufnahme (data_processing.revocation_resume).',
+      'Keine automatische Datenlöschung ohne Retention-Entscheidung. CI: npm run test:data-auth:revocation.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 24 — Widerruf darf nicht an Prozessgrenzen scheitern und muss auditierbar fortgesetzt werden.',
+    previousBehavior:
+      'Revoke-Pfade invalidierten nur GPS-Caches oder hatten keine durchgängige Workflow-Persistenz.',
+    details:
+      'backend/src/modules/data-authorizations/revocation-orchestrator/. Migration 20260724050000. Doku: docs/architecture/revocation-orchestrator-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T01:00:00.000Z',
+  },
+  {
     id: 'enforcement-coverage-registry-v49806-2026-07-24',
     version: '4.9.806',
     title: 'V4.9.806 — Enforcement Coverage Registry und Readiness-Status (Prompt 23)',

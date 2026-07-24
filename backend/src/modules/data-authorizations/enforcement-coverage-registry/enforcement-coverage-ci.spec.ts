@@ -14,7 +14,7 @@ const WORKSPACE_ROOT = join(__dirname, '..', '..', '..', '..', '..');
  */
 describe('Enforcement coverage registry CI', () => {
   it('catalog version is pinned', () => {
-    expect(ENFORCEMENT_COVERAGE_CATALOG_VERSION).toMatch(/^2026-07-prompt23/);
+    expect(ENFORCEMENT_COVERAGE_CATALOG_VERSION).toMatch(/^2026-07-prompt24/);
   });
 
   it('baseline CSV flowIds exist in catalog', () => {

@@ -51,6 +51,7 @@ export const ENFORCEMENT_COVERAGE_DOMAIN = {
   NOTIFICATION: 'notification',
   EXTERNAL_ACCESS: 'external-access',
   AUTHORIZATION_DECISION: 'authorization-decision',
+  REVOCATION: 'revocation',
 } as const;
 
 export type EnforcementCoverageDomain =

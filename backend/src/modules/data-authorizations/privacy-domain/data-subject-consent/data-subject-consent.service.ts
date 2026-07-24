@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
   AuthorizationActorType,
   DataSubjectConsentStatus,
@@ -16,10 +16,14 @@ import {
   assertConsentVersionsPresent,
   assertDataSubjectReferencePresent,
 } from '../privacy-domain.lifecycle';
+import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
 
 @Injectable()
 export class DataSubjectConsentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
+  ) {}
 
   async create(
     orgId: string,
@@ -158,6 +162,18 @@ export class DataSubjectConsentService {
         });
       }
 
+      return updated;
+    }).then(async (updated) => {
+      if (this.revocationEnqueue) {
+        await this.revocationEnqueue.enqueueConsentWithdrawn({
+          organizationId: orgId,
+          consentId: updated.id,
+          processingActivityId: updated.processingActivityId,
+          purpose: updated.purpose,
+          actorUserId,
+          reason: dto.withdrawalReason,
+        });
+      }
       return updated;
     });
   }

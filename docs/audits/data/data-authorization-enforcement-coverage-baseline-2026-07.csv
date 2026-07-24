@@ -24,3 +24,6 @@ external-document-download,external-access,true,Prompt 22 baseline
 external-voice-mcp-tool,external-access,true,Prompt 22 baseline
 external-reporting-export,external-access,true,Prompt 22 gap — registry only
 authorization-decision-engine,authorization-decision,true,Prompt 13 baseline
+revocation-deny-switch,revocation,true,Prompt 24 baseline
+revocation-provider-revoke,revocation,true,Prompt 24 baseline
+revocation-partner-notify,revocation,true,Prompt 24 baseline

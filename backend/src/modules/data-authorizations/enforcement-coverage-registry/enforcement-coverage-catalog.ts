@@ -471,9 +471,56 @@ export const ENFORCEMENT_COVERAGE_CATALOG: readonly EnforcementFlowCatalogEntry[
       'backend/src/modules/data-authorizations/authorization-decision-engine/authorization-decision.engine.spec.ts',
     productive: true,
   }),
+
+  // --- Revocation Orchestrator (Prompt 24) ---
+  flow({
+    flowId: 'revocation-deny-switch',
+    flowName: 'Revocation synchronous deny switch',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['GPS_LOCATION', 'TELEMETRY_RAW'],
+    actions: [AUTHORIZATION_DECISION_ACTION.READ, AUTHORIZATION_DECISION_ACTION.INGEST],
+    responsibleService: 'RevocationOrchestratorService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/revocation/deny-switch',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/revocation-orchestrator/revocation-orchestrator.service.spec.ts',
+    productive: true,
+  }),
+  flow({
+    flowId: 'revocation-provider-revoke',
+    flowName: 'Revocation provider access revoke',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['TELEMETRY_RAW'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST],
+    responsibleService: 'RevocationOrchestratorSteps',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/revocation/provider-revoke',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/revocation-orchestrator/revocation-orchestrator.service.spec.ts',
+    productive: true,
+  }),
+  flow({
+    flowId: 'revocation-partner-notify',
+    flowName: 'Revocation partner downstream notification',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['CUSTOMER_DATA'],
+    actions: [AUTHORIZATION_DECISION_ACTION.SHARE],
+    responsibleService: 'RevocationOrchestratorSteps',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/revocation/partner-notify',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath:
+      'backend/src/modules/data-authorizations/revocation-orchestrator/revocation-orchestrator.service.spec.ts',
+    productive: true,
+  }),
 ];
 
-export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt23-v1';
+export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt24-v1';
 
 export function getCatalogFlowById(flowId: string): EnforcementFlowCatalogEntry | undefined {
   return ENFORCEMENT_COVERAGE_CATALOG.find((row) => row.flowId === flowId);

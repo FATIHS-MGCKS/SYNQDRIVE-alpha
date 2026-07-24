@@ -18,6 +18,7 @@ import {
 import { PolicyLifecycleTransitionValidator } from './policy-lifecycle.service';
 import { DataProcessingReviewEntityType } from '@prisma/client';
 import { DataProcessingReviewWorkflowService } from '../review-workflow/review-workflow.service';
+import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
 
 type ActivityRecord = Prisma.ProcessingActivityGetPayload<object>;
 
@@ -29,6 +30,7 @@ export class ProcessingActivityLifecycleService {
     private readonly validator: PolicyLifecycleTransitionValidator,
     private readonly events: PolicyLifecycleEventsService,
     @Optional() private readonly reviewWorkflow?: DataProcessingReviewWorkflowService,
+    @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
   ) {}
 
   async create(orgId: string, data: {
@@ -230,7 +232,7 @@ export class ProcessingActivityLifecycleService {
 
   async revoke(orgId: string, id: string, reason: string, input: PolicyTransitionInput = {}): Promise<ActivityRecord> {
     const record = await this.findOrThrow(orgId, id);
-    return this.lifecycle.transitionVersion({
+    const result = await this.lifecycle.transitionVersion({
       orgId,
       record,
       toStatus: PrivacyPolicyLifecycleStatus.REVOKED,
@@ -252,6 +254,18 @@ export class ProcessingActivityLifecycleService {
           reason: event.input?.reason,
         }),
     });
+
+    if (this.revocationEnqueue) {
+      await this.revocationEnqueue.enqueueProcessingActivityRevoked({
+        organizationId: orgId,
+        processingActivityId: result.id,
+        versionNumber: result.versionNumber,
+        actorUserId: input.actorUserId,
+        reason,
+      });
+    }
+
+    return result;
   }
 
   async createNewVersion(orgId: string, sourceId: string, data: {

@@ -1749,6 +1749,7 @@ model Organization {
   dataProcessingReviewCycles                                DataProcessingReviewCycle[]
   dataProcessingReviewDecisions                             DataProcessingReviewDecision[]
   dataAuthorizationAuditOutbox                            DataAuthorizationAuditOutbox[]
+  dataAuthorizationRevocationWorkflows                    DataAuthorizationRevocationWorkflow[]
   processingActivityLifecycleEvents                         ProcessingActivityLifecycleEvent[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
@@ -11683,6 +11684,94 @@ model DataAuthorizationAuditOutbox {
   @@index([organizationId, eventKind])
   @@index([organizationId, correlationId])
   @@map("data_authorization_audit_outbox")
+}
+
+/// Persistent revocation workflow — durable fan-out after policy/consent/provider revoke.
+enum DataAuthorizationRevocationWorkflowStatus {
+  REVOCATION_REQUESTED
+  DENY_SWITCH_ACTIVE
+  INGESTION_STOPPED
+  PROVIDER_ACCESS_REVOKE_PENDING
+  PROVIDER_ACCESS_REVOKED
+  QUEUES_CANCELLED
+  DOWNSTREAM_NOTIFICATION_PENDING
+  DOWNSTREAM_NOTIFIED
+  RETENTION_DECISION_PENDING
+  RETENTION_DECIDED
+  DELETION_SCHEDULED
+  VERIFICATION_PENDING
+  REVOCATION_COMPLETE
+  REVOCATION_FAILED
+}
+
+enum DataAuthorizationRevocationTriggerType {
+  PROCESSING_ACTIVITY_REVOKED
+  ENFORCEMENT_POLICY_REVOKED
+  LEGACY_ORG_AUTH_REVOKED
+  CONSENT_WITHDRAWN
+  PROVIDER_GRANT_REVOKED
+  DATA_SHARING_REVOKED
+}
+
+model DataAuthorizationRevocationWorkflow {
+  id                   String                                    @id @default(uuid())
+  organizationId       String                                    @map("organization_id")
+  idempotencyKey       String                                    @unique @map("idempotency_key")
+  triggerType          DataAuthorizationRevocationTriggerType    @map("trigger_type")
+  status               DataAuthorizationRevocationWorkflowStatus @default(REVOCATION_REQUESTED)
+  correlationId        String                                    @map("correlation_id")
+  actorUserId          String?                                   @map("actor_user_id")
+  reason               String?
+  processingActivityId String?                                   @map("processing_activity_id")
+  enforcementPolicyId  String?                                   @map("enforcement_policy_id")
+  consentId            String?                                   @map("consent_id")
+  providerGrantId      String?                                   @map("provider_grant_id")
+  dataSharingAuthId    String?                                   @map("data_sharing_auth_id")
+  legacyOrgAuthId      String?                                   @map("legacy_org_auth_id")
+  dataCategories       Json                                      @map("data_categories")
+  purposes             Json
+  vehicleIds           Json?                                     @map("vehicle_ids")
+  completedSteps       Json                                      @default("[]") @map("completed_steps")
+  stepErrors           Json?                                     @map("step_errors")
+  attempts             Int                                       @default(0)
+  maxAttempts          Int                                       @default(8) @map("max_attempts")
+  nextRetryAt          DateTime                                  @default(now()) @map("next_retry_at")
+  denySwitchActivatedAt DateTime?                                @map("deny_switch_activated_at")
+  processedAt          DateTime?                                 @map("processed_at")
+  completedAt          DateTime?                                 @map("completed_at")
+  failedAt             DateTime?                                 @map("failed_at")
+  failureReason        String?                                   @map("failure_reason")
+  deadLetteredAt       DateTime?                                 @map("dead_lettered_at")
+  retentionDecision    String?                                   @map("retention_decision")
+  createdAt            DateTime                                  @default(now()) @map("created_at")
+  updatedAt            DateTime                                  @updatedAt @map("updated_at")
+
+  organization Organization                              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  stepEvents   DataAuthorizationRevocationStepEvent[]
+
+  @@index([organizationId])
+  @@index([status, nextRetryAt])
+  @@index([organizationId, correlationId])
+  @@map("data_authorization_revocation_workflows")
+}
+
+model DataAuthorizationRevocationStepEvent {
+  id             String                                     @id @default(uuid())
+  workflowId     String                                     @map("workflow_id")
+  organizationId String                                     @map("organization_id")
+  stepKey        String                                     @map("step_key")
+  fromStatus     DataAuthorizationRevocationWorkflowStatus?   @map("from_status")
+  toStatus       DataAuthorizationRevocationWorkflowStatus  @map("to_status")
+  outcome        String
+  errorMessage   String?                                    @map("error_message")
+  correlationId  String                                     @map("correlation_id")
+  createdAt      DateTime                                   @default(now()) @map("created_at")
+
+  workflow DataAuthorizationRevocationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([organizationId, createdAt])
+  @@map("data_authorization_revocation_step_events")
 }
 
 /// Review cycle for a specific entity version — approvals bind to version + fingerprint.

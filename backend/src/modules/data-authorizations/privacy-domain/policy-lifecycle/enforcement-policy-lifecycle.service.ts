@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   Prisma,
   PrivacyPolicyLifecycleEventType,
@@ -12,6 +12,7 @@ import {
   PolicyLifecycleService,
   PolicyTransitionInput,
 } from './policy-lifecycle.service';
+import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
 
 type EnforcementPolicyRecord = Prisma.EnforcementPolicyGetPayload<{
   include: {
@@ -35,6 +36,7 @@ export class EnforcementPolicyLifecycleService {
     private readonly prisma: PrismaService,
     private readonly lifecycle: PolicyLifecycleService,
     private readonly events: PolicyLifecycleEventsService,
+    @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
   ) {}
 
   async submitForReview(orgId: string, id: string, actorUserId: string): Promise<EnforcementPolicyRecord> {
@@ -197,7 +199,7 @@ export class EnforcementPolicyLifecycleService {
 
   async revoke(orgId: string, id: string, reason: string, input: PolicyTransitionInput = {}): Promise<EnforcementPolicyRecord> {
     const record = await this.findOrThrow(orgId, id);
-    return this.lifecycle.transitionVersion({
+    const result = await this.lifecycle.transitionVersion({
       orgId,
       record,
       toStatus: PrivacyPolicyLifecycleStatus.REVOKED,
@@ -222,6 +224,19 @@ export class EnforcementPolicyLifecycleService {
           reason: event.input?.reason,
         }),
     });
+
+    if (this.revocationEnqueue) {
+      await this.revocationEnqueue.enqueueEnforcementPolicyRevoked({
+        organizationId: orgId,
+        enforcementPolicyId: result.id,
+        processingActivityId: result.processingActivityId,
+        versionNumber: result.versionNumber,
+        actorUserId: input.actorUserId,
+        reason,
+      });
+    }
+
+    return result;
   }
 
   async findOrThrow(orgId: string, id: string): Promise<EnforcementPolicyRecord> {

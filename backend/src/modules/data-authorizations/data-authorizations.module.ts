@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { RedisModule } from '@shared/redis/redis.module';
+import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { DataAuthorizationsController } from './data-authorizations.controller';
 import { DataAuthorizationsService } from './data-authorizations.service';
 import { DataAuthorizationEnforcementService } from './data-authorization-enforcement.service';
@@ -49,9 +51,25 @@ import { EnforcementCoverageRegistryController } from './enforcement-coverage-re
 import { EnforcementCoverageRegistryService } from './enforcement-coverage-registry/enforcement-coverage-registry.service';
 import { EnforcementCoverageHealthService } from './enforcement-coverage-registry/enforcement-coverage-health.service';
 import { EnforcementCoverageRegistryMetricsService } from './enforcement-coverage-registry/enforcement-coverage-registry.metrics';
+import { RevocationOrchestratorController } from './revocation-orchestrator/revocation-orchestrator.controller';
+import { RevocationOrchestratorRepository } from './revocation-orchestrator/revocation-orchestrator.repository';
+import { RevocationOrchestratorService } from './revocation-orchestrator/revocation-orchestrator.service';
+import { RevocationOrchestratorSchedulerService } from './revocation-orchestrator/revocation-orchestrator.scheduler.service';
+import {
+  DefaultRevocationProviderRevoker,
+  RevocationOrchestratorSteps,
+} from './revocation-orchestrator/revocation-orchestrator.steps';
+import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/revocation-orchestrator.enqueue.service';
 
 @Module({
-  imports: [RedisModule],
+  imports: [
+    RedisModule,
+    BullModule.registerQueue(
+      { name: QUEUE_NAMES.DIMO_SNAPSHOT },
+      { name: QUEUE_NAMES.DTC_POLL },
+      { name: QUEUE_NAMES.TRIP_TRACKING },
+    ),
+  ],
   controllers: [
     DataAuthorizationsController,
     LegalBasisAssessmentController,
@@ -63,6 +81,7 @@ import { EnforcementCoverageRegistryMetricsService } from './enforcement-coverag
     DataProcessingReviewWorkflowController,
     DataAuthorizationAuditController,
     EnforcementCoverageRegistryController,
+    RevocationOrchestratorController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -105,6 +124,12 @@ import { EnforcementCoverageRegistryMetricsService } from './enforcement-coverag
     EnforcementCoverageRegistryService,
     EnforcementCoverageHealthService,
     EnforcementCoverageRegistryMetricsService,
+    RevocationOrchestratorRepository,
+    RevocationOrchestratorSteps,
+    DefaultRevocationProviderRevoker,
+    RevocationOrchestratorService,
+    RevocationOrchestratorSchedulerService,
+    RevocationOrchestratorEnqueueService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -139,6 +164,8 @@ import { EnforcementCoverageRegistryMetricsService } from './enforcement-coverag
     EnforcementCoverageRegistryService,
     EnforcementCoverageHealthService,
     EnforcementCoverageRegistryMetricsService,
+    RevocationOrchestratorService,
+    RevocationOrchestratorEnqueueService,
   ],
 })
 export class DataAuthorizationsModule {}

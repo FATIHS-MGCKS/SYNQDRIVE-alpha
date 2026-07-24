@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
   AuthorizationActorType,
   Prisma,
@@ -12,10 +12,14 @@ import type {
 } from './dto/provider-access-grant.dto';
 import { normalizeProviderScopes } from './provider-access-grant.constants';
 import { assertProviderGrantTransition } from '../privacy-domain.lifecycle';
+import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
 
 @Injectable()
 export class ProviderAccessGrantService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
+  ) {}
 
   async create(orgId: string, dto: CreateProviderAccessGrantDto, actorUserId?: string) {
     const scopes = normalizeProviderScopes(dto.provider, dto.grantedScopes);
@@ -142,6 +146,17 @@ export class ProviderAccessGrantService {
         },
       });
 
+      return updated;
+    }).then(async (updated) => {
+      if (this.revocationEnqueue) {
+        await this.revocationEnqueue.enqueueProviderGrantRevoked({
+          organizationId: orgId,
+          providerGrantId: updated.id,
+          vehicleId: updated.vehicleId,
+          actorUserId,
+          reason: dto.reason,
+        });
+      }
       return updated;
     });
   }

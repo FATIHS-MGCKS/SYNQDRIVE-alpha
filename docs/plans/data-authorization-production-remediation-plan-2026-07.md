@@ -23,6 +23,7 @@ Authoritative flow inventory for enforcement coverage:
 | 21 | Notification authorization | V4.9.804 |
 | 22 | External access enforcement | V4.9.805 |
 | 23 | Enforcement coverage registry | V4.9.806 |
+| 24 | Persistent revocation orchestrator | V4.9.807 |
 
 ## Verification
 

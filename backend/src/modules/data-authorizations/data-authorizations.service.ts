@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   DataAuthorizationScope,
@@ -30,6 +31,7 @@ import type { GrantDataAuthorizationDto } from './dto/grant-data-authorization.d
 import type { ListDataAuthorizationsQueryDto } from './dto/list-data-authorizations-query.dto';
 import type { RevokeDataAuthorizationDto } from './dto/revoke-data-authorization.dto';
 import { LiveGpsEnforcementService } from './live-gps-enforcement/live-gps-enforcement.service';
+import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/revocation-orchestrator.enqueue.service';
 import type { UpdateDataAuthorizationDto } from './dto/update-data-authorization.dto';
 
 const STATUS_DISPLAY: Record<string, string> = {
@@ -77,6 +79,7 @@ export class DataAuthorizationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly liveGpsEnforcement: LiveGpsEnforcementService,
+    @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
   ) {}
 
   private jsonStringArray(value: Prisma.JsonValue | null | undefined): string[] {
@@ -718,7 +721,18 @@ export class DataAuthorizationsService {
       },
     });
 
-    await this.liveGpsEnforcement.invalidateOrgGpsCaches(orgId);
+    if (this.revocationEnqueue) {
+      await this.revocationEnqueue.enqueueLegacyOrgAuthRevoked({
+        organizationId: orgId,
+        legacyOrgAuthId: row.id,
+        dataCategories: this.jsonStringArray(row.dataCategories),
+        purposes: this.jsonStringArray(row.purposes),
+        actorUserId: userId,
+        reason: dto?.reason,
+      });
+    } else {
+      await this.liveGpsEnforcement.invalidateOrgGpsCaches(orgId);
+    }
 
     return this.format(row);
   }

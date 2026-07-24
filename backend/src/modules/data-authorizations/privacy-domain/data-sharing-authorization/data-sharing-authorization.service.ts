@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
   AuthorizationActorType,
   DataSharingAuthorizationStatus,
@@ -11,10 +11,14 @@ import type {
   RevokeDataSharingAuthorizationDto,
 } from './dto/data-sharing-authorization.dto';
 import { assertSharingTransition } from '../privacy-domain.lifecycle';
+import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
 
 @Injectable()
 export class DataSharingAuthorizationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
+  ) {}
 
   async create(
     orgId: string,
@@ -139,6 +143,19 @@ export class DataSharingAuthorizationService {
         },
       });
 
+      return updated;
+    }).then(async (updated) => {
+      if (this.revocationEnqueue) {
+        await this.revocationEnqueue.enqueueDataSharingRevoked({
+          organizationId: orgId,
+          dataSharingAuthId: updated.id,
+          processingActivityId: updated.processingActivityId,
+          dataCategories: updated.dataCategories.map((c) => c.dataCategory),
+          purpose: updated.purpose,
+          actorUserId,
+          reason: dto.reason,
+        });
+      }
       return updated;
     });
   }
