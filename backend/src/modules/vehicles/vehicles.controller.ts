@@ -269,17 +269,26 @@ export class VehiclesController {
   ) {
     const data: Prisma.VehicleUpdateInput = {};
     let previousVehicleStatus: VehicleStatus | null = null;
+    let previousCleaningStatus: CleaningStatus | null = null;
+    const needsExistingSnapshot = Boolean(body.status || body.cleaningStatus);
+    const existingVehicle = needsExistingSnapshot
+      ? await this.vehiclesService.findOne(orgId, vehicleId)
+      : null;
+
     if (body.status) {
       if (!VehiclesController.ADMIN_WRITABLE_VEHICLE_STATES.has(body.status)) {
         throw new BadRequestException(
           `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
         );
       }
-      const existing = await this.vehiclesService.findOne(orgId, vehicleId);
-      previousVehicleStatus = (existing?.status as VehicleStatus | undefined) ?? null;
+      previousVehicleStatus = (existingVehicle?.status as VehicleStatus | undefined) ?? null;
       data.status = body.status;
     }
-    if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
+    if (body.cleaningStatus) {
+      previousCleaningStatus =
+        (existingVehicle?.cleaningStatus as CleaningStatus | undefined) ?? null;
+      data.cleaningStatus = body.cleaningStatus;
+    }
     if (body.healthStatus) data.healthStatus = body.healthStatus;
 
     const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
@@ -298,6 +307,26 @@ export class VehiclesController {
           auditAction: 'VEHICLE_OPERATIONAL_STATUS_UPDATE',
           previousStatus: previousVehicleStatus,
           nextStatus: body.status,
+        },
+      });
+    }
+
+    if (
+      body.cleaningStatus &&
+      previousCleaningStatus &&
+      previousCleaningStatus !== body.cleaningStatus
+    ) {
+      await this.activityLog.log({
+        organizationId: orgId,
+        userId: req.user?.id,
+        action: ActivityAction.UPDATE,
+        entity: ActivityEntity.VEHICLE,
+        entityId: vehicleId,
+        description: `Vehicle cleaning status changed from ${previousCleaningStatus} to ${body.cleaningStatus}`,
+        metaJson: {
+          auditAction: 'VEHICLE_CLEANING_STATUS_UPDATE',
+          previousCleaningStatus,
+          nextCleaningStatus: body.cleaningStatus,
         },
       });
     }

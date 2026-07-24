@@ -23,8 +23,9 @@ import {
   VehicleHealthChip,
 } from './VehicleDetailHeaderBadges';
 
-export type { VehicleOperationalUiStatus };
-export type VehicleCleaningUiStatus = 'Clean' | 'Needs Cleaning';
+import type { VehicleCleaningUiStatus } from '../../lib/vehicle-cleaning-status-mutation';
+
+export type { VehicleOperationalUiStatus, VehicleCleaningUiStatus };
 
 export interface VehicleDetailHeaderProps {
   vehicle: VehicleData;
@@ -32,6 +33,8 @@ export interface VehicleDetailHeaderProps {
   vehicleStatusBusy?: boolean;
   canEditOperationalStatus?: boolean;
   cleaningStatus: VehicleCleaningUiStatus;
+  cleaningStatusBusy?: boolean;
+  canEditCleaningStatus?: boolean;
   isStatusDropdownOpen: boolean;
   isCleaningDropdownOpen: boolean;
   onToggleStatusDropdown: () => void;
@@ -62,6 +65,8 @@ export function VehicleDetailHeader({
   vehicleStatusBusy = false,
   canEditOperationalStatus = true,
   cleaningStatus,
+  cleaningStatusBusy = false,
+  canEditCleaningStatus = true,
   isStatusDropdownOpen,
   isCleaningDropdownOpen,
   onToggleStatusDropdown,
@@ -77,6 +82,7 @@ export function VehicleDetailHeader({
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
   const readinessChip = resolveVehicleDetailHeaderReadinessChip(vehicle, rentalHealth, locale);
   const statusControlsDisabled = vehicleStatusBusy || !canEditOperationalStatus;
+  const cleaningControlsDisabled = cleaningStatusBusy || !canEditCleaningStatus;
   const readinessIcon = (
     <Icon
       name={operationalStatusIconName(readinessChip.statusBadge.status)}
@@ -192,7 +198,9 @@ export function VehicleDetailHeader({
                 <button
                   type="button"
                   onClick={onToggleCleaningDropdown}
-                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  disabled={cleaningControlsDisabled}
+                  aria-busy={cleaningStatusBusy}
+                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] disabled:cursor-not-allowed disabled:opacity-60"
                   aria-expanded={isCleaningDropdownOpen}
                   aria-haspopup="menu"
                 >
@@ -200,16 +208,17 @@ export function VehicleDetailHeader({
                     tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
                     icon={<Icon name="sparkles" className="h-3 w-3" />}
                   >
-                    {cleaningStatus}
+                    {cleaningStatusBusy ? '…' : cleaningStatus}
                   </StatusChip>
                 </button>
 
-                {isCleaningDropdownOpen ? (
+                {isCleaningDropdownOpen && !cleaningControlsDisabled ? (
                   <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
                     <button
                       type="button"
                       onClick={() => onCleaningStatusChange('Clean')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                      disabled={cleaningStatusBusy}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Icon name="sparkles" className="h-3.5 w-3.5 text-[color:var(--status-info)]" />
                       <span className="text-[12px] font-medium text-foreground">Clean</span>
@@ -217,7 +226,8 @@ export function VehicleDetailHeader({
                     <button
                       type="button"
                       onClick={() => onCleaningStatusChange('Needs Cleaning')}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                      disabled={cleaningStatusBusy}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Icon name="alert-triangle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
                       <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>

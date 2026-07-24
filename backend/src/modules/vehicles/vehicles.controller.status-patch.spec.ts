@@ -122,4 +122,28 @@ describe('VehiclesController — operational status write guard', () => {
       }),
     );
   });
+
+  it('writes activity log for cleaning status changes', async () => {
+    vehiclesService.findOne.mockResolvedValueOnce({
+      id: vehicleId,
+      cleaningStatus: CleaningStatus.NEEDS_CLEANING,
+    });
+
+    await controller.updateVehicleStatus(orgId, vehicleId, { user: { id: 'u1' } }, {
+      cleaningStatus: CleaningStatus.CLEAN,
+    });
+
+    expect(activityLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: orgId,
+        userId: 'u1',
+        entityId: vehicleId,
+        metaJson: expect.objectContaining({
+          auditAction: 'VEHICLE_CLEANING_STATUS_UPDATE',
+          previousCleaningStatus: CleaningStatus.NEEDS_CLEANING,
+          nextCleaningStatus: CleaningStatus.CLEAN,
+        }),
+      }),
+    );
+  });
 });

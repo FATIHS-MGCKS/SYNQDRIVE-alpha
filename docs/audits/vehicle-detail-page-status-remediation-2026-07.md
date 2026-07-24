@@ -252,3 +252,175 @@ API-Rohstatus
 | `fleetVisualState.ts` Map-Legende | Telemetry-spezifische Labels (`Offline`, `Soft Offline`) |
 | `i18n/translations/*.ts` status.* keys | Parallel zu display.ts — keine Massenmigration i18n in diesem Prompt |
 | Header-Dropdown persistiert nicht | C-01 — separates Thema |
+
+---
+
+## Prompt 6/36 — Serverseitige Status-Persistierung (2026-07-24)
+
+### Problem (C-01)
+
+Der Vehicle-Detail-Header änderte den operativen Status nur im lokalen React-State (`setVehicleStatus`). Reinigungsstatus (`cleaningStatus`) nutzte bereits den Backend-PATCH — operativer Status nicht.
+
+### Verwendete API (bestehend — kein neuer Endpunkt)
+
+| Feld | Wert |
+|------|------|
+| **Methode / Pfad** | `PATCH /api/v1/organizations/:orgId/vehicles/:vehicleId/status` |
+| **Frontend-Client** | `api.vehicles.updateOperationalStatus(orgId, vehicleId, { status })` |
+| **Backend-Handler** | `VehiclesController.updateVehicleStatus` |
+| **Permission** | `@RequirePermission('fleet', 'write')` + `OrgScopingGuard` |
+| **Tenant-Isolation** | `vehiclesService.update(vehicleId, data, orgId)` — `findFirst` mit Org-Scope |
+| **Zulässige Schreibwerte** | `AVAILABLE`, `IN_SERVICE`, `OUT_OF_SERVICE` |
+| **Abgelehnt** | `RENTED`, `RESERVED` (400 Bad Request) |
+
+### Edit-Token → Prisma-Mapping (Frontend)
+
+| Dropdown (Edit) | Prisma `VehicleStatus` | Kanonisch |
+|-----------------|------------------------|-----------|
+| Available | `AVAILABLE` | `AVAILABLE` |
+| Maintenance | `IN_SERVICE` | `MAINTENANCE` |
+| Manual Block | `OUT_OF_SERVICE` | `BLOCKED` |
+
+Implementiert in `mapVehicleOperationalEditStatusToPrismaStatus()` (`display.ts`).
+
+### Frontend-Implementierung
+
+| Datei | Änderung |
+|-------|----------|
+| `vehicle-operational-status-mutation.ts` | **Neu:** API-Aufruf, Fehlerklassifikation, Warn-Logik |
+| `vehicle-operational-status-mutation.test.ts` | **Neu:** 7 Tests (Erfolg, Fehler, Doppelklick, Invalidierung) |
+| `App.tsx` | `persistVehicleOperationalStatus` — kein optimistischer Erfolg; Rollback bei Fehler; `vehicleStatusBusy` |
+| `VehicleDetailHeader.tsx` | Dropdown disabled während Mutation / ohne `fleet:write` |
+| `display.ts` | `mapVehicleOperationalEditStatusToPrismaStatus` |
+
+### Mutation-Ablauf
+
+1. Permission-Check (`hasPermission('fleet', 'write')`)
+2. No-op wenn Edit-Status unverändert
+3. Warn-Modal bei Available → Maintenance/Manual Block
+4. `PATCH` mit korrekter `orgId` + `vehicleId`
+5. Bei Erfolg: `invalidateVehicleOperationalState` → `refreshFleetVehicles` → State aus Fleet-Snapshot
+6. Bei Fehler: Rollback auf `deriveVehicleDetailHeaderEditStatus(selectedVehicle)` + Toast
+
+### Invalidierte Query Keys (`reason: 'vehicle-status-patch'`)
+
+| Key | Handler |
+|-----|---------|
+| `['vehicle-operational', orgId, 'fleet-map']` | FleetContext → `fetchFleetMap` |
+| `['vehicle-operational', orgId, 'fleet-health']` | FleetContext → `reloadHealth` |
+| `['vehicle-operational', orgId, 'vehicle', vehicleId]` | Vehicle Overview Summary |
+| `['vehicle-operational', orgId, 'dashboard-runtime']` | Dashboard Runtime Slice |
+
+Zusätzlich: `vehiclesService.invalidateFleetMapCache(orgId)` im Backend.
+
+### Backend-Ergänzung: Audit Logging
+
+| Feld | Wert |
+|------|------|
+| **Service** | `ActivityLogService` (bestehend) |
+| **Trigger** | Status-Änderung via PATCH (`previousStatus !== nextStatus`) |
+| **metaJson.auditAction** | `VEHICLE_OPERATIONAL_STATUS_UPDATE` |
+| **Keine Rohdaten** | Nur Enum-Werte `previousStatus` / `nextStatus` |
+
+### Tests (Prompt 6)
+
+| Suite | Ergebnis |
+|-------|----------|
+| `vehicle-operational-status-mutation.test.ts` | 7/7 PASS |
+| `vehicles.controller.status-patch.spec.ts` | 7/7 PASS (inkl. Activity Log) |
+| Frontend `npm run build` | PASS |
+
+### Bewusste Ausnahmen
+
+| Ausnahme | Begründung |
+|----------|------------|
+| Parallele Browser-Tabs | Kein WebSocket — Fleet-Refresh bei Invalidierung + periodischer Fleet-Poll decken Konvergenz ab |
+| Booking-derived Status | RESERVED/ACTIVE_RENTED nicht per Dropdown schreibbar (Backend lehnt ab) |
+| `healthStatus` im selben PATCH | Endpoint unterstützt es; Header nutzt nur `status` |
+
+---
+
+## Prompt 7/36 — Reinigungsstatus technisch vereinheitlicht (2026-07-24)
+
+### Ziel
+
+Reinigungsstatus-Mutation strukturell an das korrigierte Fahrzeugstatus-Pattern angleichen — ohne fachliche Nebenwirkungen zu entfernen und ohne neue Reinigungslogik.
+
+### Bewusste Unterschiede zum operativen Fahrzeugstatus
+
+| Aspekt | Operativer Status | Reinigungsstatus |
+|--------|-------------------|------------------|
+| **Fachliche Domäne** | Verfügbarkeit / Block / Wartung | Reinigung / Task-Workflow |
+| **Rental Readiness** | Chip nutzt `resolveFleetVehicleDisplayState` | Reinigung beeinflusst Readiness nur indirekt über Fleet-Snapshot nach Serverantwort |
+| **Warn-Modal** | Available → Maintenance/Manual Block | Nur bei Wechsel zu „Needs Cleaning“ |
+| **Backend-Nebenwirkungen** | Keine Task-Erzeugung | `ensureCleaningTask` / `completeOpenCleaningTasks` |
+| **Automatische Freigabe** | — | **Keine** — „Clean“ setzt nicht automatisch operational Available |
+| **Audit-Action** | `VEHICLE_OPERATIONAL_STATUS_UPDATE` | `VEHICLE_CLEANING_STATUS_UPDATE` |
+
+### Verwendete API (bestehend — kein neuer Endpunkt)
+
+| Feld | Wert |
+|------|------|
+| **Methode / Pfad** | `PATCH /api/v1/organizations/:orgId/vehicles/:vehicleId/status` |
+| **Body-Feld** | `{ cleaningStatus: 'CLEAN' \| 'NEEDS_CLEANING' }` |
+| **Frontend-Client** | `api.vehicles.updateOperationalStatus(orgId, vehicleId, { cleaningStatus })` |
+| **Permission** | `@RequirePermission('fleet', 'write')` + `OrgScopingGuard` |
+| **Tenant-Isolation** | `vehiclesService.update(vehicleId, data, orgId)` |
+
+### UI-Label → Prisma-Mapping
+
+| Dropdown (UI) | Prisma `CleaningStatus` |
+|---------------|-------------------------|
+| Clean | `CLEAN` |
+| Needs Cleaning | `NEEDS_CLEANING` |
+
+Implementiert in `mapCleaningUiStatusToPrisma()` / `deriveVehicleDetailHeaderCleaningStatus()`.
+
+### Frontend-Implementierung
+
+| Datei | Änderung |
+|-------|----------|
+| `vehicle-status-patch-mutation-shared.ts` | **Neu:** gemeinsame Fehlerklassifikation für operational + cleaning |
+| `vehicle-cleaning-status-mutation.ts` | **Neu:** API-Aufruf, Mapping, Task-Side-Effects, Warn-Logik |
+| `vehicle-cleaning-status-mutation.test.ts` | **Neu:** 7 Tests |
+| `vehicle-operational-status-mutation.ts` | Refactor: nutzt shared error classifier |
+| `App.tsx` | `persistCleaningStatus` spiegelt `persistVehicleOperationalStatus` |
+| `VehicleDetailHeader.tsx` | `cleaningStatusBusy`, `canEditCleaningStatus`, Dropdown-Guard |
+
+### Mutation-Ablauf (Reinigung)
+
+1. Permission-Check (`hasPermission('fleet', 'write')`)
+2. No-op wenn UI-Status unverändert (`deriveVehicleDetailHeaderCleaningStatus`)
+3. Warn-Modal bei Wechsel zu „Needs Cleaning“
+4. `PATCH` mit `cleaningStatus` — kein optimistischer Erfolg
+5. Bei Erfolg: `invalidateVehicleOperationalState` → `refreshFleetVehicles` → State aus Fleet-Snapshot
+6. Task-Side-Effects (Toast, Navigation zu vehicle-tasks) nur nach Serverantwort
+7. Bei Fehler: Rollback auf `deriveVehicleDetailHeaderCleaningStatus(selectedVehicle)`
+8. Fleet-Sync überschreibt `cleaningStatus` nicht während `cleaningStatusBusy`
+
+### Invalidierte Query Keys
+
+Identisch zu Prompt 6 (`reason: 'vehicle-status-patch'`).
+
+### Backend-Ergänzung: Audit Logging (Cleaning)
+
+| Feld | Wert |
+|------|------|
+| **Trigger** | `cleaningStatus`-Änderung (`previousCleaningStatus !== nextCleaningStatus`) |
+| **metaJson.auditAction** | `VEHICLE_CLEANING_STATUS_UPDATE` |
+| **metaJson** | `previousCleaningStatus`, `nextCleaningStatus` |
+
+### Tests (Prompt 7)
+
+| Suite | Abdeckung |
+|-------|-----------|
+| `vehicle-cleaning-status-mutation.test.ts` | Clean, Needs Cleaning, Mapping, Permission-Fehler, Doppelklick, Side-Effects |
+| `vehicles.controller.status-patch.spec.ts` | +1 Test Cleaning-Audit-Log |
+
+### Bewusste Ausnahmen (Cleaning)
+
+| Ausnahme | Begründung |
+|----------|------------|
+| Task-Navigation nach „Needs Cleaning“ | Bestehendes Produktverhalten — keine Rental-Freigabe |
+| Englische UI-Labels „Clean“ / „Needs Cleaning“ | Unverändert — keine visuelle Linie geändert |
+| `cleaningStatus` im selben PATCH wie `status` | Endpoint erlaubt beides; Header sendet getrennte Mutationen |
