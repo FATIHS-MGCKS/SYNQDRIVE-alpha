@@ -1,22 +1,25 @@
 # Booking Post-Remediation Audit — Architecture Note
 
-Date: 2026-07-24  
-Prompt: 34/34
+Date: 2026-07-24 (updated after Go remediation)  
+Prompt: 34/34 + follow-up remediation
 
 ## Audit outcome
 
-**NO-GO** for production — see `docs/audits/booking-post-remediation-production-readiness-2026-07.md`.
+**CONDITIONAL GO** after remediation branch `cursor/booking-production-go-6eff` — see `docs/audits/booking-post-remediation-production-readiness-2026-07.md`.
 
-## Critical architecture gaps (P0)
+## Remediation applied (V4.9.801)
 
-1. **Double-booking race** — overlap check outside transaction; no DB exclusion constraint.
-2. **IAM** — `BookingsController` CRUD/handover lacks `bookings.read/write/manage` decorators.
-3. **Privacy** — `findTodaysPickups` / `findTodaysReturns` return full signature data URLs (list redaction only on paginated `findAll`).
-4. **Input boundary** — HTTP bodies typed as `Prisma.BookingCreateInput` / `BookingUpdateInput`.
+1. **Concurrency** — `pg_advisory_xact_lock` per org+vehicle inside create/update transactions before overlap check.
+2. **IAM** — `@RequirePermission('bookings', read|write|manage)` on `BookingsController` + rental-contract routes.
+3. **Privacy** — `redactHandoverProtocolForList` on `findTodaysPickups` / `findTodaysReturns`.
+4. **Input boundary** — `CreateBookingDto` / `UpdateBookingDto` + `booking-input.sanitizer.ts`.
+5. **Lifecycle** — `resolvePatchStatusTransition`, `resolveCancelTransition`, `resolveNoShowTransition` wired in `BookingsService`.
+6. **Frontend** — planner pagination truncation banner, i18n, calendar month nav, mobile agenda fallback.
 
-## Runtime enforcement gap
+## Remaining risks (P2 / staging)
 
-`booking-lifecycle-status.matrix.ts` documents transitions but is **not imported** by `BookingsService` — PATCH/cancel can bypass intended state machine.
+- No PostgreSQL exclusion constraint (advisory lock reduces race; staging parallel-create test still required).
+- Invoice bootstrap compensating delete remains non-atomic saga.
 
 ## Verified strengths
 
@@ -27,4 +30,4 @@ Prompt: 34/34
 
 ## Re-audit trigger
 
-Re-run audit after P0 remediation on consolidated `main` tip.
+Full test matrix + staging smoke before production deploy on consolidated `main`.

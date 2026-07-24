@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
 import { BookingStatusBadge, bookingTimelineSolidBarClass, type BookingUiStatus } from './bookingStatus';
@@ -26,6 +27,17 @@ export function BookingsTimelineView({
   rangeEnd,
   onSelectBooking,
 }: BookingsTimelineViewProps) {
+  const { t, locale } = useLanguage();
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   const totalMs = Math.max(MS_DAY, rangeEnd.getTime() - rangeStart.getTime());
   const dayMarkers = useMemo(() => {
     const out: { left: number; label: string }[] = [];
@@ -35,12 +47,12 @@ export function BookingsTimelineView({
       const left = ((cursor.getTime() - rangeStart.getTime()) / totalMs) * 100;
       out.push({
         left,
-        label: cursor.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+        label: cursor.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }),
       });
       cursor.setDate(cursor.getDate() + 1);
     }
     return out;
-  }, [rangeStart, rangeEnd, totalMs]);
+  }, [rangeStart, rangeEnd, totalMs, locale]);
 
   const nowLeft = useMemo(() => {
     const now = Date.now();
@@ -59,20 +71,72 @@ export function BookingsTimelineView({
     return map;
   }, [bookings]);
 
+  const agendaRows = useMemo(() => {
+    return [...bookings].sort((a, b) => {
+      const sa = parseIso(bookingStartIso(a))?.getTime() ?? 0;
+      const sb = parseIso(bookingStartIso(b))?.getTime() ?? 0;
+      return sa - sb;
+    });
+  }, [bookings]);
+
   if (vehicles.length === 0) {
     return (
       <p className="text-xs text-muted-foreground p-6 text-center">
-        Keine Fahrzeuge in der Flotte — Timeline benötigt Fahrzeugdaten.
+        {t('bookings.planner.noVehicles')}
       </p>
+    );
+  }
+
+  if (narrow) {
+    return (
+      <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] divide-y divide-border/40">
+        {agendaRows.length === 0 ? (
+          <p className="text-xs text-muted-foreground p-6 text-center">{t('bookings.planner.emptyTimeline')}</p>
+        ) : (
+          agendaRows.map((booking) => {
+            const start = parseIso(bookingStartIso(booking));
+            const end = parseIso(bookingEndIso(booking));
+            const vehicle = vehicles.find((v) => v.id === booking.vehicleId);
+            const status = rowStatus(booking);
+            return (
+              <button
+                key={booking.id}
+                type="button"
+                onClick={() => onSelectBooking(booking.id)}
+                className="w-full text-left px-3 py-3 hover:bg-muted/30 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold truncate">
+                      {bookingRef(booking.id)} · {booking.customer}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {vehicle ? vehicleLabel(vehicle) : booking.vehicle} · {vehicle?.license ?? booking.plate}
+                    </p>
+                    {start && end && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {start.toLocaleDateString(locale)} – {end.toLocaleDateString(locale)}
+                      </p>
+                    )}
+                  </div>
+                  <BookingStatusBadge status={status} />
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
     );
   }
 
   return (
     <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] overflow-hidden">
       <div className="overflow-x-auto">
-        <div className="min-w-[900px]">
+        <div className="min-w-0 sm:min-w-[640px] lg:min-w-[900px]">
           <div className="grid grid-cols-[200px_1fr] border-b border-border/60 bg-muted/30">
-            <div className="px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground">Fahrzeug</div>
+            <div className="px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground">
+              {t('bookings.vehicle')}
+            </div>
             <div className="relative h-8 border-l border-border/40">
               {dayMarkers.map((m) => (
                 <span
@@ -131,10 +195,10 @@ export function BookingsTimelineView({
         </div>
       </div>
       <div className="px-3 py-2 flex flex-wrap gap-3 border-t border-border/40 text-[10px] text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--brand)]" /> Aktiv</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-attention)]" /> Bestätigt</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Ausstehend</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-success)]" /> Abgeschlossen</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--brand)]" /> {t('bookings.active')}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-attention)]" /> {t('bookings.confirmed')}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {t('bookings.planner.pending')}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[color:var(--status-success)]" /> {t('bookings.completed')}</span>
       </div>
     </div>
   );

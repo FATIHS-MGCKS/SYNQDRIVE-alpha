@@ -86,13 +86,17 @@ describe('booking-lifecycle-status.matrix', () => {
     ).toMatchObject({ allowed: false, code: 'BOOKING_NO_SHOW_TOO_EARLY' });
   });
 
-  it('forbids cancel on terminal bookings', () => {
+  it('forbids cancel on terminal bookings and active rentals', () => {
     for (const status of BOOKING_TERMINAL_STATUSES) {
       expect(resolveCancelTransition(status)).toMatchObject({
         allowed: false,
         code: 'BOOKING_CANCEL_TERMINAL',
       });
     }
+    expect(resolveCancelTransition('ACTIVE')).toMatchObject({
+      allowed: false,
+      code: 'BOOKING_CANCEL_ACTIVE',
+    });
     expect(resolveCancelTransition('CONFIRMED')).toEqual({ allowed: true });
   });
 

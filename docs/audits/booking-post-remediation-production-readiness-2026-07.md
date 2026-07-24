@@ -8,12 +8,47 @@
 | **Audited commit** | `3bc99019` (branch `cursor/booking-test-matrix-6eff`, includes Prompt 33 test matrix) |
 | **Baseline branch** | `main` |
 | **Audit date** | 2026-07-24 UTC |
+| **Remediation date** | 2026-07-24 UTC (branch `cursor/booking-production-go-6eff`) |
 | **Auditor** | Cursor Cloud Agent (independent re-verification) |
 | **Method** | Direct code inspection, negative security review, test execution — **not** prior prompt completion messages |
 
 ---
 
-## Executive Summary
+## Remediation Update (2026-07-24)
+
+Branch `cursor/booking-production-go-6eff` addresses all **P0** findings and the listed **P1** planner/IAM/lifecycle items:
+
+| ID | Status | Remediation |
+|----|--------|-------------|
+| P0-BOOK-001 | ✅ Fixed | Advisory xact lock + overlap inside create/update TX |
+| P0-BOOK-002 | ✅ Fixed | `@RequirePermission('bookings', …)` on controller |
+| P0-BOOK-003 | ✅ Fixed | Redaction on today/pickups + today/returns |
+| P0-BOOK-004 | ✅ Fixed | CreateBookingDto / UpdateBookingDto + sanitizer |
+| P1-BOOK-001 | ✅ Fixed | Matrix wired in BookingsService |
+| P1-BOOK-002 | ✅ Fixed | PATCH blocks terminal transitions via matrix |
+| P1-BOOK-003 | ✅ Fixed | cancel() guards + idempotent CANCELLED |
+| P1-BOOK-004 | ✅ Fixed | bookings.read on GET handlers |
+| P1-BOOK-005 | ✅ Fixed | Rental contract routes permissioned |
+| P1-BOOK-006 | ✅ Fixed | Truncation banner when meta.total > loaded |
+| P1-BOOK-007 | ✅ Fixed | Mobile agenda fallback (<640px) |
+| P1-BOOK-008 | ✅ Fixed | useLanguage in planner components |
+| P1-BOOK-009 | ✅ Fixed | Calendar prev/next month navigation |
+
+### Updated release recommendation: **CONDITIONAL GO**
+
+Deploy after: merge to `main`, full test matrix re-run, staging parallel-create smoke test.
+
+| Criterion | Post-remediation |
+|-----------|------------------|
+| No open P0/P1 findings | ✅ P0 closed; P1 planner/IAM/lifecycle closed (P2 remain) |
+| No full signatures in list payloads | ✅ All list/dashboard surfaces redacted |
+| Every booking endpoint has explicit permission | ✅ Core CRUD + rental contract |
+| No HTTP payload → direct Prisma input | ✅ Validated DTOs |
+| Calendar, timeline, mobile work | ✅ Improved (staging QA still advised) |
+
+---
+
+## Executive Summary (original audit — commit `3bc99019`)
 
 The Booking remediation (Prompts 1–33) delivers **material progress**: a central eligibility gatekeeper on create/update/wizard-confirm/pickup, pickup gate with legal-document prerequisites, pricing-quote consumption with atomic mark-consumed, invoice bootstrap compensation on create failure, list-signature redaction on paginated `GET /bookings`, lifecycle policy matrices with tests, and a documented test matrix with **315 backend + 58 frontend unit tests + 7 Playwright E2E scenarios** passing on the audited commit.
 

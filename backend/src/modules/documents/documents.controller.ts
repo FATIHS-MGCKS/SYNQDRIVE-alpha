@@ -40,11 +40,13 @@ export class DocumentsController {
   ) {}
 
   @Get('bookings/:bookingId/rental-contract')
+  @RequirePermission('bookings', 'read')
   getRentalContract(@Param('orgId') orgId: string, @Param('bookingId') bookingId: string) {
     return this.rentalContract.getByBooking(orgId, bookingId);
   }
 
   @Get('bookings/:bookingId/rental-contract/download')
+  @RequirePermission('bookings', 'read')
   @Header('Cache-Control', 'no-store')
   async downloadRentalContract(
     @Param('orgId') orgId: string,

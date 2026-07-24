@@ -49,7 +49,10 @@ import {
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
-import { Prisma } from '@prisma/client';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
+import { toBookingCreateInput, toBookingUpdateInput } from './booking-input.sanitizer';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { resolveHandoverActor } from './handover-actor.util';
 
@@ -68,21 +71,25 @@ export class BookingsController {
   ) {}
 
   @Get('today/pickups')
+  @RequirePermission('bookings', 'read')
   async findTodaysPickups(@Param('orgId') orgId: string) {
     return this.bookingsService.findTodaysPickups(orgId);
   }
 
   @Get('today/returns')
+  @RequirePermission('bookings', 'read')
   async findTodaysReturns(@Param('orgId') orgId: string) {
     return this.bookingsService.findTodaysReturns(orgId);
   }
 
   @Get('stats')
+  @RequirePermission('bookings', 'read')
   async getStats(@Param('orgId') orgId: string) {
     return this.bookingsService.getBookingStats(orgId);
   }
 
   @Get()
+  @RequirePermission('bookings', 'read')
   async findAll(
     @Param('orgId') orgId: string,
     @Query() query: ListBookingsQueryDto,
@@ -117,6 +124,7 @@ export class BookingsController {
   }
 
   @Post('wizard-draft')
+  @RequirePermission('bookings', 'write')
   async createWizardDraft(
     @Param('orgId') orgId: string,
     @CurrentUser('id') userId: string | undefined,
@@ -126,6 +134,7 @@ export class BookingsController {
   }
 
   @Patch('wizard-draft/:bookingId')
+  @RequirePermission('bookings', 'write')
   async updateWizardDraft(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -136,6 +145,7 @@ export class BookingsController {
   }
 
   @Get('wizard-draft/:bookingId/checkout-context')
+  @RequirePermission('bookings', 'read')
   async getWizardCheckoutContext(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -172,6 +182,7 @@ export class BookingsController {
   }
 
   @Post('wizard-draft/:bookingId/abort')
+  @RequirePermission('bookings', 'write')
   async abortWizardDraft(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -282,6 +293,7 @@ export class BookingsController {
   }
 
   @Get(':id/allowed-drivers')
+  @RequirePermission('bookings', 'read')
   async listAllowedDrivers(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -292,6 +304,7 @@ export class BookingsController {
   }
 
   @Post(':id/allowed-drivers')
+  @RequirePermission('bookings', 'write')
   async addAllowedDriver(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -309,6 +322,7 @@ export class BookingsController {
   }
 
   @Patch(':id/primary-driver')
+  @RequirePermission('bookings', 'write')
   async setPrimaryDriver(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -326,6 +340,7 @@ export class BookingsController {
   }
 
   @Delete(':id/allowed-drivers/:customerId')
+  @RequirePermission('bookings', 'write')
   async removeAllowedDriver(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -343,6 +358,7 @@ export class BookingsController {
   }
 
   @Get('drivers/:customerId/conduct-history')
+  @RequirePermission('bookings', 'read')
   async getDriverConductHistory(
     @Param('orgId') orgId: string,
     @Param('customerId') customerId: string,
@@ -358,6 +374,7 @@ export class BookingsController {
   }
 
   @Get(':id/detail')
+  @RequirePermission('bookings', 'read')
   async findDetail(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -368,6 +385,7 @@ export class BookingsController {
   }
 
   @Get(':id')
+  @RequirePermission('bookings', 'read')
   async findOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -376,23 +394,20 @@ export class BookingsController {
   }
 
   @Post()
+  @RequirePermission('bookings', 'write')
   async create(
     @Param('orgId') orgId: string,
     @CurrentUser('id') userId: string | undefined,
     @CurrentUser('platformRole') platformRole: string | undefined,
     @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
-    @Body() body: Omit<Prisma.BookingCreateInput, 'organization'> & {
-      eligibilityApprovalId?: string;
-      foreignTravelRequested?: boolean;
-      additionalDriverCount?: number;
-    },
+    @Body() body: CreateBookingDto,
   ) {
     const {
       eligibilityApprovalId,
       foreignTravelRequested,
       additionalDriverCount,
-      ...bookingBody
     } = body;
+    const bookingBody = toBookingCreateInput(body);
     return this.bookingsService.create(orgId, bookingBody, {
       userId,
       platformRole,
@@ -404,26 +419,22 @@ export class BookingsController {
   }
 
   @Patch(':id')
+  @RequirePermission('bookings', 'write')
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @CurrentUser('id') userId: string | undefined,
     @CurrentUser('platformRole') platformRole: string | undefined,
     @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
-    @Body() body: Prisma.BookingUpdateInput & {
-      eligibilityApprovalId?: string;
-      eligibilityPreviewFingerprint?: string;
-      foreignTravelRequested?: boolean;
-      additionalDriverCount?: number;
-    },
+    @Body() body: UpdateBookingDto,
   ) {
     const {
       eligibilityApprovalId,
       eligibilityPreviewFingerprint,
       foreignTravelRequested,
       additionalDriverCount,
-      ...bookingBody
     } = body;
+    const bookingBody = toBookingUpdateInput(body);
     return this.bookingsService.update(orgId, id, bookingBody, {
       userId,
       platformRole,
@@ -436,6 +447,7 @@ export class BookingsController {
   }
 
   @Delete(':id')
+  @RequirePermission('bookings', 'manage')
   async cancel(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -448,6 +460,7 @@ export class BookingsController {
   // customer failed to appear, without overloading the generic cancel
   // path. See BookingsService.markNoShow for the guardrails.
   @Post(':id/no-show')
+  @RequirePermission('bookings', 'write')
   async markNoShow(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -461,6 +474,7 @@ export class BookingsController {
   // formal protocol (odometer, fuel/SoC, cleanliness + warning-light checks,
   // customer + staff signature, noted damage ids).
   @Get(':id/handover')
+  @RequirePermission('bookings', 'read')
   async listHandovers(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
@@ -469,6 +483,7 @@ export class BookingsController {
   }
 
   @Post(':id/handover/pickup')
+  @RequirePermission('bookings', 'write')
   async createPickupHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
@@ -485,6 +500,7 @@ export class BookingsController {
   }
 
   @Post(':id/handover/return')
+  @RequirePermission('bookings', 'write')
   async createReturnHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,

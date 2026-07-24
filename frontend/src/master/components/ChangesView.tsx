@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-production-go-v49801-2026-07-24',
+    version: '4.9.801',
+    title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',
+    summary: [
+      'P0: bookings.read/write/manage auf BookingsController + Rental-Contract-Routen; DTOs statt Prisma-Mass-Assignment; Signatur-Redaction auf today/pickups+returns; pg_advisory_xact_lock + Overlap-Check in Create/Update-TX.',
+      'P1: Lifecycle-Matrix in update/cancel/markNoShow; Frontend Pagination-Truncation-Banner; i18n im Planner; Kalender-Monatsnavigation; mobile Timeline-Agenda-Fallback.',
+      'Audit aktualisiert: CONDITIONAL GO nach Remediation.',
+    ],
+    reason: 'Booking Post-Remediation Audit Follow-up — alle P0 und relevanten P1-Findings schließen.',
+    previousBehavior: 'NO-GO (V4.9.800): DRIVER konnte CRUD, Signaturen in Dashboard-Listen, Race bei Doppelbuchung, Planner ohne i18n/Pagination.',
+    details:
+      'backend: bookings.controller.ts, bookings.service.ts, booking-input.sanitizer.ts, create/update-booking.dto.ts, documents.controller.ts. frontend: BookingsView/Page/Toolbar/Timeline/Calendar. docs/audits/booking-post-remediation-production-readiness-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Bookings / Security',
+    createdAt: '2026-07-24T08:00:00.000Z',
+  },
+  {
     id: 'booking-post-remediation-audit-v49800-2026-07-24',
     version: '4.9.800',
     title: 'V4.9.800 — Booking Post-Remediation Production Readiness Audit (Prompt 34)',

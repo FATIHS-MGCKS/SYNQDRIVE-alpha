@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PageHeader, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
 import type { BookingFiltersState, BookingPlannerView } from './bookingTypes';
@@ -19,6 +20,7 @@ export interface BookingsPageProps {
   bookings: BookingUiRow[];
   loading: boolean;
   error: string | null;
+  listTruncated?: boolean;
   onRetry: () => void;
   fleetVehicles: VehicleData[];
   stations: StationOption[];
@@ -32,6 +34,7 @@ export function BookingsPage({
   bookings,
   loading,
   error,
+  listTruncated = false,
   onRetry,
   fleetVehicles,
   stations,
@@ -40,6 +43,7 @@ export function BookingsPage({
   onOpenDrawer,
   onCancelBooking,
 }: BookingsPageProps) {
+  const { t } = useLanguage();
   const [view, setView] = useState<BookingPlannerView>('timeline');
   const [timelineRange, setTimelineRange] = useState<'week' | 'month'>('week');
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
@@ -90,9 +94,22 @@ export function BookingsPage({
     });
   }, [filtered, rangeStart, rangeEnd]);
 
+  const shiftCalendarMonth = (delta: number) => {
+    const next = new Date(calendarYear, calendarMonth + delta, 1);
+    setCalendarYear(next.getFullYear());
+    setCalendarMonth(next.getMonth());
+    setSelectedCalendarDay(null);
+  };
+
   return (
     <div className="max-w-[1800px] mx-auto space-y-4">
-      <PageHeader title="Buchungen" />
+      <PageHeader title={t('bookings.title')} />
+
+      {listTruncated && !loading && (
+        <p className="text-[11px] text-[color:var(--status-attention)] px-1" role="status">
+          {t('bookings.planner.truncated')}
+        </p>
+      )}
 
       <BookingsToolbar
         filters={filters}
@@ -117,7 +134,7 @@ export function BookingsPage({
             onClick={onRetry}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-current"
           >
-            Erneut laden
+            {t('bookings.planner.retry')}
           </button>
         </div>
       )}
@@ -125,17 +142,17 @@ export function BookingsPage({
       {loading && !error ? (
         <div className="py-16 flex flex-col items-center gap-2 text-muted-foreground">
           <Icon name="loader-2" className="w-8 h-8 animate-spin" />
-          <p className="text-xs">Buchungen werden geladen…</p>
+          <p className="text-xs">{t('bookings.planner.loading')}</p>
         </div>
       ) : !error && filtered.length === 0 ? (
         <EmptyState
           icon={<Icon name="calendar" className="w-6 h-6" />}
-          title="Keine Buchungen für die aktuellen Filter"
-          description="Passen Sie Filter an oder legen Sie eine neue Buchung an."
+          title={t('bookings.planner.emptyTitle')}
+          description={t('bookings.planner.emptyDescription')}
           action={
             onCreateNewBooking ? (
               <button type="button" onClick={onCreateNewBooking} className="text-xs font-semibold sq-tone-brand px-3 py-1.5 rounded-lg">
-                Neue Buchung
+                {t('bookings.newBooking')}
               </button>
             ) : undefined
           }
@@ -168,13 +185,15 @@ export function BookingsPage({
               selectedDay={selectedCalendarDay}
               onDayClick={setSelectedCalendarDay}
               onBookingClick={onOpenDrawer}
+              onPrevMonth={() => shiftCalendarMonth(-1)}
+              onNextMonth={() => shiftCalendarMonth(1)}
             />
           )}
         </>
       ) : null}
 
       <p className="text-[10px] text-muted-foreground text-right">
-        {filtered.length} Buchung{filtered.length === 1 ? '' : 'en'} · Klick öffnet Detail-Drawer
+        {t('bookings.planner.footer', { count: filtered.length })}
       </p>
     </div>
   );

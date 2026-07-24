@@ -73,6 +73,13 @@ import {
   assertWizardPreviewFingerprintMatches,
   buildEligibilityPreviewFingerprint,
 } from './booking-wizard-eligibility.util';
+import {
+  bookingTerminalAllowsOnlyNotes,
+  resolveCancelTransition,
+  resolveNoShowTransition,
+  resolvePatchStatusTransition,
+} from './booking-lifecycle-status.matrix';
+import { bookingVehicleOverlapLockKey } from './booking-input.sanitizer';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -216,13 +223,6 @@ export class BookingsService {
       throw new BadRequestException('Invalid booking dates');
     }
 
-    await this.assertNoVehicleOverlap({
-      organizationId: orgId,
-      vehicleId,
-      startDate,
-      endDate,
-    });
-
     // V4.6.76 Rental Health V1 — rental_blocked hard-gate. On technical
     // gate failure we do not silently pretend the vehicle is healthy: the
     // response carries healthGateStatus=UNAVAILABLE + manualReviewRequired.
@@ -325,6 +325,17 @@ export class BookingsService {
     const bookingData = this.stripBookingCreateScalars(data as Record<string, unknown>);
 
     const booking = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${bookingVehicleOverlapLockKey(orgId, vehicleId)}))`;
+      await this.assertNoVehicleOverlap(
+        {
+          organizationId: orgId,
+          vehicleId,
+          startDate,
+          endDate,
+        },
+        tx,
+      );
+
       const created = await tx.booking.create({
         data: {
           ...bookingData,
@@ -564,14 +575,17 @@ export class BookingsService {
     };
   }
 
-  private async assertNoVehicleOverlap(input: {
-    organizationId: string;
-    vehicleId: string;
-    startDate: Date;
-    endDate: Date;
-    excludeBookingId?: string;
-  }): Promise<void> {
-    const overlapping = await this.prisma.booking.findFirst({
+  private async assertNoVehicleOverlap(
+    input: {
+      organizationId: string;
+      vehicleId: string;
+      startDate: Date;
+      endDate: Date;
+      excludeBookingId?: string;
+    },
+    db: Pick<PrismaService, 'booking'> = this.prisma,
+  ): Promise<void> {
+    const overlapping = await db.booking.findFirst({
       where: buildOverlapWhere(input),
       select: { id: true, startDate: true, endDate: true, status: true },
     });
@@ -1473,8 +1487,8 @@ export class BookingsService {
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
         dailyRate: (b.dailyRateCents || 0) / 100,
         totalPrice: (b.totalPriceCents || 0) / 100,
-        pickupProtocol: pickup,
-        returnProtocol: ret,
+        pickupProtocol: redactHandoverProtocolForList(pickup),
+        returnProtocol: redactHandoverProtocolForList(ret),
         // V4.6.81 — Pickup-overdue surfaces on dashboard tiles.
         isOverdue,
         minutesOverdue,
@@ -1654,8 +1668,8 @@ export class BookingsService {
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
         dailyRate: (b.dailyRateCents || 0) / 100,
         totalPrice: (b.totalPriceCents || 0) / 100,
-        pickupProtocol: pickup,
-        returnProtocol: ret,
+        pickupProtocol: redactHandoverProtocolForList(pickup),
+        returnProtocol: redactHandoverProtocolForList(ret),
         ...signals,
       };
     });
@@ -1747,14 +1761,23 @@ export class BookingsService {
           : existing.endDate;
     const nextStatus = (anyData.status as BookingStatus | undefined) ?? existing.status;
 
-    const terminalStatuses: BookingStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
-    if (terminalStatuses.includes(existing.status)) {
+    if (bookingTerminalAllowsOnlyNotes(existing.status)) {
       const onlyNotes =
         Object.keys(anyData).length === 1 && anyData.notes !== undefined;
       if (!onlyNotes) {
         throw new BadRequestException(
           `Buchungen mit Status ${existing.status} können nur Notizen ergänzt werden.`,
         );
+      }
+    }
+
+    if (anyData.status !== undefined) {
+      const patchDecision = resolvePatchStatusTransition(existing.status, nextStatus);
+      if (!patchDecision.allowed) {
+        throw new ConflictException({
+          message: patchDecision.reason,
+          code: patchDecision.code,
+        });
       }
     }
 
@@ -1776,16 +1799,9 @@ export class BookingsService {
       nextStart.getTime() !== existing.startDate.getTime() ||
       nextEnd.getTime() !== existing.endDate.getTime();
     const statusChanged = nextStatus !== existing.status;
-
-    if (vehicleOrDatesChanged && !terminalStatuses.includes(nextStatus)) {
-      await this.assertNoVehicleOverlap({
-        organizationId: orgId,
-        vehicleId: nextVehicleId,
-        startDate: nextStart,
-        endDate: nextEnd,
-        excludeBookingId: id,
-      });
-    }
+    const terminalStatuses: BookingStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
+    const needsOverlapGuard =
+      vehicleOrDatesChanged && !terminalStatuses.includes(nextStatus);
 
     if (vehicleOrDatesChanged) {
       const rentalGate = await this.rentalHealthService.isRentalBlocked(
@@ -1986,6 +2002,19 @@ export class BookingsService {
 
     const updated = confirmingTransition
       ? await this.prisma.$transaction(async (tx) => {
+          if (needsOverlapGuard) {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${bookingVehicleOverlapLockKey(orgId, nextVehicleId)}))`;
+            await this.assertNoVehicleOverlap(
+              {
+                organizationId: orgId,
+                vehicleId: nextVehicleId,
+                startDate: nextStart,
+                endDate: nextEnd,
+                excludeBookingId: id,
+              },
+              tx,
+            );
+          }
           const gateResult = await this.bookingEligibilityEnforcement.assertAllowed(
             enforcementContext,
             enforcementOptions,
@@ -2031,7 +2060,22 @@ export class BookingsService {
           }
           return updatedBooking;
         })
-      : await this.prisma.booking.update({ where: { id }, data });
+      : needsOverlapGuard
+        ? await this.prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${bookingVehicleOverlapLockKey(orgId, nextVehicleId)}))`;
+            await this.assertNoVehicleOverlap(
+              {
+                organizationId: orgId,
+                vehicleId: nextVehicleId,
+                startDate: nextStart,
+                endDate: nextEnd,
+                excludeBookingId: id,
+              },
+              tx,
+            );
+            return tx.booking.update({ where: { id }, data });
+          })
+        : await this.prisma.booking.update({ where: { id }, data });
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {
@@ -2160,6 +2204,18 @@ export class BookingsService {
       include: { vehicle: true },
     });
 
+    if (booking.status === 'CANCELLED') {
+      return booking;
+    }
+
+    const cancelDecision = resolveCancelTransition(booking.status);
+    if (!cancelDecision.allowed) {
+      throw new ConflictException({
+        message: cancelDecision.reason,
+        code: cancelDecision.code,
+      });
+    }
+
     await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
 
     const [updated] = await this.prisma.$transaction([
@@ -2227,20 +2283,23 @@ export class BookingsService {
       include: { vehicle: true },
     });
 
-    if (booking.status !== 'CONFIRMED') {
+    const noShowDecision = resolveNoShowTransition({
+      from: booking.status,
+      scheduledStartMs: booking.startDate.getTime(),
+      nowMs: Date.now(),
+    });
+    if (!noShowDecision.allowed) {
+      if (noShowDecision.code === 'BOOKING_NO_SHOW_TOO_EARLY') {
+        throw new BadRequestException({
+          message: noShowDecision.reason,
+          code: noShowDecision.code,
+          scheduledStart: booking.startDate.toISOString(),
+        });
+      }
       throw new ConflictException({
-        message: `Buchung kann nicht als No-Show markiert werden: Status ist ${booking.status}, erwartet wird CONFIRMED.`,
-        code: 'BOOKING_NO_SHOW_WRONG_STATUS',
+        message: noShowDecision.reason ?? `No-show requires CONFIRMED, got ${booking.status}`,
+        code: noShowDecision.code ?? 'BOOKING_NO_SHOW_WRONG_STATUS',
         currentStatus: booking.status,
-      });
-    }
-
-    if (booking.startDate.getTime() > Date.now()) {
-      throw new BadRequestException({
-        message:
-          'Buchung kann erst nach dem geplanten Pickup-Zeitpunkt als No-Show markiert werden.',
-        code: 'BOOKING_NO_SHOW_TOO_EARLY',
-        scheduledStart: booking.startDate.toISOString(),
       });
     }
 

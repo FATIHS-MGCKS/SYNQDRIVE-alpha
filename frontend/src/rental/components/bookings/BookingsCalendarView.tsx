@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, parseIso, rowStatus, bookingStartIso } from './bookingUtils';
@@ -10,6 +12,8 @@ interface BookingsCalendarViewProps {
   selectedDay: number | null;
   onDayClick: (day: number | null) => void;
   onBookingClick: (id: string) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
 }
 
 export function BookingsCalendarView({
@@ -19,7 +23,10 @@ export function BookingsCalendarView({
   selectedDay,
   onDayClick,
   onBookingClick,
+  onPrevMonth,
+  onNextMonth,
 }: BookingsCalendarViewProps) {
+  const { t, locale } = useLanguage();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
   const today = new Date();
@@ -47,13 +54,40 @@ export function BookingsCalendarView({
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const monthLabel = new Date(year, month, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  const monthLabel = new Date(year, month, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+  const weekdayLabels = [
+    t('bookings.planner.weekdaySun'),
+    t('bookings.planner.weekdayMon'),
+    t('bookings.planner.weekdayTue'),
+    t('bookings.planner.weekdayWed'),
+    t('bookings.planner.weekdayThu'),
+    t('bookings.planner.weekdayFri'),
+    t('bookings.planner.weekdaySat'),
+  ];
 
   return (
     <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
-      <h3 className="text-[12px] font-semibold mb-3">{monthLabel}</h3>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <button
+          type="button"
+          onClick={onPrevMonth}
+          className="p-1.5 rounded-lg border border-border/60 hover:bg-muted/40"
+          aria-label={t('bookings.planner.prevMonth')}
+        >
+          <Icon name="chevron-left" className="w-4 h-4" />
+        </button>
+        <h3 className="text-[12px] font-semibold">{monthLabel}</h3>
+        <button
+          type="button"
+          onClick={onNextMonth}
+          className="p-1.5 rounded-lg border border-border/60 hover:bg-muted/40"
+          aria-label={t('bookings.planner.nextMonth')}
+        >
+          <Icon name="chevron-right" className="w-4 h-4" />
+        </button>
+      </div>
       <div className="grid grid-cols-7 gap-1 mb-1">
-        {['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'].map((d) => (
+        {weekdayLabels.map((d) => (
           <div key={d} className="text-center text-[9px] font-semibold text-muted-foreground py-1">
             {d}
           </div>

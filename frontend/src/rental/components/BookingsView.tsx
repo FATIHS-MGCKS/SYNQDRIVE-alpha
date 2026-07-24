@@ -8,6 +8,7 @@ import { useFleetVehicles } from '../FleetContext';
 import { useHandover } from '../HandoverContext';
 import { api } from '../../lib/api';
 import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
+import { unwrapBookingListMeta, unwrapBookingListResponse } from './bookings/bookingUtils';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 import { EntityTasksSection } from './EntityTasksSection';
 import { MisuseCasesPanel } from './MisuseCasesPanel';
@@ -79,7 +80,18 @@ interface BookingsViewProps {
   onConsumeInitialDetailBookingId?: () => void;
 }
 
-export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, onCreateNewBooking, additionalBookings = [], onBookingUpdated, onBookingCancelled, initialDetailBookingId, onConsumeInitialDetailBookingId }: BookingsViewProps) {
+const BOOKINGS_LIST_LIMIT = 500;
+
+export function BookingsView({
+  onActiveBookingRefChange,
+  onNavigateToVehicle,
+  onCreateNewBooking,
+  additionalBookings = [],
+  onBookingUpdated,
+  onBookingCancelled,
+  initialDetailBookingId,
+  onConsumeInitialDetailBookingId,
+}: BookingsViewProps) {
   const { orgId } = useRentalOrg();
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
@@ -102,14 +114,17 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
   const [apiCustomers, setApiCustomers] = useState<any[]>([]);
   const [apiUsers, setApiUsers] = useState<any[]>([]);
   const [apiStations, setApiStations] = useState<any[]>([]);
+  const [listTruncated, setListTruncated] = useState(false);
 
   const loadBookings = useCallback(() => {
     if (!orgId) return;
     setApiError(null);
     api.bookings
-      .list(orgId, { limit: 500 })
+      .list(orgId, { limit: BOOKINGS_LIST_LIMIT, page: 1 })
       .then((res: any) => {
-        const list = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
+        const list = unwrapBookingListResponse(res) as any[];
+        const meta = unwrapBookingListMeta(res);
+        setListTruncated(meta != null && meta.total > list.length);
         setRawApiBookings(list);
         setApiBookings(list.map(mapApiBooking));
         setApiLoaded(true);
@@ -1279,6 +1294,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         bookings={plannerBookings}
         loading={!apiLoaded && !apiError}
         error={apiError}
+        listTruncated={listTruncated}
         onRetry={loadBookings}
         fleetVehicles={fleetVehicles}
         stations={apiStations.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }))}

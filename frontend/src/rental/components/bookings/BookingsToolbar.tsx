@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingPlannerView, BookingFiltersState, BookingStatusFilter } from './bookingTypes';
 import type { VehicleData } from '../../data/vehicles';
 
@@ -25,16 +26,6 @@ interface BookingsToolbarProps {
   onTimelineRangeChange: (range: 'week' | 'month') => void;
 }
 
-const STATUS_OPTIONS: { value: BookingStatusFilter; label: string }[] = [
-  { value: 'all', label: 'Alle Status' },
-  { value: 'active', label: 'Aktiv' },
-  { value: 'confirmed', label: 'Bestätigt' },
-  { value: 'pending', label: 'Ausstehend' },
-  { value: 'completed', label: 'Abgeschlossen' },
-  { value: 'cancelled', label: 'Storniert' },
-  { value: 'no_show', label: 'No-Show' },
-];
-
 export function BookingsToolbar({
   filters,
   onFiltersChange,
@@ -46,6 +37,18 @@ export function BookingsToolbar({
   timelineRange,
   onTimelineRangeChange,
 }: BookingsToolbarProps) {
+  const { t } = useLanguage();
+
+  const STATUS_OPTIONS: { value: BookingStatusFilter; label: string }[] = [
+    { value: 'all', label: t('bookings.allStatuses') },
+    { value: 'active', label: t('bookings.active') },
+    { value: 'confirmed', label: t('bookings.confirmed') },
+    { value: 'pending', label: t('bookings.planner.pending') },
+    { value: 'completed', label: t('bookings.completed') },
+    { value: 'cancelled', label: t('bookings.cancelled') },
+    { value: 'no_show', label: t('bookings.planner.noShow') },
+  ];
+
   return (
     <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] space-y-3">
       <div className="flex flex-wrap items-center gap-2 justify-between">
@@ -53,7 +56,7 @@ export function BookingsToolbar({
           <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="search"
-            placeholder="Kunde, Fahrzeug, Kennzeichen, Buchungs-Nr.…"
+            placeholder={t('bookings.planner.searchPlaceholder')}
             value={filters.search}
             onChange={(e) => onFiltersChange({ search: e.target.value })}
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-border/70 bg-background text-xs outline-none focus:border-[color:var(--brand)]"
@@ -69,14 +72,18 @@ export function BookingsToolbar({
                 view === v ? 'sq-tone-brand' : 'text-muted-foreground hover:surface-premium'
               }`}
             >
-              {v === 'timeline' ? 'Timeline' : v === 'table' ? 'Tabelle' : 'Kalender'}
+              {v === 'timeline'
+                ? t('bookings.planner.viewTimeline')
+                : v === 'table'
+                  ? t('bookings.planner.viewTable')
+                  : t('bookings.planner.viewCalendar')}
             </button>
           ))}
         </div>
         {onCreateNewBooking && (
           <Button type="button" variant="primary" size="sm" onClick={onCreateNewBooking}>
             <Icon name="plus" className="h-3.5 w-3.5" />
-            Neue Buchung
+            {t('bookings.newBooking')}
           </Button>
         )}
       </div>
@@ -98,7 +105,7 @@ export function BookingsToolbar({
           onChange={(e) => onFiltersChange({ vehicleId: e.target.value || null })}
           className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium max-w-[160px]"
         >
-          <option value="">Alle Fahrzeuge</option>
+          <option value="">{t('bookings.planner.allVehicles')}</option>
           {vehicles.map((v) => (
             <option key={v.id} value={v.id}>
               {v.license} · {vehicleLabel(v)}
@@ -110,7 +117,7 @@ export function BookingsToolbar({
           onChange={(e) => onFiltersChange({ stationId: e.target.value || null })}
           className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium max-w-[160px]"
         >
-          <option value="">Alle Stationen</option>
+          <option value="">{t('bookings.planner.allStations')}</option>
           {stations.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -122,14 +129,14 @@ export function BookingsToolbar({
           value={filters.dateFrom ?? ''}
           onChange={(e) => onFiltersChange({ dateFrom: e.target.value || null })}
           className="text-[10px] px-2 py-1.5 rounded-lg border border-border surface-premium"
-          title="Von"
+          title={t('bookings.planner.dateFrom')}
         />
         <input
           type="date"
           value={filters.dateTo ?? ''}
           onChange={(e) => onFiltersChange({ dateTo: e.target.value || null })}
           className="text-[10px] px-2 py-1.5 rounded-lg border border-border surface-premium"
-          title="Bis"
+          title={t('bookings.planner.dateTo')}
         />
         {view === 'timeline' && (
           <select
@@ -137,8 +144,8 @@ export function BookingsToolbar({
             onChange={(e) => onTimelineRangeChange(e.target.value as 'week' | 'month')}
             className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium"
           >
-            <option value="week">Woche</option>
-            <option value="month">Monat</option>
+            <option value="week">{t('bookings.planner.rangeWeek')}</option>
+            <option value="month">{t('bookings.planner.rangeMonth')}</option>
           </select>
         )}
         <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground ml-auto">
@@ -147,7 +154,7 @@ export function BookingsToolbar({
             checked={filters.showTerminal}
             onChange={(e) => onFiltersChange({ showTerminal: e.target.checked })}
           />
-          Storniert / No-Show
+          {t('bookings.planner.showTerminal')}
         </label>
       </div>
     </div>

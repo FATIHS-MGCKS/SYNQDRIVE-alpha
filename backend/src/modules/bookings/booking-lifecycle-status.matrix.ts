@@ -150,6 +150,13 @@ export function resolveCancelTransition(from: BookingStatus): BookingLifecycleTr
       reason: `Cannot cancel terminal booking ${from}`,
     };
   }
+  if (from === 'ACTIVE') {
+    return {
+      allowed: false,
+      code: 'BOOKING_CANCEL_ACTIVE',
+      reason: 'Cannot cancel an active rental — complete return handover instead',
+    };
+  }
   return { allowed: true };
 }
 
