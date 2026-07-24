@@ -9,6 +9,7 @@ import { PredictiveFeatureController } from './predictive/predictive-feature.con
 import { PredictiveFeatureLoader } from './predictive/predictive-feature.loader';
 import { PredictiveFeatureRepository } from './predictive/predictive-feature.repository';
 import { PredictiveFeatureService } from './predictive/predictive-feature.service';
+import { PredictiveForecastService } from './predictive/predictive-forecast.service';
 import { PolicyUpdatePayload } from './insight.types';
 
 @Controller('admin/business-insights')
@@ -21,6 +22,7 @@ export class InternalBusinessInsightsController {
     private readonly policyService: TenantInsightPolicyService,
     private readonly triggerService: BusinessInsightsTriggerService,
     private readonly predictiveFeatureService: PredictiveFeatureService,
+    private readonly predictiveForecastService: PredictiveForecastService,
   ) {}
 
   // ─── Run triggers ──────────────────────────────────────────────────
@@ -56,7 +58,21 @@ export class InternalBusinessInsightsController {
   async runPredictiveFeatureBuild(@Param('orgId') orgId: string) {
     const result = await this.predictiveFeatureService.buildFeatures({
       organizationId: orgId,
-      lookbackDays: 7,
+      lookbackDays: 400,
+      trigger: 'manual_admin',
+    });
+    return { trigger: 'manual_admin', ...result };
+  }
+
+  @Post('predictive-forecasts/run/:orgId')
+  async runPredictiveForecastBuild(@Param('orgId') orgId: string) {
+    await this.predictiveFeatureService.buildFeatures({
+      organizationId: orgId,
+      lookbackDays: 400,
+      trigger: 'manual_admin_forecast',
+    });
+    const result = await this.predictiveForecastService.runForecasts({
+      organizationId: orgId,
       trigger: 'manual_admin',
     });
     return { trigger: 'manual_admin', ...result };

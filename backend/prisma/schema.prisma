@@ -1677,6 +1677,8 @@ model Organization {
   orgInvoices                            OrgInvoice[]
   predictiveFeatureSnapshots             OrgPredictiveFeatureSnapshot[]
   predictiveFeatureBuildRuns             OrgPredictiveFeatureBuildRun[]
+  predictiveForecasts                    OrgPredictiveForecast[]
+  predictiveForecastRuns                 OrgPredictiveForecastRun[]
   userAccountPreferences                 UserAccountPreference[]
   userNotificationPreferences            UserNotificationPreference[]
   orgInvoiceSequences                    OrgInvoiceSequence[]
@@ -13845,4 +13847,88 @@ model OrgPredictiveFeatureBuildRun {
 
   @@index([organizationId, startedAt])
   @@map("org_predictive_feature_build_runs")
+}
+
+// ── Evaluations predictive forecasts (Prompt 42/54) ──
+
+enum PredictiveForecastTarget {
+  DEMAND
+  REVENUE
+  UTILIZATION
+}
+
+enum PredictiveForecastStatus {
+  AVAILABLE
+  INSUFFICIENT_HISTORY
+  SUPPRESSED
+  FALLBACK
+}
+
+enum PredictiveInferenceTier {
+  RULE_BASED
+  STATISTICAL
+}
+
+enum PredictiveForecastRunStatus {
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+model OrgPredictiveForecast {
+  id                  String                     @id @default(uuid())
+  organizationId      String                     @map("organization_id")
+  forecastKey         PredictiveForecastTarget   @map("forecast_key")
+  horizonDays         Int                        @map("horizon_days")
+  modelVersion        String                     @map("model_version")
+  featureSetVersion   String                     @map("feature_set_version")
+  inferenceTier       PredictiveInferenceTier    @map("inference_tier")
+  scopeKey            String                     @default("fleet") @map("scope_key")
+  timezone            String
+  currency            String?
+  unit                String
+  asOfDate            String                     @map("as_of_date")
+  horizonStartDate    String                     @map("horizon_start_date")
+  horizonEndDate      String                     @map("horizon_end_date")
+  pointEstimate       Float                      @map("point_estimate")
+  intervalLow         Float                      @map("interval_low")
+  intervalHigh        Float                      @map("interval_high")
+  trainingWindowStart String                     @map("training_window_start")
+  trainingWindowEnd   String                     @map("training_window_end")
+  dataCoveragePercent Float                      @map("data_coverage_percent")
+  evaluationMetrics   Json                       @default("{}") @map("evaluation_metrics")
+  explainability      Json                       @default("{}")
+  status              PredictiveForecastStatus
+  suppressedReason    String?                    @map("suppressed_reason")
+  lineage             Json                       @default("{}")
+  forecastRunId       String?                    @map("forecast_run_id")
+  generatedAt         DateTime                   @default(now()) @map("generated_at")
+  expiresAt           DateTime?                  @map("expires_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  forecastRun  OrgPredictiveForecastRun? @relation(fields: [forecastRunId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, forecastKey, horizonDays, scopeKey, asOfDate])
+  @@index([organizationId, asOfDate])
+  @@index([organizationId, forecastKey, horizonDays])
+  @@map("org_predictive_forecasts")
+}
+
+model OrgPredictiveForecastRun {
+  id                String                        @id @default(uuid())
+  organizationId    String                        @map("organization_id")
+  featureSetVersion String                        @map("feature_set_version")
+  asOfDate          String                        @map("as_of_date")
+  status            PredictiveForecastRunStatus
+  forecastsWritten  Int                           @default(0) @map("forecasts_written")
+  errorMessage      String?                       @map("error_message")
+  trigger           String?
+  startedAt         DateTime                      @default(now()) @map("started_at")
+  completedAt       DateTime?                     @map("completed_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  forecasts    OrgPredictiveForecast[]
+
+  @@index([organizationId, startedAt])
+  @@map("org_predictive_forecast_runs")
 }
