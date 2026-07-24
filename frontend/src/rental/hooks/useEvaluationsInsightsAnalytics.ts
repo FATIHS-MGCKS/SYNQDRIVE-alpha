@@ -12,7 +12,20 @@ export interface EvaluationsInsightsSummary {
     businessRisks: number;
     revenueLeakage: number;
     criticalInsights: number;
+    criticalBookings: number;
     criticalBusinessRisks: number;
+    entities: {
+      insightGroups: number;
+      events: number;
+      affectedVehicles: number;
+      affectedBookings: number;
+      affectedCustomers: number;
+      affectedStations: number;
+      uniqueEntities: number;
+      criticalBookings: number;
+      orgWideRisks: number;
+      bookingScopedRisks: number;
+    };
     recommended: number;
     bySeverity: {
       critical: number;
