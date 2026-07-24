@@ -1,3 +1,7 @@
+import type { Money } from '@synq/money/money.contract';
+import { resolveInsightFinancialExposureMoney } from '@synq/money/money-insight-metrics';
+import { legacyInsightFinancialImpactWholeMajor } from '@synq/money/money.legacy-insight';
+
 import type { DashboardInsight, InsightType } from '../DashboardInsightsContext';
 
 export type InsightDisplayCategory =
@@ -66,13 +70,15 @@ export function insightRecommendation(insight: DashboardInsight): string {
   }
 }
 
+export function financialImpactMoney(insight: DashboardInsight, defaultCurrency = 'EUR'): Money | null {
+  const m = insight.metrics as Record<string, unknown> | null | undefined;
+  return resolveInsightFinancialExposureMoney(m, defaultCurrency);
+}
+
+/** Whole major units for legacy cockpit badges — prefer `financialImpactMoney` + `formatMoneyMinor`. */
 export function financialImpactEur(insight: DashboardInsight): number | null {
   const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const cents = m?.financialImpactCents ?? m?.lostRevenueEur;
-  if (typeof cents === 'number' && Number.isFinite(cents)) {
-    return cents > 1000 ? Math.round(cents / 100) : Math.round(cents);
-  }
-  return null;
+  return legacyInsightFinancialImpactWholeMajor(m, 'EUR');
 }
 
 export function matchesStationIdFilter(

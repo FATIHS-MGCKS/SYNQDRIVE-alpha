@@ -1,8 +1,9 @@
 import type { DashboardInvoice } from '../dashboardTypes';
 import { bookingRef } from '../../bookings/bookingUtils';
 import {
+  computeRevenueCashflowContribution,
   expensesInRange,
-  mtdRevenueInRange,
+  issuedRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
   reservedRevenueInRange,
@@ -27,6 +28,10 @@ export interface BuildBusinessPulseSlicesInput {
   locale: string;
   now?: Date;
   currency?: string;
+  /** Org/station timezone for receivable due-date classification. */
+  timezone?: string;
+  /** Canonical reporting window from server (org/station timezone). */
+  reportingPeriod?: { from: Date; to: Date; label: string };
 }
 
 function isDe(locale: string): boolean {
@@ -85,6 +90,11 @@ function monthWindow(now: Date): { from: Date; to: Date } {
     from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
     to: now,
   };
+}
+
+/** @deprecated Browser-local month window — pass `reportingPeriod` from server instead. */
+function legacyMonthWindow(now: Date): { from: Date; to: Date } {
+  return monthWindow(now);
 }
 
 function monthLabel(now: Date, locale: string): string {
@@ -303,22 +313,25 @@ export function buildBusinessPulseSlices(
 ): Record<BusinessMetricId, BusinessPulseSlice> {
   const now = input.now ?? new Date();
   const currency = input.currency ?? 'EUR';
-  const { from: monthStart, to: monthEnd } = monthWindow(now);
-  const periodLabel = monthLabel(now, input.locale);
+  const timezone = input.timezone ?? 'Europe/Berlin';
+  const { from: monthStart, to: monthEnd } = input.reportingPeriod
+    ? { from: input.reportingPeriod.from, to: input.reportingPeriod.to }
+    : legacyMonthWindow(now);
+  const periodLabel = input.reportingPeriod?.label ?? monthLabel(now, input.locale);
 
   const invoiceSlices = input.invoices.map(asInvoiceSlice);
   const rows = input.invoices.map((inv) => invoiceRow(inv, input.locale, now, currency));
   const rowByInvoiceId = new Map(rows.map((row) => [row.invoiceId, row]));
 
-  const revenueInvoices = mtdRevenueInRange(invoiceSlices, monthStart, monthEnd);
+  const revenueInvoices = issuedRevenueInRange(invoiceSlices, monthStart, monthEnd);
   const reservedInvoices = reservedRevenueInRange(invoiceSlices, monthStart, monthEnd);
   const expenseInvoices = expensesInRange(invoiceSlices, monthStart, monthEnd);
   const outgoingRows = rowsForInvoices(invoicesFromSlices(input.invoices, revenueInvoices), rowByInvoiceId);
   const reservedRows = rowsForInvoices(invoicesFromSlices(input.invoices, reservedInvoices), rowByInvoiceId);
   const incomingRows = rowsForInvoices(invoicesFromSlices(input.invoices, expenseInvoices), rowByInvoiceId);
 
-  const openReceivableInvoices = openOutgoingReceivables(invoiceSlices, now);
-  const overdueReceivableInvoices = overdueOutgoingReceivables(invoiceSlices, now);
+  const openReceivableInvoices = openOutgoingReceivables(invoiceSlices, now, currency);
+  const overdueReceivableInvoices = overdueOutgoingReceivables(invoiceSlices, now, timezone, currency);
   const openReceivables = rowsForInvoices(
     invoicesFromSlices(input.invoices, openReceivableInvoices),
     rowByInvoiceId,
@@ -336,9 +349,18 @@ export function buildBusinessPulseSlices(
   const draftInvoices = rows.filter((row) => row.state === 'draft');
   const failedPayments = rows.filter((row) => row.state === 'failed' || row.state === 'disputed');
 
-  const revenueCents = sumCents(outgoingRows);
-  const expensesCents = sumCents(incomingRows);
-  const profitCents = revenueCents - expensesCents;
+  const revenueCashflow = computeRevenueCashflowContribution({
+    invoices: invoiceSlices,
+    periodStart: monthStart,
+    periodEndInclusive: monthEnd,
+    timezone,
+    reportingCurrency: currency,
+  });
+  const revenueCents = revenueCashflow.metrics.periodRevenue.netAmountMinor;
+  const expensesCents = revenueCashflow.metrics.operatingExpenses.amountMinor;
+  const profitCents = revenueCashflow.completeness.operatingResultVisible
+    ? revenueCashflow.metrics.operatingResult?.netAmountMinor ?? revenueCents - expensesCents
+    : revenueCashflow.metrics.periodRevenue.netAmountMinor - expensesCents;
 
   return {
     revenue: makeSlice({
@@ -388,7 +410,7 @@ export function buildBusinessPulseSlices(
     }),
     'open-receivables': makeSlice({
       id: 'open-receivables',
-      title: label(input.locale, 'Offene Forderungen', 'Open receivables'),
+      title: label(input.locale, 'Offene Forderungen gesamt', 'Open receivables (total)'),
       rows: openReceivables,
       locale: input.locale,
       valueCents: sumCents(openReceivables),
@@ -396,7 +418,7 @@ export function buildBusinessPulseSlices(
     }),
     'overdue-receivables': makeSlice({
       id: 'overdue-receivables',
-      title: label(input.locale, 'Überfällig', 'Overdue'),
+      title: label(input.locale, 'Überfällige Forderungen', 'Overdue receivables'),
       rows: overdueReceivables.map((row) => ({ ...row, severity: 'critical' as const })),
       locale: input.locale,
       valueCents: sumCents(overdueReceivables),

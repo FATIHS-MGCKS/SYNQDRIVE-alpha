@@ -59,6 +59,7 @@ import { VoiceProtectionModule } from '@modules/voice-protection/voice-protectio
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
+import { EvaluationsMetricsModule } from '@modules/evaluations-metrics/evaluations-metric.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { TechnicalObservationsModule } from '@modules/technical-observations/technical-observations.module';
@@ -236,6 +237,7 @@ export class AppModule {
         VoiceProtectionModule,
         WhatsAppModule,
         BusinessInsightsModule,
+        EvaluationsMetricsModule,
         HighMobilityModule,
         RentalHealthModule,
         TechnicalObservationsModule,

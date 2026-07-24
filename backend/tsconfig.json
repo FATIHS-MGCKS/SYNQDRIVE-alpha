@@ -21,7 +21,15 @@
       "@shared/*": ["src/shared/*"],
       "@modules/*": ["src/modules/*"],
       "@workers/*": ["src/workers/*"],
-      "@config/*": ["src/config/*"]
+      "@config/*": ["src/config/*"],
+      "@synq/evaluations-metrics/*": ["../shared/evaluations-metrics/*"],
+      "@synq/evaluations-periods/*": ["../shared/evaluations-periods/*"],
+      "@synq/money/*": ["../shared/money/*"],
+      "@synq/receivables/*": ["../shared/receivables/*"],
+      "@synq/finance/*": ["../shared/finance/*"],
+      "@synq/fx/*": ["../shared/fx/*"],
+      "@synq/evaluations-fixtures/*": ["../shared/evaluations-fixtures/*"]
     }
-  }
+  },
+  "include": ["src", "../shared/evaluations-metrics/**/*.ts", "../shared/evaluations-periods/**/*.ts", "../shared/money/**/*.ts", "../shared/receivables/**/*.ts", "../shared/finance/**/*.ts", "../shared/fx/**/*.ts", "../shared/evaluations-fixtures/**/*.ts"]
 }
