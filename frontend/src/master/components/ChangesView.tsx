@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-vps-baseline-p33-2026-07-24',
+    version: '4.9.804',
+    title: 'V4.9.804 — Vehicle Detail VPS baseline audit (Prompt 33)',
+    summary: [
+      'Read-only SSH audit on production VPS (`srv1374778`): deployment paths, PM2/Docker/Nginx, TLS, secrets permissions, PostgreSQL/Redis/ClickHouse, backups, resources.',
+      'Findings doc `docs/audits/vehicle-detail-page-vps-baseline-2026-07.md` — 30 findings (4 HIGH release blockers): feature-branch deploy, dirty release tree, PM2 2800 restarts, public `/metrics`.',
+      'Health OK (200); Prisma migrations up to date; DIMO/Mapbox/DB/Redis keys present; Vehicle Detail observability (Prompt 32) not yet on deployed commit.',
+      'No VPS changes performed during audit.',
+    ],
+    reason: 'Prompt 33/36: establish infrastructure baseline before Vehicle Detail production deploy.',
+    previousBehavior: 'No dedicated VPS baseline audit for Vehicle Detail release track.',
+    details:
+      'Audit-only. SSH read-only checks; secrets masked. Release blockers documented for deploy-from-main, clean tree, PM2 stability, metrics exposure.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / Infrastructure',
+    createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
     id: 'vehicle-detail-observability-ci-p32-2026-07-24',
     version: '4.9.803',
     title: 'V4.9.803 — Vehicle Detail observability & CI release gates (Prompt 32)',
