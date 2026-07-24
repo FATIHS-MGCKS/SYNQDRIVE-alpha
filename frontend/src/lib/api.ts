@@ -4773,6 +4773,54 @@ export const api = {
       return get<DataAuthorizationAuditEntry[]>(`/organizations/${orgId}/data-authorizations/audit-log${q}`);
     },
   },
+  dataProcessing: {
+    register: {
+      list: (
+        orgId: string,
+        params?: {
+          q?: string;
+          status?: string;
+          completeness?: string;
+          limit?: number;
+          cursor?: string;
+        },
+      ) => {
+        const q = new URLSearchParams();
+        if (params?.q) q.set('q', params.q);
+        if (params?.status) q.set('status', params.status);
+        if (params?.completeness) q.set('completeness', params.completeness);
+        if (params?.limit) q.set('limit', String(params.limit));
+        if (params?.cursor) q.set('cursor', params.cursor);
+        const qs = q.toString();
+        return get<ProcessingActivityRegisterListResponse>(
+          `/organizations/${orgId}/data-authorizations/processing-activity-register${qs ? `?${qs}` : ''}`,
+        );
+      },
+    },
+    coverage: {
+      get: (orgId: string) =>
+        get<EnforcementCoverageSummaryDto>(`/organizations/${orgId}/data-authorizations/coverage`),
+    },
+    dpa: {
+      list: (orgId: string) =>
+        get<DataProcessingAgreementListItem[]>(`/organizations/${orgId}/data-processing-agreements`),
+    },
+    audit: {
+      authorizationDecisions: (
+        orgId: string,
+        params?: { limit?: number; eventType?: string; cursor?: string },
+      ) => {
+        const q = new URLSearchParams();
+        if (params?.limit) q.set('limit', String(params.limit));
+        if (params?.eventType) q.set('eventType', params.eventType);
+        if (params?.cursor) q.set('cursor', params.cursor);
+        const qs = q.toString();
+        return get<AuthorizationDecisionAuditPage>(
+          `/organizations/${orgId}/data-authorizations/audit/authorization-decisions${qs ? `?${qs}` : ''}`,
+        );
+      },
+    },
+  },
   taskAutomation: {
     listRules: (orgId: string) =>
       get<import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRulesOverviewDto>(
@@ -9310,6 +9358,82 @@ export interface DataAuthorizationAuditEntry {
   createdAt: string;
   actor: { id: string; name: string | null; email: string | null } | null;
   metaJson: unknown;
+}
+
+export interface ProcessingActivityRegisterListItem {
+  id: string;
+  activityCode: string;
+  title: string;
+  status: string;
+  versionNumber: number;
+  isCurrentVersion: boolean;
+  dpiaStatus: string;
+  hasBlockingGaps: boolean;
+  completeness: {
+    status: string;
+    blockingGaps: string[];
+  };
+  runtimeCoverage: { enforcedFlows: number; totalFlows: number } | null;
+  updatedAt: string;
+}
+
+export interface ProcessingActivityRegisterListResponse {
+  data: ProcessingActivityRegisterListItem[];
+  meta: { limit: number; nextCursor: string | null };
+  disclaimer?: string;
+}
+
+export interface EnforcementFlowCoverageRowDto {
+  flowId: string;
+  flowName: string;
+  sourceSystem: string;
+  status: string;
+  runtimeHealth: string;
+  missingEnforcementPoints: string[];
+  lastVerifiedAt: string;
+}
+
+export interface EnforcementCoverageSummaryDto {
+  coverageVersion: string;
+  gitCommit: string | null;
+  buildVersion: string | null;
+  evaluatedAt: string;
+  totalFlows: number;
+  enforcedCount: number;
+  notImplementedCount: number;
+  enforcementErrorCount: number;
+  partiallyEnforcedCount: number;
+  fullyProtected: boolean;
+  flows: EnforcementFlowCoverageRowDto[];
+}
+
+export interface DataProcessingAgreementListItem {
+  id: string;
+  processorName: string;
+  processorRole?: string;
+  status: string;
+  versionNumber: number;
+  contractReference: string | null;
+  primaryTransferMechanism?: string | null;
+  transferAssessmentStatus?: string | null;
+  effectiveUntil?: string | null;
+}
+
+export interface AuthorizationDecisionAuditItem {
+  id: string;
+  eventType: string;
+  pathId: string | null;
+  dataCategory: string | null;
+  processingPurpose: string | null;
+  evaluatedAt: string | null;
+  policyVersion: number | null;
+  engineVersion: string | null;
+  decisionReason: string | null;
+}
+
+export interface AuthorizationDecisionAuditPage {
+  items: AuthorizationDecisionAuditItem[];
+  nextCursor: string | null;
 }
 
 export interface FleetConnectivityPagination {
