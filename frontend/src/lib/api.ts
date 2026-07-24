@@ -4216,6 +4216,95 @@ export const api = {
       }>;
     }>(`/organizations/${orgId}/dashboard-insights`),
   },
+  evaluationsInsights: {
+    summary: (
+      orgId: string,
+      params?: { category?: string; severity?: string; stationId?: string },
+    ) => {
+      const qs = new URLSearchParams();
+      if (params?.category) qs.set('category', params.category);
+      if (params?.severity) qs.set('severity', params.severity);
+      if (params?.stationId) qs.set('stationId', params.stationId);
+      const q = qs.toString();
+      return get<{
+        generatedAt: string | null;
+        hasRun: boolean;
+        lastRunAt: string | null;
+        stale: boolean;
+        error: string | null;
+        counts: {
+          totalVisible: number;
+          businessRisks: number;
+          revenueLeakage: number;
+          criticalInsights: number;
+          criticalBusinessRisks: number;
+          recommended: number;
+          bySeverity: {
+            critical: number;
+            warning: number;
+            opportunity: number;
+            info: number;
+          };
+        };
+        estimatedFinancialExposureMinor: number;
+        estimatedFinancialExposureCurrency: string;
+      }>(`/organizations/${orgId}/evaluations/insights/summary${q ? `?${q}` : ''}`);
+    },
+    list: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        category?: string;
+        severity?: string;
+        stationId?: string;
+        sortBy?: 'priority' | 'createdAt';
+        sortOrder?: 'asc' | 'desc';
+      },
+    ) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.category) qs.set('category', params.category);
+      if (params?.severity) qs.set('severity', params.severity);
+      if (params?.stationId) qs.set('stationId', params.stationId);
+      if (params?.sortBy) qs.set('sortBy', params.sortBy);
+      if (params?.sortOrder) qs.set('sortOrder', params.sortOrder);
+      const q = qs.toString();
+      return get<{
+        data: Array<{
+          id: string;
+          type: string;
+          severity: string;
+          priority: number;
+          title: string;
+          message: string;
+          actionLabel?: string | null;
+          actionType?: string | null;
+          entityScope: string;
+          entityIds?: string[] | null;
+          timeContext?: Record<string, string> | null;
+          metrics?: Record<string, unknown> | null;
+          reasons?: string[] | null;
+          isGrouped: boolean;
+          groupCount: number;
+          createdAt: string;
+        }>;
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`/organizations/${orgId}/evaluations/insights${q ? `?${q}` : ''}`);
+    },
+    getById: (orgId: string, insightId: string) =>
+      get<{
+        id: string;
+        type: string;
+        severity: string;
+        priority: number;
+        title: string;
+        message: string;
+        entityScope: string;
+        createdAt: string;
+      }>(`/organizations/${orgId}/evaluations/insights/${insightId}`),
+  },
   notifications: {
     list: (
       orgId: string,

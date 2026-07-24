@@ -136,7 +136,7 @@ export class BusinessInsightsService {
 
       const grouped = this.grouping.dedupeAndGroup(gatedCandidates);
       const ranked = this.ranking.rank(grouped);
-      const formatted = this.formatter.format(ranked.slice(0, policy.maxVisibleInsights), policy.useLlmFormatting);
+      const formatted = this.formatter.format(ranked, policy.useLlmFormatting);
 
       await this.repo.publishInsights(organizationId, run.id, formatted);
       await this.repo.completeRun(run.id, gatedCandidates.length, formatted.length);

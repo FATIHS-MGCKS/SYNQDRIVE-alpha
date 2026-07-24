@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-summary-detail-separation-v49813-2026-07-24',
+    version: 'V4.9.813',
+    title: 'V4.9.813 — Summary/Detail-Trennung Auswertungen Insights (Prompt 15/54)',
+    summary: [
+      'Publish speichert alle aktiven Insights; `maxVisibleInsights` begrenzt nur das Dashboard-Widget.',
+      'Neue Endpunkte: `GET …/evaluations/insights/summary`, `…/insights` (paginiert), `…/insights/:id`.',
+      '`DashboardInsightsAnalyticsService`: `getAnalyticsSummary`, `listAnalyticsInsights`, `getAnalyticsInsightById`.',
+      'Shared Filterlogik: `shared/evaluations-insights/insights-analytics.ts`.',
+      'InsightsCockpit nutzt serverseitige Aggregation — KPIs unabhängig von Page Size.',
+      'Index: `(organization_id, is_active, priority DESC)` auf `dashboard_insights`.',
+      'Doku: `docs/architecture/analytics/evaluations-summary-detail-separation.md`.',
+    ],
+    reason:
+      'Prompt 15/54 — Summary-KPIs dürfen nicht aus der auf 4 Insights begrenzten Dashboard-Liste berechnet werden.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T10:00:00.000Z',
+  },
+  {
     id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',

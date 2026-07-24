@@ -100,11 +100,17 @@ export class DashboardInsightsRepository {
   async getActiveInsights(organizationId: string, limit: number): Promise<DashboardInsightsResponse> {
     await this.expireStaleInsights(organizationId);
 
-    const insights = await this.prisma.dashboardInsight.findMany({
-      where: { organizationId, isActive: true },
-      orderBy: { priority: 'desc' },
-      take: limit,
-    });
+    const [insights, allActiveForSummary] = await Promise.all([
+      this.prisma.dashboardInsight.findMany({
+        where: { organizationId, isActive: true },
+        orderBy: [{ priority: 'desc' }, { id: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.dashboardInsight.findMany({
+        where: { organizationId, isActive: true },
+        select: { severity: true },
+      }),
+    ]);
 
     const lastRun = await this.prisma.dashboardInsightRun.findFirst({
       where: { organizationId, finishedAt: { not: null } },
@@ -127,11 +133,11 @@ export class DashboardInsightsRepository {
     const dtos = insights.map((i) => this.toInsightDto(i));
 
     const summary = {
-      total: insights.length,
-      critical: insights.filter((i) => i.severity === InsightSeverity.CRITICAL).length,
-      warning: insights.filter((i) => i.severity === InsightSeverity.WARNING).length,
-      opportunity: insights.filter((i) => i.severity === InsightSeverity.OPPORTUNITY).length,
-      info: insights.filter((i) => i.severity === InsightSeverity.INFO).length,
+      total: allActiveForSummary.length,
+      critical: allActiveForSummary.filter((i) => i.severity === InsightSeverity.CRITICAL).length,
+      warning: allActiveForSummary.filter((i) => i.severity === InsightSeverity.WARNING).length,
+      opportunity: allActiveForSummary.filter((i) => i.severity === InsightSeverity.OPPORTUNITY).length,
+      info: allActiveForSummary.filter((i) => i.severity === InsightSeverity.INFO).length,
     };
 
     return {
@@ -139,11 +145,73 @@ export class DashboardInsightsRepository {
       hasRun: lastRunAt != null,
       lastRunAt: lastRunAt?.toISOString() ?? null,
       stale,
-      activeInsightCount: insights.length,
+      activeInsightCount: allActiveForSummary.length,
       error: lastRun?.errorMessage ?? null,
       summary,
       insights: dtos,
     };
+  }
+
+  async getRunMetadata(organizationId: string): Promise<{
+    hasRun: boolean;
+    lastRunAt: string | null;
+    stale: boolean;
+    error: string | null;
+  }> {
+    const lastRun = await this.prisma.dashboardInsightRun.findFirst({
+      where: { organizationId, finishedAt: { not: null } },
+      orderBy: { finishedAt: 'desc' },
+      select: { finishedAt: true, errorMessage: true },
+    });
+    const policy = await this.prisma.tenantInsightPolicy.findUnique({
+      where: { organizationId },
+      select: { refreshIntervalMin: true },
+    });
+    const refreshMin = policy?.refreshIntervalMin ?? 30;
+    const staleThresholdMs = refreshMin * 60_000 * 2;
+    const lastRunAt = lastRun?.finishedAt ?? null;
+    const stale =
+      lastRunAt != null ? Date.now() - lastRunAt.getTime() > staleThresholdMs : false;
+    return {
+      hasRun: lastRunAt != null,
+      lastRunAt: lastRunAt?.toISOString() ?? null,
+      stale,
+      error: lastRun?.errorMessage ?? null,
+    };
+  }
+
+  async mapRowsToInsightDtos(organizationId: string, ids: string[]): Promise<DashboardInsightDto[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.prisma.dashboardInsight.findMany({
+      where: { organizationId, id: { in: ids }, isActive: true },
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return ids
+      .map((id) => byId.get(id))
+      .filter((row): row is NonNullable<typeof row> => row != null)
+      .map((row) => this.toInsightDto(row));
+  }
+
+  toPublicInsightDto(row: {
+    id: string;
+    type: string;
+    severity: string;
+    priority: number;
+    title: string;
+    message: string;
+    actionLabel: string | null;
+    actionType: string | null;
+    entityScope: string;
+    entityIds: unknown;
+    timeContext: unknown;
+    metrics: unknown;
+    reasons: unknown;
+    isGrouped: boolean;
+    groupCount: number;
+    createdAt: Date;
+    calculationMeta?: unknown;
+  }): DashboardInsightDto {
+    return this.toInsightDto(row);
   }
 
   // ─── Run history & diagnostics ─────────────────────────────────────
