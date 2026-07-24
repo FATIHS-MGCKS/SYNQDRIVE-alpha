@@ -164,7 +164,8 @@
       "^@shared/(.*)$": "<rootDir>/shared/$1",
       "^@modules/(.*)$": "<rootDir>/modules/$1",
       "^@workers/(.*)$": "<rootDir>/workers/$1",
-      "^@config/(.*)$": "<rootDir>/config/$1"
+      "^@config/(.*)$": "<rootDir>/config/$1",
+      "^@synq/evaluations-insights/(.*)$": "<rootDir>/../../shared/evaluations-insights/$1"
     }
   }
 }

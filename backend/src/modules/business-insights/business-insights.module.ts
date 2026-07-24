@@ -36,7 +36,11 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => RentalHealthModule),
   ],
-  controllers: [DashboardInsightsController, InternalBusinessInsightsController],
+  controllers: [
+    DashboardInsightsController,
+    InternalBusinessInsightsController,
+    PredictiveFeatureController,
+  ],
   providers: [
     BusinessInsightsService,
     TenantInsightPolicyService,
@@ -47,6 +51,9 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
+    PredictiveFeatureService,
+    PredictiveFeatureRepository,
+    PredictiveFeatureLoader,
     TightHandoverDetector,
     ReturnNeedsInspectionDetector,
     StationShortageDetector,
@@ -60,6 +67,11 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PickupOverdueDetector,
     DrivingAssessmentDeviceQualityDetector,
   ],
-  exports: [BusinessInsightsService, BusinessInsightsTriggerService, InsightTaskBridgeService],
+  exports: [
+    BusinessInsightsService,
+    BusinessInsightsTriggerService,
+    InsightTaskBridgeService,
+    PredictiveFeatureService,
+  ],
 })
 export class BusinessInsightsModule {}

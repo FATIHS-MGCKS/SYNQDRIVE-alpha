@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-feature-store-p41-2026-07-24',
+    version: '4.9.838',
+    title: 'V4.9.838 — Evaluations Predictive Feature Store (Prompt 41)',
+    summary: [
+      'Versioned, tenant-scoped feature snapshots for forecasting: registry, PIT extraction, PostgreSQL materialization.',
+      '22 non-PII features (calendar, demand, bookings, revenue, utilization, maintenance, downtime) under `feature-store-v1`.',
+      'Shared pure extraction in `shared/evaluations-insights/predictive/`; backend pipeline in `business-insights/predictive/`.',
+      'Org APIs: list/build snapshots; master admin build trigger; 24-month retention purge.',
+      'Docs: `docs/architecture/analytics/evaluations-feature-store.md`.',
+    ],
+    reason: 'Prompt 41/54: establish reproducible, leakage-safe feature basis before statistical/ML forecasts.',
+    previousBehavior: 'Predictive analytics architecture (Prompt 40) was design-only; no materialized feature store.',
+    details:
+      'Prisma models `OrgPredictiveFeatureSnapshot` + `OrgPredictiveFeatureBuildRun`. v1 builds FLEET daily grain only.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Predictive Analytics',
+    createdAt: '2026-07-24T18:00:00.000Z',
+  },
+  {
     id: 'evaluations-predictive-analytics-arch-p40-2026-07-24',
     version: '4.9.837',
     title: 'V4.9.837 — Evaluations Predictive Analytics Zielarchitektur (Prompt 40)',
