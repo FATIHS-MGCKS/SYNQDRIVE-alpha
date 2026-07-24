@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-post-remediation-audit-v49800-2026-07-24',
+    version: '4.9.800',
+    title: 'V4.9.800 — Booking Post-Remediation Production Readiness Audit (Prompt 34)',
+    summary: [
+      'Unabhängiger Abschluss-Audit: docs/audits/booking-post-remediation-production-readiness-2026-07.md.',
+      'Ergebnis: NO-GO — 4× P0 (Doppelbuchungs-Race, fehlende bookings.*-Permissions, Signaturen in Dashboard-Listen, Prisma-Mass-Assignment), 9× P1.',
+      'Positiv: Eligibility-Gatekeeper, Pickup-Legal-Evidence, Quote-Consume, Listen-Redaction auf GET /bookings, 315+58+7 Tests grün.',
+      'DSGVO/ISO: technisch teilweise ready; organisatorische Nachweise noch erforderlich.',
+    ],
+    reason: 'Booking Production Readiness Prompt 34 — unabhängige Go/No-Go-Entscheidung vor Production-Deploy.',
+    previousBehavior: 'Kein konsolidierter Booking-Abschluss-Audit; Prompt-33-Tests dokumentierten Matrix, aber keine unabhängige Freigabe.',
+    details:
+      'docs/audits/booking-post-remediation-production-readiness-2026-07.md — Findings, Testnachweise, Migration/Rollback, 24h-Monitoring-Checkliste.',
+    affectsArchitecture: false,
+    module: 'Bookings / Audit',
+    createdAt: '2026-07-24T00:45:00.000Z',
+  },
+  {
     id: 'booking-production-test-matrix-v49799-2026-07-24',
     version: '4.9.799',
     title: 'V4.9.799 — Booking production test matrix (Prompt 33)',
