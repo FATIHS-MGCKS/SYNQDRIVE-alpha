@@ -104,3 +104,17 @@ must be wrapped as `AiEvidence` with explicit:
 - `ChatService` integrated via `AiVehicleResolutionService` — enriched messages no
   longer dump full VIN/tokenId fleet lists to Mistral.
 - Tests: `ai-vehicle-resolution.spec.ts` + `chat.service.spec.ts` integration.
+
+### Prompt 10 — `get_vehicle_location` domain tool (2026-07-24)
+
+- Added `backend/src/modules/ai/tools/get-vehicle-location/` — first grounded Fleet AI
+  domain tool returning structured facts via `AiDomainQueryOutcome`.
+- Source of truth: `VehicleLatestState` + `resolveTelemetryFreshness` /
+  `mapTelemetryToAiEvidenceSemantics`; live DIMO fetch only when
+  `isLiveTracking && freshness === live` (mirrors `getVehicleWithTelemetry` policy).
+- Guards: `assertAiToolExecutionAllowed`, `resolveAiVehicleAccess`,
+  `assertAiLocationAccess` + `DataAuthorizationEnforcementService` probe.
+- Never presents stale snapshot as live (`isLastKnownLocation`); address always
+  `null` (no backend reverse-geocode SoT per baseline).
+- Partial outcomes on provider timeout with snapshot fallback.
+- Tests: `ai-get-vehicle-location.spec.ts` (11 scenarios).

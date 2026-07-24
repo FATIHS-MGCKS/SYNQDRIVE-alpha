@@ -220,6 +220,17 @@ export type {
   AiVehicleResolutionResult,
   ResolveAiVehicleFromMessageInput,
 } from './vehicle-resolution';
+export {
+  AI_GET_VEHICLE_LOCATION_TOOL,
+  AiDataAuthorizationProbeAdapter,
+  AiGetVehicleLocationTool,
+  AiPrismaVehicleScopeResolver,
+} from './tools';
+export type {
+  AiGetVehicleLocationData,
+  AiGetVehicleLocationInput,
+  AiGetVehicleLocationSource,
+} from './tools';
 export type {
   StartAiTireSpecJobInput,
   AiTireSpecJobStatus,

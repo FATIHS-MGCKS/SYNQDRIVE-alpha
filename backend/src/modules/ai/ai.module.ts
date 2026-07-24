@@ -3,6 +3,8 @@ import { ConfigModule, ConfigType } from '@nestjs/config';
 import aiConfig from '@config/ai.config';
 import documentExtractionConfig from '@config/document-extraction.config';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
+import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { LlmGatewayService } from './llm/llm-gateway.service';
 import { LLM_PROVIDER } from './llm/llm-provider.token';
 import type { LlmProvider } from './llm/llm.types';
@@ -20,11 +22,16 @@ import { VehicleSpecsController } from './vehicle-specs/vehicle-specs.controller
 import { ChatService } from './chat/chat.service';
 import { ChatController } from './chat/chat.controller';
 import { AiVehicleResolutionService } from './vehicle-resolution/ai-vehicle-resolution.service';
+import { AiDataAuthorizationProbeAdapter } from './tools/ai-data-authorization.probe';
+import { AiPrismaVehicleScopeResolver } from './tools/ai-prisma-vehicle-scope.resolver';
+import { AiGetVehicleLocationTool } from './tools/get-vehicle-location/ai-get-vehicle-location.tool';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
   imports: [
     PrismaModule,
+    VehiclesModule,
+    DataAuthorizationsModule,
     ConfigModule.forFeature(aiConfig),
     ConfigModule.forFeature(documentExtractionConfig),
   ],
@@ -57,6 +64,9 @@ import { AiHealthController } from './ai-health.controller';
     TireSpecAiService,
     AiTireSpecJobService,
     AiVehicleResolutionService,
+    AiPrismaVehicleScopeResolver,
+    AiDataAuthorizationProbeAdapter,
+    AiGetVehicleLocationTool,
     ChatService,
   ],
   exports: [
@@ -71,6 +81,7 @@ import { AiHealthController } from './ai-health.controller';
     TireSpecAiService,
     AiTireSpecJobService,
     AiVehicleResolutionService,
+    AiGetVehicleLocationTool,
     ChatService,
   ],
 })
