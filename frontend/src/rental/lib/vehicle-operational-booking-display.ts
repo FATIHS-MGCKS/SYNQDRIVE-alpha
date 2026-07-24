@@ -3,6 +3,7 @@ import { bookingRef } from '../components/bookings/bookingUtils';
 import type { VehicleOperationalReadModel } from './vehicle-operational-state';
 import {
   formatVehicleOperationalStatusLabel,
+  operationalStatusToneFor,
   selectActiveBooking,
   selectIsStatusReliable,
   selectNextBooking,
@@ -227,23 +228,6 @@ export function formatOperationalDateRange(
   return formatDateWithYear(single, localeTag, timeZone);
 }
 
-function operationalToneForStatus(status: VehicleOperationalStatus): StatusTone {
-  switch (status) {
-    case VEHICLE_OPERATIONAL_STATUS.AVAILABLE:
-      return 'success';
-    case VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED:
-    case VEHICLE_OPERATIONAL_STATUS.RESERVED:
-      return 'info';
-    case VEHICLE_OPERATIONAL_STATUS.MAINTENANCE:
-      return 'warning';
-    case VEHICLE_OPERATIONAL_STATUS.BLOCKED:
-      return 'critical';
-    case VEHICLE_OPERATIONAL_STATUS.UNKNOWN:
-    default:
-      return 'neutral';
-  }
-}
-
 function dataQualityHintFor(
   status: VehicleOperationalStatus,
   reliable: boolean,
@@ -272,7 +256,7 @@ export function resolveOperationalStatusBadge(
     ? unreliable?.tone === 'watch'
       ? 'watch'
       : 'neutral'
-    : operationalToneForStatus(status);
+    : operationalStatusToneFor(status);
   const dataQualityHint = dataQualityHintFor(status, reliable, locale);
 
   return {

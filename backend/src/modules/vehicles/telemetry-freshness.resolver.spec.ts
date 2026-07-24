@@ -1,5 +1,6 @@
 import {
   DEFAULT_TELEMETRY_BACKFILL_MAX_LAG_MS,
+  parseTelemetryTimestampMs,
   resolveCanonicalTelemetryObservedAtMs,
   resolveTelemetryFreshness,
   mapTelemetryFreshnessToLegacyConnectionStatus,
@@ -108,6 +109,12 @@ describe('telemetry-freshness.resolver', () => {
       expect(
         mapTelemetryFreshnessToLegacyConnectionStatus('no_signal', true),
       ).toBe('offline');
+    });
+  });
+
+  describe('parseTelemetryTimestampMs', () => {
+    it('normalizes unix seconds to milliseconds', () => {
+      expect(parseTelemetryTimestampMs(1_700_000_000)).toBe(1_700_000_000_000);
     });
   });
 

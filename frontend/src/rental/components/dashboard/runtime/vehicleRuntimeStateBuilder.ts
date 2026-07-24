@@ -6,6 +6,7 @@ import type {
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
 import { mapCanonicalOperationalStatusToRuntime } from '../../../lib/fleet-map-vehicle-selectors';
+import { deriveRuntimeTelemetryState } from '../../../lib/vehicle-telemetry-runtime';
 import {
   normalizeVehicleOperationalStatusKey,
   selectBookingContext,
@@ -232,20 +233,10 @@ function hasFreshLiveHint(vehicle: VehicleTelemetryTimestampFields, ageMs: numbe
 export function deriveTelemetryState(
   vehicle: VehicleData,
   now: Date,
-  softOfflineHours: number = DEFAULT_SOFT_OFFLINE_HOURS,
-  hardOfflineHours: number = DEFAULT_HARD_OFFLINE_HOURS,
+  _softOfflineHours: number = DEFAULT_SOFT_OFFLINE_HOURS,
+  _hardOfflineHours: number = DEFAULT_HARD_OFFLINE_HOURS,
 ): TelemetryConnectionState {
-  const nowMs = now.getTime();
-  const ageMs = deriveSignalAgeMs(vehicle as VehicleTelemetryTimestampFields, nowMs);
-  if (ageMs == null) return 'unknown';
-
-  if (ageMs < TELEMETRY_LIVE_MAX_MS || hasFreshLiveHint(vehicle, ageMs)) return 'live';
-
-  const softMs = Math.max(0, softOfflineHours) * MS_HOUR;
-  const hardMs = Math.max(softMs, hardOfflineHours * MS_HOUR);
-  if (ageMs < softMs) return 'standby';
-  if (ageMs < hardMs) return 'soft_offline';
-  return 'offline';
+  return deriveRuntimeTelemetryState(vehicle, now);
 }
 
 function vehicleDisplayName(vehicle: VehicleData): string {

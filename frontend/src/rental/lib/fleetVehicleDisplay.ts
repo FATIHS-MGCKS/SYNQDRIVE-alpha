@@ -1,6 +1,5 @@
 import type { StatusTone } from '../../components/patterns';
 import type { RentalHealthModule, VehicleHealthResponse } from '../../lib/api';
-import { isLegalComplianceBlockingText } from '../components/dashboard/runtime/dashboardRuntimeReasons';
 import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthAlert } from '../DashboardInsightsContext';
 import { deriveFleetVisualState, type FleetVisualState } from './fleetVisualState';
@@ -10,14 +9,27 @@ import {
 } from './fleet-map-vehicle-selectors';
 import {
   formatVehicleOperationalStatusLabel,
+  operationalStatusToneFor,
   selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
+  type VehicleOperationalStatus,
 } from './vehicle-operational-state';
 import {
   formatUserFacingReasonLabel,
   isOperativeRentalHealthModule,
   sanitizeUserFacingIssueText,
 } from './operational-issues';
+import {
+  crossSurfaceRentalReadinessToFleetAvailability,
+  resolveCrossSurfaceRentalReadiness,
+} from './vehicle-rental-readiness';
+import {
+  hasHardRentalBlockingReasons,
+  hasNonServiceCriticalHealthModule,
+  isRentalHealthCritical,
+  isRentalHealthWarning,
+  isServiceOnlyOverdueCritical,
+} from './vehicle-rental-health-blockers';
 import {
   resolveTelemetryFreshness,
   type TelemetryFreshness,
@@ -178,46 +190,15 @@ function formatOdometer(km: number | null | undefined, de: boolean): string | nu
 function hasNonServiceCriticalModule(
   rentalHealth: VehicleHealthResponse | null | undefined,
 ): boolean {
-  if (!rentalHealth?.modules) return false;
-  for (const [name, mod] of Object.entries(rentalHealth.modules) as Array<
-    [keyof VehicleHealthResponse['modules'], RentalHealthModule]
-  >) {
-    if (name === 'service_compliance') continue;
-    if (mod.state === 'critical') return true;
-  }
-  return false;
-}
-
-function hasHardRentalBlockingReasons(
-  rentalHealth: VehicleHealthResponse | null | undefined,
-): boolean {
-  const reasons = rentalHealth?.blocking_reasons ?? [];
-  return reasons.some((reason) => {
-    const normalized = reason.toLowerCase();
-    if (isLegalComplianceBlockingText(reason)) return true;
-    return !normalized.includes('service') && !normalized.includes('wartung');
-  });
-}
-
-function isServiceOnlyOverdueCritical(
-  rentalHealth: VehicleHealthResponse | null | undefined,
-): boolean {
-  if (!rentalHealth || rentalHealth.rental_blocked) return false;
-  if (rentalHealth.modules?.service_compliance?.state !== 'critical') return false;
-  return !hasNonServiceCriticalModule(rentalHealth);
+  return hasNonServiceCriticalHealthModule(rentalHealth);
 }
 
 function isHealthCritical(v: VehicleData, rentalHealth: VehicleHealthResponse | null): boolean {
-  if (rentalHealth?.rental_blocked && hasHardRentalBlockingReasons(rentalHealth)) return true;
-  if (hasNonServiceCriticalModule(rentalHealth)) return true;
-  if (rentalHealth?.overall_state === 'critical' && !isServiceOnlyOverdueCritical(rentalHealth)) {
-    return true;
-  }
-  return v.healthStatus === 'Critical' && !isServiceOnlyOverdueCritical(rentalHealth);
+  return isRentalHealthCritical(v, rentalHealth);
 }
 
 function isHealthWarning(v: VehicleData, rentalHealth: VehicleHealthResponse | null): boolean {
-  return rentalHealth?.overall_state === 'warning' || v.healthStatus === 'Warning';
+  return isRentalHealthWarning(v, rentalHealth);
 }
 
 /**
@@ -252,44 +233,54 @@ function resolveOperationalStatus(
 function primaryLabelFor(
   status: FleetOperationalStatus,
   v: VehicleData,
-  de: boolean,
+  locale: VehicleOperationalDisplayLocale,
 ): string {
+  const de = locale === 'de';
+  const canonicalForPrimary: Partial<Record<FleetOperationalStatus, VehicleOperationalStatus>> = {
+    ready: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    blocked: VEHICLE_OPERATIONAL_STATUS.BLOCKED,
+    maintenance: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+    reserved: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+    unknown: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+  };
+  const canonical = canonicalForPrimary[status];
+  if (canonical) {
+    return formatVehicleOperationalStatusLabel(canonical, locale);
+  }
+
   switch (status) {
-    case 'ready':
-      return de ? 'Verfügbar' : 'Available';
     case 'critical':
       return de ? 'Kritisch' : 'Critical';
-    case 'blocked':
-      return de ? 'Blockiert' : 'Blocked';
     case 'warning':
       if (selectFleetActiveIsOverdue(v)) return de ? 'Überfällig' : 'Overdue';
       if (selectFleetReservedIsOverdue(v)) return de ? 'Abholung überfällig' : 'Pickup overdue';
       return de ? 'Warnung' : 'Warning';
     case 'active':
       return de ? 'Aktiv' : 'Active';
-    case 'reserved':
-      return de ? 'Reserviert' : 'Reserved';
-    case 'maintenance':
-      return de ? 'Wartung' : 'Maintenance';
     default:
-      return de ? 'Status nicht verfügbar' : 'Status unavailable';
+      return formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, locale);
   }
 }
 
 function primaryToneFor(status: FleetOperationalStatus): StatusTone {
+  const canonicalForPrimary: Partial<Record<FleetOperationalStatus, VehicleOperationalStatus>> = {
+    ready: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    blocked: VEHICLE_OPERATIONAL_STATUS.BLOCKED,
+    maintenance: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+    reserved: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+    active: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+    unknown: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+  };
+  const canonical = canonicalForPrimary[status];
+  if (canonical) {
+    return operationalStatusToneFor(canonical);
+  }
+
   switch (status) {
     case 'critical':
-    case 'blocked':
       return 'critical';
     case 'warning':
       return 'watch';
-    case 'maintenance':
-      return 'warning';
-    case 'ready':
-      return 'success';
-    case 'active':
-    case 'reserved':
-      return 'info';
     default:
       return 'neutral';
   }
@@ -335,22 +326,15 @@ function resolveHealthDisplay(
 function resolveRentalDisplay(
   v: VehicleData,
   rentalHealth: VehicleHealthResponse | null,
-  visual: FleetVisualState,
+  _visual: FleetVisualState,
   de: boolean,
+  now?: number,
 ): FleetRentalDisplay {
-  const operationalStatus = selectOperationalStatus(v);
-  let rentalStatus: FleetRentalAvailability;
-  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) rentalStatus = 'active';
-  else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED) rentalStatus = 'reserved';
-  else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) rentalStatus = 'maintenance';
-  else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
-    const blocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
-    if (blocked) rentalStatus = 'blocked';
-    else if (visual.isOffline) rentalStatus = 'not_ready';
-    else rentalStatus = 'ready';
-  } else {
-    rentalStatus = 'not_ready';
-  }
+  const crossSurface = resolveCrossSurfaceRentalReadiness(v, {
+    rentalHealth,
+    now,
+  });
+  const rentalStatus = crossSurfaceRentalReadinessToFleetAvailability(crossSurface.readiness);
 
   const labels: Record<FleetRentalAvailability, [string, string]> = {
     ready: ['Ready', 'Bereit'],
@@ -556,7 +540,7 @@ export function resolveFleetVehicleDisplayState(
   const bookingSupplement = resolveBookingSupplement(vehicle, displayTimeOptions);
 
   const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual);
-  const primaryLabel = primaryLabelFor(primaryStatus, vehicle, de);
+  const primaryLabel = primaryLabelFor(primaryStatus, vehicle, locale);
   const primaryTone = primaryToneFor(primaryStatus);
 
   const fresh = resolveTelemetryFreshness(vehicle, { now, locale: options.locale });
@@ -575,7 +559,7 @@ export function resolveFleetVehicleDisplayState(
   };
 
   const healthDisplay = resolveHealthDisplay(vehicle, rentalHealth, de);
-  const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de);
+  const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de, now);
   const reasonBadge =
     buildReasonBadge(vehicle, rentalHealth, visual, healthDisplay.status, de) ??
     (options.healthAlert?.primaryReason && isConcreteReason(options.healthAlert.primaryReason)

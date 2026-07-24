@@ -32,7 +32,7 @@ describe('Vehicle Operational State V2 — state engine (deriveFleetStatusContex
     ['Reserved', VehicleStatus.AVAILABLE, reservedCtx, 'Reserved'],
     ['Active Rented', VehicleStatus.AVAILABLE, activeCtx, 'Active Rented'],
     ['Maintenance IN_SERVICE', VehicleStatus.IN_SERVICE, activeCtx, 'Maintenance'],
-    ['Maintenance OUT_OF_SERVICE', VehicleStatus.OUT_OF_SERVICE, null, 'Maintenance'],
+    ['Blocked OUT_OF_SERVICE', VehicleStatus.OUT_OF_SERVICE, null, 'Blocked'],
   ] as const)(
     'maps %s',
     (_label, dbStatus, bookingCtx, expected) => {
@@ -46,12 +46,18 @@ describe('Vehicle Operational State V2 — state engine (deriveFleetStatusContex
     },
   );
 
-  it('maps master-admin Blocked label separately from rental Maintenance collapse', () => {
+  it('maps master-admin Blocked label separately from rental Maintenance', () => {
     expect(mapRawVehicleStatusToFleetLabel(VehicleStatus.OUT_OF_SERVICE)).toBe(
-      'Maintenance',
+      'Blocked',
     );
-    // Platform master surface uses Blocked; rental derivation collapses both
-    // maintenance enums into one Maintenance bucket.
+    expect(
+      service.deriveFleetStatusContext({
+        vehicle: { id: 'veh-1', status: VehicleStatus.OUT_OF_SERVICE },
+        state: null,
+        bookingCtx: null,
+        pickupOdoByBooking: new Map(),
+      }).status,
+    ).toBe('Blocked');
     expect(
       service.deriveFleetStatusContext({
         vehicle: { id: 'veh-1', status: VehicleStatus.OUT_OF_SERVICE },
