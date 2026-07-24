@@ -139,6 +139,8 @@ export interface PeriodStepProps {
   vehicleBlockedInfo: Record<number, PeriodBlockedDayInfo>;
   hoveredDay: number | null;
   rangeHasConflict: boolean;
+  /** Org-local minimum date (`YYYY-MM-DD`) for date inputs. */
+  todayMin: string;
   onPickupDateChange: (value: string) => void;
   onReturnDateChange: (value: string) => void;
   onPickupTimeChange: (value: string) => void;

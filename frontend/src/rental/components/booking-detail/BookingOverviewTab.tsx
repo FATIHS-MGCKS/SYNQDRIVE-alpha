@@ -1,5 +1,7 @@
 import { StatusChip } from '../../../components/patterns';
 import type { BookingDetailDto } from '../../../lib/api';
+import { useRentalOrg } from '../../RentalContext';
+import { useOrgTimezone } from '../../hooks/useOrgTimezone';
 import { normalizeBookingStatus } from '../bookings/bookingStatus';
 import type { BookingActionMatrix } from './bookingDetailTypes';
 import {
@@ -17,6 +19,8 @@ interface BookingOverviewTabProps {
 }
 
 export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) {
+  const { orgId } = useRentalOrg();
+  const { timezone, locale } = useOrgTimezone(orgId);
   const uiStatus = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
   const primary = getPrimaryBookingAction(detail, matrix);
   const warnings: string[] = [];
@@ -42,7 +46,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
           <h3 className="text-xs font-bold mb-3">Buchung</h3>
           <dl className="space-y-2 text-xs">
             <Row label="Status" value={detail.core.status} />
-            <Row label="Erstellt" value={formatDateTime(detail.core.createdAt)} />
+            <Row label="Erstellt" value={formatDateTime(detail.core.createdAt, timezone, locale)} />
             <Row label="Km inkl." value={detail.core.kmIncluded != null ? `${detail.core.kmIncluded} km` : EM_DASH} />
             <Row label="Km gefahren" value={detail.core.kmDriven != null ? `${detail.core.kmDriven} km` : EM_DASH} />
             <Row

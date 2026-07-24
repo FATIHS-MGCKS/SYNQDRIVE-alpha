@@ -148,6 +148,7 @@ export function PeriodStep({
   vehicleBlockedInfo,
   hoveredDay,
   rangeHasConflict,
+  todayMin,
   onPickupDateChange,
   onReturnDateChange,
   onPickupTimeChange,
@@ -163,8 +164,6 @@ export function PeriodStep({
   onHoveredDayChange,
   onCalendarDayClick,
 }: PeriodStepProps) {
-  const todayMin = new Date().toISOString().slice(0, 10);
-
   return (
     <BookingStepCard>
       <div className="p-4">

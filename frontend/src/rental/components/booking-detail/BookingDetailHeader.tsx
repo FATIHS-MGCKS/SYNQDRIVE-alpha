@@ -6,6 +6,12 @@ import {
   normalizeBookingStatus,
 } from '../bookings/bookingStatus';
 import { StatusChip } from '../../../components/patterns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../components/ui/dropdown-menu';
 import type { BookingActionMatrix, BookingPrimaryAction } from './bookingDetailTypes';
 import {
   documentsShortStatus,
@@ -13,6 +19,7 @@ import {
   formatDateRange,
   handoverShortStatus,
 } from './bookingDetailUtils';
+import { BOOKING_FOCUS_RING } from '../bookings/bookings-a11y';
 
 interface BookingDetailHeaderProps {
   detail: BookingDetailDto;
@@ -59,10 +66,10 @@ export function BookingDetailHeader({
           <button
             type="button"
             onClick={onBack}
-            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+            className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 ${BOOKING_FOCUS_RING}`}
             aria-label="Zurück"
           >
-            <Icon name="arrow-left" className="w-5 h-5" />
+            <Icon name="arrow-left" className="w-5 h-5" aria-hidden />
           </button>
           <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
@@ -108,8 +115,9 @@ export function BookingDetailHeader({
             type="button"
             disabled={primaryDisabled}
             title={primaryDisabled ? primaryReason : undefined}
+            aria-label={primaryDisabled && primaryReason ? `${primary.label}: ${primaryReason}` : primary.label}
             onClick={onPrimaryAction}
-            className={`sq-press px-4 py-2 rounded-lg text-xs font-semibold ${
+            className={`sq-press min-h-11 px-4 py-2 rounded-lg text-xs font-semibold ${BOOKING_FOCUS_RING} ${
               primaryDisabled
                 ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
                 : 'sq-tone-brand'
@@ -117,63 +125,43 @@ export function BookingDetailHeader({
           >
             {primary.label}
           </button>
-          <div className="relative group">
-            <button
-              type="button"
-              className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border surface-premium hover:bg-muted"
-            >
-              Aktionen
-              <Icon name="chevron-down" className="w-3.5 h-3.5 inline ml-1" />
-            </button>
-            <div className="absolute right-0 mt-1 w-52 rounded-lg border border-border bg-popover shadow-lg py-1 hidden group-hover:block group-focus-within:block z-30">
-              <MenuItem
-                label="Bearbeiten"
-                disabled={!matrix.edit.allowed}
-                reason={matrix.edit.reason}
-                onClick={onEdit}
-              />
-              <MenuItem
-                label="Stornieren"
-                disabled={!matrix.cancel.allowed}
-                reason={matrix.cancel.reason}
-                onClick={onCancel}
-              />
-              <MenuItem
-                label="No-Show markieren"
-                disabled={!matrix.no_show.allowed}
-                reason={matrix.no_show.reason}
-                onClick={onNoShow}
-              />
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-haspopup="menu"
+                className={`sq-press min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border border-border surface-premium hover:bg-muted ${BOOKING_FOCUS_RING}`}
+              >
+                Aktionen
+                <Icon name="chevron-down" className="w-3.5 h-3.5 inline ml-1" aria-hidden />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                disabled={!matrix.edit.allowed || !onEdit}
+                title={!matrix.edit.allowed ? matrix.edit.reason : undefined}
+                onSelect={() => onEdit?.()}
+              >
+                Bearbeiten
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!matrix.cancel.allowed || !onCancel}
+                title={!matrix.cancel.allowed ? matrix.cancel.reason : undefined}
+                onSelect={() => onCancel?.()}
+              >
+                Stornieren
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!matrix.no_show.allowed || !onNoShow}
+                title={!matrix.no_show.allowed ? matrix.no_show.reason : undefined}
+                onSelect={() => onNoShow?.()}
+              >
+                No-Show markieren
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>
-  );
-}
-
-function MenuItem({
-  label,
-  disabled,
-  reason,
-  onClick,
-}: {
-  label: string;
-  disabled: boolean;
-  reason?: string;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled || !onClick}
-      title={disabled ? reason : undefined}
-      onClick={onClick}
-      className={`w-full text-left px-3 py-2 text-xs ${
-        disabled ? 'text-muted-foreground opacity-50 cursor-not-allowed' : 'hover:bg-muted text-foreground'
-      }`}
-    >
-      {label}
-    </button>
   );
 }

@@ -35,6 +35,130 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-a11y-mobile-v49796-2026-07-23',
+    version: '4.9.796',
+    title: 'V4.9.796 — Booking mobile, touch & accessibility (Prompt 31)',
+    summary: [
+      'Semantische Korrekturen ohne visuelles Redesign: keine verschachtelten Buttons im Kalender, Keyboard-Navigation für Tabellenzeilen, sichtbare Focus-Rings.',
+      'Touch-Ziele ~44 CSS px für Toolbar, Tabellen-Aktionen, Kalender-Tagesliste, Timeline-Balken (mobile), Wizard-Stepper und Footer.',
+      'BookingEditDialog → FormDialog (Focus Trap, Escape, Fokus-Rückgabe); BookingDossier Cancel/No-Show → ConfirmDialog.',
+      'Detail Quick Actions: DropdownMenu statt hover-only Menü; DataTable sticky Actions-Spalte bei horizontalem Scroll.',
+      'Timeline: iOS-Safari-freundliches horizontales Scrollen (`-webkit-overflow-scrolling: touch`) + sticky Fahrzeugspalte.',
+    ],
+    reason: 'Booking Production Readiness Prompt 31 — Mobile-, Touch-, Accessibility- und semantische HTML-Probleme der Booking Page.',
+    previousBehavior:
+      'Kleine Icon-Only-Aktionen ohne aria-label; Kalender-Tag als Button in gridcell; Edit/Confirm als Custom-Overlays ohne Focus Trap; Quick Actions nur per Hover.',
+    details:
+      'bookings-a11y.ts, BookingsTableView, BookingsCalendarView, BookingsTimelineView, BookingsToolbar, BookingWizardStepper, MobileBookingFooter, BookingEditDialog, BookingDossier, BookingDetailHeader, data-table. Tests: bookings-a11y.ui.test.ts. Architektur: architecture/BOOKING_A11Y_MOBILE_2026-07-23.md.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:30:00.000Z',
+  },
+  {
+    id: 'booking-calendar-timeline-v49795-2026-07-23',
+    version: '4.9.795',
+    title: 'V4.9.795 — Booking calendar & timeline functional fixes (Prompt 30)',
+    summary: [
+      'Wochenfenster exakt 7 Org-Kalendertage (halb-offen `[from,to)`), kein 8-Tage-Off-by-one; DST-sichere Tag-Iteration statt `+7*24h` oder Browser-`setDate`.',
+      'Wochenstart locale-aware (`resolveWeekStartsOn` — Montag für de-DE, Sonntag für en-US); Kalendergrid in Org-Zeitzone.',
+      'Timeline-Navigation (‹/› + Pfeiltasten) mit `timelineAnchorDateOnly`; Fetch-Fenster = sichtbares Fenster via `resolvePlannerVisibleRange`.',
+      'Kalender: getrennte Tag-/Buchungsauswahl, `pointerdown`-Isolation für Touch, Keyboard-Grid (Pfeile/Home/End/Enter).',
+      'Halb-offene Overlap-/Clip-Logik für Timeline-Balken und Kalendertage — keine Doppelungen an Grenzen.',
+    ],
+    reason: 'Booking Production Readiness Prompt 30 — funktionale Bugs in Calendar/Timeline ohne visuelles Redesign.',
+    previousBehavior:
+      'Timeline ohne Navigation und mit Browser-local Day-Markern (`<= rangeEnd` → 8 Tage); Woche via feste Millisekunden; verschachtelte Day/Booking-Buttons; Fetch und Render-Fenster divergierten.',
+    details:
+      '`lib/datetime/planner-range.ts`, `bookings-planner-range.utils.ts`, `bookingPlannerOverlap.ts`, `BookingsPage`, `BookingsCalendarView`, `BookingsTimelineView`, `useBookingsPlannerData`. Tests: planner-range, bookings-planner-range, bookingPlannerOverlap.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:05:00.000Z',
+  },
+  {
+    id: 'booking-timezone-v49794-2026-07-23',
+    version: '4.9.794',
+    title: 'V4.9.794 — Canonical booking timezone strategy (Prompt 29)',
+    summary: [
+      'Neues Frontend-Modul `lib/datetime` + `useOrgTimezone`: org IANA-Zeitzone aus `organizations.getProfile`, Locale aus `language`.',
+      'Lokale Buchungsdaten (Wizard date/time, datetime-local Edit, Handover backdate) werden in Org-Zeitzone interpretiert und als UTC ISO persistiert — keine `new Date(local)` / `toISOString().slice(0,10)` als fachliche Wahrheit.',
+      'Planner/Calendar/Timeline nutzen halb-offene `[from, to)`-Fenster in Org-Zeitzone; Kalendertage via `zonedDayRange`.',
+      'DST: Sommerzeitlücke → nächste gültige Minute; doppelte Stunde → erste Occurrence. Tests für Berlin, London, UTC, Mitternacht, DST.',
+      'API-Doku: `from`/`to` auf List-Bookings als halb-offenes UTC-Fenster dokumentiert.',
+    ],
+    reason:
+      'Booking Production Readiness Prompt 29 — einheitliche Zeitzonenstrategie über Wizard, Planner, Edit, Detail und Handover.',
+    previousBehavior:
+      'Frontend interpretierte date/time über Browser-Local (`new Date("YYYY-MM-DDTHH:mm")`) und `toISOString().slice(0,10)` für „heute“; Planner-Fenster in Browser-Local.',
+    details:
+      '`frontend/src/lib/datetime/*`, `useOrgTimezone.ts`, `booking-edit-form.*`, `entityMappers.buildBookingCreatePayload(timeZone)`, `useBookingsPlannerData`, `BookingsPage/CalendarView`, `NewBookingView/PeriodStep`, `HandoverProtocolDialog`, Operator-Booking-Sheets, `bookingDetailUtils`. Architektur: `architecture/BOOKING_TIMEZONE_2026-07-23.md`.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:59:00.000Z',
+  },
+  {
+    id: 'booking-edit-commands-v49793-2026-07-23',
+    version: '4.9.793',
+    title: 'V4.9.793 — Unified booking edit command layer (Prompt 28)',
+    summary: [
+      'Gemeinsame Command-Schicht `booking-commands` + `useBookingMutations`: ein PATCH-Builder für Detail-Edit, Operator-Edit und künftige Pfade.',
+      'Gemeinsame Schema-Validierung (Zeitraum, Stationen, km) — keine optimistischen Finanz-Fakes, Status nur via dedizierte Commands.',
+      'Nach Save: API-Response, `invalidateBookingsList`, Vehicle-Operational-Invalidierung, Detail-Reload.',
+      'Versions-/Permission-/Overlap-Fehler verständlich via `formatBookingMutationError`.',
+      'Toter Legacy-Edit-Modal in `BookingsView` entfernt; Cancel/No-Show über shared mutations.',
+    ],
+    reason:
+      'Booking Production Readiness Prompt 28: Bearbeitungswege hatten divergierende Patch-Logik und optimistische Local-Overlays.',
+    previousBehavior:
+      'BookingEditDialog, OperatorBookingFormSheet und toter BookingsView-Modal bauten PATCH unterschiedlich; `localEdits` zeigten ungespeicherte Änderungen.',
+    details:
+      'booking-commands/*, useBookingMutations.ts, BookingEditDialog, BookingDossier, BookingsView, useOperatorBookingMutations, OperatorBookingFormSheet, Vitest.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:10:00.000Z',
+  },
+  {
+    id: 'booking-frontend-pagination-v49792-2026-07-23',
+    version: '4.9.792',
+    title: 'V4.9.792 — Booking planner frontend pagination wiring (Prompt 27)',
+    summary: [
+      '`useBookingsPlannerData`: AbortController + Request-Sequenz gegen Race Conditions; debounced Search; Sortierung synchron mit Query.',
+      'Tabellenansicht: serverseitige Pagination + klickbare Sort-Header (`startDate`/`createdAt`); Filter/Zeitraum synchron.',
+      'Timeline/Kalender/Fahrzeug-Buchungen: Range-Fetch bei Horizont-/Monatswechsel; kein `limit:500` mehr.',
+      'Loading/Error/Empty getrennt; API-Fehler nie als leere Liste; `bookings:invalidated` nach Mutationen.',
+      'Tests: Pagination, Filter-Query-Mapping, Abort, Stale-Response, Error-State.',
+    ],
+    reason:
+      'Booking Production Readiness Prompt 27: paginierte Backend-Endpunkte sauber im Frontend anbinden ohne Full-List-Downloads oder stale UI.',
+    previousBehavior:
+      'Hardcoded Sort `startDate/desc`; keine Request-Abbrüche; `additionalBookings` optimistisch gemerged; `VehicleBookingsView` mit `limit:500`.',
+    details:
+      'useBookingsPlannerData.ts, bookings-query.utils.ts, bookings-invalidation.ts, BookingsPage/TableView, VehicleBookingsView, api.bookings.list(signal), Vitest.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-24T00:05:00.000Z',
+  },
+  {
+    id: 'booking-list-pagination-v49791-2026-07-23',
+    version: '4.9.791',
+    title: 'V4.9.791 — Booking list pagination & planner range queries (Prompt 26)',
+    summary: [
+      'Serverseitige Pagination: offset + cursor, `total`/`hasNextPage`/`nextCursor`, stabile Sortierung (`sortBy` + `id` Tie-Breaker).',
+      'Validiertes `ListBookingsQueryDto` mit Filtern (Status, Kunde, Fahrzeug, Station, Zeitraum `[from,to)`, Suche/Buchungsnummer).',
+      'DB-Indizes `(organizationId, startDate, id)` und `(organizationId, vehicleId, startDate)`.',
+      'Planner-Frontend: `useBookingsPlannerData` lädt Timeline/Kalender nur für sichtbaren Zeitraum; Tabelle mit Server-Pagination.',
+      'Kein stilles `limit: 500` mehr in `BookingsView`.',
+    ],
+    reason:
+      'Booking Production Readiness: große Organisationen überschritten die 500er-Abschneidung; Kalender/Timeline filterten clientseitig.',
+    previousBehavior:
+      '`BookingsView` lud `api.bookings.list({ limit: 500 })` einmalig; Filter/Sortierung clientseitig; `meta.limit` max 100 Inkonsistenz.',
+    details:
+      'bookings-list-pagination.util.ts, list-bookings-query.dto.ts, bookings.service.ts, BookingsPage/useBookingsPlannerData, bookings-pagination.ts, migration 20260723290000.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:55:00.000Z',
+  },
+  {
     id: 'fleet-rental-crash-task-pagination-v49789-2026-07-23',
     version: '4.9.789',
     title: 'V4.9.789 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',

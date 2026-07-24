@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Calendar, Car, Check, CreditCard, Star, User } from 'lucide-react';
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
+import { BOOKING_FOCUS_RING } from '../bookings/bookings-a11y';
 
 export const BOOKING_WIZARD_STEPS = [
   { id: 1, label: 'Fahrzeug', icon: Car },
@@ -79,7 +80,8 @@ export function BookingWizardStepper({
                   if (isCompleted) onStepSelect(step.id);
                 }}
                 className={cn(
-                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tabular-nums transition-all',
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tabular-nums transition-all',
+                  BOOKING_FOCUS_RING,
                   isActive && 'sq-tone-brand border-border ring-1 ring-[color:var(--brand-glow)]',
                   isCompleted &&
                     'sq-tone-success cursor-pointer border-border hover:opacity-90',
@@ -112,7 +114,8 @@ export function BookingWizardStepper({
                     if (isCompleted) onStepSelect(step.id);
                   }}
                   className={cn(
-                    'flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border px-2.5 py-2 transition-all duration-200 lg:px-3',
+                    'flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border px-2.5 py-2 min-h-11 transition-all duration-200 lg:px-3',
+                    BOOKING_FOCUS_RING,
                     isActive && 'sq-tone-brand border-border ring-1 ring-[color:var(--brand-glow)]',
                     isCompleted &&
                       'sq-tone-success cursor-pointer border-border hover:opacity-90',

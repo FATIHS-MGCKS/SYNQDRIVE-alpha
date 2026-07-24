@@ -10,6 +10,9 @@ export type BookingApiStatus =
 
 export type BookingPlannerView = 'timeline' | 'table' | 'calendar';
 
+export type BookingTableSortBy = 'startDate' | 'endDate' | 'createdAt';
+export type BookingTableSortOrder = 'asc' | 'desc';
+
 export type BookingStatusFilter =
   | 'all'
   | 'active'

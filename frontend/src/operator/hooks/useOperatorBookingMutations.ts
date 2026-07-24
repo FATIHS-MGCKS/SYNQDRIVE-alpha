@@ -2,13 +2,13 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import {
   api,
-  getErrorMessage,
   type OperatorBookingCreatePayload,
   type OperatorBookingUpdatePayload,
 } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { invalidateBookingsList } from '../../rental/lib/bookings-invalidation';
 import { invalidateVehicleOperationalAfterBookingChange } from '../../rental/lib/vehicle-operational-query';
-import { formatOperatorBookingError } from '../bookings/operatorBooking.utils';
+import { formatBookingMutationError } from '../../rental/lib/booking-commands';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
 function resolveVehicleIdFromUpdatePayload(
@@ -28,11 +28,10 @@ export function useOperatorBookingMutations() {
   const clearError = useCallback(() => setError(null), []);
 
   const reportError = useCallback((e: unknown) => {
-    const msg = getErrorMessage(e, 'Aktion fehlgeschlagen');
-    const formatted = formatOperatorBookingError(msg);
-    setError(formatted.description);
-    toast.error(formatted.title, { description: formatted.description });
-    return formatted.description;
+    const view = formatBookingMutationError(e, 'Aktion fehlgeschlagen');
+    setError(view.description);
+    toast.error(view.title, { description: view.description });
+    return view.description;
   }, []);
 
   const run = useCallback(
@@ -55,6 +54,7 @@ export function useOperatorBookingMutations() {
         const result = await fn();
         triggerRefresh();
         afterSuccess?.();
+        invalidateBookingsList();
         toast.success(successMessage);
         onSuccess?.();
         return result;

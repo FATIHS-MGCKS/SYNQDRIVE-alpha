@@ -2,8 +2,15 @@ import { useMemo } from 'react';
 import { DataTable, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import type { BookingUiRow } from '../../lib/entityMappers';
+import type { BookingTableSortBy, BookingTableSortOrder } from './bookingTypes';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, formatCents, rowStatus } from './bookingUtils';
+import {
+  BOOKING_FOCUS_RING,
+  BOOKING_TOUCH_TARGET,
+  bookingRowActionAria,
+  bookingSortHeaderAria,
+} from './bookings-a11y';
 
 interface BookingsTableViewProps {
   rows: BookingUiRow[];
@@ -11,6 +18,59 @@ interface BookingsTableViewProps {
   onRowClick: (id: string) => void;
   onEdit?: (id: string) => void;
   onCancel?: (id: string) => void;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  hasNextPage?: boolean;
+  onPageChange?: (page: number) => void;
+  sortBy?: BookingTableSortBy;
+  sortOrder?: BookingTableSortOrder;
+  onSortChange?: (sortBy: BookingTableSortBy) => void;
+}
+
+function sortAria(
+  column: BookingTableSortBy,
+  sortBy?: BookingTableSortBy,
+  sortOrder?: BookingTableSortOrder,
+): 'ascending' | 'descending' | 'none' {
+  if (sortBy !== column) return 'none';
+  return sortOrder === 'asc' ? 'ascending' : 'descending';
+}
+
+function SortableHeader({
+  label,
+  column,
+  sortBy,
+  sortOrder,
+  onSortChange,
+}: {
+  label: string;
+  column: BookingTableSortBy;
+  sortBy?: BookingTableSortBy;
+  sortOrder?: BookingTableSortOrder;
+  onSortChange?: (sortBy: BookingTableSortBy) => void;
+}) {
+  if (!onSortChange) return label;
+  const active = sortBy === column;
+  return (
+    <button
+      type="button"
+      onClick={() => onSortChange(column)}
+      aria-label={bookingSortHeaderAria(label, column, sortBy, sortOrder)}
+      className={`inline-flex items-center gap-1 rounded-md px-1 py-1 font-semibold ${BOOKING_FOCUS_RING} ${
+        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+      {active && (
+        <Icon
+          name={sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'}
+          className="w-3 h-3"
+          aria-hidden
+        />
+      )}
+    </button>
+  );
 }
 
 export function BookingsTableView({
@@ -19,12 +79,29 @@ export function BookingsTableView({
   onRowClick,
   onEdit,
   onCancel,
+  page = 1,
+  pageSize = 50,
+  total,
+  hasNextPage = false,
+  onPageChange,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: BookingsTableViewProps) {
   const columns = useMemo(
     () => [
       {
         key: 'ref',
-        header: 'Buchung',
+        header: (
+          <SortableHeader
+            label="Buchung"
+            column="createdAt"
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={onSortChange}
+          />
+        ),
+        ariaSort: sortAria('createdAt', sortBy, sortOrder),
         cell: (b: BookingUiRow) => (
           <div>
             <div className="font-mono text-[11px] font-semibold">{bookingRef(b.id)}</div>
@@ -49,7 +126,16 @@ export function BookingsTableView({
       },
       {
         key: 'period',
-        header: 'Zeitraum',
+        header: (
+          <SortableHeader
+            label="Zeitraum"
+            column="startDate"
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={onSortChange}
+          />
+        ),
+        ariaSort: sortAria('startDate', sortBy, sortOrder),
         cell: (b: BookingUiRow) => (
           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
             {b.startDate} – {b.endDate}
@@ -85,11 +171,11 @@ export function BookingsTableView({
         ),
       },
     ],
-    [],
+    [onSortChange, sortBy, sortOrder],
   );
 
   return (
-    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] space-y-3">
       <DataTable
         columns={columns}
         rows={rows}
@@ -101,8 +187,9 @@ export function BookingsTableView({
         rowActions={(b) => {
           const status = rowStatus(b);
           if (status !== 'pending' && status !== 'confirmed') return null;
+          const ref = bookingRef(b.id);
           return (
-            <div className="flex gap-1">
+            <div className="flex gap-0.5">
               {onEdit && (
                 <button
                   type="button"
@@ -110,10 +197,10 @@ export function BookingsTableView({
                     e.stopPropagation();
                     onEdit(b.id);
                   }}
-                  className="p-1 rounded-lg sq-tone-brand text-[10px]"
-                  title="Bearbeiten"
+                  aria-label={bookingRowActionAria(ref, 'edit')}
+                  className={`${BOOKING_TOUCH_TARGET} rounded-lg sq-tone-brand text-[10px] ${BOOKING_FOCUS_RING}`}
                 >
-                  <Icon name="pencil" className="w-3 h-3" />
+                  <Icon name="pencil" className="w-3.5 h-3.5" aria-hidden />
                 </button>
               )}
               {onCancel && (
@@ -123,10 +210,10 @@ export function BookingsTableView({
                     e.stopPropagation();
                     onCancel(b.id);
                   }}
-                  className="p-1 rounded-lg sq-tone-critical text-[10px]"
-                  title="Stornieren"
+                  aria-label={bookingRowActionAria(ref, 'cancel')}
+                  className={`${BOOKING_TOUCH_TARGET} rounded-lg sq-tone-critical text-[10px] ${BOOKING_FOCUS_RING}`}
                 >
-                  <Icon name="trash-2" className="w-3 h-3" />
+                  <Icon name="trash-2" className="w-3.5 h-3.5" aria-hidden />
                 </button>
               )}
             </div>
@@ -140,6 +227,33 @@ export function BookingsTableView({
           />
         }
       />
+      {onPageChange && (
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+          <span>
+            {(page - 1) * pageSize + 1}–{(page - 1) * pageSize + rows.length} von {total ?? rows.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => onPageChange(Math.max(1, page - 1))}
+              aria-label="Vorherige Seite"
+              className={`min-h-11 px-3 rounded border border-border disabled:opacity-40 ${BOOKING_FOCUS_RING}`}
+            >
+              Zurück
+            </button>
+            <button
+              type="button"
+              disabled={!hasNextPage || loading}
+              onClick={() => onPageChange(page + 1)}
+              aria-label="Nächste Seite"
+              className={`min-h-11 px-3 rounded border border-border disabled:opacity-40 ${BOOKING_FOCUS_RING}`}
+            >
+              Weiter
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
