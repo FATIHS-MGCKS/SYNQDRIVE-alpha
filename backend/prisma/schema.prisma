@@ -1628,6 +1628,8 @@ model Organization {
   insightPolicy                          TenantInsightPolicy?
   insightRuns                            DashboardInsightRun[]
   insights                               DashboardInsight[]
+  recommendations                        OrgRecommendation[]
+  recommendationEvents                   OrgRecommendationEvent[]
   providerConsents                       VehicleProviderConsent[]
   generatedDocuments                     GeneratedDocument[]
   legalDocuments                         OrganizationLegalDocument[]
@@ -13039,6 +13041,105 @@ model DashboardInsight {
   @@index([dedupeKey])
   @@index([type])
   @@map("dashboard_insights")
+}
+
+// ── Evaluations / Maßnahmen — canonical recommendation domain (V4.9.806) ──
+
+enum RecommendationSourceType {
+  DASHBOARD_INSIGHT
+  EVALUATIONS_INSIGHT
+  EVALUATIONS_RISK
+  MISUSE_CASE
+  MANUAL
+}
+
+enum RecommendationCategory {
+  MAINTENANCE
+  SAFETY
+  COMPLIANCE
+  COST_OPTIMIZATION
+  FLEET_UTILIZATION
+  CUSTOMER_EXPERIENCE
+  OPERATIONAL
+  OTHER
+}
+
+enum RecommendationConfidence {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum RecommendationStatus {
+  NEW
+  REVIEWED
+  ACCEPTED
+  REJECTED
+  PLANNED
+  IN_PROGRESS
+  IMPLEMENTED
+  MEASURING_IMPACT
+  COMPLETED
+  CANCELLED
+}
+
+/// Canonical org-scoped Maßnahme / Empfehlung linked to an insight or risk source.
+model OrgRecommendation {
+  id                         String                   @id @default(uuid())
+  organizationId             String                   @map("organization_id")
+  sourceType                 RecommendationSourceType @map("source_type")
+  sourceId                   String                   @map("source_id")
+  category                   RecommendationCategory
+  title                      String
+  description                String
+  rationale                  String
+  expectedBenefitCents       Int?                     @map("expected_benefit_cents")
+  expectedBenefitCurrency    String?                  @map("expected_benefit_currency")
+  estimatedCostCents         Int?                     @map("estimated_cost_cents")
+  estimatedCostCurrency      String?                  @map("estimated_cost_currency")
+  expectedNetBenefitCents    Int?                     @map("expected_net_benefit_cents")
+  expectedNetBenefitCurrency String?                  @map("expected_net_benefit_currency")
+  confidence                 RecommendationConfidence
+  priority                   Int                      @default(0)
+  affectedEntities           Json                     @default("[]") @map("affected_entities")
+  ownerId                    String?                  @map("owner_id")
+  dueAt                      DateTime?                @map("due_at")
+  status                     RecommendationStatus     @default(NEW)
+  dedupKey                   String                   @map("dedup_key")
+  calculationVersion         String                   @map("calculation_version")
+  createdAt                  DateTime                 @default(now()) @map("created_at")
+  updatedAt                  DateTime                 @updatedAt @map("updated_at")
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       OrgRecommendationEvent[]
+
+  @@unique([organizationId, dedupKey], name: "org_recommendations_org_dedup_key")
+  @@index([organizationId, status])
+  @@index([organizationId, sourceType, sourceId])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, dueAt])
+  @@map("org_recommendations")
+}
+
+/// Append-only audit trail for recommendation lifecycle changes.
+model OrgRecommendationEvent {
+  id               String                  @id @default(uuid())
+  recommendationId String                  @map("recommendation_id")
+  organizationId   String                  @map("organization_id")
+  eventType        String                  @map("event_type")
+  actorUserId      String?                 @map("actor_user_id")
+  previousStatus   RecommendationStatus?   @map("previous_status")
+  newStatus        RecommendationStatus?   @map("new_status")
+  metadata         Json?
+  createdAt        DateTime                @default(now()) @map("created_at")
+
+  recommendation OrgRecommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([recommendationId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("org_recommendation_events")
 }
 
 // ── Notification Engine (V4.9.351) — persistent lifecycle notifications ──

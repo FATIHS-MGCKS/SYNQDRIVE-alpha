@@ -25,6 +25,9 @@ import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-asse
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
+import { OrgRecommendationsController } from './recommendations/org-recommendations.controller';
+import { OrgRecommendationsRepository } from './recommendations/org-recommendations.repository';
+import { OrgRecommendationsService } from './recommendations/org-recommendations.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
@@ -36,7 +39,11 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => RentalHealthModule),
   ],
-  controllers: [DashboardInsightsController, InternalBusinessInsightsController],
+  controllers: [
+    DashboardInsightsController,
+    InternalBusinessInsightsController,
+    OrgRecommendationsController,
+  ],
   providers: [
     BusinessInsightsService,
     TenantInsightPolicyService,
@@ -45,6 +52,8 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightFormatterService,
     DashboardInsightsRepository,
     InsightTaskBridgeService,
+    OrgRecommendationsRepository,
+    OrgRecommendationsService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
     TightHandoverDetector,
@@ -60,6 +69,11 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PickupOverdueDetector,
     DrivingAssessmentDeviceQualityDetector,
   ],
-  exports: [BusinessInsightsService, BusinessInsightsTriggerService, InsightTaskBridgeService],
+  exports: [
+    BusinessInsightsService,
+    BusinessInsightsTriggerService,
+    InsightTaskBridgeService,
+    OrgRecommendationsService,
+  ],
 })
 export class BusinessInsightsModule {}

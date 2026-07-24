@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-recommendation-domain-p36-2026-07-24',
+    version: '4.9.806',
+    title: 'V4.9.806 — Evaluations recommendation domain model (Prompt 36)',
+    summary: [
+      'Prisma `OrgRecommendation` + `OrgRecommendationEvent` with full status lifecycle (NEW → COMPLETED/CANCELLED).',
+      'Shared domain: money model (`amountMinor` + currency), dedup key, status machine, rationale validation, discrimination guard.',
+      'REST API `GET/POST/PATCH /organizations/:orgId/evaluations/recommendations` + status transitions + audit events.',
+      'Docs: `docs/architecture/analytics/evaluations-recommendation-domain.md`.',
+    ],
+    reason: 'Prompt 36/54: canonical Maßnahmen/Empfehlungen domain for Auswertungen.',
+    previousBehavior: 'Recommendations scattered across insight action labels, health strings, driving decisions — no persisted canonical model.',
+    details:
+      'backend: prisma migration 20260724120000_org_recommendations, shared/recommendations/*, business-insights/recommendations/*.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Recommendations',
+    createdAt: '2026-07-24T13:00:00.000Z',
+  },
+  {
     id: 'vehicle-detail-vps-runtime-p34-2026-07-24',
     version: '4.9.805',
     title: 'V4.9.805 — Vehicle Detail VPS runtime audit (Prompt 34)',
