@@ -129,7 +129,7 @@ export function deriveOverviewMapPosition(input: {
   const hasLiveGps =
     isLiveTracking &&
     targetPosition != null &&
-    (gpsSource === 'dimo' || isFresh);
+    gpsSource === 'dimo';
 
   if (error) {
     const fallback = cachedPosition ?? staticPosition;
@@ -147,7 +147,7 @@ export function deriveOverviewMapPosition(input: {
     return empty('telemetryUnavailable', 'Telemetry temporarily unavailable', 'No coordinates available');
   }
 
-  if (hasLiveGps || (isLiveTracking && targetPosition)) {
+  if (hasLiveGps) {
     return {
       mode: 'livePosition',
       mapTargetPosition: targetPosition,
@@ -155,6 +155,18 @@ export function deriveOverviewMapPosition(input: {
       showEmptyState: false,
       operatorHint: null,
       operatorHintSub: null,
+      isBoundToCurrentVehicle: true,
+    };
+  }
+
+  if (isLiveTracking && targetPosition) {
+    return {
+      mode: 'lastKnownPosition',
+      mapTargetPosition: targetPosition,
+      mapInitialPosition: staticPosition ?? targetPosition,
+      showEmptyState: false,
+      operatorHint: null,
+      operatorHintSub: 'Last known position shown',
       isBoundToCurrentVehicle: true,
     };
   }

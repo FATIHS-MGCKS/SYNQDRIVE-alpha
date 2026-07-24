@@ -268,7 +268,10 @@ export function mapFleetMapVehicleResponse(
     cleaningStatus,
     healthStatus,
     online: raw.isFresh,
-    lastSignal: raw.lastSeenAt ?? '',
+    lastSignal: raw.measuredAt ?? raw.lastSeenAt ?? '',
+    measuredAt: raw.measuredAt ?? raw.lastSeenAt ?? null,
+    receivedAt: raw.receivedAt ?? null,
+    cachedAt: raw.cachedAt ?? null,
     badge: 0,
     odometer: odometerKm,
     fuel:

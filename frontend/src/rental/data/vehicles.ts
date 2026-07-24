@@ -48,6 +48,9 @@ export interface VehicleData {
   healthStatus: 'Good Health' | 'Warning' | 'Critical';
   online: boolean;
   lastSignal: string;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  cachedAt?: string | null;
   badge: number;
   // Legacy numeric telemetry — nullable since Prompt 10/36. Prefer canonical
   // fields below for UI empty-state. Aggregations may use `(v.odometer ?? 0)`.

@@ -8836,6 +8836,9 @@ export interface FleetMapVehicleResponse {
   latitude: number | null;
   longitude: number | null;
   lastSeenAt: string | null;
+  measuredAt?: string | null;
+  receivedAt?: string | null;
+  cachedAt?: string | null;
   signalAgeMs: number;
   isFresh: boolean;
   onlineStatus: string;

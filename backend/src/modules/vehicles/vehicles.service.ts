@@ -28,6 +28,10 @@ import {
 } from '@shared/utils/pagination';
 import { interpretVehicleState } from './vehicle-state-interpreter';
 import {
+  projectTelemetryTimestampsFromLatestState,
+  rehydrateFleetMapTelemetryFreshness,
+} from './telemetry-timestamp.projection';
+import {
   buildFleetBookingContextFromRows,
   emptyFleetBookingSupplement,
   type FleetBookingContextRow,
@@ -254,6 +258,12 @@ export interface FleetMapVehicleDto
   latitude: number | null;
   longitude: number | null;
   lastSeenAt: string | null;
+  /** Provider measurement instant (canonical). */
+  measuredAt?: string | null;
+  /** SynqDrive ingest instant — diagnostic only. */
+  receivedAt?: string | null;
+  /** Fleet-map redis serve instant — diagnostic only. */
+  cachedAt?: string | null;
   signalAgeMs: number;
   isFresh: boolean;
   onlineStatus: string;
@@ -1402,7 +1412,11 @@ export class VehiclesService {
     try {
       const cached = await this.redis.get(cacheKey);
       if (cached) {
-        return JSON.parse(cached) as FleetMapVehicleDto[];
+        const parsed = JSON.parse(cached) as FleetMapVehicleDto[];
+        const cachedAtIso = new Date().toISOString();
+        return parsed.map((row) =>
+          rehydrateFleetMapTelemetryFreshness(row, Date.now(), cachedAtIso),
+        );
       }
     } catch (err: any) {
       this.logger.debug(`Fleet-map cache read failed (${err?.message ?? err})`);
@@ -1439,6 +1453,9 @@ export class VehiclesService {
             latitude: true,
             longitude: true,
             lastSeenAt: true,
+            sourceTimestamp: true,
+            providerFetchedAt: true,
+            updatedAt: true,
             speedKmh: true,
             isIgnitionOn: true,
             engineLoad: true,
@@ -1509,6 +1526,8 @@ export class VehiclesService {
         vehicle.fuelType === FuelType.ELECTRIC ||
         vehicle.fuelType === FuelType.PLUGIN_HYBRID;
 
+      const timestamps = projectTelemetryTimestampsFromLatestState(state);
+
       return {
         id: vehicle.id,
         licensePlate: vehicle.licensePlate ?? null,
@@ -1541,11 +1560,13 @@ export class VehiclesService {
         expectedStationId: vehicle.expectedStationId ?? null,
         latitude: state?.latitude ?? null,
         longitude: state?.longitude ?? null,
-        lastSeenAt: state?.lastSeenAt?.toISOString() ?? null,
-        signalAgeMs: interpreted.signalAgeMs,
-        isFresh: interpreted.isFresh,
-        onlineStatus: interpreted.onlineStatus,
-        telemetryFreshness: interpreted.telemetryFreshness,
+        lastSeenAt: timestamps.observedAtIso,
+        measuredAt: timestamps.measuredAt,
+        receivedAt: timestamps.receivedAt,
+        signalAgeMs: timestamps.signalAgeMs,
+        isFresh: timestamps.isFresh,
+        onlineStatus: timestamps.onlineStatus,
+        telemetryFreshness: timestamps.telemetryFreshness,
         displayState: interpreted.displayState,
         displayIgnition: interpreted.displayIgnition,
         isLiveTracking: interpreted.isLiveTracking,
@@ -1760,6 +1781,8 @@ export class VehiclesService {
         ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
         : null;
 
+    const timestamps = projectTelemetryTimestampsFromLatestState(state);
+
     return {
       id: vehicle.id,
       vin: vehicle.vin,
@@ -1767,8 +1790,10 @@ export class VehiclesService {
       model: vehicle.model,
       year: vehicle.year,
       station: vehicle.homeStation?.name ?? '',
-      online: interpreted.isFresh,
-      lastSignal: interpreted.lastSignal,
+      online: timestamps.isFresh,
+      lastSignal: timestamps.lastSignal,
+      measuredAt: timestamps.measuredAt,
+      receivedAt: timestamps.receivedAt,
       speed: this.nullableTelemetryScalar(state?.speedKmh),
       odometer: odometerKm,
       fuel: fuelPercent,
@@ -1793,10 +1818,10 @@ export class VehiclesService {
       odometerKm,
       fuelPercent,
       evSoc,
-      signalAgeMs: interpreted.signalAgeMs,
-      isFresh: interpreted.isFresh,
-      onlineStatus: interpreted.onlineStatus,
-      telemetryFreshness: interpreted.telemetryFreshness,
+      signalAgeMs: timestamps.signalAgeMs,
+      isFresh: timestamps.isFresh,
+      onlineStatus: timestamps.onlineStatus,
+      telemetryFreshness: timestamps.telemetryFreshness,
       displayState: interpreted.displayState,
       displayIgnition: interpreted.displayIgnition,
       isLiveTracking: interpreted.isLiveTracking,
@@ -1825,10 +1850,13 @@ export class VehiclesService {
 
     const tokenId = vehicle.dimoVehicle?.tokenId;
     if (!tokenId) {
+      const receivedAt = new Date().toISOString();
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
         speedKmh: null,
+        measuredAt: null,
+        receivedAt,
         lastSeenAt: null,
         source: 'cache' as const,
       };
@@ -1858,10 +1886,13 @@ export class VehiclesService {
         : data?.signalsLatest;
 
       if (!signals) {
+        const receivedAt = new Date().toISOString();
         return {
           latitude: vehicle.latestState?.latitude ?? null,
           longitude: vehicle.latestState?.longitude ?? null,
           speedKmh: null,
+          measuredAt: null,
+          receivedAt,
           lastSeenAt: null,
           source: 'cache' as const,
         };
@@ -1877,25 +1908,48 @@ export class VehiclesService {
       const lat = loc?.value?.latitude;
       const lng = loc?.value?.longitude;
       const speedKmh = typeof speedSig?.value === 'number' ? speedSig.value : null;
-      const lastSeenAt = signals.lastSeen ?? loc?.timestamp ?? null;
+      const providerMeasured = signals.lastSeen ?? loc?.timestamp ?? null;
+      const receivedAt = new Date().toISOString();
+      const measuredAt =
+        providerMeasured != null
+          ? projectTelemetryTimestampsFromLatestState({
+              lastSeenAt:
+                providerMeasured instanceof Date
+                  ? providerMeasured
+                  : new Date(providerMeasured),
+            }).measuredAt
+          : null;
 
       if (typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng)) {
-        return { latitude: lat, longitude: lng, speedKmh, lastSeenAt, source: 'dimo' as const };
+        return {
+          latitude: lat,
+          longitude: lng,
+          speedKmh,
+          measuredAt,
+          receivedAt,
+          lastSeenAt: measuredAt,
+          source: 'dimo' as const,
+        };
       }
 
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
         speedKmh,
-        lastSeenAt,
+        measuredAt,
+        receivedAt,
+        lastSeenAt: measuredAt,
         source: 'cache' as const,
       };
     } catch (err) {
       this.logger.warn(`Live GPS DIMO fetch failed for ${vehicleId}: ${(err as Error).message}`);
+      const receivedAt = new Date().toISOString();
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
         speedKmh: null,
+        measuredAt: null,
+        receivedAt,
         lastSeenAt: null,
         source: 'cache' as const,
       };

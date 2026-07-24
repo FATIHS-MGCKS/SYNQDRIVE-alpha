@@ -16,6 +16,9 @@ export function makeOperationalVehiclesService(deps: {
     ...deps.redis,
   };
   const fleetMapCache = new FleetMapCacheService(redis as never);
+  const connectivityRuntimeProjection = {
+    projectForVehicles: jest.fn().mockResolvedValue(new Map()),
+  };
   return new (VehiclesService as unknown as {
     new (...args: unknown[]): VehiclesService;
   })(
@@ -29,6 +32,7 @@ export function makeOperationalVehiclesService(deps: {
     stub(),
     stub(),
     stub(),
+    connectivityRuntimeProjection,
     stub(),
     stub(),
     fleetMapCache,

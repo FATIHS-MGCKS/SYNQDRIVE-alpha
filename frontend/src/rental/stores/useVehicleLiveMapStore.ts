@@ -26,6 +26,9 @@ export interface VehicleLiveMapData {
   lastLocationAt: number | null;
   isMoving: boolean;
   lastSignal: string;
+  measuredAt: string | null;
+  receivedAt: string | null;
+  cachedAt: string | null;
   signalAgeMs: number | null;
   isFresh: boolean;
   onlineStatus: OnlineStatus;
@@ -66,6 +69,9 @@ function createInitialState(): VehicleLiveMapData {
     lastLocationAt: null,
     isMoving: false,
     lastSignal: '',
+    measuredAt: null,
+    receivedAt: null,
+    cachedAt: null,
     signalAgeMs: null,
     isFresh: false,
     onlineStatus: 'OFFLINE',

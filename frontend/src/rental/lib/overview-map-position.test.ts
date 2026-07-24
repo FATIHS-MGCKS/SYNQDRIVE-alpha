@@ -48,6 +48,27 @@ describe('deriveOverviewMapPosition', () => {
     expect(view.mode).toBe('staticPositionOnly');
   });
 
+  it('does not label cache-sourced GPS as live even when telemetry is fresh', () => {
+    const view = deriveOverviewMapPosition({
+      boundVehicleId: VEHICLE,
+      boundOrgId: ORG,
+      vehicleId: VEHICLE,
+      orgId: ORG,
+      targetPosition: [9.48, 51.31],
+      lastConfirmedPosition: [9.48, 51.31],
+      staticLat: null,
+      staticLng: null,
+      loading: false,
+      error: null,
+      isLiveTracking: true,
+      isFresh: true,
+      gpsSource: 'cache',
+    });
+
+    expect(view.mode).not.toBe('livePosition');
+    expect(view.mode).toBe('lastKnownPosition');
+  });
+
   it('shows live position when bound and tracking', () => {
     const view = deriveOverviewMapPosition({
       boundVehicleId: VEHICLE,

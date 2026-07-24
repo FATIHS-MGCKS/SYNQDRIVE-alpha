@@ -16,8 +16,9 @@ import {
   parseTelemetrySpeedKmh,
 } from '../lib/telemetry-field-semantics';
 import {
-  useVehicleLiveMapStore,
-} from '../stores/useVehicleLiveMapStore';
+  mergeGpsMeasuredAt,
+  resolveTelemetryDisplayTime,
+} from '../lib/telemetry-timestamp-semantics';
 
 const GPS_POLL_MS = 5_000;
 const DASHBOARD_POLL_MS = 30_000;
@@ -112,6 +113,26 @@ export function useLiveVehicleTelemetry(
         const lng = data.longitude;
         if (lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
           applyGpsPoint(boundVehicleId, boundOrgId, lat, lng, data.speedKmh, data.source);
+          const merged = mergeGpsMeasuredAt(store, {
+            measuredAt: (data as { measuredAt?: string | null }).measuredAt,
+            lastSeenAt: (data as { lastSeenAt?: string | null }).lastSeenAt,
+            receivedAt: (data as { receivedAt?: string | null }).receivedAt,
+            source: data.source,
+          });
+          const displayTime = resolveTelemetryDisplayTime(merged);
+          store.patchIfBound(boundVehicleId, boundOrgId, {
+            measuredAt: displayTime.measuredAt,
+            receivedAt: displayTime.receivedAt,
+            lastSignal: displayTime.observedAtIso ?? store.lastSignal,
+            signalAgeMs: displayTime.freshness.signalAgeMs,
+            isFresh: displayTime.freshness.isLive,
+            onlineStatus:
+              displayTime.freshness.isLive
+                ? 'ONLINE'
+                : displayTime.freshness.isStandby
+                  ? 'STANDBY'
+                  : 'OFFLINE',
+          });
         }
       } catch {
         // Keep previous position on GPS-only errors.
@@ -135,6 +156,8 @@ export function useLiveVehicleTelemetry(
           engineLoad?: number;
           isIgnitionOn?: boolean | null;
           lastSignal?: string;
+          measuredAt?: string | null;
+          receivedAt?: string | null;
           signalAgeMs?: number;
           isFresh?: boolean;
           onlineStatus?: OnlineStatus;
@@ -191,16 +214,35 @@ export function useLiveVehicleTelemetry(
         );
         liveRef.current = backendLive;
 
+        const displayTime = resolveTelemetryDisplayTime({
+          measuredAt: data.measuredAt ?? null,
+          receivedAt: data.receivedAt ?? null,
+          lastSignal: data.lastSignal ?? null,
+          signalAgeMs:
+            typeof data.signalAgeMs === 'number' ? data.signalAgeMs : null,
+          onlineStatus: data.onlineStatus,
+        });
+
         store.patchIfBound(boundVehicleId, boundOrgId, {
           snapshot: snap,
           isLiveTracking: backendLive,
           loading: false,
           error: null,
-          lastSignal: data.lastSignal ?? store.lastSignal,
-          signalAgeMs:
-            typeof data.signalAgeMs === 'number' ? data.signalAgeMs : store.signalAgeMs,
-          isFresh: typeof data.isFresh === 'boolean' ? data.isFresh : store.isFresh,
-          onlineStatus,
+          measuredAt: displayTime.measuredAt,
+          receivedAt: displayTime.receivedAt,
+          lastSignal: displayTime.observedAtIso ?? data.lastSignal ?? store.lastSignal,
+          signalAgeMs: displayTime.freshness.signalAgeMs,
+          isFresh: displayTime.freshness.isLive,
+          onlineStatus:
+            data.onlineStatus === 'ONLINE' ||
+            data.onlineStatus === 'STANDBY' ||
+            data.onlineStatus === 'OFFLINE'
+              ? data.onlineStatus
+              : displayTime.freshness.isLive
+                ? 'ONLINE'
+                : displayTime.freshness.isStandby
+                  ? 'STANDBY'
+                  : 'OFFLINE',
           displayState,
           displayIgnition,
           displaySpeed: data.displaySpeed ?? snap.speed,
