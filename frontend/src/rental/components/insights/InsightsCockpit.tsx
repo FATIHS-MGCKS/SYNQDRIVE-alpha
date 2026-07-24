@@ -17,21 +17,23 @@ import {
   formatEvaluationsMoneyDisplay,
   resolveEvaluationsCockpitMoney,
 } from '../../lib/evaluations/evaluations-money';
-import { minorToWholeMajorUnits } from '@synq/money/money.util';
+import { minorToWholeMajorUnits, zeroMoney } from '@synq/money/money.util';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
   stationId?: string | null;
-  /** Canonical overdue receivables (minor + currency). */
-  financialRisk?: Money | null;
-  /** Canonical open receivables (minor + currency). */
+  /** Canonical open receivables total (minor + currency). */
   openReceivables?: Money | null;
-  /** @deprecated Use `financialRisk` — whole major EUR for backward compatibility. */
-  financialRiskEur?: number;
+  /** Canonical overdue receivables (minor + currency). */
+  overdueReceivables?: Money | null;
+  /** @deprecated Insight-only exposure — use `overdueReceivables` for invoice overdue balances. */
+  financialRisk?: Money | null;
   /** @deprecated Use `openReceivables` — whole major EUR for backward compatibility. */
   openReceivablesEur?: number;
+  /** @deprecated Use `overdueReceivables` — whole major EUR for backward compatibility. */
+  financialRiskEur?: number;
 }
 
 interface InsightKpiCardProps {
@@ -268,10 +270,11 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 export function InsightsCockpit({
   isDarkMode,
   stationId = null,
-  financialRisk = null,
   openReceivables = null,
-  financialRiskEur = 0,
+  overdueReceivables = null,
+  financialRisk = null,
   openReceivablesEur = 0,
+  financialRiskEur = 0,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
@@ -293,21 +296,21 @@ export function InsightsCockpit({
     [filteredInsights],
   );
 
-  const resolvedFinancialRisk = useMemo(
-    () => resolveEvaluationsCockpitMoney(financialRisk, financialRiskEur),
-    [financialRisk, financialRiskEur],
-  );
   const resolvedOpenReceivables = useMemo(
     () => resolveEvaluationsCockpitMoney(openReceivables, openReceivablesEur),
     [openReceivables, openReceivablesEur],
   );
+  const resolvedOverdueReceivables = useMemo(
+    () => resolveEvaluationsCockpitMoney(overdueReceivables, financialRiskEur),
+    [overdueReceivables, financialRiskEur],
+  );
 
-  const estimatedRisk = useMemo(() => {
-    return estimatedFinancialRiskMoney(resolvedFinancialRisk, [
-      ...businessRisks,
-      ...revenueLeakage,
-    ]);
-  }, [businessRisks, revenueLeakage, resolvedFinancialRisk]);
+  const estimatedInsightExposure = useMemo(() => {
+    return estimatedFinancialRiskMoney(
+      financialRisk ?? zeroMoney(resolvedOpenReceivables.currency),
+      [...businessRisks, ...revenueLeakage],
+    );
+  }, [businessRisks, revenueLeakage, financialRisk, resolvedOpenReceivables.currency]);
 
   const criticalBookings = businessRisks.filter((i) => i.severity === 'CRITICAL').length;
   const hasRun = response?.hasRun ?? false;
@@ -317,7 +320,7 @@ export function InsightsCockpit({
     <div className="space-y-4">
       <RunStateBanner hasRun={hasRun} stale={stale} error={error} loading={loading} />
 
-      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6">
         <InsightKpiCard
           label="Business Risks"
           value={String(businessRisks.length)}
@@ -326,18 +329,25 @@ export function InsightsCockpit({
           accent={businessRisks.length > 0}
         />
         <InsightKpiCard
-          label="Finanzrisiko (geschätzt)"
-          value={`≈ ${formatEvaluationsMoneyDisplay(estimatedRisk)}`}
+          label="Geschätzte Insight-Exposition"
+          value={`≈ ${formatEvaluationsMoneyDisplay(estimatedInsightExposure)}`}
           icon={TrendingDown}
           tone="watch"
-          accent={estimatedRisk.amountMinor > 0}
+          accent={estimatedInsightExposure.amountMinor > 0}
         />
         <InsightKpiCard
-          label="Offene Forderungen"
+          label="Offene Forderungen gesamt"
           value={formatEvaluationsMoneyDisplay(resolvedOpenReceivables)}
           icon={Zap}
           tone="info"
           accent={resolvedOpenReceivables.amountMinor > 0}
+        />
+        <InsightKpiCard
+          label="Überfällige Forderungen"
+          value={formatEvaluationsMoneyDisplay(resolvedOverdueReceivables)}
+          icon={AlertTriangle}
+          tone="critical"
+          accent={resolvedOverdueReceivables.amountMinor > 0}
         />
         <InsightKpiCard
           label="Kritische Buchungen"

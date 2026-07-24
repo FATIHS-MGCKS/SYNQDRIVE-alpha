@@ -1,6 +1,6 @@
 /**
  * Server-side financial KPI aggregation for Auswertungen metric responses.
- * Rules aligned with frontend `financial-insights.logic.ts`.
+ * Receivables rules: shared/receivables (outstanding balances, org timezone).
  */
 
 import {
@@ -11,19 +11,30 @@ import {
 } from '@modules/invoices/invoice-domain.util';
 import type { OrgInvoiceStatus } from '@prisma/client';
 import { moneyFromMinor, sumMoney } from '@synq/money/money.util';
+import {
+  computeReceivablesAnalytics,
+  filterOpenNotDueReceivables,
+  filterOpenReceivables,
+  filterOverdueReceivables,
+  resolveOutstandingMinor,
+  type ReceivableInvoiceRow,
+  type ReceivablesAnalyticsResult,
+} from '@synq/receivables/receivables-analytics';
 
-export interface FinancialKpiInvoiceRow {
-  id: string;
-  type: string;
-  status: string;
-  totalCents: number | null;
-  currency: string | null;
+export type FinancialKpiInvoiceRow = ReceivableInvoiceRow & {
   invoiceDate: Date | string | null;
-  dueDate: Date | string | null;
-  paidAt: Date | string | null;
   createdAt: Date | string | null;
   updatedAt?: Date | string | null;
-}
+};
+
+export {
+  computeReceivablesAnalytics,
+  filterOpenNotDueReceivables,
+  filterOpenReceivables,
+  filterOverdueReceivables,
+  resolveOutstandingMinor,
+};
+export type { ReceivablesAnalyticsResult };
 
 export function isEurInvoice(inv: FinancialKpiInvoiceRow): boolean {
   const c = (inv.currency ?? 'EUR').toUpperCase();
@@ -53,17 +64,47 @@ export function isExpenseInvoice(inv: FinancialKpiInvoiceRow): boolean {
   return !EXPENSE_EXCLUDED_STATUSES.includes(normalizeStatus(inv.status) as OrgInvoiceStatus);
 }
 
+/** @deprecated Use filterOpenReceivables — kept for callers expecting the old name. */
 export function isReceivableInvoice(inv: FinancialKpiInvoiceRow): boolean {
   if (!isOutgoingInvoiceType(inv.type)) return false;
   const status = normalizeStatus(inv.status);
   return !['DRAFT', 'CANCELLED', 'CANCELED', 'VOID', 'CREDITED', 'PAID'].includes(status);
 }
 
-export function isOverdueReceivable(inv: FinancialKpiInvoiceRow, now: Date): boolean {
-  if (!isReceivableInvoice(inv)) return false;
-  if (!inv.dueDate) return false;
-  const due = inv.dueDate instanceof Date ? inv.dueDate : new Date(String(inv.dueDate));
-  return !Number.isNaN(due.getTime()) && due.getTime() < now.getTime();
+/** All open outgoing receivables (outstanding > 0, EUR). */
+export function allOpenOutgoingReceivables(
+  invoices: FinancialKpiInvoiceRow[],
+  reportingCurrency = 'EUR',
+): FinancialKpiInvoiceRow[] {
+  return filterOpenReceivables(invoices, reportingCurrency);
+}
+
+/** Open receivables not yet due (org timezone). */
+export function openNotDueOutgoingReceivables(
+  invoices: FinancialKpiInvoiceRow[],
+  reference: Date,
+  timezone: string,
+  reportingCurrency = 'EUR',
+): FinancialKpiInvoiceRow[] {
+  return filterOpenNotDueReceivables(invoices, reference, timezone, reportingCurrency);
+}
+
+/** Open receivables total — alias for allOpenOutgoingReceivables. */
+export function openOutgoingReceivables(
+  invoices: FinancialKpiInvoiceRow[],
+  _reference?: Date,
+  reportingCurrency = 'EUR',
+): FinancialKpiInvoiceRow[] {
+  return allOpenOutgoingReceivables(invoices, reportingCurrency);
+}
+
+export function overdueOutgoingReceivables(
+  invoices: FinancialKpiInvoiceRow[],
+  reference: Date,
+  timezone = 'Europe/Berlin',
+  reportingCurrency = 'EUR',
+): FinancialKpiInvoiceRow[] {
+  return filterOverdueReceivables(invoices, reference, timezone, reportingCurrency);
 }
 
 export function sumCents(rows: FinancialKpiInvoiceRow[], currency = 'EUR'): number {
@@ -72,6 +113,12 @@ export function sumCents(rows: FinancialKpiInvoiceRow[], currency = 'EUR'): numb
     .map((row) => moneyFromMinor(row.totalCents ?? 0, row.currency ?? currency));
   if (amounts.length === 0) return 0;
   return sumMoney(amounts).amountMinor;
+}
+
+export function sumOutstandingCents(rows: FinancialKpiInvoiceRow[], currency = 'EUR'): number {
+  const amounts = rows.map((row) => moneyFromMinor(resolveOutstandingMinor(row), row.currency ?? currency));
+  if (amounts.length === 0) return 0;
+  return sumMoney(amounts, currency).amountMinor;
 }
 
 export function issuedRevenueInRange(
@@ -121,20 +168,6 @@ export function expensesInRange(
     const d = effectiveInvoiceDate(inv);
     return d != null && d >= from && d <= to;
   });
-}
-
-export function openOutgoingReceivables(
-  invoices: FinancialKpiInvoiceRow[],
-  now: Date,
-): FinancialKpiInvoiceRow[] {
-  return invoices.filter((inv) => isReceivableInvoice(inv) && isEurInvoice(inv) && !isOverdueReceivable(inv, now));
-}
-
-export function overdueOutgoingReceivables(
-  invoices: FinancialKpiInvoiceRow[],
-  now: Date,
-): FinancialKpiInvoiceRow[] {
-  return invoices.filter((inv) => isReceivableInvoice(inv) && isEurInvoice(inv) && isOverdueReceivable(inv, now));
 }
 
 export function latestInvoiceSourceAt(invoices: FinancialKpiInvoiceRow[]): Date | null {

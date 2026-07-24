@@ -124,8 +124,8 @@ describe('buildBusinessPulseSlices invoice classification', () => {
       ],
     });
 
-    expect(slices['open-receivables'].count).toBe(2);
-    expect(slices['open-receivables'].valueCents).toBe(9_000);
+    expect(slices['open-receivables'].count).toBe(3);
+    expect(slices['open-receivables'].valueCents).toBe(14_000);
     expect(slices['overdue-receivables'].count).toBe(1);
     expect(slices['overdue-receivables'].valueCents).toBe(5_000);
   });

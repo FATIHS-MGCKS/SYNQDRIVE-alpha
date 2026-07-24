@@ -15,6 +15,7 @@ import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluati
 import { resolveEvaluationsMetricCalculationVersion } from '@synq/evaluations-metrics/evaluations-metric-calculation-versions';
 import { EvaluationsPeriodService } from './evaluations-period.service';
 import {
+  computeReceivablesAnalytics,
   expensesInRange,
   FINANCIAL_KPI_EXCLUSIONS,
   isEurInvoice,
@@ -24,7 +25,9 @@ import {
   overdueOutgoingReceivables,
   paidRevenueInRange,
   sumCents,
+  sumOutstandingCents,
   type FinancialKpiInvoiceRow,
+  type ReceivablesAnalyticsResult,
 } from './financial-kpi.logic';
 
 const SOURCE_STALE_MS = 24 * 60 * 60 * 1000;
@@ -39,6 +42,7 @@ export interface FinancialMtdKpiBundle {
     yoySamePeriod: EvaluationsPeriodWindow;
   } | null;
   metrics: EvaluationsMetricResponse[];
+  receivablesAnalytics: ReceivablesAnalyticsResult | null;
 }
 
 @Injectable()
@@ -89,8 +93,15 @@ export class EvaluationsFinancialKpiService {
       const prevRevenueRows = mtdRevenueInRange(invoices, prevFrom, prevTo);
       const mtdExpenseRows = expensesInRange(invoices, mtdFrom, mtdTo);
       const mtdPaidRows = paidRevenueInRange(invoices, mtdFrom, mtdTo);
-      const openRows = openOutgoingReceivables(invoices, reference);
-      const overdueRows = overdueOutgoingReceivables(invoices, reference);
+      const timezone = periodBundle.timezone.effective;
+      const receivablesAnalytics = computeReceivablesAnalytics({
+        invoices,
+        reference,
+        timezone,
+        reportingCurrency: 'EUR',
+      });
+      const openRows = openOutgoingReceivables(invoices, reference, 'EUR');
+      const overdueRows = overdueOutgoingReceivables(invoices, reference, timezone, 'EUR');
 
       const mtdRevenueCents = sumCents(mtdRevenueRows);
       const mtdExpenseCents = sumCents(mtdExpenseRows);
@@ -101,8 +112,16 @@ export class EvaluationsFinancialKpiService {
       const baseCoverage = {
         rowsObserved: invoices.length,
         rowsExpected: null,
-        missingSources: nonEurCount > 0 ? [FINANCIAL_KPI_EXCLUSIONS.nonEur] : [],
-        ratio: nonEurCount > 0 ? (invoices.length - nonEurCount) / invoices.length : 1,
+        missingSources: [
+          ...(nonEurCount > 0 ? [FINANCIAL_KPI_EXCLUSIONS.nonEur] : []),
+          ...(receivablesAnalytics.dataQuality.missingDueDateCount > 0
+            ? ['receivables_missing_due_date']
+            : []),
+        ],
+        ratio:
+          nonEurCount > 0 || receivablesAnalytics.dataQuality.missingDueDateCount > 0
+            ? (invoices.length - nonEurCount) / Math.max(invoices.length, 1)
+            : 1,
       };
 
       const freshness = {
@@ -204,8 +223,13 @@ export class EvaluationsFinancialKpiService {
         buildMoney('fin.mtd_expenses', mtdExpenseCents, mtdPeriod),
         buildMoney('fin.mtd_net_result', mtdNetCents, mtdPeriod),
         profitMarginMetric(),
-        buildMoney('fin.open_receivables', sumCents(openRows), snapshotPeriod),
-        buildMoney('fin.overdue_receivables', sumCents(overdueRows), snapshotPeriod),
+        buildMoney('fin.open_receivables', sumOutstandingCents(openRows), snapshotPeriod),
+        buildMoney('fin.overdue_receivables', sumOutstandingCents(overdueRows), snapshotPeriod),
+        buildMoney(
+          'fin.total_outstanding_receivables',
+          receivablesAnalytics.metrics.openTotal.amountMinor,
+          snapshotPeriod,
+        ),
       ];
 
       return {
@@ -218,6 +242,7 @@ export class EvaluationsFinancialKpiService {
           yoySamePeriod: periodBundle.yoySamePeriod,
         },
         metrics,
+        receivablesAnalytics,
       };
     } catch (err: unknown) {
       this.logger.warn(
@@ -256,6 +281,7 @@ export class EvaluationsFinancialKpiService {
           errorMetric('fin.mtd_expenses'),
           errorMetric('fin.mtd_net_result'),
         ],
+        receivablesAnalytics: null,
       };
     }
   }
@@ -268,6 +294,8 @@ export class EvaluationsFinancialKpiService {
         type: true,
         status: true,
         totalCents: true,
+        paidCents: true,
+        outstandingCents: true,
         currency: true,
         invoiceDate: true,
         dueDate: true,

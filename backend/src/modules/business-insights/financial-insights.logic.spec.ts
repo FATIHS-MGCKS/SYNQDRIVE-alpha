@@ -54,12 +54,12 @@ describe('financial-insights.logic (Insights cockpit)', () => {
     expect(open.map((r) => r.id).sort()).toEqual(['mtd', 'old']);
   });
 
-  it('overdue filters by dueDate before now', () => {
+  it('overdue filters by dueDate in org timezone', () => {
     const rows = [
       inv({ id: 'over', dueDate: '2026-06-01', status: 'SENT' }),
       inv({ id: 'ok', dueDate: '2026-06-30', status: 'SENT' }),
     ];
-    expect(overdueOutgoingReceivables(rows, now).map((r) => r.id)).toEqual(['over']);
+    expect(overdueOutgoingReceivables(rows, now, 'Europe/Berlin').map((r) => r.id)).toEqual(['over']);
   });
 
   it('issued revenue MTD excludes draft and cancelled', () => {

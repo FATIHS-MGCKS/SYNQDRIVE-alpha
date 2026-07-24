@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'receivables-analytics-v49809-2026-07-24',
+    version: '4.9.809',
+    title: 'V4.9.809 — Forderungslogik Auswertungen (Prompt 11/54)',
+    summary: [
+      'Kanonisches Modul `shared/receivables`: offene/überfällige/teilbezahlte/strittige/gestundete/uneinbringliche Forderungen, Storno, Gutschriften, Erstattungen + Aging-Buckets.',
+      'Salden auf `outstandingCents` (Fallback total − paid); Überfälligkeit per Organisationszeitzone; fehlende Fälligkeit als Datenqualitätswarnung.',
+      'Backend `EvaluationsFinancialKpiService` lädt paid/outstanding; API-Bundle enthält `receivablesAnalytics`.',
+      'UI: Forderungsanalyse-Sektion, korrigierte Labels (Offene Forderungen gesamt, Überfällige Forderungen, Geschätzte Insight-Exposition).',
+      'Tests: Teilzahlung, Überzahlung, Gutschrift, Storno, Aging, Zeitzonen, Multi-Currency.',
+      'Doku: `docs/architecture/finance/receivables-analytics.md`.',
+    ],
+    reason: 'Auswertungen summierten Forderungen auf Bruttobetrag und trennte offen/überfällig fachlich falsch; Cockpit vermischte Insight-Risiko mit überfälligen Rechnungen.',
+    previousBehavior: '`openOutgoingReceivables` schloss überfällige aus „offen“; `sumCents` auf totalCents; UTC-Vergleich für Fälligkeit; „Finanzrisiko (geschätzt)“ enthielt überfällige Forderungen.',
+    details:
+      'shared/receivables/*, financial-kpi.logic.ts, evaluations-financial-kpi.service.ts, financial-insights.logic.ts, FinancialInsightsView, InsightsCockpit, businessPulseSliceBuilder.',
+    affectsArchitecture: true,
+    module: 'Finance / Auswertungen',
+    createdAt: '2026-07-24T22:00:00.000Z',
+  },
+  {
     id: 'evaluations-money-migration-v49808-2026-07-24',
     version: '4.9.808',
     title: 'V4.9.808 — Auswertungen Legacy-Geldfelder Migration (Prompt 10/54)',

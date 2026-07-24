@@ -19,6 +19,7 @@ import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import {
+  computeReceivablesAnalytics,
   expensesInRange,
   mtdRevenueInRange,
   openOutgoingReceivables,
@@ -26,6 +27,7 @@ import {
   paidRevenueInRange,
   sumCents,
 } from '../lib/financial-insights.logic';
+import type { ReceivablesAgingBucket } from '@synq/receivables/receivables-invoice.contract';
 import { useEvaluationsReportingPeriods } from '../lib/evaluations/useEvaluationsReportingPeriods';
 import { reportingBundleToFinancialRanges } from '../lib/evaluations/evaluations-period.client';
 import { chartMajorFromMinor } from '../lib/evaluations/evaluations-money';
@@ -51,6 +53,8 @@ interface InvoiceLite {
   bookingId: string | null;
   title: string | null;
   totalCents: number | null;
+  paidCents?: number | null;
+  outstandingCents?: number | null;
   subtotalCents: number | null;
   taxCents: number | null;
   currency: string | null;
@@ -83,6 +87,15 @@ const TYPE_META: Record<string, { label: string; icon: typeof ArrowUpRight; tone
   OUTGOING_FINAL: { label: 'Final invoice', icon: ArrowUpRight, tone: 'revenue' },
   INCOMING_VENDOR: { label: 'Vendor invoice', icon: ArrowDownLeft, tone: 'expense' },
   INCOMING_UPLOADED: { label: 'Uploaded invoice', icon: ArrowDownLeft, tone: 'expense' },
+};
+
+const AGING_BUCKET_LABELS: Record<ReceivablesAgingBucket, { de: string; en: string }> = {
+  not_due: { de: 'Nicht fällig', en: 'Not due' },
+  overdue_1_7: { de: '1–7 Tage überfällig', en: '1–7 days overdue' },
+  overdue_8_30: { de: '8–30 Tage überfällig', en: '8–30 days overdue' },
+  overdue_31_60: { de: '31–60 Tage überfällig', en: '31–60 days overdue' },
+  overdue_61_90: { de: '61–90 Tage überfällig', en: '61–90 days overdue' },
+  overdue_90_plus: { de: '> 90 Tage überfällig', en: '> 90 days overdue' },
 };
 
 const STATUS_META: Record<string, { label: string; tone: 'paid' | 'unpaid' | 'overdue' | 'neutral' }> = {
@@ -222,8 +235,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // Bucket invoices by current vs previous month and by direction so we can
   // compute MTD KPIs + month-over-month deltas without re-iterating the list.
   const bucketed = useMemo(() => {
-    const outstandingRevenue = openOutgoingReceivables(invoices, now);
-    const overdueRevenue = overdueOutgoingReceivables(invoices, now);
+    const openTotal = openOutgoingReceivables(invoices, now);
+    const overdueRevenue = overdueOutgoingReceivables(invoices, now, reportingTimezone);
     const mtdRevenueRows = mtdRevenueInRange(invoices, monthStart, now);
     const mtdPaid = paidRevenueInRange(invoices, monthStart, now);
     const mtdExpenseRows = expensesInRange(invoices, monthStart, now);
@@ -234,20 +247,41 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       mtdExpense: mtdExpenseRows,
       prevRevenue: prevRevenueRows,
       prevExpense: expensesInRange(invoices, prevMonthStart, prevMonthEnd),
-      outstandingRevenue,
+      openTotal,
       overdueRevenue,
       mtdPaid,
       mtdInvoices: mtdRevenueRows,
     };
-  }, [invoices, monthStart, prevMonthStart, prevMonthEnd, now]);
+  }, [invoices, monthStart, prevMonthStart, prevMonthEnd, now, reportingTimezone]);
+
+  const receivablesAnalytics = useMemo(
+    () =>
+      computeReceivablesAnalytics({
+        invoices,
+        reference: now,
+        timezone: reportingTimezone,
+        reportingCurrency: 'EUR',
+      }),
+    [invoices, now, reportingTimezone],
+  );
 
   const mtdRevenueCents = useMemo(() => sumCents(bucketed.mtdRevenue), [bucketed.mtdRevenue]);
   const mtdPaidRevenueCents = useMemo(() => sumCents(bucketed.mtdPaid), [bucketed.mtdPaid]);
   const mtdExpenseCents = useMemo(() => sumCents(bucketed.mtdExpense), [bucketed.mtdExpense]);
   const prevRevenueCents = useMemo(() => sumCents(bucketed.prevRevenue), [bucketed.prevRevenue]);
   const prevExpenseCents = useMemo(() => sumCents(bucketed.prevExpense), [bucketed.prevExpense]);
-  const outstandingCents = useMemo(() => sumCents(bucketed.outstandingRevenue), [bucketed.outstandingRevenue]);
-  const overdueCents = useMemo(() => sumCents(bucketed.overdueRevenue), [bucketed.overdueRevenue]);
+  const outstandingCents = useMemo(
+    () => receivablesAnalytics.metrics.openTotal.amountMinor,
+    [receivablesAnalytics],
+  );
+  const openNotDueCents = useMemo(
+    () => receivablesAnalytics.metrics.openNotDue.amountMinor,
+    [receivablesAnalytics],
+  );
+  const overdueCents = useMemo(
+    () => receivablesAnalytics.metrics.overdue.amountMinor,
+    [receivablesAnalytics],
+  );
   const profitCents = mtdRevenueCents - mtdExpenseCents;
   const profitMargin = mtdRevenueCents > 0 ? (profitCents / mtdRevenueCents) * 100 : 0;
   const mtdOpenInvoices = useMemo(
@@ -443,10 +477,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
       <PageHeader title={t('nav.financialInsights')} />
-      <InsightsCockpit
+        <InsightsCockpit
         isDarkMode={isDarkMode}
         openReceivables={moneyFromMinor(outstandingCents, 'EUR')}
-        financialRisk={moneyFromMinor(overdueCents, 'EUR')}
+        overdueReceivables={moneyFromMinor(overdueCents, 'EUR')}
       />
 
       <div className="pt-2 border-t border-border">
@@ -505,20 +539,20 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           subtle={`Margin ${fmtPct(profitMargin, 1)} · basierend auf Issued Revenue`}
         />
         <KpiCard
-          label="Open Receivables"
+          label={locale === 'de' ? 'Offene Forderungen gesamt' : 'Open receivables (total)'}
           value={fmtEUR(outstandingCents, intlLocale)}
           icon={Clock}
           color="purple"
           isDarkMode={isDarkMode}
-          subtle={`${bucketed.outstandingRevenue.length} offen gesamt`}
+          subtle={`${receivablesAnalytics.metrics.openTotal.invoiceCount} ${locale === 'de' ? 'offen' : 'open'}`}
         />
         <KpiCard
-          label="Overdue"
+          label={locale === 'de' ? 'Überfällige Forderungen' : 'Overdue receivables'}
           value={fmtEUR(overdueCents, intlLocale)}
           icon={Clock}
           color="red"
           isDarkMode={isDarkMode}
-          subtle={`${bucketed.overdueRevenue.length} überfällig`}
+          subtle={`${receivablesAnalytics.metrics.overdue.invoiceCount} ${locale === 'de' ? 'überfällig' : 'overdue'}`}
         />
       </div>
 
@@ -531,6 +565,82 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         <SummaryCard label="Expense invoices" value={String(bucketed.mtdExpense.length)} hint={monthLabel} />
         <SummaryCard label="Paid invoices MTD" value={String(bucketed.mtdPaid.length)} hint="nach paidAt" />
         <SummaryCard label="Open invoices" value={String(mtdOpenInvoices)} hint="This month" />
+      </div>
+
+      {receivablesAnalytics.dataQuality.missingDueDateCount > 0 && (
+        <div className="rounded-xl p-3 flex items-start gap-2 sq-tone-warning">
+          <Icon name="alert-circle" className="w-4 h-4 mt-0.5 shrink-0" />
+          <div className="text-xs">
+            <p className="font-semibold">
+              {locale === 'de' ? 'Datenqualität: fehlende Fälligkeitsdaten' : 'Data quality: missing due dates'}
+            </p>
+            <p className="text-muted-foreground mt-0.5">
+              {receivablesAnalytics.dataQuality.missingDueDateCount}{' '}
+              {locale === 'de' ? 'offene Rechnungen ohne Fälligkeit' : 'open invoices without due date'} ·{' '}
+              {fmtEUR(receivablesAnalytics.dataQuality.missingDueDateOutstandingMinor, intlLocale)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground mb-1">
+          {locale === 'de' ? 'Forderungsanalyse' : 'Receivables analytics'}
+        </h3>
+        <p className="text-[10px] text-muted-foreground mb-4">
+          {locale === 'de'
+            ? 'Salden auf Basis offener Restbeträge · Überfälligkeit nach Organisationszeitzone'
+            : 'Balances from outstanding amounts · overdue based on org timezone'}
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 mb-4">
+          {(
+            [
+              ['openNotDue', locale === 'de' ? 'Noch nicht fällig' : 'Not yet due'],
+              ['partiallyPaid', locale === 'de' ? 'Teilweise bezahlt' : 'Partially paid'],
+              ['disputed', locale === 'de' ? 'Strittig' : 'Disputed'],
+              ['deferred', locale === 'de' ? 'Gestundet' : 'Deferred'],
+              ['uncollectible', locale === 'de' ? 'Uneinbringlich' : 'Uncollectible'],
+              ['cancelled', locale === 'de' ? 'Storniert' : 'Cancelled'],
+              ['credits', locale === 'de' ? 'Gutschriften' : 'Credits'],
+              ['refunds', locale === 'de' ? 'Erstattungen' : 'Refunds'],
+            ] as const
+          ).map(([key, labelText]) => {
+            const bucket = receivablesAnalytics.metrics[key];
+            return (
+              <SummaryCard
+                key={key}
+                label={labelText}
+                value={fmtEUR(bucket.amountMinor, intlLocale)}
+                hint={`${bucket.invoiceCount} ${locale === 'de' ? 'Rechnungen' : 'invoices'}`}
+              />
+            );
+          })}
+        </div>
+        <h4 className="text-[11px] font-semibold text-foreground mb-2">
+          {locale === 'de' ? 'Aging (überfällige Tage)' : 'Aging (days overdue)'}
+        </h4>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          {(Object.keys(AGING_BUCKET_LABELS) as ReceivablesAgingBucket[]).map((bucketKey) => {
+            const bucket = receivablesAnalytics.aging[bucketKey];
+            const labels = AGING_BUCKET_LABELS[bucketKey];
+            return (
+              <SummaryCard
+                key={bucketKey}
+                label={locale === 'de' ? labels.de : labels.en}
+                value={fmtEUR(bucket.amountMinor, intlLocale)}
+                hint={`${bucket.invoiceCount} ${locale === 'de' ? 'Positionen' : 'items'}`}
+              />
+            );
+          })}
+        </div>
+        {receivablesAnalytics.dataQuality.incompatibleCurrencyCount > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-3">
+            {receivablesAnalytics.dataQuality.incompatibleCurrencyCount}{' '}
+            {locale === 'de'
+              ? 'Rechnungen in anderer Währung ausgeschlossen (nur EUR-Auswertung).'
+              : 'invoices in other currencies excluded (EUR reporting only).'}
+          </p>
+        )}
       </div>
 
       {/* ─── Daily chart ─── */}
@@ -651,7 +761,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
                 </span>
               )}
             </SnapRow>
-            <SnapRow label="Outstanding">
+            <SnapRow label={locale === 'de' ? 'Noch nicht fällig' : 'Not yet due'}>
+              <span className="text-xs font-bold text-foreground">{fmtEUR(openNotDueCents, intlLocale)}</span>
+            </SnapRow>
+            <SnapRow label={locale === 'de' ? 'Offen gesamt' : 'Open total'}>
               <span className="text-xs font-bold text-foreground">{fmtEUR(outstandingCents, intlLocale)}</span>
             </SnapRow>
             <SnapRow label="Avg invoice">

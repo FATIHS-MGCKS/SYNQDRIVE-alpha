@@ -8,6 +8,7 @@ export default defineConfig({
       '@synq/evaluations-metrics': path.resolve(__dirname, '../shared/evaluations-metrics'),
       '@synq/evaluations-periods': path.resolve(__dirname, '../shared/evaluations-periods'),
       '@synq/money': path.resolve(__dirname, '../shared/money'),
+      '@synq/receivables': path.resolve(__dirname, '../shared/receivables'),
     },
   },
   test: {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeReceivablesAnalytics,
   expensesInRange,
   mtdRevenueInRange,
   openOutgoingReceivables,
@@ -71,13 +72,28 @@ describe('financial-insights scenarios (characterization)', () => {
     expect(sumCents(exp)).toBe(2_000);
   });
 
-  it('overdue and open receivables are classified separately', () => {
-    const open = openOutgoingReceivables(SCENARIO_OVERDUE_PARTIAL.invoices, FIXTURE_NOW);
-    const overdue = overdueOutgoingReceivables(SCENARIO_OVERDUE_PARTIAL.invoices, FIXTURE_NOW);
-    expect(overdue.map((r) => r.id)).toEqual(['overdue']);
-    expect(open.map((r) => r.id)).toEqual(['open-ok']);
-    expect(sumCents(overdue)).toBe(25_000);
-    expect(sumCents(open)).toBe(10_000);
+  it('overdue and open receivables are classified separately by outstanding balance', () => {
+    const invoices = [
+      {
+        ...SCENARIO_OVERDUE_PARTIAL.invoices[0],
+        paidCents: 0,
+        outstandingCents: 25_000,
+      },
+      {
+        ...SCENARIO_OVERDUE_PARTIAL.invoices[1],
+        paidCents: 0,
+        outstandingCents: 10_000,
+      },
+    ];
+    const analytics = computeReceivablesAnalytics({
+      invoices,
+      reference: FIXTURE_NOW,
+      timezone: 'Europe/Berlin',
+    });
+    expect(analytics.metrics.overdue.invoiceCount).toBe(1);
+    expect(analytics.metrics.overdue.amountMinor).toBe(25_000);
+    expect(analytics.metrics.openNotDue.amountMinor).toBe(10_000);
+    expect(analytics.metrics.openTotal.amountMinor).toBe(35_000);
   });
 
   it('profit characterization: revenue minus expenses for full scenario', () => {

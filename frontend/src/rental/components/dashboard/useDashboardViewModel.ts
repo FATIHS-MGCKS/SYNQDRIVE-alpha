@@ -845,6 +845,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
               ),
             }
           : undefined,
+        timezone: reportingRanges?.timezone,
       }),
     [invoicesApi, locale, dashboardNow, reportingRanges, reportingPeriodBundle],
   );
