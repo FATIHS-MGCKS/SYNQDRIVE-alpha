@@ -20,6 +20,10 @@ import { DataProcessingReviewEntityType } from '@prisma/client';
 import { DataProcessingReviewWorkflowService } from '../review-workflow/review-workflow.service';
 import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
 import { DenySwitchService } from '../../deny-switch/deny-switch.service';
+import { PolicyLifecycleActivationGuardService } from './policy-lifecycle-activation-guard.service';
+import { assertExtensionSourceAllowed, assertNewVersionSourceAllowed } from './policy-lifecycle-rollback-guard';
+import { enrichPolicyWithStatusSemantics } from './policy-lifecycle-status-semantics';
+import { POLICY_LIFECYCLE_REASON_CODES } from './policy-lifecycle-semantics.constants';
 
 type ActivityRecord = Prisma.ProcessingActivityGetPayload<object>;
 
@@ -33,6 +37,7 @@ export class ProcessingActivityLifecycleService {
     @Optional() private readonly reviewWorkflow?: DataProcessingReviewWorkflowService,
     @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
     @Optional() private readonly denySwitch?: DenySwitchService,
+    @Optional() private readonly activationGuard?: PolicyLifecycleActivationGuardService,
   ) {}
 
   async create(orgId: string, data: {
@@ -172,7 +177,16 @@ export class ProcessingActivityLifecycleService {
   async activate(orgId: string, id: string, input: PolicyActivationInput = {}): Promise<ActivityRecord> {
     const record = await this.findOrThrow(orgId, id);
     await this.assertReviewComplete(record);
-    return this.lifecycle.activateVersion({
+    if (this.activationGuard) {
+      await this.activationGuard.assertActivationPrerequisites({
+        orgId,
+        processingActivityId: record.id,
+        lifecycleStatus: record.status,
+        versionNumber: record.versionNumber,
+        contentFingerprint: record.contentFingerprint,
+      });
+    }
+    const activated = await this.lifecycle.activateVersion({
       entityKind: 'PROCESSING_ACTIVITY',
       orgId,
       record,
@@ -204,6 +218,50 @@ export class ProcessingActivityLifecycleService {
           validFrom: event.input?.validFrom,
         }),
     });
+    return enrichPolicyWithStatusSemantics(activated);
+  }
+
+  async resume(orgId: string, id: string, input: PolicyTransitionInput = {}): Promise<ActivityRecord> {
+    const record = await this.findOrThrow(orgId, id);
+    if (record.status !== PrivacyPolicyLifecycleStatus.SUSPENDED) {
+      throw new PolicyNotFoundException('ProcessingActivity');
+    }
+
+    const resumed = await this.lifecycle.transitionVersion({
+      orgId,
+      record,
+      toStatus: PrivacyPolicyLifecycleStatus.ACTIVE,
+      input: {
+        ...input,
+        reason: input.reason ?? POLICY_LIFECYCLE_REASON_CODES.RESUMED.SUSPENSION_LIFTED,
+      },
+      patch: { suspendedAt: null, suspensionReason: null },
+      loadCurrent: (tx, activityId) =>
+        tx.processingActivity.findFirst({ where: { id: activityId, organizationId: orgId } }),
+      applyTransition: (tx, current, toStatus, patch) =>
+        tx.processingActivity.update({
+          where: { id: current.id },
+          data: { status: toStatus, ...patch },
+        }),
+      recordEvent: (tx, current, event) =>
+        this.events.recordProcessingActivityEvent(tx, current.id, {
+          organizationId: orgId,
+          eventType: event.eventType,
+          previousStatus: event.previousStatus,
+          newStatus: event.newStatus,
+          actorUserId: event.input?.actorUserId,
+          reason: event.input?.reason,
+        }),
+    });
+
+    if (this.denySwitch) {
+      await this.denySwitch.deactivateForSuspensionResume({
+        organizationId: orgId,
+        processingActivityId: resumed.id,
+      });
+    }
+
+    return enrichPolicyWithStatusSemantics(resumed);
   }
 
   async suspend(orgId: string, id: string, reason: string, input: PolicyTransitionInput = {}): Promise<ActivityRecord> {
@@ -287,15 +345,7 @@ export class ProcessingActivityLifecycleService {
     description?: string | null;
   }): Promise<ActivityRecord> {
     const source = await this.findOrThrow(orgId, sourceId);
-    if (
-      source.status !== PrivacyPolicyLifecycleStatus.ACTIVE &&
-      source.status !== PrivacyPolicyLifecycleStatus.SUSPENDED &&
-      source.status !== PrivacyPolicyLifecycleStatus.REJECTED &&
-      source.status !== PrivacyPolicyLifecycleStatus.SUPERSEDED &&
-      source.status !== PrivacyPolicyLifecycleStatus.REVOKED
-    ) {
-      throw new PolicyNotFoundException('ProcessingActivity');
-    }
+    assertNewVersionSourceAllowed(source.status);
 
     const latest = await this.prisma.processingActivity.findFirst({
       where: { policyFamilyId: source.policyFamilyId },
@@ -334,6 +384,29 @@ export class ProcessingActivityLifecycleService {
       });
 
       return created;
+    });
+  }
+
+  /**
+   * Extends validity of an ACTIVE policy by creating a successor draft version.
+   * Material validity changes require governance review — not in-place patches.
+   */
+  async extendViaNewVersion(
+    orgId: string,
+    sourceId: string,
+    data: { validUntil: Date; title?: string; description?: string | null },
+  ): Promise<ActivityRecord> {
+    const source = await this.findOrThrow(orgId, sourceId);
+    assertExtensionSourceAllowed(source.status);
+
+    const created = await this.createNewVersion(orgId, sourceId, {
+      title: data.title ?? source.title,
+      description: data.description ?? source.description,
+    });
+
+    return this.prisma.processingActivity.update({
+      where: { id: created.id },
+      data: { validUntil: data.validUntil },
     });
   }
 

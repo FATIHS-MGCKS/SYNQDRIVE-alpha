@@ -32,17 +32,51 @@ export const POLICY_LIFECYCLE_TRANSITIONS: Readonly<
     PrivacyPolicyLifecycleStatus.REVOKED,
     PrivacyPolicyLifecycleStatus.EXPIRED,
   ],
-  [PrivacyPolicyLifecycleStatus.SUSPENDED]: [PrivacyPolicyLifecycleStatus.ACTIVE],
+  [PrivacyPolicyLifecycleStatus.SUSPENDED]: [
+    PrivacyPolicyLifecycleStatus.ACTIVE,
+    PrivacyPolicyLifecycleStatus.EXPIRED,
+  ],
   [PrivacyPolicyLifecycleStatus.SUPERSEDED]: [],
   [PrivacyPolicyLifecycleStatus.REVOKED]: [],
   [PrivacyPolicyLifecycleStatus.EXPIRED]: [],
   [PrivacyPolicyLifecycleStatus.REJECTED]: [],
 };
 
+/** Explicitly forbidden cross-status transitions (semantic guard). */
+export const POLICY_FORBIDDEN_TRANSITIONS: ReadonlyArray<{
+  from: PrivacyPolicyLifecycleStatus;
+  to: PrivacyPolicyLifecycleStatus;
+  reason: string;
+}> = [
+  {
+    from: PrivacyPolicyLifecycleStatus.REJECTED,
+    to: PrivacyPolicyLifecycleStatus.REVOKED,
+    reason: 'REJECTED was never operational and cannot appear as REVOKED',
+  },
+  {
+    from: PrivacyPolicyLifecycleStatus.REJECTED,
+    to: PrivacyPolicyLifecycleStatus.ACTIVE,
+    reason: 'REJECTED policies cannot be activated',
+  },
+  {
+    from: PrivacyPolicyLifecycleStatus.REVOKED,
+    to: PrivacyPolicyLifecycleStatus.ACTIVE,
+    reason: 'REVOKED policies cannot be reactivated',
+  },
+  {
+    from: PrivacyPolicyLifecycleStatus.DRAFT,
+    to: PrivacyPolicyLifecycleStatus.ACTIVE,
+    reason: 'DRAFT must pass review before activation',
+  },
+];
+
 export function isPolicyLifecycleTransitionAllowed(
   from: PrivacyPolicyLifecycleStatus,
   to: PrivacyPolicyLifecycleStatus,
 ): boolean {
+  if (POLICY_FORBIDDEN_TRANSITIONS.some((f) => f.from === from && f.to === to)) {
+    return false;
+  }
   return (POLICY_LIFECYCLE_TRANSITIONS[from] ?? []).includes(to);
 }
 

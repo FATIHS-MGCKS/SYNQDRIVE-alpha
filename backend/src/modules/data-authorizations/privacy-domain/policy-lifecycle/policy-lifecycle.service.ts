@@ -315,6 +315,17 @@ export class PolicyLifecycleService {
 
     this.validator.assertTransition(record.status, toStatus);
 
+    if (
+      record.status === PrivacyPolicyLifecycleStatus.REJECTED &&
+      toStatus === PrivacyPolicyLifecycleStatus.REVOKED
+    ) {
+      throwPolicyLifecycleError(
+        POLICY_LIFECYCLE_ERROR_CODES.REJECTED_CANNOT_REVOKE,
+        'REJECTED policies were never operational and cannot be marked as REVOKED.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
     if (toStatus === PrivacyPolicyLifecycleStatus.REVOKED) {
       this.validator.assertRevocationReason(input.reason);
       this.validator.assertNotRevokedReactivation(record.status);
@@ -355,6 +366,9 @@ export class PolicyLifecycleService {
       if (toStatus === PrivacyPolicyLifecycleStatus.SUSPENDED) {
         statusPatch.suspendedAt = now;
         statusPatch.suspensionReason = input.reason?.trim();
+      }
+      if (toStatus === PrivacyPolicyLifecycleStatus.EXPIRED) {
+        statusPatch.isCurrentVersion = false;
       }
       if (toStatus === PrivacyPolicyLifecycleStatus.SUPERSEDED) {
         statusPatch.supersededById = input.supersededById;

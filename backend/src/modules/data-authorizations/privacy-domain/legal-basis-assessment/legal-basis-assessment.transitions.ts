@@ -29,7 +29,7 @@ export const LEGAL_BASIS_ASSESSMENT_TRANSITIONS = {
     return [PrivacyPolicyLifecycleStatus.SUSPENDED, PrivacyPolicyLifecycleStatus.SUPERSEDED, PrivacyPolicyLifecycleStatus.REVOKED, PrivacyPolicyLifecycleStatus.EXPIRED];
   },
   get [PrivacyPolicyLifecycleStatus.SUSPENDED]() {
-    return [PrivacyPolicyLifecycleStatus.ACTIVE];
+    return [PrivacyPolicyLifecycleStatus.ACTIVE, PrivacyPolicyLifecycleStatus.EXPIRED];
   },
   get [PrivacyPolicyLifecycleStatus.SUPERSEDED]() {
     return [];
