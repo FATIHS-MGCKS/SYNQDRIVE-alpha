@@ -1,25 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WorkflowEngineService, type WorkflowDomainEvent } from './workflow-engine.service';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
 
 @Injectable()
 export class WorkflowEventService {
   private readonly logger = new Logger(WorkflowEventService.name);
 
-  constructor(private readonly engine: WorkflowEngineService) {}
+  constructor(
+    private readonly engine: WorkflowEngineService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
+  ) {}
 
   /**
    * Emit a domain event into the workflow engine. Fire-and-forget safe: callers
    * may void this when automation must not block the primary transaction.
    */
   async emitEvent(event: WorkflowDomainEvent): Promise<string[]> {
-    if (!event.organizationId?.trim()) {
-      throw new Error('organizationId is required for workflow events');
-    }
+    const orgId = this.tenantGuard.assertEventOrganization(event);
     if (!event.type?.trim()) {
       throw new Error('event type is required for workflow events');
     }
     const normalized: WorkflowDomainEvent = {
       ...event,
+      organizationId: orgId,
       type: event.type.trim(),
       payload: event.payload ?? {},
       occurredAt: event.occurredAt ?? new Date(),

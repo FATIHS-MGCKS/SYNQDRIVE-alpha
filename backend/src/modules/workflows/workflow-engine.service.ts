@@ -14,6 +14,16 @@ import {
   type WorkflowScopeDef,
 } from './workflow-definition.validator';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import {
+  assertLiveExecution,
+  WorkflowExecutionMode,
+} from './workflow-execution-mode';
+import { evaluateWorkflowScope } from './workflow-scope.evaluator';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
+
+export interface ExecuteWorkflowOptions {
+  executionMode: WorkflowExecutionMode;
+}
 
 export interface WorkflowDomainEvent {
   organizationId: string;
@@ -32,14 +42,20 @@ export class WorkflowEngineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actionExecutor: WorkflowActionExecutorService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
   ) {}
 
   async processEvent(event: WorkflowDomainEvent): Promise<string[]> {
+    const orgId = this.tenantGuard.assertEventOrganization(event);
+    await this.tenantGuard.validateEventEntities(orgId, event);
+
     const workflows = await this.findMatchingWorkflows(event);
     const runIds: string[] = [];
 
     for (const workflow of workflows) {
-      const runId = await this.executeWorkflow(workflow, event);
+      const runId = await this.executeWorkflow(workflow, event, {
+        executionMode: WorkflowExecutionMode.LIVE,
+      });
       if (runId) runIds.push(runId);
     }
     return runIds;
@@ -62,28 +78,21 @@ export class WorkflowEngineService {
     });
   }
 
-  private matchesScope(scope: WorkflowScopeDef, event: WorkflowDomainEvent): boolean {
-    if (!scope || scope.type === 'organization') return true;
-    const vehicleId =
-      event.entityType === 'vehicle'
-        ? event.entityId
-        : (event.payload.vehicleId as string | undefined);
-    if (scope.type === 'vehicle' && scope.vehicleIds?.length) {
-      return !!vehicleId && scope.vehicleIds.includes(vehicleId);
-    }
-    if (scope.type === 'station' && scope.stationIds?.length) {
-      const stationId = event.payload.stationId as string | undefined;
-      return !!stationId && scope.stationIds.includes(stationId);
-    }
-    return true;
-  }
-
   async executeWorkflow(
     workflow: OrgWorkflow,
     event: WorkflowDomainEvent,
+    options: ExecuteWorkflowOptions,
   ): Promise<string | null> {
-    const scope = workflow.scope as unknown as WorkflowScopeDef;
-    if (!this.matchesScope(scope, event)) {
+    assertLiveExecution(
+      options.executionMode,
+      'WorkflowEngineService.executeWorkflow',
+    );
+
+    const scopeResult = evaluateWorkflowScope(
+      workflow.scope as unknown as WorkflowScopeDef,
+      event,
+    );
+    if (!scopeResult.passed) {
       return null;
     }
 
@@ -160,10 +169,11 @@ export class WorkflowEngineService {
         entityId: event.entityId,
         payload: event.payload,
         idempotencyKey,
+        executionMode: WorkflowExecutionMode.LIVE,
       });
 
-      await this.prisma.orgWorkflowActionRun.update({
-        where: { id: actionRun.id },
+      await this.prisma.orgWorkflowActionRun.updateMany({
+        where: { id: actionRun.id, organizationId: event.organizationId },
         data: {
           status: result.status,
           output: (result.output ?? undefined) as unknown as Prisma.InputJsonValue,
@@ -183,8 +193,8 @@ export class WorkflowEngineService {
       }
     }
 
-    await this.prisma.orgWorkflowRun.update({
-      where: { id: run.id },
+    await this.prisma.orgWorkflowRun.updateMany({
+      where: { id: run.id, organizationId: event.organizationId },
       data: {
         status: runStatus,
         errorMessage: runError,
@@ -192,8 +202,8 @@ export class WorkflowEngineService {
       },
     });
 
-    await this.prisma.orgWorkflow.update({
-      where: { id: workflow.id },
+    await this.prisma.orgWorkflow.updateMany({
+      where: { id: workflow.id, organizationId: event.organizationId },
       data: {
         triggerCount: { increment: 1 },
         lastTriggeredAt: new Date(),

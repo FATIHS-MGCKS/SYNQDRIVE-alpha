@@ -824,6 +824,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const [runsLoading, setRunsLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const [testPlan, setTestPlan] = useState<import('../../lib/api').WorkflowExecutionPlanDto | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -838,18 +839,20 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
     if (!orgId) return;
     setTesting(true);
     setTestError(null);
+    setTestPlan(null);
     try {
-      const result = await api.workflows.test(orgId, wf.id, {
+      const plan = await api.workflows.dryRun(orgId, wf.id, {
         payload: { manualTest: true, workflowName: wf.name },
       });
-      if (result.runs?.length) {
-        setRuns((prev) => [...(result.runs as WorkflowRun[]), ...prev]);
-      } else {
-        setTestError(result.message || 'Workflow was skipped (conditions/scope)');
+      setTestPlan(plan);
+      if (!plan.scope.passed || !plan.conditions.passed) {
+        setTestError(
+          plan.policyBlockers[0] ||
+            'Workflow would be skipped (scope/conditions) — no actions were executed.',
+        );
       }
-      onRefresh();
     } catch (e) {
-      setTestError(e instanceof Error ? e.message : 'Test failed');
+      setTestError(e instanceof Error ? e.message : 'Dry run failed');
     } finally {
       setTesting(false);
     }
@@ -905,7 +908,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
             >
               <Icon name="play" className="w-3.5 h-3.5 text-status-info" />
-              {testing ? 'Testing…' : 'Test workflow'}
+              {testing ? 'Simulating…' : 'Simulate workflow'}
             </button>
             <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
               {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
@@ -935,6 +938,42 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                 ' Approval step is configured.'}
             </p>
           </div>
+        </div>
+      )}
+
+      {testPlan && (
+        <div className={`text-xs px-3 py-3 rounded-lg border space-y-2 ${isDarkMode ? 'bg-emerald-900/15 border-emerald-800/40 text-emerald-200' : 'bg-emerald-50 border-emerald-200 text-emerald-900'}`}>
+          <p className="font-semibold">Dry run — no actions were executed</p>
+          <p className="opacity-90">{testPlan.message}</p>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide opacity-70">Scope</p>
+              <p>{testPlan.scope.passed ? 'Passed' : 'Blocked'} — {testPlan.scope.reason}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide opacity-70">Conditions</p>
+              <p>{testPlan.conditions.passed ? 'Passed' : 'Failed'}</p>
+            </div>
+          </div>
+          {testPlan.plannedActions.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wide opacity-70 mb-1">Planned actions</p>
+              <ul className="space-y-1">
+                {testPlan.plannedActions.map((action) => (
+                  <li key={action.index} className={`rounded-md px-2 py-1 ${isDarkMode ? 'bg-black/20' : 'bg-white/70'}`}>
+                    <span className="font-medium">{action.actionType}</span>
+                    <span className="opacity-70"> — {action.riskClass}</span>
+                    {action.status === 'ERROR' && action.validationErrors.length > 0 && (
+                      <span className="text-amber-400"> ({action.validationErrors[0]})</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {testPlan.skippedActions.length > 0 && (
+            <p className="opacity-80">{testPlan.skippedActions.length} action(s) would be skipped.</p>
+          )}
         </div>
       )}
 

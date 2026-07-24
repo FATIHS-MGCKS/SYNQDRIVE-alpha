@@ -33,6 +33,30 @@ export const WORKFLOW_CATEGORIES = [
   'support',
 ] as const;
 
+/** Scope types that may be saved and evaluated at runtime. */
+export const IMPLEMENTED_WORKFLOW_SCOPE_TYPES = [
+  'organization',
+  'vehicle',
+  'station',
+  'booking',
+  'customer',
+] as const;
+
+export type WorkflowScopeType = (typeof IMPLEMENTED_WORKFLOW_SCOPE_TYPES)[number];
+
+/** Reserved scope types — rejected at definition save until implemented. */
+export const RESERVED_WORKFLOW_SCOPE_TYPES = ['territory', 'fleet'] as const;
+
+export const SCOPE_ID_FIELD_BY_TYPE: Record<
+  Exclude<WorkflowScopeType, 'organization'>,
+  'vehicleIds' | 'stationIds' | 'bookingIds' | 'customerIds'
+> = {
+  vehicle: 'vehicleIds',
+  station: 'stationIds',
+  booking: 'bookingIds',
+  customer: 'customerIds',
+};
+
 export const WORKFLOW_ACTION_TYPES = [
   'task.create',
   'alert.create',

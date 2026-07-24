@@ -35,6 +35,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-tenant-isolation-v49812-2026-07-24',
+    version: '4.9.812',
+    title: 'V4.9.812 — Workflow tenant isolation & fail-closed scope enforcement',
+    summary: [
+      '**Tenant guard**: `WorkflowTenantGuardService` validates org context, scope entity IDs at save, and event/action entity refs at runtime (vehicle/station/booking/customer).',
+      '**Scope**: booking + customer scopes; empty ID lists rejected; territory/fleet blocked at save; unknown types fail-closed; no foreign IDs in error messages.',
+      '**Defense-in-depth**: workflow mutations use `updateMany`/`deleteMany` with `organizationId`; engine/executor/preview validate entities before scope/actions.',
+      '**Tests**: negative cases for foreign workflow/run/approval/entity, empty scope, unknown scope, dry-run foreign entity.',
+      '**Docs**: `docs/security/workflow-automation-tenant-isolation-2026-07.md`.',
+    ],
+    reason:
+      'Workflow automation had fail-open scope defaults and action paths that could reference entities without org validation.',
+    previousBehavior:
+      'Scope IDs not validated at save; task actions accepted cross-tenant vehicle/booking refs; some mutations used `{ id }` only after read.',
+    details:
+      'backend/src/modules/workflows/{workflow-tenant-guard,workflow-entity-refs,workflow-scope.evaluator}.*, workflow-engine/action-executor/action-preview/dry-run/event/services, dto/workflow.dto.ts.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-24T23:45:00.000Z',
+  },
+  {
+    id: 'workflow-dry-run-execution-plan-v49811-2026-07-24',
+    version: '4.9.811',
+    title: 'V4.9.811 — Workflow dry-run execution plan (no side effects on test/simulate)',
+    summary: [
+      '**P0 fix**: `POST /workflows/:id/test` no longer executes LIVE actions — returns `WorkflowExecutionPlan` only (`executed: false`).',
+      '**New**: `POST /workflows/:id/dry-run`; explicit `WorkflowExecutionMode` (`DRY_RUN` | `LIVE`); `WorkflowDryRunService` + `WorkflowActionPreviewService`; `assertLiveExecution` guards on engine/executor.',
+      '**Frontend**: `WorkflowAutomationView` uses `api.workflows.dryRun()` with clear “no actions executed” banner; legacy `test` response keeps empty `runIds`/`runs`.',
+      '**Tests**: `workflow-dry-run.service.spec.ts` — no tasks/vehicles/notifications/runs in dry run; LIVE still works; unknown actions + cross-tenant errors.',
+      '**Docs**: `docs/architecture/WORKFLOW_DRY_RUN_2026-07.md`.',
+    ],
+    reason:
+      'Manual workflow test/simulation previously created real OrgWorkflowRun records and executed task.create, vehicle.status.update, and approval side effects.',
+    previousBehavior:
+      '`testWorkflow` called `WorkflowEngineService.executeWorkflow` without execution mode guard — real tasks, vehicle updates, and workflow runs were created.',
+    details:
+      'backend/src/modules/workflows/{workflow-dry-run,workflow-action-preview,workflow-execution-mode,workflow-execution-plan.types,workflow-scope.evaluator,workflow-preview.util,workflow-action-risk}.*, workflow-engine.service.ts, workflow-action-executor.service.ts, workflows.{service,controller,module}.ts; frontend WorkflowAutomationView.tsx, lib/api.ts.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-24T23:30:00.000Z',
+  },
+  {
     id: 'evaluations-production-release-v49810-2026-07-24',
     version: '4.9.810',
     title: 'V4.9.810 — Auswertungen production release (IAM fix + station filter)',
