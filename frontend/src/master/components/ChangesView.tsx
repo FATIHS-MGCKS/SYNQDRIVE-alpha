@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-metric-registry-v49803-2026-07-24',
+    version: '4.9.803',
+    title: 'V4.9.803 — Auswertungen Metric Registry (Prompt 5/54)',
+    summary: [
+      'Zentrale typisierte Metric Registry im Backend: `EvaluationsMetricsModule` mit 74 Kennzahlen.',
+      'Shared contract: `shared/evaluations-metrics/` (Types, i18n DE/EN, Legacy-Maps).',
+      'API: GET `/api/v1/evaluations-metrics/registry` und lookup per `?id=`.',
+      'Registry-Tests: eindeutige IDs, Pflichtfelder, Units, Kategorien, metricKinds, i18n, calculationVersion.',
+      'Frontend-Re-Export + KPI-Konstanten; keine UI-Label-Änderung.',
+    ],
+    reason: 'Auswertungen-Professionalisierung Prompt 5 — verbindliche Registry als Grundlage für Backend, Frontend, Exporte.',
+    previousBehavior: 'Nur Taxonomie-Dokument (Prompt 4), keine typisierte Registry im Code.',
+    details:
+      'backend/src/modules/evaluations-metrics/*, shared/evaluations-metrics/*, frontend/src/rental/lib/evaluations/evaluations-metric.contract.ts, docs/architecture/analytics/evaluations-metric-registry.md.',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-07-24T12:30:00.000Z',
+  },
+  {
     id: 'evaluations-kpi-taxonomy-v49802-2026-07-24',
     version: '4.9.802',
     title: 'V4.9.802 — Auswertungen KPI-Taxonomie (Prompt 4/54)',
