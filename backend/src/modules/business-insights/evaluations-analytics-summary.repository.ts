@@ -21,6 +21,7 @@ import type {
   EvaluationsFinancialSnapshot,
   EvaluationsFleetSnapshot,
 } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import type { EvaluationsCostModelSnapshot } from '@synq/evaluations-insights/evaluations-cost-model.contract';
 
 interface InvoiceRow {
   type: string;
@@ -34,6 +35,7 @@ interface InvoiceRow {
   createdAt: Date;
   currency: string | null;
   vehicleId: string | null;
+  vendor?: { category: string } | null;
 }
 
 @Injectable()
@@ -386,5 +388,348 @@ export class EvaluationsAnalyticsSummaryRepository {
     }
 
     return { ...counts, underutilized };
+  }
+
+  async loadCostModelSnapshot(
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+  ): Promise<EvaluationsCostModelSnapshot> {
+    const currentFrom = new Date(resolved.period.from);
+    const currentTo = new Date(resolved.period.to);
+    const periodMs = Math.max(currentTo.getTime() - currentFrom.getTime(), 86400_000);
+    const proRateFactor = periodMs / (30 * 86400_000);
+
+    const vehicleScope = resolveVehicleScopeConstraint(resolved);
+    const vehicleFilter =
+      vehicleScope.mode === 'scoped'
+        ? { vehicleId: { in: vehicleScope.vehicleIds } }
+        : vehicleScope.mode === 'empty'
+          ? { vehicleId: { in: [] as string[] } }
+          : {};
+
+    const vehicleAndFilters: Array<Record<string, unknown>> = [
+      { organizationId: resolved.organizationId },
+    ];
+    const stationScope = resolveStationBookingScope(resolved);
+    if (stationScope.mode === 'scoped') {
+      vehicleAndFilters.push({
+        OR: [
+          { homeStationId: { in: stationScope.stationIds } },
+          { currentStationId: { in: stationScope.stationIds } },
+        ],
+      });
+    } else if (stationScope.mode === 'empty') {
+      vehicleAndFilters.push({ id: { in: [] as string[] } });
+    }
+    if (resolved.vehicleClassId) {
+      vehicleAndFilters.push({ rentalCategoryId: resolved.vehicleClassId });
+    }
+    if (resolved.vehicleStatus) {
+      vehicleAndFilters.push({ status: resolved.vehicleStatus });
+    }
+    if (vehicleScope.mode === 'scoped') {
+      vehicleAndFilters.push({ id: { in: vehicleScope.vehicleIds } });
+    } else if (vehicleScope.mode === 'empty') {
+      vehicleAndFilters.push({ id: { in: [] as string[] } });
+    }
+
+    const bookingAndFilters: Array<Record<string, unknown>> = [
+      { organizationId: resolved.organizationId },
+    ];
+    if (resolved.bookingStatus) {
+      bookingAndFilters.push({ status: resolved.bookingStatus });
+    }
+    if (stationScope.mode === 'scoped') {
+      bookingAndFilters.push({
+        OR: [
+          { pickupStationId: { in: stationScope.stationIds } },
+          { returnStationId: { in: stationScope.stationIds } },
+        ],
+      });
+    } else if (stationScope.mode === 'empty') {
+      bookingAndFilters.push({ id: { in: [] as string[] } });
+    }
+    if (vehicleScope.mode === 'scoped') {
+      bookingAndFilters.push({ vehicleId: { in: vehicleScope.vehicleIds } });
+    } else if (vehicleScope.mode === 'empty') {
+      bookingAndFilters.push({ vehicleId: { in: [] as string[] } });
+    }
+    if (resolved.customerSegment) {
+      bookingAndFilters.push({ customer: { customerType: resolved.customerSegment } });
+    }
+
+    const damageVehicleFilter =
+      vehicleScope.mode === 'scoped'
+        ? { vehicleId: { in: vehicleScope.vehicleIds } }
+        : vehicleScope.mode === 'empty'
+          ? { vehicleId: { in: [] as string[] } }
+          : {};
+
+    const [
+      invoices,
+      vehicles,
+      damages,
+      serviceCases,
+      serviceEvents,
+      completedBookings,
+      cancelledCount,
+      noShowCount,
+    ] = await Promise.all([
+      this.prisma.orgInvoice.findMany({
+        where: {
+          organizationId: resolved.organizationId,
+          ...vehicleFilter,
+        },
+        select: {
+          type: true,
+          status: true,
+          totalCents: true,
+          invoiceDate: true,
+          createdAt: true,
+          currency: true,
+          vehicleId: true,
+          vendor: { select: { category: true } },
+        },
+      }),
+      this.prisma.vehicle.findMany({
+        where: { AND: vehicleAndFilters },
+        select: {
+          id: true,
+          homeStationId: true,
+          rentalCategoryId: true,
+          leasingRateCents: true,
+          insuranceCostCents: true,
+          taxCostCents: true,
+          homeStation: { select: { id: true, name: true } },
+          rentalCategory: { select: { id: true, name: true } },
+        },
+      }),
+      this.prisma.vehicleDamage.findMany({
+        where: {
+          organizationId: resolved.organizationId,
+          ...damageVehicleFilter,
+          OR: [
+            { repairedAt: { gte: currentFrom, lte: currentTo } },
+            {
+              repairedAt: null,
+              createdAt: { gte: currentFrom, lte: currentTo },
+            },
+          ],
+        },
+        select: {
+          repairCostCents: true,
+          repairedAt: true,
+        },
+      }),
+      this.prisma.serviceCase.findMany({
+        where: {
+          organizationId: resolved.organizationId,
+          ...(vehicleScope.mode === 'scoped'
+            ? { vehicleId: { in: vehicleScope.vehicleIds } }
+            : vehicleScope.mode === 'empty'
+              ? { vehicleId: { in: [] as string[] } }
+              : {}),
+          completedAt: { gte: currentFrom, lte: currentTo },
+        },
+        select: {
+          category: true,
+          actualCostCents: true,
+        },
+      }),
+      this.prisma.vehicleServiceEvent.findMany({
+        where: {
+          organizationId: resolved.organizationId,
+          ...(vehicleScope.mode === 'scoped'
+            ? { vehicleId: { in: vehicleScope.vehicleIds } }
+            : vehicleScope.mode === 'empty'
+              ? { vehicleId: { in: [] as string[] } }
+              : {}),
+          eventDate: { gte: currentFrom, lte: currentTo },
+        },
+        select: {
+          costCents: true,
+        },
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          AND: bookingAndFilters,
+          status: 'COMPLETED',
+          completedAt: { gte: currentFrom, lte: currentTo },
+        },
+        select: {
+          kmDriven: true,
+          priceSnapshots: { select: { rentalDays: true } },
+        },
+      }),
+      this.prisma.booking.count({
+        where: {
+          AND: bookingAndFilters,
+          status: 'CANCELLED',
+          cancelledAt: { gte: currentFrom, lte: currentTo },
+        },
+      }),
+      this.prisma.booking.count({
+        where: {
+          AND: bookingAndFilters,
+          status: 'NO_SHOW',
+          startDate: { gte: currentFrom, lte: currentTo },
+        },
+      }),
+    ]);
+
+    let invoiceExpensesMinor = 0;
+    let invoiceExpenseCount = 0;
+    let invoicesWithVehicleIdCount = 0;
+    const vendorCategoryExpenses: Record<string, number> = {};
+
+    const vehicleById = new Map(vehicles.map((v) => [v.id, v]));
+    const stationExpenses = new Map<string, { name: string; expensesMinor: number; vehicleIds: Set<string> }>();
+    const classExpenses = new Map<string, { name: string; expensesMinor: number; vehicleIds: Set<string> }>();
+
+    for (const inv of invoices as InvoiceRow[]) {
+      const currency = (inv.currency ?? 'EUR').toUpperCase();
+      if (currency !== 'EUR' && currency !== '€') continue;
+      if (!isIncomingInvoiceType(inv.type)) continue;
+      if (EXPENSE_EXCLUDED_STATUSES.includes(inv.status as never)) continue;
+
+      const effectiveDate = inv.invoiceDate ?? inv.createdAt;
+      if (effectiveDate < currentFrom || effectiveDate > currentTo) continue;
+
+      invoiceExpensesMinor += inv.totalCents;
+      invoiceExpenseCount += 1;
+      if (inv.vehicleId) {
+        invoicesWithVehicleIdCount += 1;
+        const vehicle = vehicleById.get(inv.vehicleId);
+        if (vehicle?.homeStationId) {
+          const stationKey = vehicle.homeStationId;
+          const stationName = vehicle.homeStation?.name ?? stationKey;
+          const row = stationExpenses.get(stationKey) ?? {
+            name: stationName,
+            expensesMinor: 0,
+            vehicleIds: new Set<string>(),
+          };
+          row.expensesMinor += inv.totalCents;
+          row.vehicleIds.add(inv.vehicleId);
+          stationExpenses.set(stationKey, row);
+        }
+        if (vehicle?.rentalCategoryId) {
+          const classKey = vehicle.rentalCategoryId;
+          const className = vehicle.rentalCategory?.name ?? classKey;
+          const row = classExpenses.get(classKey) ?? {
+            name: className,
+            expensesMinor: 0,
+            vehicleIds: new Set<string>(),
+          };
+          row.expensesMinor += inv.totalCents;
+          row.vehicleIds.add(inv.vehicleId);
+          classExpenses.set(classKey, row);
+        }
+      }
+
+      const vendorCategory = inv.vendor?.category;
+      if (vendorCategory) {
+        vendorCategoryExpenses[vendorCategory] =
+          (vendorCategoryExpenses[vendorCategory] ?? 0) + inv.totalCents;
+      }
+    }
+
+    let damageRepairCostsMinor = 0;
+    let damagesWithRepairCostCount = 0;
+    for (const damage of damages) {
+      if (damage.repairCostCents != null && damage.repairCostCents > 0) {
+        damageRepairCostsMinor += damage.repairCostCents;
+        damagesWithRepairCostCount += 1;
+      }
+    }
+
+    let serviceCaseCostsMinor = 0;
+    let unplannedRepairCostsMinor = 0;
+    let serviceCasesWithActualCostCount = 0;
+    for (const sc of serviceCases) {
+      if (sc.actualCostCents != null && sc.actualCostCents > 0) {
+        serviceCaseCostsMinor += sc.actualCostCents;
+        serviceCasesWithActualCostCount += 1;
+        if (sc.category === 'REPAIR' || sc.category === 'DIAGNOSTIC') {
+          unplannedRepairCostsMinor += sc.actualCostCents;
+        }
+      }
+    }
+
+    let serviceEventCostsMinor = 0;
+    let serviceEventsWithCostCount = 0;
+    for (const event of serviceEvents) {
+      if (event.costCents != null && event.costCents > 0) {
+        serviceEventCostsMinor += event.costCents;
+        serviceEventsWithCostCount += 1;
+      }
+    }
+
+    let estimatedFixedCostsMinor = 0;
+    let vehiclesWithFixedCostData = 0;
+    for (const vehicle of vehicles) {
+      const monthly =
+        (vehicle.leasingRateCents ?? 0) +
+        (vehicle.insuranceCostCents ?? 0) +
+        (vehicle.taxCostCents ?? 0);
+      if (monthly > 0) {
+        vehiclesWithFixedCostData += 1;
+        estimatedFixedCostsMinor += Math.round(monthly * proRateFactor);
+      }
+    }
+
+    let totalKmDriven = 0;
+    let bookingsWithKmCount = 0;
+    let totalRentalDays = 0;
+    let bookingsWithRentalDaysCount = 0;
+    for (const booking of completedBookings) {
+      if (booking.kmDriven != null && booking.kmDriven > 0) {
+        totalKmDriven += booking.kmDriven;
+        bookingsWithKmCount += 1;
+      }
+      const rentalDays = booking.priceSnapshots[0]?.rentalDays;
+      if (rentalDays != null && rentalDays > 0) {
+        totalRentalDays += rentalDays;
+        bookingsWithRentalDaysCount += 1;
+      }
+    }
+
+    return {
+      currency: 'EUR',
+      invoiceExpensesMinor,
+      invoiceExpenseCount,
+      invoicesWithVehicleIdCount,
+      vendorCategoryExpenses,
+      damageRepairCostsMinor,
+      damagesWithRepairCostCount,
+      damagesTotalInPeriod: damages.length,
+      serviceCaseCostsMinor,
+      unplannedRepairCostsMinor,
+      serviceCasesWithActualCostCount,
+      serviceCasesTotalInPeriod: serviceCases.length,
+      serviceEventCostsMinor,
+      serviceEventsWithCostCount,
+      serviceEventsTotalInPeriod: serviceEvents.length,
+      estimatedFixedCostsMinor,
+      vehiclesWithFixedCostData,
+      vehicleCount: vehicles.length,
+      completedBookingsInPeriod: completedBookings.length,
+      cancelledBookingsInPeriod: cancelledCount,
+      noShowBookingsInPeriod: noShowCount,
+      totalKmDriven,
+      bookingsWithKmCount,
+      totalRentalDays,
+      bookingsWithRentalDaysCount,
+      expensesByStation: [...stationExpenses.entries()].map(([stationId, row]) => ({
+        stationId,
+        stationName: row.name,
+        expensesMinor: row.expensesMinor,
+        vehicleCount: row.vehicleIds.size,
+      })),
+      expensesByVehicleClass: [...classExpenses.entries()].map(([vehicleClassId, row]) => ({
+        vehicleClassId,
+        vehicleClassName: row.name,
+        expensesMinor: row.expensesMinor,
+        vehicleCount: row.vehicleIds.size,
+      })),
+    };
   }
 }

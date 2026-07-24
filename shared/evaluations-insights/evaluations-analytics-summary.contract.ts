@@ -11,6 +11,7 @@ import type {
   EvaluationsSectionEnvelope,
   EvaluationsTimePeriod,
 } from './evaluations-analytics-primitives.contract';
+import type { EvaluationsCostModelSummary } from './evaluations-cost-model.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
@@ -144,6 +145,7 @@ export interface EvaluationsAnalyticsSummaryResponse {
   vehicleAvailability: EvaluationsSectionEnvelope<EvaluationsVehicleAvailabilitySummary>;
   downtime: EvaluationsSectionEnvelope<EvaluationsDowntimeSummary>;
   costs: EvaluationsSectionEnvelope<EvaluationsCostsSummary>;
+  costModel: EvaluationsSectionEnvelope<EvaluationsCostModelSummary>;
   activeRisks: EvaluationsSectionEnvelope<EvaluationsActiveRisksSummary>;
   affectedEntities: EvaluationsSectionEnvelope<InsightEntityCountSummary>;
   strengths: EvaluationsSectionEnvelope<EvaluationsHighlightItem[]>;

@@ -122,6 +122,7 @@ const SUMMARY_SECTION_KEYS = [
   'vehicleAvailability',
   'downtime',
   'costs',
+  'costModel',
   'activeRisks',
   'affectedEntities',
   'strengths',

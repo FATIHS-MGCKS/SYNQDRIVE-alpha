@@ -27,6 +27,7 @@ import {
   type EvaluationsSectionResult,
 } from '@synq/evaluations-insights/evaluations-analytics-summary';
 import { toAppliedFilters } from '@synq/evaluations-insights/evaluations-analytics-filters';
+import { buildCostModelSummary, costModelSectionStatus } from '@synq/evaluations-insights/evaluations-cost-model';
 
 @Injectable()
 export class EvaluationsAnalyticsSummaryService {
@@ -44,19 +45,34 @@ export class EvaluationsAnalyticsSummaryService {
     const startedAt = Date.now();
     const generatedAt = new Date().toISOString();
 
-    const [financialResult, bookingResult, fleetResult, insightsResult] = await Promise.all([
+    const [financialResult, bookingResult, fleetResult, insightsResult, costModelResult] =
+      await Promise.all([
       this.safeSection('financial', () => this.repository.loadFinancialSnapshot(resolved)),
       this.safeSection('bookings', () => this.repository.loadBookingSnapshot(resolved)),
       this.safeSection('fleet', () => this.repository.loadFleetSnapshot(resolved, 7)),
       this.safeSection('insights', () =>
         this.insightsAnalytics.getAnalyticsSummary(organizationId, resolved),
       ),
+      this.safeSection('costModel', () => this.repository.loadCostModelSnapshot(resolved)),
     ]);
 
     const financial = unwrapSectionResult(financialResult);
     const bookings = unwrapSectionResult(bookingResult);
     const fleet = unwrapSectionResult(fleetResult);
     const insights = unwrapSectionResult(insightsResult);
+    const costModelSnapshot = unwrapSectionResult(costModelResult);
+
+    const periodWindow = {
+      key: resolved.period.key,
+      label: resolved.period.key === 'mtd' ? 'Month to date' : resolved.period.key,
+      from: resolved.period.from,
+      to: resolved.period.to,
+      timezone: resolved.period.timezone,
+    };
+
+    const costModelSummary = costModelSnapshot
+      ? buildCostModelSummary(costModelSnapshot, periodWindow)
+      : null;
 
     const financialSummary = financial ? buildFinancialSummary(financial) : null;
     const receivablesSummary = financial ? buildReceivablesSummary(financial) : null;
@@ -64,7 +80,12 @@ export class EvaluationsAnalyticsSummaryService {
     const fleetUtilization = fleet ? buildFleetUtilizationSummary(fleet) : null;
     const vehicleAvailability = fleet ? buildVehicleAvailabilitySummary(fleet) : null;
     const downtime = fleet ? buildDowntimeSummary(fleet) : null;
-    const costs = financial ? buildCostsSummary(financial) : null;
+    const costs = financial
+      ? buildCostsSummary(
+          financial,
+          costModelSummary?.totals.estimatedFixedCostsMinor ?? null,
+        )
+      : null;
     const activeRisks = insights ? buildActiveRisksSummary(insights) : null;
     const affectedEntities = insights ? affectedEntitiesFromInsights(insights) : null;
 
@@ -92,6 +113,12 @@ export class EvaluationsAnalyticsSummaryService {
       { key: 'vehicleAvailability', status: sectionStatusFromResult(fleetResult) },
       { key: 'downtime', status: sectionStatusFromResult(fleetResult) },
       { key: 'costs', status: sectionStatusFromResult(financialResult) },
+      {
+        key: 'costModel',
+        status: costModelSummary
+          ? costModelSectionStatus(costModelSummary)
+          : sectionStatusFromResult(costModelResult),
+      },
       { key: 'activeRisks', status: sectionStatusFromResult(insightsResult) },
       { key: 'affectedEntities', status: sectionStatusFromResult(insightsResult) },
       { key: 'strengths', status: executive ? 'OK' : 'PARTIAL' },
@@ -113,13 +140,7 @@ export class EvaluationsAnalyticsSummaryService {
     return {
       organizationId,
       generatedAt,
-      period: {
-        key: resolved.period.key,
-        label: resolved.period.key === 'mtd' ? 'Month to date' : resolved.period.key,
-        from: resolved.period.from,
-        to: resolved.period.to,
-        timezone: resolved.period.timezone,
-      },
+      period: periodWindow,
       comparisonPeriod: {
         key: resolved.comparisonPeriod.key,
         label: `Previous ${resolved.comparisonPeriod.key}`,
@@ -171,6 +192,14 @@ export class EvaluationsAnalyticsSummaryService {
         sectionStatusFromResult(financialResult),
         generatedAt,
         financialResult.ok ? null : financialResult.error,
+      ),
+      costModel: wrapSection(
+        costModelSummary,
+        costModelSummary
+          ? costModelSectionStatus(costModelSummary)
+          : sectionStatusFromResult(costModelResult),
+        generatedAt,
+        costModelResult.ok ? null : costModelResult.error,
       ),
       activeRisks: wrapSection(
         activeRisks,

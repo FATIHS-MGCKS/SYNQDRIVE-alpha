@@ -94,6 +94,38 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
         underutilized: 14,
       };
     }),
+    loadCostModelSnapshot: jest.fn().mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 7));
+      return {
+        currency: 'EUR',
+        invoiceExpensesMinor: 350_000,
+        invoiceExpenseCount: 120,
+        invoicesWithVehicleIdCount: 95,
+        vendorCategoryExpenses: { WORKSHOP: 120_000 },
+        damageRepairCostsMinor: 25_000,
+        damagesWithRepairCostCount: 8,
+        damagesTotalInPeriod: 12,
+        serviceCaseCostsMinor: 40_000,
+        unplannedRepairCostsMinor: 22_000,
+        serviceCasesWithActualCostCount: 15,
+        serviceCasesTotalInPeriod: 20,
+        serviceEventCostsMinor: 12_000,
+        serviceEventsWithCostCount: 10,
+        serviceEventsTotalInPeriod: 18,
+        estimatedFixedCostsMinor: 80_000,
+        vehiclesWithFixedCostData: 90,
+        vehicleCount,
+        completedBookingsInPeriod: 840,
+        cancelledBookingsInPeriod: 22,
+        noShowBookingsInPeriod: 5,
+        totalKmDriven: 420_000,
+        bookingsWithKmCount: 780,
+        totalRentalDays: 2_100,
+        bookingsWithRentalDaysCount: 820,
+        expensesByStation: [],
+        expensesByVehicleClass: [],
+      };
+    }),
   };
 
   const insightsAnalytics = {
@@ -156,9 +188,10 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
     );
     const elapsed = Date.now() - started;
 
-    expect(result.overallStatus).toBe('OK');
+    expect(result.overallStatus).toBe('PARTIAL');
     expect(result.fleetUtilization.data?.totalOperational).toBe(115);
     expect(result.affectedEntities.data?.insightGroups).toBe(insightGroups);
+    expect(result.costModel.data?.metrics.length).toBeGreaterThan(10);
     expect(result.comparisonPeriod.from).toBeTruthy();
     expect(result.metadata.generationDurationMs).toBeLessThan(500);
     expect(elapsed).toBeLessThan(500);

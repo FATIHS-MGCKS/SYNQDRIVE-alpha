@@ -170,12 +170,15 @@ export function buildDowntimeSummary(fleet: EvaluationsFleetSnapshot): Evaluatio
   };
 }
 
-export function buildCostsSummary(snapshot: EvaluationsFinancialSnapshot): EvaluationsCostsSummary {
+export function buildCostsSummary(
+  snapshot: EvaluationsFinancialSnapshot,
+  estimatedFixedCostsMinor: number | null = null,
+): EvaluationsCostsSummary {
   return {
     expensesMtdMinor: snapshot.expensesMtdMinor,
     expensesPreviousMinor: snapshot.expensesPreviousMinor,
     expensesDeltaPercent: deltaPercent(snapshot.expensesMtdMinor, snapshot.expensesPreviousMinor),
-    fixedCostsMtdMinor: null,
+    fixedCostsMtdMinor: estimatedFixedCostsMinor,
     variableCostsMtdMinor: snapshot.expensesMtdMinor,
     currency: snapshot.currency,
   };

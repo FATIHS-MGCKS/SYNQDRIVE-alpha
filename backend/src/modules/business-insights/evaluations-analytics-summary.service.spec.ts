@@ -72,6 +72,35 @@ describe('EvaluationsAnalyticsSummaryService', () => {
       cleaningRequired: 1,
       underutilized: 2,
     }),
+    loadCostModelSnapshot: jest.fn().mockResolvedValue({
+      currency: 'EUR',
+      invoiceExpensesMinor: 30_000,
+      invoiceExpenseCount: 4,
+      invoicesWithVehicleIdCount: 3,
+      vendorCategoryExpenses: {},
+      damageRepairCostsMinor: 2_000,
+      damagesWithRepairCostCount: 1,
+      damagesTotalInPeriod: 2,
+      serviceCaseCostsMinor: 5_000,
+      unplannedRepairCostsMinor: 3_000,
+      serviceCasesWithActualCostCount: 1,
+      serviceCasesTotalInPeriod: 2,
+      serviceEventCostsMinor: 1_000,
+      serviceEventsWithCostCount: 1,
+      serviceEventsTotalInPeriod: 2,
+      estimatedFixedCostsMinor: 8_000,
+      vehiclesWithFixedCostData: 5,
+      vehicleCount: 10,
+      completedBookingsInPeriod: 20,
+      cancelledBookingsInPeriod: 1,
+      noShowBookingsInPeriod: 0,
+      totalKmDriven: 3_000,
+      bookingsWithKmCount: 18,
+      totalRentalDays: 45,
+      bookingsWithRentalDaysCount: 19,
+      expensesByStation: [],
+      expensesByVehicleClass: [],
+    }),
   };
 
   const insightsAnalytics = {
@@ -127,9 +156,12 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     const result = await service.getSummary(orgId, baseResolved());
 
     expect(result.organizationId).toBe(orgId);
-    expect(result.overallStatus).toBe('OK');
+    expect(result.overallStatus).toBe('PARTIAL');
     expect(result.executive.data?.revenueMtdMinor).toBe(100_000);
     expect(result.appliedFilters.stationId).toBeNull();
+    expect(result.costModel.status).toBe('PARTIAL');
+    expect(result.costModel.data?.totals.actualExpensesMinor).toBe(30_000);
+    expect(result.costs.data?.fixedCostsMtdMinor).toBe(8_000);
   });
 
   it('passes resolved filters to repository loaders', async () => {
@@ -138,6 +170,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
 
     expect(repository.loadFinancialSnapshot).toHaveBeenCalledWith(resolved);
     expect(repository.loadBookingSnapshot).toHaveBeenCalledWith(resolved);
+    expect(repository.loadCostModelSnapshot).toHaveBeenCalledWith(resolved);
     expect(insightsAnalytics.getAnalyticsSummary).toHaveBeenCalledWith(orgId, resolved);
   });
 

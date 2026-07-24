@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-cost-model-v49819-2026-07-24',
+    version: 'V4.9.819',
+    title: 'V4.9.819 — Kanonisches Kostenmodell Auswertungen (Prompt 21/54)',
+    summary: [
+      'Neue `costModel`-Section in `GET …/evaluations/analytics/summary` mit nachvollziehbaren KPI-Metadaten (Formel, Quellen, Abdeckung, Status, calculationVersion).',
+      'Belastbare Kosten: Eingangsrechnungen, Schadens-Reparaturkosten, ServiceCase/ServiceEvent-Kosten, Ratio-KPIs (je Fahrzeug/km/Vermiettag/Buchung).',
+      'Geschätzte Fixkosten aus Vehicle-Masterdaten (Leasing/Versicherung/Steuer), pro-rata — klar als ESTIMATED markiert.',
+      'Datenlücken dokumentiert: Reinigung, Ersatzfahrzeuge, Personal, Downtime-Kosten, Unterauslastung (keine Opportunitätskosten als Ist-Kosten).',
+      'Shared: `evaluations-cost-model.contract.ts`, `evaluations-cost-model.ts`; Repository `loadCostModelSnapshot`.',
+      'Doku: `docs/architecture/analytics/evaluations-cost-model.md`.',
+    ],
+    reason:
+      'Prompt 21/54 — Nachvollziehbares Kostenmodell für die Auswertungen-Seite mit belastbaren vs. fehlenden Datenquellen.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T20:00:00.000Z',
+  },
+  {
     id: 'evaluations-analytics-contracts-v49818-2026-07-24',
     version: 'V4.9.818',
     title: 'V4.9.818 — Analytics-DTOs und API-Contracts konsolidiert (Prompt 20/54)',
