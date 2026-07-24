@@ -25,7 +25,7 @@ import { AuthorizationDecisionService } from '../../src/modules/data-authorizati
 import { EnforcementCoverageRegistryService } from '../../src/modules/data-authorizations/enforcement-coverage-registry/enforcement-coverage-registry.service';
 import { WorkerRuntimeHealthService } from '../../src/modules/data-authorizations/revocation-queue-control/worker-runtime-health.service';
 import { DenySwitchService } from '../../src/modules/data-authorizations/deny-switch/deny-switch.service';
-import { DENY_SWITCH_SCOPE } from '../../src/modules/data-authorizations/deny-switch/deny-switch.constants';
+import { DENY_SWITCH_SCOPE, DENY_SWITCH_TRIGGER } from '../../src/modules/data-authorizations/deny-switch/deny-switch.constants';
 import {
   cleanupDataAuthPostgresFixture,
   correlationId,
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
     fixture = await createDataAuthPostgresFixture(prisma);
     const orgId = fixture.orgA.id;
     const vehicleId = fixture.vehicleA.id;
-    const corr = correlationId('staging-verify');
+    const corr = (suffix: string) => correlationId(`staging-${suffix}`);
 
     const allowDecision = await decisionService.decide({
       organizationId: orgId,
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.INGEST,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM,
-      processorIdentity: 'DIMO',
+      processorId: 'DIMO',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: vehicleId,
       vehicleId,
@@ -118,7 +118,7 @@ async function main(): Promise<void> {
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.INGEST,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM,
-      processorIdentity: 'DIMO',
+      processorId: 'DIMO',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: fixture.vehicleB.id,
       vehicleId: fixture.vehicleB.id,
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.READ,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SERVICE,
-      processorIdentity: 'SYNQDRIVE',
+      processorId: 'SYNQDRIVE',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: fixture.vehicleB.id,
       vehicleId: fixture.vehicleB.id,
@@ -159,7 +159,7 @@ async function main(): Promise<void> {
       purpose: 'VEHICLE_HEALTH',
       action: AUTHORIZATION_DECISION_ACTION.USE_FOR_AI,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SERVICE,
-      processorIdentity: 'SYNQDRIVE',
+      processorId: 'SYNQDRIVE',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: fixture.vehicleB.id,
       vehicleId: fixture.vehicleB.id,
@@ -179,7 +179,7 @@ async function main(): Promise<void> {
       purpose: 'DRIVER_SCORING',
       action: AUTHORIZATION_DECISION_ACTION.DERIVE,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SERVICE,
-      processorIdentity: 'SYNQDRIVE',
+      processorId: 'SYNQDRIVE',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: fixture.vehicleB.id,
       vehicleId: fixture.vehicleB.id,
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.READ,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_INTEGRATION,
-      processorIdentity: 'MCP_TOOL',
+      processorId: 'MCP_TOOL',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.ORGANIZATION,
       resourceId: orgId,
       correlationId: corr('mcp-deny'),
@@ -226,7 +226,7 @@ async function main(): Promise<void> {
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.READ,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM,
-      processorIdentity: 'DIMO',
+      processorId: 'DIMO',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: vehicleId,
       vehicleId,
@@ -236,7 +236,7 @@ async function main(): Promise<void> {
     await denySwitch.activateSync({
       organizationId: orgId,
       scopeType: DENY_SWITCH_SCOPE.ORGANIZATION,
-      trigger: 'MANUAL',
+      trigger: DENY_SWITCH_TRIGGER.MANUAL,
       reason: 'Prompt 42 controlled deny-switch test',
       correlationId: corr('deny-switch-activate'),
       blocksIngest: true,
@@ -250,7 +250,7 @@ async function main(): Promise<void> {
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.INGEST,
       processorType: POLICY_RESOLVER_PROCESSOR_TYPE.PROVIDER_PLATFORM,
-      processorIdentity: 'DIMO',
+      processorId: 'DIMO',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: vehicleId,
       vehicleId,
