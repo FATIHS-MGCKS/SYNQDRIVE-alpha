@@ -11,6 +11,7 @@ import {
   Query,
   Req,
   UseGuards,
+  Optional,
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
@@ -32,6 +33,7 @@ import {
 } from '@prisma/client';
 import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
+import { VehicleDetailObservabilityService } from './observability/vehicle-detail-observability.service';
 
 interface VehicleStatusAuthRequest {
   user?: { id?: string };
@@ -65,6 +67,7 @@ export class VehiclesController {
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
+    @Optional() private readonly vehicleDetailObservability?: VehicleDetailObservabilityService,
   ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
@@ -114,7 +117,15 @@ export class VehiclesController {
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
   ) {
-    return this.vehiclesService.getVehicleWithTelemetry(vehicleId, orgId);
+    const started = performance.now();
+    try {
+      const result = await this.vehiclesService.getVehicleWithTelemetry(vehicleId, orgId);
+      this.vehicleDetailObservability?.observeRequest('telemetry', started, null);
+      return result;
+    } catch (err) {
+      this.vehicleDetailObservability?.observeRequest('telemetry', started, err);
+      throw err;
+    }
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/live-gps')
@@ -124,7 +135,15 @@ export class VehiclesController {
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
   ) {
-    return this.vehiclesService.getLiveGps(vehicleId, orgId);
+    const started = performance.now();
+    try {
+      const result = await this.vehiclesService.getLiveGps(vehicleId, orgId);
+      this.vehicleDetailObservability?.observeRequest('live_gps', started, null);
+      return result;
+    } catch (err) {
+      this.vehicleDetailObservability?.observeRequest('live_gps', started, err);
+      throw err;
+    }
   }
 
   @Post('organizations/:orgId/vehicles')
@@ -263,37 +282,62 @@ export class VehiclesController {
       healthStatus?: HealthStatus;
     },
   ) {
-    const data: Prisma.VehicleUpdateInput = {};
-    if (body.status) {
-      if (!VehiclesController.ADMIN_WRITABLE_VEHICLE_STATES.has(body.status)) {
-        throw new BadRequestException(
-          `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
+    const started = performance.now();
+    try {
+      const data: Prisma.VehicleUpdateInput = {};
+      if (body.status) {
+        if (!VehiclesController.ADMIN_WRITABLE_VEHICLE_STATES.has(body.status)) {
+          throw new BadRequestException(
+            `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
+          );
+        }
+        data.status = body.status;
+      }
+      if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
+      if (body.healthStatus) data.healthStatus = body.healthStatus;
+
+      const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
+
+      await this.vehiclesService.invalidateFleetMapCache(orgId);
+
+      let cleaningTask: Awaited<
+        ReturnType<VehicleCleaningTaskService['ensureCleaningTask']>
+      > | null = null;
+
+      if (body.cleaningStatus === 'NEEDS_CLEANING') {
+        cleaningTask = await this.vehicleCleaningTasks.ensureCleaningTask(orgId, vehicleId);
+      } else if (body.cleaningStatus === 'CLEAN') {
+        cleaningTask = await this.vehicleCleaningTasks.completeOpenCleaningTasks(
+          orgId,
+          vehicleId,
+          req.user?.id,
         );
       }
-      data.status = body.status;
+
+      if (body.cleaningStatus) {
+        this.vehicleDetailObservability?.recordStatusMutation('cleaning_status', null);
+      }
+      if (body.status) {
+        this.vehicleDetailObservability?.recordStatusMutation('operational_status', null);
+      }
+      if (body.healthStatus) {
+        this.vehicleDetailObservability?.recordStatusMutation('health_status', null);
+      }
+      this.vehicleDetailObservability?.observeRequest('status_patch', started, null);
+      return { vehicle, cleaningTask };
+    } catch (err) {
+      if (body.cleaningStatus) {
+        this.vehicleDetailObservability?.recordStatusMutation('cleaning_status', err);
+      }
+      if (body.status) {
+        this.vehicleDetailObservability?.recordStatusMutation('operational_status', err);
+      }
+      if (body.healthStatus) {
+        this.vehicleDetailObservability?.recordStatusMutation('health_status', err);
+      }
+      this.vehicleDetailObservability?.observeRequest('status_patch', started, err);
+      throw err;
     }
-    if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
-    if (body.healthStatus) data.healthStatus = body.healthStatus;
-
-    const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
-
-    await this.vehiclesService.invalidateFleetMapCache(orgId);
-
-    let cleaningTask: Awaited<
-      ReturnType<VehicleCleaningTaskService['ensureCleaningTask']>
-    > | null = null;
-
-    if (body.cleaningStatus === 'NEEDS_CLEANING') {
-      cleaningTask = await this.vehicleCleaningTasks.ensureCleaningTask(orgId, vehicleId);
-    } else if (body.cleaningStatus === 'CLEAN') {
-      cleaningTask = await this.vehicleCleaningTasks.completeOpenCleaningTasks(
-        orgId,
-        vehicleId,
-        req.user?.id,
-      );
-    }
-
-    return { vehicle, cleaningTask };
   }
 
   @Get('organizations/:orgId/fleet-connectivity')
@@ -322,7 +366,15 @@ export class VehiclesController {
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
   ) {
-    return this.vehiclesService.getDeviceConnection(orgId, vehicleId);
+    const started = performance.now();
+    try {
+      const result = await this.vehiclesService.getDeviceConnection(orgId, vehicleId);
+      this.vehicleDetailObservability?.observeRequest('device_connection', started, null);
+      return result;
+    } catch (err) {
+      this.vehicleDetailObservability?.observeRequest('device_connection', started, err);
+      throw err;
+    }
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/complaints')

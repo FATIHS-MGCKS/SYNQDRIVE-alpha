@@ -70,6 +70,8 @@ import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
+import { VehicleDetailObservabilityService } from './observability/vehicle-detail-observability.service';
+import { classifyVehicleDetailProviderError } from './observability/vehicle-detail-log.util';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -304,6 +306,8 @@ export class VehiclesService {
     private readonly capabilityLifecycle?: VehicleDrivingCapabilityLifecycleService,
     @Optional()
     private readonly batteryCapabilityRefresh?: BatteryCapabilityRefreshService,
+    @Optional()
+    private readonly vehicleDetailObservability?: VehicleDetailObservabilityService,
   ) {}
 
   /** Invalidate cached fleet-map payload after booking/handover/status mutations. */
@@ -1353,10 +1357,13 @@ export class VehiclesService {
     try {
       const cached = await this.redis.get(cacheKey);
       if (cached) {
+        this.vehicleDetailObservability?.recordCacheOutcome('hit');
         return JSON.parse(cached) as FleetMapVehicleDto[];
       }
+      this.vehicleDetailObservability?.recordCacheOutcome('miss');
     } catch (err: any) {
       this.logger.debug(`Fleet-map cache read failed (${err?.message ?? err})`);
+      this.vehicleDetailObservability?.recordCacheOutcome('miss');
     }
 
     const where = this.withOrgScope(organizationId);
@@ -1693,8 +1700,17 @@ export class VehiclesService {
             longitude = lng;
           }
         }
-      } catch {
-        // Keep cached values; DIMO fetch failed
+      } catch (err) {
+        const errorClass = classifyVehicleDetailProviderError(err);
+        this.vehicleDetailObservability?.observeProviderOutcome(
+          'telemetry',
+          errorClass === 'timeout'
+            ? 'timeout'
+            : errorClass === 'rate_limited'
+              ? 'rate_limited'
+              : 'provider_error',
+          err,
+        );
       }
     }
 
@@ -1754,6 +1770,7 @@ export class VehiclesService {
 
     const tokenId = vehicle.dimoVehicle?.tokenId;
     if (!tokenId) {
+      this.vehicleDetailObservability?.recordLiveGpsSource('cache');
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
@@ -1787,6 +1804,8 @@ export class VehiclesService {
         : data?.signalsLatest;
 
       if (!signals) {
+        this.vehicleDetailObservability?.recordLiveGpsSource('cache');
+        this.vehicleDetailObservability?.observeProviderOutcome('live_gps', 'cache_fallback');
         return {
           latitude: vehicle.latestState?.latitude ?? null,
           longitude: vehicle.latestState?.longitude ?? null,
@@ -1809,9 +1828,13 @@ export class VehiclesService {
       const lastSeenAt = signals.lastSeen ?? loc?.timestamp ?? null;
 
       if (typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+        this.vehicleDetailObservability?.recordLiveGpsSource('dimo');
+        this.vehicleDetailObservability?.observeProviderOutcome('live_gps', 'success');
         return { latitude: lat, longitude: lng, speedKmh, lastSeenAt, source: 'dimo' as const };
       }
 
+      this.vehicleDetailObservability?.recordLiveGpsSource('cache');
+      this.vehicleDetailObservability?.observeProviderOutcome('live_gps', 'cache_fallback');
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
@@ -1820,7 +1843,21 @@ export class VehiclesService {
         source: 'cache' as const,
       };
     } catch (err) {
-      this.logger.warn(`Live GPS DIMO fetch failed for ${vehicleId}: ${(err as Error).message}`);
+      const errorClass = classifyVehicleDetailProviderError(err);
+      this.vehicleDetailObservability?.observeProviderOutcome(
+        'live_gps',
+        errorClass === 'timeout'
+          ? 'timeout'
+          : errorClass === 'rate_limited'
+            ? 'rate_limited'
+            : 'provider_error',
+        err,
+      );
+      this.vehicleDetailObservability?.recordLiveGpsSource('cache');
+      this.logger.warn({
+        msg: 'vehicle_detail.live_gps_provider_failed',
+        errorClass,
+      });
       return {
         latitude: vehicle.latestState?.latitude ?? null,
         longitude: vehicle.latestState?.longitude ?? null,
@@ -2404,16 +2441,21 @@ export class VehiclesService {
   }
 
   async getDeviceConnection(organizationId: string, vehicleId: string) {
-    const [summary, runtime] = await Promise.all([
-      this.deviceConnectionQuery.getVehicleSummary(organizationId, vehicleId, {
-        eventLimit: 20,
-      }),
-      this.connectivityRuntimeProjection.projectForVehicle(organizationId, vehicleId),
-    ]);
-    return {
-      ...summary,
-      connectivityRuntime: serializeVehicleConnectivityRuntimeState(runtime),
-    };
+    try {
+      const [summary, runtime] = await Promise.all([
+        this.deviceConnectionQuery.getVehicleSummary(organizationId, vehicleId, {
+          eventLimit: 20,
+        }),
+        this.connectivityRuntimeProjection.projectForVehicle(organizationId, vehicleId),
+      ]);
+      return {
+        ...summary,
+        connectivityRuntime: serializeVehicleConnectivityRuntimeState(runtime),
+      };
+    } catch (err) {
+      this.vehicleDetailObservability?.recordDeviceConnectionError(err);
+      throw err;
+    }
   }
 
   async listVehicleComplaints(organizationId: string, vehicleId: string) {

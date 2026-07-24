@@ -12,6 +12,7 @@ import {
   shouldShowVehicleDeviceConnection,
   sortDeviceConnectionEvents,
 } from '../../lib/device-connection-ui';
+import { recordVehicleDetailClientSignal } from '../../lib/vehicle-detail-observability';
 
 export interface VehicleDeviceConnectionCardProps {
   orgId: string;
@@ -36,6 +37,7 @@ export function VehicleDeviceConnectionCard({
       setSummary(res);
     } catch {
       setSummary(null);
+      recordVehicleDetailClientSignal('device_connection_error');
     } finally {
       setLoading(false);
     }

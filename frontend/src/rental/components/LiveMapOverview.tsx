@@ -6,6 +6,7 @@ import { useAddress } from '../../lib/useAddress';
 import { createSedanMarkerEl, updateSedanRotation, shortestRotation } from '../../lib/vehicleMarker';
 import { LiquidGlassLens } from '../../components/surface';
 import { cn } from '../../components/ui/utils';
+import { recordVehicleDetailClientSignal } from '../lib/vehicle-detail-observability';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 const MAPBOX_STYLE = import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/light-v11';
@@ -237,7 +238,11 @@ export function LiveMapOverview({
 
   // Initial map setup
   useEffect(() => {
-    if (!mapContainerRef.current || !MAPBOX_TOKEN) return;
+    if (!mapContainerRef.current) return;
+    if (!MAPBOX_TOKEN) {
+      recordVehicleDetailClientSignal('map_token_missing');
+      return;
+    }
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
     const style = isDarkMode ? DARK_STYLE : MAPBOX_STYLE;
@@ -252,7 +257,13 @@ export function LiveMapOverview({
       attributionControl: false,
     });
 
-    map.on('load', () => setLoaded(true));
+    map.on('load', () => {
+      setLoaded(true);
+      recordVehicleDetailClientSignal('map_init_success');
+    });
+    map.on('error', () => {
+      recordVehicleDetailClientSignal('map_init_error', { reason: 'mapbox_error' });
+    });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     mapRef.current = map;
 
