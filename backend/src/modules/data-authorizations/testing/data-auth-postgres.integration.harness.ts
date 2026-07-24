@@ -357,10 +357,18 @@ export async function createDataAuthStagingRuntimeFixture(
   const now = new Date('2026-07-01T00:00:00.000Z');
 
   const orgA = await prisma.organization.create({
-    data: { name: `Data Auth Staging A ${suffix}`, slug: `da-stg-a-${suffix}` },
+    data: {
+      companyName: `Data Auth Staging A ${suffix}`,
+      businessType: 'RENTAL',
+      status: 'ACTIVE',
+    },
   });
   const orgB = await prisma.organization.create({
-    data: { name: `Data Auth Staging B ${suffix}`, slug: `da-stg-b-${suffix}` },
+    data: {
+      companyName: `Data Auth Staging B ${suffix}`,
+      businessType: 'RENTAL',
+      status: 'ACTIVE',
+    },
   });
 
   const stationA = await prisma.station.create({

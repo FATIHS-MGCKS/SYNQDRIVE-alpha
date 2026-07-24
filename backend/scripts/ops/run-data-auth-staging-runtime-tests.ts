@@ -28,6 +28,7 @@ import { DenySwitchService } from '@modules/data-authorizations/deny-switch/deny
 import { DENY_SWITCH_SCOPE, DENY_SWITCH_TRIGGER } from '@modules/data-authorizations/deny-switch/deny-switch.constants';
 import {
   cleanupDataAuthStagingRuntimeFixture,
+  correlationId,
   createDataAuthStagingRuntimeFixture,
   probeDataAuthDatabase,
 } from '@modules/data-authorizations/testing/data-auth-postgres.integration.harness';
