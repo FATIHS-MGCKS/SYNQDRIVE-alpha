@@ -15,6 +15,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import {
+  ArchiveWorkflowDto,
   CreateWorkflowDto,
   RejectWorkflowActionDto,
   TestWorkflowDto,
@@ -35,8 +36,13 @@ export class WorkflowsController {
     @Param('orgId') orgId: string,
     @Query('status') status?: string,
     @Query('category') category?: string,
+    @Query('includeArchived') includeArchived?: string,
   ) {
-    return this.service.findByOrg(orgId, { status, category });
+    return this.service.findByOrg(orgId, {
+      status,
+      category,
+      includeArchived: includeArchived === 'true' || includeArchived === '1',
+    });
   }
 
   @Get('stats')
@@ -154,6 +160,16 @@ export class WorkflowsController {
     );
   }
 
+  @Post(':id/dry-run')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async dryRun(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: TestWorkflowDto,
+  ) {
+    return this.service.dryRunWorkflow(orgId, id, body);
+  }
+
   @Post(':id/test')
   @Roles(...WORKFLOW_WRITE_ROLES)
   async test(
@@ -164,9 +180,43 @@ export class WorkflowsController {
     return this.service.testWorkflow(orgId, id, body);
   }
 
+  @Post(':id/publish')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async publish(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { user?: { id?: string; name?: string; email?: string } },
+  ) {
+    const user = req.user || {};
+    return this.service.publish(
+      orgId,
+      id,
+      user.id,
+      user.name || user.email || 'System',
+    );
+  }
+
+  @Post(':id/archive')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async archive(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: ArchiveWorkflowDto,
+    @Req() req: { user?: { id?: string; name?: string; email?: string } },
+  ) {
+    const user = req.user || {};
+    return this.service.archive(
+      orgId,
+      id,
+      user.id,
+      user.name || user.email || 'System',
+      body.reason,
+    );
+  }
+
   @Delete(':id')
   @Roles(...WORKFLOW_WRITE_ROLES)
-  async remove(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.service.remove(orgId, id);
+  async discardDraft(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.service.discardDraft(orgId, id);
   }
 }

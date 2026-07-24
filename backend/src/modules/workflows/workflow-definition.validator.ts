@@ -1,8 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   APPROVAL_REQUIRED_ACTIONS,
+  IMPLEMENTED_WORKFLOW_SCOPE_TYPES,
   LEGACY_ACTION_TO_CANONICAL,
   LEGACY_TRIGGER_TO_EVENT,
+  RESERVED_WORKFLOW_SCOPE_TYPES,
+  SCOPE_ID_FIELD_BY_TYPE,
   WORKFLOW_ACTION_TYPES,
   WORKFLOW_CATEGORIES,
   WORKFLOW_EVENT_TYPES,
@@ -33,6 +36,8 @@ export interface WorkflowScopeDef {
   type: string;
   stationIds?: string[];
   vehicleIds?: string[];
+  bookingIds?: string[];
+  customerIds?: string[];
 }
 
 export function normalizeTriggerType(raw: string): WorkflowEventType | string {
@@ -136,8 +141,26 @@ export function validateWorkflowDefinition(input: {
   const conditions = Array.isArray(input.conditions) ? input.conditions : [];
 
   const scope = input.scope ?? { type: 'organization' };
-  if (!scope.type) {
+  if (!scope.type?.trim()) {
     throw new BadRequestException('Workflow scope.type is required');
+  }
+  const scopeType = scope.type.trim();
+  if ((RESERVED_WORKFLOW_SCOPE_TYPES as readonly string[]).includes(scopeType)) {
+    throw new BadRequestException(
+      `Workflow scope type "${scopeType}" is not available yet`,
+    );
+  }
+  if (!(IMPLEMENTED_WORKFLOW_SCOPE_TYPES as readonly string[]).includes(scopeType)) {
+    throw new BadRequestException(`Unsupported workflow scope type: ${scopeType}`);
+  }
+  if (scopeType !== 'organization') {
+    const idField = SCOPE_ID_FIELD_BY_TYPE[scopeType as keyof typeof SCOPE_ID_FIELD_BY_TYPE];
+    const ids = (scope[idField] as string[] | undefined) ?? [];
+    if (!ids.length) {
+      throw new BadRequestException(
+        `${scopeType} scope requires at least one configured entity`,
+      );
+    }
   }
 
   return {

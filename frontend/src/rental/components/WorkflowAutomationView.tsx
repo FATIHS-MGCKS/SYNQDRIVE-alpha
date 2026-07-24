@@ -28,6 +28,10 @@ interface Workflow {
   lastTriggeredAt: string | null;
   triggerCount: number;
   isTemplate: boolean;
+  publishedAt?: string | null;
+  archivedAt?: string | null;
+  archivedByName?: string | null;
+  archiveReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +47,7 @@ interface Stats {
   draft: number;
   disabled: number;
   invalid?: number;
+  archived?: number;
   totalRuns?: number;
   successfulRuns?: number;
   failedRuns?: number;
@@ -275,7 +280,9 @@ function relativeTime(dateStr: string | null) {
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: string; textClass: string }> = {
   ACTIVE: { label: 'Active', color: 'green', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
   DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
+  PUBLISHED: { label: 'Published', color: 'blue', bgClass: 'bg-status-info-soft', textClass: 'text-status-info' },
   DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
+  ARCHIVED: { label: 'Archived', color: 'slate', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
   INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
 };
 
@@ -299,7 +306,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('operational');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [view, setView] = useState<'list' | 'detail' | 'builder'>('list');
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
@@ -319,8 +326,16 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     if (!orgId) return;
     setLoading(true);
     try {
+      const listParams =
+        statusFilter === 'ARCHIVED'
+          ? { status: 'ARCHIVED' as const }
+          : statusFilter === 'all'
+            ? { includeArchived: true }
+            : statusFilter === 'operational'
+              ? {}
+              : { status: statusFilter };
       const [wfRes, stRes] = await Promise.all([
-        api.workflows.list(orgId),
+        api.workflows.list(orgId, listParams),
         api.workflows.stats(orgId),
       ]);
       setWorkflows(wfRes as Workflow[]);
@@ -330,13 +345,15 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, statusFilter]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const filtered = useMemo(() => {
     let list = workflows;
-    if (statusFilter !== 'all') list = list.filter((w) => w.status === statusFilter);
+    if (statusFilter !== 'all' && statusFilter !== 'operational' && statusFilter !== 'ARCHIVED') {
+      list = list.filter((w) => w.status === statusFilter);
+    }
     if (categoryFilter !== 'all') list = list.filter((w) => w.category === categoryFilter);
     if (search) {
       const s = search.toLowerCase();
@@ -368,10 +385,32 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     } catch (e) { console.error(e); }
   };
 
-  const handleDelete = async (wf: Workflow) => {
-    if (!orgId || !confirm(`Delete workflow "${wf.name}"? This cannot be undone.`)) return;
+  const canDiscardDraft = (wf: Workflow) =>
+    wf.status === 'DRAFT' && !wf.publishedAt && (wf.triggerCount ?? 0) === 0;
+
+  const workflowNeedsArchiveReason = (wf: Workflow) =>
+    wf.status !== 'DRAFT' || !!wf.publishedAt || (wf.triggerCount ?? 0) > 0;
+
+  const handleArchive = async (wf: Workflow) => {
+    if (!orgId) return;
+    const needsReason = workflowNeedsArchiveReason(wf);
+    const reason = needsReason
+      ? window.prompt(`Workflow „${wf.name}" archivieren — bitte Begründung angeben:`) ?? ''
+      : undefined;
+    if (needsReason && !reason.trim()) return;
+    if (!confirm(`Workflow „${wf.name}" archivieren? Er wird nicht mehr ausgeführt, der Verlauf bleibt erhalten.`)) return;
     try {
-      await api.workflows.remove(orgId, wf.id);
+      await api.workflows.archive(orgId, wf.id, reason?.trim() || undefined);
+      if (view === 'detail') setView('list');
+      loadData();
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDiscardDraft = async (wf: Workflow) => {
+    if (!orgId || !canDiscardDraft(wf)) return;
+    if (!confirm(`Entwurf „${wf.name}" verwerfen? Der unveröffentlichte Entwurf wird dauerhaft entfernt.`)) return;
+    try {
+      await api.workflows.discardDraft(orgId, wf.id);
       if (view === 'detail') setView('list');
       loadData();
     } catch (e) { console.error(e); }
@@ -459,7 +498,8 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
       onEdit={() => openBuilder(selectedWorkflow)}
       onToggle={() => handleToggle(selectedWorkflow)}
       onDuplicate={() => handleDuplicate(selectedWorkflow)}
-      onDelete={() => handleDelete(selectedWorkflow)}
+      onArchive={() => handleArchive(selectedWorkflow)}
+      onDiscardDraft={() => handleDiscardDraft(selectedWorkflow)}
       onRefresh={loadData}
     />
   );
@@ -628,10 +668,12 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         <div className="flex items-center gap-1">
           <Icon name="filter" className={`w-3 h-3 ${textSecondary}`} />
           {[
-            { key: 'all', label: 'All' },
-            { key: 'ACTIVE', label: 'Active' },
-            { key: 'DRAFT', label: 'Draft' },
-            { key: 'DISABLED', label: 'Disabled' },
+            { key: 'operational', label: 'Aktiv' },
+            { key: 'all', label: 'Alle' },
+            { key: 'ACTIVE', label: 'Nur aktiv' },
+            { key: 'DRAFT', label: 'Entwürfe' },
+            { key: 'DISABLED', label: 'Deaktiviert' },
+            { key: 'ARCHIVED', label: 'Archiv' },
           ].map((f) => (
             <button
               key={f.key}
@@ -716,7 +758,9 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
               onEdit={() => openBuilder(wf)}
               onToggle={() => handleToggle(wf)}
               onDuplicate={() => handleDuplicate(wf)}
-              onDelete={() => handleDelete(wf)}
+              onArchive={() => handleArchive(wf)}
+              onDiscardDraft={() => handleDiscardDraft(wf)}
+              canDiscardDraft={canDiscardDraft(wf)}
             />
           ))}
         </div>
@@ -729,9 +773,10 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
 
 // ─── WorkflowRow ─────────────────────────────────
 
-function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDuplicate, onDelete }: {
+function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDuplicate, onArchive, onDiscardDraft, canDiscardDraft }: {
   wf: Workflow; isDarkMode: boolean; canWrite: boolean;
-  onOpen: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
+  onOpen: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void;
+  onArchive: () => void; onDiscardDraft: () => void; canDiscardDraft: boolean;
 }) {
   const cat = getCategoryMeta(wf.category);
   const CatIcon = cat.icon;
@@ -796,12 +841,19 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
               <button onClick={onEdit} className={`p-1.5 rounded-md ${hoverBg}`} title="Edit">
                 <Icon name="edit-3" className={`w-3.5 h-3.5 ${textSecondary}`} />
               </button>
-              <button onClick={onDuplicate} className={`p-1.5 rounded-md ${hoverBg}`} title="Duplicate">
+              <button onClick={onDuplicate} className={`p-1.5 rounded-md ${hoverBg}`} title="Duplizieren">
                 <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
               </button>
-              <button onClick={onDelete} className={`p-1.5 rounded-md ${hoverBg}`} title="Delete">
-                <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
-              </button>
+              {wf.status !== 'ARCHIVED' && (
+                <button onClick={onArchive} className={`p-1.5 rounded-md ${hoverBg}`} title="Archivieren">
+                  <Icon name="archive" className="w-3.5 h-3.5 text-amber-500" />
+                </button>
+              )}
+              {canDiscardDraft && (
+                <button onClick={onDiscardDraft} className={`p-1.5 rounded-md ${hoverBg}`} title="Discard draft">
+                  <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
+                </button>
+              )}
             </>
           )}
           <button onClick={onOpen} className={`p-1.5 rounded-md ${hoverBg}`} title="Details">
@@ -815,15 +867,17 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
 
 // ─── DetailView ──────────────────────────────────
 
-function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle, onDuplicate, onDelete, onRefresh }: {
+function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle, onDuplicate, onArchive, onDiscardDraft, onRefresh }: {
   wf: Workflow; orgId: string | null; isDarkMode: boolean; canWrite: boolean;
-  onBack: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
+  onBack: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void;
+  onArchive: () => void; onDiscardDraft: () => void;
   onRefresh: () => void;
 }) {
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [runsLoading, setRunsLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const [testPlan, setTestPlan] = useState<import('../../lib/api').WorkflowExecutionPlanDto | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -838,18 +892,20 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
     if (!orgId) return;
     setTesting(true);
     setTestError(null);
+    setTestPlan(null);
     try {
-      const result = await api.workflows.test(orgId, wf.id, {
+      const plan = await api.workflows.dryRun(orgId, wf.id, {
         payload: { manualTest: true, workflowName: wf.name },
       });
-      if (result.runs?.length) {
-        setRuns((prev) => [...(result.runs as WorkflowRun[]), ...prev]);
-      } else {
-        setTestError(result.message || 'Workflow was skipped (conditions/scope)');
+      setTestPlan(plan);
+      if (!plan.scope.passed || !plan.conditions.passed) {
+        setTestError(
+          plan.policyBlockers[0] ||
+            'Workflow would be skipped (scope/conditions) — no actions were executed.',
+        );
       }
-      onRefresh();
     } catch (e) {
-      setTestError(e instanceof Error ? e.message : 'Test failed');
+      setTestError(e instanceof Error ? e.message : 'Dry run failed');
     } finally {
       setTesting(false);
     }
@@ -875,6 +931,9 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
     yellow: isDarkMode ? 'text-yellow-400' : 'text-yellow-600',
   };
 
+  const isArchived = wf.status === 'ARCHIVED';
+  const draftDiscardable = wf.status === 'DRAFT' && !wf.publishedAt && (wf.triggerCount ?? 0) === 0;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -899,26 +958,37 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
         </div>
         {canWrite && (
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleTest}
-              disabled={testing}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
-            >
-              <Icon name="play" className="w-3.5 h-3.5 text-status-info" />
-              {testing ? 'Testing…' : 'Test workflow'}
-            </button>
-            <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
-            </button>
-            <button onClick={onEdit} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover">
-              <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
-            </button>
-            <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
-            </button>
-            <button onClick={onDelete} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
-            </button>
+            {!isArchived && (
+              <>
+                <button
+                  onClick={handleTest}
+                  disabled={testing}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
+                >
+                  <Icon name="play" className="w-3.5 h-3.5 text-status-info" />
+                  {testing ? 'Simuliere…' : 'Simulieren'}
+                </button>
+                {wf.status !== 'DRAFT' && (
+                  <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+                    {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Deaktivieren</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Aktivieren</>}
+                  </button>
+                )}
+                <button onClick={onEdit} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover">
+                  <Icon name="edit-3" className="w-3.5 h-3.5" /> Bearbeiten
+                </button>
+                <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`} title="Duplizieren">
+                  <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
+                </button>
+                <button onClick={onArchive} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`} title="Archivieren">
+                  <Icon name="archive" className="w-3.5 h-3.5 text-amber-500" />
+                </button>
+                {draftDiscardable && (
+                  <button onClick={onDiscardDraft} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`} title="Entwurf verwerfen">
+                    <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -935,6 +1005,57 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                 ' Approval step is configured.'}
             </p>
           </div>
+        </div>
+      )}
+
+      {isArchived && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-50 border-gray-200'}`}>
+          <Icon name="archive" className={`w-4 h-4 mt-0.5 shrink-0 ${textSecondary}`} />
+          <div>
+            <p className={`text-xs font-semibold ${textPrimary}`}>Archivierter Workflow</p>
+            <p className={`text-[11px] mt-0.5 ${textSecondary}`}>
+              Dieser Workflow löst keine neuen Runs mehr aus. Ausführungsverlauf und Genehmigungen bleiben lesbar.
+              {wf.archivedAt && ` Archiviert am ${new Date(wf.archivedAt).toLocaleString('de-DE')}`}
+              {wf.archivedByName && ` von ${wf.archivedByName}`}
+              {wf.archiveReason && ` — ${wf.archiveReason}`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {testPlan && (
+        <div className={`text-xs px-3 py-3 rounded-lg border space-y-2 ${isDarkMode ? 'bg-emerald-900/15 border-emerald-800/40 text-emerald-200' : 'bg-emerald-50 border-emerald-200 text-emerald-900'}`}>
+          <p className="font-semibold">Dry run — no actions were executed</p>
+          <p className="opacity-90">{testPlan.message}</p>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide opacity-70">Scope</p>
+              <p>{testPlan.scope.passed ? 'Passed' : 'Blocked'} — {testPlan.scope.reason}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide opacity-70">Conditions</p>
+              <p>{testPlan.conditions.passed ? 'Passed' : 'Failed'}</p>
+            </div>
+          </div>
+          {testPlan.plannedActions.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wide opacity-70 mb-1">Planned actions</p>
+              <ul className="space-y-1">
+                {testPlan.plannedActions.map((action) => (
+                  <li key={action.index} className={`rounded-md px-2 py-1 ${isDarkMode ? 'bg-black/20' : 'bg-white/70'}`}>
+                    <span className="font-medium">{action.actionType}</span>
+                    <span className="opacity-70"> — {action.riskClass}</span>
+                    {action.status === 'ERROR' && action.validationErrors.length > 0 && (
+                      <span className="text-amber-400"> ({action.validationErrors[0]})</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {testPlan.skippedActions.length > 0 && (
+            <p className="opacity-80">{testPlan.skippedActions.length} action(s) would be skipped.</p>
+          )}
         </div>
       )}
 

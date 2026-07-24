@@ -65,6 +65,42 @@ describe('validateWorkflowDefinition', () => {
     expect(result.actions[0].type).toBe('task.create');
     expect(result.trigger.type).toBe('booking.returned');
   });
+
+  it('rejects empty vehicle scope lists', () => {
+    expect(() =>
+      validateWorkflowDefinition({
+        name: 'Scoped',
+        category: 'maintenance',
+        trigger: { type: 'manual.test' },
+        actions: [{ type: 'task.create', config: { title: 'x' } }],
+        scope: { type: 'vehicle', vehicleIds: [] },
+      }),
+    ).toThrow(/requires at least one configured entity/);
+  });
+
+  it('rejects unknown scope types', () => {
+    expect(() =>
+      validateWorkflowDefinition({
+        name: 'Scoped',
+        category: 'maintenance',
+        trigger: { type: 'manual.test' },
+        actions: [{ type: 'task.create', config: { title: 'x' } }],
+        scope: { type: 'territory', vehicleIds: ['v1'] },
+      }),
+    ).toThrow(/not available yet/);
+  });
+
+  it('rejects fleet scope until implemented', () => {
+    expect(() =>
+      validateWorkflowDefinition({
+        name: 'Scoped',
+        category: 'maintenance',
+        trigger: { type: 'manual.test' },
+        actions: [{ type: 'task.create', config: { title: 'x' } }],
+        scope: { type: 'fleet', vehicleIds: ['v1'] },
+      }),
+    ).toThrow(/not available yet/);
+  });
 });
 
 describe('evaluateWorkflowConditions', () => {

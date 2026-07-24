@@ -9,11 +9,22 @@ import { validateWorkflowDefinition } from './workflow-definition.validator';
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowEngineService } from './workflow-engine.service';
+import { WorkflowDryRunService } from './workflow-dry-run.service';
+import type { WorkflowExecutionPlan } from './workflow-execution-plan.types';
+import { WorkflowTenantGuardService } from './workflow-tenant-guard.service';
+import {
+  canDiscardDraft,
+  requiresArchiveReason,
+  wasEverPublished,
+  WORKFLOW_LIST_DEFAULT_STATUSES,
+} from './workflow-lifecycle.util';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
   DRAFT: 'Draft',
+  PUBLISHED: 'Published',
   DISABLED: 'Disabled',
+  ARCHIVED: 'Archived',
   INVALID: 'Invalid',
 };
 
@@ -23,6 +34,8 @@ export class WorkflowsService {
     private readonly prisma: PrismaService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly workflowEngine: WorkflowEngineService,
+    private readonly workflowDryRun: WorkflowDryRunService,
+    private readonly tenantGuard: WorkflowTenantGuardService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -32,9 +45,16 @@ export class WorkflowsService {
     };
   }
 
-  async findByOrg(orgId: string, filters?: { status?: string; category?: string }) {
+  async findByOrg(
+    orgId: string,
+    filters?: { status?: string; category?: string; includeArchived?: boolean },
+  ) {
     const where: Prisma.OrgWorkflowWhereInput = { organizationId: orgId };
-    if (filters?.status) where.status = filters.status as Prisma.EnumWorkflowStatusFilter;
+    if (filters?.status) {
+      where.status = filters.status as Prisma.EnumWorkflowStatusFilter;
+    } else if (!filters?.includeArchived) {
+      where.status = { in: WORKFLOW_LIST_DEFAULT_STATUSES };
+    }
     if (filters?.category) where.category = filters.category;
 
     const rows = await this.prisma.orgWorkflow.findMany({
@@ -54,6 +74,7 @@ export class WorkflowsService {
 
   async create(orgId: string, dto: CreateWorkflowDto, userId?: string, userName?: string) {
     const validated = validateWorkflowDefinition(dto);
+    await this.tenantGuard.validateScopeDefinition(orgId, validated.scope);
     const status = dto.status ?? 'DRAFT';
     const enabled = status === 'ACTIVE';
 
@@ -99,10 +120,20 @@ export class WorkflowsService {
       actions: (dto.actions ?? existing.actions) as any,
       scope: (dto.scope ?? existing.scope) as any,
     });
+    await this.tenantGuard.validateScopeDefinition(orgId, validated.scope);
 
     const nextStatus = dto.status ?? existing.status;
-    const row = await this.prisma.orgWorkflow.update({
-      where: { id },
+    if (existing.status === 'ARCHIVED') {
+      throw new BadRequestException('Archived workflows cannot be modified');
+    }
+
+    const publishMeta =
+      nextStatus === 'ACTIVE' || nextStatus === 'PUBLISHED' || nextStatus === 'DISABLED'
+        ? this.publishMetadataIfNeeded(existing, userId, userName)
+        : {};
+
+    const updated = await this.prisma.orgWorkflow.updateMany({
+      where: { id, organizationId: orgId },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.description !== undefined ? { description: dto.description } : {}),
@@ -116,9 +147,12 @@ export class WorkflowsService {
         version: { increment: 1 },
         updatedById: userId,
         updatedByName: userName,
+        ...publishMeta,
       },
     });
-    return this.format(row as unknown as Record<string, unknown>);
+    if (updated.count === 0) throw new NotFoundException('Workflow not found');
+    const row = await this.findById(orgId, id);
+    return row;
   }
 
   async toggleStatus(orgId: string, id: string, userId?: string, userName?: string) {
@@ -126,18 +160,27 @@ export class WorkflowsService {
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundException('Workflow not found');
+    if (existing.status === 'ARCHIVED') {
+      throw new BadRequestException('Archived workflows cannot be toggled');
+    }
+    if (existing.status === 'DRAFT') {
+      throw new BadRequestException('Publish the workflow before enabling it');
+    }
 
     const newStatus = existing.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
-    const row = await this.prisma.orgWorkflow.update({
-      where: { id },
+    const publishMeta = this.publishMetadataIfNeeded(existing, userId, userName);
+    const updated = await this.prisma.orgWorkflow.updateMany({
+      where: { id, organizationId: orgId },
       data: {
         status: newStatus,
         enabled: newStatus === 'ACTIVE',
         updatedById: userId,
         updatedByName: userName,
+        ...publishMeta,
       },
     });
-    return this.format(row as unknown as Record<string, unknown>);
+    if (updated.count === 0) throw new NotFoundException('Workflow not found');
+    return this.findById(orgId, id);
   }
 
   async duplicate(orgId: string, id: string, userId?: string, userName?: string) {
@@ -145,6 +188,9 @@ export class WorkflowsService {
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundException('Workflow not found');
+    if (existing.status === 'ARCHIVED') {
+      throw new BadRequestException('Archived workflows cannot be duplicated');
+    }
 
     const row = await this.prisma.orgWorkflow.create({
       data: {
@@ -168,13 +214,137 @@ export class WorkflowsService {
     return this.format(row as unknown as Record<string, unknown>);
   }
 
-  async remove(orgId: string, id: string) {
+  async publish(
+    orgId: string,
+    id: string,
+    userId?: string,
+    userName?: string,
+  ) {
     const existing = await this.prisma.orgWorkflow.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundException('Workflow not found');
-    await this.prisma.orgWorkflow.delete({ where: { id } });
-    return { success: true };
+    if (existing.status === 'ARCHIVED') {
+      throw new BadRequestException('Archived workflows cannot be published');
+    }
+    if (existing.status !== 'DRAFT') {
+      throw new BadRequestException('Only draft workflows can be published');
+    }
+
+    const updated = await this.prisma.orgWorkflow.updateMany({
+      where: { id, organizationId: orgId, status: 'DRAFT' },
+      data: {
+        status: 'PUBLISHED',
+        enabled: false,
+        ...this.publishMetadataIfNeeded(existing, userId, userName, true),
+        updatedById: userId,
+        updatedByName: userName,
+      },
+    });
+    if (updated.count === 0) throw new NotFoundException('Workflow not found');
+    return this.findById(orgId, id);
+  }
+
+  async archive(
+    orgId: string,
+    id: string,
+    userId?: string,
+    userName?: string,
+    reason?: string,
+  ) {
+    const existing = await this.prisma.orgWorkflow.findFirst({
+      where: { id, organizationId: orgId },
+    });
+    if (!existing) throw new NotFoundException('Workflow not found');
+    if (existing.status === 'ARCHIVED') {
+      return this.findById(orgId, id);
+    }
+
+    const runCount = await this.prisma.orgWorkflowRun.count({
+      where: { organizationId: orgId, workflowId: id },
+    });
+    if (
+      requiresArchiveReason({
+        publishedAt: existing.publishedAt,
+        triggerCount: existing.triggerCount,
+        runCount,
+      }) &&
+      !reason?.trim()
+    ) {
+      throw new BadRequestException(
+        'Archive reason is required for published or executed workflows',
+      );
+    }
+
+    const updated = await this.prisma.orgWorkflow.updateMany({
+      where: { id, organizationId: orgId },
+      data: {
+        status: 'ARCHIVED',
+        enabled: false,
+        archivedAt: new Date(),
+        archivedById: userId ?? null,
+        archivedByName: userName ?? null,
+        archiveReason: reason?.trim() || null,
+        updatedById: userId,
+        updatedByName: userName,
+      },
+    });
+    if (updated.count === 0) throw new NotFoundException('Workflow not found');
+    return this.findById(orgId, id);
+  }
+
+  async discardDraft(orgId: string, id: string) {
+    const existing = await this.prisma.orgWorkflow.findFirst({
+      where: { id, organizationId: orgId },
+    });
+    if (!existing) throw new NotFoundException('Workflow not found');
+
+    const runCount = await this.prisma.orgWorkflowRun.count({
+      where: { organizationId: orgId, workflowId: id },
+    });
+    if (
+      !canDiscardDraft({
+        status: existing.status,
+        publishedAt: existing.publishedAt,
+        triggerCount: existing.triggerCount,
+        runCount,
+      })
+    ) {
+      throw new BadRequestException(
+        'Only unpublished drafts without execution history can be discarded. Archive instead.',
+      );
+    }
+
+    const deleted = await this.prisma.orgWorkflow.deleteMany({
+      where: { id, organizationId: orgId, status: 'DRAFT', publishedAt: null },
+    });
+    if (deleted.count === 0) throw new NotFoundException('Workflow not found');
+    return { discarded: true };
+  }
+
+  /** @deprecated Use archive() or discardDraft() */
+  async remove(orgId: string, id: string) {
+    return this.discardDraft(orgId, id);
+  }
+
+  private publishMetadataIfNeeded(
+    existing: {
+      publishedAt: Date | null;
+      publishedById: string | null;
+      publishedByName: string | null;
+    },
+    userId?: string,
+    userName?: string,
+    force = false,
+  ): Prisma.OrgWorkflowUpdateManyMutationInput {
+    if (!force && wasEverPublished(existing)) {
+      return {};
+    }
+    return {
+      publishedAt: new Date(),
+      publishedById: userId ?? null,
+      publishedByName: userName ?? null,
+    };
   }
 
   async getStats(orgId: string) {
@@ -186,6 +356,7 @@ export class WorkflowsService {
       draft,
       disabled,
       invalid,
+      archived,
       totalRuns,
       successfulRuns,
       failedRuns,
@@ -193,11 +364,14 @@ export class WorkflowsService {
       runsLast24h,
       lastRun,
     ] = await Promise.all([
-      this.prisma.orgWorkflow.count({ where: { organizationId: orgId } }),
+      this.prisma.orgWorkflow.count({
+        where: { organizationId: orgId, status: { in: WORKFLOW_LIST_DEFAULT_STATUSES } },
+      }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'ACTIVE' } }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'DRAFT' } }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'DISABLED' } }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'INVALID' } }),
+      this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'ARCHIVED' } }),
       this.prisma.orgWorkflowRun.count({ where: { organizationId: orgId } }),
       this.prisma.orgWorkflowRun.count({ where: { organizationId: orgId, status: 'SUCCESS' } }),
       this.prisma.orgWorkflowRun.count({ where: { organizationId: orgId, status: 'FAILED' } }),
@@ -220,6 +394,7 @@ export class WorkflowsService {
       draft,
       disabled,
       invalid,
+      archived,
       totalRuns,
       successfulRuns,
       failedRuns,
@@ -254,33 +429,27 @@ export class WorkflowsService {
     return run;
   }
 
+  async dryRunWorkflow(
+    orgId: string,
+    workflowId: string,
+    dto: { payload?: Record<string, unknown>; entityType?: string; entityId?: string },
+  ): Promise<WorkflowExecutionPlan> {
+    return this.workflowDryRun.buildExecutionPlan(orgId, workflowId, dto);
+  }
+
   async testWorkflow(
     orgId: string,
     workflowId: string,
     dto: { payload?: Record<string, unknown>; entityType?: string; entityId?: string },
   ) {
-    const wf = await this.prisma.orgWorkflow.findFirst({
-      where: { id: workflowId, organizationId: orgId },
-    });
-    if (!wf) throw new NotFoundException('Workflow not found');
-
-    const runId = await this.workflowEngine.executeWorkflow(wf, {
-      organizationId: orgId,
-      type: 'manual.test',
-      entityType: dto.entityType,
-      entityId: dto.entityId,
-      payload: {
-        ...(dto.payload ?? {}),
-        manualTest: true,
-      },
-      idempotencyKey: `manual.test:${workflowId}:${Date.now()}`,
-    });
-
-    if (!runId) {
-      return { runIds: [], runs: [], message: 'Workflow skipped (scope/conditions)' };
-    }
-    const run = await this.getRun(orgId, runId);
-    return { runIds: [runId], runs: [run] };
+    const plan = await this.dryRunWorkflow(orgId, workflowId, dto);
+    return {
+      executed: false as const,
+      plan,
+      message: plan.message,
+      runIds: [] as string[],
+      runs: [] as unknown[],
+    };
   }
 
   async approveActionRun(orgId: string, actionRunId: string, userId?: string) {
@@ -292,8 +461,8 @@ export class WorkflowsService {
       throw new BadRequestException('Action run is not waiting for approval');
     }
 
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
+    await this.prisma.orgWorkflowActionRun.updateMany({
+      where: { id: actionRunId, organizationId: orgId },
       data: {
         status: 'SUCCESS',
         approvedByUserId: userId ?? null,
@@ -322,8 +491,8 @@ export class WorkflowsService {
     });
     if (!actionRun) throw new NotFoundException('Action run not found');
 
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
+    await this.prisma.orgWorkflowActionRun.updateMany({
+      where: { id: actionRunId, organizationId: orgId },
       data: {
         status: 'FAILED',
         errorMessage: reason ?? 'Rejected by reviewer',
@@ -341,8 +510,8 @@ export class WorkflowsService {
       },
     });
 
-    await this.prisma.orgWorkflowRun.update({
-      where: { id: actionRun.workflowRunId },
+    await this.prisma.orgWorkflowRun.updateMany({
+      where: { id: actionRun.workflowRunId, organizationId: orgId },
       data: { status: 'FAILED', errorMessage: 'Action rejected', finishedAt: new Date() },
     });
 

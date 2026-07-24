@@ -2308,6 +2308,13 @@ export interface WorkflowDto {
   lastTriggeredAt: string | null;
   triggerCount: number;
   isTemplate?: boolean;
+  publishedAt?: string | null;
+  publishedById?: string | null;
+  publishedByName?: string | null;
+  archivedAt?: string | null;
+  archivedById?: string | null;
+  archivedByName?: string | null;
+  archiveReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -2317,6 +2324,7 @@ export interface WorkflowStatsDto {
   draft: number;
   disabled: number;
   invalid: number;
+  archived?: number;
   totalRuns: number;
   successfulRuns: number;
   failedRuns: number;
@@ -2377,10 +2385,54 @@ export interface WorkflowTestPayload {
   entityType?: string;
   entityId?: string;
 }
+export interface WorkflowPlannedActionDto {
+  index: number;
+  actionType: string;
+  riskClass: 'INTERNAL' | 'EXTERNAL' | 'HUMAN' | 'UNKNOWN';
+  requiresApproval: boolean;
+  status: 'PLANNED' | 'SKIPPED' | 'BLOCKED' | 'ERROR';
+  policyBlockers: string[];
+  resolvedRecipients?: Array<{ channel: string; masked: string }>;
+  preview?: Record<string, unknown>;
+  validationErrors: string[];
+  expectedFallback?: string;
+  skipReason?: string;
+}
+export interface WorkflowExecutionPlanDto {
+  executionMode: 'DRY_RUN';
+  executed: false;
+  message: string;
+  workflowId: string;
+  workflowVersion: number;
+  workflowName: string;
+  event: {
+    type: string;
+    entityType?: string | null;
+    entityId?: string | null;
+    normalizedPayload: Record<string, unknown>;
+  };
+  scope: {
+    passed: boolean;
+    scopeType: string;
+    reason?: string;
+    details?: Record<string, unknown>;
+  };
+  conditions: {
+    passed: boolean;
+    results: Array<{ path: string; operator: string; passed: boolean }>;
+  };
+  plannedActions: WorkflowPlannedActionDto[];
+  skippedActions: WorkflowPlannedActionDto[];
+  validationErrors: string[];
+  policyBlockers: string[];
+  wouldCreateApprovals: boolean;
+}
 export interface WorkflowTestResultDto {
+  executed: false;
+  plan: WorkflowExecutionPlanDto;
+  message: string;
   runIds: string[];
   runs: WorkflowRunDto[];
-  message?: string;
 }
 
 // ── Account Self-Service (Settings → Account Information) ───────────────────
@@ -4830,10 +4882,11 @@ export const api = {
       ),
   },
   workflows: {
-    list: (orgId: string, params?: { status?: string; category?: string }) => {
+    list: (orgId: string, params?: { status?: string; category?: string; includeArchived?: boolean }) => {
       const q = new URLSearchParams();
       if (params?.status) q.set('status', params.status);
       if (params?.category) q.set('category', params.category);
+      if (params?.includeArchived) q.set('includeArchived', 'true');
       const qs = q.toString();
       return get<WorkflowDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
     },
@@ -4843,10 +4896,20 @@ export const api = {
     update: (orgId: string, id: string, data: WorkflowUpdatePayload) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`, data),
     toggle: (orgId: string, id: string) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/toggle`, {}),
     duplicate: (orgId: string, id: string) => post<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/duplicate`, {}),
-    remove: (orgId: string, id: string) => del<{ deleted: boolean }>(`/organizations/${orgId}/workflows/${id}`),
+    publish: (orgId: string, id: string) =>
+      post<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/publish`, {}),
+    archive: (orgId: string, id: string, reason?: string) =>
+      post<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/archive`, { reason }),
+    discardDraft: (orgId: string, id: string) =>
+      del<{ discarded: boolean }>(`/organizations/${orgId}/workflows/${id}`),
+    /** @deprecated Use archive() or discardDraft() */
+    remove: (orgId: string, id: string) =>
+      del<{ discarded: boolean }>(`/organizations/${orgId}/workflows/${id}`),
     listRuns: (orgId: string, workflowId: string, limit = 25) =>
       get<WorkflowRunDto[]>(`/organizations/${orgId}/workflows/${workflowId}/runs?limit=${limit}`),
     getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
+    dryRun: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
+      post<WorkflowExecutionPlanDto>(`/organizations/${orgId}/workflows/${workflowId}/dry-run`, data ?? {}),
     test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
       post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
     approveActionRun: (orgId: string, actionRunId: string) =>

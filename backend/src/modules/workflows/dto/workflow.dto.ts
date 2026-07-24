@@ -67,6 +67,16 @@ export class WorkflowScopeDto {
   @IsArray()
   @IsString({ each: true })
   vehicleIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bookingIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  customerIds?: string[];
 }
 
 export class CreateWorkflowDto {
@@ -105,8 +115,8 @@ export class CreateWorkflowDto {
   scope?: WorkflowScopeDto;
 
   @IsOptional()
-  @IsIn(['DRAFT', 'ACTIVE', 'DISABLED'])
-  status?: 'DRAFT' | 'ACTIVE' | 'DISABLED';
+  @IsIn(['DRAFT', 'PUBLISHED', 'ACTIVE', 'DISABLED'])
+  status?: 'DRAFT' | 'PUBLISHED' | 'ACTIVE' | 'DISABLED';
 }
 
 export class UpdateWorkflowDto {
@@ -149,8 +159,8 @@ export class UpdateWorkflowDto {
   scope?: WorkflowScopeDto;
 
   @IsOptional()
-  @IsIn(['DRAFT', 'ACTIVE', 'DISABLED', 'INVALID'])
-  status?: 'DRAFT' | 'ACTIVE' | 'DISABLED' | 'INVALID';
+  @IsIn(['DRAFT', 'PUBLISHED', 'ACTIVE', 'DISABLED', 'INVALID'])
+  status?: 'DRAFT' | 'PUBLISHED' | 'ACTIVE' | 'DISABLED' | 'INVALID';
 }
 
 export class TestWorkflowDto {
@@ -165,6 +175,13 @@ export class TestWorkflowDto {
   @IsOptional()
   @IsString()
   entityId?: string;
+}
+
+export class ArchiveWorkflowDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  reason?: string;
 }
 
 export class RejectWorkflowActionDto {
