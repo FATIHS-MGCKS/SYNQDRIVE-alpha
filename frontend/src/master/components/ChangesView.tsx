@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-runtime-data-model-v49816-2026-07-25',
+    version: '4.9.816',
+    title: 'V4.9.816 — Workflow runtime canonical data model (Phase 3 design)',
+    summary: [
+      '**ADR**: `docs/architecture/workflow-automation-data-model-2026-07.md` — canonical model for Definition, Version, Trigger, Scope, Condition tree, Action, Run, ActionRun, Approval, Delivery, EventOutbox, Timer, Revision, PolicySnapshot, FeatureFlag.',
+      '**Rules**: Definition = identity; Version immutable after publish; Run binds version + policy snapshot + definition snapshot; per-action idempotency; no cascade deletes on runtime history.',
+      '**Migration plan**: additive dual-write → backfill from `org_workflow*` → cutover with feature flag → legacy retirement.',
+      '**No schema change in this prompt** — design only.',
+    ],
+    reason:
+      'MVP `org_workflows` JSON blobs and cascade deletes cannot support pause-and-resume, delivery tracking, durable events, or audit-safe versioning.',
+    previousBehavior:
+      'Single `org_workflows` row with embedded JSON; `org_workflow_runs` CASCADE; no normalized trigger/scope/condition query paths.',
+    details:
+      'docs/architecture/workflow-automation-data-model-2026-07.md; inputs: WORKFLOW_ACTION_CAPABILITIES, approval interim safeguards, existing Prisma org_workflow* models.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-25T18:00:00.000Z',
+  },
+  {
     id: 'evaluations-production-release-v49810-2026-07-24',
     version: '4.9.810',
     title: 'V4.9.810 — Auswertungen production release (IAM fix + station filter)',
