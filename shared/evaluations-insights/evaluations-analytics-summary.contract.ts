@@ -17,6 +17,7 @@ import type { EvaluationsStrengthDetectionSummary } from './evaluations-strength
 import type { EvaluationsWeaknessDetectionSummary } from './evaluations-weakness-detection.contract';
 import type { EvaluationsRiskDriverOutcome, EvaluationsDriverAnalysisSummary } from './evaluations-driver-analysis.contract';
 import type { EvaluationsDataQualityDomainSummary } from './evaluations-data-quality.contract';
+import type { EvaluationsLineageSummary } from './evaluations-lineage.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
@@ -162,6 +163,7 @@ export interface EvaluationsAnalyticsSummaryResponse {
   weaknesses: EvaluationsSectionEnvelope<EvaluationsWeaknessDetectionSummary>;
   driverAnalysis: EvaluationsSectionEnvelope<EvaluationsDriverAnalysisSummary>;
   dataQuality: EvaluationsSectionEnvelope<EvaluationsDataQualitySummary>;
+  lineage: EvaluationsSectionEnvelope<EvaluationsLineageSummary>;
   insights: EvaluationsSectionEnvelope<Pick<InsightAnalyticsSummary, 'hasRun' | 'lastRunAt' | 'stale' | 'error'>>;
   metadata: {
     generationDurationMs: number;
@@ -207,6 +209,15 @@ export interface EvaluationsDataQualityModelResponse {
   comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
   appliedFilters: EvaluationsAnalyticsSummaryFilters;
   dataQuality: EvaluationsSectionEnvelope<EvaluationsDataQualitySummary>;
+}
+
+export interface EvaluationsLineageResponse {
+  organizationId: string;
+  generatedAt: string;
+  period: EvaluationsAnalyticsPeriodWindow;
+  comparisonPeriod: EvaluationsAnalyticsPeriodWindow;
+  appliedFilters: EvaluationsAnalyticsSummaryFilters;
+  lineage: EvaluationsSectionEnvelope<EvaluationsLineageSummary>;
 }
 
 export interface EvaluationsAnalyticsSummaryQuery {

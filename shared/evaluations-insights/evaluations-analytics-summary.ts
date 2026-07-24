@@ -303,8 +303,9 @@ export function wrapSection<T>(
   generatedAt: string,
   error: string | null = null,
   freshness?: EvaluationsSectionEnvelope<T>['freshness'],
+  lineage?: EvaluationsSectionEnvelope<T>['lineage'],
 ): EvaluationsSectionEnvelope<T> {
-  return { status, data, error, generatedAt, freshness };
+  return { status, data, error, generatedAt, freshness, lineage };
 }
 
 export function computeOverallStatus(

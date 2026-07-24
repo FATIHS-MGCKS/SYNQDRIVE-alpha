@@ -5,6 +5,7 @@
  */
 import type { EvaluationsTimePeriod } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsMetricDataQualityAttachment } from './evaluations-data-quality.contract';
+import type { EvaluationsMetricLineage } from './evaluations-lineage.contract';
 
 export const EVALUATIONS_COST_MODEL_VERSION = 'cost-model-v1';
 
@@ -62,6 +63,8 @@ export interface EvaluationsCostKpi extends EvaluationsCostKpiDefinition {
   breakdown?: EvaluationsCostBreakdownItem[];
   /** Data quality status for this KPI (Prompt 26/54). */
   dataQuality?: EvaluationsMetricDataQualityAttachment;
+  /** Lineage and freshness metadata (Prompt 27/54). */
+  lineage?: EvaluationsMetricLineage;
 }
 
 export interface EvaluationsCostDataGap {

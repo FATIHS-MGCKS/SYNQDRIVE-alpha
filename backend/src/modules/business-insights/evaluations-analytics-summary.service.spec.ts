@@ -5,6 +5,7 @@ import { EvaluationsStrengthDetectionService } from './evaluations-strength-dete
 import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import { EvaluationsDriverAnalysisService } from './evaluations-driver-analysis.service';
 import { EvaluationsDataQualityService } from './evaluations-data-quality.service';
+import { EvaluationsLineageService } from './evaluations-lineage.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -201,6 +202,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
         EvaluationsWeaknessDetectionService,
         EvaluationsDriverAnalysisService,
         EvaluationsDataQualityService,
+        EvaluationsLineageService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
         { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },

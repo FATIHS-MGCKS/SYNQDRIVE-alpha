@@ -15,6 +15,7 @@ import { EvaluationsStrengthDetectionService } from './evaluations-strength-dete
 import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import { EvaluationsDriverAnalysisService } from './evaluations-driver-analysis.service';
 import { EvaluationsDataQualityService } from './evaluations-data-quality.service';
+import { EvaluationsLineageService } from './evaluations-lineage.service';
 import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { BusinessInsightsScheduler } from './business-insights-scheduler.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
@@ -71,6 +72,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     EvaluationsWeaknessDetectionService,
     EvaluationsDriverAnalysisService,
     EvaluationsDataQualityService,
+    EvaluationsLineageService,
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,

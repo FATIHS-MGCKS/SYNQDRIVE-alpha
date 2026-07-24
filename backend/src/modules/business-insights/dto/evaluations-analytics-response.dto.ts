@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { EvaluationsAnalyticsSummaryResponse, EvaluationsDataQualityModelResponse, EvaluationsDriverAnalysisResponse, EvaluationsStrengthDetectionResponse, EvaluationsWeaknessDetectionResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import type { EvaluationsAnalyticsSummaryResponse, EvaluationsDataQualityModelResponse, EvaluationsDriverAnalysisResponse, EvaluationsLineageResponse, EvaluationsStrengthDetectionResponse, EvaluationsWeaknessDetectionResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
 import type { InsightAnalyticsSummary } from '@synq/evaluations-insights/insights-analytics.contract';
 import type { EvaluationsInsightDetail } from '@synq/evaluations-insights/evaluations-insight-detail.contract';
 
@@ -103,6 +103,9 @@ export class EvaluationsAnalyticsSummaryResponseDto implements EvaluationsAnalyt
   dataQuality!: EvaluationsAnalyticsSummaryResponse['dataQuality'];
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
+  lineage!: EvaluationsAnalyticsSummaryResponse['lineage'];
+
+  @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
   insights!: EvaluationsAnalyticsSummaryResponse['insights'];
 
   @ApiProperty({ type: Object })
@@ -187,6 +190,26 @@ export class EvaluationsDataQualityModelResponseDto implements EvaluationsDataQu
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
   dataQuality!: EvaluationsDataQualityModelResponse['dataQuality'];
+}
+
+export class EvaluationsLineageResponseDto implements EvaluationsLineageResponse {
+  @ApiProperty()
+  organizationId!: string;
+
+  @ApiProperty()
+  generatedAt!: string;
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  period!: EvaluationsLineageResponse['period'];
+
+  @ApiProperty({ type: EvaluationsAnalyticsPeriodWindowDto })
+  comparisonPeriod!: EvaluationsLineageResponse['comparisonPeriod'];
+
+  @ApiProperty({ type: Object })
+  appliedFilters!: EvaluationsLineageResponse['appliedFilters'];
+
+  @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
+  lineage!: EvaluationsLineageResponse['lineage'];
 }
 
 export class InsightAnalyticsSummaryResponseDto implements InsightAnalyticsSummary {

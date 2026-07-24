@@ -131,6 +131,7 @@ const SUMMARY_SECTION_KEYS = [
   'weaknesses',
   'driverAnalysis',
   'dataQuality',
+  'lineage',
   'insights',
 ] as const;
 
@@ -180,6 +181,9 @@ export function validateEvaluationsAnalyticsSummaryResponse(
     }
     if (sectionKey === 'dataQuality' && section.data != null) {
       validateDataQualitySummary(section.data, `${sectionKey}.data`, issues);
+    }
+    if (sectionKey === 'lineage' && section.data != null) {
+      validateLineageSummary(section.data, `${sectionKey}.data`, issues);
     }
   }
   if (!isRecord(value.metadata) || !isNumber(value.metadata.generationDurationMs)) {
@@ -279,6 +283,32 @@ function validateDataQualitySummary(
   }
   if (!isString(value.overallStatus) || !METRIC_STATUSES.has(value.overallStatus as EvaluationsMetricStatus)) {
     push(issues, `${path}.overallStatus`, 'Invalid overallStatus');
+  }
+}
+
+function validateLineageSummary(
+  value: unknown,
+  path: string,
+  issues: ContractValidationIssue[],
+): void {
+  if (!isRecord(value)) {
+    push(issues, path, 'Expected lineage summary object');
+    return;
+  }
+  if (!isString(value.calculationVersion)) {
+    push(issues, `${path}.calculationVersion`, 'Required string');
+  }
+  if (!isString(value.calculatedAt)) {
+    push(issues, `${path}.calculatedAt`, 'Required calculatedAt');
+  }
+  if (!Array.isArray(value.metrics)) {
+    push(issues, `${path}.metrics`, 'Required metrics array');
+  }
+  if (!Array.isArray(value.sections)) {
+    push(issues, `${path}.sections`, 'Required sections array');
+  }
+  if (!isString(value.audience)) {
+    push(issues, `${path}.audience`, 'Required audience');
   }
 }
 

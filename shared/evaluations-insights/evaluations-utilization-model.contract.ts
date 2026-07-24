@@ -5,6 +5,7 @@
 import type { EvaluationsTimePeriod } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsMetricValue } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsMetricDataQualityAttachment } from './evaluations-data-quality.contract';
+import type { EvaluationsMetricLineage } from './evaluations-lineage.contract';
 
 export const EVALUATIONS_UTILIZATION_MODEL_VERSION = 'utilization-model-v1';
 
@@ -50,6 +51,8 @@ export interface EvaluationsUtilizationMetric {
   breakdown?: EvaluationsUtilizationBreakdownItem[];
   /** Data quality status for this metric (Prompt 26/54). */
   dataQuality?: EvaluationsMetricDataQualityAttachment;
+  /** Lineage and freshness metadata (Prompt 27/54). */
+  lineage?: EvaluationsMetricLineage;
 }
 
 export interface EvaluationsUtilizationBreakdownItem {

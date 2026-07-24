@@ -165,4 +165,6 @@ export interface EvaluationsSectionEnvelope<T> {
     stale: boolean;
     lastUpdatedAt?: string | null;
   };
+  /** Data lineage and freshness metadata (Prompt 27/54). */
+  lineage?: import('./evaluations-lineage.contract').EvaluationsSectionLineage;
 }

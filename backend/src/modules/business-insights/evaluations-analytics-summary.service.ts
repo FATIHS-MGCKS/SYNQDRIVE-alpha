@@ -35,10 +35,12 @@ import { EvaluationsStrengthDetectionService } from './evaluations-strength-dete
 import { EvaluationsWeaknessDetectionService } from './evaluations-weakness-detection.service';
 import { EvaluationsDriverAnalysisService } from './evaluations-driver-analysis.service';
 import { EvaluationsDataQualityService } from './evaluations-data-quality.service';
+import { EvaluationsLineageService } from './evaluations-lineage.service';
 import type { EvaluationsStrengthDetectionSummary } from '@synq/evaluations-insights/evaluations-strength-detection.contract';
 import type { EvaluationsWeaknessDetectionSummary } from '@synq/evaluations-insights/evaluations-weakness-detection.contract';
 import type { EvaluationsDriverAnalysisSummary } from '@synq/evaluations-insights/evaluations-driver-analysis.contract';
 import type { EvaluationsSectionEnvelope } from '@synq/evaluations-insights/evaluations-analytics-primitives.contract';
+import type { EvaluationsLineageAudience } from '@synq/evaluations-insights/evaluations-lineage.contract';
 
 @Injectable()
 export class EvaluationsAnalyticsSummaryService {
@@ -52,11 +54,18 @@ export class EvaluationsAnalyticsSummaryService {
     private readonly weaknessDetection: EvaluationsWeaknessDetectionService,
     private readonly driverAnalysis: EvaluationsDriverAnalysisService,
     private readonly dataQualityService: EvaluationsDataQualityService,
+    private readonly lineageService: EvaluationsLineageService,
   ) {}
 
   async getSummary(
     organizationId: string,
     resolved: ResolvedEvaluationsAnalyticsFilters,
+    options: {
+      audience?: EvaluationsLineageAudience;
+      servedFromCache?: boolean;
+      cacheGeneratedAt?: string | null;
+      recalculationTrigger?: 'SCHEDULED' | 'ON_DEMAND' | 'CACHE';
+    } = {},
   ): Promise<EvaluationsAnalyticsSummaryResponse> {
     const startedAt = Date.now();
     const generatedAt = new Date().toISOString();
@@ -183,6 +192,51 @@ export class EvaluationsAnalyticsSummaryService {
       ? this.dataQualityService.enrichUtilizationModel(utilizationModelSummaryRaw, dataQuality)
       : null;
 
+    const lineageSummary = this.lineageService.build({
+      period: periodWindow,
+      generatedAt,
+      audience: options.audience ?? 'STANDARD',
+      recalculationTrigger: options.recalculationTrigger ?? 'ON_DEMAND',
+      servedFromCache: options.servedFromCache ?? false,
+      cacheGeneratedAt: options.cacheGeneratedAt ?? null,
+      dataQuality,
+      loaderHealth: {
+        financial: { ok: financialResult.ok, error: financialResult.ok ? null : financialResult.error },
+        bookings: { ok: bookingResult.ok, error: bookingResult.ok ? null : bookingResult.error },
+        fleet: { ok: fleetResult.ok, error: fleetResult.ok ? null : fleetResult.error },
+        insights: { ok: insightsResult.ok, error: insightsResult.ok ? null : insightsResult.error },
+        costModel: { ok: costModelResult.ok, error: costModelResult.ok ? null : costModelResult.error },
+        utilizationModel: {
+          ok: utilizationResult.ok,
+          error: utilizationResult.ok ? null : utilizationResult.error,
+        },
+      },
+      financial,
+      bookings,
+      fleet,
+      insights: insights
+        ? {
+            stale: insights.stale,
+            lastRunAt: insights.lastRunAt,
+            hasRun: insights.hasRun,
+            error: insights.error,
+          }
+        : null,
+      costModelSummary,
+      costModelSnapshot,
+      utilizationModelSummary,
+      utilizationSnapshot,
+      overlappingBookingCount: utilizationSnapshot?.overlappingBookingIds.length ?? 0,
+      sectionStatuses: loaderSectionDefs,
+    });
+
+    const enrichedCostModelSummary = costModelSummary
+      ? this.lineageService.enrichCostModel(costModelSummary, lineageSummary)
+      : null;
+    const enrichedUtilizationModelSummary = utilizationModelSummary
+      ? this.lineageService.enrichUtilizationModel(utilizationModelSummary, lineageSummary)
+      : null;
+
     const strengthSummary = this.strengthDetection.detect({
       period: periodWindow,
       comparisonPeriod: {
@@ -280,30 +334,45 @@ export class EvaluationsAnalyticsSummaryService {
       },
       appliedFilters: toAppliedFilters(resolved),
       overallStatus: computeOverallStatus(sectionDefs),
-      executive: wrapSection(executive, executive ? 'OK' : 'PARTIAL', generatedAt),
+      executive: wrapSection(
+        executive,
+        executive ? 'OK' : 'PARTIAL',
+        generatedAt,
+        null,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'executive'),
+      ),
       financial: wrapSection(
         financialSummary,
         sectionStatusFromResult(financialResult),
         generatedAt,
         financialResult.ok ? null : financialResult.error,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'financial'),
       ),
       receivables: wrapSection(
         receivablesSummary,
         sectionStatusFromResult(financialResult),
         generatedAt,
         financialResult.ok ? null : financialResult.error,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'receivables'),
       ),
       bookings: wrapSection(
         bookingSummary,
         sectionStatusFromResult(bookingResult),
         generatedAt,
         bookingResult.ok ? null : bookingResult.error,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'bookings'),
       ),
       fleetUtilization: wrapSection(
         fleetUtilization,
         sectionStatusFromResult(fleetResult),
         generatedAt,
         fleetResult.ok ? null : fleetResult.error,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'fleetUtilization'),
       ),
       vehicleAvailability: wrapSection(
         vehicleAvailability,
@@ -324,26 +393,32 @@ export class EvaluationsAnalyticsSummaryService {
         financialResult.ok ? null : financialResult.error,
       ),
       costModel: wrapSection(
-        costModelSummary,
-        costModelSummary
-          ? costModelSectionStatus(costModelSummary)
+        enrichedCostModelSummary,
+        enrichedCostModelSummary
+          ? costModelSectionStatus(enrichedCostModelSummary)
           : sectionStatusFromResult(costModelResult),
         generatedAt,
         costModelResult.ok ? null : costModelResult.error,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'costModel'),
       ),
       utilizationModel: wrapSection(
-        utilizationModelSummary,
-        utilizationModelSummary
-          ? utilizationModelSectionStatus(utilizationModelSummary)
+        enrichedUtilizationModelSummary,
+        enrichedUtilizationModelSummary
+          ? utilizationModelSectionStatus(enrichedUtilizationModelSummary)
           : sectionStatusFromResult(utilizationResult),
         generatedAt,
         utilizationResult.ok ? null : utilizationResult.error,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'utilizationModel'),
       ),
       activeRisks: wrapSection(
         enrichedActiveRisks,
         sectionStatusFromResult(insightsResult),
         generatedAt,
         insightsResult.ok ? null : insightsResult.error,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'activeRisks'),
       ),
       affectedEntities: wrapSection(
         affectedEntities,
@@ -351,10 +426,43 @@ export class EvaluationsAnalyticsSummaryService {
         generatedAt,
         insightsResult.ok ? null : insightsResult.error,
       ),
-      strengths: wrapSection(enrichedStrengthSummary, strengthStatus, generatedAt),
-      weaknesses: wrapSection(enrichedWeaknessSummary, weaknessStatus, generatedAt),
-      driverAnalysis: wrapSection(driverAnalysisSummary, driverAnalysisStatus, generatedAt),
-      dataQuality: wrapSection(dataQuality, this.dataQualityService.sectionStatus(dataQuality), generatedAt),
+      strengths: wrapSection(
+        enrichedStrengthSummary,
+        strengthStatus,
+        generatedAt,
+        null,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'strengths'),
+      ),
+      weaknesses: wrapSection(
+        enrichedWeaknessSummary,
+        weaknessStatus,
+        generatedAt,
+        null,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'weaknesses'),
+      ),
+      driverAnalysis: wrapSection(
+        driverAnalysisSummary,
+        driverAnalysisStatus,
+        generatedAt,
+        null,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'driverAnalysis'),
+      ),
+      dataQuality: wrapSection(
+        dataQuality,
+        this.dataQualityService.sectionStatus(dataQuality),
+        generatedAt,
+        null,
+        undefined,
+        this.lineageService.sectionLineage(lineageSummary, 'dataQuality'),
+      ),
+      lineage: wrapSection(
+        lineageSummary,
+        this.lineageService.sectionStatus(lineageSummary, sectionDefs),
+        generatedAt,
+      ),
       insights: wrapSection(
         insights
           ? {
@@ -461,6 +569,29 @@ export class EvaluationsAnalyticsSummaryService {
       comparisonPeriod: summary.comparisonPeriod,
       appliedFilters: summary.appliedFilters,
       dataQuality: summary.dataQuality,
+    };
+  }
+
+  async getLineage(
+    organizationId: string,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+    audience: EvaluationsLineageAudience = 'STANDARD',
+  ): Promise<{
+    organizationId: string;
+    generatedAt: string;
+    period: EvaluationsStrengthDetectionSummary['period'];
+    comparisonPeriod: EvaluationsStrengthDetectionSummary['comparisonPeriod'];
+    appliedFilters: ReturnType<typeof toAppliedFilters>;
+    lineage: EvaluationsSectionEnvelope<import('@synq/evaluations-insights/evaluations-lineage.contract').EvaluationsLineageSummary>;
+  }> {
+    const summary = await this.getSummary(organizationId, resolved, { audience });
+    return {
+      organizationId: summary.organizationId,
+      generatedAt: summary.generatedAt,
+      period: summary.period,
+      comparisonPeriod: summary.comparisonPeriod,
+      appliedFilters: summary.appliedFilters,
+      lineage: summary.lineage,
     };
   }
 

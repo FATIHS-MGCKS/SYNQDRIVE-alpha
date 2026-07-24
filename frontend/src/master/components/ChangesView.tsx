@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-lineage-freshness-v49825-2026-07-24',
+    version: 'V4.9.825',
+    title: 'V4.9.825 — Lineage & Freshness Auswertungen (Prompt 27/54)',
+    summary: [
+      'Konsistente Lineage-Struktur: Quellen, Datensatz-Grenzen, Import/Job-Zeitstempel, Berechnungszeitpunkt, Calculation Version, Ausschlüsse, Abdeckung, Freshness.',
+      'Pro Section-Envelope + Cost/Utilization-KPIs; Dedicated API `GET …/evaluations/analytics/lineage`.',
+      'Rollenunterschied: STANDARD vs ADMIN (`adminDiagnostics` nur für Org/Master Admin).',
+      'Stale-Grenzen quellenabhängig (Insights/Telemetry 24h); Quellenfehler markieren betroffene Kennzahlen.',
+      'Shared: `evaluations-lineage.*`; Backend `EvaluationsLineageService`.',
+      'Doku: `docs/architecture/analytics/evaluations-lineage-freshness.md`.',
+    ],
+    reason:
+      'Prompt 27/54 — Transparente Datenherkunft und Freshness für alle relevanten Analytics-Ergebnisse.',
+    previousBehavior: 'Nur section-level `freshness` ohne vollständige Lineage-Metadaten.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T11:00:00.000Z',
+  },
+  {
     id: 'evaluations-data-quality-model-v49824-2026-07-24',
     version: 'V4.9.824',
     title: 'V4.9.824 — Einheitliches Data-Quality-Modell Auswertungen (Prompt 26/54)',

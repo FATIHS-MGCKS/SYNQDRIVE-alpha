@@ -8,7 +8,8 @@ import {
   EvaluationsAnalyticsSummaryQueryDto,
   normalizeAnalyticsFilterQuery,
 } from './dto/evaluations-analytics-filters.dto';
-import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsDataQualityModelResponseDto, EvaluationsDriverAnalysisResponseDto, EvaluationsStrengthDetectionResponseDto, EvaluationsWeaknessDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
+import { EvaluationsAnalyticsSummaryResponseDto, EvaluationsDataQualityModelResponseDto, EvaluationsDriverAnalysisResponseDto, EvaluationsLineageResponseDto, EvaluationsStrengthDetectionResponseDto, EvaluationsWeaknessDetectionResponseDto } from './dto/evaluations-analytics-response.dto';
+import { resolveLineageAudience } from '@synq/evaluations-insights/evaluations-lineage.contract';
 
 @ApiTags('Evaluations Analytics')
 @Controller('organizations/:orgId/evaluations/analytics')
@@ -30,7 +31,7 @@ export class EvaluationsAnalyticsController {
   async getAnalyticsSummary(
     @Param('orgId') orgId: string,
     @Query() query: EvaluationsAnalyticsSummaryQueryDto,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: { user?: { id?: string; membershipRole?: string; platformRole?: string } },
   ) {
     const resolved = await this.filterService.resolve(
       orgId,
@@ -38,7 +39,8 @@ export class EvaluationsAnalyticsController {
       normalizeAnalyticsFilterQuery(query),
       { allowDataQualitySectionFilters: true },
     );
-    return this.summaryService.getSummary(orgId, resolved);
+    const audience = resolveLineageAudience(req.user?.membershipRole, req.user?.platformRole);
+    return this.summaryService.getSummary(orgId, resolved, { audience });
   }
 
   @Get('strengths')
@@ -127,5 +129,28 @@ export class EvaluationsAnalyticsController {
       { allowDataQualitySectionFilters: true },
     );
     return this.summaryService.getDataQuality(orgId, resolved);
+  }
+
+  @Get('lineage')
+  @ApiOperation({
+    summary: 'Data lineage and freshness metadata for Auswertungen analytics',
+    description:
+      'Provenance per metric: sources, record bounds, import/job timestamps, exclusions, coverage, freshness. Admin roles receive additional diagnostics. Same filter contract as summary.',
+  })
+  @ApiParam({ name: 'orgId', description: 'Organization ID' })
+  @ApiOkResponse({ type: EvaluationsLineageResponseDto })
+  async getLineage(
+    @Param('orgId') orgId: string,
+    @Query() query: EvaluationsAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string; membershipRole?: string; platformRole?: string } },
+  ) {
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+      { allowDataQualitySectionFilters: true },
+    );
+    const audience = resolveLineageAudience(req.user?.membershipRole, req.user?.platformRole);
+    return this.summaryService.getLineage(orgId, resolved, audience);
   }
 }
