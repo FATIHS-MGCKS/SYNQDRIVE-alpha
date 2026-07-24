@@ -391,7 +391,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   if (loading) {
     return (
-      <div className="max-w-[1600px] mx-auto space-y-5">
+      <div className="max-w-[1600px] mx-auto space-y-5" data-testid="evaluations-page">
         <PageHeader title={t('nav.financialInsights')} />
         <div className="py-12 flex flex-col items-center justify-center gap-3">
           <Icon name="loader-2" className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -403,7 +403,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   if (invoiceError) {
     return (
-      <div className="max-w-[1600px] mx-auto space-y-4">
+      <div className="max-w-[1600px] mx-auto space-y-4" data-testid="evaluations-page">
         <PageHeader title={t('nav.financialInsights')} />
         <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} />
         <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
@@ -415,7 +415,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
+    <div className="max-w-[1600px] mx-auto space-y-5" data-testid="evaluations-page">
       <PageHeader title={t('nav.financialInsights')} />
       <InsightsCockpit
         isDarkMode={isDarkMode}
@@ -946,10 +946,22 @@ function BreakdownPopup({
 }) {
   const totalCls = tone === 'revenue' ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-attention)]';
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 overlay-scrim" />
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="evaluations-breakdown-title"
+        data-testid="evaluations-breakdown-dialog"
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl p-5 shadow-2xl surface-premium border border-border"
       >
@@ -957,13 +969,13 @@ function BreakdownPopup({
           type="button"
           onClick={onClose}
           className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
-          aria-label="Close"
+          aria-label="Schließen"
         >
           <Icon name="x" className="w-4 h-4 text-muted-foreground" />
         </button>
 
         <div className="mb-4">
-          <h2 className="text-[14px] font-bold text-foreground">{title}</h2>
+          <h2 id="evaluations-breakdown-title" className="text-[14px] font-bold text-foreground">{title}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{monthLabel}</p>
         </div>
 

@@ -290,7 +290,7 @@ export function InsightsCockpit({
   const stale = response?.stale ?? false;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="evaluations-insights-cockpit">
       <RunStateBanner hasRun={hasRun} stale={stale} error={error} loading={loading} />
 
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">

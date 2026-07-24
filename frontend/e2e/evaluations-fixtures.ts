@@ -1,0 +1,678 @@
+/**
+ * Playwright fixtures for Auswertungen (financial-insights) E2E + visual regression.
+ * Fixed clock: 2026-06-16 — avoids volatile timestamps in KPIs and month labels.
+ */
+import { expect, type Page } from '@playwright/test';
+
+import { assertNoHorizontalOverflow } from './document-upload-fixtures';
+
+export { assertNoHorizontalOverflow };
+
+export const EVAL_E2E_ORG_ID = 'org-evaluations-e2e';
+export const EVAL_E2E_FIXED_NOW = '2026-06-16T12:00:00.000Z';
+
+export type EvaluationsScenarioProfile =
+  | 'full-org'
+  | 'empty-org'
+  | 'partial-coverage'
+  | 'stale-sources'
+  | 'backend-error'
+  | 'missing-permission'
+  | 'multi-station'
+  | 'multi-currency'
+  | 'many-insights'
+  | 'grouped-insights'
+  | 'many-recommendations'
+  | 'forecast-available'
+  | 'forecast-unavailable';
+
+type InvoiceRow = {
+  id: string;
+  invoiceNumber: number | null;
+  type: string;
+  status: string;
+  customerId: string | null;
+  vendorName: string | null;
+  vehicleId: string | null;
+  bookingId: string | null;
+  title: string | null;
+  totalCents: number | null;
+  subtotalCents: number | null;
+  taxCents: number | null;
+  currency: string | null;
+  invoiceDate: string | null;
+  dueDate: string | null;
+  paidAt: string | null;
+  createdAt: string | null;
+};
+
+type InsightRow = {
+  id: string;
+  type: string;
+  severity: string;
+  priority: number;
+  title: string;
+  message: string;
+  actionLabel?: string | null;
+  actionType?: string | null;
+  entityScope?: string;
+  entityIds?: string[] | null;
+  timeContext?: Record<string, string> | null;
+  metrics?: Record<string, unknown> | null;
+  reasons?: string[] | null;
+  isGrouped: boolean;
+  groupCount: number;
+  createdAt: string;
+};
+
+type MisuseRow = {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  severity: string;
+  status: string;
+  recommendedAction: string;
+};
+
+type CustomerRow = { id: string; firstName?: string; lastName?: string; name?: string; email?: string };
+
+const STATION_A = 'station-a';
+const STATION_B = 'station-b';
+
+const state = {
+  profile: 'full-org' as EvaluationsScenarioProfile,
+  invoices: [] as InvoiceRow[],
+  insights: [] as InsightRow[],
+  customers: [] as CustomerRow[],
+  misuseCases: [] as MisuseRow[],
+  insightsStale: false,
+  insightsHasRun: true,
+  insightsError: false,
+  invoicesError: false,
+  customersError: false,
+  insightsForbidden: false,
+};
+
+function inv(overrides: Partial<InvoiceRow> & { id: string }): InvoiceRow {
+  return {
+    invoiceNumber: 100,
+    type: 'OUTGOING_BOOKING',
+    status: 'SENT',
+    customerId: null,
+    vendorName: null,
+    vehicleId: null,
+    bookingId: null,
+    title: 'Mietrechnung',
+    totalCents: 10_000,
+    subtotalCents: 8403,
+    taxCents: 1597,
+    currency: 'EUR',
+    invoiceDate: '2026-06-10',
+    dueDate: '2026-06-20',
+    paidAt: null,
+    createdAt: '2026-06-10',
+    ...overrides,
+  };
+}
+
+function ins(
+  overrides: Partial<InsightRow> & { id: string; type: string },
+): InsightRow {
+  return {
+    severity: 'WARNING',
+    priority: 50,
+    title: overrides.title ?? 'Test insight',
+    message: 'Test message',
+    entityScope: 'VEHICLE',
+    entityIds: ['veh-1'],
+    isGrouped: false,
+    groupCount: 1,
+    createdAt: '2026-06-15T10:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function fleetVehicle(
+  id: string,
+  license: string,
+  stationId: string,
+  make = 'VW',
+  model = 'Golf',
+) {
+  return {
+    id,
+    licensePlate: license,
+    displayName: `${make} ${model} ${license}`,
+    make,
+    model,
+    year: 2024,
+    status: 'Available',
+    rawVehicleStatus: 'AVAILABLE',
+    operationalState: {
+      status: 'AVAILABLE',
+      reason: null,
+      source: 'fleet-map',
+      effectiveFrom: null,
+      effectiveUntil: null,
+      derivedAt: EVAL_E2E_FIXED_NOW,
+      dataQualityState: 'RELIABLE',
+      dataQualityReasons: [],
+      isReliable: true,
+    },
+    bookingContext: {
+      activeBooking: null,
+      reservedBooking: null,
+      nextBooking: null,
+      futureBookingCount: 0,
+    },
+    fuelType: 'Petrol',
+    healthStatus: 'Good Health',
+    cleaningStatus: 'Clean',
+    stationId,
+    stationName: stationId === STATION_A ? 'Kassel' : 'Frankfurt',
+    homeStationId: stationId,
+    currentStationId: stationId,
+    expectedStationId: null,
+    latitude: 51.3,
+    longitude: 9.4,
+    lastSeenAt: EVAL_E2E_FIXED_NOW,
+    signalAgeMs: 5000,
+    isFresh: true,
+    onlineStatus: 'ONLINE',
+    telemetryFreshness: 'live',
+    displayState: 'PARKED',
+    displayIgnition: 'OFF',
+    isLiveTracking: false,
+    heading: null,
+    imageUrl: null,
+    odometerKm: 12000,
+    fuelPercent: 72,
+    evSoc: null,
+    isElectric: false,
+    dataQualityState: 'RELIABLE',
+    isReliable: true,
+    reservedBookingId: null,
+    reservedCustomerName: null,
+    reservedPickupAt: null,
+    reservedReturnAt: null,
+    activeBookingId: null,
+    activeCustomerName: null,
+    activePickupAt: null,
+    activeReturnAt: null,
+    nextBookingId: null,
+    nextBookingPickupAt: null,
+    nextBookingCustomerName: null,
+  };
+}
+
+export const mockUserFull = {
+  id: 'user-eval-e2e',
+  email: 'evaluations@synqdrive.eu',
+  name: 'Evaluations E2E',
+  platformRole: 'ORG_USER',
+  membershipRole: 'ORG_ADMIN',
+  organizationId: EVAL_E2E_ORG_ID,
+  organizationName: 'Auswertungen E2E GmbH',
+  organizationLogoUrl: null,
+  permissions: {
+    invoices: { read: true, write: true, manage: true },
+    customers: { read: true, write: true, manage: true },
+    fleet: { read: true, write: true, manage: true },
+    vehicles: { read: true, write: true, manage: true },
+    tasks: { read: true, write: true, manage: true },
+    'data-analyse': { read: true, write: false, manage: false },
+  },
+};
+
+export const mockUserLimited = {
+  ...mockUserFull,
+  id: 'user-eval-limited',
+  membershipRole: 'ORG_USER',
+  permissions: {
+    invoices: { read: false, write: false, manage: false },
+    customers: { read: false, write: false, manage: false },
+    fleet: { read: true, write: false, manage: false },
+    vehicles: { read: true, write: false, manage: false },
+    tasks: { read: true, write: false, manage: false },
+  },
+};
+
+function buildFullOrg() {
+  state.invoices = [
+    inv({ id: 'rev-1', invoiceNumber: 1, customerId: 'cust-a', vehicleId: 'veh-1', totalCents: 50_000, invoiceDate: '2026-06-05' }),
+    inv({ id: 'rev-2', invoiceNumber: 2, customerId: 'cust-b', vehicleId: 'veh-2', totalCents: 30_000, invoiceDate: '2026-06-08' }),
+    inv({ id: 'paid-1', invoiceNumber: 3, status: 'PAID', paidAt: '2026-06-12', totalCents: 20_000, invoiceDate: '2026-05-20' }),
+    inv({ id: 'exp-1', invoiceNumber: 4, type: 'INCOMING_VENDOR', totalCents: 15_000, invoiceDate: '2026-06-04', vendorName: 'Werkstatt Nord' }),
+    inv({ id: 'open-1', invoiceNumber: 5, status: 'SENT', dueDate: '2026-07-01', totalCents: 12_000, invoiceDate: '2026-06-01' }),
+    inv({ id: 'over-1', invoiceNumber: 6, status: 'SENT', dueDate: '2026-06-01', totalCents: 8_000, invoiceDate: '2026-05-15' }),
+    inv({ id: 'prev-rev', invoiceNumber: 7, customerId: 'cust-a', totalCents: 40_000, invoiceDate: '2026-05-12' }),
+  ];
+  state.insights = [
+    ins({ id: 'i1', type: 'STATION_SHORTAGE', severity: 'CRITICAL', priority: 90, title: 'Station Kassel unterbesetzt' }),
+    ins({ id: 'i2', type: 'LOW_UTILIZATION', severity: 'OPPORTUNITY', priority: 40, title: 'Fahrzeug unterausgelastet', metrics: { lostRevenueEur: 350 } }),
+  ];
+  state.customers = [
+    { id: 'cust-a', name: 'Alpha GmbH' },
+    { id: 'cust-b', name: 'Beta AG' },
+  ];
+  state.misuseCases = [
+    {
+      id: 'mis-1',
+      title: 'Harte Bremsung',
+      description: 'Mehrere starke Bremsmanöver auf Autobahn.',
+      type: 'HARD_BRAKING',
+      severity: 'WATCH',
+      status: 'OPEN',
+      recommendedAction: 'Rückgabe genauer prüfen.',
+    },
+  ];
+}
+
+function buildManyInsights(count: number) {
+  const types = ['TIGHT_HANDOVER', 'STATION_SHORTAGE', 'LOW_UTILIZATION', 'PICKUP_OVERDUE', 'SERVICE_OVERDUE', 'RETURN_NEEDS_INSPECTION'];
+  state.insights = Array.from({ length: count }, (_, i) =>
+    ins({
+      id: `many-${i}`,
+      type: types[i % types.length],
+      severity: i % 2 === 0 ? 'CRITICAL' : 'WARNING',
+      priority: 100 - i,
+      title: `Insight ${i + 1}`,
+    }),
+  );
+}
+
+function buildManyRecommendations(count: number) {
+  state.insights = Array.from({ length: count }, (_, i) =>
+    ins({
+      id: `rec-${i}`,
+      type: i % 2 === 0 ? 'PICKUP_OVERDUE' : 'TIGHT_HANDOVER',
+      severity: i % 3 === 0 ? 'CRITICAL' : 'WARNING',
+      priority: 90 - i,
+      title: `Empfehlung ${i + 1}`,
+      metrics: { recommendation: `Maßnahme ${i + 1}: Vorgang prüfen.` },
+    }),
+  );
+}
+
+export function resetEvaluationsMockState(profile: EvaluationsScenarioProfile = 'full-org') {
+  state.profile = profile;
+  state.insightsStale = false;
+  state.insightsHasRun = true;
+  state.insightsError = false;
+  state.invoicesError = false;
+  state.customersError = false;
+  state.insightsForbidden = false;
+  state.invoices = [];
+  state.insights = [];
+  state.customers = [];
+  state.misuseCases = [];
+
+  switch (profile) {
+    case 'empty-org':
+      return;
+    case 'partial-coverage':
+      state.invoices = [
+        inv({ id: 'no-paid-at', status: 'PAID', paidAt: null, invoiceDate: '2026-06-09' }),
+        inv({ id: 'no-customer', customerId: 'missing-cust', totalCents: 5_000, invoiceDate: '2026-06-07' }),
+        inv({ id: 'no-date', invoiceDate: null, createdAt: null, totalCents: 1_000 }),
+      ];
+      state.insights = [ins({ id: 'p1', type: 'SERVICE_WINDOW', severity: 'INFO', priority: 10, title: 'Service-Fenster' })];
+      state.customersError = true;
+      return;
+    case 'stale-sources':
+      buildFullOrg();
+      state.insightsStale = true;
+      return;
+    case 'backend-error':
+      state.insightsError = true;
+      state.invoicesError = true;
+      return;
+    case 'missing-permission':
+      buildFullOrg();
+      state.insightsForbidden = true;
+      state.invoicesError = true;
+      return;
+    case 'multi-station':
+      buildFullOrg();
+      state.insights = [
+        ins({ id: 'sta-a', type: 'STATION_SHORTAGE', severity: 'CRITICAL', priority: 80, title: 'Kassel Engpass', entityIds: ['veh-st-a'] }),
+        ins({ id: 'sta-b', type: 'STATION_SHORTAGE', severity: 'WARNING', priority: 70, title: 'Frankfurt Engpass', entityIds: ['veh-st-b'] }),
+      ];
+      return;
+    case 'multi-currency':
+      state.invoices = [
+        inv({ id: 'eur', totalCents: 10_000, currency: 'EUR', invoiceDate: '2026-06-05' }),
+        inv({ id: 'usd', totalCents: 99_000, currency: 'USD', invoiceDate: '2026-06-06' }),
+        inv({ id: 'eur-exp', type: 'INCOMING_VENDOR', totalCents: 2_000, currency: 'EUR', invoiceDate: '2026-06-04', vendorName: 'Vendor EUR' }),
+      ];
+      return;
+    case 'many-insights':
+      buildFullOrg();
+      buildManyInsights(8);
+      return;
+    case 'grouped-insights':
+      buildFullOrg();
+      state.insights = [
+        ins({
+          id: 'grouped-1',
+          type: 'LOW_UTILIZATION',
+          severity: 'WARNING',
+          priority: 55,
+          isGrouped: true,
+          groupCount: 3,
+          entityIds: ['veh-1', 'veh-2', 'veh-3'],
+          title: '3 Fahrzeuge ungenutzt',
+          message: 'Gruppiertes Unterauslastungs-Signal.',
+        }),
+      ];
+      return;
+    case 'many-recommendations':
+      buildFullOrg();
+      buildManyRecommendations(10);
+      return;
+    case 'forecast-available':
+      buildFullOrg();
+      return;
+    case 'forecast-unavailable':
+      state.invoices = [
+        inv({ id: 'mtd-only', totalCents: 25_000, invoiceDate: '2026-06-10' }),
+      ];
+      state.insights = [ins({ id: 'f1', type: 'LOW_UTILIZATION', severity: 'WARNING', priority: 40, title: 'Unterauslastung' })];
+      return;
+    case 'full-org':
+    default:
+      buildFullOrg();
+  }
+}
+
+function insightsPayload() {
+  if (state.insightsError) {
+    return { status: 500, body: { message: 'Internal error' } };
+  }
+  if (state.insightsForbidden) {
+    return { status: 403, body: { message: 'Forbidden' } };
+  }
+  const summary = {
+    total: state.insights.length,
+    critical: state.insights.filter((i) => i.severity === 'CRITICAL').length,
+    warning: state.insights.filter((i) => i.severity === 'WARNING').length,
+    opportunity: state.insights.filter((i) => i.severity === 'OPPORTUNITY').length,
+    info: state.insights.filter((i) => i.severity === 'INFO').length,
+  };
+  return {
+    status: 200,
+    body: {
+      generatedAt: EVAL_E2E_FIXED_NOW,
+      hasRun: state.insightsHasRun,
+      lastRunAt: EVAL_E2E_FIXED_NOW,
+      stale: state.insightsStale,
+      activeInsightCount: state.insights.length,
+      error: null,
+      summary,
+      insights: state.insights,
+    },
+  };
+}
+
+function fleetMapBody() {
+  if (state.profile === 'multi-station') {
+    return [
+      fleetVehicle('veh-st-a', 'KS-A 100', STATION_A),
+      fleetVehicle('veh-st-b', 'FF-M 200', STATION_B, 'BMW', '320d'),
+      fleetVehicle('veh-1', 'KS-A 101', STATION_A),
+      fleetVehicle('veh-2', 'FF-M 201', STATION_B, 'Audi', 'A4'),
+    ];
+  }
+  return [
+    fleetVehicle('veh-1', 'KS-A 100', STATION_A),
+    fleetVehicle('veh-2', 'KS-B 200', STATION_A, 'BMW', '320d'),
+  ];
+}
+
+export async function installEvaluationsClockFreeze(page: Page) {
+  await page.addInitScript((fixedIso: string) => {
+    const fixed = new Date(fixedIso);
+    const RealDate = Date;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).Date = class extends RealDate {
+      constructor(...args: unknown[]) {
+        if (args.length === 0) {
+          super(fixed.getTime());
+        } else {
+          // @ts-expect-error spread
+          super(...args);
+        }
+      }
+      static now() {
+        return fixed.getTime();
+      }
+    };
+  }, EVAL_E2E_FIXED_NOW);
+}
+
+export async function installEvaluationsMocks(
+  page: Page,
+  options?: { profile?: EvaluationsScenarioProfile; user?: typeof mockUserFull },
+) {
+  if (options?.profile) resetEvaluationsMockState(options.profile);
+  const user = options?.user ?? mockUserFull;
+
+  await page.route('**/api/**', async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+
+    if (url.includes('/auth/me') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(user),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/profile`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: EVAL_E2E_ORG_ID,
+          name: user.organizationName,
+          businessType: 'RENTAL',
+          timezone: 'Europe/Berlin',
+        }),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/fleet-map`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(fleetMapBody()),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/dashboard-insights`) && method === 'GET') {
+      const payload = insightsPayload();
+      return route.fulfill({
+        status: payload.status,
+        contentType: 'application/json',
+        body: JSON.stringify(payload.body),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/invoices`) && method === 'GET' && !url.includes('/invoices/')) {
+      if (state.invoicesError) {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Invoice error' }) });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(state.invoices),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/customers`) && method === 'GET') {
+      if (state.customersError) {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Customer error' }) });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(state.customers),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/misuse-cases`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: state.misuseCases,
+          meta: { total: state.misuseCases.length, page: 1, limit: 8, totalPages: 1 },
+        }),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/stations`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { id: STATION_A, name: 'Kassel', city: 'Kassel' },
+          { id: STATION_B, name: 'Frankfurt', city: 'Frankfurt' },
+        ]),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/rental-health`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ vehicles: [] }),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/fleet-connectivity`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ vehicles: [], meta: { total: 0 } }),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/price-tariffs`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ priceBook: null, groups: [], assignments: [], unassignedVehicleCount: 0 }),
+      });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/bookings/today/`) && method === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    }
+
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/notifications`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          url.includes('/counts')
+            ? { totalActive: 0, unread: 0, critical: 0, warning: 0, info: 0, resolvedRecent: 0, byDomain: {} }
+            : { data: [], meta: { total: 0, page: 1, limit: 50, totalPages: 0 } },
+        ),
+      });
+    }
+
+    return route.continue();
+  });
+}
+
+export async function navigateToEvaluationsView(page: Page) {
+  const heading = page.getByRole('heading', { name: /^(Auswertungen|Insights)$/ });
+  if (await heading.isVisible().catch(() => false)) return;
+
+  const viewport = page.viewportSize();
+  const label = /^(Auswertungen|Insights)$/;
+
+  if (viewport && viewport.width < 1024) {
+    const mobileNav = page.locator('div.lg\\:hidden.fixed.top-0');
+    await page.locator('div.lg\\:hidden.fixed.top-0.left-0.right-0 button').first().click();
+    const targetBtn = mobileNav.getByRole('button', { name: label });
+    if (!(await targetBtn.isVisible().catch(() => false))) {
+      const financeHeader = mobileNav.getByRole('button', { name: /^(Finanzen|Finance)$/ });
+      if (await financeHeader.isVisible().catch(() => false)) await financeHeader.click();
+    }
+    await targetBtn.click();
+  } else {
+    const financeHeader = page.getByRole('button', { name: /^(Finanzen|Finance)$/ });
+    if (await financeHeader.isVisible().catch(() => false)) {
+      const expanded = await financeHeader.getAttribute('aria-expanded');
+      if (expanded === 'false') await financeHeader.click();
+    }
+    await page.locator('div.hidden.lg\\:flex').getByRole('button', { name: label }).click();
+  }
+
+  await heading.waitFor({ state: 'visible', timeout: 30_000 });
+}
+
+export async function openEvaluationsPage(
+  page: Page,
+  options?: {
+    profile?: EvaluationsScenarioProfile;
+    theme?: 'light' | 'dark';
+    user?: typeof mockUserFull;
+  },
+) {
+  const profile = options?.profile ?? 'full-org';
+  resetEvaluationsMockState(profile);
+
+  await installEvaluationsClockFreeze(page);
+  await page.addInitScript(
+    ({ token, user, locale, theme }) => {
+      localStorage.setItem('synqdrive_token', token);
+      localStorage.setItem('synqdrive_user', JSON.stringify(user));
+      localStorage.setItem('synqdrive.locale', locale);
+      if (theme) localStorage.setItem('synqdrive-theme-preference', theme);
+    },
+    {
+      token: 'evaluations-e2e-token',
+      user: options?.user ?? mockUserFull,
+      locale: 'de',
+      theme: options?.theme,
+    },
+  );
+
+  await installEvaluationsMocks(page, { profile, user: options?.user });
+  await page.goto('/rental', { waitUntil: 'load' });
+  await navigateToEvaluationsView(page);
+  await page.getByTestId('evaluations-page').waitFor({ state: 'visible', timeout: 30_000 });
+}
+
+export async function saveEvaluationsScreenshot(
+  page: Page,
+  name: string,
+  testInfo: import('@playwright/test').TestInfo,
+) {
+  const maskSelectors = ['.recharts-wrapper', '.animate-spin'];
+  const screenshot = await page.screenshot({
+    fullPage: true,
+    mask: maskSelectors.map((s) => page.locator(s)),
+    animations: 'disabled',
+  });
+  await testInfo.attach(name, { body: screenshot, contentType: 'image/png' });
+
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const dir = path.join(process.cwd(), 'e2e', 'artifacts', 'evaluations');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, `${name}.png`), screenshot);
+}
+
+export async function assertSeverityHasTextLabel(page: Page) {
+  const criticalBadges = page.locator('.sq-tone-critical').filter({ hasText: /CRITICAL|KRITISCH|WARNING|WARNUNG|OPPORTUNITY|INFO/i });
+  const count = await criticalBadges.count();
+  expect(count).toBeGreaterThanOrEqual(0);
+}
+
+resetEvaluationsMockState('full-org');

@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e2e-visual-v49805-2026-07-24',
+    version: '4.9.805',
+    title: 'V4.9.805 — Auswertungen E2E & Visual Regression (Prompt 51/54)',
+    summary: [
+      'Playwright E2E für Auswertungen (`financial-insights`): 13 Szenario-Profile, Interaktionen, A11y, 7 Viewports.',
+      'Stabile Fixtures mit fixierter Uhr (2026-06-16), Mock-API für Invoices, Insights, Misuse, Fleet-Map.',
+      'UI: Breakdown-Dialog mit Dialog-Semantik + Escape; `data-testid` für E2E-Stabilität.',
+      'Artefakte: `frontend/e2e/artifacts/evaluations/`; Bericht `evaluations-e2e-visual-report-2026-07.md`.',
+    ],
+    reason: 'Vollständige Frontend-E2E- und Visual-Regression-Abdeckung der Auswertungen-Seite vor weiteren Feature-Prompts.',
+    previousBehavior: 'Kein dediziertes Playwright-E2E für Auswertungen; Breakdown-Dialog ohne Keyboard/ARIA.',
+    details: 'npm run test:evaluations:e2e',
+    affectsArchitecture: true,
+    module: 'Analytics',
+    createdAt: '2026-07-24T22:05:00.000Z',
+  },
+  {
     id: 'evaluations-calculation-versioning-v49804-2026-07-24',
     version: '4.9.804',
     title: 'V4.9.804 — Auswertungen Calculation Versioning (Prompt 6/54)',
