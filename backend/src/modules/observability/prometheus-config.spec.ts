@@ -4,6 +4,7 @@ import { TripMetricsService } from './trip-metrics.service';
 import { TireMetricsService } from '@modules/vehicle-intelligence/tires/tire-metrics.service';
 import { BrakeMetricsService } from '@modules/vehicle-intelligence/brakes/brake-metrics.service';
 import { FleetHealthMetricsService } from '@modules/fleet-health-observability/fleet-health-metrics.service';
+import { EvaluationsMetricsService } from '@modules/evaluations-observability/evaluations-metrics.service';
 
 const FORBIDDEN_LABELS = [
   'vehicle_id',
@@ -27,6 +28,7 @@ describe('TripMetricsService label cardinality', () => {
     new TireMetricsService(metrics);
     new BrakeMetricsService(metrics);
     new FleetHealthMetricsService(metrics);
+    new EvaluationsMetricsService(metrics);
   });
 
   it('does not register forbidden high-cardinality labels', async () => {
@@ -90,6 +92,17 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_fleet_health_module_status_total');
     expect(text).toContain('synqdrive_fleet_health_availability_total');
     expect(text).toContain('synqdrive_fleet_health_battery_publication_coverage_ratio');
+    expect(text).toContain('synqdrive_evaluations_api_request_duration_seconds');
+    expect(text).toContain('synqdrive_evaluations_detector_duration_seconds');
+    expect(text).toContain('synqdrive_evaluations_insights_run_duration_seconds');
+    expect(text).toContain('synqdrive_evaluations_scheduler_runs_total');
+    expect(text).toContain('synqdrive_evaluations_job_duration_seconds');
+    expect(text).toContain('synqdrive_evaluations_redis_errors_total');
+    expect(text).toContain('synqdrive_evaluations_cache_total');
+    expect(text).toContain('synqdrive_evaluations_data_source_total');
+    expect(text).toContain('synqdrive_evaluations_db_query_duration_seconds');
+    expect(text).toContain('synqdrive_evaluations_forecast_total');
+    expect(text).toContain('synqdrive_evaluations_kpi_jump_total');
   });
 });
 
@@ -131,6 +144,9 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('FleetHealthBatteryPublicationCoverageAbsent');
     expect(yaml).toContain('FleetHealthTaskAutomationEnqueueFailures');
     expect(yaml).toContain('FleetHealthBlockingCasesBacklogHigh');
+    expect(yaml).toContain('EvaluationsInsightsRunFailureRateHigh');
+    expect(yaml).toContain('synqdrive_evaluations_insights_runs_total');
+    expect(yaml).toContain('owner: evaluations');
     expect(yaml).toContain('owner: fleet-health-service');
     expect(yaml).toContain('runbook_url:');
     expect(yaml).toContain('clear_condition:');

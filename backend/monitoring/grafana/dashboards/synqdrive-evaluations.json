@@ -1,0 +1,277 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "doc",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Evaluations Runbook",
+      "type": "link",
+      "url": "docs/operations/evaluations-observability-runbook.md"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["synqdrive"],
+      "targetBlank": false,
+      "title": "SynqDrive Ops",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Übersicht",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_evaluations_api_requests_total[15m]))", "refId": "A" }],
+      "title": "API requests/s (15m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_evaluations_api_requests_total{result=\"error\"}[15m])) / clamp_min(sum(rate(synqdrive_evaluations_api_requests_total[15m])), 0.001)", "refId": "A" }],
+      "title": "API error rate (15m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_evaluations_insights_runs_total{result=\"error\"}[30m])) / clamp_min(sum(rate(synqdrive_evaluations_insights_runs_total[30m])), 0.001)", "refId": "A" }],
+      "title": "Insights run failure rate (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "synqdrive_evaluations_scheduler_orgs_enqueued", "refId": "A" }],
+      "title": "Last scheduler orgs enqueued",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "API-Latenz & Fehlerrate",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 5,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, route) (rate(synqdrive_evaluations_api_request_duration_seconds_bucket[10m])))", "legendFormat": "{{route}} p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.50, sum by (le, route) (rate(synqdrive_evaluations_api_request_duration_seconds_bucket[10m])))", "legendFormat": "{{route}} p50", "refId": "B" }
+      ],
+      "title": "Auswertungen API latency (10m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 6,
+      "targets": [
+        { "expr": "sum by (route, status_class) (rate(synqdrive_evaluations_api_requests_total[10m]))", "legendFormat": "{{route}} {{status_class}}", "refId": "A" }
+      ],
+      "title": "API requests by route/status",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "Insights-Pipeline & Detektoren",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "id": 7,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, trigger_class) (rate(synqdrive_evaluations_insights_run_duration_seconds_bucket[15m])))", "legendFormat": "{{trigger_class}} p95", "refId": "A" }
+      ],
+      "title": "Insights run duration p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "id": 8,
+      "targets": [
+        { "expr": "sum by (detector, result) (rate(synqdrive_evaluations_detector_runs_total[15m]))", "legendFormat": "{{detector}} {{result}}", "refId": "A" }
+      ],
+      "title": "Detector outcomes/s",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "id": 9,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, detector) (rate(synqdrive_evaluations_detector_duration_seconds_bucket[15m])))", "legendFormat": "{{detector}} p95", "refId": "A" }
+      ],
+      "title": "Detector duration p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "id": 10,
+      "targets": [
+        { "expr": "sum(rate(synqdrive_evaluations_insights_published_total[30m]))", "legendFormat": "published/s", "refId": "A" },
+        { "expr": "sum by (severity) (rate(synqdrive_evaluations_kpi_jump_total[30m]))", "legendFormat": "kpi jump {{severity}}", "refId": "B" }
+      ],
+      "title": "Published insights & KPI jumps",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "id": 103,
+      "title": "Queue, Jobs & Scheduler",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 32 },
+      "id": 11,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(synqdrive_queue_lag_seconds_bucket{queue=\"notification.evaluation\"}[10m])))", "legendFormat": "p95 lag", "refId": "A" }
+      ],
+      "title": "notification.evaluation queue lag p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 32 },
+      "id": 12,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, trigger_class) (rate(synqdrive_evaluations_job_duration_seconds_bucket[15m])))", "legendFormat": "{{trigger_class}} p95", "refId": "A" }
+      ],
+      "title": "Evaluation job duration p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 32 },
+      "id": 13,
+      "targets": [
+        { "expr": "sum by (trigger, result) (rate(synqdrive_evaluations_scheduler_runs_total[30m]))", "legendFormat": "{{trigger}} {{result}}", "refId": "A" }
+      ],
+      "title": "Scheduler cycles",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "id": 104,
+      "title": "Datenquellen, DB, Redis & Forecast",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 41 },
+      "id": 14,
+      "targets": [
+        { "expr": "sum by (source, freshness) (rate(synqdrive_evaluations_data_source_total[30m]))", "legendFormat": "{{source}} {{freshness}}", "refId": "A" }
+      ],
+      "title": "Data source freshness",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 41 },
+      "id": 15,
+      "targets": [
+        { "expr": "sum by (operation) (rate(synqdrive_evaluations_db_slow_queries_total[15m]))", "legendFormat": "slow {{operation}}", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(synqdrive_evaluations_db_query_duration_seconds_bucket[15m])))", "legendFormat": "{{operation}} p95", "refId": "B" }
+      ],
+      "title": "DB query duration & slow queries",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 41 },
+      "id": 16,
+      "targets": [
+        { "expr": "sum by (cache, result) (rate(synqdrive_evaluations_cache_total[15m]))", "legendFormat": "{{cache}} {{result}}", "refId": "A" },
+        { "expr": "sum by (operation) (rate(synqdrive_evaluations_redis_errors_total[15m]))", "legendFormat": "redis {{operation}}", "refId": "B" },
+        { "expr": "sum by (operation, result) (rate(synqdrive_evaluations_forecast_total[30m]))", "legendFormat": "forecast {{operation}} {{result}}", "refId": "C" }
+      ],
+      "title": "Cache, Redis errors & forecast ops",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 },
+      "id": 105,
+      "title": "Node-Ressourcen (shared)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
+      "id": 17,
+      "targets": [
+        { "expr": "rate(process_cpu_seconds_total{job=\"synqdrive-backend\"}[5m])", "legendFormat": "CPU", "refId": "A" }
+      ],
+      "title": "Backend CPU (process)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 50 },
+      "id": 18,
+      "targets": [
+        { "expr": "process_resident_memory_bytes{job=\"synqdrive-backend\"}", "legendFormat": "RSS", "refId": "A" },
+        { "expr": "nodejs_heap_size_used_bytes{job=\"synqdrive-backend\"}", "legendFormat": "heap used", "refId": "B" }
+      ],
+      "title": "Backend memory",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "evaluations", "auswertungen", "insights"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SynqDrive — Auswertungen & Forecast Pipeline",
+  "uid": "synqdrive-evaluations",
+  "version": 1
+}

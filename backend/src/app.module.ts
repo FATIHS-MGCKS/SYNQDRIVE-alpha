@@ -29,6 +29,8 @@ import { ObservabilityModule } from '@modules/observability/observability.module
 import { FleetHealthObservabilityModule } from '@modules/fleet-health-observability/fleet-health-observability.module';
 import { VehicleDetailObservabilityModule } from '@modules/vehicles/observability/vehicle-detail-observability.module';
 import { IamObservabilityModule } from '@modules/iam-observability/iam-observability.module';
+import { EvaluationsObservabilityModule } from '@modules/evaluations-observability/evaluations-observability.module';
+import { EvaluationsApiObservabilityInterceptor } from '@modules/evaluations-observability/evaluations-api.interceptor';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { AiModule } from '@modules/ai/ai.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
@@ -136,6 +138,10 @@ export class AppModule {
           provide: APP_INTERCEPTOR,
           useClass: AuditInterceptor,
         },
+        {
+          provide: APP_INTERCEPTOR,
+          useClass: EvaluationsApiObservabilityInterceptor,
+        },
       ],
       imports: [
         ConfigModule.forRoot({
@@ -206,6 +212,7 @@ export class AppModule {
         IamObservabilityModule,
         FleetHealthObservabilityModule,
         VehicleDetailObservabilityModule,
+        EvaluationsObservabilityModule,
         VehicleIntelligenceModule,
         DimoModule,
         AiModule,

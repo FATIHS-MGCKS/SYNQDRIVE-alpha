@@ -37,6 +37,9 @@ import { BrakeCriticalDetector } from './detectors/brake-critical.detector';
 import { ComplianceOperationalDetector } from './detectors/compliance-operational.detector';
 import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-assessment-device-quality.detector';
+import { EvaluationsObservabilityService } from '@modules/evaluations-observability/evaluations-observability.service';
+import { classifyInsightsTrigger } from '@modules/evaluations-observability/evaluations-trigger-class.util';
+import { sourcesForDetector } from '@modules/evaluations-observability/evaluations-detector-sources';
 
 @Injectable()
 export class BusinessInsightsService {
@@ -68,6 +71,7 @@ export class BusinessInsightsService {
     @Optional() private readonly dtcService?: DtcService,
     @Optional() private readonly tireHealthAlerts?: TireHealthAlertService,
     @Optional() private readonly brakeHealthAlerts?: BrakeHealthAlertService,
+    @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
   ) {
     this.detectors = [
       tightHandover,
@@ -96,6 +100,16 @@ export class BusinessInsightsService {
 
     const run = await this.repo.createRun(organizationId, trigger);
     const ctx: DetectorContext = { organizationId, now: new Date(), policy };
+    const triggerClass = classifyInsightsTrigger(trigger);
+    const runStarted = Date.now();
+    const lastRun = await this.repo.getLastRunForOrg(organizationId);
+    const previousPublished = lastRun?.publishedCount ?? 0;
+    const evalCtx = {
+      correlationId: this.evaluationsObservability?.createCorrelationId(run.id) ?? run.id,
+      runId: run.id,
+      triggerClass,
+    };
+    let detectorFailureCount = 0;
 
     try {
       const enabledDetectors = this.detectors.filter((d) => this.isDetectorEnabled(d, policy));
@@ -109,14 +123,19 @@ export class BusinessInsightsService {
       const detectorResults = await Promise.allSettled(
         enabledDetectors.map(async (detector) => {
           const start = Date.now();
-          const results = await detector.detect(ctx);
-          const elapsed = Date.now() - start;
-          if (elapsed > 2000) {
-            this.logger.warn(
-              `Detector ${detector.type} slow for org ${organizationId}: ${elapsed}ms`,
-            );
+          try {
+            const results = await detector.detect(ctx);
+            const elapsed = Date.now() - start;
+            this.evaluationsObservability?.observeDetector(evalCtx, detector.type, elapsed);
+            for (const source of sourcesForDetector(detector.type)) {
+              this.evaluationsObservability?.recordSourceFreshness(source, 'fresh');
+            }
+            return { detector, results };
+          } catch (err) {
+            const elapsed = Date.now() - start;
+            this.evaluationsObservability?.observeDetector(evalCtx, detector.type, elapsed, err);
+            throw err;
           }
-          return { detector, results };
         }),
       );
 
@@ -126,6 +145,7 @@ export class BusinessInsightsService {
         if (r.status === 'fulfilled') {
           allCandidates.push(...r.value.results);
         } else {
+          detectorFailureCount++;
           this.logger.warn(
             `Detector ${type} failed for org ${organizationId}: ${r.reason?.message ?? r.reason}`,
           );
@@ -198,12 +218,34 @@ export class BusinessInsightsService {
         );
       }
 
+      this.evaluationsObservability?.observeInsightsRun(
+        evalCtx,
+        triggerClass,
+        'success',
+        Date.now() - runStarted,
+        formatted.length,
+        detectorFailureCount,
+      );
+      this.evaluationsObservability?.recordInsightCountJump(
+        previousPublished,
+        formatted.length,
+        evalCtx,
+      );
+
       this.logger.log(
         `Insights run [${trigger}] for org ${organizationId}: ${gatedCandidates.length} candidates → ${grouped.length} grouped → ${formatted.length} published`,
       );
       return { runId: run.id, published: formatted.length };
     } catch (err: any) {
       await this.repo.completeRun(run.id, 0, 0, err.message);
+      this.evaluationsObservability?.observeInsightsRun(
+        evalCtx,
+        triggerClass,
+        'error',
+        Date.now() - runStarted,
+        0,
+        detectorFailureCount,
+      );
       this.logger.error(`Insights run failed for org ${organizationId}: ${err.message}`);
       return { runId: run.id, published: 0 };
     }

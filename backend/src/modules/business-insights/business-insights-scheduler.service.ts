@@ -1,10 +1,11 @@
-import { Injectable, Logger, OnApplicationBootstrap, Inject } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, Inject, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigType } from '@nestjs/config';
 import notificationEvaluationConfig from '@config/notification-evaluation.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BusinessInsightsService } from './business-insights.service';
 import { NotificationEvaluationService } from '@modules/notifications/runtime/notification-evaluation.service';
+import { EvaluationsObservabilityService } from '@modules/evaluations-observability/evaluations-observability.service';
 
 /** Wall-clock cadence — survives PM2 restarts better than @Interval (which resets every deploy). */
 const INSIGHTS_CRON = '2,32 * * * *';
@@ -20,6 +21,7 @@ export class BusinessInsightsScheduler implements OnApplicationBootstrap {
     private readonly evaluationService: NotificationEvaluationService,
     @Inject(notificationEvaluationConfig.KEY)
     private readonly evalConfig: ConfigType<typeof notificationEvaluationConfig>,
+    @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
   ) {}
 
   onApplicationBootstrap() {
@@ -38,12 +40,20 @@ export class BusinessInsightsScheduler implements OnApplicationBootstrap {
     this.cycleCount++;
     this.logger.debug(`Enqueueing scheduled notification evaluations (${trigger})`);
     const start = Date.now();
+    const correlationId = this.evaluationsObservability?.createCorrelationId() ?? `sched-${Date.now()}`;
 
     try {
       const activeOrgIds = await this.getActiveOrganizationIds();
 
       if (activeOrgIds.length === 0) {
         this.logger.debug('No active organizations to refresh');
+        this.evaluationsObservability?.observeScheduler(
+          { correlationId },
+          trigger,
+          'success',
+          0,
+          Date.now() - start,
+        );
         return;
       }
 
@@ -56,6 +66,13 @@ export class BusinessInsightsScheduler implements OnApplicationBootstrap {
       );
 
       const elapsed = Date.now() - start;
+      this.evaluationsObservability?.observeScheduler(
+        { correlationId },
+        trigger,
+        'success',
+        activeOrgIds.length,
+        elapsed,
+      );
       this.logger.log(
         `Scheduled evaluation jobs enqueued (${trigger}): ${activeOrgIds.length} orgs in ${elapsed}ms`,
       );
@@ -65,6 +82,14 @@ export class BusinessInsightsScheduler implements OnApplicationBootstrap {
         await this.insightsService.pruneOldData();
       }
     } catch (err) {
+      this.evaluationsObservability?.observeScheduler(
+        { correlationId },
+        trigger,
+        'error',
+        0,
+        Date.now() - start,
+        err,
+      );
       this.logger.error(`Scheduled notification evaluation enqueue failed: ${err}`);
     }
   }
