@@ -28,6 +28,8 @@ interface Workflow {
   lastTriggeredAt: string | null;
   triggerCount: number;
   isTemplate: boolean;
+  remediationRequired?: boolean;
+  remediationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,19 +107,54 @@ const TRIGGER_TYPES = [
   { key: 'manual.test', label: 'Manual test', category: 'vehicle_return' },
 ] as const;
 
-const ACTION_TYPES = [
-  { key: 'create_alert', label: 'Create alert', icon: Bell, mvp: true },
-  { key: 'create_task', label: 'Create task', icon: ClipboardList, mvp: true },
-  { key: 'change_vehicle_status', label: 'Change vehicle status', icon: Car, mvp: true },
-  { key: 'send_notification', label: 'Prepare notification (draft only)', icon: Bell, mvp: true },
-  { key: 'ai_suggest', label: 'AI: Suggest action (approval required)', icon: Bot, mvp: true },
-  { key: 'request_approval', label: 'Request approval', icon: Shield, mvp: true },
-  { key: 'change_cleaning_status', label: 'Set cleaning status', icon: Sparkles, mvp: false, comingSoon: true },
-  { key: 'ai_execute', label: 'AI: Execute action', icon: Zap, mvp: false, comingSoon: true },
-  { key: 'ai_send_message', label: 'AI: Send customer message', icon: Bot, mvp: false, comingSoon: true },
-  { key: 'ai_book_appointment', label: 'AI: Book appointment', icon: Calendar, mvp: false, comingSoon: true },
-  { key: 'assign_vendor', label: 'Assign vendor / service', icon: Truck, mvp: false, comingSoon: true },
+const ACTION_UI_FALLBACK = [
+  { key: 'create_alert', label: 'Create alert', icon: Bell },
+  { key: 'create_task', label: 'Create task', icon: ClipboardList },
+  { key: 'change_vehicle_status', label: 'Change vehicle status', icon: Car },
+  { key: 'send_notification', label: 'Prepare notification (draft only)', icon: Bell },
+  { key: 'ai_suggest', label: 'AI: Suggest action (approval required)', icon: Bot },
+  { key: 'request_approval', label: 'Request approval', icon: Shield },
+  { key: 'change_cleaning_status', label: 'Set cleaning status', icon: Sparkles },
+  { key: 'ai_execute', label: 'AI: Execute action', icon: Zap },
+  { key: 'ai_send_message', label: 'AI: Send customer message', icon: Bot },
+  { key: 'ai_book_appointment', label: 'AI: Book appointment', icon: Calendar },
+  { key: 'assign_vendor', label: 'Assign vendor / service', icon: Truck },
 ] as const;
+
+type ActionPickerOption = {
+  key: string;
+  label: string;
+  icon: typeof Zap;
+  disabled: boolean;
+  status: string;
+  blockedReason?: string;
+};
+
+function buildActionPickerOptions(
+  capabilities: import('../../lib/api').WorkflowActionCapabilityDto[],
+): ActionPickerOption[] {
+  if (!capabilities.length) {
+    return ACTION_UI_FALLBACK.map((entry) => ({
+      ...entry,
+      disabled: !['create_alert', 'create_task', 'change_vehicle_status', 'send_notification', 'ai_suggest', 'request_approval'].includes(entry.key),
+      status: 'AVAILABLE',
+    }));
+  }
+  return capabilities.map((cap) => {
+    const key = cap.legacyAliases[0] ?? cap.canonicalType;
+    const fallback = ACTION_UI_FALLBACK.find(
+      (entry) => entry.key === key || entry.key === cap.canonicalType,
+    );
+    return {
+      key,
+      label: cap.label,
+      icon: fallback?.icon ?? Zap,
+      disabled: !cap.selectableInUi,
+      status: cap.status,
+      blockedReason: cap.blockedReason,
+    };
+  });
+}
 
 const CONDITION_FIELDS = [
   { key: 'vehicle_status', label: 'Vehicle status' },
@@ -244,11 +281,13 @@ function getCategoryMeta(key: string) {
 function getTriggerLabel(key: string) {
   return TRIGGER_TYPES.find((t) => t.key === key)?.label || key;
 }
-function getActionLabel(key: string) {
-  return ACTION_TYPES.find((a) => a.key === key)?.label || key;
+function getActionLabel(key: string, options?: ActionPickerOption[]) {
+  return options?.find((a) => a.key === key)?.label || ACTION_UI_FALLBACK.find((a) => a.key === key)?.label || key;
 }
-function getActionIcon(key: string) {
-  const a = ACTION_TYPES.find((t) => t.key === key);
+function getActionIcon(key: string, options?: ActionPickerOption[]) {
+  const fromOptions = options?.find((t) => t.key === key)?.icon;
+  if (fromOptions) return fromOptions;
+  const a = ACTION_UI_FALLBACK.find((t) => t.key === key);
   return a?.icon || Zap;
 }
 function getFieldLabel(key: string) {
@@ -307,6 +346,11 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   const [builderData, setBuilderData] = useState<Partial<Workflow> | null>(null);
   const [mainTab, setMainTab] = useState<'workflows' | 'task-automations'>('workflows');
   const [saving, setSaving] = useState(false);
+  const [actionCapabilities, setActionCapabilities] = useState<import('../../lib/api').WorkflowActionCapabilityDto[]>([]);
+  const actionPickerOptions = useMemo(
+    () => buildActionPickerOptions(actionCapabilities),
+    [actionCapabilities],
+  );
 
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
@@ -319,12 +363,14 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     if (!orgId) return;
     setLoading(true);
     try {
-      const [wfRes, stRes] = await Promise.all([
+      const [wfRes, stRes, capRes] = await Promise.all([
         api.workflows.list(orgId),
         api.workflows.stats(orgId),
+        api.workflows.actionCapabilities(orgId),
       ]);
       setWorkflows(wfRes as Workflow[]);
       setStats(stRes);
+      setActionCapabilities(capRes.actions);
     } catch (e) {
       console.error('Failed to load workflows', e);
     } finally {
@@ -470,6 +516,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
       setData={setBuilderData}
       isDarkMode={isDarkMode}
       saving={saving}
+      actionPickerOptions={actionPickerOptions}
       onSave={handleSave}
       onCancel={() => setView('list')}
     />
@@ -824,6 +871,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const [runsLoading, setRunsLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const [testPlan, setTestPlan] = useState<import('../../lib/api').WorkflowActionCapabilityPlanItemDto[] | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -838,11 +886,19 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
     if (!orgId) return;
     setTesting(true);
     setTestError(null);
+    setTestPlan(null);
     try {
       const result = await api.workflows.test(orgId, wf.id, {
         payload: { manualTest: true, workflowName: wf.name },
       });
-      if (result.runs?.length) {
+      if (result.executed === false) {
+        setTestPlan(result.actionPlan ?? null);
+        setTestError(
+          result.policyBlockers?.[0] ||
+            result.message ||
+            'Workflow test blocked — invalid or unavailable actions',
+        );
+      } else if (result.runs?.length) {
         setRuns((prev) => [...(result.runs as WorkflowRun[]), ...prev]);
       } else {
         setTestError(result.message || 'Workflow was skipped (conditions/scope)');
@@ -893,6 +949,11 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>AI</span>
               )}
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.bgClass} ${st.textClass}`}>{st.label}</span>
+            {wf.remediationRequired && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                Needs remediation
+              </span>
+            )}
             </div>
             <p className={`text-xs ${textSecondary}`}>{wf.description || 'No description'}</p>
           </div>
@@ -923,6 +984,18 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
         )}
       </div>
 
+      {wf.remediationRequired && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-amber-900/15 border-amber-800/40' : 'bg-amber-50 border-amber-200'}`}>
+          <Icon name="alert-triangle" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`} />
+          <div>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-amber-200' : 'text-amber-900'}`}>Remediation required</p>
+            <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-amber-300/90' : 'text-amber-800'}`}>
+              {wf.remediationReason || 'This workflow contains actions that are no longer production-capable. Edit actions before activation.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* AI Warning */}
       {isAi && (
         <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50 border-purple-200'}`}>
@@ -941,6 +1014,20 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       {testError && (
         <div className={`text-xs px-3 py-2 rounded-lg border ${isDarkMode ? 'bg-amber-900/20 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
           {testError}
+        </div>
+      )}
+
+      {testPlan && testPlan.length > 0 && (
+        <div className={`text-xs px-3 py-3 rounded-lg border space-y-2 ${isDarkMode ? 'bg-slate-900/40 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
+          <p className="font-semibold">Action capability preview — not executed</p>
+          {testPlan.map((item) => (
+            <div key={item.index} className="flex items-start justify-between gap-3">
+              <span>{getActionLabel(item.rawType)} ({item.canonicalType || item.rawType})</span>
+              <span className={item.wouldExecute ? 'text-green-500' : 'text-amber-500'}>
+                {item.wouldExecute ? 'OK' : item.message || item.validationErrors.join('; ')}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -1062,9 +1149,10 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
 
 // ─── BuilderView ─────────────────────────────────
 
-function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
+function BuilderView({ data, setData, isDarkMode, saving, actionPickerOptions, onSave, onCancel }: {
   data: Partial<Workflow>; setData: (d: Partial<Workflow> | null) => void;
-  isDarkMode: boolean; saving: boolean; onSave: () => void; onCancel: () => void;
+  isDarkMode: boolean; saving: boolean; actionPickerOptions: ActionPickerOption[];
+  onSave: () => void; onCancel: () => void;
 }) {
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
@@ -1280,15 +1368,15 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
             ) : (
               <div className="space-y-2">
                 {((data.actions || []) as ActionDef[]).map((a: ActionDef, i: number) => {
-                  const Icon = getActionIcon(a.type);
+                  const ActionIcon = getActionIcon(a.type, actionPickerOptions);
                   return (
                     <div key={i} className={`p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-1.5 mb-1.5">
-                        <Icon className={`w-3.5 h-3.5 ${a.type.startsWith('ai_') ? 'text-purple-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                        <ActionIcon className={`w-3.5 h-3.5 ${a.type.startsWith('ai_') ? 'text-purple-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                         <select value={a.type} onChange={(e) => updateAction(i, { type: e.target.value, config: {} })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-                          {ACTION_TYPES.map((at) => (
-                            <option key={at.key} value={at.key} disabled={'comingSoon' in at && at.comingSoon}>
-                              {at.label}{'comingSoon' in at && at.comingSoon ? ' (Coming soon)' : ''}
+                          {actionPickerOptions.map((at) => (
+                            <option key={at.key} value={at.key} disabled={at.disabled}>
+                              {at.label}{at.disabled ? ` (${at.status})` : ''}
                             </option>
                           ))}
                         </select>

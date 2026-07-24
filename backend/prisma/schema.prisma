@@ -10689,6 +10689,9 @@ model OrgWorkflow {
   lastTriggeredAt DateTime?      @map("last_triggered_at")
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
+  remediationRequired Boolean    @default(false) @map("remediation_required")
+  remediationReason String?      @map("remediation_reason")
+  remediationDetectedAt DateTime? @map("remediation_detected_at")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
