@@ -9,9 +9,6 @@ export const DATA_PROCESSING_SECTIONS = [
 
 export type DataProcessingSectionId = (typeof DATA_PROCESSING_SECTIONS)[number];
 
-export const DATA_PROCESSING_DISCLAIMER =
-  'Technische Übersicht zur Datenverarbeitungs-Governance — keine pauschale DSGVO-Konformitätsbehauptung.';
-
 export const ENFORCEMENT_STATUS_LABELS: Record<string, string> = {
   ENFORCED: 'Durchgesetzt',
   PARTIALLY_ENFORCED: 'Teilweise',
