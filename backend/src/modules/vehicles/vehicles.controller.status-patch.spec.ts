@@ -11,16 +11,24 @@ describe('VehiclesController — operational status write guard', () => {
 
   const vehiclesService = {
     update: jest.fn().mockResolvedValue({ id: vehicleId, status: VehicleStatus.AVAILABLE }),
+    findOne: jest
+      .fn()
+      .mockResolvedValue({ id: vehicleId, status: VehicleStatus.AVAILABLE }),
+    invalidateFleetMapCache: jest.fn().mockResolvedValue(undefined),
   };
   const vehicleCleaningTasks = {
     ensureCleaningTask: jest.fn(),
     completeOpenCleaningTasks: jest.fn(),
+  };
+  const activityLog = {
+    log: jest.fn().mockResolvedValue(undefined),
   };
 
   const controller = new VehiclesController(
     vehiclesService as any,
     {} as any,
     vehicleCleaningTasks as any,
+    activityLog as any,
   );
 
   beforeEach(() => {
@@ -88,6 +96,30 @@ describe('VehiclesController — operational status write guard', () => {
         healthStatus: HealthStatus.GOOD,
       }),
       orgId,
+    );
+  });
+
+  it('writes activity log for operational status changes', async () => {
+    vehiclesService.findOne.mockResolvedValueOnce({
+      id: vehicleId,
+      status: VehicleStatus.AVAILABLE,
+    });
+
+    await controller.updateVehicleStatus(orgId, vehicleId, { user: { id: 'u1' } }, {
+      status: VehicleStatus.IN_SERVICE,
+    });
+
+    expect(activityLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: orgId,
+        userId: 'u1',
+        entityId: vehicleId,
+        metaJson: expect.objectContaining({
+          auditAction: 'VEHICLE_OPERATIONAL_STATUS_UPDATE',
+          previousStatus: VehicleStatus.AVAILABLE,
+          nextStatus: VehicleStatus.IN_SERVICE,
+        }),
+      }),
     );
   });
 });

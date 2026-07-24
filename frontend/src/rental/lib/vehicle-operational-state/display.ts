@@ -90,6 +90,23 @@ export function formatVehicleOperationalStatusLabelFromRaw(
 }
 
 /** Map canonical operational status → editable header dropdown token. */
+/** Prisma VehicleStatus values writable via admin status PATCH. */
+export type VehicleOperationalPrismaStatus = 'AVAILABLE' | 'IN_SERVICE' | 'OUT_OF_SERVICE';
+
+export function mapVehicleOperationalEditStatusToPrismaStatus(
+  editStatus: VehicleOperationalEditStatus,
+): VehicleOperationalPrismaStatus {
+  switch (editStatus) {
+    case 'Maintenance':
+      return 'IN_SERVICE';
+    case 'Manual Block':
+      return 'OUT_OF_SERVICE';
+    case 'Available':
+    default:
+      return 'AVAILABLE';
+  }
+}
+
 export function mapCanonicalOperationalStatusToEditStatus(
   status: VehicleOperationalStatus,
 ): VehicleOperationalEditStatus {

@@ -29,6 +29,8 @@ export type VehicleCleaningUiStatus = 'Clean' | 'Needs Cleaning';
 export interface VehicleDetailHeaderProps {
   vehicle: VehicleData;
   vehicleStatus: VehicleOperationalUiStatus;
+  vehicleStatusBusy?: boolean;
+  canEditOperationalStatus?: boolean;
   cleaningStatus: VehicleCleaningUiStatus;
   isStatusDropdownOpen: boolean;
   isCleaningDropdownOpen: boolean;
@@ -57,6 +59,8 @@ const backButtonClassName =
 export function VehicleDetailHeader({
   vehicle,
   vehicleStatus,
+  vehicleStatusBusy = false,
+  canEditOperationalStatus = true,
   cleaningStatus,
   isStatusDropdownOpen,
   isCleaningDropdownOpen,
@@ -72,6 +76,7 @@ export function VehicleDetailHeader({
   const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
   const readinessChip = resolveVehicleDetailHeaderReadinessChip(vehicle, rentalHealth, locale);
+  const statusControlsDisabled = vehicleStatusBusy || !canEditOperationalStatus;
   const readinessIcon = (
     <Icon
       name={operationalStatusIconName(readinessChip.statusBadge.status)}
@@ -141,23 +146,26 @@ export function VehicleDetailHeader({
                 <button
                   type="button"
                   onClick={onToggleStatusDropdown}
-                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  disabled={statusControlsDisabled}
+                  aria-busy={vehicleStatusBusy}
+                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] disabled:cursor-not-allowed disabled:opacity-60"
                   aria-expanded={isStatusDropdownOpen}
                   aria-haspopup="menu"
                 >
                   <StatusChip tone={readinessChip.tone} icon={readinessIcon}>
-                    {readinessChip.label}
+                    {vehicleStatusBusy ? '…' : readinessChip.label}
                   </StatusChip>
                 </button>
 
-                {isStatusDropdownOpen ? (
+                {isStatusDropdownOpen && !statusControlsDisabled ? (
                   <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
                     {VEHICLE_OPERATIONAL_EDIT_STATUSES.map((editStatus) => (
                       <button
                         key={editStatus}
                         type="button"
                         onClick={() => onVehicleStatusChange(editStatus)}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                        disabled={vehicleStatusBusy}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <Icon
                           name={operationalStatusIconName(

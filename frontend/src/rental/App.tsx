@@ -58,11 +58,18 @@ import { VehicleData } from './data/vehicles';
 import { deriveVehicleDetailHeaderEditStatus } from './lib/vehicle-detail-header-status';
 import type { VehicleOperationalUiStatus } from './lib/vehicle-detail-header-status';
 import {
+  classifyVehicleOperationalStatusMutationError,
+  mutateVehicleOperationalStatus,
+  shouldWarnBeforeVehicleOperationalStatusChange,
+  vehicleOperationalStatusMutationSuccessMessage,
+} from './lib/vehicle-operational-status-mutation';
+import {
   invalidateVehicleOperationalAfterBookingChange,
   invalidateVehicleOperationalState,
 } from './lib/vehicle-operational-query';
 import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles } from './FleetContext';
+import { useFleetMapStore } from './stores/useFleetMapStore';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
@@ -306,6 +313,8 @@ function RentalAppContent() {
   const [highlightedVehicleTaskId, setHighlightedVehicleTaskId] = useState<string | null>(null);
   const [vehicleTasksRefreshToken, setVehicleTasksRefreshToken] = useState(0);
   const [cleaningStatusBusy, setCleaningStatusBusy] = useState(false);
+  const [vehicleStatusBusy, setVehicleStatusBusy] = useState(false);
+  const canEditVehicleOperationalStatus = hasPermission('fleet', 'write');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const overviewSummaryEnabled = currentView === 'overview' && Boolean(selectedVehicle?.id);
@@ -343,9 +352,17 @@ function RentalAppContent() {
       return;
     }
     setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
-    setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
+    if (!vehicleStatusBusy) {
+      setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
+    }
     setCleaningStatus(fresh.cleaningStatus);
-  }, [fleetVehicles, selectedVehicle?.id, selectedVehicle?.status, selectedVehicle?.cleaningStatus]);
+  }, [
+    fleetVehicles,
+    selectedVehicle?.id,
+    selectedVehicle?.status,
+    selectedVehicle?.cleaningStatus,
+    vehicleStatusBusy,
+  ]);
 
   // Shared new customers (created in NewBookingView, shown in CustomersView)
   const [newlyCreatedCustomers, setNewlyCreatedCustomers] = useState<any[]>([]);
@@ -393,7 +410,7 @@ function RentalAppContent() {
   // Warning modals
   const [showCleaningWarning, setShowCleaningWarning] = useState(false);
   const [showStatusWarning, setShowStatusWarning] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState<'Manual Block' | 'Maintenance' | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<VehicleOperationalUiStatus | null>(null);
   
   // Available stations
   const availableStations: string[] = [];
@@ -509,26 +526,86 @@ function RentalAppContent() {
     void persistCleaningStatus('NEEDS_CLEANING');
   };
 
+  const persistVehicleOperationalStatus = useCallback(
+    async (editStatus: VehicleOperationalUiStatus) => {
+      if (!orgId || !selectedVehicle?.id || vehicleStatusBusy) return;
+      if (!canEditVehicleOperationalStatus) {
+        toast.error('Keine Berechtigung', {
+          description: 'Zum Ändern des Fahrzeugstatus ist Fleet-Schreibrecht erforderlich.',
+        });
+        return;
+      }
+
+      const confirmedEditStatus = deriveVehicleDetailHeaderEditStatus(selectedVehicle);
+      if (editStatus === confirmedEditStatus) {
+        setIsStatusDropdownOpen(false);
+        return;
+      }
+
+      setVehicleStatusBusy(true);
+      setIsStatusDropdownOpen(false);
+      try {
+        await mutateVehicleOperationalStatus({
+          orgId,
+          vehicleId: selectedVehicle.id,
+          editStatus,
+        });
+        await invalidateVehicleOperationalState({
+          orgId,
+          vehicleIds: [selectedVehicle.id],
+          reason: 'vehicle-status-patch',
+          optimistic: 'none',
+        });
+        await refreshFleetVehicles();
+        const fresh = useFleetMapStore
+          .getState()
+          .vehicles.find((vehicle) => vehicle.id === selectedVehicle.id);
+        if (fresh) {
+          setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
+          setVehicleStatus(deriveVehicleDetailHeaderEditStatus(fresh));
+        }
+        toast.success(vehicleOperationalStatusMutationSuccessMessage(editStatus, 'de'));
+      } catch (err) {
+        setVehicleStatus(deriveVehicleDetailHeaderEditStatus(selectedVehicle));
+        toast.error('Fahrzeugstatus konnte nicht gespeichert werden', {
+          description: classifyVehicleOperationalStatusMutationError(err, 'de'),
+        });
+      } finally {
+        setVehicleStatusBusy(false);
+        setPendingStatus(null);
+        setShowStatusWarning(false);
+      }
+    },
+    [
+      canEditVehicleOperationalStatus,
+      orgId,
+      refreshFleetVehicles,
+      selectedVehicle,
+      vehicleStatusBusy,
+    ],
+  );
+
   // Handle vehicle status change
   const handleVehicleStatusChange = (newStatus: VehicleOperationalUiStatus) => {
-    // Show warning if changing from Available to Maintenance or Manual Block
-    if (vehicleStatus === 'Available' && (newStatus === 'Maintenance' || newStatus === 'Manual Block')) {
+    if (vehicleStatusBusy) return;
+    if (
+      shouldWarnBeforeVehicleOperationalStatusChange(vehicleStatus, newStatus)
+    ) {
       setPendingStatus(newStatus);
       setShowStatusWarning(true);
       setIsStatusDropdownOpen(false);
-    } else {
-      setVehicleStatus(newStatus);
-      setIsStatusDropdownOpen(false);
+      return;
     }
+    void persistVehicleOperationalStatus(newStatus);
   };
 
   // Confirm vehicle status change
   const confirmStatusChange = () => {
     if (pendingStatus) {
-      setVehicleStatus(pendingStatus);
-      setPendingStatus(null);
+      void persistVehicleOperationalStatus(pendingStatus);
+    } else {
+      setShowStatusWarning(false);
     }
-    setShowStatusWarning(false);
   };
 
   // Handle vehicle selection from Fleet
@@ -794,10 +871,15 @@ function RentalAppContent() {
           <VehicleDetailHeader
             vehicle={selectedVehicle}
             vehicleStatus={vehicleStatus}
+            vehicleStatusBusy={vehicleStatusBusy}
+            canEditOperationalStatus={canEditVehicleOperationalStatus}
             cleaningStatus={cleaningStatus}
             isStatusDropdownOpen={isStatusDropdownOpen}
             isCleaningDropdownOpen={isCleaningDropdownOpen}
-            onToggleStatusDropdown={() => setIsStatusDropdownOpen((open) => !open)}
+            onToggleStatusDropdown={() => {
+              if (vehicleStatusBusy || !canEditVehicleOperationalStatus) return;
+              setIsStatusDropdownOpen((open) => !open);
+            }}
             onToggleCleaningDropdown={() => setIsCleaningDropdownOpen((open) => !open)}
             onVehicleStatusChange={handleVehicleStatusChange}
             onCleaningStatusChange={handleCleaningStatusChange}
@@ -1377,22 +1459,25 @@ function RentalAppContent() {
             <div className="flex gap-2">
               <button
                 onClick={() => {
+                  if (vehicleStatusBusy) return;
                   setShowStatusWarning(false);
                   setPendingStatus(null);
                 }}
-                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press"
+                disabled={vehicleStatusBusy}
+                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmStatusChange}
-                className={`flex-1 px-3 py-2 text-white rounded-md font-semibold transition-all duration-200 shadow-sm sq-press hover:opacity-90 ${
+                disabled={vehicleStatusBusy}
+                className={`flex-1 px-3 py-2 text-white rounded-md font-semibold transition-all duration-200 shadow-sm sq-press hover:opacity-90 disabled:opacity-60 ${
                   pendingStatus === 'Manual Block'
                     ? 'bg-[color:var(--status-critical)]'
                     : 'bg-[color:var(--status-warning)]'
                 }`}
               >
-                Confirm
+                {vehicleStatusBusy ? 'Wird gespeichert…' : 'Confirm'}
               </button>
             </div>
           </div>

@@ -32,11 +32,13 @@ export {
   VEHICLE_OPERATIONAL_EDIT_STATUSES,
   mapCanonicalOperationalStatusToEditStatus,
   mapVehicleOperationalEditStatusToCanonical,
+  mapVehicleOperationalEditStatusToPrismaStatus,
   formatVehicleOperationalEditStatusLabel,
   operationalStatusToneFor,
   operationalStatusIconName,
   type VehicleOperationalDisplayLocale,
   type VehicleOperationalEditStatus,
+  type VehicleOperationalPrismaStatus,
 } from './display';
 
 export {

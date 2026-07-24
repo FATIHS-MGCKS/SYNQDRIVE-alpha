@@ -24,6 +24,8 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
+  ActivityAction,
+  ActivityEntity,
   CleaningStatus,
   HealthStatus,
   VehicleStatus,
@@ -32,6 +34,7 @@ import {
 } from '@prisma/client';
 import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
+import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 
 interface VehicleStatusAuthRequest {
   user?: { id?: string };
@@ -65,6 +68,7 @@ export class VehiclesController {
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
@@ -264,12 +268,15 @@ export class VehiclesController {
     },
   ) {
     const data: Prisma.VehicleUpdateInput = {};
+    let previousVehicleStatus: VehicleStatus | null = null;
     if (body.status) {
       if (!VehiclesController.ADMIN_WRITABLE_VEHICLE_STATES.has(body.status)) {
         throw new BadRequestException(
           `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
         );
       }
+      const existing = await this.vehiclesService.findOne(orgId, vehicleId);
+      previousVehicleStatus = (existing?.status as VehicleStatus | undefined) ?? null;
       data.status = body.status;
     }
     if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
@@ -278,6 +285,22 @@ export class VehiclesController {
     const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
 
     await this.vehiclesService.invalidateFleetMapCache(orgId);
+
+    if (body.status && previousVehicleStatus && previousVehicleStatus !== body.status) {
+      await this.activityLog.log({
+        organizationId: orgId,
+        userId: req.user?.id,
+        action: ActivityAction.UPDATE,
+        entity: ActivityEntity.VEHICLE,
+        entityId: vehicleId,
+        description: `Vehicle operational status changed from ${previousVehicleStatus} to ${body.status}`,
+        metaJson: {
+          auditAction: 'VEHICLE_OPERATIONAL_STATUS_UPDATE',
+          previousStatus: previousVehicleStatus,
+          nextStatus: body.status,
+        },
+      });
+    }
 
     let cleaningTask: Awaited<
       ReturnType<VehicleCleaningTaskService['ensureCleaningTask']>
