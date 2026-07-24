@@ -1,13 +1,49 @@
+/**
+ * Frontend money helpers — display formatting and shared domain utilities.
+ * Source of truth: shared/money/
+ */
+import {
+  formatMoney,
+  formatMoneyMajorUnits as formatMoneyMajorUnitsShared,
+  formatMoneyMinor,
+  tryNormalizeCurrencyCode,
+} from '@synq/money/money.format';
+import { minorToMajorDisplayValue } from '@synq/money/money.util';
+
+export type { Money } from '@synq/money/money.contract';
+export { MoneyDomainError } from '@synq/money/money.contract';
+
+export {
+  currencyMinorDecimals,
+  minorUnitScale,
+} from '@synq/money/currency-decimals';
+
+export {
+  absMoney,
+  addMoney,
+  assertSameCurrency,
+  compareMoney,
+  majorUnitsStringToMinor,
+  minorToMajorDisplayValue,
+  minorToWholeMajorUnits,
+  moneyFromMinor,
+  subtractMoney,
+  sumMoney,
+  zeroMoney,
+} from '@synq/money/money.util';
+
+export {
+  legacyInsightFinancialImpactWholeMajor,
+  resolveLegacyInsightFinancialImpact,
+} from '@synq/money/money.legacy-insight';
+
+export { formatMoney, formatMoneyMinor };
+
 export const DEFAULT_MONEY_LOCALE = 'de-DE';
 
-const ISO4217_PATTERN = /^[A-Z]{3}$/;
-
+/** Lenient ISO-4217 normalization for UI — returns null when invalid. */
 export function normalizeCurrencyCode(input: string | null | undefined): string | null {
-  const trimmed = typeof input === 'string' ? input.trim() : '';
-  if (!trimmed) return null;
-  const normalized = trimmed.toUpperCase();
-  if (!ISO4217_PATTERN.test(normalized)) return null;
-  return normalized;
+  return tryNormalizeCurrencyCode(input);
 }
 
 /**
@@ -24,32 +60,32 @@ export function resolvePricingCurrency(
   );
 }
 
+/** Format integer minor units for display — no FX conversion. */
 export function formatMoneyCents(
   cents: number | null | undefined,
   currency: string,
   locale: string = DEFAULT_MONEY_LOCALE,
 ): string {
-  if (cents == null || Number.isNaN(cents)) return '—';
-  const code = normalizeCurrencyCode(currency);
-  if (!code) return '—';
-  try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(cents / 100);
-  } catch {
-    return `${(cents / 100).toFixed(2)} ${code}`;
-  }
+  return formatMoneyMinor(cents, currency, locale);
 }
 
-/** Major currency units (e.g. euros/dollars) from integer cents — no FX conversion. */
-export function majorUnitsFromCents(cents: number | null | undefined): number | null {
+/**
+ * @deprecated Use minorToMajorDisplayValue for display-only reads, or keep amounts in minor units.
+ * Returns major units via display ratio — not for business arithmetic.
+ */
+export function majorUnitsFromCents(
+  cents: number | null | undefined,
+  currency = 'EUR',
+): number | null {
   if (cents == null || Number.isNaN(cents)) return null;
-  return cents / 100;
+  return minorToMajorDisplayValue(cents, currency);
 }
 
+/** @deprecated Use formatMoneyMinor with minor units directly. */
 export function formatMoneyMajorUnits(
   majorUnits: number | null | undefined,
   currency: string,
   locale: string = DEFAULT_MONEY_LOCALE,
 ): string {
-  if (majorUnits == null || !Number.isFinite(majorUnits)) return '—';
-  return formatMoneyCents(Math.round(majorUnits * 100), currency, locale);
+  return formatMoneyMajorUnitsShared(majorUnits, currency, locale);
 }

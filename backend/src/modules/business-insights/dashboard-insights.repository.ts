@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   InsightCandidate,
@@ -8,6 +9,12 @@ import {
   InsightRunSummaryDto,
   InsightRunDetailDto,
 } from './insight.types';
+import { parseCalculationProvenance } from '@synq/evaluations-metrics/evaluations-calculation-provenance';
+import type { EvaluationsCalculationProvenance } from '@synq/evaluations-metrics/evaluations-calculation-provenance';
+
+function toPrismaJson(value: EvaluationsCalculationProvenance): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
 
 @Injectable()
 export class DashboardInsightsRepository {
@@ -23,13 +30,26 @@ export class DashboardInsightsRepository {
     });
   }
 
-  async completeRun(runId: string, candidateCount: number, publishedCount: number, errorMessage?: string) {
+  async completeRun(
+    runId: string,
+    candidateCount: number,
+    publishedCount: number,
+    errorMessage?: string,
+    calculationMeta?: EvaluationsCalculationProvenance,
+  ) {
     const finishedAt = new Date();
     const run = await this.prisma.dashboardInsightRun.findUnique({ where: { id: runId } });
     const durationMs = run ? finishedAt.getTime() - run.startedAt.getTime() : null;
     return this.prisma.dashboardInsightRun.update({
       where: { id: runId },
-      data: { finishedAt, durationMs, candidateCount, publishedCount, errorMessage },
+      data: {
+        finishedAt,
+        durationMs,
+        candidateCount,
+        publishedCount,
+        errorMessage,
+        ...(calculationMeta != null ? { calculationMeta: toPrismaJson(calculationMeta) } : {}),
+      },
     });
   }
 
@@ -79,6 +99,7 @@ export class DashboardInsightsRepository {
             groupCount: c.entityIds?.length ?? 1,
             isActive: true,
             expiresAt: c.expiresAt,
+            ...(c.calculationMeta != null ? { calculationMeta: toPrismaJson(c.calculationMeta) } : {}),
           },
         }),
       ),
@@ -198,6 +219,7 @@ export class DashboardInsightsRepository {
       isGrouped: i.isGrouped,
       groupCount: i.groupCount,
       createdAt: i.createdAt.toISOString(),
+      calculationMeta: parseCalculationProvenance(i.calculationMeta),
     };
   }
 
@@ -212,6 +234,7 @@ export class DashboardInsightsRepository {
       candidateCount: r.candidateCount,
       publishedCount: r.publishedCount,
       errorMessage: r.errorMessage ?? null,
+      calculationMeta: parseCalculationProvenance(r.calculationMeta),
     };
   }
 }

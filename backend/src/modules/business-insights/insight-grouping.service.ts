@@ -1,4 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import {
+  buildMoneyMetricFields,
+  resolveInsightLostRevenueMoney,
+} from '@synq/money/money-insight-metrics';
+import { moneyFromMinor } from '@synq/money/money.util';
 import { InsightCandidate, InsightType, InsightSeverity } from './insight.types';
 
 const GROUP_TEMPLATES: Partial<Record<InsightType, (count: number) => string>> = {
@@ -61,7 +66,10 @@ export class InsightGroupingService {
       const highestSeverity = this.pickHighestSeverity(items);
       const templateFn = GROUP_TEMPLATES[best.type];
 
-      const totalRevenue = items.reduce((s, i) => s + ((i.metrics?.lostRevenueEur as number) ?? 0), 0);
+      const totalRevenueMinor = items.reduce((sum, item) => {
+        const money = resolveInsightLostRevenueMoney(item.metrics ?? null, 'EUR');
+        return sum + (money?.amountMinor ?? 0);
+      }, 0);
 
       // Preserve per-entity payload so the dashboard can expand the grouped
       // row into a small list of affected vehicles (with their individual
@@ -86,7 +94,15 @@ export class InsightGroupingService {
         metrics: {
           ...best.metrics,
           groupedCount: items.length,
-          ...(totalRevenue > 0 ? { totalLostRevenueEur: totalRevenue } : {}),
+          ...(totalRevenueMinor > 0
+            ? {
+                ...buildMoneyMetricFields(
+                  'totalLostRevenueAmountMinor',
+                  'totalLostRevenueCurrency',
+                  moneyFromMinor(totalRevenueMinor, 'EUR'),
+                ),
+              }
+            : {}),
           entities,
         },
         dedupeKey: `grouped:${best.groupKey}`,

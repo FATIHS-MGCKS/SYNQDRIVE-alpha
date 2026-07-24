@@ -1,4 +1,6 @@
 import { InsightCandidate, InsightEntityScope, InsightSeverity, InsightType } from './insight.types';
+import { buildFinancialImpactMetrics } from '@synq/money/money-insight-metrics';
+import { minorToWholeMajorUnits } from '@synq/money/money.util';
 
 /** Raw vehicle-health detector types — only publish when tied to an upcoming booking. */
 export const RAW_HEALTH_INSIGHT_TYPES = new Set<InsightType>([
@@ -37,7 +39,7 @@ export function enrichHealthCandidateWithBooking(
     Math.round((booking.startDate.getTime() - now.getTime()) / 3_600_000),
   );
   const financialImpactCents = estimateBookingRevenueCents(booking);
-  const revenueEur = Math.round(financialImpactCents / 100);
+  const revenueEur = minorToWholeMajorUnits(financialImpactCents, 'EUR');
   const healthReason = candidate.reasons[0] ?? candidate.message;
   const when =
     hoursUntil < 24
@@ -67,12 +69,12 @@ export function enrichHealthCandidateWithBooking(
       bookingId: booking.id,
       customerId: booking.customerId,
       affectedVehicleId: candidate.entityIds[0],
-      financialImpactCents,
       hoursUntilPickup: hoursUntil,
       recommendation:
         revenueEur > 0
           ? 'Fahrzeug vor Übergabe prüfen oder Buchung umplanen.'
           : 'Fahrzeug vor Übergabe prüfen.',
+      ...buildFinancialImpactMetrics(financialImpactCents, 'EUR'),
     },
     reasons: [
       ...candidate.reasons,
