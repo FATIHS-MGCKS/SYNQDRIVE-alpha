@@ -1768,6 +1768,8 @@ model Organization {
   processingActivityDeletionJobs                            ProcessingActivityDeletionJob[]
   processingActivityDeletionJobSteps                        ProcessingActivityDeletionJobStep[]
   processingActivityDeletionEvidence                        ProcessingActivityDeletionEvidence[]
+  complianceEvidenceReports                                 ComplianceEvidenceReport[]
+  complianceEvidenceReportAuditEvents                       ComplianceEvidenceReportAuditEvent[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
 
@@ -11594,6 +11596,97 @@ model ProcessingActivityDeletionEvidence {
 
   @@index([organizationId, jobId])
   @@map("processing_activity_deletion_evidence")
+}
+
+enum ComplianceEvidenceReportType {
+  FULL_PACKAGE
+  PROCESSING_ACTIVITY_VERSION
+  LEGAL_BASIS
+  CONSENT
+  PROVIDER_ACCESS_GRANT
+  DATA_PROCESSING_AGREEMENT
+  DPIA
+  ENFORCEMENT_COVERAGE
+  REVIEW_APPROVAL
+  POLICY_DEPLOYMENT
+  REVOCATION
+  RETENTION
+  DELETION
+  AUTHORIZATION_DECISIONS
+  RUNTIME_HEALTH
+  PROVIDER_CONSISTENCY
+}
+
+enum ComplianceEvidenceReportStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ComplianceEvidenceReportFormat {
+  JSON
+}
+
+enum ComplianceEvidenceAuditAction {
+  EXPORT_REQUESTED
+  EXPORT_COMPLETED
+  EXPORT_FAILED
+  EXPORT_DOWNLOADED
+}
+
+/// Time-limited compliance evidence export artifacts (tenant-scoped, private storage).
+model ComplianceEvidenceReport {
+  id                     String                         @id @default(uuid())
+  organizationId           String                         @map("organization_id")
+  reportType               ComplianceEvidenceReportType   @map("report_type")
+  format                   ComplianceEvidenceReportFormat @default(JSON)
+  status                   ComplianceEvidenceReportStatus @default(PLANNED)
+  idempotencyKey           String                         @unique @map("idempotency_key")
+  periodFrom               DateTime?                      @map("period_from")
+  periodTo                 DateTime?                      @map("period_to")
+  generatedAt              DateTime?                      @map("generated_at")
+  generatedByUserId        String?                        @map("generated_by_user_id")
+  recordVersion            String                         @map("record_version")
+  gitCommit                String?                        @map("git_commit")
+  buildVersion             String?                        @map("build_version")
+  includesRuntimeData      Boolean                        @default(false) @map("includes_runtime_data")
+  complianceClaimAllowed   Boolean                        @default(false) @map("compliance_claim_allowed")
+  gapCount                 Int                            @default(0) @map("gap_count")
+  sectionSummary           Json?                          @map("section_summary")
+  fileName                 String?                        @map("file_name")
+  filePath                 String?                        @map("file_path")
+  mimeType                 String?                        @map("mime_type")
+  checksumSha256           String?                        @map("checksum_sha256")
+  dataSnapshotAt           DateTime?                      @map("data_snapshot_at")
+  expiresAt                DateTime?                      @map("expires_at")
+  errorMessage             String?                        @map("error_message") @db.Text
+  createdAt                DateTime                       @default(now()) @map("created_at")
+  updatedAt                DateTime                       @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@index([organizationId, expiresAt])
+  @@map("compliance_evidence_reports")
+}
+
+/// Append-only audit for compliance evidence exports and downloads.
+model ComplianceEvidenceReportAuditEvent {
+  id             String                        @id @default(uuid())
+  organizationId String                        @map("organization_id")
+  action         ComplianceEvidenceAuditAction
+  actorUserId    String?                       @map("actor_user_id")
+  reportId       String?                       @map("report_id")
+  metadata       Json?
+  createdAt      DateTime                      @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, action])
+  @@map("compliance_evidence_report_audit_events")
 }
 
 /// Rechtsgrundlage — versionierte, unveränderliche Bewertung nach Freigabe.

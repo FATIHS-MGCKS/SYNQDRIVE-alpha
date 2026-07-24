@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'compliance-evidence-v49816-2026-07-24',
+    version: '4.9.816',
+    title: 'V4.9.816 — Compliance Evidence & prüfbare Reports (Prompt 33)',
+    summary: [
+      'Evidence-Schicht für interne Datenschutz- und ISO-Prüfungen über 15 Reporttypen / Sektionen.',
+      'Unveränderliche Versionsreferenzen, SHA-256-Prüfsumme, generatedAt/generatedBy, Gap-Kennzeichnung.',
+      'Keine Compliance-Behauptung bei fehlenden Pflichtdaten; Git-Commit/Build bei Runtime-Daten.',
+      'Privater Export (72h TTL), zeitlich begrenzter Download, Export-Audit, idempotente/async Jobs.',
+      'Permissions: evidence_view, evidence_export. CI: npm run test:data-auth:evidence.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 33 — prüfbare Compliance-Evidence-Pakete für interne Audits.',
+    previousBehavior: 'Keine einheitliche Evidence-Schicht über Data-Authorization-Domänen hinweg.',
+    details:
+      'Migration 20260724130000. Module compliance-evidence/. Doku: docs/architecture/compliance-evidence-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-24T01:45:00.000Z',
+  },
+  {
     id: 'retention-deletion-legal-hold-v49815-2026-07-24',
     version: '4.9.815',
     title: 'V4.9.815 — Retention, Löschung & Legal Hold (Prompt 32)',
