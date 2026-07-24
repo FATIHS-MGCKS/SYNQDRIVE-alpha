@@ -118,16 +118,7 @@ export interface EvaluationsLineageBuildInput {
   sectionStatuses: Array<{ key: string; status: import('./evaluations-analytics-primitives.contract').EvaluationsMetricStatus }>;
 }
 
-export interface EvaluationsLineageResponse {
-  organizationId: string;
-  generatedAt: string;
-  period: EvaluationsTimePeriod;
-  comparisonPeriod: EvaluationsTimePeriod;
-  appliedFilters: import('./evaluations-analytics-filters.contract').EvaluationsAnalyticsAppliedFilters;
-  lineage: EvaluationsSectionEnvelope<EvaluationsLineageSummary>;
-}
-
-/** Maps membership role to lineage audience. */
+/** @see EvaluationsLineageResponse in evaluations-analytics-summary.contract */
 export function resolveLineageAudience(
   membershipRole: string | null | undefined,
   platformRole?: string | null,

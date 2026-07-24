@@ -3,10 +3,10 @@ import type { EvaluationsCostModelSnapshot } from '@synq/evaluations-insights/ev
 import type { EvaluationsCostModelSummary } from '@synq/evaluations-insights/evaluations-cost-model.contract';
 import type {
   EvaluationsActiveRisksSummary,
-  EvaluationsDataQualitySummary,
   EvaluationsFinancialSnapshot,
   EvaluationsFleetSnapshot,
 } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import type { EvaluationsDataQualityDomainSummary } from '@synq/evaluations-insights/evaluations-data-quality.contract';
 import type { EvaluationsUtilizationModelSummary } from '@synq/evaluations-insights/evaluations-utilization-model.contract';
 import type { EvaluationsUtilizationSnapshot } from '@synq/evaluations-insights/evaluations-utilization-model.contract';
 import type { EvaluationsTimePeriod } from '@synq/evaluations-insights/evaluations-analytics-primitives.contract';
@@ -36,7 +36,7 @@ export interface EvaluationsDriverAnalysisInput {
   utilizationSnapshot: EvaluationsUtilizationSnapshot | null;
   activeRisks: EvaluationsActiveRisksSummary | null;
   affectedEntities: InsightEntityCountSummary | null;
-  dataQuality: EvaluationsDataQualitySummary;
+  dataQuality: EvaluationsDataQualityDomainSummary;
   overlappingBookingCount?: number;
   strengths: EvaluationsDetectedStrength[];
   weaknesses: EvaluationsDetectedWeakness[];

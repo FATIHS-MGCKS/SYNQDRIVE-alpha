@@ -5,10 +5,14 @@ import { useRentalOrg } from '../../RentalContext';
 import { api, type MisuseCaseRecord } from '../../../lib/api';
 import { financialImpactEur, insightRecommendation } from '../../lib/insights-categories';
 import { useEvaluationsInsightsAnalytics } from '../../hooks/useEvaluationsInsightsAnalytics';
+import type { useEvaluationsAnalyticsSummary } from '../../hooks/useEvaluationsAnalyticsSummary';
 import type { EvaluationsAnalyticsFiltersQuery } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
 import { EvaluationsAnalyticsFilterBar } from './EvaluationsAnalyticsFilterBar';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { EvaluationsMetricKpiCard } from '../evaluations/EvaluationsMetricKpiCard';
+import type { EvaluationsResolvedMetricState } from '@synq/evaluations-insights/evaluations-metric-state.contract';
+import { resolveMetricFromEnvelope } from '@synq/evaluations-insights/evaluations-metric-state';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
@@ -16,8 +20,7 @@ interface InsightsCockpitProps {
   filterKey: string;
   onPatchFilters: (patch: Partial<EvaluationsAnalyticsFiltersQuery>) => void;
   stationOptions?: Array<{ id: string; label: string }>;
-  financialRiskEur?: number;
-  openReceivablesEur?: number;
+  analytics?: ReturnType<typeof useEvaluationsAnalyticsSummary>;
 }
 
 interface InsightKpiCardProps {
@@ -28,6 +31,7 @@ interface InsightKpiCardProps {
   accent?: boolean;
 }
 
+/** @deprecated Legacy static KPI — prefer EvaluationsMetricKpiCard */
 function InsightKpiCard({
   label,
   value,
@@ -237,8 +241,7 @@ export function InsightsCockpit({
   filterKey,
   onPatchFilters,
   stationOptions = [],
-  financialRiskEur = 0,
-  openReceivablesEur = 0,
+  analytics,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
   const { summary, businessRisks, revenueLeakage, loading, error } = useEvaluationsInsightsAnalytics({
@@ -256,12 +259,41 @@ export function InsightsCockpit({
       .slice(0, 6);
   }, [businessRisks, revenueLeakage]);
 
-  const estimatedRiskMinor =
-    (summary?.estimatedFinancialExposureMinor ?? 0) + Math.round(financialRiskEur * 100);
-  const estimatedRiskEur = Math.round(estimatedRiskMinor / 100);
-
   const hasRun = summary?.hasRun ?? false;
   const stale = summary?.stale ?? false;
+
+  const metrics = analytics?.metrics;
+
+  const fallbackCountState = (count: number | undefined): EvaluationsResolvedMetricState =>
+    resolveMetricFromEnvelope({
+      envelope:
+        error || loading
+          ? {
+              status: error ? 'ERROR' : 'UNAVAILABLE',
+              data: null,
+              error,
+              generatedAt: new Date().toISOString(),
+            }
+          : {
+              status: 'OK',
+              data: { count: count ?? 0 },
+              error: null,
+              generatedAt: new Date().toISOString(),
+            },
+      extractValue: (d) => d.count,
+      formatValue: (v) => String(v),
+      fetchPhase: loading ? 'loading' : error ? 'failed' : 'ready',
+      fetchError: error,
+      zeroMeansNull: true,
+    });
+
+  const businessRisksState = metrics?.businessRiskGroups ?? fallbackCountState(summary?.counts.businessRisks);
+  const revenueLeakageState = metrics?.revenueLeakageGroups ?? fallbackCountState(summary?.counts.revenueLeakage);
+  const criticalBookingsState =
+    metrics?.criticalBookings ??
+    fallbackCountState(summary?.counts.criticalBookings ?? summary?.counts.criticalBusinessRisks);
+  const openReceivablesState = metrics?.openReceivables;
+  const estimatedExposureState = metrics?.estimatedExposure;
 
   return (
     <div className="space-y-4">
@@ -271,42 +303,77 @@ export function InsightsCockpit({
         stationOptions={stationOptions}
       />
       <RunStateBanner hasRun={hasRun} stale={stale} error={error} loading={loading} />
+      {analytics?.isRefetching ? (
+        <p className="text-[11px] text-[color:var(--status-watch)]" role="status">
+          Auswertungen werden aktualisiert — angezeigte KPIs können vorherige Werte sein.
+        </p>
+      ) : null}
+      {analytics?.error && analytics.summary ? (
+        <p className="text-[11px] text-[color:var(--status-critical)]" role="alert">
+          KPI-Aktualisierung fehlgeschlagen — letzte bekannte Werte sind als veraltet markiert.
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
-        <InsightKpiCard
+        <EvaluationsMetricKpiCard
           label="Geschäftsrisiken (Gruppen)"
-          value={String(summary?.counts.businessRisks ?? 0)}
+          state={businessRisksState}
           icon={AlertTriangle}
           tone="critical"
-          accent={(summary?.counts.businessRisks ?? 0) > 0}
+          accent={businessRisksState.canShowValue && (businessRisksState.rawValue ?? 0) > 0}
         />
-        <InsightKpiCard
-          label="Finanzrisiko (geschätzt)"
-          value={`≈ ${estimatedRiskEur.toLocaleString('de-DE')} €`}
-          icon={TrendingDown}
-          tone="watch"
-          accent={estimatedRiskEur > 0}
-        />
-        <InsightKpiCard
-          label="Offene Forderungen"
-          value={`${openReceivablesEur.toLocaleString('de-DE')} €`}
-          icon={Zap}
-          tone="info"
-          accent={openReceivablesEur > 0}
-        />
-        <InsightKpiCard
+        {estimatedExposureState ? (
+          <EvaluationsMetricKpiCard
+            label="Finanzrisiko (geschätzt)"
+            state={estimatedExposureState}
+            icon={TrendingDown}
+            tone="watch"
+            accent={estimatedExposureState.canShowValue && (estimatedExposureState.rawValue ?? 0) > 0}
+            prefix="≈"
+          />
+        ) : (
+          <InsightKpiCard
+            label="Finanzrisiko (geschätzt)"
+            value={
+              error || loading
+                ? '—'
+                : `≈ ${Math.round((summary?.estimatedFinancialExposureMinor ?? 0) / 100).toLocaleString('de-DE')} €`
+            }
+            icon={TrendingDown}
+            tone="watch"
+            accent={(summary?.estimatedFinancialExposureMinor ?? 0) > 0}
+          />
+        )}
+        {openReceivablesState ? (
+          <EvaluationsMetricKpiCard
+            label="Offene Forderungen"
+            state={openReceivablesState}
+            icon={Zap}
+            tone="info"
+            accent={openReceivablesState.canShowValue && (openReceivablesState.rawValue ?? 0) > 0}
+          />
+        ) : (
+          <InsightKpiCard
+            label="Offene Forderungen"
+            value="—"
+            icon={Zap}
+            tone="info"
+            accent={false}
+          />
+        )}
+        <EvaluationsMetricKpiCard
           label="Kritische Buchungen"
-          value={String(summary?.counts.criticalBookings ?? summary?.counts.criticalBusinessRisks ?? 0)}
+          state={criticalBookingsState}
           icon={AlertTriangle}
           tone="critical"
-          accent={(summary?.counts.criticalBusinessRisks ?? 0) > 0}
+          accent={criticalBookingsState.canShowValue && (criticalBookingsState.rawValue ?? 0) > 0}
         />
-        <InsightKpiCard
+        <EvaluationsMetricKpiCard
           label="Umsatzverlust (Gruppen)"
-          value={String(summary?.counts.revenueLeakage ?? 0)}
+          state={revenueLeakageState}
           icon={TrendingDown}
           tone="watch"
-          accent={(summary?.counts.revenueLeakage ?? 0) > 0}
+          accent={revenueLeakageState.canShowValue && (revenueLeakageState.rawValue ?? 0) > 0}
         />
       </div>
 

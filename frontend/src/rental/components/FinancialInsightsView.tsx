@@ -18,6 +18,17 @@ import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import { useEvaluationsAnalyticsFilters } from '../hooks/useEvaluationsAnalyticsFilters';
+import { useEvaluationsAnalyticsSummary } from '../hooks/useEvaluationsAnalyticsSummary';
+import { EvaluationsMetricValue } from './evaluations/EvaluationsMetricValue';
+import { resolveScalarMetricState } from '@synq/evaluations-insights/evaluations-metric-state';
+import {
+  buildSummaryExportRows,
+  summaryExportToCsv,
+} from '@synq/evaluations-insights/evaluations-metric-state';
+import {
+  chartSeriesHasValues,
+  mergeRevenueExpenseChartSeries,
+} from '@synq/evaluations-insights/evaluations-chart-series';
 import {
   expensesInRange,
   mtdRevenueInRange,
@@ -154,8 +165,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     es: 'es-ES', it: 'it-IT', pl: 'pl-PL', cs: 'cs-CZ',
   };
   const intlLocale = localeMap[locale] || 'en-US';
+  const analyticsLocale = locale === 'en' ? 'en' : 'de';
 
   const { filters, filterKey, patchFilters } = useEvaluationsAnalyticsFilters();
+  const analytics = useEvaluationsAnalyticsSummary({ orgId, filters, filterKey, locale: analyticsLocale });
   const [loading, setLoading] = useState(true);
   const [stationOptions, setStationOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
@@ -273,34 +286,83 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   const dailySeries = useMemo(() => {
     const days = daysInMonth(now.getFullYear(), now.getMonth());
-    const out: { day: string; dayNum: number; revenue: number; expenses: number; profit: number }[] = [];
-    for (let i = 0; i < days; i++) {
-      out.push({ day: String(i + 1), dayNum: i + 1, revenue: 0, expenses: 0, profit: 0 });
-    }
+    const revenueObs: Array<{ dayIndex: number; value: number }> = [];
+    const expenseObs: Array<{ dayIndex: number; value: number }> = [];
     for (const inv of bucketed.mtdRevenue) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const dayIdx = d.getDate() - 1;
-      if (dayIdx >= 0 && dayIdx < out.length) {
-        out[dayIdx].revenue += (inv.totalCents ?? 0) / 100;
-      }
+      revenueObs.push({ dayIndex: d.getDate() - 1, value: (inv.totalCents ?? 0) / 100 });
     }
     for (const inv of bucketed.mtdExpense) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
-      const dayIdx = d.getDate() - 1;
-      if (dayIdx >= 0 && dayIdx < out.length) {
-        out[dayIdx].expenses += (inv.totalCents ?? 0) / 100;
-      }
+      expenseObs.push({ dayIndex: d.getDate() - 1, value: (inv.totalCents ?? 0) / 100 });
     }
-    for (const row of out) row.profit = row.revenue - row.expenses;
-    return out;
-  }, [bucketed.mtdRevenue, bucketed.mtdExpense, now]);
+    return mergeRevenueExpenseChartSeries({
+      dayCount: days,
+      dayKey: (i) => String(i + 1),
+      revenueObservations: revenueObs,
+      expenseObservations: expenseObs,
+      dataUnavailable: Boolean(invoiceError),
+    });
+  }, [bucketed.mtdRevenue, bucketed.mtdExpense, now, invoiceError]);
 
-  const hasDailyData = useMemo(
-    () => dailySeries.some((d) => d.revenue > 0 || d.expenses > 0),
-    [dailySeries],
-  );
+  const hasDailyData = useMemo(() => chartSeriesHasValues(dailySeries), [dailySeries]);
+
+  const invoiceFetchPhase = invoiceError
+    ? 'failed'
+    : loading
+      ? 'loading'
+      : 'ready';
+
+  const openReceivablesMetric = resolveScalarMetricState({
+    value: invoiceError ? null : outstandingCents,
+    fetchPhase: invoiceFetchPhase,
+    fetchError: invoiceError,
+    unavailable: Boolean(invoiceError),
+    locale: analyticsLocale,
+  });
+  const overdueMetric = resolveScalarMetricState({
+    value: invoiceError ? null : overdueCents,
+    fetchPhase: invoiceFetchPhase,
+    fetchError: invoiceError,
+    unavailable: Boolean(invoiceError),
+    locale: analyticsLocale,
+  });
+  const revenueMetric = resolveScalarMetricState({
+    value: invoiceError ? null : mtdRevenueCents,
+    fetchPhase: invoiceFetchPhase,
+    fetchError: invoiceError,
+    unavailable: Boolean(invoiceError),
+    locale: analyticsLocale,
+  });
+  const expenseMetric = resolveScalarMetricState({
+    value: invoiceError ? null : mtdExpenseCents,
+    fetchPhase: invoiceFetchPhase,
+    fetchError: invoiceError,
+    unavailable: Boolean(invoiceError),
+    locale: analyticsLocale,
+  });
+  const profitMetric = resolveScalarMetricState({
+    value: invoiceError ? null : profitCents,
+    fetchPhase: invoiceFetchPhase,
+    fetchError: invoiceError,
+    unavailable: Boolean(invoiceError),
+    locale: analyticsLocale,
+  });
+
+  const handleExportSummary = useCallback(() => {
+    if (!analytics.summary) return;
+    const rows = buildSummaryExportRows(analytics.summary, analyticsLocale);
+    const csv = summaryExportToCsv(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `auswertungen-summary-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [analytics.summary, analyticsLocale]);
 
   // ─── Derived: lookups ────────────────────────────────────────────────
 
@@ -423,7 +485,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           filterKey={filterKey}
           onPatchFilters={patchFilters}
           stationOptions={stationOptions}
-          openReceivablesEur={0}
+          analytics={analytics}
         />
         <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
           <Icon name="alert-circle" className="w-5 h-5" />
@@ -442,9 +504,19 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         filterKey={filterKey}
         onPatchFilters={patchFilters}
         stationOptions={stationOptions}
-        openReceivablesEur={Math.round(outstandingCents / 100)}
-        financialRiskEur={Math.round(overdueCents / 100)}
+        analytics={analytics}
       />
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={handleExportSummary}
+          disabled={!analytics.summary}
+          className="px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral disabled:opacity-50"
+        >
+          KPI-Export (CSV)
+        </button>
+      </div>
 
       <div className="pt-2 border-t border-border">
         <h2 className="text-[14px] font-bold text-foreground mb-1">Financial Intelligence</h2>
@@ -470,9 +542,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
       {/* ─── KPI Row ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
-        <KpiCard
+        <MetricKpiCard
           label="Issued Revenue MTD"
-          value={fmtEUR(mtdRevenueCents, intlLocale)}
+          state={revenueMetric}
+          formattedValue={fmtEUR(mtdRevenueCents, intlLocale)}
           icon={ArrowUpRight}
           color="green"
           isDarkMode={isDarkMode}
@@ -481,9 +554,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           onClick={() => setActivePopup('revenue')}
           clickable
         />
-        <KpiCard
+        <MetricKpiCard
           label="Expenses MTD"
-          value={fmtEUR(mtdExpenseCents, intlLocale)}
+          state={expenseMetric}
+          formattedValue={fmtEUR(mtdExpenseCents, intlLocale)}
           icon={ArrowDownLeft}
           color="red"
           isDarkMode={isDarkMode}
@@ -493,25 +567,28 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           onClick={() => setActivePopup('expenses')}
           clickable
         />
-        <KpiCard
+        <MetricKpiCard
           label="Net Profit MTD"
-          value={fmtEUR(profitCents, intlLocale)}
+          state={profitMetric}
+          formattedValue={fmtEUR(profitCents, intlLocale)}
           icon={Wallet}
           color={profitCents >= 0 ? 'blue' : 'red'}
           isDarkMode={isDarkMode}
           subtle={`Margin ${fmtPct(profitMargin, 1)} · basierend auf Issued Revenue`}
         />
-        <KpiCard
+        <MetricKpiCard
           label="Open Receivables"
-          value={fmtEUR(outstandingCents, intlLocale)}
+          state={openReceivablesMetric}
+          formattedValue={fmtEUR(outstandingCents, intlLocale)}
           icon={Clock}
           color="purple"
           isDarkMode={isDarkMode}
           subtle={`${bucketed.outstandingRevenue.length} offen gesamt`}
         />
-        <KpiCard
+        <MetricKpiCard
           label="Overdue"
-          value={fmtEUR(overdueCents, intlLocale)}
+          state={overdueMetric}
+          formattedValue={fmtEUR(overdueCents, intlLocale)}
           icon={Clock}
           color="red"
           isDarkMode={isDarkMode}
@@ -609,8 +686,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
                     ];
                   }}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#finRevGrad)" dot={false} />
-                <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={1.5} fill="url(#finExpGrad)" dot={false} />
+                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#finRevGrad)" dot={false} connectNulls={false} />
+                <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={1.5} fill="url(#finExpGrad)" dot={false} connectNulls={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -793,6 +870,83 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 }
 
 // ─── Reusable bits ─────────────────────────────────────────────────────
+
+function MetricKpiCard({
+  label,
+  state,
+  formattedValue,
+  icon: KpiIcon,
+  color,
+  delta,
+  deltaInverted,
+  subtle,
+  onClick,
+  clickable,
+}: {
+  label: string;
+  state: import('@synq/evaluations-insights/evaluations-metric-state.contract').EvaluationsResolvedMetricState;
+  formattedValue: string;
+  icon: typeof ArrowUpRight;
+  color: 'green' | 'red' | 'blue' | 'purple';
+  isDarkMode: boolean;
+  delta?: number | null;
+  deltaInverted?: boolean;
+  subtle?: string;
+  onClick?: () => void;
+  clickable?: boolean;
+}) {
+  const toneClass =
+    color === 'green'
+      ? 'sq-tone-success'
+      : color === 'red'
+        ? 'sq-tone-critical'
+        : color === 'blue'
+          ? 'sq-tone-brand'
+          : 'sq-tone-warning';
+
+  const deltaDisplay = (() => {
+    if (delta == null) return null;
+    const positive = delta >= 0;
+    const goodDirection = deltaInverted ? !positive : positive;
+    return (
+      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${goodDirection ? 'sq-tone-success' : 'sq-tone-critical'}`}>
+        {positive ? '▲' : '▼'} {fmtPct(Math.abs(delta), 1)}
+      </span>
+    );
+  })();
+
+  const Wrapper: any = clickable ? 'button' : 'div';
+  return (
+    <Wrapper
+      type={clickable ? 'button' : undefined}
+      onClick={onClick}
+      className={`text-left rounded-xl p-3 transition-all duration-200 flex flex-col ${toneClass} ${
+        clickable ? 'cursor-pointer hover:opacity-90 hover:shadow-sm' : ''
+      } ${state.showStaleOverlay ? 'ring-1 ring-[color:var(--status-watch)]/30' : ''}`}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-current/10">
+          <KpiIcon className="w-4 h-4" />
+        </div>
+        {deltaDisplay}
+      </div>
+      <div className="text-[16px] font-bold leading-tight tabular-nums">
+        {state.canShowValue ? (
+          formattedValue
+        ) : (
+          <EvaluationsMetricValue state={state} valueClassName="text-[16px] font-bold" showBadge={false} />
+        )}
+      </div>
+      <div className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">{label}</div>
+      {subtle && (
+        <div className="text-[10px] mt-2 pt-2 border-t border-current/15 flex items-center justify-between opacity-80">
+          <span>{subtle}</span>
+          {clickable && <Icon name="arrow-right" className="w-3.5 h-3.5" />}
+        </div>
+      )}
+    </Wrapper>
+  );
+}
 
 function KpiCard({
   label, value, icon: Icon, color, delta, deltaInverted, subtle, onClick, clickable,

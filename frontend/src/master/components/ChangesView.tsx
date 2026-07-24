@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-metric-state-ux-v49826-2026-07-24',
+    version: 'V4.9.826',
+    title: 'V4.9.826 — Metric State UX Auswertungen (Prompt 28/54)',
+    summary: [
+      'Kennzahlen unterscheiden verfügbar, teilweise, veraltet, nicht verfügbar, Fehler, nicht anwendbar und echten Nullwert — kein `?? 0` bei Fehlern.',
+      'Shared: `evaluations-metric-state.*`, `evaluations-chart-series.*`; Frontend `EvaluationsMetricValue`, `useEvaluationsAnalyticsSummary`.',
+      'InsightsCockpit nutzt Summary-Envelopes (`receivables`, `activeRisks`); Rechnungsfehler zeigen nie „0 € offene Forderungen“.',
+      'Charts: Lücken als `null` (`connectNulls={false}`); CSV-Export mit Status und Ausschlüssen.',
+      'Doku: `docs/frontend/evaluations-metric-state-ux.md`.',
+    ],
+    reason:
+      'Prompt 28/54 — Fehler-, Partial- und Stale-Zustände korrekt darstellen; fehlgeschlagene Abrufe dürfen nicht wie gültige Nullwerte erscheinen.',
+    previousBehavior: 'KPI-Karten mit `?? 0` und `openReceivablesEur={0}` bei Invoice-Fehlern.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T11:30:00.000Z',
+  },
+  {
     id: 'evaluations-lineage-freshness-v49825-2026-07-24',
     version: 'V4.9.825',
     title: 'V4.9.825 — Lineage & Freshness Auswertungen (Prompt 27/54)',

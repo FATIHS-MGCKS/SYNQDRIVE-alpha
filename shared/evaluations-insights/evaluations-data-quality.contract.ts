@@ -136,7 +136,6 @@ export interface EvaluationsDataQualityDomainSummary {
 }
 
 /** Canonical summary type used in analytics responses. */
-export type EvaluationsDataQualitySummary = EvaluationsDataQualityDomainSummary;
 
 export interface EvaluationsDataQualityBuildInput {
   period: EvaluationsTimePeriod;

@@ -3,10 +3,10 @@ import type { EvaluationsCostModelSnapshot } from '@synq/evaluations-insights/ev
 import type { EvaluationsCostModelSummary } from '@synq/evaluations-insights/evaluations-cost-model.contract';
 import type {
   EvaluationsActiveRisksSummary,
-  EvaluationsDataQualitySummary,
   EvaluationsFinancialSnapshot,
   EvaluationsFleetSnapshot,
 } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import type { EvaluationsDataQualityDomainSummary } from '@synq/evaluations-insights/evaluations-data-quality.contract';
 import type { InsightEntityCountSummary } from '@synq/evaluations-insights/insight-entity-references.contract';
 import type { EvaluationsUtilizationModelSummary } from '@synq/evaluations-insights/evaluations-utilization-model.contract';
 import type { EvaluationsUtilizationSnapshot } from '@synq/evaluations-insights/evaluations-utilization-model.contract';
@@ -29,7 +29,7 @@ export interface EvaluationsWeaknessDetectionInput {
   utilizationSnapshot: EvaluationsUtilizationSnapshot | null;
   activeRisks: EvaluationsActiveRisksSummary | null;
   affectedEntities: InsightEntityCountSummary | null;
-  dataQuality: EvaluationsDataQualitySummary;
+  dataQuality: EvaluationsDataQualityDomainSummary;
 }
 
 @Injectable()
