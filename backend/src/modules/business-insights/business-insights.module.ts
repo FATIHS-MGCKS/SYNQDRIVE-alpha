@@ -29,6 +29,7 @@ import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-asse
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { EvaluationsInsightsController } from './evaluations-insights.controller';
 import { EvaluationsAnalyticsController } from './evaluations-analytics.controller';
+import { EvaluationsAnalyticsFilterService } from './evaluations-analytics-filter.service';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';

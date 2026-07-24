@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-tenant-isolation-v49817-2026-07-24',
+    version: 'V4.9.817',
+    title: 'V4.9.817 — Auswertungen Mandantenisolation gehärtet (Prompt 19/54)',
+    summary: [
+      'Security-Audit aller Analytics-/Insights-Pfade: Controller, Filter, Repositories, Entity References, BullMQ/Redis.',
+      'Insight-Detail und Dashboard-Insights wenden jetzt Stationsmitgliedschafts-Scope an (nicht nur expliziten stationId-Filter).',
+      '`matchesStationInsightFilter` blockiert org-weite Insights ohne Stationsbezug bei Stationsfilter.',
+      'Impliziter Stations-Scope über `allowedStationIds`; leere Vehicle-Scopes liefern keine Org-weiten Aggregates.',
+      'Generische 404-Fehler ohne fremde Entity-IDs; Admin Run-Detail erfordert `:orgId`.',
+      'Negative Cross-Tenant-Tests: `evaluations-tenant-isolation.security.spec.ts`.',
+      'Doku: `docs/security/evaluations-tenant-isolation-audit.md`.',
+    ],
+    reason:
+      'Prompt 19/54 — Mandantentrennung und Berechtigungen für Analytics müssen auf Query-Ebene nachweisbar sein.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T16:00:00.000Z',
+  },
+  {
     id: 'evaluations-filter-contract-v49816-2026-07-24',
     version: 'V4.9.816',
     title: 'V4.9.816 — Einheitliche Auswertungen-Filterarchitektur (Prompt 18/54)',

@@ -54,8 +54,15 @@ export class EvaluationsInsightsController {
   async getAnalyticsInsightById(
     @Param('orgId') orgId: string,
     @Param('insightId') insightId: string,
+    @Query() query: EvaluationsInsightAnalyticsSummaryQueryDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    const insight = await this.analytics.getAnalyticsInsightById(orgId, insightId);
+    const resolved = await this.filterService.resolve(
+      orgId,
+      req.user?.id,
+      normalizeAnalyticsFilterQuery(query),
+    );
+    const insight = await this.analytics.getAnalyticsInsightById(orgId, insightId, resolved);
     if (!insight) throw new NotFoundException('Insight not found');
     return insight;
   }

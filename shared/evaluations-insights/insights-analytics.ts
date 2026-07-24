@@ -48,29 +48,52 @@ export function matchesStationInsightFilter(
   insight: InsightAnalyticsRow,
   stationId: string | null | undefined,
   stationVehicleIds: ReadonlySet<string> | null | undefined,
+  allowedStationIds?: readonly string[] | null,
 ): boolean {
-  if (!stationId) return true;
-  if (!stationVehicleIds || stationVehicleIds.size === 0) return false;
+  if (allowedStationIds != null && allowedStationIds.length === 0) return false;
+
+  const explicitStation = stationId ?? null;
+  const implicitStations =
+    !explicitStation && allowedStationIds != null && allowedStationIds.length > 0
+      ? allowedStationIds
+      : null;
+  const stationsToMatch = explicitStation ? [explicitStation] : implicitStations;
+
+  if (!stationsToMatch) return true;
 
   const refs = insight.entityReferences ?? [];
-  if (refs.length > 0) {
-    const stationMatch = refs.some(
-      (r) =>
-        r.stationId === stationId ||
-        (r.entityType === 'STATION' && r.entityId === stationId) ||
-        (r.entityType === 'VEHICLE' && stationVehicleIds.has(r.entityId)),
-    );
-    if (stationMatch) return true;
+  for (const sid of stationsToMatch) {
+    if (
+      refs.some(
+        (r) =>
+          r.stationId === sid || (r.entityType === 'STATION' && r.entityId === sid),
+      )
+    ) {
+      return true;
+    }
+    if (insight.entityScope === 'STATION' && (insight.entityIds ?? []).includes(sid)) {
+      return true;
+    }
+  }
+
+  const metricsStation =
+    typeof insight.metrics?.stationId === 'string' ? insight.metrics.stationId : null;
+  if (metricsStation && stationsToMatch.includes(metricsStation)) return true;
+
+  if (!stationVehicleIds || stationVehicleIds.size === 0) return false;
+
+  if (refs.some((r) => r.entityType === 'VEHICLE' && stationVehicleIds.has(r.entityId))) {
+    return true;
   }
 
   const ids = insight.entityIds ?? [];
-  if (ids.length === 0) return true;
-  const m = insight.metrics;
   const vehicleId =
-    (typeof m?.affectedVehicleId === 'string' ? m.affectedVehicleId : null) ??
-    ids.find((id) => stationVehicleIds.has(id));
-  if (!vehicleId) return true;
-  return stationVehicleIds.has(vehicleId);
+    (typeof insight.metrics?.affectedVehicleId === 'string'
+      ? insight.metrics.affectedVehicleId
+      : null) ?? ids.find((id) => stationVehicleIds.has(id));
+  if (vehicleId) return stationVehicleIds.has(vehicleId);
+
+  return false;
 }
 
 export function matchesInsightAnalyticsFilters(
@@ -78,7 +101,14 @@ export function matchesInsightAnalyticsFilters(
   filters: InsightAnalyticsFilters,
 ): boolean {
   if (!isVisibleAnalyticsInsight(insight)) return false;
-  if (!matchesStationInsightFilter(insight, filters.stationId, filters.stationVehicleIds)) {
+  if (
+    !matchesStationInsightFilter(
+      insight,
+      filters.stationId,
+      filters.stationVehicleIds,
+      filters.allowedStationIds,
+    )
+  ) {
     return false;
   }
   if (filters.severity && insight.severity !== filters.severity) return false;

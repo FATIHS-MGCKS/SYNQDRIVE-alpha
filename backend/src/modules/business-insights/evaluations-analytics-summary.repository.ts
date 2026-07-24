@@ -12,6 +12,10 @@ import {
   REVENUE_EXCLUDED_STATUSES,
 } from '@modules/invoices/invoice-domain.util';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
+import {
+  resolveStationBookingScope,
+  resolveVehicleScopeConstraint,
+} from '@synq/evaluations-insights/evaluations-analytics-filters';
 import type {
   EvaluationsBookingSnapshot,
   EvaluationsFinancialSnapshot,
@@ -62,13 +66,13 @@ export class EvaluationsAnalyticsSummaryRepository {
     resolved: ResolvedEvaluationsAnalyticsFilters,
   ): Promise<EvaluationsFinancialSnapshot> {
     const now = new Date();
-    const vehicleIds = resolved.scopedVehicleIds
-      ? [...resolved.scopedVehicleIds]
-      : resolved.stationVehicleIds
-        ? [...resolved.stationVehicleIds]
-        : null;
-
-    const vehicleFilter = vehicleIds?.length ? { vehicleId: { in: vehicleIds } } : {};
+    const vehicleScope = resolveVehicleScopeConstraint(resolved);
+    const vehicleFilter =
+      vehicleScope.mode === 'scoped'
+        ? { vehicleId: { in: vehicleScope.vehicleIds } }
+        : vehicleScope.mode === 'empty'
+          ? { vehicleId: { in: [] as string[] } }
+          : {};
 
     const invoices = await this.prisma.orgInvoice.findMany({
       where: {
@@ -192,18 +196,22 @@ export class EvaluationsAnalyticsSummaryRepository {
     if (resolved.bookingStatus) {
       andFilters.push({ status: resolved.bookingStatus });
     }
-    if (resolved.stationId) {
+    const stationScope = resolveStationBookingScope(resolved);
+    if (stationScope.mode === 'scoped') {
       andFilters.push({
         OR: [
-          { pickupStationId: resolved.stationId },
-          { returnStationId: resolved.stationId },
+          { pickupStationId: { in: stationScope.stationIds } },
+          { returnStationId: { in: stationScope.stationIds } },
         ],
       });
+    } else if (stationScope.mode === 'empty') {
+      andFilters.push({ id: { in: [] as string[] } });
     }
-    if (resolved.vehicleId) {
-      andFilters.push({ vehicleId: resolved.vehicleId });
-    } else if (resolved.scopedVehicleIds?.size) {
-      andFilters.push({ vehicleId: { in: [...resolved.scopedVehicleIds] } });
+    const vehicleScope = resolveVehicleScopeConstraint(resolved);
+    if (vehicleScope.mode === 'scoped') {
+      andFilters.push({ vehicleId: { in: vehicleScope.vehicleIds } });
+    } else if (vehicleScope.mode === 'empty') {
+      andFilters.push({ vehicleId: { in: [] as string[] } });
     }
     if (resolved.customerSegment) {
       andFilters.push({ customer: { customerType: resolved.customerSegment } });
@@ -269,13 +277,16 @@ export class EvaluationsAnalyticsSummaryRepository {
     const andFilters: Array<Record<string, unknown>> = [
       { organizationId: resolved.organizationId },
     ];
-    if (resolved.stationId) {
+    const stationScope = resolveStationBookingScope(resolved);
+    if (stationScope.mode === 'scoped') {
       andFilters.push({
         OR: [
-          { homeStationId: resolved.stationId },
-          { currentStationId: resolved.stationId },
+          { homeStationId: { in: stationScope.stationIds } },
+          { currentStationId: { in: stationScope.stationIds } },
         ],
       });
+    } else if (stationScope.mode === 'empty') {
+      andFilters.push({ id: { in: [] as string[] } });
     }
     if (resolved.vehicleClassId) {
       andFilters.push({ rentalCategoryId: resolved.vehicleClassId });
@@ -283,10 +294,11 @@ export class EvaluationsAnalyticsSummaryRepository {
     if (resolved.vehicleStatus) {
       andFilters.push({ status: resolved.vehicleStatus });
     }
-    if (resolved.vehicleId) {
-      andFilters.push({ id: resolved.vehicleId });
-    } else if (resolved.scopedVehicleIds?.size) {
-      andFilters.push({ id: { in: [...resolved.scopedVehicleIds] } });
+    const vehicleScope = resolveVehicleScopeConstraint(resolved);
+    if (vehicleScope.mode === 'scoped') {
+      andFilters.push({ id: { in: vehicleScope.vehicleIds } });
+    } else if (vehicleScope.mode === 'empty') {
+      andFilters.push({ id: { in: [] as string[] } });
     }
 
     const vehicles = await this.prisma.vehicle.findMany({

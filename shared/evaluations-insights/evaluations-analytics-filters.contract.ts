@@ -69,6 +69,11 @@ export interface ResolvedEvaluationsAnalyticsFilters {
   /** Intersection of station/vehicle/class/status scopes — null means no vehicle constraint. */
   scopedVehicleIds: ReadonlySet<string> | null;
   stationVehicleIds: ReadonlySet<string> | null;
+  /**
+   * Membership station scope when Stations V2 is enabled.
+   * `null` = org-wide access; `[]` = no readable stations; non-empty = implicit station scope.
+   */
+  allowedStationIds: readonly string[] | null;
 }
 
 /** Serializable filters returned in API responses (no internal sets). */

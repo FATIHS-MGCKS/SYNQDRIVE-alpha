@@ -59,6 +59,11 @@ export class EvaluationsAnalyticsFilterService {
     const timezone = await this.resolveOrgTimezone(organizationId);
     const { current, previous } = resolvePeriodBounds(query, timezone);
 
+    const allowedStationIds =
+      access.bypassScope || access.allowedStationIds === null
+        ? null
+        : [...access.allowedStationIds];
+
     const stationId = query.stationId ?? null;
     if (stationId) {
       this.stationAccess.assertStationReadable(access, stationId);
@@ -75,7 +80,7 @@ export class EvaluationsAnalyticsFilterService {
         select: { id: true },
       });
       if (!vehicle) {
-        throw new NotFoundException(`Vehicle ${vehicleId} not found`);
+        throw new NotFoundException('Vehicle not found');
       }
     }
 
@@ -85,15 +90,17 @@ export class EvaluationsAnalyticsFilterService {
         select: { id: true },
       });
       if (!category) {
-        throw new NotFoundException(`Vehicle class ${query.vehicleClassId} not found`);
+        throw new NotFoundException('Vehicle class not found');
       }
     }
 
-    const stationVehicleIds = await this.resolveStationVehicleIds(
-      organizationId,
-      access,
-      stationId,
-    );
+    const stationVehicleIds = stationId
+      ? await this.resolveStationVehicleIds(organizationId, access, stationId)
+      : allowedStationIds && allowedStationIds.length > 0
+        ? await this.resolveVehiclesForStationIds(organizationId, access, allowedStationIds)
+        : allowedStationIds && allowedStationIds.length === 0
+          ? new Set<string>()
+          : null;
 
     const classVehicleIds = query.vehicleClassId
       ? await this.resolveClassVehicleIds(organizationId, access, query.vehicleClassId)
@@ -133,6 +140,7 @@ export class EvaluationsAnalyticsFilterService {
       dataQualityStatus: query.dataQualityStatus ?? null,
       scopedVehicleIds,
       stationVehicleIds,
+      allowedStationIds,
     };
   }
 
@@ -182,6 +190,15 @@ export class EvaluationsAnalyticsFilterService {
           { returnStationId: resolved.stationId },
         ],
       });
+    } else if (resolved.allowedStationIds?.length) {
+      and.push({
+        OR: [
+          { pickupStationId: { in: [...resolved.allowedStationIds] } },
+          { returnStationId: { in: [...resolved.allowedStationIds] } },
+        ],
+      });
+    } else if (resolved.allowedStationIds && resolved.allowedStationIds.length === 0) {
+      and.push({ id: { in: [] } });
     }
     if (resolved.vehicleId) {
       and.push({ vehicleId: resolved.vehicleId });
@@ -206,7 +223,32 @@ export class EvaluationsAnalyticsFilterService {
     if (resolved.stationId && resolved.stationVehicleIds?.size) {
       return { vehicleId: { in: [...resolved.stationVehicleIds] } };
     }
+    if (!resolved.stationId && resolved.stationVehicleIds !== null) {
+      return resolved.stationVehicleIds.size > 0
+        ? { vehicleId: { in: [...resolved.stationVehicleIds] } }
+        : { vehicleId: { in: [] } };
+    }
     return {};
+  }
+
+  private async resolveVehiclesForStationIds(
+    organizationId: string,
+    access: Awaited<ReturnType<StationAccessService['resolve']>>,
+    stationIds: readonly string[],
+  ): Promise<ReadonlySet<string>> {
+    if (stationIds.length === 0) return new Set();
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: {
+        organizationId,
+        OR: [
+          { homeStationId: { in: [...stationIds] } },
+          { currentStationId: { in: [...stationIds] } },
+        ],
+        ...this.stationAccess.buildVehicleStationScopeWhere(access),
+      },
+      select: { id: true },
+    });
+    return new Set(vehicles.map((v) => v.id));
   }
 
   private async resolveOrgTimezone(organizationId: string): Promise<string> {

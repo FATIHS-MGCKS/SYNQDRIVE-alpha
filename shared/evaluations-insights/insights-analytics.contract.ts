@@ -37,6 +37,8 @@ export interface InsightAnalyticsFilters {
   stationId?: string | null;
   /** Vehicle ids belonging to stationId — resolved server-side when station filter is set. */
   stationVehicleIds?: ReadonlySet<string> | null;
+  /** Implicit membership station scope (no explicit stationId filter). */
+  allowedStationIds?: readonly string[] | null;
 }
 
 export interface InsightAnalyticsListQuery extends InsightAnalyticsFilters {

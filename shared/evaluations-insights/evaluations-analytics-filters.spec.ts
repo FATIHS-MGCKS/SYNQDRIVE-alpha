@@ -2,9 +2,12 @@ import {
   intersectVehicleIdSets,
   parseFiltersFromSearchParams,
   resolvePeriodBounds,
+  resolveVehicleScopeConstraint,
   serializeFiltersToSearchParams,
   validateEvaluationsAnalyticsFilters,
 } from './evaluations-analytics-filters';
+import { matchesStationInsightFilter } from './insights-analytics';
+import type { InsightAnalyticsRow } from './insights-analytics.contract';
 
 describe('evaluations-analytics-filters (shared)', () => {
   it('rejects unsupported bookingChannel filter', () => {
@@ -50,5 +53,74 @@ describe('evaluations-analytics-filters (shared)', () => {
     const a = new Set(['v1', 'v2']);
     const b = new Set(['v3']);
     expect(intersectVehicleIdSets(a, b)?.size).toBe(0);
+  });
+
+  it('resolveVehicleScopeConstraint treats empty scoped set as empty results', () => {
+    const constraint = resolveVehicleScopeConstraint({
+      organizationId: 'org-1',
+      period: { key: 'mtd', from: '2026-01-01', to: '2026-01-31', timezone: 'UTC' },
+      comparisonPeriod: { key: 'mtd', from: '2025-12-01', to: '2025-12-31', timezone: 'UTC' },
+      stationId: null,
+      vehicleId: null,
+      vehicleClassId: null,
+      vehicleStatus: null,
+      bookingStatus: null,
+      customerSegment: null,
+      currency: 'EUR',
+      riskCategory: null,
+      insightStatus: null,
+      dataQualityStatus: null,
+      scopedVehicleIds: new Set(),
+      stationVehicleIds: null,
+      allowedStationIds: null,
+    });
+    expect(constraint).toEqual({ mode: 'empty' });
+  });
+
+  it('blocks org-wide insights for explicit station filter without station ties', () => {
+    const insight: InsightAnalyticsRow = {
+      id: 'insight-1',
+      type: 'LOW_UTILIZATION',
+      severity: 'WARNING',
+      priority: 50,
+      entityScope: 'ORG',
+      entityIds: [],
+    };
+    const stationVehicles = new Set(['veh-1']);
+    expect(
+      matchesStationInsightFilter(insight, 'station-a', stationVehicles, null),
+    ).toBe(false);
+  });
+
+  it('allows station shortage insights tied to the filtered station', () => {
+    const insight: InsightAnalyticsRow = {
+      id: 'insight-2',
+      type: 'STATION_SHORTAGE',
+      severity: 'CRITICAL',
+      priority: 90,
+      entityScope: 'STATION',
+      entityIds: ['station-a'],
+    };
+    const stationVehicles = new Set(['veh-1']);
+    expect(
+      matchesStationInsightFilter(insight, 'station-a', stationVehicles, null),
+    ).toBe(true);
+  });
+
+  it('applies implicit allowedStationIds when no explicit station filter is set', () => {
+    const insight: InsightAnalyticsRow = {
+      id: 'insight-3',
+      type: 'STATION_SHORTAGE',
+      severity: 'WARNING',
+      priority: 70,
+      entityScope: 'STATION',
+      entityIds: ['station-b'],
+    };
+    expect(
+      matchesStationInsightFilter(insight, null, new Set(['veh-9']), ['station-a']),
+    ).toBe(false);
+    expect(
+      matchesStationInsightFilter(insight, null, new Set(['veh-9']), ['station-b']),
+    ).toBe(true);
   });
 });

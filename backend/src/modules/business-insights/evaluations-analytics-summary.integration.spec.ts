@@ -55,6 +55,7 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
     dataQualityStatus: null,
     scopedVehicleIds: null,
     stationVehicleIds: null,
+    allowedStationIds: null,
     ...overrides,
   });
 

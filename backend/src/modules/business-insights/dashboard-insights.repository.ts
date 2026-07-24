@@ -258,6 +258,22 @@ export class DashboardInsightsRepository {
     };
   }
 
+  async getRunDetailForOrg(
+    organizationId: string,
+    runId: string,
+  ): Promise<InsightRunDetailDto | null> {
+    const run = await this.prisma.dashboardInsightRun.findFirst({
+      where: { id: runId, organizationId },
+      include: { insights: { orderBy: { priority: 'desc' } } },
+    });
+    if (!run) return null;
+
+    return {
+      ...this.toRunSummaryDto(run),
+      insights: run.insights.map((i) => this.toInsightDto(i, organizationId)),
+    };
+  }
+
   async getLastRunForOrg(organizationId: string): Promise<InsightRunSummaryDto | null> {
     const run = await this.prisma.dashboardInsightRun.findFirst({
       where: { organizationId, finishedAt: { not: null } },

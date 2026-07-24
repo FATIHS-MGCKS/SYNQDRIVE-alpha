@@ -39,6 +39,7 @@ export class DashboardInsightsAnalyticsService {
       severity: resolved.insightStatus ?? undefined,
       stationId: resolved.stationId,
       stationVehicleIds: resolved.stationVehicleIds,
+      allowedStationIds: resolved.allowedStationIds,
     };
     const counts = computeInsightAnalyticsSummaryCounts(
       filtered,
@@ -82,13 +83,70 @@ export class DashboardInsightsAnalyticsService {
   async getAnalyticsInsightById(
     organizationId: string,
     insightId: string,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
   ): Promise<DashboardInsightDto | null> {
+    const runMeta = await this.repo.getRunMetadata(organizationId);
     await this.repo.expireStaleInsights(organizationId);
     const row = await this.prisma.dashboardInsight.findFirst({
       where: { id: insightId, organizationId, isActive: true },
     });
     if (!row) return null;
+    const analyticsRow = this.toAnalyticsRow(row, organizationId);
+    if (!this.isInsightAccessible(analyticsRow, resolved, runMeta.stale)) return null;
     return this.repo.toPublicInsightDto(row, organizationId);
+  }
+
+  filterInsightRows(
+    insights: InsightAnalyticsRow[],
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+    insightStale: boolean,
+  ): InsightAnalyticsRow[] {
+    return this.filterInsights(insights, resolved, insightStale);
+  }
+
+  private isInsightAccessible(
+    insight: InsightAnalyticsRow,
+    resolved: ResolvedEvaluationsAnalyticsFilters,
+    insightStale = false,
+  ): boolean {
+    return (
+      matchesResolvedInsightFilters(insight, resolved) &&
+      matchesDataQualityInsightFilter(insightStale, resolved.dataQualityStatus)
+    );
+  }
+
+  private toAnalyticsRow(
+    row: {
+      id: string;
+      type: string;
+      severity: string;
+      priority: number;
+      entityScope: string;
+      entityIds: unknown;
+      isGrouped: boolean;
+      groupCount: number;
+      entityReferences: unknown;
+      metrics: unknown;
+      timeContext: unknown;
+      createdAt: Date;
+    },
+    organizationId: string,
+  ): InsightAnalyticsRow {
+    return {
+      id: row.id,
+      type: row.type,
+      severity: row.severity,
+      priority: row.priority,
+      entityScope: row.entityScope,
+      entityIds: (row.entityIds as string[] | null) ?? null,
+      isGrouped: row.isGrouped,
+      groupCount: row.groupCount,
+      organizationId,
+      entityReferences: (row.entityReferences as InsightAnalyticsRow['entityReferences']) ?? null,
+      metrics: (row.metrics as Record<string, unknown> | null) ?? null,
+      timeContext: (row.timeContext as Record<string, string> | null) ?? null,
+      createdAt: row.createdAt,
+    };
   }
 
   private filterInsights(
@@ -124,20 +182,6 @@ export class DashboardInsightsAnalyticsService {
       orderBy: [{ priority: 'desc' }, { id: 'asc' }],
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      severity: row.severity,
-      priority: row.priority,
-      entityScope: row.entityScope,
-      entityIds: (row.entityIds as string[] | null) ?? null,
-      isGrouped: row.isGrouped,
-      groupCount: row.groupCount,
-      organizationId,
-      entityReferences: (row.entityReferences as InsightAnalyticsRow['entityReferences']) ?? null,
-      metrics: (row.metrics as Record<string, unknown> | null) ?? null,
-      timeContext: (row.timeContext as Record<string, string> | null) ?? null,
-      createdAt: row.createdAt,
-    }));
+    return rows.map((row) => this.toAnalyticsRow(row, organizationId));
   }
 }

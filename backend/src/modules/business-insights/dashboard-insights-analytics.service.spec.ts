@@ -50,6 +50,7 @@ describe('DashboardInsightsAnalyticsService', () => {
     dataQualityStatus: null,
     scopedVehicleIds: null,
     stationVehicleIds: null,
+    allowedStationIds: null,
     ...overrides,
   });
 
@@ -213,7 +214,7 @@ describe('DashboardInsightsAnalyticsService', () => {
 
   it('getAnalyticsInsightById returns a single insight', async () => {
     rows = [insightRow('one')];
-    const insight = await service.getAnalyticsInsightById(orgId, 'one');
+    const insight = await service.getAnalyticsInsightById(orgId, 'one', baseResolved());
     expect(insight?.id).toBe('one');
   });
 

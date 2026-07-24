@@ -30,7 +30,7 @@ describe('EvaluationsAnalyticsFilterService', () => {
     }),
     assertStationReadable: jest.fn((access, id: string) => {
       if (!access.allowedStationIds.includes(id)) {
-        throw new NotFoundException(`Station ${id} not found`);
+        throw new NotFoundException('Station not found');
       }
     }),
     buildVehicleStationScopeWhere: jest.fn().mockReturnValue({
@@ -61,7 +61,19 @@ describe('EvaluationsAnalyticsFilterService', () => {
   it('rejects foreign station id via station access', async () => {
     await expect(
       service.resolve(orgId, 'user-1', { stationId: foreignStationId }),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    ).rejects.toThrow('Station not found');
+  });
+
+  it('applies implicit station scope when membership is station-limited', async () => {
+    stationAccess.resolve.mockResolvedValueOnce({
+      bypassScope: false,
+      allowedStationIds: [stationId],
+      membershipRole: 'WORKER',
+      userId: 'user-1',
+    });
+    const resolved = await service.resolve(orgId, 'user-1', {});
+    expect(resolved.allowedStationIds).toEqual([stationId]);
+    expect(resolved.stationVehicleIds?.has(vehicleId)).toBe(true);
   });
 
   it('rejects bookingChannel as unsupported combination', async () => {

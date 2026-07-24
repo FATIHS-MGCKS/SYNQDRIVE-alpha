@@ -188,6 +188,39 @@ export function intersectVehicleIdSets(
   return out;
 }
 
+export function resolveVehicleScopeConstraint(
+  resolved: ResolvedEvaluationsAnalyticsFilters,
+): { mode: 'unrestricted' } | { mode: 'scoped'; vehicleIds: string[] } | { mode: 'empty' } {
+  if (resolved.vehicleId) {
+    return { mode: 'scoped', vehicleIds: [resolved.vehicleId] };
+  }
+  if (resolved.scopedVehicleIds !== null) {
+    return resolved.scopedVehicleIds.size > 0
+      ? { mode: 'scoped', vehicleIds: [...resolved.scopedVehicleIds] }
+      : { mode: 'empty' };
+  }
+  if (resolved.stationVehicleIds !== null) {
+    return resolved.stationVehicleIds.size > 0
+      ? { mode: 'scoped', vehicleIds: [...resolved.stationVehicleIds] }
+      : { mode: 'empty' };
+  }
+  return { mode: 'unrestricted' };
+}
+
+export function resolveStationBookingScope(
+  resolved: ResolvedEvaluationsAnalyticsFilters,
+): { mode: 'unrestricted' } | { mode: 'scoped'; stationIds: string[] } | { mode: 'empty' } {
+  if (resolved.stationId) {
+    return { mode: 'scoped', stationIds: [resolved.stationId] };
+  }
+  if (resolved.allowedStationIds != null) {
+    return resolved.allowedStationIds.length > 0
+      ? { mode: 'scoped', stationIds: [...resolved.allowedStationIds] }
+      : { mode: 'empty' };
+  }
+  return { mode: 'unrestricted' };
+}
+
 export function serializeFiltersToSearchParams(
   filters: EvaluationsAnalyticsFiltersQuery,
 ): URLSearchParams {
@@ -265,6 +298,7 @@ export function matchesResolvedInsightFilters(
       severity: resolved.insightStatus ?? undefined,
       stationId: resolved.stationId,
       stationVehicleIds: resolved.stationVehicleIds,
+      allowedStationIds: resolved.allowedStationIds,
     })
   ) {
     return false;
@@ -284,7 +318,7 @@ export function matchesResolvedInsightFilters(
         : null;
     if (affectedVehicleId) vehicleIds.add(affectedVehicleId);
 
-    if (vehicleIds.size === 0) return true;
+    if (vehicleIds.size === 0) return false;
     for (const id of vehicleIds) {
       if (resolved.scopedVehicleIds.has(id)) return true;
     }
