@@ -2,6 +2,8 @@ import { EvaluationsSection } from '../EvaluationsSection';
 import { EVALUATIONS_SECTION_IDS } from '../evaluations-page.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAnalyticsSummaryResponse } from '@synq/evaluations-insights/evaluations-analytics-summary.contract';
+import { EvaluationsSwCockpit } from '../EvaluationsSwCockpit';
+import { resolveSwCockpit } from '@synq/evaluations-insights/evaluations-sw-cockpit';
 
 interface EvaluationsStrengthsWeaknessesSectionProps {
   summary: EvaluationsAnalyticsSummaryResponse | null;
@@ -12,60 +14,49 @@ export function EvaluationsStrengthsWeaknessesSection({
   summary,
   loading,
 }: EvaluationsStrengthsWeaknessesSectionProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const analyticsLocale = locale === 'en' ? 'en' : 'de';
+
   const strengths = summary?.strengths;
   const weaknesses = summary?.weaknesses;
-  const strengthItems = strengths?.data?.strengths ?? [];
-  const weaknessItems = weaknesses?.data?.weaknesses ?? [];
+
+  const cockpit = resolveSwCockpit({
+    strengths: strengths?.data?.strengths,
+    weaknesses: weaknesses?.data?.weaknesses,
+    strengthsStatus: strengths?.status,
+    weaknessesStatus: weaknesses?.status,
+    locale: analyticsLocale,
+  });
 
   const surfaceState = loading && !summary ? 'loading' : 'ready';
-  const isEmpty = !loading && strengthItems.length === 0 && weaknessItems.length === 0;
+  const isEmpty = !loading && cockpit.findings.length === 0;
+
+  const emptyTitle =
+    cockpit.emptyReason === 'INSUFFICIENT_DATA'
+      ? t('evaluations.swCockpit.empty.titleInsufficient')
+      : t('evaluations.ia.sections.strengthsWeaknesses.emptyTitle');
+
+  const emptyDescription =
+    cockpit.emptyReason === 'INSUFFICIENT_DATA'
+      ? t('evaluations.swCockpit.empty.insufficientData')
+      : cockpit.emptyReason === 'SECTION_ERROR'
+        ? t('evaluations.swCockpit.empty.error')
+        : cockpit.emptyReason === 'SECTION_UNAVAILABLE'
+          ? t('evaluations.swCockpit.empty.unavailable')
+          : t('evaluations.ia.sections.strengthsWeaknesses.emptyDescription');
 
   return (
     <EvaluationsSection
       id={EVALUATIONS_SECTION_IDS.strengthsWeaknesses}
       title={t('evaluations.ia.sections.strengthsWeaknesses.title')}
-      subtitle={t('evaluations.ia.sections.strengthsWeaknesses.subtitle')}
+      subtitle={t('evaluations.swCockpit.sectionSubtitle')}
       sectionStatus={strengths?.status === 'ERROR' ? strengths.status : weaknesses?.status}
       surfaceState={isEmpty ? 'empty' : surfaceState}
-      emptyTitle={t('evaluations.ia.sections.strengthsWeaknesses.emptyTitle')}
-      emptyDescription={t('evaluations.ia.sections.strengthsWeaknesses.emptyDescription')}
+      emptyTitle={emptyTitle}
+      emptyDescription={emptyDescription}
       defaultOpen
     >
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            {t('evaluations.ia.sections.strengthsWeaknesses.strengths')}
-          </h3>
-          <ul className="space-y-2">
-            {strengthItems.slice(0, 6).map((item) => (
-              <li
-                key={item.id}
-                className="rounded-lg border border-border/40 bg-[color:var(--status-success)]/[0.04] px-3 py-2"
-              >
-                <p className="text-[12px] font-semibold text-foreground">{item.title}</p>
-                <p className="mt-0.5 text-[10.5px] text-muted-foreground leading-relaxed">{item.description}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            {t('evaluations.ia.sections.strengthsWeaknesses.weaknesses')}
-          </h3>
-          <ul className="space-y-2">
-            {weaknessItems.slice(0, 6).map((item) => (
-              <li
-                key={item.id}
-                className="rounded-lg border border-border/40 bg-[color:var(--status-watch)]/[0.04] px-3 py-2"
-              >
-                <p className="text-[12px] font-semibold text-foreground">{item.title}</p>
-                <p className="mt-0.5 text-[10.5px] text-muted-foreground leading-relaxed">{item.description}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      <EvaluationsSwCockpit summary={summary} loading={loading} />
     </EvaluationsSection>
   );
 }

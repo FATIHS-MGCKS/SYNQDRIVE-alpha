@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-sw-cockpit-v49830-2026-07-24',
+    version: 'V4.9.830',
+    title: 'V4.9.830 — Stärken- und Schwächen-Cockpit (Prompt 32/54)',
+    summary: [
+      'Unified SW-Cockpit mit 5 Kategorien: Stärke, Verbesserungspotenzial, Beobachtung, Risiko, kritisches Risiko.',
+      'Karten: Titel, Erklärung, quantitative Grundlage, Vergleichsbasis, Zeitraum, Dimension, Auswirkung, Confidence, Abdeckung, Drill-down.',
+      'Cross-Source-Deduplizierung (Root-Cause-Groups) und Sortierung nach Wirkung/Dringlichkeit.',
+      'Detail-Drawer mit Ursachen, Datenquellen, Entitäten, Empfehlungen und Sektions-Drill-down.',
+      'Shared: `evaluations-sw-cockpit.*`; UI `EvaluationsSwCockpit`, `EvaluationsSwFindingCard`, `EvaluationsSwFindingDetailDrawer`.',
+      'Doku: `docs/frontend/evaluations-strengths-weaknesses-cockpit.md`.',
+    ],
+    reason:
+      'Prompt 32/54 — Übersichtliches Management-Cockpit für Stärken/Schwächen ohne doppelte Ursachen und ohne rein farbcodierte Severity.',
+    previousBehavior: 'Einfache Zwei-Spalten-Liste (max. 6 Stärken/Schwächen) ohne Kategorien, Drawer oder Dedupe.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T15:00:00.000Z',
+  },
+  {
+    id: 'evaluations-executive-kpi-strip-v49829-2026-07-24',
+    version: 'V4.9.829',
+    title: 'V4.9.829 — Executive KPI Strip für Auswertungen (Prompt 31/54)',
+    summary: [
+      'Professioneller Executive KPI Strip mit max. 8 priorisierten Kennzahlen aus konfigurierbarer Metric Registry.',
+      'Karten: Titel, Wert/Einheit, Zeitraum, Vergleich, Δ absolut/% , Status, Abdeckung, Freshness, Definitionstooltip, Drill-down.',
+      'Fachliche Delta-Semantik (higher/lower/contextual) — kein blindes Grün/Rot nach Vorzeichen.',
+      'Shared: `evaluations-executive-kpi-registry.*`; UI `EvaluationsExecutiveKpiStrip`, `EvaluationsExecutiveKpiCard`.',
+      'Mobile: horizontaler Snap-Scroll statt 8 Mini-Karten; Desktop 2×4 Grid.',
+      'Doku: `docs/frontend/evaluations-executive-kpis.md`.',
+    ],
+    reason:
+      'Prompt 31/54 — Management-KPIs oben mit klarer Definition, Datenqualitäts-Kontext und progressiver Drill-down-Navigation.',
+    previousBehavior: 'Einfache 6er-KPI-Zeile ohne Vergleich, Abdeckung, Freshness oder Registry.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T14:00:00.000Z',
+  },
+  {
     id: 'evaluations-information-architecture-v49828-2026-07-24',
     version: 'V4.9.828',
     title: 'V4.9.828 — Auswertungen Informationsarchitektur (Prompt 30/54)',

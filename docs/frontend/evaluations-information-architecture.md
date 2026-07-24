@@ -9,7 +9,7 @@ Die Seite **Auswertungen** (`FinancialInsightsView` → `EvaluationsPage`) folgt
 | # | Anchor-ID | Komponente | Datenquelle |
 |---|-----------|------------|-------------|
 | 1 | `auswertungen-filter` | `EvaluationsGlobalFiltersSection` | Filter-Bar + `summary.generatedAt` |
-| 2 | `auswertungen-executive` | `EvaluationsExecutiveSummarySection` | `summary.executive` |
+| 2 | `auswertungen-executive` | `EvaluationsExecutiveSummarySection` → **`EvaluationsExecutiveKpiStrip`** | `summary.*` + `lineage` via Registry |
 | 3 | `auswertungen-staerken-schwaechen` | `EvaluationsStrengthsWeaknessesSection` | `summary.strengths` / `weaknesses` |
 | 4 | `auswertungen-risiken` | `EvaluationsRisksSection` | `summary.activeRisks` + Insights-Listen |
 | 5 | `auswertungen-finanzen` | `EvaluationsFinanceSection` | `summary.financial` / `receivables` + Rechnungs-Drill-down |
