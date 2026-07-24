@@ -1679,6 +1679,8 @@ model Organization {
   predictiveFeatureBuildRuns             OrgPredictiveFeatureBuildRun[]
   predictiveForecasts                    OrgPredictiveForecast[]
   predictiveForecastRuns                 OrgPredictiveForecastRun[]
+  predictiveRiskForecasts                OrgPredictiveRiskForecast[]
+  predictiveRiskForecastRuns             OrgPredictiveRiskForecastRun[]
   userAccountPreferences                 UserAccountPreference[]
   userNotificationPreferences            UserNotificationPreference[]
   orgInvoiceSequences                    OrgInvoiceSequence[]
@@ -13931,4 +13933,88 @@ model OrgPredictiveForecastRun {
 
   @@index([organizationId, startedAt])
   @@map("org_predictive_forecast_runs")
+}
+
+// ── Evaluations maintenance / failure risk forecasts (Prompt 43/54) ──
+
+enum PredictiveRiskTarget {
+  MAINTENANCE_COST
+  UNPLANNED_FAILURE
+  EXPECTED_DOWNTIME
+  CAPACITY_RISK
+  COST_RISK
+}
+
+enum PredictiveRiskForecastStatus {
+  AVAILABLE
+  INSUFFICIENT_DATA
+  SUPPRESSED
+  FALLBACK
+}
+
+enum PredictiveRiskForecastRunStatus {
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+model OrgPredictiveRiskForecast {
+  id                  String                       @id @default(uuid())
+  organizationId      String                       @map("organization_id")
+  riskKey             PredictiveRiskTarget         @map("risk_key")
+  horizonDays         Int                          @map("horizon_days")
+  modelVersion        String                       @map("model_version")
+  featureSetVersion   String                       @map("feature_set_version")
+  inferenceTier       PredictiveInferenceTier      @map("inference_tier")
+  scopeKey            String                       @default("fleet") @map("scope_key")
+  timezone            String
+  currency            String?
+  unit                String
+  asOfDate            String                       @map("as_of_date")
+  horizonStartDate    String                       @map("horizon_start_date")
+  horizonEndDate      String                       @map("horizon_end_date")
+  probabilityEstimate Float?                       @map("probability_estimate")
+  impactEstimate      Float?                       @map("impact_estimate")
+  costP50Minor        Float?                       @map("cost_p50_minor")
+  costP90Minor        Float?                       @map("cost_p90_minor")
+  pointEstimate       Float?                       @map("point_estimate")
+  intervalLow         Float?                       @map("interval_low")
+  intervalHigh        Float?                       @map("interval_high")
+  dataCoveragePercent Float                        @map("data_coverage_percent")
+  evaluationMetrics   Json                         @default("{}") @map("evaluation_metrics")
+  explainability      Json                         @default("{}")
+  safetyBoundaries    Json                         @default("{}") @map("safety_boundaries")
+  status              PredictiveRiskForecastStatus
+  suppressedReason    String?                      @map("suppressed_reason")
+  lineage             Json                         @default("{}")
+  riskRunId           String?                      @map("risk_run_id")
+  generatedAt         DateTime                     @default(now()) @map("generated_at")
+  expiresAt           DateTime?                    @map("expires_at")
+
+  organization Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  riskRun      OrgPredictiveRiskForecastRun? @relation(fields: [riskRunId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, riskKey, horizonDays, scopeKey, asOfDate])
+  @@index([organizationId, asOfDate])
+  @@index([organizationId, riskKey, horizonDays])
+  @@map("org_predictive_risk_forecasts")
+}
+
+model OrgPredictiveRiskForecastRun {
+  id                String                          @id @default(uuid())
+  organizationId    String                          @map("organization_id")
+  featureSetVersion String                          @map("feature_set_version")
+  asOfDate          String                          @map("as_of_date")
+  status            PredictiveRiskForecastRunStatus
+  forecastsWritten  Int                             @default(0) @map("forecasts_written")
+  errorMessage      String?                         @map("error_message")
+  trigger           String?
+  startedAt         DateTime                        @default(now()) @map("started_at")
+  completedAt       DateTime?                       @map("completed_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  forecasts    OrgPredictiveRiskForecast[]
+
+  @@index([organizationId, startedAt])
+  @@map("org_predictive_risk_forecast_runs")
 }

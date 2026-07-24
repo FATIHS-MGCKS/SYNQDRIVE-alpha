@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-maintenance-risk-forecasts-p43-2026-07-24',
+    version: '4.9.840',
+    title: 'V4.9.840 — Evaluations Maintenance & Failure Risk Forecasts (Prompt 43)',
+    summary: [
+      'Conservative risk baselines: maintenance cost, unplanned failure, expected downtime, capacity risk, cost risk at 30/90-day horizons.',
+      'Rule-based + statistical engines with separate probability/impact, P50/P90 costs, safety boundaries, and explainability.',
+      'Prisma `OrgPredictiveRiskForecast` + `OrgPredictiveRiskForecastRun`; nightly scheduler runs after feature build + operational forecasts.',
+      'Org API + admin trigger; telemetry-offline and service-overdue excluded as failure drivers; insufficient-data suppression.',
+      'Docs: `docs/architecture/analytics/evaluations-maintenance-failure-forecast.md`.',
+    ],
+    reason: 'Prompt 43/54: deliver explainable maintenance/failure/cost risk baselines before any ML risk models.',
+    previousBehavior: 'Operational baselines (Prompt 42) forecasted demand/revenue/utilization but not maintenance or failure risk.',
+    details:
+      '10 risk forecasts per org run (5 targets × 2 horizons). Shared `runAllMaintenanceRiskForecasts` in `evaluations-maintenance-risk-forecast.ts`. Loader reads feature snapshots, service cases, tire/brake/DTC health.',
+    affectsArchitecture: true,
+    module: 'Evaluations / Predictive Analytics',
+    createdAt: '2026-07-24T20:00:00.000Z',
+  },
+  {
     id: 'evaluations-baseline-forecasts-p42-2026-07-24',
     version: '4.9.839',
     title: 'V4.9.839 — Evaluations Baseline Forecasts: Demand, Revenue, Utilization (Prompt 42)',

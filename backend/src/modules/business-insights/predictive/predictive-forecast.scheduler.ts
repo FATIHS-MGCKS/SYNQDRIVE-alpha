@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { PredictiveFeatureService } from './predictive-feature.service';
 import { PredictiveForecastService } from './predictive-forecast.service';
+import { PredictiveRiskService } from './predictive-risk.service';
 
 const FORECAST_CRON = '15 3 * * *';
 
@@ -15,6 +16,7 @@ export class PredictiveForecastScheduler {
     private readonly prisma: PrismaService,
     private readonly featureService: PredictiveFeatureService,
     private readonly forecastService: PredictiveForecastService,
+    private readonly riskService: PredictiveRiskService,
   ) {}
 
   @Cron(FORECAST_CRON)
@@ -39,6 +41,10 @@ export class PredictiveForecastScheduler {
           await this.forecastService.runForecasts({
             organizationId: org.id,
             trigger: 'scheduled_forecast',
+          });
+          await this.riskService.runForecasts({
+            organizationId: org.id,
+            trigger: 'scheduled_risk_forecast',
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
