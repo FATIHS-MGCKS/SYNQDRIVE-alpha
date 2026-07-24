@@ -94,7 +94,13 @@ export function AuditDecisionsSection({
     <div className="space-y-3">
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.audit.hint')}</p>
       <div className="hidden md:block">
-        <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} />
+        <DataTable
+          columns={columns}
+          rows={items}
+          getRowKey={(r) => r.id}
+          ariaLabel={t('dataProcessing.audit.tableLabel')}
+          caption={t('dataProcessing.audit.tableLabel')}
+        />
       </div>
       <div className="md:hidden space-y-2">
         {items.map((row) => (

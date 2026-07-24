@@ -8,7 +8,7 @@ import {
   type DataTableColumn,
 } from '../../../../../components/patterns';
 import type { EnforcementFlowCoverageRowDto } from '../../../../../lib/api';
-import { ENFORCEMENT_STATUS_LABELS } from '../data-processing.constants';
+import { labelEnforcementStatus } from '../../../../lib/data-processing-status-labels';
 import { useLanguage } from '../../../../i18n/LanguageContext';
 
 function statusTone(status: string): 'success' | 'watch' | 'critical' | 'neutral' {
@@ -57,7 +57,8 @@ export function EnforcementPoliciesSection({
       header: t('dataProcessing.enforcement.col.status'),
       cell: (row) => (
         <StatusChip tone={statusTone(row.status)}>
-          {ENFORCEMENT_STATUS_LABELS[row.status] ?? row.status}
+          <span className="sr-only">{t('dataProcessing.a11y.statusPrefix')}: </span>
+          {labelEnforcementStatus(row.status, t)}
         </StatusChip>
       ),
     },
@@ -114,14 +115,21 @@ export function EnforcementPoliciesSection({
       ) : null}
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.enforcement.hint')}</p>
       <div className="hidden md:block">
-        <DataTable columns={columns} rows={visibleFlows} getRowKey={(r) => r.flowId} />
+        <DataTable
+          columns={columns}
+          rows={visibleFlows}
+          getRowKey={(r) => r.flowId}
+          ariaLabel={t('dataProcessing.enforcement.tableLabel')}
+          caption={t('dataProcessing.enforcement.tableLabel')}
+        />
       </div>
       <div className="md:hidden space-y-2">
         {visibleFlows.map((row) => (
           <div key={row.flowId} className="surface-premium rounded-xl border border-border/70 p-3">
             <p className="font-medium text-foreground">{row.flowName}</p>
             <StatusChip tone={statusTone(row.status)} className="mt-2">
-              {ENFORCEMENT_STATUS_LABELS[row.status] ?? row.status}
+              <span className="sr-only">{t('dataProcessing.a11y.statusPrefix')}: </span>
+              {labelEnforcementStatus(row.status, t)}
             </StatusChip>
           </div>
         ))}

@@ -1,5 +1,5 @@
 import { StatusChip } from '../../../../../../components/patterns';
-import { LIFECYCLE_STATUS_LABELS } from '../../data-processing.constants';
+import { labelLifecycleStatus } from '../../../../../lib/data-processing-status-labels';
 import { useLanguage } from '../../../../../i18n/LanguageContext';
 
 interface Props {
@@ -27,7 +27,8 @@ export function LifecycleStatusHeader({ status, versionNumber, isCurrentVersion,
   return (
     <div className="flex flex-wrap items-center gap-2">
       <StatusChip tone={tone}>
-        {statusSemantics?.label ?? LIFECYCLE_STATUS_LABELS[status] ?? status}
+        <span className="sr-only">{t('dataProcessing.a11y.statusPrefix')}: </span>
+        {statusSemantics?.label ?? labelLifecycleStatus(status, t)}
       </StatusChip>
       {versionNumber != null ? (
         <span className="text-[11px] tabular-nums text-muted-foreground">

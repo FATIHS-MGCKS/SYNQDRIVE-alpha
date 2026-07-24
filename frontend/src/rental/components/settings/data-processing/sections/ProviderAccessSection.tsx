@@ -90,6 +90,10 @@ export function ProviderAccessSection({ list, onRowClick }: Props) {
         />
       </div>
       <p className="text-[11px] text-muted-foreground">{t('dataProcessing.providers.hint')}</p>
+      <p className="text-[11px] text-muted-foreground" title={t('dataProcessing.terms.providerAccess.hint')}>
+        <span className="font-semibold text-foreground/80">{t('dataProcessing.terms.providerAccess.title')}:</span>{' '}
+        {t('dataProcessing.terms.providerAccess.hint')}
+      </p>
       {loading && items.length === 0 ? <SkeletonRows rows={4} /> : null}
       {!loading && items.length === 0 ? (
         <EmptyState
@@ -101,7 +105,14 @@ export function ProviderAccessSection({ list, onRowClick }: Props) {
       {items.length > 0 ? (
         <>
           <div className="hidden md:block">
-            <DataTable columns={columns} rows={items} getRowKey={(r) => r.id} onRowClick={onRowClick} />
+            <DataTable
+              columns={columns}
+              rows={items}
+              getRowKey={(r) => r.id}
+              onRowClick={onRowClick}
+              ariaLabel={t('dataProcessing.providers.tableLabel')}
+              caption={t('dataProcessing.providers.tableLabel')}
+            />
           </div>
           <div className="md:hidden space-y-2">
             {items.map((row) => (

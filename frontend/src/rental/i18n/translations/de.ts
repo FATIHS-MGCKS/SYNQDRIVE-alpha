@@ -586,6 +586,54 @@ export const de: Record<TranslationKey, string> = {
   'dataProcessing.enforcement.empty.errors.title': 'Keine Enforcement-Fehler',
   'dataProcessing.enforcement.empty.errors.description':
     'Alle überwachten Flows laufen in der aktuellen Ansicht ohne Enforcement-Fehler.',
+  'dataProcessing.enforcement.tableLabel': 'Tabelle technischer Zugriffspolicies',
+
+  'dataProcessing.error.unknown': 'Ein unerwarteter Fehler ist aufgetreten.',
+  'dataProcessing.error.loadFailed': 'Listen konnten nicht geladen werden.',
+
+  'dataProcessing.a11y.statusPrefix': 'Status',
+  'dataProcessing.a11y.completenessPrefix': 'Vollständigkeit',
+  'dataProcessing.a11y.kpiGroup': 'Readiness-Kennzahlen',
+  'dataProcessing.a11y.kpiFilter': 'Liste filtern: {label} ({count})',
+  'dataProcessing.a11y.kpiLoading': 'Kennzahlen werden geladen',
+  'dataProcessing.a11y.paginationLoading': 'Weitere Einträge werden geladen',
+  'dataProcessing.a11y.errorSummary': 'Formularfehler',
+
+  'dataProcessing.activities.tableLabel': 'Tabelle Verarbeitungstätigkeiten',
+  'dataProcessing.providers.tableLabel': 'Tabelle Providerzugriffe',
+  'dataProcessing.consents.tableLabel': 'Tabelle Einwilligungen und Freigaben',
+  'dataProcessing.audit.tableLabel': 'Tabelle Audit-Entscheidungen',
+  'dataProcessing.partners.tableLabel': 'Tabelle Partner und AVV',
+
+  'dataProcessing.status.lifecycle.DRAFT': 'Entwurf',
+  'dataProcessing.status.lifecycle.IN_REVIEW': 'In Prüfung',
+  'dataProcessing.status.lifecycle.APPROVED': 'Freigegeben',
+  'dataProcessing.status.lifecycle.SCHEDULED': 'Geplant',
+  'dataProcessing.status.lifecycle.ACTIVE': 'Aktiv',
+  'dataProcessing.status.lifecycle.SUSPENDED': 'Ausgesetzt',
+  'dataProcessing.status.lifecycle.SUPERSEDED': 'Ersetzt',
+  'dataProcessing.status.lifecycle.REVOKED': 'Widerrufen',
+  'dataProcessing.status.lifecycle.EXPIRED': 'Abgelaufen',
+  'dataProcessing.status.lifecycle.REJECTED': 'Abgelehnt',
+
+  'dataProcessing.status.enforcement.ENFORCED': 'Durchgesetzt',
+  'dataProcessing.status.enforcement.PARTIALLY_ENFORCED': 'Teilweise durchgesetzt',
+  'dataProcessing.status.enforcement.NOT_IMPLEMENTED': 'Nicht implementiert',
+  'dataProcessing.status.enforcement.ENFORCEMENT_ERROR': 'Enforcement-Fehler',
+  'dataProcessing.status.enforcement.DISABLED': 'Deaktiviert',
+
+  'dataProcessing.terms.legalBasis.title': 'Rechtsgrundlage',
+  'dataProcessing.terms.legalBasis.hint':
+    'Begründet die Zulässigkeit der Verarbeitung — getrennt von Einwilligung und Providerzugriff.',
+  'dataProcessing.terms.consent.title': 'Einwilligung',
+  'dataProcessing.terms.consent.hint':
+    'Dokumentiert die Einwilligung betroffener Personen — nicht identisch mit Rechtsgrundlage oder technischem Providerzugriff.',
+  'dataProcessing.terms.providerAccess.title': 'Providerzugriff',
+  'dataProcessing.terms.providerAccess.hint':
+    'Technischer Zugriff für Integrationsanbieter — getrennt von Einwilligung und Rechtsgrundlage.',
+
+  'dataProcessing.lifecycle.revokeFromDetail': 'Widerrufen aus Detailansicht',
+  'dataProcessing.detail.error.unsupportedEntity': 'Dieser Entitätstyp wird in der Detailansicht nicht unterstützt.',
 
   'dataProcessing.detail.loading': 'Details werden geladen…',
   'dataProcessing.detail.notEditable': 'Aktive Datensätze können nicht direkt bearbeitet werden. Legen Sie stattdessen eine neue Version an.',

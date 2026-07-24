@@ -125,16 +125,22 @@ export function DataProcessingKpiStrip({
         : activityKpis;
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3">
+    <div
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3"
+      role="group"
+      aria-label={t('dataProcessing.a11y.kpiGroup')}
+      aria-busy={loading || undefined}
+    >
       {kpis.map((kpi) => (
         <button
           key={kpi.key}
           type="button"
           onClick={() => onKpiClick?.(kpi.key)}
-          className={`text-left rounded-xl transition-shadow ${
+          aria-label={t('dataProcessing.a11y.kpiFilter', { label: kpi.label, count: kpi.value })}
+          aria-pressed={activeKpi === kpi.key}
+          className={`text-left rounded-xl transition-shadow motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
             activeKpi === kpi.key ? 'ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-background' : ''
           }`}
-          aria-pressed={activeKpi === kpi.key}
         >
           <MetricCard
             label={kpi.label}

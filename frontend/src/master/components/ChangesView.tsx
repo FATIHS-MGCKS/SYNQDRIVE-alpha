@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-processing-a11y-i18n-v49821-2026-07-24',
+    version: '4.9.821',
+    title: 'V4.9.821 — Mobile, i18n & Accessibility (Prompt 38)',
+    summary: [
+      'Section-Subnav mit Roving-Tabindex, aria-controls/tabpanel, Pfeiltasten/Home/End.',
+      'Status-Labels vollständig über i18n (Lifecycle, Enforcement); keine hardcodierten DE-Konstanten.',
+      'Tabellen mit aria-label/Caption, Tastaturzeilen, KPI-aria-labels, Error-Summary in Lifecycle-Dialog.',
+      'Rechtsgrundlage/Einwilligung/Providerzugriff sprachlich getrennt; Playwright+Axe-Tests.',
+    ],
+    reason:
+      'Die neue Datenverarbeitungs-Seite brauchte WCAG-taugliche Navigation, vollständige DE/EN-Texte und Mobile-Viewport-Stabilität.',
+    previousBehavior:
+      'Tabs ohne Keyboard-Pattern; deutsche Status-Konstanten; farbliche Statuschips ohne SR-Text.',
+    details: 'docs/architecture/data-processing-a11y-i18n-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-24T03:00:00.000Z',
+  },
+  {
     id: 'data-processing-kpi-filters-v49820-2026-07-24',
     version: '4.9.820',
     title: 'V4.9.820 — KPI, Filter, Pagination & Performance (Prompt 37)',

@@ -12,7 +12,7 @@ import {
 } from '../../../../lib/data-processing-timeline.mappers';
 import { useLanguage } from '../../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../../RentalContext';
-import { LIFECYCLE_STATUS_LABELS } from '../data-processing.constants';
+import { labelLifecycleStatus } from '../../../../lib/data-processing-status-labels';
 import { labelDataCategory } from '../../data-authorization/data-authorization.constants';
 import { LifecycleActionDialog } from './LifecycleActionDialog';
 import { DetailPanel, DetailRow, DetailSection, SecondaryId } from './shared/DetailPrimitives';
@@ -259,7 +259,7 @@ export function ProcessingActivityDetailDrawer({
                       >
                         <span className="text-[12px] font-semibold">{lb.legalBasisType}</span>
                         <span className="ml-2 text-[11px] text-muted-foreground">
-                          {LIFECYCLE_STATUS_LABELS[lb.status] ?? lb.status}
+                          {labelLifecycleStatus(lb.status, t)}
                         </span>
                       </button>
                     </li>
@@ -275,7 +275,7 @@ export function ProcessingActivityDetailDrawer({
                     <li key={p.id} className="surface-premium rounded-lg border border-border/60 px-3 py-2 text-[12px]">
                       <span className="font-semibold">{p.dataCategory ?? p.processingPurpose ?? p.id.slice(0, 8)}</span>
                       <StatusChip tone="neutral" className="ml-2">
-                        {LIFECYCLE_STATUS_LABELS[p.status] ?? p.status}
+                        {labelLifecycleStatus(p.status, t)}
                       </StatusChip>
                     </li>
                   ))}
@@ -312,7 +312,7 @@ export function ProcessingActivityDetailDrawer({
                       >
                         <span className="text-[12px] font-semibold">{p.label}</span>
                         <StatusChip tone="neutral" className="ml-2">
-                          {LIFECYCLE_STATUS_LABELS[p.status] ?? p.status}
+                          {labelLifecycleStatus(p.status, t)}
                         </StatusChip>
                       </button>
                     </li>

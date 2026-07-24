@@ -70,7 +70,7 @@ export function EntityDetailDrawer({
           d = (await api.dataProcessing.sharing.get(orgId, target.activityId!, target.id)) as EntityDetail;
           break;
         default:
-          throw new Error('Unsupported entity kind');
+          throw new Error(t('dataProcessing.detail.error.unsupportedEntity'));
       }
       setDetail(d);
     } catch (e) {

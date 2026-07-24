@@ -19,6 +19,8 @@ export interface AppDialogProps {
   className?: string;
   /** Hide the built-in close button (e.g. when footer has Cancel). */
   hideClose?: boolean;
+  /** Accessible name for the dialog close control. */
+  closeAriaLabel?: string;
   /** Dialog panel surface — solid (L0) or elevated (L1 interactive). No glass/liquid. */
   surface?: DialogSurface;
 }
@@ -30,6 +32,7 @@ export function AppDialog({
   maxWidthClassName = 'sm:max-w-lg',
   className,
   hideClose = false,
+  closeAriaLabel = 'Close',
   surface = 'elevated',
 }: AppDialogProps) {
   return (
@@ -63,7 +66,7 @@ export function AppDialog({
                 variant="ghost"
                 size="icon"
                 className="absolute top-3.5 right-3.5 z-10 size-8"
-                aria-label="Schließen"
+                aria-label={closeAriaLabel}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -84,6 +87,8 @@ export interface FormDialogProps {
   children: ReactNode;
   maxWidthClassName?: string;
   hideClose?: boolean;
+  /** Accessible name for the dialog close control. */
+  closeAriaLabel?: string;
   bodyClassName?: string;
   surface?: DialogSurface;
 }
@@ -99,6 +104,7 @@ export function FormDialog({
   hideClose = false,
   bodyClassName,
   surface,
+  closeAriaLabel,
 }: FormDialogProps) {
   return (
     <AppDialog
@@ -107,6 +113,7 @@ export function FormDialog({
       maxWidthClassName={maxWidthClassName}
       hideClose={hideClose}
       surface={surface}
+      closeAriaLabel={closeAriaLabel}
     >
       <div className="flex shrink-0 flex-col gap-1 border-b border-border/70 px-5 py-4 pr-12">
         <DialogPrimitive.Title className="text-base font-semibold text-foreground">
