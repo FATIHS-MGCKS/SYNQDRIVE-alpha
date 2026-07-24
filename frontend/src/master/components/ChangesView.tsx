@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-information-architecture-v49828-2026-07-24',
+    version: 'V4.9.828',
+    title: 'V4.9.828 — Auswertungen Informationsarchitektur (Prompt 30/54)',
+    summary: [
+      'Neue Sektions-IA für Auswertungen: Filter, Executive Summary, Stärken/Schwächen, Risiken, Finanzen, Flotte, Kosten/Ausfälle, Maßnahmen, Datenqualität.',
+      'Sticky Anchor-Navigation (`EvaluationsSectionNav`), einklappbare `EvaluationsSection`-Shell mit Loading/Empty/Error/Partial.',
+      '`EvaluationsPage` ersetzt monolithisches Layout; `FinancialInsightsView` ist Thin-Wrapper. `InsightsCockpit` nicht mehr auf der Seite (keine doppelten KPIs).',
+      'Rechnungs-Drill-down via `useEvaluationsInvoiceData` + `EvaluationsFinanceInvoiceDetail`; Summary-KPIs aus kanonischer Analytics-API.',
+      'Vollständige i18n (`evaluations.ia.*` de/en). Doku: `docs/frontend/evaluations-information-architecture.md`.',
+    ],
+    reason:
+      'Prompt 30/54 — Progressive Informationsdichte, Management-Übersicht oben, operative Details per Drill-down, klare Hierarchie ohne Sprachmischung.',
+    previousBehavior:
+      'Monolithische `FinancialInsightsView` mit `InsightsCockpit`, redundanter KPI-Zeile und englisch/deutscher Mischung.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Evaluations Analytics',
+    createdAt: '2026-07-24T13:00:00.000Z',
+  },
+  {
     id: 'evaluations-data-quality-panel-v49827-2026-07-24',
     version: 'V4.9.827',
     title: 'V4.9.827 — Datenqualitätsbereich für Administratoren (Prompt 29/54)',
