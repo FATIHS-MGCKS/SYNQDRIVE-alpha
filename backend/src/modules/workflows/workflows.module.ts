@@ -4,6 +4,7 @@ import { WorkflowsService } from './workflows.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import { WorkflowApprovalInterimService } from './workflow-approval-interim.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     WorkflowEngineService,
     WorkflowEventService,
     WorkflowActionExecutorService,
+    WorkflowApprovalInterimService,
   ],
   exports: [WorkflowsService, WorkflowEventService, WorkflowEngineService],
 })

@@ -15,6 +15,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import {
+  ApproveWorkflowActionDto,
   CreateWorkflowDto,
   RejectWorkflowActionDto,
   TestWorkflowDto,
@@ -62,9 +63,11 @@ export class WorkflowsController {
   async approveAction(
     @Param('orgId') orgId: string,
     @Param('actionRunId') actionRunId: string,
-    @Req() req: { user?: { id?: string } },
+    @Body() body: ApproveWorkflowActionDto,
+    @Req() req: { user?: { id?: string; name?: string; email?: string; roles?: string[] } },
   ) {
-    return this.service.approveActionRun(orgId, actionRunId, req.user?.id);
+    const user = req.user || {};
+    return this.service.approveActionRun(orgId, actionRunId, user, body.comment);
   }
 
   @Post('action-runs/:actionRunId/reject')
@@ -73,9 +76,10 @@ export class WorkflowsController {
     @Param('orgId') orgId: string,
     @Param('actionRunId') actionRunId: string,
     @Body() body: RejectWorkflowActionDto,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: { user?: { id?: string; name?: string; email?: string; roles?: string[] } },
   ) {
-    return this.service.rejectActionRun(orgId, actionRunId, req.user?.id, body.reason);
+    const user = req.user || {};
+    return this.service.rejectActionRun(orgId, actionRunId, user, body.reason);
   }
 
   @Get(':id/runs')

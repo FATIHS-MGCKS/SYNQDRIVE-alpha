@@ -36,7 +36,7 @@ interface Workflow {
 
 interface TriggerDef { type: string; config?: Record<string, any>; }
 interface ConditionDef { field?: string; path?: string; operator: string; value: any; }
-interface ActionDef { type: string; config?: Record<string, any>; }
+interface ActionDef { type: string; config?: Record<string, any>; requiresApproval?: boolean; }
 interface ScopeDef { type: string; stationIds?: string[]; vehicleIds?: string[]; }
 
 interface Stats {
@@ -323,9 +323,30 @@ const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textCl
   FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
   SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
   WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
+  APPROVED_PENDING_EXECUTION: {
+    label: 'Approved — pending execution',
+    bgClass: 'bg-amber-100 dark:bg-status-attention-soft',
+    textClass: 'text-amber-700 dark:text-status-attention',
+  },
+  EXPIRED: { label: 'Expired', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
   RUNNING: { label: 'Running', bgClass: 'bg-status-info-soft', textClass: 'text-status-info' },
   PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
 };
+
+const APPROVAL_GATED_ACTION_TYPES = new Set([
+  'workflow.approval.request',
+  'ai.suggest_action',
+  'request_approval',
+  'ai_suggest',
+]);
+
+function isApprovalGatedAction(action: ActionDef): boolean {
+  return action.requiresApproval === true || APPROVAL_GATED_ACTION_TYPES.has(action.type) || action.type.startsWith('ai_');
+}
+
+function workflowHasApprovalGatedActions(actions?: ActionDef[]): boolean {
+  return (actions || []).some(isApprovalGatedAction);
+}
 
 // ─── Main Component ──────────────────────────────
 
@@ -920,6 +941,10 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const labelClass = `text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`;
   const valueClass = `text-xs font-medium ${textPrimary}`;
   const isAi = wf.category === 'ai_permissions' || wf.actions?.some((a: ActionDef) => a.type.startsWith('ai_'));
+  const hasInterimApprovedRuns = runs.some((run) =>
+    run.actionRuns?.some((ar) => ar.status === 'APPROVED_PENDING_EXECUTION'),
+  );
+  const hasWaitingApprovalRuns = runs.some((run) => run.status === 'WAITING_APPROVAL');
 
   const catColors: Record<string, string> = {
     blue: isDarkMode ? 'text-brand' : 'text-brand',
@@ -1014,6 +1039,22 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       {testError && (
         <div className={`text-xs px-3 py-2 rounded-lg border ${isDarkMode ? 'bg-amber-900/20 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
           {testError}
+        </div>
+      )}
+
+      {(hasInterimApprovedRuns || hasWaitingApprovalRuns) && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-amber-900/15 border-amber-800/40' : 'bg-amber-50 border-amber-200'}`}>
+          <Icon name="alert-triangle" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`} />
+          <div>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-amber-200' : 'text-amber-900'}`}>
+              Approval interim safeguard active
+            </p>
+            <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-amber-300/90' : 'text-amber-800'}`}>
+              Approving a workflow action does not complete it yet. Legacy approvals remain visible as
+              {' '}<strong>Approved — pending execution</strong> until Phase 5 pause-and-resume ships.
+              Runs stay <strong>Waiting approval</strong> — do not treat them as successful.
+            </p>
+          </div>
         </div>
       )}
 
@@ -1125,12 +1166,26 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                   {run.errorMessage && (
                     <p className={`text-[10px] mt-1 text-red-500`}>{run.errorMessage}</p>
                   )}
+                  {run.status === 'WAITING_APPROVAL' && !run.errorMessage && (
+                    <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+                      Run is waiting — approval does not mark the workflow as successful.
+                    </p>
+                  )}
                   {run.actionRuns && run.actionRuns.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {run.actionRuns.map((ar) => {
                         const ars = RUN_STATUS_CONFIG[ar.status] || RUN_STATUS_CONFIG.PENDING;
+                        const isInterimApproved = ar.status === 'APPROVED_PENDING_EXECUTION';
                         return (
-                          <span key={ar.id} className={`text-[9px] px-1.5 py-0.5 rounded ${ars.bgClass} ${ars.textClass}`}>
+                          <span
+                            key={ar.id}
+                            title={
+                              isInterimApproved
+                                ? 'Approved but not executed — automatic resume unavailable (Phase 5)'
+                                : undefined
+                            }
+                            className={`text-[9px] px-1.5 py-0.5 rounded ${ars.bgClass} ${ars.textClass}`}
+                          >
                             {ar.actionType} — {ars.label}
                           </span>
                         );
@@ -1196,6 +1251,8 @@ function BuilderView({ data, setData, isDarkMode, saving, actionPickerOptions, o
   };
 
   const isAiAction = (data.actions || []).some((a: ActionDef) => a.type.startsWith('ai_'));
+  const hasApprovalGatedActions = workflowHasApprovalGatedActions(data.actions as ActionDef[]);
+  const activationBlocked = hasApprovalGatedActions && (data.status === 'ACTIVE');
 
   return (
     <div className="space-y-4">
@@ -1222,10 +1279,10 @@ function BuilderView({ data, setData, isDarkMode, saving, actionPickerOptions, o
           </select>
           <button
             onClick={onSave}
-            disabled={saving || !data.name}
+            disabled={saving || !data.name || activationBlocked}
             className="px-4 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Workflow'}
+            {saving ? 'Saving...' : activationBlocked ? 'Cannot activate (approval resume pending)' : 'Save Workflow'}
           </button>
         </div>
       </div>
@@ -1238,6 +1295,21 @@ function BuilderView({ data, setData, isDarkMode, saving, actionPickerOptions, o
             <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>AI Actions Detected</p>
             <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
               This workflow includes AI-powered actions. For customer-facing actions (messaging, bookings), consider adding an "Request approval" action first.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {hasApprovalGatedActions && (
+        <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-amber-900/15 border-amber-800/40' : 'bg-amber-50 border-amber-200'}`}>
+          <Icon name="alert-triangle" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`} />
+          <div>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-amber-200' : 'text-amber-900'}`}>
+              Approval-gated actions — activation blocked
+            </p>
+            <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-amber-300/90' : 'text-amber-800'}`}>
+              Workflows with approval-gated actions cannot be activated until Phase 5 pause-and-resume is available.
+              Save as <strong>Draft</strong> or remove approval-gated actions to proceed.
             </p>
           </div>
         </div>

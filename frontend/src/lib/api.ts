@@ -4896,8 +4896,8 @@ export const api = {
     getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
     test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
       post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
-    approveActionRun: (orgId: string, actionRunId: string) =>
-      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, {}),
+    approveActionRun: (orgId: string, actionRunId: string, comment?: string) =>
+      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, { comment }),
     rejectActionRun: (orgId: string, actionRunId: string, reason?: string) =>
       post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/reject`, { reason }),
   },

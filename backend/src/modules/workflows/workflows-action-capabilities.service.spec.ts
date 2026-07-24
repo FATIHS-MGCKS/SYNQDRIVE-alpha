@@ -39,7 +39,10 @@ describe('WorkflowsService action capabilities', () => {
 
   beforeEach(() => {
     prisma = makePrisma();
-    service = new WorkflowsService(prisma, {} as any, engine as any);
+    service = new WorkflowsService(prisma, {} as any, engine as any, {
+      approveActionRun: jest.fn(),
+      rejectActionRun: jest.fn(),
+    } as any);
   });
 
   it('previewWorkflowActions returns non-executing capability plan', async () => {

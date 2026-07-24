@@ -18,6 +18,8 @@ import {
   assessWorkflowActionRemediation,
   normalizeStoredWorkflowActions,
 } from './workflow-remediation.util';
+import { WorkflowApprovalInterimService } from './workflow-approval-interim.service';
+import { assertWorkflowActivatableWithApprovalPolicy } from './workflow-approval-interim.util';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -32,6 +34,7 @@ export class WorkflowsService {
     private readonly prisma: PrismaService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly workflowEngine: WorkflowEngineService,
+    private readonly approvalInterim: WorkflowApprovalInterimService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -154,6 +157,7 @@ export class WorkflowsService {
           issues,
         });
       }
+      assertWorkflowActivatableWithApprovalPolicy(actions, newStatus);
     }
 
     const row = await this.prisma.orgWorkflow.update({
@@ -382,69 +386,21 @@ export class WorkflowsService {
     };
   }
 
-  async approveActionRun(orgId: string, actionRunId: string, userId?: string) {
-    const actionRun = await this.prisma.orgWorkflowActionRun.findFirst({
-      where: { id: actionRunId, organizationId: orgId },
-    });
-    if (!actionRun) throw new NotFoundException('Action run not found');
-    if (actionRun.status !== 'WAITING_APPROVAL') {
-      throw new BadRequestException('Action run is not waiting for approval');
-    }
-
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
-      data: {
-        status: 'SUCCESS',
-        approvedByUserId: userId ?? null,
-        approvedAt: new Date(),
-        finishedAt: new Date(),
-        output: { approved: true, executedAfterApproval: false },
-      },
-    });
-
-    await this.prisma.orgWorkflowApproval.updateMany({
-      where: { actionRunId, organizationId: orgId, status: 'PENDING' },
-      data: { status: 'APPROVED', approvedByUserId: userId ?? null, decidedAt: new Date() },
-    });
-
-    return this.getRun(orgId, actionRun.workflowRunId);
+  async approveActionRun(
+    orgId: string,
+    actionRunId: string,
+    user?: { id?: string; name?: string; email?: string; roles?: string[] },
+    comment?: string,
+  ) {
+    return this.approvalInterim.approveActionRun(orgId, actionRunId, user, comment);
   }
 
   async rejectActionRun(
     orgId: string,
     actionRunId: string,
-    userId?: string,
+    user?: { id?: string; name?: string; email?: string; roles?: string[] },
     reason?: string,
   ) {
-    const actionRun = await this.prisma.orgWorkflowActionRun.findFirst({
-      where: { id: actionRunId, organizationId: orgId },
-    });
-    if (!actionRun) throw new NotFoundException('Action run not found');
-
-    await this.prisma.orgWorkflowActionRun.update({
-      where: { id: actionRunId },
-      data: {
-        status: 'FAILED',
-        errorMessage: reason ?? 'Rejected by reviewer',
-        finishedAt: new Date(),
-      },
-    });
-
-    await this.prisma.orgWorkflowApproval.updateMany({
-      where: { actionRunId, organizationId: orgId, status: 'PENDING' },
-      data: {
-        status: 'REJECTED',
-        approvedByUserId: userId ?? null,
-        reason: reason ?? null,
-        decidedAt: new Date(),
-      },
-    });
-
-    await this.prisma.orgWorkflowRun.update({
-      where: { id: actionRun.workflowRunId },
-      data: { status: 'FAILED', errorMessage: 'Action rejected', finishedAt: new Date() },
-    });
-
-    return this.getRun(orgId, actionRun.workflowRunId);
+    return this.approvalInterim.rejectActionRun(orgId, actionRunId, user, reason);
   }
 }

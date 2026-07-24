@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-approval-interim-safeguards-v49815-2026-07-25',
+    version: '4.9.815',
+    title: 'V4.9.815 — Workflow approval interim safeguards (Phase 2)',
+    summary: [
+      '**Status model**: `APPROVED_PENDING_EXECUTION` on approvals + action runs; workflow run stays `WAITING_APPROVAL` after approve.',
+      '**Guards**: duplicate decision, foreign tenant, self-approval, role check, 72h expiry — structured `WORKFLOW_APPROVAL_*` error codes.',
+      '**Activation block**: approval-gated workflows (`ai.suggest_action`, `workflow.approval.request`, `requiresApproval`) cannot go `ACTIVE` until Phase 5 resume.',
+      '**Audit**: approver id/name, comment/reason, decidedAt, expiresAt on `org_workflow_approvals`.',
+      '**UI**: interim warning banner, amber pending-execution badges — no false Success after approval.',
+      '**Docs**: `docs/security/workflow-approval-interim-safeguards-2026-07.md`.',
+    ],
+    reason:
+      'Incomplete approval path previously marked action runs SUCCESS without executing the action, falsely implying workflow completion.',
+    previousBehavior:
+      'Approve endpoint set action run SUCCESS with executedAfterApproval:false; runs could appear successful while still blocked.',
+    details:
+      'workflow-approval-interim.util/service.ts, workflows.service/controller/module.ts, workflow-definition.validator.ts, workflow-action-executor.service.ts, migration 20260725130000; frontend WorkflowAutomationView.tsx, lib/api.ts.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-25T12:00:00.000Z',
+  },
+  {
     id: 'workflow-action-capabilities-v49814-2026-07-25',
     version: '4.9.814',
     title: 'V4.9.814 — Workflow action capability registry & server allowlist',

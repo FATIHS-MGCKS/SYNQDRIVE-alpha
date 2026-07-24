@@ -10,6 +10,7 @@ import {
   assertWorkflowActionsCapable,
   resolveWorkflowActionType,
 } from './workflow-action-capabilities';
+import { assertWorkflowActivatableWithApprovalPolicy } from './workflow-approval-interim.util';
 import { normalizeVehicleStatusInput } from './vehicle-status.util';
 
 export interface WorkflowTriggerDef {
@@ -127,6 +128,7 @@ export function validateWorkflowDefinition(input: {
   const activationMode =
     input.status === 'ACTIVE' || input.status === 'PUBLISHED' ? 'activate' : 'save';
   assertWorkflowActionsCapable(normalizedActions, activationMode);
+  assertWorkflowActivatableWithApprovalPolicy(normalizedActions, input.status);
 
   const conditions = Array.isArray(input.conditions) ? input.conditions : [];
 

@@ -17,6 +17,7 @@ import {
   assertWorkflowActionsCapable,
   WORKFLOW_ACTION_ERROR_CODES,
 } from './workflow-action-capabilities';
+import { approvalExpiresAt } from './workflow-approval-interim.util';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -53,6 +54,7 @@ export class WorkflowActionExecutorService {
           status: 'PENDING',
           requestedBySystem: true,
           reason: `Approval required for ${action.type}`,
+          expiresAt: approvalExpiresAt(),
         },
       });
       return {
@@ -243,6 +245,7 @@ export class WorkflowActionExecutorService {
         reason:
           (typeof action.config?.message === 'string' && action.config.message) ||
           'Workflow approval requested',
+        expiresAt: approvalExpiresAt(),
       },
     });
     return { waitingApproval: true };
@@ -278,6 +281,7 @@ export class WorkflowActionExecutorService {
         status: 'PENDING',
         requestedBySystem: true,
         reason: 'AI suggestion requires human approval',
+        expiresAt: approvalExpiresAt(),
       },
     });
     return { suggestionTaskId: task.id, suggestionOnly: true };
