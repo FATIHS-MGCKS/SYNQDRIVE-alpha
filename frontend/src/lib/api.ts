@@ -4216,6 +4216,39 @@ export const api = {
       }>;
     }>(`/organizations/${orgId}/dashboard-insights`),
   },
+  evaluationsForecasts: {
+    list: (orgId: string, query?: { forecastKey?: string; horizonDays?: number }) => {
+      const params = new URLSearchParams();
+      if (query?.forecastKey) params.set('forecastKey', query.forecastKey);
+      if (query?.horizonDays != null) params.set('horizonDays', String(query.horizonDays));
+      const qs = params.toString();
+      return get<unknown[]>(
+        `/organizations/${orgId}/business-insights/evaluations/predictive/forecasts${qs ? `?${qs}` : ''}`,
+      );
+    },
+    listRisk: (orgId: string, query?: { riskKey?: string; horizonDays?: number }) => {
+      const params = new URLSearchParams();
+      if (query?.riskKey) params.set('riskKey', query.riskKey);
+      if (query?.horizonDays != null) params.set('horizonDays', String(query.horizonDays));
+      const qs = params.toString();
+      return get<unknown[]>(
+        `/organizations/${orgId}/business-insights/evaluations/predictive/risk-forecasts${qs ? `?${qs}` : ''}`,
+      );
+    },
+    listRegistry: (orgId: string) =>
+      get<unknown[]>(
+        `/organizations/${orgId}/business-insights/evaluations/predictive/backtests/registry`,
+      ),
+    listBacktestResults: (orgId: string, query?: { modelKey?: string; limit?: number }) => {
+      const params = new URLSearchParams();
+      if (query?.modelKey) params.set('modelKey', query.modelKey);
+      if (query?.limit != null) params.set('limit', String(query.limit));
+      const qs = params.toString();
+      return get<unknown[]>(
+        `/organizations/${orgId}/business-insights/evaluations/predictive/backtests/results${qs ? `?${qs}` : ''}`,
+      );
+    },
+  },
   notifications: {
     list: (
       orgId: string,

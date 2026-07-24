@@ -17,6 +17,7 @@ import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import { InsightsCockpit } from './insights/InsightsCockpit';
+import { EvaluationsForecastsSection } from './evaluations-forecasts/EvaluationsForecastsSection';
 import {
   expensesInRange,
   mtdRevenueInRange,
@@ -422,6 +423,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         openReceivablesEur={Math.round(outstandingCents / 100)}
         financialRiskEur={Math.round(overdueCents / 100)}
       />
+
+      <EvaluationsForecastsSection isDarkMode={isDarkMode} />
 
       <div className="pt-2 border-t border-border">
         <h2 className="text-[14px] font-bold text-foreground mb-1">Financial Intelligence</h2>
