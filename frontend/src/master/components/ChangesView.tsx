@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-action-capabilities-v49814-2026-07-25',
+    version: '4.9.814',
+    title: 'V4.9.814 — Workflow action capability registry & server allowlist',
+    summary: [
+      '**Registry**: `workflow-action-capabilities.ts` — statuses `AVAILABLE|INTERNAL_ONLY|EXPERIMENTAL|DISABLED|UNSUPPORTED`, auditable revision, config validation.',
+      '**Enforcement**: save/activate/execute blocked for unknown/disabled/unsupported actions; executor default → `FAILED` not silent success.',
+      '**API**: `GET /workflows/action-capabilities`, `POST /:id/preview-actions`; test endpoint returns capability plan without LIVE run when invalid.',
+      '**Remediation**: `remediation_required` fields + migration disables workflows with legacy invalid actions.',
+      '**UI**: action picker driven by server capabilities; remediation badges; test preview for blocked actions.',
+      '**Docs**: `docs/architecture/WORKFLOW_ACTION_CAPABILITIES_2026-07.md`.',
+    ],
+    reason:
+      'Workflow actions could appear in UI or pass validation without a registered production handler; missing switch cases risked silent misbehavior.',
+    previousBehavior:
+      'Hardcoded blocklist in validator; UI catalog independent of backend; test endpoint always executed LIVE engine.',
+    details:
+      'workflow-action-capabilities.ts, workflow-remediation.util.ts, workflow-definition.validator.ts, workflow-action-executor.service.ts, workflow-engine.service.ts, workflows.service/controller.ts, migration 20260725120000; frontend WorkflowAutomationView.tsx, lib/api.ts.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-25T00:15:00.000Z',
+  },
+  {
     id: 'evaluations-production-release-v49810-2026-07-24',
     version: '4.9.810',
     title: 'V4.9.810 — Auswertungen production release (IAM fix + station filter)',

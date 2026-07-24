@@ -9,6 +9,15 @@ import { validateWorkflowDefinition } from './workflow-definition.validator';
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowEngineService } from './workflow-engine.service';
+import {
+  buildWorkflowActionCapabilityPlan,
+  collectWorkflowActionCapabilityIssues,
+  listWorkflowActionCapabilities,
+} from './workflow-action-capabilities';
+import {
+  assessWorkflowActionRemediation,
+  normalizeStoredWorkflowActions,
+} from './workflow-remediation.util';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -53,8 +62,8 @@ export class WorkflowsService {
   }
 
   async create(orgId: string, dto: CreateWorkflowDto, userId?: string, userName?: string) {
-    const validated = validateWorkflowDefinition(dto);
     const status = dto.status ?? 'DRAFT';
+    const validated = validateWorkflowDefinition({ ...dto, status });
     const enabled = status === 'ACTIVE';
 
     const row = await this.prisma.orgWorkflow.create({
@@ -69,6 +78,9 @@ export class WorkflowsService {
         scope: validated.scope as unknown as Prisma.InputJsonValue,
         status,
         enabled,
+        remediationRequired: false,
+        remediationReason: null,
+        remediationDetectedAt: null,
         version: 1,
         createdById: userId,
         createdByName: userName,
@@ -91,6 +103,7 @@ export class WorkflowsService {
     });
     if (!existing) throw new NotFoundException('Workflow not found');
 
+    const nextStatus = dto.status ?? existing.status;
     const validated = validateWorkflowDefinition({
       name: dto.name ?? existing.name,
       category: dto.category ?? existing.category,
@@ -98,9 +111,9 @@ export class WorkflowsService {
       conditions: (dto.conditions ?? existing.conditions) as any,
       actions: (dto.actions ?? existing.actions) as any,
       scope: (dto.scope ?? existing.scope) as any,
+      status: nextStatus,
     });
 
-    const nextStatus = dto.status ?? existing.status;
     const row = await this.prisma.orgWorkflow.update({
       where: { id },
       data: {
@@ -113,6 +126,9 @@ export class WorkflowsService {
         scope: validated.scope as unknown as Prisma.InputJsonValue,
         status: nextStatus,
         enabled: nextStatus === 'ACTIVE',
+        remediationRequired: false,
+        remediationReason: null,
+        remediationDetectedAt: null,
         version: { increment: 1 },
         updatedById: userId,
         updatedByName: userName,
@@ -128,6 +144,18 @@ export class WorkflowsService {
     if (!existing) throw new NotFoundException('Workflow not found');
 
     const newStatus = existing.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+    if (newStatus === 'ACTIVE') {
+      const actions = normalizeStoredWorkflowActions(existing.actions);
+      const issues = collectWorkflowActionCapabilityIssues(actions, 'activate');
+      if (issues.length > 0) {
+        throw new BadRequestException({
+          message: issues[0].message,
+          code: issues[0].code,
+          issues,
+        });
+      }
+    }
+
     const row = await this.prisma.orgWorkflow.update({
       where: { id },
       data: {
@@ -264,6 +292,20 @@ export class WorkflowsService {
     });
     if (!wf) throw new NotFoundException('Workflow not found');
 
+    const actions = normalizeStoredWorkflowActions(wf.actions);
+    const plan = buildWorkflowActionCapabilityPlan(actions);
+    const blocking = plan.filter((item) => !item.wouldExecute);
+    if (blocking.length > 0) {
+      return {
+        runIds: [],
+        runs: [],
+        executed: false,
+        actionPlan: plan,
+        message: 'Workflow test blocked — invalid or unavailable actions detected',
+        policyBlockers: blocking.map((item) => item.message ?? item.validationErrors.join('; ')),
+      };
+    }
+
     const runId = await this.workflowEngine.executeWorkflow(wf, {
       organizationId: orgId,
       type: 'manual.test',
@@ -281,6 +323,63 @@ export class WorkflowsService {
     }
     const run = await this.getRun(orgId, runId);
     return { runIds: [runId], runs: [run] };
+  }
+
+  getActionCapabilities() {
+    return listWorkflowActionCapabilities();
+  }
+
+  async previewWorkflowActions(orgId: string, workflowId: string) {
+    const wf = await this.prisma.orgWorkflow.findFirst({
+      where: { id: workflowId, organizationId: orgId },
+    });
+    if (!wf) throw new NotFoundException('Workflow not found');
+    const actions = normalizeStoredWorkflowActions(wf.actions);
+    return {
+      workflowId: wf.id,
+      workflowName: wf.name,
+      remediationRequired: wf.remediationRequired,
+      remediationReason: wf.remediationReason,
+      capabilityRevision: listWorkflowActionCapabilities().revision,
+      executed: false,
+      plannedActions: buildWorkflowActionCapabilityPlan(actions),
+    };
+  }
+
+  async remediateOrganizationWorkflows(orgId: string) {
+    const rows = await this.prisma.orgWorkflow.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, actions: true },
+    });
+    const results = rows.map((row) => assessWorkflowActionRemediation(row));
+    for (const result of results) {
+      if (!result.remediationRequired) {
+        await this.prisma.orgWorkflow.update({
+          where: { id: result.workflowId },
+          data: {
+            remediationRequired: false,
+            remediationReason: null,
+            remediationDetectedAt: null,
+          },
+        });
+        continue;
+      }
+      await this.prisma.orgWorkflow.update({
+        where: { id: result.workflowId },
+        data: {
+          status: 'INVALID',
+          enabled: false,
+          remediationRequired: true,
+          remediationReason: result.remediationReason,
+          remediationDetectedAt: new Date(),
+        },
+      });
+    }
+    return {
+      scanned: results.length,
+      remediated: results.filter((r) => r.remediationRequired).length,
+      results,
+    };
   }
 
   async approveActionRun(orgId: string, actionRunId: string, userId?: string) {

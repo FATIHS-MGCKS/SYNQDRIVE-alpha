@@ -45,6 +45,12 @@ export class WorkflowsController {
     return this.service.getStats(orgId);
   }
 
+  @Get('action-capabilities')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async actionCapabilities() {
+    return this.service.getActionCapabilities();
+  }
+
   @Get('runs/:runId')
   @Roles(...WORKFLOW_READ_ROLES)
   async getRun(@Param('orgId') orgId: string, @Param('runId') runId: string) {
@@ -152,6 +158,12 @@ export class WorkflowsController {
       user.id,
       user.name || user.email || 'System',
     );
+  }
+
+  @Post(':id/preview-actions')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async previewActions(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.service.previewWorkflowActions(orgId, id);
   }
 
   @Post(':id/test')

@@ -1,14 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   APPROVAL_REQUIRED_ACTIONS,
-  LEGACY_ACTION_TO_CANONICAL,
   LEGACY_TRIGGER_TO_EVENT,
-  WORKFLOW_ACTION_TYPES,
   WORKFLOW_CATEGORIES,
   WORKFLOW_EVENT_TYPES,
-  type WorkflowActionType,
   type WorkflowEventType,
 } from './workflow.constants';
+import {
+  assertWorkflowActionsCapable,
+  resolveWorkflowActionType,
+} from './workflow-action-capabilities';
 import { normalizeVehicleStatusInput } from './vehicle-status.util';
 
 export interface WorkflowTriggerDef {
@@ -41,8 +42,8 @@ export function normalizeTriggerType(raw: string): WorkflowEventType | string {
 }
 
 export function normalizeActionType(raw: string): string {
-  if ((WORKFLOW_ACTION_TYPES as readonly string[]).includes(raw)) return raw;
-  return LEGACY_ACTION_TO_CANONICAL[raw] ?? raw;
+  const resolved = resolveWorkflowActionType(raw);
+  return resolved.canonicalType ?? raw;
 }
 
 export function validateWorkflowDefinition(input: {
@@ -92,46 +93,40 @@ export function validateWorkflowDefinition(input: {
     if (!action?.type) {
       throw new BadRequestException(`Action at index ${index} is missing type`);
     }
-    const canonical = normalizeActionType(action.type);
-    const blocked = [
-      'ai.execute',
-      'ai.send_message',
-      'ai.book_appointment',
-      'customer.contact.send',
-      'invoice.charge',
-      'booking.cancel',
-      'ai_execute',
-      'ai_send_message',
-      'ai_book_appointment',
-    ];
-    if (blocked.includes(action.type) || blocked.includes(canonical)) {
-      throw new BadRequestException(
-        `Action "${action.type}" is not available for automatic execution`,
-      );
-    }
-    if (!(WORKFLOW_ACTION_TYPES as readonly string[]).includes(canonical)) {
-      throw new BadRequestException(`Unsupported action type: ${action.type}`);
+    const { canonicalType, definition } = resolveWorkflowActionType(action.type);
+    if (!canonicalType || !definition) {
+      throw new BadRequestException({
+        message: `Unsupported action type: ${action.type}`,
+        code: 'WORKFLOW_ACTION_UNKNOWN',
+      });
     }
     const requiresApproval =
-      action.requiresApproval === true || APPROVAL_REQUIRED_ACTIONS.has(canonical);
+      action.requiresApproval === true ||
+      APPROVAL_REQUIRED_ACTIONS.has(canonicalType) ||
+      definition.requiresApproval;
     let config = action.config ?? {};
-    if (canonical === 'vehicle.status.update') {
+    if (canonicalType === 'vehicle.status.update') {
       const status = action.config?.status;
       const normalized =
         typeof status === 'string' ? normalizeVehicleStatusInput(status) : undefined;
       if (!normalized) {
-        throw new BadRequestException(
-          `vehicle.status.update requires a valid VehicleStatus (got: ${String(status)})`,
-        );
+        throw new BadRequestException({
+          message: `vehicle.status.update requires a valid VehicleStatus (got: ${String(status)})`,
+          code: 'WORKFLOW_ACTION_INVALID_CONFIG',
+        });
       }
       config = { ...config, status: normalized };
     }
     return {
-      type: canonical,
+      type: canonicalType,
       config,
       requiresApproval,
     };
   });
+
+  const activationMode =
+    input.status === 'ACTIVE' || input.status === 'PUBLISHED' ? 'activate' : 'save';
+  assertWorkflowActionsCapable(normalizedActions, activationMode);
 
   const conditions = Array.isArray(input.conditions) ? input.conditions : [];
 

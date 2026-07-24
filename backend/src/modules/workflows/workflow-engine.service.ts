@@ -52,6 +52,7 @@ export class WorkflowEngineService {
         organizationId: event.organizationId,
         status: 'ACTIVE',
         enabled: true,
+        remediationRequired: false,
       },
     });
 
