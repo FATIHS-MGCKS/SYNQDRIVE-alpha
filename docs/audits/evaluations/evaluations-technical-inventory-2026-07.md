@@ -727,4 +727,6 @@ Dieses Dokument ist **read-only**. Empfohlene Follow-ups für spätere Prompts:
 
 **Dokumentpfad:** `docs/audits/evaluations/evaluations-technical-inventory-2026-07.md`
 
+**Folgedokument (Prompt 2):** [`evaluations-data-flow-map-2026-07.md`](./evaluations-data-flow-map-2026-07.md)
+
 **Synqdrive Code → Changes / Architektur:** Nicht aktualisiert (reine Audit-Dokumentation, keine Implementierungsänderung).
