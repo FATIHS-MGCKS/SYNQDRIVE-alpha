@@ -13,6 +13,8 @@ import {
   PolicyTransitionInput,
 } from './policy-lifecycle.service';
 import { RevocationOrchestratorEnqueueService } from '../../revocation-orchestrator/revocation-orchestrator.enqueue.service';
+import { DenySwitchService } from '../../deny-switch/deny-switch.service';
+import { randomUUID } from 'crypto';
 
 type EnforcementPolicyRecord = Prisma.EnforcementPolicyGetPayload<{
   include: {
@@ -37,6 +39,7 @@ export class EnforcementPolicyLifecycleService {
     private readonly lifecycle: PolicyLifecycleService,
     private readonly events: PolicyLifecycleEventsService,
     @Optional() private readonly revocationEnqueue?: RevocationOrchestratorEnqueueService,
+    @Optional() private readonly denySwitch?: DenySwitchService,
   ) {}
 
   async submitForReview(orgId: string, id: string, actorUserId: string): Promise<EnforcementPolicyRecord> {
@@ -170,7 +173,7 @@ export class EnforcementPolicyLifecycleService {
 
   async suspend(orgId: string, id: string, reason: string, input: PolicyTransitionInput = {}): Promise<EnforcementPolicyRecord> {
     const record = await this.findOrThrow(orgId, id);
-    return this.lifecycle.transitionVersion({
+    const result = await this.lifecycle.transitionVersion({
       orgId,
       record,
       toStatus: PrivacyPolicyLifecycleStatus.SUSPENDED,
@@ -195,6 +198,19 @@ export class EnforcementPolicyLifecycleService {
           reason: event.input?.reason,
         }),
     });
+
+    if (this.denySwitch) {
+      await this.denySwitch.activateForSuspension({
+        organizationId: orgId,
+        correlationId: randomUUID(),
+        actorUserId: input.actorUserId,
+        reason,
+        enforcementPolicyId: result.id,
+        processingActivityId: result.processingActivityId,
+      });
+    }
+
+    return result;
   }
 
   async revoke(orgId: string, id: string, reason: string, input: PolicyTransitionInput = {}): Promise<EnforcementPolicyRecord> {

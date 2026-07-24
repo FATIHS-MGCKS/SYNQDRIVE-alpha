@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   DataAuthorizationAuditEventKind,
@@ -10,6 +10,7 @@ import type { Queue } from 'bullmq';
 import { PrismaService } from '@shared/database/prisma.service';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { AuthorizationDecisionService } from '../authorization-decision-engine/authorization-decision.service';
+import { DenySwitchService } from '../deny-switch/deny-switch.service';
 import { LiveGpsEnforcementService } from '../live-gps-enforcement/live-gps-enforcement.service';
 import { NotificationEnforcementService } from '../notification-enforcement/notification-enforcement.service';
 import { ExternalAccessEnforcementService } from '../external-access-enforcement/external-access-enforcement.service';
@@ -107,6 +108,8 @@ export class RevocationOrchestratorSteps {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationDecision: AuthorizationDecisionService,
+    @Inject(forwardRef(() => DenySwitchService))
+    private readonly denySwitch: DenySwitchService,
     private readonly liveGpsEnforcement: LiveGpsEnforcementService,
     private readonly notificationEnforcement: NotificationEnforcementService,
     private readonly externalAccessEnforcement: ExternalAccessEnforcementService,
@@ -118,12 +121,24 @@ export class RevocationOrchestratorSteps {
   ) {}
 
   async executeDenySwitch(ctx: RevocationStepContext): Promise<RevocationStepOutcome> {
-    this.authorizationDecision.invalidateOrganizationCache(ctx.organizationId);
+    const activations = await this.denySwitch.activateForRevocation({
+      organizationId: ctx.organizationId,
+      correlationId: ctx.correlationId,
+      reason: ctx.reason,
+      processingActivityId: ctx.processingActivityId,
+      enforcementPolicyId: ctx.enforcementPolicyId,
+      consentId: ctx.consentId,
+      providerGrantId: ctx.providerGrantId,
+      vehicleIds: ctx.vehicleIds,
+    });
     await this.liveGpsEnforcement.invalidateOrgGpsCaches(ctx.organizationId);
     return {
       stepKey: REVOCATION_STEP_KEY.DENY_SWITCH,
       outcome: 'success',
-      detail: { cachesInvalidated: true },
+      detail: {
+        denySwitchActivations: activations.length,
+        sequences: activations.map((a) => a.sequence.toString()),
+      },
     };
   }
 

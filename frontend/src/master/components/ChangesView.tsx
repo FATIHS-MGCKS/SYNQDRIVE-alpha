@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'deny-switch-v49808-2026-07-24',
+    version: '4.9.808',
+    title: 'V4.9.808 — Sofortiger Fail-closed Deny-Switch (Prompt 25)',
+    summary: [
+      'DenySwitchService — zentraler Deny-Switch für Policy, Activity, Consent, ProviderGrant, Org und Resource.',
+      'Synchron bei Widerruf/Suspendierung; DB Source of Truth; Redis Pub/Sub Propagation mit monotonic sequence.',
+      'Fail-closed: Redis-Ausfall führt nicht zu ALLOW. Startup-Hydration + 60s Reconciliation.',
+      'CI: npm run test:data-auth:deny-switch.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 25 — neue Decisions müssen sofort DENY sein, bevor verteilte Propagation abgeschlossen ist.',
+    previousBehavior:
+      'Revocation invalidierte nur Caches ohne persistenten, scope-basierten Deny-Switch mit verteilter Propagation.',
+    details:
+      'backend/src/modules/data-authorizations/deny-switch/. Migration 20260724060000. Doku: docs/architecture/deny-switch-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-24T01:30:00.000Z',
+  },
+  {
     id: 'revocation-orchestrator-v49807-2026-07-24',
     version: '4.9.807',
     title: 'V4.9.807 — Persistenter Revocation Orchestrator (Prompt 24)',

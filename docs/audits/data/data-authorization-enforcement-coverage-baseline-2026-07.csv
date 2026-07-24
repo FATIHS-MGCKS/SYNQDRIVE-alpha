@@ -27,3 +27,5 @@ authorization-decision-engine,authorization-decision,true,Prompt 13 baseline
 revocation-deny-switch,revocation,true,Prompt 24 baseline
 revocation-provider-revoke,revocation,true,Prompt 24 baseline
 revocation-partner-notify,revocation,true,Prompt 24 baseline
+deny-switch-decision-gate,revocation,true,Prompt 25 baseline
+deny-switch-queue-guard,revocation,true,Prompt 25 baseline

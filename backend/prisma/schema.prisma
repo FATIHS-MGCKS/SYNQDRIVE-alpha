@@ -1750,6 +1750,7 @@ model Organization {
   dataProcessingReviewDecisions                             DataProcessingReviewDecision[]
   dataAuthorizationAuditOutbox                            DataAuthorizationAuditOutbox[]
   dataAuthorizationRevocationWorkflows                    DataAuthorizationRevocationWorkflow[]
+  dataAuthorizationDenySwitches                           DataAuthorizationDenySwitch[]
   processingActivityLifecycleEvents                         ProcessingActivityLifecycleEvent[]
   legalBasisAssessmentLifecycleEvents                       LegalBasisAssessmentLifecycleEvent[]
   enforcementPolicyLifecycleEvents                          EnforcementPolicyLifecycleEvent[]
@@ -11772,6 +11773,52 @@ model DataAuthorizationRevocationStepEvent {
   @@index([workflowId])
   @@index([organizationId, createdAt])
   @@map("data_authorization_revocation_step_events")
+}
+
+/// Fail-closed deny switch — DB source of truth for immediate DENY on revoke/suspend.
+enum DataAuthorizationDenySwitchScopeType {
+  ORGANIZATION
+  PROCESSING_ACTIVITY
+  ENFORCEMENT_POLICY
+  CONSENT
+  PROVIDER_GRANT
+  RESOURCE
+}
+
+enum DataAuthorizationDenySwitchTrigger {
+  REVOKED
+  SUSPENDED
+  MANUAL
+}
+
+model DataAuthorizationDenySwitch {
+  id                String                              @id @default(uuid())
+  organizationId    String                              @map("organization_id")
+  scopeType         DataAuthorizationDenySwitchScopeType @map("scope_type")
+  scopeEntityId     String?                             @map("scope_entity_id")
+  resourceType      String?                             @map("resource_type")
+  resourceId        String?                             @map("resource_id")
+  trigger           DataAuthorizationDenySwitchTrigger
+  sequence          BigInt
+  active            Boolean                             @default(true)
+  blocksIngest      Boolean                             @default(true) @map("blocks_ingest")
+  blocksRead        Boolean                             @default(true) @map("blocks_read")
+  blocksQueueEnqueue Boolean                            @default(true) @map("blocks_queue_enqueue")
+  reason            String?
+  correlationId     String                              @map("correlation_id")
+  actorUserId       String?                             @map("actor_user_id")
+  idempotencyKey    String                              @unique @map("idempotency_key")
+  activatedAt       DateTime                            @default(now()) @map("activated_at")
+  deactivatedAt     DateTime?                           @map("deactivated_at")
+  createdAt         DateTime                            @default(now()) @map("created_at")
+  updatedAt         DateTime                            @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, scopeType, scopeEntityId, resourceType, resourceId])
+  @@index([organizationId, active])
+  @@index([organizationId, sequence])
+  @@map("data_authorization_deny_switches")
 }
 
 /// Review cycle for a specific entity version — approvals bind to version + fingerprint.

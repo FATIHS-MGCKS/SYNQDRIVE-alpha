@@ -24,6 +24,7 @@ Authoritative flow inventory for enforcement coverage:
 | 22 | External access enforcement | V4.9.805 |
 | 23 | Enforcement coverage registry | V4.9.806 |
 | 24 | Persistent revocation orchestrator | V4.9.807 |
+| 25 | Fail-closed deny switch | V4.9.808 |
 
 ## Verification
 

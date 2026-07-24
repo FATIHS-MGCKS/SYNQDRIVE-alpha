@@ -518,9 +518,37 @@ export const ENFORCEMENT_COVERAGE_CATALOG: readonly EnforcementFlowCatalogEntry[
       'backend/src/modules/data-authorizations/revocation-orchestrator/revocation-orchestrator.service.spec.ts',
     productive: true,
   }),
+  flow({
+    flowId: 'deny-switch-decision-gate',
+    flowName: 'Deny switch authorization decision gate',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['GPS_LOCATION', 'TELEMETRY_RAW'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST, AUTHORIZATION_DECISION_ACTION.READ],
+    responsibleService: 'DenySwitchService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/deny-switch/decision-gate',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath: 'backend/src/modules/data-authorizations/deny-switch/deny-switch.service.spec.ts',
+    productive: true,
+  }),
+  flow({
+    flowId: 'deny-switch-queue-guard',
+    flowName: 'Deny switch queue enqueue guard',
+    sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.DIMO,
+    dataCategories: ['TELEMETRY_RAW'],
+    actions: [AUTHORIZATION_DECISION_ACTION.INGEST],
+    responsibleService: 'DenySwitchService',
+    responsibleOwner: 'data-authorizations',
+    domain: ENFORCEMENT_COVERAGE_DOMAIN.REVOCATION,
+    processingPath: 'data-auth/deny-switch/queue-guard',
+    implementedEnforcementPoints: FULLY_WIRED,
+    testSpecPath: 'backend/src/modules/data-authorizations/deny-switch/deny-switch.evaluator.spec.ts',
+    productive: true,
+  }),
 ];
 
-export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt24-v1';
+export const ENFORCEMENT_COVERAGE_CATALOG_VERSION = '2026-07-prompt25-v1';
 
 export function getCatalogFlowById(flowId: string): EnforcementFlowCatalogEntry | undefined {
   return ENFORCEMENT_COVERAGE_CATALOG.find((row) => row.flowId === flowId);

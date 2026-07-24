@@ -1,8 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { PrivacyProcessingDataCategory, PrivacyProcessingPurpose } from '@prisma/client';
 import { PolicyResolverService } from '../policy-resolver/policy-resolver.service';
 import type { PolicyResolverInput } from '../policy-resolver/policy-resolver.types';
-import { DECISION_TO_RESOLVER_ACTION } from './authorization-decision.constants';
+import {
+  AUTHORIZATION_DECISION_ENGINE_VERSION,
+  AUTHORIZATION_DECISION_OUTCOME,
+  AUTHORIZATION_DECISION_REASON,
+  DECISION_TO_RESOLVER_ACTION,
+  type AuthorizationDecisionReasonCode,
+} from './authorization-decision.constants';
 import { readAuthorizationDecisionConfig } from './authorization-decision.config';
 import {
   AuthorizationDecisionCache,
@@ -15,6 +21,7 @@ import {
   evaluateAuthorizationDecision,
 } from './authorization-decision.engine';
 import { DataAuthorizationAuditService } from '../privacy-domain/audit-log/data-authorization-audit.service';
+import { DenySwitchService } from '../deny-switch/deny-switch.service';
 import type {
   AuthorizationDecisionRequest,
   AuthorizationDecisionResult,
@@ -32,6 +39,9 @@ export class AuthorizationDecisionService {
   constructor(
     private readonly policyResolver: PolicyResolverService,
     private readonly auditService: DataAuthorizationAuditService,
+    @Optional()
+    @Inject(forwardRef(() => DenySwitchService))
+    private readonly denySwitch?: DenySwitchService,
   ) {
     const config = readAuthorizationDecisionConfig();
     this.cache = config.cacheEnabled
@@ -62,6 +72,38 @@ export class AuthorizationDecisionService {
         }),
         config,
       );
+    }
+
+    if (this.denySwitch) {
+      const deny = this.denySwitch.evaluate({
+        organizationId: evaluated.organizationId,
+        action: evaluated.action,
+        vehicleId: evaluated.vehicleId,
+        customerId: evaluated.customerId,
+        bookingId: evaluated.bookingId,
+        stationId: evaluated.stationId,
+        resourceType: evaluated.resourceType,
+        resourceId: evaluated.resourceId,
+      });
+      if (deny?.denied) {
+        const denyResult: AuthorizationDecisionResult = {
+          decision: AUTHORIZATION_DECISION_OUTCOME.DENY,
+          enforced: true,
+          isShadowMode: false,
+          reasonCode: deny.reasonCode as AuthorizationDecisionReasonCode,
+          reasonCodes: deny.reasonCodes as AuthorizationDecisionReasonCode[],
+          resolverResult: null,
+          matchedPolicyId: null,
+          policyVersion: null,
+          correlationId: evaluated.correlationId,
+          evaluatedAt: new Date().toISOString(),
+          engineVersion: AUTHORIZATION_DECISION_ENGINE_VERSION,
+          cacheHit: false,
+          auditEventId: null,
+          warnings: [],
+        };
+        return this.finalize(request, evaluated, denyResult, config);
+      }
     }
 
     const cacheKey = this.cache && !request.skipCache ? buildCacheKey(evaluated) : null;

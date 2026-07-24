@@ -52,6 +52,13 @@ import { EnforcementCoverageRegistryService } from './enforcement-coverage-regis
 import { EnforcementCoverageHealthService } from './enforcement-coverage-registry/enforcement-coverage-health.service';
 import { EnforcementCoverageRegistryMetricsService } from './enforcement-coverage-registry/enforcement-coverage-registry.metrics';
 import { RevocationOrchestratorController } from './revocation-orchestrator/revocation-orchestrator.controller';
+import { DenySwitchController } from './deny-switch/deny-switch.controller';
+import { DenySwitchLocalStore } from './deny-switch/deny-switch.local-store';
+import { DenySwitchMetricsService } from './deny-switch/deny-switch.metrics';
+import { DenySwitchPropagationService } from './deny-switch/deny-switch.propagation.service';
+import { DenySwitchRepository } from './deny-switch/deny-switch.repository';
+import { DenySwitchService } from './deny-switch/deny-switch.service';
+import { DenySwitchStartupService } from './deny-switch/deny-switch.startup.service';
 import { RevocationOrchestratorRepository } from './revocation-orchestrator/revocation-orchestrator.repository';
 import { RevocationOrchestratorService } from './revocation-orchestrator/revocation-orchestrator.service';
 import { RevocationOrchestratorSchedulerService } from './revocation-orchestrator/revocation-orchestrator.scheduler.service';
@@ -82,6 +89,7 @@ import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/
     DataAuthorizationAuditController,
     EnforcementCoverageRegistryController,
     RevocationOrchestratorController,
+    DenySwitchController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -130,6 +138,12 @@ import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/
     RevocationOrchestratorService,
     RevocationOrchestratorSchedulerService,
     RevocationOrchestratorEnqueueService,
+    DenySwitchLocalStore,
+    DenySwitchRepository,
+    DenySwitchMetricsService,
+    DenySwitchPropagationService,
+    DenySwitchService,
+    DenySwitchStartupService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -166,6 +180,7 @@ import { RevocationOrchestratorEnqueueService } from './revocation-orchestrator/
     EnforcementCoverageRegistryMetricsService,
     RevocationOrchestratorService,
     RevocationOrchestratorEnqueueService,
+    DenySwitchService,
   ],
 })
 export class DataAuthorizationsModule {}
