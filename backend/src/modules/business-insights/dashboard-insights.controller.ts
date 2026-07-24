@@ -2,6 +2,7 @@ import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
+import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 
 @Controller('organizations/:orgId/dashboard-insights')
@@ -10,6 +11,7 @@ export class DashboardInsightsController {
   constructor(
     private readonly repo: DashboardInsightsRepository,
     private readonly policyService: TenantInsightPolicyService,
+    private readonly analytics: DashboardInsightsAnalyticsService,
   ) {}
 
   @Get()
@@ -21,17 +23,21 @@ export class DashboardInsightsController {
   @Get('summary')
   async getSummary(@Param('orgId') orgId: string) {
     const policy = await this.policyService.getPolicy(orgId);
-    const response = await this.repo.getActiveInsights(orgId, policy.maxVisibleInsights);
+    const analyticsSummary = await this.analytics.getAnalyticsSummary(orgId);
     const lastRun = await this.repo.getLastRunForOrg(orgId);
 
     return {
-      generatedAt: response.generatedAt,
-      summary: response.summary,
-      insightCount: response.insights.length,
+      generatedAt: analyticsSummary.generatedAt,
+      summary: {
+        total: analyticsSummary.counts.totalVisible,
+        ...analyticsSummary.counts.bySeverity,
+      },
+      insightCount: analyticsSummary.counts.totalVisible,
       maxVisible: policy.maxVisibleInsights,
       enabled: policy.enabled,
       lastRunTrigger: lastRun?.trigger ?? null,
       lastRunDurationMs: lastRun?.durationMs ?? null,
+      analytics: analyticsSummary.counts,
     };
   }
 }

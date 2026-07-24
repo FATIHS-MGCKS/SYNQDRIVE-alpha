@@ -6,6 +6,9 @@ import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
 import { InsightFormatterService } from './insight-formatter.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
+import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
+import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
+import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
 import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { BusinessInsightsScheduler } from './business-insights-scheduler.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
@@ -24,6 +27,8 @@ import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-assessment-device-quality.detector';
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
+import { EvaluationsInsightsController } from './evaluations-insights.controller';
+import { EvaluationsAnalyticsController } from './evaluations-analytics.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
@@ -36,7 +41,12 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => RentalHealthModule),
   ],
-  controllers: [DashboardInsightsController, InternalBusinessInsightsController],
+  controllers: [
+    DashboardInsightsController,
+    EvaluationsInsightsController,
+    EvaluationsAnalyticsController,
+    InternalBusinessInsightsController,
+  ],
   providers: [
     BusinessInsightsService,
     TenantInsightPolicyService,
@@ -44,6 +54,10 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightGroupingService,
     InsightFormatterService,
     DashboardInsightsRepository,
+    DashboardInsightsAnalyticsService,
+    EvaluationsAnalyticsFilterService,
+    EvaluationsAnalyticsSummaryRepository,
+    EvaluationsAnalyticsSummaryService,
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
@@ -60,6 +74,12 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PickupOverdueDetector,
     DrivingAssessmentDeviceQualityDetector,
   ],
-  exports: [BusinessInsightsService, BusinessInsightsTriggerService, InsightTaskBridgeService],
+  exports: [
+    BusinessInsightsService,
+    BusinessInsightsTriggerService,
+    InsightTaskBridgeService,
+    DashboardInsightsAnalyticsService,
+    EvaluationsAnalyticsSummaryService,
+  ],
 })
 export class BusinessInsightsModule {}

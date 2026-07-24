@@ -1,22 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ShieldAlert, TrendingDown, Zap, type LucideIcon } from 'lucide-react';
-import { Icon } from '../ui/Icon';
-import { useDashboardInsights, type DashboardInsight } from '../../DashboardInsightsContext';
-import { useFleetVehicles } from '../../FleetContext';
+import type { DashboardInsight } from '../../DashboardInsightsContext';
 import { useRentalOrg } from '../../RentalContext';
 import { api, type MisuseCaseRecord } from '../../../lib/api';
-import {
-  financialImpactEur,
-  insightRecommendation,
-  matchesStationIdFilter,
-  partitionInsights,
-} from '../../lib/insights-categories';
+import { financialImpactEur, insightRecommendation } from '../../lib/insights-categories';
+import { useEvaluationsInsightsAnalytics } from '../../hooks/useEvaluationsInsightsAnalytics';
+import type { EvaluationsAnalyticsFiltersQuery } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
+import { EvaluationsAnalyticsFilterBar } from './EvaluationsAnalyticsFilterBar';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
-  stationId?: string | null;
+  filters: EvaluationsAnalyticsFiltersQuery;
+  filterKey: string;
+  onPatchFilters: (patch: Partial<EvaluationsAnalyticsFiltersQuery>) => void;
+  stationOptions?: Array<{ id: string; label: string }>;
   financialRiskEur?: number;
   openReceivablesEur?: number;
 }
@@ -107,41 +106,6 @@ function SeverityBadge({ severity }: { severity: string }) {
   );
 }
 
-function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDarkMode: boolean }) {
-  const impact = financialImpactEur(insight);
-  const rec = insightRecommendation(insight);
-  const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const bookingId = (m?.bookingId ?? insight.timeContext?.bookingId) as string | undefined;
-  const customerId = (m?.customerId ?? insight.timeContext?.customerId) as string | undefined;
-
-  return (
-    <article
-      className={`rounded-xl border p-3 ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`}
-    >
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <h4 className="text-xs font-semibold text-foreground leading-snug">{insight.title}</h4>
-        <SeverityBadge severity={insight.severity} />
-      </div>
-      <p className="text-[11px] text-muted-foreground leading-relaxed">{insight.message}</p>
-      {(impact != null || bookingId || customerId) && (
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
-          {impact != null && <span className="sq-tone-warning px-1.5 py-0.5 rounded-md">≈ {impact} € Risiko</span>}
-          {bookingId && <span className="px-1.5 py-0.5 rounded-md border border-border">Buchung</span>}
-          {customerId && <span className="px-1.5 py-0.5 rounded-md border border-border">Kunde</span>}
-        </div>
-      )}
-      {insight.reasons && insight.reasons.length > 0 && (
-        <ul className="mt-2 text-[10px] text-muted-foreground/90 list-disc pl-4 space-y-0.5">
-          {insight.reasons.slice(0, 3).map((r, i) => (
-            <li key={i}>{r}</li>
-          ))}
-        </ul>
-      )}
-      <p className="mt-2 text-[10px] font-medium text-[color:var(--brand)]">→ {rec}</p>
-    </article>
-  );
-}
-
 function RunStateBanner({
   hasRun,
   stale,
@@ -150,54 +114,77 @@ function RunStateBanner({
 }: {
   hasRun: boolean;
   stale: boolean;
-  error: boolean;
+  error: string | null;
   loading: boolean;
 }) {
-  if (loading) return null;
+  if (loading) {
+    return (
+      <p className="text-[11px] text-muted-foreground" role="status">
+        Insights werden geladen…
+      </p>
+    );
+  }
   if (error) {
     return (
-      <div className="rounded-xl p-3 sq-tone-critical text-xs font-medium flex items-center gap-2">
-        <Icon name="alert-circle" className="w-4 h-4 shrink-0" />
-        Insights konnten nicht geladen werden.
-      </div>
+      <p className="text-[11px] text-[color:var(--status-critical)]" role="alert">
+        Insights konnten nicht geladen werden: {error}
+      </p>
     );
   }
   if (!hasRun) {
     return (
-      <div className="rounded-xl p-3 sq-tone-neutral text-xs">
-        Insights wurden für diese Organisation noch nicht berechnet. Der nächste Lauf erfolgt automatisch.
-      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Noch keine Insight-Berechnung für diese Organisation — KPIs erscheinen nach dem ersten Lauf.
+      </p>
     );
   }
   if (stale) {
     return (
-      <div className="rounded-xl p-3 sq-tone-warning text-xs">
-        Insights sind möglicherweise veraltet — letzter Lauf liegt zurück.
-      </div>
+      <p className="text-[11px] text-[color:var(--status-watch)]">
+        Daten möglicherweise veraltet — letzte Berechnung liegt zurück.
+      </p>
     );
   }
   return null;
 }
 
+function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDarkMode: boolean }) {
+  const impact = financialImpactEur(insight);
+  return (
+    <article
+      className={`rounded-xl border p-3 text-[11px] ${isDarkMode ? 'border-border' : 'border-gray-200'}`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="font-semibold text-foreground">{insight.title}</span>
+        <SeverityBadge severity={insight.severity} />
+      </div>
+      <p className="text-muted-foreground leading-relaxed">{insight.message}</p>
+      {impact != null && impact > 0 ? (
+        <p className="mt-1 text-[10px] font-medium text-[color:var(--status-watch)]">
+          Geschätzte Exposition: ≈ {impact.toLocaleString('de-DE')} €
+        </p>
+      ) : null}
+      <p className="mt-1.5 text-[10px] font-medium text-[color:var(--brand)]">
+        → {insightRecommendation(insight)}
+      </p>
+    </article>
+  );
+}
+
 function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: boolean }) {
   const [rows, setRows] = useState<MisuseCaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [errored, setErrored] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     api.misuseCases
-      .list(orgId, { limit: 8, page: 1 })
+      .list(orgId, { page: 1, limit: 8 })
       .then((res) => {
-        if (cancelled) return;
-        setRows(Array.isArray(res?.data) ? res.data : []);
-        setErrored(false);
+        if (!cancelled) setRows(res.data ?? []);
       })
       .catch(() => {
-        if (!cancelled) {
-          setRows([]);
-          setErrored(true);
-        }
+        if (!cancelled) setRows([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -209,27 +196,21 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 
   return (
     <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldAlert className="w-4 h-4 text-[color:var(--status-watch)]" />
-        <h3 className="text-[12px] font-semibold text-foreground">Nutzungsauffälligkeiten</h3>
-      </div>
+      <h3 className="text-[12px] font-semibold mb-3 text-foreground flex items-center gap-2">
+        <ShieldAlert className="h-3.5 w-3.5 text-[color:var(--status-watch)]" />
+        Nutzungsauffälligkeiten
+      </h3>
       {loading ? (
-        <p className="text-xs text-muted-foreground">Lade Missbrauchs- & Risikosignale…</p>
-      ) : errored ? (
-        <p className="text-xs text-muted-foreground">Signale konnten nicht geladen werden.</p>
+        <p className="text-xs text-muted-foreground">Lade…</p>
       ) : rows.length === 0 ? (
-        <EmptyState
-          compact
-          title="Keine aktiven Auffälligkeiten"
-          description="Fahrverhalten wird nach abgeschlossenen Fahrten ausgewertet."
-        />
+        <EmptyState compact title="Keine Auffälligkeiten" description="Misuse-Signale erscheinen hier separat paginiert." />
       ) : (
         <div className="space-y-2">
           {rows.map((row) => {
-            const title = String(row.title ?? row.type ?? 'Auffälligkeit');
-            const desc = String(row.description ?? '');
-            const sev = String(row.severity ?? 'WATCH');
-            const action = String(row.recommendedAction ?? 'Rückgabe genauer prüfen.');
+            const title = row.title ?? row.type ?? 'Auffälligkeit';
+            const desc = row.description ?? '';
+            const sev = row.severity ?? 'INFO';
+            const action = row.recommendedAction ?? 'Prüfen';
             return (
               <article
                 key={String(row.id)}
@@ -252,61 +233,59 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 
 export function InsightsCockpit({
   isDarkMode,
-  stationId = null,
+  filters,
+  filterKey,
+  onPatchFilters,
+  stationOptions = [],
   financialRiskEur = 0,
   openReceivablesEur = 0,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
-  const { fleetVehicles } = useFleetVehicles();
-  const { response, loading, error } = useDashboardInsights();
+  const { summary, businessRisks, revenueLeakage, loading, error } = useEvaluationsInsightsAnalytics({
+    orgId,
+    filters,
+    filterKey,
+    listLimit: 50,
+  });
 
-  const vehicleStationById = useMemo(() => {
-    const m = new Map<string, string | null | undefined>();
-    for (const v of fleetVehicles) m.set(v.id, v.stationId);
-    return m;
-  }, [fleetVehicles]);
+  const recommended = useMemo(() => {
+    const combined = [...businessRisks, ...revenueLeakage] as DashboardInsight[];
+    return combined
+      .filter((i) => i.severity === 'CRITICAL' || i.severity === 'WARNING')
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, 6);
+  }, [businessRisks, revenueLeakage]);
 
-  const filteredInsights = useMemo(() => {
-    const list = response?.insights ?? [];
-    return list.filter((i) => matchesStationIdFilter(i, stationId, vehicleStationById));
-  }, [response?.insights, stationId, vehicleStationById]);
+  const estimatedRiskMinor =
+    (summary?.estimatedFinancialExposureMinor ?? 0) + Math.round(financialRiskEur * 100);
+  const estimatedRiskEur = Math.round(estimatedRiskMinor / 100);
 
-  const { businessRisks, revenueLeakage, recommended } = useMemo(
-    () => partitionInsights(filteredInsights),
-    [filteredInsights],
-  );
-
-  const estimatedRisk = useMemo(() => {
-    let sum = financialRiskEur;
-    for (const i of [...businessRisks, ...revenueLeakage]) {
-      const e = financialImpactEur(i);
-      if (e != null) sum += e;
-    }
-    return sum;
-  }, [businessRisks, revenueLeakage, financialRiskEur]);
-
-  const criticalBookings = businessRisks.filter((i) => i.severity === 'CRITICAL').length;
-  const hasRun = response?.hasRun ?? false;
-  const stale = response?.stale ?? false;
+  const hasRun = summary?.hasRun ?? false;
+  const stale = summary?.stale ?? false;
 
   return (
     <div className="space-y-4">
+      <EvaluationsAnalyticsFilterBar
+        filters={filters}
+        onPatch={onPatchFilters}
+        stationOptions={stationOptions}
+      />
       <RunStateBanner hasRun={hasRun} stale={stale} error={error} loading={loading} />
 
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
         <InsightKpiCard
-          label="Business Risks"
-          value={String(businessRisks.length)}
+          label="Geschäftsrisiken (Gruppen)"
+          value={String(summary?.counts.businessRisks ?? 0)}
           icon={AlertTriangle}
           tone="critical"
-          accent={businessRisks.length > 0}
+          accent={(summary?.counts.businessRisks ?? 0) > 0}
         />
         <InsightKpiCard
           label="Finanzrisiko (geschätzt)"
-          value={`≈ ${estimatedRisk.toLocaleString('de-DE')} €`}
+          value={`≈ ${estimatedRiskEur.toLocaleString('de-DE')} €`}
           icon={TrendingDown}
           tone="watch"
-          accent={estimatedRisk > 0}
+          accent={estimatedRiskEur > 0}
         />
         <InsightKpiCard
           label="Offene Forderungen"
@@ -317,17 +296,17 @@ export function InsightsCockpit({
         />
         <InsightKpiCard
           label="Kritische Buchungen"
-          value={String(criticalBookings)}
+          value={String(summary?.counts.criticalBookings ?? summary?.counts.criticalBusinessRisks ?? 0)}
           icon={AlertTriangle}
           tone="critical"
-          accent={criticalBookings > 0}
+          accent={(summary?.counts.criticalBusinessRisks ?? 0) > 0}
         />
         <InsightKpiCard
-          label="Revenue Leakage"
-          value={String(revenueLeakage.length)}
+          label="Umsatzverlust (Gruppen)"
+          value={String(summary?.counts.revenueLeakage ?? 0)}
           icon={TrendingDown}
           tone="watch"
-          accent={revenueLeakage.length > 0}
+          accent={(summary?.counts.revenueLeakage ?? 0) > 0}
         />
       </div>
 
@@ -341,7 +320,7 @@ export function InsightsCockpit({
           ) : (
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
               {businessRisks.map((i) => (
-                <InsightCard key={i.id} insight={i} isDarkMode={isDarkMode} />
+                <InsightCard key={i.id} insight={i as DashboardInsight} isDarkMode={isDarkMode} />
               ))}
             </div>
           )}
@@ -356,7 +335,7 @@ export function InsightsCockpit({
           ) : (
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
               {revenueLeakage.map((i) => (
-                <InsightCard key={i.id} insight={i} isDarkMode={isDarkMode} />
+                <InsightCard key={i.id} insight={i as DashboardInsight} isDarkMode={isDarkMode} />
               ))}
             </div>
           )}
@@ -371,7 +350,7 @@ export function InsightsCockpit({
           <p className="text-xs text-muted-foreground">Keine dringenden Empfehlungen — weiter beobachten.</p>
         ) : (
           <ul className="space-y-2">
-            {recommended.slice(0, 6).map((i) => (
+            {recommended.map((i) => (
               <li key={i.id} className="flex items-start gap-2 text-[11px]">
                 <span className="text-[color:var(--brand)] font-bold">•</span>
                 <span>
