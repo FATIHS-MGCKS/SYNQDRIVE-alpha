@@ -3,6 +3,7 @@
  */
 import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
+import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -166,6 +167,53 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
     }),
   };
 
+  const utilizationSnapshot = {
+    loadSnapshot: jest.fn().mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 6));
+      return {
+        periodFromMs: Date.parse('2026-06-01T00:00:00.000Z'),
+        periodToMs: Date.parse('2026-06-16T12:00:00.000Z'),
+        vehicles: Array.from({ length: vehicleCount }, (_, i) => ({
+          vehicleId: `veh-${i}`,
+          label: `V-${i}`,
+          homeStationId: 'station-a',
+          homeStationName: 'Station A',
+          vehicleClassId: 'cls-1',
+          vehicleClassName: 'Compact',
+          prismaStatus: 'AVAILABLE',
+          cleaningStatus: 'CLEAN',
+          rentalBlocked: false,
+          telemetryOffline: i % 10 === 0,
+          operationalToken: i % 3 === 0 ? 'ACTIVE_RENTED' : 'AVAILABLE',
+          capacityMs: 1_000_000,
+          rentedMs: 400_000,
+          maintenanceMs: 10_000,
+          blockedMs: 5_000,
+          unplannedDowntimeMs: 2_000,
+          bookedNotRealizedMs: 20_000,
+          standstillMs: 585_000,
+          turnaroundMs: 8_000,
+          turnaroundCount: 1,
+        })),
+        overlappingBookingIds: [],
+        stationBottlenecks: [],
+        operationalSnapshot: {
+          activeRented: 40,
+          reserved: 10,
+          available: 60,
+          maintenance: 5,
+          blocked: 5,
+          unknown: 0,
+          operationalUtilizationPercent: 40,
+        },
+        maintenanceFromDowntimeWindows: 20,
+        maintenanceFromSnapshotOnly: 3,
+        blockedFromDowntimeWindows: 2,
+        blockedFromSnapshotOnly: 1,
+      };
+    }),
+  };
+
   let service: EvaluationsAnalyticsSummaryService;
 
   beforeEach(async () => {
@@ -175,6 +223,7 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
         EvaluationsAnalyticsSummaryService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
+        { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },
       ],
     }).compile();
     service = moduleRef.get(EvaluationsAnalyticsSummaryService);
@@ -192,6 +241,7 @@ describe('EvaluationsAnalyticsSummaryService integration', () => {
     expect(result.fleetUtilization.data?.totalOperational).toBe(115);
     expect(result.affectedEntities.data?.insightGroups).toBe(insightGroups);
     expect(result.costModel.data?.metrics.length).toBeGreaterThan(10);
+    expect(result.utilizationModel.data?.drillDowns.length).toBeGreaterThan(3);
     expect(result.comparisonPeriod.from).toBeTruthy();
     expect(result.metadata.generationDurationMs).toBeLessThan(500);
     expect(elapsed).toBeLessThan(500);

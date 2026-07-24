@@ -9,3 +9,4 @@ export * from './insights-analytics.contract';
 export * from './insight-entity-references.contract';
 export * from './evaluations-analytics-summary.contract';
 export * from './evaluations-cost-model.contract';
+export * from './evaluations-utilization-model.contract';

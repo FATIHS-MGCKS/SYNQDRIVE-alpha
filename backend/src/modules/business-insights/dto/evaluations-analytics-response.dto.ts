@@ -82,6 +82,9 @@ export class EvaluationsAnalyticsSummaryResponseDto implements EvaluationsAnalyt
   costModel!: EvaluationsAnalyticsSummaryResponse['costModel'];
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
+  utilizationModel!: EvaluationsAnalyticsSummaryResponse['utilizationModel'];
+
+  @ApiProperty({ type: EvaluationsSectionEnvelopeDto })
   activeRisks!: EvaluationsAnalyticsSummaryResponse['activeRisks'];
 
   @ApiProperty({ type: EvaluationsSectionEnvelopeDto })

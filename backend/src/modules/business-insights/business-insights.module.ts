@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BusinessInsightsService } from './business-insights.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
@@ -9,6 +10,7 @@ import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
+import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { BusinessInsightsScheduler } from './business-insights-scheduler.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
@@ -41,6 +43,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => RentalHealthModule),
+    forwardRef(() => VehiclesModule),
   ],
   controllers: [
     DashboardInsightsController,
@@ -59,6 +62,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     EvaluationsAnalyticsFilterService,
     EvaluationsAnalyticsSummaryRepository,
     EvaluationsAnalyticsSummaryService,
+    EvaluationsUtilizationSnapshotService,
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,

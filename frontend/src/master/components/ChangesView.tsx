@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-utilization-model-v49820-2026-07-24',
+    version: 'V4.9.820',
+    title: 'V4.9.820 — Kanonische Flottenauslastung Auswertungen (Prompt 22/54)',
+    summary: [
+      'Neue `utilizationModel`-Section: zeitgewichtete Auslastung + operative Performance-KPIs mit Formeln, Quellen, Abdeckung.',
+      'Runtime-State-Architektur: `deriveFleetStatusContext` für Snapshot, Booking-Intervalle für Vermietzeit, ServiceCase-Downtime für Wartung/Block.',
+      'Drill-downs auf Fahrzeug-, Buchungs- und Stationsniveau; überlappende Buchungen als Datenfehler.',
+      'Telemetrie-Offline nur informativ — kein automatisches Downtime-Label.',
+      'Shared: `evaluations-utilization-model.*`, `evaluations-utilization-intervals.ts`; Backend `EvaluationsUtilizationSnapshotService`.',
+      'Doku: `docs/architecture/analytics/evaluations-utilization-model.md`.',
+    ],
+    reason:
+      'Prompt 22/54 — Nachvollziehbare Flotten- und Auslastungsanalyse ohne parallele Status-Definitionen.',
+    affectsArchitecture: true,
+    module: 'Auswertungen',
+    previousBehavior: null,
+    details: null,
+    createdAt: '2026-07-24T22:00:00.000Z',
+  },
+  {
     id: 'evaluations-cost-model-v49819-2026-07-24',
     version: 'V4.9.819',
     title: 'V4.9.819 — Kanonisches Kostenmodell Auswertungen (Prompt 21/54)',

@@ -12,6 +12,7 @@ import type {
   EvaluationsTimePeriod,
 } from './evaluations-analytics-primitives.contract';
 import type { EvaluationsCostModelSummary } from './evaluations-cost-model.contract';
+import type { EvaluationsUtilizationModelSummary } from './evaluations-utilization-model.contract';
 
 export type EvaluationsAnalyticsPeriod = 'mtd' | 'last7d' | 'last30d' | 'custom';
 
@@ -146,6 +147,7 @@ export interface EvaluationsAnalyticsSummaryResponse {
   downtime: EvaluationsSectionEnvelope<EvaluationsDowntimeSummary>;
   costs: EvaluationsSectionEnvelope<EvaluationsCostsSummary>;
   costModel: EvaluationsSectionEnvelope<EvaluationsCostModelSummary>;
+  utilizationModel: EvaluationsSectionEnvelope<EvaluationsUtilizationModelSummary>;
   activeRisks: EvaluationsSectionEnvelope<EvaluationsActiveRisksSummary>;
   affectedEntities: EvaluationsSectionEnvelope<InsightEntityCountSummary>;
   strengths: EvaluationsSectionEnvelope<EvaluationsHighlightItem[]>;

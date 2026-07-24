@@ -123,6 +123,7 @@ const SUMMARY_SECTION_KEYS = [
   'downtime',
   'costs',
   'costModel',
+  'utilizationModel',
   'activeRisks',
   'affectedEntities',
   'strengths',

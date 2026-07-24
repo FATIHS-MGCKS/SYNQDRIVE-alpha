@@ -28,6 +28,11 @@ import {
 } from '@synq/evaluations-insights/evaluations-analytics-summary';
 import { toAppliedFilters } from '@synq/evaluations-insights/evaluations-analytics-filters';
 import { buildCostModelSummary, costModelSectionStatus } from '@synq/evaluations-insights/evaluations-cost-model';
+import {
+  buildUtilizationModelSummary,
+  utilizationModelSectionStatus,
+} from '@synq/evaluations-insights/evaluations-utilization-model';
+import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 
 @Injectable()
 export class EvaluationsAnalyticsSummaryService {
@@ -36,6 +41,7 @@ export class EvaluationsAnalyticsSummaryService {
   constructor(
     private readonly repository: EvaluationsAnalyticsSummaryRepository,
     private readonly insightsAnalytics: DashboardInsightsAnalyticsService,
+    private readonly utilizationSnapshot: EvaluationsUtilizationSnapshotService,
   ) {}
 
   async getSummary(
@@ -45,7 +51,7 @@ export class EvaluationsAnalyticsSummaryService {
     const startedAt = Date.now();
     const generatedAt = new Date().toISOString();
 
-    const [financialResult, bookingResult, fleetResult, insightsResult, costModelResult] =
+    const [financialResult, bookingResult, fleetResult, insightsResult, costModelResult, utilizationResult] =
       await Promise.all([
       this.safeSection('financial', () => this.repository.loadFinancialSnapshot(resolved)),
       this.safeSection('bookings', () => this.repository.loadBookingSnapshot(resolved)),
@@ -54,6 +60,9 @@ export class EvaluationsAnalyticsSummaryService {
         this.insightsAnalytics.getAnalyticsSummary(organizationId, resolved),
       ),
       this.safeSection('costModel', () => this.repository.loadCostModelSnapshot(resolved)),
+      this.safeSection('utilizationModel', () =>
+        this.utilizationSnapshot.loadSnapshot(resolved),
+      ),
     ]);
 
     const financial = unwrapSectionResult(financialResult);
@@ -61,6 +70,7 @@ export class EvaluationsAnalyticsSummaryService {
     const fleet = unwrapSectionResult(fleetResult);
     const insights = unwrapSectionResult(insightsResult);
     const costModelSnapshot = unwrapSectionResult(costModelResult);
+    const utilizationSnapshot = unwrapSectionResult(utilizationResult);
 
     const periodWindow = {
       key: resolved.period.key,
@@ -70,6 +80,9 @@ export class EvaluationsAnalyticsSummaryService {
       timezone: resolved.period.timezone,
     };
 
+    const utilizationModelSummary = utilizationSnapshot
+      ? buildUtilizationModelSummary(utilizationSnapshot, periodWindow)
+      : null;
     const costModelSummary = costModelSnapshot
       ? buildCostModelSummary(costModelSnapshot, periodWindow)
       : null;
@@ -118,6 +131,12 @@ export class EvaluationsAnalyticsSummaryService {
         status: costModelSummary
           ? costModelSectionStatus(costModelSummary)
           : sectionStatusFromResult(costModelResult),
+      },
+      {
+        key: 'utilizationModel',
+        status: utilizationModelSummary
+          ? utilizationModelSectionStatus(utilizationModelSummary)
+          : sectionStatusFromResult(utilizationResult),
       },
       { key: 'activeRisks', status: sectionStatusFromResult(insightsResult) },
       { key: 'affectedEntities', status: sectionStatusFromResult(insightsResult) },
@@ -200,6 +219,14 @@ export class EvaluationsAnalyticsSummaryService {
           : sectionStatusFromResult(costModelResult),
         generatedAt,
         costModelResult.ok ? null : costModelResult.error,
+      ),
+      utilizationModel: wrapSection(
+        utilizationModelSummary,
+        utilizationModelSummary
+          ? utilizationModelSectionStatus(utilizationModelSummary)
+          : sectionStatusFromResult(utilizationResult),
+        generatedAt,
+        utilizationResult.ok ? null : utilizationResult.error,
       ),
       activeRisks: wrapSection(
         activeRisks,

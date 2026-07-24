@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { EvaluationsAnalyticsSummaryService } from './evaluations-analytics-summary.service';
+import { EvaluationsUtilizationSnapshotService } from './evaluations-utilization-snapshot.service';
 import { EvaluationsAnalyticsSummaryRepository } from './evaluations-analytics-summary.repository';
 import { DashboardInsightsAnalyticsService } from './dashboard-insights-analytics.service';
 import type { ResolvedEvaluationsAnalyticsFilters } from '@synq/evaluations-insights/evaluations-analytics-filters.contract';
@@ -138,6 +139,52 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     }),
   };
 
+  const utilizationSnapshot = {
+    loadSnapshot: jest.fn().mockResolvedValue({
+      periodFromMs: Date.parse('2026-06-01T00:00:00.000Z'),
+      periodToMs: Date.parse('2026-06-16T12:00:00.000Z'),
+      vehicles: [
+        {
+          vehicleId: 'v1',
+          label: 'AB-1',
+          homeStationId: 'st-1',
+          homeStationName: 'Berlin',
+          vehicleClassId: 'cls-1',
+          vehicleClassName: 'Compact',
+          prismaStatus: 'RENTED',
+          cleaningStatus: 'CLEAN',
+          rentalBlocked: false,
+          telemetryOffline: false,
+          operationalToken: 'ACTIVE_RENTED',
+          capacityMs: 1_000_000,
+          rentedMs: 600_000,
+          maintenanceMs: 0,
+          blockedMs: 0,
+          unplannedDowntimeMs: 0,
+          bookedNotRealizedMs: 0,
+          standstillMs: 400_000,
+          turnaroundMs: 50_000,
+          turnaroundCount: 2,
+        },
+      ],
+      overlappingBookingIds: [],
+      stationBottlenecks: [],
+      operationalSnapshot: {
+        activeRented: 5,
+        reserved: 1,
+        available: 4,
+        maintenance: 0,
+        blocked: 0,
+        unknown: 0,
+        operationalUtilizationPercent: 50,
+      },
+      maintenanceFromDowntimeWindows: 0,
+      maintenanceFromSnapshotOnly: 0,
+      blockedFromDowntimeWindows: 0,
+      blockedFromSnapshotOnly: 0,
+    }),
+  };
+
   let service: EvaluationsAnalyticsSummaryService;
 
   beforeEach(async () => {
@@ -147,6 +194,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
         EvaluationsAnalyticsSummaryService,
         { provide: EvaluationsAnalyticsSummaryRepository, useValue: repository },
         { provide: DashboardInsightsAnalyticsService, useValue: insightsAnalytics },
+        { provide: EvaluationsUtilizationSnapshotService, useValue: utilizationSnapshot },
       ],
     }).compile();
     service = moduleRef.get(EvaluationsAnalyticsSummaryService);
@@ -161,6 +209,8 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     expect(result.appliedFilters.stationId).toBeNull();
     expect(result.costModel.status).toBe('PARTIAL');
     expect(result.costModel.data?.totals.actualExpensesMinor).toBe(30_000);
+    expect(result.utilizationModel.status).toBe('PARTIAL');
+    expect(result.utilizationModel.data?.metrics.length).toBeGreaterThan(10);
     expect(result.costs.data?.fixedCostsMtdMinor).toBe(8_000);
   });
 
@@ -171,6 +221,7 @@ describe('EvaluationsAnalyticsSummaryService', () => {
     expect(repository.loadFinancialSnapshot).toHaveBeenCalledWith(resolved);
     expect(repository.loadBookingSnapshot).toHaveBeenCalledWith(resolved);
     expect(repository.loadCostModelSnapshot).toHaveBeenCalledWith(resolved);
+    expect(utilizationSnapshot.loadSnapshot).toHaveBeenCalledWith(resolved);
     expect(insightsAnalytics.getAnalyticsSummary).toHaveBeenCalledWith(orgId, resolved);
   });
 
