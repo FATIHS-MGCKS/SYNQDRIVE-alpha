@@ -377,7 +377,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: false,
     module: 'Fleet / Vehicle Detail',
     createdAt: '2026-07-24T11:05:00.000Z',
-  },    id: 'booking-production-go-v49801-2026-07-24',
+  },
+  {
+    id: 'booking-production-go-v49801-2026-07-24',
     version: '4.9.801',
     title: 'V4.9.801 — Booking production Go remediation (P0/P1 closure)',
     summary: [

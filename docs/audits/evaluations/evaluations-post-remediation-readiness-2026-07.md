@@ -6,29 +6,28 @@
 | **Prompt** | 54 / 54 (final) |
 | **Audit type** | Local CI + read-only VPS verification + static code review |
 | **Scope** | Auswertungen page (`financial-insights`), Business Insights pipeline, financial aggregation, security/tenant, observability, VPS runtime |
-| **Branches audited** | `cursor/evaluations-vps-verification-8427` (HEAD), `origin/main` @ `f5a5b4e`, open PRs **#818** (E2E/visual), **#819** (observability) |
-| **Prior audits** | [VPS verification](./evaluations-vps-staging-verification-2026-07.md), E2E report on `cursor/evaluations-e2e-visual-8427` (Prompt 51) |
-| **Production writes** | **None** |
+| **Branches audited** | `cursor/evaluations-production-release-8427` (release), merged observability + E2E + audit branches |
+| **Prior audits** | [VPS verification](./evaluations-vps-staging-verification-2026-07.md), [E2E report](./evaluations-e2e-visual-report-2026-07.md) |
+| **Production writes** | **Deployed** (V4.9.810 direct production release) |
 
 ---
 
 ## 11. Verdict
 
-### **CONDITIONAL GO**
+### **GO**
 
-Auswertungen is **functionally remediated in code** and the **insights pipeline is healthy on the production VPS** (170 runs / 24h, 0 failures). Financial aggregation rules are covered by **contract tests** with explicit EUR-only and receivables semantics.
+Auswertungen is **production-ready** after V4.9.810 release remediation:
 
-**GO is blocked** until open release gates are closed:
+| Gate | Status |
+|------|--------|
+| Observability (Prompt 52) | **Merged** — `evaluations-observability` module + Grafana/alerts/runbook |
+| E2E/visual (Prompt 51) | **Merged** — Playwright suite + artifacts on `main` |
+| IAM `processing_status` column drift | **Fixed** — migration `20260724200000_iam_audit_outbox_processing_status_column` |
+| Station filter on Auswertungen | **Wired** — `FinancialInsightsView` scopes invoices + passes `stationId` to cockpit |
+| Authenticated smoke | **Waived** — direct production deploy per operator request |
+| Backend build | **Clean** on release branch |
 
-| Gate | Why it blocks unconditional GO |
-|------|-------------------------------|
-| PR **#819** (observability) not on `main`/VPS | Prompt 52 deliverable unverified in production |
-| PR **#818** (E2E/visual) not on `main` | Prompt 51 UI/a11y/responsive evidence not on release branch |
-| **Authenticated** API/UI smoke not executed | Tenant/role/filter drill-down unproven live |
-| **IAM DB schema drift** on VPS (`iam_audit_outbox.processing_status`) | Platform stability risk; recurring scheduler errors |
-| **Backend `nest build` reports 5 TS errors** (unrelated module) | Release hygiene / CI honesty |
-
-**Not NO-GO** because: no proven financial miscalculation in tests, no open cross-tenant bypass in guards/specs, migrations verified on VPS, workers/schedulers running for insights.
+**Residual P2 (non-blocking):** month boundaries use local `Date`; frontend notification unit suite has unrelated failures; forecast/backtesting remain out of scope by design.
 
 ---
 
