@@ -35,6 +35,90 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-complete-return-handover-v49842-2026-07-25',
+    version: '4.9.842',
+    title: 'V4.9.842 — Operator App: atomischer Return-Abschluss-Command (Prompt 16)',
+    summary: [
+      'Neuer autoritativer Command `CompleteReturnHandoverService.completeReturnHandover` mit atomarer Transaktion.',
+      'API: `POST …/handover/return/complete` — Permission `operator.handover.complete`, Pflicht-`idempotencyKey`, optional Session-`expectedVersion`.',
+      'Transaktion: Return-Protokoll + Booking COMPLETED + Vehicle-Status via `resolveReturnVehicleUpdate` (kein Maintenance aus Beobachtungen) + Schäden verknüpfen + Observations + Session COMPLETED + Idempotency-Cache.',
+      'Post-Commit: ActivityLog, PDF-Enqueue, Task-Automation, `booking.returned` + `booking.completed` Workflow-Events (idempotent), Cache-Invalidierung.',
+      'Operator-Frontend nutzt neuen Endpoint; Legacy `POST …/handover/return` unverändert. 9 Integrationstests + Executor-Unit-Tests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 16: kein partieller Abschluss, keine doppelten Schäden/Dokumente/Notifications bei Retry, zentrale Vehicle-Availability-Logik.',
+    previousBehavior:
+      'Return-Abschluss nur über Legacy-POST ohne dedizierten Idempotency-Key und ohne Session-Finalisierung.',
+    details:
+      'Audit §38, `complete-return-handover.service.ts`, `handover-return-completion.executor.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:15:00.000Z',
+  },
+  {
+    id: 'operator-complete-pickup-handover-v49841-2026-07-25',
+    version: '4.9.841',
+    title: 'V4.9.841 — Operator App: atomischer Pickup-Abschluss-Command (Prompt 15)',
+    summary: [
+      'Neuer autoritativer Command `CompletePickupHandoverService.completePickupHandover` mit atomarer Transaktion.',
+      'API: `POST …/handover/pickup/complete` — Permission `operator.handover.complete`, Pflicht-`idempotencyKey`, optional Session-`expectedVersion`.',
+      'Transaktion: Protokoll + Booking ACTIVE + Vehicle RENTED + Schäden + technische Beobachtungen + Session COMPLETED + Idempotency-Cache.',
+      'Post-Commit: ActivityLog, PDF-Enqueue, Task-Automation, `booking.activated` Workflow-Event (idempotent), Cache-Invalidierung.',
+      'Operator-Frontend nutzt neuen Endpoint; Legacy `POST …/handover/pickup` unverändert. 10 Integrationstests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 15: kein partieller Abschluss, keine doppelten Notifications, Race-sichere Idempotenz.',
+    previousBehavior:
+      'Pickup-Abschluss nur über Legacy-POST ohne dedizierten Idempotency-Key und ohne Session-Finalisierung.',
+    details:
+      'Audit §37, `complete-pickup-handover.service.ts`, `handover-pickup-completion.executor.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:45:00.000Z',
+  },
+  {
+    id: 'operator-handover-session-sm-v49840-2026-07-25',
+    version: '4.9.840',
+    title: 'V4.9.840 — Operator App: serverseitige Handover-Session State-Machine (Prompt 14)',
+    summary: [
+      'Neues Prisma-Modell `BookingHandoverSession` + Enum `HandoverSessionStatus` mit partiellem Unique-Index (eine aktive Session pro booking/kind).',
+      'Zentraler Domain-Layer: `HandoverStateMachine`, `HandoverTransitionPolicy` (Pickup), `ReturnTransitionPolicy`, Übergangs-Matrix, stabile Fehlercodes.',
+      'Alle Übergänge validieren Status-Matrix, Permission, Tenant/Station-Scope, Version, Booking/Vehicle, Pickup-Gate, Signaturen, Dokumente, Blocker.',
+      'API: `GET …/handover/sessions/:kind`, `POST …/handover/sessions/:kind/transition` — COMPLETE-Transaktion bewusst deferred.',
+      '36 Unit-Tests für erlaubte/verbotene Übergänge, Overrides, Version-Konflikte, Terminal-Immutability.',
+    ],
+    reason:
+      'Production-Readiness Prompt 14: keine frei editierbaren Statusstrings; Zustandsentscheidung zentral serverseitig.',
+    previousBehavior:
+      'Kein server-persistierter Handover-Draft; Wizard-State nur im Frontend; Legacy POST erzeugt Protokoll atomar.',
+    details:
+      'Audit §36, `architecture/OPERATOR_HANDOVER_STATE_MACHINE_2026-07-25.md`. Legacy `POST …/handover/pickup|return` unverändert.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:30:00.000Z',
+  },
+  {
+    id: 'operator-handover-state-machine-v49839-2026-07-25',
+    version: '4.9.839',
+    title: 'V4.9.839 — Operator App: Handover State-Machine Analyse (Prompt 13)',
+    summary: [
+      'Vollständige Ist-Analyse Pickup/Return: Datenmodelle, Wizard, Endpunkte, Drafts, Signaturen, Schäden, Dokumente, Booking/Vehicle-Status, Notifications, Audit.',
+      'Verbindliche mehrschichtige Ist-State-Machine (Booking + Protokoll ABSENT→FINAL + ephemeres UI).',
+      'Ziel-State-Machine mit `BookingHandoverSession`: not_started, draft, in_progress, awaiting_requirements, awaiting_signature, submitted, completed, cancelled, superseded.',
+      '14 Befunde (HSM-001…014): fehlende Draft-States, returnProtocolStatus-Mehrdeutigkeit, doppelte UIs, asymmetrische Idempotenz, keine Versionierung.',
+      'Migrationsrisiken + 10 Akzeptanzkriterien für Implementierung (Prompt 14+). Keine produktiven Übergänge geändert.',
+    ],
+    reason:
+      'Production-Readiness Prompt 13: verbindliche Lifecycle-Dokumentation vor Session/Draft-Implementierung.',
+    previousBehavior:
+      'Handover-Lifecycle implizit über Booking-Status + Protokoll-Existenz; kein dokumentiertes Zielmodell für Draft/Resume/Cancel.',
+    details:
+      'Audit §35, `architecture/OPERATOR_HANDOVER_STATE_MACHINE_2026-07-25.md`. Explizit unverändert: BookingsHandoverService, Prisma, Wizard-Submit.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:50:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

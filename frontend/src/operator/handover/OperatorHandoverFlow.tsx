@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import type {
@@ -60,6 +60,8 @@ export function OperatorHandoverFlow({
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const pickupIdempotencyKeyRef = useRef<string | null>(null);
+  const returnIdempotencyKeyRef = useRef<string | null>(null);
 
   const form = useOperatorHandoverForm(isOpen, kind, orgId, booking);
 
@@ -69,6 +71,8 @@ export function OperatorHandoverFlow({
       setStepError(null);
       setSubmitError(null);
       setSubmitting(false);
+      pickupIdempotencyKeyRef.current = null;
+      returnIdempotencyKeyRef.current = null;
     }
   }, [isOpen, booking?.id, kind]);
 
@@ -138,9 +142,27 @@ export function OperatorHandoverFlow({
         state: form.state,
       });
       if (kind === 'PICKUP') {
-        await api.bookings.createPickupHandover(orgId, booking.id, payload);
+        if (!pickupIdempotencyKeyRef.current) {
+          pickupIdempotencyKeyRef.current =
+            typeof crypto !== 'undefined' && 'randomUUID' in crypto
+              ? `pickup-${booking.id}-${crypto.randomUUID()}`
+              : `pickup-${booking.id}-${Date.now()}`;
+        }
+        await api.bookings.completePickupHandover(orgId, booking.id, {
+          ...payload,
+          idempotencyKey: pickupIdempotencyKeyRef.current,
+        });
       } else {
-        await api.bookings.createReturnHandover(orgId, booking.id, payload);
+        if (!returnIdempotencyKeyRef.current) {
+          returnIdempotencyKeyRef.current =
+            typeof crypto !== 'undefined' && 'randomUUID' in crypto
+              ? `return-${booking.id}-${crypto.randomUUID()}`
+              : `return-${booking.id}-${Date.now()}`;
+        }
+        await api.bookings.completeReturnHandover(orgId, booking.id, {
+          ...payload,
+          idempotencyKey: returnIdempotencyKeyRef.current,
+        });
       }
       // Server generates pickup/return protocol PDFs after handover — refresh bundle (no frontend PDF).
       await form.reloadDocuments();

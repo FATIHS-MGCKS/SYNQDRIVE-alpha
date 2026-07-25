@@ -3872,8 +3872,10 @@ export const api = {
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
     createPickupHandover: (orgId: string, bookingId: string, data: any) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    completePickupHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup/complete`, data),
+    completeReturnHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return/complete`, data),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.
