@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-whatsapp-actions-v49845-2026-07-25',
+    version: '4.9.845',
+    title: 'V4.9.845 — Workflow WhatsApp Action Adapters (Phase 8 Prompt 35)',
+    summary: [
+      'Production whatsapp.template.send via Meta Cloud API (WhatsAppModule) — no WhatsApp Web automation.',
+      'whatsapp.ai_message.send registered with capabilityStatus DISABLED until AI pipeline.',
+      'WorkflowWhatsAppSendService: org config, E.164 resolution, consent, template approval, idempotency.',
+      'Communication policy: quiet hours, contact frequency, org rate limits.',
+      'Webhook status path: accepted/sent/delivered/read/failed with signature + replay protection.',
+      '13 dedicated tests + existing workflow suites passing.',
+    ],
+    reason: 'Workflows need governed WhatsApp outbound on the official Cloud API architecture.',
+    previousBehavior: 'customer.contact.whatsapp policy existed DISABLED with no production handler.',
+    details: 'docs/integrations/workflow-whatsapp-action-2026-07.md. Handlers: whatsapp-template-send, whatsapp-ai-message-send.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T14:00:00.000Z',
+  },
+  {
     id: 'workflow-email-send-v49844-2026-07-25',
     version: '4.9.844',
     title: 'V4.9.844 — Workflow email.send Action Adapter (Phase 8 Prompt 34)',

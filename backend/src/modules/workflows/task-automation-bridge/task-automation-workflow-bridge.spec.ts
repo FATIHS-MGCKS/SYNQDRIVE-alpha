@@ -20,6 +20,7 @@ import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
 } from '../actions/workflow-action-handlers.provider';
+import { workflowActionAdapterTestProviders } from '../actions/workflow-action-test.providers';
 import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
 import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 import { TaskAutomationExecutionRouterService } from './task-automation-execution-router.service';
@@ -155,6 +156,7 @@ describe('Task automation → workflow runtime bridge', () => {
             }),
           },
         },
+        ...workflowActionAdapterTestProviders,
       ],
     }).compile();
 

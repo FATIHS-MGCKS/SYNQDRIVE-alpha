@@ -23,6 +23,7 @@ import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
 } from './workflow-action-handlers.provider';
+import { workflowWhatsAppTestProviders } from './workflow-action-test.providers';
 import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
 import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 
@@ -182,6 +183,7 @@ describe('email.send workflow action adapter', () => {
         { provide: EmailProviderRegistry, useValue: { resolve: () => provider } },
         { provide: GeneratedDocumentsService, useValue: { getById: jest.fn() } },
         { provide: DOCUMENTS_STORAGE, useValue: { getObject: jest.fn() } },
+        ...workflowWhatsAppTestProviders,
       ],
     }).compile();
 

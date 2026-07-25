@@ -23,6 +23,7 @@ import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
 } from './workflow-action-handlers.provider';
+import { workflowActionAdapterTestProviders } from './workflow-action-test.providers';
 import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
 import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 
@@ -160,8 +161,7 @@ describe('Workflow production action adapters', () => {
             }),
           },
         },
-        { provide: GeneratedDocumentsService, useValue: { getById: jest.fn() } },
-        { provide: DOCUMENTS_STORAGE, useValue: { getObject: jest.fn() } },
+        ...workflowActionAdapterTestProviders,
       ],
     }).compile();
 

@@ -23,6 +23,7 @@ import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
 } from './workflow-action-handlers.provider';
+import { workflowActionAdapterTestProviders } from './workflow-action-test.providers';
 import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
 import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 import { BaseWorkflowActionHandler } from './handlers/base-workflow-action.handler';
@@ -137,7 +138,7 @@ describe('WorkflowActionRegistryService', () => {
         },
         { provide: NotificationCoreService, useValue: { ingestCandidate: jest.fn().mockResolvedValue({ enabled: true, operation: 'created', notification: { id: 'n1' } }) } },
         { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false, reasons: [] }) } },
-        ...emailAdapterTestProviders,
+        ...workflowActionAdapterTestProviders,
       ],
     }).compile();
 
@@ -148,6 +149,7 @@ describe('WorkflowActionRegistryService', () => {
   it('registers built-in handlers', () => {
     expect(registry.has('task.create')).toBe(true);
     expect(registry.has('email.send')).toBe(true);
+    expect(registry.has('whatsapp.template.send')).toBe(true);
     expect(registry.listTypes()).toContain('alert.create');
   });
 
@@ -185,7 +187,7 @@ describe('WorkflowActionRegistryExecutorService', () => {
         { provide: TasksService, useValue: tasksService },
         { provide: NotificationCoreService, useValue: { ingestCandidate: jest.fn().mockResolvedValue({ enabled: true, operation: 'created', notification: { id: 'n1' } }) } },
         { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false, reasons: [] }) } },
-        ...emailAdapterTestProviders,
+        ...workflowActionAdapterTestProviders,
       ],
     }).compile();
 

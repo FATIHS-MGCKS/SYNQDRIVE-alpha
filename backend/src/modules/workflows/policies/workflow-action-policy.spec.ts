@@ -186,6 +186,34 @@ describe('WorkflowActionPolicyService', () => {
     expect(result.policy.capabilityGate).toBe('ENABLED');
   });
 
+  it('allows whatsapp.template.send preview when capability enabled', () => {
+    const result = policyService.evaluate({
+      organizationId: ORG,
+      actionType: 'whatsapp.template.send',
+      eventType: 'booking.returned',
+      entityType: 'booking',
+      scopeType: 'organization',
+      actorPermissions: ['WORKFLOW_CUSTOMER_CONTACT'],
+      mode: 'preview',
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.policy.capabilityGate).toBe('ENABLED');
+  });
+
+  it('blocks whatsapp.ai_message.send when capability disabled', () => {
+    const result = policyService.evaluate({
+      organizationId: ORG,
+      actionType: 'whatsapp.ai_message.send',
+      eventType: 'booking.returned',
+      entityType: 'booking',
+      scopeType: 'organization',
+      actorPermissions: ['WORKFLOW_CUSTOMER_CONTACT'],
+      mode: 'preview',
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.violations.some((v) => v.code === 'CAPABILITY_DISABLED')).toBe(true);
+  });
+
   it('rejects cross-tenant evaluation without organizationId', () => {
     const result = policyService.evaluate({
       organizationId: '',

@@ -106,3 +106,46 @@ export interface EmailSendActionConfig {
   respectSendWindow?: boolean;
   verifiedDiagnosis?: boolean;
 }
+
+export type WorkflowWhatsAppRecipientRef =
+  | { type: 'customer'; customerId: string }
+  | { type: 'booking'; bookingId: string };
+
+export type WorkflowWhatsAppMessageKind = 'transactional' | 'marketing' | 'support';
+
+export type WorkflowWhatsAppDeliveryStatus =
+  | 'PREPARED'
+  | 'QUEUED'
+  | 'ACCEPTED'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'READ'
+  | 'FAILED'
+  | 'BLOCKED';
+
+export interface WhatsAppTemplateSendActionConfig {
+  /** Org-scoped WhatsAppTemplate.id — not provider secrets. */
+  templateId: string;
+  /** Must match approved template language when set. */
+  language?: string;
+  recipient: WorkflowWhatsAppRecipientRef;
+  /** Explicit E.164 — requires WORKFLOW_CUSTOMER_CONTACT when entity has no phone. */
+  toPhone?: string;
+  variables?: Record<string, string>;
+  messageKind?: WorkflowWhatsAppMessageKind;
+  respectQuietHours?: boolean;
+  verifiedDiagnosis?: boolean;
+}
+
+export interface WhatsAppAiMessageSendActionConfig {
+  recipient: WorkflowWhatsAppRecipientRef;
+  toPhone?: string;
+  /** Populated by future AI pipeline; manual override for approved runs only. */
+  message?: string;
+  messageKind?: WorkflowWhatsAppMessageKind;
+  respectQuietHours?: boolean;
+  appendAiTransparency?: boolean;
+  verifiedDiagnosis?: boolean;
+  /** Risk flags from AI pipeline — triggers approval gate when present. */
+  sensitiveFlags?: string[];
+}

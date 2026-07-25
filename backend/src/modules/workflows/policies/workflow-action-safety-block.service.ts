@@ -49,6 +49,8 @@ export class WorkflowActionSafetyBlockService {
       'email.send',
       'customer.contact.email',
       'customer.contact.whatsapp',
+      'whatsapp.template.send',
+      'whatsapp.ai_message.send',
       'voice.call',
     ]);
     if (!customerFacingActions.has(input.actionType)) return { blocked: false };

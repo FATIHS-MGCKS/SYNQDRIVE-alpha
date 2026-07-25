@@ -249,6 +249,64 @@ export const WORKFLOW_ACTION_POLICY_MATRIX: Record<string, WorkflowActionTechnic
     ],
   }),
 
+  // ── Customer WhatsApp (production adapters) ──
+
+  'whatsapp.template.send': policy({
+    actionType: 'whatsapp.template.send',
+    policyVersion: '2026-07-1',
+    capabilityGate: 'ENABLED',
+    riskClass: 'HIGH',
+    requiredPermission: 'WORKFLOW_CUSTOMER_CONTACT',
+    approvalRule: 'REQUIRED',
+    allowedTriggers: ALL_TRIGGERS,
+    allowedEntityTypes: ['customer', 'booking'],
+    allowedScopes: ['organization'],
+    timeout: BASE_TIMEOUT,
+    retry: { maxAttempts: 2, initialBackoffMs: 30_000, maxBackoffMs: 120_000 },
+    maxAttempts: 2,
+    fallbackCapable: false,
+    dataCategories: ['COMMUNICATION', 'PII'],
+    auditLevel: 'FORENSIC',
+    retentionClass: 'COMPLIANCE',
+    dryRunAvailable: true,
+    compensationPossible: false,
+    prohibitUnverifiedDiagnosisOnTriggers: VEHICLE_HEALTH_CRITICAL_TRIGGERS,
+    highRiskSafeguards: [
+      { code: 'OPT_IN_REQUIRED', description: 'WhatsApp opt-in and channel consent required' },
+      { code: 'QUIET_HOURS', description: 'Transactional sends respect org quiet hours unless overridden' },
+      { code: 'RATE_LIMIT', description: 'Org and per-contact frequency limits enforced' },
+      { code: 'TEMPLATE_APPROVED', description: 'Only approved template versions may be sent' },
+    ],
+  }),
+
+  'whatsapp.ai_message.send': policy({
+    actionType: 'whatsapp.ai_message.send',
+    policyVersion: '2026-07-1',
+    capabilityGate: 'DISABLED',
+    riskClass: 'CRITICAL',
+    requiredPermission: 'WORKFLOW_CUSTOMER_CONTACT',
+    approvalRule: 'REQUIRED',
+    allowedTriggers: ALL_TRIGGERS,
+    allowedEntityTypes: ['customer', 'booking'],
+    allowedScopes: ['organization'],
+    timeout: BASE_TIMEOUT,
+    retry: { maxAttempts: 1, initialBackoffMs: 30_000, maxBackoffMs: 120_000 },
+    maxAttempts: 1,
+    fallbackCapable: false,
+    dataCategories: ['COMMUNICATION', 'PII'],
+    auditLevel: 'FORENSIC',
+    retentionClass: 'COMPLIANCE',
+    dryRunAvailable: true,
+    compensationPossible: false,
+    prohibitUnverifiedDiagnosisOnTriggers: VEHICLE_HEALTH_CRITICAL_TRIGGERS,
+    highRiskSafeguards: [
+      { code: 'AI_PIPELINE_REQUIRED', description: 'Disabled until AI pipeline is production-ready' },
+      { code: 'HUMAN_IN_LOOP', description: 'Sensitive AI flags require explicit approval' },
+      { code: 'AI_TRANSPARENCY', description: 'AI transparency disclaimer appended to messages' },
+      { code: 'SERVICE_WINDOW', description: 'Free-text only within 24h customer service window' },
+    ],
+  }),
+
   // ── Disabled future / external actions (policy defined, capability DISABLED) ──
 
   'customer.contact.email': policy({

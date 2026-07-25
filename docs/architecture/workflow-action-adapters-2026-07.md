@@ -12,6 +12,8 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 | `booking.flag` | MEDIUM | `WORKFLOW_EXECUTE` | `extrasJson.workflowFlags` — enum flags only |
 | `vehicle.status.update` | HIGH | `WORKFLOW_VEHICLE_WRITE` | Transition matrix + `RentalHealthService` gate |
 | `email.send` | MEDIUM | `WORKFLOW_CUSTOMER_CONTACT` | `OutboundEmailPolicyService` + Resend via `WorkflowEmailSendService` |
+| `whatsapp.template.send` | HIGH | `WORKFLOW_CUSTOMER_CONTACT` | Meta Cloud API via `WorkflowWhatsAppSendService` + org templates |
+| `whatsapp.ai_message.send` | CRITICAL | `WORKFLOW_CUSTOMER_CONTACT` | **DISABLED** until AI pipeline; free-text + transparency disclaimer |
 
 ## Cross-cutting adapter infrastructure
 
@@ -23,6 +25,8 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 - **Notification templates** — `workflow-notification-templates.ts`
 - **Email templates** — `workflow-email-templates.ts` (`booking_follow_up`, `invoice_reminder`, `workflow_operational`)
 - **Email send service** — `workflow-email-send.service.ts` (org identity, idempotency, attachments, delivery status)
+- **WhatsApp send service** — `workflow-whatsapp-send.service.ts` (template + AI paths, consent, quiet hours, idempotency)
+- **WhatsApp communication policy** — `workflow-whatsapp-communication-policy.service.ts`
 - **Recipient roles** — `workflow-recipient-role.util.ts`
 
 Each handler implements: validate, authorize, preview (dry-run), execute, classifyError, timeout/retry/idempotency via `BaseWorkflowActionHandler`.
@@ -46,4 +50,6 @@ Each handler implements: validate, authorize, preview (dry-run), execute, classi
 
 ## Module wiring
 
-`WorkflowActionRegistryModule` imports `TasksModule`, `NotificationsModule`, `RentalHealthModule`.
+`WorkflowActionRegistryModule` imports `TasksModule`, `NotificationsModule`, `RentalHealthModule`, `OutboundEmailModule`, `WhatsAppModule`.
+
+See also: `docs/integrations/workflow-whatsapp-action-2026-07.md`.
