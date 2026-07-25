@@ -32,6 +32,7 @@ export function renderSafeMarkdown(
   options: SafeMarkdownOptions = {},
 ): ReactElement[] {
   const { isDarkMode = false } = options;
+  const textWrapClass = 'min-w-0 break-words [overflow-wrap:anywhere]';
   const safeText = escapeHtml(text);
   const lines = safeText.split('\n');
   const elements: ReactElement[] = [];
@@ -105,13 +106,15 @@ export function renderSafeMarkdown(
       const content = line.replace(/^\d+\.\s/, '');
       const number = line.match(/^\d+/)?.[0] ?? '';
       elements.push(
-        <div key={`li-${i}`} className="flex gap-2 ml-1 mb-1">
+        <div key={`li-${i}`} className={`flex gap-2 ml-1 mb-1 min-w-0 ${textWrapClass}`}>
           <span
             className={`text-xs shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}
           >
             {number}.
           </span>
-          <span className="text-[10px]">{renderBoldSegments(content)}</span>
+          <span className="text-[10px] min-w-0 break-words [overflow-wrap:anywhere]">
+            {renderBoldSegments(content)}
+          </span>
         </div>,
       );
       continue;
@@ -120,21 +123,23 @@ export function renderSafeMarkdown(
     if (line.startsWith('- ')) {
       const content = line.slice(2);
       elements.push(
-        <div key={`bullet-${i}`} className="flex gap-2 ml-1 mb-1">
+        <div key={`bullet-${i}`} className={`flex gap-2 ml-1 mb-1 min-w-0 ${textWrapClass}`}>
           <span
             className={`text-xs shrink-0 mt-1 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`}
             aria-hidden="true"
           >
             •
           </span>
-          <span className="text-[10px]">{renderBoldSegments(content)}</span>
+          <span className="text-[10px] min-w-0 break-words [overflow-wrap:anywhere]">
+            {renderBoldSegments(content)}
+          </span>
         </div>,
       );
       continue;
     }
 
     elements.push(
-      <p key={`p-${i}`} className="text-xs mb-1">
+      <p key={`p-${i}`} className={`text-xs mb-1 min-w-0 break-words [overflow-wrap:anywhere]`}>
         {renderBoldSegments(line)}
       </p>,
     );

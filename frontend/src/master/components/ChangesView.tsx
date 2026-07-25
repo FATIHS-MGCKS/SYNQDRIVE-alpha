@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-chat-mobile-layout-v49816-2026-07-25',
+    version: '4.9.816',
+    title: 'V4.9.816 — AI Chat mobile layout (Prompt 23)',
+    summary: [
+      'AI chat session sidebar hidden below lg; mobile new-chat in header.',
+      'Single scroll region for messages; sticky input with iOS safe-area.',
+      'min-w-0 / break-words on bubbles, markdown, structured cards.',
+      'Playwright: no horizontal overflow, long health/overdue answers, input reachable.',
+    ],
+    reason: 'Prompt 23/32 — fix mobile layout root causes on AI chat page.',
+    previousBehavior:
+      '260px sidebar always visible on mobile; nested scroll + calc(100vh-120px) crushed answer column.',
+    details:
+      'frontend/src/rental/components/AIAssistantView.tsx, App.tsx shell, e2e/ai-chat-responsive.spec.ts',
+    affectsArchitecture: true,
+    module: 'Fleet AI / Chat',
+    createdAt: '2026-07-25T01:30:00.000Z',
+  },
+  {
     id: 'fleet-ai-chat-compact-summary-v49815-2026-07-25',
     version: '4.9.815',
     title: 'V4.9.815 — Fleet Chat compact summary readability (Prompt 22)',

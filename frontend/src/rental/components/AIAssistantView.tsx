@@ -42,6 +42,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
   const [agentReady, setAgentReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
 
@@ -96,38 +97,42 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [orgId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const frame = requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+    return () => cancelAnimationFrame(frame);
   }, [messages, isTyping]);
 
-  const handleSend = useCallback((text?: string) => {
-    const msg = text || input.trim();
-    if (!msg || isTyping || !orgId) return;
+  const handleSend = useCallback(
+    (text?: string) => {
+      const msg = text || input.trim();
+      if (!msg || isTyping || !orgId) return;
 
-    setError(null);
-    const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: msg,
-      timestamp: new Date(),
-    };
+      setError(null);
+      const userMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        content: msg,
+        timestamp: new Date(),
+      };
 
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setIsTyping(true);
-    setThinkingLabel(null);
+      setMessages((prev) => [...prev, userMsg]);
+      setInput('');
+      setIsTyping(true);
+      setThinkingLabel(null);
 
-    // Cancel any in-flight stream before starting a new one.
-    streamAbortRef.current?.abort();
+      streamAbortRef.current?.abort();
 
-    let settled = false;
-    streamAbortRef.current = streamChatMessage(
-      orgId,
-      msg,
-      (evt: ChatStreamEvent) => {
+      let settled = false;
+      streamAbortRef.current = streamChatMessage(orgId, msg, (evt: ChatStreamEvent) => {
         if (evt.event === 'status') {
           if (evt.data.agentReady) setAgentReady(true);
         } else if (evt.event === 'progress') {
@@ -144,40 +149,44 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
             timestamp: new Date(evt.data.createdAt),
             structured: evt.data.structured,
           };
-          setMessages(prev => [...prev, aiMsg]);
+          setMessages((prev) => [...prev, aiMsg]);
         } else if (evt.event === 'error') {
           settled = true;
           const errorMsg: ChatMessage = {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: sanitizeUserVisibleText(evt.data.message || "I'm sorry, something went wrong. Please try again."),
+            content: sanitizeUserVisibleText(
+              evt.data.message || "I'm sorry, something went wrong. Please try again.",
+            ),
             timestamp: new Date(),
             isError: true,
             technicalDetails: evt.data.technicalDetails,
           };
-          setMessages(prev => [...prev, errorMsg]);
+          setMessages((prev) => [...prev, errorMsg]);
         }
-      },
-      () => {
-        // onDone — connection closed; surface a fallback only if nothing arrived.
+      }, () => {
         if (!settled) {
           const errorMsg: ChatMessage = {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: "It looks like there's a connection issue. Please check your network and try again.",
+            content:
+              "It looks like there's a connection issue. Please check your network and try again.",
             timestamp: new Date(),
           };
-          setMessages(prev => [...prev, errorMsg]);
+          setMessages((prev) => [...prev, errorMsg]);
         }
         setIsTyping(false);
         setThinkingLabel(null);
         streamAbortRef.current = null;
-      },
-    );
-  }, [input, isTyping, orgId, agentReady, locale]);
+      });
+    },
+    [input, isTyping, orgId, agentReady, locale],
+  );
 
   useEffect(() => {
-    return () => { streamAbortRef.current?.abort(); };
+    return () => {
+      streamAbortRef.current?.abort();
+    };
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -200,30 +209,40 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
     setError(null);
     try {
       await api.chat.clearHistory(orgId);
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   };
 
-  const handleRetry = useCallback((msgId: string) => {
-    const idx = messages.findIndex(m => m.id === msgId);
-    if (idx < 1) return;
-    const prevUserMsg = messages.slice(0, idx).reverse().find(m => m.role === 'user');
-    if (prevUserMsg) {
-      setMessages(prev => prev.filter(m => m.id !== msgId));
-      handleSend(prevUserMsg.content);
-    }
-  }, [messages, handleSend]);
+  const handleRetry = useCallback(
+    (msgId: string) => {
+      const idx = messages.findIndex((m) => m.id === msgId);
+      if (idx < 1) return;
+      const prevUserMsg = messages.slice(0, idx).reverse().find((m) => m.role === 'user');
+      if (prevUserMsg) {
+        setMessages((prev) => prev.filter((m) => m.id !== msgId));
+        handleSend(prevUserMsg.content);
+      }
+    },
+    [messages, handleSend],
+  );
 
   const glass = isDarkMode
     ? 'bg-neutral-900 border border-neutral-800'
     : 'bg-white border border-gray-200';
 
-  const messageCount = messages.filter(m => m.role === 'user').length;
+  const messageCount = messages.filter((m) => m.role === 'user').length;
 
   return (
-    <div className="flex h-[calc(100vh-120px)] max-w-[1400px] mx-auto gap-0">
-      {/* Left sidebar - Chat info */}
-      <div className={`w-[260px] shrink-0 rounded-l-2xl overflow-hidden flex flex-col ${glass}`}>
-        {/* New chat button */}
+    <div
+      data-testid="ai-assistant-root"
+      className="flex flex-1 min-h-0 min-w-0 w-full max-w-[1400px] mx-auto gap-0 overflow-hidden"
+    >
+      {/* Desktop sidebar — hidden on mobile to preserve chat column width */}
+      <aside
+        className={`hidden lg:flex w-[260px] shrink-0 rounded-l-2xl overflow-hidden flex-col min-w-0 ${glass}`}
+        aria-label={locale === 'en' ? 'Chat session info' : 'Chat-Sitzungsinfo'}
+      >
         <div className="p-3">
           <button
             onClick={handleNewChat}
@@ -238,11 +257,12 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           </button>
         </div>
 
-        {/* Agent status */}
         <div className="px-3 pb-3">
           <div className={`rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <div className={`w-2 h-2 rounded-full ${agentReady ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
+              <div
+                className={`w-2 h-2 rounded-full ${agentReady ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`}
+              />
               <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                 {agentReady ? 'DIMO Agent Connected' : 'Agent Initializing...'}
               </span>
@@ -258,112 +278,175 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           </div>
         </div>
 
-        {/* Capabilities */}
-        <div className="flex-1 overflow-y-auto px-3 pb-3" style={{ scrollbarWidth: 'thin', scrollbarColor: isDarkMode ? 'rgba(100,100,100,0.3) transparent' : 'rgba(200,200,200,0.5) transparent' }}>
-          <div className={`text-xs font-semibold uppercase tracking-wider px-2 py-1.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
+        <div
+          className="flex-1 min-h-0 overflow-y-auto px-3 pb-3"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: isDarkMode ? 'rgba(100,100,100,0.3) transparent' : 'rgba(200,200,200,0.5) transparent',
+          }}
+        >
+          <div
+            className={`text-xs font-semibold uppercase tracking-wider px-2 py-1.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}
+          >
             Capabilities
           </div>
-          {capabilities.map(cap => {
-            const Icon = cap.icon;
+          {capabilities.map((cap) => {
+            const CapIcon = cap.icon;
             return (
-              <div key={cap.key} className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                <Icon className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-purple-500/60' : 'text-purple-400/60'}`} />
-                <span className="text-[11px] font-medium">{t(cap.key as any)}</span>
+              <div
+                key={cap.key}
+                className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}
+              >
+                <CapIcon
+                  className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-purple-500/60' : 'text-purple-400/60'}`}
+                />
+                <span className="text-[11px] font-medium min-w-0 break-words">{t(cap.key as any)}</span>
               </div>
             );
           })}
 
           <div className={`mt-4 rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/60'}`}>
-            <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>About this assistant</p>
+            <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+              About this assistant
+            </p>
             <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
-              This AI assistant uses the DIMO Agents API to analyze your fleet data, vehicle telemetry, and operational metrics in real-time.
+              This AI assistant uses the DIMO Agents API to analyze your fleet data, vehicle telemetry, and operational
+              metrics in real-time.
             </p>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Main chat area */}
-      <div className={`flex-1 flex flex-col rounded-r-2xl overflow-hidden border-l-0 ${glass}`} style={{ borderLeft: 'none' }}>
-        {/* Chat header */}
-        <div className={`px-3 py-2.5 border-b flex items-center gap-3 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}>
+      {/* Main chat column — single scroll region for messages */}
+      <div
+        data-testid="ai-chat-compose"
+        className={`flex-1 flex flex-col min-h-0 min-w-0 rounded-2xl overflow-hidden ${glass}`}
+      >
+        <div
+          className={`shrink-0 px-3 py-2.5 border-b flex items-center gap-2 sm:gap-3 min-w-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}
+        >
+          <div
+            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}
+          >
             <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
           </div>
-          <div className="flex-1">
-            <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('aiChat.title')}</h2>
-            <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('aiChat.subtitle')}</p>
+          <div className="flex-1 min-w-0">
+            <h2 className={`text-base sm:text-lg font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {t('aiChat.title')}
+            </h2>
+            <p className={`text-[11px] sm:text-xs truncate ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+              {t('aiChat.subtitle')}
+            </p>
           </div>
-          {messages.length > 0 && (
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={handleNewChat}
-              title="Clear conversation"
-              className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+              title={t('aiChat.newChat')}
+              className={`lg:hidden p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
             >
-              <Icon name="trash-2" className="w-4 h-4" />
+              <Icon name="plus" className="w-4 h-4" />
             </button>
-          )}
+            {messages.length > 0 && (
+              <button
+                onClick={handleNewChat}
+                title="Clear conversation"
+                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+              >
+                <Icon name="trash-2" className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Error banner */}
         {error && (
-          <div className={`px-4 py-2 flex items-center gap-2 text-xs ${isDarkMode ? 'bg-red-900/20 text-red-400 border-b border-red-800/30' : 'bg-red-50 text-red-600 border-b border-red-100'}`}>
+          <div
+            className={`shrink-0 px-4 py-2 flex items-center gap-2 text-xs min-w-0 ${isDarkMode ? 'bg-red-900/20 text-red-400 border-b border-red-800/30' : 'bg-red-50 text-red-600 border-b border-red-100'}`}
+          >
             <Icon name="alert-circle" className="w-3.5 h-3.5 shrink-0" />
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-auto text-[10px] font-semibold hover:underline">Dismiss</button>
+            <span className="min-w-0 break-words">{error}</span>
+            <button onClick={() => setError(null)} className="ml-auto text-[10px] font-semibold hover:underline shrink-0">
+              Dismiss
+            </button>
           </div>
         )}
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-3 py-3" style={{ scrollbarWidth: 'thin', scrollbarColor: isDarkMode ? 'rgba(100,100,100,0.3) transparent' : 'rgba(200,200,200,0.5) transparent' }}>
+        <div
+          ref={scrollContainerRef}
+          data-testid="ai-chat-messages"
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: isDarkMode ? 'rgba(100,100,100,0.3) transparent' : 'rgba(200,200,200,0.5) transparent',
+          }}
+        >
           {!historyLoaded ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[12rem]">
               <Icon name="loader-2" className={`w-6 h-6 animate-spin ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
             </div>
           ) : messages.length === 0 ? (
-            /* Welcome screen */
-            <div className="max-w-2xl mx-auto mt-8">
+            <div className="max-w-2xl mx-auto mt-4 sm:mt-8 min-w-0">
               <div className="text-center mb-3">
-                <div className={`w-16 h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-gradient-to-br from-purple-500/20 to-violet-500/15' : 'bg-gradient-to-br from-purple-100 to-violet-50'}`}>
+                <div
+                  className={`w-16 h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-gradient-to-br from-purple-500/20 to-violet-500/15' : 'bg-gradient-to-br from-purple-100 to-violet-50'}`}
+                >
                   <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                 </div>
-                <h2 className={`text-lg font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('aiChat.title')}</h2>
-                <p className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('aiChat.welcomeDesc')}</p>
+                <h2 className={`text-lg font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {t('aiChat.title')}
+                </h2>
+                <p className={`text-xs px-2 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                  {t('aiChat.welcomeDesc')}
+                </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                {capabilities.map(cap => {
-                  const Icon = cap.icon;
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 mb-3">
+                {capabilities.map((cap) => {
+                  const CapIcon = cap.icon;
                   return (
-                    <div key={cap.key} className={`flex items-center gap-2.5 px-3.5 py-3 rounded-lg ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}>
-                      <Icon className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
-                      <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{t(cap.key as any)}</span>
+                    <div
+                      key={cap.key}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg min-w-0 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}
+                    >
+                      <CapIcon className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                      <span className={`text-[11px] font-semibold min-w-0 break-words ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {t(cap.key as any)}
+                      </span>
                     </div>
                   );
                 })}
               </div>
 
               <div>
-                <p className={`text-xs font-semibold uppercase tracking-wider mb-3 text-center ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
+                <p
+                  className={`text-xs font-semibold uppercase tracking-wider mb-3 text-center ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}
+                >
                   Try asking...
                 </p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {suggestions.map(s => {
-                    const Icon = s.icon;
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {suggestions.map((s) => {
+                    const SIcon = s.icon;
                     return (
                       <button
                         key={s.key}
                         onClick={() => handleSend(t(s.key as any))}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all group ${
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group min-w-0 ${
                           isDarkMode
                             ? 'surface-premium hover:surface-premium border border-neutral-800 hover:border-neutral-700'
                             : 'bg-white hover:bg-gray-50 border border-gray-200/60 hover:border-gray-300'
                         }`}
                       >
-                        <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50'}`}>
-                          <Icon className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                        <div
+                          className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50'}`}
+                        >
+                          <SIcon className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                         </div>
-                        <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t(s.key as any)}</span>
-                        <Icon name="chevron-right" className={`w-3.5 h-3.5 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`} />
+                        <span className={`text-xs font-semibold min-w-0 break-words ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {t(s.key as any)}
+                        </span>
+                        <Icon
+                          name="chevron-right"
+                          className={`w-3.5 h-3.5 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}
+                        />
                       </button>
                     );
                   })}
@@ -371,34 +454,44 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
               </div>
             </div>
           ) : (
-            /* Chat messages */
-            <div className="max-w-3xl mx-auto space-y-5">
-              {messages.map(msg => (
-                <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+            <div className="max-w-3xl mx-auto space-y-4 sm:space-y-5 min-w-0 w-full">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex gap-2 sm:gap-3 min-w-0 w-full ${msg.role === 'user' ? 'justify-end' : ''}`}
+                >
                   {msg.role === 'assistant' && (
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}>
-                      <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                    <div
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}
+                    >
+                      <Icon name="sparkles" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                     </div>
                   )}
-                  <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-first' : ''}`}>
-                    <div className={`rounded-lg px-3 py-2 ${
-                      msg.role === 'user'
-                        ? isDarkMode
-                          ? 'bg-purple-600/20 border border-purple-500/20'
-                          : 'bg-purple-50 border border-purple-200/40'
-                        : msg.isError
+                  <div
+                    className={`min-w-0 max-w-[min(100%,42rem)] sm:max-w-[88%] lg:max-w-[80%] ${msg.role === 'user' ? 'order-first' : ''}`}
+                  >
+                    <div
+                      className={`rounded-lg px-3 py-2 min-w-0 overflow-hidden break-words [overflow-wrap:anywhere] ${
+                        msg.role === 'user'
                           ? isDarkMode
-                            ? 'bg-red-900/15 border border-red-800/30'
-                            : 'bg-red-50 border border-red-100'
-                          : isDarkMode
-                            ? 'surface-premium'
-                            : 'bg-gray-50/80'
-                    }`}>
+                            ? 'bg-purple-600/20 border border-purple-500/20'
+                            : 'bg-purple-50 border border-purple-200/40'
+                          : msg.isError
+                            ? isDarkMode
+                              ? 'bg-red-900/15 border border-red-800/30'
+                              : 'bg-red-50 border border-red-100'
+                            : isDarkMode
+                              ? 'surface-premium'
+                              : 'bg-gray-50/80'
+                      }`}
+                    >
                       {msg.role === 'user' ? (
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{msg.content}</p>
+                        <p className={`text-xs min-w-0 break-words ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                          {msg.content}
+                        </p>
                       ) : (
                         <div
-                          className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}
+                          className={`min-w-0 break-words [overflow-wrap:anywhere] ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
                           role={msg.isError ? 'alert' : undefined}
                           aria-live={msg.isError ? 'polite' : undefined}
                         >
@@ -430,12 +523,20 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                           onClick={() => handleCopy(msg.id, msg.content)}
                           className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
                         >
-                          {copiedId === msg.id ? <Icon name="check" className="w-3 h-3 text-green-500" /> : <Icon name="copy" className="w-3 h-3" />}
+                          {copiedId === msg.id ? (
+                            <Icon name="check" className="w-3 h-3 text-green-500" />
+                          ) : (
+                            <Icon name="copy" className="w-3 h-3" />
+                          )}
                         </button>
-                        <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                        <button
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                        >
                           <Icon name="thumbs-up" className="w-3 h-3" />
                         </button>
-                        <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                        <button
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                        >
                           <Icon name="thumbs-down" className="w-3 h-3" />
                         </button>
                         <button
@@ -448,22 +549,31 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                     )}
                   </div>
                   {msg.role === 'user' && (
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-status-ai-soft' : 'bg-status-info-soft/80'}`}>
-                      <Icon name="user" className={`w-5 h-5 ${isDarkMode ? 'text-status-ai' : 'text-status-info'}`} />
+                    <div
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-status-ai-soft' : 'bg-status-info-soft/80'}`}
+                    >
+                      <Icon name="user" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-status-ai' : 'text-status-info'}`} />
                     </div>
                   )}
                 </div>
               ))}
 
               {isTyping && (
-                <div className="flex gap-3">
-                  <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}>
-                    <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                <div className="flex gap-2 sm:gap-3 min-w-0">
+                  <div
+                    className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}
+                  >
+                    <Icon name="sparkles" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                   </div>
                   <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}>
                     <div className="flex items-center gap-2">
-                      <Icon name="loader-2" className={`w-3.5 h-3.5 animate-spin ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
-                      <span className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{thinkingLabel || t('aiChat.thinking')}</span>
+                      <Icon
+                        name="loader-2"
+                        className={`w-3.5 h-3.5 animate-spin ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`}
+                      />
+                      <span className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                        {thinkingLabel || t('aiChat.thinking')}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -474,44 +584,51 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           )}
         </div>
 
-        {/* Input area */}
-        <div className={`px-3 py-3 border-t ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
-          <div className="max-w-3xl mx-auto">
-            <div className={`flex items-end gap-3 rounded-lg px-3 py-2 ${
-              isDarkMode
-                ? 'surface-premium border border-neutral-700 focus-within:border-purple-500/40'
-                : 'bg-gray-50/80 border border-gray-200 focus-within:border-purple-300'
-            } transition-colors`}>
+        <div
+          className={`shrink-0 px-3 py-3 border-t pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}
+        >
+          <div className="max-w-3xl mx-auto min-w-0">
+            <div
+              className={`flex items-end gap-2 sm:gap-3 rounded-lg px-3 py-2 min-w-0 ${
+                isDarkMode
+                  ? 'surface-premium border border-neutral-700 focus-within:border-purple-500/40'
+                  : 'bg-gray-50/80 border border-gray-200 focus-within:border-purple-300'
+              } transition-colors`}
+            >
               <textarea
                 ref={inputRef}
+                data-testid="ai-chat-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={t('aiChat.inputPlaceholder')}
                 rows={1}
-                className={`flex-1 bg-transparent outline-none text-xs resize-none max-h-32 placeholder:text-gray-400 ${
+                className={`flex-1 min-w-0 bg-transparent outline-none text-xs resize-none max-h-32 placeholder:text-gray-400 ${
                   isDarkMode ? 'text-gray-200' : 'text-gray-800'
                 }`}
                 style={{ minHeight: '24px' }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
                   target.style.height = '24px';
-                  target.style.height = target.scrollHeight + 'px';
+                  target.style.height = `${Math.min(target.scrollHeight, 128)}px`;
                 }}
               />
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isTyping}
-                className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                aria-label={t('aiChat.send')}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                   input.trim() && !isTyping
                     ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-sm'
-                    : isDarkMode ? 'bg-neutral-700 text-gray-500' : 'bg-gray-200 text-gray-400'
+                    : isDarkMode
+                      ? 'bg-neutral-700 text-gray-500'
+                      : 'bg-gray-200 text-gray-400'
                 }`}
               >
                 <Icon name="send" className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className={`text-xs text-center mt-2 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
+            <p className={`text-[10px] sm:text-xs text-center mt-2 px-1 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
               SYNQDRIVE AI · Powered by DIMO Agents · Verify important fleet data
             </p>
           </div>

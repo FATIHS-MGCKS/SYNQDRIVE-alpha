@@ -238,3 +238,11 @@ must be wrapped as `AiEvidence` with explicit:
 - Warnings: last-known position, limited data, inconsistent state; next action footer.
 - Narrative de-duplication via collapsible "Vollständige Antwort".
 
+### Prompt 23 — AI Chat mobile layout (2026-07-25)
+
+- `AIAssistantView`: session sidebar `hidden lg:flex`; main column `flex-1 min-h-0` single scroll (`#ai-chat-messages`).
+- `App.tsx`: `ai-assistant-shell` negates AppShell padding; `100dvh`-based min-height on mobile.
+- Sticky input with `env(safe-area-inset-bottom)`; message bubbles `min-w-0` + `overflow-wrap:anywhere`.
+- Responsive welcome grids (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`).
+- Playwright `e2e/ai-chat-responsive.spec.ts` — 320–430px, landscape, desktop; long HEALTH/OVERDUE history.
+

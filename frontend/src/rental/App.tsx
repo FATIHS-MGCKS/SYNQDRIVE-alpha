@@ -1148,7 +1148,12 @@ function RentalAppContent() {
             }}
           />
         ) : currentView === 'ai-assistant' ? (
-          <AIAssistantView isDarkMode={isDarkMode} />
+          <div
+            data-testid="ai-assistant-shell"
+            className="-mx-5 sm:-mx-7 lg:-mx-[100px] -mt-4 lg:-mt-6 -mb-8 lg:-mb-6 flex flex-col min-h-[calc(100dvh-4rem)] lg:min-h-[calc(100dvh-6rem)] min-w-0"
+          >
+            <AIAssistantView isDarkMode={isDarkMode} />
+          </div>
         ) : currentView === 'support' ? (
           <SupportView
             onOpenHelpCenter={() => {

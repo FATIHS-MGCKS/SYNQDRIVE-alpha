@@ -26,7 +26,7 @@ export function FleetChatStructuredContent({
   const muted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
 
   return (
-    <div data-testid="fleet-chat-structured-content">
+    <div data-testid="fleet-chat-structured-content" className="min-w-0 break-words [overflow-wrap:anywhere]">
       <FleetChatCompactSummaryCard
         structured={structured}
         content={content}
