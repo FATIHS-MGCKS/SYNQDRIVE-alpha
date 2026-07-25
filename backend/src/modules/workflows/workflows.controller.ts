@@ -39,8 +39,17 @@ export class WorkflowsController {
     @Param('orgId') orgId: string,
     @Query('status') status?: string,
     @Query('category') category?: string,
+    @Query('search') search?: string,
+    @Query('includeSystem') includeSystem?: string,
+    @Query('includeArchived') includeArchived?: string,
   ) {
-    return this.service.findByOrg(orgId, { status, category });
+    return this.service.findByOrg(orgId, {
+      status,
+      category,
+      search,
+      includeSystem: includeSystem === 'true',
+      includeArchived: includeArchived === 'true',
+    });
   }
 
   @Get('stats')

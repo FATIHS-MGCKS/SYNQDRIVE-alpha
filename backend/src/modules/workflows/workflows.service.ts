@@ -18,6 +18,11 @@ import {
 } from './maker-checker/workflow-maker-checker.util';
 import { TaskAutomationAdminService } from '@modules/tasks/automation/task-automation-admin.service';
 import { WorkflowAuditService } from './audit/workflow-audit.service';
+import {
+  isSystemWorkflow,
+  mapWorkflowListItem,
+  type WorkflowListItemDto,
+} from './workflow-list.mapper';
 import { redactWorkflowRunPayload } from './audit/workflow-audit-sanitize.util';
 
 const STATUS_DISPLAY: Record<string, string> = {
@@ -26,6 +31,7 @@ const STATUS_DISPLAY: Record<string, string> = {
   DISABLED: 'Disabled',
   INVALID: 'Invalid',
   PENDING_ACTIVATION: 'Pending activation',
+  ARCHIVED: 'Archived',
 };
 
 @Injectable()
@@ -46,16 +52,73 @@ export class WorkflowsService {
     };
   }
 
-  async findByOrg(orgId: string, filters?: { status?: string; category?: string }) {
+  async findByOrg(
+    orgId: string,
+    filters?: {
+      status?: string;
+      category?: string;
+      search?: string;
+      includeSystem?: boolean;
+      includeArchived?: boolean;
+    },
+  ): Promise<WorkflowListItemDto[]> {
     const where: Prisma.OrgWorkflowWhereInput = { organizationId: orgId };
-    if (filters?.status) where.status = filters.status as Prisma.EnumWorkflowStatusFilter;
+    if (filters?.status) {
+      where.status = filters.status as Prisma.EnumWorkflowStatusFilter;
+    } else if (!filters?.includeArchived) {
+      where.status = { not: 'ARCHIVED' };
+    }
     if (filters?.category) where.category = filters.category;
+    if (filters?.search?.trim()) {
+      const query = filters.search.trim();
+      where.OR = [
+        { name: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { category: { contains: query, mode: 'insensitive' } },
+      ];
+    }
 
     const rows = await this.prisma.orgWorkflow.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     });
-    return rows.map((r) => this.format(r as unknown as Record<string, unknown>));
+
+    const visible = filters?.includeSystem
+      ? rows
+      : rows.filter((row) => !isSystemWorkflow(row));
+    if (visible.length === 0) return [];
+
+    const workflowIds = visible.map((row) => row.id);
+    const [latestRuns, pendingRequests] = await Promise.all([
+      this.prisma.orgWorkflowRun.findMany({
+        where: { organizationId: orgId, workflowId: { in: workflowIds } },
+        orderBy: { createdAt: 'desc' },
+        distinct: ['workflowId'],
+      }),
+      this.prisma.orgWorkflowChangeRequest.findMany({
+        where: {
+          organizationId: orgId,
+          workflowId: { in: workflowIds },
+          status: 'PENDING',
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const latestRunByWorkflow = new Map(latestRuns.map((run) => [run.workflowId, run]));
+    const pendingByWorkflow = new Map<string, (typeof pendingRequests)[number]>();
+    for (const request of pendingRequests) {
+      if (!pendingByWorkflow.has(request.workflowId)) {
+        pendingByWorkflow.set(request.workflowId, request);
+      }
+    }
+
+    return visible.map((row) =>
+      mapWorkflowListItem(row, {
+        latestRun: latestRunByWorkflow.get(row.id) ?? null,
+        pendingChangeRequest: pendingByWorkflow.get(row.id) ?? null,
+      }),
+    );
   }
 
   async findById(orgId: string, id: string) {
@@ -480,7 +543,13 @@ export class WorkflowsService {
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundException('Workflow not found');
-    await this.prisma.orgWorkflow.delete({ where: { id } });
+    await this.prisma.orgWorkflow.update({
+      where: { id },
+      data: {
+        status: 'ARCHIVED',
+        enabled: false,
+      },
+    });
     this.workflowAudit.recordFireAndForget({
       orgId,
       eventType: 'WORKFLOW_ARCHIVED',
@@ -501,6 +570,7 @@ export class WorkflowsService {
       disabled,
       invalid,
       pendingActivation,
+      archived,
       totalRuns,
       successfulRuns,
       failedRuns,
@@ -508,13 +578,18 @@ export class WorkflowsService {
       runsLast24h,
       lastRun,
     ] = await Promise.all([
-      this.prisma.orgWorkflow.count({ where: { organizationId: orgId } }),
+      this.prisma.orgWorkflow.count({
+        where: { organizationId: orgId, status: { not: 'ARCHIVED' } },
+      }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'ACTIVE' } }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'DRAFT' } }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'DISABLED' } }),
       this.prisma.orgWorkflow.count({ where: { organizationId: orgId, status: 'INVALID' } }),
       this.prisma.orgWorkflow.count({
         where: { organizationId: orgId, status: 'PENDING_ACTIVATION' },
+      }),
+      this.prisma.orgWorkflow.count({
+        where: { organizationId: orgId, status: 'ARCHIVED' },
       }),
       this.prisma.orgWorkflowRun.count({ where: { organizationId: orgId } }),
       this.prisma.orgWorkflowRun.count({ where: { organizationId: orgId, status: 'SUCCESS' } }),
@@ -539,6 +614,7 @@ export class WorkflowsService {
       disabled,
       invalid,
       pendingActivation,
+      archived,
       totalRuns,
       successfulRuns,
       failedRuns,

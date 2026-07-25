@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-runtime-ui-v49854-2026-07-25',
+    version: '4.9.854',
+    title: 'V4.9.854 — Workflow Runtime UI (Phase 10 Prompt 44)',
+    summary: [
+      'Workflow automation overview bound to canonical OrgWorkflow runtime list API (risk, approval, last run, source type).',
+      'WorkflowListItemDto mapper on backend with archived status, legacy/migrated badges, unavailable action counts.',
+      'Frontend WorkflowOverviewSection + WorkflowDetailDrawer with filters, search, i18n DE/EN, loading/error/empty states.',
+      'No misleading global success counters in overview KPIs; partial success and policy-block surfaced per workflow.',
+    ],
+    reason: 'Operators need a trustworthy workflow overview aligned with the canonical runtime, not legacy list placeholders.',
+    previousBehavior: 'Workflow list used raw WorkflowDto with coarse status filters and run success counters without runtime metadata.',
+    details: 'frontend/src/rental/components/workflow-automation/. Backend: workflow-list.mapper.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T23:00:00.000Z',
+  },
+  {
     id: 'workflow-audit-ai-transparency-v49853-2026-07-25',
     version: '4.9.853',
     title: 'V4.9.853 — Workflow Audit, PII Redaction & AI Transparency (Phase 9 Prompt 43)',

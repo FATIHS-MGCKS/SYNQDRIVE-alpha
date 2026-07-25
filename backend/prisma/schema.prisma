@@ -10695,6 +10695,7 @@ enum WorkflowStatus {
   DISABLED
   INVALID
   PENDING_ACTIVATION
+  ARCHIVED
 }
 
 enum WorkflowMakerCheckerOperation {

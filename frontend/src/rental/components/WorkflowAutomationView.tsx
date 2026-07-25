@@ -3,9 +3,12 @@ import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { api } from '../../lib/api';
+import type { WorkflowListItemDto } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import { useLanguage } from '../i18n/LanguageContext';
 import { EmptyState } from '../../components/patterns';
 import { TaskAutomationRulesSection } from './workflow-automation/TaskAutomationRulesSection';
+import { WorkflowOverviewSection } from './workflow-automation/WorkflowOverviewSection';
 
 // ─── Types ───────────────────────────────────────
 
@@ -20,7 +23,7 @@ interface Workflow {
   actions: ActionDef[];
   scope: ScopeDef;
   status: string;
-  statusLabel: string;
+  statusLabel?: string;
   createdById: string | null;
   createdByName: string | null;
   updatedById: string | null;
@@ -33,7 +36,7 @@ interface Workflow {
 }
 
 interface TriggerDef { type: string; config?: Record<string, any>; }
-interface ConditionDef { field?: string; path?: string; operator: string; value: any; }
+interface ConditionDef { field?: string; path?: string; operator: string; value?: any; }
 interface ActionDef { type: string; config?: Record<string, any>; }
 interface ScopeDef { type: string; stationIds?: string[]; vehicleIds?: string[]; }
 
@@ -337,17 +340,9 @@ const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textCl
 
 export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = true }: Props) {
   const { orgId } = useRentalOrg();
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    total: 0, active: 0, draft: 0, disabled: 0, invalid: 0,
-    totalRuns: 0, successfulRuns: 0, failedRuns: 0, waitingApprovalRuns: 0, runsLast24h: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const { t } = useLanguage();
   const [view, setView] = useState<'list' | 'detail' | 'builder'>('list');
-  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowListItemDto | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [builderData, setBuilderData] = useState<Partial<Workflow> | null>(null);
   const [mainTab, setMainTab] = useState<'workflows' | 'task-automations'>('workflows');
@@ -360,44 +355,19 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
   const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50';
 
-  const loadData = useCallback(async () => {
-    if (!orgId) return;
-    setLoading(true);
+  const refreshSelectedWorkflow = useCallback(async () => {
+    if (!orgId || !selectedWorkflow) return;
     try {
-      const [wfRes, stRes] = await Promise.all([
-        api.workflows.list(orgId),
-        api.workflows.stats(orgId),
-      ]);
-      setWorkflows(wfRes as Workflow[]);
-      setStats(stRes);
+      const wf = await api.workflows.get(orgId, selectedWorkflow.id);
+      setSelectedWorkflow(wf as WorkflowListItemDto);
     } catch (e) {
-      console.error('Failed to load workflows', e);
-    } finally {
-      setLoading(false);
+      console.error('Failed to refresh workflow', e);
     }
-  }, [orgId]);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const filtered = useMemo(() => {
-    let list = workflows;
-    if (statusFilter !== 'all') list = list.filter((w) => w.status === statusFilter);
-    if (categoryFilter !== 'all') list = list.filter((w) => w.category === categoryFilter);
-    if (search) {
-      const s = search.toLowerCase();
-      list = list.filter((w) =>
-        w.name.toLowerCase().includes(s) ||
-        (w.description || '').toLowerCase().includes(s) ||
-        getCategoryMeta(w.category).label.toLowerCase().includes(s) ||
-        getTriggerLabel(w.trigger?.type).toLowerCase().includes(s),
-      );
-    }
-    return list;
-  }, [workflows, statusFilter, categoryFilter, search]);
+  }, [orgId, selectedWorkflow]);
 
   // ─── Actions ─────────────────────────────────
 
-  const handleToggle = async (wf: Workflow) => {
+  const handleToggle = async (wf: WorkflowListItemDto) => {
     if (!orgId) return;
     const enabling = wf.status !== 'ACTIVE';
     let activationReason: string | undefined;
@@ -408,30 +378,28 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     }
     try {
       await api.workflows.toggle(orgId, wf.id, activationReason ? { activationReason } : undefined);
-      loadData();
+      await refreshSelectedWorkflow();
     } catch (e) { console.error(e); }
   };
 
-  const handleDuplicate = async (wf: Workflow) => {
+  const handleDuplicate = async (wf: WorkflowListItemDto) => {
     if (!orgId) return;
     try {
       await api.workflows.duplicate(orgId, wf.id);
-      loadData();
     } catch (e) { console.error(e); }
   };
 
-  const handleDelete = async (wf: Workflow) => {
+  const handleDelete = async (wf: WorkflowListItemDto) => {
     if (!orgId || !confirm(`Delete workflow "${wf.name}"? This cannot be undone.`)) return;
     try {
       await api.workflows.remove(orgId, wf.id);
       if (view === 'detail') setView('list');
-      loadData();
     } catch (e) { console.error(e); }
   };
 
-  const openDetail = (wf: Workflow) => { setSelectedWorkflow(wf); setView('detail'); };
+  const openDetail = (wf: WorkflowListItemDto) => { setSelectedWorkflow(wf); setView('detail'); };
 
-  const openBuilder = (wf?: Workflow | null, template?: StarterTemplate) => {
+  const openBuilder = (wf?: WorkflowListItemDto | Workflow | null, template?: StarterTemplate) => {
     if (template) {
       setBuilderData({
         name: template.name,
@@ -488,7 +456,6 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         await api.workflows.create(orgId, payload);
       }
       setView('list');
-      loadData();
     } catch (e) {
       console.error(e);
     } finally {
@@ -500,10 +467,10 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
 
   if (!canRead) {
     return (
-      <div className="rounded-xl border border-border/60 px-6 py-10 text-center">
-        <p className="text-sm font-medium text-foreground">Kein Zugriff auf Workflow-Automatisierung</p>
+      <div className="rounded-xl border border-border/60 px-6 py-10 text-center" data-testid="workflow-automation-no-access">
+        <p className="text-sm font-medium text-foreground">{t('workflowAutomation.noAccess.title')}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Ihre Rolle hat keine Berechtigung für Workflow-Automatisierung.
+          {t('workflowAutomation.noAccess.description')}
         </p>
       </div>
     );
@@ -520,7 +487,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
       onToggle={() => handleToggle(selectedWorkflow)}
       onDuplicate={() => handleDuplicate(selectedWorkflow)}
       onDelete={() => handleDelete(selectedWorkflow)}
-      onRefresh={loadData}
+      onRefresh={refreshSelectedWorkflow}
     />
   );
 
@@ -573,8 +540,8 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
 
       <div className="flex flex-wrap items-center gap-2">
         {[
-          { key: 'workflows', label: 'Eigene Workflows' },
-          { key: 'task-automations', label: 'Aufgaben-Automationen' },
+          { key: 'workflows', label: t('workflowAutomation.tabs.workflows') },
+          { key: 'task-automations', label: t('workflowAutomation.tabs.taskAutomations') },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -595,33 +562,11 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         <TaskAutomationRulesSection canWrite={canWrite} />
       ) : (
         <>
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Workflows', value: stats.total, icon: Layers, color: 'blue' },
-          { label: 'Active', value: stats.active, icon: Play, color: 'green' },
-          { label: 'Runs (24h)', value: stats.runsLast24h ?? 0, icon: Zap, color: 'cyan' },
-          { label: 'Failed runs', value: stats.failedRuns ?? 0, icon: Pause, color: 'red' },
-        ].map((s) => {
-          const colors: Record<string, string> = {
-            blue: isDarkMode ? 'text-brand' : 'text-brand',
-            green: isDarkMode ? 'text-green-400' : 'text-green-600',
-            amber: isDarkMode ? 'text-amber-400' : 'text-amber-600',
-            gray: isDarkMode ? 'text-muted-foreground' : 'text-gray-500',
-            cyan: isDarkMode ? 'text-cyan-400' : 'text-cyan-600',
-            red: isDarkMode ? 'text-red-400' : 'text-red-600',
-          };
-          return (
-            <div key={s.label} className={`${cardBg} border ${cardBorder} rounded-xl p-3`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>{s.label}</span>
-                <s.icon className={`w-3.5 h-3.5 ${colors[s.color]}`} />
-              </div>
-              <p className={`text-xl font-bold ${textPrimary}`}>{s.value}</p>
-            </div>
-          );
-        })}
-      </div>
+      <WorkflowOverviewSection
+        canWrite={canWrite}
+        onOpenBuilder={(item) => openBuilder(item ?? null)}
+        onOpenFullDetail={(item) => openDetail(item)}
+      />
 
       {/* Templates Section */}
       {showTemplates && (
@@ -674,201 +619,8 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Icon name="search" className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${textSecondary}`} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search workflows..."
-            className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border ${inputBg} focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-        </div>
-        <div className="flex items-center gap-1">
-          <Icon name="filter" className={`w-3 h-3 ${textSecondary}`} />
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'ACTIVE', label: 'Active' },
-            { key: 'DRAFT', label: 'Draft' },
-            { key: 'DISABLED', label: 'Disabled' },
-          ].map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setStatusFilter(f.key)}
-              className={`px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
-                statusFilter === f.key
-                  ? 'bg-brand text-brand-foreground'
-                  : `${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          {[{ key: 'all', label: 'All Types' }, ...CATEGORIES.map((c) => ({ key: c.key, label: c.label }))].map((c) => (
-            <button
-              key={c.key}
-              onClick={() => setCategoryFilter(c.key)}
-              className={`px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
-                categoryFilter === c.key
-                  ? 'bg-brand text-brand-foreground'
-                  : `${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Workflow List */}
-      {loading ? (
-        <div className={`${cardBg} border ${cardBorder} rounded-xl p-12 text-center`}>
-          <Icon name="refresh-cw" className={`w-6 h-6 mx-auto mb-2 animate-spin ${textSecondary}`} />
-          <p className={`text-xs ${textSecondary}`}>Loading workflows...</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        workflows.length > 0 ? (
-          <EmptyState
-            icon={<Icon name="search" className="w-8 h-8" />}
-            title="No workflows match your filters"
-            description="Try adjusting your search or filter criteria"
-            compact
-          />
-        ) : (
-          <EmptyState
-            icon={<Icon name="zap" className="w-6 h-6" />}
-            title="No workflows yet"
-            description="Create your first automation to streamline fleet operations — from return protocols and cleaning workflows to geofence alerts and AI-powered actions."
-            action={
-              canWrite ? (
-                <div className="flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowTemplates(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-foreground hover:bg-muted"
-                  >
-                    <Icon name="layers" className="w-3.5 h-3.5" /> Browse Templates
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openBuilder()}
-                    className="sq-cta flex items-center gap-1.5 px-3 py-1.5 text-xs"
-                  >
-                    <Icon name="plus" className="w-3.5 h-3.5" /> New Workflow
-                  </button>
-                </div>
-              ) : undefined
-            }
-          />
-        )
-      ) : (
-        <div className="space-y-1.5">
-          {filtered.map((wf) => (
-            <WorkflowRow
-              key={wf.id}
-              wf={wf}
-              isDarkMode={isDarkMode}
-              canWrite={canWrite}
-              onOpen={() => openDetail(wf)}
-              onEdit={() => openBuilder(wf)}
-              onToggle={() => handleToggle(wf)}
-              onDuplicate={() => handleDuplicate(wf)}
-              onDelete={() => handleDelete(wf)}
-            />
-          ))}
-        </div>
-      )}
         </>
       )}
-    </div>
-  );
-}
-
-// ─── WorkflowRow ─────────────────────────────────
-
-function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDuplicate, onDelete }: {
-  wf: Workflow; isDarkMode: boolean; canWrite: boolean;
-  onOpen: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
-}) {
-  const cat = getCategoryMeta(wf.category);
-  const CatIcon = cat.icon;
-  const st = STATUS_CONFIG[wf.status] || STATUS_CONFIG.DRAFT;
-  const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
-  const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50';
-
-  const catColors: Record<string, string> = {
-    blue: isDarkMode ? 'text-brand' : 'text-brand',
-    green: isDarkMode ? 'text-green-400' : 'text-green-600',
-    cyan: isDarkMode ? 'text-cyan-400' : 'text-cyan-600',
-    orange: isDarkMode ? 'text-orange-400' : 'text-orange-600',
-    red: isDarkMode ? 'text-red-400' : 'text-red-600',
-    purple: isDarkMode ? 'text-purple-400' : 'text-purple-600',
-    yellow: isDarkMode ? 'text-yellow-400' : 'text-yellow-600',
-  };
-
-  const isAi = wf.category === 'ai_permissions' || wf.actions?.some((a: ActionDef) => a.type.startsWith('ai_'));
-
-  return (
-    <div className={`${cardBg} border ${cardBorder} rounded-xl p-3 ${hoverBg} transition-colors cursor-pointer group`} onClick={onOpen}>
-      <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
-          <CatIcon className={`w-4 h-4 ${catColors[cat.color] || 'text-gray-500'}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className={`text-sm font-semibold ${textPrimary} truncate`}>{wf.name}</p>
-            {isAi && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
-                AI
-              </span>
-            )}
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.bgClass} ${st.textClass}`}>
-              {st.label}
-            </span>
-          </div>
-          <div className={`flex items-center gap-3 mt-0.5 text-[10px] ${textSecondary}`}>
-            <span className="flex items-center gap-1">
-              <Icon name="target" className="w-3 h-3" /> {getTriggerLabel(wf.trigger?.type)}
-            </span>
-            <span className="flex items-center gap-1">
-              <Icon name="zap" className="w-3 h-3" /> {wf.actions?.length || 0} action{(wf.actions?.length || 0) !== 1 ? 's' : ''}
-            </span>
-            <span>{cat.label}</span>
-            {wf.lastTriggeredAt && (
-              <span className="flex items-center gap-1">
-                <Icon name="clock" className="w-3 h-3" /> Last: {relativeTime(wf.lastTriggeredAt)}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-          {canWrite && (
-            <>
-              <button onClick={onToggle} className={`p-1.5 rounded-md ${hoverBg}`} title={wf.status === 'ACTIVE' ? 'Disable' : 'Enable'}>
-                {wf.status === 'ACTIVE' ? <Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> : <Icon name="play" className="w-3.5 h-3.5 text-green-500" />}
-              </button>
-              <button onClick={onEdit} className={`p-1.5 rounded-md ${hoverBg}`} title="Edit">
-                <Icon name="edit-3" className={`w-3.5 h-3.5 ${textSecondary}`} />
-              </button>
-              <button onClick={onDuplicate} className={`p-1.5 rounded-md ${hoverBg}`} title="Duplicate">
-                <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
-              </button>
-              <button onClick={onDelete} className={`p-1.5 rounded-md ${hoverBg}`} title="Delete">
-                <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
-              </button>
-            </>
-          )}
-          <button onClick={onOpen} className={`p-1.5 rounded-md ${hoverBg}`} title="Details">
-            <Icon name="eye" className={`w-3.5 h-3.5 ${textSecondary}`} />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -876,7 +628,7 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
 // ─── DetailView ──────────────────────────────────
 
 function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle, onDuplicate, onDelete, onRefresh }: {
-  wf: Workflow; orgId: string | null; isDarkMode: boolean; canWrite: boolean;
+  wf: WorkflowListItemDto; orgId: string | null; isDarkMode: boolean; canWrite: boolean;
   onBack: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
   onRefresh: () => void;
 }) {

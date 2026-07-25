@@ -2321,6 +2321,24 @@ export interface WorkflowDto {
   createdAt: string;
   updatedAt: string;
 }
+export interface WorkflowListItemDto extends WorkflowDto {
+  riskClass: 'LOW' | 'HIGH' | 'CRITICAL';
+  sourceType: 'custom' | 'system' | 'migrated';
+  approvalStatus: 'none' | 'pending' | 'approved';
+  activeVersion: number;
+  lastRunAt: string | null;
+  lastRunOutcome:
+    | 'none'
+    | 'success'
+    | 'failed'
+    | 'partial'
+    | 'waiting_approval'
+    | 'skipped'
+    | 'policy_blocked';
+  lastRunLabel: string | null;
+  hasLegacyMapping: boolean;
+  unavailableActionCount: number;
+}
 export interface WorkflowStatsDto {
   total: number;
   active: number;
@@ -2328,6 +2346,7 @@ export interface WorkflowStatsDto {
   disabled: number;
   invalid: number;
   pendingActivation?: number;
+  archived?: number;
   totalRuns: number;
   successfulRuns: number;
   failedRuns: number;
@@ -2353,6 +2372,7 @@ export interface WorkflowAuditEventDto {
   legalHold?: boolean;
   createdAt: string;
 }
+export interface WorkflowChangeRequestDiffDto {
   field: string;
   before: unknown;
   after: unknown;
@@ -4892,12 +4912,24 @@ export const api = {
       ),
   },
   workflows: {
-    list: (orgId: string, params?: { status?: string; category?: string }) => {
+    list: (
+      orgId: string,
+      params?: {
+        status?: string;
+        category?: string;
+        search?: string;
+        includeSystem?: boolean;
+        includeArchived?: boolean;
+      },
+    ) => {
       const q = new URLSearchParams();
       if (params?.status) q.set('status', params.status);
       if (params?.category) q.set('category', params.category);
+      if (params?.search) q.set('search', params.search);
+      if (params?.includeSystem) q.set('includeSystem', 'true');
+      if (params?.includeArchived) q.set('includeArchived', 'true');
       const qs = q.toString();
-      return get<WorkflowDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
+      return get<WorkflowListItemDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
     },
     stats: (orgId: string) => get<WorkflowStatsDto>(`/organizations/${orgId}/workflows/stats`),
     get: (orgId: string, id: string) => get<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`),
