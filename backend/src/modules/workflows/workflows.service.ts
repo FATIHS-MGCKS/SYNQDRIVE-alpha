@@ -10,6 +10,8 @@ import { CreateWorkflowDto, UpdateWorkflowDto } from './dto';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowRiskCalculatorService } from './risk/workflow-risk-calculator.service';
+import { WorkflowPermissionService } from './permissions/workflow-permission.service';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import type { PreviewWorkflowRiskDto } from './dto';
 
 const STATUS_DISPLAY: Record<string, string> = {
@@ -26,6 +28,7 @@ export class WorkflowsService {
     private readonly workflowEvents: WorkflowEventService,
     private readonly workflowEngine: WorkflowEngineService,
     private readonly riskCalculator: WorkflowRiskCalculatorService,
+    private readonly workflowPermissions: WorkflowPermissionService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -42,8 +45,8 @@ export class WorkflowsService {
     const risk = this.riskCalculator.assessWorkflow({
       organizationId: orgId,
       trigger: wf.trigger as { type: string; config?: Record<string, unknown> },
-      conditions: (wf.conditions as PreviewWorkflowRiskDto['conditions']) ?? [],
-      actions: (wf.actions as PreviewWorkflowRiskDto['actions']) ?? [],
+      conditions: (wf.conditions as unknown as PreviewWorkflowRiskDto['conditions']) ?? [],
+      actions: (wf.actions as unknown as PreviewWorkflowRiskDto['actions']) ?? [],
       eventType: (wf.trigger as { type?: string })?.type,
     });
     return {
@@ -72,8 +75,8 @@ export class WorkflowsService {
     return this.riskCalculator.assessWorkflow({
       organizationId: orgId,
       trigger: wf.trigger as { type: string; config?: Record<string, unknown> },
-      conditions: (wf.conditions as PreviewWorkflowRiskDto['conditions']) ?? [],
-      actions: (wf.actions as PreviewWorkflowRiskDto['actions']) ?? [],
+      conditions: (wf.conditions as unknown as PreviewWorkflowRiskDto['conditions']) ?? [],
+      actions: (wf.actions as unknown as PreviewWorkflowRiskDto['actions']) ?? [],
       eventType: (wf.trigger as { type?: string })?.type,
     });
   }
@@ -98,9 +101,17 @@ export class WorkflowsService {
     return this.enrichWithRisk(orgId, this.format(row as unknown as Record<string, unknown>));
   }
 
-  async create(orgId: string, dto: CreateWorkflowDto, userId?: string, userName?: string) {
-    const validated = validateWorkflowDefinition(dto);
+  async create(
+    orgId: string,
+    dto: CreateWorkflowDto,
+    userId?: string,
+    userName?: string,
+    actor?: PermissionActor,
+  ) {
     const status = dto.status ?? 'DRAFT';
+    await this.workflowPermissions.assertPublishIfActiveStatus(actor, orgId, status);
+
+    const validated = validateWorkflowDefinition(dto);
     const enabled = status === 'ACTIVE';
 
     const row = await this.prisma.orgWorkflow.create({
@@ -131,11 +142,15 @@ export class WorkflowsService {
     dto: UpdateWorkflowDto,
     userId?: string,
     userName?: string,
+    actor?: PermissionActor,
   ) {
     const existing = await this.prisma.orgWorkflow.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundException('Workflow not found');
+
+    const nextStatus = dto.status ?? existing.status;
+    await this.workflowPermissions.assertPublishIfActiveStatus(actor, orgId, nextStatus);
 
     const validated = validateWorkflowDefinition({
       name: dto.name ?? existing.name,
@@ -146,7 +161,6 @@ export class WorkflowsService {
       scope: (dto.scope ?? existing.scope) as any,
     });
 
-    const nextStatus = dto.status ?? existing.status;
     const row = await this.prisma.orgWorkflow.update({
       where: { id },
       data: {
@@ -167,11 +181,19 @@ export class WorkflowsService {
     return this.format(row as unknown as Record<string, unknown>);
   }
 
-  async toggleStatus(orgId: string, id: string, userId?: string, userName?: string) {
+  async toggleStatus(
+    orgId: string,
+    id: string,
+    userId?: string,
+    userName?: string,
+    actor?: PermissionActor,
+  ) {
     const existing = await this.prisma.orgWorkflow.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundException('Workflow not found');
+
+    await this.workflowPermissions.assertToggle(actor, orgId, existing.status);
 
     const newStatus = existing.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
     const row = await this.prisma.orgWorkflow.update({
@@ -214,7 +236,8 @@ export class WorkflowsService {
     return this.format(row as unknown as Record<string, unknown>);
   }
 
-  async remove(orgId: string, id: string) {
+  async remove(orgId: string, id: string, actor?: PermissionActor) {
+    await this.workflowPermissions.assert(actor, orgId, 'workflow.archive');
     const existing = await this.prisma.orgWorkflow.findFirst({
       where: { id, organizationId: orgId },
     });
@@ -304,7 +327,9 @@ export class WorkflowsService {
     orgId: string,
     workflowId: string,
     dto: { payload?: Record<string, unknown>; entityType?: string; entityId?: string },
+    actor?: PermissionActor,
   ) {
+    await this.workflowPermissions.assert(actor, orgId, 'workflow.test_external');
     const wf = await this.prisma.orgWorkflow.findFirst({
       where: { id: workflowId, organizationId: orgId },
     });
@@ -329,14 +354,20 @@ export class WorkflowsService {
     const riskAssessment = this.riskCalculator.assessWorkflow({
       organizationId: orgId,
       trigger: wf.trigger as { type: string; config?: Record<string, unknown> },
-      conditions: (wf.conditions as PreviewWorkflowRiskDto['conditions']) ?? [],
-      actions: (wf.actions as PreviewWorkflowRiskDto['actions']) ?? [],
+      conditions: (wf.conditions as unknown as PreviewWorkflowRiskDto['conditions']) ?? [],
+      actions: (wf.actions as unknown as PreviewWorkflowRiskDto['actions']) ?? [],
       eventType: 'manual.test',
     });
     return { runIds: [runId], runs: [run], riskAssessment };
   }
 
-  async approveActionRun(orgId: string, actionRunId: string, userId?: string) {
+  async approveActionRun(
+    orgId: string,
+    actionRunId: string,
+    userId?: string,
+    actor?: PermissionActor,
+  ) {
+    await this.workflowPermissions.assert(actor, orgId, 'workflow.approve');
     const actionRun = await this.prisma.orgWorkflowActionRun.findFirst({
       where: { id: actionRunId, organizationId: orgId },
     });
@@ -369,7 +400,9 @@ export class WorkflowsService {
     actionRunId: string,
     userId?: string,
     reason?: string,
+    actor?: PermissionActor,
   ) {
+    await this.workflowPermissions.assert(actor, orgId, 'workflow.reject');
     const actionRun = await this.prisma.orgWorkflowActionRun.findFirst({
       where: { id: actionRunId, organizationId: orgId },
     });

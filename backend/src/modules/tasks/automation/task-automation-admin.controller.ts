@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
-import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { RequireWorkflowPermission } from '@modules/workflows/permissions/require-workflow-permission.decorator';
 import {
   ResetTaskAutomationRuleOverrideDto,
   SimulateTaskAutomationRuleDto,
@@ -25,19 +25,19 @@ export class TaskAutomationAdminController {
   constructor(private readonly admin: TaskAutomationAdminService) {}
 
   @Get('rules')
-  @RequirePermission('workflow-automation', 'read')
+  @RequireWorkflowPermission('workflow.read')
   listRules(@Param('orgId') orgId: string) {
     return this.admin.listRules(orgId);
   }
 
   @Get('rules/:ruleId')
-  @RequirePermission('workflow-automation', 'read')
+  @RequireWorkflowPermission('workflow.read')
   getRule(@Param('orgId') orgId: string, @Param('ruleId') ruleId: string) {
     return this.admin.getRule(orgId, ruleId);
   }
 
   @Post('rules/:ruleId/simulate')
-  @RequirePermission('workflow-automation', 'read')
+  @RequireWorkflowPermission('workflow.test_dry_run')
   simulateRule(
     @Param('orgId') orgId: string,
     @Param('ruleId') ruleId: string,
@@ -59,7 +59,7 @@ export class TaskAutomationAdminController {
   }
 
   @Patch('rules/:ruleId/override')
-  @RequirePermission('workflow-automation', 'write')
+  @RequireWorkflowPermission('workflow.template.manage')
   upsertOverride(
     @Param('orgId') orgId: string,
     @Param('ruleId') ruleId: string,
@@ -74,7 +74,7 @@ export class TaskAutomationAdminController {
   }
 
   @Delete('rules/:ruleId/override')
-  @RequirePermission('workflow-automation', 'write')
+  @RequireWorkflowPermission('workflow.template.manage')
   resetOverride(
     @Param('orgId') orgId: string,
     @Param('ruleId') ruleId: string,
@@ -85,13 +85,13 @@ export class TaskAutomationAdminController {
   }
 
   @Get('rules/:ruleId/revisions')
-  @RequirePermission('workflow-automation', 'read')
+  @RequireWorkflowPermission('workflow.audit.read')
   listRuleRevisions(@Param('orgId') orgId: string, @Param('ruleId') ruleId: string) {
     return this.admin.listRuleRevisions(orgId, ruleId);
   }
 
   @Post('outbox/:outboxId/replay')
-  @RequirePermission('workflow-automation', 'manage')
+  @RequireWorkflowPermission('workflow.dead_letter.replay')
   replayDeadLetterOutbox(@Param('orgId') orgId: string, @Param('outboxId') outboxId: string) {
     return this.admin.replayDeadLetterOutbox(orgId, outboxId);
   }

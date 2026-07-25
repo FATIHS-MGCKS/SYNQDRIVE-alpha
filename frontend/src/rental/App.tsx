@@ -1169,6 +1169,13 @@ function RentalAppContent() {
             isDarkMode={isDarkMode}
             canRead={hasPermission('workflow-automation', 'read')}
             canWrite={hasPermission('workflow-automation', 'write')}
+            canPublish={
+              hasPermission('workflow-automation-publish', 'write')
+              || hasPermission('workflow-automation-publish', 'manage')
+            }
+            canArchive={hasPermission('workflow-automation-publish', 'manage')}
+            canTestExternal={hasPermission('workflow-automation-test-external', 'manage')}
+            canManageTemplates={hasPermission('workflow-automation-templates', 'manage')}
           />
         ) : currentView === 'whatsapp-business' ? (
           <WhatsAppBusinessView isDarkMode={isDarkMode} />

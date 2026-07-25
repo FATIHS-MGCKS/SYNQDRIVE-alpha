@@ -11,9 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { WorkflowsService } from './workflows.service';
-import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
-import { Roles } from '@shared/decorators/roles.decorator';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequireWorkflowPermission } from './permissions/require-workflow-permission.decorator';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import {
   CreateWorkflowDto,
   PreviewWorkflowRiskDto,
@@ -22,16 +23,13 @@ import {
   UpdateWorkflowDto,
 } from './dto';
 
-const WORKFLOW_READ_ROLES = ['ORG_ADMIN', 'SUB_ADMIN', 'MASTER_ADMIN'] as const;
-const WORKFLOW_WRITE_ROLES = ['ORG_ADMIN', 'SUB_ADMIN', 'MASTER_ADMIN'] as const;
-
 @Controller('organizations/:orgId/workflows')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, PermissionsGuard)
 export class WorkflowsController {
   constructor(private readonly service: WorkflowsService) {}
 
   @Get()
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.read')
   async list(
     @Param('orgId') orgId: string,
     @Query('status') status?: string,
@@ -41,13 +39,13 @@ export class WorkflowsController {
   }
 
   @Get('risk-registry')
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.read')
   async riskRegistry(@Param('orgId') orgId: string) {
     return this.service.getRiskRegistry(orgId);
   }
 
   @Post('risk/preview')
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.test_dry_run')
   async previewRisk(
     @Param('orgId') orgId: string,
     @Body() body: PreviewWorkflowRiskDto,
@@ -56,40 +54,46 @@ export class WorkflowsController {
   }
 
   @Get('stats')
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.read')
   async stats(@Param('orgId') orgId: string) {
     return this.service.getStats(orgId);
   }
 
   @Get('runs/:runId')
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.run.read')
   async getRun(@Param('orgId') orgId: string, @Param('runId') runId: string) {
     return this.service.getRun(orgId, runId);
   }
 
   @Post('action-runs/:actionRunId/approve')
-  @Roles(...WORKFLOW_WRITE_ROLES)
+  @RequireWorkflowPermission('workflow.approve')
   async approveAction(
     @Param('orgId') orgId: string,
     @Param('actionRunId') actionRunId: string,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: { user?: PermissionActor },
   ) {
-    return this.service.approveActionRun(orgId, actionRunId, req.user?.id);
+    return this.service.approveActionRun(orgId, actionRunId, req.user?.id, req.user);
   }
 
   @Post('action-runs/:actionRunId/reject')
-  @Roles(...WORKFLOW_WRITE_ROLES)
+  @RequireWorkflowPermission('workflow.reject')
   async rejectAction(
     @Param('orgId') orgId: string,
     @Param('actionRunId') actionRunId: string,
     @Body() body: RejectWorkflowActionDto,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: { user?: PermissionActor },
   ) {
-    return this.service.rejectActionRun(orgId, actionRunId, req.user?.id, body.reason);
+    return this.service.rejectActionRun(
+      orgId,
+      actionRunId,
+      req.user?.id,
+      body.reason,
+      req.user,
+    );
   }
 
   @Get(':id/runs')
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.run.read')
   async listRuns(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -99,23 +103,23 @@ export class WorkflowsController {
   }
 
   @Get(':id/risk')
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.read')
   async getWorkflowRisk(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.service.getWorkflowRisk(orgId, id);
   }
 
   @Get(':id')
-  @Roles(...WORKFLOW_READ_ROLES)
+  @RequireWorkflowPermission('workflow.read')
   async get(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.service.findById(orgId, id);
   }
 
   @Post()
-  @Roles(...WORKFLOW_WRITE_ROLES)
+  @RequireWorkflowPermission('workflow.create')
   async create(
     @Param('orgId') orgId: string,
     @Body() body: CreateWorkflowDto,
-    @Req() req: { user?: { id?: string; name?: string; email?: string } },
+    @Req() req: { user?: PermissionActor & { name?: string; email?: string } },
   ) {
     const user = req.user || {};
     return this.service.create(
@@ -123,16 +127,17 @@ export class WorkflowsController {
       body,
       user.id,
       user.name || user.email || 'System',
+      user,
     );
   }
 
   @Patch(':id')
-  @Roles(...WORKFLOW_WRITE_ROLES)
+  @RequireWorkflowPermission('workflow.edit_draft')
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: UpdateWorkflowDto,
-    @Req() req: { user?: { id?: string; name?: string; email?: string } },
+    @Req() req: { user?: PermissionActor & { name?: string; email?: string } },
   ) {
     const user = req.user || {};
     return this.service.update(
@@ -141,15 +146,16 @@ export class WorkflowsController {
       body,
       user.id,
       user.name || user.email || 'System',
+      user,
     );
   }
 
   @Patch(':id/toggle')
-  @Roles(...WORKFLOW_WRITE_ROLES)
+  @RequireWorkflowPermission('workflow.enable')
   async toggle(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: { user?: { id?: string; name?: string; email?: string } },
+    @Req() req: { user?: PermissionActor & { name?: string; email?: string } },
   ) {
     const user = req.user || {};
     return this.service.toggleStatus(
@@ -157,15 +163,16 @@ export class WorkflowsController {
       id,
       user.id,
       user.name || user.email || 'System',
+      user,
     );
   }
 
   @Post(':id/duplicate')
-  @Roles(...WORKFLOW_WRITE_ROLES)
+  @RequireWorkflowPermission('workflow.create')
   async duplicate(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: { user?: { id?: string; name?: string; email?: string } },
+    @Req() req: { user?: PermissionActor & { name?: string; email?: string } },
   ) {
     const user = req.user || {};
     return this.service.duplicate(
@@ -177,18 +184,23 @@ export class WorkflowsController {
   }
 
   @Post(':id/test')
-  @Roles(...WORKFLOW_WRITE_ROLES)
+  @RequireWorkflowPermission('workflow.test_external')
   async test(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: TestWorkflowDto,
+    @Req() req: { user?: PermissionActor },
   ) {
-    return this.service.testWorkflow(orgId, id, body);
+    return this.service.testWorkflow(orgId, id, body, req.user);
   }
 
   @Delete(':id')
-  @Roles(...WORKFLOW_WRITE_ROLES)
-  async remove(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.service.remove(orgId, id);
+  @RequireWorkflowPermission('workflow.archive')
+  async remove(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { user?: PermissionActor },
+  ) {
+    return this.service.remove(orgId, id, req.user);
   }
 }

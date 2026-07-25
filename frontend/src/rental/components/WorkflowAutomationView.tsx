@@ -75,6 +75,10 @@ interface Props {
   isDarkMode: boolean;
   canWrite?: boolean;
   canRead?: boolean;
+  canPublish?: boolean;
+  canArchive?: boolean;
+  canTestExternal?: boolean;
+  canManageTemplates?: boolean;
 }
 
 // ─── Constants ───────────────────────────────────
@@ -290,7 +294,15 @@ const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textCl
 
 // ─── Main Component ──────────────────────────────
 
-export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = true }: Props) {
+export function WorkflowAutomationView({
+  isDarkMode,
+  canWrite = true,
+  canRead = true,
+  canPublish = canWrite,
+  canArchive = canWrite,
+  canTestExternal = canWrite,
+  canManageTemplates = canWrite,
+}: Props) {
   const { orgId } = useRentalOrg();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -455,6 +467,9 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
       orgId={orgId}
       isDarkMode={isDarkMode}
       canWrite={canWrite}
+      canPublish={canPublish}
+      canArchive={canArchive}
+      canTestExternal={canTestExternal}
       onBack={() => { setView('list'); setSelectedWorkflow(null); }}
       onEdit={() => openBuilder(selectedWorkflow)}
       onToggle={() => handleToggle(selectedWorkflow)}
@@ -532,7 +547,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
       </div>
 
       {mainTab === 'task-automations' ? (
-        <TaskAutomationRulesSection canWrite={canWrite} />
+        <TaskAutomationRulesSection canWrite={canManageTemplates} />
       ) : (
         <>
       {/* Stats */}
@@ -712,6 +727,8 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
               wf={wf}
               isDarkMode={isDarkMode}
               canWrite={canWrite}
+              canPublish={canPublish}
+              canArchive={canArchive}
               onOpen={() => openDetail(wf)}
               onEdit={() => openBuilder(wf)}
               onToggle={() => handleToggle(wf)}
@@ -729,8 +746,8 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
 
 // ─── WorkflowRow ─────────────────────────────────
 
-function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDuplicate, onDelete }: {
-  wf: Workflow; isDarkMode: boolean; canWrite: boolean;
+function WorkflowRow({ wf, isDarkMode, canWrite, canPublish, canArchive, onOpen, onEdit, onToggle, onDuplicate, onDelete }: {
+  wf: Workflow; isDarkMode: boolean; canWrite: boolean; canPublish: boolean; canArchive: boolean;
   onOpen: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
   const cat = getCategoryMeta(wf.category);
@@ -788,21 +805,25 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
           </div>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          {canPublish && (
+            <button onClick={onToggle} className={`p-1.5 rounded-md ${hoverBg}`} title={wf.status === 'ACTIVE' ? 'Disable' : 'Enable'}>
+              {wf.status === 'ACTIVE' ? <Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> : <Icon name="play" className="w-3.5 h-3.5 text-green-500" />}
+            </button>
+          )}
           {canWrite && (
             <>
-              <button onClick={onToggle} className={`p-1.5 rounded-md ${hoverBg}`} title={wf.status === 'ACTIVE' ? 'Disable' : 'Enable'}>
-                {wf.status === 'ACTIVE' ? <Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> : <Icon name="play" className="w-3.5 h-3.5 text-green-500" />}
-              </button>
               <button onClick={onEdit} className={`p-1.5 rounded-md ${hoverBg}`} title="Edit">
                 <Icon name="edit-3" className={`w-3.5 h-3.5 ${textSecondary}`} />
               </button>
               <button onClick={onDuplicate} className={`p-1.5 rounded-md ${hoverBg}`} title="Duplicate">
                 <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
               </button>
-              <button onClick={onDelete} className={`p-1.5 rounded-md ${hoverBg}`} title="Delete">
-                <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
-              </button>
             </>
+          )}
+          {canArchive && (
+            <button onClick={onDelete} className={`p-1.5 rounded-md ${hoverBg}`} title="Delete">
+              <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
+            </button>
           )}
           <button onClick={onOpen} className={`p-1.5 rounded-md ${hoverBg}`} title="Details">
             <Icon name="eye" className={`w-3.5 h-3.5 ${textSecondary}`} />
@@ -815,8 +836,9 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
 
 // ─── DetailView ──────────────────────────────────
 
-function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle, onDuplicate, onDelete, onRefresh }: {
+function DetailView({ wf, orgId, isDarkMode, canWrite, canPublish, canArchive, canTestExternal, onBack, onEdit, onToggle, onDuplicate, onDelete, onRefresh }: {
   wf: Workflow; orgId: string | null; isDarkMode: boolean; canWrite: boolean;
+  canPublish: boolean; canArchive: boolean; canTestExternal: boolean;
   onBack: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
   onRefresh: () => void;
 }) {
@@ -897,28 +919,38 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
             <p className={`text-xs ${textSecondary}`}>{wf.description || 'No description'}</p>
           </div>
         </div>
-        {canWrite && (
+        {(canWrite || canPublish || canArchive || canTestExternal) && (
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleTest}
-              disabled={testing}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
-            >
-              <Icon name="play" className="w-3.5 h-3.5 text-status-info" />
-              {testing ? 'Testing…' : 'Test workflow'}
-            </button>
-            <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
-            </button>
-            <button onClick={onEdit} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover">
-              <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
-            </button>
-            <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
-            </button>
-            <button onClick={onDelete} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
-            </button>
+            {canTestExternal && (
+              <button
+                onClick={handleTest}
+                disabled={testing}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
+              >
+                <Icon name="play" className="w-3.5 h-3.5 text-status-info" />
+                {testing ? 'Testing…' : 'Test workflow'}
+              </button>
+            )}
+            {canPublish && (
+              <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+                {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
+              </button>
+            )}
+            {canWrite && (
+              <>
+                <button onClick={onEdit} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover">
+                  <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+                  <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
+                </button>
+              </>
+            )}
+            {canArchive && (
+              <button onClick={onDelete} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
+                <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-granular-permissions-v49851-2026-07-25',
+    version: '4.9.851',
+    title: 'V4.9.851 — Workflow Granular Permissions (Phase 9 Prompt 41)',
+    summary: [
+      '21 workflow permission actions mapped to 11 org-scoped membership modules (read/write/manage).',
+      'WorkflowsController + TaskAutomationAdminController: PermissionsGuard + @RequireWorkflowPermission replaces coarse @Roles.',
+      'WorkflowPermissionService: service-layer assert for publish, enable/disable toggle, archive, external test, approval.',
+      'Sub Admin conservative: draft edit + read-only ops; no publish, external test, secrets, policy, templates, replay.',
+      'Backfill script backfill-workflow-permissions.ts; frontend users-roles modules + supplementary UI gates.',
+    ],
+    reason: 'Workflow access must be granular and org-scoped — not blanket Sub Admin or role-name only.',
+    previousBehavior: 'ORG_ADMIN/SUB_ADMIN/MASTER_ADMIN @Roles on workflows; single workflow-automation module.',
+    details: 'docs/security/workflow-granular-permissions-2026-07.md. Module: workflows/permissions/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T20:00:00.000Z',
+  },
+  {
     id: 'workflow-risk-classification-v49850-2026-07-25',
     version: '4.9.850',
     title: 'V4.9.850 — Workflow Risk Classification Registry & Calculator (Phase 9 Prompt 40)',

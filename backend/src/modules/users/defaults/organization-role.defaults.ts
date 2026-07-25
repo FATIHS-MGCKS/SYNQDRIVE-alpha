@@ -16,6 +16,10 @@ import {
   rentalRulesReadPermissions,
   rentalRulesViewerPermissions,
 } from '@modules/rental-rules/rental-rules-permission.defaults';
+import {
+  workflowAutomationFullPermissions,
+  workflowAutomationOperatorPermissions,
+} from '@modules/workflows/permissions/workflow-permission.defaults';
 
 export interface DefaultRoleTemplate {
   systemKey: string;
@@ -89,7 +93,10 @@ function adminPermissions(): MembershipPermissionsMap {
     })),
     mergePermissions(
       legalDocumentFullPermissions(),
-      mergePermissions(rentalRulesFullPermissions(), bookingEligibilityFullPermissions()),
+      mergePermissions(
+        rentalRulesFullPermissions(),
+        mergePermissions(bookingEligibilityFullPermissions(), workflowAutomationFullPermissions()),
+      ),
     ),
   );
 }
@@ -110,10 +117,13 @@ function subAdminPermissions(): MembershipPermissionsMap {
   ] as const) {
     delete perms[key];
   }
-  return mergePermissions(perms, mergePermissions(
-    legalDocumentReadPermissions(),
-    mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
-  ));
+  return mergePermissions(
+    mergePermissions(perms, workflowAutomationOperatorPermissions()),
+    mergePermissions(
+      legalDocumentReadPermissions(),
+      mergePermissions(rentalRulesReadPermissions(), bookingEligibilityReviewerPermissions()),
+    ),
+  );
 }
 
 function workerReadPermissions(extraWrite: string[] = []): MembershipPermissionsMap {

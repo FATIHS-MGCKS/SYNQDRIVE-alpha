@@ -6,6 +6,7 @@ import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { WorkflowActionRegistryModule } from './actions/workflow-action-registry.module';
 import { WorkflowRiskModule } from './risk/workflow-risk.module';
+import { WorkflowPermissionService } from './permissions/workflow-permission.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -16,7 +17,8 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     WorkflowEngineService,
     WorkflowEventService,
     WorkflowActionExecutorService,
+    WorkflowPermissionService,
   ],
-  exports: [WorkflowsService, WorkflowEventService, WorkflowEngineService],
+  exports: [WorkflowsService, WorkflowEventService, WorkflowEngineService, WorkflowPermissionService],
 })
 export class WorkflowsModule {}
