@@ -58,8 +58,8 @@ async function main(): Promise<void> {
   const results: ScenarioResult[] = [];
 
   const record = (id: number, name: string, ok: boolean, detail?: string, skip = false) => {
-    const status = skip ? 'skip' : ok ? 'pass' : 'fail';
-    const row = { id, name, status, detail };
+    const status: ScenarioResult['status'] = skip ? 'skip' : ok ? 'pass' : 'fail';
+    const row: ScenarioResult = { id, name, status, detail };
     results.push(row);
     emit(row);
   };
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
       dataCategory: 'TRIP_ROUTE',
       purpose: 'FLEET_OPERATIONS',
       action: AUTHORIZATION_DECISION_ACTION.READ,
-      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SERVICE,
+      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SYSTEM,
       processorId: 'SYNQDRIVE',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: fixture.vehicleB.id,
@@ -159,7 +159,7 @@ async function main(): Promise<void> {
       dataCategory: 'VEHICLE_DIAGNOSTICS',
       purpose: 'VEHICLE_HEALTH',
       action: AUTHORIZATION_DECISION_ACTION.USE_FOR_AI,
-      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SERVICE,
+      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SYSTEM,
       processorId: 'SYNQDRIVE',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: fixture.vehicleB.id,
@@ -179,7 +179,7 @@ async function main(): Promise<void> {
       dataCategory: 'DRIVING_BEHAVIOR',
       purpose: 'DRIVER_SCORING',
       action: AUTHORIZATION_DECISION_ACTION.DERIVE,
-      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SERVICE,
+      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.INTERNAL_SYSTEM,
       processorId: 'SYNQDRIVE',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.VEHICLE,
       resourceId: fixture.vehicleB.id,
@@ -202,11 +202,11 @@ async function main(): Promise<void> {
 
     const mcpDeny = await decisionService.decide({
       organizationId: orgId,
-      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.EXTERNAL_API,
+      sourceSystem: POLICY_RESOLVER_SOURCE_SYSTEM.API_INTEGRATION,
       dataCategory: 'GPS_LOCATION',
       purpose: 'LIVE_MAP',
       action: AUTHORIZATION_DECISION_ACTION.READ,
-      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_INTEGRATION,
+      processorType: POLICY_RESOLVER_PROCESSOR_TYPE.EXTERNAL_PARTNER,
       processorId: 'MCP_TOOL',
       resourceType: POLICY_RESOLVER_RESOURCE_TYPE.ORGANIZATION,
       resourceId: orgId,
