@@ -137,7 +137,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           if (evt.data.agentReady) setAgentReady(true);
         } else if (evt.event === 'progress') {
           if (evt.data.content) {
-            setThinkingLabel(mapProgressContent(evt.data.type, evt.data.content));
+            setThinkingLabel(mapProgressContent(evt.data.type, evt.data.content, locale));
           }
         } else if (evt.event === 'result') {
           settled = true;
@@ -241,7 +241,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
       {/* Desktop sidebar — hidden on mobile to preserve chat column width */}
       <aside
         className={`hidden lg:flex w-[260px] shrink-0 rounded-l-2xl overflow-hidden flex-col min-w-0 ${glass}`}
-        aria-label={locale === 'en' ? 'Chat session info' : 'Chat-Sitzungsinfo'}
+        aria-label={t('aiChat.sidebar.info')}
       >
         <div className="p-3">
           <button
@@ -261,18 +261,30 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           <div className={`rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/80'}`}>
             <div className="flex items-center gap-2 mb-2">
               <div
-                className={`w-2 h-2 rounded-full ${agentReady ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`}
+                className={`w-2 h-2 rounded-full ${
+                  error
+                    ? 'bg-status-attention'
+                    : agentReady
+                      ? 'bg-emerald-500'
+                      : 'bg-amber-500'
+                } animate-pulse`}
               />
               <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                {agentReady ? 'DIMO Agent Connected' : 'Agent Initializing...'}
+                {error
+                  ? t('aiChat.status.unavailable')
+                  : agentReady
+                    ? t('aiChat.status.available')
+                    : t('aiChat.status.preparing')}
               </span>
             </div>
             <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
-              Powered by DIMO Vehicle Intelligence
+              {t('aiChat.branding.dataBasis')}
             </p>
             {messageCount > 0 && (
               <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
-                {messageCount} message{messageCount !== 1 ? 's' : ''} in this session
+                {t(messageCount === 1 ? 'aiChat.sessionMessage' : 'aiChat.sessionMessages', {
+                  count: String(messageCount),
+                })}
               </p>
             )}
           </div>
@@ -288,7 +300,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           <div
             className={`text-xs font-semibold uppercase tracking-wider px-2 py-1.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}
           >
-            Capabilities
+            {t('aiChat.capabilities')}
           </div>
           {capabilities.map((cap) => {
             const CapIcon = cap.icon;
@@ -307,11 +319,10 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
 
           <div className={`mt-4 rounded-lg p-3 ${isDarkMode ? 'surface-premium' : 'bg-gray-50/60'}`}>
             <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
-              About this assistant
+              {t('aiChat.aboutTitle')}
             </p>
             <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
-              This AI assistant uses the DIMO Agents API to analyze your fleet data, vehicle telemetry, and operational
-              metrics in real-time.
+              {t('aiChat.aboutDesc')}
             </p>
           </div>
         </div>
@@ -420,7 +431,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                 <p
                   className={`text-xs font-semibold uppercase tracking-wider mb-3 text-center ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}
                 >
-                  Try asking...
+                  {t('aiChat.tryAsking')}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {suggestions.map((s) => {
@@ -629,7 +640,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
               </button>
             </div>
             <p className={`text-[10px] sm:text-xs text-center mt-2 px-1 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
-              SYNQDRIVE AI · Powered by DIMO Agents · Verify important fleet data
+              {t('aiChat.footer', { basis: t('aiChat.branding.dataBasis') })}
             </p>
           </div>
         </div>

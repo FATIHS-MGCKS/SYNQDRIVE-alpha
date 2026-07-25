@@ -18,7 +18,7 @@ const RESPONSE_TYPE_LABELS: Record<
 };
 
 const FRESHNESS_LABELS: Record<string, { de: string; en: string }> = {
-  live: { de: 'Live', en: 'Live' },
+  live: { de: 'Aktuell', en: 'Current' },
   standby: { de: 'Standby', en: 'Standby' },
   signal_delayed: { de: 'Signal verzögert', en: 'Signal delayed' },
   offline: { de: 'Offline', en: 'Offline' },
@@ -87,7 +87,7 @@ export function formatFleetDataAgeLabel(
   if (freshness.isLastKnown) {
     return locale === 'en'
       ? `Last known · ${freshnessLabel}`
-      : `Letzte bekannte Position · ${freshnessLabel}`;
+      : `Letzte bekannte Daten · ${freshnessLabel}`;
   }
 
   if (freshness.observedAt) {
@@ -126,18 +126,28 @@ export function containsInternalId(text: string): boolean {
   return UUID_PATTERN.test(text);
 }
 
-export function mapProgressContent(type: string, content: string): string {
+import { fleetChatUiLabel } from './fleet-chat-ui-labels';
+
+export function mapProgressContent(
+  type: string,
+  content: string,
+  locale: 'de' | 'en' = 'de',
+): string {
   if (content && !INTERNAL_TOOL_PATTERN.test(content)) {
     return content;
   }
-  const fallback: Record<string, { de: string; en: string }> = {
-    thinking: { de: 'Anfrage wird analysiert…', en: 'Analyzing request…' },
-    routing: { de: 'Absicht wird erkannt…', en: 'Detecting intent…' },
-    tools: { de: 'Flottendaten werden geladen…', en: 'Loading fleet data…' },
-    composing: { de: 'Antwort wird zusammengestellt…', en: 'Composing response…' },
-    token: { de: 'Antwort wird formuliert…', en: 'Composing answer…' },
+  const fallback: Record<string, 'aiChat.progress.analyzing' | 'aiChat.progress.routing' | 'aiChat.progress.tools' | 'aiChat.progress.composing' | 'aiChat.progress.token'> = {
+    thinking: 'aiChat.progress.analyzing',
+    routing: 'aiChat.progress.routing',
+    tools: 'aiChat.progress.tools',
+    composing: 'aiChat.progress.composing',
+    token: 'aiChat.progress.token',
   };
-  return fallback[type]?.de ?? content;
+  const key = fallback[type];
+  if (key) {
+    return fleetChatUiLabel(key, locale);
+  }
+  return content;
 }
 
 export function buildSampleStructuredPayload(

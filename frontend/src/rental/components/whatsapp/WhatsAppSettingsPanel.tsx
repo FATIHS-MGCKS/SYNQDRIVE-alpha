@@ -1,6 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import type { WhatsAppConfig } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { AI_MODE_META, isSandboxEnvironment } from './whatsapp.ops';
 
 interface WhatsAppSettingsPanelProps {
@@ -20,6 +21,7 @@ export function WhatsAppSettingsPanel({
   onDisconnect,
   onSimulate,
 }: WhatsAppSettingsPanelProps) {
+  const { t } = useLanguage();
   const sandboxVisible = isSandboxEnvironment();
   const aiMode = config?.aiMode ?? 'OFF';
 
@@ -85,7 +87,7 @@ export function WhatsAppSettingsPanel({
       <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold text-foreground">AI assistance</h3>
         <p className="mt-1 text-[10px] text-muted-foreground">
-          SynqDrive AI uses Vehicle Intelligence / DIMO Agent as an internal tool for context — humans control what is sent.
+          {t('whatsapp.ai.description' as any)}
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {(Object.keys(AI_MODE_META) as WhatsAppConfig['aiMode'][]).map(key => {

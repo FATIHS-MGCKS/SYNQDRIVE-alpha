@@ -6,11 +6,8 @@ import {
   compactToneTextClass,
   shouldCollapseNarrative,
 } from '../../lib/ai-chat/fleet-chat-compact-display';
-import {
-  fleetChatResponseTypeLabel,
-  isClarificationResponseType,
-  isWarningResponseType,
-} from '../../lib/ai-chat/fleet-chat-response-display';
+import { fleetChatResponseTypeLabel, isClarificationResponseType, isWarningResponseType } from '../../lib/ai-chat/fleet-chat-response-display';
+import { fleetChatUiLabel } from '../../lib/ai-chat/fleet-chat-ui-labels';
 
 export interface FleetChatCompactSummaryCardProps {
   structured: FleetChatStructuredPayload;
@@ -57,7 +54,7 @@ export function FleetChatCompactSummaryCard({
       data-testid="fleet-chat-compact-summary"
       data-response-type={structured.responseType}
       role="region"
-      aria-label={locale === 'en' ? 'Structured summary' : 'Strukturierte Zusammenfassung'}
+      aria-label={fleetChatUiLabel('aiChat.structured.region', locale)}
     >
       <div className={`px-2.5 py-2 border-b ${borderClass} flex flex-wrap items-center gap-1.5`}>
         <span
@@ -76,7 +73,7 @@ export function FleetChatCompactSummaryCard({
             className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${isDarkMode ? 'bg-status-attention-soft text-[color:var(--status-attention)]' : 'bg-status-attention-soft text-[color:var(--status-attention)]'}`}
             role="status"
           >
-            {locale === 'en' ? 'Partial' : 'Teil'}
+            {fleetChatUiLabel('aiChat.status.partialAnswer', locale)}
           </span>
         )}
       </div>
@@ -92,19 +89,25 @@ export function FleetChatCompactSummaryCard({
           {showLastKnownWarning && (
             <p className="text-[10px] flex items-start gap-1.5 text-[color:var(--status-attention)]">
               <Icon name="alert-triangle" className="w-3 h-3 shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{locale === 'en' ? 'Last-known position — not live' : 'Letzte bekannte Position — nicht live'}</span>
+              <span>{fleetChatUiLabel('aiChat.status.lastKnown', locale)}</span>
             </p>
           )}
           {showLimitedWarning && (
             <p className="text-[10px] flex items-start gap-1.5 text-[color:var(--status-attention)]">
               <Icon name="alert-circle" className="w-3 h-3 shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{locale === 'en' ? 'Limited data available' : 'Begrenzte Datenlage'}</span>
+              <span>{fleetChatUiLabel('aiChat.status.limitedData', locale)}</span>
             </p>
           )}
           {showInconsistentWarning && (
             <p className="text-[10px] flex items-start gap-1.5 text-[color:var(--status-attention)]">
               <Icon name="alert-triangle" className="w-3 h-3 shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{locale === 'en' ? 'Inconsistent data state' : 'Inkonsistenter Datenstand'}</span>
+              <span>{fleetChatUiLabel('aiChat.status.inconsistentState', locale)}</span>
+            </p>
+          )}
+          {structured.responseType === 'TEMPORARY_UNAVAILABLE' && (
+            <p className="text-[10px] flex items-start gap-1.5 text-[color:var(--status-attention)]">
+              <Icon name="alert-circle" className="w-3 h-3 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{fleetChatUiLabel('aiChat.status.unavailable', locale)}</span>
             </p>
           )}
         </div>
@@ -130,7 +133,7 @@ export function FleetChatCompactSummaryCard({
       {structured.actions && structured.actions.length > 0 && (
         <div className={`px-2.5 py-2 border-t ${borderClass}`}>
           <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
-            {locale === 'en' ? 'Next action' : 'Nächste Aktion'}
+            {fleetChatUiLabel('aiChat.structured.nextAction', locale)}
           </p>
           <p className="text-[10px] leading-snug">
             {locale === 'en' ? structured.actions[0].messageEn : structured.actions[0].messageDe}
@@ -140,7 +143,7 @@ export function FleetChatCompactSummaryCard({
 
       {isClarificationResponseType(structured.responseType) && (
         <div className={`px-2.5 py-2 border-t ${borderClass} text-[10px] text-[color:var(--status-info)]`}>
-          {locale === 'en' ? 'Please clarify your question.' : 'Bitte Anfrage präzisieren.'}
+          {fleetChatUiLabel('aiChat.structured.clarify', locale)}
         </div>
       )}
     </div>

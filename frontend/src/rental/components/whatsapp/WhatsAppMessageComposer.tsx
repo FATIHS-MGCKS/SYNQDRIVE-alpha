@@ -2,6 +2,8 @@ import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
 import type { WhatsAppAiSuggestionResponse, WhatsAppConfig } from '../../../lib/api';
 
+import { useLanguage } from '../../i18n/LanguageContext';
+
 interface WhatsAppMessageComposerProps {
   config: WhatsAppConfig | null;
   input: string;
@@ -35,6 +37,7 @@ export function WhatsAppMessageComposer({
   onOpenTemplates,
   onRequestHandover,
 }: WhatsAppMessageComposerProps) {
+  const { t } = useLanguage();
   const aiMode = config?.aiMode ?? 'OFF';
   const suggestedReply = aiResult?.suggestedReply ?? aiResult?.suggestion ?? null;
   const canAutoSendAi = Boolean(aiResult?.canSendAutomatically);
@@ -89,7 +92,7 @@ export function WhatsAppMessageComposer({
           )}
 
           <p className="mt-1 text-[9px] text-muted-foreground">
-            SynqDrive AI uses Vehicle Intelligence / DIMO telemetry as internal tools — not as the WhatsApp sender.
+            {t('whatsapp.ai.description')}
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {canAutoSendAi && (

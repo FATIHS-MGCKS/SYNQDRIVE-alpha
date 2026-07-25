@@ -40,7 +40,7 @@ describe('formatFleetDataAgeLabel', () => {
       'de',
     );
     expect(label).toContain('Daten vom');
-    expect(label).toContain('Live');
+    expect(label).toContain('Aktuell');
   });
 
   it('prefers backend label when present', () => {
@@ -60,8 +60,10 @@ describe('formatFleetDataAgeLabel', () => {
 
 describe('mapProgressContent', () => {
   it('maps internal tool progress types to readable labels', () => {
-    expect(mapProgressContent('tools', 'get_vehicle_location')).toContain('Flottendaten');
-    expect(mapProgressContent('thinking', '')).toContain('analysiert');
+    expect(mapProgressContent('tools', 'get_vehicle_location', 'de')).toContain('Flottendaten');
+    expect(mapProgressContent('thinking', '', 'de')).toContain('analysiert');
+    expect(mapProgressContent('tools', 'get_vehicle_location', 'en')).toContain('fleet');
+    expect(mapProgressContent('thinking', '', 'en')).toContain('Analyzing');
   });
 });
 

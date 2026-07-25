@@ -246,3 +246,9 @@ must be wrapped as `AiEvidence` with explicit:
 - Responsive welcome grids (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`).
 - Playwright `e2e/ai-chat-responsive.spec.ts` — 320–430px, landscape, desktop; long HEALTH/OVERDUE history.
 
+### Prompt 24 — AI Chat branding & status copy (2026-07-25)
+
+- Removed misleading DIMO-as-chat-agent strings from `AIAssistantView` (status, footer, about).
+- `fleetChatUiLabel` helper + DE/EN keys for availability, partial data, last-known, progress steps.
+- Freshness display: `Aktuell`/`Current` instead of `Live`; WhatsApp AI panels use shared description.
+

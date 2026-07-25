@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-chat-branding-v49817-2026-07-25',
+    version: '4.9.817',
+    title: 'V4.9.817 — AI Chat branding & status copy (Prompt 24)',
+    summary: [
+      'Removed DIMO Agent Connected / Powered by DIMO Agents UI copy.',
+      'SynqDrive AI as visible assistant; DE+EN i18n for status, progress, structured labels.',
+      'Freshness labels: Aktuell/Current instead of Live; WhatsApp AI description corrected.',
+    ],
+    reason: 'Prompt 24/32 — correct AI branding without false DIMO-as-agent architecture claims.',
+    previousBehavior: 'Chat UI claimed DIMO Agent Connected and Powered by DIMO Agents.',
+    details:
+      'AIAssistantView, fleet-chat components, de/en translations, fleet-chat-branding.test.ts',
+    affectsArchitecture: true,
+    module: 'Fleet AI / Chat',
+    createdAt: '2026-07-25T01:15:00.000Z',
+  },
+  {
     id: 'fleet-ai-chat-mobile-layout-v49816-2026-07-25',
     version: '4.9.816',
     title: 'V4.9.816 — AI Chat mobile layout (Prompt 23)',

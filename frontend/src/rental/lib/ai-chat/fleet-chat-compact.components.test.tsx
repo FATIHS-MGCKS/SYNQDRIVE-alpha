@@ -54,7 +54,7 @@ describe('FleetChatCompactSummaryCard', () => {
       expect(html).not.toContain('<table');
       expect(html).toContain('break-all');
       if (responseType === 'LOCATION_SUMMARY') {
-        expect(html).toContain('Letzte bekannte Position');
+        expect(html).toContain('Letzte bekannte Daten');
       }
       if (responseType === 'HEALTH_SUMMARY') {
         expect(html).toContain('Begrenzte Datenlage');

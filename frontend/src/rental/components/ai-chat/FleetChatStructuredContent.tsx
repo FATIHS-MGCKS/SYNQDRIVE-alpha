@@ -3,6 +3,7 @@ import { FleetChatCompactSummaryCard } from './FleetChatCompactSummaryCard';
 import { FleetChatTechnicalErrorDetails } from './FleetChatTechnicalErrorDetails';
 import { renderSafeMarkdown } from '../../lib/ai-chat/safe-markdown';
 import { shouldCollapseNarrative } from '../../lib/ai-chat/fleet-chat-compact-display';
+import { fleetChatUiLabel } from '../../lib/ai-chat/fleet-chat-ui-labels';
 import { sanitizeSourceLabel } from '../../lib/ai-chat/fleet-chat-response-display';
 
 export interface FleetChatStructuredContentProps {
@@ -43,7 +44,7 @@ export function FleetChatStructuredContent({
       {collapseNarrative && content.trim() && (
         <details className={`mt-2 text-[10px] ${muted}`}>
           <summary className="cursor-pointer hover:underline">
-            {locale === 'en' ? 'Full answer' : 'Vollständige Antwort'}
+            {fleetChatUiLabel('aiChat.structured.fullAnswer', locale)}
           </summary>
           <div className={`mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
             {renderSafeMarkdown(content, { isDarkMode })}
@@ -68,7 +69,7 @@ export function FleetChatStructuredContent({
 
       {!isError && structured.sources.length > 0 && (
         <p className={`mt-2 text-[10px] ${muted}`}>
-          <span className="font-semibold">{locale === 'en' ? 'Sources' : 'Quellen'}: </span>
+          <span className="font-semibold">{fleetChatUiLabel('aiChat.structured.sources', locale)}: </span>
           <span className="break-words">
             {structured.sources.map((s) => sanitizeSourceLabel(s.label, locale)).join(' · ')}
           </span>
