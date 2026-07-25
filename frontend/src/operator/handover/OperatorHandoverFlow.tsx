@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import type {
@@ -23,6 +23,9 @@ import { OperatorHandoverStepReview } from './OperatorHandoverStepReview';
 import { OperatorHandoverStepSignatures } from './OperatorHandoverStepSignatures';
 import { OperatorHandoverStepVehicle } from './OperatorHandoverStepVehicle';
 import { useOperatorHandoverForm } from './useOperatorHandoverForm';
+import { useOperatorHandoverDraft } from './useOperatorHandoverDraft';
+import { OperatorHandoverSaveStatus } from './OperatorHandoverSaveStatus';
+import { OperatorHandoverConflictDialog } from './OperatorHandoverConflictDialog';
 
 const STEP_LABELS: Record<OperatorHandoverStepId, string> = {
   vehicle: 'Fahrzeug',
@@ -60,15 +63,30 @@ export function OperatorHandoverFlow({
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [conflictBusy, setConflictBusy] = useState(false);
+  const pickupIdempotencyKeyRef = useRef<string | null>(null);
+  const returnIdempotencyKeyRef = useRef<string | null>(null);
 
-  const form = useOperatorHandoverForm(isOpen, kind, orgId, booking);
+  const form = useOperatorHandoverForm(isOpen, kind, orgId, booking, { skipResetOnOpen: true });
+
+  const draftSync = useOperatorHandoverDraft(
+    isOpen,
+    orgId,
+    booking?.id,
+    kind,
+    step,
+    form.state,
+    form.patchState,
+    setStep,
+  );
 
   useEffect(() => {
     if (isOpen) {
-      setStep('vehicle');
       setStepError(null);
       setSubmitError(null);
       setSubmitting(false);
+      pickupIdempotencyKeyRef.current = null;
+      returnIdempotencyKeyRef.current = null;
     }
   }, [isOpen, booking?.id, kind]);
 
@@ -103,24 +121,37 @@ export function OperatorHandoverFlow({
     [step, kind, bookingRef, form.state],
   );
 
-  const goNext = useCallback(() => {
+  const navigateToStep = useCallback(
+    async (next: OperatorHandoverStepId) => {
+      setStepError(null);
+      await draftSync.flushSave();
+      setStep(next);
+    },
+    [draftSync],
+  );
+
+  const goNext = useCallback(async () => {
     if (!canAdvanceFromStep(step, kind, bookingRef, form.state)) {
       const issues = validateOperatorHandoverStep(step, kind, bookingRef, form.state);
       setStepError(issues[0]?.message ?? 'Bitte Pflichtfelder ausfüllen');
       return;
     }
-    setStepError(null);
     const idx = stepIndex(step);
     if (idx < OPERATOR_HANDOVER_STEPS.length - 1) {
-      setStep(OPERATOR_HANDOVER_STEPS[idx + 1]);
+      await navigateToStep(OPERATOR_HANDOVER_STEPS[idx + 1]);
     }
-  }, [step, kind, bookingRef, form.state]);
+  }, [step, kind, bookingRef, form.state, navigateToStep]);
 
-  const goBack = useCallback(() => {
-    setStepError(null);
+  const goBack = useCallback(async () => {
     const idx = stepIndex(step);
-    if (idx > 0) setStep(OPERATOR_HANDOVER_STEPS[idx - 1]);
-  }, [step]);
+    if (idx > 0) await navigateToStep(OPERATOR_HANDOVER_STEPS[idx - 1]);
+  }, [step, navigateToStep]);
+
+  const handleClose = useCallback(async () => {
+    if (submitting) return;
+    await draftSync.flushSave();
+    onClose();
+  }, [draftSync, onClose, submitting]);
 
   const handleSubmit = async () => {
     if (!booking || !bookingRef || submitting) return;
@@ -129,6 +160,9 @@ export function OperatorHandoverFlow({
       setStep(allIssues[0].step);
       return;
     }
+    const saved = await draftSync.flushSave();
+    if (!saved && draftSync.conflict) return;
+
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -138,11 +172,33 @@ export function OperatorHandoverFlow({
         state: form.state,
       });
       if (kind === 'PICKUP') {
-        await api.bookings.createPickupHandover(orgId, booking.id, payload);
+        if (!pickupIdempotencyKeyRef.current) {
+          pickupIdempotencyKeyRef.current =
+            typeof crypto !== 'undefined' && 'randomUUID' in crypto
+              ? `pickup-${booking.id}-${crypto.randomUUID()}`
+              : `pickup-${booking.id}-${Date.now()}`;
+        }
+        await api.bookings.completePickupHandover(orgId, booking.id, {
+          ...payload,
+          idempotencyKey: pickupIdempotencyKeyRef.current,
+          sessionId: draftSync.sessionId ?? undefined,
+          expectedVersion: draftSync.expectedVersion ?? undefined,
+        });
       } else {
-        await api.bookings.createReturnHandover(orgId, booking.id, payload);
+        if (!returnIdempotencyKeyRef.current) {
+          returnIdempotencyKeyRef.current =
+            typeof crypto !== 'undefined' && 'randomUUID' in crypto
+              ? `return-${booking.id}-${crypto.randomUUID()}`
+              : `return-${booking.id}-${Date.now()}`;
+        }
+        await api.bookings.completeReturnHandover(orgId, booking.id, {
+          ...payload,
+          idempotencyKey: returnIdempotencyKeyRef.current,
+          sessionId: draftSync.sessionId ?? undefined,
+          expectedVersion: draftSync.expectedVersion ?? undefined,
+        });
       }
-      // Server generates pickup/return protocol PDFs after handover — refresh bundle (no frontend PDF).
+      draftSync.clearDraftAfterComplete();
       await form.reloadDocuments();
       onSuccess?.();
       onClose();
@@ -242,15 +298,22 @@ export function OperatorHandoverFlow({
               {booking ? `${booking.vehicleName} · ${booking.plate}` : 'Laden…'}
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <OperatorHandoverSaveStatus
+              status={draftSync.saveStatus}
+              isOnline={draftSync.isOnline}
+              errorMessage={draftSync.draftSyncError}
+            />
+            <button
+              type="button"
+              onClick={() => void handleClose()}
+              disabled={submitting}
+              className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
+              aria-label="Schließen"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
           <div
@@ -271,10 +334,7 @@ export function OperatorHandoverFlow({
                 <li key={s}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setStepError(null);
-                      setStep(s);
-                    }}
+                    onClick={() => void navigateToStep(s)}
                     className={`w-full rounded-lg px-3 py-2 text-left text-xs font-semibold ${
                       step === s
                         ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
@@ -290,6 +350,9 @@ export function OperatorHandoverFlow({
         )}
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+          {draftSync.draftLoading && (
+            <p className="mb-3 text-xs text-muted-foreground">Entwurf wird geladen…</p>
+          )}
           {stepContent}
           {stepError && (
             <p className="mt-3 text-sm text-[color:var(--status-critical)]">{stepError}</p>
@@ -305,7 +368,7 @@ export function OperatorHandoverFlow({
           {stepIndex(step) > 0 && (
             <button
               type="button"
-              onClick={goBack}
+              onClick={() => void goBack()}
               disabled={submitting}
               className="sq-3d-btn sq-3d-btn--neutral min-h-[52px] flex-1 font-semibold"
             >
@@ -315,8 +378,8 @@ export function OperatorHandoverFlow({
           {!isReview ? (
             <button
               type="button"
-              onClick={goNext}
-              disabled={!booking}
+              onClick={() => void goNext()}
+              disabled={!booking || draftSync.draftLoading}
               className="sq-3d-btn sq-3d-btn--primary min-h-[52px] flex-[2] font-semibold disabled:opacity-50"
             >
               Weiter
@@ -325,7 +388,7 @@ export function OperatorHandoverFlow({
             <button
               type="button"
               onClick={() => void handleSubmit()}
-              disabled={submitting || allIssues.length > 0}
+              disabled={submitting || allIssues.length > 0 || draftSync.draftLoading}
               className="sq-3d-btn sq-3d-btn--primary flex min-h-[52px] flex-[2] items-center justify-center gap-2 font-semibold disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -336,6 +399,20 @@ export function OperatorHandoverFlow({
           )}
         </div>
       </footer>
+
+      <OperatorHandoverConflictDialog
+        open={Boolean(draftSync.conflict)}
+        message={draftSync.conflict?.message ?? 'Der Entwurf wurde parallel bearbeitet.'}
+        busy={conflictBusy}
+        onAcceptServer={() => {
+          setConflictBusy(true);
+          void draftSync.resolveConflictAcceptServer().finally(() => setConflictBusy(false));
+        }}
+        onKeepLocal={() => {
+          setConflictBusy(true);
+          void draftSync.resolveConflictKeepLocal().finally(() => setConflictBusy(false));
+        }}
+      />
     </div>
   );
 }

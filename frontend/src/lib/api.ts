@@ -1,4 +1,5 @@
 import { getToken, clearAuth } from './auth';
+import { ApiHttpError, formatHttpErrorMessage } from './httpError';
 import {
   buildFleetRentalHealthQueryString,
   fetchAllFleetRentalHealth as collectFleetRentalHealthPages,
@@ -665,36 +666,7 @@ export function streamChatMessage(
 }
 
 /** Normalize NestJS / validation error bodies into a user-visible string. */
-export function formatHttpErrorMessage(
-  body: { message?: unknown },
-  status: number,
-  path: string,
-): string {
-  const raw = body.message;
-  if (typeof raw === 'string') return raw;
-  if (Array.isArray(raw)) return raw.map(String).join(', ');
-  if (raw && typeof raw === 'object') {
-    const nested = raw as {
-      message?: unknown;
-      code?: unknown;
-      missing?: unknown;
-      error?: unknown;
-    };
-    const base =
-      typeof nested.message === 'string'
-        ? nested.message
-        : typeof nested.error === 'string'
-          ? nested.error
-          : 'Request failed';
-    const code = typeof nested.code === 'string' ? nested.code : undefined;
-    const withCode = code ? `[${code}] ${base}` : base;
-    if (Array.isArray(nested.missing) && nested.missing.length > 0) {
-      return `${withCode}: ${nested.missing.map(String).join(', ')}`;
-    }
-    return withCode;
-  }
-  return `API error ${status} (${path})`;
-}
+export { formatHttpErrorMessage } from './httpError';
 
 export function getErrorMessage(err: unknown, fallback = 'An unexpected error occurred'): string {
   if (err instanceof Error && err.message) return err.message;
@@ -726,7 +698,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(formatHttpErrorMessage(body, res.status, path));
+    throw new ApiHttpError(res.status, body, path);
   }
 
   if (res.status === 204) {
@@ -762,16 +734,23 @@ function post<T>(path: string, body: unknown) {
   return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
 }
 
-function patch<T>(path: string, body: unknown) {
-  return request<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
+function patch<T>(path: string, body: unknown, init?: RequestInit) {
+  return request<T>(path, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    ...init,
+  });
 }
 
 function put<T>(path: string, body: unknown) {
   return request<T>(path, { method: 'PUT', body: JSON.stringify(body) });
 }
 
-function del<T>(path: string) {
-  return request<T>(path, { method: 'DELETE' });
+function del<T>(path: string, body?: unknown) {
+  return request<T>(path, {
+    method: 'DELETE',
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
 }
 
 // ── Task Action Layer types (V4.8.3 + V2 detail/buckets) ───────────────────
@@ -1153,7 +1132,7 @@ async function fetchBlob(path: string): Promise<Blob> {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(formatHttpErrorMessage(body, res.status, path));
+    throw new ApiHttpError(res.status, body, path);
   }
   return res.blob();
 }
@@ -3872,8 +3851,32 @@ export const api = {
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
     createPickupHandover: (orgId: string, bookingId: string, data: any) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    completePickupHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup/complete`, data),
+    completeReturnHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return/complete`, data),
+    getHandoverDraft: (
+      orgId: string,
+      bookingId: string,
+      kind: 'PICKUP' | 'RETURN',
+      init?: RequestInit,
+    ) => get<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`, init),
+    createHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN', data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`, data),
+    updateHandoverDraft: (
+      orgId: string,
+      bookingId: string,
+      kind: 'PICKUP' | 'RETURN',
+      data: any,
+      init?: RequestInit,
+    ) =>
+      patch<any>(
+        `/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`,
+        data,
+        init,
+      ),
+    cancelHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN', data?: any) =>
+      del<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`, data),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.

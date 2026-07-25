@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Loader2, Pencil, X, Ban, UserX, ClipboardCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Loader2, Pencil, X, Ban, UserX, ClipboardCheck, FilePenLine } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import { api, type BookingDetailDto } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
@@ -12,6 +12,10 @@ import { useOperatorShell } from '../context/OperatorShellContext';
 import { canOperatorMarkNoShow } from '../bookings/operatorBooking.utils';
 import { OperatorBookingDocumentsPanel } from '../documents/OperatorBookingDocumentsPanel';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
+import {
+  getOperatorHandoverDraftHint,
+  useOperatorHandoverDraftHints,
+} from '../handover/useOperatorHandoverDraftHints';
 import { OperatorGlassCard } from './OperatorGlassCard';
 
 interface OperatorBookingDetailSheetProps {
@@ -32,6 +36,18 @@ export function OperatorBookingDetailSheet({
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const draftTargets = useMemo(
+    () => (item ? [{ bookingId: item.bookingId, kind: item.kind }] : []),
+    [item],
+  );
+  const draftHints = useOperatorHandoverDraftHints(orgId ?? undefined, draftTargets);
+  const pickupDraft = item
+    ? getOperatorHandoverDraftHint(draftHints, item.bookingId, 'PICKUP')
+    : undefined;
+  const returnDraft = item
+    ? getOperatorHandoverDraftHint(draftHints, item.bookingId, 'RETURN')
+    : undefined;
 
   useEffect(() => {
     if (!item || !orgId) {
@@ -237,6 +253,19 @@ export function OperatorBookingDetailSheet({
           </OperatorGlassCard>
         )}
 
+        {(pickupDraft || returnDraft) && (
+          <OperatorGlassCard className="border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/40 p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <FilePenLine className="h-4 w-4 shrink-0" aria-hidden />
+              Offener Handover-Entwurf
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+              {pickupDraft && <li>Pickup — Schritt {pickupDraft.stepLabel}</li>}
+              {returnDraft && <li>Return — Schritt {returnDraft.stepLabel}</li>}
+            </ul>
+          </OperatorGlassCard>
+        )}
+
         <div className="grid gap-2">
           <button
             type="button"
@@ -248,7 +277,7 @@ export function OperatorBookingDetailSheet({
             }}
             className="sq-3d-btn sq-3d-btn--primary min-h-[48px] font-semibold disabled:opacity-45"
           >
-            Pickup starten
+            {pickupDraft ? 'Pickup fortsetzen' : 'Pickup starten'}
           </button>
           <button
             type="button"
@@ -260,7 +289,7 @@ export function OperatorBookingDetailSheet({
             }}
             className="sq-3d-btn sq-3d-btn--neutral min-h-[48px] font-semibold disabled:opacity-45"
           >
-            Return starten
+            {returnDraft ? 'Return fortsetzen' : 'Return starten'}
           </button>
         </div>
       </div>
