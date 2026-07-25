@@ -6,13 +6,21 @@ import {
 import {
   Prisma,
   TaskPriority,
+  TaskSource,
+  TaskType,
   WorkflowActionRunStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { checklistForType } from '@modules/tasks/task-templates';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
 import type { WorkflowActionDef } from './workflow-definition.validator';
+import {
+  assertLiveExecution,
+  WorkflowExecutionMode,
+} from './workflow-execution-mode';
+import { WorkflowRuntimeRolloutService } from './rollout/workflow-runtime-rollout.service';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -25,6 +33,7 @@ export interface ActionExecutionContext {
   entityId?: string | null;
   payload: Record<string, unknown>;
   idempotencyKey: string;
+  executionMode: WorkflowExecutionMode;
 }
 
 @Injectable()
@@ -32,12 +41,28 @@ export class WorkflowActionExecutorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
+    private readonly rollout: WorkflowRuntimeRolloutService,
   ) {}
 
   async execute(
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
+    assertLiveExecution(ctx.executionMode, 'WorkflowActionExecutorService.execute');
+
+    const rolloutCheck = await this.rollout.canExecuteLiveAction(
+      ctx.organizationId,
+      action.type,
+      ctx.workflowId,
+    );
+    if (!rolloutCheck.allowed) {
+      return {
+        status: 'FAILED',
+        errorMessage: `Rollout policy blocked action: ${rolloutCheck.reasons.join(', ')}`,
+        output: { rolloutBlocked: true, reasons: rolloutCheck.reasons },
+      };
+    }
+
     if (action.requiresApproval) {
       await this.prisma.orgWorkflowApproval.create({
         data: {
@@ -112,25 +137,94 @@ export class WorkflowActionExecutorService {
     const title =
       (typeof config.title === 'string' && config.title.trim()) ||
       'Workflow task';
-    const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:task`;
+    const catalogDedupKey =
+      typeof config.dedupKey === 'string' && config.dedupKey.trim()
+        ? config.dedupKey.trim()
+        : null;
+    const dedupKey = catalogDedupKey
+      ?? `${ctx.idempotencyKey}:action:${ctx.actionIndex}:task`;
+
+    if (catalogDedupKey) {
+      const existing = await this.tasksService.findActiveByDedup(ctx.organizationId, dedupKey);
+      if (existing) {
+        return { taskId: existing.id, dedupKey, idempotentReplay: true };
+      }
+    }
+
+    const vehicleId =
+      (typeof config.vehicleId === 'string' && config.vehicleId)
+      || this.vehicleIdFromPayload(ctx)
+      || null;
+    const bookingId =
+      (typeof config.bookingId === 'string' && config.bookingId)
+      || this.bookingIdFromPayload(ctx)
+      || null;
+    let customerId =
+      typeof config.customerId === 'string' ? config.customerId : null;
+
+    if (bookingId && !customerId) {
+      const booking = await this.prisma.booking.findFirst({
+        where: { id: bookingId, organizationId: ctx.organizationId },
+        select: { customerId: true },
+      });
+      if (!booking) {
+        throw new NotFoundException('Booking not found in organization');
+      }
+      customerId = booking.customerId;
+    }
+
+    if (vehicleId) {
+      const vehicle = await this.prisma.vehicle.findFirst({
+        where: { id: vehicleId, organizationId: ctx.organizationId },
+        select: { id: true },
+      });
+      if (!vehicle) {
+        throw new NotFoundException('Vehicle not found in organization');
+      }
+    }
+
+    const taskType = (typeof config.taskType === 'string' ? config.taskType : 'CUSTOM') as TaskType;
+    const sourceType = (typeof config.sourceType === 'string' ? config.sourceType : 'SYSTEM') as TaskSource;
+    const source = typeof config.source === 'string' ? config.source : 'WORKFLOW_AUTOMATION';
+    const withChecklist = config.withChecklist === true;
+    const checklist = withChecklist
+      ? checklistForType(taskType)
+      : Array.isArray(config.checklist)
+        ? config.checklist as Array<{
+            title: string;
+            description?: string;
+            sortOrder?: number;
+            isRequired?: boolean;
+          }>
+        : undefined;
+
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title,
       description:
         typeof config.description === 'string' ? config.description : undefined,
       category: typeof config.category === 'string' ? config.category : 'workflow',
-      type: 'CUSTOM',
-      sourceType: 'SYSTEM',
-      source: 'WORKFLOW_AUTOMATION',
+      type: taskType,
+      sourceType,
+      source,
       priority: this.mapPriority(config.priority),
-      vehicleId: this.vehicleIdFromPayload(ctx) ?? null,
-      bookingId: this.bookingIdFromPayload(ctx) ?? null,
+      vehicleId,
+      bookingId,
+      customerId,
+      dueDate: typeof config.dueDate === 'string' ? new Date(config.dueDate) : null,
+      activatesAt: typeof config.activatesAt === 'string' ? new Date(config.activatesAt) : new Date(),
+      checklist,
       metadata: {
+        ...(typeof config.metadata === 'object' && config.metadata ? config.metadata : {}),
         workflowId: ctx.workflowId,
         workflowRunId: ctx.workflowRunId,
         eventType: ctx.eventType,
+        automationRuleId: config.automationRuleId,
+        automationCatalogKey: config.automationCatalogKey,
+        dedupKey,
+        provenance: config.automationCatalogKey ? 'task_automation_workflow' : 'workflow',
       } as Prisma.InputJsonValue,
     });
-    return { taskId: task.id };
+    return { taskId: task.id, dedupKey };
   }
 
   private async execAlertCreate(

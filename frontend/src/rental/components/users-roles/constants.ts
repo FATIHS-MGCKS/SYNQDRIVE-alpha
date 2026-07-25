@@ -60,6 +60,7 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { key: 'legal-documents', label: 'Rechtliche Dokumente', icon: FileText, group: 'Unternehmen' },
   { key: 'legal-documents-audit', label: 'Rechtstext-Audit', icon: FileText, group: 'Unternehmen' },
   { key: 'workflow-automation', label: 'Workflow-Automatisierung', icon: Zap, group: 'Workflow' },
+  { key: 'workflow-emergency-override', label: 'Workflow Notfall-Freigabe', icon: Zap, group: 'Workflow' },
   { key: 'company-info', label: 'Unternehmensinformationen', icon: Building2, group: 'Unternehmen' },
   { key: 'users-roles', label: 'Benutzer & Rollen', icon: UserCog, group: 'Benutzer & Rollen' },
   { key: 'stations', label: 'Stationen', icon: MapPin, group: 'Stationen' },

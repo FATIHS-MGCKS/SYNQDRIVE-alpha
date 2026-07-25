@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -12,7 +13,9 @@ import {
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import {
+  ReplayDeadLetterOutboxDto,
   ResetTaskAutomationRuleOverrideDto,
   SimulateTaskAutomationRuleDto,
   UpsertTaskAutomationRuleOverrideDto,
@@ -92,7 +95,15 @@ export class TaskAutomationAdminController {
 
   @Post('outbox/:outboxId/replay')
   @RequirePermission('workflow-automation', 'manage')
-  replayDeadLetterOutbox(@Param('orgId') orgId: string, @Param('outboxId') outboxId: string) {
-    return this.admin.replayDeadLetterOutbox(orgId, outboxId);
+  replayDeadLetterOutbox(
+    @Param('orgId') orgId: string,
+    @Param('outboxId') outboxId: string,
+    @Body() body: ReplayDeadLetterOutboxDto,
+    @Req() req: { user?: PermissionActor & { id: string } },
+  ) {
+    if (!req.user?.id) {
+      throw new ForbiddenException('Authenticated maker required');
+    }
+    return this.admin.replayDeadLetterOutbox(orgId, outboxId, req.user, body.makerReason);
   }
 }
