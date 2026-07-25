@@ -4,10 +4,11 @@
 |------|------|
 | **Audit ID** | `workflow-automation-post-remediation-production-readiness-2026-07` |
 | **Prompt** | Phase 12, Prompt 54 von 54 (finaler Kontrollaudit) |
-| **Prüfzeit (UTC)** | 2026-07-25T12:34–12:45Z |
-| **Auditor** | Cursor Cloud Agent (unabhängige Re-Verifikation) |
-| **Methode** | Code-Inspektion, Testausführung, Build, VPS-SSH (read-only), Health-Checks — **ohne** Vertrauen auf frühere PASS-Aussagen |
-| **Geprüfter Repo-Commit** | `8669e525` (Branch `cursor/workflow-post-remediation-audit-2a81`, enthält E2E-Acceptance + Phase-11-Artefakte) |
+| **Prüfzeit (UTC)** | 2026-07-25T12:34–12:45Z (Pass 1) · **Re-Verifikation 16:47–16:49Z** (Pass 2, unabhängig) |
+| **Auditor** | Cursor Cloud Agent (unabhängige Re-Verifikation — frühere PASS-Aussagen nicht übernommen) |
+| **Methode** | Code-Inspektion, Testausführung, Build, VPS-SSH (read-only), Health-Checks |
+| **Geprüfter Repo-Commit** | `da1e1b61` (Branch `cursor/workflow-post-remediation-audit-2a81`) |
+| **Feature-Code-Commit (Workflow Runtime)** | `cursor/workflow-runtime-rollout-2a81` — enthält Phase-11-Artefakte (Shadow, Rollout, Migration) |
 | **VPS Deploy-Commit** | `6080dbd2` (`20260725083109_data-auth-rc`) — **~91 Commits hinter `origin/main`** |
 | **Voraussetzungs-Audits** | [VPS Control](./workflow-automation-vps-control-audit-2026-07.md), [E2E Acceptance](./workflow-automation-e2e-acceptance-2026-07.md) |
 | **Kundenkontakt** | **Keine echten Kunden kontaktiert** |
@@ -16,7 +17,7 @@
 
 ## Executive Summary
 
-Die Workflow-Automation-Remediation (Phase 1–12, Prompts 1–54) liefert eine **kanonische Workflow Runtime** im Repository mit durchgängiger Tenant-Isolation, Transactional Outbox, Idempotenz, Maker-Checker, Policy Engine, Audit/PII-Redaction, Shadow Mode, Controlled Rollout inkl. Kill Switches und dokumentierter Migrationsbrücke. Die **automatisierte Testmatrix** (340 Tests) ist vollständig **grün**; Backend- und Frontend-Builds sind **grün**.
+Die Workflow-Automation-Remediation (Phase 1–12, Prompts 1–54) liefert eine **kanonische Workflow Runtime** im Repository mit durchgängiger Tenant-Isolation, Transactional Outbox, Idempotenz, Maker-Checker, Policy Engine, Audit/PII-Redaction, Shadow Mode, Controlled Rollout inkl. Kill Switches und dokumentierter Migrationsbrücke. Die **automatisierte Testmatrix** (**373 Tests** — 328 Backend + 45 Frontend) ist vollständig **grün**; Backend- und Frontend-Builds sind **grün**. Typecheck im Verify-Script schlägt wegen **2 vorbestehender AI-Tool-Spec-Fehler** fehl (nicht Workflow-blockierend; `nest build` grün).
 
 **Die produktive VPS (`app.synqdrive.eu`) trägt Phase 11 nicht.** Shadow-, Rollout- und erweiterte Audit-Migrationen fehlen; `WORKFLOW_*`-Env-Variablen sind nicht gesetzt; Kill-Switch-APIs sind nicht live. Damit ist die **aktuelle Produktionsumgebung für einen Workflow-Runtime-Rollout NO-GO**, während der **remedierte Code-Stand CONDITIONAL GO** erhält — unter expliziten Deploy- und Betriebsbedingungen.
 
@@ -160,7 +161,7 @@ Controlled Rollout (V4.9.861)
 | Provider-Webhooks nicht signaturgeprüft | Twilio `validateRequest` | Voice-Modul deployt | **PASS** |
 | Secrets in Code/Config/Logs | Secret-Scan in Audit-Service | Log-Muster `password`/`authorization` (P1) | **PASS (Code)** / **WARN (Ops)** |
 | Kill Switch fehlt | `WORKFLOW_RUNTIME_KILL_SWITCH` + APIs | **Keine Env, keine Tabellen** | **PASS (Code)** / **FAIL (VPS)** |
-| Kritische Tests rot | 340/340 PASS | N/A | **PASS** |
+| Kritische Tests rot | 373/373 PASS (328 BE + 45 FE) | N/A | **PASS** |
 | Kein Rollback | Runbook: `legacy` mode + Stage DISABLED | Nicht konfiguriert | **PASS (Doc)** / **FAIL (VPS aktiv)** |
 | Echte Kundenkontakte ohne Policy | Policy Engine + Sandbox | `WHATSAPP_SIMULATE=true` | **PASS** |
 | KI kommuniziert ohne Transparenz | AI Transparency Builder | Nicht live getestet | **PASS (Code)** |
@@ -202,7 +203,21 @@ Controlled Rollout (V4.9.861)
 
 ## Testnachweise
 
-### Ausführung 2026-07-25T12:39–12:45Z (unabhängig)
+### Ausführung 2026-07-25T16:47–16:49Z (Pass 2 — unabhängig)
+
+| Prüfung | Befehl | Ergebnis |
+|---------|--------|----------|
+| Backend Unit & Service | `npm run test:workflow-automation` | **229/229 PASS** |
+| Backend Integration | `npm run test:workflow-automation:integration` | **66/66 PASS** |
+| Backend Security/Audit | `npm run test:workflow-automation:security` | **33/33 PASS** |
+| Shadow + Rollout | `jest workflow-shadow workflow-runtime-rollout` | **31/31 PASS** (Teilmenge von Unit) |
+| Frontend | `vitest workflow-automation/` | **45/45 PASS** |
+| **Gesamt (dedupliziert)** | Unit + Integration + Security + Frontend | **373 PASS** |
+| Backend Build | `npm run build` | **PASS** |
+| Frontend Build | `npm run build` | **PASS** (~12.9 s) |
+| Typecheck (verify script) | `tsc` in `test:workflow-automation:verify` | **2 Fehler** in `ai-explain-overdue-return` / `get-vehicle-booking-context` Specs — **nicht Workflow** |
+
+### Ausführung 2026-07-25T12:39–12:45Z (Pass 1)
 
 | Prüfung | Befehl | Ergebnis |
 |---------|--------|----------|
@@ -240,14 +255,18 @@ Registry: `backend/src/modules/workflows/testing/workflow-production-readiness.s
 
 ## VPS-Nachweise
 
-**Prüfzeit:** 2026-07-25T12:42Z (SSH read-only)
+**Prüfzeit:** 2026-07-25T16:49Z (Pass 2, SSH read-only — bestätigt Pass 1)
 
 | Prüfpunkt | Ergebnis |
 |-----------|----------|
-| Health `GET /api/v1/health` | **200** `status: ok` |
-| Readiness | **200** — Postgres, Redis, ClickHouse ok; `workersEnabled: true` |
+| Health `GET /api/v1/health` | **200** `status: ok`, uptime ~29552 s |
+| Readiness | **200** — postgres, redis, clickhouse, workers, documentExtraction |
 | Aktiver Release | `20260725083109_data-auth-rc` |
 | Deploy-Commit | `6080dbd2` |
+| Shadow API | **404** (nicht deployt) |
+| Rollout API | **404** (nicht deployt) |
+| `WORKFLOW_*` Env | **NONE** |
+| Queue `task.automation` | wait=**0** |
 | PM2 `synqdrive` | **online**, Restarts **3161** |
 | `WORKFLOW_*` Env | **NONE** |
 | Workflow-Tabellen | `org_workflows`, `org_workflow_runs`, `org_workflow_action_runs`, `org_workflow_approvals` — **0 Zeilen** |
