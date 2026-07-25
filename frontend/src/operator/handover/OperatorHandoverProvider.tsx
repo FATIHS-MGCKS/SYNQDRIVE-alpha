@@ -13,6 +13,7 @@ import type {
   HandoverDialogBookingInfo,
   HandoverDialogKind,
 } from '../../rental/components/handover/HandoverProtocolDialog';
+import { mapOperatorContextToHandoverBooking, operatorApi } from '../lib/operatorApi';
 import { OperatorHandoverFlow } from './OperatorHandoverFlow';
 import { invalidateVehicleOperationalState } from '../../rental/lib/vehicle-operational-query';
 
@@ -108,61 +109,10 @@ export function OperatorHandoverProvider({
 
       if (!orgId) return;
       try {
-        const detail = await api.bookings.detail(orgId, bookingId);
-        if (!detail) return;
-        const pickupKm =
-          nextKind === 'RETURN' && detail.handover.pickup
-            ? detail.handover.pickup.odometerKm
-            : null;
-        setBooking({
-          id: detail.core.bookingId,
-          vehicleId: detail.vehicle.vehicleId,
-          customerId: detail.customer.customerId,
-          vehicleName: detail.vehicle.displayName,
-          plate: detail.vehicle.licensePlate ?? '',
-          customerName: detail.customer.fullName ?? '',
-          startDate: detail.core.startDate,
-          endDate: detail.core.endDate,
-          pickupLocation:
-            detail.stations?.pickup?.name ?? detail.core.pickupStationName ?? '',
-          returnLocation:
-            detail.stations?.return?.name ?? detail.core.returnStationName ?? '',
-          pickupStationId: detail.core.pickupStationId,
-          returnStationId: detail.core.returnStationId,
-          handoverInstructions: detail.stations?.pickup?.handoverInstructions ?? null,
-          returnInstructions: detail.stations?.return?.returnInstructions ?? null,
-          status: detail.core.status,
-          includedKm: detail.core.kmIncluded ?? undefined,
-          pickupOdometerKm: pickupKm,
-        });
+        const ctx = await operatorApi.getBookingContext(orgId, bookingId, nextKind);
+        setBooking(mapOperatorContextToHandoverBooking(ctx, nextKind));
       } catch {
-        try {
-          const full = await api.bookings.get(orgId, bookingId);
-          if (!full) return;
-          const pickupKm =
-            nextKind === 'RETURN' && full.pickupProtocol
-              ? full.pickupProtocol.odometerKm
-              : null;
-          setBooking({
-            id: full.id,
-            vehicleId: full.vehicleId,
-            customerId: full.customerId ?? null,
-            vehicleName: full.vehicleName,
-            plate: full.vehicleLicense ?? '',
-            customerName: full.customerName ?? '',
-            startDate: full.startDate,
-            endDate: full.endDate,
-            pickupLocation: full.pickupStationName ?? full.station ?? '',
-            returnLocation: full.returnStationName ?? full.station ?? '',
-            pickupStationId: full.pickupStationId ?? null,
-            returnStationId: full.returnStationId ?? null,
-            status: full.status,
-            includedKm: full.kmIncluded,
-            pickupOdometerKm: pickupKm,
-          });
-        } catch {
-          /* keep seed */
-        }
+        /* keep seed */
       }
     },
     [orgId],

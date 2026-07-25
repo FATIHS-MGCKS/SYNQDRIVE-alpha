@@ -316,7 +316,7 @@ export function OperatorHandoverFlow({
       )}
       {step === 'damages' && <OperatorHandoverStepDamages form={form} />}
       {step === 'documents' && (
-        <OperatorHandoverStepDocuments booking={booking} form={form} onAiUpload={openAiUpload} />
+        <OperatorHandoverStepDocuments booking={booking} form={form} kind={kind} onAiUpload={openAiUpload} />
       )}
       {step === 'signatures' && bookingRef && (
         <OperatorHandoverStepSignatures

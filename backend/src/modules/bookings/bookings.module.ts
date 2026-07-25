@@ -105,5 +105,6 @@ import { BookingsHandoverDraftService } from './handover-session/bookings-handov
     BookingEligibilityRecheckSchedulerService,
     VehicleBookingContextService,
   ],
+  exports: [BookingsService],
 })
 export class BookingsModule {}

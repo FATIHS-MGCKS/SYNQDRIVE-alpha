@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-data-minimization-v49850-2026-07-25',
+    version: '4.9.850',
+    title: 'V4.9.850 — Operator App: Datenminimierung Dokumente & Kundendaten (Prompt 25)',
+    summary: [
+      'Neues Operator-API-Modul `/organizations/:orgId/operator/*` mit prozessbezogenen minimierten DTOs (Pickup, Return, Damage, Dokumentprüfung, Task, Booking-Form).',
+      'Maskierte Kundenfelder (Name, E-Mail, Telefon); Dokumentstatus statt Inhalt für Worker (`bookings.read`).',
+      'Gesonderte Vollansicht nur mit `customers.read` — kurzlebige HMAC Preview-Tokens (5 min), Audit `OPERATOR_SENSITIVE_DOCUMENT_VIEW`.',
+      'Frontend: `operatorSensitiveFetch` (`cache: no-store`), keine `/uploads/`-Prefetch-URLs; Detail/Handover/Dokumente über minimierte APIs.',
+      'Tests: Worker vs. Prüfer, fremde Org, Audit bei Preview-Grant, kein HTTP-Cache für sensitive Requests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 25: Datenminimierung für Operator-Prozesse — nur notwendige Felder übertragen und anzeigen.',
+    previousBehavior:
+      'Operator lud vollständige `BookingDetailDto` / `api.customers.list` und öffnete Kundendokumente über statische `/uploads/`-URLs ohne Audit.',
+    details:
+      'Backend: `operator-app` module, `operator-data.mapper`, `operator-document-preview.service`, `operator-document-audit.service`. Frontend: `operatorApi`, `OperatorBookingDocumentsPanel`, `OperatorBookingDetailSheet`, `OperatorHandoverProvider`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:05:00.000Z',
+  },
+  {
     id: 'operator-signature-binding-v49849-2026-07-25',
     version: '4.9.849',
     title: 'V4.9.849 — Operator App: Signatur-Bindung an Protokollinhalt (Prompt 24)',
