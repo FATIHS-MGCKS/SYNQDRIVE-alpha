@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-today-work-queue-v49838-2026-07-25',
+    version: '4.9.838',
+    title: 'V4.9.838 — Operator App: zentrale Today-Datenlogik (Prompt 12)',
+    summary: [
+      'Neues `operatorTodayWorkQueue.ts` — wrappt `classifyTodaysOperational` + `mapPickupItems`/`mapReturnItems` + Runtime.',
+      'Fachliche Work-States: bereit, in Bearbeitung, blockiert, verspätet, abgeschlossen mit serverseitigem `blockerReason`.',
+      'Org-Zeitzone (IANA, Default Europe/Berlin) für Kalendertag — keine Browser-2h-DueNow-Schattenlogik.',
+      'Entfernt: doppelte dueNow+today-Listen, clientseitiges `isDueWithinWindow` für Today-Priorisierung.',
+      'NOW-Sektion = nur verspätete Übergaben; TODAY = nicht-überfällige Pickups/Returns ohne Overlap.',
+      'Neues `org-calendar.ts` + Tests (Mitternacht, DST, Stornierung, Duplikate, Priorisierung).',
+    ],
+    reason:
+      'Production-Readiness Prompt 12: Heute-Ansicht darf keine zweite Wahrheit erzeugen — nächster zulässiger Arbeitsschritt aus zentralen Booking/Task/Handover/Vehicle-Daten.',
+    previousBehavior:
+      'dueNow via 2h-Fenster clientseitig; gleiche Buchung in dueNow und pickupsToday/returnsToday; keine einheitlichen Work-States; Kalendertag browser-lokal.',
+    details:
+      'Audit §34. Zentrale Module: operatorTodayWorkQueue, todaysOperationalSlice, today-booking-contract, bookingHandoverGates, org-calendar.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:45:00.000Z',
+  },
+  {
     id: 'operator-app-vehicle-runtime-v49837-2026-07-25',
     version: '4.9.837',
     title: 'V4.9.837 — Operator App: zentrale Vehicle-Runtime-Wahrheit (Prompt 11)',

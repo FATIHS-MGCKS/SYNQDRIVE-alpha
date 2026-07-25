@@ -7,7 +7,26 @@ import {
 import type { OperatorHandoverKind, OperatorTodayBookingItem } from '../lib/operatorData';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorStatusChip } from './OperatorStatusChip';
+import {
+  OPERATOR_TODAY_WORK_STATE_LABELS,
+  type OperatorTodayWorkState,
+} from '../lib/operatorTodayWorkQueue';
 import { pickupDueBadge, returnDueBadge } from '../lib/operatorStatus';
+
+function workStateBadge(workState: OperatorTodayWorkState) {
+  switch (workState) {
+    case 'bereit':
+      return { kind: 'ready' as const, label: OPERATOR_TODAY_WORK_STATE_LABELS.bereit, tone: 'success' as const };
+    case 'in_bearbeitung':
+      return { kind: 'task_open' as const, label: OPERATOR_TODAY_WORK_STATE_LABELS.in_bearbeitung, tone: 'info' as const };
+    case 'blockiert':
+      return { kind: 'blocked' as const, label: OPERATOR_TODAY_WORK_STATE_LABELS.blockiert, tone: 'critical' as const };
+    case 'verspaetet':
+      return { kind: 'blocked' as const, label: OPERATOR_TODAY_WORK_STATE_LABELS.verspaetet, tone: 'critical' as const };
+    case 'abgeschlossen':
+      return { kind: 'ready' as const, label: OPERATOR_TODAY_WORK_STATE_LABELS.abgeschlossen, tone: 'success' as const };
+  }
+}
 
 interface OperatorBookingCardProps {
   item: OperatorTodayBookingItem;
@@ -27,8 +46,6 @@ export function OperatorBookingCard({
     kind === 'PICKUP'
       ? { label: 'Pickup starten', gate: item.pickupGate, onClick: onPickupStart }
       : { label: 'Return starten', gate: item.returnGate, onClick: onReturnStart };
-
-  const dueBadge = kind === 'PICKUP' ? pickupDueBadge() : returnDueBadge();
 
   return (
     <OperatorGlassCard className="overflow-hidden p-0">
@@ -68,12 +85,9 @@ export function OperatorBookingCard({
             <StatusChip tone={bookingStatusTone(item.status as BookingUiStatus)} dot>
               {item.statusLabel}
             </StatusChip>
-            {!item.isDone && <OperatorStatusChip badge={dueBadge} />}
-            {item.isOverdue && !item.isDone && (
-              <OperatorStatusChip badge={{ kind: 'blocked', label: 'Überfällig', tone: 'critical' }} />
-            )}
-            {item.isDone && (
-              <OperatorStatusChip badge={{ kind: 'ready', label: 'Erledigt', tone: 'success' }} />
+            {!item.isDone && <OperatorStatusChip badge={workStateBadge(item.workState)} />}
+            {!item.isDone && item.workState !== 'verspaetet' && (
+              <OperatorStatusChip badge={kind === 'PICKUP' ? pickupDueBadge() : returnDueBadge()} />
             )}
           </span>
         </span>
@@ -102,9 +116,9 @@ export function OperatorBookingCard({
           )}
         </div>
       )}
-      {!item.isDone && !primaryAction.gate.allowed && primaryAction.gate.reason && (
+      {!item.isDone && !primaryAction.gate.allowed && (item.blockerReason || primaryAction.gate.reason) && (
         <p className="border-t border-border/30 px-4 py-2 text-[11px] leading-snug text-muted-foreground">
-          {primaryAction.gate.reason}
+          {item.blockerReason ?? primaryAction.gate.reason}
         </p>
       )}
     </OperatorGlassCard>

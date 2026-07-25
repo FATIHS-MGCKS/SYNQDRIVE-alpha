@@ -1,6 +1,7 @@
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
 import { de } from '../../../i18n/translations/de';
 import { en, type TranslationKey } from '../../../i18n/translations/en';
+import { isScheduledOnOrgCalendarDay } from '../../../lib/org-calendar';
 import type { VehicleRuntimeState } from './dashboardRuntimeTypes';
 
 /** Stable group ids inside the `active-rented` (Today's Operations) runtime slice. */
@@ -52,8 +53,19 @@ function parseTimeMs(iso: string | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Calendar-day match against dashboard `now` (items are pre-filtered by org TZ on the API). */
-export function isScheduledToday(iso: string | undefined, now: Date): boolean {
+/**
+ * Calendar-day match against `now`.
+ * When `timeZone` is set, uses org IANA calendar semantics (aligned with bookings today API).
+ * Otherwise falls back to the runtime environment local calendar (legacy dashboard default).
+ */
+export function isScheduledToday(
+  iso: string | undefined,
+  now: Date,
+  timeZone?: string,
+): boolean {
+  if (timeZone?.trim()) {
+    return isScheduledOnOrgCalendarDay(iso, now, timeZone);
+  }
   const ms = parseTimeMs(iso);
   if (ms == null) return false;
   const scheduled = new Date(ms);
@@ -106,12 +118,12 @@ function dedupeReturns(entries: TodaysOperationalReturnEntry[]): TodaysOperation
   return result;
 }
 
-function isOpenPickupToday(item: PickupTileItem, now: Date): boolean {
-  return !item.done && isScheduledToday(item.startDate, now);
+function isOpenPickupToday(item: PickupTileItem, now: Date, timeZone?: string): boolean {
+  return !item.done && isScheduledToday(item.startDate, now, timeZone);
 }
 
-function isOpenReturnToday(item: ReturnTileItem, now: Date): boolean {
-  return !item.done && isScheduledToday(item.endDate, now);
+function isOpenReturnToday(item: ReturnTileItem, now: Date, timeZone?: string): boolean {
+  return !item.done && isScheduledToday(item.endDate, now, timeZone);
 }
 
 export function classifyTodaysOperational(input: {
@@ -119,8 +131,10 @@ export function classifyTodaysOperational(input: {
   pickupItems: PickupTileItem[];
   returnItems: ReturnTileItem[];
   now: Date;
+  /** Org IANA timezone — when set, "today" follows tenant calendar, not browser local. */
+  timeZone?: string;
 }): ClassifiedTodaysOperational {
-  const { vehicleStates, pickupItems, returnItems, now } = input;
+  const { vehicleStates, pickupItems, returnItems, now, timeZone } = input;
 
   const activeRentedNow = vehicleStates
     .filter((state) => state.operationalStatus === 'active_rented')
@@ -142,7 +156,7 @@ export function classifyTodaysOperational(input: {
       continue;
     }
 
-    if (!isOpenPickupToday(item, now)) continue;
+    if (!isOpenPickupToday(item, now, timeZone)) continue;
 
     pickupsToday.push(entry);
     if (state?.operationalStatus === 'reserved') {
@@ -160,7 +174,7 @@ export function classifyTodaysOperational(input: {
       continue;
     }
 
-    if (!isOpenReturnToday(item, now)) continue;
+    if (!isOpenReturnToday(item, now, timeZone)) continue;
     returnsToday.push(entry);
   }
 

@@ -1,4 +1,4 @@
-import type { ApiTask, VehicleHealthResponse } from '../../lib/api';
+import type { VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
 import type { OperatorTodayFeedState } from '../hooks/operatorTodayFeed.utils';
@@ -17,9 +17,7 @@ import {
   type BookingHandoverGate,
 } from '../../rental/lib/bookingHandoverGates';
 import {
-  filterOperatorOperationalTodayRows,
   inferTodayHandoverKind,
-  isDueWithinWindow,
   mapBookingListRowToTodayRow,
   resolveTodayCustomerName,
   resolveTodayStationLabel,
@@ -27,8 +25,15 @@ import {
   scheduledAtForTodayKind,
   type TodayHandoverKind,
 } from '../../rental/lib/today-booking-contract';
+import { buildOperatorTodayWorkQueue } from './operatorTodayWorkQueue';
+import {
+  deriveOperatorTodayWorkState,
+  type OperatorTodayWorkState,
+} from './operatorTodayWorkQueue';
 import { buildOperatorVehicleRuntimeState } from './operatorVehicleRuntime';
 import type { OperatorScanBookingHit } from '../hooks/useOperatorScanSearch';
+
+export type { OperatorTodayWorkState } from './operatorTodayWorkQueue';
 
 export type OperatorHandoverKind = TodayHandoverKind;
 
@@ -48,8 +53,11 @@ export interface OperatorTodayBookingItem {
   status: BookingUiStatus;
   statusLabel: string;
   isOverdue: boolean;
+  /** True when server marks overdue — no client-side 2h window. */
   isDueNow: boolean;
   isDone: boolean;
+  workState: OperatorTodayWorkState;
+  blockerReason?: string;
   pickupGate: OperatorActionGate;
   returnGate: OperatorActionGate;
   raw: TodayBookingApiRow;
@@ -64,12 +72,18 @@ export interface OperatorBlockedVehicleItem {
 }
 
 export interface OperatorTodaySnapshot {
-  dueNow: OperatorTodayBookingItem[];
+  overduePickups: OperatorTodayBookingItem[];
+  overdueReturns: OperatorTodayBookingItem[];
   pickupsToday: OperatorTodayBookingItem[];
   returnsToday: OperatorTodayBookingItem[];
+  /** Overdue handovers only — for NOW feed extras (no overlap with today lists). */
+  urgentHandovers: OperatorTodayBookingItem[];
+  /** @deprecated Use `urgentHandovers` — kept for transitional callers. */
+  dueNow: OperatorTodayBookingItem[];
   totalOpenTasksCount: number;
   blockedVehicles: OperatorBlockedVehicleItem[];
   taskFeed: OperatorTodayFeedState;
+  orgTimezone: string;
 }
 
 export { normalizeBookingList as normalizeTodayRows } from '../../rental/components/dashboard/dashboardUtils';
@@ -125,8 +139,9 @@ function mapTodayRowToOperatorItem(
     status,
     statusLabel: bookingStatusLabel(status),
     isOverdue,
-    isDueNow: isOverdue || isDueWithinWindow(scheduledAt, nowMs),
+    isDueNow: isOverdue,
     isDone,
+    workState: 'bereit',
     pickupGate: gates.pickupGate,
     returnGate: gates.returnGate,
     raw: row,
@@ -175,21 +190,19 @@ export function buildOperatorTodaySnapshot(input: {
   fleetVehicles: VehicleData[];
   healthMap: Map<string, VehicleHealthResponse>;
   locale?: string;
+  orgTimezone?: string | null;
+  referenceNow?: Date;
 }): OperatorTodaySnapshot {
   const locale = input.locale ?? 'de';
-  const nowMs = Date.now();
-
-  const pickupsToday = filterOperatorOperationalTodayRows(input.pickups)
-    .map((r) => mapPickupRow(r, input.healthMap, locale, nowMs))
-    .filter((x): x is OperatorTodayBookingItem => x !== null);
-
-  const returnsToday = filterOperatorOperationalTodayRows(input.returns)
-    .map((r) => mapReturnRow(r, locale, nowMs))
-    .filter((x): x is OperatorTodayBookingItem => x !== null);
-
-  const dueNow = [...pickupsToday, ...returnsToday]
-    .filter((item) => !item.isDone && item.isDueNow)
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  const workQueue = buildOperatorTodayWorkQueue({
+    pickups: input.pickups,
+    returns: input.returns,
+    fleetVehicles: input.fleetVehicles,
+    healthMap: input.healthMap,
+    locale,
+    orgTimezone: input.orgTimezone ?? input.taskFeed.timezone,
+    referenceNow: input.referenceNow,
+  });
 
   const totalOpenTasksCount = bucketCount(
     input.taskFeed.summary,
@@ -205,6 +218,7 @@ export function buildOperatorTodaySnapshot(input: {
       health,
       healthMap: input.healthMap,
       locale,
+      now: workQueue.referenceNow,
     });
     if (!runtime.isBlocked) continue;
     const primaryReason =
@@ -223,12 +237,16 @@ export function buildOperatorTodaySnapshot(input: {
   }
 
   return {
-    dueNow,
-    pickupsToday,
-    returnsToday,
+    overduePickups: workQueue.overduePickups,
+    overdueReturns: workQueue.overdueReturns,
+    pickupsToday: workQueue.pickupsToday,
+    returnsToday: workQueue.returnsToday,
+    urgentHandovers: workQueue.urgentHandovers,
+    dueNow: workQueue.urgentHandovers,
     totalOpenTasksCount,
     blockedVehicles,
     taskFeed: input.taskFeed,
+    orgTimezone: workQueue.orgTimezone,
   };
 }
 
@@ -297,6 +315,17 @@ export function mapScanBookingToDetailItem(
   const isDone =
     kind === 'PICKUP' ? Boolean(raw.pickupProtocol) : Boolean(raw.returnProtocol);
 
+  const pickupGate = { allowed: false as const };
+  const returnGate = { allowed: false as const };
+  const { workState, blockerReason } = deriveOperatorTodayWorkState({
+    kind,
+    isDone,
+    isOverdue,
+    raw,
+    pickupGate,
+    returnGate,
+  });
+
   return {
     bookingId: hit.bookingId,
     kind,
@@ -311,10 +340,12 @@ export function mapScanBookingToDetailItem(
     status,
     statusLabel: bookingStatusLabel(status),
     isOverdue,
-    isDueNow: isOverdue || isDueWithinWindow(scheduledAt, nowMs),
+    isDueNow: isOverdue,
     isDone,
-    pickupGate: { allowed: false },
-    returnGate: { allowed: false },
+    workState,
+    blockerReason,
+    pickupGate,
+    returnGate,
     raw,
   };
 }
