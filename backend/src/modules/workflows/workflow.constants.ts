@@ -10,6 +10,7 @@ export const WORKFLOW_EVENT_TYPES = [
   'invoice.overdue',
   'customer.complaint.created',
   'manual.test',
+  'task.automation.materialize',
 ] as const;
 
 export type WorkflowEventType = (typeof WORKFLOW_EVENT_TYPES)[number];
@@ -37,8 +38,14 @@ export const WORKFLOW_ACTION_TYPES = [
   'task.create',
   'alert.create',
   'vehicle.status.update',
+  'approval.request',
   'workflow.approval.request',
+  'notification.in_app.send',
   'notification.prepare',
+  'email.send',
+  'whatsapp.template.send',
+  'whatsapp.ai_message.send',
+  'booking.flag',
   'ai.suggest_action',
 ] as const;
 
@@ -47,13 +54,21 @@ export type WorkflowActionType = (typeof WORKFLOW_ACTION_TYPES)[number];
 /** Actions that must never auto-execute without approval. */
 export const APPROVAL_REQUIRED_ACTIONS = new Set<string>([
   'ai.suggest_action',
-  'workflow.approval.request',
   'ai.execute',
   'ai.send_message',
   'ai.book_appointment',
   'customer.contact.send',
+  'customer.contact.email',
+  'whatsapp.template.send',
+  'whatsapp.ai_message.send',
   'invoice.charge',
   'booking.cancel',
+]);
+
+/** Approval gate actions — they create the gate; executor must not double-gate. */
+export const WORKFLOW_APPROVAL_GATE_ACTIONS = new Set<string>([
+  'approval.request',
+  'workflow.approval.request',
 ]);
 
 /** Legacy UI action keys → canonical action types. */
@@ -61,9 +76,19 @@ export const LEGACY_ACTION_TO_CANONICAL: Record<string, WorkflowActionType> = {
   create_task: 'task.create',
   create_alert: 'alert.create',
   change_vehicle_status: 'vehicle.status.update',
-  send_notification: 'notification.prepare',
+  send_notification: 'notification.in_app.send',
+  send_in_app_notification: 'notification.in_app.send',
+  notification_send: 'notification.in_app.send',
+  send_email: 'email.send',
+  email_send: 'email.send',
+  customer_contact_email: 'email.send',
+  customer_contact_send: 'email.send',
+  whatsapp_template_send: 'whatsapp.template.send',
+  whatsapp_ai_message_send: 'whatsapp.ai_message.send',
+  customer_contact_whatsapp: 'whatsapp.template.send',
   ai_suggest: 'ai.suggest_action',
-  request_approval: 'workflow.approval.request',
+  request_approval: 'approval.request',
+  workflow_approval: 'workflow.approval.request',
 };
 
 export const ALLOWED_VEHICLE_STATUSES = new Set<string>(Object.values(VehicleStatus));
