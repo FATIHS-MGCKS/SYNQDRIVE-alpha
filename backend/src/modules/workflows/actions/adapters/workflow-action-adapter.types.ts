@@ -8,6 +8,23 @@ export interface TaskCreateActionConfig {
   vehicleId?: string;
   bookingId?: string;
   customerId?: string;
+  /** Catalog dedup key — when set, overrides workflow-scoped dedup. */
+  dedupKey?: string;
+  taskType?: string;
+  sourceType?: string;
+  source?: string;
+  withChecklist?: boolean;
+  checklist?: Array<{
+    title: string;
+    description?: string;
+    sortOrder?: number;
+    isRequired?: boolean;
+  }>;
+  dueDate?: string;
+  activatesAt?: string;
+  metadata?: Record<string, unknown>;
+  automationRuleId?: string;
+  automationCatalogKey?: string;
 }
 
 export type WorkflowInAppNotificationTemplateKey =

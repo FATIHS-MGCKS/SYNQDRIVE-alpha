@@ -10740,6 +10740,7 @@ model OrgWorkflow {
   lastTriggeredAt DateTime?      @map("last_triggered_at")
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
+  systemMetadata  Json?          @map("system_metadata")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 

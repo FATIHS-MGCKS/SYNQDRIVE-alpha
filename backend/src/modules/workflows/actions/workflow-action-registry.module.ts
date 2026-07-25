@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
@@ -16,7 +16,12 @@ import { WorkflowActionRegistryService } from './workflow-action-registry.servic
 import { WorkflowActionNoopSecretsResolver } from './workflow-action-secrets.resolver';
 
 @Module({
-  imports: [PrismaModule, TasksModule, NotificationsModule, RentalHealthModule],
+  imports: [
+    PrismaModule,
+    forwardRef(() => TasksModule),
+    NotificationsModule,
+    RentalHealthModule,
+  ],
   providers: [
     WorkflowActionPolicyService,
     WorkflowActionSafetyBlockService,

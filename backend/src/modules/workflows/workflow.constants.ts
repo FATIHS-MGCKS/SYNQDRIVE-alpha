@@ -10,6 +10,7 @@ export const WORKFLOW_EVENT_TYPES = [
   'invoice.overdue',
   'customer.complaint.created',
   'manual.test',
+  'task.automation.materialize',
 ] as const;
 
 export type WorkflowEventType = (typeof WORKFLOW_EVENT_TYPES)[number];

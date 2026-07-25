@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'task-automation-workflow-bridge-v49843-2026-07-25',
+    version: '4.9.843',
+    title: 'V4.9.843 — Task Automation → Workflow Runtime Bridge (Phase 7 Prompt 33)',
+    summary: [
+      'Task automation materialization routes through shared Workflow Runtime via task.create adapter.',
+      'Feature flag TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE: legacy (default) | shadow | cutover.',
+      '13 system workflow templates (task_automation_system) with systemMetadata traceability to catalog rules.',
+      'TaskAutomationExecutionRouterService prevents duplicate legacy + workflow writes.',
+      'Admin API exposes workflow.templateId, templateName, runtimeMode — same source of truth for rules UI.',
+      'Bridge tests: booking task, due date, priority, checklist, override, dedup, shadow/cutover/rollback, tenant isolation.',
+    ],
+    reason: 'Predefined task rules must run through the canonical workflow runtime without rebuilding stable automation logic.',
+    previousBehavior: 'TaskAutomationService wrote tasks directly via upsertByDedup with no workflow template linkage.',
+    details: 'docs/migrations/task-automation-to-workflow-runtime-2026-07.md. Module: backend/src/modules/workflows/task-automation-bridge/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T12:00:00.000Z',
+  },
+  {
     id: 'workflow-action-policies-v49842-2026-07-25',
     version: '4.9.842',
     title: 'V4.9.842 — Workflow Action Technical Policies (Phase 7 Prompt 32)',

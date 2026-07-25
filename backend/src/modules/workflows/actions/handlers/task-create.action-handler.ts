@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
-import { TaskPriority } from '@prisma/client';
+import { checklistForType } from '@modules/tasks/task-templates';
+import { TaskPriority, TaskSource, TaskType } from '@prisma/client';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import type { WorkflowActionExecutionContext } from '../workflow-action-execution.context';
-import type { WorkflowActionExecuteResult, WorkflowActionValidationResult } from '../workflow-action-registry.types';
+import type { WorkflowActionExecuteResult } from '../workflow-action-registry.types';
 import { WorkflowActionAuditService } from '../adapters/workflow-action-audit.service';
 import type { TaskCreateActionConfig } from '../adapters/workflow-action-adapter.types';
 import { BaseWorkflowActionHandler } from './base-workflow-action.handler';
@@ -13,12 +14,12 @@ import { BaseWorkflowActionHandler } from './base-workflow-action.handler';
 export class TaskCreateActionHandler extends BaseWorkflowActionHandler {
   readonly definition = this.buildDefinition({
     type: 'task.create',
-    version: '1.1.0',
+    version: '1.2.0',
     capabilityStatus: 'ENABLED',
     riskClass: 'LOW',
     requiredPermission: 'WORKFLOW_EXECUTE',
     configSchema: {
-      schemaVersion: '1.1.0',
+      schemaVersion: '1.2.0',
       additionalProperties: false,
       properties: {
         title: { type: 'string', required: true, description: 'Task title' },
@@ -28,6 +29,17 @@ export class TaskCreateActionHandler extends BaseWorkflowActionHandler {
         vehicleId: { type: 'string' },
         bookingId: { type: 'string' },
         customerId: { type: 'string' },
+        dedupKey: { type: 'string' },
+        taskType: { type: 'string' },
+        sourceType: { type: 'string' },
+        source: { type: 'string' },
+        withChecklist: { type: 'boolean' },
+        checklist: { type: 'array' },
+        dueDate: { type: 'string' },
+        activatesAt: { type: 'string' },
+        metadata: { type: 'object' },
+        automationRuleId: { type: 'string' },
+        automationCatalogKey: { type: 'string' },
       },
     },
   });
@@ -42,7 +54,8 @@ export class TaskCreateActionHandler extends BaseWorkflowActionHandler {
 
   protected describePlannedEffects(config: Record<string, unknown>): string[] {
     const title = typeof config.title === 'string' ? config.title : 'Workflow task';
-    return [`Upsert task "${title}" with workflow provenance (idempotent)`];
+    const dedup = typeof config.dedupKey === 'string' ? config.dedupKey : 'workflow-scoped';
+    return [`Upsert task "${title}" (dedup: ${dedup})`];
   }
 
   async execute(
@@ -51,17 +64,20 @@ export class TaskCreateActionHandler extends BaseWorkflowActionHandler {
   ): Promise<WorkflowActionExecuteResult> {
     const parsed = config as unknown as TaskCreateActionConfig;
     const title = parsed.title?.trim() || 'Workflow task';
-    const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:task`;
+    const dedupKey =
+      parsed.dedupKey?.trim()
+      || `${ctx.idempotencyKey}:action:${ctx.actionIndex}:task`;
 
     const existing = await this.tasksService.findActiveByDedup(ctx.organizationId, dedupKey);
     if (existing) {
       const audit = this.audit.record(ctx, 'task.create', 'duplicate', 'Task already exists for dedup key', {
         taskId: existing.id,
+        dedupKey,
       });
       return {
         status: 'SUCCESS',
         idempotentReplay: true,
-        output: { taskId: existing.id, auditId: audit.auditId },
+        output: { taskId: existing.id, auditId: audit.auditId, dedupKey },
       };
     }
 
@@ -98,23 +114,37 @@ export class TaskCreateActionHandler extends BaseWorkflowActionHandler {
       }
     }
 
+    const taskType = (parsed.taskType as TaskType | undefined) ?? 'CUSTOM';
+    const sourceType = (parsed.sourceType as TaskSource | undefined) ?? 'SYSTEM';
+    const source = parsed.source ?? 'WORKFLOW_AUTOMATION';
+    const checklist = parsed.withChecklist
+      ? checklistForType(taskType)
+      : parsed.checklist;
+
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title,
       description: parsed.description,
       category: parsed.category ?? 'workflow',
-      type: 'CUSTOM',
-      sourceType: 'SYSTEM',
-      source: 'WORKFLOW_AUTOMATION',
+      type: taskType,
+      sourceType,
+      source,
       priority: normalizeTaskPriority(String(parsed.priority ?? '')) as TaskPriority,
       vehicleId,
       bookingId,
       customerId,
+      dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
+      activatesAt: parsed.activatesAt ? new Date(parsed.activatesAt) : new Date(),
+      checklist,
       metadata: {
+        ...(parsed.metadata ?? {}),
         workflowId: ctx.workflowId,
         workflowRunId: ctx.workflowRunId,
         actionRunId: ctx.actionRunId,
         eventType: ctx.event.eventType,
-        provenance: 'workflow',
+        provenance: parsed.automationCatalogKey ? 'task_automation_workflow' : 'workflow',
+        automationRuleId: parsed.automationRuleId,
+        automationCatalogKey: parsed.automationCatalogKey,
+        dedupKey,
       },
     });
 
@@ -123,7 +153,8 @@ export class TaskCreateActionHandler extends BaseWorkflowActionHandler {
       bookingId,
       vehicleId,
       customerId,
+      dedupKey,
     });
-    return { status: 'SUCCESS', output: { taskId: task.id, auditId: audit.auditId } };
+    return { status: 'SUCCESS', output: { taskId: task.id, auditId: audit.auditId, dedupKey } };
   }
 }
