@@ -171,6 +171,7 @@ export function clauseError(
   explain?: string,
 ): WorkflowConditionClauseResult {
   return {
+    kind: 'clause',
     fieldPath,
     operator: operator as WorkflowConditionClauseResult['operator'],
     passed: false,

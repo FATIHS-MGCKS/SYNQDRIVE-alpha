@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-condition-tree-v49836-2026-07-25',
+    version: '4.9.836',
+    title: 'V4.9.836 — Nested workflow condition groups (Phase 6 Prompt 26)',
+    summary: [
+      'WorkflowConditionTreeEngine: ALL, ANY, NOT with safe nested groups and deterministic evaluation.',
+      'Result tree for dry-run: each clause includes field, operator, masked actual/expected, passed, errorCode.',
+      'Limits: max depth 5, max 50 clauses, max 100 nodes, 64KB payload guard.',
+      'Prisma NOT logic operator; legacy flat AND lists migrate to ALL root; orchestrator uses nested tree.',
+      'DTO: WorkflowConditionGroupDto + conditionTree/conditionGroups; UI types in frontend/src/types/workflow-conditions.ts.',
+    ],
+    reason: 'Workflow conditions need composable boolean logic with explainable, PII-safe evaluation trees — not flat implicit AND lists.',
+    previousBehavior: 'Orchestrator flattened conditionGroups into a single AND list, ignoring group logic and nesting.',
+    details: 'docs/architecture/workflow-condition-engine-2026-07.md. Module: backend/src/modules/workflows/conditions/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T09:00:00.000Z',
+  },
+  {
     id: 'workflow-condition-engine-v49835-2026-07-25',
     version: '4.9.835',
     title: 'V4.9.835 — Typed workflow condition engine (Phase 6 Prompt 25)',

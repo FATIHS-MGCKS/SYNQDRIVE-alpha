@@ -1,7 +1,15 @@
 import type { WorkflowConditionFieldDefinition } from './workflow-condition.types';
 import { OPERATORS_BY_DATA_TYPE } from './workflow-condition-operators';
 
-const BOOKING_STATUS = ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const;
+const BOOKING_STATUS = [
+  'PENDING',
+  'CONFIRMED',
+  'READY_FOR_PICKUP',
+  'ACTIVE',
+  'COMPLETED',
+  'CANCELLED',
+  'NO_SHOW',
+] as const;
 const TASK_STATUS = ['OPEN', 'IN_PROGRESS', 'DONE', 'CANCELLED'] as const;
 const HEALTH_SEVERITY = ['OK', 'WARNING', 'CRITICAL'] as const;
 
@@ -32,6 +40,14 @@ export const WORKFLOW_CONDITION_FIELD_REGISTRY: readonly WorkflowConditionFieldD
     piiClass: 'none',
   },
   {
+    path: 'booking.cancelled',
+    resolvePath: 'booking.cancelled',
+    dataType: 'boolean',
+    label: 'Booking cancelled',
+    allowedOperators: OPERATORS_BY_DATA_TYPE.boolean,
+    piiClass: 'none',
+  },
+  {
     path: 'vehicle.health.severity',
     resolvePath: 'vehicle.health.severity',
     dataType: 'enum',
@@ -57,6 +73,17 @@ export const WORKFLOW_CONDITION_FIELD_REGISTRY: readonly WorkflowConditionFieldD
     allowedOperators: OPERATORS_BY_DATA_TYPE.boolean,
     piiClass: 'pii',
     requiredPermission: 'workflow:condition:pii',
+    legacyFieldKeys: ['customer.whatsappAllowed', 'whatsappAllowed'],
+  },
+  {
+    path: 'customer.contact.phoneAllowed',
+    resolvePath: 'customer.contact.phoneAllowed',
+    dataType: 'boolean',
+    label: 'Customer phone allowed',
+    allowedOperators: OPERATORS_BY_DATA_TYPE.boolean,
+    piiClass: 'pii',
+    requiredPermission: 'workflow:condition:pii',
+    legacyFieldKeys: ['customer.phoneAllowed', 'phoneAllowed'],
   },
   {
     path: 'invoice.amountDue',
