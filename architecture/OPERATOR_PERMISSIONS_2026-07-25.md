@@ -92,6 +92,16 @@
 
 **Important:** Frontend gates are UX only. Backend `PermissionsGuard` / services remain authoritative.
 
+## Vehicle-scoped routes (Prompt 7)
+
+Routes under `/vehicles/:vehicleId/*` use `VehicleOwnershipGuard` (no explicit `orgId` in path). As of V4.9.833 the guard enforces:
+
+1. Vehicle belongs to JWT `activeOrganizationId`
+2. User has **ACTIVE** `organizationMembership` in that org (same invariant as `OrgScopingGuard`)
+3. `request.tenantId` stamped for downstream services
+
+Master Admin bypass unchanged. Audit: `docs/audits/operator-app-production-readiness-2026-07.md` §29.
+
 ## Endpoint migration (deferred)
 
 Controllers should adopt `@RequireOperatorPermission('operator.…')` per handler. Until migrated, existing `@RequirePermission` on domain modules remains authoritative. Service layer must add:
