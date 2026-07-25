@@ -181,6 +181,8 @@
 
 ---
 
+## 0. Safe audit helpers (run on VPS as `root` or deploy user)
+
 Load once per SSH session. These helpers enforce masking and read-only defaults.
 
 ```bash
