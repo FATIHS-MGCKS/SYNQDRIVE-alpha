@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-prod-deploy-v49840-2026-07-25',
+    version: '4.9.840',
+    title: 'V4.9.840 — Operator App production deploy + Gate 12 closure',
+    summary: [
+      'Merged PR #933 to main; VPS deploy release 20260725233142_v4994 @ 4a479c1e.',
+      'Prisma migration 20260725230000_booking_handover_drafts applied on production.',
+      'Gate 12 PASS: Document/Legal/IAM retention ENABLED dryRun=false on VPS (backup backend.env.pre-retention-20260725T233632Z).',
+      'Read-only smoke preflight 4/4 PASS; handover/draft API returns 401 unauth (deploy verified).',
+      'Gate 20 remains: authenticated write smoke blocked (GAP-043-001 — no smoke tenant/JWT).',
+    ],
+    reason: 'Complete production rollout sequence: merge → deploy → retention enablement → smoke verification.',
+    previousBehavior: 'Operator blocker fixes on branch only; retention dryRun=true on VPS.',
+    details: 'Deploy via cloud-agent-deploy.sh; docs/releases/operator-app-production-gate-2026-07.md updated.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-07-25T23:40:00.000Z',
+  },
+  {
     id: 'vehicle-warnings-followups-v49866-2026-07-25',
     version: '4.9.866',
     title: 'V4.9.866 — Vehicle Warnings post-remediation follow-ups',

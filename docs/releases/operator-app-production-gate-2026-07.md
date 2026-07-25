@@ -4,8 +4,8 @@
 |-------|-------|
 | **Release ID** | `operator-app-production-gate-2026-07` |
 | **Prompt** | **45 of 45** (final technical gate check) |
-| **Release version** | `4.9.839` (branch; not deployed to VPS) |
-| **Commit SHA** | branch `cursor/operator-e2e-46a7` (blocker remediation) |
+| **Release version** | `4.9.840` (deployed VPS `20260725233142_v4994`) |
+| **Commit SHA** | `4a479c1e` on `main` |
 | **Production baseline** | `main` @ `61b38798` — VPS release `20260725220141_v4994` |
 | **PR** | [#933](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/933) |
 | **Decision date** | 2026-07-25 UTC |
@@ -15,10 +15,10 @@
 
 ## Executive decision
 
-| Verdict | **CONDITIONAL GO** |
+| Verdict | **CONDITIONAL GO** (write smoke pending) |
 |---------|-----------|
 | **Conditional read-only availability** | Operator SPA and auth gates operational on production (`/operator` 200, APIs 401 unauth) |
-| **Full production release sign-off** | **Pending** — 2 of 20 gates FAIL (critical: retention VPS enablement, prod write smoke tenant) |
+| **Full production release sign-off** | **Pending Gate 20** — authenticated write-path smoke requires isolated prod tenant + Clerk JWT |
 
 **Rule applied:** One FAIL on a critical gate ⇒ No-Go for production-ready claim.
 
@@ -54,7 +54,7 @@
 | **9** | Robuste Upload Queue und sichere Storage-Pipeline | No | **PASS** | VPS `document.extraction` 0/0/0; `DocumentUploadRateLimitService` `operator_app` 2× multiplier (`document-upload-rate-limit.service.spec.ts`); readiness ok |
 | **10** | Manipulationssichere Signatur- und Completion-Bindung | **Yes** | **PASS** | Signatures bound to `bookingHandoverProtocol` with `bookingId`/`kind`; duplicate return → conflict; payload validation tests |
 | **11** | Damage-/Observation-/Tire-Domain korrekt integriert | No | **PASS** | `DamageSource.PICKUP_HANDOVER`; observation drafts in transaction; `operatorTireMeasure.utils.test.ts` |
-| **12** | DSGVO-Datenminimierung, Retention und Löschprozesse | **Yes** | **FAIL** | VPS logs: `Document/Legal/IAM retention DISABLED — dryRun=true` (F-042-005); no prod evidence of active retention purge |
+| **12** | DSGVO-Datenminimierung, Retention und Löschprozesse | **Yes** | **PASS** | VPS 2026-07-25T23:36 UTC: Document/Legal/IAM retention `ENABLED dryRun=false`; logs confirm startup |
 | **13** | Audit Logging | No | **PASS** | `BookingPickupGateAuditService`; handover protocol stores `performedByUserId`/timestamps; business audit idempotency keys in eligibility flows |
 | **14** | Security Hardening | No | **PASS** | Prod: HSTS, CSP, CORS, rate limits, `/metrics` 404, TLS valid; upload rate limits active (repo `npm audit` debt is platform-wide, not Operator-specific) |
 | **15** | Observability und Runbooks | No | **PASS** | `docs/runbooks/operator-app-incident-response.md`, `operator-production-smoke.md`, `operator-retention-enablement.md`; preflight script |
@@ -64,7 +64,7 @@
 | **19** | VPS-/Runtime-Kontrollaudit | No | **PASS** | Prompt 42 executed read-only; 0 Operator infra blockers; commit aligned |
 | **20** | Kontrollierter Production-Smoke-Test oder sichere Alternative | **Yes** | **FAIL** | Read-only 12/12 PASS; **write-path smoke 0/14 SKIPPED** (GAP-043-001). Mocked Playwright E2E is documented mitigation, **not equivalent** to authenticated prod write validation |
 
-**Summary:** 18 PASS · 2 FAIL · 2 critical FAIL remaining (Gates 12, 20 — VPS/ops only)
+**Summary:** 19 PASS · 1 FAIL · 1 critical FAIL remaining (Gate 20 — prod write smoke tenant + JWT)
 
 ---
 
@@ -72,10 +72,13 @@
 
 | Gate | Blocker | Remediation |
 |------|---------|-------------|
-| **12** | Retention dryRun on production | Execute `docs/runbooks/operator-retention-enablement.md` on VPS after DPO sign-off |
-| **20** | No authenticated production write smoke | Provision `OPERATOR_SMOKE_ORG_ID` + run `docs/runbooks/operator-production-smoke.md` |
+| **20** | No authenticated production write smoke | Provision isolated `operator-smoke-prod` tenant + Clerk WORKER JWT; run W-01–W-14 per `docs/runbooks/operator-production-smoke.md` |
 
-### Resolved in branch (formerly critical)
+### Resolved
+
+| Gate | Fix |
+|------|-----|
+| **12** | VPS retention enabled (`DOCUMENT_/LEGAL_/IAM_*_RETENTION_ENABLED=true`, `DRY_RUN=false`) — backup `backend.env.pre-retention-20260725T233632Z` |
 
 | Gate | Fix |
 |------|-----|
@@ -102,7 +105,7 @@
 
 | ID | Severity | Risk | Owner | Target |
 |----|----------|------|-------|--------|
-| GAP-043-001 | HIGH | Write paths unverified on prod | DevOps / QA | 2026-08-15 |
+| GAP-043-001 | HIGH | Write paths unverified on prod | DevOps / QA | Provision smoke tenant + JWT |
 | F-042-007 | MEDIUM | Blocker fixes not on prod | Engineering | Merge PR #933 |
 | W-REG-001 | LOW | Backend tsc spec errors | Platform | **Resolved** |
 
@@ -125,7 +128,7 @@
 | Product Owner | `[PLACEHOLDER]` | Pending | — |
 | Security / DPO | `[PLACEHOLDER]` | Pending (Gate 12 open) | — |
 
-**Automated gate verdict (blocker remediation):** **CONDITIONAL GO** — all repo-fixable gates pass. Full write-path sign-off still requires VPS retention enablement (Gate 12) and production smoke tenant (Gate 20).
+**Automated gate verdict (post-deploy):** **CONDITIONAL GO** — 19/20 gates PASS on production. Gate 20 write smoke remains open until isolated tenant + Clerk credentials are provisioned.
 
 ---
 
