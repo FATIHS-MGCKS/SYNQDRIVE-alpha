@@ -6,6 +6,7 @@ import { WorkflowDryRunService } from '../workflow-dry-run.service';
 import { compareLegacyTaskWithShadowPlan } from './workflow-shadow-comparison.util';
 import { WorkflowShadowGateService } from './workflow-shadow-gate.service';
 import { WorkflowShadowService } from './workflow-shadow.service';
+import { makeRolloutServiceMock } from '../rollout/workflow-runtime-rollout.test-util';
 import workflowShadowConfig from '@config/workflow-shadow.config';
 import taskAutomationWorkflowRuntimeConfig from '@config/task-automation-workflow-runtime.config';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -263,6 +264,7 @@ describe('Workflow shadow mode', () => {
       const gate = new WorkflowShadowGateService(
         { orgWorkflowShadowSettings: { findUnique: jest.fn().mockResolvedValue(null) } } as unknown as PrismaService,
         { get: jest.fn().mockReturnValue(false) } as never,
+        makeRolloutServiceMock({ runShadow: true, effectiveStage: 'SHADOW' }) as never,
       );
       await expect(gate.isOrgShadowEnabled(ORG_A)).resolves.toBe(true);
       delete process.env.TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE;

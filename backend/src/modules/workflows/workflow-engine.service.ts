@@ -21,7 +21,9 @@ import {
 import { evaluateWorkflowScope } from './workflow-scope.evaluator';
 import { WorkflowShadowGateService } from './shadow/workflow-shadow-gate.service';
 import { WorkflowShadowService } from './shadow/workflow-shadow.service';
+import { WorkflowRuntimeRolloutService } from './rollout/workflow-runtime-rollout.service';
 import { shouldRunWorkflowLive } from './shadow/workflow-shadow-comparison.util';
+import { ConfigService } from '@nestjs/config';
 
 export interface ExecuteWorkflowOptions {
   executionMode: WorkflowExecutionMode;
@@ -46,6 +48,8 @@ export class WorkflowEngineService {
     private readonly actionExecutor: WorkflowActionExecutorService,
     private readonly shadowGate: WorkflowShadowGateService,
     private readonly shadowService: WorkflowShadowService,
+    private readonly rollout: WorkflowRuntimeRolloutService,
+    private readonly config: ConfigService,
   ) {}
 
   async processEvent(event: WorkflowDomainEvent): Promise<string[]> {
@@ -58,19 +62,30 @@ export class WorkflowEngineService {
 
     const runIds: string[] = [];
     let shadowEvaluations = 0;
-    const maxShadow = 20;
+    const maxShadow =
+      this.config.get<number>('workflowShadow.maxEvaluationsPerEvent')
+      ?? this.config.get<number>('workflowRuntimeRollout.maxEvaluationsPerEvent')
+      ?? 20;
 
     for (const workflow of workflows.values()) {
+      const rolloutFlags = await this.rollout.resolveEffectiveFlags(event.organizationId, workflow.id);
       const gate = await this.shadowGate.resolve(event.organizationId, workflow);
 
-      if (gate.runLive && shouldRunWorkflowLive(workflow)) {
+      const runLive =
+        rolloutFlags.runLiveEngine
+        && gate.runLive
+        && shouldRunWorkflowLive(workflow)
+        && !workflow.shadowEnabled;
+
+      if (runLive) {
         const runId = await this.executeWorkflow(workflow, event, {
           executionMode: WorkflowExecutionMode.LIVE,
         });
         if (runId) runIds.push(runId);
       }
 
-      if (gate.runShadow && shadowEvaluations < maxShadow) {
+      const runShadow = rolloutFlags.runShadow && gate.runShadow;
+      if (runShadow && shadowEvaluations < maxShadow) {
         shadowEvaluations += 1;
         this.shadowService.scheduleShadowEvaluation(workflow, event);
       }

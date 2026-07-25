@@ -31,6 +31,7 @@ export { default as billingStripeSyncConfig } from './billing-stripe-sync.config
 export { default as taskAutomationOutboxConfig } from './task-automation-outbox.config';
 export { default as taskAutomationWorkflowRuntimeConfig, resolveTaskAutomationWorkflowRuntimeMode } from './task-automation-workflow-runtime.config';
 export { default as workflowShadowConfig } from './workflow-shadow.config';
+export { default as workflowRuntimeRolloutConfig } from './workflow-runtime-rollout.config';
 export { default as deviceConnectionWebhookInboxConfig } from './device-connection-webhook-inbox.config';
 export { default as connectivityRecoveryConfig } from './connectivity-recovery.config';
 export {

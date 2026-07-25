@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { OrgWorkflow } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { resolveTaskAutomationWorkflowRuntimeMode } from '@config/task-automation-workflow-runtime.config';
+import { WorkflowRuntimeRolloutService } from '../rollout/workflow-runtime-rollout.service';
 import type { WorkflowShadowGateResult } from './workflow-shadow.types';
 import { shouldRunWorkflowLive, shouldRunWorkflowShadow } from './workflow-shadow-comparison.util';
 
@@ -14,16 +15,24 @@ export class WorkflowShadowGateService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly rollout: WorkflowRuntimeRolloutService,
   ) {}
 
   async resolve(orgId: string, workflow: OrgWorkflow): Promise<WorkflowShadowGateResult> {
     const orgSettings = await this.getOrgSettings(orgId);
     const globalOn = this.config.get<boolean>('workflowShadow.globallyEnabled') === true;
-    const runtimeShadow = resolveTaskAutomationWorkflowRuntimeMode() === 'shadow';
-    const orgShadowEnabled = globalOn || orgSettings.enabled || runtimeShadow;
+    const rolloutFlags = await this.rollout.resolveEffectiveFlags(orgId, workflow.id);
+    const runtimeShadow =
+      rolloutFlags.effectiveStage === 'SHADOW'
+      || resolveTaskAutomationWorkflowRuntimeMode() === 'shadow';
+    const orgShadowEnabled = globalOn || orgSettings.enabled || rolloutFlags.runShadow || runtimeShadow;
 
-    const runShadow = shouldRunWorkflowShadow(workflow, orgShadowEnabled);
-    const runLive = shouldRunWorkflowLive(workflow) && !runtimeShadow;
+    const runShadow =
+      rolloutFlags.runShadow && shouldRunWorkflowShadow(workflow, orgShadowEnabled);
+    const runLive =
+      rolloutFlags.runLiveEngine
+      && shouldRunWorkflowLive(workflow)
+      && rolloutFlags.executionPath !== 'shadow_compare';
 
     return {
       orgShadowEnabled,
@@ -36,7 +45,13 @@ export class WorkflowShadowGateService {
   async isOrgShadowEnabled(orgId: string): Promise<boolean> {
     const orgSettings = await this.getOrgSettings(orgId);
     const globalOn = this.config.get<boolean>('workflowShadow.globallyEnabled') === true;
-    return globalOn || orgSettings.enabled || resolveTaskAutomationWorkflowRuntimeMode() === 'shadow';
+    const rolloutFlags = await this.rollout.resolveEffectiveFlags(orgId);
+    return (
+      globalOn
+      || orgSettings.enabled
+      || rolloutFlags.runShadow
+      || resolveTaskAutomationWorkflowRuntimeMode() === 'shadow'
+    );
   }
 
   async isLegacyCompareEnabled(orgId: string): Promise<boolean> {

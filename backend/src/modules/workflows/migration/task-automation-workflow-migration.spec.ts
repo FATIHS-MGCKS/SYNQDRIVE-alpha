@@ -17,6 +17,8 @@ import { TaskAutomationExecutionRouterService } from '../task-automation-bridge/
 import { TaskAutomationWorkflowMaterializerService } from '../task-automation-bridge/task-automation-workflow-materializer.service';
 import { TaskAutomationWorkflowTemplateService } from '../task-automation-bridge/task-automation-workflow-template.service';
 import { TaskAutomationWorkflowMigrationService } from './task-automation-workflow-migration.service';
+import { makeRolloutServiceMock } from '../rollout/workflow-runtime-rollout.test-util';
+import { WorkflowRuntimeRolloutService } from '../rollout/workflow-runtime-rollout.service';
 import type { TaskAutomationMaterializationPayload } from '../task-automation-bridge/task-automation-workflow-bridge.types';
 
 const ORG_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -230,6 +232,25 @@ describe('Task automation workflow migration', () => {
       isLegacyCompareEnabled: jest.fn().mockResolvedValue(true),
     };
 
+    const rollout = makeRolloutServiceMock({
+      executionPath: mode === 'cutover' ? 'workflow_live' : mode === 'shadow' ? 'shadow_compare' : 'legacy_only',
+      runLiveEngine: mode === 'cutover',
+      runShadow: mode === 'shadow',
+      runLegacyBridge: mode !== 'cutover',
+      effectiveStage:
+        mode === 'cutover'
+          ? 'INTERNAL_ACTIONS_ONLY'
+          : mode === 'shadow'
+            ? 'SHADOW'
+            : 'DISABLED',
+      globalStage:
+        mode === 'cutover'
+          ? 'INTERNAL_ACTIONS_ONLY'
+          : mode === 'shadow'
+            ? 'SHADOW'
+            : 'DISABLED',
+    });
+
     const module = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ load: [taskAutomationWorkflowRuntimeConfig] })],
       providers: [
@@ -243,6 +264,7 @@ describe('Task automation workflow migration', () => {
         TaskAutomationRuleResolverService,
         { provide: WorkflowShadowService, useValue: shadowService },
         { provide: WorkflowShadowGateService, useValue: shadowGate },
+        { provide: WorkflowRuntimeRolloutService, useValue: rollout },
         { provide: PrismaService, useValue: prisma },
         { provide: TasksService, useValue: tasksService },
         { provide: TaskAutomationRuleResolverService, useValue: resolver },

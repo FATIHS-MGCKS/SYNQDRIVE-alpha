@@ -10,6 +10,7 @@ import { TaskAutomationWorkflowMigrationController } from './migration/task-auto
 import { WorkflowMakerCheckerModule } from './maker-checker/workflow-maker-checker.module';
 import { WorkflowAuditModule } from './audit/workflow-audit.module';
 import { WorkflowShadowModule } from './shadow/workflow-shadow.module';
+import { WorkflowRuntimeRolloutModule } from './rollout/workflow-runtime-rollout.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     WorkflowMakerCheckerModule,
     WorkflowAuditModule,
     WorkflowShadowModule,
+    WorkflowRuntimeRolloutModule,
   ],
   controllers: [WorkflowsController, TaskAutomationWorkflowMigrationController],
   providers: [
@@ -36,6 +38,7 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     TaskAutomationWorkflowBridgeModule,
     TaskAutomationWorkflowMigrationService,
     WorkflowShadowModule,
+    WorkflowRuntimeRolloutModule,
   ],
 })
 export class WorkflowsModule {}

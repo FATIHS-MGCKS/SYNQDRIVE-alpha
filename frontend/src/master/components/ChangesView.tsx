@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-runtime-rollout-v49861-2026-07-25',
+    version: '4.9.861',
+    title: 'V4.9.861 — Workflow Runtime Controlled Rollout (Phase 11 Prompt 51)',
+    summary: [
+      'Server-side rollout stages: DISABLED → SHADOW → INTERNAL_ACTIONS_ONLY → SELECTED_WORKFLOWS → SELECTED_ORGANIZATIONS → EXTERNAL_COMMUNICATIONS_WITH_APPROVAL → GENERAL_AVAILABILITY.',
+      'Per-org + per-workflow scope; separate channel flags (email, WhatsApp, SMS, voice, AI, critical); fail-closed default.',
+      'Kill switches: global, per-provider, per-org, per-action-type; in-flight runs complete, new actions blocked.',
+      'Maker-checker for risky stage promotion; audit for stage changes and kill switch toggles.',
+      'Pre-deployment gates API; bridge router single execution path (no legacy+workflow double run).',
+      'Admin API: `GET/PATCH .../workflows/runtime-rollout/*`.',
+      'Docs: `docs/operations/workflow-runtime-rollout-runbook-2026-07.md`.',
+    ],
+    reason:
+      'Production rollout of the Workflow Runtime must be tenant-safe, reversible, and enforced server-side — not activatable from the frontend alone.',
+    previousBehavior:
+      'Shadow/cutover relied on env tri-state only; no staged channel flags, kill switches, gates, or maker-checker for external communications.',
+    details:
+      'WorkflowRuntimeRolloutModule, workflow-runtime-rollout.config.ts, migration 20260725160000_workflow_runtime_rollout, workflow-runtime-rollout.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T17:00:00.000Z',
+  },
+  {
     id: 'workflow-shadow-mode-v49860-2026-07-25',
     version: '4.9.860',
     title: 'V4.9.860 — Workflow Runtime Shadow Mode (Phase 11 Prompt 50)',

@@ -5,6 +5,8 @@ import { WorkflowExecutionMode } from './workflow-execution-mode';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { makeRolloutServiceMock } from './rollout/workflow-runtime-rollout.test-util';
+import { ConfigService } from '@nestjs/config';
 
 const ORG_A = 'org-a';
 const ORG_B = 'org-b';
@@ -203,7 +205,8 @@ describe('WorkflowActionExecutorService live guard', () => {
   it('refuses execution without LIVE mode', async () => {
     const prisma = makePrisma();
     const tasksService = { upsertByDedup: jest.fn() } as unknown as TasksService;
-    const executor = new WorkflowActionExecutorService(prisma, tasksService);
+    const rollout = makeRolloutServiceMock();
+    const executor = new WorkflowActionExecutorService(prisma, tasksService, rollout as never);
 
     await expect(
       executor.execute(
@@ -247,13 +250,17 @@ describe('WorkflowEngineService LIVE mode', () => {
     const tasksService = {
       upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }),
     } as unknown as TasksService;
-    const actionExecutor = new WorkflowActionExecutorService(prisma, tasksService);
+    const rollout = makeRolloutServiceMock();
+    const actionExecutor = new WorkflowActionExecutorService(prisma, tasksService, rollout as never);
     const shadow = makeShadowMocks();
+    const config = { get: jest.fn().mockReturnValue(20) } as unknown as ConfigService;
     const engine = new WorkflowEngineService(
       prisma,
       actionExecutor,
       shadow.shadowGate as never,
       shadow.shadowService as never,
+      rollout as never,
+      config,
     );
 
     const wf = makeWorkflow({
@@ -285,16 +292,21 @@ describe('WorkflowEngineService LIVE mode', () => {
 
   it('rejects executeWorkflow without LIVE mode', async () => {
     const prisma = makePrisma();
+    const rollout = makeRolloutServiceMock();
     const actionExecutor = new WorkflowActionExecutorService(
       prisma,
       { upsertByDedup: jest.fn() } as unknown as TasksService,
+      rollout as never,
     );
     const shadow = makeShadowMocks();
+    const config = { get: jest.fn().mockReturnValue(20) } as unknown as ConfigService;
     const engine = new WorkflowEngineService(
       prisma,
       actionExecutor,
       shadow.shadowGate as never,
       shadow.shadowService as never,
+      rollout as never,
+      config,
     );
     const wf = makeWorkflow({
       actions: [{ type: 'task.create', config: { title: 'Blocked' } }],

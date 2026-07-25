@@ -20,6 +20,7 @@ import {
   assertLiveExecution,
   WorkflowExecutionMode,
 } from './workflow-execution-mode';
+import { WorkflowRuntimeRolloutService } from './rollout/workflow-runtime-rollout.service';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -40,6 +41,7 @@ export class WorkflowActionExecutorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
+    private readonly rollout: WorkflowRuntimeRolloutService,
   ) {}
 
   async execute(
@@ -47,6 +49,19 @@ export class WorkflowActionExecutorService {
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
     assertLiveExecution(ctx.executionMode, 'WorkflowActionExecutorService.execute');
+
+    const rolloutCheck = await this.rollout.canExecuteLiveAction(
+      ctx.organizationId,
+      action.type,
+      ctx.workflowId,
+    );
+    if (!rolloutCheck.allowed) {
+      return {
+        status: 'FAILED',
+        errorMessage: `Rollout policy blocked action: ${rolloutCheck.reasons.join(', ')}`,
+        output: { rolloutBlocked: true, reasons: rolloutCheck.reasons },
+      };
+    }
 
     if (action.requiresApproval) {
       await this.prisma.orgWorkflowApproval.create({

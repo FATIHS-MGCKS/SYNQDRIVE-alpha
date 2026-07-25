@@ -3,6 +3,8 @@ import { TasksService } from '@modules/tasks/tasks.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { WorkflowExecutionMode } from './workflow-execution-mode';
+import { makeRolloutServiceMock } from './rollout/workflow-runtime-rollout.test-util';
+import { ConfigService } from '@nestjs/config';
 
 const ORG_A = 'org-a';
 const ORG_B = 'org-b';
@@ -101,13 +103,17 @@ function makeEngine(
   upsertByDedup: jest.Mock = jest.fn().mockResolvedValue({ id: 'task-1' }),
 ) {
   const shadow = makeShadowDeps();
+  const rollout = makeRolloutServiceMock();
+  const config = { get: jest.fn().mockReturnValue(20) } as unknown as ConfigService;
   const engine = new WorkflowEngineService(
     prisma,
-    new WorkflowActionExecutorService(prisma, { upsertByDedup } as unknown as TasksService),
+    new WorkflowActionExecutorService(prisma, { upsertByDedup } as unknown as TasksService, rollout as never),
     shadow.shadowGate as never,
     shadow.shadowService as never,
+    rollout as never,
+    config,
   );
-  return { engine, shadow };
+  return { engine, shadow, rollout };
 }
 
 describe('WorkflowEngineService production scenarios', () => {
