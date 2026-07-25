@@ -241,6 +241,7 @@ import {
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController],
   providers: [
+    VehicleIntelligencePermissionGuard,
     BatteryService,
     TiresService,
     TireWearModelService,

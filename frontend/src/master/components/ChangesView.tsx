@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-warnings-remediation-phase1-v49827-2026-07-25',
+    version: '4.9.827',
+    title: 'V4.9.827 — Vehicle Warnings Remediation Phase 1',
+    summary: [
+      'Security: VehicleIntelligencePermissionGuard (fleet read/write); brake/battery spec PATCH vehicleId binding; dashboard-insights requires dashboard.read.',
+      'Blocking SSOT: rental-health collectBlockingReasons includes open BLOCK_RENTAL damages + service critical; API fields rental_readiness, evaluated_at, projection_version.',
+      'Idempotency: DTC upsert P2002 retry + rental-health cache invalidation; OrgTask upsertByDedup race handler; partial unique indexes (DTC + dashboard insights).',
+      'Notifications: health sweep limit configurable (default 2000); mergeV2 dedupe by semanticKey only; OPEN_VEHICLE_MODULE routing.',
+      'Rental-health API rate limit 120/min; migration 20260725180000_vehicle_warnings_dedup_indexes.',
+    ],
+    reason: 'Implement audit remediation WP-B0 and phases 1–5 subset (42 findings — ongoing 19-phase plan).',
+    previousBehavior: 'Vehicle Intelligence ohne Permission-Gate; parallele Block-Pfade; DTC/Insight ohne DB-Dedup; FE mergeV2 unterdrückte zweite Health pro Fahrzeug.',
+    details:
+      'Audit docs: docs/audits/vehicle-warnings/. Remaining: canonical VehicleFinding, runtime SSOT UI migration, GDPR erasure, battery V2 prod fix, full 19-phase rollout.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T18:20:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { VehicleBatterySpec, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 
@@ -23,9 +23,18 @@ export class BatteryService {
   }
 
   async update(
+    vehicleId: string,
     id: string,
     data: Prisma.VehicleBatterySpecUpdateInput,
   ): Promise<VehicleBatterySpec> {
+    const existing = await this.prisma.vehicleBatterySpec.findFirst({
+      where: { id, vehicleId },
+    });
+    if (!existing) {
+      throw new NotFoundException(
+        `Battery spec ${id} not found for vehicle ${vehicleId}`,
+      );
+    }
     return this.prisma.vehicleBatterySpec.update({ where: { id }, data });
   }
 }

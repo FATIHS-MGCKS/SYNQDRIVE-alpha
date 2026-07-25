@@ -50,10 +50,9 @@ function coveredHealthSemanticKeys(v2Items: ActionQueueItem[]): Set<string> {
 function shouldSkipSupplementalHealthItem(
   item: ActionQueueItem,
   coveredSemanticKeys: Set<string>,
-  coveredVehicleIds: Set<string>,
+  _coveredVehicleIds: Set<string>,
 ): boolean {
   if (item.semanticKey && coveredSemanticKeys.has(item.semanticKey)) return true;
-  if (item.vehicleId && coveredVehicleIds.has(item.vehicleId)) return true;
   return false;
 }
 

@@ -1,11 +1,13 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 
 @Controller('organizations/:orgId/dashboard-insights')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class DashboardInsightsController {
   constructor(
     private readonly repo: DashboardInsightsRepository,
@@ -13,12 +15,14 @@ export class DashboardInsightsController {
   ) {}
 
   @Get()
+  @RequirePermission('dashboard', 'read')
   async getInsights(@Param('orgId') orgId: string) {
     const policy = await this.policyService.getPolicy(orgId);
     return this.repo.getActiveInsights(orgId, policy.maxVisibleInsights);
   }
 
   @Get('summary')
+  @RequirePermission('dashboard', 'read')
   async getSummary(@Param('orgId') orgId: string) {
     const policy = await this.policyService.getPolicy(orgId);
     const response = await this.repo.getActiveInsights(orgId, policy.maxVisibleInsights);

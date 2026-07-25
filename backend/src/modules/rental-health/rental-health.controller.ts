@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Query, Req, UnauthorizedException, UseGuards, Optional } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UnauthorizedException, UseGuards, Optional } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { RentalHealthService } from './rental-health.service';
 import { RentalHealthFleetService } from './rental-health-fleet.service';
@@ -54,6 +55,7 @@ export class RentalHealthController {
   ) {}
 
   @Get('vehicles/:vehicleId/rental-health')
+  @Throttle({ default: { ttl: 60_000, limit: 120 } })
   @RequirePermission('fleet', 'read')
   async getVehicleHealth(
     @Param('orgId') orgId: string,

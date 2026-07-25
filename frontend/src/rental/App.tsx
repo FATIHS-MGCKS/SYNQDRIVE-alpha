@@ -576,10 +576,14 @@ function RentalAppContent() {
 
   const rentalEntityNavigation = useMemo<RentalEntityNavigationValue>(
     () => ({
-      openVehicleById: (vehicleId) => {
+      openVehicleById: (vehicleId, options) => {
         const match = fleetVehicles.find((vehicle) => vehicle.id === vehicleId);
         if (match) {
           setSelectedVehicle(match);
+          if (options?.module) {
+            setCurrentView('health-errors');
+            return;
+          }
           setCurrentView('overview');
           return;
         }

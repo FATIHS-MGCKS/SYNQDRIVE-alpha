@@ -25,6 +25,14 @@ import { validateRegistryCandidate } from '../registry/notification-event-regist
 import { NotificationSeverity } from '../notification.enums';
 import { NotificationCoreService } from '../notification-core.service';
 
+const VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT = Math.min(
+  Math.max(
+    Number.parseInt(process.env.VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT ?? '2000', 10) || 2000,
+    500,
+  ),
+  5000,
+);
+
 export interface DrivingAssessmentQualityIngestInput {
   organizationId: string;
   vehicleId: string;
@@ -257,7 +265,7 @@ export class NotificationProducerIngestService {
       organizationId,
       status: ACTIVE_NOTIFICATION_STATUSES,
       entityType: NotificationEntityType.VEHICLE,
-      limit: 500,
+      limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT,
     });
 
     for (const notification of activeNotifications) {
@@ -301,7 +309,7 @@ export class NotificationProducerIngestService {
     const activeNotifications = await this.repository.listNotifications({
       organizationId,
       status: ACTIVE_NOTIFICATION_STATUSES,
-      limit: 500,
+      limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT,
     });
 
     for (const notification of activeNotifications) {
@@ -360,7 +368,7 @@ export class NotificationProducerIngestService {
       organizationId,
       status: ACTIVE_NOTIFICATION_STATUSES,
       entityType: NotificationEntityType.VEHICLE,
-      limit: 500,
+      limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT,
     });
 
     for (const notification of activeNotifications) {
