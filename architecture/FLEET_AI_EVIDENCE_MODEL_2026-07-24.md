@@ -252,3 +252,11 @@ must be wrapped as `AiEvidence` with explicit:
 - `fleetChatUiLabel` helper + DE/EN keys for availability, partial data, last-known, progress steps.
 - Freshness display: `Aktuell`/`Current` instead of `Live`; WhatsApp AI panels use shared description.
 
+### Prompt 25 — AI request audit logging (2026-07-25)
+
+- `ai_request_audit_logs` append-only table + `AiRequestAuditService`.
+- Per request: org, pseudonymized `userIdRef`, role, correlationId, intent, vehicle ref, tools, data sources, LLM usage, performance, data classification, partial/complete.
+- No prompt/response/secrets/coordinates in audit rows; `ActivityLog` mirror (`AI_ASSISTANT` + `EXECUTE`).
+- Retention: `AI_AUDIT_RETENTION_DAYS` (default 730d) via `AiAuditRetentionService`.
+- See `architecture/AI_REQUEST_AUDIT_LOGGING_2026-07-25.md`.
+

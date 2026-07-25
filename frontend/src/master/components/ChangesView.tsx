@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-chat-audit-v49818-2026-07-25',
+    version: '4.9.818',
+    title: 'V4.9.818 — AI request audit logging (Prompt 25)',
+    summary: [
+      'Append-only ai_request_audit_logs for fleet chat requests + tool events.',
+      'Pseudonymized userIdRef by default; no prompts/responses/secrets/coords in audit rows.',
+      'ActivityLog mirror (AI_ASSISTANT + EXECUTE); retention via AI_AUDIT_RETENTION_DAYS.',
+    ],
+    reason:
+      'Production-ready revision and privacy posture for the AI agent runtime.',
+    previousBehavior:
+      'Orchestrator built audit metadata but ChatService discarded result.audit; tool registry dropped audit payloads.',
+    details:
+      'AiRequestAuditService, ai-request-audit.serialization/builder, migration 20260725130000_ai_request_audit_logging, architecture/AI_REQUEST_AUDIT_LOGGING_2026-07-25.md.',
+    affectsArchitecture: true,
+    module: 'AI Assistant',
+    createdAt: '2026-07-25T00:00:00.000Z',
+  },
+  {
     id: 'fleet-ai-chat-branding-v49817-2026-07-25',
     version: '4.9.817',
     title: 'V4.9.817 — AI Chat branding & status copy (Prompt 24)',

@@ -34,4 +34,14 @@ export default registerAs('ai', () => ({
   streamingEnabled: parseBooleanEnv(process.env.AI_STREAMING_ENABLED, true),
   /** When true, outbound customer communication (WhatsApp/email) must pass approval policy. */
   externalActionsRequireApproval: parseBooleanEnv(process.env.AI_EXTERNAL_ACTIONS_REQUIRE_APPROVAL, true),
+  /** Persist revision-grade AI request audit rows (default on). */
+  auditLoggingEnabled: parseBooleanEnv(process.env.AI_AUDIT_LOGGING_ENABLED, true),
+  /** Store raw userId in audit rows; default false — pseudonym ref only. */
+  auditStorePlainUserId: parseBooleanEnv(process.env.AI_AUDIT_STORE_PLAIN_USER_ID, false),
+  /** HMAC pepper for pseudonymized user refs — falls back to JWT_SECRET when unset. */
+  auditUserRefPepper: process.env.AI_AUDIT_USER_REF_PEPPER?.trim() || '',
+  /** Retention window for AI audit rows (days). */
+  auditRetentionDays: parsePositiveIntEnv(process.env.AI_AUDIT_RETENTION_DAYS, 730),
+  /** When true, emit verbose debug audit lines (never in production by default). */
+  auditDebugLogging: parseBooleanEnv(process.env.AI_AUDIT_DEBUG_LOGGING, false),
 }));

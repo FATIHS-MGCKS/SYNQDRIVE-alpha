@@ -22,6 +22,8 @@ import { AiTireSpecJobService } from './vehicle-specs/ai-tire-spec-job.service';
 import { VehicleSpecsController } from './vehicle-specs/vehicle-specs.controller';
 import { ChatService } from './chat/chat.service';
 import { ChatExecutionContextResolver } from './chat/chat-execution-context.resolver';
+import { AiRequestAuditService, AiAuditRetentionService } from './audit/ai-request-audit.service';
+import appConfig from '@config/app.config';
 import { ChatController } from './chat/chat.controller';
 import { AiVehicleResolutionService } from './vehicle-resolution/ai-vehicle-resolution.service';
 import { AiDataAuthorizationProbeAdapter } from './tools/ai-data-authorization.probe';
@@ -50,6 +52,7 @@ import { AiHealthController } from './ai-health.controller';
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => BookingsModule),
     ConfigModule.forFeature(aiConfig),
+    ConfigModule.forFeature(appConfig),
     ConfigModule.forFeature(documentExtractionConfig),
   ],
   controllers: [VehicleSpecsController, ChatController, AiHealthController],
@@ -93,6 +96,8 @@ import { AiHealthController } from './ai-health.controller';
     FleetChatEvidenceResponseComposerService,
     FleetChatOrchestratorService,
     ChatExecutionContextResolver,
+    AiRequestAuditService,
+    AiAuditRetentionService,
     ChatService,
   ],
   exports: [

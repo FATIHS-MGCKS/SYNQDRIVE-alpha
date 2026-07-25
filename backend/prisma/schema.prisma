@@ -1183,6 +1183,7 @@ enum ActivityAction {
   REFRESH // token refreshed
   REVOKE_ALL // all sessions/tokens revoked
   SEND // outbound email / messaging dispatch
+  EXECUTE // non-mutating operational execution (e.g. AI assistant query)
 }
 
 enum ActivityEntity {
@@ -1216,6 +1217,7 @@ enum ActivityEntity {
   ORGANIZATION_ROLE // custom role template
   DATA_AUTHORIZATION // org-level data consent / authorization record
   OUTBOUND_EMAIL // transactional outbound email record
+  AI_ASSISTANT // fleet AI assistant / domain tool audit
 }
 
 enum DrivingEventType {
@@ -1616,6 +1618,7 @@ model Organization {
   vendors                                Vendor[]
   chatAgent                              OrganizationChatAgent?
   chatMessages                           ChatMessage[]
+  aiRequestAuditLogs                     AiRequestAuditLog[]
   whatsappConfig                         OrgWhatsAppConfig?
   whatsappConversations                  WhatsAppConversation[]
   whatsappMessages                       WhatsAppMessage[]
@@ -10539,6 +10542,53 @@ model ChatMessage {
 
   @@index([organizationId, createdAt])
   @@map("chat_messages")
+}
+
+enum AiRequestAuditEventKind {
+  REQUEST
+  TOOL
+}
+
+/// Append-only audit trail for AI assistant requests and tool invocations (Prompt 25).
+model AiRequestAuditLog {
+  id                 String                  @id @default(uuid())
+  organizationId   String                  @map("organization_id")
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  eventKind        AiRequestAuditEventKind @map("event_kind")
+  userId           String?                 @map("user_id")
+  userIdRef        String                  @map("user_id_ref")
+  membershipRole   String                  @map("membership_role")
+  correlationId    String                  @map("correlation_id")
+  requestId        String                  @map("request_id")
+  channel          String
+  primaryIntent    String?                 @map("primary_intent")
+  detectedIntents  Json                    @default("[]") @map("detected_intents")
+  resolvedVehicleId String?              @map("resolved_vehicle_id")
+  resolvedVehicleRef Json?                @map("resolved_vehicle_ref")
+  toolsUsed        Json                    @default("[]") @map("tools_used")
+  dataSources        Json                    @default("[]") @map("data_sources")
+  toolDurations      Json                    @default("[]") @map("tool_durations")
+  errorCodes         Json                    @default("[]") @map("error_codes")
+  responseType       String?               @map("response_type")
+  partial            Boolean                 @default(false)
+  resultComplete     Boolean                 @default(true) @map("result_complete")
+  dataClassification String                @default("internal") @map("data_classification")
+  modelProvider      String?                 @map("model_provider")
+  modelName          String?                 @map("model_name")
+  tokenUsage         Json?                   @map("token_usage")
+  llmUsed            Boolean                 @default(false) @map("llm_used")
+  performance        Json?                   @map("performance")
+  securityFlags      Json                    @default("[]") @map("security_flags")
+  toolName           String?                 @map("tool_name")
+  toolDecision       String?                 @map("tool_decision")
+  toolDurationMs     Int?                    @map("tool_duration_ms")
+  createdAt          DateTime                @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, correlationId])
+  @@index([correlationId])
+  @@map("ai_request_audit_logs")
 }
 
 // ------------------------------------------------

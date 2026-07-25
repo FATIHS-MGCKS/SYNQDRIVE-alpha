@@ -1,9 +1,13 @@
 import type { AiDomainToolName } from '../registry/ai-domain-tool-registry.types';
 import type { AiDomainQueryOutcome } from '../evidence/ai-domain-error.types';
 import type { AiEvidence } from '../evidence/ai-evidence.types';
+import type { AiEvidenceSensitivity } from '../evidence/ai-evidence.enums';
 import type { FleetChatRouteResult } from '../routing/fleet-chat-intent.types';
 import type { FleetChatIntent } from '../routing/fleet-chat-intent.enums';
 import type { FleetChatEvidenceApiResponse } from './fleet-chat-evidence-response/fleet-chat-evidence-response.types';
+import type { FleetChatResponseType } from './fleet-chat-evidence-response/fleet-chat-evidence-response.enums';
+import type { LlmUsage } from '../llm/llm.types';
+import type { MembershipRole } from '@prisma/client';
 
 export const FLEET_CHAT_ORCHESTRATOR_LLM_TIMEOUT_MS = 25_000;
 export const FLEET_CHAT_ORCHESTRATOR_TOOL_BUDGET_MS = 30_000;
@@ -21,6 +25,7 @@ export interface FleetChatOrchestratorAudit {
   readonly requestId: string;
   readonly organizationId: string;
   readonly userId: string;
+  readonly role: MembershipRole | 'MASTER_ADMIN';
   readonly channel: string;
   readonly primaryIntent: FleetChatIntent;
   readonly detectedIntents: readonly FleetChatIntent[];
@@ -28,7 +33,18 @@ export interface FleetChatOrchestratorAudit {
   readonly toolsSucceeded: readonly AiDomainToolName[];
   readonly toolsFailed: readonly AiDomainToolName[];
   readonly partial: boolean;
+  readonly resultComplete: boolean;
   readonly securityFlags: readonly string[];
+  readonly responseType: FleetChatResponseType | null;
+  readonly resolvedVehicleId: string | null;
+  readonly dataClassification: AiEvidenceSensitivity;
+  readonly dataSources: readonly string[];
+  readonly toolsUsed: readonly AiDomainToolName[];
+  readonly errorCodes: readonly string[];
+  readonly modelProvider: string | null;
+  readonly modelName: string | null;
+  readonly tokenUsage: LlmUsage | null;
+  readonly timestamp: string;
 }
 
 export interface FleetChatOrchestratorPerformance {

@@ -127,7 +127,12 @@ function createOrchestrator(input: {
 
   const llm = {
     isConfigured: jest.fn().mockReturnValue(true),
-    complete: jest.fn().mockResolvedValue({ content: 'Synthesized fleet answer.' }),
+    complete: jest.fn().mockResolvedValue({
+      content: 'Synthesized fleet answer.',
+      model: 'mistral-large-latest',
+      usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
+    }),
+    activeProviderId: 'mistral',
     ...input.llm,
   } as unknown as LlmGatewayService;
 

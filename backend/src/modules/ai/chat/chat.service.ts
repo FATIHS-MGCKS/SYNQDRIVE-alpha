@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
 import { FleetChatOrchestratorService } from './fleet-chat-orchestrator.service';
 import { ChatExecutionContextResolver } from './chat-execution-context.resolver';
+import { AiRequestAuditService } from '../audit/ai-request-audit.service';
 import type { ChatSessionIdentity } from './chat-session.types';
 import {
   type ChatFleetStructuredPayload,
@@ -37,6 +38,7 @@ export class ChatService {
     private readonly llm: LlmGatewayService,
     private readonly orchestrator: FleetChatOrchestratorService,
     private readonly contextResolver: ChatExecutionContextResolver,
+    private readonly requestAudit: AiRequestAuditService,
   ) {}
 
   isConfigured(): boolean {
@@ -211,6 +213,7 @@ export class ChatService {
 
     try {
       const result = await this.orchestrator.orchestrate(context, { message: content });
+      this.requestAudit.recordFleetRequest(context, result);
       const structured = result.structuredResponse
         ? toClientStructuredPayload(
             result.structuredResponse,

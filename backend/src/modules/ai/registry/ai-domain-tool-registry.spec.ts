@@ -77,12 +77,15 @@ function createRegistryWithMocks(input: {
   const overdueTool = { execute: jest.fn(input.overdueExecute) };
   const bookingTool = { execute: jest.fn(input.bookingExecute) };
 
+  const requestAudit = { recordToolEvent: jest.fn() };
+
   const registry = new AiDomainToolRegistry(
     locationTool as unknown as AiGetVehicleLocationTool,
     telemetryTool as unknown as AiGetVehicleTelemetryStatusTool,
     healthTool as unknown as AiGetVehicleHealthSummaryTool,
     overdueTool as unknown as AiExplainOverdueReturnTool,
     bookingTool as unknown as AiGetVehicleBookingContextTool,
+    requestAudit as unknown as import('../audit/ai-request-audit.service').AiRequestAuditService,
   );
 
   return {

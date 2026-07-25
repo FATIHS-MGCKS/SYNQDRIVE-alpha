@@ -34,6 +34,7 @@ import {
   assertNoProviderDetailsInOutcome,
   buildAiDomainToolRegistryAuditPayload,
 } from './ai-domain-tool-registry.audit';
+import { AiRequestAuditService } from '../audit/ai-request-audit.service';
 import type {
   AiDomainToolDefinition,
   AiDomainToolExecuteOptions,
@@ -92,6 +93,7 @@ export class AiDomainToolRegistry {
     private readonly getVehicleHealthSummaryTool: AiGetVehicleHealthSummaryTool,
     private readonly explainOverdueReturnTool: AiExplainOverdueReturnTool,
     private readonly getVehicleBookingContextTool: AiGetVehicleBookingContextTool,
+    private readonly requestAudit: AiRequestAuditService,
   ) {
     this.executors = {
       [AI_GET_VEHICLE_LOCATION_TOOL]: (context, input, nowMs) =>
@@ -465,7 +467,7 @@ export class AiDomainToolRegistry {
     if (!input.context) {
       return;
     }
-    buildAiDomainToolRegistryAuditPayload({
+    const payload = buildAiDomainToolRegistryAuditPayload({
       event: input.event,
       toolName: input.toolName,
       toolVersion: input.toolVersion,
@@ -481,5 +483,6 @@ export class AiDomainToolRegistry {
       ...(input.partial != null ? { partial: input.partial } : {}),
       ...(input.durationMs != null ? { durationMs: input.durationMs } : {}),
     });
+    this.requestAudit.recordToolEvent(payload, input.context.role);
   }
 }

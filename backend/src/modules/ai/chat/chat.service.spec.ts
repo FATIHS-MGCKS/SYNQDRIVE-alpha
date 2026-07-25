@@ -107,6 +107,7 @@ function makeOrchestratorResult(
       requestId: 'req-1',
       organizationId: ORG_ID,
       userId: USER_ID,
+      role: MembershipRole.WORKER,
       channel: 'fleet_chat',
       primaryIntent: 'VEHICLE_HEALTH',
       detectedIntents: ['VEHICLE_HEALTH'],
@@ -114,7 +115,18 @@ function makeOrchestratorResult(
       toolsSucceeded: [],
       toolsFailed: [],
       partial: false,
+      resultComplete: true,
       securityFlags: [],
+      responseType: 'HEALTH_SUMMARY',
+      resolvedVehicleId: null,
+      dataClassification: 'internal',
+      dataSources: [],
+      toolsUsed: [],
+      errorCodes: [],
+      modelProvider: 'mistral',
+      modelName: 'mistral-large-latest',
+      tokenUsage: null,
+      timestamp: '2026-01-01T00:00:00.000Z',
     },
     performance: {
       routingMs: 1,
@@ -141,11 +153,13 @@ describe('ChatService — fleet orchestrator wiring', () => {
     const llm = { isConfigured: jest.fn().mockReturnValue(true), activeProviderId: 'mistral' };
     const orchestrator = { orchestrate: jest.fn() };
     const contextResolver = { resolve: jest.fn() };
+    const requestAudit = { recordFleetRequest: jest.fn() };
     const svc = new ChatService(
       prisma as any,
       llm as any,
       orchestrator as any,
       contextResolver as any,
+      requestAudit as any,
     );
 
     const result = await svc.ensureAgent(ORG_ID);
@@ -171,11 +185,13 @@ describe('ChatService — fleet orchestrator wiring', () => {
         correlationId: 'corr-1',
       }),
     };
+    const requestAudit = { recordFleetRequest: jest.fn() };
     const svc = new ChatService(
       prisma as any,
       llm as any,
       orchestrator as any,
       contextResolver as any,
+      requestAudit as any,
     );
 
     const result = await svc.sendMessage(ORG_ID, 'Wie ist die Gesundheit?', {
@@ -183,7 +199,7 @@ describe('ChatService — fleet orchestrator wiring', () => {
       platformRole: null,
     });
 
-    expect(orchestrator.orchestrate).toHaveBeenCalled();
+    expect(requestAudit.recordFleetRequest).toHaveBeenCalled();
     expect(result.content).toBe('Fleet answer from orchestrator');
     expect(result.structured?.responseType).toBe('HEALTH_SUMMARY');
     expect(JSON.stringify(result.structured)).not.toContain('corr-1');
@@ -194,11 +210,13 @@ describe('ChatService — fleet orchestrator wiring', () => {
     const llm = { isConfigured: jest.fn().mockReturnValue(false) };
     const orchestrator = { orchestrate: jest.fn() };
     const contextResolver = { resolve: jest.fn() };
+    const requestAudit = { recordFleetRequest: jest.fn() };
     const svc = new ChatService(
       prisma as any,
       llm as any,
       orchestrator as any,
       contextResolver as any,
+      requestAudit as any,
     );
 
     const result = await svc.sendMessage(ORG_ID, 'Hello');

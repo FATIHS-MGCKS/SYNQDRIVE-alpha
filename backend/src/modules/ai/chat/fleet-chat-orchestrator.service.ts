@@ -15,6 +15,11 @@ import {
 } from './fleet-chat-evidence.util';
 import type { FleetChatEvidenceApiResponse } from './fleet-chat-evidence-response/fleet-chat-evidence-response.types';
 import { FleetChatEvidenceResponseComposerService } from './fleet-chat-evidence-response/fleet-chat-evidence-response.service';
+import {
+  maxDataClassification,
+} from '../audit/ai-request-audit.builder';
+import { AI_DOMAIN_TOOL_DEFINITION_BY_NAME } from '../registry/ai-domain-tool-registry.definitions';
+import type { LlmCompleteResult } from '../llm/llm.types';
 import type {
   FleetChatOrchestrateInput,
   FleetChatOrchestrateResult,
@@ -243,15 +248,17 @@ export class FleetChatOrchestratorService {
     let responseText = prepared.directResponse ?? '';
     let structuredResponse: FleetChatEvidenceApiResponse | null = null;
     let llmUsed = false;
+    let llmResult: LlmCompleteResult | null = null;
 
     if (!prepared.skipLlm && prepared.llmUserContext) {
       const llmStarted = Date.now();
       try {
-        responseText = await withTimeout(
+        llmResult = await withTimeout(
           this.callLlm(prepared.llmUserContext, route.language),
           FLEET_CHAT_ORCHESTRATOR_LLM_TIMEOUT_MS,
           'LLM',
         );
+        responseText = llmResult.content.trim();
         llmUsed = true;
       } catch {
         responseText =
@@ -294,6 +301,7 @@ export class FleetChatOrchestratorService {
       toolsSucceeded,
       toolsFailed,
       structuredResponse,
+      llmResult,
     });
   }
 
@@ -306,7 +314,7 @@ export class FleetChatOrchestratorService {
   private async callLlm(
     userContext: string,
     language: 'de' | 'en' | 'unknown',
-  ): Promise<string> {
+  ): Promise<LlmCompleteResult> {
     const localeHint =
       language === 'de'
         ? 'Antworte auf Deutsch.'
@@ -314,7 +322,7 @@ export class FleetChatOrchestratorService {
           ? 'Answer in English.'
           : 'Prefer the user language.';
 
-    const result = await this.llm.complete({
+    return this.llm.complete({
       purpose: 'chat',
       temperature: 0.2,
       maxTokens: 768,
@@ -326,7 +334,6 @@ export class FleetChatOrchestratorService {
         },
       ],
     });
-    return result.content.trim();
   }
 
   private buildFailureResult(
@@ -372,7 +379,27 @@ export class FleetChatOrchestratorService {
     toolsSucceeded: readonly AiDomainToolName[];
     toolsFailed: readonly AiDomainToolName[];
     structuredResponse?: FleetChatEvidenceApiResponse;
+    llmResult?: LlmCompleteResult | null;
   }): FleetChatOrchestrateResult {
+    const toolClassifications = input.toolRecords.map((record) => {
+      const def = AI_DOMAIN_TOOL_DEFINITION_BY_NAME[record.toolName];
+      return def?.dataClassification ?? 'internal';
+    });
+    const evidenceClassifications = input.mergedEvidence.map((e) => e.sensitivity);
+    const dataClassification = maxDataClassification([
+      ...toolClassifications,
+      ...evidenceClassifications,
+    ]);
+    const dataSources = [...new Set(input.mergedEvidence.map((evidence) => evidence.source))];
+    const errorCodes = [
+      ...new Set(
+        input.toolRecords.flatMap((record) =>
+          record.outcome.errors.map((error) => error.code),
+        ),
+      ),
+    ];
+    const resultComplete = !input.partial;
+
     return {
       responseText: input.responseText,
       route: input.route,
@@ -387,6 +414,7 @@ export class FleetChatOrchestratorService {
         requestId: input.context.requestId,
         organizationId: input.context.organizationId,
         userId: input.context.userId,
+        role: input.context.role,
         channel: input.context.channel,
         primaryIntent: input.route.primaryIntent,
         detectedIntents: input.route.detectedIntents,
@@ -394,7 +422,18 @@ export class FleetChatOrchestratorService {
         toolsSucceeded: input.toolsSucceeded,
         toolsFailed: input.toolsFailed,
         partial: input.partial,
+        resultComplete,
         securityFlags: input.route.securityFlags,
+        responseType: input.structuredResponse?.responseType ?? null,
+        resolvedVehicleId: input.route.vehicleResolution.resolvedVehicleId,
+        dataClassification,
+        dataSources,
+        toolsUsed: input.toolsRequested,
+        errorCodes,
+        modelProvider: input.llmUsed ? this.llm.activeProviderId : null,
+        modelName: input.llmResult?.model ?? null,
+        tokenUsage: input.llmResult?.usage ?? null,
+        timestamp: new Date().toISOString(),
       },
       performance: {
         routingMs: input.routingMs,
