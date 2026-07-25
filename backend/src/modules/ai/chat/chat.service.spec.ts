@@ -1,5 +1,10 @@
 import { ChatService } from './chat.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
+import { AiVehicleResolutionService } from '../vehicle-resolution/ai-vehicle-resolution.service';
+import { VehicleStatus } from '@prisma/client';
+
+const ORG_ID = 'org-uuid-1';
+const VEHICLE_ID = 'veh-1';
 
 function makePrisma(overrides: Record<string, unknown> = {}) {
   const base = {
@@ -23,7 +28,8 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
     vehicle: {
       findMany: jest.fn().mockResolvedValue([
         {
-          id: 'veh-1',
+          id: VEHICLE_ID,
+          organizationId: ORG_ID,
           licensePlate: 'B-XY 1234',
           vehicleName: 'Golf 1',
           make: 'VW',
@@ -31,9 +37,14 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
           year: 2020,
           vin: 'WVWZZZ1JZYW000001',
           fuelType: 'PETROL',
+          status: VehicleStatus.AVAILABLE,
+          currentStationId: 'station-1',
           dimoVehicle: { tokenId: 872 },
         },
       ]),
+    },
+    booking: {
+      findFirst: jest.fn().mockResolvedValue(null),
     },
   };
   return { ...base, ...overrides };
@@ -51,8 +62,6 @@ function makeLlm(overrides: Record<string, unknown> = {}) {
 }
 
 describe('ChatService — Mistral fleet chat', () => {
-  const orgId = 'org-uuid-1';
-
   it('ensureAgent registers provider id in organizationChatAgent', async () => {
     const prisma = makePrisma({
       organizationChatAgent: {
@@ -68,9 +77,10 @@ describe('ChatService — Mistral fleet chat', () => {
       },
     });
     const llm = makeLlm();
-    const svc = new ChatService(prisma as any, llm as any);
+    const vehicleResolution = new AiVehicleResolutionService(prisma as any);
+    const svc = new ChatService(prisma as any, llm as any, vehicleResolution);
 
-    const result = await svc.ensureAgent(orgId);
+    const result = await svc.ensureAgent(ORG_ID);
 
     expect(result.dimoAgentId).toBe('mistral');
     expect(prisma.organizationChatAgent.create).toHaveBeenCalledWith(
@@ -80,29 +90,45 @@ describe('ChatService — Mistral fleet chat', () => {
     );
   });
 
-  it('sendMessage enriches fleet context and calls Mistral complete', async () => {
+  it('sendMessage enriches fleet context via structured vehicle resolver', async () => {
     const prisma = makePrisma();
     const llm = makeLlm();
-    const svc = new ChatService(prisma as any, llm as any);
+    const vehicleResolution = new AiVehicleResolutionService(prisma as any);
+    const svc = new ChatService(prisma as any, llm as any, vehicleResolution);
 
-    await svc.sendMessage(orgId, 'What is the fuel level of B-XY 1234?');
+    await svc.sendMessage(ORG_ID, 'What is the fuel level of B-XY 1234?');
 
+    expect(prisma.vehicle.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId: ORG_ID },
+      }),
+    );
     expect(llm.complete).toHaveBeenCalledWith(
       expect.objectContaining({
         purpose: 'chat',
         messages: expect.arrayContaining([
-          expect.objectContaining({ role: 'user', content: expect.stringContaining('B-XY 1234') }),
+          expect.objectContaining({
+            role: 'user',
+            content: expect.stringMatching(/B-XY 1234/),
+          }),
         ]),
       }),
     );
+    const userMessage = (llm.complete as jest.Mock).mock.calls[0][0].messages.find(
+      (message: { role: string }) => message.role === 'user',
+    ).content as string;
+    expect(userMessage).toContain('Resolved fleet vehicle');
+    expect(userMessage).not.toContain('WVWZZZ');
+    expect(userMessage).not.toContain(VEHICLE_ID);
   });
 
   it('sendMessage returns config error when LLM is not configured', async () => {
     const prisma = makePrisma();
     const llm = makeLlm({ isConfigured: jest.fn().mockReturnValue(false) });
-    const svc = new ChatService(prisma as any, llm as any);
+    const vehicleResolution = new AiVehicleResolutionService(prisma as any);
+    const svc = new ChatService(prisma as any, llm as any, vehicleResolution);
 
-    const result = await svc.sendMessage(orgId, 'Hello');
+    const result = await svc.sendMessage(ORG_ID, 'Hello');
 
     expect(result.content).toMatch(/not configured/i);
     expect(llm.complete).not.toHaveBeenCalled();

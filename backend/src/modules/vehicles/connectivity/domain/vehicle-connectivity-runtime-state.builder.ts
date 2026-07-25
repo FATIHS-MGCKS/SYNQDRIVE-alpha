@@ -170,7 +170,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
 
     const providerLinkState = input.provider.link.state;
     mergeProviderLinkReasonCodes(input.provider.link.reasonCodes, reasonCodes);
-    const telemetryState = resolveTelemetryState(
+    const telemetryState = deriveTelemetryState(
       input.telemetry,
       nowMs,
       reasonCodes,
@@ -287,7 +287,11 @@ function mergeProviderLinkReasonCodes(
   }
 }
 
-function resolveTelemetryState(
+/**
+ * Canonical telemetry freshness derivation for connectivity runtime.
+ * Reused by Fleet AI `get_vehicle_telemetry_status` — do not duplicate thresholds.
+ */
+export function deriveTelemetryState(
   telemetry: TelemetryInput,
   nowMs: number,
   reasonCodes: ConnectivityReasonCode[],

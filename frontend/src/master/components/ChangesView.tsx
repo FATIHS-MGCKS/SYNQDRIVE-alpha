@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-chat-policy-v49811-2026-07-25',
+    version: '4.9.811',
+    title: 'V4.9.811 — Fleet Chat policy v1.0.0 (Prompt 18)',
+    summary: [
+      'Versioned Fleet Chat system prompt: domain tools as operational SoT; LLM explains/summarizes/prioritizes only.',
+      'Scenario rules: live/last-known/stale position, health full/limited, overdue return, inconsistency, permission, ambiguity, partial.',
+      'No invented values; missing data ≠ OK; no external DIMO dashboard redirects; no status recalculation.',
+      'Tests: fleet-chat-policy.spec.ts golden rules + orchestrator wiring.',
+    ],
+    reason: 'Prompt 18/32 — production-ready Fleet Chat answer policy.',
+    previousBehavior:
+      'Legacy FLEET_CHAT_SYSTEM_PROMPT was a short generic assistant string without versioned scenario rules.',
+    details:
+      'backend/src/modules/ai/chat/fleet-chat-policy/, fleet-chat-orchestrator.service.ts, fleet-chat-response.composer.ts, architecture/FLEET_AI_EVIDENCE_MODEL_2026-07-24.md',
+    affectsArchitecture: true,
+    module: 'Fleet AI / Chat',
+    createdAt: '2026-07-25T00:20:00.000Z',
+  },
+  {
     id: 'evaluations-production-release-v49810-2026-07-24',
     version: '4.9.810',
     title: 'V4.9.810 — Auswertungen production release (IAM fix + station filter)',

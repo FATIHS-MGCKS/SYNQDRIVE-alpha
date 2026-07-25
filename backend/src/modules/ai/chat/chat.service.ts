@@ -1,14 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
+import { AiVehicleResolutionService } from '../vehicle-resolution/ai-vehicle-resolution.service';
 import {
   buildEnrichedChatMessage,
   FLEET_CHAT_SYSTEM_PROMPT,
-  FleetVehicleInfo,
   formatChatScopeLog,
   resolveChatVehicleTokenIds,
-  tryResolveVehicle,
-} from './fleet-chat-context.util';
+} from '../vehicle-resolution/ai-vehicle-resolution.llm';
 
 export interface ChatMessageResult {
   id?: string;
@@ -30,6 +29,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly llm: LlmGatewayService,
+    private readonly vehicleResolution: AiVehicleResolutionService,
   ) {}
 
   isConfigured(): boolean {
@@ -187,11 +187,13 @@ export class ChatService {
     orgId: string,
     content: string,
   ): Promise<{ enrichedMessage: string; tokenIds?: number[] }> {
-    const fleet = await this.getOrgFleetInfo(orgId);
-    const resolvedVehicle = tryResolveVehicle(content, fleet);
-    const tokenIds = resolveChatVehicleTokenIds(resolvedVehicle?.tokenId);
-    const enrichedMessage = buildEnrichedChatMessage(content, fleet, resolvedVehicle);
-    this.logger.log(`[Chat] ${formatChatScopeLog(orgId, tokenIds)}`);
+    const { fleet, resolution } = await this.vehicleResolution.resolveFromMessage({
+      organizationId: orgId,
+      message: content,
+    });
+    const tokenIds = resolveChatVehicleTokenIds(resolution, fleet);
+    const enrichedMessage = buildEnrichedChatMessage(content, fleet, resolution);
+    this.logger.log(`[Chat] ${formatChatScopeLog(orgId, resolution)}`);
     return { enrichedMessage, tokenIds };
   }
 
@@ -262,34 +264,6 @@ export class ChatService {
       content: msg.content,
       createdAt: msg.createdAt.toISOString(),
     };
-  }
-
-  private async getOrgFleetInfo(orgId: string): Promise<FleetVehicleInfo[]> {
-    const vehicles = await this.prisma.vehicle.findMany({
-      where: { organizationId: orgId },
-      select: {
-        id: true,
-        licensePlate: true,
-        vehicleName: true,
-        make: true,
-        model: true,
-        year: true,
-        vin: true,
-        fuelType: true,
-        dimoVehicle: { select: { tokenId: true } },
-      },
-    });
-    return vehicles.map((v) => ({
-      vehicleId: v.id,
-      licensePlate: v.licensePlate,
-      vehicleName: v.vehicleName,
-      make: v.make,
-      model: v.model,
-      year: v.year,
-      vin: v.vin,
-      fuelType: v.fuelType,
-      tokenId: v.dimoVehicle?.tokenId ?? null,
-    }));
   }
 
   private deriveShortCode(companyName: string): string {
