@@ -11323,6 +11323,9 @@ model WorkflowActionRun {
   errorMessage         String?                        @map("error_message")
   approvedByUserId     String?                        @map("approved_by_user_id")
   approvedAt           DateTime?                      @map("approved_at")
+  claimedByWorkerId    String?                        @map("claimed_by_worker_id")
+  leaseExpiresAt       DateTime?                      @map("lease_expires_at")
+  lastHeartbeatAt      DateTime?                      @map("last_heartbeat_at")
   startedAt            DateTime?                      @map("started_at")
   finishedAt           DateTime?                      @map("finished_at")
   createdAt            DateTime                       @default(now()) @map("created_at")
@@ -11341,6 +11344,7 @@ model WorkflowActionRun {
   @@index([organizationId, status])
   @@index([workflowRunId, actionIndex])
   @@index([workflowActionId])
+  @@index([status, leaseExpiresAt])
   @@map("workflow_action_runs")
 }
 
