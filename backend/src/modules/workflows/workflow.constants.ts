@@ -1,27 +1,16 @@
 import { VehicleStatus } from '@prisma/client';
+import {
+  WORKFLOW_DOMAIN_EVENT_TYPES,
+  LEGACY_TRIGGER_TO_EVENT,
+} from './registry';
 
-/** Canonical MVP workflow event types. */
-export const WORKFLOW_EVENT_TYPES = [
-  'booking.returned',
-  'booking.completed',
-  'vehicle.health.warning',
-  'vehicle.health.critical',
-  'vehicle.dtc.critical',
-  'invoice.overdue',
-  'customer.complaint.created',
-  'manual.test',
-] as const;
+/** Canonical workflow domain event types — sourced from registry. */
+export const WORKFLOW_EVENT_TYPES = WORKFLOW_DOMAIN_EVENT_TYPES;
 
 export type WorkflowEventType = (typeof WORKFLOW_EVENT_TYPES)[number];
 
-/** Legacy UI trigger keys → canonical event types. */
-export const LEGACY_TRIGGER_TO_EVENT: Record<string, WorkflowEventType> = {
-  vehicle_returned: 'booking.returned',
-  manual: 'manual.test',
-  invoice_overdue: 'invoice.overdue',
-  health_threshold: 'vehicle.health.warning',
-  fine_created: 'customer.complaint.created',
-};
+/** @deprecated Import from `./registry` — explicit legacy adapters only. */
+export { LEGACY_TRIGGER_TO_EVENT };
 
 export const WORKFLOW_CATEGORIES = [
   'vehicle_return',
@@ -38,6 +27,7 @@ export const WORKFLOW_ACTION_TYPES = [
   'alert.create',
   'vehicle.status.update',
   'workflow.approval.request',
+  'workflow.delay',
   'notification.prepare',
   'ai.suggest_action',
 ] as const;

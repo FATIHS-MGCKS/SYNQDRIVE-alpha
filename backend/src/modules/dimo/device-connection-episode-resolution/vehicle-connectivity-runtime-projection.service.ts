@@ -129,6 +129,8 @@ export class VehicleConnectivityRuntimeProjectionService {
       canonicalTelemetryFreshness: runtime.telemetryState,
       dataCoverageState: runtime.dataCoverageState,
       bindingChangedSinceEpisode: bundle.bindingChangedSinceEpisode,
+      lastTelemetryAt: runtime.lastTelemetryAt,
+      observedAt: runtime.calculatedAt,
     });
 
     this.observability?.log('runtime_state_calculated', {
@@ -223,12 +225,21 @@ export class VehicleConnectivityRuntimeProjectionService {
     canonicalTelemetryFreshness: string;
     dataCoverageState: string;
     bindingChangedSinceEpisode: boolean;
+    lastTelemetryAt?: string | null;
+    observedAt?: string;
   }): Promise<void> {
     if (!this.connectivityAlerts) return;
 
     const label =
       [input.vehicle.make, input.vehicle.model].filter(Boolean).join(' ').trim() ||
       input.vehicle.id;
+
+    const observedAt = input.observedAt ? new Date(input.observedAt) : new Date();
+    const lastSignalAt = input.lastTelemetryAt ? new Date(input.lastTelemetryAt) : null;
+    const minutesSinceSignal =
+      lastSignalAt && !Number.isNaN(lastSignalAt.getTime())
+        ? Math.max(0, Math.floor((observedAt.getTime() - lastSignalAt.getTime()) / 60_000))
+        : null;
 
     await this.connectivityAlerts.syncRuntimeAlerts({
       organizationId: input.vehicle.organizationId,
@@ -253,7 +264,9 @@ export class VehicleConnectivityRuntimeProjectionService {
       webhookProcessingFailed: input.providerLink.state === 'ERROR',
       bindingChanged: input.bindingChangedSinceEpisode,
       connectivityStateUnknown: input.providerLink.state === 'UNKNOWN',
-      observedAt: new Date(),
+      observedAt,
+      lastSignalAt,
+      minutesSinceSignal,
     });
   }
 }

@@ -45,6 +45,7 @@ import { DeviceConnectionEpisodeReconciliationApplyService } from './device-conn
 import { DeviceConnectionWebhookConfigurationService } from './device-connection-webhook-configuration/device-connection-webhook-configuration.service';
 import { DimoTriggerRegistryService } from './device-connection-webhook-configuration/dimo-trigger-registry.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
+import { WorkflowEventOutboxCoreModule } from '@modules/workflows/outbox/workflow-event-outbox-core.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     BullModule.registerQueue({ name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS }),
     ActivityLogModule,
     SharedGuardsModule,
+    WorkflowEventOutboxCoreModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
   ],

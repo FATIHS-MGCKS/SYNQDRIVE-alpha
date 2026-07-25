@@ -106,6 +106,12 @@ export class TripMetricsService implements OnModuleInit {
   readonly taskAutomationOutboxRetry: Counter<string>;
   readonly taskAutomationOutboxRefreshed: Counter<string>;
 
+  /** Workflow domain event outbox — low-cardinality labels only. */
+  readonly workflowEventOutboxDispatched: Counter<string>;
+  readonly workflowEventOutboxFailed: Counter<string>;
+  readonly workflowEventOutboxRetry: Counter<string>;
+  readonly workflowEventOutboxDeadLetter: Counter<string>;
+
   /** Driving Intelligence V2 durable jobs (P20). */
   readonly drivingIntelligenceJobCompleted: Counter<string>;
   readonly drivingIntelligenceJobRetry: Counter<string>;
@@ -195,6 +201,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly queueFailedJobs: Gauge<string>;
   readonly notificationQueueBacklog: Gauge<string>;
   readonly taskAutomationOutboxBacklog: Gauge<string>;
+  readonly workflowEventOutboxQueueLag: Gauge<string>;
   readonly batteryV2DeadLetterBacklog: Gauge<string>;
   readonly batteryV2VehiclesWithoutPublication: Gauge<string>;
   readonly batteryPostgresTableRows: Gauge<string>;
@@ -215,6 +222,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationRunDuration: Histogram<string>;
   readonly notificationOpenAge: Histogram<string>;
   readonly taskAutomationOutboxProcessingDuration: Histogram<string>;
+  readonly workflowEventOutboxProcessingDuration: Histogram<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -831,15 +839,56 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.workflowEventOutboxDispatched = new Counter({
+      name: 'synqdrive_workflow_event_outbox_dispatched_total',
+      help: 'Workflow domain events successfully dispatched from outbox',
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
+    this.workflowEventOutboxFailed = new Counter({
+      name: 'synqdrive_workflow_event_outbox_failed_total',
+      help: 'Failed workflow domain event outbox processing attempts',
+      labelNames: ['event_type', 'error_class', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.workflowEventOutboxRetry = new Counter({
+      name: 'synqdrive_workflow_event_outbox_retry_total',
+      help: 'Workflow domain event outbox retries scheduled',
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
+    this.workflowEventOutboxDeadLetter = new Counter({
+      name: 'synqdrive_workflow_event_outbox_dead_letter_total',
+      help: 'Workflow domain events moved to dead letter',
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
     this.taskAutomationOutboxBacklog = new Gauge({
       name: 'synqdrive_task_automation_outbox_backlog',
       help: 'Pending or dead-letter task automation outbox rows',
       registers: [this.registry],
     });
 
+    this.workflowEventOutboxQueueLag = new Gauge({
+      name: 'synqdrive_workflow_event_outbox_queue_lag',
+      help: 'Pending, retry-scheduled, or claimed workflow event outbox rows',
+      registers: [this.registry],
+    });
+
     this.taskAutomationOutboxProcessingDuration = new Histogram({
       name: 'synqdrive_task_automation_outbox_processing_duration_seconds',
       help: 'Single task automation outbox processing duration',
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
+      registers: [this.registry],
+    });
+
+    this.workflowEventOutboxProcessingDuration = new Histogram({
+      name: 'synqdrive_workflow_event_outbox_processing_duration_seconds',
+      help: 'Single workflow domain event outbox processing duration',
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
       registers: [this.registry],
     });

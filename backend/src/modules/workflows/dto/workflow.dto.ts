@@ -1,15 +1,19 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
+import { WORKFLOW_CONDITION_LIMITS } from '../conditions/workflow-condition.config';
 import { WORKFLOW_CATEGORIES } from '../workflow.constants';
 
 export class WorkflowTriggerDto {
@@ -37,6 +41,35 @@ export class WorkflowConditionDto {
 
   @IsOptional()
   value?: unknown;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+}
+
+export class WorkflowConditionGroupDto {
+  @IsIn(['ALL', 'ANY', 'NOT', 'AND', 'OR'])
+  logic!: 'ALL' | 'ANY' | 'NOT' | 'AND' | 'OR';
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(WORKFLOW_CONDITION_LIMITS.maxClauseCount)
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowConditionDto)
+  conditions?: WorkflowConditionDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(WORKFLOW_CONDITION_LIMITS.maxNodeCount)
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowConditionGroupDto)
+  groups?: WorkflowConditionGroupDto[];
 }
 
 export class WorkflowActionDto {
@@ -51,6 +84,26 @@ export class WorkflowActionDto {
   @IsOptional()
   @IsBoolean()
   requiresApproval?: boolean;
+
+  @IsOptional()
+  @IsString()
+  errorStrategy?: string;
+
+  @IsOptional()
+  @IsString()
+  fallbackActionKey?: string;
+
+  @IsOptional()
+  @IsString()
+  compensateActionKey?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  compensatable?: boolean;
+
+  @IsOptional()
+  @IsString()
+  actionKey?: string;
 }
 
 export class WorkflowScopeDto {
@@ -94,6 +147,17 @@ export class CreateWorkflowDto {
   @Type(() => WorkflowConditionDto)
   conditions?: WorkflowConditionDto[];
 
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WorkflowConditionGroupDto)
+  conditionTree?: WorkflowConditionGroupDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowConditionGroupDto)
+  conditionGroups?: WorkflowConditionGroupDto[];
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => WorkflowActionDto)
@@ -136,6 +200,17 @@ export class UpdateWorkflowDto {
   @ValidateNested({ each: true })
   @Type(() => WorkflowConditionDto)
   conditions?: WorkflowConditionDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WorkflowConditionGroupDto)
+  conditionTree?: WorkflowConditionGroupDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowConditionGroupDto)
+  conditionGroups?: WorkflowConditionGroupDto[];
 
   @IsOptional()
   @IsArray()

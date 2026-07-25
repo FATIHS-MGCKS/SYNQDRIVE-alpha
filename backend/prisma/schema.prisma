@@ -1183,7 +1183,6 @@ enum ActivityAction {
   REFRESH // token refreshed
   REVOKE_ALL // all sessions/tokens revoked
   SEND // outbound email / messaging dispatch
-  EXECUTE // non-mutating operational execution (e.g. AI assistant query)
 }
 
 enum ActivityEntity {
@@ -1217,7 +1216,6 @@ enum ActivityEntity {
   ORGANIZATION_ROLE // custom role template
   DATA_AUTHORIZATION // org-level data consent / authorization record
   OUTBOUND_EMAIL // transactional outbound email record
-  AI_ASSISTANT // fleet AI assistant / domain tool audit
 }
 
 enum DrivingEventType {
@@ -1529,209 +1527,230 @@ enum HealthStatus {
 // ------------------------------------------------
 
 model Organization {
-  id                String             @id @default(uuid())
-  companyName       String             @map("company_name")
-  shortCode         String?            @unique @map("short_code")
-  businessType      BusinessType       @map("business_type")
-  address           String?
-  city              String?
-  state             String?
-  zip               String?
-  country           String?
-  taxId             String?            @map("tax_id")
-  legalCompanyName  String?            @map("legal_company_name")
-  legalForm         String?            @map("legal_form")
-  taxNumber         String?            @map("tax_number")
-  vatId             String?            @map("vat_id")
-  isSmallBusiness   Boolean            @default(false) @map("is_small_business")
-  defaultVatRate    Float?             @map("default_vat_rate")
-  invoicePrefix     String?            @map("invoice_prefix")
-  nextInvoiceNumber Int                @default(1) @map("next_invoice_number")
-  paymentTermsDays  Int                @default(7) @map("payment_terms_days")
-  invoiceEmail      String?            @map("invoice_email")
-  bankName          String?            @map("bank_name")
-  iban              String?
-  bic               String?
-  pdfFooterText     String?            @map("pdf_footer_text")
-  emailSignature    String?            @map("email_signature")
-  accentColor       String?            @map("accent_color")
-  logoDarkUrl       String?            @map("logo_dark_url")
-  pdfLogoUrl        String?            @map("pdf_logo_url")
-  phone             String?
-  email             String?
-  website           String?
-  timezone          String?
-  language          String?
-  managerName       String?            @map("manager_name")
-  managerEmail      String?            @map("manager_email")
-  logoUrl           String?            @map("logo_url")
-  status            OrganizationStatus @default(ACTIVE)
+  id                           String             @id @default(uuid())
+  companyName                  String             @map("company_name")
+  shortCode                    String?            @unique @map("short_code")
+  businessType                 BusinessType       @map("business_type")
+  address                      String?
+  city                         String?
+  state                        String?
+  zip                          String?
+  country                      String?
+  taxId                        String?            @map("tax_id")
+  legalCompanyName             String?            @map("legal_company_name")
+  legalForm                    String?            @map("legal_form")
+  taxNumber                    String?            @map("tax_number")
+  vatId                        String?            @map("vat_id")
+  isSmallBusiness              Boolean            @default(false) @map("is_small_business")
+  defaultVatRate               Float?             @map("default_vat_rate")
+  invoicePrefix                String?            @map("invoice_prefix")
+  nextInvoiceNumber            Int                @default(1) @map("next_invoice_number")
+  paymentTermsDays             Int                @default(7) @map("payment_terms_days")
+  invoiceEmail                 String?            @map("invoice_email")
+  bankName                     String?            @map("bank_name")
+  iban                         String?
+  bic                          String?
+  pdfFooterText                String?            @map("pdf_footer_text")
+  emailSignature               String?            @map("email_signature")
+  accentColor                  String?            @map("accent_color")
+  logoDarkUrl                  String?            @map("logo_dark_url")
+  pdfLogoUrl                   String?            @map("pdf_logo_url")
+  phone                        String?
+  email                        String?
+  website                      String?
+  timezone                     String?
+  language                     String?
+  managerName                  String?            @map("manager_name")
+  managerEmail                 String?            @map("manager_email")
+  logoUrl                      String?            @map("logo_url")
+  status                       OrganizationStatus @default(ACTIVE)
   /// End-customer Stripe Connect payments — disabled by default; enable via platform admin only.
-  paymentsEnabled   Boolean            @default(false) @map("payments_enabled")
+  paymentsEnabled              Boolean            @default(false) @map("payments_enabled")
   /// When true, legal document approve/activate must be performed by a user other than the uploader/submitter.
-  legalDocumentFourEyesEnabled Boolean @default(false) @map("legal_document_four_eyes_enabled")
-  lastActiveAt      DateTime?          @map("last_active_at")
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
+  legalDocumentFourEyesEnabled Boolean            @default(false) @map("legal_document_four_eyes_enabled")
+  lastActiveAt                 DateTime?          @map("last_active_at")
+  createdAt                    DateTime           @default(now()) @map("created_at")
+  updatedAt                    DateTime           @updatedAt @map("updated_at")
 
-  memberships                            OrganizationMembership[]
-  organizationProducts                   OrganizationProduct[]
-  stations                               Station[]
-  vehicleStationTransfers                VehicleStationTransfer[]
-  vehicles                               Vehicle[]
-  brakeComponentInstallations            BrakeComponentInstallation[]
-  brakeServiceApplications               BrakeServiceApplication[]
-  brakeServiceOutbox                     BrakeServiceOutbox[]
-  vehicleComplaints                      VehicleComplaint[]
-  vehicleDrivingAssessmentQualities      VehicleDrivingAssessmentQuality[]
-  orgIntegrations                        OrganizationIntegration[]
-  subscriptions                          BillingSubscription[]
-  billingSubscriptionItems               BillingSubscriptionItem[]
-  billingUsageSnapshots                  BillingUsageSnapshot[]
-  billingBillableVehicleAssignments      BillingBillableVehicleAssignment[]
-  billingQuantityEvents                  BillingQuantityEvent[]
-  billingPaymentMethods                  BillingPaymentMethod[]
-  billingDisputes                        BillingDispute[]
-  billingOrgPriceOverrides               BillingOrganizationPriceOverride[]
-  billingAuditLogs                       BillingAuditLog[]
-  billingCommands                        BillingCommand[]
-  billingReconciliationDrifts            BillingReconciliationDrift[]
-  billingReconciliationRuns              BillingReconciliationRun[]
-  customers                              Customer[]
-  customerDocuments                      CustomerDocument[]
-  customerVerificationChecks             CustomerVerificationCheck[]
-  customerTimelineEvents                 CustomerTimelineEvent[]
-  customerEligibilityPolicy              CustomerEligibilityPolicy?
-  organizationRentalRules                OrganizationRentalRules?
-  rentalVehicleCategories                RentalVehicleCategory[]
-  vehicleRentalRequirementOverrides      VehicleRentalRequirementOverride[]
-  rentalRuleRevisions                    RentalRuleRevision[]
-  tireRentalHealthReviewOverrides        TireRentalHealthReviewOverride[]
-  brakeRentalHealthReviewOverrides       BrakeRentalHealthReviewOverride[]
-  tireHealthAlerts                       TireHealthAlert[]
-  brakeHealthAlerts                      BrakeHealthAlert[]
-  bookings                               Booking[]
-  bookingAllowedDrivers                  BookingAllowedDriver[]
-  bookingHandoverProtocols               BookingHandoverProtocol[]
-  activityLogs                           ActivityLog[]
-  rentalDrivingAnalyses                  RentalDrivingAnalysis[]
-  vendors                                Vendor[]
-  chatAgent                              OrganizationChatAgent?
-  chatMessages                           ChatMessage[]
-  aiRequestAuditLogs                     AiRequestAuditLog[]
-  whatsappConfig                         OrgWhatsAppConfig?
-  whatsappConversations                  WhatsAppConversation[]
-  whatsappMessages                       WhatsAppMessage[]
-  whatsappWebhookEvents                  WhatsAppWebhookEvent[]
-  whatsappConsents                       WhatsAppConsent[]
-  whatsappTemplates                      WhatsAppTemplate[]
-  whatsappAiSuggestions                  WhatsAppAiSuggestion[]
-  voiceAssistant                         VoiceAssistant?
-  voiceConversations                     VoiceConversation[]
-  insightPolicy                          TenantInsightPolicy?
-  insightRuns                            DashboardInsightRun[]
-  insights                               DashboardInsight[]
-  providerConsents                       VehicleProviderConsent[]
-  generatedDocuments                     GeneratedDocument[]
-  legalDocuments                         OrganizationLegalDocument[]
-  legalDocumentStations                  OrganizationLegalDocumentStation[]
-  legalDocumentEvents                    OrganizationLegalDocumentEvent[]
-  legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
-  bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
-  bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
-  bookingEligibilityApprovals          BookingEligibilityApproval[]
-  bookingEligibilityDecisions          BookingEligibilityDecision[]
-  legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
-  legalDocumentRetentionPurgeRuns        LegalDocumentRetentionPurgeRun[]
-  legalDocumentRetentionPolicy           OrganizationLegalDocumentRetentionPolicy?
-  bookingDocumentBundles                 BookingDocumentBundle[]
-  bookingDeposits                        BookingDeposit[]
-  organizationPaymentAccounts            OrganizationPaymentAccount[]
-  bookingPaymentRequests                 BookingPaymentRequest[]
-  paymentEmailOutbox                     PaymentEmailOutbox[]
-  paymentTransactions                    PaymentTransaction[]
-  stripeConnectWebhookEvents             StripeConnectWebhookEvent[]
-  twilioWebhookEvents                    TwilioWebhookEvent[]
-  voiceSubscriptions                     VoiceSubscription[]
-  voiceProviderAccounts                  VoiceProviderAccount[]
-  voicePhoneNumbers                      VoicePhoneNumber[]
-  voiceAgentDeployments                  VoiceAgentDeployment[]
-  voiceProvisioningJobs                  VoiceProvisioningJob[]
-  voiceProviderWebhookEvents             VoiceProviderWebhookEvent[]
-  voiceUsageEvents                       VoiceUsageEvent[]
-  voiceBillingPeriods                    VoiceBillingPeriod[]
-  voiceBudgetPolicies                    VoiceBudgetPolicy[]
-  voiceProtectionOverrides               VoiceProtectionOverride[]
-  voiceProtectionAuditEvents             VoiceProtectionAuditEvent[]
-  voiceBudgetWarningStates               VoiceBudgetWarningState[]
-  voiceToolExecutions                    VoiceToolExecution[]
-  voiceApprovalRequests                  VoiceApprovalRequest[]
-  voiceTestRuns                          VoiceTestRun[]
-  rentalContracts                        RentalContract[]
-  misuseCases                            MisuseCase[]
-  vehicleDrivingCapabilities             VehicleDrivingCapability[]
-  tripAssessabilities                    TripAssessability[]
-  drivingEvidence                        DrivingEvidence[]
-  drivingAnalysisRuns                    DrivingAnalysisRun[]
-  driverAttributions                     DriverAttribution[]
-  drivingDecisionAudits                  DrivingDecisionAudit[]
-  drivingAnalysisStages                  DrivingAnalysisStage[]
-  drivingIntelligenceJobs                DrivingIntelligenceJob[]
-  orgInvoices                            OrgInvoice[]
-  userAccountPreferences                 UserAccountPreference[]
-  userNotificationPreferences            UserNotificationPreference[]
-  orgInvoiceSequences                    OrgInvoiceSequence[]
-  priceBooks                             PriceBook[]
-  priceTariffGroups                      PriceTariffGroup[]
-  priceTariffVersions                    PriceTariffVersion[]
-  tariffRates                            TariffRate[]
-  mileagePackages                        MileagePackage[]
-  insuranceOptions                       TariffInsuranceOption[]
-  tariffExtraOptions                     TariffExtraOption[]
-  vehicleTariffAssignments               VehicleTariffAssignment[]
-  bookingPriceSnapshots                  BookingPriceSnapshot[]
-  bookingPriceLineItems                  BookingPriceLineItem[]
-  pricingQuotes                          PricingQuote[]
-  organizationRoles                      OrganizationRole[]
-  organizationRoleVersions               OrganizationRoleVersion[]
-  organizationRoleAssignments            OrganizationRoleAssignment[]
-  membershipPermissionOverrides          MembershipPermissionOverride[]
-  organizationRoleChangeApplications     OrganizationRoleChangeApplication[]
+  memberships                                               OrganizationMembership[]
+  organizationProducts                                      OrganizationProduct[]
+  stations                                                  Station[]
+  vehicleStationTransfers                                   VehicleStationTransfer[]
+  vehicles                                                  Vehicle[]
+  brakeComponentInstallations                               BrakeComponentInstallation[]
+  brakeServiceApplications                                  BrakeServiceApplication[]
+  brakeServiceOutbox                                        BrakeServiceOutbox[]
+  vehicleComplaints                                         VehicleComplaint[]
+  vehicleDrivingAssessmentQualities                         VehicleDrivingAssessmentQuality[]
+  orgIntegrations                                           OrganizationIntegration[]
+  subscriptions                                             BillingSubscription[]
+  billingSubscriptionItems                                  BillingSubscriptionItem[]
+  billingUsageSnapshots                                     BillingUsageSnapshot[]
+  billingBillableVehicleAssignments                         BillingBillableVehicleAssignment[]
+  billingQuantityEvents                                     BillingQuantityEvent[]
+  billingPaymentMethods                                     BillingPaymentMethod[]
+  billingDisputes                                           BillingDispute[]
+  billingOrgPriceOverrides                                  BillingOrganizationPriceOverride[]
+  billingAuditLogs                                          BillingAuditLog[]
+  billingCommands                                           BillingCommand[]
+  billingReconciliationDrifts                               BillingReconciliationDrift[]
+  billingReconciliationRuns                                 BillingReconciliationRun[]
+  customers                                                 Customer[]
+  customerDocuments                                         CustomerDocument[]
+  customerVerificationChecks                                CustomerVerificationCheck[]
+  customerTimelineEvents                                    CustomerTimelineEvent[]
+  customerEligibilityPolicy                                 CustomerEligibilityPolicy?
+  organizationRentalRules                                   OrganizationRentalRules?
+  rentalVehicleCategories                                   RentalVehicleCategory[]
+  vehicleRentalRequirementOverrides                         VehicleRentalRequirementOverride[]
+  rentalRuleRevisions                                       RentalRuleRevision[]
+  tireRentalHealthReviewOverrides                           TireRentalHealthReviewOverride[]
+  brakeRentalHealthReviewOverrides                          BrakeRentalHealthReviewOverride[]
+  tireHealthAlerts                                          TireHealthAlert[]
+  brakeHealthAlerts                                         BrakeHealthAlert[]
+  bookings                                                  Booking[]
+  bookingAllowedDrivers                                     BookingAllowedDriver[]
+  bookingHandoverProtocols                                  BookingHandoverProtocol[]
+  activityLogs                                              ActivityLog[]
+  rentalDrivingAnalyses                                     RentalDrivingAnalysis[]
+  vendors                                                   Vendor[]
+  chatAgent                                                 OrganizationChatAgent?
+  chatMessages                                              ChatMessage[]
+  whatsappConfig                                            OrgWhatsAppConfig?
+  whatsappConversations                                     WhatsAppConversation[]
+  whatsappMessages                                          WhatsAppMessage[]
+  whatsappWebhookEvents                                     WhatsAppWebhookEvent[]
+  whatsappConsents                                          WhatsAppConsent[]
+  whatsappTemplates                                         WhatsAppTemplate[]
+  whatsappAiSuggestions                                     WhatsAppAiSuggestion[]
+  voiceAssistant                                            VoiceAssistant?
+  voiceConversations                                        VoiceConversation[]
+  insightPolicy                                             TenantInsightPolicy?
+  insightRuns                                               DashboardInsightRun[]
+  insights                                                  DashboardInsight[]
+  providerConsents                                          VehicleProviderConsent[]
+  generatedDocuments                                        GeneratedDocument[]
+  legalDocuments                                            OrganizationLegalDocument[]
+  legalDocumentStations                                     OrganizationLegalDocumentStation[]
+  legalDocumentEvents                                       OrganizationLegalDocumentEvent[]
+  legalDocumentDeliveryEvidence                             LegalDocumentDeliveryEvidence[]
+  bookingDocumentGenerationJobs                             BookingDocumentGenerationJob[]
+  bookingPickupGateAuditEvents                              BookingPickupGateAuditEvent[]
+  bookingEligibilityApprovals                               BookingEligibilityApproval[]
+  bookingEligibilityDecisions                               BookingEligibilityDecision[]
+  legalDocumentStorageReconciliationRuns                    LegalDocumentStorageReconciliationRun[]
+  legalDocumentRetentionPurgeRuns                           LegalDocumentRetentionPurgeRun[]
+  legalDocumentRetentionPolicy                              OrganizationLegalDocumentRetentionPolicy?
+  bookingDocumentBundles                                    BookingDocumentBundle[]
+  bookingDeposits                                           BookingDeposit[]
+  organizationPaymentAccounts                               OrganizationPaymentAccount[]
+  bookingPaymentRequests                                    BookingPaymentRequest[]
+  paymentEmailOutbox                                        PaymentEmailOutbox[]
+  paymentTransactions                                       PaymentTransaction[]
+  stripeConnectWebhookEvents                                StripeConnectWebhookEvent[]
+  twilioWebhookEvents                                       TwilioWebhookEvent[]
+  voiceSubscriptions                                        VoiceSubscription[]
+  voiceProviderAccounts                                     VoiceProviderAccount[]
+  voicePhoneNumbers                                         VoicePhoneNumber[]
+  voiceAgentDeployments                                     VoiceAgentDeployment[]
+  voiceProvisioningJobs                                     VoiceProvisioningJob[]
+  voiceProviderWebhookEvents                                VoiceProviderWebhookEvent[]
+  voiceUsageEvents                                          VoiceUsageEvent[]
+  voiceBillingPeriods                                       VoiceBillingPeriod[]
+  voiceBudgetPolicies                                       VoiceBudgetPolicy[]
+  voiceProtectionOverrides                                  VoiceProtectionOverride[]
+  voiceProtectionAuditEvents                                VoiceProtectionAuditEvent[]
+  voiceBudgetWarningStates                                  VoiceBudgetWarningState[]
+  voiceToolExecutions                                       VoiceToolExecution[]
+  voiceApprovalRequests                                     VoiceApprovalRequest[]
+  voiceTestRuns                                             VoiceTestRun[]
+  rentalContracts                                           RentalContract[]
+  misuseCases                                               MisuseCase[]
+  vehicleDrivingCapabilities                                VehicleDrivingCapability[]
+  tripAssessabilities                                       TripAssessability[]
+  drivingEvidence                                           DrivingEvidence[]
+  drivingAnalysisRuns                                       DrivingAnalysisRun[]
+  driverAttributions                                        DriverAttribution[]
+  drivingDecisionAudits                                     DrivingDecisionAudit[]
+  drivingAnalysisStages                                     DrivingAnalysisStage[]
+  drivingIntelligenceJobs                                   DrivingIntelligenceJob[]
+  orgInvoices                                               OrgInvoice[]
+  userAccountPreferences                                    UserAccountPreference[]
+  userNotificationPreferences                               UserNotificationPreference[]
+  orgInvoiceSequences                                       OrgInvoiceSequence[]
+  priceBooks                                                PriceBook[]
+  priceTariffGroups                                         PriceTariffGroup[]
+  priceTariffVersions                                       PriceTariffVersion[]
+  tariffRates                                               TariffRate[]
+  mileagePackages                                           MileagePackage[]
+  insuranceOptions                                          TariffInsuranceOption[]
+  tariffExtraOptions                                        TariffExtraOption[]
+  vehicleTariffAssignments                                  VehicleTariffAssignment[]
+  bookingPriceSnapshots                                     BookingPriceSnapshot[]
+  bookingPriceLineItems                                     BookingPriceLineItem[]
+  pricingQuotes                                             PricingQuote[]
+  organizationRoles                                         OrganizationRole[]
+  organizationRoleVersions                                  OrganizationRoleVersion[]
+  organizationRoleAssignments                               OrganizationRoleAssignment[]
+  membershipPermissionOverrides                             MembershipPermissionOverride[]
+  organizationRoleChangeApplications                        OrganizationRoleChangeApplication[]
   organizationRoleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
-  organizationUserInvites                OrganizationUserInvite[]
-  inviteEmailOutbox                      InviteEmailOutbox[]
-  iamAuditOutbox                         IamAuditOutbox[]
-  businessAuditOutbox                    BusinessAuditOutbox[]
-  accessReviewCampaigns                  AccessReviewCampaign[]
-  accessReviewItems                      AccessReviewItem[]
-  accessReviewDecisions                  AccessReviewDecision[]
-  iamRetentionPolicyOverrides            IamRetentionPolicyOverride[]
-  iamLegalHolds                          IamLegalHold[]
-  iamRetentionRunLogs                    IamRetentionRunLog[]
-  iamDsarExportLogs                      IamDsarExportLog[]
-  orgEmailSettings                       OrgEmailSettings?
-  orgEmailDomains                        OrgEmailDomain[]
-  outboundEmails                         OutboundEmail[]
-  billingEmailSuppressions               BillingEmailSuppression[]
-  notifications                          Notification[]
-  notificationOccurrences                NotificationOccurrence[]
-  notificationReceipts                   NotificationReceipt[]
-  notificationDeliveryOutbox             NotificationDeliveryOutbox[]
-  taskAutomationOutbox                   TaskAutomationOutbox[]
-  taskAutomationRuleOverrides            OrgTaskAutomationRuleOverride[]
-  batteryMeasurementSessions             BatteryMeasurementSession[]
-  batteryMeasurements                    BatteryMeasurement[]
-  batteryAssessments                     BatteryAssessment[]
-  batteryPublications                    BatteryPublication[]
-  vehicleBatteryCapabilities             VehicleBatteryCapability[]
-  vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
-  vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
-  vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
-  hvChargeSessions                       HvChargeSession[]
-  hvCapacityObservations                 HvCapacityObservation[]
-  batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
-  batteryRetentionAggregates             BatteryRetentionAggregate[]
-  refreshTokens                          RefreshToken[]
+  organizationUserInvites                                   OrganizationUserInvite[]
+  inviteEmailOutbox                                         InviteEmailOutbox[]
+  iamAuditOutbox                                            IamAuditOutbox[]
+  businessAuditOutbox                                       BusinessAuditOutbox[]
+  accessReviewCampaigns                                     AccessReviewCampaign[]
+  accessReviewItems                                         AccessReviewItem[]
+  accessReviewDecisions                                     AccessReviewDecision[]
+  iamRetentionPolicyOverrides                               IamRetentionPolicyOverride[]
+  iamLegalHolds                                             IamLegalHold[]
+  iamRetentionRunLogs                                       IamRetentionRunLog[]
+  iamDsarExportLogs                                         IamDsarExportLog[]
+  orgEmailSettings                                          OrgEmailSettings?
+  orgEmailDomains                                           OrgEmailDomain[]
+  outboundEmails                                            OutboundEmail[]
+  billingEmailSuppressions                                  BillingEmailSuppression[]
+  notifications                                             Notification[]
+  notificationOccurrences                                   NotificationOccurrence[]
+  notificationReceipts                                      NotificationReceipt[]
+  notificationDeliveryOutbox                                NotificationDeliveryOutbox[]
+  taskAutomationOutbox                                      TaskAutomationOutbox[]
+  workflowDefinitions                                       WorkflowDefinition[]
+  workflowVersions                                          WorkflowVersion[]
+  workflowTriggers                                          WorkflowTrigger[]
+  workflowScopes                                            WorkflowScope[]
+  workflowScopeBindings                                     WorkflowScopeBinding[]
+  workflowConditionGroups                                   WorkflowConditionGroup[]
+  workflowConditions                                        WorkflowCondition[]
+  workflowActions                                           WorkflowAction[]
+  workflowRuns                                              WorkflowRun[]
+  workflowActionRuns                                        WorkflowActionRun[]
+  workflowApprovals                                         WorkflowApproval[]
+  workflowApprovalComments                                  WorkflowApprovalComment[]
+  workflowDeliveries                                        WorkflowDelivery[]
+  workflowEventOutbox                                       WorkflowEventOutbox[]
+  workflowTimers                                            WorkflowTimer[]
+  workflowIdempotencyDecisions                              WorkflowIdempotencyDecision[]
+  workflowRevisions                                         WorkflowRevision[]
+  workflowRuntimeStatusTransitions                          WorkflowRuntimeStatusTransition[]
+  workflowExecutionSnapshots                                WorkflowExecutionSnapshot[]
+  workflowPolicySnapshots                                   WorkflowPolicySnapshot[]
+  workflowFeatureFlags                                      WorkflowFeatureFlag[]
+  workflowRolloutScopes                                     WorkflowRolloutScope[]
+  taskAutomationRuleOverrides                               OrgTaskAutomationRuleOverride[]
+  batteryMeasurementSessions                                BatteryMeasurementSession[]
+  batteryMeasurements                                       BatteryMeasurement[]
+  batteryAssessments                                        BatteryAssessment[]
+  batteryPublications                                       BatteryPublication[]
+  vehicleBatteryCapabilities                                VehicleBatteryCapability[]
+  vehicleBatteryCapabilityChanges                           VehicleBatteryCapabilityChange[]
+  vehicleBatteryReferenceCapacities                         VehicleBatteryReferenceCapacity[]
+  vehicleBatteryReferenceCapacityChanges                    VehicleBatteryReferenceCapacityChange[]
+  hvChargeSessions                                          HvChargeSession[]
+  hvCapacityObservations                                    HvCapacityObservation[]
+  batteryV2JobDeadLetters                                   BatteryV2JobDeadLetter[]
+  batteryRetentionAggregates                                BatteryRetentionAggregate[]
+  refreshTokens                                             RefreshToken[]
 
   @@index([status])
   @@map("organizations")
@@ -1742,86 +1761,94 @@ model Organization {
 // ------------------------------------------------
 
 model User {
-  id                 String           @id @default(uuid())
-  email              String           @unique
-  name               String?
-  firstName          String?          @map("first_name")
-  lastName           String?          @map("last_name")
-  passwordHash       String?          @map("password_hash")
-  avatarUrl          String?          @map("avatar_url")
-  authProviderId     String?          @unique @map("auth_provider_id")
-  platformRole       UserPlatformRole @default(USER) @map("platform_role")
-  status             UserStatus       @default(ACTIVE)
-  phone              String?
-  mobile             String?
-  address            String?
-  language           String?          @default("de")
-  timezone           String?          @default("Europe/Berlin")
-  dateFormat         String?          @default("DD.MM.YYYY") @map("date_format")
-  mustChangePassword Boolean          @default(false) @map("must_change_password")
-  securityVersion    Int              @default(0) @map("security_version")
-  sessionVersion           Int              @default(0) @map("session_version")
+  id                         String           @id @default(uuid())
+  email                      String           @unique
+  name                       String?
+  firstName                  String?          @map("first_name")
+  lastName                   String?          @map("last_name")
+  passwordHash               String?          @map("password_hash")
+  avatarUrl                  String?          @map("avatar_url")
+  authProviderId             String?          @unique @map("auth_provider_id")
+  platformRole               UserPlatformRole @default(USER) @map("platform_role")
+  status                     UserStatus       @default(ACTIVE)
+  phone                      String?
+  mobile                     String?
+  address                    String?
+  language                   String?          @default("de")
+  timezone                   String?          @default("Europe/Berlin")
+  dateFormat                 String?          @default("DD.MM.YYYY") @map("date_format")
+  mustChangePassword         Boolean          @default(false) @map("must_change_password")
+  securityVersion            Int              @default(0) @map("security_version")
+  sessionVersion             Int              @default(0) @map("session_version")
   lastSelectedOrganizationId String?          @map("last_selected_organization_id")
-  lastLoginAt        DateTime?        @map("last_login_at")
-  lastLoginIp        String?          @map("last_login_ip")
-  lastLoginDevice    String?          @map("last_login_device")
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
+  lastLoginAt                DateTime?        @map("last_login_at")
+  lastLoginIp                String?          @map("last_login_ip")
+  lastLoginDevice            String?          @map("last_login_device")
+  createdAt                  DateTime         @default(now()) @map("created_at")
+  updatedAt                  DateTime         @updatedAt @map("updated_at")
 
-  refreshTokens                       RefreshToken[]
-  memberships                         OrganizationMembership[]
-  activityLogs                        ActivityLog[]
-  mfaFactors                          UserMfaFactor[]
-  mfaRecoveryCodes                    UserMfaRecoveryCode[]
-  mfaStepUpGrants                     UserMfaStepUpGrant[]
-  accessReviewCampaignsCreated        AccessReviewCampaign[]                  @relation("AccessReviewCampaignsCreated")
-  accessReviewCampaignsAsReviewer     AccessReviewCampaign[]                  @relation("AccessReviewReviewer")
-  accessReviewDecisions               AccessReviewDecision[]                  @relation("AccessReviewDecisions")
-  accessReviewItems                   AccessReviewItem[]
-  dsarExportsAsSubject                IamDsarExportLog[]                      @relation("DsarSubject")
-  dsarExportsRequested                IamDsarExportLog[]                      @relation("DsarRequestedBy")
-  iamLegalHoldsPlaced                 IamLegalHold[]                          @relation("IamLegalHoldPlacedBy")
-  iamRetentionPolicyApprovals         IamRetentionPolicyOverride[]            @relation("IamRetentionPolicyApprovedBy")
-  iamSessionRevocationIntents         IamSessionRevocationIntent[]
-  passwordResetTokens                 PasswordResetToken[]
-  accountPreferences                  UserAccountPreference[]
-  notificationPreferences             UserNotificationPreference[]
-  invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
-  invitesAccepted                     OrganizationUserInvite[]                @relation("InvitesAccepted")
-  inviteEmailOutboxSent               InviteEmailOutbox[]                     @relation("InviteEmailOutboxSentBy")
-  organizationRolesCreated            OrganizationRole[]                      @relation("RolesCreated")
-  organizationRoleVersionsCreated     OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
-  organizationRoleAssignmentsCreated  OrganizationRoleAssignment[]          @relation("RoleAssignmentsCreated")
-  membershipPermissionOverridesCreated MembershipPermissionOverride[]       @relation("PermissionOverridesCreated")
-  organizationRoleChangeApplications   OrganizationRoleChangeApplication[] @relation("RoleChangeApplications")
-  billingPriceVersionsCreated         BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
-  billingPriceVersionsPublished       BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
-  billingSubscriptionsCreated         BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
-  billingSubscriptionsUpdated         BillingSubscription[]                   @relation("BillingSubscriptionsUpdated")
-  billingDiscountsCreated             BillingDiscount[]                       @relation("BillingDiscountsCreated")
-  billingQuantityEventsActed          BillingQuantityEvent[]                  @relation("BillingQuantityEventsActed")
-  billingPaymentsRecorded             BillingPayment[]                        @relation("BillingPaymentsRecorded")
-  billingReconciliationDriftsResolved BillingReconciliationDrift[]            @relation("BillingReconciliationDriftsResolved")
-  billingUsageSnapshotsCreated        BillingUsageSnapshot[]                  @relation("BillingUsageSnapshotsCreated")
-  billingVehicleAssignmentsApproved   BillingBillableVehicleAssignment[]      @relation("BillingVehicleAssignmentsApproved")
-  outboundEmailsSent                  OutboundEmail[]                         @relation("OutboundEmailSentBy")
-  pricingQuotesCreated                PricingQuote[]                          @relation("PricingQuotesCreated")
-  notificationReceipts                NotificationReceipt[]
-  taskAutomationRuleOverridesCreated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
-  taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
-  taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
-  driverAttributionsResolved          DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
-  drivingDecisionsMade                DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
-  drivingDecisionsRevoked             DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
-  bookingAllowedDriversAdded          BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
-  bookingEligibilityApprovalsRequested BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalRequestedBy")
-  bookingEligibilityApprovalsDecided   BookingEligibilityApproval[]           @relation("BookingEligibilityApprovalDecidedBy")
-  rentalRuleRevisionsCreated           RentalRuleRevision[]                   @relation("RentalRuleRevisionCreatedBy")
-  rentalRuleRevisionsPublished         RentalRuleRevision[]                   @relation("RentalRuleRevisionPublishedBy")
-  tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
-  verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
-  batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
-  brakeRentalHealthReviewGrants       BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
+  refreshTokens                        RefreshToken[]
+  memberships                          OrganizationMembership[]
+  activityLogs                         ActivityLog[]
+  mfaFactors                           UserMfaFactor[]
+  mfaRecoveryCodes                     UserMfaRecoveryCode[]
+  mfaStepUpGrants                      UserMfaStepUpGrant[]
+  accessReviewCampaignsCreated         AccessReviewCampaign[]                  @relation("AccessReviewCampaignsCreated")
+  accessReviewCampaignsAsReviewer      AccessReviewCampaign[]                  @relation("AccessReviewReviewer")
+  accessReviewDecisions                AccessReviewDecision[]                  @relation("AccessReviewDecisions")
+  accessReviewItems                    AccessReviewItem[]
+  dsarExportsAsSubject                 IamDsarExportLog[]                      @relation("DsarSubject")
+  dsarExportsRequested                 IamDsarExportLog[]                      @relation("DsarRequestedBy")
+  iamLegalHoldsPlaced                  IamLegalHold[]                          @relation("IamLegalHoldPlacedBy")
+  iamRetentionPolicyApprovals          IamRetentionPolicyOverride[]            @relation("IamRetentionPolicyApprovedBy")
+  iamSessionRevocationIntents          IamSessionRevocationIntent[]
+  passwordResetTokens                  PasswordResetToken[]
+  accountPreferences                   UserAccountPreference[]
+  notificationPreferences              UserNotificationPreference[]
+  invitesSent                          OrganizationUserInvite[]                @relation("InvitesSent")
+  invitesAccepted                      OrganizationUserInvite[]                @relation("InvitesAccepted")
+  inviteEmailOutboxSent                InviteEmailOutbox[]                     @relation("InviteEmailOutboxSentBy")
+  organizationRolesCreated             OrganizationRole[]                      @relation("RolesCreated")
+  organizationRoleVersionsCreated      OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
+  organizationRoleAssignmentsCreated   OrganizationRoleAssignment[]            @relation("RoleAssignmentsCreated")
+  membershipPermissionOverridesCreated MembershipPermissionOverride[]          @relation("PermissionOverridesCreated")
+  organizationRoleChangeApplications   OrganizationRoleChangeApplication[]     @relation("RoleChangeApplications")
+  billingPriceVersionsCreated          BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
+  billingPriceVersionsPublished        BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
+  billingSubscriptionsCreated          BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
+  billingSubscriptionsUpdated          BillingSubscription[]                   @relation("BillingSubscriptionsUpdated")
+  billingDiscountsCreated              BillingDiscount[]                       @relation("BillingDiscountsCreated")
+  billingQuantityEventsActed           BillingQuantityEvent[]                  @relation("BillingQuantityEventsActed")
+  billingPaymentsRecorded              BillingPayment[]                        @relation("BillingPaymentsRecorded")
+  billingReconciliationDriftsResolved  BillingReconciliationDrift[]            @relation("BillingReconciliationDriftsResolved")
+  billingUsageSnapshotsCreated         BillingUsageSnapshot[]                  @relation("BillingUsageSnapshotsCreated")
+  billingVehicleAssignmentsApproved    BillingBillableVehicleAssignment[]      @relation("BillingVehicleAssignmentsApproved")
+  outboundEmailsSent                   OutboundEmail[]                         @relation("OutboundEmailSentBy")
+  pricingQuotesCreated                 PricingQuote[]                          @relation("PricingQuotesCreated")
+  notificationReceipts                 NotificationReceipt[]
+  taskAutomationRuleOverridesCreated   OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
+  taskAutomationRuleOverridesUpdated   OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
+  taskAutomationRuleOverrideRevisions  OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
+  driverAttributionsResolved           DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
+  drivingDecisionsMade                 DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
+  drivingDecisionsRevoked              DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
+  bookingAllowedDriversAdded           BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
+  bookingEligibilityApprovalsRequested BookingEligibilityApproval[]            @relation("BookingEligibilityApprovalRequestedBy")
+  bookingEligibilityApprovalsDecided   BookingEligibilityApproval[]            @relation("BookingEligibilityApprovalDecidedBy")
+  rentalRuleRevisionsCreated           RentalRuleRevision[]                    @relation("RentalRuleRevisionCreatedBy")
+  rentalRuleRevisionsPublished         RentalRuleRevision[]                    @relation("RentalRuleRevisionPublishedBy")
+  workflowDefinitionsCreated           WorkflowDefinition[]                    @relation("WorkflowDefinitionCreatedBy")
+  workflowDefinitionsUpdated           WorkflowDefinition[]                    @relation("WorkflowDefinitionUpdatedBy")
+  workflowVersionsPublished            WorkflowVersion[]                       @relation("WorkflowVersionPublishedBy")
+  workflowRevisionsActed               WorkflowRevision[]                      @relation("WorkflowRevisionActor")
+  workflowApprovalsDecided             WorkflowApproval[]                      @relation("WorkflowApprovalDecidedBy")
+  workflowApprovalsRequested           WorkflowApproval[]                      @relation("WorkflowApprovalRequestedBy")
+  workflowRunsTriggered                WorkflowRun[]                           @relation("WorkflowRunTriggeredBy")
+  workflowRunsCancelled                WorkflowRun[]                           @relation("WorkflowRunCancelledBy")
+  tireRentalHealthReviewGrants         TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
+  verifiedBatteryReferenceCapacities   VehicleBatteryReferenceCapacity[]
+  batteryReferenceCapacityChanges      VehicleBatteryReferenceCapacityChange[]
+  brakeRentalHealthReviewGrants        BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
 
   @@map("users")
 }
@@ -2001,13 +2028,13 @@ model OrganizationMembership {
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  organizationRole  OrganizationRole?  @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
-  accessReviewItems AccessReviewItem[]
-  refreshTokens    RefreshToken[]
-  roleAssignments  OrganizationRoleAssignment[]
-  permissionOverrides MembershipPermissionOverride[]
+  user                                          User                                                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization                                  Organization                                               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole                              OrganizationRole?                                          @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  accessReviewItems                             AccessReviewItem[]
+  refreshTokens                                 RefreshToken[]
+  roleAssignments                               OrganizationRoleAssignment[]
+  permissionOverrides                           MembershipPermissionOverride[]
   roleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
 
   @@unique([userId, organizationId])
@@ -2143,12 +2170,12 @@ model OrganizationRole {
   createdAt               DateTime       @default(now()) @map("created_at")
   updatedAt               DateTime       @updatedAt @map("updated_at")
 
-  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy    User?                    @relation("RolesCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  memberships  OrganizationMembership[]
-  invites      OrganizationUserInvite[]
-  versions     OrganizationRoleVersion[]
-  assignments  OrganizationRoleAssignment[]
+  organization       Organization                        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy          User?                               @relation("RolesCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  memberships        OrganizationMembership[]
+  invites            OrganizationUserInvite[]
+  versions           OrganizationRoleVersion[]
+  assignments        OrganizationRoleAssignment[]
   changeApplications OrganizationRoleChangeApplication[]
 
   @@unique([organizationId, systemKey])
@@ -2157,26 +2184,26 @@ model OrganizationRole {
 }
 
 model OrganizationRoleVersion {
-  id                  String                           @id @default(uuid())
-  organizationRoleId  String                           @map("organization_role_id")
-  organizationId      String                           @map("organization_id")
+  id                  String                             @id @default(uuid())
+  organizationRoleId  String                             @map("organization_role_id")
+  organizationId      String                             @map("organization_id")
   version             Int
-  nameSnapshot        String                           @map("name_snapshot")
-  descriptionSnapshot String?                          @map("description_snapshot")
+  nameSnapshot        String                             @map("name_snapshot")
+  descriptionSnapshot String?                            @map("description_snapshot")
   permissions         Json?
-  defaultStationScope String?                          @map("default_station_scope")
-  defaultStationIds   Json?                            @map("default_station_ids")
-  fieldAgentAccess    Boolean                          @default(false) @map("field_agent_access")
+  defaultStationScope String?                            @map("default_station_scope")
+  defaultStationIds   Json?                              @map("default_station_ids")
+  fieldAgentAccess    Boolean                            @default(false) @map("field_agent_access")
   riskClassification  OrganizationRoleRiskClassification @default(STANDARD) @map("risk_classification")
-  createdByUserId     String?                          @map("created_by_user_id")
-  createdAt           DateTime                         @default(now()) @map("created_at")
-  changeReason        String?                          @map("change_reason")
-  status              OrganizationRoleVersionStatus    @default(APPROVED)
+  createdByUserId     String?                            @map("created_by_user_id")
+  createdAt           DateTime                           @default(now()) @map("created_at")
+  changeReason        String?                            @map("change_reason")
+  status              OrganizationRoleVersionStatus      @default(APPROVED)
 
-  organizationRole OrganizationRole             @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
-  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy        User?                        @relation("RoleVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  assignments      OrganizationRoleAssignment[] @relation("AssignedRoleVersion")
+  organizationRole   OrganizationRole                    @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
+  organization       Organization                        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy          User?                               @relation("RoleVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignments        OrganizationRoleAssignment[]        @relation("AssignedRoleVersion")
   changeApplications OrganizationRoleChangeApplication[]
 
   @@unique([organizationRoleId, version])
@@ -2199,7 +2226,7 @@ model OrganizationRoleAssignment {
   isCurrent             Boolean                        @default(true) @map("is_current")
 
   organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  membership          OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  membership          OrganizationMembership   @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   organizationRole    OrganizationRole?        @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
   assignedRoleVersion OrganizationRoleVersion? @relation("AssignedRoleVersion", fields: [assignedRoleVersionId], references: [id], onDelete: SetNull)
   assignedBy          User?                    @relation("RoleAssignmentsCreated", fields: [assignedByUserId], references: [id], onDelete: SetNull)
@@ -2212,17 +2239,17 @@ model OrganizationRoleAssignment {
 }
 
 model MembershipPermissionOverride {
-  id             String                           @id @default(uuid())
-  organizationId String                           @map("organization_id")
-  membershipId   String                           @map("membership_id")
-  moduleKey      String                           @map("module_key")
-  permissionLevel String                          @map("permission_level")
-  effect         MembershipPermissionOverrideEffect
-  actorUserId    String?                          @map("actor_user_id")
-  reason         String?
-  expiresAt      DateTime?                        @map("expires_at")
-  revokedAt      DateTime?                        @map("revoked_at")
-  createdAt      DateTime                         @default(now()) @map("created_at")
+  id              String                             @id @default(uuid())
+  organizationId  String                             @map("organization_id")
+  membershipId    String                             @map("membership_id")
+  moduleKey       String                             @map("module_key")
+  permissionLevel String                             @map("permission_level")
+  effect          MembershipPermissionOverrideEffect
+  actorUserId     String?                            @map("actor_user_id")
+  reason          String?
+  expiresAt       DateTime?                          @map("expires_at")
+  revokedAt       DateTime?                          @map("revoked_at")
+  createdAt       DateTime                           @default(now()) @map("created_at")
 
   organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
@@ -2247,9 +2274,9 @@ model OrganizationRoleChangeApplication {
   result                Json?
   createdAt             DateTime @default(now()) @map("created_at")
 
-  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  organizationRole   OrganizationRole        @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
-  actor              User?                   @relation("RoleChangeApplications", fields: [actorUserId], references: [id], onDelete: SetNull)
+  organization       Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole   OrganizationRole         @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
+  actor              User?                    @relation("RoleChangeApplications", fields: [actorUserId], references: [id], onDelete: SetNull)
   createdRoleVersion OrganizationRoleVersion? @relation(fields: [createdRoleVersionId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, organizationRoleId, createdAt])
@@ -2257,17 +2284,17 @@ model OrganizationRoleChangeApplication {
 }
 
 model OrganizationRoleAssignmentDriftReconciliationApplication {
-  id                  String   @id @default(uuid())
-  idempotencyKey      String   @unique @map("idempotency_key")
-  organizationId      String   @map("organization_id")
-  membershipId        String   @map("membership_id")
-  evidenceHash        String   @map("evidence_hash")
-  expectedGitCommit   String   @map("expected_git_commit")
-  operator            String
-  reason              String
-  classification      String
-  result              Json?
-  createdAt           DateTime @default(now()) @map("created_at")
+  id                String   @id @default(uuid())
+  idempotencyKey    String   @unique @map("idempotency_key")
+  organizationId    String   @map("organization_id")
+  membershipId      String   @map("membership_id")
+  evidenceHash      String   @map("evidence_hash")
+  expectedGitCommit String   @map("expected_git_commit")
+  operator          String
+  reason            String
+  classification    String
+  result            Json?
+  createdAt         DateTime @default(now()) @map("created_at")
 
   organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "org_role_assignment_drift_recon_app_org_fkey")
   membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade, map: "org_role_assignment_drift_recon_app_mem_fkey")
@@ -2438,6 +2465,8 @@ model BusinessAuditOutbox {
   updatedAt      DateTime                  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  workflowRevisions WorkflowRevision[]
 
   @@index([organizationId])
   @@index([status, nextRetryAt])
@@ -2671,16 +2700,16 @@ model Station {
   createdAt                    DateTime      @default(now()) @map("created_at")
   updatedAt                    DateTime      @updatedAt @map("updated_at")
 
-  organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehiclesHome           Vehicle[]                @relation("VehicleHomeStation")
-  vehiclesCurrent        Vehicle[]                @relation("VehicleCurrentStation")
-  vehiclesExpected       Vehicle[]                @relation("VehicleExpectedStation")
-  transfersFrom          VehicleStationTransfer[] @relation("TransferFromStation")
-  transfersTo            VehicleStationTransfer[] @relation("TransferToStation")
-  pickupBookings         Booking[]                @relation("BookingPickupStation")
-  returnBookings         Booking[]                @relation("BookingReturnStation")
-  actualPickupBookings   Booking[]                @relation("BookingActualPickupStation")
-  actualReturnBookings   Booking[]                @relation("BookingActualReturnStation")
+  organization           Organization                       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehiclesHome           Vehicle[]                          @relation("VehicleHomeStation")
+  vehiclesCurrent        Vehicle[]                          @relation("VehicleCurrentStation")
+  vehiclesExpected       Vehicle[]                          @relation("VehicleExpectedStation")
+  transfersFrom          VehicleStationTransfer[]           @relation("TransferFromStation")
+  transfersTo            VehicleStationTransfer[]           @relation("TransferToStation")
+  pickupBookings         Booking[]                          @relation("BookingPickupStation")
+  returnBookings         Booking[]                          @relation("BookingReturnStation")
+  actualPickupBookings   Booking[]                          @relation("BookingActualPickupStation")
+  actualReturnBookings   Booking[]                          @relation("BookingActualReturnStation")
   legalDocumentStations  OrganizationLegalDocumentStation[]
   userAccountPreferences UserAccountPreference[]
 
@@ -5117,22 +5146,22 @@ model Customer {
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
 
-  organization                           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization                           Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookings                               Booking[]
-  assignedDriverBookings                 Booking[]                   @relation("BookingAssignedDriver")
+  assignedDriverBookings                 Booking[]                       @relation("BookingAssignedDriver")
   bookingAllowedDrivers                  BookingAllowedDriver[]
-  rentalDrivingAnalysesAsBookingCustomer RentalDrivingAnalysis[]     @relation("RentalAnalysisBookingCustomer")
-  rentalDrivingAnalysesAsAssignedDriver  RentalDrivingAnalysis[]     @relation("RentalAnalysisAssignedDriver")
-  rentalDrivingAnalysesAsActualDriver    RentalDrivingAnalysis[]     @relation("RentalAnalysisActualDriver")
-  rentalDrivingAnalysesLegacyDriver      RentalDrivingAnalysis[]     @relation("RentalAnalysisLegacyDriver")
+  rentalDrivingAnalysesAsBookingCustomer RentalDrivingAnalysis[]         @relation("RentalAnalysisBookingCustomer")
+  rentalDrivingAnalysesAsAssignedDriver  RentalDrivingAnalysis[]         @relation("RentalAnalysisAssignedDriver")
+  rentalDrivingAnalysesAsActualDriver    RentalDrivingAnalysis[]         @relation("RentalAnalysisActualDriver")
+  rentalDrivingAnalysesLegacyDriver      RentalDrivingAnalysis[]         @relation("RentalAnalysisLegacyDriver")
   documents                              CustomerDocument[]
   verificationChecks                     CustomerVerificationCheck[]
   timelineEvents                         CustomerTimelineEvent[]
   misuseCases                            MisuseCase[]
-  misuseCasesAsAssignedDriver            MisuseCase[]                @relation("MisuseCaseAssignedDriver")
-  misuseCasesAsActualDriver              MisuseCase[]                @relation("MisuseCaseActualDriver")
-  driverAttributionsAsBookingCustomer    DriverAttribution[]         @relation("DriverAttributionBookingCustomer")
-  driverAttributionsAsDriver             DriverAttribution[]         @relation("DriverAttributionDriver")
+  misuseCasesAsAssignedDriver            MisuseCase[]                    @relation("MisuseCaseAssignedDriver")
+  misuseCasesAsActualDriver              MisuseCase[]                    @relation("MisuseCaseActualDriver")
+  driverAttributionsAsBookingCustomer    DriverAttribution[]             @relation("DriverAttributionBookingCustomer")
+  driverAttributionsAsDriver             DriverAttribution[]             @relation("DriverAttributionDriver")
   outboundEmails                         OutboundEmail[]
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingPaymentRequests                 BookingPaymentRequest[]
@@ -5442,10 +5471,10 @@ model RentalRuleRevision {
   supersedesRevisionId String?                     @map("supersedes_revision_id")
   lockVersion          Int                         @default(1) @map("lock_version")
 
-  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdByUser      User?               @relation("RentalRuleRevisionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  publishedByUser    User?               @relation("RentalRuleRevisionPublishedBy", fields: [publishedBy], references: [id], onDelete: SetNull)
-  supersedesRevision RentalRuleRevision? @relation("RentalRuleRevisionSupersedes", fields: [supersedesRevisionId], references: [id], onDelete: SetNull)
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser      User?                @relation("RentalRuleRevisionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  publishedByUser    User?                @relation("RentalRuleRevisionPublishedBy", fields: [publishedBy], references: [id], onDelete: SetNull)
+  supersedesRevision RentalRuleRevision?  @relation("RentalRuleRevisionSupersedes", fields: [supersedesRevisionId], references: [id], onDelete: SetNull)
   supersededBy       RentalRuleRevision[] @relation("RentalRuleRevisionSupersedes")
 
   @@unique([organizationId, scopeType, scopeId, version], map: "rental_rule_revisions_scope_version_key")
@@ -5588,32 +5617,32 @@ model Booking {
   createdAt               DateTime              @default(now()) @map("created_at")
   updatedAt               DateTime              @updatedAt @map("updated_at")
 
-  organization            Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer                Customer                    @relation(fields: [customerId], references: [id])
-  assignedDriver          Customer?                   @relation("BookingAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
-  vehicle                 Vehicle                     @relation(fields: [vehicleId], references: [id])
-  pickupStation           Station?                    @relation("BookingPickupStation", fields: [pickupStationId], references: [id], onDelete: SetNull)
-  returnStation           Station?                    @relation("BookingReturnStation", fields: [returnStationId], references: [id], onDelete: SetNull)
-  actualPickupStation     Station?                    @relation("BookingActualPickupStation", fields: [actualPickupStationId], references: [id], onDelete: SetNull)
-  actualReturnStation     Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
-  rentalDrivingAnalyses   RentalDrivingAnalysis[]
-  handoverProtocols       BookingHandoverProtocol[]
-  verificationChecks      CustomerVerificationCheck[]
-  misuseCases             MisuseCase[]
-  priceSnapshots          BookingPriceSnapshot[]
-  pricingQuote            PricingQuote?               @relation("PricingQuoteConsumedBooking")
-  vehicleDamages          VehicleDamage[]
-  whatsappConversations   WhatsAppConversation[]
-  outboundEmails          OutboundEmail[]
+  organization                  Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer                      Customer                        @relation(fields: [customerId], references: [id])
+  assignedDriver                Customer?                       @relation("BookingAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  vehicle                       Vehicle                         @relation(fields: [vehicleId], references: [id])
+  pickupStation                 Station?                        @relation("BookingPickupStation", fields: [pickupStationId], references: [id], onDelete: SetNull)
+  returnStation                 Station?                        @relation("BookingReturnStation", fields: [returnStationId], references: [id], onDelete: SetNull)
+  actualPickupStation           Station?                        @relation("BookingActualPickupStation", fields: [actualPickupStationId], references: [id], onDelete: SetNull)
+  actualReturnStation           Station?                        @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
+  rentalDrivingAnalyses         RentalDrivingAnalysis[]
+  handoverProtocols             BookingHandoverProtocol[]
+  verificationChecks            CustomerVerificationCheck[]
+  misuseCases                   MisuseCase[]
+  priceSnapshots                BookingPriceSnapshot[]
+  pricingQuote                  PricingQuote?                   @relation("PricingQuoteConsumedBooking")
+  vehicleDamages                VehicleDamage[]
+  whatsappConversations         WhatsAppConversation[]
+  outboundEmails                OutboundEmail[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
   documentGenerationJobs        BookingDocumentGenerationJob[]
   pickupGateAuditEvents         BookingPickupGateAuditEvent[]
   eligibilityApprovals          BookingEligibilityApproval[]
   eligibilityDecisions          BookingEligibilityDecision[]
-  bookingPaymentRequests  BookingPaymentRequest[]
-  drivingIntelligenceJobs DrivingIntelligenceJob[]
-  driverAttributions      DriverAttribution[]
-  allowedDrivers          BookingAllowedDriver[]
+  bookingPaymentRequests        BookingPaymentRequest[]
+  drivingIntelligenceJobs       DrivingIntelligenceJob[]
+  driverAttributions            DriverAttribution[]
+  allowedDrivers                BookingAllowedDriver[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -7025,61 +7054,61 @@ model OrgInvoice {
 // relations to GeneratedDocument with onDelete: SetNull (historical evidence preserved).
 
 model GeneratedDocument {
-  id                 String       @id @default(uuid())
-  organizationId     String       @map("organization_id")
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType       String       @map("document_type") // BOOKING_INVOICE, … CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy)
-  legalVariant       String?      @map("legal_variant")
-  origin             String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
-  status             String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
-  bookingId          String?      @map("booking_id")
-  customerId         String?      @map("customer_id")
-  vehicleId          String?      @map("vehicle_id")
-  invoiceId          String?      @map("invoice_id")
-  handoverProtocolId String?      @map("handover_protocol_id")
-  rentalContractId   String?      @map("rental_contract_id")
-  depositId          String?      @map("deposit_id")
-  legalDocumentId    String?      @map("legal_document_id")
-  title              String
-  documentNumber     String?      @map("document_number")
-  fileName           String       @map("file_name")
-  mimeType           String       @default("application/pdf") @map("mime_type")
-  storageProvider    String       @default("local") @map("storage_provider")
-  objectKey          String       @map("object_key")
-  sizeBytes          Int?         @map("size_bytes")
-  checksum           String?
-  templateKey        String?      @map("template_key")
-  templateVersion    String?      @map("template_version")
-  legalVersionLabel  String?      @map("legal_version_label")
-  generatedAt        DateTime?    @map("generated_at")
-  generatedByUserId  String?      @map("generated_by_user_id")
-  sentAt             DateTime?    @map("sent_at")
-  signedAt           DateTime?    @map("signed_at")
-  voidedAt           DateTime?    @map("voided_at")
-  metadata           Json?
-  snapshot           Json?
-  retentionClass     String       @default("BOOKING_SNAPSHOT") @map("retention_class")
-  retainUntil        DateTime?    @map("retain_until")
-  legalHold          Boolean      @default(false) @map("legal_hold")
-  legalHoldReason    String?      @map("legal_hold_reason")
-  legalHoldSetAt     DateTime?    @map("legal_hold_set_at")
-  legalHoldSetByUserId String?    @map("legal_hold_set_by_user_id")
-  deletionEligibleAt DateTime?    @map("deletion_eligible_at")
-  deletedAt          DateTime?    @map("deleted_at")
-  storagePurgedAt    DateTime?    @map("storage_purged_at")
-  storagePurgeError  String?      @map("storage_purge_error")
-  createdAt          DateTime     @default(now()) @map("created_at")
-  updatedAt          DateTime     @updatedAt @map("updated_at")
+  id                   String       @id @default(uuid())
+  organizationId       String       @map("organization_id")
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType         String       @map("document_type") // BOOKING_INVOICE, … CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy)
+  legalVariant         String?      @map("legal_variant")
+  origin               String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
+  status               String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
+  bookingId            String?      @map("booking_id")
+  customerId           String?      @map("customer_id")
+  vehicleId            String?      @map("vehicle_id")
+  invoiceId            String?      @map("invoice_id")
+  handoverProtocolId   String?      @map("handover_protocol_id")
+  rentalContractId     String?      @map("rental_contract_id")
+  depositId            String?      @map("deposit_id")
+  legalDocumentId      String?      @map("legal_document_id")
+  title                String
+  documentNumber       String?      @map("document_number")
+  fileName             String       @map("file_name")
+  mimeType             String       @default("application/pdf") @map("mime_type")
+  storageProvider      String       @default("local") @map("storage_provider")
+  objectKey            String       @map("object_key")
+  sizeBytes            Int?         @map("size_bytes")
+  checksum             String?
+  templateKey          String?      @map("template_key")
+  templateVersion      String?      @map("template_version")
+  legalVersionLabel    String?      @map("legal_version_label")
+  generatedAt          DateTime?    @map("generated_at")
+  generatedByUserId    String?      @map("generated_by_user_id")
+  sentAt               DateTime?    @map("sent_at")
+  signedAt             DateTime?    @map("signed_at")
+  voidedAt             DateTime?    @map("voided_at")
+  metadata             Json?
+  snapshot             Json?
+  retentionClass       String       @default("BOOKING_SNAPSHOT") @map("retention_class")
+  retainUntil          DateTime?    @map("retain_until")
+  legalHold            Boolean      @default(false) @map("legal_hold")
+  legalHoldReason      String?      @map("legal_hold_reason")
+  legalHoldSetAt       DateTime?    @map("legal_hold_set_at")
+  legalHoldSetByUserId String?      @map("legal_hold_set_by_user_id")
+  deletionEligibleAt   DateTime?    @map("deletion_eligible_at")
+  deletedAt            DateTime?    @map("deleted_at")
+  storagePurgedAt      DateTime?    @map("storage_purged_at")
+  storagePurgeError    String?      @map("storage_purge_error")
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
 
   outboundEmailAttachments            OutboundEmailAttachment[]
-  activeForInvoice                    OrgInvoice?               @relation("InvoiceActiveDocument")
-  invoiceRecord                       OrgInvoice?               @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
-  bookingBundlesAsTermsDocument       BookingDocumentBundle[]   @relation("BookingBundleTermsDocument")
-  bookingBundlesAsWithdrawalDocument  BookingDocumentBundle[]   @relation("BookingBundleWithdrawalDocument")
-  bookingBundlesAsPrivacyDocument     BookingDocumentBundle[]   @relation("BookingBundlePrivacyDocument")
-  rentalContractsAsTermsDocument      RentalContract[]          @relation("RentalContractTermsDocument")
-  rentalContractsAsWithdrawalDocument RentalContract[]          @relation("RentalContractWithdrawalDocument")
-  rentalContractsAsPrivacyDocument    RentalContract[]          @relation("RentalContractPrivacyDocument")
+  activeForInvoice                    OrgInvoice?                     @relation("InvoiceActiveDocument")
+  invoiceRecord                       OrgInvoice?                     @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
+  bookingBundlesAsTermsDocument       BookingDocumentBundle[]         @relation("BookingBundleTermsDocument")
+  bookingBundlesAsWithdrawalDocument  BookingDocumentBundle[]         @relation("BookingBundleWithdrawalDocument")
+  bookingBundlesAsPrivacyDocument     BookingDocumentBundle[]         @relation("BookingBundlePrivacyDocument")
+  rentalContractsAsTermsDocument      RentalContract[]                @relation("RentalContractTermsDocument")
+  rentalContractsAsWithdrawalDocument RentalContract[]                @relation("RentalContractWithdrawalDocument")
+  rentalContractsAsPrivacyDocument    RentalContract[]                @relation("RentalContractPrivacyDocument")
   legalDocumentDeliveryEvidence       LegalDocumentDeliveryEvidence[]
 
   @@index([organizationId])
@@ -7095,75 +7124,75 @@ model GeneratedDocument {
 }
 
 model OrganizationLegalDocument {
-  id                         String       @id @default(uuid())
-  organizationId             String       @map("organization_id")
-  organization               Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType               String       @map("document_type") // TERMS_AND_CONDITIONS, CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy values)
-  legalVariant               String?      @map("legal_variant") // CONSUMER_INFORMATION variants only
+  id                         String                @id @default(uuid())
+  organizationId             String                @map("organization_id")
+  organization               Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType               String                @map("document_type") // TERMS_AND_CONDITIONS, CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy values)
+  legalVariant               String?               @map("legal_variant") // CONSUMER_INFORMATION variants only
   title                      String
-  versionLabel               String       @map("version_label")
-  language                   String       @default("de")
-  status                     String       @default("DRAFT") // DRAFT, IN_REVIEW, APPROVED, SCHEDULED, ACTIVE, SUPERSEDED, REVOKED, ARCHIVED
-  fileName                   String       @map("file_name")
-  mimeType                   String       @default("application/pdf") @map("mime_type")
-  storageProvider            String       @default("local") @map("storage_provider")
-  objectKey                  String       @map("object_key")
+  versionLabel               String                @map("version_label")
+  language                   String                @default("de")
+  status                     String                @default("DRAFT") // DRAFT, IN_REVIEW, APPROVED, SCHEDULED, ACTIVE, SUPERSEDED, REVOKED, ARCHIVED
+  fileName                   String                @map("file_name")
+  mimeType                   String                @default("application/pdf") @map("mime_type")
+  storageProvider            String                @default("local") @map("storage_provider")
+  objectKey                  String                @map("object_key")
   checksum                   String?
-  sizeBytes                  Int?         @map("size_bytes")
-  validFrom                  DateTime?    @map("valid_from")
-  validUntil                 DateTime?    @map("valid_until")
-  jurisdictionCountry        String       @default("DE") @map("jurisdiction_country") // ISO 3166-1 alpha-2
-  customerSegment            LegalCustomerSegment @default(BOTH) @map("customer_segment")
-  bookingChannel             LegalBookingChannel @default(ALL) @map("booking_channel")
-  productScope               BusinessType? @map("product_scope") // null = all business types
+  sizeBytes                  Int?                  @map("size_bytes")
+  validFrom                  DateTime?             @map("valid_from")
+  validUntil                 DateTime?             @map("valid_until")
+  jurisdictionCountry        String                @default("DE") @map("jurisdiction_country") // ISO 3166-1 alpha-2
+  customerSegment            LegalCustomerSegment  @default(BOTH) @map("customer_segment")
+  bookingChannel             LegalBookingChannel   @default(ALL) @map("booking_channel")
+  productScope               BusinessType?         @map("product_scope") // null = all business types
   stationScopeMode           LegalStationScopeMode @default(ORGANIZATION_WIDE) @map("station_scope_mode")
-  priority                   Int          @default(0)
-  isMandatory                Boolean      @default(true) @map("is_mandatory")
-  noticePurpose              LegalNoticePurpose @default(GENERAL_NOTICE) @map("notice_purpose")
-  submittedForReviewAt       DateTime?    @map("submitted_for_review_at")
-  submittedForReviewByUserId String?      @map("submitted_for_review_by_user_id")
-  approvedAt                 DateTime?    @map("approved_at")
-  approvedByUserId           String?      @map("approved_by_user_id")
-  activatedAt                DateTime?    @map("activated_at")
-  activatedByUserId          String?      @map("activated_by_user_id")
-  revokedAt                  DateTime?    @map("revoked_at")
-  revokedByUserId            String?      @map("revoked_by_user_id")
-  statusReason               String?      @map("status_reason")
-  changeSummary              String?      @map("change_summary")
-  legalOwnerName             String?      @map("legal_owner_name")
-  uploadedByUserId           String?      @map("uploaded_by_user_id")
-  scanStatus                 String       @default("UPLOADED") @map("scan_status")
-  pageCount                  Int?         @map("page_count")
-  validationErrorCode        String?      @map("validation_error_code")
-  validationErrorDetail      String?      @map("validation_error_detail")
-  validatedAt                DateTime?    @map("validated_at")
-  malwareScannedAt           DateTime?    @map("malware_scanned_at")
-  malwareScannerId           String?      @map("malware_scanner_id")
-  malwareEngineVersion       String?      @map("malware_engine_version")
-  malwareThreatName          String?      @map("malware_threat_name")
-  malwareScanDetail          String?      @map("malware_scan_detail")
-  malwareScanAttempts        Int?         @default(0) @map("malware_scan_attempts")
-  quarantineObjectKey        String?      @map("quarantine_object_key")
-  integrityStatus            String       @default("UNVERIFIED") @map("integrity_status")
-  integrityCheckedAt         DateTime?    @map("integrity_checked_at")
-  integrityDetail            String?      @map("integrity_detail")
-  integrityUnavailable       Boolean      @default(false) @map("integrity_unavailable")
-  retentionClass             String       @default("LEGAL_MASTER") @map("retention_class")
-  retainUntil                DateTime?    @map("retain_until")
-  legalHold                  Boolean      @default(false) @map("legal_hold")
-  legalHoldReason            String?      @map("legal_hold_reason")
-  legalHoldSetAt             DateTime?    @map("legal_hold_set_at")
-  legalHoldSetByUserId       String?      @map("legal_hold_set_by_user_id")
-  deletionEligibleAt         DateTime?    @map("deletion_eligible_at")
-  deletedAt                  DateTime?    @map("deleted_at")
-  storagePurgedAt            DateTime?    @map("storage_purged_at")
-  storagePurgeError          String?      @map("storage_purge_error")
-  createdAt                  DateTime     @default(now()) @map("created_at")
-  updatedAt                  DateTime     @updatedAt @map("updated_at")
+  priority                   Int                   @default(0)
+  isMandatory                Boolean               @default(true) @map("is_mandatory")
+  noticePurpose              LegalNoticePurpose    @default(GENERAL_NOTICE) @map("notice_purpose")
+  submittedForReviewAt       DateTime?             @map("submitted_for_review_at")
+  submittedForReviewByUserId String?               @map("submitted_for_review_by_user_id")
+  approvedAt                 DateTime?             @map("approved_at")
+  approvedByUserId           String?               @map("approved_by_user_id")
+  activatedAt                DateTime?             @map("activated_at")
+  activatedByUserId          String?               @map("activated_by_user_id")
+  revokedAt                  DateTime?             @map("revoked_at")
+  revokedByUserId            String?               @map("revoked_by_user_id")
+  statusReason               String?               @map("status_reason")
+  changeSummary              String?               @map("change_summary")
+  legalOwnerName             String?               @map("legal_owner_name")
+  uploadedByUserId           String?               @map("uploaded_by_user_id")
+  scanStatus                 String                @default("UPLOADED") @map("scan_status")
+  pageCount                  Int?                  @map("page_count")
+  validationErrorCode        String?               @map("validation_error_code")
+  validationErrorDetail      String?               @map("validation_error_detail")
+  validatedAt                DateTime?             @map("validated_at")
+  malwareScannedAt           DateTime?             @map("malware_scanned_at")
+  malwareScannerId           String?               @map("malware_scanner_id")
+  malwareEngineVersion       String?               @map("malware_engine_version")
+  malwareThreatName          String?               @map("malware_threat_name")
+  malwareScanDetail          String?               @map("malware_scan_detail")
+  malwareScanAttempts        Int?                  @default(0) @map("malware_scan_attempts")
+  quarantineObjectKey        String?               @map("quarantine_object_key")
+  integrityStatus            String                @default("UNVERIFIED") @map("integrity_status")
+  integrityCheckedAt         DateTime?             @map("integrity_checked_at")
+  integrityDetail            String?               @map("integrity_detail")
+  integrityUnavailable       Boolean               @default(false) @map("integrity_unavailable")
+  retentionClass             String                @default("LEGAL_MASTER") @map("retention_class")
+  retainUntil                DateTime?             @map("retain_until")
+  legalHold                  Boolean               @default(false) @map("legal_hold")
+  legalHoldReason            String?               @map("legal_hold_reason")
+  legalHoldSetAt             DateTime?             @map("legal_hold_set_at")
+  legalHoldSetByUserId       String?               @map("legal_hold_set_by_user_id")
+  deletionEligibleAt         DateTime?             @map("deletion_eligible_at")
+  deletedAt                  DateTime?             @map("deleted_at")
+  storagePurgedAt            DateTime?             @map("storage_purged_at")
+  storagePurgeError          String?               @map("storage_purge_error")
+  createdAt                  DateTime              @default(now()) @map("created_at")
+  updatedAt                  DateTime              @updatedAt @map("updated_at")
 
-  events            OrganizationLegalDocumentEvent[]
-  deliveryEvidence  LegalDocumentDeliveryEvidence[]
-  stations OrganizationLegalDocumentStation[]
+  events           OrganizationLegalDocumentEvent[]
+  deliveryEvidence LegalDocumentDeliveryEvidence[]
+  stations         OrganizationLegalDocumentStation[]
 
   // Scope-aware ACTIVE uniqueness is enforced via conflict detection at activation
   // (Prompt 7/32) — legacy partial index `organization_legal_documents_single_active_key`
@@ -7202,34 +7231,34 @@ model OrganizationLegalDocumentStation {
 /// Append-only audit log for organization legal document lifecycle transitions.
 /// No update/delete API — rows are created atomically with status changes.
 model OrganizationLegalDocumentEvent {
-  id               String   @id @default(uuid())
-  organizationId   String   @map("organization_id")
-  legalDocumentId  String   @map("legal_document_id")
-  eventType        String   @map("event_type")
-  previousStatus   String?  @map("previous_status")
-  newStatus        String   @map("new_status")
-  actorUserId      String?  @map("actor_user_id")
-  actorDisplayName String?  @map("actor_display_name")
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  legalDocumentId  String    @map("legal_document_id")
+  eventType        String    @map("event_type")
+  previousStatus   String?   @map("previous_status")
+  newStatus        String    @map("new_status")
+  actorUserId      String?   @map("actor_user_id")
+  actorDisplayName String?   @map("actor_display_name")
   reason           String?
-  changeSummary    String?  @map("change_summary")
-  versionLabel     String   @map("version_label")
-  documentType     String   @map("document_type")
-  legalVariant     String?  @map("legal_variant")
+  changeSummary    String?   @map("change_summary")
+  versionLabel     String    @map("version_label")
+  documentType     String    @map("document_type")
+  legalVariant     String?   @map("legal_variant")
   checksum         String?
   language         String
   jurisdiction     String?
-  customerSegment  String?  @map("customer_segment")
-  bookingChannel   String?  @map("booking_channel")
-  productScope     String?  @map("product_scope")
-  stationScopeMode String?  @map("station_scope_mode")
+  customerSegment  String?   @map("customer_segment")
+  bookingChannel   String?   @map("booking_channel")
+  productScope     String?   @map("product_scope")
+  stationScopeMode String?   @map("station_scope_mode")
   priority         Int?
-  isMandatory      Boolean? @map("is_mandatory")
-  noticePurpose    String?  @map("notice_purpose")
+  isMandatory      Boolean?  @map("is_mandatory")
+  noticePurpose    String?   @map("notice_purpose")
   validFrom        DateTime? @map("valid_from")
   validUntil       DateTime? @map("valid_until")
-  correlationId    String?  @map("correlation_id")
-  retentionClass   String   @default("AUDIT_EVENT") @map("retention_class")
-  createdAt        DateTime @default(now()) @map("created_at")
+  correlationId    String?   @map("correlation_id")
+  retentionClass   String    @default("AUDIT_EVENT") @map("retention_class")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
   organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   legalDocument OrganizationLegalDocument @relation(fields: [legalDocumentId], references: [id], onDelete: Cascade)
@@ -7244,37 +7273,37 @@ model OrganizationLegalDocumentEvent {
 /// NOT a consent store — marketing/KYC/data-processing consents use separate models.
 /// Rows are created via controlled service methods; completed events are immutable.
 model LegalDocumentDeliveryEvidence {
-  id                  String    @id @default(uuid())
-  organizationId      String    @map("organization_id")
-  bookingId           String    @map("booking_id")
-  customerId          String    @map("customer_id")
-  legalDocumentId     String    @map("legal_document_id")
-  generatedDocumentId String    @map("generated_document_id")
-  documentType        String    @map("document_type")
-  versionLabel        String    @map("version_label")
-  language            String
-  checksum            String?
-  presentedAt         DateTime  @map("presented_at")
-  deliveryChannel     String    @map("delivery_channel")
-  deliveryStatus      String    @map("delivery_status")
-  deliveredAt         DateTime? @map("delivered_at")
-  acknowledgedAt      DateTime? @map("acknowledged_at")
-  acknowledgmentMethod String?  @map("acknowledgment_method")
-  signatureReference  String?   @map("signature_reference")
-  actorUserId         String?   @map("actor_user_id")
-  recipientSnapshot   Json      @map("recipient_snapshot")
-  requestId           String?   @map("request_id")
-  outboundEmailId     String?   @map("outbound_email_id")
-  retentionClass    String    @default("DELIVERY_EVIDENCE") @map("retention_class")
-  retainUntil         DateTime? @map("retain_until")
-  legalHold           Boolean   @default(false) @map("legal_hold")
-  legalHoldReason     String?   @map("legal_hold_reason")
-  legalHoldSetAt      DateTime? @map("legal_hold_set_at")
-  legalHoldSetByUserId String?  @map("legal_hold_set_by_user_id")
-  deletionEligibleAt  DateTime? @map("deletion_eligible_at")
-  deletedAt           DateTime? @map("deleted_at")
-  recipientRedactedAt DateTime? @map("recipient_redacted_at")
-  createdAt           DateTime  @default(now()) @map("created_at")
+  id                   String    @id @default(uuid())
+  organizationId       String    @map("organization_id")
+  bookingId            String    @map("booking_id")
+  customerId           String    @map("customer_id")
+  legalDocumentId      String    @map("legal_document_id")
+  generatedDocumentId  String    @map("generated_document_id")
+  documentType         String    @map("document_type")
+  versionLabel         String    @map("version_label")
+  language             String
+  checksum             String?
+  presentedAt          DateTime  @map("presented_at")
+  deliveryChannel      String    @map("delivery_channel")
+  deliveryStatus       String    @map("delivery_status")
+  deliveredAt          DateTime? @map("delivered_at")
+  acknowledgedAt       DateTime? @map("acknowledged_at")
+  acknowledgmentMethod String?   @map("acknowledgment_method")
+  signatureReference   String?   @map("signature_reference")
+  actorUserId          String?   @map("actor_user_id")
+  recipientSnapshot    Json      @map("recipient_snapshot")
+  requestId            String?   @map("request_id")
+  outboundEmailId      String?   @map("outbound_email_id")
+  retentionClass       String    @default("DELIVERY_EVIDENCE") @map("retention_class")
+  retainUntil          DateTime? @map("retain_until")
+  legalHold            Boolean   @default(false) @map("legal_hold")
+  legalHoldReason      String?   @map("legal_hold_reason")
+  legalHoldSetAt       DateTime? @map("legal_hold_set_at")
+  legalHoldSetByUserId String?   @map("legal_hold_set_by_user_id")
+  deletionEligibleAt   DateTime? @map("deletion_eligible_at")
+  deletedAt            DateTime? @map("deleted_at")
+  recipientRedactedAt  DateTime? @map("recipient_redacted_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
 
   organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   booking           Booking                   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -7337,25 +7366,25 @@ enum BookingEligibilityApprovalStatus {
 
 /// Persisted manual-approval workflow for MANUAL_APPROVAL_REQUIRED eligibility decisions.
 model BookingEligibilityApproval {
-  id                       String                            @id @default(uuid())
-  organizationId           String                            @map("organization_id")
-  bookingId                String                            @map("booking_id")
-  eligibilityDecision      String                            @map("eligibility_decision")
-  exceptionReason          String                            @map("exception_reason")
-  reasonCodes              Json                              @default("[]") @map("reason_codes")
-  status                   BookingEligibilityApprovalStatus  @default(PENDING)
-  gateStage                String                            @map("gate_stage")
-  targetBookingStatus      String                            @map("target_booking_status")
-  requestedByUserId        String                            @map("requested_by_user_id")
-  decidedByUserId          String?                           @map("decided_by_user_id")
-  decisionReason           String?                           @map("decision_reason")
-  eligibilityFingerprint   String                            @map("eligibility_fingerprint")
-  ruleRevision             String                            @map("rule_revision")
-  bookingDataVersion       String                            @map("booking_data_version")
-  gateResultSnapshot       Json?                             @map("gate_result_snapshot")
-  createdAt                DateTime                          @default(now()) @map("created_at")
-  decidedAt                DateTime?                         @map("decided_at")
-  expiresAt                DateTime                          @map("expires_at")
+  id                     String                           @id @default(uuid())
+  organizationId         String                           @map("organization_id")
+  bookingId              String                           @map("booking_id")
+  eligibilityDecision    String                           @map("eligibility_decision")
+  exceptionReason        String                           @map("exception_reason")
+  reasonCodes            Json                             @default("[]") @map("reason_codes")
+  status                 BookingEligibilityApprovalStatus @default(PENDING)
+  gateStage              String                           @map("gate_stage")
+  targetBookingStatus    String                           @map("target_booking_status")
+  requestedByUserId      String                           @map("requested_by_user_id")
+  decidedByUserId        String?                          @map("decided_by_user_id")
+  decisionReason         String?                          @map("decision_reason")
+  eligibilityFingerprint String                           @map("eligibility_fingerprint")
+  ruleRevision           String                           @map("rule_revision")
+  bookingDataVersion     String                           @map("booking_data_version")
+  gateResultSnapshot     Json?                            @map("gate_result_snapshot")
+  createdAt              DateTime                         @default(now()) @map("created_at")
+  decidedAt              DateTime?                        @map("decided_at")
+  expiresAt              DateTime                         @map("expires_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -7515,7 +7544,7 @@ model BookingDocumentBundle {
   createdAt                DateTime           @default(now()) @map("created_at")
   updatedAt                DateTime           @updatedAt @map("updated_at")
 
-  generationJobs           BookingDocumentGenerationJob[]
+  generationJobs BookingDocumentGenerationJob[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -7553,29 +7582,29 @@ model BookingDeposit {
 }
 
 model RentalContract {
-  id                   String             @id @default(uuid())
-  organizationId       String             @map("organization_id")
-  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bookingId            String             @unique @map("booking_id")
-  customerId           String?            @map("customer_id")
-  vehicleId            String?            @map("vehicle_id")
-  contractNumber       String?            @map("contract_number")
-  status               String             @default("DRAFT") // DRAFT, GENERATED, SIGNED, CANCELLED
-  termsDocumentId      String?            @map("terms_document_id")
-  termsDocument        GeneratedDocument? @relation("RentalContractTermsDocument", fields: [termsDocumentId], references: [id], onDelete: SetNull)
-  withdrawalDocumentId String?            @map("withdrawal_document_id")
-  withdrawalDocument   GeneratedDocument? @relation("RentalContractWithdrawalDocument", fields: [withdrawalDocumentId], references: [id], onDelete: SetNull)
-  privacyDocumentId    String?            @map("privacy_document_id")
-  privacyDocument      GeneratedDocument? @relation("RentalContractPrivacyDocument", fields: [privacyDocumentId], references: [id], onDelete: SetNull)
-  generatedDocumentId  String?            @map("generated_document_id")
+  id                    String             @id @default(uuid())
+  organizationId        String             @map("organization_id")
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId             String             @unique @map("booking_id")
+  customerId            String?            @map("customer_id")
+  vehicleId             String?            @map("vehicle_id")
+  contractNumber        String?            @map("contract_number")
+  status                String             @default("DRAFT") // DRAFT, GENERATED, SIGNED, CANCELLED
+  termsDocumentId       String?            @map("terms_document_id")
+  termsDocument         GeneratedDocument? @relation("RentalContractTermsDocument", fields: [termsDocumentId], references: [id], onDelete: SetNull)
+  withdrawalDocumentId  String?            @map("withdrawal_document_id")
+  withdrawalDocument    GeneratedDocument? @relation("RentalContractWithdrawalDocument", fields: [withdrawalDocumentId], references: [id], onDelete: SetNull)
+  privacyDocumentId     String?            @map("privacy_document_id")
+  privacyDocument       GeneratedDocument? @relation("RentalContractPrivacyDocument", fields: [privacyDocumentId], references: [id], onDelete: SetNull)
+  generatedDocumentId   String?            @map("generated_document_id")
   /// Immutable verification snapshot of legal document versions used at contract time.
-  legalRefsSnapshot    Json?              @map("legal_refs_snapshot")
-  legalSnapshotFrozenAt DateTime?           @map("legal_snapshot_frozen_at")
-  snapshot             Json?
-  generatedAt          DateTime?          @map("generated_at")
-  signedAt             DateTime?          @map("signed_at")
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
+  legalRefsSnapshot     Json?              @map("legal_refs_snapshot")
+  legalSnapshotFrozenAt DateTime?          @map("legal_snapshot_frozen_at")
+  snapshot              Json?
+  generatedAt           DateTime?          @map("generated_at")
+  signedAt              DateTime?          @map("signed_at")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
 
   @@index([organizationId])
   @@index([bookingId])
@@ -10531,64 +10560,16 @@ model OrganizationChatAgent {
 }
 
 model ChatMessage {
-  id                 String   @id @default(uuid())
-  organizationId     String   @map("organization_id")
-  role               String
-  content            String
-  structuredPayload  Json?    @map("structured_payload")
-  createdAt          DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  role           String
+  content        String
+  createdAt      DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
   @@map("chat_messages")
-}
-
-enum AiRequestAuditEventKind {
-  REQUEST
-  TOOL
-}
-
-/// Append-only audit trail for AI assistant requests and tool invocations (Prompt 25).
-model AiRequestAuditLog {
-  id                 String                  @id @default(uuid())
-  organizationId   String                  @map("organization_id")
-  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  eventKind        AiRequestAuditEventKind @map("event_kind")
-  userId           String?                 @map("user_id")
-  userIdRef        String                  @map("user_id_ref")
-  membershipRole   String                  @map("membership_role")
-  correlationId    String                  @map("correlation_id")
-  requestId        String                  @map("request_id")
-  channel          String
-  primaryIntent    String?                 @map("primary_intent")
-  detectedIntents  Json                    @default("[]") @map("detected_intents")
-  resolvedVehicleId String?              @map("resolved_vehicle_id")
-  resolvedVehicleRef Json?                @map("resolved_vehicle_ref")
-  toolsUsed        Json                    @default("[]") @map("tools_used")
-  dataSources        Json                    @default("[]") @map("data_sources")
-  toolDurations      Json                    @default("[]") @map("tool_durations")
-  errorCodes         Json                    @default("[]") @map("error_codes")
-  responseType       String?               @map("response_type")
-  partial            Boolean                 @default(false)
-  resultComplete     Boolean                 @default(true) @map("result_complete")
-  dataClassification String                @default("internal") @map("data_classification")
-  modelProvider      String?                 @map("model_provider")
-  modelName          String?                 @map("model_name")
-  tokenUsage         Json?                   @map("token_usage")
-  llmUsed            Boolean                 @default(false) @map("llm_used")
-  performance        Json?                   @map("performance")
-  securityFlags      Json                    @default("[]") @map("security_flags")
-  toolName           String?                 @map("tool_name")
-  toolDecision       String?                 @map("tool_decision")
-  toolDurationMs     Int?                    @map("tool_duration_ms")
-  createdAt          DateTime                @default(now()) @map("created_at")
-
-  @@index([organizationId, createdAt])
-  @@index([organizationId, correlationId])
-  @@index([correlationId])
-  @@map("ai_request_audit_logs")
 }
 
 // ------------------------------------------------
@@ -10686,8 +10667,9 @@ model OrgDataAuthorization {
   @@map("org_data_authorizations")
 }
 
-// ─── Workflow Automation ──────────────────────────
+// ─── Workflow Automation (legacy MVP — deprecated, use canonical workflow_* tables) ───
 
+/// @deprecated Use `WorkflowDefinition` + `WorkflowVersion` graph (`workflow_*` tables). Retained for backward compatibility until Phase C cutover.
 enum WorkflowStatus {
   ACTIVE
   DRAFT
@@ -10695,6 +10677,7 @@ enum WorkflowStatus {
   INVALID
 }
 
+/// @deprecated Use `WorkflowRuntimeRunStatus` on `WorkflowRun`.
 enum WorkflowRunStatus {
   PENDING
   RUNNING
@@ -10704,6 +10687,7 @@ enum WorkflowRunStatus {
   WAITING_APPROVAL
 }
 
+/// @deprecated Use `WorkflowRuntimeActionRunStatus` on `WorkflowActionRun`.
 enum WorkflowActionRunStatus {
   PENDING
   RUNNING
@@ -10713,6 +10697,7 @@ enum WorkflowActionRunStatus {
   WAITING_APPROVAL
 }
 
+/// @deprecated Use `WorkflowRuntimeApprovalStatus` on `WorkflowApproval`.
 enum WorkflowApprovalStatus {
   PENDING
   APPROVED
@@ -10720,6 +10705,7 @@ enum WorkflowApprovalStatus {
   EXPIRED
 }
 
+/// @deprecated Use `WorkflowDefinition`. Maps to `org_workflows`.
 model OrgWorkflow {
   id              String         @id @default(uuid())
   organizationId  String         @map("organization_id")
@@ -10753,6 +10739,7 @@ model OrgWorkflow {
   @@map("org_workflows")
 }
 
+/// @deprecated Use `WorkflowRun`. Maps to `org_workflow_runs`.
 model OrgWorkflowRun {
   id              String            @id @default(uuid())
   organizationId  String            @map("organization_id")
@@ -10783,6 +10770,7 @@ model OrgWorkflowRun {
   @@map("org_workflow_runs")
 }
 
+/// @deprecated Use `WorkflowActionRun`. Maps to `org_workflow_action_runs`.
 model OrgWorkflowActionRun {
   id               String                  @id @default(uuid())
   organizationId   String                  @map("organization_id")
@@ -10810,6 +10798,7 @@ model OrgWorkflowActionRun {
   @@map("org_workflow_action_runs")
 }
 
+/// @deprecated Use `WorkflowApproval`. Maps to `org_workflow_approvals`.
 model OrgWorkflowApproval {
   id                String                 @id @default(uuid())
   organizationId    String                 @map("organization_id")
@@ -10829,6 +10818,906 @@ model OrgWorkflowApproval {
   @@index([actionRunId])
   @@index([status])
   @@map("org_workflow_approvals")
+}
+
+// ─── Workflow Automation (canonical runtime — workflow_* tables) ───
+
+enum WorkflowDefinitionLifecycleStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum WorkflowVersionStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  DISABLED
+  ARCHIVED
+  /// @deprecated Superseded by DISABLED — retained for migration compatibility
+  RETIRED
+  /// @deprecated Use definition remediation flags — retained for migration compatibility
+  INVALID
+}
+
+enum WorkflowScopeType {
+  ORGANIZATION
+  STATION
+  VEHICLE
+}
+
+enum WorkflowScopeBindingType {
+  STATION
+  VEHICLE
+}
+
+enum WorkflowConditionLogicOperator {
+  AND
+  OR
+  NOT
+}
+
+enum WorkflowConditionOperator {
+  EQUALS
+  NOT_EQUALS
+  IN
+  NOT_IN
+  GT
+  GTE
+  LT
+  LTE
+  IS_TRUE
+  IS_FALSE
+  CONTAINS
+  STARTS_WITH
+  NOT_EXISTS
+  ENDS_WITH
+  CHANGED_FROM
+  CHANGED_TO
+  DURATION_EXCEEDED
+  WITHIN_TIME_WINDOW
+  BEFORE
+  AFTER
+  BETWEEN
+}
+
+enum WorkflowActionCapabilityStatus {
+  AVAILABLE
+  INTERNAL_ONLY
+  EXPERIMENTAL
+  DISABLED
+  UNSUPPORTED
+}
+
+enum WorkflowRuntimeRunStatus {
+  PENDING
+  RUNNING
+  WAITING
+  WAITING_FOR_APPROVAL
+  COMPLETED
+  /// Run completed with at least one successful fallback after a primary action failure.
+  COMPLETED_WITH_FALLBACK
+  PARTIALLY_COMPLETED
+  FAILED
+  CANCELLED
+  SKIPPED
+  /// @deprecated Use `WAITING` — retained for migration compatibility
+  PAUSED
+  /// @deprecated Use `WAITING_FOR_APPROVAL`
+  WAITING_APPROVAL
+  /// @deprecated Use `COMPLETED`
+  SUCCESS
+}
+
+enum WorkflowRuntimeActionRunStatus {
+  PENDING
+  RUNNING
+  WAITING
+  WAITING_FOR_APPROVAL
+  SUCCEEDED
+  FAILED_RETRYABLE
+  FAILED_PERMANENT
+  CANCELLED
+  SKIPPED
+  /// @deprecated Use `WAITING_FOR_APPROVAL`
+  WAITING_APPROVAL
+  /// @deprecated Interim Phase 4 — resume in Phase 5
+  APPROVED_PENDING_EXECUTION
+  /// @deprecated Use `SUCCEEDED`
+  SUCCESS
+  /// @deprecated Use `FAILED_RETRYABLE` or `FAILED_PERMANENT`
+  FAILED
+}
+
+enum WorkflowRuntimeStatusEntityType {
+  RUN
+  ACTION_RUN
+}
+
+enum WorkflowRuntimeStatusActorType {
+  USER
+  SYSTEM
+  WORKER
+}
+
+enum WorkflowRuntimeApprovalStatus {
+  PENDING
+  APPROVED
+  APPROVED_PENDING_EXECUTION
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum WorkflowApprovalRejectionStrategy {
+  CANCEL_RUN
+  SKIP_ACTION
+  EXECUTE_FALLBACK
+}
+
+enum WorkflowActionErrorStrategy {
+  STOP_WORKFLOW
+  CONTINUE
+  SKIP_ACTION
+  REQUEST_APPROVAL
+  EXECUTE_FALLBACK
+  RETRY
+  MARK_PARTIAL
+  COMPENSATE_PREVIOUS
+}
+
+enum WorkflowDeliveryChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  WEBHOOK
+  INTERNAL
+}
+
+enum WorkflowDeliveryStatus {
+  PENDING
+  SUBMITTED
+  DELIVERED
+  FAILED
+  CANCELLED
+  DEAD_LETTER
+}
+
+enum WorkflowEventOutboxStatus {
+  PENDING
+  CLAIMED
+  DISPATCHED
+  RETRY_SCHEDULED
+  DEAD_LETTER
+}
+
+enum WorkflowTimerType {
+  APPROVAL_EXPIRY
+  RESUME_DELAY
+  RETRY_BACKOFF
+  SCHEDULED_TRIGGER
+}
+
+enum WorkflowTimerStatus {
+  SCHEDULED
+  CLAIMED
+  FIRED
+  CANCELLED
+}
+
+enum WorkflowRevisionType {
+  DRAFT_SAVED
+  PUBLISHED
+  ACTIVATED
+  DEACTIVATED
+  ARCHIVED
+  RETIRED
+  INVALIDATED
+  REMEDIATION_FLAGGED
+  RESTORED
+}
+
+enum WorkflowFeatureFlagScope {
+  PLATFORM
+  ORGANIZATION
+  WORKFLOW_DEFINITION
+}
+
+enum WorkflowRolloutScopeType {
+  STATION
+  VEHICLE
+  CATEGORY
+}
+
+/// Logical workflow identity within a tenant. Executable config lives on `WorkflowVersion` children.
+model WorkflowDefinition {
+  id                    String                            @id @default(uuid())
+  organizationId        String                            @map("organization_id")
+  /// Optional URL-safe identifier; unique per org while not archived.
+  slug                  String?
+  name                  String
+  description           String?
+  category              String
+  lifecycleStatus       WorkflowDefinitionLifecycleStatus @default(ACTIVE) @map("lifecycle_status")
+  isTemplate            Boolean                           @default(false) @map("is_template")
+  draftVersionId        String?                           @unique @map("draft_version_id")
+  publishedVersionId    String?                           @unique @map("published_version_id")
+  activeVersionId       String?                           @unique @map("active_version_id")
+  lockVersion           Int                               @default(1) @map("lock_version")
+  versionCounter        Int                               @default(0) @map("version_counter")
+  triggerCount          Int                               @default(0) @map("trigger_count")
+  lastTriggeredAt       DateTime?                         @map("last_triggered_at")
+  remediationRequired   Boolean                           @default(false) @map("remediation_required")
+  remediationReason     String?                           @map("remediation_reason")
+  remediationDetectedAt DateTime?                         @map("remediation_detected_at")
+  /// Bridge to legacy `org_workflows.id` during dual-write / backfill (Phase A–B).
+  legacyOrgWorkflowId   String?                           @unique @map("legacy_org_workflow_id")
+  createdByUserId       String?                           @map("created_by_user_id")
+  updatedByUserId       String?                           @map("updated_by_user_id")
+  archivedAt            DateTime?                         @map("archived_at")
+  createdAt             DateTime                          @default(now()) @map("created_at")
+  updatedAt             DateTime                          @updatedAt @map("updated_at")
+
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser    User?                 @relation("WorkflowDefinitionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser    User?                 @relation("WorkflowDefinitionUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  draftVersion     WorkflowVersion?      @relation("WorkflowDraftVersion", fields: [draftVersionId], references: [id], onDelete: SetNull)
+  publishedVersion WorkflowVersion?      @relation("WorkflowPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+  activeVersion    WorkflowVersion?      @relation("WorkflowActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  versions         WorkflowVersion[]     @relation("WorkflowDefinitionVersions")
+  runs             WorkflowRun[]
+  revisions        WorkflowRevision[]
+  featureFlags     WorkflowFeatureFlag[]
+
+  @@index([organizationId])
+  @@index([organizationId, lifecycleStatus])
+  @@index([organizationId, category])
+  @@map("workflow_definitions")
+}
+
+/// Versioned workflow configuration. Immutable after `PUBLISHED` (enforced in service layer).
+model WorkflowVersion {
+  id                   String                @id @default(uuid())
+  organizationId       String                @map("organization_id")
+  workflowDefinitionId String                @map("workflow_definition_id")
+  versionNumber        Int                   @map("version_number")
+  status               WorkflowVersionStatus @default(DRAFT)
+  contentHash          String                @map("content_hash") @db.VarChar(64)
+  /// Frozen normalized graph at publish — immutable snapshot for run binding. No secrets.
+  definitionSnapshot   Json?                 @map("definition_snapshot")
+  supersedesVersionId  String?               @map("supersedes_version_id")
+  publishedByUserId    String?               @map("published_by_user_id")
+  publishedAt          DateTime?             @map("published_at")
+  activatedAt          DateTime?             @map("activated_at")
+  disabledAt           DateTime?             @map("disabled_at")
+  retiredAt            DateTime?             @map("retired_at")
+  archivedAt           DateTime?             @map("archived_at")
+  invalidatedAt        DateTime?             @map("invalidated_at")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  definition             WorkflowDefinition       @relation("WorkflowDefinitionVersions", fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  publishedByUser        User?                    @relation("WorkflowVersionPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  supersedesVersion      WorkflowVersion?         @relation("WorkflowVersionSupersedes", fields: [supersedesVersionId], references: [id], onDelete: SetNull)
+  supersededBy           WorkflowVersion[]        @relation("WorkflowVersionSupersedes")
+  draftForDefinition     WorkflowDefinition?      @relation("WorkflowDraftVersion")
+  publishedForDefinition WorkflowDefinition?      @relation("WorkflowPublishedVersion")
+  activeForDefinition    WorkflowDefinition?      @relation("WorkflowActiveVersion")
+  trigger                WorkflowTrigger?
+  scope                  WorkflowScope?
+  conditionGroups        WorkflowConditionGroup[]
+  actions                WorkflowAction[]
+  runs                   WorkflowRun[]
+  revisions              WorkflowRevision[]
+
+  @@unique([organizationId, workflowDefinitionId, versionNumber], map: "workflow_versions_definition_version_key")
+  @@index([organizationId, workflowDefinitionId, status])
+  @@index([workflowDefinitionId, versionNumber])
+  @@index([contentHash])
+  @@map("workflow_versions")
+}
+
+/// Canonical trigger for a version — queryable by `triggerType` for engine matching.
+model WorkflowTrigger {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  workflowVersionId String   @unique @map("workflow_version_id")
+  triggerType       String   @map("trigger_type")
+  legacyTriggerKey  String?  @map("legacy_trigger_key")
+  /// Version-bound trigger config (entity IDs only — no provider secrets).
+  config            Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version      WorkflowVersion @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, triggerType])
+  @@map("workflow_triggers")
+}
+
+/// Scope type declaration for a version (bindings in `WorkflowScopeBinding`).
+model WorkflowScope {
+  id                String            @id @default(uuid())
+  organizationId    String            @map("organization_id")
+  workflowVersionId String            @unique @map("workflow_version_id")
+  scopeType         WorkflowScopeType @map("scope_type")
+  createdAt         DateTime          @default(now()) @map("created_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version      WorkflowVersion        @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  bindings     WorkflowScopeBinding[]
+
+  @@index([organizationId, scopeType])
+  @@map("workflow_scopes")
+}
+
+/// Normalized scope membership for event→workflow resolution.
+model WorkflowScopeBinding {
+  id              String                   @id @default(uuid())
+  organizationId  String                   @map("organization_id")
+  workflowScopeId String                   @map("workflow_scope_id")
+  bindingType     WorkflowScopeBindingType @map("binding_type")
+  bindingId       String                   @map("binding_id")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scope        WorkflowScope @relation(fields: [workflowScopeId], references: [id], onDelete: Restrict)
+
+  @@unique([workflowScopeId, bindingType, bindingId])
+  @@index([organizationId, bindingType, bindingId])
+  @@map("workflow_scope_bindings")
+}
+
+/// Boolean group node in the condition tree for a version.
+model WorkflowConditionGroup {
+  id                String                         @id @default(uuid())
+  organizationId    String                         @map("organization_id")
+  workflowVersionId String                         @map("workflow_version_id")
+  parentGroupId     String?                        @map("parent_group_id")
+  logicOperator     WorkflowConditionLogicOperator @default(AND) @map("logic_operator")
+  sortOrder         Int                            @default(0) @map("sort_order")
+  createdAt         DateTime                       @default(now()) @map("created_at")
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version      WorkflowVersion          @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  parentGroup  WorkflowConditionGroup?  @relation("WorkflowConditionGroupTree", fields: [parentGroupId], references: [id], onDelete: Restrict)
+  childGroups  WorkflowConditionGroup[] @relation("WorkflowConditionGroupTree")
+  conditions   WorkflowCondition[]
+
+  @@index([workflowVersionId])
+  @@index([parentGroupId])
+  @@map("workflow_condition_groups")
+}
+
+/// Leaf predicate in the condition tree — typed value columns for queryable comparisons.
+model WorkflowCondition {
+  id               String                    @id @default(uuid())
+  organizationId   String                    @map("organization_id")
+  conditionGroupId String                    @map("condition_group_id")
+  fieldPath        String                    @map("field_path")
+  operator         WorkflowConditionOperator
+  valueText        String?                   @map("value_text")
+  valueNumber      Float?                    @map("value_number")
+  valueBoolean     Boolean?                  @map("value_boolean")
+  /// Complex `in` / `not_in` lists only — not for secrets.
+  valueJson        Json?                     @map("value_json")
+  sortOrder        Int                       @default(0) @map("sort_order")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conditionGroup WorkflowConditionGroup @relation(fields: [conditionGroupId], references: [id], onDelete: Restrict)
+
+  @@unique([conditionGroupId, sortOrder])
+  @@index([organizationId, fieldPath, operator])
+  @@map("workflow_conditions")
+}
+
+/// Ordered action step within a published/draft version.
+model WorkflowAction {
+  id                        String                          @id @default(uuid())
+  organizationId            String                          @map("organization_id")
+  workflowVersionId         String                          @map("workflow_version_id")
+  actionKey                 String                          @map("action_key")
+  actionIndex               Int                             @map("action_index")
+  actionType                String                          @map("action_type")
+  requiresApproval          Boolean                         @default(false) @map("requires_approval")
+  errorStrategy             WorkflowActionErrorStrategy     @default(STOP_WORKFLOW) @map("error_strategy")
+  fallbackActionKey         String?                         @map("fallback_action_key")
+  compensateActionKey       String?                         @map("compensate_action_key")
+  /// Only true for explicitly marked internal, technically reversible actions.
+  compensatable             Boolean                         @default(false)
+  capabilityStatusAtPublish WorkflowActionCapabilityStatus? @map("capability_status_at_publish")
+  /// Action config — no API keys, tokens, or provider secrets.
+  config                    Json                            @default("{}")
+  createdAt                 DateTime                        @default(now()) @map("created_at")
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  version      WorkflowVersion     @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  actionRuns   WorkflowActionRun[]
+
+  @@unique([workflowVersionId, actionIndex])
+  @@unique([workflowVersionId, actionKey])
+  @@index([organizationId, actionType])
+  @@map("workflow_actions")
+}
+
+/// Frozen operational policy captured at workflow run start.
+model WorkflowPolicySnapshot {
+  id                      String   @id @default(uuid())
+  organizationId          String   @map("organization_id")
+  capabilityRevision      String   @map("capability_revision")
+  approvalResumeSupported Boolean  @default(false) @map("approval_resume_supported")
+  approvalTtlHours        Int      @default(72) @map("approval_ttl_hours")
+  /// Frozen feature-flag / policy payload — no secrets.
+  policyPayload           Json     @default("{}") @map("policy_payload")
+  contentHash             String   @map("content_hash") @db.VarChar(64)
+  capturedAt              DateTime @default(now()) @map("captured_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  runs         WorkflowRun[]
+
+  @@unique([organizationId, contentHash], map: "workflow_policy_snapshots_org_hash_key")
+  @@index([contentHash])
+  @@map("workflow_policy_snapshots")
+}
+
+/// Immutable execution snapshot — frozen at workflow run start; never updated.
+model WorkflowExecutionSnapshot {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  workflowRunId   String   @unique @map("workflow_run_id")
+  snapshotVersion Int      @default(1) @map("snapshot_version")
+  contentHash     String   @map("content_hash") @db.VarChar(64)
+  /// Structured execution snapshot — no provider secrets; PII minimized.
+  payload         Json
+  capturedAt      DateTime @default(now()) @map("captured_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun  WorkflowRun  @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, capturedAt])
+  @@index([contentHash])
+  @@map("workflow_execution_snapshots")
+}
+
+/// Single workflow execution for a domain event.
+model WorkflowRun {
+  id                   String                   @id @default(uuid())
+  organizationId       String                   @map("organization_id")
+  workflowDefinitionId String                   @map("workflow_definition_id")
+  workflowVersionId    String                   @map("workflow_version_id")
+  policySnapshotId     String                   @map("policy_snapshot_id")
+  versionNumber        Int                      @map("version_number")
+  eventType            String                   @map("event_type")
+  entityType           String?                  @map("entity_type")
+  entityId             String?                  @map("entity_id")
+  status               WorkflowRuntimeRunStatus @default(PENDING)
+  lockVersion          Int                      @default(1) @map("lock_version")
+  /// Set only while status = WAITING.
+  waitingUntil         DateTime?                @map("waiting_until")
+  /// Set only while status = WAITING_FOR_APPROVAL.
+  approvalId           String?                  @unique @map("approval_id")
+  idempotencyKey       String                   @map("idempotency_key")
+  /// Stable business occurrence — same fact re-delivered maps here (no PII).
+  occurrenceId         String?                  @map("occurrence_id")
+  /// Source domain event instance id.
+  eventId              String?                  @map("event_id")
+  correlationId        String?                  @map("correlation_id")
+  /// Domain event payload — may contain PII; minimize at write time.
+  inputPayload         Json                     @map("input_payload")
+  /// Full published definition graph at run start — immutable.
+  definitionSnapshot   Json                     @map("definition_snapshot")
+  conditionResult      Json?                    @map("condition_result")
+  errorMessage         String?                  @map("error_message")
+  triggeredByUserId    String?                  @map("triggered_by_user_id")
+  startedAt            DateTime                 @default(now()) @map("started_at")
+  finishedAt           DateTime?                @map("finished_at")
+  pausedAt             DateTime?                @map("paused_at")
+  lastResumedAt        DateTime?                @map("last_resumed_at")
+  /// Set when status transitions to CANCELLED.
+  cancelledAt          DateTime?                @map("cancelled_at")
+  cancelledByUserId    String?                  @map("cancelled_by_user_id")
+  cancelledByActorType WorkflowRuntimeStatusActorType? @map("cancelled_by_actor_type")
+  cancelReason         String?                  @map("cancel_reason")
+  createdAt            DateTime                 @default(now()) @map("created_at")
+
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  definition      WorkflowDefinition     @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  version         WorkflowVersion        @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
+  policySnapshot  WorkflowPolicySnapshot @relation(fields: [policySnapshotId], references: [id], onDelete: Restrict)
+  triggeredByUser User?                  @relation("WorkflowRunTriggeredBy", fields: [triggeredByUserId], references: [id], onDelete: SetNull)
+  cancelledByUser User?                  @relation("WorkflowRunCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  waitingApproval WorkflowApproval?      @relation("WorkflowRunWaitingApproval", fields: [approvalId], references: [id], onDelete: SetNull)
+  actionRuns      WorkflowActionRun[]
+  approvals       WorkflowApproval[]
+  deliveries      WorkflowDelivery[]
+  timers          WorkflowTimer[]
+  outboxEvents    WorkflowEventOutbox[]
+  statusTransitions WorkflowRuntimeStatusTransition[]
+  executionSnapshot WorkflowExecutionSnapshot?
+
+  @@unique([organizationId, idempotencyKey], map: "workflow_runs_org_idempotency_key")
+  @@unique([organizationId, workflowVersionId, occurrenceId], map: "workflow_runs_org_version_occurrence_key")
+  @@index([organizationId, workflowDefinitionId, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@index([workflowVersionId])
+  @@index([correlationId])
+  @@map("workflow_runs")
+}
+
+/// Execution unit for one action step within a run.
+model WorkflowActionRun {
+  id                   String                         @id @default(uuid())
+  organizationId       String                         @map("organization_id")
+  workflowRunId        String                         @map("workflow_run_id")
+  workflowDefinitionId String                         @map("workflow_definition_id")
+  workflowVersionId    String                         @map("workflow_version_id")
+  workflowActionId     String?                        @map("workflow_action_id")
+  actionKey            String                         @map("action_key")
+  actionIndex          Int                            @map("action_index")
+  actionType           String                         @map("action_type")
+  status               WorkflowRuntimeActionRunStatus @default(PENDING)
+  lockVersion          Int                            @default(1) @map("lock_version")
+  /// Set only while status = WAITING.
+  waitingUntil         DateTime?                      @map("waiting_until")
+  /// Set only while status = WAITING_FOR_APPROVAL.
+  approvalId           String?                        @unique @map("approval_id")
+  attemptCount         Int                            @default(0) @map("attempt_count")
+  maxAttempts          Int                            @default(5) @map("max_attempts")
+  nextAttemptAt        DateTime?                      @map("next_attempt_at")
+  timeoutAt            DateTime?                      @map("timeout_at")
+  requiresApproval     Boolean                        @default(false) @map("requires_approval")
+  /// When false, a permanent failure on this action does not block subsequent actions.
+  blockingOnFailure    Boolean                        @default(true) @map("blocking_on_failure")
+  errorStrategy        WorkflowActionErrorStrategy    @default(STOP_WORKFLOW) @map("error_strategy")
+  fallbackActionKey    String?                        @map("fallback_action_key")
+  compensateActionKey  String?                        @map("compensate_action_key")
+  compensatable        Boolean                        @default(false)
+  appliedErrorStrategy WorkflowActionErrorStrategy?   @map("applied_error_strategy")
+  parentActionRunId    String?                        @map("parent_action_run_id")
+  isFallbackRun        Boolean                        @default(false) @map("is_fallback_run")
+  fallbackDepth        Int                            @default(0) @map("fallback_depth")
+  partialFailure       Boolean                        @default(false) @map("partial_failure")
+  idempotencyKey       String                         @map("idempotency_key")
+  /// Stable business occurrence copied from parent run.
+  occurrenceId         String?                        @map("occurrence_id")
+  /// Stable action identifier within version graph (actionKey).
+  actionStableId       String?                        @map("action_stable_id")
+  /// Key passed to external providers — same formula as idempotencyKey.
+  providerIdempotencyKey String?                      @map("provider_idempotency_key")
+  /// Frozen action input at first claim — no secrets.
+  inputSnapshot        Json?                          @map("input_snapshot")
+  input                Json?
+  output               Json?
+  /// Minimized execution result for audit/UI — no secrets or raw PII.
+  resultSummary        Json?                          @map("result_summary")
+  errorCode            String?                        @map("error_code")
+  errorCategory        String?                        @map("error_category")
+  errorSummary         String?                        @map("error_summary")
+  errorMessage         String?                        @map("error_message")
+  /// Opaque provider-side reference (message ID, task ID) — never secrets.
+  providerReference    String?                        @map("provider_reference")
+  approvedByUserId     String?                        @map("approved_by_user_id")
+  approvedAt           DateTime?                      @map("approved_at")
+  claimedByWorkerId    String?                        @map("claimed_by_worker_id")
+  leaseExpiresAt       DateTime?                      @map("lease_expires_at")
+  lastHeartbeatAt      DateTime?                      @map("last_heartbeat_at")
+  startedAt            DateTime?                      @map("started_at")
+  finishedAt           DateTime?                      @map("finished_at")
+  createdAt            DateTime                       @default(now()) @map("created_at")
+
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun    WorkflowRun        @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
+  workflowAction WorkflowAction?    @relation(fields: [workflowActionId], references: [id], onDelete: SetNull)
+  parentActionRun WorkflowActionRun? @relation("WorkflowActionRunFallback", fields: [parentActionRunId], references: [id], onDelete: SetNull)
+  fallbackRuns    WorkflowActionRun[] @relation("WorkflowActionRunFallback")
+  waitingApproval WorkflowApproval? @relation("WorkflowActionRunWaitingApproval", fields: [approvalId], references: [id], onDelete: SetNull)
+  approval       WorkflowApproval?
+  deliveries     WorkflowDelivery[]
+  timers         WorkflowTimer[]
+  statusTransitions WorkflowRuntimeStatusTransition[]
+
+  @@unique([workflowRunId, actionIndex], map: "workflow_action_runs_run_index_key")
+  @@unique([organizationId, idempotencyKey], map: "workflow_action_runs_org_idempotency_key")
+  @@unique([organizationId, workflowVersionId, actionStableId, occurrenceId], map: "workflow_action_runs_occurrence_action_key")
+  @@index([organizationId, status])
+  @@index([workflowRunId, actionIndex])
+  @@index([workflowActionId])
+  @@index([status, leaseExpiresAt])
+  @@map("workflow_action_runs")
+}
+
+/// Human approval gate — exactly one per waiting action run.
+model WorkflowApproval {
+  id                String                        @id @default(uuid())
+  organizationId    String                        @map("organization_id")
+  workflowRunId     String                        @map("workflow_run_id")
+  workflowVersionId String                        @map("workflow_version_id")
+  actionRunId       String                        @unique @map("action_run_id")
+  status            WorkflowRuntimeApprovalStatus @default(PENDING)
+  requestedBySystem Boolean                       @default(true) @map("requested_by_system")
+  requestedByUserId String?                       @map("requested_by_user_id")
+  approverRoleScope String?                       @map("approver_role_scope")
+  approvedByUserId  String?                       @map("approved_by_user_id")
+  decidedByName     String?                       @map("decided_by_name")
+  reason            String?
+  rejectionStrategy WorkflowApprovalRejectionStrategy @default(CANCEL_RUN) @map("rejection_strategy")
+  makerCheckerRequired Boolean                    @default(true) @map("maker_checker_required")
+  /// Role/policy metadata only — no secrets.
+  requestedPolicy   Json?                         @map("requested_policy")
+  expiresAt         DateTime?                     @map("expires_at")
+  decidedAt         DateTime?                     @map("decided_at")
+  notificationPreparedAt DateTime?                @map("notification_prepared_at")
+  /// Bridge to legacy `org_workflow_approvals.id` during migration.
+  legacyOrgWorkflowApprovalId String?              @unique @map("legacy_org_workflow_approval_id")
+  createdAt         DateTime                      @default(now()) @map("created_at")
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun    WorkflowRun       @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
+  actionRun      WorkflowActionRun @relation(fields: [actionRunId], references: [id], onDelete: Restrict)
+  approvedByUser User?             @relation("WorkflowApprovalDecidedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  requestedByUser User?            @relation("WorkflowApprovalRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  expiryTimer    WorkflowTimer?
+  runWaitingForApproval    WorkflowRun?       @relation("WorkflowRunWaitingApproval")
+  actionRunWaitingApproval WorkflowActionRun? @relation("WorkflowActionRunWaitingApproval")
+  comments       WorkflowApprovalComment[]
+
+  @@index([organizationId, workflowRunId])
+  @@index([organizationId, status, expiresAt])
+  @@index([workflowVersionId])
+  @@map("workflow_approvals")
+}
+
+/// Append-only approval decision comments for audit.
+model WorkflowApprovalComment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  approvalId     String   @map("approval_id")
+  userId         String?  @map("user_id")
+  userName       String?  @map("user_name")
+  comment        String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approval       WorkflowApproval @relation(fields: [approvalId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, approvalId, createdAt])
+  @@map("workflow_approval_comments")
+}
+
+/// Append-only audit trail for workflow run and action run status transitions.
+model WorkflowRuntimeStatusTransition {
+  id             String                         @id @default(uuid())
+  organizationId String                         @map("organization_id")
+  entityType     WorkflowRuntimeStatusEntityType @map("entity_type")
+  workflowRunId  String                         @map("workflow_run_id")
+  actionRunId    String?                        @map("action_run_id")
+  fromStatus     String                         @map("from_status")
+  toStatus       String                         @map("to_status")
+  actorType      WorkflowRuntimeStatusActorType   @map("actor_type")
+  actorId        String?                        @map("actor_id")
+  actorSource    String                         @map("actor_source")
+  reason         String?
+  occurredAt     DateTime                       @default(now()) @map("occurred_at")
+  metadata       Json?
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun  WorkflowRun        @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
+  actionRun    WorkflowActionRun? @relation(fields: [actionRunId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, workflowRunId, occurredAt])
+  @@index([organizationId, actionRunId, occurredAt])
+  @@map("workflow_runtime_status_transitions")
+}
+
+/// Provider delivery state for workflow side-effects — no secrets stored.
+model WorkflowDelivery {
+  id                String                  @id @default(uuid())
+  organizationId    String                  @map("organization_id")
+  actionRunId       String                  @map("action_run_id")
+  workflowRunId     String                  @map("workflow_run_id")
+  channel           WorkflowDeliveryChannel
+  provider          String
+  status            WorkflowDeliveryStatus  @default(PENDING)
+  idempotencyKey    String                  @map("idempotency_key")
+  externalReference String?                 @map("external_reference")
+  /// Opaque recipient reference — not raw email/phone when avoidable.
+  recipientRef      String?                 @map("recipient_ref")
+  notificationId    String?                 @map("notification_id")
+  outboundEmailId   String?                 @map("outbound_email_id")
+  /// IDs/links only — no message bodies or auth headers.
+  payloadRef        Json                    @default("{}") @map("payload_ref")
+  attemptCount      Int                     @default(0) @map("attempt_count")
+  lastError         String?                 @map("last_error")
+  submittedAt       DateTime?               @map("submitted_at")
+  deliveredAt       DateTime?               @map("delivered_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actionRun    WorkflowActionRun @relation(fields: [actionRunId], references: [id], onDelete: Restrict)
+  workflowRun  WorkflowRun       @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, idempotencyKey], map: "workflow_deliveries_org_idempotency_key")
+  @@index([organizationId, status, updatedAt])
+  @@index([actionRunId])
+  @@index([externalReference])
+  @@map("workflow_deliveries")
+}
+
+/// Durable transactional outbox for workflow domain events (canonical envelope).
+model WorkflowEventOutbox {
+  id               String                    @id @default(uuid())
+  /// Globally unique workflow domain event identifier.
+  eventId          String                    @unique @map("event_id")
+  organizationId   String                    @map("organization_id")
+  workflowRunId    String?                   @map("workflow_run_id")
+  eventType        String                    @map("event_type")
+  eventVersion     String                    @default("1.0.0") @map("event_version")
+  schemaVersion    String                    @default("1.0.0") @map("schema_version")
+  entityType       String?                   @map("entity_type")
+  entityId         String?                   @map("entity_id")
+  aggregateType    String?                   @map("aggregate_type")
+  aggregateId      String?                   @map("aggregate_id")
+  correlationId    String                    @map("correlation_id")
+  causationId      String?                   @map("causation_id")
+  source           String
+  idempotencyKey   String                    @map("idempotency_key")
+  /// Stable business occurrence for deduplication (no PII).
+  occurrenceId     String?                   @map("occurrence_id")
+  occurredAt       DateTime                  @map("occurred_at")
+  receivedAt       DateTime                  @default(now()) @map("received_at")
+  /// Minimized payload — entity refs only, no secrets.
+  payload          Json
+  metadata         Json                      @default("{}")
+  /// Full immutable envelope for dispatch (JSON-serializable).
+  envelope         Json
+  status           WorkflowEventOutboxStatus @default(PENDING)
+  attemptCount     Int                       @default(0) @map("attempt_count")
+  availableAt      DateTime                  @default(now()) @map("available_at")
+  claimedAt        DateTime?                 @map("claimed_at")
+  claimedBy        String?                   @map("claimed_by")
+  leaseExpiresAt   DateTime?                 @map("lease_expires_at")
+  dispatchedAt     DateTime?                 @map("dispatched_at")
+  deadLetteredAt   DateTime?                 @map("dead_lettered_at")
+  lastErrorCode    String?                   @map("last_error_code")
+  lastErrorSummary String?                   @map("last_error_summary")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun  WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey], map: "workflow_event_outbox_org_idempotency_key")
+  @@index([organizationId, occurrenceId])
+  @@index([status, availableAt])
+  @@index([organizationId, eventType, createdAt])
+  @@index([correlationId])
+  @@index([organizationId, createdAt])
+  @@map("workflow_event_outbox")
+}
+
+/// Scheduled wake-up for approval expiry, resume, retry, or scheduled triggers.
+model WorkflowTimer {
+  id             String              @id @default(uuid())
+  organizationId String              @map("organization_id")
+  workflowRunId  String?             @map("workflow_run_id")
+  actionRunId    String?             @map("action_run_id")
+  approvalId     String?             @unique @map("approval_id")
+  timerType      WorkflowTimerType   @map("timer_type")
+  status         WorkflowTimerStatus @default(SCHEDULED)
+  /// Stable business occurrence key for replace/cancel (e.g. booking.pickup_overdue:…).
+  occurrenceId   String?             @map("occurrence_id")
+  idempotencyKey String              @map("idempotency_key")
+  /// UTC due instant — same semantics as dueAt in API docs.
+  fireAt         DateTime            @map("fire_at")
+  firedAt        DateTime?           @map("fired_at")
+  cancelledAt    DateTime?           @map("cancelled_at")
+  /// Opaque resume/scheduling token — not user PII.
+  payload        Json                @default("{}")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun  WorkflowRun?       @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  actionRun    WorkflowActionRun? @relation(fields: [actionRunId], references: [id], onDelete: SetNull)
+  approval     WorkflowApproval?  @relation(fields: [approvalId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey], map: "workflow_timers_org_idempotency_key")
+  @@index([status, fireAt])
+  @@index([organizationId, workflowRunId])
+  @@index([organizationId, occurrenceId])
+  @@map("workflow_timers")
+}
+
+/// Explainable idempotency / deduplication audit log.
+model WorkflowIdempotencyDecision {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  entityType     String   @map("entity_type")
+  scopeKey       String   @map("scope_key")
+  outcome        String
+  reason         String
+  occurrenceId   String?  @map("occurrence_id")
+  eventId        String?  @map("event_id")
+  correlationId  String?  @map("correlation_id")
+  causationId    String?  @map("causation_id")
+  workflowRunId  String?  @map("workflow_run_id")
+  actionId       String?  @map("action_id")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, scopeKey, createdAt])
+  @@index([organizationId, occurrenceId])
+  @@map("workflow_idempotency_decisions")
+}
+
+/// Append-only audit trail for definition/version lifecycle.
+model WorkflowRevision {
+  id                    String               @id @default(uuid())
+  organizationId        String               @map("organization_id")
+  workflowDefinitionId  String               @map("workflow_definition_id")
+  workflowVersionId     String?              @map("workflow_version_id")
+  revisionType          WorkflowRevisionType @map("revision_type")
+  actorUserId           String?              @map("actor_user_id")
+  businessAuditOutboxId String?              @map("business_audit_outbox_id")
+  changeReason          String?              @map("change_reason")
+  beforeHash            String?              @map("before_hash") @db.VarChar(64)
+  afterHash             String?              @map("after_hash") @db.VarChar(64)
+  diffRef               String?              @map("diff_ref")
+  correlationId         String?              @map("correlation_id")
+  occurredAt            DateTime             @default(now()) @map("occurred_at")
+  createdAt             DateTime             @default(now()) @map("created_at")
+
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  definition          WorkflowDefinition   @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  version             WorkflowVersion?     @relation(fields: [workflowVersionId], references: [id], onDelete: SetNull)
+  actorUser           User?                @relation("WorkflowRevisionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  businessAuditOutbox BusinessAuditOutbox? @relation(fields: [businessAuditOutboxId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, workflowDefinitionId, occurredAt])
+  @@index([correlationId])
+  @@map("workflow_revisions")
+}
+
+/// Feature-flag rollout for workflow runtime capabilities.
+model WorkflowFeatureFlag {
+  id                   String                   @id @default(uuid())
+  scope                WorkflowFeatureFlagScope
+  organizationId       String?                  @map("organization_id")
+  workflowDefinitionId String?                  @map("workflow_definition_id")
+  flagKey              String                   @map("flag_key")
+  enabled              Boolean                  @default(false)
+  rolloutPercentage    Int?                     @map("rollout_percentage")
+  createdAt            DateTime                 @default(now()) @map("created_at")
+  updatedAt            DateTime                 @updatedAt @map("updated_at")
+
+  organization       Organization?          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowDefinition WorkflowDefinition?    @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  rolloutScopes      WorkflowRolloutScope[]
+
+  @@index([flagKey, enabled])
+  @@index([organizationId, flagKey])
+  @@map("workflow_feature_flags")
+}
+
+/// Normalized rollout scope bindings for feature flags.
+model WorkflowRolloutScope {
+  id             String                   @id @default(uuid())
+  organizationId String                   @map("organization_id")
+  featureFlagId  String                   @map("feature_flag_id")
+  scopeType      WorkflowRolloutScopeType @map("scope_type")
+  scopeId        String                   @map("scope_id")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  featureFlag  WorkflowFeatureFlag @relation(fields: [featureFlagId], references: [id], onDelete: Restrict)
+
+  @@unique([featureFlagId, scopeType, scopeId])
+  @@index([organizationId, scopeType, scopeId])
+  @@map("workflow_rollout_scopes")
 }
 
 // ------------------------------------------------
@@ -11240,21 +12129,22 @@ model OutboundEmail {
   createdAt                   DateTime                @default(now()) @map("created_at")
   updatedAt                   DateTime                @updatedAt @map("updated_at")
 
-  organization             Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  booking                  Booking?                          @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  customer                 Customer?                         @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  invoice                  OrgInvoice?                       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  bookingPaymentRequest    BookingPaymentRequest?            @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
-  billingInvoice           BillingInvoice?                   @relation(fields: [billingInvoiceId], references: [id], onDelete: SetNull)
-  billingSubscription      BillingSubscription?              @relation(fields: [billingSubscriptionId], references: [id], onDelete: SetNull)
-  billingOutboxDelivery    BillingDomainEventOutboxDelivery? @relation(fields: [billingOutboxDeliveryId], references: [id], onDelete: SetNull)
-  sentByUser               User?                             @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
-  attachments              OutboundEmailAttachment[]
-  events                   OutboundEmailEvent[]
-  paymentEmailOutbox       PaymentEmailOutbox[]
-  billingEmailSuppressions BillingEmailSuppression[]
+  organization                  Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking                       Booking?                          @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer                      Customer?                         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice                       OrgInvoice?                       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  bookingPaymentRequest         BookingPaymentRequest?            @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
+  billingInvoice                BillingInvoice?                   @relation(fields: [billingInvoiceId], references: [id], onDelete: SetNull)
+  billingSubscription           BillingSubscription?              @relation(fields: [billingSubscriptionId], references: [id], onDelete: SetNull)
+  billingOutboxDelivery         BillingDomainEventOutboxDelivery? @relation(fields: [billingOutboxDeliveryId], references: [id], onDelete: SetNull)
+  sentByUser                    User?                             @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+  attachments                   OutboundEmailAttachment[]
+  events                        OutboundEmailEvent[]
+  paymentEmailOutbox            PaymentEmailOutbox[]
+  billingEmailSuppressions      BillingEmailSuppression[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
 
+  @@unique([organizationId, sendIdempotencyKey], map: "outbound_emails_org_send_idempotency_key")
   @@index([organizationId])
   @@index([organizationId, bookingId])
   @@index([organizationId, customerId])
@@ -11265,7 +12155,6 @@ model OutboundEmail {
   @@index([bookingPaymentRequestId])
   @@index([status])
   @@index([createdAt])
-  @@unique([organizationId, sendIdempotencyKey], map: "outbound_emails_org_send_idempotency_key")
   @@map("outbound_emails")
 }
 
@@ -13037,17 +13926,17 @@ model TenantInsightPolicy {
 }
 
 model DashboardInsightRun {
-  id             String    @id @default(uuid())
-  organizationId String    @map("organization_id")
-  trigger        String
-  startedAt      DateTime  @map("started_at")
-  finishedAt     DateTime? @map("finished_at")
-  durationMs     Int?      @map("duration_ms")
-  candidateCount Int       @default(0) @map("candidate_count")
-  publishedCount Int       @default(0) @map("published_count")
-  errorMessage   String?   @map("error_message")
-  calculationMeta Json?    @map("calculation_meta")
-  createdAt      DateTime  @default(now()) @map("created_at")
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  trigger         String
+  startedAt       DateTime  @map("started_at")
+  finishedAt      DateTime? @map("finished_at")
+  durationMs      Int?      @map("duration_ms")
+  candidateCount  Int       @default(0) @map("candidate_count")
+  publishedCount  Int       @default(0) @map("published_count")
+  errorMessage    String?   @map("error_message")
+  calculationMeta Json?     @map("calculation_meta")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   insights     DashboardInsight[]
@@ -13058,31 +13947,31 @@ model DashboardInsightRun {
 }
 
 model DashboardInsight {
-  id             String             @id @default(uuid())
-  organizationId String             @map("organization_id")
-  runId          String             @map("run_id")
-  type           InsightType
-  severity       InsightSeverity
-  priority       Int                @default(0)
-  title          String
-  message        String
-  actionLabel    String?            @map("action_label")
-  actionType     String?            @map("action_type")
-  entityScope    InsightEntityScope @map("entity_scope")
-  entityIds      Json?              @map("entity_ids")
-  timeContext    Json?              @map("time_context")
-  metrics        Json?
-  reasons        Json?
-  confidence     Float              @default(1.0)
-  dedupeKey      String             @map("dedupe_key")
-  groupKey       String?            @map("group_key")
-  isGrouped      Boolean            @default(false) @map("is_grouped")
-  groupCount     Int                @default(1) @map("group_count")
-  isActive       Boolean            @default(true) @map("is_active")
-  expiresAt      DateTime?          @map("expires_at")
-  calculationMeta Json?             @map("calculation_meta")
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  id              String             @id @default(uuid())
+  organizationId  String             @map("organization_id")
+  runId           String             @map("run_id")
+  type            InsightType
+  severity        InsightSeverity
+  priority        Int                @default(0)
+  title           String
+  message         String
+  actionLabel     String?            @map("action_label")
+  actionType      String?            @map("action_type")
+  entityScope     InsightEntityScope @map("entity_scope")
+  entityIds       Json?              @map("entity_ids")
+  timeContext     Json?              @map("time_context")
+  metrics         Json?
+  reasons         Json?
+  confidence      Float              @default(1.0)
+  dedupeKey       String             @map("dedupe_key")
+  groupKey        String?            @map("group_key")
+  isGrouped       Boolean            @default(false) @map("is_grouped")
+  groupCount      Int                @default(1) @map("group_count")
+  isActive        Boolean            @default(true) @map("is_active")
+  expiresAt       DateTime?          @map("expires_at")
+  calculationMeta Json?              @map("calculation_meta")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
 
   organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   run          DashboardInsightRun @relation(fields: [runId], references: [id], onDelete: Cascade)

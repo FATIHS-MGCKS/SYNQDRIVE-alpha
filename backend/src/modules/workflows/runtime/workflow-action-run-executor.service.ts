@@ -1,0 +1,544 @@
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '@shared/database/prisma.service';
+import { WorkflowActionRunRuntimeRepository } from './workflow-action-run-runtime.repository';
+import { WorkflowRunRuntimeRepository } from './workflow-run-runtime.repository';
+import { WorkflowRunRuntimeService } from './workflow-run-runtime.service';
+import { WorkflowRuntimeActionExecutorAdapter } from './workflow-runtime-action-executor.adapter';
+import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-audit.service';
+import { WORKFLOW_RUNTIME_STATUS_ERROR_CODES } from './workflow-runtime-status.errors';
+import type { WorkflowActionRunStatus } from './workflow-runtime-status.constants';
+import type { WorkflowRuntimeActor } from './workflow-runtime-status.types';
+import {
+  buildEventContext,
+  buildPolicyContext,
+  type WorkflowActionExecutionContext,
+  type WorkflowActionExecutionResult,
+} from './workflow-action-run-execution.types';
+import {
+  classifyActionError,
+} from './workflow-action-run-error.classifier';
+import {
+  buildInputSnapshot,
+  buildResultSummary,
+  extractProviderReference,
+  resolveActionFromRunSnapshot,
+  stripSecretsFromValue,
+} from './workflow-action-run-snapshot.util';
+import { WorkflowApprovalPauseService } from './approval/workflow-approval-pause.service';
+import { computeWorkflowOutboxBackoffMs } from '../outbox/workflow-event-outbox-error.util';
+import type { WorkflowActionDef } from '../workflow-definition.validator';
+import { resolveErrorStrategy } from './error-strategy/workflow-action-error-strategy.resolver';
+import { WorkflowActionFallbackService } from './error-strategy/workflow-action-fallback.service';
+import { WorkflowActionCompensationService } from './error-strategy/workflow-action-compensation.service';
+import { WorkflowRunWorkerService } from './workflow-run-worker.service';
+import { WorkflowDurableTimerService } from './timers/workflow-durable-timer.service';
+
+@Injectable()
+export class WorkflowActionRunExecutorService {
+  private readonly logger = new Logger(WorkflowActionRunExecutorService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly actionRuns: WorkflowActionRunRuntimeRepository,
+    private readonly runs: WorkflowRunRuntimeRepository,
+    private readonly runRuntime: WorkflowRunRuntimeService,
+    private readonly audit: WorkflowRuntimeStatusAuditService,
+    private readonly adapter: WorkflowRuntimeActionExecutorAdapter,
+    private readonly approvalPause: WorkflowApprovalPauseService,
+    private readonly fallback: WorkflowActionFallbackService,
+    private readonly compensation: WorkflowActionCompensationService,
+    @Inject(forwardRef(() => WorkflowRunWorkerService))
+    private readonly worker: WorkflowRunWorkerService,
+    private readonly durableTimers: WorkflowDurableTimerService,
+  ) {}
+
+  private get defaultMaxAttempts() {
+    return this.config.get<number>('workflowRuntime.maxActionAttempts', 5);
+  }
+
+  private get actionTimeoutMs() {
+    return this.config.get<number>('workflowRuntime.actionTimeoutMs', 120000);
+  }
+
+  private get retryBackoffMs() {
+    return this.config.get<number>('workflowRuntime.retryBackoffMs', 30000);
+  }
+
+  private get maxRetryBackoffMs() {
+    return this.config.get<number>('workflowRuntime.maxRetryBackoffMs', 900000);
+  }
+
+  private get maxFallbackDepth() {
+    return this.config.get<number>('workflowRuntime.maxFallbackDepth', 3);
+  }
+
+  /**
+   * Execute a claimed action run — idempotent, snapshot-bound, atomically persisted.
+   */
+  async executeClaimed(
+    orgId: string,
+    actionRunId: string,
+    actor: WorkflowRuntimeActor,
+    options?: { resumedAfterApproval?: boolean },
+  ): Promise<WorkflowActionExecutionResult> {
+    const actionRun = await this.actionRuns.findByIdOrThrow(orgId, actionRunId);
+    const run = await this.runs.findByIdOrThrow(orgId, actionRun.workflowRunId);
+
+    if (actionRun.organizationId !== orgId || run.organizationId !== orgId) {
+      throw new NotFoundException({
+        message: 'Cross-tenant action execution denied',
+        code: WORKFLOW_RUNTIME_STATUS_ERROR_CODES.TENANT_VIOLATION,
+      });
+    }
+
+    const idempotent = await this.checkIdempotentCompletion(orgId, actionRun);
+    if (idempotent) {
+      return idempotent;
+    }
+
+    if (actionRun.status !== 'RUNNING') {
+      throw new ConflictException({
+        message: 'Action run must be RUNNING before execution',
+        code: WORKFLOW_RUNTIME_STATUS_ERROR_CODES.CLAIM_CONFLICT,
+      });
+    }
+
+    const policySnapshot = await this.prisma.workflowPolicySnapshot.findFirst({
+      where: { id: run.policySnapshotId, organizationId: orgId },
+    });
+    if (!policySnapshot) {
+      throw new NotFoundException({
+        message: 'Policy snapshot not found for run',
+        code: WORKFLOW_RUNTIME_STATUS_ERROR_CODES.NOT_FOUND,
+      });
+    }
+
+    const ctx = this.buildExecutionContext(run, actionRun, policySnapshot, actor);
+    await this.ensureInputSnapshot(orgId, actionRun, ctx);
+
+    if (this.isTimedOut(actionRun.timeoutAt)) {
+      return this.persistFailure(orgId, run.id, actionRun, ctx, {
+        timedOut: true,
+        err: new Error('Action execution exceeded configured timeout'),
+      });
+    }
+
+    try {
+      const actionDef: WorkflowActionDef = {
+        type: ctx.actionSnapshot.actionType,
+        config: ctx.actionSnapshot.config,
+        requiresApproval: options?.resumedAfterApproval ? false : ctx.actionSnapshot.requiresApproval,
+      };
+
+      const raw = await this.executeWithTimeout(
+        () =>
+          this.adapter.execute(
+            actionDef,
+            run,
+            actionRun,
+            actionRun.attemptCount,
+            actionRun.maxAttempts ?? ctx.policy.maxActionAttempts,
+            options,
+          ),
+        ctx.policy.actionTimeoutMs,
+      );
+
+      return this.persistResult(orgId, run.id, actionRun, ctx, raw);
+    } catch (err) {
+      return this.persistFailure(orgId, run.id, actionRun, ctx, { err });
+    }
+  }
+
+  async checkIdempotentCompletion(
+    orgId: string,
+    actionRun: { id: string; status: string; resultSummary: unknown; output: unknown; providerReference: string | null },
+  ): Promise<WorkflowActionExecutionResult | null> {
+    if (actionRun.status === 'SUCCEEDED') {
+      return {
+        status: 'SUCCEEDED',
+        resultSummary:
+          actionRun.resultSummary && typeof actionRun.resultSummary === 'object'
+            ? (actionRun.resultSummary as Record<string, unknown>)
+            : undefined,
+        output:
+          actionRun.output && typeof actionRun.output === 'object'
+            ? (actionRun.output as Record<string, unknown>)
+            : undefined,
+        providerReference: actionRun.providerReference ?? undefined,
+        idempotentReplay: true,
+      };
+    }
+    return null;
+  }
+
+  buildExecutionContext(
+    run: Awaited<ReturnType<WorkflowRunRuntimeRepository['findByIdOrThrow']>>,
+    actionRun: Awaited<ReturnType<WorkflowActionRunRuntimeRepository['findByIdOrThrow']>>,
+    policySnapshot: Awaited<ReturnType<PrismaService['workflowPolicySnapshot']['findFirst']>>,
+    actor: WorkflowRuntimeActor,
+  ): WorkflowActionExecutionContext {
+    if (!policySnapshot) {
+      throw new NotFoundException('Policy snapshot required');
+    }
+    return {
+      organizationId: run.organizationId,
+      actor,
+      run,
+      actionRun,
+      event: buildEventContext(run),
+      policy: buildPolicyContext(policySnapshot, {
+        maxActionAttempts: actionRun.maxAttempts ?? this.defaultMaxAttempts,
+        actionTimeoutMs: this.actionTimeoutMs,
+      }),
+      actionSnapshot: resolveActionFromRunSnapshot(run, actionRun),
+    };
+  }
+
+  private async ensureInputSnapshot(
+    orgId: string,
+    actionRun: Awaited<ReturnType<WorkflowActionRunRuntimeRepository['findByIdOrThrow']>>,
+    ctx: WorkflowActionExecutionContext,
+  ) {
+    if (actionRun.inputSnapshot) return;
+    const snapshot = buildInputSnapshot(actionRun);
+    await this.actionRuns.patchExecutionFields(orgId, actionRun.id, {
+      inputSnapshot: snapshot as never,
+      timeoutAt: new Date(Date.now() + ctx.policy.actionTimeoutMs),
+    });
+  }
+
+  private isTimedOut(timeoutAt: Date | null): boolean {
+    return !!timeoutAt && timeoutAt.getTime() <= Date.now();
+  }
+
+  private async executeWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('Action execution exceeded configured timeout'));
+      }, timeoutMs);
+      fn()
+        .then((value) => {
+          clearTimeout(timer);
+          resolve(value);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+  }
+
+  private async persistResult(
+    orgId: string,
+    runId: string,
+    actionRun: Awaited<ReturnType<WorkflowActionRunRuntimeRepository['findByIdOrThrow']>>,
+    ctx: WorkflowActionExecutionContext,
+    raw: Awaited<ReturnType<WorkflowRuntimeActionExecutorAdapter['execute']>>,
+  ): Promise<WorkflowActionExecutionResult> {
+    const resultSummary = buildResultSummary(raw.output);
+    const providerReference = extractProviderReference(raw.output);
+    const sanitizedOutput = raw.output
+      ? (stripSecretsFromValue(raw.output) as Record<string, unknown>)
+      : undefined;
+    const finishedAt = ['SUCCEEDED', 'FAILED_PERMANENT', 'SKIPPED', 'CANCELLED'].includes(raw.status)
+      ? new Date()
+      : null;
+
+    let approvalId: string | null = null;
+    if (raw.status === 'WAITING_FOR_APPROVAL') {
+      await this.atomicComplete(orgId, runId, actionRun, {
+        toStatus: raw.status,
+        resultSummary,
+        output: sanitizedOutput,
+        errorSummary: raw.errorMessage ? raw.errorMessage.slice(0, 500) : null,
+        providerReference,
+        approvalId: null,
+        finishedAt: null,
+        nextAttemptAt: null,
+      });
+
+      const approval = await this.approvalPause.finalizeExecutionApproval({
+        organizationId: orgId,
+        workflowRunId: runId,
+        workflowVersionId: ctx.run.workflowVersionId,
+        actionRunId: actionRun.id,
+        reason: `Approval required for ${actionRun.actionType}`,
+      });
+      approvalId = approval.id;
+
+      return {
+        status: raw.status,
+        resultSummary,
+        output: sanitizedOutput,
+        providerReference,
+        errorSummary: raw.errorMessage,
+      };
+    }
+
+    if (raw.status === 'WAITING' && raw.waitingUntil) {
+      await this.atomicComplete(orgId, runId, actionRun, {
+        toStatus: 'WAITING',
+        resultSummary,
+        output: sanitizedOutput,
+        providerReference,
+        finishedAt: null,
+        nextAttemptAt: null,
+        waitingUntil: raw.waitingUntil,
+      });
+      return {
+        status: raw.status,
+        resultSummary,
+        output: sanitizedOutput,
+        providerReference,
+      };
+    }
+
+    const nextAttemptAt =
+      raw.status === 'FAILED_RETRYABLE'
+        ? new Date(
+            Date.now() +
+              computeWorkflowOutboxBackoffMs(
+                this.retryBackoffMs,
+                this.maxRetryBackoffMs,
+                0,
+                actionRun.attemptCount,
+              ),
+          )
+        : null;
+
+    await this.atomicComplete(orgId, runId, actionRun, {
+      toStatus: raw.status,
+      resultSummary,
+      output: sanitizedOutput,
+      errorSummary: raw.errorMessage ? raw.errorMessage.slice(0, 500) : null,
+      errorCategory:
+        raw.status === 'FAILED_RETRYABLE'
+          ? 'RETRYABLE'
+          : raw.status === 'FAILED_PERMANENT'
+            ? 'PERMANENT'
+            : undefined,
+      providerReference,
+      approvalId,
+      finishedAt,
+      nextAttemptAt,
+    });
+
+    if (nextAttemptAt) {
+      await this.scheduleRetryTimer(orgId, runId, actionRun.id, nextAttemptAt);
+    }
+
+    return {
+      status: raw.status,
+      resultSummary,
+      output: sanitizedOutput,
+      providerReference,
+      errorSummary: raw.errorMessage,
+    };
+  }
+
+  private async persistFailure(
+    orgId: string,
+    runId: string,
+    actionRun: Awaited<ReturnType<WorkflowActionRunRuntimeRepository['findByIdOrThrow']>>,
+    ctx: WorkflowActionExecutionContext,
+    input: { err: unknown; timedOut?: boolean },
+  ): Promise<WorkflowActionExecutionResult> {
+    const classification = classifyActionError(input.err, {
+      attemptCount: actionRun.attemptCount,
+      maxAttempts: actionRun.maxAttempts ?? ctx.policy.maxActionAttempts,
+      timedOut: input.timedOut,
+    });
+
+    const resolution = resolveErrorStrategy(classification, {
+      errorStrategy: (actionRun.errorStrategy ?? ctx.actionSnapshot.errorStrategy) as never,
+      actionType: actionRun.actionType,
+      fallbackActionKey: actionRun.fallbackActionKey ?? ctx.actionSnapshot.fallbackActionKey,
+      compensateActionKey: actionRun.compensateActionKey ?? ctx.actionSnapshot.compensateActionKey,
+      compensatable: actionRun.compensatable ?? ctx.actionSnapshot.compensatable,
+      blockingOnFailure: actionRun.blockingOnFailure,
+      fallbackDepth: actionRun.fallbackDepth ?? 0,
+      maxFallbackDepth: this.maxFallbackDepth,
+    });
+
+    const status = resolution.targetStatus;
+    const nextAttemptAt =
+      status === 'FAILED_RETRYABLE'
+        ? new Date(
+            Date.now() +
+              computeWorkflowOutboxBackoffMs(
+                this.retryBackoffMs,
+                this.maxRetryBackoffMs,
+                0,
+                actionRun.attemptCount,
+              ),
+          )
+        : null;
+
+    if (resolution.compensatePrevious && resolution.compensateActionKey) {
+      await this.compensation.compensatePrevious({
+        organizationId: orgId,
+        workflowRunId: runId,
+        failedActionRunId: actionRun.id,
+        compensateActionKey: resolution.compensateActionKey,
+        actionType: actionRun.actionType,
+        compensatable: actionRun.compensatable,
+      });
+    }
+
+    await this.atomicComplete(orgId, runId, actionRun, {
+      toStatus: status,
+      errorCode: classification.errorCode,
+      errorCategory: classification.errorCategory,
+      errorSummary: resolution.auditReason,
+      finishedAt: ['FAILED_PERMANENT', 'SKIPPED'].includes(status) ? new Date() : null,
+      nextAttemptAt,
+      appliedErrorStrategy: resolution.appliedStrategy,
+      partialFailure: resolution.partialFailure,
+      blockingOnFailure: resolution.blockingOnFailure,
+    });
+
+    if (resolution.requestApproval) {
+      await this.approvalPause.finalizeExecutionApproval({
+        organizationId: orgId,
+        workflowRunId: runId,
+        workflowVersionId: ctx.run.workflowVersionId,
+        actionRunId: actionRun.id,
+        reason: resolution.auditReason,
+      });
+    }
+
+    if (resolution.executeFallback && resolution.fallbackActionKey) {
+      const fallbackAction = this.fallback.resolveFallbackActionFromSnapshot(
+        ctx.run.definitionSnapshot,
+        resolution.fallbackActionKey,
+      );
+      if (fallbackAction) {
+        await this.fallback.materializeFallbackRun({
+          organizationId: orgId,
+          workflowRunId: runId,
+          workflowDefinitionId: actionRun.workflowDefinitionId,
+          workflowVersionId: actionRun.workflowVersionId,
+          parentActionRunId: actionRun.id,
+          parentActionIndex: actionRun.actionIndex,
+          fallbackDepth: actionRun.fallbackDepth ?? 0,
+          fallbackAction,
+          runIdempotencyKey: ctx.run.idempotencyKey,
+        });
+        await this.worker.processRun(orgId, runId);
+      }
+    } else if (status === 'SKIPPED' || status === 'FAILED_PERMANENT') {
+      await this.worker.processRun(orgId, runId);
+    }
+
+    return {
+      status,
+      errorCode: classification.errorCode,
+      errorCategory: classification.errorCategory,
+      errorSummary: resolution.auditReason,
+    };
+  }
+
+  private async atomicComplete(
+    orgId: string,
+    runId: string,
+    actionRun: Awaited<ReturnType<WorkflowActionRunRuntimeRepository['findByIdOrThrow']>>,
+    patch: {
+      toStatus: WorkflowActionRunStatus;
+      resultSummary?: Record<string, unknown>;
+      output?: Record<string, unknown>;
+      errorCode?: string;
+      errorCategory?: string;
+      errorSummary?: string | null;
+      providerReference?: string;
+      approvalId?: string | null;
+      finishedAt?: Date | null;
+      nextAttemptAt?: Date | null;
+      waitingUntil?: Date | null;
+      appliedErrorStrategy?: string;
+      partialFailure?: boolean;
+      blockingOnFailure?: boolean;
+    },
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      const count = await this.actionRuns.completeExecution(tx, {
+        orgId,
+        actionRunId: actionRun.id,
+        expectedLockVersion: actionRun.lockVersion,
+        toStatus: patch.toStatus,
+        output: patch.output as never,
+        resultSummary: patch.resultSummary as never,
+        errorCode: patch.errorCode ?? null,
+        errorCategory: patch.errorCategory ?? null,
+        errorSummary: patch.errorSummary ?? null,
+        errorMessage: patch.errorSummary ?? null,
+        providerReference: patch.providerReference ?? null,
+        waitingUntil: patch.waitingUntil ?? null,
+        approvalId: patch.approvalId ?? null,
+        finishedAt: patch.finishedAt ?? null,
+        attemptCount: actionRun.attemptCount,
+        nextAttemptAt: patch.nextAttemptAt ?? null,
+        appliedErrorStrategy: patch.appliedErrorStrategy ?? null,
+        partialFailure: patch.partialFailure ?? false,
+        blockingOnFailure: patch.blockingOnFailure,
+      });
+      if (count === 0) {
+        throw new ConflictException({
+          message: 'Action completion conflict',
+          code: WORKFLOW_RUNTIME_STATUS_ERROR_CODES.LOCK_CONFLICT,
+        });
+      }
+
+      await this.audit.recordActionRunTransition(tx, {
+        orgId,
+        workflowRunId: runId,
+        actionRunId: actionRun.id,
+        fromStatus: 'RUNNING',
+        toStatus: patch.toStatus,
+        actor: { type: 'WORKER', source: 'action-run.executor' },
+        reason: patch.errorSummary ?? 'Action execution completed',
+        metadata: {
+          errorCode: patch.errorCode ?? null,
+          errorCategory: patch.errorCategory ?? null,
+          providerReference: patch.providerReference ?? null,
+          attemptCount: actionRun.attemptCount,
+          appliedErrorStrategy: patch.appliedErrorStrategy ?? null,
+          partialFailure: patch.partialFailure ?? false,
+        },
+      });
+    });
+
+    await this.runRuntime.deriveAndApplyRunStatus(
+      orgId,
+      runId,
+      { type: 'WORKER', source: 'action-run.executor' },
+      'Derived after action execution',
+    );
+  }
+
+  private async scheduleRetryTimer(
+    orgId: string,
+    runId: string,
+    actionRunId: string,
+    fireAt: Date,
+  ) {
+    await this.durableTimers.scheduleOrReplace({
+      organizationId: orgId,
+      workflowRunId: runId,
+      actionRunId,
+      timerType: 'RETRY_BACKOFF',
+      dueAt: fireAt,
+      occurrenceId: `retry:${runId}:${actionRunId}`,
+      idempotencyKey: `timer:retry:${runId}:${actionRunId}`,
+      payload: { reason: 'FAILED_RETRYABLE' },
+    });
+  }
+}

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   CustomerDocument,
@@ -13,6 +14,9 @@ import { CustomerVerificationService } from '@modules/customer-verification/cust
 import { ReviewCustomerDocumentDto } from './dto/review-customer-document.dto';
 import { UploadCustomerDocumentDto } from './dto/upload-customer-document.dto';
 import { CustomerTimelineService } from './customer-timeline.service';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import { buildDocumentExpiringOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
+import { mapCustomerDocumentTypeToRegistry } from './customer-document-type.util';
 
 @Injectable()
 export class CustomerDocumentsService {
@@ -21,6 +25,7 @@ export class CustomerDocumentsService {
     private readonly storage: StorageService,
     private readonly timeline: CustomerTimelineService,
     private readonly verificationService: CustomerVerificationService,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {}
 
   async uploadDocument(
@@ -152,6 +157,66 @@ export class CustomerDocumentsService {
       await this.syncVerificationReadModel(row.organizationId, row.customerId);
     }
     return expired.count;
+  }
+
+  /**
+   * Scans verified customer documents approaching expiry and enqueues
+   * `customer.document.expiring` workflow events (idempotent per document + expiry date).
+   */
+  async emitExpiringDocumentEvents(warnWithinDays = 30): Promise<number> {
+    if (!this.workflowEmitter?.isGroupEnabled('customer')) return 0;
+
+    const now = new Date();
+    const warnUntil = new Date(now);
+    warnUntil.setDate(warnUntil.getDate() + warnWithinDays);
+
+    const documents = await this.prisma.customerDocument.findMany({
+      where: {
+        status: 'VERIFIED',
+        expiresAt: { gte: now, lte: warnUntil },
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        customerId: true,
+        type: true,
+        expiresAt: true,
+      },
+      take: 500,
+      orderBy: { expiresAt: 'asc' },
+    });
+
+    let emitted = 0;
+    for (const doc of documents) {
+      if (!doc.expiresAt) continue;
+      const expiresOn = doc.expiresAt.toISOString().slice(0, 10);
+      const occurrenceId = buildDocumentExpiringOccurrenceId(
+        doc.customerId,
+        doc.id,
+        expiresOn,
+      );
+
+      const row = await this.workflowEmitter.enqueueStandalone({
+        group: 'customer',
+        organizationId: doc.organizationId,
+        eventType: 'customer.document.expiring',
+        source: 'customers',
+        entityType: 'customer',
+        entityId: doc.customerId,
+        correlationId: `customer-documents:${doc.customerId}`,
+        occurrenceId,
+        payload: {
+          customerId: doc.customerId,
+          documentId: doc.id,
+          documentType: mapCustomerDocumentTypeToRegistry(doc.type),
+          expiresAt: doc.expiresAt.toISOString(),
+        },
+      });
+
+      if (row) emitted += 1;
+    }
+
+    return emitted;
   }
 
   /** @deprecated use CustomerVerificationService.syncCustomerReadModel */

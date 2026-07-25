@@ -70,8 +70,9 @@ describe('validateWorkflowDefinition', () => {
 describe('evaluateWorkflowConditions', () => {
   it('evaluates equals on payload path', () => {
     const result = evaluateWorkflowConditions(
-      [{ path: 'payload.severity', operator: 'equals', value: 'critical' }],
-      { severity: 'critical' },
+      [{ path: 'payload.severity', operator: 'equals', value: 'CRITICAL' }],
+      { severity: 'CRITICAL' },
+      { organizationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
     );
     expect(result.passed).toBe(true);
   });
@@ -80,6 +81,7 @@ describe('evaluateWorkflowConditions', () => {
     const result = evaluateWorkflowConditions(
       [{ field: 'overdue_days', operator: 'greater_than', value: 14 }],
       { overdueDays: 5 },
+      { organizationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
     );
     expect(result.passed).toBe(false);
   });

@@ -191,6 +191,7 @@ import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessmen
 import { TechnicalObservationsModule } from '../technical-observations/technical-observations.module';
 import { BusinessInsightsModule } from '../business-insights/business-insights.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { RentalDrivingAnalysisModule } from '../rental-driving-analysis/rental-driving-analysis.module';
 import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jobs-producer.module';
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
@@ -218,7 +219,7 @@ import {
 @Module({
   imports: [
     forwardRef(() => DimoModule),
-    forwardRef(() => AiModule),
+    AiModule,
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
     forwardRef(() => HighMobilityModule),
@@ -227,6 +228,7 @@ import {
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
     forwardRef(() => NotificationsModule),
+    forwardRef(() => WorkflowsModule),
     TasksModule,
     BatteryV2JobsProducerModule,
     BullModule.registerQueue(

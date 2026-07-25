@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -56,6 +57,8 @@ import {
   resolveProofOfAddressStatus,
   normalizeVerificationStatus,
 } from './utils/customer-verification-status.util';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import type { WorkflowTx } from '@modules/workflows/outbox/workflow-event-outbox-emitter.types';
 
 type AuthUser = {
   id: string;
@@ -83,6 +86,7 @@ export class CustomerVerificationService {
     private readonly diditService: DiditService,
     private readonly configService: ConfigService,
     private readonly readModelHelper: CustomerVerificationReadModelService,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {}
 
   async startDiditSession(
@@ -418,9 +422,14 @@ export class CustomerVerificationService {
       params.sessionId,
     );
 
+    const previousStatus = check.status;
+    const nextStatus = params.normalizedDecision.status;
+    const failedTransition = this.isVerificationFailedStatus(nextStatus)
+      && !this.isVerificationFailedStatus(previousStatus);
+
     const now = new Date();
     const updateData: Prisma.CustomerVerificationCheckUpdateInput = {
-      status: params.normalizedDecision.status,
+      status: nextStatus,
       providerStatus: params.normalizedDecision.providerStatus ?? null,
       providerWorkflowId: params.normalizedDecision.workflowId ?? undefined,
       vendorData: params.normalizedDecision.vendorData ?? undefined,
@@ -429,17 +438,29 @@ export class CustomerVerificationService {
       warnings: params.normalizedDecision.warnings ?? Prisma.JsonNull,
     };
 
-    if (this.readModelHelper.isTerminalStatus(params.normalizedDecision.status)) {
+    if (this.readModelHelper.isTerminalStatus(nextStatus)) {
       updateData.completedAt = now;
     }
 
-    const updated = await this.prisma.customerVerificationCheck.update({
-      where: { id: check.id },
-      data: updateData,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.customerVerificationCheck.update({
+        where: { id: check.id },
+        data: updateData,
+      });
+
+      if (failedTransition) {
+        await this.emitVerificationFailedEvent(tx, row, {
+          reasonCode:
+            params.normalizedDecision.providerStatus
+            ?? params.normalizedDecision.status,
+        });
+      }
+
+      return row;
     });
 
     await this.syncCustomerReadModel(updated.organizationId, updated.customerId);
-    await this.logVerificationTimeline(updated, params.normalizedDecision.status);
+    await this.logVerificationTimeline(updated, nextStatus);
 
     return updated;
   }
@@ -488,29 +509,49 @@ export class CustomerVerificationService {
 
     let check: CustomerVerificationCheck;
     if (manualCheck) {
-      check = await this.prisma.customerVerificationCheck.update({
-        where: { id: manualCheck.id },
-        data: {
-          status: checkStatus,
-          checkedByUserId: params.userId ?? null,
-          startedAt: manualCheck.startedAt ?? reviewedAt,
-          completedAt: reviewedAt,
-          decisionJson,
-        },
+      check = await this.prisma.$transaction(async (tx) => {
+        const row = await tx.customerVerificationCheck.update({
+          where: { id: manualCheck.id },
+          data: {
+            status: checkStatus,
+            checkedByUserId: params.userId ?? null,
+            startedAt: manualCheck.startedAt ?? reviewedAt,
+            completedAt: reviewedAt,
+            decisionJson,
+          },
+        });
+
+        if (checkStatus === 'REJECTED') {
+          await this.emitVerificationFailedEvent(tx, row, {
+            reasonCode: params.rejectedReason?.trim() || 'MANUAL_REVIEW_REJECTED',
+          });
+        }
+
+        return row;
       });
     } else {
-      check = await this.prisma.customerVerificationCheck.create({
-        data: {
-          organizationId: params.organizationId,
-          customerId: params.customerId,
-          provider: CustomerVerificationProvider.MANUAL,
-          kind,
-          status: checkStatus,
-          checkedByUserId: params.userId ?? null,
-          startedAt: reviewedAt,
-          completedAt: reviewedAt,
-          decisionJson,
-        },
+      check = await this.prisma.$transaction(async (tx) => {
+        const row = await tx.customerVerificationCheck.create({
+          data: {
+            organizationId: params.organizationId,
+            customerId: params.customerId,
+            provider: CustomerVerificationProvider.MANUAL,
+            kind,
+            status: checkStatus,
+            checkedByUserId: params.userId ?? null,
+            startedAt: reviewedAt,
+            completedAt: reviewedAt,
+            decisionJson,
+          },
+        });
+
+        if (checkStatus === 'REJECTED') {
+          await this.emitVerificationFailedEvent(tx, row, {
+            reasonCode: params.rejectedReason?.trim() || 'MANUAL_REVIEW_REJECTED',
+          });
+        }
+
+        return row;
       });
     }
 
@@ -1200,5 +1241,52 @@ export class CustomerVerificationService {
         'Booking does not belong to the specified customer',
       );
     }
+  }
+
+  private isVerificationFailedStatus(
+    status: CustomerVerificationCheckStatus,
+  ): boolean {
+    return status === 'REJECTED' || status === 'FAILED';
+  }
+
+  private mapKindToVerificationType(
+    kind: CustomerVerificationCheckKind,
+  ): 'identity' | 'license' | 'address' {
+    switch (kind) {
+      case 'DRIVING_LICENSE':
+        return 'license';
+      case 'PROOF_OF_ADDRESS':
+        return 'address';
+      case 'ID_DOCUMENT':
+      default:
+        return 'identity';
+    }
+  }
+
+  private async emitVerificationFailedEvent(
+    tx: WorkflowTx,
+    check: CustomerVerificationCheck,
+    input: { reasonCode: string },
+  ): Promise<void> {
+    if (!this.workflowEmitter?.isGroupEnabled('customer')) return;
+
+    await this.workflowEmitter.enqueueInTransaction(tx, {
+      group: 'customer',
+      organizationId: check.organizationId,
+      eventType: 'customer.verification.failed',
+      source: 'customers',
+      entityType: 'customer',
+      entityId: check.customerId,
+      idempotencyKey: `customer.verification.failed:${check.id}`,
+      correlationId: `customer-verification:${check.customerId}`,
+      causationId: check.id,
+      payload: {
+        customerId: check.customerId,
+        verificationType: this.mapKindToVerificationType(check.kind),
+        reasonCode: input.reasonCode,
+        ...(check.bookingId ? { bookingId: check.bookingId } : {}),
+        providerRef: check.providerSessionId ?? check.id,
+      },
+    });
   }
 }

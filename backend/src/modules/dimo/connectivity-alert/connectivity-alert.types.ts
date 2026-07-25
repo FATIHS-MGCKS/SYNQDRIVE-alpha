@@ -93,6 +93,10 @@ export interface RuntimeConnectivityAlertSyncInput extends ConnectivityAlertVehi
   bindingChanged?: boolean;
   connectivityStateUnknown?: boolean;
   observedAt: Date;
+  /** Last telemetry signal timestamp when known — used for workflow domain events. */
+  lastSignalAt?: Date | string | null;
+  /** Minutes since last signal when known. */
+  minutesSinceSignal?: number | null;
 }
 
 export const ALERT_TYPE_CATEGORY: Record<

@@ -2,13 +2,23 @@ import { BadRequestException } from '@nestjs/common';
 import {
   APPROVAL_REQUIRED_ACTIONS,
   LEGACY_ACTION_TO_CANONICAL,
-  LEGACY_TRIGGER_TO_EVENT,
   WORKFLOW_ACTION_TYPES,
   WORKFLOW_CATEGORIES,
   WORKFLOW_EVENT_TYPES,
   type WorkflowActionType,
   type WorkflowEventType,
 } from './workflow.constants';
+import {
+  DEFAULT_ERROR_STRATEGY_BY_ACTION,
+  NON_COMPENSATABLE_EXTERNAL_ACTION_TYPES,
+  WORKFLOW_ACTION_ERROR_STRATEGIES,
+  isActionCompensatable,
+  resolveBlockingOnFailure,
+} from './runtime/error-strategy/workflow-action-error-strategy.constants';
+import {
+  LEGACY_TRIGGER_TO_EVENT,
+  resolveCanonicalEventType,
+} from './registry';
 import { normalizeVehicleStatusInput } from './vehicle-status.util';
 
 export interface WorkflowTriggerDef {
@@ -27,6 +37,11 @@ export interface WorkflowActionDef {
   type: string;
   config?: Record<string, unknown>;
   requiresApproval?: boolean;
+  errorStrategy?: string;
+  fallbackActionKey?: string;
+  compensateActionKey?: string;
+  compensatable?: boolean;
+  actionKey?: string;
 }
 
 export interface WorkflowScopeDef {
@@ -37,7 +52,7 @@ export interface WorkflowScopeDef {
 
 export function normalizeTriggerType(raw: string): WorkflowEventType | string {
   if ((WORKFLOW_EVENT_TYPES as readonly string[]).includes(raw)) return raw;
-  return LEGACY_TRIGGER_TO_EVENT[raw] ?? raw;
+  return resolveCanonicalEventType(raw);
 }
 
 export function normalizeActionType(raw: string): string {
@@ -114,6 +129,29 @@ export function validateWorkflowDefinition(input: {
     }
     const requiresApproval =
       action.requiresApproval === true || APPROVAL_REQUIRED_ACTIONS.has(canonical);
+    const errorStrategyRaw =
+      action.errorStrategy ??
+      DEFAULT_ERROR_STRATEGY_BY_ACTION[canonical] ??
+      'STOP_WORKFLOW';
+    if (!WORKFLOW_ACTION_ERROR_STRATEGIES.includes(errorStrategyRaw as never)) {
+      throw new BadRequestException(`Invalid errorStrategy at index ${index}: ${errorStrategyRaw}`);
+    }
+    const compensatableRequested = action.compensatable === true;
+    if (compensatableRequested && NON_COMPENSATABLE_EXTERNAL_ACTION_TYPES.has(canonical)) {
+      throw new BadRequestException(
+        `Action "${canonical}" cannot be compensatable — external communication is not reliably reversible`,
+      );
+    }
+    if (errorStrategyRaw === 'EXECUTE_FALLBACK' && !action.fallbackActionKey) {
+      throw new BadRequestException(
+        `Action at index ${index} uses EXECUTE_FALLBACK but fallbackActionKey is missing`,
+      );
+    }
+    if (errorStrategyRaw === 'COMPENSATE_PREVIOUS' && !isActionCompensatable(canonical, compensatableRequested)) {
+      throw new BadRequestException(
+        `Action at index ${index} uses COMPENSATE_PREVIOUS but is not compensatable`,
+      );
+    }
     let config = action.config ?? {};
     if (canonical === 'vehicle.status.update') {
       const status = action.config?.status;
@@ -130,8 +168,22 @@ export function validateWorkflowDefinition(input: {
       type: canonical,
       config,
       requiresApproval,
+      errorStrategy: errorStrategyRaw,
+      fallbackActionKey: action.fallbackActionKey,
+      compensateActionKey: action.compensateActionKey,
+      compensatable: isActionCompensatable(canonical, compensatableRequested),
+      actionKey: action.actionKey ?? `action-${index}`,
     };
   });
+
+  const actionKeys = new Set(normalizedActions.map((a) => a.actionKey));
+  for (const action of normalizedActions) {
+    if (action.fallbackActionKey && !actionKeys.has(action.fallbackActionKey)) {
+      throw new BadRequestException(
+        `fallbackActionKey "${action.fallbackActionKey}" does not reference an action in this workflow`,
+      );
+    }
+  }
 
   const conditions = Array.isArray(input.conditions) ? input.conditions : [];
 
