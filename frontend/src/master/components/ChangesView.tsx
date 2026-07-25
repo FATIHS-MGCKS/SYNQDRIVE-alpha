@@ -35,6 +35,51 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-domain-event-registry-v49821-2026-07-26',
+    version: '4.9.821',
+    title: 'V4.9.821 — Workflow domain event registry (Phase 4 Prompt 14)',
+    summary: [
+      '**Registry**: `backend/src/modules/workflows/registry/` — 36 versioned domain events across booking, vehicle, finance, customer, damage, service, task, support, notification domains.',
+      '**Validation**: payload schema checks (required IDs, forbidden PII, closed key set); unknown `eventVersion` rejected.',
+      '**Legacy adapters**: explicit mapping table; removed wrong `fine_created` → `customer.complaint.created` (now `invoice.created` with `invoiceKind: fine`).',
+      '**Wiring**: `WorkflowEventService.emitEvent` validates via registry; `WORKFLOW_EVENT_TYPES` sourced from registry.',
+      '**Docs**: `docs/architecture/workflow-domain-event-registry-2026-07.md`.',
+      '**Tests**: `workflow-domain-event-registry.spec.ts` — 16 cases.',
+    ],
+    reason:
+      'Workflow automation needs a single, documented, validatable catalogue of domain events so triggers, snapshots, and producers stay consistent across modules.',
+    previousBehavior:
+      'Eight hardcoded `WORKFLOW_EVENT_TYPES` in `workflow.constants.ts` with inline `LEGACY_TRIGGER_TO_EVENT` including incorrect fine→complaint mapping.',
+    details:
+      'Producer modules (billing, telemetry, geofence, tasks, etc.) still need event emission hooks — registry is ready for integration.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-26T00:00:00.000Z',
+  },
+  {
+    id: 'workflow-execution-snapshot-v49820-2026-07-26',
+    version: '4.9.820',
+    title: 'V4.9.820 — Immutable workflow execution snapshot (Phase 3 Prompt 13)',
+    summary: [
+      '**Snapshot table**: `workflow_execution_snapshots` — 1:1 with `workflow_runs`, append-only, `contentHash`.',
+      '**Capture**: `WorkflowExecutionSnapshotService.captureAtRunStart` — atomically freezes definition/version graph, policies, templates, minimized event envelope.',
+      '**Payload**: trigger, scope, condition tree, actions with stable `actionKey`, policy/capability revision, template versions, risk classes, required permissions.',
+      '**PII/secrets**: sanitizer redacts provider secrets; PII minimized via entity refs when possible.',
+      '**Immutability**: no update path; duplicate capture rejected; historical runs unaffected by later workflow/template changes.',
+      '**API**: `GET .../workflow-runs/:runId/execution-snapshot` — audit-read roles (`ORG_ADMIN`, `SUB_ADMIN`, `MASTER_ADMIN`).',
+      '**Tests**: `workflow-execution-snapshot.spec.ts` — 11 cases.',
+    ],
+    reason:
+      'Historical workflow runs must fully explain what configuration and event context applied at execution time.',
+    previousBehavior:
+      'Run row had unstructured `definitionSnapshot` JSON without dedicated immutable store, template/policy binding, or PII minimization rules.',
+    details:
+      'backend/src/modules/workflows/snapshot/*, migration 20260726300000_workflow_execution_snapshot.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-26T22:00:00.000Z',
+  },
+  {
     id: 'workflow-runtime-status-v49819-2026-07-26',
     version: '4.9.819',
     title: 'V4.9.819 — Workflow run/action runtime status foundation (Phase 3 Prompt 12)',

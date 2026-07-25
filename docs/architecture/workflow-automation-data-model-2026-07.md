@@ -814,6 +814,32 @@ Prisma cannot enforce row-level immutability after publish. Enforcement points:
 
 **Not in this prompt:** engine executor, worker dispatch, HTTP controllers for runtime transitions (services only).
 
+### Execution snapshot (V4.9.820 — implemented)
+
+**Table:** `workflow_execution_snapshots` — 1:1 with `workflow_runs`, append-only, `contentHash` integrity.
+
+**Capture:** `WorkflowExecutionSnapshotService.captureAtRunStart` atomically:
+1. Resolves active/published version graph
+2. Dedupes/creates `WorkflowPolicySnapshot`
+3. Builds structured payload (definition, graph, policies, templates, minimized event)
+4. Persists immutable `WorkflowExecutionSnapshot`
+5. Binds denormalized `definitionSnapshot` + minimized `inputPayload` on run
+
+**Payload sections:**
+- `definition` — definitionId, versionId, versionNumber, publishedAt, contentHash
+- `graph` — trigger, scope, condition tree, actions with stable `actionKey`, risk class, permissions
+- `policies` — policySnapshotId, capabilityRevision, approval rules, feature flags
+- `templates` — extracted templateId/templateVersion from action configs
+- `event` — envelope (correlation/causation/idempotency) + minimized payload with entity refs
+
+**PII/secrets:** `workflow-execution-snapshot.sanitize.ts` redacts secret keys; PII fields become entity refs when `entityType`/`entityId` present.
+
+**Read API:** `GET /organizations/:orgId/workflow-runs/:runId/execution-snapshot` — audit-read roles only.
+
+**Migration:** `20260726300000_workflow_execution_snapshot`
+
+**Retention:** export/retention jobs not implemented — payload designed for future archival export.
+
 ### JSON field bindings (implemented)
 
 | Field | Model | Purpose | PII / secrets |

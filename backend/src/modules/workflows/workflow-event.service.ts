@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WorkflowEngineService, type WorkflowDomainEvent } from './workflow-engine.service';
+import { validateAndNormalizeWorkflowEvent } from './registry';
 
 @Injectable()
 export class WorkflowEventService {
@@ -12,19 +13,34 @@ export class WorkflowEventService {
    * may void this when automation must not block the primary transaction.
    */
   async emitEvent(event: WorkflowDomainEvent): Promise<string[]> {
-    if (!event.organizationId?.trim()) {
-      throw new Error('organizationId is required for workflow events');
+    const normalized = validateAndNormalizeWorkflowEvent({
+      organizationId: event.organizationId,
+      type: event.type,
+      eventVersion: (event as WorkflowDomainEvent & { eventVersion?: string }).eventVersion,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      payload: event.payload,
+      occurredAt: event.occurredAt,
+      idempotencyKey: event.idempotencyKey,
+    });
+
+    if (normalized.legacySourceKey) {
+      this.logger.warn(
+        `Workflow event used legacy adapter ${normalized.legacySourceKey} → ${normalized.type}`,
+      );
     }
-    if (!event.type?.trim()) {
-      throw new Error('event type is required for workflow events');
-    }
-    const normalized: WorkflowDomainEvent = {
-      ...event,
-      type: event.type.trim(),
-      payload: event.payload ?? {},
-      occurredAt: event.occurredAt ?? new Date(),
+
+    const engineEvent: WorkflowDomainEvent = {
+      organizationId: normalized.organizationId,
+      type: normalized.type,
+      entityType: normalized.entityType,
+      entityId: normalized.entityId,
+      payload: normalized.payload,
+      occurredAt: normalized.occurredAt,
+      idempotencyKey: normalized.idempotencyKey,
     };
-    return this.engine.processEvent(normalized);
+
+    return this.engine.processEvent(engineEvent);
   }
 
   scheduleEmit(event: WorkflowDomainEvent): void {
