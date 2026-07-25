@@ -31,6 +31,7 @@ import {
   resolveActionFromRunSnapshot,
   stripSecretsFromValue,
 } from './workflow-action-run-snapshot.util';
+import { WorkflowApprovalPauseService } from './approval/workflow-approval-pause.service';
 import { computeWorkflowOutboxBackoffMs } from '../outbox/workflow-event-outbox-error.util';
 import type { WorkflowActionDef } from '../workflow-definition.validator';
 
@@ -46,6 +47,7 @@ export class WorkflowActionRunExecutorService {
     private readonly runRuntime: WorkflowRunRuntimeService,
     private readonly audit: WorkflowRuntimeStatusAuditService,
     private readonly adapter: WorkflowRuntimeActionExecutorAdapter,
+    private readonly approvalPause: WorkflowApprovalPauseService,
   ) {}
 
   private get defaultMaxAttempts() {
@@ -71,6 +73,7 @@ export class WorkflowActionRunExecutorService {
     orgId: string,
     actionRunId: string,
     actor: WorkflowRuntimeActor,
+    options?: { resumedAfterApproval?: boolean },
   ): Promise<WorkflowActionExecutionResult> {
     const actionRun = await this.actionRuns.findByIdOrThrow(orgId, actionRunId);
     const run = await this.runs.findByIdOrThrow(orgId, actionRun.workflowRunId);
@@ -118,7 +121,7 @@ export class WorkflowActionRunExecutorService {
       const actionDef: WorkflowActionDef = {
         type: ctx.actionSnapshot.actionType,
         config: ctx.actionSnapshot.config,
-        requiresApproval: ctx.actionSnapshot.requiresApproval,
+        requiresApproval: options?.resumedAfterApproval ? false : ctx.actionSnapshot.requiresApproval,
       };
 
       const raw = await this.executeWithTimeout(
@@ -129,6 +132,7 @@ export class WorkflowActionRunExecutorService {
             actionRun,
             actionRun.attemptCount,
             actionRun.maxAttempts ?? ctx.policy.maxActionAttempts,
+            options,
           ),
         ctx.policy.actionTimeoutMs,
       );
@@ -236,17 +240,33 @@ export class WorkflowActionRunExecutorService {
 
     let approvalId: string | null = null;
     if (raw.status === 'WAITING_FOR_APPROVAL') {
-      const approval = await this.prisma.workflowApproval.create({
-        data: {
-          organizationId: orgId,
-          workflowRunId: runId,
-          actionRunId: actionRun.id,
-          status: 'PENDING',
-          requestedBySystem: true,
-          reason: `Approval required for ${actionRun.actionType}`,
-        },
+      await this.atomicComplete(orgId, runId, actionRun, {
+        toStatus: raw.status,
+        resultSummary,
+        output: sanitizedOutput,
+        errorSummary: raw.errorMessage ? raw.errorMessage.slice(0, 500) : null,
+        providerReference,
+        approvalId: null,
+        finishedAt: null,
+        nextAttemptAt: null,
+      });
+
+      const approval = await this.approvalPause.finalizeExecutionApproval({
+        organizationId: orgId,
+        workflowRunId: runId,
+        workflowVersionId: ctx.run.workflowVersionId,
+        actionRunId: actionRun.id,
+        reason: `Approval required for ${actionRun.actionType}`,
       });
       approvalId = approval.id;
+
+      return {
+        status: raw.status,
+        resultSummary,
+        output: sanitizedOutput,
+        providerReference,
+        errorSummary: raw.errorMessage,
+      };
     }
 
     const nextAttemptAt =

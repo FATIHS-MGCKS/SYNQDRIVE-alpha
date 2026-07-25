@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-approval-pause-resume-v49832-2026-07-25',
+    version: '4.9.832',
+    title: 'V4.9.832 — Workflow approval pause-and-resume (Phase 5 Prompt 22)',
+    summary: [
+      'Persistent WorkflowApproval linked to WorkflowRun, ActionRun, and WorkflowVersion with requester, approver, decision, reason, expiry, and audited comments.',
+      'Pause: action execution → WAITING_FOR_APPROVAL → approval record + run derivation; Resume: pre-execution re-check → same action resumed via executeClaimed({ resumedAfterApproval: true }).',
+      'Guards: duplicate decision, expiry, cross-tenant, maker-checker; approval does not auto-succeed — execution runs after APPROVED_PENDING_EXECUTION.',
+      'Rejection strategies: CANCEL_RUN, SKIP_ACTION, EXECUTE_FALLBACK (stub); legacy OrgWorkflowApproval bridge marks LEGACY_ONLY rows.',
+      '12 approval unit tests + 77 total runtime suite; REST under organizations/:orgId/workflow-approvals.',
+    ],
+    reason: 'Sensitive workflow actions must pause durably, survive restarts, and resume the exact action only after policy re-validation.',
+    previousBehavior: 'WAITING_FOR_APPROVAL status existed but no canonical approval entity, resume path, or pre-execution validator.',
+    details:
+      'docs/architecture/workflow-approval-pause-resume-2026-07.md. Migration 20260726230000_workflow_approval_pause_resume. Notification prepare stub only — no new external comms.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T12:00:00.000Z',
+  },
+  {
     id: 'workflow-run-state-machine-v49830-2026-07-25',
     version: '4.9.830',
     title: 'V4.9.830 — Workflow run state machine (Phase 5 Prompt 20)',

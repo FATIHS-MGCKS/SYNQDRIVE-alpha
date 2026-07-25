@@ -14,9 +14,17 @@ import { WorkflowRunRuntimeService } from './workflow-run-runtime.service';
 import { WorkflowRunWorkerService } from './workflow-run-worker.service';
 import { WorkflowRuntimeActionExecutorAdapter } from './workflow-runtime-action-executor.adapter';
 import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-audit.service';
+import { WorkflowApprovalController } from './approval/workflow-approval.controller';
+import { WorkflowApprovalRepository } from './approval/workflow-approval.repository';
+import { WorkflowApprovalPauseService } from './approval/workflow-approval-pause.service';
+import { WorkflowApprovalResumeService } from './approval/workflow-approval-resume.service';
+import { WorkflowApprovalPreExecutionValidator } from './approval/workflow-approval-pre-execution.validator';
+import { WorkflowApprovalNotificationPrepareService } from './approval/workflow-approval-notification.prepare.service';
+import { WorkflowApprovalLegacyBridgeService } from './approval/workflow-approval-legacy.bridge';
 
 @Module({
   imports: [PrismaModule, TasksModule, ConfigModule.forFeature(workflowRuntimeConfig)],
+  controllers: [WorkflowApprovalController],
   providers: [
     WorkflowRunRuntimeRepository,
     WorkflowActionRunRuntimeRepository,
@@ -25,7 +33,13 @@ import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-aud
     WorkflowRunRuntimeService,
     WorkflowActionRunRuntimeService,
     WorkflowRunOrchestratorService,
+    WorkflowApprovalRepository,
+    WorkflowApprovalPreExecutionValidator,
+    WorkflowApprovalNotificationPrepareService,
+    WorkflowApprovalLegacyBridgeService,
+    WorkflowApprovalPauseService,
     WorkflowActionRunExecutorService,
+    WorkflowApprovalResumeService,
     WorkflowRunWorkerService,
     WorkflowRuntimeActionExecutorAdapter,
     WorkflowActionExecutorService,
@@ -35,6 +49,8 @@ import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-aud
     WorkflowActionRunRuntimeService,
     WorkflowRunOrchestratorService,
     WorkflowActionRunExecutorService,
+    WorkflowApprovalPauseService,
+    WorkflowApprovalResumeService,
     WorkflowRunWorkerService,
   ],
 })

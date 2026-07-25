@@ -31,6 +31,7 @@ export class WorkflowRuntimeActionExecutorAdapter {
     actionRun: WorkflowActionRun,
     attemptCount: number,
     maxAttempts: number,
+    options?: { resumedAfterApproval?: boolean },
   ): Promise<CanonicalActionExecutionResult> {
     const inputPayload =
       run.inputPayload && typeof run.inputPayload === 'object' && !Array.isArray(run.inputPayload)
