@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-doc-reconciliation-v49829-2026-07-25',
+    version: '4.9.829',
+    title: 'V4.9.829 — Operator App: Dokumentationsabgleich (Prompt 3)',
+    summary: [
+      'operator/README.md: „PWA foundation“ → mobile/tablet web shell; veraltetes „wire placeholders“-TODO entfernt.',
+      'frontend/README.md: operator/ in Struktur; kein PWA-Reife-Claim.',
+      'Audit Kap. 25: 17 DOC-Funde klassifiziert; 7 offene IMP-Lücken mit Akzeptanzkriterien.',
+      'Architektur-Docs (Document Intake) verifiziert — keine Widersprüche.',
+    ],
+    reason: 'Production-Readiness Prompt 3 — Doku darf Implementierungsstand nicht übertreiben.',
+    previousBehavior: 'Operator-README behauptete PWA-Foundation und offenes Wiring-TODO trotz verdrahteter Flows.',
+    details: 'docs/audits/operator-app-production-readiness-2026-07.md §25; frontend/src/operator/README.md',
+    affectsArchitecture: false,
+    module: 'Operations',
+    createdAt: '2026-07-25T17:15:00.000Z',
+  },
+  {
     id: 'operator-app-file-inventory-v49828-2026-07-25',
     version: '4.9.828',
     title: 'V4.9.828 — Operator App: vollständige Dateiinventur + Traceability (Prompt 2)',

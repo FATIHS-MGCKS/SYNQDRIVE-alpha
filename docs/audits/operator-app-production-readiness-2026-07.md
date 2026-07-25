@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Audit ID** | `operator-app-production-readiness-2026-07` |
-| **Prompt** | **1** (baseline) · **2** (vollständige Dateiinventur + Traceability-Matrix) |
+| **Prompt** | **1** (baseline) · **2** (Dateiinventur) · **3** (Dokumentationsabgleich) |
 | **Repository** | `https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **Audited commit** | `1d0f2caebe56aa1ecd23295aa33d20e953daa95d` (Prompt 1) · Branch-HEAD nach Prompt 2 |
 | **Audit branch** | `audit/operator-app-production-readiness-2026-07` |
@@ -897,7 +897,92 @@ Vorläufige Kategorien (ohne Pass/Fail):
 | PH-003 | `OperatorLinkCard.tsx` | QR-Code-Generator folgt später | **Feature-Platzhalter** |
 | PH-004 | `OperatorAiUploadFlow.tsx` | „Typ kann später korrigiert werden“ | UX-Hinweis (kein Blocker) |
 
-**Anzahl echte TODO/Platzhalter:** **4** (davon 1 veraltete Doku)
+**Anzahl echte TODO/Platzhalter:** **4** (davon 1 veraltete Doku — in Prompt 3 bereinigt)
+
+---
+
+## 25. Dokumentationsabgleich (Prompt 3)
+
+**Methode:** Volltextsuche im Repository nach `operator`, `PWA`, `placeholder`, `mock`, `TODO`, `not wired`, `stub`, `incomplete`, `demo`, `temporary`, `fallback`, `connect existing` — Abgleich jeder Operator-relevanten Aussage mit Code (`frontend/src/operator/**`, globale Provider, `architecture/DOCUMENT_INTAKE_*`).
+
+**Geänderte Dokumentation (Code eindeutig belegt):**
+
+| Datei | Änderung |
+|-------|----------|
+| `frontend/src/operator/README.md` | Titel „PWA foundation“ → „mobile/tablet web shell“; veraltetes TODO entfernt; Wired-Flows + Known-Gaps-Tabelle |
+| `frontend/README.md` | `operator/` in Struktur; kein PWA-Claim |
+
+**Nicht geändert (bewusst):** Historische `ChangesView`-Einträge (z. B. V4.8.73 „PWA-artige WebApp“ als **Ziel bei Einführung**) — Changelog bleibt zeitlicher Snapshot.
+
+### 25.1 Fundliste mit Klassifikation
+
+| ID | Quelle | Aussage / Fund | Code-Befund | Klassifikation |
+|----|--------|----------------|-------------|----------------|
+| DOC-001 | `operator/README.md` (alt) | „Web / PWA foundation“ | Kein `manifest`, kein `service-worker`, kein `vite-plugin-pwa` in `frontend/` | **1 — Dokumentation veraltet** → README bereinigt |
+| DOC-002 | `operator/README.md` (alt) | „Wire placeholders in OperatorShell“ | `OperatorHandoverProvider`, `OperatorDamageCaptureProvider`, `OperatorActionSheets`, Task/Booking-Sheets in Shell-Stack verdrahtet | **1 — Dokumentation veraltet** → TODO entfernt |
+| DOC-003 | `ChangesView` V4.8.73 | „PWA-artige WebApp“ (reason, 2026-06) | Shell existiert; PWA-Mechanismen fehlen weiterhin | **4 — historischer Changelog**, kein aktueller Reife-Claim |
+| DOC-004 | `OperatorScanView.tsx` L114 | „QR-Scanner später verfügbar … MVP“ | Nur `<input type="search">`; kein Kamera/QR-Code | **2 — Implementierung unvollständig** |
+| DOC-005 | `OperatorLinkCard.tsx` L35–36 | „QR-Code-Generator folgt später — im MVP nur kopieren“ | Copy-to-clipboard funktioniert; kein QR-Render | **3 — teilweise implementiert** (Link-Share ja, QR nein) |
+| DOC-006 | `OperatorConnectivityBanner.tsx` Kommentar L5 | „no offline queue or sync illusion“ | Kein SW/Queue | **Code korrekt** |
+| DOC-007 | `OperatorTodayView.tsx` L50–51 (offline) | „Aktionen werden nach Verbindungsaufbau synchronisiert“ | Keine Offline-Queue; Mutationen scheitern ohne Retry | **3 — teilweise / widersprüchliche UI-Copy** (Banner vs. Connectivity-Kommentar) |
+| DOC-008 | `architecture/DOCUMENT_INTAKE_V2_ENTRY_POINTS` | Operator AI Upload → kanonischer Intake | `OperatorAiUploadFlow` → `useDocumentExtractionFlow` → `useDocumentIntakeFlow` | **Korrekt — keine Änderung** |
+| DOC-009 | `architecture/DOCUMENT_INTAKE_UNIFIED_FLOW` | Operator embedded flow shared | `mode: 'embedded'`, `pollThroughApply: true` in Hook | **Korrekt — keine Änderung** |
+| DOC-010 | `OperatorAiUploadReview.tsx` L42 | `showEntityResolution={false}` | Entity-Resolution-UI deaktiviert vs. volles Rental-Panel | **3 — teilweise implementiert** |
+| DOC-011 | `useOperatorHandoverForm.ts` L178 | `damagesActive` (deprecated alias) | Funktional; `getVehicleDamagesActive` bevorzugt in Quick View | **4 — Code-Konsistenz, keine Doku-Behauptung** |
+| DOC-012 | `OperatorTasksView.tsx` L65–67 | (keine Doku) | `catch { setRemoteTasks([]) }` — Fehler unsichtbar | **2 — Implementierung unvollständig** (Error-UX) |
+| DOC-013 | `frontend/README.md` (alt) | Kein `operator/` erwähnt | Modul existiert mit 117 Dateien | **1 — Dokumentation veraltet** → ergänzt |
+| DOC-014 | `AGENTS.md` | „operator surfaces“ | Route `/operator/*` in `App.tsx` | **Korrekt** |
+| DOC-015 | `operatorPickupCheckPayload.test.ts` | `vi.mock` | Test-Mocks only | **Korrekt (Tests)** — kein Produktions-Mock |
+| DOC-016 | `operatorTaskDisplay.utils.test.ts` | „fallbacks“ in Testname | Display-Fallback-Logik | **Korrekt (Tests)** |
+| DOC-017 | `operatorTodayFeed.utils.ts` | `bucketCount(…, fallback)` | Numerischer Fallback für Summary | **Korrekt (Logik)** — kein Mock-Datenpfad |
+
+### 25.2 Bereinigte Dokumentationswidersprüche
+
+| Widerspruch | Resolution |
+|-------------|------------|
+| README behauptet PWA-Foundation | README: explizit „responsive web shell“, PWA als Gap |
+| README TODO „wire placeholders“ | Entfernt; Wired-Flows-Tabelle dokumentiert |
+| `frontend/README` ignoriert Operator-Modul | `operator/` + Verweis auf Operator-README und Audit |
+| Audit Kap. 13 „README: PWA foundation“ | Bleibt als historischer Prompt-1-Fund; README ist bereinigt |
+
+### 25.3 Weiterhin offene Implementierungslücken (mit Akzeptanzkriterien)
+
+| ID | Lücke | Datei / fehlende Verdrahtung | Akzeptanzkriterium |
+|----|-------|------------------------------|-------------------|
+| IMP-001 | PWA / Offline | Kein `manifest.webmanifest`, kein SW-Register in `frontend/index.html` | Entscheidung dokumentiert; bei GO: installierbar + definiertes Offline-Verhalten |
+| IMP-002 | QR-Scanner | `OperatorScanView.tsx` — nur Textsuche | Scan erkennt Kennzeichen/Buchungs-QR und öffnet Fahrzeug/Buchung oder füllt `scanQuery` |
+| IMP-003 | QR-Link-Generator | `OperatorLinkCard.tsx` — nur Clipboard | Desktop-Modal zeigt QR für `/operator` Deep-Link |
+| IMP-004 | Offline-Sync-Copy | `OperatorTodayView.tsx` OperatorTodayStaleBanner offline-Text | Text entspricht Realität (manueller Retry) **oder** echte Outbox-Sync |
+| IMP-005 | Task-Listen-Fehler | `OperatorTasksView.tsx` `fetchRemoteTasks` catch→`[]` | `ErrorState` + Retry wie bei `tasksError` aus Context |
+| IMP-006 | AI Upload Entity Resolution | `OperatorAiUploadReview.tsx` `showEntityResolution={false}` | Entity-Binding-UI wenn `entityCandidates` vom Server geliefert |
+| IMP-007 | Operator E2E | Kein `e2e/operator*.spec.ts` | Playwright-Flows: Login → Today → Handover smoke (mocked API) |
+
+### 25.4 TODO-Register (nach Bereinigung)
+
+**Veraltete TODOs (entfernt aus Doku):**
+
+| ID | ehem. Quelle | Status |
+|----|--------------|--------|
+| PH-001 | `operator/README.md` „Wire placeholders“ | **Entfernt** — Flows sind verdrahtet |
+
+**Gültige TODOs / Platzhalter (unverändert im Code):**
+
+| ID | Quelle | Status | Klassifikation |
+|----|--------|--------|----------------|
+| PH-002 | `OperatorScanView.tsx` QR-Scanner MVP | Offen | **2 — unvollständig** |
+| PH-003 | `OperatorLinkCard.tsx` QR-Generator | Offen | **3 — teilweise** |
+| PH-004 | `OperatorAiUploadFlow.tsx` Typ später korrigierbar | UX-Hinweis, kein Blocker | **4 — bewusste UX** |
+
+### 25.5 Architektur-Dokumente
+
+| Dokument | Operator-Bezug | Ergebnis |
+|----------|----------------|----------|
+| `architecture/DOCUMENT_INTAKE_V2_ENTRY_POINTS_2026-07-17.md` | Operator AI Upload migriert | ✅ **stimmt mit Code überein** — keine Änderung |
+| `architecture/DOCUMENT_INTAKE_UNIFIED_FLOW_2026-07-17.md` | Embedded operator flow | ✅ **stimmt** — keine Änderung |
+| `architecture/DOCUMENT_OPTIONAL_CONTEXT_CONTRACT_2026-07-17.md` | `operator_ai_upload` surface | ✅ **stimmt** |
+| `frontend/src/master/components/ArchitekturView.tsx` | Operator in Document Intake / Handover Narrative | ✅ **kein Widerspruch** zu Inventur (keine „unwired“-Claims für aktuelle Flows) |
+
+`ArchitekturView.tsx` wurde **nicht** editiert (historische Release-Narrative; keine falsche aktuelle Production-Reife für Operator PWA).
 
 ---
 
@@ -908,6 +993,10 @@ Vorläufige Kategorien (ohne Pass/Fail):
 | 1 | `docs/audits/operator-app-production-readiness-2026-07.md` | Neu |
 | 1 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.827 |
 | 2 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 18–24 Inventur + Matrix |
+| 3 | `frontend/src/operator/README.md` | PWA/TODO bereinigt, Gaps dokumentiert |
+| 3 | `frontend/README.md` | `operator/` ergänzt |
+| 3 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 25 Dokumentationsabgleich |
+| 3 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.829 |
 
 ---
 
