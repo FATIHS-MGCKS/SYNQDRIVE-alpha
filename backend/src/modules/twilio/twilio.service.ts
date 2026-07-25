@@ -20,4 +20,8 @@ export class TwilioService {
   getVoiceWebhookBaseUrl(): string {
     return this.config.get<string>('twilio.voiceWebhookBaseUrl', '');
   }
+
+  getAuthToken(): string {
+    return this.config.get<string>('twilio.authToken', '');
+  }
 }

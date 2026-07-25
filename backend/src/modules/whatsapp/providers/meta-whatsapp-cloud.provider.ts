@@ -243,6 +243,8 @@ export class MetaWhatsAppCloudProvider implements WhatsAppProviderInterface {
 
   private mapDeliveryStatus(status: string): 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | null {
     switch (status) {
+      case 'accepted':
+        return 'SENT';
       case 'sent':
         return 'SENT';
       case 'delivered':
