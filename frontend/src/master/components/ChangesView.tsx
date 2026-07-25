@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-vps-audit-executed-v49835-2026-07-25',
+    version: '4.9.835',
+    title: 'V4.9.835 — Operator App VPS control audit executed (Prompt 42)',
+    summary: [
+      'Read-only live VPS audit on srv1374778.hstgr.cloud — release 20260725220141_v4994, commit 61b38798 (= origin/main).',
+      'Verdict CONDITIONAL GO: health/readiness ok, document.extraction queue clear, Operator SPA 200, APIs 401 unauth, TLS/CORS/HSTS pass.',
+      '0 production blockers; findings: scheduler Custom Id noise, battery.v2 failed=27, retention dryRun, Operator PR #933 not yet deployed.',
+      'Updated docs/audits/operator-app-vps-control-audit-2026-07.md with live results.',
+    ],
+    reason: 'Complete Operator production-readiness VPS verification after Prompt 41 runbook.',
+    previousBehavior: 'Prompt 41 prepared runbook only; no live VPS execution.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Operator',
+    createdAt: '2026-07-25T22:12:00.000Z',
+  },
+  {
     id: 'operator-app-vps-control-audit-v49834-2026-07-25',
     version: '4.9.834',
     title: 'V4.9.834 — Operator App VPS control audit runbook (Prompt 41)',
