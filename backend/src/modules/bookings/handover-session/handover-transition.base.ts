@@ -178,7 +178,7 @@ export function evaluateHandoverTransitionBase(
     if (input.fromStatus !== 'SUBMITTED') {
       return denyHandoverTransition(
         HANDOVER_SESSION_ERROR.TRANSITION_FORBIDDEN,
-        'COMPLETE requires SUBMITTED session status — use pickup/complete command',
+        `COMPLETE requires SUBMITTED session status — use ${kind === 'RETURN' ? 'return' : 'pickup'}/complete command`,
       );
     }
     return allowHandoverTransition();

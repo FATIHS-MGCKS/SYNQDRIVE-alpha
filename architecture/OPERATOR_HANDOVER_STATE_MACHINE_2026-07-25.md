@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | V4.9.840 (Prompt 14 — server-side state machine) |
+| **Version** | V4.9.842 (Prompt 16 — return complete command) |
 | **Date** | 2026-07-25 |
-| **Status** | Session SM implemented; **COMPLETE transaction deferred** |
+| **Status** | Session SM + atomic pickup/return complete implemented |
 | **Full audit** | `docs/audits/operator-app-production-readiness-2026-07.md` §35 |
 
 ---
@@ -55,7 +55,29 @@ Existing protocols map to `completed`. Legacy POST endpoints remain as submit sh
 | Service | `bookings-handover-session.service.ts` |
 | API | `GET/POST …/handover/sessions/:kind[/transition]` |
 
-**Deferred:** `COMPLETE` → protocol + booking/vehicle mutation (Prompt 15+).
+**Deferred:** Return complete command ~~(Prompt 16+)~~ — **implemented Prompt 16**.
+
+### Return complete (Prompt 16)
+
+| Component | Path |
+|-----------|------|
+| Command | `complete-return-handover.service.ts` |
+| Atomic executor | `handover-return-completion.executor.ts` |
+| Idempotency | `BookingHandoverReturnCompletionIdempotency` |
+| API | `POST …/handover/return/complete` |
+| Permission | `operator.handover.complete` → `bookings.write` |
+
+### Pickup complete (Prompt 15)
+
+| Component | Path |
+|-----------|------|
+| Command | `complete-pickup-handover.service.ts` |
+| Atomic executor | `handover-pickup-completion.executor.ts` |
+| Idempotency | `BookingHandoverPickupCompletionIdempotency` |
+| API | `POST …/handover/pickup/complete` |
+| Permission | `operator.handover.complete` → `bookings.write` |
+
+Vehicle availability on return uses `resolveReturnVehicleUpdate()` — never sets maintenance from observations; respects `IN_SERVICE`/`OUT_OF_SERVICE` and other active bookings.
 
 ---
 

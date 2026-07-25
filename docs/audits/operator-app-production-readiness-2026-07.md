@@ -2030,6 +2030,112 @@ stateDiagram-v2
 
 ---
 
+## 37. Atomischer Pickup-Abschluss (Prompt 15)
+
+### 37.1 Command
+
+`CompletePickupHandoverService.completePickupHandover()` — einziger autoritativer Pfad für Operator-Pickup-Abschluss (Frontend).
+
+**Endpoint:** `POST /organizations/:orgId/bookings/:id/handover/pickup/complete`
+
+### 37.2 Transaktionsumfang (eine `$transaction`)
+
+1. `SELECT … FOR UPDATE` auf Booking
+2. `BookingHandoverProtocol.create` (PICKUP)
+3. `Booking.update` → `ACTIVE` + `actualPickupStation`
+4. `Vehicle.update` → `RENTED` (+ Station)
+5. `VehicleDamage.updateMany` (damageIds)
+6. `VehicleComplaint.create` (technicalObservations)
+7. `BookingPickupGateAuditEvent` (bei Override)
+8. `BookingHandoverSession.update` → `COMPLETED` (optional)
+9. `BookingHandoverPickupCompletionIdempotency.create`
+
+### 37.3 Idempotenzstrategie
+
+| Layer | Verhalten |
+|-------|-----------|
+| HTTP `idempotencyKey` (required) | Unique `(organizationId, idempotencyKey)` → gespeicherte Response |
+| Existing protocol + ACTIVE booking | Sofortige Replay-Antwort ohne Side-Effects |
+| Workflow `booking.activated` | `idempotencyKey: booking.activated:{bookingId}` |
+| Post-commit Side-Effects | Nur wenn Tx neu (nicht bei Cache/Protocol-Replay) |
+
+### 37.4 Validierungen (Pre-Tx)
+
+Auth, `operator.handover.complete`, Tenant/Station-Scope, Booking `CONFIRMED`, Vehicle-Zuordnung, Rental-Health-Blocker, Eligibility/Führerschein (`assertAllowedForPickup`), Pickup-Gate (`assertPickupAllowed`), Signaturen, Dokumente, Odometer/Tank, Session-Version.
+
+### 37.5 Tests
+
+10 Integrationstests in `complete-pickup-handover.integration.spec.ts`.
+
+### 37.6 Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `complete-pickup-handover.service.ts` | Command |
+| `handover-pickup-completion.executor.ts` | Atomic tx |
+| `operator-handover-permission.constants.ts` | `operator.handover.complete` |
+| Prisma + Migration | Idempotency table |
+| `bookings.controller.ts` | Route |
+| `OperatorHandoverFlow.tsx` | Neuer API-Call |
+| `api.ts` | `completePickupHandover` |
+
+---
+
+## 38. Atomischer Return-Abschluss (Prompt 16)
+
+### 38.1 Command
+
+`CompleteReturnHandoverService.completeReturnHandover()` — einziger autoritativer Pfad für Operator-Return-Abschluss (Frontend).
+
+**Endpoint:** `POST /organizations/:orgId/bookings/:id/handover/return/complete`
+
+### 38.2 Transaktionsumfang (eine `$transaction`)
+
+1. `SELECT … FOR UPDATE` auf Booking
+2. Booking muss `ACTIVE` sein; Pickup-Protokoll vorhanden; kein Return-Protokoll
+3. Odometer `>=` Pickup-Odometer
+4. `BookingHandoverProtocol.create` (RETURN)
+5. `Booking.update` → `COMPLETED` + `completedAt` + `kmDriven` + `actualReturnStation`
+6. `Vehicle.update` via `resolveReturnVehicleUpdate` (zentrale Availability — kein Maintenance aus Observations)
+7. `VehicleDamage.updateMany` (damageIds link-only, keine Neuerstellung)
+8. `VehicleComplaint.create` (technicalObservations, `OPERATOR_RETURN`)
+9. `BookingHandoverSession.update` → `COMPLETED` (optional)
+10. `BookingHandoverReturnCompletionIdempotency.create`
+
+### 38.3 Idempotenzstrategie
+
+| Layer | Verhalten |
+|-------|-----------|
+| HTTP `idempotencyKey` (required) | Unique `(organizationId, idempotencyKey)` → gespeicherte Response |
+| Existing RETURN protocol + COMPLETED booking | Sofortige Replay-Antwort ohne Side-Effects |
+| Workflow `booking.returned` / `booking.completed` | `idempotencyKey: booking.returned:{bookingId}` / `booking.completed:{bookingId}` |
+| Post-commit Side-Effects | Nur wenn Tx neu (nicht bei Cache/Protocol-Replay) |
+
+### 38.4 Validierungen (Pre-Tx)
+
+Auth, `operator.handover.complete`, Tenant/Station-Scope, Booking `ACTIVE`, Pickup-Protokoll, Vehicle-Zuordnung, Odometer `>=` Pickup, Tank/SOC, Signaturen, Dokumente, Session-Version. Kein Pickup-Gate / Rental-Health-Block auf Return.
+
+### 38.5 Runtime-State-Integration
+
+`resolveReturnVehicleUpdate()` setzt `AVAILABLE` nur wenn Fahrzeug nicht `IN_SERVICE`/`OUT_OF_SERVICE` und keine andere `ACTIVE`-Buchung existiert. Technische Beobachtungen erzeugen `VehicleComplaint` mit optional `blocksRental`, mutieren aber **nicht** `Vehicle.status` — Maintenance/Blocker nur über zentrale Runtime-Logik.
+
+### 38.6 Tests
+
+9 Integrationstests in `complete-return-handover.integration.spec.ts` + Unit-Tests für `resolveReturnVehicleUpdate` in `handover-return-completion.executor.spec.ts`.
+
+### 38.7 Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `complete-return-handover.service.ts` | Command |
+| `handover-return-completion.executor.ts` | Atomic tx + vehicle resolver |
+| Prisma + Migration | `BookingHandoverReturnCompletionIdempotency` |
+| `bookings.controller.ts` | Route |
+| `OperatorHandoverFlow.tsx` | Neuer API-Call |
+| `api.ts` | `completeReturnHandover` |
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

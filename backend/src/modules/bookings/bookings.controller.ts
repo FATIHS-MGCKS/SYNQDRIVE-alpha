@@ -61,7 +61,8 @@ import {
   isHandoverSessionStatusValue,
 } from './handover-session/bookings-handover-session.service';
 import type { HandoverSessionTransitionBodyDto } from './handover-session/dto/handover-session.dto';
-import type { CompletePickupHandoverBodyDto } from './handover-session/dto/complete-pickup-handover.dto';
+import { CompleteReturnHandoverService } from './handover-session/complete-return-handover.service';
+import type { CompleteReturnHandoverBodyDto } from './handover-session/dto/complete-return-handover.dto';
 import { resolveHandoverActor } from './handover-actor.util';
 import type { HandoverKind } from '@prisma/client';
 
@@ -73,6 +74,7 @@ export class BookingsController {
     private readonly handoverService: BookingsHandoverService,
     private readonly handoverSessionService: BookingsHandoverSessionService,
     private readonly completePickupHandoverService: CompletePickupHandoverService,
+    private readonly completeReturnHandoverService: CompleteReturnHandoverService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
@@ -532,6 +534,30 @@ export class BookingsController {
       body,
       resolveHandoverActor(user),
     );
+  }
+
+  @Post(':id/handover/return/complete')
+  @RequirePermission('bookings', 'write')
+  async completeReturnHandover(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CompleteReturnHandoverBodyDto,
+  ) {
+    if (!body?.idempotencyKey?.trim()) {
+      throw new BadRequestException('idempotencyKey is required');
+    }
+    const { idempotencyKey, sessionId, expectedVersion, scopeOverrideReason, ...payload } = body;
+    return this.completeReturnHandoverService.completeReturnHandover({
+      organizationId: orgId,
+      bookingId,
+      idempotencyKey: idempotencyKey.trim(),
+      payload,
+      actor: resolveHandoverActor(user),
+      sessionId: sessionId ?? null,
+      expectedVersion: expectedVersion ?? null,
+      scopeOverrideReason: scopeOverrideReason ?? null,
+    });
   }
 
   @Post(':id/handover/return')

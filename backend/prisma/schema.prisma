@@ -1615,6 +1615,7 @@ model Organization {
   bookingHandoverProtocols               BookingHandoverProtocol[]
   bookingHandoverSessions                BookingHandoverSession[]
   bookingHandoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
+  bookingHandoverReturnCompletionIdempotency BookingHandoverReturnCompletionIdempotency[]
   activityLogs                           ActivityLog[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   vendors                                Vendor[]
@@ -5603,6 +5604,7 @@ model Booking {
   handoverProtocols       BookingHandoverProtocol[]
   handoverSessions        BookingHandoverSession[]
   handoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
+  handoverReturnCompletionIdempotency BookingHandoverReturnCompletionIdempotency[]
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
   priceSnapshots          BookingPriceSnapshot[]
@@ -6081,6 +6083,25 @@ model BookingHandoverPickupCompletionIdempotency {
   @@unique([organizationId, idempotencyKey], map: "booking_handover_pickup_completion_org_idempotency_key")
   @@index([bookingId], map: "booking_handover_pickup_completion_booking_id_idx")
   @@map("booking_handover_pickup_completion_idempotency")
+}
+
+/// Idempotent replay cache for return handover completion commands (Prompt 16).
+model BookingHandoverReturnCompletionIdempotency {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  bookingId      String   @map("booking_id")
+  idempotencyKey String   @map("idempotency_key")
+  sessionId      String?  @map("session_id")
+  protocolId     String   @map("protocol_id")
+  responseJson   Json     @map("response_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey], map: "booking_handover_return_completion_org_idempotency_key")
+  @@index([bookingId], map: "booking_handover_return_completion_booking_id_idx")
+  @@map("booking_handover_return_completion_idempotency")
 }
 
 /// Rental-period analysis input coverage (P59).
