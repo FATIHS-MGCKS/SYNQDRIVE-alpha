@@ -2444,6 +2444,46 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 47. Operator Damage Capture Consolidation (Prompt 26)
+
+### 47.1 Kanonische Domain
+
+- Einzige Persistenz: `VehicleDamage` + `VehicleDamageImage`
+- Handover verknüpft über `damageIds` / FK `handoverProtocolId` — keine parallele Handover-Damage-Tabelle
+- Operator-API delegiert an `DamagesService`
+
+### 47.2 Operator-Quellen
+
+| Operator Source | `DamageSource` |
+|-----------------|----------------|
+| pickup | PICKUP_HANDOVER |
+| return | RETURN_HANDOVER |
+| operator_inspection | INSPECTION |
+| manual | MANUAL |
+| ai_suggestion | **blockiert** — nur Document-Intake mit Bestätigung |
+
+### 47.3 Deduplizierung & Idempotenz
+
+- Semantische Dedup: Typ + Area/Label (+ Severity/Description)
+- Retry: `captureKey` → `operator_damage_capture_idempotency` (unique per org)
+
+### 47.4 Status & Haftung
+
+- Final: `REPAIRED`, `ARCHIVED` — `DamagesService.update` wirft `ConflictException`
+- Haftung nur via `defaultLiabilityForSource` — kein `CUSTOMER_RESPONSIBLE` aus Operator-Capture
+
+### 47.5 Audit Events
+
+`OPERATOR_DAMAGE_CAPTURED`, `OPERATOR_DAMAGE_DEDUPLICATED`, `OPERATOR_DAMAGE_CAPTURE_IDEMPOTENT`, `OPERATOR_DAMAGE_UPDATE_BLOCKED`
+
+### 47.6 Tests
+
+- `operator-damage.service.spec.ts`
+- `damage-domain.util.spec.ts`
+- `damages.service.spec.ts` (final update guard)
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

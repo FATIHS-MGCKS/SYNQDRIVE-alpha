@@ -1615,6 +1615,7 @@ model Organization {
   bookingHandoverProtocols               BookingHandoverProtocol[]
   bookingHandoverSessions                BookingHandoverSession[]
   operatorUploads                        OperatorUpload[]
+  operatorDamageCaptureIdempotency     OperatorDamageCaptureIdempotency[]
   bookingHandoverCompletionRecords       BookingHandoverCompletionRecord[]
   bookingHandoverCompletionAuditEvents   BookingHandoverCompletionAuditEvent[]
   bookingHandoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
@@ -2864,6 +2865,7 @@ model Vehicle {
   handoverProtocols                      BookingHandoverProtocol[]
   handoverSessions                       BookingHandoverSession[]
   operatorUploads                        OperatorUpload[]
+  operatorDamageCaptureIdempotency     OperatorDamageCaptureIdempotency[]
   handoverCompletionRecords              BookingHandoverCompletionRecord[]
   drivingEvents                          DrivingEvent[]
   batterySnapshots                       BatteryHealthSnapshot[]
@@ -5609,6 +5611,7 @@ model Booking {
   handoverProtocols       BookingHandoverProtocol[]
   handoverSessions        BookingHandoverSession[]
   operatorUploads           OperatorUpload[]
+  operatorDamageCaptureIdempotency OperatorDamageCaptureIdempotency[]
   handoverCompletionRecords BookingHandoverCompletionRecord[]
   handoverCompletionAuditEvents BookingHandoverCompletionAuditEvent[]
   handoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
@@ -6230,6 +6233,28 @@ model OperatorUpload {
   @@index([handoverSessionId])
   @@index([status, expiresAt])
   @@map("operator_uploads")
+}
+
+/// Idempotent operator damage capture keys (Prompt 26) — retry-safe without duplicate VehicleDamage rows.
+model OperatorDamageCaptureIdempotency {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  captureKey       String   @map("capture_key")
+  damageId         String   @map("damage_id")
+  vehicleId        String   @map("vehicle_id")
+  bookingId        String?  @map("booking_id")
+  capturedByUserId String?  @map("captured_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  damage       VehicleDamage @relation(fields: [damageId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  booking      Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, captureKey])
+  @@index([damageId])
+  @@index([vehicleId])
+  @@map("operator_damage_capture_idempotency")
 }
 
 /// Idempotent replay cache for pickup handover completion commands (Prompt 15).
@@ -9510,6 +9535,7 @@ model VehicleDamage {
   handoverProtocol   BookingHandoverProtocol?   @relation(fields: [handoverProtocolId], references: [id], onDelete: SetNull)
   task               OrgTask?                   @relation(fields: [taskId], references: [id], onDelete: SetNull)
   images             VehicleDamageImage[]
+  operatorCaptureIdempotency OperatorDamageCaptureIdempotency[]
 
   @@unique([organizationId, documentExtractionId])
   @@index([vehicleId])

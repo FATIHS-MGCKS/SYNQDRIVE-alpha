@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Station } from '../../lib/api';
 import type { DamageResponse } from '../../rental/lib/damage.types';
+import { operatorApi } from '../lib/operatorApi';
 import { useHandoverVehicleTelemetryPrefill } from '../../rental/lib/useHandoverVehicleTelemetryPrefill';
 import { stationsForPickup, stationsForReturn } from '../../rental/lib/stationBookingUtils';
 import type {
@@ -130,8 +131,8 @@ export function useOperatorHandoverForm(
     if (!isOpen || !booking) return;
     let cancelled = false;
     setLoadingDamages(true);
-    api.vehicleIntelligence
-      .damagesActive(booking.vehicleId)
+    operatorApi
+      .listActiveDamages(orgId, booking.vehicleId, booking.id)
       .then((rows) => {
         if (cancelled) return;
         const list: OperatorHandoverDamageRow[] = Array.isArray(rows)
@@ -160,7 +161,7 @@ export function useOperatorHandoverForm(
     return () => {
       cancelled = true;
     };
-  }, [isOpen, booking?.vehicleId, kind, booking]);
+  }, [isOpen, booking?.vehicleId, kind, booking, orgId]);
 
   const patchState = useCallback((patch: Partial<OperatorHandoverFormState>) => {
     setState((prev) => {
@@ -212,10 +213,10 @@ export function useOperatorHandoverForm(
   }, []);
 
   const reloadDamages = useCallback(async () => {
-    if (!booking) return;
+    if (!booking || !orgId) return;
     setLoadingDamages(true);
     try {
-      const rows = await api.vehicleIntelligence.damagesActive(booking.vehicleId);
+      const rows = await operatorApi.listActiveDamages(orgId, booking.vehicleId, booking.id);
       const list: OperatorHandoverDamageRow[] = Array.isArray(rows)
         ? rows.map((r) => ({
             id: String(r.id),
@@ -231,7 +232,7 @@ export function useOperatorHandoverForm(
     } finally {
       setLoadingDamages(false);
     }
-  }, [booking]);
+  }, [booking, orgId]);
 
   const stationOptions =
     kind === 'PICKUP' ? stationsForPickup(orgStations) : stationsForReturn(orgStations);

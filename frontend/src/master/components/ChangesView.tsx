@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-damage-consolidation-v49851-2026-07-25',
+    version: '4.9.851',
+    title: 'V4.9.851 — Operator App: konsolidierte Damage-Capture-Domain (Prompt 26)',
+    summary: [
+      'Operator-Damage-API auf kanonischer `VehicleDamage`-Domain — keine parallele Schadenstabelle.',
+      'Zentrale Operator-DTOs mit Quellen: pickup, return, operator_inspection, manual; KI nur über Document-Intake.',
+      'Deduplizierung (Typ/Area/Description) + idempotente `captureKey` gegen Retry-Duplikate.',
+      'Haftung serverseitig abgeleitet — kein automatischer Kundenhaftungsentscheid; finale Schäden nicht still editierbar.',
+      'Audit Events: CAPTURED, DEDUPLICATED, CAPTURE_IDEMPOTENT, UPDATE_BLOCKED.',
+      'Frontend: Handover + Capture-Flow über `operatorApi.captureDamage` / `listActiveDamages`.',
+    ],
+    reason:
+      'Production-Readiness Prompt 26: Damage-Capture in Operator App auditieren und an kanonische Domain binden.',
+    previousBehavior:
+      'Operator rief `api.vehicleIntelligence.createVehicleDamage` direkt auf — ohne Dedup, Idempotenz oder Audit.',
+    details:
+      'Backend: `operator-damage` submodule, shared `damage-dedup.util`, `damage-status-transition.util`, `OperatorDamageCaptureIdempotency`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:30:00.000Z',
+  },
+  {
     id: 'operator-data-minimization-v49850-2026-07-25',
     version: '4.9.850',
     title: 'V4.9.850 — Operator App: Datenminimierung Dokumente & Kundendaten (Prompt 25)',

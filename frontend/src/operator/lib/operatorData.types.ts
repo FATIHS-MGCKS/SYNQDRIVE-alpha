@@ -92,6 +92,46 @@ export interface OperatorCustomerSearchItemDto {
   licenseStatus: string | null;
 }
 
+export type OperatorDamageCaptureSource =
+  | 'pickup'
+  | 'return'
+  | 'operator_inspection'
+  | 'manual'
+  | 'ai_suggestion';
+
+export interface OperatorDamageListItemDto {
+  id: string;
+  vehicleId: string;
+  damageType: string;
+  severity: string;
+  status: string;
+  source: string;
+  operatorSource: OperatorDamageCaptureSource | null;
+  description: string | null;
+  locationView: string;
+  locationLabel: string | null;
+  rentalImpact: string;
+  liabilityStatus: string;
+  evidenceStatus: string;
+  bookingId: string | null;
+  customerId: string | null;
+  handoverProtocolId: string | null;
+  reportedBy: string | null;
+  isFinal: boolean;
+  isEditable: boolean;
+  isKnownDamage: boolean;
+  isAiSuggestion: boolean;
+  imageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OperatorDamageCaptureResultDto {
+  damage: OperatorDamageListItemDto;
+  deduplicated: boolean;
+  idempotentReplay: boolean;
+}
+
 export interface OperatorDocumentPreviewGrantDto {
   previewPath: string;
   expiresAt: string;
