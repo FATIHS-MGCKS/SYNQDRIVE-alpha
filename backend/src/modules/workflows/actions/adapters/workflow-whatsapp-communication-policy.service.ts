@@ -1,17 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { WhatsAppTemplateCategory } from '@prisma/client';
+import { WhatsAppConsentService } from '@modules/whatsapp/whatsapp-consent.service';
+import {
+  WorkflowCommunicationPolicyEngineService,
+  evaluateQuietHours,
+} from '../../communication-policy';
+import {
+  mapEngineResultToChannel,
+  type WorkflowChannelCommunicationPolicyResult,
+} from './workflow-communication-policy-bridge';
 
-export interface WorkflowWhatsAppCommunicationPolicyResult {
-  allowed: boolean;
-  reason?: string;
-  code?: 'QUIET_HOURS' | 'RATE_LIMIT' | 'CONTACT_FREQUENCY' | 'MARKETING_BLOCKED' | 'CHANNEL_DISABLED';
+export interface WorkflowWhatsAppCommunicationPolicyResult extends WorkflowChannelCommunicationPolicyResult {
+  code?: 'QUIET_HOURS' | 'RATE_LIMIT' | 'CONTACT_FREQUENCY' | 'MARKETING_BLOCKED' | 'CHANNEL_DISABLED' | string;
 }
 
-/** Org-local quiet hours + contact frequency for workflow WhatsApp sends. */
 @Injectable()
 export class WorkflowWhatsAppCommunicationPolicyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly consent: WhatsAppConsentService,
+    private readonly policyEngine: WorkflowCommunicationPolicyEngineService,
+  ) {}
 
   async evaluate(input: {
     organizationId: string;
@@ -20,40 +30,34 @@ export class WorkflowWhatsAppCommunicationPolicyService {
     messageKind: 'transactional' | 'marketing' | 'support';
     enforceQuietHours: boolean;
     respectQuietHours?: boolean;
+    bookingId?: string | null;
+    customerId?: string | null;
+    legalBasisRef?: string | null;
+    aiGenerated?: boolean;
+    aiTransparencyProvided?: boolean;
+    requiresApproval?: boolean;
+    runApproved?: boolean;
+    frozenSnapshot?: import('../../communication-policy').WorkflowCommunicationPolicySnapshot | null;
+    phase?: 'plan' | 'pre_send';
     now?: Date;
   }): Promise<WorkflowWhatsAppCommunicationPolicyResult> {
+    const now = input.now ?? new Date();
     const config = await this.prisma.orgWhatsAppConfig.findUnique({
       where: { organizationId: input.organizationId },
       select: { isActive: true, isConnected: true },
     });
-    if (!config?.isConnected || !config.isActive) {
-      return {
-        allowed: false,
-        code: 'CHANNEL_DISABLED',
-        reason: 'WhatsApp channel is not connected or active for this organization',
-      };
-    }
 
-    if (input.messageKind === 'marketing') {
-      return {
-        allowed: false,
-        code: 'MARKETING_BLOCKED',
-        reason: 'Marketing WhatsApp sends via workflow are not enabled',
-      };
-    }
+    const consentRow = await this.consent.getConsent(input.organizationId, input.phoneNormalized);
+    const optedOut = this.consent.isOptedOut(consentRow);
 
-    if (input.enforceQuietHours && input.respectQuietHours !== false) {
-      const inWindow = await this.isWithinQuietHours(input.organizationId, input.now ?? new Date());
-      if (!inWindow) {
-        return {
-          allowed: false,
-          code: 'QUIET_HOURS',
-          reason: 'Outside organization WhatsApp quiet hours (Mon–Fri 08:00–20:00 org timezone)',
-        };
-      }
-    }
+    const org = await this.prisma.organization.findUnique({
+      where: { id: input.organizationId },
+      select: { timezone: true },
+    });
+    const timeZone = org?.timezone?.trim() || 'Europe/Berlin';
+    const quietHours = evaluateQuietHours(timeZone, now);
 
-    const since24h = new Date((input.now ?? new Date()).getTime() - 24 * 60 * 60 * 1000);
+    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const recentToPhone = await this.prisma.whatsAppMessage.count({
       where: {
         organizationId: input.organizationId,
@@ -63,15 +67,9 @@ export class WorkflowWhatsAppCommunicationPolicyService {
       },
     });
     const maxPerPhonePerDay = 5;
-    if (recentToPhone >= maxPerPhonePerDay) {
-      return {
-        allowed: false,
-        code: 'CONTACT_FREQUENCY',
-        reason: `Contact frequency limit reached (${maxPerPhonePerDay} outbound messages per 24h)`,
-      };
-    }
+    const contactFrequencyExceeded = recentToPhone >= maxPerPhonePerDay;
 
-    const sinceHour = new Date((input.now ?? new Date()).getTime() - 60 * 60 * 1000);
+    const sinceHour = new Date(now.getTime() - 60 * 60 * 1000);
     const recentOrg = await this.prisma.whatsAppMessage.count({
       where: {
         organizationId: input.organizationId,
@@ -79,36 +77,46 @@ export class WorkflowWhatsAppCommunicationPolicyService {
         createdAt: { gte: sinceHour },
       },
     });
-    const maxPerOrgPerHour = 30;
-    if (recentOrg >= maxPerOrgPerHour) {
-      return {
-        allowed: false,
-        code: 'RATE_LIMIT',
-        reason: 'Hourly WhatsApp send limit reached for this organization',
-      };
-    }
+    const rateLimitExceeded = recentOrg >= 30;
 
-    return { allowed: true };
-  }
-
-  private async isWithinQuietHours(orgId: string, now: Date): Promise<boolean> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { timezone: true },
+    const engineResult = this.policyEngine.evaluate({
+      organizationId: input.organizationId,
+      phase: input.phase ?? 'plan',
+      channel: 'whatsapp',
+      processingPurpose: input.messageKind,
+      recipientType: input.bookingId ? 'booking_customer' : 'customer',
+      recipientPhoneNormalized: input.phoneNormalized,
+      recipientValidated: true,
+      bookingId: input.bookingId,
+      customerId: input.customerId,
+      legalBasisRef: input.legalBasisRef ?? 'gdpr.art6.1.b.contract',
+      requireBookingOrContractRef: input.messageKind === 'transactional',
+      optedOut,
+      optedIn: Boolean(consentRow?.optedInAt),
+      requireOptIn: input.messageKind === 'marketing',
+      channelEnabled: Boolean(config?.isConnected && config.isActive),
+      channelPermissionGranted: true,
+      communicationPreference: null,
+      fallbackChannel: 'sms',
+      enforceQuietHours: input.enforceQuietHours,
+      respectQuietHours: input.respectQuietHours,
+      inQuietHours: quietHours.inWindow,
+      quietHoursDelayUntil: quietHours.nextAllowedAt,
+      contactFrequencyExceeded,
+      contactFrequencyDelayUntil: contactFrequencyExceeded
+        ? new Date(now.getTime() + 24 * 60 * 60 * 1000)
+        : null,
+      rateLimitExceeded,
+      rateLimitDelayUntil: rateLimitExceeded ? new Date(now.getTime() + 60 * 60 * 1000) : null,
+      aiGenerated: input.aiGenerated,
+      aiTransparencyProvided: input.aiTransparencyProvided,
+      requiresApproval: input.requiresApproval,
+      runApproved: input.runApproved,
+      frozenSnapshot: input.frozenSnapshot,
+      retentionClass: 'STANDARD',
+      now,
     });
-    const timeZone = org?.timezone?.trim() || 'Europe/Berlin';
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone,
-      weekday: 'short',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false,
-    }).formatToParts(now);
 
-    const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
-    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
-    const isWeekend = weekday === 'Sat' || weekday === 'Sun';
-    if (isWeekend) return false;
-    return hour >= 8 && hour < 20;
+    return mapEngineResultToChannel(engineResult);
   }
 }

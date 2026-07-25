@@ -29,6 +29,8 @@ import { WorkflowAiCommunicationPipelineService } from './adapters/ai-communicat
 import { WorkflowAiCommunicationDataService } from './adapters/ai-communication/workflow-ai-communication-data.service';
 import { WorkflowAiCommunicationFactCheckService } from './adapters/ai-communication/workflow-ai-communication-fact-check.service';
 import { WorkflowAiCommunicationSafetyService } from './adapters/ai-communication/workflow-ai-communication-safety.service';
+import { WorkflowCommunicationPolicyBridgeService } from './adapters/workflow-communication-policy-bridge';
+import { WorkflowCommunicationPolicyEngineService } from '../communication-policy/workflow-communication-policy-engine.service';
 
 export const WORKFLOW_ACTION_HANDLER_CLASSES = [
   TaskCreateActionHandler,
@@ -62,6 +64,8 @@ export const WORKFLOW_ACTION_ADAPTER_SERVICES = [
   WorkflowAiCommunicationDataService,
   WorkflowAiCommunicationFactCheckService,
   WorkflowAiCommunicationSafetyService,
+  WorkflowCommunicationPolicyEngineService,
+  WorkflowCommunicationPolicyBridgeService,
 ] as const;
 
 export const WORKFLOW_ACTION_HANDLER_PROVIDERS = [

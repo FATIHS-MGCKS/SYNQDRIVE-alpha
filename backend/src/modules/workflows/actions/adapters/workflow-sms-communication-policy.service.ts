@@ -1,15 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { SmsConsentService } from '@modules/sms/sms-consent.service';
+import {
+  WorkflowCommunicationPolicyEngineService,
+  evaluateQuietHours,
+} from '../../communication-policy';
+import {
+  mapEngineResultToChannel,
+  type WorkflowChannelCommunicationPolicyResult,
+} from './workflow-communication-policy-bridge';
 
-export interface WorkflowSmsCommunicationPolicyResult {
-  allowed: boolean;
-  reason?: string;
-  code?: 'QUIET_HOURS' | 'RATE_LIMIT' | 'CONTACT_FREQUENCY' | 'MARKETING_BLOCKED' | 'CHANNEL_DISABLED';
+export interface WorkflowSmsCommunicationPolicyResult extends WorkflowChannelCommunicationPolicyResult {
+  code?: 'QUIET_HOURS' | 'RATE_LIMIT' | 'CONTACT_FREQUENCY' | 'MARKETING_BLOCKED' | 'CHANNEL_DISABLED' | string;
 }
 
 @Injectable()
 export class WorkflowSmsCommunicationPolicyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly consent: SmsConsentService,
+    private readonly policyEngine: WorkflowCommunicationPolicyEngineService,
+  ) {}
 
   async evaluate(input: {
     organizationId: string;
@@ -17,40 +28,32 @@ export class WorkflowSmsCommunicationPolicyService {
     enforceQuietHours: boolean;
     respectQuietHours?: boolean;
     messageKind: 'transactional' | 'marketing' | 'support';
+    bookingId?: string | null;
+    customerId?: string | null;
+    legalBasisRef?: string | null;
+    requiresApproval?: boolean;
+    runApproved?: boolean;
+    frozenSnapshot?: import('../../communication-policy').WorkflowCommunicationPolicySnapshot | null;
+    phase?: 'plan' | 'pre_send';
     now?: Date;
   }): Promise<WorkflowSmsCommunicationPolicyResult> {
+    const now = input.now ?? new Date();
     const config = await this.prisma.orgSmsConfig.findUnique({
       where: { organizationId: input.organizationId },
       select: { isActive: true },
     });
-    if (!config?.isActive) {
-      return {
-        allowed: false,
-        code: 'CHANNEL_DISABLED',
-        reason: 'SMS channel is not active for this organization',
-      };
-    }
 
-    if (input.messageKind === 'marketing') {
-      return {
-        allowed: false,
-        code: 'MARKETING_BLOCKED',
-        reason: 'Marketing SMS via workflow is not enabled',
-      };
-    }
+    const consentRow = await this.consent.getConsent(input.organizationId, input.phoneNormalized);
+    const optedOut = this.consent.isOptedOut(consentRow);
 
-    if (input.enforceQuietHours && input.respectQuietHours !== false) {
-      const inWindow = await this.isWithinQuietHours(input.organizationId, input.now ?? new Date());
-      if (!inWindow) {
-        return {
-          allowed: false,
-          code: 'QUIET_HOURS',
-          reason: 'Outside organization SMS quiet hours (Mon–Fri 08:00–20:00 org timezone)',
-        };
-      }
-    }
+    const org = await this.prisma.organization.findUnique({
+      where: { id: input.organizationId },
+      select: { timezone: true },
+    });
+    const timeZone = org?.timezone?.trim() || 'Europe/Berlin';
+    const quietHours = evaluateQuietHours(timeZone, now);
 
-    const since24h = new Date((input.now ?? new Date()).getTime() - 24 * 60 * 60 * 1000);
+    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const recentToPhone = await this.prisma.outboundSms.count({
       where: {
         organizationId: input.organizationId,
@@ -58,46 +61,48 @@ export class WorkflowSmsCommunicationPolicyService {
         createdAt: { gte: since24h },
       },
     });
-    if (recentToPhone >= 3) {
-      return {
-        allowed: false,
-        code: 'CONTACT_FREQUENCY',
-        reason: 'Contact frequency limit reached (3 SMS per phone per 24h)',
-      };
-    }
+    const contactFrequencyExceeded = recentToPhone >= 3;
 
-    const sinceHour = new Date((input.now ?? new Date()).getTime() - 60 * 60 * 1000);
+    const sinceHour = new Date(now.getTime() - 60 * 60 * 1000);
     const recentOrg = await this.prisma.outboundSms.count({
       where: { organizationId: input.organizationId, createdAt: { gte: sinceHour } },
     });
-    if (recentOrg >= 20) {
-      return {
-        allowed: false,
-        code: 'RATE_LIMIT',
-        reason: 'Hourly SMS send limit reached for this organization',
-      };
-    }
+    const rateLimitExceeded = recentOrg >= 20;
 
-    return { allowed: true };
-  }
-
-  private async isWithinQuietHours(orgId: string, now: Date): Promise<boolean> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { timezone: true },
+    const engineResult = this.policyEngine.evaluate({
+      organizationId: input.organizationId,
+      phase: input.phase ?? 'plan',
+      channel: 'sms',
+      processingPurpose: input.messageKind,
+      recipientType: input.bookingId ? 'booking_customer' : 'customer',
+      recipientPhoneNormalized: input.phoneNormalized,
+      recipientValidated: true,
+      bookingId: input.bookingId,
+      customerId: input.customerId,
+      legalBasisRef: input.legalBasisRef ?? 'gdpr.art6.1.b.contract',
+      requireBookingOrContractRef: input.messageKind === 'transactional',
+      optedOut,
+      optedIn: Boolean(consentRow?.optedInAt),
+      requireOptIn: input.messageKind === 'marketing',
+      channelEnabled: Boolean(config?.isActive),
+      channelPermissionGranted: true,
+      enforceQuietHours: input.enforceQuietHours,
+      respectQuietHours: input.respectQuietHours,
+      inQuietHours: quietHours.inWindow,
+      quietHoursDelayUntil: quietHours.nextAllowedAt,
+      contactFrequencyExceeded,
+      contactFrequencyDelayUntil: contactFrequencyExceeded
+        ? new Date(now.getTime() + 24 * 60 * 60 * 1000)
+        : null,
+      rateLimitExceeded,
+      rateLimitDelayUntil: rateLimitExceeded ? new Date(now.getTime() + 60 * 60 * 1000) : null,
+      requiresApproval: input.requiresApproval,
+      runApproved: input.runApproved,
+      frozenSnapshot: input.frozenSnapshot,
+      retentionClass: 'STANDARD',
+      now,
     });
-    const timeZone = org?.timezone?.trim() || 'Europe/Berlin';
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone,
-      weekday: 'short',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false,
-    }).formatToParts(now);
 
-    const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
-    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
-    if (weekday === 'Sat' || weekday === 'Sun') return false;
-    return hour >= 8 && hour < 20;
+    return mapEngineResultToChannel(engineResult);
   }
 }

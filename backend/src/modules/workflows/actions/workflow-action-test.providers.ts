@@ -13,6 +13,7 @@ import { OutboundSmsService } from '@modules/sms/outbound-sms.service';
 import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
 import { LlmGatewayService } from '@modules/ai/llm/llm-gateway.service';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
+import { WorkflowCommunicationPolicyEngineService } from '../communication-policy/workflow-communication-policy-engine.service';
 
 /** Minimal email adapter mocks for workflow action unit tests. */
 export const workflowEmailTestProviders = [
@@ -110,6 +111,7 @@ export const workflowSmsTestProviders = [
         marketingAllowed: false,
         transactionalAllowed: true,
       }),
+      isOptedOut: jest.fn().mockReturnValue(false),
     },
   },
   { provide: OutboundSmsService, useValue: { recordEvent: jest.fn().mockResolvedValue({}) } },
@@ -160,6 +162,7 @@ export const workflowAiCommunicationTestProviders = [
 ];
 
 export const workflowActionAdapterTestProviders = [
+  WorkflowCommunicationPolicyEngineService,
   ...workflowEmailTestProviders,
   ...workflowWhatsAppTestProviders,
   ...workflowSmsTestProviders,

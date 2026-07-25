@@ -22,10 +22,12 @@ import {
 import { WorkflowActionRegistryExecutorService } from './workflow-action-registry.executor.service';
 import { WorkflowActionRegistryService } from './workflow-action-registry.service';
 import { WorkflowActionNoopSecretsResolver } from './workflow-action-secrets.resolver';
+import { WorkflowCommunicationPolicyModule } from '../communication-policy';
 
 @Module({
   imports: [
     PrismaModule,
+    WorkflowCommunicationPolicyModule,
     ConfigModule.forFeature(emailConfig),
     forwardRef(() => TasksModule),
     NotificationsModule,

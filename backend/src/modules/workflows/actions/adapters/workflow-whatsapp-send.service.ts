@@ -29,6 +29,8 @@ import type {
   WorkflowWhatsAppMessageKind,
 } from './workflow-action-adapter.types';
 import { WorkflowWhatsAppCommunicationPolicyService } from './workflow-whatsapp-communication-policy.service';
+import { WorkflowCommunicationPolicyEngineService } from '../../communication-policy';
+import type { WorkflowCommunicationPolicySnapshot } from '../../communication-policy';
 import { maskPhoneNumber } from './workflow-whatsapp-mask.util';
 
 export const WORKFLOW_WHATSAPP_AI_TRANSPARENCY_DE =
@@ -58,6 +60,7 @@ export class WorkflowWhatsAppSendService {
     private readonly consent: WhatsAppConsentService,
     private readonly messagePolicy: WhatsAppMessagePolicyService,
     private readonly communicationPolicy: WorkflowWhatsAppCommunicationPolicyService,
+    private readonly policyEngine: WorkflowCommunicationPolicyEngineService,
   ) {}
 
   buildIdempotencyKey(ctx: WorkflowActionExecutionContext, channel: 'template' | 'ai'): string {
@@ -141,10 +144,17 @@ export class WorkflowWhatsAppSendService {
       messageKind,
       enforceQuietHours: true,
       respectQuietHours: config.respectQuietHours,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      phase: options?.dryRun ? 'plan' : 'pre_send',
+    });
+    this.policyEngine.assertSendPermitted(policyResult, {
+      allowWithApproval: ctx.runApproved === true,
     });
     if (!policyResult.allowed) {
       throw new BadRequestException(policyResult.reason ?? 'Communication policy blocked send');
     }
+    const policySnapshot: WorkflowCommunicationPolicySnapshot | undefined = policyResult.snapshot;
 
     if (options?.dryRun) {
       return {
@@ -161,6 +171,23 @@ export class WorkflowWhatsAppSendService {
         dryRun: true,
       };
     }
+
+    const preSendPolicy = await this.communicationPolicy.evaluate({
+      organizationId: ctx.organizationId,
+      phoneNormalized: resolved.phoneNormalized,
+      templateCategory: template.category,
+      messageKind,
+      enforceQuietHours: true,
+      respectQuietHours: config.respectQuietHours,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      phase: 'pre_send',
+      frozenSnapshot: policySnapshot ?? null,
+      runApproved: ctx.runApproved,
+    });
+    this.policyEngine.assertSendPermitted(preSendPolicy, {
+      allowWithApproval: ctx.runApproved === true,
+    });
 
     const convo = await this.findOrCreateConversation(
       ctx.organizationId,
@@ -284,10 +311,19 @@ export class WorkflowWhatsAppSendService {
       messageKind,
       enforceQuietHours: true,
       respectQuietHours: config.respectQuietHours,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      aiGenerated: true,
+      aiTransparencyProvided: config.appendAiTransparency !== false,
+      phase: options?.dryRun ? 'plan' : 'pre_send',
+    });
+    this.policyEngine.assertSendPermitted(policyResult, {
+      allowWithApproval: ctx.runApproved === true,
     });
     if (!policyResult.allowed) {
       throw new BadRequestException(policyResult.reason ?? 'Communication policy blocked send');
     }
+    const policySnapshot: WorkflowCommunicationPolicySnapshot | undefined = policyResult.snapshot;
 
     const convo = await this.findOrCreateConversation(
       ctx.organizationId,
@@ -323,6 +359,24 @@ export class WorkflowWhatsAppSendService {
         dryRun: true,
       };
     }
+
+    const preSendPolicy = await this.communicationPolicy.evaluate({
+      organizationId: ctx.organizationId,
+      phoneNormalized: resolved.phoneNormalized,
+      messageKind,
+      enforceQuietHours: true,
+      respectQuietHours: config.respectQuietHours,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      aiGenerated: true,
+      aiTransparencyProvided: config.appendAiTransparency !== false,
+      phase: 'pre_send',
+      frozenSnapshot: policySnapshot ?? null,
+      runApproved: ctx.runApproved,
+    });
+    this.policyEngine.assertSendPermitted(preSendPolicy, {
+      allowWithApproval: ctx.runApproved === true,
+    });
 
     const msg = await this.prisma.whatsAppMessage.create({
       data: {

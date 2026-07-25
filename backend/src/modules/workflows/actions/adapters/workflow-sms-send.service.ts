@@ -27,6 +27,8 @@ import type {
   WorkflowSmsLocale,
 } from './workflow-action-adapter.types';
 import { WorkflowSmsCommunicationPolicyService } from './workflow-sms-communication-policy.service';
+import { WorkflowCommunicationPolicyEngineService } from '../../communication-policy';
+import type { WorkflowCommunicationPolicySnapshot } from '../../communication-policy';
 import { maskPhoneNumber } from './workflow-whatsapp-mask.util';
 import {
   renderWorkflowSmsTemplate,
@@ -55,6 +57,7 @@ export class WorkflowSmsSendService {
     private readonly messaging: SmsMessagingService,
     private readonly consent: SmsConsentService,
     private readonly communicationPolicy: WorkflowSmsCommunicationPolicyService,
+    private readonly policyEngine: WorkflowCommunicationPolicyEngineService,
     private readonly outboundSms: OutboundSmsService,
   ) {}
 
@@ -125,10 +128,18 @@ export class WorkflowSmsSendService {
       enforceQuietHours: template.enforceQuietHours,
       respectQuietHours: config.respectQuietHours,
       messageKind,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      phase: options?.dryRun ? 'plan' : 'pre_send',
+    });
+    this.policyEngine.assertSendPermitted(policyResult, {
+      allowWithApproval: ctx.runApproved === true,
     });
     if (!policyResult.allowed) {
       throw new BadRequestException(policyResult.reason ?? 'Communication policy blocked send');
     }
+
+    const policySnapshot: WorkflowCommunicationPolicySnapshot | undefined = policyResult.snapshot;
 
     const sender = await this.messaging.resolveSender(ctx.organizationId);
 
@@ -148,6 +159,22 @@ export class WorkflowSmsSendService {
         dryRun: true,
       };
     }
+
+    const preSendPolicy = await this.communicationPolicy.evaluate({
+      organizationId: ctx.organizationId,
+      phoneNormalized: resolved.phoneNormalized,
+      enforceQuietHours: template.enforceQuietHours,
+      respectQuietHours: config.respectQuietHours,
+      messageKind,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      phase: 'pre_send',
+      frozenSnapshot: policySnapshot ?? null,
+      runApproved: ctx.runApproved,
+    });
+    this.policyEngine.assertSendPermitted(preSendPolicy, {
+      allowWithApproval: ctx.runApproved === true,
+    });
 
     const row = await this.prisma.outboundSms.create({
       data: {

@@ -22,7 +22,7 @@ import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
 } from './workflow-action-handlers.provider';
-import { workflowEmailTestProviders, workflowWhatsAppTestProviders } from './workflow-action-test.providers';
+import { workflowEmailTestProviders, workflowWhatsAppTestProviders, workflowAiCommunicationTestProviders } from './workflow-action-test.providers';
 import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
 import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 
@@ -156,7 +156,7 @@ describe('sms.send workflow action adapter', () => {
     sendSms: jest.Mock;
     resolveSender: jest.Mock;
   };
-  let consent: { assertCanSend: jest.Mock; getConsent: jest.Mock };
+  let consent: { assertCanSend: jest.Mock; getConsent: jest.Mock; isOptedOut: jest.Mock };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
@@ -180,6 +180,7 @@ describe('sms.send workflow action adapter', () => {
         marketingAllowed: false,
         transactionalAllowed: true,
       }),
+      isOptedOut: jest.fn().mockReturnValue(false),
     };
 
     const module = await Test.createTestingModule({
@@ -199,6 +200,7 @@ describe('sms.send workflow action adapter', () => {
         { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false }) } },
         ...workflowEmailTestProviders,
         ...workflowWhatsAppTestProviders,
+        ...workflowAiCommunicationTestProviders,
         { provide: SmsMessagingService, useValue: messaging },
         { provide: SmsConsentService, useValue: consent },
         { provide: OutboundSmsService, useValue: { recordEvent: jest.fn().mockResolvedValue({}) } },

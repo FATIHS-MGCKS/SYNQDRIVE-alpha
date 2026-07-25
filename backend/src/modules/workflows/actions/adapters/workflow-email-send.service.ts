@@ -30,6 +30,8 @@ import type {
   WorkflowEmailLocale,
 } from './workflow-action-adapter.types';
 import { WorkflowEmailCommunicationPolicyService } from './workflow-email-communication-policy.service';
+import { WorkflowCommunicationPolicyEngineService } from '../../communication-policy';
+import type { WorkflowCommunicationPolicySnapshot } from '../../communication-policy';
 import { maskEmailAddress } from './workflow-email-mask.util';
 import {
   isAllowedWorkflowEmailAttachmentMime,
@@ -58,6 +60,7 @@ export class WorkflowEmailSendService {
     private readonly outboundEmail: OutboundEmailService,
     private readonly providers: EmailProviderRegistry,
     private readonly communicationPolicy: WorkflowEmailCommunicationPolicyService,
+    private readonly policyEngine: WorkflowCommunicationPolicyEngineService,
     private readonly generatedDocuments: GeneratedDocumentsService,
     @Inject(DOCUMENTS_STORAGE) private readonly documentStorage: DocumentStoragePort,
   ) {}
@@ -116,6 +119,25 @@ export class WorkflowEmailSendService {
       templateCategory: template.category,
       enforceSendWindow: template.enforceSendWindow,
       respectSendWindow: config.respectSendWindow,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      phase: 'pre_send',
+    });
+    if (policyResult.decision === 'SUPPRESS') {
+      return {
+        outboundEmailId: '',
+        deliveryStatus: 'SUPPRESSED',
+        providerMessageId: null,
+        idempotencyKey,
+        maskedRecipient: maskEmailAddress(resolved.toEmail),
+        duplicate: false,
+        locale,
+        templateId: config.templateId,
+        templateVersion: config.templateVersion,
+      };
+    }
+    this.policyEngine.assertSendPermitted(policyResult, {
+      allowWithApproval: ctx.runApproved === true,
     });
     if (!policyResult.allowed) {
       if (policyResult.code === 'SUPPRESSED') {
@@ -133,6 +155,7 @@ export class WorkflowEmailSendService {
       }
       throw new BadRequestException(policyResult.reason ?? 'Communication policy blocked send');
     }
+    const policySnapshot: WorkflowCommunicationPolicySnapshot | undefined = policyResult.snapshot;
 
     await this.assertRateLimit(ctx.organizationId);
 

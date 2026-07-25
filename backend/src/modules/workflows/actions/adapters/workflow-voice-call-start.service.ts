@@ -26,6 +26,7 @@ import type {
   WorkflowVoiceScenarioKey,
 } from './workflow-action-adapter.types';
 import { WorkflowVoiceCallCommunicationPolicyService } from './workflow-voice-call-communication-policy.service';
+import { WorkflowCommunicationPolicyEngineService } from '../../communication-policy';
 import { maskPhoneNumber } from './workflow-whatsapp-mask.util';
 import { WORKFLOW_VOICE_SCENARIOS } from './workflow-voice-scenarios';
 
@@ -37,6 +38,7 @@ export class WorkflowVoiceCallStartService {
     private readonly prisma: PrismaService,
     private readonly orchestration: VoiceCallOrchestrationService,
     private readonly communicationPolicy: WorkflowVoiceCallCommunicationPolicyService,
+    private readonly policyEngine: WorkflowCommunicationPolicyEngineService,
     private readonly smsConsent: SmsConsentService,
   ) {}
 
@@ -133,10 +135,18 @@ export class WorkflowVoiceCallStartService {
       phoneNormalized: resolved.phoneNormalized,
       callPurpose: config.callPurpose,
       respectCallHours: config.respectCallHours,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      phase: options?.dryRun ? 'plan' : 'pre_send',
+      runApproved: ctx.runApproved,
+    });
+    this.policyEngine.assertSendPermitted(policyResult, {
+      allowWithApproval: ctx.runApproved === true,
     });
     if (!policyResult.allowed) {
       throw new BadRequestException(policyResult.reason ?? 'Voice communication policy blocked call');
     }
+    const policySnapshot = policyResult.snapshot;
 
     const deployment = await this.resolveApprovedDeployment(ctx.organizationId, config.agentVersion);
     const assistant = await this.prisma.voiceAssistant.findUnique({
@@ -178,6 +188,21 @@ export class WorkflowVoiceCallStartService {
         maxDurationSeconds,
       };
     }
+
+    const preSendPolicy = await this.communicationPolicy.evaluate({
+      organizationId: ctx.organizationId,
+      phoneNormalized: resolved.phoneNormalized,
+      callPurpose: config.callPurpose,
+      respectCallHours: config.respectCallHours,
+      bookingId: resolved.bookingId,
+      customerId: resolved.customerId,
+      phase: 'pre_send',
+      frozenSnapshot: policySnapshot ?? null,
+      runApproved: ctx.runApproved,
+    });
+    this.policyEngine.assertSendPermitted(preSendPolicy, {
+      allowWithApproval: ctx.runApproved === true,
+    });
 
     try {
       const result = await Promise.race([

@@ -1,17 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { WorkflowEmailTemplateCategory } from './workflow-email-templates';
+import {
+  WorkflowCommunicationPolicyEngineService,
+  evaluateQuietHours,
+} from '../../communication-policy';
+import {
+  mapEngineResultToChannel,
+  type WorkflowChannelCommunicationPolicyResult,
+} from './workflow-communication-policy-bridge';
 
-export interface WorkflowEmailCommunicationPolicyResult {
-  allowed: boolean;
-  reason?: string;
-  code?: 'SUPPRESSED' | 'SEND_WINDOW' | 'MARKETING_BLOCKED';
+export interface WorkflowEmailCommunicationPolicyResult extends WorkflowChannelCommunicationPolicyResult {
+  code?: 'SUPPRESSED' | 'SEND_WINDOW' | 'MARKETING_BLOCKED' | string;
 }
 
-/** Org-local send window: Mon–Fri 08:00–20:00 in org timezone. */
 @Injectable()
 export class WorkflowEmailCommunicationPolicyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly policyEngine: WorkflowCommunicationPolicyEngineService,
+  ) {}
 
   async evaluate(input: {
     organizationId: string;
@@ -19,62 +27,59 @@ export class WorkflowEmailCommunicationPolicyService {
     templateCategory: WorkflowEmailTemplateCategory;
     enforceSendWindow: boolean;
     respectSendWindow?: boolean;
+    bookingId?: string | null;
+    customerId?: string | null;
+    legalBasisRef?: string | null;
+    requiresApproval?: boolean;
+    runApproved?: boolean;
+    frozenSnapshot?: import('../../communication-policy').WorkflowCommunicationPolicySnapshot | null;
+    phase?: 'plan' | 'pre_send';
     now?: Date;
   }): Promise<WorkflowEmailCommunicationPolicyResult> {
+    const now = input.now ?? new Date();
+    const email = input.recipientEmail.trim().toLowerCase();
+
     const suppressed = await this.prisma.billingEmailSuppression.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        email: input.recipientEmail.trim().toLowerCase(),
-      },
+      where: { organizationId: input.organizationId, email },
     });
-    if (suppressed) {
-      return {
-        allowed: false,
-        code: 'SUPPRESSED',
-        reason: `Recipient suppressed (${suppressed.reason})`,
-      };
-    }
 
-    if (input.templateCategory === 'MARKETING') {
-      return {
-        allowed: false,
-        code: 'MARKETING_BLOCKED',
-        reason: 'Marketing email templates are not enabled for workflow sends',
-      };
-    }
-
-    if (input.enforceSendWindow && input.respectSendWindow !== false) {
-      const inWindow = await this.isWithinSendWindow(input.organizationId, input.now ?? new Date());
-      if (!inWindow) {
-        return {
-          allowed: false,
-          code: 'SEND_WINDOW',
-          reason: 'Outside organization email send window (Mon–Fri 08:00–20:00 org timezone)',
-        };
-      }
-    }
-
-    return { allowed: true };
-  }
-
-  private async isWithinSendWindow(orgId: string, now: Date): Promise<boolean> {
     const org = await this.prisma.organization.findUnique({
-      where: { id: orgId },
+      where: { id: input.organizationId },
       select: { timezone: true },
     });
     const timeZone = org?.timezone?.trim() || 'Europe/Berlin';
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone,
-      weekday: 'short',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false,
-    }).formatToParts(now);
+    const quietHours = evaluateQuietHours(timeZone, now);
 
-    const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
-    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
-    const isWeekend = weekday === 'Sat' || weekday === 'Sun';
-    if (isWeekend) return false;
-    return hour >= 8 && hour < 20;
+    const purpose =
+      input.templateCategory === 'MARKETING' ? 'marketing' : 'transactional';
+
+    const engineResult = this.policyEngine.evaluate({
+      organizationId: input.organizationId,
+      phase: input.phase ?? 'plan',
+      channel: 'email',
+      processingPurpose: purpose,
+      recipientType: input.bookingId ? 'booking_customer' : 'customer',
+      recipientEmail: email,
+      recipientValidated: email.includes('@'),
+      bookingId: input.bookingId,
+      customerId: input.customerId,
+      legalBasisRef: input.legalBasisRef ?? 'gdpr.art6.1.b.contract',
+      requireBookingOrContractRef: purpose === 'transactional',
+      optedOut: Boolean(suppressed),
+      emailSuppressed: Boolean(suppressed),
+      channelEnabled: true,
+      channelPermissionGranted: true,
+      enforceQuietHours: input.enforceSendWindow,
+      respectQuietHours: input.respectSendWindow,
+      inQuietHours: quietHours.inWindow,
+      quietHoursDelayUntil: quietHours.nextAllowedAt,
+      requiresApproval: input.requiresApproval,
+      runApproved: input.runApproved,
+      frozenSnapshot: input.frozenSnapshot,
+      retentionClass: 'STANDARD',
+      now,
+    });
+
+    return mapEngineResultToChannel(engineResult);
   }
 }

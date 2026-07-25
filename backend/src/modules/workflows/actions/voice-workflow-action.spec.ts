@@ -27,6 +27,7 @@ import {
   workflowSmsTestProviders,
   workflowWhatsAppTestProviders,
   workflowEmailTestProviders,
+  workflowAiCommunicationTestProviders,
 } from './workflow-action-test.providers';
 import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
 import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
@@ -156,7 +157,7 @@ describe('voice.call.start workflow action adapter', () => {
   let executor: WorkflowActionRegistryExecutorService;
   let prisma: ReturnType<typeof createPrismaMock>;
   let orchestration: { orchestrateOutboundCall: jest.Mock };
-  let consent: { assertCanSend: jest.Mock };
+  let consent: { assertCanSend: jest.Mock; getConsent: jest.Mock; isOptedOut: jest.Mock };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
@@ -191,6 +192,11 @@ describe('voice.call.start workflow action adapter', () => {
     };
     consent = {
       assertCanSend: jest.fn().mockResolvedValue(undefined),
+      getConsent: jest.fn().mockResolvedValue({
+        optedInAt: new Date(),
+        optedOutAt: null,
+      }),
+      isOptedOut: jest.fn().mockReturnValue(false),
     };
 
     const module = await Test.createTestingModule({
@@ -211,6 +217,7 @@ describe('voice.call.start workflow action adapter', () => {
         ...workflowEmailTestProviders,
         ...workflowWhatsAppTestProviders,
         ...workflowSmsTestProviders.filter((p) => (p as { provide?: unknown }).provide !== SmsConsentService),
+        ...workflowAiCommunicationTestProviders,
         { provide: SmsConsentService, useValue: consent },
         { provide: VoiceCallOrchestrationService, useValue: orchestration },
       ],
@@ -370,6 +377,7 @@ describe('voice.call.start workflow action adapter', () => {
       prisma as never,
       orchestration as never,
       { evaluate: jest.fn() } as never,
+      { assertSendPermitted: jest.fn() } as never,
       consent as never,
     );
     const postCall = await service.resolvePostCallResult(ORG, 'conv-final');

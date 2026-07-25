@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-communication-policy-engine-v49849-2026-07-25',
+    version: '4.9.849',
+    title: 'V4.9.849 — Central Workflow Communication Policy Engine (Phase 9 Prompt 39)',
+    summary: [
+      'Central WorkflowCommunicationPolicyEngineService: ALLOW, ALLOW_WITH_APPROVAL, DELAY_UNTIL, FALLBACK_CHANNEL, SUPPRESS, DENY.',
+      'Checks: tenant, purpose, legal basis ref, booking ref, opt-in/out, quiet hours, frequency, approval, AI transparency, snapshot.',
+      'Two-phase evaluation: plan (dry-run) + pre_send (immediate before provider). Later opt-out blocks scheduled sends.',
+      'Channel adapters (SMS, WhatsApp, email, voice) delegate to engine; assertSendPermitted() mandatory before provider.',
+      '13 engine tests + 66 communication workflow tests passing.',
+    ],
+    reason: 'All automated customer contacts need a single auditable policy gate — not per-channel silos.',
+    previousBehavior: 'Per-channel policy services returned allowed/boolean only; no unified decisions or pre-send re-check.',
+    details: 'docs/privacy/workflow-communication-policy-2026-07.md. Module: communication-policy/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T18:00:00.000Z',
+  },
+  {
     id: 'workflow-ai-communication-pipeline-v49848-2026-07-25',
     version: '4.9.848',
     title: 'V4.9.848 — Workflow AI Communication Governance Pipeline (Phase 8 Prompt 38)',
