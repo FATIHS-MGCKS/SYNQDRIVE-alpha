@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-production-smoke-v49836-2026-07-25',
+    version: '4.9.836',
+    title: 'V4.9.836 — Operator App production smoke test (Prompt 43)',
+    summary: [
+      'Read-only production smoke on app.synqdrive.eu: 12/12 PASS (SPA, health, 401 gates, security headers, latency ~0.29s).',
+      'Write-path smoke SKIPPED — GAP-043-001: no isolated Operator production test tenant documented.',
+      'Production blocker for full write-path sign-off: YES (test tenant gap); infra read-only: PASS.',
+      'Audit: docs/audits/operator-app-production-smoke-2026-07.md; fix Playwright beforeEach destructuring in operator-flow.spec.ts.',
+    ],
+    reason: 'Controlled production smoke per Operator production-readiness Prompt 43.',
+    previousBehavior: 'Prompt 42 VPS audit read-only only; no production smoke report.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Operator',
+    createdAt: '2026-07-25T22:18:00.000Z',
+  },
+  {
     id: 'operator-app-vps-audit-executed-v49835-2026-07-25',
     version: '4.9.835',
     title: 'V4.9.835 — Operator App VPS control audit executed (Prompt 42)',

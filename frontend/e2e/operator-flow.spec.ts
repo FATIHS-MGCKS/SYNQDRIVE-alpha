@@ -17,7 +17,7 @@ import {
 test.describe('Operator App E2E — core field flows', () => {
   test.describe.configure({ mode: 'serial' });
 
-  test.beforeEach(async (_context, testInfo) => {
+  test.beforeEach(async ({}, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-375', 'Serial operator flows run on mobile-375');
   });
 
