@@ -5,6 +5,10 @@ import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useFleetVehicles } from '../../rental/FleetContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
+import {
+  OperatorFullScreenDialog,
+  useOperatorDialogTitleId,
+} from '../components/OperatorFullScreenDialog';
 import { OperatorTireMeasureTreadGrid } from './OperatorTireMeasureTreadGrid';
 import {
   defaultTireSetupSelection,
@@ -192,44 +196,28 @@ export function OperatorTireMeasureFlow({ action }: Props) {
   const selectedSetup = data.setupOptions.find((o) => o.id === selectedSetupId);
 
   return (
-    <div
-      className="fixed inset-0 z-[135] flex flex-col bg-background"
-      style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
-      role="dialog"
-      aria-modal
-      aria-labelledby="operator-tire-measure-title"
-    >
+    <OperatorFullScreenDialog onClose={closeSheet} zIndexClass="z-[135]">
       <header className="shrink-0 border-b border-border/50 px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Reifenprofil messen
-            </p>
-            <h2 id="operator-tire-measure-title" className="truncate text-base font-bold text-foreground">
-              {vehicleLabel}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={closeSheet}
-            className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <OperatorTireMeasureHeader vehicleLabel={vehicleLabel} onClose={closeSheet} />
         <div className="mt-3">
-          <div className="mb-1 flex justify-between text-[10px] font-semibold uppercase text-muted-foreground">
+          <p
+            className="mb-1 flex justify-between text-[10px] font-semibold uppercase text-muted-foreground"
+            aria-live="polite"
+          >
             <span>
               Schritt {stepIndex(step) + 1}/{OPERATOR_TIRE_MEASURE_STEPS.length} — {STEP_LABELS[step]}
             </span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          </p>
+          <div
+            className="h-1.5 overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
+            aria-label={`Fortschritt Schritt ${stepIndex(step) + 1} von ${OPERATOR_TIRE_MEASURE_STEPS.length}`}
+          >
             <div
-              className="h-full rounded-full bg-[color:var(--brand)] transition-all"
+              className="h-full rounded-full bg-[color:var(--brand)] motion-safe:transition-all motion-safe:duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -467,12 +455,18 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   Backend.
                 </p>
                 {submitError && (
-                  <p className="text-sm text-[color:var(--status-critical)]">{submitError}</p>
+                  <p role="alert" className="text-sm text-[color:var(--status-critical)]">
+                    {submitError}
+                  </p>
                 )}
               </div>
             )}
 
-            {stepError && <p className="mt-2 text-sm text-[color:var(--status-critical)]">{stepError}</p>}
+            {stepError && (
+              <p role="alert" className="mt-2 text-sm text-[color:var(--status-critical)]">
+                {stepError}
+              </p>
+            )}
           </>
         )}
       </div>
@@ -509,6 +503,37 @@ export function OperatorTireMeasureFlow({ action }: Props) {
           )}
         </div>
       </footer>
+    </OperatorFullScreenDialog>
+  );
+}
+
+function OperatorTireMeasureHeader({
+  vehicleLabel,
+  onClose,
+}: {
+  vehicleLabel: string;
+  onClose: () => void;
+}) {
+  const titleId = useOperatorDialogTitleId();
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Reifenprofil messen
+        </p>
+        <h2 id={titleId} className="truncate text-base font-bold text-foreground">
+          {vehicleLabel}
+        </h2>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+        aria-label="Schließen"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
     </div>
   );
 }

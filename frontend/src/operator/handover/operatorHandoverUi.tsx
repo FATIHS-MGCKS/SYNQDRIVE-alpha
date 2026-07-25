@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
+import { useId } from 'react';
+import { operatorFieldDescribedBy } from '../lib/operatorA11y';
 
 export const operatorFieldClass =
-  'h-12 w-full rounded-xl border border-border bg-background px-3 text-base outline-none focus:border-[color:var(--brand)]/40';
+  'h-12 w-full rounded-xl border border-border bg-background px-3 text-base outline-none focus-visible:border-[color:var(--brand)]/40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/30';
 
 export const operatorTextareaClass =
-  'min-h-[88px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-[color:var(--brand)]/40';
+  'min-h-[88px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus-visible:border-[color:var(--brand)]/40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/30';
 
 export function OperatorHandoverField({
   label,
@@ -17,15 +19,30 @@ export function OperatorHandoverField({
   children: ReactNode;
   error?: string;
 }) {
+  const fieldId = useId();
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+  const errorId = error ? `${fieldId}-error` : undefined;
+  const describedBy = operatorFieldDescribedBy(hintId, errorId);
+
   return (
-    <label className="block space-y-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="block space-y-1.5">
+      <span id={`${fieldId}-label`} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-      {error && <p className="text-[11px] text-[color:var(--status-critical)]">{error}</p>}
-    </label>
+      <div aria-labelledby={`${fieldId}-label`} aria-describedby={describedBy} aria-invalid={error ? true : undefined}>
+        {children}
+      </div>
+      {hint && (
+        <p id={hintId} className="text-[11px] text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={errorId} role="alert" className="text-[11px] text-[color:var(--status-critical)]">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -44,7 +61,9 @@ export function OperatorToggleRow({
     <button
       type="button"
       onClick={onChange}
-      className={`sq-press flex min-h-[48px] w-full items-center justify-between rounded-xl border px-4 text-left text-sm font-medium ${
+      aria-pressed={checked}
+      aria-label={`${label}: ${checked ? 'aktiv' : 'inaktiv'}`}
+      className={`sq-press flex min-h-[48px] w-full items-center justify-between rounded-xl border px-4 text-left text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 motion-reduce:transition-none ${
         checked
           ? danger
             ? 'border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06]'

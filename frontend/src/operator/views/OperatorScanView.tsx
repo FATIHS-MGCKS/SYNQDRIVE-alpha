@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ScanLine, Search } from 'lucide-react';
 import { EmptyState, SkeletonRows } from '../../components/patterns';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -86,29 +86,38 @@ export function OperatorScanView() {
     });
   };
 
+  const searchInputId = useId();
+  const searchHintId = `${searchInputId}-hint`;
+
   const listContent = (
     <div className="flex h-full min-h-0 flex-col space-y-4">
       <div className="shrink-0 space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+        <label htmlFor={searchInputId} className="relative block">
+          <span className="sr-only">Fahrzeug oder Buchung suchen</span>
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <input
+            id={searchInputId}
             type="search"
             inputMode="search"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
             placeholder="Kennzeichen, Fahrzeug oder Buchungs-ID"
+            aria-describedby={searchHintId}
             value={scanQuery}
             onChange={(e) => {
               setScanQuery(e.target.value);
               setFocusedBookingId(null);
             }}
-            className="h-14 w-full rounded-2xl border border-border/70 surface-premium pl-12 pr-4 text-lg shadow-[var(--shadow-1)] outline-none focus:border-[color:var(--brand)]/40"
+            className="h-14 w-full rounded-2xl border border-border/70 surface-premium pl-12 pr-4 text-lg shadow-[var(--shadow-1)] outline-none focus-visible:border-[color:var(--brand)]/40 focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/30"
           />
-        </div>
+        </label>
 
-        <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-center">
-          <ScanLine className="mx-auto h-6 w-6 text-muted-foreground" />
+        <div
+          id={searchHintId}
+          className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-center"
+        >
+          <ScanLine className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
           <p className="mt-2 text-sm font-semibold text-foreground">Kennzeichen eingeben</p>
           <p className="mt-1 text-xs text-muted-foreground">
             QR-Scanner später verfügbar — WebApp/PWA ohne native Scanner-Library im MVP.
@@ -120,7 +129,9 @@ export function OperatorScanView() {
         {loading && hasQuery && <SkeletonRows rows={4} />}
 
         {!loading && bookingsError && (
-          <p className="text-xs text-[color:var(--status-critical)]">{bookingsError}</p>
+          <p role="alert" className="text-xs text-[color:var(--status-critical)]">
+            {bookingsError}
+          </p>
         )}
 
         {!loading && !hasQuery && (

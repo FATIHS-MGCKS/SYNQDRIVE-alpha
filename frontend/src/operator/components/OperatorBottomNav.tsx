@@ -35,11 +35,12 @@ export function OperatorBottomNav() {
               type="button"
               onClick={() => setActiveTab(item.id)}
               data-active={active ? 'true' : undefined}
-              className={`sq-press flex min-h-[52px] min-w-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
+              className={`sq-press flex min-h-[52px] min-w-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 motion-reduce:transition-none ${
                 active
                   ? 'text-[color:var(--brand-ink)]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
+              aria-label={item.label}
               aria-current={active ? 'page' : undefined}
             >
               <span

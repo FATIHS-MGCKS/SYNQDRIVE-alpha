@@ -1,5 +1,5 @@
 import { Icon } from '../ui/Icon';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useId, useRef, useState, useCallback } from 'react';
 
 
 // V4.6.75 — Canvas-based signature pad with touch + mouse + typed-name
@@ -35,6 +35,8 @@ export function SignaturePad({
   canvasHeight = 140,
 }: SignaturePadProps) {
   const [mode, setMode] = useState<Mode>('draw');
+  const canvasLabelId = useId();
+  const helperId = useId();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -159,15 +161,16 @@ export function SignaturePad({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <label className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <span id={canvasLabelId} className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-        <div className="flex items-center gap-1">
+          {required && <span className="text-red-500 ml-0.5" aria-hidden>*</span>}
+        </span>
+        <div className="flex items-center gap-1" role="group" aria-label={`${label}: Eingabemodus`}>
           <button
             type="button"
             onClick={() => setMode('draw')}
-            className={`${badgeBase} ${
+            aria-pressed={mode === 'draw'}
+            className={`${badgeBase} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 ${
               mode === 'draw'
                 ? isDarkMode
                   ? 'bg-brand/30 text-brand border border-brand/40'
@@ -183,7 +186,8 @@ export function SignaturePad({
           <button
             type="button"
             onClick={() => setMode('type')}
-            className={`${badgeBase} ${
+            aria-pressed={mode === 'type'}
+            className={`${badgeBase} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 ${
               mode === 'type'
                 ? isDarkMode
                   ? 'bg-brand/30 text-brand border border-brand/40'
@@ -203,6 +207,10 @@ export function SignaturePad({
         <div className={`relative rounded-lg border ${borderColor} ${canvasBg} overflow-hidden`}>
           <canvas
             ref={canvasRef}
+            role="img"
+            aria-labelledby={canvasLabelId}
+            aria-describedby={helperText ? helperId : undefined}
+            aria-label={`${label}: Unterschrift zeichnen`}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -218,17 +226,18 @@ export function SignaturePad({
           <button
             type="button"
             onClick={clearCanvas}
-            className={`absolute top-2 right-2 p-1.5 rounded-md transition-colors ${
+            aria-label={`${label}: Unterschrift löschen`}
+            className={`absolute top-2 right-2 p-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 motion-reduce:transition-none ${
               isDarkMode
                 ? 'surface-premium/90 text-gray-400 hover:text-red-400 hover:bg-neutral-700'
                 : 'bg-white/90 text-gray-500 hover:text-red-500 hover:bg-gray-50 shadow-sm'
             }`}
             title="Unterschrift löschen"
           >
-            <Icon name="eraser" className="w-3.5 h-3.5" />
+            <Icon name="eraser" className="w-3.5 h-3.5" aria-hidden />
           </button>
           {!dataUrl && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
               <span className={`text-[11px] ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
                 Hier unterschreiben
               </span>
@@ -241,7 +250,9 @@ export function SignaturePad({
           value={typedName}
           onChange={(e) => onTypedNameChange(e.target.value)}
           placeholder="Vor- und Nachname"
-          className={`w-full px-3 py-2 rounded-lg border text-sm ${
+          aria-labelledby={canvasLabelId}
+          aria-describedby={helperText ? helperId : undefined}
+          className={`w-full px-3 py-2 rounded-lg border text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 ${
             isDarkMode
               ? 'bg-neutral-900 border-neutral-700 text-gray-100 placeholder-gray-500'
               : 'bg-background border-border text-foreground placeholder:text-muted-foreground'
@@ -250,7 +261,9 @@ export function SignaturePad({
       )}
 
       {helperText && (
-        <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>{helperText}</p>
+        <p id={helperId} className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+          {helperText}
+        </p>
       )}
     </div>
   );

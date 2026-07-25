@@ -13,6 +13,7 @@ export function OperatorConnectivityBanner() {
     <div
       className="flex items-center justify-center gap-2 border-b border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.08] px-4 py-2 text-center text-[11px] font-medium text-[color:var(--status-watch)]"
       role="status"
+      aria-live="polite"
     >
       <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span>Verbindung instabil oder offline — Aktionen werden erst nach erneutem Senden übernommen.</span>

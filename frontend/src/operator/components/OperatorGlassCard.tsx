@@ -5,7 +5,6 @@ interface OperatorGlassCardProps {
   children: ReactNode;
   className?: string;
   onClick?: () => void;
-  as?: 'div' | 'button';
   disabled?: boolean;
   /** `chrome` = nav/header frost; `content` = list/panel premium solid */
   variant?: 'chrome' | 'content';
@@ -15,7 +14,6 @@ export function OperatorGlassCard({
   children,
   className,
   onClick,
-  as = 'div',
   disabled,
   variant = 'content',
 }: OperatorGlassCardProps) {
@@ -27,17 +25,18 @@ export function OperatorGlassCard({
     className,
   );
 
-  if (as === 'button') {
+  if (onClick) {
     return (
-      <button type="button" className={cn(base, 'w-full text-left')} onClick={onClick} disabled={disabled}>
+      <button
+        type="button"
+        className={cn(base, 'w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40')}
+        onClick={onClick}
+        disabled={disabled}
+      >
         {children}
       </button>
     );
   }
 
-  return (
-    <div className={base} onClick={disabled ? undefined : onClick} role={onClick ? 'button' : undefined}>
-      {children}
-    </div>
-  );
+  return <div className={base}>{children}</div>;
 }

@@ -3,6 +3,10 @@ import { Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
 import type { ManualPickupCheckDto } from '../../lib/api';
+import {
+  OperatorFullScreenDialog,
+  useOperatorDialogTitleId,
+} from '../components/OperatorFullScreenDialog';
 
 interface OperatorPickupCheckSheetProps {
   customerId: string;
@@ -47,6 +51,38 @@ const CHECKLIST_ITEMS: Array<{
   },
 ];
 
+function PickupCheckHeader({
+  customerName,
+  onClose,
+}: {
+  customerName: string;
+  onClose: () => void;
+}) {
+  const titleId = useOperatorDialogTitleId();
+
+  return (
+    <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Manuelle Prüfung
+        </p>
+        <h2 id={titleId} className="truncate text-base font-bold">
+          Prüfung beim Pickup
+        </h2>
+        <p className="text-xs text-muted-foreground truncate">{customerName}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+        aria-label="Schließen"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
+    </header>
+  );
+}
+
 export function OperatorPickupCheckSheet({
   customerId,
   bookingId,
@@ -81,29 +117,8 @@ export function OperatorPickupCheckSheet({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex flex-col bg-background"
-      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-      role="dialog"
-      aria-modal
-    >
-      <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Manuelle Prüfung
-          </p>
-          <h2 className="truncate text-base font-bold">Prüfung beim Pickup</h2>
-          <p className="text-xs text-muted-foreground truncate">{customerName}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-          aria-label="Schließen"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </header>
+    <OperatorFullScreenDialog onClose={onClose} zIndexClass="z-[60]">
+      <PickupCheckHeader customerName={customerName} onClose={onClose} />
 
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 space-y-4">
         <p className="text-sm text-muted-foreground">
@@ -115,11 +130,11 @@ export function OperatorPickupCheckSheet({
           {CHECKLIST_ITEMS.map((item) => (
             <label
               key={item.key}
-              className="flex items-start gap-3 px-4 py-3 text-sm cursor-pointer"
+              className="flex items-start gap-3 px-4 py-3 text-sm cursor-pointer min-h-[48px]"
             >
               <input
                 type="checkbox"
-                className="mt-0.5"
+                className="mt-0.5 h-5 w-5"
                 checked={Boolean(form[item.key])}
                 onChange={() => toggle(item.key)}
               />
@@ -134,14 +149,18 @@ export function OperatorPickupCheckSheet({
         </div>
 
         <div>
-          <label className="block text-[10px] font-semibold uppercase text-muted-foreground mb-1.5">
+          <label
+            htmlFor="operator-pickup-check-notes"
+            className="block text-[10px] font-semibold uppercase text-muted-foreground mb-1.5"
+          >
             Notizen
           </label>
           <textarea
+            id="operator-pickup-check-notes"
             rows={3}
             value={form.notes ?? ''}
             onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-            className="w-full rounded-xl border border-border/60 surface-premium px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-border/60 surface-premium px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
             placeholder="Optionale Anmerkungen zur Pickup-Prüfung…"
           />
         </div>
@@ -156,7 +175,7 @@ export function OperatorPickupCheckSheet({
         >
           {saving ? (
             <span className="inline-flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden />
               Speichern…
             </span>
           ) : (
@@ -166,11 +185,11 @@ export function OperatorPickupCheckSheet({
         <button
           type="button"
           onClick={onClose}
-          className="sq-press min-h-[44px] w-full rounded-xl border border-border/60 text-sm font-medium"
+          className="sq-press min-h-[44px] w-full rounded-xl border border-border/60 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
         >
           Abbrechen
         </button>
       </footer>
-    </div>
+    </OperatorFullScreenDialog>
   );
 }

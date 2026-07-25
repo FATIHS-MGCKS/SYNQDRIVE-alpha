@@ -54,7 +54,8 @@ function OperatorTodayStaleBanner({ offline, onRetry }: { offline: boolean; onRe
       <button
         type="button"
         onClick={onRetry}
-        className="sq-press inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 text-[11px] font-semibold text-foreground"
+        aria-label="Daten aktualisieren"
+        className="sq-press inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 text-[11px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
       >
         <RefreshCw className="h-3.5 w-3.5" aria-hidden />
         Aktualisieren

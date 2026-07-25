@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Car } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
 import { deriveVehicleOperatorStatuses } from '../lib/operatorStatus';
@@ -24,6 +24,7 @@ export function OperatorVehiclesView() {
   const { tasksByVehicleId } = useOperatorData();
   const { selectedVehicleId, setSelectedVehicleId } = useOperatorShell();
   const isTablet = useOperatorTabletLayout();
+  const vehicleSearchId = useId();
 
   const filtered = vehicles.filter((v) => {
     const health = healthMap.get(v.id);
@@ -34,12 +35,16 @@ export function OperatorVehiclesView() {
 
   const listContent = (
     <div className="flex h-full min-h-0 flex-col space-y-3">
+      <label htmlFor={vehicleSearchId} className="sr-only">
+        Fahrzeuge suchen
+      </label>
       <input
+        id={vehicleSearchId}
         type="search"
         placeholder="Kennzeichen oder Fahrzeugname…"
         value={localSearch}
         onChange={(e) => setLocalSearch(e.target.value)}
-        className="h-11 w-full shrink-0 rounded-xl border border-border surface-premium px-3 text-sm"
+        className="h-11 w-full shrink-0 rounded-xl border border-border surface-premium px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
       />
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {OPERATOR_VEHICLE_FILTERS.map((f) => (
