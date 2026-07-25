@@ -3878,6 +3878,40 @@ export const api = {
     cancelHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN', data?: any) =>
       del<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`, data),
   },
+  operatorUploads: {
+    register: (orgId: string, data: Record<string, unknown>) =>
+      post<any>(`/organizations/${orgId}/operator-uploads`, data),
+    get: (orgId: string, clientUploadId: string) =>
+      get<any>(`/organizations/${orgId}/operator-uploads/${clientUploadId}`),
+    uploadBinary: async (
+      orgId: string,
+      clientUploadId: string,
+      file: File,
+      init?: RequestInit,
+    ) => {
+      const token = getToken();
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(
+        `${BASE_URL}/organizations/${orgId}/operator-uploads/${clientUploadId}/binary`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: form,
+          signal: init?.signal,
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new ApiHttpError(res.status, body, res.url);
+      }
+      return res.json();
+    },
+    cancel: (orgId: string, clientUploadId: string) =>
+      post<any>(`/organizations/${orgId}/operator-uploads/${clientUploadId}/cancel`, {}),
+    listBySession: (orgId: string, handoverSessionId: string) =>
+      get<any[]>(`/organizations/${orgId}/operator-uploads/sessions/${handoverSessionId}`),
+  },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.
   documents: {

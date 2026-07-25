@@ -26,6 +26,9 @@ import { useOperatorHandoverForm } from './useOperatorHandoverForm';
 import { useOperatorHandoverDraft } from './useOperatorHandoverDraft';
 import { OperatorHandoverSaveStatus } from './OperatorHandoverSaveStatus';
 import { OperatorHandoverConflictDialog } from './OperatorHandoverConflictDialog';
+import { useOperatorUploadQueue } from '../upload-queue/useOperatorUploadQueue';
+import { OperatorUploadStatusList } from '../upload-queue/OperatorUploadStatusList';
+import { dataUrlToBlob } from '../upload-queue/operatorUploadQueue.utils';
 
 const STEP_LABELS: Record<OperatorHandoverStepId, string> = {
   vehicle: 'Fahrzeug',
@@ -79,6 +82,21 @@ export function OperatorHandoverFlow({
     form.patchState,
     setStep,
   );
+
+  const uploadContext = useMemo(
+    () =>
+      booking
+        ? {
+            orgId,
+            bookingId: booking.id,
+            vehicleId: booking.vehicleId,
+            handoverSessionId: draftSync.sessionId,
+            handoverKind: kind,
+          }
+        : null,
+    [orgId, booking, draftSync.sessionId, kind],
+  );
+  const uploadQueue = useOperatorUploadQueue(isOpen ? uploadContext : null);
 
   useEffect(() => {
     if (isOpen) {
@@ -162,6 +180,36 @@ export function OperatorHandoverFlow({
     }
     const saved = await draftSync.flushSave();
     if (!saved && draftSync.conflict) return;
+
+    if (form.state.customerSigData?.trim()) {
+      const blob = dataUrlToBlob(form.state.customerSigData);
+      if (blob) {
+        await uploadQueue.enqueue({
+          kind: 'SIGNATURE',
+          file: blob,
+          fileName: 'customer-signature.png',
+          mimeType: 'image/png',
+          required: true,
+        });
+      }
+    }
+    if (form.state.staffSigData?.trim()) {
+      const blob = dataUrlToBlob(form.state.staffSigData);
+      if (blob) {
+        await uploadQueue.enqueue({
+          kind: 'SIGNATURE',
+          file: blob,
+          fileName: 'staff-signature.png',
+          mimeType: 'image/png',
+          required: true,
+        });
+      }
+    }
+    await uploadQueue.flush();
+    if (uploadQueue.hasBlockingUploads) {
+      setSubmitError('Pflicht-Uploads sind noch nicht abgeschlossen.');
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError(null);
@@ -364,6 +412,14 @@ export function OperatorHandoverFlow({
       </div>
 
       <footer className="shrink-0 border-t border-border/50 bg-background/95 p-4">
+        {uploadQueue.items.length > 0 && (
+          <div className="mb-3">
+            <OperatorUploadStatusList
+              items={uploadQueue.items}
+              onCancel={(id) => void uploadQueue.cancel(id)}
+            />
+          </div>
+        )}
         <div className="flex gap-2">
           {stepIndex(step) > 0 && (
             <button
@@ -388,7 +444,12 @@ export function OperatorHandoverFlow({
             <button
               type="button"
               onClick={() => void handleSubmit()}
-              disabled={submitting || allIssues.length > 0 || draftSync.draftLoading}
+              disabled={
+                submitting ||
+                allIssues.length > 0 ||
+                draftSync.draftLoading ||
+                uploadQueue.hasBlockingUploads
+              }
               className="sq-3d-btn sq-3d-btn--primary flex min-h-[52px] flex-[2] items-center justify-center gap-2 font-semibold disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
