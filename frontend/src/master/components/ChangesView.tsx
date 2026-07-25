@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-run-state-machine-v49830-2026-07-25',
+    version: '4.9.830',
+    title: 'V4.9.830 — Workflow run state machine (Phase 5 Prompt 20)',
+    summary: [
+      'Persistent canonical WorkflowRun / WorkflowActionRun state machine with central transition guards and append-only audit.',
+      'WorkflowRunOrchestratorService: atomic run + execution snapshot + ordered action runs from matcher match.',
+      'WorkflowRunWorkerService: concurrency-safe claim (lockVersion + lease), heartbeat, stale RUNNING recovery, max run duration.',
+      'Terminal derivation: COMPLETED, PARTIALLY_COMPLETED, FAILED, CANCELLED, SKIPPED, WAITING, WAITING_FOR_APPROVAL.',
+      '45 unit tests: full run, retryable/permanent failure, claim conflict, stale recovery, tenant isolation, invalid transitions.',
+    ],
+    reason: 'Workflow runs must survive process restarts, worker failures, waits, approvals, and retries.',
+    previousBehavior: 'Canonical runtime tables existed but no orchestrator/worker; legacy WorkflowEngineService executed synchronously on OrgWorkflow.',
+    details:
+      'docs/architecture/workflow-run-state-machine-2026-07.md. Outbox dispatch not yet rewired — orchestrator callable but not auto-triggered.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T10:00:00.000Z',
+  },
+  {
     id: 'workflow-matcher-v49829-2026-07-25',
     version: '4.9.829',
     title: 'V4.9.829 — Canonical workflow matcher (Phase 5 Prompt 19)',

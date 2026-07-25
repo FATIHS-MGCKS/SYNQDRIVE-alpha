@@ -7,9 +7,15 @@ import { WorkflowActionExecutorService } from './workflow-action-executor.servic
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { WorkflowEventOutboxCoreModule } from './outbox/workflow-event-outbox-core.module';
 import { WorkflowMatcherModule } from './matcher/workflow-matcher.module';
+import { WorkflowRuntimeModule } from './runtime/workflow-runtime.module';
 
 @Module({
-  imports: [TasksModule, WorkflowEventOutboxCoreModule, WorkflowMatcherModule],
+  imports: [
+    TasksModule,
+    WorkflowEventOutboxCoreModule,
+    WorkflowMatcherModule,
+    WorkflowRuntimeModule,
+  ],
   controllers: [WorkflowsController],
   providers: [
     WorkflowsService,
@@ -23,6 +29,7 @@ import { WorkflowMatcherModule } from './matcher/workflow-matcher.module';
     WorkflowEngineService,
     WorkflowEventOutboxCoreModule,
     WorkflowMatcherModule,
+    WorkflowRuntimeModule,
   ],
 })
 export class WorkflowsModule {}
