@@ -20,6 +20,7 @@ import { CustomerVerificationModule } from '@modules/customer-verification/custo
   ],
   exports: [
     CustomersService,
+    CustomerDocumentsService,
     CustomerEligibilityService,
     CustomerTimelineService,
   ],

@@ -29,6 +29,11 @@ import {
   parseStatus,
   type TechnicalObservationDto,
 } from './technical-observations.mapper';
+import {
+  resolveObservationBlocksRental,
+  urgencyToTraceableSeverity,
+} from '@shared/technical-observations/technical-observation-policy.util';
+import { TechnicalObservationAuditService } from './technical-observation-audit.service';
 import type {
   ConvertObservationToTaskDto,
   CreateTechnicalObservationDto,
@@ -53,6 +58,7 @@ export class TechnicalObservationsService {
     private readonly serviceCases: ServiceCasesService,
     private readonly damages: DamagesService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly observationAudit?: TechnicalObservationAuditService,
   ) {}
 
   async list(
@@ -146,7 +152,7 @@ export class TechnicalObservationsService {
         affectedArea: parseAffectedArea(body.affectedArea),
         status: initialStatus,
         source: parseSource(body.source),
-        blocksRental: body.blocksRental ?? false,
+        blocksRental: resolveObservationBlocksRental(body.blocksRental),
         bookingId: body.bookingId ?? null,
         customerId: body.customerId ?? null,
         driverId: body.driverId ?? null,
@@ -159,6 +165,18 @@ export class TechnicalObservationsService {
 
     const dto = mapObservationRow(row);
     void this.syncV2ObservationActive(orgId, vehicleId, row, dto);
+    void this.observationAudit?.log({
+      organizationId: orgId,
+      userId: createdByUserId ?? 'system',
+      event: 'TECHNICAL_OBSERVATION_CREATED',
+      observationId: row.id,
+      vehicleId,
+      bookingId: row.bookingId,
+      handoverProtocolId: row.handoverProtocolId,
+      source: dto.source,
+      severity: urgencyToTraceableSeverity(row.urgency),
+      blocksRental: row.blocksRental,
+    });
     return dto;
   }
 
@@ -180,7 +198,9 @@ export class TechnicalObservationsService {
     if (body.affectedArea !== undefined) {
       data.affectedArea = parseAffectedArea(body.affectedArea);
     }
-    if (body.blocksRental !== undefined) data.blocksRental = body.blocksRental;
+    if (body.blocksRental !== undefined) {
+      data.blocksRental = resolveObservationBlocksRental(body.blocksRental);
+    }
     if (body.status !== undefined) {
       const next = parseStatus(body.status);
       if (!next) throw new BadRequestException('Invalid status');
@@ -193,7 +213,33 @@ export class TechnicalObservationsService {
       where: { id: existing.id },
       data,
     });
-    return mapObservationRow(row);
+    const dto = mapObservationRow(row);
+    if (body.status !== undefined) {
+      void this.observationAudit?.log({
+        organizationId: orgId,
+        userId: 'system',
+        event:
+          row.status === 'RESOLVED'
+            ? 'TECHNICAL_OBSERVATION_RESOLVED'
+            : row.status === 'DISMISSED'
+              ? 'TECHNICAL_OBSERVATION_DISMISSED'
+              : 'TECHNICAL_OBSERVATION_CREATED',
+        observationId: row.id,
+        vehicleId,
+        bookingId: row.bookingId,
+        handoverProtocolId: row.handoverProtocolId,
+        severity: dto.severity,
+        blocksRental: row.blocksRental,
+        meta: {
+          previousStatus: existing.status,
+          nextStatus: row.status,
+        },
+      });
+      if (row.status === 'RESOLVED' || row.status === 'DISMISSED') {
+        void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+      }
+    }
+    return dto;
   }
 
   async resolve(
@@ -214,6 +260,17 @@ export class TechnicalObservationsService {
     });
     const dto = mapObservationRow(row);
     void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    void this.observationAudit?.log({
+      organizationId: orgId,
+      userId: resolvedByUserId ?? 'system',
+      event: 'TECHNICAL_OBSERVATION_RESOLVED',
+      observationId: row.id,
+      vehicleId,
+      bookingId: row.bookingId,
+      handoverProtocolId: row.handoverProtocolId,
+      severity: dto.severity,
+      blocksRental: false,
+    });
     return dto;
   }
 
@@ -235,6 +292,17 @@ export class TechnicalObservationsService {
     });
     const dto = mapObservationRow(row);
     void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    void this.observationAudit?.log({
+      organizationId: orgId,
+      userId: dismissedByUserId ?? 'system',
+      event: 'TECHNICAL_OBSERVATION_DISMISSED',
+      observationId: row.id,
+      vehicleId,
+      bookingId: row.bookingId,
+      handoverProtocolId: row.handoverProtocolId,
+      severity: dto.severity,
+      blocksRental: false,
+    });
     return dto;
   }
 
@@ -296,7 +364,67 @@ export class TechnicalObservationsService {
 
     const dto = mapObservationRow(row);
     void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    void this.observationAudit?.log({
+      organizationId: orgId,
+      userId: actorUserId ?? 'system',
+      event: 'TECHNICAL_OBSERVATION_CONVERTED',
+      observationId: row.id,
+      vehicleId,
+      bookingId: row.bookingId,
+      handoverProtocolId: row.handoverProtocolId,
+      severity: dto.severity,
+      blocksRental: row.blocksRental,
+      meta: { taskId: task.id },
+    });
     return { observation: dto, taskId: task.id };
+  }
+
+  /** Post-handover: notifications + audit for observations created in the transaction. */
+  async syncHandoverCreatedObservations(input: {
+    organizationId: string;
+    vehicleId: string;
+    bookingId: string;
+    handoverProtocolId: string;
+    source: 'OPERATOR_HANDOVER' | 'OPERATOR_RETURN';
+    actorUserId: string;
+    createdObservationIds: string[];
+    skippedDuplicateIds?: string[];
+  }): Promise<void> {
+    const createdIds = input.createdObservationIds ?? [];
+    const skippedIds = input.skippedDuplicateIds ?? [];
+    if (createdIds.length === 0 && skippedIds.length === 0) return;
+
+    void this.observationAudit?.log({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      event: 'TECHNICAL_OBSERVATION_HANDOVER_PERSISTED',
+      vehicleId: input.vehicleId,
+      bookingId: input.bookingId,
+      handoverProtocolId: input.handoverProtocolId,
+      source: input.source,
+      meta: {
+        createdObservationIds: createdIds,
+        skippedDuplicateIds: skippedIds,
+      },
+    });
+
+    for (const observationId of createdIds) {
+      const row = await this.prisma.vehicleComplaint.findFirst({
+        where: {
+          id: observationId,
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+        },
+      });
+      if (!row) continue;
+      const dto = mapObservationRow(row);
+      await this.syncV2ObservationActive(
+        input.organizationId,
+        input.vehicleId,
+        row,
+        dto,
+      );
+    }
   }
 
   async linkDamage(

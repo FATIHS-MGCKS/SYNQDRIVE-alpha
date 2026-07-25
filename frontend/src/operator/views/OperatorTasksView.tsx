@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { ListTodo, Plus } from 'lucide-react';
 import { apiTaskPriorityLabelDe } from '../../lib/tasks/task-labels';
 import { api, type ApiTask, type ApiTaskPriority } from '../../lib/api';
@@ -9,6 +10,7 @@ import { useFleetVehicles } from '../../rental/FleetContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { useOperatorNavigation } from '../hooks/useOperatorNavigation';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
@@ -26,6 +28,11 @@ import {
   sortOperatorTasks,
   type OperatorTaskViewFilters,
 } from '../tasks/operatorTask.utils';
+import {
+  hasActiveOperatorTaskFilters,
+  operatorTasksEmptyDescription,
+  resetOperatorTaskFilters,
+} from './operatorTasksView.utils';
 
 type FilterChip = 'today' | 'overdue' | 'vehicle' | 'booking';
 
@@ -36,6 +43,8 @@ export function OperatorTasksView() {
   const { taskSummary, tasksLoading, tasksError, reloadTasks } = useOperatorData();
   const { fleetVehicles } = useFleetVehicles();
   const { openSheet, pendingTasksBookingId, setPendingTasksBookingId } = useOperatorShell();
+  const { openTask: navigateToTask, goToTab } = useOperatorNavigation();
+  const routeTaskId = useParams().taskId ?? null;
   const isTablet = useOperatorTabletLayout();
   const userId = getOperatorUserId();
 
@@ -45,6 +54,7 @@ export function OperatorTasksView() {
   const [vehiclePickerOpen, setVehiclePickerOpen] = useState(false);
   const [remoteTasks, setRemoteTasks] = useState<ApiTask[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
 
   const apiFilters = useMemo(() => buildTaskListApiFilters(filters, userId), [filters, userId]);
 
@@ -59,11 +69,13 @@ export function OperatorTasksView() {
       return;
     }
     setRemoteLoading(true);
+    setRemoteError(null);
     try {
       const response = unwrapTaskListPage(await api.tasks.list(orgId, listFilters));
       setRemoteTasks(sortOperatorTasks(response.data));
-    } catch {
+    } catch (err) {
       setRemoteTasks([]);
+      setRemoteError(err instanceof Error ? err.message : 'Aufgaben konnten nicht geladen werden');
     } finally {
       setRemoteLoading(false);
     }
@@ -142,31 +154,82 @@ export function OperatorTasksView() {
     });
   };
 
+  useEffect(() => {
+    if (!routeTaskId) return;
+    setSelectedTaskId(routeTaskId);
+  }, [routeTaskId]);
+
+  useEffect(() => {
+    if (!routeTaskId || !orgId) return;
+    if (sourceTasks.some((task) => task.id === routeTaskId)) return;
+    let cancelled = false;
+    void api.tasks
+      .get(orgId, routeTaskId)
+      .then((task) => {
+        if (cancelled) return;
+        setRemoteTasks((current) =>
+          current.some((row) => row.id === task.id) ? current : sortOperatorTasks([...current, task]),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, routeTaskId, sourceTasks]);
+
   const openTask = useCallback(
     (task: ApiTask, options?: { focusComment?: boolean }) => {
       setFocusComment(Boolean(options?.focusComment));
       setSelectedTaskId(task.id);
+      navigateToTask(task.id);
     },
-    [],
+    [navigateToTask],
   );
 
+  const listError = tasksError ?? remoteError;
+  const filtersActive = hasActiveOperatorTaskFilters(filters);
+
   const summaryRow = taskSummary && (
-    <div className="grid grid-cols-3 gap-2 shrink-0">
+    <div className="grid grid-cols-3 gap-2 shrink-0" role="group" aria-label="Aufgabenübersicht">
       {[
-        { label: 'Offen', value: taskSummary.open },
-        { label: 'Heute', value: taskSummary.dueToday },
-        { label: 'Überfällig', value: taskSummary.overdue },
+        { label: 'Offen', value: taskSummary.open, filter: null },
+        { label: 'Heute', value: taskSummary.dueToday, filter: 'today' as const },
+        { label: 'Überfällig', value: taskSummary.overdue, filter: 'overdue' as const },
       ].map((s) => (
-        <div key={s.label} className="rounded-xl border border-border/50 bg-muted/20 px-2 py-2 text-center">
+        <button
+          key={s.label}
+          type="button"
+          disabled={s.value === 0 || !s.filter}
+          onClick={() => {
+            if (!s.filter) return;
+            setFilters((current) => ({
+              ...current,
+              today: s.filter === 'today' ? !current.today : false,
+              overdue: s.filter === 'overdue' ? !current.overdue : false,
+            }));
+          }}
+          aria-label={
+            s.filter
+              ? `${s.value} ${s.label.toLowerCase()}e Aufgaben filtern`
+              : `${s.value} offene Aufgaben`
+          }
+          className="sq-press rounded-xl border border-border/50 bg-muted/20 px-2 py-2 text-center disabled:cursor-default disabled:opacity-80"
+        >
           <p className="text-lg font-bold tabular-nums text-foreground">{s.value}</p>
           <p className="text-[10px] font-semibold uppercase text-muted-foreground">{s.label}</p>
-        </div>
+        </button>
       ))}
     </div>
   );
 
   const filterBar = (
     <div className="shrink-0 space-y-2">
+      <header className="px-0.5">
+        <h1 className="font-display text-base font-bold tracking-tight text-foreground">Aufgaben</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Offene operative Aufgaben — nach Dringlichkeit sortiert.
+        </p>
+      </header>
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-foreground">{listTitle}</p>
         {userId && (
@@ -215,7 +278,7 @@ export function OperatorTasksView() {
               key={chip}
               type="button"
               onClick={() => toggleChip(chip)}
-              className={`sq-press shrink-0 rounded-full border px-3 py-2 text-xs font-semibold ${
+              className={`sq-press shrink-0 rounded-full border px-3 py-2.5 text-xs font-semibold min-h-[44px] ${
                 active
                   ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
                   : 'border-border surface-premium text-foreground'
@@ -232,7 +295,7 @@ export function OperatorTasksView() {
             key={p}
             type="button"
             onClick={() => setFilters((f) => ({ ...f, priority: p }))}
-            className={`sq-press shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase ${
+            className={`sq-press shrink-0 rounded-full border px-3 py-2 text-[10px] font-semibold uppercase min-h-[40px] ${
               filters.priority === p
                 ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
                 : 'border-border surface-premium text-muted-foreground'
@@ -275,23 +338,31 @@ export function OperatorTasksView() {
       {filterBar}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-2">
         {(tasksLoading || remoteLoading) && <SkeletonRows rows={5} />}
-        {!tasksLoading && !remoteLoading && tasksError && (
-          <ErrorState compact error={tasksError} onRetry={() => void reloadTasks()} />
+        {!tasksLoading && !remoteLoading && listError && (
+          <ErrorState compact error={listError} onRetry={() => void reloadTaskLists()} />
         )}
-        {!tasksLoading && !remoteLoading && !tasksError && filtered.length === 0 && (
+        {!tasksLoading && !remoteLoading && !listError && filtered.length === 0 && (
           <EmptyState
             compact
             icon={<ListTodo className="h-5 w-5" />}
             title="Keine offenen Aufgaben"
-            description={
-              filters.scope === 'mine'
-                ? 'Dir sind keine offenen Aufgaben zugewiesen.'
-                : 'Alle Aufgaben erledigt — oder Filter zu eng.'
+            description={operatorTasksEmptyDescription(filters, userId)}
+            action={
+              filtersActive ? (
+                <button
+                  type="button"
+                  onClick={() => setFilters(resetOperatorTaskFilters(userId))}
+                  className="sq-btn sq-btn-secondary min-h-[44px] px-4 text-xs font-semibold"
+                >
+                  Filter zurücksetzen
+                </button>
+              ) : undefined
             }
           />
         )}
         {!tasksLoading &&
           !remoteLoading &&
+          !listError &&
           filtered.map((task) => (
             <OperatorTaskCardConnected
               key={task.id}
@@ -351,6 +422,7 @@ export function OperatorTasksView() {
           onClick={() => {
             setSelectedTaskId(null);
             setFocusComment(false);
+            goToTab('tasks', { replace: true });
           }}
         >
           ← Zurück zur Liste

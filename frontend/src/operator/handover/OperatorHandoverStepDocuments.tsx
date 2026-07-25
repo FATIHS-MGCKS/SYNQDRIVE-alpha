@@ -11,24 +11,23 @@ import { OperatorToggleRow } from './operatorHandoverUi';
 
 
 interface Props {
-
   booking: HandoverDialogBookingInfo;
-
   form: OperatorHandoverFormApi;
-
+  kind: 'PICKUP' | 'RETURN';
   onAiUpload?: () => void;
-
+  fieldErrors?: Record<string, string>;
 }
 
-
-
 const DOCUMENTS_ACK_LABEL =
-
   'Mietvertrag, Fahrzeugschein und Übergabedokumente wurden mit dem Kunden durchgesprochen.';
 
-
-
-export function OperatorHandoverStepDocuments({ booking, form, onAiUpload }: Props) {
+export function OperatorHandoverStepDocuments({
+  booking,
+  form,
+  kind,
+  onAiUpload,
+  fieldErrors,
+}: Props) {
 
   const { orgId } = useRentalOrg();
 
@@ -47,7 +46,7 @@ export function OperatorHandoverStepDocuments({ booking, form, onAiUpload }: Pro
         bookingId={booking.id}
 
         customerId={booking.customerId ?? undefined}
-
+        process={kind}
         onAiUpload={onAiUpload}
 
       />
@@ -65,13 +64,17 @@ export function OperatorHandoverStepDocuments({ booking, form, onAiUpload }: Pro
       />
 
       {!form.state.checks.documentsAcknowledged && (
-
-        <p className="text-xs text-muted-foreground">
-
-          Pflichtbestätigung — ohne Häkchen kein Abschluss der Übergabe.
-
+        <p
+          className={`text-xs ${
+            fieldErrors?.documentsAcknowledged
+              ? 'text-[color:var(--status-critical)]'
+              : 'text-muted-foreground'
+          }`}
+          role={fieldErrors?.documentsAcknowledged ? 'alert' : undefined}
+        >
+          {fieldErrors?.documentsAcknowledged ??
+            'Pflichtbestätigung — ohne Häkchen kein Abschluss der Übergabe.'}
         </p>
-
       )}
 
     </div>

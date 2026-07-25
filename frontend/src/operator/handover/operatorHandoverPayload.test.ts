@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildOperatorHandoverPayload, createInitialHandoverState } from './operatorHandoverPayload';
+import {
+  buildOperatorHandoverPayload,
+  canAdvanceFromStep,
+  canNavigateToStep,
+  createInitialHandoverState,
+  getOperatorHandoverFinalizeLabel,
+  validateOperatorHandover,
+  validateOperatorHandoverStep,
+} from './operatorHandoverPayload';
 import {
   collectTechnicalObservationsForPayload,
   createEmptyObservationDraft,
@@ -73,5 +81,44 @@ describe('operator handover technical observations', () => {
     const payload = buildOperatorHandoverPayload({ kind: 'RETURN', booking, state });
     expect(payload.warningLightsNotes).toBe('Öldruck');
     expect(payload.technicalObservations?.[0].description).toBe('Öldruck');
+  });
+});
+
+describe('operator handover validation', () => {
+  it('blocks advance from vehicle when station missing', () => {
+    const state = createInitialHandoverState(booking, 'PICKUP');
+    state.actualStationId = '';
+    expect(canAdvanceFromStep('vehicle', 'PICKUP', booking, state)).toBe(false);
+    expect(validateOperatorHandoverStep('vehicle', 'PICKUP', booking, state)[0]?.field).toBe(
+      'actualStationId',
+    );
+  });
+
+  it('blocks advance from condition without odometer', () => {
+    const state = createInitialHandoverState(booking, 'PICKUP');
+    state.odometerKm = '';
+    expect(canAdvanceFromStep('condition', 'PICKUP', booking, state)).toBe(false);
+  });
+
+  it('blocks tablet jump to review when signatures missing', () => {
+    const state = createInitialHandoverState(booking, 'PICKUP');
+    state.actualStationId = 'station-1';
+    state.odometerKm = '10000';
+    state.checks.documentsAcknowledged = true;
+    expect(canNavigateToStep('review', 'vehicle', 'PICKUP', booking, state)).toBe(false);
+  });
+
+  it('uses binding finalize labels', () => {
+    expect(getOperatorHandoverFinalizeLabel('PICKUP')).toContain('verbindlich');
+    expect(getOperatorHandoverFinalizeLabel('RETURN')).toContain('verbindlich');
+  });
+
+  it('aggregates all issues for review submit', () => {
+    const state = createInitialHandoverState(booking, 'PICKUP');
+    state.actualStationId = 'station-1';
+    state.odometerKm = '10000';
+    const issues = validateOperatorHandover('PICKUP', booking, state);
+    expect(issues.some((i) => i.step === 'documents')).toBe(true);
+    expect(issues.some((i) => i.step === 'signatures')).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import type { ApiTask } from '../../lib/api';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
 import type { OperatorTodayFeedBucket, OperatorTodayBucketSlice } from '../hooks/operatorTodayFeed.utils';
 import type { OperatorTodayTaskEntry } from '../tasks/operatorTodayTasks';
+import { shouldSuppressTaskForHandoverCard } from '../tasks/operatorTodayTasks';
 import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
 import type { FleetVehicleLookup } from '../tasks/operatorTaskDisplay.utils';
 import {
@@ -21,6 +22,7 @@ export interface OperatorTodayTaskFeedProps {
   onTaskChanged?: () => void | Promise<void>;
   onReload: () => void;
   sectionExtras?: Partial<Record<OperatorTodayFeedBucket, ReactNode>>;
+  suppressedHandoverKeysByBucket?: Partial<Record<OperatorTodayFeedBucket, Set<string>>>;
   renderEntry?: (entry: OperatorTodayTaskEntry) => ReactNode;
 }
 
@@ -34,6 +36,7 @@ export function OperatorTodayTaskFeed({
   onTaskChanged,
   onReload,
   sectionExtras,
+  suppressedHandoverKeysByBucket,
   renderEntry,
 }: OperatorTodayTaskFeedProps) {
   const defaultRenderEntry = useCallback(
@@ -57,8 +60,15 @@ export function OperatorTodayTaskFeed({
 
     const extras = sectionExtras?.[meta.bucket];
     const hasExtras = Boolean(extras);
+    const suppressedKeys = suppressedHandoverKeysByBucket?.[meta.bucket];
+    const filteredEntries = suppressedKeys
+      ? slice.entries.filter(
+          (entry) => !shouldSuppressTaskForHandoverCard(entry.task, suppressedKeys),
+        )
+      : slice.entries;
     const collapsedPlanned = meta.bucket === 'PLANNED' && meta.collapsible && !plannedOpen;
-    const isEmpty = !slice.loading && !slice.error && slice.entries.length === 0 && !hasExtras;
+    const isEmpty =
+      !slice.loading && !slice.error && filteredEntries.length === 0 && !hasExtras;
     const showEntries = (!collapsedPlanned && !isEmpty) || (hasExtras && !collapsedPlanned);
 
     return (
@@ -91,7 +101,7 @@ export function OperatorTodayTaskFeed({
         {showEntries && (
           <div className="space-y-2">
             {extras}
-            {slice.entries.map((entry: OperatorTodayTaskEntry) => renderTaskEntry(entry))}
+            {filteredEntries.map((entry: OperatorTodayTaskEntry) => renderTaskEntry(entry))}
           </div>
         )}
       </OperatorTodaySection>

@@ -8,6 +8,7 @@ import {
   type HandoverTechnicalObservationPayloadItem,
   type OperatorHandoverObservationDraft,
 } from './operatorHandoverTechnicalObservations';
+import type { OperatorHandoverSignatureBinding } from './operatorHandoverSignatureBinding';
 
 export type OperatorHandoverStepId =
   | 'vehicle'
@@ -67,6 +68,9 @@ export interface OperatorHandoverFormState {
   selectedDamageIds: Set<string>;
   tireMeasurementCaptured: boolean;
   technicalObservationDrafts: OperatorHandoverObservationDraft[];
+  customerSignatureBinding: OperatorHandoverSignatureBinding | null;
+  staffSignatureBinding: OperatorHandoverSignatureBinding | null;
+  signaturesInvalidated: boolean;
 }
 
 export type { HandoverTechnicalObservationPayloadItem, OperatorHandoverObservationDraft };
@@ -137,6 +141,9 @@ export function createInitialHandoverState(
     selectedDamageIds: new Set<string>(),
     tireMeasurementCaptured: false,
     technicalObservationDrafts: [],
+    customerSignatureBinding: null,
+    staffSignatureBinding: null,
+    signaturesInvalidated: false,
   };
 }
 
@@ -174,6 +181,10 @@ export function buildOperatorHandoverPayload(input: OperatorHandoverPayloadInput
     damageIds: Array.from(state.selectedDamageIds),
     actualStationId: state.actualStationId || null,
     technicalObservations: collectTechnicalObservationsForPayload(kind, state),
+    signatureBindings: [
+      ...(state.customerSignatureBinding ? [state.customerSignatureBinding] : []),
+      ...(state.staffSignatureBinding ? [state.staffSignatureBinding] : []),
+    ],
   };
 }
 
@@ -187,6 +198,14 @@ export function validateOperatorHandover(
   if (!booking) {
     issues.push({ step: 'vehicle', field: 'booking', message: 'Buchung nicht geladen' });
     return issues;
+  }
+
+  if (!state.actualStationId?.trim()) {
+    issues.push({
+      step: 'vehicle',
+      field: 'actualStationId',
+      message: 'Station ist Pflicht — bitte tatsächliche Station wählen',
+    });
   }
 
   if (!state.odometerKm || Number.isNaN(Number(state.odometerKm))) {
@@ -225,7 +244,7 @@ export function validateOperatorHandover(
     issues.push({ step: 'signatures', field: 'staff', message: 'Mitarbeiter muss ausgewählt oder erfasst werden' });
   }
 
-  if (!state.customerSigData) {
+  if (!state.customerSigData || state.signaturesInvalidated || !state.customerSignatureBinding) {
     issues.push({
       step: 'signatures',
       field: 'customerSignature',
@@ -233,7 +252,7 @@ export function validateOperatorHandover(
     });
   }
 
-  if (!state.staffSigData) {
+  if (!state.staffSigData || state.signaturesInvalidated || !state.staffSignatureBinding) {
     issues.push({
       step: 'signatures',
       field: 'staffSignature',
@@ -264,7 +283,61 @@ export function canAdvanceFromStep(
   booking: OperatorHandoverBookingRef | null,
   state: OperatorHandoverFormState,
 ): boolean {
-  if (step === 'vehicle') return Boolean(booking);
   if (step === 'damages') return true;
   return validateOperatorHandoverStep(step, kind, booking, state).length === 0;
+}
+
+export function canNavigateToStep(
+  target: OperatorHandoverStepId,
+  current: OperatorHandoverStepId,
+  kind: HandoverDialogKind,
+  booking: OperatorHandoverBookingRef | null,
+  state: OperatorHandoverFormState,
+): boolean {
+  const targetIdx = stepIndex(target);
+  const currentIdx = stepIndex(current);
+  if (targetIdx <= currentIdx) return true;
+  for (let i = currentIdx; i < targetIdx; i += 1) {
+    const stepId = OPERATOR_HANDOVER_STEPS[i];
+    if (!canAdvanceFromStep(stepId, kind, booking, state)) return false;
+  }
+  return true;
+}
+
+export function firstBlockingStepIssue(
+  from: OperatorHandoverStepId,
+  to: OperatorHandoverStepId,
+  kind: HandoverDialogKind,
+  booking: OperatorHandoverBookingRef | null,
+  state: OperatorHandoverFormState,
+): OperatorHandoverValidationIssue | null {
+  const fromIdx = stepIndex(from);
+  const toIdx = stepIndex(to);
+  for (let i = fromIdx; i < toIdx; i += 1) {
+    const stepId = OPERATOR_HANDOVER_STEPS[i];
+    const issues = validateOperatorHandoverStep(stepId, kind, booking, state);
+    if (issues.length > 0) return issues[0] ?? null;
+  }
+  return null;
+}
+
+export function issuesToFieldMap(
+  issues: OperatorHandoverValidationIssue[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const issue of issues) {
+    if (!map[issue.field]) map[issue.field] = issue.message;
+  }
+  return map;
+}
+
+export function getOperatorHandoverFinalizeLabel(kind: HandoverDialogKind): string {
+  return kind === 'PICKUP'
+    ? 'Übergabe verbindlich abschließen'
+    : 'Rückgabe verbindlich abschließen';
+}
+
+export function getOperatorHandoverStepPrimaryCta(step: OperatorHandoverStepId): string {
+  if (step === 'review') return 'Zur Prüfung';
+  return 'Weiter';
 }

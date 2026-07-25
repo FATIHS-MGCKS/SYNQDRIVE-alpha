@@ -1,5 +1,5 @@
 import { Icon } from '../ui/Icon';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useId } from 'react';
 
 
 // V4.6.75 — Canvas-based signature pad with touch + mouse + typed-name
@@ -19,6 +19,8 @@ interface SignaturePadProps {
   helperText?: string;
   /** Canvas CSS height (default 140px). Operator handover uses taller pads. */
   canvasHeight?: number | string;
+  disabled?: boolean;
+  ariaDescription?: string;
 }
 
 type Mode = 'draw' | 'type';
@@ -33,7 +35,11 @@ export function SignaturePad({
   required,
   helperText,
   canvasHeight = 140,
+  disabled = false,
+  ariaDescription,
 }: SignaturePadProps) {
+  const labelId = useId();
+  const descId = useId();
   const [mode, setMode] = useState<Mode>('draw');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
@@ -112,6 +118,7 @@ export function SignaturePad({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (disabled) return;
     const p = getPoint(e);
     if (!p) return;
     (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
@@ -159,7 +166,10 @@ export function SignaturePad({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <label className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <label
+          id={labelId}
+          className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
+        >
           {label}
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
@@ -200,9 +210,17 @@ export function SignaturePad({
       </div>
 
       {mode === 'draw' ? (
-        <div className={`relative rounded-lg border ${borderColor} ${canvasBg} overflow-hidden`}>
+        <div
+          className={`relative rounded-lg border ${borderColor} ${canvasBg} overflow-hidden ${
+            disabled ? 'opacity-50 pointer-events-none' : ''
+          }`}
+        >
           <canvas
             ref={canvasRef}
+            role="img"
+            aria-labelledby={labelId}
+            aria-describedby={ariaDescription ? descId : undefined}
+            aria-disabled={disabled}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -247,6 +265,12 @@ export function SignaturePad({
               : 'bg-background border-border text-foreground placeholder:text-muted-foreground'
           } focus:outline-none focus:ring-2 focus:ring-blue-500/40`}
         />
+      )}
+
+      {ariaDescription && (
+        <p id={descId} className="sr-only">
+          {ariaDescription}
+        </p>
       )}
 
       {helperText && (

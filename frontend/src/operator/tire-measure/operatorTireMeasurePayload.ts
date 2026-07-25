@@ -1,4 +1,4 @@
-import { api } from '../../lib/api';
+import { operatorApi } from '../lib/operatorApi';
 import type {
   OperatorTireContextForm,
   OperatorTireSetupOption,
@@ -55,49 +55,51 @@ export function defaultTireSetupSelection(options: OperatorTireSetupOption[]): s
 }
 
 export async function submitOperatorTireMeasurement(params: {
+  orgId: string;
   vehicleId: string;
+  captureKey: string;
+  confirmed: boolean;
   tireSetupId: string | null;
   tread: OperatorTireTreadForm;
   context: OperatorTireContextForm;
-}): Promise<void> {
-  const { vehicleId, tireSetupId, tread, context } = params;
-  const treadPayload = {
+  bookingId?: string;
+  handoverSessionId?: string;
+}) {
+  const { orgId, vehicleId, captureKey, confirmed, tireSetupId, tread, context } = params;
+
+  const odometerRaw = context.odometerKm.trim().replace(',', '.');
+  const odometer = odometerRaw ? parseFloat(odometerRaw) : undefined;
+  const measuredAt = context.measuredAt.trim()
+    ? new Date(context.measuredAt).toISOString()
+    : new Date().toISOString();
+
+  return operatorApi.captureTireMeasurement(orgId, vehicleId, {
+    captureKey,
+    confirmed,
+    tireSetupId: tireSetupId && tireSetupId !== '__unknown__' ? tireSetupId : undefined,
     frontLeftMm: parseTreadMm(tread.fl),
     frontRightMm: parseTreadMm(tread.fr),
     rearLeftMm: parseTreadMm(tread.rl),
     rearRightMm: parseTreadMm(tread.rr),
+    measuredAt,
+    odometerKm: Number.isFinite(odometer!) ? odometer : undefined,
+    confirmOdometer: Number.isFinite(odometer!),
     source: context.source,
     workshopName: context.workshopName.trim() || undefined,
-  };
-
-  const odometerRaw = context.odometerKm.trim().replace(',', '.');
-  const odometer = odometerRaw ? parseFloat(odometerRaw) : undefined;
-
-  const useSetupEndpoint =
-    tireSetupId != null &&
-    tireSetupId !== '__unknown__' &&
-    context.measuredAt.trim().length > 0;
-
-  if (useSetupEndpoint) {
-    const measuredAt = new Date(context.measuredAt);
-    await api.vehicleIntelligence.addTireMeasurement(vehicleId, tireSetupId!, {
-      ...treadPayload,
-      odometerAtMeasurement: Number.isFinite(odometer!) ? odometer : undefined,
-      measuredAt: measuredAt.toISOString(),
-    });
-    return;
-  }
-
-  await api.vehicleIntelligence.addTireHealthMeasurement(vehicleId, {
-    ...treadPayload,
-    odometerKm: Number.isFinite(odometer!) ? odometer : undefined,
+    note: context.note.trim() || undefined,
+    bookingId: params.bookingId,
+    handoverSessionId: params.handoverSessionId,
   });
 }
 
-export function dispatchTireMeasurementSaved(vehicleId: string, bookingId?: string): void {
+export function dispatchTireMeasurementSaved(
+  vehicleId: string,
+  bookingId?: string,
+  measurementId?: string,
+): void {
   window.dispatchEvent(
     new CustomEvent('operator:tire-measurement-saved', {
-      detail: { vehicleId, bookingId },
+      detail: { vehicleId, bookingId, measurementId },
     }),
   );
 }
