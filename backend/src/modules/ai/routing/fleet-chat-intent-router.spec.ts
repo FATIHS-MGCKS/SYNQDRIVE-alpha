@@ -114,6 +114,13 @@ describe('Fleet chat intent router', () => {
       expect(route.detectedIntents).toContain('VEHICLE_LOCATION');
       expect(route.vehicleReferences[0]?.vehicleId).toBe(VEHICLE_TIGUAN_A);
     });
+
+    it('detects vehicle booking context intent in German', () => {
+      const route = resolve('Buchungskontext für WOB L 7503');
+
+      expect(route.detectedIntents).toContain('VEHICLE_BOOKING_CONTEXT');
+      expect(route.requiredTools).toContain('get_vehicle_booking_context');
+    });
   });
 
   describe('English formulations', () => {

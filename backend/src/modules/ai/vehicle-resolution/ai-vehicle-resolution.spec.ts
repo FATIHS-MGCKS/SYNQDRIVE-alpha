@@ -2,6 +2,7 @@ import { VehicleStatus } from '@prisma/client';
 import { resolveAiVehicleFromMessage } from './ai-vehicle-resolution.matcher';
 import { buildEnrichedChatMessage } from './ai-vehicle-resolution.llm';
 import { sanitizeAiVehicleUserText } from './ai-vehicle-resolution.hints';
+import { AI_VEHICLE_MIN_CONFIDENCE } from './ai-vehicle-resolution.enums';
 import type { AiVehicleResolutionRecord } from './ai-vehicle-resolution.types';
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
@@ -119,6 +120,51 @@ describe('AI vehicle resolution', () => {
       expect(resolution.resolvedVehicleId).toBe(VEHICLE_GOLF);
       expect(resolution.matchType).toBe('internal_id');
       expect(resolution.confidence).toBe(1);
+    });
+
+    it('resolves full VIN to unique vehicle', () => {
+      const resolution = resolveAiVehicleFromMessage({
+        organizationId: ORG_ID,
+        message: 'VIN WVWZZZ1JZYW000003',
+        fleet,
+      });
+
+      expect(resolution.resolvedVehicleId).toBe(VEHICLE_GOLF);
+      expect(resolution.matchType).toBe('vin_exact');
+      expect(resolution.confidence).toBeGreaterThanOrEqual(0.95);
+    });
+
+    it('resolves vehicle_name_exact when unique in fleet', () => {
+      const namedFleet = [
+        makeVehicle({
+          vehicleId: VEHICLE_GOLF,
+          licensePlate: 'B-AB 1234',
+          vehicleName: 'Pool Golf Alpha',
+          make: 'VW',
+          model: 'Golf',
+        }),
+      ];
+
+      const resolution = resolveAiVehicleFromMessage({
+        organizationId: ORG_ID,
+        message: 'Wie ist Pool Golf Alpha?',
+        fleet: namedFleet,
+      });
+
+      expect(resolution.resolvedVehicleId).toBe(VEHICLE_GOLF);
+      expect(resolution.matchType).toBe('vehicle_name_exact');
+    });
+
+    it('returns no match for unrelated message without hints', () => {
+      const resolution = resolveAiVehicleFromMessage({
+        organizationId: ORG_ID,
+        message: 'Wie wird das Wetter morgen?',
+        fleet,
+      });
+
+      expect(resolution.resolvedVehicleId).toBeNull();
+      expect(resolution.matchType).toBe('none');
+      expect(resolution.confidence).toBeLessThan(AI_VEHICLE_MIN_CONFIDENCE);
     });
 
     it('resolves DIMO token id', () => {

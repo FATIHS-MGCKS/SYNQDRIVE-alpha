@@ -260,6 +260,12 @@ must be wrapped as `AiEvidence` with explicit:
 - Retention: `AI_AUDIT_RETENTION_DAYS` (default 730d) via `AiAuditRetentionService`.
 - See `architecture/AI_REQUEST_AUDIT_LOGGING_2026-07-25.md`.
 
+### Prompt 27 — Fleet AI test matrix (2026-07-25)
+
+- 39 Jest suites / 360 tests for evidence, security, resolvers, tools, router/orchestrator, answer composition.
+- Shared `__fixtures__/fleet-ai-test.fixtures.ts`; coverage ~66% lines on `modules/ai/`.
+- See `architecture/FLEET_AI_TEST_MATRIX_2026-07-25.md`.
+
 ### Prompt 26 — AI agent limits, cache & cost boundaries (2026-07-25)
 
 - Redis-backed rate limits (org/user/IP), concurrency slots, daily token budgets.

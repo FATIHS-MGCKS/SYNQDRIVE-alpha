@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-test-matrix-v49820-2026-07-25',
+    version: '4.9.820',
+    title: 'V4.9.820 — Fleet AI test matrix (Prompt 27)',
+    summary: [
+      '39 Jest suites / 360 tests covering evidence contracts, security, resolvers, tools, router/orchestrator, answer composition.',
+      'New contract specs: evidence matrix, hallucination guards, security detector, context resolver, orchestrator limits.',
+      'Shared fleet-ai-test.fixtures.ts; coverage report ~66% lines on backend/src/modules/ai.',
+    ],
+    reason: 'Production-ready test matrix for Fleet AI Assistant domain grounding.',
+    previousBehavior: 'Partial test coverage; gaps in VIN, booking intent, orchestrator caps, fallback branches.',
+    details:
+      'See architecture/FLEET_AI_TEST_MATRIX_2026-07-25.md. New specs under chat/fleet-chat-evidence-response/, evidence/, routing/, limits integration.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T00:00:00.000Z',
+  },
+  {
     id: 'fleet-ai-chat-limits-v49819-2026-07-25',
     version: '4.9.819',
     title: 'V4.9.819 — AI agent limits, cache & cost boundaries (Prompt 26)',
