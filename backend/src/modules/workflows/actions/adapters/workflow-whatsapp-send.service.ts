@@ -269,7 +269,7 @@ export class WorkflowWhatsAppSendService {
 
     const body = config.message?.trim();
     if (!body) {
-      throw new BadRequestException('message is required — AI pipeline output not yet available');
+      throw new BadRequestException('message is required after AI pipeline generation');
     }
 
     const orgConfig = await this.requireActiveWhatsApp(ctx.organizationId);
@@ -386,7 +386,7 @@ export class WorkflowWhatsAppSendService {
   }
 
   isAiMessageCapabilityEnabled(): boolean {
-    return this.config.get<string>('WORKFLOW_WHATSAPP_AI_MESSAGE_ENABLED') === 'true';
+    return process.env.WORKFLOW_AI_COMMUNICATION_ENABLED === 'true';
   }
 
   private toResult(

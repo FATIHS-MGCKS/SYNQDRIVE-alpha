@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { AiModule } from '@modules/ai/ai.module';
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
@@ -33,6 +34,7 @@ import { WorkflowActionNoopSecretsResolver } from './workflow-action-secrets.res
     WhatsAppModule,
     SmsModule,
     VoiceCallOrchestrationModule,
+    AiModule,
     forwardRef(() => DocumentsModule),
   ],
   providers: [

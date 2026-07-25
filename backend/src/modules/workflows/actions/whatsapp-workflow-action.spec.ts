@@ -3,7 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { WhatsAppTemplateProviderStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationCoreService } from '@modules/notifications/notification-core.service';
+import { LlmGatewayService } from '@modules/ai/llm/llm-gateway.service';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
+import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
@@ -252,7 +254,6 @@ describe('whatsapp workflow action adapters', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: TasksService, useValue: { upsertByDedup: jest.fn(), findActiveByDedup: jest.fn() } },
         { provide: NotificationCoreService, useValue: { ingestCandidate: jest.fn() } },
-        { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false }) } },
         { provide: OutboundEmailPolicyService, useValue: { resolveIdentity: jest.fn(), isValidEmail: jest.fn() } },
         { provide: OutboundEmailService, useValue: { recordEvent: jest.fn() } },
         { provide: EmailProviderRegistry, useValue: { resolve: () => ({ sendEmail: jest.fn() }) } },
@@ -268,6 +269,35 @@ describe('whatsapp workflow action adapters', () => {
         { provide: WhatsAppProviderService, useValue: providerService },
         { provide: WhatsAppConsentService, useValue: consentService },
         { provide: WhatsAppMessagePolicyService, useValue: messagePolicy },
+        {
+          provide: LlmGatewayService,
+          useValue: {
+            isConfigured: jest.fn().mockReturnValue(true),
+            completeJson: jest.fn().mockResolvedValue({
+              data: {
+                message: 'Test AI message body',
+                citedFactIds: ['f1'],
+                claimsDiagnosis: false,
+                claimsCertainty: false,
+              },
+              model: 'mistral-small-latest',
+            }),
+          },
+        },
+        {
+          provide: RentalHealthService,
+          useValue: {
+            isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false }),
+            getVehicleHealth: jest.fn().mockResolvedValue({
+              overall_state: 'warning',
+              modules: { brakes: { state: 'warning', reason: 'Documented wear' } },
+            }),
+          },
+        },
+        {
+          provide: VoiceCallOrchestrationService,
+          useValue: { orchestrateOutboundCall: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -395,9 +425,14 @@ describe('whatsapp workflow action adapters', () => {
         'whatsapp.ai_message.send',
         {
           recipient: { type: 'booking', bookingId: 'booking-1' },
-          message: 'Test AI message',
+          promptKey: 'operational_workflow',
+          promptVersion: '1.0.0',
+          purpose: 'operational',
         },
-        baseContext({ runApproved: true }),
+        baseContext({
+          runApproved: true,
+          event: { ...baseContext().event, eventType: 'manual.test' },
+        }),
       ),
     ).rejects.toThrow(/disabled/i);
   });

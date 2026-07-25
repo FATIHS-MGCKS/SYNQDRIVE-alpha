@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-ai-communication-pipeline-v49848-2026-07-25',
+    version: '4.9.848',
+    title: 'V4.9.848 — Workflow AI Communication Governance Pipeline (Phase 8 Prompt 38)',
+    summary: [
+      'Governed AI communication pipeline: purpose check → minimal facts → versioned prompts → Mistral JSON → fact check → safety → approval → provider adapter send.',
+      'WorkflowAiCommunicationPipelineService with injection protection, diagnosis guardrails, static fallback templates.',
+      'whatsapp.ai_message.send enabled when WORKFLOW_AI_COMMUNICATION_ENABLED=true.',
+      'No direct provider calls from LLM; PII-minimal fact collection; audit metadata.',
+      '10 dedicated pipeline tests + workflow suites updated.',
+    ],
+    reason: 'Workflows need controlled AI customer messaging without unconstrained write/send rights.',
+    previousBehavior: 'whatsapp.ai_message.send required manual message; AI pipeline stub only.',
+    details: 'docs/ai/workflow-ai-communication-governance-2026-07.md. Module: actions/adapters/ai-communication/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T17:00:00.000Z',
+  },
+  {
     id: 'workflow-voice-call-start-v49847-2026-07-25',
     version: '4.9.847',
     title: 'V4.9.847 — Workflow voice.call.start Action Adapter (Phase 8 Prompt 37)',

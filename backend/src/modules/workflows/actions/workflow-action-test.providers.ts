@@ -11,6 +11,8 @@ import { SmsConsentService } from '@modules/sms/sms-consent.service';
 import { SmsMessagingService } from '@modules/sms/sms-messaging.service';
 import { OutboundSmsService } from '@modules/sms/outbound-sms.service';
 import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
+import { LlmGatewayService } from '@modules/ai/llm/llm-gateway.service';
+import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 
 /** Minimal email adapter mocks for workflow action unit tests. */
 export const workflowEmailTestProviders = [
@@ -129,9 +131,38 @@ export const workflowVoiceTestProviders = [
   },
 ];
 
+export const workflowAiCommunicationTestProviders = [
+  {
+    provide: LlmGatewayService,
+    useValue: {
+      isConfigured: jest.fn().mockReturnValue(true),
+      completeJson: jest.fn().mockResolvedValue({
+        data: {
+          message: 'Test AI draft',
+          citedFactIds: ['f1'],
+          claimsDiagnosis: false,
+          claimsCertainty: false,
+        },
+        model: 'mistral-small-latest',
+      }),
+    },
+  },
+  {
+    provide: RentalHealthService,
+    useValue: {
+      isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false }),
+      getVehicleHealth: jest.fn().mockResolvedValue({
+        overall_state: 'warning',
+        modules: {},
+      }),
+    },
+  },
+];
+
 export const workflowActionAdapterTestProviders = [
   ...workflowEmailTestProviders,
   ...workflowWhatsAppTestProviders,
   ...workflowSmsTestProviders,
   ...workflowVoiceTestProviders,
+  ...workflowAiCommunicationTestProviders,
 ];

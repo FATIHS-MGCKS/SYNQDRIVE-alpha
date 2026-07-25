@@ -140,15 +140,40 @@ export interface WhatsAppTemplateSendActionConfig {
 export interface WhatsAppAiMessageSendActionConfig {
   recipient: WorkflowWhatsAppRecipientRef;
   toPhone?: string;
-  /** Populated by future AI pipeline; manual override for approved runs only. */
+  /** Approved pipeline prompt — preferred over manual message. */
+  promptKey?: WorkflowAiCommunicationPromptKey;
+  promptVersion?: string;
+  purpose?: WorkflowAiCommunicationPurpose;
+  locale?: WorkflowAiLocale;
+  /** Manual override — requires workflow approval; bypasses AI generation. */
   message?: string;
+  /** Untrusted customer text for context (injection-filtered, never executed). */
+  customerContextText?: string;
   messageKind?: WorkflowWhatsAppMessageKind;
   respectQuietHours?: boolean;
   appendAiTransparency?: boolean;
   verifiedDiagnosis?: boolean;
-  /** Risk flags from AI pipeline — triggers approval gate when present. */
+  /** Risk flags from upstream — triggers approval gate when present. */
   sensitiveFlags?: string[];
 }
+
+export type WorkflowAiCommunicationPurpose =
+  | 'transactional'
+  | 'support'
+  | 'collections'
+  | 'operational'
+  | 'health_notice'
+  | 'admin_alert';
+
+export type WorkflowAiCommunicationPromptKey =
+  | 'booking_follow_up'
+  | 'invoice_reminder'
+  | 'vehicle_health_critical_notice'
+  | 'vehicle_health_warning_notice'
+  | 'complaint_acknowledgement'
+  | 'operational_workflow';
+
+export type WorkflowAiLocale = 'de' | 'en';
 
 export type WorkflowSmsLocale = 'de' | 'en';
 

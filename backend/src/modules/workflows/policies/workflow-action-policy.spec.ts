@@ -200,7 +200,7 @@ describe('WorkflowActionPolicyService', () => {
     expect(result.policy.capabilityGate).toBe('ENABLED');
   });
 
-  it('blocks whatsapp.ai_message.send when capability disabled', () => {
+  it('allows whatsapp.ai_message.send preview when capability enabled', () => {
     const result = policyService.evaluate({
       organizationId: ORG,
       actionType: 'whatsapp.ai_message.send',
@@ -210,8 +210,8 @@ describe('WorkflowActionPolicyService', () => {
       actorPermissions: ['WORKFLOW_CUSTOMER_CONTACT'],
       mode: 'preview',
     });
-    expect(result.allowed).toBe(false);
-    expect(result.violations.some((v) => v.code === 'CAPABILITY_DISABLED')).toBe(true);
+    expect(result.allowed).toBe(true);
+    expect(result.policy.capabilityGate).toBe('ENABLED');
   });
 
   it('allows voice.call.start preview when capability enabled', () => {

@@ -282,7 +282,7 @@ export const WORKFLOW_ACTION_POLICY_MATRIX: Record<string, WorkflowActionTechnic
   'whatsapp.ai_message.send': policy({
     actionType: 'whatsapp.ai_message.send',
     policyVersion: '2026-07-1',
-    capabilityGate: 'DISABLED',
+    capabilityGate: 'ENABLED',
     riskClass: 'CRITICAL',
     requiredPermission: 'WORKFLOW_CUSTOMER_CONTACT',
     approvalRule: 'REQUIRED',
@@ -300,7 +300,7 @@ export const WORKFLOW_ACTION_POLICY_MATRIX: Record<string, WorkflowActionTechnic
     compensationPossible: false,
     prohibitUnverifiedDiagnosisOnTriggers: VEHICLE_HEALTH_CRITICAL_TRIGGERS,
     highRiskSafeguards: [
-      { code: 'AI_PIPELINE_REQUIRED', description: 'Disabled until AI pipeline is production-ready' },
+      { code: 'AI_PIPELINE', description: 'Governed AI communication pipeline with fact check and fallback' },
       { code: 'HUMAN_IN_LOOP', description: 'Sensitive AI flags require explicit approval' },
       { code: 'AI_TRANSPARENCY', description: 'AI transparency disclaimer appended to messages' },
       { code: 'SERVICE_WINDOW', description: 'Free-text only within 24h customer service window' },

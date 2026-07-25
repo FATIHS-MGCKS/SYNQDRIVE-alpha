@@ -25,6 +25,10 @@ import { WorkflowSmsSendService } from './adapters/workflow-sms-send.service';
 import { WorkflowSmsCommunicationPolicyService } from './adapters/workflow-sms-communication-policy.service';
 import { WorkflowVoiceCallStartService } from './adapters/workflow-voice-call-start.service';
 import { WorkflowVoiceCallCommunicationPolicyService } from './adapters/workflow-voice-call-communication-policy.service';
+import { WorkflowAiCommunicationPipelineService } from './adapters/ai-communication/workflow-ai-communication-pipeline.service';
+import { WorkflowAiCommunicationDataService } from './adapters/ai-communication/workflow-ai-communication-data.service';
+import { WorkflowAiCommunicationFactCheckService } from './adapters/ai-communication/workflow-ai-communication-fact-check.service';
+import { WorkflowAiCommunicationSafetyService } from './adapters/ai-communication/workflow-ai-communication-safety.service';
 
 export const WORKFLOW_ACTION_HANDLER_CLASSES = [
   TaskCreateActionHandler,
@@ -54,6 +58,10 @@ export const WORKFLOW_ACTION_ADAPTER_SERVICES = [
   WorkflowSmsCommunicationPolicyService,
   WorkflowVoiceCallStartService,
   WorkflowVoiceCallCommunicationPolicyService,
+  WorkflowAiCommunicationPipelineService,
+  WorkflowAiCommunicationDataService,
+  WorkflowAiCommunicationFactCheckService,
+  WorkflowAiCommunicationSafetyService,
 ] as const;
 
 export const WORKFLOW_ACTION_HANDLER_PROVIDERS = [
