@@ -50,6 +50,7 @@ export {
   IAM_ORG_BOUND_REFRESH_SESSIONS_ENV,
   IAM_LEGACY_UNSCOPED_REFRESH_GRACE_ENV,
 } from './iam.config';
+export { default as operatorSecurityConfig } from './operator-security.config';
 export {
   BATTERY_CRANK_SIGNAL_CADENCE_MS,
   BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV,

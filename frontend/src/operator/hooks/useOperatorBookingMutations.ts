@@ -10,6 +10,10 @@ import { useRentalOrg } from '../../rental/RentalContext';
 import { invalidateVehicleOperationalAfterBookingChange } from '../../rental/lib/vehicle-operational-query';
 import { formatOperatorBookingError } from '../bookings/operatorBooking.utils';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import {
+  clearScopedIdempotencyKey,
+  operatorIdempotencyHeaders,
+} from '../lib/operatorIdempotency';
 
 function resolveVehicleIdFromUpdatePayload(
   payload: OperatorBookingUpdatePayload,
@@ -127,9 +131,16 @@ export function useOperatorBookingMutations() {
   );
 
   const markNoShow = useCallback(
-    (bookingId: string, vehicleId: string | null | undefined, reason?: string, onSuccess?: () => void) =>
-      run(
-        () => api.bookings.markNoShow(orgId!, bookingId, reason ?? null),
+    (bookingId: string, vehicleId: string | null | undefined, reason?: string, onSuccess?: () => void) => {
+      const scope = `booking:no-show:${bookingId}`;
+      return run(
+        async () => {
+          const result = await api.bookings.markNoShow(orgId!, bookingId, reason ?? null, {
+            headers: operatorIdempotencyHeaders(scope),
+          });
+          clearScopedIdempotencyKey(scope);
+          return result;
+        },
         'Als No-Show markiert',
         onSuccess,
         () => {
@@ -139,7 +150,8 @@ export function useOperatorBookingMutations() {
             reason: 'booking-no-show',
           });
         },
-      ),
+      );
+    },
     [orgId, run],
   );
 

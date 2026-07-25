@@ -758,12 +758,12 @@ function get<T>(path: string, init?: RequestInit) {
   return request<T>(path, init);
 }
 
-function post<T>(path: string, body: unknown) {
-  return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
+function post<T>(path: string, body: unknown, init?: RequestInit) {
+  return request<T>(path, { method: 'POST', body: JSON.stringify(body), ...init });
 }
 
-function patch<T>(path: string, body: unknown) {
-  return request<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
+function patch<T>(path: string, body: unknown, init?: RequestInit) {
+  return request<T>(path, { method: 'PATCH', body: JSON.stringify(body), ...init });
 }
 
 function put<T>(path: string, body: unknown) {
@@ -3699,8 +3699,8 @@ export const api = {
     // passed without a handover as NO_SHOW. Distinct from cancel so
     // downstream reporting can tell "called off" from "customer never
     // showed". Server-side guardrails enforce status + time window.
-    markNoShow: (orgId: string, id: string, reason?: string | null) =>
-      post<any>(`/organizations/${orgId}/bookings/${id}/no-show`, { reason: reason ?? null }),
+    markNoShow: (orgId: string, id: string, reason?: string | null, init?: RequestInit) =>
+      post<any>(`/organizations/${orgId}/bookings/${id}/no-show`, { reason: reason ?? null }, init),
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/bookings/stats`),
     todayPickups: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/pickups`),
     todayReturns: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/returns`),
@@ -3870,10 +3870,10 @@ export const api = {
     // the fact). Omitted → server uses `now()`.
     listHandovers: (orgId: string, bookingId: string) =>
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
-    createPickupHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    createPickupHandover: (orgId: string, bookingId: string, data: any, init?: RequestInit) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data, init),
+    createReturnHandover: (orgId: string, bookingId: string, data: any, init?: RequestInit) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data, init),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.
@@ -5460,8 +5460,8 @@ export const api = {
       patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/start`, {}),
     waiting: (orgId: string, id: string) =>
       patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/waiting`, {}),
-    complete: (orgId: string, id: string, data?: CompleteTaskPayload) =>
-      patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/complete`, data ?? {}),
+    complete: (orgId: string, id: string, data?: CompleteTaskPayload, init?: RequestInit) =>
+      patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/complete`, data ?? {}, init),
     cancel: (orgId: string, id: string) =>
       patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/cancel`, {}),
     bulk: (orgId: string, data: BulkTaskActionPayload) =>

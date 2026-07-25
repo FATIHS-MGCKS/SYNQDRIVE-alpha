@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   UseGuards,
+  Header,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { TasksService } from './tasks.service';
@@ -35,6 +36,10 @@ import {
   UpdateChecklistItemDto,
   UpdateTaskDto,
 } from './dto/task.dto';
+import { OperatorRateLimitService } from '@modules/operator-security/operator-rate-limit.service';
+import { OperatorIdempotencyService } from '@modules/operator-security/operator-idempotency.service';
+import { readOperatorIdempotencyKey } from '@modules/operator-security/operator-idempotency.util';
+import { assertNoForbiddenOperatorBodyFields } from '@modules/operator-security/operator-client-field-guard.util';
 
 /**
  * Task Action Layer REST surface (V4.8.3). All routes are org-scoped through
@@ -48,6 +53,8 @@ export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
     private readonly taskPermissionService: TaskPermissionService,
+    private readonly operatorRateLimit: OperatorRateLimitService,
+    private readonly operatorIdempotency: OperatorIdempotencyService,
   ) {}
 
   @Get('organizations/:orgId/tasks')
@@ -89,6 +96,7 @@ export class TasksController {
 
   @Get('organizations/:orgId/tasks/:id')
   @RequireTaskPermission('tasks.read')
+  @Header('Cache-Control', 'no-store')
   async findOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -205,26 +213,40 @@ export class TasksController {
   async complete(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: TaskAuthRequest,
+    @Req() req: TaskAuthRequest & Request,
     @Body() body: CompleteTaskDto,
   ) {
+    assertNoForbiddenOperatorBodyFields(body);
+    await this.operatorRateLimit.assertAllowed({
+      organizationId: orgId,
+      userId: req.user?.id,
+      action: 'completion',
+    });
     const actor = resolveTaskActor(req.user);
     if (body.actualCostCents !== undefined && body.actualCostCents !== null) {
       await this.taskPermissionService.assert(actor, orgId, 'tasks.manage_costs');
     }
 
-    return this.tasksService.completeTask(
-      orgId,
-      id,
-      {
-        resolutionNote: body.resolutionNote,
-        resolutionCode: body.resolutionCode,
-        actualCostCents: body.actualCostCents,
-        overrideIncompleteChecklist: body.overrideIncompleteChecklist,
-        overrideReason: body.overrideReason,
-      },
-      req.user?.id ? { id: req.user.id, platformRole: req.user.platformRole } : undefined,
-    );
+    const idempotencyKey = readOperatorIdempotencyKey(req.headers);
+    return this.operatorIdempotency.execute({
+      organizationId: orgId,
+      scope: `task:complete:${id}`,
+      idempotencyKey,
+      work: () =>
+        this.tasksService.completeTask(
+          orgId,
+          id,
+          {
+            resolutionNote: body.resolutionNote,
+            resolutionCode: body.resolutionCode,
+            actualCostCents: body.actualCostCents,
+            overrideIncompleteChecklist: body.overrideIncompleteChecklist,
+            overrideReason: body.overrideReason,
+            expectedUpdatedAt: body.expectedUpdatedAt,
+          },
+          req.user?.id ? { id: req.user.id, platformRole: req.user.platformRole } : undefined,
+        ),
+    });
   }
 
   @Patch('organizations/:orgId/tasks/:id/cancel')

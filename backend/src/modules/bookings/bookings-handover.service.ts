@@ -28,6 +28,7 @@ import {
   parseSeverity,
 } from '@modules/technical-observations/technical-observations.mapper';
 import type { HandoverTechnicalObservationDraft } from './handover.types';
+import { assertNoForbiddenOperatorBodyFields } from '@modules/operator-security/operator-client-field-guard.util';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
@@ -188,9 +189,18 @@ export class BookingsHandoverService {
     if (kind === 'RETURN') {
       const existingReturn = await this.prisma.bookingHandoverProtocol.findUnique({
         where: { bookingId_kind: { bookingId, kind: 'RETURN' } },
-        select: { id: true },
       });
       if (existingReturn) {
+        const currentBooking = await this.prisma.booking.findFirst({
+          where: { id: bookingId, organizationId: orgId },
+          select: { id: true, status: true },
+        });
+        if (currentBooking?.status === 'COMPLETED') {
+          return {
+            booking: { id: currentBooking.id, status: currentBooking.status },
+            protocol: this.mapProtocol(existingReturn),
+          };
+        }
         throw new ConflictException({
           message: 'Rückgabe-Protokoll existiert bereits für diese Buchung.',
           code: 'HANDOVER_ALREADY_EXISTS',
@@ -600,6 +610,7 @@ export class BookingsHandoverService {
     if (p == null || typeof p !== 'object') {
       throw new BadRequestException('Payload required');
     }
+    assertNoForbiddenOperatorBodyFields(p);
     if (
       typeof p.odometerKm !== 'number' ||
       !isFinite(p.odometerKm) ||
