@@ -37,8 +37,11 @@ export const WORKFLOW_ACTION_TYPES = [
   'task.create',
   'alert.create',
   'vehicle.status.update',
+  'approval.request',
   'workflow.approval.request',
+  'notification.in_app.send',
   'notification.prepare',
+  'booking.flag',
   'ai.suggest_action',
 ] as const;
 
@@ -47,7 +50,6 @@ export type WorkflowActionType = (typeof WORKFLOW_ACTION_TYPES)[number];
 /** Actions that must never auto-execute without approval. */
 export const APPROVAL_REQUIRED_ACTIONS = new Set<string>([
   'ai.suggest_action',
-  'workflow.approval.request',
   'ai.execute',
   'ai.send_message',
   'ai.book_appointment',
@@ -56,14 +58,23 @@ export const APPROVAL_REQUIRED_ACTIONS = new Set<string>([
   'booking.cancel',
 ]);
 
+/** Approval gate actions — they create the gate; executor must not double-gate. */
+export const WORKFLOW_APPROVAL_GATE_ACTIONS = new Set<string>([
+  'approval.request',
+  'workflow.approval.request',
+]);
+
 /** Legacy UI action keys → canonical action types. */
 export const LEGACY_ACTION_TO_CANONICAL: Record<string, WorkflowActionType> = {
   create_task: 'task.create',
   create_alert: 'alert.create',
   change_vehicle_status: 'vehicle.status.update',
-  send_notification: 'notification.prepare',
+  send_notification: 'notification.in_app.send',
+  send_in_app_notification: 'notification.in_app.send',
+  notification_send: 'notification.in_app.send',
   ai_suggest: 'ai.suggest_action',
-  request_approval: 'workflow.approval.request',
+  request_approval: 'approval.request',
+  workflow_approval: 'workflow.approval.request',
 };
 
 export const ALLOWED_VEHICLE_STATUSES = new Set<string>(Object.values(VehicleStatus));

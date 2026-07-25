@@ -9,7 +9,7 @@ export class NotificationPrepareActionHandler extends BaseWorkflowActionHandler 
   readonly definition = this.buildDefinition({
     type: 'notification.prepare',
     version: '1.0.0',
-    capabilityStatus: 'ENABLED',
+    capabilityStatus: 'DEPRECATED',
     riskClass: 'LOW',
     requiredPermission: 'WORKFLOW_EXECUTE',
     configSchema: {

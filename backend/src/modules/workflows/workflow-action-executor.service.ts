@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { WorkflowActionRunStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { WorkflowActionDef } from './workflow-definition.validator';
+import { WORKFLOW_APPROVAL_GATE_ACTIONS } from './workflow.constants';
 import {
   createWorkflowActionPiiSafeLogger,
   WorkflowActionNoopSecretsResolver,
@@ -34,7 +35,7 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
-    if (action.requiresApproval) {
+    if (action.requiresApproval && !WORKFLOW_APPROVAL_GATE_ACTIONS.has(action.type)) {
       await this.prisma.orgWorkflowApproval.create({
         data: {
           organizationId: ctx.organizationId,

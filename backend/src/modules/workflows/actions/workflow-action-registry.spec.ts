@@ -1,17 +1,21 @@
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '@shared/database/prisma.service';
+import { NotificationCoreService } from '@modules/notifications/notification-core.service';
+import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import {
   createWorkflowActionPiiSafeLogger,
   WorkflowActionNoopSecretsResolver,
   WorkflowActionRegistryExecutorService,
   WorkflowActionRegistryService,
-  WORKFLOW_ACTION_HANDLERS,
   type WorkflowActionExecutionContext,
   type WorkflowActionHandler,
   WorkflowActionRegistryError,
 } from './index';
-import { WORKFLOW_ACTION_HANDLER_PROVIDERS } from './workflow-action-handlers.provider';
+import {
+  WORKFLOW_ACTION_HANDLER_PROVIDERS,
+  workflowActionHandlersProvider,
+} from './workflow-action-handlers.provider';
 import { BaseWorkflowActionHandler } from './handlers/base-workflow-action.handler';
 import type { WorkflowActionExecuteResult } from './workflow-action-registry.types';
 
@@ -71,17 +75,15 @@ describe('WorkflowActionRegistryService', () => {
     const module = await Test.createTestingModule({
       providers: [
         ...WORKFLOW_ACTION_HANDLER_PROVIDERS,
-        {
-          provide: WORKFLOW_ACTION_HANDLERS,
-          useFactory: (...handlers: WorkflowActionHandler[]) => handlers,
-          inject: [...WORKFLOW_ACTION_HANDLER_PROVIDERS],
-        },
+        workflowActionHandlersProvider,
         WorkflowActionRegistryService,
-        { provide: PrismaService, useValue: { vehicle: { findFirst: jest.fn(), update: jest.fn() }, orgWorkflowApproval: { create: jest.fn() } } },
+        { provide: PrismaService, useValue: { vehicle: { findFirst: jest.fn().mockResolvedValue({ id: 'veh-1' }), update: jest.fn() }, booking: { findFirst: jest.fn().mockResolvedValue({ id: 'booking-1', customerId: 'cust-1' }), update: jest.fn() }, orgWorkflowApproval: { create: jest.fn(), findFirst: jest.fn() } } },
         {
           provide: TasksService,
-          useValue: { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }) },
+          useValue: { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }), findActiveByDedup: jest.fn().mockResolvedValue(null) },
         },
+        { provide: NotificationCoreService, useValue: { ingestCandidate: jest.fn().mockResolvedValue({ enabled: true, operation: 'created', notification: { id: 'n1' } }) } },
+        { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false, reasons: [] }) } },
       ],
     }).compile();
 
@@ -107,23 +109,24 @@ describe('WorkflowActionRegistryService', () => {
 
 describe('WorkflowActionRegistryExecutorService', () => {
   let executor: WorkflowActionRegistryExecutorService;
-  let tasksService: { upsertByDedup: jest.Mock };
+  let tasksService: { upsertByDedup: jest.Mock; findActiveByDedup: jest.Mock };
 
   beforeEach(async () => {
-    tasksService = { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-99' }) };
+    tasksService = {
+      upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-99' }),
+      findActiveByDedup: jest.fn().mockResolvedValue(null),
+    };
     const module = await Test.createTestingModule({
       providers: [
         ...WORKFLOW_ACTION_HANDLER_PROVIDERS,
-        {
-          provide: WORKFLOW_ACTION_HANDLERS,
-          useFactory: (...handlers: WorkflowActionHandler[]) => handlers,
-          inject: [...WORKFLOW_ACTION_HANDLER_PROVIDERS],
-        },
+        workflowActionHandlersProvider,
         WorkflowActionRegistryService,
         WorkflowActionRegistryExecutorService,
         WorkflowActionNoopSecretsResolver,
-        { provide: PrismaService, useValue: { vehicle: { findFirst: jest.fn(), update: jest.fn() }, orgWorkflowApproval: { create: jest.fn() } } },
+        { provide: PrismaService, useValue: { vehicle: { findFirst: jest.fn().mockResolvedValue({ id: 'veh-1' }), update: jest.fn() }, booking: { findFirst: jest.fn().mockResolvedValue({ id: 'booking-1', customerId: 'cust-1' }), update: jest.fn() }, orgWorkflowApproval: { create: jest.fn(), findFirst: jest.fn() } } },
         { provide: TasksService, useValue: tasksService },
+        { provide: NotificationCoreService, useValue: { ingestCandidate: jest.fn().mockResolvedValue({ enabled: true, operation: 'created', notification: { id: 'n1' } }) } },
+        { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false, reasons: [] }) } },
       ],
     }).compile();
 
@@ -171,16 +174,17 @@ describe('WorkflowActionRegistryExecutorService', () => {
     ).rejects.toMatchObject({ code: 'RISK_DOWNGRADE' });
   });
 
-  it('execute is idempotent via task upsert dedup key', async () => {
+  it('execute uses stable dedup key for task.create', async () => {
     const ctx = baseContext({
       actor: { kind: 'system', permissions: ['WORKFLOW_EXECUTE'] },
     });
+    tasksService.findActiveByDedup
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'task-99' });
     await executor.execute('task.create', { title: 'A' }, ctx);
     await executor.execute('task.create', { title: 'A' }, ctx);
-    expect(tasksService.upsertByDedup).toHaveBeenCalledTimes(2);
-    expect(tasksService.upsertByDedup.mock.calls[0][1]).toBe(
-      tasksService.upsertByDedup.mock.calls[1][1],
-    );
+    expect(tasksService.upsertByDedup).toHaveBeenCalledTimes(1);
+    expect(tasksService.findActiveByDedup).toHaveBeenCalledTimes(2);
   });
 });
 
