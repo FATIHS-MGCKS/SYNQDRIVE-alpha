@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-domain-event-envelope-v49822-2026-07-26',
+    version: '4.9.822',
+    title: 'V4.9.822 — Workflow domain event envelope (Phase 4 Prompt 15)',
+    summary: [
+      '**Envelope**: `backend/src/modules/workflows/envelope/` — immutable wire format with eventId, eventType, eventVersion, organizationId, occurredAt/receivedAt (UTC), entityType/entityId, correlationId, causationId, source, payload, metadata, schemaVersion.',
+      '**Validation**: registry payload check, metadata secret rejection, cross-tenant guard, duplicate eventId store, payload/metadata size limits.',
+      '**Rejection path**: structured `WorkflowEventRejection` + dead-letter payload — no silent drop.',
+      '**Legacy**: controlled normalizer delegates to registry adapters; `WorkflowEventService` builds envelope before engine dispatch.',
+      '**Safe logging**: `toSafeLogEnvelope` masks PII/secrets.',
+      '**Tests**: `workflow-domain-event-envelope.spec.ts` — 15 cases.',
+    ],
+    reason:
+      'Workflow events need a uniform, queue- and DB-serializable envelope so correlation, tenant isolation, and validation are consistent across producers and consumers.',
+    previousBehavior:
+      'WorkflowEventService passed ad-hoc `WorkflowDomainEvent` objects without global eventId, correlation chain, or structured rejection.',
+    details:
+      'Outbox worker persistence of full envelope JSON pending; bookings handover uses default source `workflows` unless caller sets `source`.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-26T00:00:00.000Z',
+  },
+  {
     id: 'workflow-domain-event-registry-v49821-2026-07-26',
     version: '4.9.821',
     title: 'V4.9.821 — Workflow domain event registry (Phase 4 Prompt 14)',

@@ -228,3 +228,7 @@ const trigger = resolveCanonicalEventType('vehicle_returned'); // booking.return
 
 - `docs/architecture/workflow-automation-data-model-2026-07.md` — runtime data model
 - `backend/src/modules/notifications/registry/` — parallel pattern for notification events
+
+## 11. Event envelope (V4.9.822)
+
+Producers should build events via `createWorkflowDomainEventEnvelope()` in `backend/src/modules/workflows/envelope/`. The envelope wraps registry-validated payloads with `eventId`, UTC timestamps, correlation/causation chain, and `source`. Rejections produce structured dead-letter payloads — never silent drops.
