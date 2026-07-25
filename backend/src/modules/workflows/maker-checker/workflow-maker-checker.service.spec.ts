@@ -71,7 +71,9 @@ describe('WorkflowMakerCheckerService', () => {
 
   beforeEach(() => {
     prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
-    service = new WorkflowMakerCheckerService(prisma as never);
+    service = new WorkflowMakerCheckerService(prisma as never, {
+      recordFireAndForget: jest.fn(),
+    } as never);
     checkerPermissionSpy = jest
       .spyOn(service as any, 'assertCheckerPermission')
       .mockResolvedValue(undefined);

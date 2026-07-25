@@ -5,10 +5,11 @@ import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { WorkflowMakerCheckerModule } from './maker-checker/workflow-maker-checker.module';
+import { WorkflowAuditModule } from './audit/workflow-audit.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
-  imports: [TasksModule, WorkflowMakerCheckerModule],
+  imports: [TasksModule, WorkflowMakerCheckerModule, WorkflowAuditModule],
   controllers: [WorkflowsController],
   providers: [
     WorkflowsService,

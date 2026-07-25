@@ -2335,7 +2335,24 @@ export interface WorkflowStatsDto {
   runsLast24h: number;
   lastRunAt: string | null;
 }
-export interface WorkflowChangeRequestDiffDto {
+export interface WorkflowAuditEventDto {
+  id: string;
+  organizationId: string;
+  workflowId?: string | null;
+  workflowRunId?: string | null;
+  actionRunId?: string | null;
+  eventType: string;
+  retentionClass: string;
+  retentionDays?: number;
+  actorUserId?: string | null;
+  correlationId?: string | null;
+  summary: string;
+  payload: Record<string, unknown>;
+  payloadHash?: string | null;
+  aiTransparency?: Record<string, unknown> | null;
+  legalHold?: boolean;
+  createdAt: string;
+}
   field: string;
   before: unknown;
   after: unknown;
@@ -4910,6 +4927,26 @@ export const api = {
       post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/reject`, { reason }),
     listChangeRequests: (orgId: string, workflowId: string) =>
       get<WorkflowChangeRequestDto[]>(`/organizations/${orgId}/workflows/${workflowId}/change-requests`),
+    listAuditEvents: (
+      orgId: string,
+      params?: { workflowId?: string; eventType?: string; limit?: number; cursor?: string },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.workflowId) q.set('workflowId', params.workflowId);
+      if (params?.eventType) q.set('eventType', params.eventType);
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.cursor) q.set('cursor', params.cursor);
+      const qs = q.toString();
+      return get<{ items: WorkflowAuditEventDto[]; nextCursor: string | null }>(
+        `/organizations/${orgId}/workflows/audit-events${qs ? `?${qs}` : ''}`,
+      );
+    },
+    getAuditEvent: (orgId: string, eventId: string) =>
+      get<WorkflowAuditEventDto>(`/organizations/${orgId}/workflows/audit-events/${eventId}`),
+    getAuditRetention: (orgId: string) =>
+      get<{ classes: Array<Record<string, unknown>> }>(
+        `/organizations/${orgId}/workflows/audit-events/retention`,
+      ),
     getChangeRequest: (orgId: string, requestId: string) =>
       get<WorkflowChangeRequestDto>(`/organizations/${orgId}/workflows/change-requests/${requestId}`),
     approveChangeRequest: (

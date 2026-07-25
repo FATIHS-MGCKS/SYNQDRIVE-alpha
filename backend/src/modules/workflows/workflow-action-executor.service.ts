@@ -13,6 +13,12 @@ import { TasksService } from '@modules/tasks/tasks.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
 import { WorkflowMakerCheckerService } from '../maker-checker/workflow-maker-checker.service';
+import { WorkflowAuditService } from '../audit/workflow-audit.service';
+import {
+  buildAiCallOpeningScript,
+  buildAiMessageTransparency,
+} from '../audit/workflow-ai-transparency.util';
+import { summarizeWorkflowError } from '../audit/workflow-audit-sanitize.util';
 import {
   buildDefinitionSnapshot,
   computeWorkflowDefinitionHash,
@@ -39,6 +45,7 @@ export class WorkflowActionExecutorService {
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
     private readonly makerChecker: WorkflowMakerCheckerService,
+    private readonly workflowAudit: WorkflowAuditService,
   ) {}
 
   async execute(
@@ -110,12 +117,62 @@ export class WorkflowActionExecutorService {
             output: await this.execAiSuggest(action, ctx),
           };
         default:
+          this.workflowAudit.recordFireAndForget({
+            orgId: ctx.organizationId,
+            eventType: 'WORKFLOW_POLICY_BLOCKED',
+            workflowId: ctx.workflowId,
+            workflowRunId: ctx.workflowRunId,
+            actionRunId: ctx.actionRunId,
+            summary: `Unsupported or blocked action type: ${action.type}`,
+            payload: { actionType: action.type },
+          });
           throw new BadRequestException(`Unsupported action type: ${action.type}`);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      this.workflowAudit.recordFireAndForget({
+        orgId: ctx.organizationId,
+        eventType: 'WORKFLOW_ERROR',
+        workflowId: ctx.workflowId,
+        workflowRunId: ctx.workflowRunId,
+        actionRunId: ctx.actionRunId,
+        summary: summarizeWorkflowError(message),
+        payload: { actionType: action.type },
+      });
       return { status: 'FAILED', errorMessage: message };
     }
+  }
+
+  private async resolveOrganizationName(orgId: string): Promise<string> {
+    const org = await this.prisma.organization.findFirst({
+      where: { id: orgId },
+      select: { companyName: true },
+    });
+    return org?.companyName?.trim() || 'your organization';
+  }
+
+  private async recordAiTransparency(
+    ctx: ActionExecutionContext,
+    actionType: string,
+    channel: 'message' | 'voice' | 'suggestion',
+  ): Promise<Record<string, unknown>> {
+    const orgName = await this.resolveOrganizationName(ctx.organizationId);
+    const transparency = buildAiMessageTransparency(orgName, channel);
+    this.workflowAudit.recordFireAndForget({
+      orgId: ctx.organizationId,
+      eventType: 'WORKFLOW_PROVIDER_STATUS',
+      workflowId: ctx.workflowId,
+      workflowRunId: ctx.workflowRunId,
+      actionRunId: ctx.actionRunId,
+      summary: `AI transparency metadata recorded for ${actionType}`,
+      aiTransparency: transparency,
+      payload: {
+        modelId: transparency.modelId,
+        promptVersion: transparency.promptVersion,
+        ...(channel === 'voice' ? { openingScript: buildAiCallOpeningScript(orgName) } : {}),
+      },
+    });
+    return transparency as unknown as Record<string, unknown>;
   }
 
   private vehicleIdFromPayload(ctx: ActionExecutionContext): string | undefined {
@@ -238,7 +295,7 @@ export class WorkflowActionExecutorService {
     const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:notification`;
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title: 'Notification draft (not sent)',
-      description: message,
+      description: message.slice(0, 120),
       category: 'workflow_notification',
       type: 'CUSTOM',
       sourceType: 'SYSTEM',
@@ -250,6 +307,15 @@ export class WorkflowActionExecutorService {
         target: config.target ?? 'admin',
         preparedOnly: true,
       } as Prisma.InputJsonValue,
+    });
+    this.workflowAudit.recordFireAndForget({
+      orgId: ctx.organizationId,
+      eventType: 'WORKFLOW_RECIPIENT_RESOLVED',
+      workflowId: ctx.workflowId,
+      workflowRunId: ctx.workflowRunId,
+      actionRunId: ctx.actionRunId,
+      summary: 'Notification recipient resolved (redacted)',
+      payload: { target: config.target ?? 'admin', channel: config.channel ?? 'internal' },
     });
     return { preparedOnly: true, taskId: task.id };
   }
@@ -278,6 +344,7 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<Record<string, unknown>> {
+    const transparency = await this.recordAiTransparency(ctx, action.type, 'suggestion');
     const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:ai_suggest`;
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title: 'AI action suggestion (approval required)',
@@ -307,6 +374,6 @@ export class WorkflowActionExecutorService {
           : null,
       reason: 'AI suggestion requires human approval',
     });
-    return { suggestionTaskId: task.id, suggestionOnly: true };
+    return { suggestionTaskId: task.id, suggestionOnly: true, aiTransparency: transparency };
   }
 }

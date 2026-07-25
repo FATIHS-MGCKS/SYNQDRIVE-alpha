@@ -49,6 +49,39 @@ export class WorkflowsController {
     return this.service.getStats(orgId);
   }
 
+  @Get('audit-events/retention')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async auditRetention(@Param('orgId') orgId: string) {
+    void orgId;
+    return this.service.getAuditRetentionMetadata();
+  }
+
+  @Get('audit-events/:eventId')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async getAuditEvent(
+    @Param('orgId') orgId: string,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.service.getAuditEvent(orgId, eventId);
+  }
+
+  @Get('audit-events')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async listAuditEvents(
+    @Param('orgId') orgId: string,
+    @Query('workflowId') workflowId?: string,
+    @Query('eventType') eventType?: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    return this.service.listAuditEvents(orgId, {
+      workflowId,
+      eventType,
+      limit: limit ? Number(limit) : undefined,
+      cursor,
+    });
+  }
+
   @Get('change-requests/:requestId')
   @Roles(...WORKFLOW_READ_ROLES)
   async getChangeRequest(

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-audit-ai-transparency-v49853-2026-07-25',
+    version: '4.9.853',
+    title: 'V4.9.853 — Workflow Audit, PII Redaction & AI Transparency (Phase 9 Prompt 43)',
+    summary: [
+      'OrgWorkflowAuditEvent append-only audit trail for full workflow lifecycle (create → run → approval → dead-letter).',
+      'PII redaction on audit write + run read: phones, emails, tokens, document numbers, truncated messages.',
+      'AI transparency metadata: modelId, promptVersion, organization disclosure, voice opening script.',
+      'Retention classes TECHNICAL_LOG / REVISION_AUDIT / GOVERNANCE_AUDIT; legalHold column (not auto-enabled).',
+      'API: GET /workflows/audit-events, /audit-events/:id, /audit-events/retention.',
+    ],
+    reason: 'Workflow automation must meet audit, privacy, and AI transparency compliance requirements.',
+    previousBehavior: 'Runtime rows only; no durable audit feed, no systematic PII redaction, no AI disclosure metadata.',
+    details: 'docs/compliance/workflow-audit-and-ai-transparency-2026-07.md. Module: workflows/audit/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T22:00:00.000Z',
+  },
+  {
     id: 'workflow-maker-checker-v49852-2026-07-25',
     version: '4.9.852',
     title: 'V4.9.852 — Workflow Maker-Checker / Four-Eyes Controls (Phase 9 Prompt 42)',

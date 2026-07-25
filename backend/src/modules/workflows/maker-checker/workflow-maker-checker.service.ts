@@ -31,6 +31,7 @@ import {
   diffDefinitionSnapshots,
   type WorkflowDefinitionSnapshot,
 } from './workflow-maker-checker.util';
+import { WorkflowAuditService } from '../audit/workflow-audit.service';
 
 export interface MakerCheckerActor extends PermissionActor {
   id: string;
@@ -40,7 +41,10 @@ export interface MakerCheckerActor extends PermissionActor {
 export class WorkflowMakerCheckerService {
   private readonly logger = new Logger(WorkflowMakerCheckerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workflowAudit: WorkflowAuditService,
+  ) {}
 
   assessPublishSensitivity(workflow: Pick<OrgWorkflow, 'actions'>): ReturnType<typeof assessWorkflowSensitivity> {
     const actions = Array.isArray(workflow.actions)
@@ -128,6 +132,16 @@ export class WorkflowMakerCheckerService {
         proposedStatus: 'ACTIVE',
         expiresAt,
       },
+    }).then((request) => {
+      this.workflowAudit.recordFireAndForget({
+        orgId: input.orgId,
+        eventType: 'WORKFLOW_APPROVAL_REQUESTED',
+        workflowId: input.workflow.id,
+        actorUserId: input.maker.id,
+        summary: `Activation approval requested for workflow ${input.workflow.name}`,
+        payload: { requestId: request.id, operation: request.operation },
+      });
+      return request;
     });
   }
 
@@ -162,6 +176,14 @@ export class WorkflowMakerCheckerService {
         await tx.orgWorkflowChangeRequest.update({
           where: { id: request.id },
           data: { status: 'EXPIRED', decidedAt: new Date() },
+        });
+        this.workflowAudit.recordFireAndForget({
+          orgId: input.orgId,
+          eventType: 'WORKFLOW_APPROVAL_EXPIRED',
+          workflowId: request.workflowId,
+          actorUserId: input.checker.id,
+          summary: 'Change request expired before approval',
+          payload: { requestId: request.id },
         });
         throw new BadRequestException('Change request has expired');
       }
@@ -344,6 +366,15 @@ export class WorkflowMakerCheckerService {
         where: { id: input.approval.id },
         data: { status: 'EXPIRED', decidedAt: new Date() },
       });
+      this.workflowAudit.recordFireAndForget({
+        orgId: input.orgId,
+        eventType: 'WORKFLOW_APPROVAL_EXPIRED',
+        workflowRunId: input.approval.workflowRunId,
+        actionRunId: input.actionRunId,
+        actorUserId: input.checker.id,
+        summary: 'Runtime approval expired before decision',
+        payload: { approvalId: input.approval.id },
+      });
       throw new BadRequestException('Approval has expired');
     }
     if (
@@ -459,6 +490,15 @@ export class WorkflowMakerCheckerService {
         proposedStatus: 'DRAFT',
         expiresAt,
       },
+    }).then((request) => {
+      this.workflowAudit.recordFireAndForget({
+        orgId: input.orgId,
+        eventType: 'WORKFLOW_DEAD_LETTER',
+        actorUserId: input.maker.id,
+        summary: `Dead-letter replay approval requested for outbox ${input.outboxId}`,
+        payload: { outboxId: input.outboxId, requestId: request.id },
+      });
+      return request;
     });
   }
 

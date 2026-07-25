@@ -17,6 +17,8 @@ import {
   computeWorkflowDefinitionHash,
 } from './maker-checker/workflow-maker-checker.util';
 import { TaskAutomationAdminService } from '@modules/tasks/automation/task-automation-admin.service';
+import { WorkflowAuditService } from './audit/workflow-audit.service';
+import { redactWorkflowRunPayload } from './audit/workflow-audit-sanitize.util';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -34,6 +36,7 @@ export class WorkflowsService {
     private readonly workflowEngine: WorkflowEngineService,
     private readonly makerChecker: WorkflowMakerCheckerService,
     private readonly taskAutomationAdmin: TaskAutomationAdminService,
+    private readonly workflowAudit: WorkflowAuditService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -134,6 +137,41 @@ export class WorkflowsService {
         maker: { id: userId, platformRole: undefined },
         makerReason: dto.activationReason!.trim(),
       });
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_APPROVAL_REQUESTED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Publish approval requested for workflow ${row.name}`,
+        payload: { workflowVersion: row.version, status: row.status },
+      });
+    }
+
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: 'WORKFLOW_CREATED',
+      workflowId: row.id,
+      actorUserId: userId,
+      summary: `Workflow created: ${row.name}`,
+      payload: { status: row.status, category: row.category, version: row.version },
+    });
+    if (makerCheckerRequired) {
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_PUBLISHED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Workflow publish submitted (pending activation): ${row.name}`,
+        payload: { pendingActivation: true },
+      });
+    } else if (requestedStatus === 'ACTIVE') {
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_ACTIVATED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Workflow activated: ${row.name}`,
+      });
     }
 
     return {
@@ -209,6 +247,38 @@ export class WorkflowsService {
         maker: { id: userId },
         makerReason: dto.activationReason!.trim(),
       });
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_APPROVAL_REQUESTED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Activation approval requested for workflow ${row.name}`,
+        payload: { workflowVersion: row.version },
+      });
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_PUBLISHED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Workflow publish submitted (pending activation): ${row.name}`,
+      });
+    } else if (activating && nextStatus === 'ACTIVE') {
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_ACTIVATED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Workflow activated: ${row.name}`,
+      });
+    } else {
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_DRAFT_CHANGED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Workflow updated: ${row.name}`,
+        payload: { version: row.version, status: row.status },
+      });
     }
 
     return {
@@ -258,6 +328,13 @@ export class WorkflowsService {
         maker: { id: userId },
         makerReason: activationReason.trim(),
       });
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_APPROVAL_REQUESTED',
+        workflowId: row.id,
+        actorUserId: userId,
+        summary: `Toggle activation approval requested for ${existing.name}`,
+      });
       return {
         ...this.format(row as unknown as Record<string, unknown>),
         pendingActivation: true,
@@ -274,6 +351,13 @@ export class WorkflowsService {
         updatedById: userId,
         updatedByName: userName,
       },
+    });
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: newStatus === 'ACTIVE' ? 'WORKFLOW_ACTIVATED' : 'WORKFLOW_DEACTIVATED',
+      workflowId: row.id,
+      actorUserId: userId,
+      summary: `Workflow ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'}: ${row.name}`,
     });
     return this.format(row as unknown as Record<string, unknown>);
   }
@@ -304,7 +388,33 @@ export class WorkflowsService {
       const proposed = result.request.proposedDefinition as { outboxId?: string };
       if (proposed?.outboxId) {
         await this.taskAutomationAdmin.executeDeadLetterReplay(orgId, proposed.outboxId);
+        this.workflowAudit.recordFireAndForget({
+          orgId,
+          eventType: 'WORKFLOW_REPLAY',
+          workflowId: result.workflow.id,
+          actorUserId: actor.id,
+          summary: `Dead-letter replay executed for outbox ${proposed.outboxId}`,
+          payload: { outboxId: proposed.outboxId },
+        });
       }
+    }
+
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: 'WORKFLOW_APPROVAL_APPROVED',
+      workflowId: result.workflow.id,
+      actorUserId: actor.id,
+      summary: `Change request approved for workflow ${result.workflow.name}`,
+      payload: { requestId, operation: result.request.operation },
+    });
+    if (result.request.operation === 'WORKFLOW_PUBLISH_HIGH_CRITICAL') {
+      this.workflowAudit.recordFireAndForget({
+        orgId,
+        eventType: 'WORKFLOW_ACTIVATED',
+        workflowId: result.workflow.id,
+        actorUserId: actor.id,
+        summary: `Workflow activated after approval: ${result.workflow.name}`,
+      });
     }
 
     return {
@@ -325,6 +435,14 @@ export class WorkflowsService {
       checker: actor,
       checkerReason: body.reason,
       expectedDecisionVersion: body.decisionVersion,
+    });
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: 'WORKFLOW_APPROVAL_REJECTED',
+      workflowId: request.workflowId,
+      actorUserId: actor.id,
+      summary: 'Workflow change request rejected',
+      payload: { requestId },
     });
     return this.makerChecker.formatChangeRequest(request);
   }
@@ -363,6 +481,13 @@ export class WorkflowsService {
     });
     if (!existing) throw new NotFoundException('Workflow not found');
     await this.prisma.orgWorkflow.delete({ where: { id } });
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: 'WORKFLOW_ARCHIVED',
+      workflowId: id,
+      summary: `Workflow archived: ${existing.name}`,
+      payload: { name: existing.name },
+    });
     return { success: true };
   }
 
@@ -425,7 +550,7 @@ export class WorkflowsService {
 
   async listRuns(orgId: string, workflowId: string, limit = 25) {
     await this.findById(orgId, workflowId);
-    return this.prisma.orgWorkflowRun.findMany({
+    const rows = await this.prisma.orgWorkflowRun.findMany({
       where: { organizationId: orgId, workflowId },
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 100),
@@ -433,6 +558,7 @@ export class WorkflowsService {
         actionRuns: { orderBy: { actionIndex: 'asc' } },
       },
     });
+    return rows.map((run) => this.redactRun(run));
   }
 
   async getRun(orgId: string, runId: string) {
@@ -445,7 +571,58 @@ export class WorkflowsService {
       },
     });
     if (!run) throw new NotFoundException('Workflow run not found');
-    return run;
+    return this.redactRun(run);
+  }
+
+  private redactRun<T extends {
+    inputPayload?: unknown;
+    conditionResult?: unknown;
+    errorMessage?: string | null;
+    actionRuns?: Array<{
+      input?: unknown;
+      output?: unknown;
+      errorMessage?: string | null;
+    }>;
+    approvals?: Array<Record<string, unknown>>;
+  }>(run: T): T {
+    return {
+      ...run,
+      inputPayload: redactWorkflowRunPayload(run.inputPayload),
+      conditionResult: redactWorkflowRunPayload(run.conditionResult),
+      errorMessage: run.errorMessage
+        ? redactWorkflowRunPayload(run.errorMessage)
+        : run.errorMessage,
+      actionRuns: run.actionRuns?.map((actionRun) => ({
+        ...actionRun,
+        input: redactWorkflowRunPayload(actionRun.input),
+        output: redactWorkflowRunPayload(actionRun.output),
+        errorMessage: actionRun.errorMessage
+          ? redactWorkflowRunPayload(actionRun.errorMessage)
+          : actionRun.errorMessage,
+      })),
+      approvals: run.approvals?.map((approval) => redactWorkflowRunPayload(approval)),
+    };
+  }
+
+  async listAuditEvents(
+    orgId: string,
+    filters?: { workflowId?: string; eventType?: string; limit?: number; cursor?: string },
+  ) {
+    return this.workflowAudit.listEvents({
+      orgId,
+      workflowId: filters?.workflowId,
+      eventType: filters?.eventType as any,
+      limit: filters?.limit,
+      cursor: filters?.cursor,
+    });
+  }
+
+  getAuditRetentionMetadata() {
+    return this.workflowAudit.getRetentionMetadata();
+  }
+
+  async getAuditEvent(orgId: string, eventId: string) {
+    return this.workflowAudit.getEvent(orgId, eventId);
   }
 
   async testWorkflow(
@@ -458,6 +635,18 @@ export class WorkflowsService {
       where: { id: workflowId, organizationId: orgId },
     });
     if (!wf) throw new NotFoundException('Workflow not found');
+
+    const isExternalTest = Boolean((dto.payload as Record<string, unknown> | undefined)?.externalTest);
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: isExternalTest ? 'WORKFLOW_EXTERNAL_TEST' : 'WORKFLOW_DRY_RUN',
+      workflowId,
+      actorUserId: triggeredByUserId,
+      summary: isExternalTest
+        ? `External workflow test started for ${wf.name}`
+        : `Dry run started for ${wf.name}`,
+      payload: { entityType: dto.entityType, entityId: dto.entityId },
+    });
 
     const runId = await this.workflowEngine.executeWorkflow(wf, {
       organizationId: orgId,
@@ -530,6 +719,17 @@ export class WorkflowsService {
         : undefined,
     });
 
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: 'WORKFLOW_APPROVAL_APPROVED',
+      workflowId: workflow.id,
+      workflowRunId: actionRun.workflowRunId,
+      actionRunId,
+      actorUserId: userId,
+      summary: `Runtime action approved: ${actionRun.actionType}`,
+      payload: { approvalId: approval.id },
+    });
+
     await this.prisma.orgWorkflowActionRun.update({
       where: { id: actionRunId },
       data: {
@@ -582,6 +782,17 @@ export class WorkflowsService {
     await this.prisma.orgWorkflowRun.update({
       where: { id: actionRun.workflowRunId },
       data: { status: 'FAILED', errorMessage: 'Action rejected', finishedAt: new Date() },
+    });
+
+    this.workflowAudit.recordFireAndForget({
+      orgId,
+      eventType: 'WORKFLOW_APPROVAL_REJECTED',
+      workflowId: actionRun.workflowId,
+      workflowRunId: actionRun.workflowRunId,
+      actionRunId,
+      actorUserId: userId,
+      summary: `Runtime action rejected: ${actionRun.actionType}`,
+      payload: { reason },
     });
 
     return this.getRun(orgId, actionRun.workflowRunId);
