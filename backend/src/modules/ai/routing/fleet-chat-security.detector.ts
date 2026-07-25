@@ -3,6 +3,8 @@ import type { FleetChatSecurityFlag } from './fleet-chat-intent.enums';
 
 const INJECTION_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
   { pattern: /\bignore\s+(all\s+)?(previous|prior)\s+instructions\b/i, label: 'ignore_instructions' },
+  { pattern: /\bignoriere\s+(alle\s+)?(vorherigen\s+)?(anweisungen|regeln)\b/i, label: 'ignore_instructions_de' },
+  { pattern: /\bregeln\s+ignorieren\b/i, label: 'ignore_rules_de' },
   { pattern: /\bdisregard\s+(all\s+)?(previous|prior)\s+instructions\b/i, label: 'disregard_instructions' },
   { pattern: /\byou\s+are\s+now\b/i, label: 'you_are_now' },
   { pattern: /\bsystem\s*prompt\b/i, label: 'system_prompt' },
@@ -13,6 +15,22 @@ const INJECTION_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
   { pattern: /\boverride\s+(?:safety|security|policy)\b/i, label: 'override_policy' },
   { pattern: /\bexecute\s+tool\b/i, label: 'execute_tool' },
   { pattern: /\brun\s+tool\s+get_/i, label: 'run_tool_get' },
+  {
+    pattern: /\b(?:show|zeige|reveal|list)\s+(?:all\s+)?(?:organizations?|organisationen|tenants?)\b/i,
+    label: 'cross_org_exfil',
+  },
+  {
+    pattern: /\b(?:alle\s+organisationen|all\s+organizations|cross[\s-]?tenant)\b/i,
+    label: 'cross_org_request',
+  },
+  {
+    pattern: /\b(?:call|invoke|rufe)\s+.*(?:unregistered|nicht\s+registriert)\w*\s+tool\b/i,
+    label: 'unregistered_tool_request',
+  },
+  {
+    pattern: /\bzeige\s+daten\s+aller\s+organisationen\b/i,
+    label: 'cross_org_request_de',
+  },
 ];
 
 const TOOL_NAME_PATTERN =

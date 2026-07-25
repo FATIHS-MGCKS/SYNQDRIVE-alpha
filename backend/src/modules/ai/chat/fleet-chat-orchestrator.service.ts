@@ -258,7 +258,10 @@ export class FleetChatOrchestratorService {
     let llmUsed = false;
     let llmResult: LlmCompleteResult | null = null;
 
-    if (!prepared.skipLlm && prepared.llmUserContext) {
+    const shouldCallLlm =
+      allowLlmInference && !prepared.skipLlm && prepared.llmUserContext;
+
+    if (shouldCallLlm) {
       const llmStarted = Date.now();
       try {
         llmResult = await withTimeout(
@@ -277,9 +280,14 @@ export class FleetChatOrchestratorService {
       llmMs = Date.now() - llmStarted;
     }
 
+    const finalizeResponseType =
+      llmUsed || !allowLlmInference
+        ? prepared.responseType
+        : 'TEMPORARY_UNAVAILABLE';
+
     structuredResponse = this.evidenceResponseComposer.finalize(
       evidenceComposeBase,
-      llmUsed ? prepared.responseType : 'TEMPORARY_UNAVAILABLE',
+      finalizeResponseType,
       responseText,
     );
     responseText = structuredResponse.text;
