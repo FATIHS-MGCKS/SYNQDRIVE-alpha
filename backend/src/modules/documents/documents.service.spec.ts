@@ -362,7 +362,8 @@ describe('GeneratedDocumentsService — org scoping + storage', () => {
 
   it('createFromPdf stores the bytes and persists checksum + object key', async () => {
     const prisma = { generatedDocument: { create: jest.fn().mockImplementation(({ data }: any) => ({ id: 'g1', ...data })) } } as any;
-    const svc = new GeneratedDocumentsService(prisma, storage);
+    const operatorAudit = { record: jest.fn() };
+    const svc = new GeneratedDocumentsService(prisma, storage, operatorAudit as never);
     const doc = await svc.createFromPdf({
       organizationId: 'org-1',
       documentType: DOCUMENT_TYPE.BOOKING_INVOICE,
@@ -381,7 +382,8 @@ describe('GeneratedDocumentsService — org scoping + storage', () => {
 
   it('getById enforces org scope and throws NotFound when absent', async () => {
     const prisma = { generatedDocument: { findFirst: jest.fn().mockResolvedValue(null) } } as any;
-    const svc = new GeneratedDocumentsService(prisma, storage);
+    const operatorAudit = { record: jest.fn() };
+    const svc = new GeneratedDocumentsService(prisma, storage, operatorAudit as never);
     await expect(svc.getById('org-1', 'missing')).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.generatedDocument.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'missing', organizationId: 'org-1' } }),
@@ -390,8 +392,9 @@ describe('GeneratedDocumentsService — org scoping + storage', () => {
 
   it('getDownload streams the stored object for the requesting org', async () => {
     const prisma = { generatedDocument: { findFirst: jest.fn().mockResolvedValue({ id: 'g1', organizationId: 'org-1', objectKey: 'k', fileName: 'a.pdf', mimeType: 'application/pdf', sizeBytes: 1 }) } } as any;
-    const svc = new GeneratedDocumentsService(prisma, storage);
-    const dl = await svc.getDownload('org-1', 'g1');
+    const operatorAudit = { record: jest.fn() };
+    const svc = new GeneratedDocumentsService(prisma, storage, operatorAudit as never);
+    const dl = await svc.getDownload('org-1', 'g1', 'user-1', 'req-1');
     expect(storage.getObjectStream).toHaveBeenCalledWith('k');
     expect(dl.fileName).toBe('a.pdf');
   });

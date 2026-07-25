@@ -152,7 +152,7 @@ describe('DamagesService', () => {
   beforeEach(() => {
     prisma = makePrisma();
     tasks = { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }) };
-    svc = new DamagesService(prisma, tasks as any);
+    svc = new DamagesService(prisma, tasks as any, { record: jest.fn() } as any);
   });
 
   it('create persists damage with valid payload and maps response', async () => {
@@ -372,7 +372,7 @@ describe('DamagesService document extraction idempotency', () => {
   beforeEach(() => {
     prisma = makePrisma();
     tasks = { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }) };
-    svc = new DamagesService(prisma, tasks as any);
+    svc = new DamagesService(prisma, tasks as any, { record: jest.fn() } as any);
     jest.clearAllMocks();
   });
 

@@ -41,6 +41,12 @@ import {
 } from './booking-pickup-gate/booking-pickup-gate.constants';
 import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
+import { minimizeHandoverProtocolPayload } from '@modules/operator-audit/operator-audit-payload.util';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -69,6 +75,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -96,6 +103,18 @@ export class BookingsHandoverService {
           select: { id: true, status: true },
         });
         if (currentBooking?.status === 'ACTIVE') {
+          void this.operatorAudit.record({
+            organizationId: orgId,
+            action: BusinessAuditAction.OPERATOR_HANDOVER_PICKUP_COMPLETED,
+            entityType: BUSINESS_AUDIT_ENTITY_TYPE.HANDOVER_PROTOCOL,
+            entityId: existingPickup.id,
+            actorUserId: actor.userId,
+            outcome: 'SUCCESS',
+            correlationId: `handover-complete:${bookingId}:PICKUP:${existingPickup.id}`,
+            stationId: existingPickup.actualStationId ?? null,
+            description: 'Pickup handover idempotent replay',
+            metadata: { bookingId, kind: 'PICKUP', idempotent: true },
+          });
           return {
             booking: { id: currentBooking.id, status: currentBooking.status },
             protocol: this.mapProtocol(existingPickup),
@@ -125,6 +144,19 @@ export class BookingsHandoverService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
+
+    void this.operatorAudit.record({
+      organizationId: orgId,
+      action: BusinessAuditAction.OPERATOR_HANDOVER_STARTED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+      entityId: bookingId,
+      actorUserId: actor.userId,
+      outcome: 'SUCCESS',
+      correlationId: `handover-start:${bookingId}:${kind}`,
+      stationId: payload.actualStationId ?? booking.pickupStationId ?? booking.returnStationId ?? null,
+      description: `Handover ${kind} started`,
+      metadata: { bookingId, kind, vehicleId: booking.vehicleId },
+    });
 
     // V4.6.81 — Backdate support. When the operator records a pickup that
     // actually happened earlier (customer was late, dispatcher logs after
@@ -480,6 +512,81 @@ export class BookingsHandoverService {
 
     await this.fleetMapCache.invalidate(orgId);
     await this.rentalHealthSummaryCache.invalidate(orgId, booking.vehicleId);
+
+    const completeAction =
+      kind === 'PICKUP'
+        ? BusinessAuditAction.OPERATOR_HANDOVER_PICKUP_COMPLETED
+        : BusinessAuditAction.OPERATOR_HANDOVER_RETURN_COMPLETED;
+
+    await this.operatorAudit.record({
+      organizationId: orgId,
+      action: completeAction,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.HANDOVER_PROTOCOL,
+      entityId: protocol.id,
+      actorUserId: actor.userId,
+      outcome: 'SUCCESS',
+      correlationId: `handover-complete:${bookingId}:${kind}:${protocol.id}`,
+      stationId: payload.actualStationId ?? booking.pickupStationId ?? booking.returnStationId ?? null,
+      changeReason: payload.pickupGateOverrideReason ?? null,
+      after: minimizeHandoverProtocolPayload(payload),
+      description: `Handover ${kind} completed`,
+      metadata: {
+        bookingId,
+        kind,
+        vehicleId: booking.vehicleId,
+        technicalObservationCount: payload.technicalObservations?.length ?? 0,
+      },
+      critical: true,
+    });
+
+    if (payload.customerSignatureDataUrl || payload.staffSignatureDataUrl) {
+      void this.operatorAudit.record({
+        organizationId: orgId,
+        action: BusinessAuditAction.OPERATOR_SIGNATURE_CAPTURED,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.HANDOVER_PROTOCOL,
+        entityId: protocol.id,
+        actorUserId: actor.userId,
+        outcome: 'SUCCESS',
+        correlationId: `handover-signature:${protocol.id}`,
+        stationId: payload.actualStationId ?? null,
+        description: 'Handover signatures captured',
+        after: {
+          hasCustomerSignature: Boolean(payload.customerSignatureDataUrl),
+          hasStaffSignature: Boolean(payload.staffSignatureDataUrl),
+        },
+        metadata: { bookingId, kind },
+      });
+    }
+
+    if (kind === 'PICKUP' && gateEvaluation?.overrideUsed) {
+      void this.operatorAudit.record({
+        organizationId: orgId,
+        action: BusinessAuditAction.OPERATOR_HANDOVER_OVERRIDE,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+        entityId: bookingId,
+        actorUserId: actor.userId,
+        outcome: 'SUCCESS',
+        correlationId: `handover-override:${bookingId}:${protocol.id}`,
+        changeReason: payload.pickupGateOverrideReason ?? null,
+        description: 'Pickup gate override applied during handover',
+        metadata: { protocolId: protocol.id },
+      });
+    }
+
+    const observationCount = payload.technicalObservations?.length ?? 0;
+    if (observationCount > 0) {
+      void this.operatorAudit.record({
+        organizationId: orgId,
+        action: BusinessAuditAction.OPERATOR_TECHNICAL_OBSERVATION_CREATED,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.TECHNICAL_OBSERVATION,
+        entityId: protocol.id,
+        actorUserId: actor.userId,
+        outcome: 'SUCCESS',
+        correlationId: `handover-observations:${protocol.id}`,
+        description: `Technical observations recorded (${observationCount})`,
+        metadata: { bookingId, kind, count: observationCount },
+      });
+    }
 
     return {
       booking: { id: updatedBooking.id, status: updatedBooking.status },

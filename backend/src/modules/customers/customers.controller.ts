@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -24,6 +25,8 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { StorageService } from '@shared/storage/storage.service';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import { BusinessAuditAction, BUSINESS_AUDIT_ENTITY_TYPE } from '@modules/business-audit/business-audit.constants';
 import {
   AddCustomerNoteDto,
   ArchiveCustomerDto,
@@ -85,6 +88,7 @@ export class CustomersController {
     private readonly customerDocumentsService: CustomerDocumentsService,
     private readonly customerTimelineService: CustomerTimelineService,
     private readonly storage: StorageService,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   @Get('stats')
@@ -260,9 +264,23 @@ export class CustomersController {
   async findOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
+    @Req() req?: { requestId?: string },
   ) {
     const customer = await this.customersService.findById(orgId, id);
     if (!customer) throw new NotFoundException('Customer not found');
+    void this.operatorAudit.record({
+      organizationId: orgId,
+      action: BusinessAuditAction.OPERATOR_CUSTOMER_SENSITIVE_VIEW,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.CUSTOMER,
+      entityId: id,
+      actorUserId: userId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `customer-view:${id}:${userId ?? 'anon'}`,
+      requestId: req?.requestId ?? null,
+      description: 'Customer sensitive profile viewed',
+      after: { id, hasDocuments: (customer.documents?.length ?? 0) > 0 },
+    });
     return customer;
   }
 

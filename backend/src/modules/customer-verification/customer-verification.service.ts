@@ -19,6 +19,13 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { CustomerVerificationPlanDto } from '@modules/customers/dto/verification-plan.dto';
 import { CustomerVerificationReadModelService } from './customer-verification-read-model.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import { BusinessAuditAction, BUSINESS_AUDIT_ENTITY_TYPE } from '@modules/business-audit/business-audit.constants';
 import { ManualPickupCheckDto } from './dto/manual-pickup-check.dto';
 import { StartDiditSessionDto } from './dto/start-didit-session.dto';
 import { DiditService } from './providers/didit/didit.service';
@@ -83,6 +90,7 @@ export class CustomerVerificationService {
     private readonly diditService: DiditService,
     private readonly configService: ConfigService,
     private readonly readModelHelper: CustomerVerificationReadModelService,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   async startDiditSession(
@@ -713,6 +721,24 @@ export class CustomerVerificationService {
         },
         createdByUserId: user.id,
       },
+    });
+
+    void this.operatorAudit.record({
+      organizationId,
+      action: BusinessAuditAction.OPERATOR_DOCUMENT_VERIFICATION,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+      entityId: dto.bookingId,
+      actorUserId: user.id,
+      outcome: 'SUCCESS',
+      correlationId: `pickup-verification:${dto.bookingId}:${checks.map((c) => c.id).join(',')}`,
+      description: 'Manual pickup document verification recorded',
+      metadata: {
+        customerId: dto.customerId,
+        checkIds: checks.map((c) => c.id),
+        idStatus,
+        licenseStatus,
+      },
+      critical: true,
     });
 
     return { checks };

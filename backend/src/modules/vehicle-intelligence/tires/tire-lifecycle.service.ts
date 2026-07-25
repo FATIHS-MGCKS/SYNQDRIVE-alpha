@@ -14,6 +14,11 @@ import { TireWearModelService } from './tire-wear-model.service';
 import { TireHealthService } from './tire-health.service';
 import { TireHealthAlertService } from './tire-health-alert.service';
 import { TireHealthObservabilityService } from './tire-health-observability.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
 import {
   TireIdentityService,
   dbPosToWheel,
@@ -246,6 +251,7 @@ export class TireLifecycleService {
     private readonly tireHealthService: TireHealthService,
     private readonly tireHealthAlertService: TireHealthAlertService,
     private readonly tireIdentity: TireIdentityService,
+    private readonly operatorAudit: OperatorAuditService,
     @Optional() private readonly observability?: TireHealthObservabilityService,
   ) {}
 
@@ -362,6 +368,23 @@ export class TireLifecycleService {
     }
 
     this.observability?.recordMeasurement({ source });
+
+    void this.operatorAudit.record({
+      organizationId: vehicle.organizationId,
+      action: BusinessAuditAction.OPERATOR_TIRE_MEASUREMENT_RECORDED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.TIRE_MEASUREMENT,
+      entityId: measurement.id,
+      actorUserId: command.userId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `tire-measurement:${measurement.id}`,
+      description: 'Tire tread measurement recorded',
+      after: {
+        source,
+        wheelCount: values.count,
+        odometerKm: resolvedOdometer,
+      },
+      metadata: { vehicleId: command.vehicleId, tireSetupId: setup.id },
+    });
 
     return { measurement, kFactors, source };
   }
