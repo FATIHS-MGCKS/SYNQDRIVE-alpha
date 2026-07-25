@@ -267,6 +267,9 @@ export {
 export {
   routeFleetChatMessage,
   validateFleetChatLlmClassification,
+  FleetChatIntentRouterService,
+  FLEET_CHAT_INTENTS,
+} from './routing';
 export { FleetChatOrchestratorService } from './chat/fleet-chat-orchestrator.service';
 export type {
   FleetChatOrchestrateResult,

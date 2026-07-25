@@ -52,8 +52,6 @@ must be wrapped as `AiEvidence` with explicit:
   combined questions, hardened vehicle resolver only; no LLM tool execution from user text.
 - **Orchestrator:** `FleetChatOrchestratorService` — intent → registry tools (parallel
   independent tools); partial results; token-light evidence; structured composer; audit metadata.
-- **Intent router:** `FleetChatIntentRouterService` — closed intent taxonomy,
-  combined questions, hardened vehicle resolver only; no LLM tool execution from user text.
 
 ### Next prompts
 
@@ -198,6 +196,16 @@ must be wrapped as `AiEvidence` with explicit:
   rules; hardened `AiVehicleResolutionService` for vehicle refs; combined intents
   (`COMBINED_VEHICLE_STATUS`); injection/tool-name stripping before scoring.
 - Optional schema-validated LLM classification via `purpose: 'router'` when enabled.
-- **Not wired to ChatService** yet — orchestrator follows next prompt.
-- Tests: `fleet-chat-intent-router.spec.ts` (11); **262/262** AI module.
+- Tests: `fleet-chat-intent-router.spec.ts` (11); **262/262** AI module before Prompt 17.
+
+### Prompt 17 — Fleet Chat orchestrator (2026-07-25)
+
+- Added `backend/src/modules/ai/chat/fleet-chat-orchestrator.service.ts` —
+  `FleetChatOrchestratorService.orchestrate(context, message)`.
+- Flow: `FleetChatIntentRouterService` → minimal `AiDomainToolRegistry` tools
+  (parallel independent) → `fleet-chat-evidence.util` + `fleet-chat-response.composer`
+  → LLM (`purpose: chat`) with token-light grounded facts.
+- Partial outcomes, tool budget + LLM timeouts, structured audit + performance metadata.
+- `ChatService` legacy enrichment path unchanged until controller passes auth context.
+- Tests: `fleet-chat-orchestrator.spec.ts` (8); **270/270** AI module.
 
