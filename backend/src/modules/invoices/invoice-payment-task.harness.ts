@@ -5,6 +5,7 @@ import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TaskLinkedObjectResolverService } from '@modules/tasks/task-linked-object-resolver.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { makeOperatorResourceScopeMock } from '@modules/operator-app/__fixtures__/operator-resource-scope.mock';
 import { createInvoiceTestStore, type InvoiceTestStore } from './invoices-test-store';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
@@ -29,7 +30,7 @@ export function createInvoicePaymentTaskHarness(): InvoicePaymentTaskHarness {
     resolveForTask: jest.fn().mockResolvedValue([]),
   } as unknown as TaskLinkedObjectResolverService;
 
-  const tasks = new TasksService(prisma, activityLog, linkedObjectResolver);
+  const tasks = new TasksService(prisma, activityLog, linkedObjectResolver, makeOperatorResourceScopeMock() as any);
   const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
   const invoicePaymentTasks = new InvoicePaymentTaskService(
     prisma,

@@ -72,14 +72,20 @@ export class BookingsController {
 
   @Get('today/pickups')
   @RequirePermission('bookings', 'read')
-  async findTodaysPickups(@Param('orgId') orgId: string) {
-    return this.bookingsService.findTodaysPickups(orgId);
+  async findTodaysPickups(
+    @Param('orgId') orgId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.bookingsService.findTodaysPickups(orgId, userId);
   }
 
   @Get('today/returns')
   @RequirePermission('bookings', 'read')
-  async findTodaysReturns(@Param('orgId') orgId: string) {
-    return this.bookingsService.findTodaysReturns(orgId);
+  async findTodaysReturns(
+    @Param('orgId') orgId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.bookingsService.findTodaysReturns(orgId, userId);
   }
 
   @Get('stats')
@@ -93,8 +99,9 @@ export class BookingsController {
   async findAll(
     @Param('orgId') orgId: string,
     @Query() query: ListBookingsQueryDto,
+    @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.bookingsService.findAll(orgId, query);
+    return this.bookingsService.findAll(orgId, query, userId);
   }
 
   @Post('eligibility-check')
@@ -389,8 +396,9 @@ export class BookingsController {
   async findOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.bookingsService.findById(orgId, id);
+    return this.bookingsService.findById(orgId, id, userId);
   }
 
   @Post()

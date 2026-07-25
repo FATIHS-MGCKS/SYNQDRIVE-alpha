@@ -41,6 +41,7 @@ import {
 } from './booking-pickup-gate/booking-pickup-gate.constants';
 import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
+import { OperatorResourceScopeService } from '@modules/operator-app/operator-resource-scope.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -69,6 +70,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly operatorScope: OperatorResourceScopeService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -120,10 +122,44 @@ export class BookingsHandoverService {
         endDate: true,
         pickupStationId: true,
         returnStationId: true,
+        actualPickupStationId: true,
+        actualReturnStationId: true,
       },
     });
     if (!booking) {
       throw new NotFoundException('Booking not found');
+    }
+
+    const vehicle = booking.vehicleId
+      ? await this.prisma.vehicle.findFirst({
+          where: { id: booking.vehicleId, organizationId: orgId },
+          select: { homeStationId: true, currentStationId: true },
+        })
+      : null;
+
+    if (actor.userId) {
+      const scope = await this.operatorScope.resolve(actor.userId, orgId);
+      this.operatorScope.assertBookingWritable(scope, booking, vehicle, {
+        requireFieldAgent: true,
+        handoverKind: kind,
+        override: { scopeOverrideReason: payload.scopeOverrideReason },
+      });
+      if (payload.scopeOverrideReason?.trim()) {
+        await this.operatorScope.recordScopeOverrideAudit({
+          organizationId: orgId,
+          actorUserId: actor.userId,
+          resourceKind: 'handover',
+          resourceId: bookingId,
+          reason: payload.scopeOverrideReason.trim(),
+          metadata: { handoverKind: kind },
+        });
+      }
+      this.operatorScope.validateHandoverActualStation(
+        scope,
+        booking,
+        kind,
+        payload.actualStationId,
+      );
     }
 
     // V4.6.81 — Backdate support. When the operator records a pickup that
