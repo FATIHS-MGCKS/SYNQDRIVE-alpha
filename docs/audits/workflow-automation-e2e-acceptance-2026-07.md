@@ -4,21 +4,89 @@
 |------|------|
 | **Audit ID** | `workflow-automation-e2e-acceptance-2026-07` |
 | **Prompt** | Phase 12, Prompt 53 von 54 |
-| **Prüfzeit (UTC)** | 2026-07-25T16:27–16:31Z |
+| **Prüfzeit (UTC)** | 2026-07-25T16:27–16:31Z (Pass 1–2) · **2026-07-25T21:12–21:23Z (Pass 3 post-deploy)** |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` / `https://app.synqdrive.eu` |
-| **VPS-Deploy-Commit** | `6080dbd260b01e8e091f17687799fbb73bde290a` (`20260725083109_data-auth-rc`) |
-| **Repo-Test-Commit** | `cursor/workflow-runtime-rollout-2a81` (Phase-11-Workflow-Stand, **nicht** auf VPS) |
+| **VPS-Deploy-Commit** | **`eae1ccbd`** (`20260725211756_v4994`) — Phase 11 auf `main` deployt |
+| **Repo-Test-Commit** | `main` @ `eae1ccbd` (identisch mit VPS) |
 | **Voraussetzung** | [workflow-automation-vps-control-audit-2026-07.md](./workflow-automation-vps-control-audit-2026-07.md) |
 | **Kontakt-Policy** | **Keine echten Kunden kontaktiert** — nur dedizierte Test-/Simulate-Konfiguration und automatisierte Harness-Tests |
-| **Gesamtverdict** | **FAIL (Production E2E)** — **PASS (Repo CI Harness)** auf Feature-Branch |
+| **Gesamtverdict** | **CONDITIONAL PASS (Infrastructure)** — **PARTIAL (Mutating E2E)** — Repo CI **PASS** |
+
+---
+
+## Pass 3 — Post-Deploy Re-Acceptance (2026-07-25T21:12–21:23Z)
+
+Phase-11-Workflow-Runtime ist auf Production deployt. P0-Blocker P0-1 bis P0-3 aus Pass 1–2 sind **behoben**.
+
+| Check | Pass 1–2 | Pass 3 |
+|-------|----------|--------|
+| Deploy-Commit | `6080dbd` (~91 Commits hinter `main`) | **`eae1ccbd`** auf `main` |
+| Shadow/Rollout APIs | **404** | **401** (Routen aktiv, Auth-Guard) |
+| Workflow-Tabellen | Fehlend | **9 Tabellen** (`org_workflow_*`) |
+| Prisma-Migrationen | Nicht angewendet | **6 Migrationen** angewendet |
+| `WORKFLOW_*` Env | Fehlend | **Fail-closed** gesetzt (`DISABLED` + `shadow`) |
+| Shadow-Pilot-Org | Nicht konfiguriert | **`org-voice-staging-e2e`** enabled |
+| Health / Readiness | 200 | **200** |
+| PM2 | online (3161 restarts) | online (3164 restarts nach Deploy) |
+
+### Env-Konfiguration (Production)
+
+```bash
+WORKFLOW_RUNTIME_ROLLOUT_STAGE=DISABLED
+TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE=shadow
+WORKFLOW_SHADOW_GLOBALLY_ENABLED=false
+WORKFLOW_SHADOW_RETENTION_DAYS=30
+WORKFLOW_RUNTIME_KILL_SWITCH=false  # alle Channel-Kill-Switches false
+```
+
+### Shadow-Pilot (7-Tage-Soak)
+
+| Feld | Wert |
+|------|------|
+| Org | `org-voice-staging-e2e` (`Voice Staging E2E (Internal)`) |
+| `org_workflow_shadow_settings.enabled` | **true** |
+| `legacy_compare_enabled` | **true** |
+| `retention_days` | 30 |
+| Shadow-Runs bisher | 0 (Soak startet nach Deploy) |
+
+### Aktualisierte Szenario-Matrix (Pass 3)
+
+| # | Szenario | Prod (Pass 3) | CI | Gesamt |
+|---|----------|---------------|-----|--------|
+| 1 | Pickup 30 min überfällig | **DEFERRED** (kein mutierender Trigger) | PASS | PARTIAL |
+| 2 | Kritischer Fahrzeugfehler | **DEFERRED** | PARTIAL | PARTIAL |
+| 3 | Provider-Ausfall | **DEFERRED** | PASS | PARTIAL |
+| 4 | Doppelte Events | **DEFERRED** | PASS | PARTIAL |
+| 5 | Prozessneustart | **INFRA PASS** (PM2 restart OK) | PASS | PASS |
+| 6 | Cross-Tenant-Manipulation | **PASS** (401) | PASS | **PASS** |
+| 7 | Dry Run | **INFRA PASS** (API routiert) | PASS | PARTIAL |
+| 8 | Quiet Hours / Opt-out | **DEFERRED** | PARTIAL | PARTIAL |
+| 9 | Voice Call | **DEFERRED** (kein Live-Call) | N/A | DEFERRED |
+| 10 | Dead Letter & Replay | **DEFERRED** | PASS | PARTIAL |
+| 11 | Kill Switch | **INFRA PASS** (Env + API) | PASS | PARTIAL |
+| 12 | Legacy vs neue Engine | **PASS** (shadow mode, kein Doppelpfad) | PASS | **PASS** |
+
+**Pass 3 Bestanden:** 3 (Szenario 5, 6, 12) · **Infra ready / deferred:** 9
+
+### Verbleibende Blocker
+
+| ID | Blocker | Status |
+|----|---------|--------|
+| P0-1 | Phase-11 nicht deployt | **RESOLVED** |
+| P0-2 | Migrationen fehlen | **RESOLVED** |
+| P0-3 | Env fehlt | **RESOLVED** |
+| P0-4 | Mutierende Production-E2E | **DEFERRED** — 7-Tage Shadow-Soak auf `org-voice-staging-e2e` |
+| P0-5 | Scheduler BullMQ `:` Job-ID | **OPEN** — weiterhin im Log |
 
 ---
 
 ## Executive Summary
 
-Die **Production-VPS** kann die 12 Pflichtszenarien der neuen Workflow Runtime **nicht** End-to-End ausführen: Phase-11-Features (Shadow, Rollout, Migration Bridge, erweiterte Audit-Tabellen) sind **nicht deployt** (`CONDITIONAL NO-GO` aus Prompt 52). Legacy Task Automation läuft; `org_workflows` / `org_workflow_runs` sind leer.
+**Pass 3 (2026-07-25):** Phase-11-Workflow-Runtime ist auf Production deployt (`eae1ccbd`). Infrastruktur-Checks (Migrationen, APIs, Env, Shadow-Pilot) sind **grün**. Mutierende E2E-Szenarien bleiben während des 7-Tage-Shadow-Soaks auf `org-voice-staging-e2e` deferred.
 
-Die **automatisierte Akzeptanz** auf dem Repo-Stand `cursor/workflow-runtime-rollout-2a81` ist **grün**:
+**Pass 1–2 (2026-07-25):** Die Production-VPS konnte die 12 Pflichtszenarien **nicht** End-to-End ausführen, da Phase-11-Features nicht deployt waren.
+
+Die **automatisierte Akzeptanz** auf `main` @ `eae1ccbd` ist **grün**:
 
 | Suite | Ergebnis |
 |-------|----------|
@@ -30,7 +98,7 @@ Die **automatisierte Akzeptanz** auf dem Repo-Stand `cursor/workflow-runtime-rol
 | Frontend workflow-automation Vitest | **45 PASS** |
 | **Gesamt (dedupliziert)** | **~404 PASS** |
 
-**Empfehlung:** Production-E2E erst nach Deploy Phase 11 + Migrationen + Env-Konfiguration wiederholen. Bis dahin gilt Repo-CI als Nachweis der fachlichen Korrektheit; VPS nur für Legacy-Pfad und Sicherheits-Gates.
+**Empfehlung:** 7-Tage Shadow-Soak auf `org-voice-staging-e2e` beobachten (`org_workflow_shadow_runs`, Deviation-Summary). Mutierende Production-E2E nach Soak mit authentifiziertem Test-Admin wiederholen. Scheduler BullMQ Job-ID-Fix (P0-5) separat priorisieren.
 
 ### Testorganisation & Sandbox (Production)
 
@@ -297,11 +365,12 @@ Legende: **Prod** = Live-VPS E2E · **CI** = Repo-Harness auf Feature-Branch
 
 - [x] VPS-Control-Audit als Voraussetzung gelesen
 - [x] Read-only VPS-Checks (Health, API 401/404, Queue, DB counts, Simulate-Flags)
-- [x] Repo CI auf `cursor/workflow-runtime-rollout-2a81` (404 Tests)
+- [x] Repo CI auf `main` @ `eae1ccbd` (373+ Tests)
 - [x] **Keine** echten Kunden kontaktiert
 - [x] **Keine** Live-Voice-Calls
 - [x] **Keine** Queue-Mutation / Datenlöschung auf Prod
-- [ ] Mutierende Production-E2E (bewusst deferred bis Deploy)
+- [x] **Pass 3:** Phase-11-Merge auf `main`, Deploy, Migrationen, fail-closed Env, Shadow-Pilot-Org
+- [ ] Mutierende Production-E2E (deferred — 7-Tage Shadow-Soak)
 
 ---
 

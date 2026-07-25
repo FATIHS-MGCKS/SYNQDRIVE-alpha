@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-phase11-production-rollout-v49864-2026-07-25',
+    version: '4.9.864',
+    title: 'V4.9.864 — Workflow Runtime Phase 11 production rollout (fail-closed + shadow soak)',
+    summary: [
+      'Merged Phase 11 to main (maker-checker, audit, shadow, rollout, migration bridge, UI, tests) — commit eae1ccbd.',
+      'VPS deploy 20260725211756_v4994: 6 Prisma migrations applied; 9 org_workflow_* tables live.',
+      'Fail-closed env: WORKFLOW_RUNTIME_ROLLOUT_STAGE=DISABLED, TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE=shadow.',
+      'Shadow pilot org org-voice-staging-e2e enabled (7-day soak); no real customer contact.',
+      'E2E Pass 3: CONDITIONAL PASS (infra) — mutating scenarios deferred during soak.',
+    ],
+    reason:
+      'Post-remediation audit (Prompt 54) recommended 6 next steps: merge, deploy, migrate, env, shadow soak, re-acceptance.',
+    previousBehavior:
+      'VPS ~91 commits behind main; shadow/rollout APIs 404; no WORKFLOW_* env; no shadow pilot.',
+    details:
+      'docs/audits/workflow-automation-e2e-acceptance-2026-07.md Pass 3; docs/operations/workflow-shadow-mode-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T21:25:00.000Z',
+  },
+  {
     id: 'workflow-post-remediation-audit-v49862-2026-07-25',
     version: '4.9.862',
     title: 'V4.9.862 — Workflow Automation post-remediation production readiness audit (Phase 12 Prompt 54)',
