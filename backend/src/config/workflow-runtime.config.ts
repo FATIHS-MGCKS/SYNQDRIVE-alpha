@@ -15,4 +15,13 @@ export default registerAs('workflowRuntime', () => ({
   approvalTtlHours: parseInt(process.env.WORKFLOW_RUNTIME_APPROVAL_TTL_HOURS ?? '72', 10),
   schedulerEnabled: process.env.WORKFLOW_RUNTIME_SCHEDULER_ENABLED !== 'false',
   maxFallbackDepth: parseInt(process.env.WORKFLOW_RUNTIME_MAX_FALLBACK_DEPTH ?? '3', 10),
+  /** Maximum delay for workflow.delay actions and durable timers (default 30 days). */
+  maxTimerDelayMs: parseInt(process.env.WORKFLOW_RUNTIME_MAX_TIMER_DELAY_MS ?? String(30 * 24 * 60 * 60 * 1000), 10),
+  /** Minutes after pickupAt before booking.pickup_overdue timer fires. */
+  bookingPickupOverdueOffsetMinutes: parseInt(
+    process.env.WORKFLOW_BOOKING_PICKUP_OVERDUE_OFFSET_MINUTES ?? '30',
+    10,
+  ),
+  /** Log warning when timer fires later than this threshold (ms). */
+  timerLateWarningMs: parseInt(process.env.WORKFLOW_RUNTIME_TIMER_LATE_WARNING_MS ?? '60000', 10),
 }));

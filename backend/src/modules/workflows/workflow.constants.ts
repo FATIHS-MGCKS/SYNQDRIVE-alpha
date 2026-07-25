@@ -27,6 +27,7 @@ export const WORKFLOW_ACTION_TYPES = [
   'alert.create',
   'vehicle.status.update',
   'workflow.approval.request',
+  'workflow.delay',
   'notification.prepare',
   'ai.suggest_action',
 ] as const;

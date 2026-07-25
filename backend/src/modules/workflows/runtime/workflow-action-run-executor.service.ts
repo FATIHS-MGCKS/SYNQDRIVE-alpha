@@ -39,6 +39,7 @@ import { resolveErrorStrategy } from './error-strategy/workflow-action-error-str
 import { WorkflowActionFallbackService } from './error-strategy/workflow-action-fallback.service';
 import { WorkflowActionCompensationService } from './error-strategy/workflow-action-compensation.service';
 import { WorkflowRunWorkerService } from './workflow-run-worker.service';
+import { WorkflowDurableTimerService } from './timers/workflow-durable-timer.service';
 
 @Injectable()
 export class WorkflowActionRunExecutorService {
@@ -57,6 +58,7 @@ export class WorkflowActionRunExecutorService {
     private readonly compensation: WorkflowActionCompensationService,
     @Inject(forwardRef(() => WorkflowRunWorkerService))
     private readonly worker: WorkflowRunWorkerService,
+    private readonly durableTimers: WorkflowDurableTimerService,
   ) {}
 
   private get defaultMaxAttempts() {
@@ -282,6 +284,24 @@ export class WorkflowActionRunExecutorService {
       };
     }
 
+    if (raw.status === 'WAITING' && raw.waitingUntil) {
+      await this.atomicComplete(orgId, runId, actionRun, {
+        toStatus: 'WAITING',
+        resultSummary,
+        output: sanitizedOutput,
+        providerReference,
+        finishedAt: null,
+        nextAttemptAt: null,
+        waitingUntil: raw.waitingUntil,
+      });
+      return {
+        status: raw.status,
+        resultSummary,
+        output: sanitizedOutput,
+        providerReference,
+      };
+    }
+
     const nextAttemptAt =
       raw.status === 'FAILED_RETRYABLE'
         ? new Date(
@@ -311,6 +331,10 @@ export class WorkflowActionRunExecutorService {
       finishedAt,
       nextAttemptAt,
     });
+
+    if (nextAttemptAt) {
+      await this.scheduleRetryTimer(orgId, runId, actionRun.id, nextAttemptAt);
+    }
 
     return {
       status: raw.status,
@@ -438,6 +462,7 @@ export class WorkflowActionRunExecutorService {
       approvalId?: string | null;
       finishedAt?: Date | null;
       nextAttemptAt?: Date | null;
+      waitingUntil?: Date | null;
       appliedErrorStrategy?: string;
       partialFailure?: boolean;
       blockingOnFailure?: boolean;
@@ -456,7 +481,7 @@ export class WorkflowActionRunExecutorService {
         errorSummary: patch.errorSummary ?? null,
         errorMessage: patch.errorSummary ?? null,
         providerReference: patch.providerReference ?? null,
-        waitingUntil: null,
+        waitingUntil: patch.waitingUntil ?? null,
         approvalId: patch.approvalId ?? null,
         finishedAt: patch.finishedAt ?? null,
         attemptCount: actionRun.attemptCount,
@@ -497,5 +522,23 @@ export class WorkflowActionRunExecutorService {
       { type: 'WORKER', source: 'action-run.executor' },
       'Derived after action execution',
     );
+  }
+
+  private async scheduleRetryTimer(
+    orgId: string,
+    runId: string,
+    actionRunId: string,
+    fireAt: Date,
+  ) {
+    await this.durableTimers.scheduleOrReplace({
+      organizationId: orgId,
+      workflowRunId: runId,
+      actionRunId,
+      timerType: 'RETRY_BACKOFF',
+      dueAt: fireAt,
+      occurrenceId: `retry:${runId}:${actionRunId}`,
+      idempotencyKey: `timer:retry:${runId}:${actionRunId}`,
+      payload: { reason: 'FAILED_RETRYABLE' },
+    });
   }
 }

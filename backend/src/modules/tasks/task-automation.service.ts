@@ -20,6 +20,7 @@ import {
 } from './automation/task-automation-effective-rule.util';
 import { TaskAutomationRuleResolverService } from './automation/task-automation-rule-resolver.service';
 import { WorkflowBookingTimingEmitterService } from '@modules/workflows/outbox/workflow-booking-timing-emitter.service';
+import { BookingPickupOverdueTimerService } from '@modules/workflows/runtime/timers/booking-pickup-overdue-timer.service';
 import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
 import { buildWorkflowOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
 import type { ResolvedTaskAutomationRule, TaskAutomationCatalogKey } from './automation/task-automation-rule.types';
@@ -100,6 +101,7 @@ export class TaskAutomationService {
     private readonly ruleResolver: TaskAutomationRuleResolverService,
     @Optional() private readonly bookingTimingEmitter?: WorkflowBookingTimingEmitterService,
     @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
+    @Optional() private readonly pickupOverdueTimer?: BookingPickupOverdueTimerService,
   ) {}
 
   private async resolveMaterializationRule(
@@ -373,7 +375,10 @@ export class TaskAutomationService {
     booking: BookingLifecycleTaskInput,
     options?: SyncBookingPickupOptions,
   ): Promise<void> {
-    if (booking.status !== 'CONFIRMED') return;
+    if (booking.status !== 'CONFIRMED') {
+      await this.pickupOverdueTimer?.cancelForBooking(booking.organizationId, booking.id);
+      return;
+    }
 
     try {
       const resolved = await this.resolveMaterializationRule(booking.organizationId, 'BOOKING_PICKUP');
@@ -425,6 +430,16 @@ export class TaskAutomationService {
         stationId: booking.pickupStationId,
         timing,
         now,
+      });
+
+      await this.pickupOverdueTimer?.syncForConfirmedBooking({
+        organizationId: booking.organizationId,
+        bookingId: booking.id,
+        vehicleId: booking.vehicleId,
+        pickupStationId: booking.pickupStationId,
+        startDate: booking.startDate,
+        status: booking.status,
+        timeZone,
       });
     } catch (err: unknown) {
       await this.handleAutomationFailure(

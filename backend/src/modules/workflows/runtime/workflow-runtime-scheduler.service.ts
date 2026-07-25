@@ -4,7 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import { WorkflowRunWorkerService } from './workflow-run-worker.service';
 import { WorkflowApprovalResumeService } from './approval/workflow-approval-resume.service';
 import { WorkflowRunCancellationService } from './cancellation/workflow-run-cancellation.service';
-import { WorkflowTimerRepository } from './cancellation/workflow-timer.repository';
+import { WorkflowTimerFireService } from './timers/workflow-timer-fire.service';
 import { WorkflowRunRuntimeRepository } from './workflow-run-runtime.repository';
 import { PrismaService } from '@shared/database/prisma.service';
 
@@ -18,7 +18,7 @@ export class WorkflowRuntimeSchedulerService {
     private readonly worker: WorkflowRunWorkerService,
     private readonly approvalResume: WorkflowApprovalResumeService,
     private readonly cancellation: WorkflowRunCancellationService,
-    private readonly timers: WorkflowTimerRepository,
+    private readonly timerFire: WorkflowTimerFireService,
     private readonly runs: WorkflowRunRuntimeRepository,
   ) {}
 
@@ -57,18 +57,13 @@ export class WorkflowRuntimeSchedulerService {
   }
 
   private async processDueTimers() {
-    const batch = await this.timers.findDueBatch(
+    const results = await this.timerFire.fireDueTimers(
       new Date(),
       this.config.get<number>('workflowRuntime.pollBatchSize', 25),
     );
-
-    for (const timer of batch) {
-      const fired = await this.timers.markFired(timer.id);
-      if (fired.count === 0) continue;
-
-      if (timer.timerType === 'RETRY_BACKOFF' && timer.workflowRunId) {
-        await this.worker.processRun(timer.organizationId, timer.workflowRunId);
-      }
+    const fired = results.filter((r) => r.fired && r.handler !== 'duplicate').length;
+    if (fired > 0) {
+      this.logger.log(`Fired ${fired} workflow timer(s)`);
     }
   }
 
