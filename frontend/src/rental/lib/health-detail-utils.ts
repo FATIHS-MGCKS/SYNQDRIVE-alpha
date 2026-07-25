@@ -66,6 +66,29 @@ export function moduleKeyToTab(key: RentalHealthModuleKey): HealthDetailTab {
   return map[key];
 }
 
+const RENTAL_HEALTH_MODULE_KEYS = new Set<RentalHealthModuleKey>([
+  'battery',
+  'tires',
+  'brakes',
+  'error_codes',
+  'service_compliance',
+  'complaints',
+  'vehicle_alerts',
+]);
+
+function isRentalHealthModuleKey(module: string): module is RentalHealthModuleKey {
+  return RENTAL_HEALTH_MODULE_KEYS.has(module as RentalHealthModuleKey);
+}
+
+/** Maps notification / OPEN_VEHICLE_MODULE targets to a health detail tab. */
+export function resolveNotificationModuleTab(module?: string | null): HealthDetailTab {
+  if (!module || module === 'overview' || module === 'health') return 'overview';
+  if (module === 'connectivity') return 'evidence';
+  if (module === 'trips') return 'overview';
+  if (isRentalHealthModuleKey(module)) return moduleKeyToTab(module);
+  return 'overview';
+}
+
 export function overallStateLabel(state: RentalHealthState | undefined): string {
   switch (state) {
     case 'critical':

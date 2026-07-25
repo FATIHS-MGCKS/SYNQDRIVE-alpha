@@ -1972,43 +1972,88 @@ export class TasksService {
     const taskType = payload.type ?? 'CUSTOM';
     const checklist = this.resolveChecklist(taskType, payload.checklist);
 
-    const task = await this.prisma.orgTask.create({
-      data: {
-        organizationId: orgId,
-        title: payload.title,
-        description: payload.description,
-        category: payload.category,
-        type: taskType,
-        sourceType: payload.sourceType ?? 'SYSTEM',
-        priority: payload.priority ?? 'NORMAL',
-        vehicleId: payload.vehicleId ?? undefined,
-        bookingId: payload.bookingId ?? undefined,
-        customerId: payload.customerId ?? undefined,
-        vendorId: payload.vendorId ?? undefined,
-        alertId: payload.alertId ?? undefined,
-        documentId: payload.documentId ?? undefined,
-        fineId: payload.fineId ?? undefined,
-        invoiceId: payload.invoiceId ?? undefined,
-        dueDate: payload.dueDate ?? null,
-        activatesAt: payload.activatesAt ?? new Date(),
-        source: payload.source,
-        dedupKey,
-        metadata: payload.metadata,
-        blocksVehicleAvailability: payload.blocksVehicleAvailability ?? false,
-        checklistItems: checklist
-          ? {
-              create: checklist.map((c, i) => ({
+    try {
+      const task = await this.prisma.orgTask.create({
+        data: {
+          organizationId: orgId,
+          title: payload.title,
+          description: payload.description,
+          category: payload.category,
+          type: taskType,
+          sourceType: payload.sourceType ?? 'SYSTEM',
+          priority: payload.priority ?? 'NORMAL',
+          vehicleId: payload.vehicleId ?? undefined,
+          bookingId: payload.bookingId ?? undefined,
+          customerId: payload.customerId ?? undefined,
+          vendorId: payload.vendorId ?? undefined,
+          alertId: payload.alertId ?? undefined,
+          documentId: payload.documentId ?? undefined,
+          fineId: payload.fineId ?? undefined,
+          invoiceId: payload.invoiceId ?? undefined,
+          dueDate: payload.dueDate ?? null,
+          activatesAt: payload.activatesAt ?? new Date(),
+          source: payload.source,
+          dedupKey,
+          metadata: payload.metadata,
+          blocksVehicleAvailability: payload.blocksVehicleAvailability ?? false,
+          checklistItems: checklist
+            ? {
+                create: checklist.map((c, i) => ({
                   title: c.title,
                   description: c.description,
                   sortOrder: c.sortOrder ?? i,
                   isRequired: c.isRequired ?? false,
                 })),
-            }
-          : undefined,
-      },
-    });
-    await this.recordEvent(task.id, 'CREATED', null, null, task.status, { auto: true });
-    return this.format(task);
+              }
+            : undefined,
+        },
+      });
+      await this.recordEvent(task.id, 'CREATED', null, null, task.status, { auto: true });
+      return this.format(task);
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const raced = await this.prisma.orgTask.findFirst({
+          where: { organizationId: orgId, dedupKey },
+        });
+        if (
+          raced &&
+          raced.status !== 'DONE' &&
+          raced.status !== 'CANCELLED'
+        ) {
+          const task = await this.prisma.orgTask.update({
+            where: { id: raced.id },
+            data: {
+              title: payload.title,
+              description: payload.description,
+              category: payload.category,
+              type: payload.type ?? raced.type,
+              sourceType: payload.sourceType ?? raced.sourceType,
+              priority: payload.priority ?? 'NORMAL',
+              vehicleId: payload.vehicleId ?? raced.vehicleId,
+              bookingId: payload.bookingId ?? raced.bookingId,
+              customerId: payload.customerId ?? raced.customerId,
+              vendorId: payload.vendorId ?? raced.vendorId,
+              alertId: payload.alertId ?? raced.alertId,
+              documentId: payload.documentId ?? raced.documentId,
+              fineId: payload.fineId ?? raced.fineId,
+              invoiceId: payload.invoiceId ?? raced.invoiceId,
+              dueDate: payload.dueDate !== undefined ? payload.dueDate : raced.dueDate,
+              activatesAt:
+                payload.activatesAt != null ? payload.activatesAt : raced.activatesAt,
+              source: payload.source,
+              metadata: payload.metadata,
+              blocksVehicleAvailability:
+                payload.blocksVehicleAvailability ?? raced.blocksVehicleAvailability,
+            },
+          });
+          return this.format(task);
+        }
+      }
+      throw err;
+    }
   }
 
   /**

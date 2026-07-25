@@ -16,6 +16,7 @@ import type { Request, Response } from 'express';
 import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
+import { normalizeDtcCodes } from '../vehicle-intelligence/dtc/dtc-code-normalizer.util';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
 import {
@@ -257,9 +258,8 @@ export class DimoWebhookController {
   }
 
   private async handleDtcEvent(vehicleId: string, dtcValue: any) {
-    const codes = typeof dtcValue === 'string'
-      ? dtcValue.split(',').map((c: string) => c.trim()).filter(Boolean)
-      : Array.isArray(dtcValue) ? dtcValue : [];
+    const codes = normalizeDtcCodes(dtcValue);
+    const newCodeSet = new Set(codes);
 
     this.logger.log(`DTC webhook for vehicle ${vehicleId}: ${codes.length} codes`);
 
@@ -273,13 +273,33 @@ export class DimoWebhookController {
       organizationId: vehicle?.organizationId ?? null,
     };
 
+    const previousActive = await this.prisma.vehicleDtcEvent.findMany({
+      where: { vehicleId, isActive: true },
+      select: { dtcCode: true },
+    });
+    const previousCodes = new Set(previousActive.map((e) => e.dtcCode));
+
     for (const code of codes) {
       await this.dtcService.upsertDtc(vehicleId, code, { producerContext });
     }
 
+    // VW-F-007: webhook clear parity with poll — deactivate codes no longer present
+    for (const code of previousCodes) {
+      if (!newCodeSet.has(code)) {
+        await this.dtcService.clearDtc(vehicleId, code, { producerContext });
+        this.logger.log(`DTC cleared via webhook: vehicleId=${vehicleId} code=${code}`);
+      }
+    }
+
     await this.prisma.vehicleLatestState.updateMany({
       where: { vehicleId },
-      data: { obdDtcList: codes, lastDtcPollAt: new Date() },
+      data: {
+        obdDtcList: codes,
+        lastDtcPollAt: new Date(),
+        lastDtcSuccessfulCheckAt: new Date(),
+        dtcPollStatus: 'success',
+        dtcPollError: null,
+      },
     });
   }
 }

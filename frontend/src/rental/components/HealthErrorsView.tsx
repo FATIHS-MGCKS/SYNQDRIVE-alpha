@@ -79,6 +79,8 @@ import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBar
 import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useHealthTabBatteryData } from '../hooks/useHealthTabBatteryData';
+import { invalidateRentalHealthForVehicle } from '../lib/rental-health-query';
+import type { HealthDetailTab } from '../lib/health-detail-utils';
 import { BatteryHealthQueryErrorPanel } from './battery/BatteryHealthQueryErrorPanel';
 import { BatteryLvSummaryCard } from './battery/BatteryLvSummaryCard';
 import { BatteryHvSummaryCard } from './battery/BatteryHvSummaryCard';
@@ -111,10 +113,43 @@ import type { BrakeServiceKindInput, BrakeServiceScopeInput } from '../../lib/ap
 interface HealthErrorsViewProps {
   vehicleId?: string;
   fuelType?: string;
+  initialModuleTab?: HealthDetailTab;
+  onConsumeInitialModuleTab?: () => void;
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
   onOpenBooking?: (bookingId: string) => void;
   onOpenTrips?: (dateIso?: string) => void;
+}
+
+function openHealthDetailTabModal(
+  tab: HealthDetailTab,
+  openers: {
+    openErrorCodes: () => void;
+    openBattery: () => void;
+    openService: () => void;
+    openBrakes: () => void;
+    openTires: () => void;
+  },
+): void {
+  switch (tab) {
+    case 'dtc':
+      openers.openErrorCodes();
+      break;
+    case 'battery':
+      openers.openBattery();
+      break;
+    case 'service':
+      openers.openService();
+      break;
+    case 'brakes':
+      openers.openBrakes();
+      break;
+    case 'tires':
+      openers.openTires();
+      break;
+    default:
+      break;
+  }
 }
 
 function formatEnumLabel(value: unknown, fallback = '—'): string {
@@ -204,6 +239,8 @@ function formatMeasuredAgo(iso: string | null | undefined): string | null {
 export function HealthErrorsView({
   vehicleId,
   fuelType,
+  initialModuleTab,
+  onConsumeInitialModuleTab,
   onOpenServiceCenter,
   onOpenExistingTask,
   onOpenBooking,
@@ -242,6 +279,14 @@ export function HealthErrorsView({
   const { t } = useLanguage();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
   const { reloadHealth } = useFleetVehicles();
+
+  const invalidateHealthCache = useCallback(() => {
+    if (orgId && vehicleId) {
+      invalidateRentalHealthForVehicle(orgId, vehicleId);
+    } else {
+      void reloadHealth();
+    }
+  }, [orgId, vehicleId, reloadHealth]);
   const [showErrorCodes, setShowErrorCodes] = useState(false);
   const [showBattery, setShowBattery] = useState(false);
   const [showService, setShowService] = useState(false);
@@ -741,6 +786,7 @@ export function HealthErrorsView({
       setRotationNotes('');
       refreshTireWear();
       loadTireDetail();
+      invalidateHealthCache();
     } catch (err: any) {
       setTireActionError(err?.message || 'Failed to rotate tires. Please try again.');
     }
@@ -773,6 +819,7 @@ export function HealthErrorsView({
       setTireChangeNotes('');
       refreshTireWear();
       loadTireDetail();
+      invalidateHealthCache();
     } catch (err: any) {
       setTireActionError(err?.message || 'Failed to change tires.');
     }
@@ -785,6 +832,7 @@ export function HealthErrorsView({
     tireChangeNotes,
     refreshTireWear,
     loadTireDetail,
+    invalidateHealthCache,
   ]);
 
   const handleActivateStoredSet = useCallback(async () => {
@@ -800,6 +848,7 @@ export function HealthErrorsView({
       setStoredActivationOdometer('');
       refreshTireWear();
       loadTireDetail();
+      invalidateHealthCache();
     } catch (err: any) {
       setTireActionError(err?.message || 'Failed to activate stored tire set.');
     }
@@ -810,6 +859,7 @@ export function HealthErrorsView({
     storedActivationOdometer,
     refreshTireWear,
     loadTireDetail,
+    invalidateHealthCache,
   ]);
 
   const [tireActionError, setTireActionError] = useState<string | null>(null);
@@ -843,6 +893,7 @@ export function HealthErrorsView({
       setManualMeasurement({ fl: '', fr: '', rl: '', rr: '', odometer: '', workshop: '' });
       refreshTireWear();
       loadTireDetail();
+      invalidateHealthCache();
     } catch (err: any) {
       setTireActionError(err?.message || 'Failed to save measurement. Please try again.');
     }
@@ -1053,6 +1104,7 @@ export function HealthErrorsView({
         rearRotorWidthMm: '',
       });
       refreshBrakeHealth();
+      invalidateHealthCache();
     } catch { /* error */ }
     setSubmittingBrake(false);
   };
@@ -1074,6 +1126,30 @@ export function HealthErrorsView({
       setIsModalClosing(false);
     }, 400);
   };
+
+  useEffect(() => {
+    if (!initialModuleTab || initialModuleTab === 'overview') {
+      onConsumeInitialModuleTab?.();
+      return;
+    }
+    openHealthDetailTabModal(initialModuleTab, {
+      openErrorCodes: () => openModal(setShowErrorCodes),
+      openBattery: () => openModal(setShowBattery),
+      openService: () => openModal(setShowService),
+      openBrakes: () => {
+        openModal(setShowBrakes);
+        if (vehicleId) {
+          api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
+        }
+      },
+      openTires: () => {
+        setTireActionError(null);
+        openModal(setShowTires);
+        loadTireDetail();
+      },
+    });
+    onConsumeInitialModuleTab?.();
+  }, [initialModuleTab, onConsumeInitialModuleTab, vehicleId, loadTireDetail]);
 
   const anyModalOpen = showErrorCodes || showBattery || showService || showBrakes || showTires || showHvBattery;
 
@@ -1710,7 +1786,7 @@ export function HealthErrorsView({
             rentalHealthLoading={rentalHealthLoading}
             onOpenExistingTask={onOpenExistingTask}
             onHealthRefetch={async () => {
-              await Promise.all([reloadHealth(), retryBattery()]);
+              await Promise.all([invalidateHealthCache(), retryBattery()]);
             }}
             quickCardClass={quickCardClass}
             quickCardHeaderClass={quickCardHeaderClass}

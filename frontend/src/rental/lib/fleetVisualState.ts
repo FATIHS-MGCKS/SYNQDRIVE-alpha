@@ -351,6 +351,11 @@ function deriveReason(
   return undefined;
 }
 
+/**
+ * Map/visual chip state for fleet surfaces. Still used for row labels and map tones.
+ * Do not use {@link deriveFleetVisualState} for Fleet Command tab badge counts when
+ * runtime vehicle states are available — use `resolveFleetTabCountsFromRuntime` instead.
+ */
 export function deriveFleetVisualState(
   vehicle: FleetVisualStateVehicle,
   options: DeriveFleetVisualStateOptions = {},

@@ -18,7 +18,7 @@ const API_TO_QUEUE_ACTION: Record<ApiNotificationActionType, NotificationActionT
 
 const API_TO_LEGACY_CTA: Record<ApiNotificationActionType, ActionQueueCta> = {
   OPEN_VEHICLE: 'open-vehicle',
-  OPEN_VEHICLE_MODULE: 'open-vehicle',
+  OPEN_VEHICLE_MODULE: 'open-vehicle-module',
   OPEN_BOOKING: 'open-booking',
   OPEN_HANDOVER_PICKUP: 'start-handover-pickup',
   OPEN_HANDOVER_RETURN: 'start-handover-return',
@@ -57,7 +57,10 @@ export function isKnownApiActionType(type: string): type is ApiNotificationActio
 }
 
 export interface NotificationV2NavigationHandlers {
-  onOpenVehicleById?: (vehicleId: string) => void;
+  onOpenVehicleById?: (
+    vehicleId: string,
+    options?: { module?: string },
+  ) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
@@ -80,8 +83,15 @@ export function navigateNotificationV2Action(
   const actionType = item.queue.actionType;
 
   switch (actionType) {
-    case 'open-vehicle':
     case 'open-vehicle-module':
+      if (target.vehicleId) {
+        handlers.onOpenVehicleById?.(target.vehicleId, {
+          module: target.module,
+        });
+        return true;
+      }
+      break;
+    case 'open-vehicle':
       if (target.vehicleId) {
         handlers.onOpenVehicleById?.(target.vehicleId);
         return true;

@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { VehicleBrakeReferenceSpec, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeReferenceSpecService, type CreateBrakeReferenceSpecInput } from './brake-reference-spec.service';
@@ -29,9 +29,18 @@ export class BrakesService {
   }
 
   async update(
+    vehicleId: string,
     id: string,
     data: Prisma.VehicleBrakeReferenceSpecUpdateInput,
   ): Promise<VehicleBrakeReferenceSpec> {
+    const existing = await this.prisma.vehicleBrakeReferenceSpec.findFirst({
+      where: { id, vehicleId },
+    });
+    if (!existing) {
+      throw new NotFoundException(
+        `Brake spec ${id} not found for vehicle ${vehicleId}`,
+      );
+    }
     const updated = await this.prisma.vehicleBrakeReferenceSpec.update({ where: { id }, data });
     await this.recalcOrchestrator?.enqueue({ vehicleId: updated.vehicleId, trigger: 'spec_update' });
     return updated;

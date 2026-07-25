@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useFleetVehicles } from '../../rental/FleetContext';
+import { useRentalOrg } from '../../rental/RentalContext';
+import { invalidateRentalHealthForVehicle } from '../../rental/lib/rental-health-query';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorTireMeasureTreadGrid } from './OperatorTireMeasureTreadGrid';
 import {
@@ -54,6 +56,7 @@ interface Props {
 export function OperatorTireMeasureFlow({ action }: Props) {
   const isTablet = useOperatorTabletLayout();
   const { closeSheet, openSheet, triggerRefresh } = useOperatorShell();
+  const { orgId } = useRentalOrg();
   const { reloadHealth } = useFleetVehicles();
   const data = useOperatorTireMeasureData(action.vehicleId);
 
@@ -175,7 +178,11 @@ export function OperatorTireMeasureFlow({ action }: Props) {
       toast.success('Reifenprofilmessung gespeichert');
       dispatchTireMeasurementSaved(action.vehicleId, action.bookingId);
       triggerRefresh();
-      reloadHealth();
+      if (orgId) {
+        invalidateRentalHealthForVehicle(orgId, action.vehicleId);
+      } else {
+        reloadHealth();
+      }
       void data.reload();
       action.onSuccess?.();
       closeSheet();

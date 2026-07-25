@@ -1,10 +1,11 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DtcSeverity } from '@prisma/client';
+import { DtcSeverity, Prisma } from '@prisma/client';
 import {
   BrakeDtcEvidenceProducerService,
   type BrakeDtcProducerContext,
 } from '../brakes/brake-dtc-evidence.producer';
+import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export class DtcService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly brakeDtcProducer?: BrakeDtcEvidenceProducerService,
+    @Optional() private readonly rentalHealthSummaryCache?: RentalHealthSummaryCacheService,
   ) {}
 
   // ── Basic reads ─────────────────────────────────────────────────────────────
@@ -317,24 +319,62 @@ export class DtcService {
         },
       });
     } else {
-      event = await this.prisma.vehicleDtcEvent.create({
-        data: {
-          vehicle: { connect: { id: vehicleId } },
-          dtcCode,
-          description: options?.description ?? null,
-          severity: options?.severity ?? 'WARNING',
-          firstSeenAt: now,
-          lastSeenAt: now,
-          occurrenceCount: 1,
-        },
-      });
+      try {
+        event = await this.prisma.vehicleDtcEvent.create({
+          data: {
+            vehicle: { connect: { id: vehicleId } },
+            dtcCode,
+            description: options?.description ?? null,
+            severity: options?.severity ?? 'WARNING',
+            firstSeenAt: now,
+            lastSeenAt: now,
+            occurrenceCount: 1,
+          },
+        });
+      } catch (err) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          const raced = await this.prisma.vehicleDtcEvent.findFirst({
+            where: { vehicleId, dtcCode, isActive: true },
+          });
+          if (!raced) throw err;
+          event = await this.prisma.vehicleDtcEvent.update({
+            where: { id: raced.id },
+            data: {
+              lastSeenAt: now,
+              occurrenceCount: { increment: 1 },
+              ...(options?.description ? { description: options.description } : {}),
+              ...(options?.severity ? { severity: options.severity } : {}),
+            },
+          });
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (options?.producerContext) {
       await this.brakeDtcProducer?.onDtcUpserted(vehicleId, event, options.producerContext);
     }
 
+    await this.invalidateRentalHealthCache(vehicleId);
     return event;
+  }
+
+  private async invalidateRentalHealthCache(vehicleId: string): Promise<void> {
+    if (!this.rentalHealthSummaryCache) return;
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (vehicle?.organizationId) {
+      await this.rentalHealthSummaryCache.invalidate(
+        vehicle.organizationId,
+        vehicleId,
+      );
+    }
   }
 
   async clearDtc(
@@ -357,6 +397,7 @@ export class DtcService {
       );
     }
 
+    await this.invalidateRentalHealthCache(vehicleId);
     return result;
   }
 

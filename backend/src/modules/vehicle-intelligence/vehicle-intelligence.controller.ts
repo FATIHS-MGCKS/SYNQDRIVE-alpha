@@ -66,6 +66,7 @@ import { ComplianceTaskMaterializeService } from './service-compliance/complianc
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
+import { VehicleIntelligencePermissionGuard } from './vehicle-intelligence-permission.guard';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
@@ -120,7 +121,7 @@ import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dt
 import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
 
 @Controller('vehicles/:vehicleId')
-@UseGuards(RolesGuard, VehicleOwnershipGuard)
+@UseGuards(RolesGuard, VehicleOwnershipGuard, VehicleIntelligencePermissionGuard)
 export class VehicleIntelligenceController {
   private readonly logger = new Logger(VehicleIntelligenceController.name);
 
@@ -244,10 +245,11 @@ export class VehicleIntelligenceController {
 
   @Patch('battery/:id')
   async updateBatterySpec(
+    @Param('vehicleId') vehicleId: string,
     @Param('id') id: string,
     @Body() body: Prisma.VehicleBatterySpecUpdateInput,
   ) {
-    return this.batteryService.update(id, body);
+    return this.batteryService.update(vehicleId, id, body);
   }
 
   // --- Tires ---
@@ -556,10 +558,11 @@ export class VehicleIntelligenceController {
 
   @Patch('brakes/:id')
   async updateBrakeSpec(
+    @Param('vehicleId') vehicleId: string,
     @Param('id') id: string,
     @Body() body: UpdateBrakeSpecDto,
   ) {
-    return this.brakesService.update(id, body);
+    return this.brakesService.update(vehicleId, id, body);
   }
 
   // --- Brake Status (legacy compat; canonical condition from brake-health summary) ---

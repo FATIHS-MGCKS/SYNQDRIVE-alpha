@@ -97,6 +97,15 @@ export interface VehicleHealth {
     vehicle_alerts: ModuleHealth;
   };
   generated_at: string; // ISO 8601
+  /** Alias for generated_at — cross-surface contract (VW-F-018). */
+  evaluated_at?: string;
+  /**
+   * Ready for rental when pipeline is complete and no hard blockers apply.
+   * Inverse of operational "not ready" when availability is `ready`.
+   */
+  rental_readiness?: 'ready' | 'not_ready' | 'unevaluable';
+  /** Monotonic projection version for cache coherence (VW-F-033). */
+  projection_version?: string;
   /** Present when the aggregate was degraded — safe operator copy, no internals. */
   degradation?: RentalHealthDegradation;
 }
