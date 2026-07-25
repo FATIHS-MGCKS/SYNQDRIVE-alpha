@@ -16,7 +16,7 @@ import {
 import { createObservedAiEvidence } from '../../evidence/ai-evidence.factory';
 import type { AiEvidence } from '../../evidence/ai-evidence.types';
 import { buildAiVehicleDisplayName } from '../../vehicle-resolution/ai-vehicle-resolution.hints';
-import type { AiVehicleScopeResolver } from '../../execution/ai-execution-context.types';
+import { AiPrismaVehicleScopeResolver } from '../ai-prisma-vehicle-scope.resolver';
 import type {
   AiGetVehicleBookingContextData,
   AiGetVehicleBookingContextInput,
@@ -27,7 +27,7 @@ export class AiGetVehicleBookingContextTool {
   constructor(
     private readonly prisma: PrismaService,
     private readonly vehicleBookingContext: VehicleBookingContextService,
-    private readonly vehicleScopeResolver: AiVehicleScopeResolver,
+    private readonly vehicleScopeResolver: AiPrismaVehicleScopeResolver,
   ) {}
 
   async execute(

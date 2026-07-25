@@ -44,7 +44,7 @@ import { createObservedAiEvidence } from '../../evidence/ai-evidence.factory';
 import type { AiEvidenceConfidence } from '../../evidence/ai-evidence.enums';
 import type { AiEvidence } from '../../evidence/ai-evidence.types';
 import { buildAiVehicleDisplayName } from '../../vehicle-resolution/ai-vehicle-resolution.hints';
-import type { AiVehicleScopeResolver } from '../../execution/ai-execution-context.types';
+import { AiPrismaVehicleScopeResolver } from '../ai-prisma-vehicle-scope.resolver';
 import {
   buildEndpointErrorSlice,
   buildMissingDataSlice,
@@ -156,7 +156,7 @@ export class AiGetVehicleHealthSummaryTool {
     private readonly serviceCompliance: ServiceComplianceService,
     private readonly damages: DamagesService,
     private readonly tasks: TasksService,
-    private readonly vehicleScopeResolver: AiVehicleScopeResolver,
+    private readonly vehicleScopeResolver: AiPrismaVehicleScopeResolver,
   ) {}
 
   async execute(

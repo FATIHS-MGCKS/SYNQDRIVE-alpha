@@ -27,8 +27,8 @@ import type { MappedTelemetryAiSemantics } from '../../evidence/ai-evidence-tele
 import { createObservedAiEvidence } from '../../evidence/ai-evidence.factory';
 import type { AiEvidence } from '../../evidence/ai-evidence.types';
 import { buildAiVehicleDisplayName } from '../../vehicle-resolution/ai-vehicle-resolution.hints';
-import type { AiDataAuthorizationProbe } from '../../execution/ai-execution-context.types';
-import type { AiVehicleScopeResolver } from '../../execution/ai-execution-context.types';
+import { AiDataAuthorizationProbeAdapter } from '../ai-data-authorization.probe';
+import { AiPrismaVehicleScopeResolver } from '../ai-prisma-vehicle-scope.resolver';
 import type {
   AiGetVehicleLocationData,
   AiGetVehicleLocationInput,
@@ -78,8 +78,8 @@ export class AiGetVehicleLocationTool {
   constructor(
     private readonly prisma: PrismaService,
     private readonly vehicles: VehiclesService,
-    private readonly vehicleScopeResolver: AiVehicleScopeResolver,
-    private readonly dataAuthorizationProbe: AiDataAuthorizationProbe,
+    private readonly vehicleScopeResolver: AiPrismaVehicleScopeResolver,
+    private readonly dataAuthorizationProbe: AiDataAuthorizationProbeAdapter,
   ) {}
 
   async execute(

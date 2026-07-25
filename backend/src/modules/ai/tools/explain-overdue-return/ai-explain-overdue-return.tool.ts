@@ -15,7 +15,8 @@ import {
   assertAiToolExecutionAllowed,
   resolveAiVehicleAccess,
 } from '../../execution/ai-execution-context.access';
-import type { AiVehicleScopeResolver, AiDataAuthorizationProbe } from '../../execution/ai-execution-context.types';
+import { AiDataAuthorizationProbeAdapter } from '../ai-data-authorization.probe';
+import { AiPrismaVehicleScopeResolver } from '../ai-prisma-vehicle-scope.resolver';
 import type { AiDomainError, AiDomainQueryOutcome } from '../../evidence/ai-domain-error.types';
 import {
   buildAiDomainQueryOutcome,
@@ -62,8 +63,8 @@ interface LoadedBookingRow {
 export class AiExplainOverdueReturnTool {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly vehicleScopeResolver: AiVehicleScopeResolver,
-    private readonly dataAuthorizationProbe: AiDataAuthorizationProbe,
+    private readonly vehicleScopeResolver: AiPrismaVehicleScopeResolver,
+    private readonly dataAuthorizationProbe: AiDataAuthorizationProbeAdapter,
   ) {}
 
   async execute(
