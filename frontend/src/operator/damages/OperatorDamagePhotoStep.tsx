@@ -1,6 +1,7 @@
 import { Camera, ImagePlus, Loader2, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { prepareDamageImageDataUrl } from './operatorDamageImage.utils';
+import { useOperatorCameraCapture } from '../hooks/useOperatorCameraCapture';
 
 export interface OperatorDamagePhotoItem {
   id: string;
@@ -22,6 +23,7 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
   const galleryRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const camera = useOperatorCameraCapture();
 
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length || photos.length >= MAX_PHOTOS) return;
@@ -62,7 +64,13 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
         <button
           type="button"
           disabled={busy || photos.length >= MAX_PHOTOS}
-          onClick={() => cameraRef.current?.click()}
+          onClick={() => {
+            if (!camera.cameraCaptureLikely) {
+              galleryRef.current?.click();
+              return;
+            }
+            cameraRef.current?.click();
+          }}
           className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]/40 disabled:opacity-50"
         >
           {busy ? (
@@ -70,7 +78,9 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
           ) : (
             <Camera className="h-8 w-8 text-[color:var(--brand)]" />
           )}
-          <span className="text-sm font-semibold text-foreground">Kamera</span>
+          <span className="text-sm font-semibold text-foreground">
+            {camera.cameraCaptureLikely ? 'Kamera' : 'Datei wählen'}
+          </span>
         </button>
         <button
           type="button"
@@ -130,6 +140,7 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
 
       <p className="text-[11px] text-muted-foreground">
         {photos.length}/{MAX_PHOTOS} Fotos · Große Bilder werden vor dem Upload komprimiert.
+        {camera.hint ? ` ${camera.hint}` : ''}
       </p>
 
       {displayError && (

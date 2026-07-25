@@ -11,11 +11,12 @@ export function OperatorDesktopOnlyNotice() {
         </div>
         <div className="space-y-2">
           <h1 className="font-display text-xl font-bold text-foreground">
-            Operator App ist für mobile Endgeräte und Tablets optimiert
+            Operator App — am besten mobil nutzen
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Kopiere den Link und öffne ihn auf deinem Smartphone oder Tablet, um Übergaben,
-            Rückgaben, Schäden und Fahrzeugchecks direkt am Fahrzeug durchzuführen.
+            Für Übergaben am Fahrzeug empfehlen wir Smartphone oder Tablet. Ein Notfallzugriff auf
+            dem Desktop ist unter <code className="text-xs">/operator</code> in einer schmalen
+            mobilen Arbeitsfläche verfügbar.
           </p>
         </div>
         <OperatorLinkCard />
