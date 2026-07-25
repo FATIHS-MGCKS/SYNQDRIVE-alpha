@@ -54,7 +54,26 @@ import { UpdateBookingDto } from './dto/update-booking.dto';
 import { toBookingCreateInput, toBookingUpdateInput } from './booking-input.sanitizer';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CreateHandoverProtocolPayload } from './handover.types';
+import { BookingsHandoverSessionService } from './handover-session/bookings-handover-session.service';
+import { CompletePickupHandoverService } from './handover-session/complete-pickup-handover.service';
+import {
+  isHandoverSessionAction,
+  isHandoverSessionStatusValue,
+} from './handover-session/bookings-handover-session.service';
+import type { HandoverSessionTransitionBodyDto } from './handover-session/dto/handover-session.dto';
+import { CompleteReturnHandoverService } from './handover-session/complete-return-handover.service';
+import type { CompleteReturnHandoverBodyDto } from './handover-session/dto/complete-return-handover.dto';
+import { CorrectHandoverCompletionService } from './handover-session/correct-handover-completion.service';
+import type { CorrectHandoverCompletionBodyDto } from './handover-session/dto/correct-handover-completion.dto';
+import { HandoverCompletionRecordQueryService } from './handover-session/handover-completion-record-query.service';
+import { BookingsHandoverDraftService } from './handover-session/bookings-handover-draft.service';
+import type {
+  CancelHandoverDraftBodyDto,
+  CreateHandoverDraftBodyDto,
+  UpdateHandoverDraftBodyDto,
+} from './handover-session/dto/handover-draft.dto';
 import { resolveHandoverActor } from './handover-actor.util';
+import type { HandoverKind } from '@prisma/client';
 
 @Controller('organizations/:orgId/bookings')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
@@ -62,6 +81,12 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
+    private readonly handoverSessionService: BookingsHandoverSessionService,
+    private readonly completePickupHandoverService: CompletePickupHandoverService,
+    private readonly completeReturnHandoverService: CompleteReturnHandoverService,
+    private readonly correctHandoverCompletionService: CorrectHandoverCompletionService,
+    private readonly handoverCompletionRecordQueryService: HandoverCompletionRecordQueryService,
+    private readonly handoverDraftService: BookingsHandoverDraftService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
@@ -482,6 +507,30 @@ export class BookingsController {
     return this.handoverService.findForBooking(orgId, bookingId);
   }
 
+  @Post(':id/handover/pickup/complete')
+  @RequirePermission('bookings', 'write')
+  async completePickupHandover(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CompletePickupHandoverBodyDto,
+  ) {
+    if (!body?.idempotencyKey?.trim()) {
+      throw new BadRequestException('idempotencyKey is required');
+    }
+    const { idempotencyKey, sessionId, expectedVersion, scopeOverrideReason, ...payload } = body;
+    return this.completePickupHandoverService.completePickupHandover({
+      organizationId: orgId,
+      bookingId,
+      idempotencyKey: idempotencyKey.trim(),
+      payload,
+      actor: resolveHandoverActor(user),
+      sessionId: sessionId ?? null,
+      expectedVersion: expectedVersion ?? null,
+      scopeOverrideReason: scopeOverrideReason ?? null,
+    });
+  }
+
   @Post(':id/handover/pickup')
   @RequirePermission('bookings', 'write')
   async createPickupHandover(
@@ -499,6 +548,30 @@ export class BookingsController {
     );
   }
 
+  @Post(':id/handover/return/complete')
+  @RequirePermission('bookings', 'write')
+  async completeReturnHandover(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CompleteReturnHandoverBodyDto,
+  ) {
+    if (!body?.idempotencyKey?.trim()) {
+      throw new BadRequestException('idempotencyKey is required');
+    }
+    const { idempotencyKey, sessionId, expectedVersion, scopeOverrideReason, ...payload } = body;
+    return this.completeReturnHandoverService.completeReturnHandover({
+      organizationId: orgId,
+      bookingId,
+      idempotencyKey: idempotencyKey.trim(),
+      payload,
+      actor: resolveHandoverActor(user),
+      sessionId: sessionId ?? null,
+      expectedVersion: expectedVersion ?? null,
+      scopeOverrideReason: scopeOverrideReason ?? null,
+    });
+  }
+
   @Post(':id/handover/return')
   @RequirePermission('bookings', 'write')
   async createReturnHandover(
@@ -514,5 +587,171 @@ export class BookingsController {
       body,
       resolveHandoverActor(user),
     );
+  }
+
+  @Post(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'write')
+  async createHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CreateHandoverDraftBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverDraftService.createDraft({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      actor: resolveHandoverActor(user),
+      currentStep: body.currentStep,
+      draft: body.draft,
+      actualStationId: body.actualStationId ?? null,
+    });
+  }
+
+  @Get(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'read')
+  async getHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverDraftService.getDraft(orgId, bookingId, kind, resolveHandoverActor(user));
+  }
+
+  @Patch(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'write')
+  async updateHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: UpdateHandoverDraftBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    if (body.expectedVersion == null || !Number.isFinite(body.expectedVersion)) {
+      throw new BadRequestException('expectedVersion is required');
+    }
+    return this.handoverDraftService.updateDraft({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      actor: resolveHandoverActor(user),
+      expectedVersion: body.expectedVersion,
+      currentStep: body.currentStep,
+      draft: body.draft,
+      validateStep: body.validateStep,
+      actualStationId: body.actualStationId ?? null,
+      acquireLock: body.acquireLock,
+    });
+  }
+
+  @Delete(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'write')
+  async cancelHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CancelHandoverDraftBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverDraftService.cancelDraft({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      actor: resolveHandoverActor(user),
+      expectedVersion: body?.expectedVersion ?? null,
+      cancelReason: body?.cancelReason ?? null,
+    });
+  }
+
+  @Get(':id/handover/completion-records/:kind')
+  @RequirePermission('bookings', 'read')
+  async listHandoverCompletionRecords(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverCompletionRecordQueryService.listForBooking(orgId, bookingId, kind);
+  }
+
+  @Post(':id/handover/completion-records/:kind/correct')
+  @RequirePermission('bookings', 'manage')
+  async correctHandoverCompletion(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CorrectHandoverCompletionBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    if (!body?.correctionReason?.trim()) {
+      throw new BadRequestException('correctionReason is required');
+    }
+    const { correctionReason, ...payload } = body;
+    return this.correctHandoverCompletionService.correctHandoverCompletion({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      correctionReason: correctionReason.trim(),
+      payload,
+      actor: resolveHandoverActor(user),
+    });
+  }
+
+  // V4.9.840 — Server-side handover session state machine (draft/resume/cancel).
+  @Get(':id/handover/sessions/:kind')
+  @RequirePermission('bookings', 'read')
+  async getHandoverSession(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverSessionService.getSessionView(
+      orgId,
+      bookingId,
+      kind,
+      resolveHandoverActor(user),
+    );
+  }
+
+  @Post(':id/handover/sessions/:kind/transition')
+  @RequirePermission('bookings', 'write')
+  async transitionHandoverSession(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: HandoverSessionTransitionBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    if (!body?.action || !isHandoverSessionAction(body.action)) {
+      throw new BadRequestException('Invalid handover session action');
+    }
+    if (body.toStatus && !isHandoverSessionStatusValue(body.toStatus)) {
+      throw new BadRequestException('Invalid handover session status');
+    }
+    return this.handoverSessionService.transition(
+      orgId,
+      bookingId,
+      kind,
+      body,
+      resolveHandoverActor(user),
+    );
+  }
+
+  private parseHandoverKind(kindParam: string): HandoverKind {
+    const normalized = kindParam?.toUpperCase();
+    if (normalized !== 'PICKUP' && normalized !== 'RETURN') {
+      throw new BadRequestException('kind must be pickup or return');
+    }
+    return normalized;
   }
 }

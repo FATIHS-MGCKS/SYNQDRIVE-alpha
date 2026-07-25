@@ -1,10 +1,9 @@
 import { Sparkles } from 'lucide-react';
 import {
-  formatDamageSource,
   formatDamageType,
   formatSeverity,
-  type DamageSource,
 } from '../../rental/lib/damage.types';
+import type { OperatorDamageCaptureSource } from '../lib/operatorData.types';
 import {
   OPERATOR_DAMAGE_LOCATION_CHIPS,
   type OperatorDamageFormState,
@@ -18,12 +17,20 @@ const RENTAL_IMPACT_LABELS: Record<string, string> = {
   SAFETY_CRITICAL: 'Sicherheitskritisch',
 };
 
+const OPERATOR_SOURCE_LABELS: Record<OperatorDamageCaptureSource, string> = {
+  pickup: 'Pickup-Übergabe',
+  return: 'Return-Übergabe',
+  operator_inspection: 'Operator-Inspektion',
+  manual: 'Manuell',
+  ai_suggestion: 'KI-Vorschlag (unverifiziert)',
+};
+
 interface Props {
   vehicleLabel: string;
   plate: string;
   bookingLabel?: string | null;
   customerName?: string | null;
-  source: DamageSource;
+  source: OperatorDamageCaptureSource;
   form: OperatorDamageFormState;
   photos: OperatorDamagePhotoItem[];
   onOpenAiUpload?: () => void;
@@ -60,7 +67,7 @@ export function OperatorDamageReviewStep({
         <ReviewRow label="Kennzeichen" value={plate || '—'} />
         {bookingLabel && <ReviewRow label="Buchung" value={bookingLabel} />}
         {customerName && <ReviewRow label="Kunde" value={customerName} />}
-        <ReviewRow label="Quelle" value={formatDamageSource(source)} />
+        <ReviewRow label="Quelle" value={OPERATOR_SOURCE_LABELS[source]} />
         <ReviewRow label="Typ" value={formatDamageType(form.damageType)} />
         <ReviewRow label="Schweregrad" value={formatSeverity(form.severity)} />
         <ReviewRow label="Position" value={location} />

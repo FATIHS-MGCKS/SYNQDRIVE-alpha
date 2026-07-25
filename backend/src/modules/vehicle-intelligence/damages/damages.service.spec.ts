@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { Prisma } from '@prisma/client';
@@ -448,5 +448,15 @@ describe('DamagesService document extraction idempotency', () => {
     expect(results[0].id).toBe('damage-raced');
     expect(results[1].id).toBe('damage-raced');
     expect(prisma.vehicleDamage.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('update rejects silent mutation of repaired damage', async () => {
+    prisma.vehicleDamage.findFirst.mockResolvedValue(
+      makeDamageRow({ status: DamageStatus.REPAIRED, repairedAt: new Date() }),
+    );
+    await expect(
+      svc.update(vehicleId, 'damage-1', { description: 'changed' }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.vehicleDamage.update).not.toHaveBeenCalled();
   });
 });

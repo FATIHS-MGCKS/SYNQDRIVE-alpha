@@ -21,20 +21,31 @@ export function OperatorDeepLinkBridge() {
       {
         vehicleId: params.vehicleId,
         bookingId: params.bookingId,
+        taskId: params.taskId,
+        draftId: params.draftId,
       },
     );
     if (!intent) return;
 
     switch (intent.type) {
       case 'vehicle':
+      case 'vehicle-damage':
         setActiveTab('scan');
         setFocusedBookingId(null);
         setSelectedVehicleId(intent.vehicleId);
         break;
       case 'booking':
+      case 'booking-handover':
+      case 'booking-return':
         setActiveTab('scan');
         setSelectedVehicleId(null);
         setFocusedBookingId(intent.bookingId);
+        break;
+      case 'task':
+        setActiveTab('tasks');
+        break;
+      case 'draft':
+        setActiveTab('scan');
         break;
       case 'scan':
         setActiveTab('scan');
@@ -52,6 +63,8 @@ export function OperatorDeepLinkBridge() {
     location.search,
     params.vehicleId,
     params.bookingId,
+    params.taskId,
+    params.draftId,
     setActiveTab,
     setSelectedVehicleId,
     setScanQuery,

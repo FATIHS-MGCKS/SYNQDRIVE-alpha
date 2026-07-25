@@ -10,6 +10,10 @@ import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns'
 import { useFleetVehicles } from '../../rental/FleetContext';
 import type { ApiTask } from '../../lib/api';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
+import {
+  getOperatorHandoverDraftHint,
+  useOperatorHandoverDraftHints,
+} from '../handover/useOperatorHandoverDraftHints';
 import { useOperatorToday } from '../hooks/useOperatorToday';
 import { useOperatorOperationalAlerts } from '../hooks/useOperatorOperationalAlerts';
 import { OperatorBookingCard } from '../components/OperatorBookingCard';
@@ -23,6 +27,10 @@ import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { buildFleetVehicleById } from '../tasks/operatorTaskDisplay.utils';
+import {
+  buildHandoverSuppressionKeys,
+  dedupeHandoversExcludingDueNow,
+} from './operatorTodayHandover.utils';
 import {
   countVisibleTaskFeedEntries,
   hasAnyTaskBucketContent,
@@ -47,8 +55,8 @@ function OperatorTodayStaleBanner({ offline, onRetry }: { offline: boolean; onRe
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
           {offline
-            ? 'Die Anzeige basiert auf dem letzten erfolgreichen Abruf. Aktionen werden nach Verbindungsaufbau synchronisiert.'
-            : 'Der letzte Abruf ist fehlgeschlagen. Angezeigt werden die zuletzt geladenen Aufgaben.'}
+            ? 'Die Anzeige basiert auf dem letzten erfolgreichen Abruf. Bitte nach Verbindungsaufbau erneut laden.'
+            : 'Der letzte Abruf ist fehlgeschlagen. Angezeigt werden die zuletzt geladenen Daten.'}
         </p>
       </div>
       <button
@@ -83,6 +91,15 @@ export function OperatorTodayView() {
   const isTablet = useOperatorTabletLayout();
   const [detailItem, setDetailItem] = useState<OperatorTodayBookingItem | null>(null);
   const [plannedOpen, setPlannedOpen] = useState(false);
+
+  const draftLookupTargets = useMemo(() => {
+    const items = [...snapshot.dueNow, ...snapshot.pickupsToday, ...snapshot.returnsToday];
+    return items
+      .filter((item) => !item.isDone)
+      .map((item) => ({ bookingId: item.bookingId, kind: item.kind }));
+  }, [snapshot.dueNow, snapshot.pickupsToday, snapshot.returnsToday]);
+
+  const draftHints = useOperatorHandoverDraftHints(orgId ?? undefined, draftLookupTargets);
 
   const vehicleById = useMemo(() => buildFleetVehicleById(fleetVehicles), [fleetVehicles]);
 
@@ -144,6 +161,7 @@ export function OperatorTodayView() {
           <OperatorBookingCard
             key={`${item.kind}-${item.bookingId}`}
             item={item}
+            draftHint={getOperatorHandoverDraftHint(draftHints, item.bookingId, item.kind)}
             onPickupStart={() => startHandover(item, 'PICKUP')}
             onReturnStart={() => startHandover(item, 'RETURN')}
             onDetails={() => setDetailItem(item)}
@@ -151,7 +169,20 @@ export function OperatorTodayView() {
         ))}
       </div>
     ),
-    [startHandover],
+    [startHandover, draftHints],
+  );
+
+  const todayHandovers = useMemo(
+    () => dedupeHandoversExcludingDueNow(snapshot.pickupsToday, snapshot.returnsToday, snapshot.dueNow),
+    [snapshot.pickupsToday, snapshot.returnsToday, snapshot.dueNow],
+  );
+
+  const suppressedHandoverKeysByBucket = useMemo(
+    () => ({
+      NOW: buildHandoverSuppressionKeys(snapshot.dueNow),
+      TODAY: buildHandoverSuppressionKeys(todayHandovers),
+    }),
+    [snapshot.dueNow, todayHandovers],
   );
 
   const sectionExtras = useMemo(() => {
@@ -166,7 +197,6 @@ export function OperatorTodayView() {
         </div>
       );
     }
-    const todayHandovers = [...snapshot.pickupsToday, ...snapshot.returnsToday];
     if (todayHandovers.length > 0) {
       extras.TODAY = (
         <div className="space-y-2">
@@ -178,7 +208,7 @@ export function OperatorTodayView() {
       );
     }
     return extras;
-  }, [renderHandoverCards, snapshot.dueNow, snapshot.pickupsToday, snapshot.returnsToday]);
+  }, [renderHandoverCards, snapshot.dueNow, todayHandovers]);
 
   if (!orgLoading && !orgId) {
     return (
@@ -298,6 +328,7 @@ export function OperatorTodayView() {
                 onTaskChanged={() => void reload()}
                 onReload={() => void reload()}
                 sectionExtras={sectionExtras}
+                suppressedHandoverKeysByBucket={suppressedHandoverKeysByBucket}
               />
 
               {snapshot.blockedVehicles.length > 0 && (
@@ -310,8 +341,12 @@ export function OperatorTodayView() {
                     {snapshot.blockedVehicles.map((v) => (
                       <OperatorListCard
                         key={v.vehicleId}
-                        title={`${v.label} · ${v.plate}`}
-                        subtitle={v.station || undefined}
+                        title={`${v.label}${v.plate ? ` · ${v.plate}` : ''}`}
+                        subtitle={
+                          v.reasons.length > 0
+                            ? v.reasons.join(' · ')
+                            : v.station || 'Vermietung blockiert'
+                        }
                         badges={[{ kind: 'blocked', label: 'Blockiert', tone: 'critical' }]}
                         onClick={() => {
                           setSelectedVehicleId(v.vehicleId);

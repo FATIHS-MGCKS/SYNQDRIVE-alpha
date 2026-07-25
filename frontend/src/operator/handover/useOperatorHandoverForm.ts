@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Station } from '../../lib/api';
 import type { DamageResponse } from '../../rental/lib/damage.types';
+import { operatorApi } from '../lib/operatorApi';
 import { useHandoverVehicleTelemetryPrefill } from '../../rental/lib/useHandoverVehicleTelemetryPrefill';
 import { stationsForPickup, stationsForReturn } from '../../rental/lib/stationBookingUtils';
 import type {
@@ -14,11 +15,41 @@ import {
 } from './operatorHandoverPayload';
 import type { OperatorHandoverObservationDraft } from './operatorHandoverTechnicalObservations';
 
+const SIGNABLE_INVALIDATION_FIELDS: Array<keyof OperatorHandoverFormState> = [
+  'odometerKm',
+  'fuelPercent',
+  'fuelFull',
+  'checks',
+  'warningLightsNotes',
+  'notes',
+  'selectedDamageIds',
+  'technicalObservationDrafts',
+  'tireMeasurementCaptured',
+  'actualStationId',
+];
+
+function patchInvalidatesSignatures(patch: Partial<OperatorHandoverFormState>): boolean {
+  return SIGNABLE_INVALIDATION_FIELDS.some((key) => key in patch);
+}
+
+function clearInvalidatedSignatures(
+  prev: OperatorHandoverFormState,
+): Partial<OperatorHandoverFormState> {
+  return {
+    customerSigData: null,
+    staffSigData: null,
+    customerSignatureBinding: null,
+    staffSignatureBinding: null,
+    signaturesInvalidated: true,
+  };
+}
+
 export function useOperatorHandoverForm(
   isOpen: boolean,
   kind: HandoverDialogKind,
   orgId: string,
   booking: HandoverDialogBookingInfo | null,
+  options?: { skipResetOnOpen?: boolean },
 ) {
   const [state, setState] = useState<OperatorHandoverFormState>(() =>
     createInitialHandoverState(booking, kind),
@@ -39,11 +70,11 @@ export function useOperatorHandoverForm(
   );
 
   useEffect(() => {
-    if (!isOpen || !booking) return;
+    if (!isOpen || !booking || options?.skipResetOnOpen) return;
     telemetryAppliedRef.current = null;
     setState(createInitialHandoverState(booking, kind));
     setDamageError(null);
-  }, [isOpen, booking?.id, kind, booking]);
+  }, [isOpen, booking?.id, kind, booking, options?.skipResetOnOpen]);
 
   useEffect(() => {
     if (!isOpen || !booking) return;
@@ -100,8 +131,8 @@ export function useOperatorHandoverForm(
     if (!isOpen || !booking) return;
     let cancelled = false;
     setLoadingDamages(true);
-    api.vehicleIntelligence
-      .damagesActive(booking.vehicleId)
+    operatorApi
+      .listActiveDamages(orgId, booking.vehicleId, booking.id)
       .then((rows) => {
         if (cancelled) return;
         const list: OperatorHandoverDamageRow[] = Array.isArray(rows)
@@ -130,16 +161,22 @@ export function useOperatorHandoverForm(
     return () => {
       cancelled = true;
     };
-  }, [isOpen, booking?.vehicleId, kind, booking]);
+  }, [isOpen, booking?.vehicleId, kind, booking, orgId]);
 
   const patchState = useCallback((patch: Partial<OperatorHandoverFormState>) => {
-    setState((prev) => ({ ...prev, ...patch }));
+    setState((prev) => {
+      const invalidation = patchInvalidatesSignatures(patch)
+        ? clearInvalidatedSignatures(prev)
+        : {};
+      return { ...prev, ...patch, ...invalidation };
+    });
   }, []);
 
   const toggleCheck = useCallback(
     (field: keyof OperatorHandoverFormState['checks']) => {
       setState((prev) => ({
         ...prev,
+        ...clearInvalidatedSignatures(prev),
         checks: { ...prev.checks, [field]: !prev.checks[field] },
       }));
     },
@@ -151,7 +188,11 @@ export function useOperatorHandoverForm(
       const next = new Set(prev.selectedDamageIds);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      return { ...prev, selectedDamageIds: next };
+      return {
+        ...prev,
+        ...clearInvalidatedSignatures(prev),
+        selectedDamageIds: next,
+      };
     });
   }, []);
 
@@ -172,10 +213,10 @@ export function useOperatorHandoverForm(
   }, []);
 
   const reloadDamages = useCallback(async () => {
-    if (!booking) return;
+    if (!booking || !orgId) return;
     setLoadingDamages(true);
     try {
-      const rows = await api.vehicleIntelligence.damagesActive(booking.vehicleId);
+      const rows = await operatorApi.listActiveDamages(orgId, booking.vehicleId, booking.id);
       const list: OperatorHandoverDamageRow[] = Array.isArray(rows)
         ? rows.map((r) => ({
             id: String(r.id),
@@ -191,7 +232,7 @@ export function useOperatorHandoverForm(
     } finally {
       setLoadingDamages(false);
     }
-  }, [booking]);
+  }, [booking, orgId]);
 
   const stationOptions =
     kind === 'PICKUP' ? stationsForPickup(orgStations) : stationsForReturn(orgStations);

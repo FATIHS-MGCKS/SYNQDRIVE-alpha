@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react';
-import { Loader2, Pencil, X, Ban, UserX, ClipboardCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Loader2, Pencil, X, Ban, UserX, ClipboardCheck, FilePenLine } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
-import { api, type BookingDetailDto } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
-import { getBookingActionMatrix } from '../../rental/components/booking-detail/bookingActionRules';
-import {
-  bookingStatusLabel,
-  normalizeBookingStatus,
-} from '../../rental/components/bookings/bookingStatus';
+import { bookingStatusLabel, normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
 import { useOperatorShell } from '../context/OperatorShellContext';
-import { canOperatorMarkNoShow } from '../bookings/operatorBooking.utils';
 import { OperatorBookingDocumentsPanel } from '../documents/OperatorBookingDocumentsPanel';
+import { useOperatorBookingContext } from '../documents/useOperatorBookingContext';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
+import {
+  getOperatorHandoverDraftHint,
+  useOperatorHandoverDraftHints,
+} from '../handover/useOperatorHandoverDraftHints';
 import { OperatorGlassCard } from './OperatorGlassCard';
 
 interface OperatorBookingDetailSheetProps {
@@ -29,44 +28,36 @@ export function OperatorBookingDetailSheet({
 }: OperatorBookingDetailSheetProps) {
   const { orgId } = useRentalOrg();
   const { openSheet, triggerRefresh } = useOperatorShell();
-  const [detail, setDetail] = useState<BookingDetailDto | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { context, loading, error } = useOperatorBookingContext(
+    orgId ?? undefined,
+    item?.bookingId,
+    'DOCUMENT_CHECK',
+  );
 
-  useEffect(() => {
-    if (!item || !orgId) {
-      setDetail(null);
-      setError(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    api.bookings
-      .detail(orgId, item.bookingId)
-      .then((d) => {
-        if (!cancelled) setDetail(d);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Details nicht verfügbar');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [item, orgId]);
+  const draftTargets = useMemo(
+    () => (item ? [{ bookingId: item.bookingId, kind: item.kind }] : []),
+    [item],
+  );
+  const draftHints = useOperatorHandoverDraftHints(orgId ?? undefined, draftTargets);
+  const pickupDraft = item
+    ? getOperatorHandoverDraftHint(draftHints, item.bookingId, 'PICKUP')
+    : undefined;
+  const returnDraft = item
+    ? getOperatorHandoverDraftHint(draftHints, item.bookingId, 'RETURN')
+    : undefined;
 
   if (!item) return null;
 
-  const matrix = detail ? getBookingActionMatrix(detail) : null;
-  const pickupGate = matrix?.pickup ?? item.pickupGate;
-  const returnGate = matrix?.return ?? item.returnGate;
-  const status = detail
-    ? normalizeBookingStatus(detail.core.statusEnum, detail.core.status)
+  const status = context
+    ? normalizeBookingStatus(context.handover.statusEnum, context.status)
     : item.status;
-  const noShowGate = detail ? canOperatorMarkNoShow(detail) : { allowed: false };
+  const pickupGate = context
+    ? { allowed: context.canStartPickup, reason: context.canStartPickup ? undefined : 'Pickup nicht verfügbar' }
+    : item.pickupGate;
+  const returnGate = context
+    ? { allowed: context.canStartReturn, reason: context.canStartReturn ? undefined : 'Return nicht verfügbar' }
+    : item.returnGate;
+  const noShowGate = context?.actions.markNoShow ?? { allowed: false, reason: 'Details nicht geladen' };
 
   const openBookingAction = (
     type: 'booking-edit' | 'booking-cancel' | 'booking-no-show',
@@ -120,10 +111,7 @@ export function OperatorBookingDetailSheet({
             <div>
               <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Station</dt>
               <dd>
-                {(detail?.core.pickupStationName ??
-                  detail?.core.returnStationName ??
-                  item.station) ||
-                  '—'}
+                {(context?.pickupStation.name ?? context?.returnStation.name ?? item.station) || '—'}
               </dd>
             </div>
             <div>
@@ -140,11 +128,11 @@ export function OperatorBookingDetailSheet({
         )}
         {error && <p className="text-sm text-[color:var(--status-critical)]">{error}</p>}
 
-        {detail && detail.health.rentalBlocked && (
+        {context && context.health.rentalBlocked && (
           <OperatorGlassCard className="border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">
             <p className="text-sm font-semibold text-[color:var(--status-critical)]">Fahrzeug blockiert</p>
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-              {detail.health.blockingReasons.map((r) => (
+              {context.health.blockingReasons.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
@@ -155,23 +143,27 @@ export function OperatorBookingDetailSheet({
           <OperatorBookingDocumentsPanel
             orgId={orgId}
             bookingId={item.bookingId}
-            customerId={detail?.customer.customerId}
-            onAiUpload={() => {
-              if (!detail) return;
-              openSheet({
-                type: 'ai-upload',
-                vehicleId: detail.vehicle.vehicleId,
-                vehicleLabel: `${detail.vehicle.displayName} · ${detail.vehicle.licensePlate ?? ''}`,
-                bookingId: detail.core.bookingId,
-                customerId: detail.customer.customerId,
-                customerName: detail.customer.fullName ?? item.customerName,
-                contextMode: 'booking',
-              });
-            }}
+            customerId={context?.customer.customerId}
+            process="DOCUMENT_CHECK"
+            onAiUpload={
+              context
+                ? () => {
+                    openSheet({
+                      type: 'ai-upload',
+                      vehicleId: context.vehicle.vehicleId,
+                      vehicleLabel: `${context.vehicle.displayName} · ${context.vehicle.licensePlate ?? ''}`,
+                      bookingId: context.bookingId,
+                      customerId: context.customer.customerId,
+                      customerName: context.customer.displayName ?? item.customerName,
+                      contextMode: 'booking',
+                    });
+                  }
+                : undefined
+            }
           />
         </OperatorGlassCard>
 
-        {detail && item.kind === 'PICKUP' && (
+        {context && item.kind === 'PICKUP' && (
           <OperatorGlassCard className="p-4 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Dokumentenprüfung
@@ -181,9 +173,9 @@ export function OperatorBookingDetailSheet({
               onClick={() =>
                 openSheet({
                   type: 'pickup-verification',
-                  customerId: detail.customer.customerId,
-                  bookingId: detail.core.bookingId,
-                  customerName: detail.customer.fullName ?? item.customerName,
+                  customerId: context.customer.customerId,
+                  bookingId: context.bookingId,
+                  customerName: context.customer.displayName ?? item.customerName,
                   onSuccess: () => triggerRefresh(),
                 })
               }
@@ -195,15 +187,15 @@ export function OperatorBookingDetailSheet({
           </OperatorGlassCard>
         )}
 
-        {detail && matrix && (
+        {context && (
           <OperatorGlassCard className="space-y-2 p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Buchung verwalten
             </p>
             <button
               type="button"
-              disabled={!matrix.edit.allowed}
-              title={matrix.edit.reason}
+              disabled={!context.actions.edit.allowed}
+              title={context.actions.edit.reason ?? undefined}
               onClick={() => openBookingAction('booking-edit')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left disabled:opacity-45"
             >
@@ -212,8 +204,8 @@ export function OperatorBookingDetailSheet({
             </button>
             <button
               type="button"
-              disabled={!matrix.cancel.allowed}
-              title={matrix.cancel.reason}
+              disabled={!context.actions.cancel.allowed}
+              title={context.actions.cancel.reason ?? undefined}
               onClick={() => openBookingAction('booking-cancel')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
             >
@@ -225,7 +217,7 @@ export function OperatorBookingDetailSheet({
             <button
               type="button"
               disabled={!noShowGate.allowed}
-              title={noShowGate.reason}
+              title={noShowGate.reason ?? undefined}
               onClick={() => openBookingAction('booking-no-show')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
             >
@@ -234,6 +226,19 @@ export function OperatorBookingDetailSheet({
                 No-Show markieren
               </span>
             </button>
+          </OperatorGlassCard>
+        )}
+
+        {(pickupDraft || returnDraft) && (
+          <OperatorGlassCard className="border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/40 p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <FilePenLine className="h-4 w-4 shrink-0" aria-hidden />
+              Offener Handover-Entwurf
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+              {pickupDraft && <li>Pickup — Schritt {pickupDraft.stepLabel}</li>}
+              {returnDraft && <li>Return — Schritt {returnDraft.stepLabel}</li>}
+            </ul>
           </OperatorGlassCard>
         )}
 
@@ -248,7 +253,7 @@ export function OperatorBookingDetailSheet({
             }}
             className="sq-3d-btn sq-3d-btn--primary min-h-[48px] font-semibold disabled:opacity-45"
           >
-            Pickup starten
+            {pickupDraft ? 'Pickup fortsetzen' : 'Pickup starten'}
           </button>
           <button
             type="button"
@@ -260,7 +265,7 @@ export function OperatorBookingDetailSheet({
             }}
             className="sq-3d-btn sq-3d-btn--neutral min-h-[48px] font-semibold disabled:opacity-45"
           >
-            Return starten
+            {returnDraft ? 'Return fortsetzen' : 'Return starten'}
           </button>
         </div>
       </div>

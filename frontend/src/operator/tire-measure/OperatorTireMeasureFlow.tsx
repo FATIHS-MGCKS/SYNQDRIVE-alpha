@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useFleetVehicles } from '../../rental/FleetContext';
+import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorTireMeasureTreadGrid } from './OperatorTireMeasureTreadGrid';
 import {
@@ -53,9 +54,11 @@ interface Props {
 
 export function OperatorTireMeasureFlow({ action }: Props) {
   const isTablet = useOperatorTabletLayout();
+  const { orgId } = useRentalOrg();
   const { closeSheet, openSheet, triggerRefresh } = useOperatorShell();
   const { reloadHealth } = useFleetVehicles();
   const data = useOperatorTireMeasureData(action.vehicleId);
+  const captureKeyRef = useRef<string>(crypto.randomUUID());
 
   const [step, setStep] = useState<OperatorTireMeasureStep>('vehicle');
   const [selectedSetupId, setSelectedSetupId] = useState<string>('__unknown__');
@@ -67,6 +70,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     workshopName: '',
     note: '',
   });
+  const [confirmed, setConfirmed] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -77,7 +81,10 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     setStep('vehicle');
     setStepError(null);
     setSubmitError(null);
+    setServerWarnings([]);
+    setConfirmed(false);
     setSubmitting(false);
+    captureKeyRef.current = crypto.randomUUID();
     setTread({
       fl: formatTreadInput(action.prefilledTread?.fl),
       fr: formatTreadInput(action.prefilledTread?.fr),
@@ -155,6 +162,14 @@ export function OperatorTireMeasureFlow({ action }: Props) {
   };
 
   const handleSave = async () => {
+    if (!orgId) {
+      setSubmitError('Organisation nicht verfügbar — bitte erneut anmelden.');
+      return;
+    }
+    if (!confirmed) {
+      setSubmitError('Bitte bestätigen Sie die Messwerte vor dem Speichern.');
+      return;
+    }
     const err = validateTireMeasureStep('tread', tread, context);
     if (err) {
       setStepError(err);
@@ -166,21 +181,37 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     try {
       const setupId =
         selectedSetupId === '__unknown__' ? null : selectedSetupId;
-      await submitOperatorTireMeasurement({
+      const result = await submitOperatorTireMeasurement({
+        orgId,
         vehicleId: action.vehicleId,
+        captureKey: captureKeyRef.current,
+        confirmed: true,
         tireSetupId: setupId,
         tread,
         context,
+        bookingId: action.bookingId,
+        handoverSessionId: action.handoverSessionId,
       });
-      toast.success('Reifenprofilmessung gespeichert');
-      dispatchTireMeasurementSaved(action.vehicleId, action.bookingId);
+      setServerWarnings(result.warnings ?? []);
+      toast.success(
+        result.idempotentReplay
+          ? 'Reifenprofilmessung bereits gespeichert'
+          : 'Reifenprofilmessung gespeichert',
+      );
+      dispatchTireMeasurementSaved(action.vehicleId, action.bookingId, result.measurementId);
       triggerRefresh();
       reloadHealth();
       void data.reload();
-      action.onSuccess?.();
+      action.onSuccess?.(result.measurementId);
       closeSheet();
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      const message =
+        e && typeof e === 'object' && 'errors' in e && Array.isArray((e as { errors: unknown }).errors)
+          ? ((e as { errors: string[] }).errors.join(' · ') || 'Validierung fehlgeschlagen')
+          : e instanceof Error
+            ? e.message
+            : 'Speichern fehlgeschlagen';
+      setSubmitError(message);
     } finally {
       setSubmitting(false);
     }
@@ -454,17 +485,35 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                 </div>
                 {plausibilityWarnings.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase text-muted-foreground">Hinweise (nur UI)</p>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      Plausibilitätshinweise (blockieren nicht)
+                    </p>
                     {plausibilityWarnings.map((w) => (
-                      <p key={w.id} className="text-xs text-[color:var(--status-watch)]">
-                        {w.message}
+                      <p key={w.id} className="text-xs text-foreground">
+                        • {w.message}
                       </p>
                     ))}
                   </div>
                 )}
+                <label className="flex min-h-[52px] cursor-pointer items-start gap-3 rounded-2xl border border-border surface-premium px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={(e) => {
+                      setConfirmed(e.target.checked);
+                      setSubmitError(null);
+                    }}
+                    className="mt-1 h-5 w-5 rounded border-border"
+                  />
+                  <span className="text-sm leading-snug">
+                    Ich bestätige, dass die Profiltiefen korrekt gemessen und geprüft wurden. Die
+                    Speicherung löst keine automatische Vermietungssperre aus — Tire Health wertet
+                    zentral nach den Systemregeln.
+                  </span>
+                </label>
                 <p className="text-xs text-muted-foreground">
-                  Nach Speichern lädt Tire Health / Rental Health neu — Status und Rest-km kommen ausschließlich vom
-                  Backend.
+                  Nach Speichern lädt Tire Health / Rental Health neu — Status und Rest-km kommen
+                  ausschließlich vom Backend.
                 </p>
                 {submitError && (
                   <p className="text-sm text-[color:var(--status-critical)]">{submitError}</p>
@@ -491,7 +540,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
           {isReview ? (
             <button
               type="button"
-              disabled={submitting}
+              disabled={submitting || !confirmed}
               onClick={() => void handleSave()}
               className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-60"
             >

@@ -39,6 +39,7 @@ import {
   type ResolvedOdometerAnchor,
   type VehicleOdometerContext,
 } from './tire-odometer-anchor';
+import { validateTireTreadMeasurementMm } from '@shared/tires/tire-measurement-validation.util';
 import {
   buildRecommendedPressurePersistData,
   normalizeTirePressureSpecSource,
@@ -74,6 +75,8 @@ export interface RecordTireMeasurementCommand {
   quality?: 'measured' | 'estimated' | 'mixed';
   shouldCalibrate?: boolean;
   triggerRecalculate?: boolean;
+  bookingId?: string;
+  handoverSessionId?: string;
 }
 
 export interface ReplaceTiresCommand {
@@ -262,6 +265,36 @@ export class TireLifecycleService {
       throw new BadRequestException('At least one wheel measurement is required.');
     }
 
+    const setupSeason = setup.tireSeason ?? null;
+    const validated = validateTireTreadMeasurementMm(
+      {
+        frontLeftMm: values.frontLeftMm,
+        frontRightMm: values.frontRightMm,
+        rearLeftMm: values.rearLeftMm,
+        rearRightMm: values.rearRightMm,
+      },
+      { tireSeason: setupSeason },
+    );
+    if (validated.errors.length > 0) {
+      throw new BadRequestException({
+        message: 'Tire measurement validation failed',
+        errors: validated.errors,
+      });
+    }
+
+    const normalizedValues = {
+      frontLeftMm: validated.values.frontLeftMm ?? null,
+      frontRightMm: validated.values.frontRightMm ?? null,
+      rearLeftMm: validated.values.rearLeftMm ?? null,
+      rearRightMm: validated.values.rearRightMm ?? null,
+      count: [
+        validated.values.frontLeftMm,
+        validated.values.frontRightMm,
+        validated.values.rearLeftMm,
+        validated.values.rearRightMm,
+      ].filter((v) => v != null).length,
+    };
+
     const source = normalizeMeasurementSource(command.source);
     const measuredAt = command.measuredAt ? new Date(command.measuredAt) : new Date();
     const resolvedOdometer = await this.resolveMeasurementOdometer(
@@ -282,25 +315,27 @@ export class TireLifecycleService {
         vehicleId: command.vehicleId,
         tireSetupId: setup.id,
         documentExtractionId: command.documentExtractionId ?? command.linkedExtractionId ?? null,
-        frontLeftMm: values.frontLeftMm,
-        frontRightMm: values.frontRightMm,
-        rearLeftMm: values.rearLeftMm,
-        rearRightMm: values.rearRightMm,
+        frontLeftMm: normalizedValues.frontLeftMm,
+        frontRightMm: normalizedValues.frontRightMm,
+        rearLeftMm: normalizedValues.rearLeftMm,
+        rearRightMm: normalizedValues.rearRightMm,
         odometerAtMeasurement: resolvedOdometer,
         source,
         workshopName: command.workshopName ?? null,
         isCalibrationPoint: shouldCalibrate,
         measuredAt,
         evidenceSource,
+        bookingId: command.bookingId ?? null,
+        handoverSessionId: command.handoverSessionId ?? null,
       },
     });
 
     const baselineFields = buildSetupBaselineFields({
       treadByPosition: {
-        FL: values.frontLeftMm,
-        FR: values.frontRightMm,
-        RL: values.rearLeftMm,
-        RR: values.rearRightMm,
+        FL: normalizedValues.frontLeftMm,
+        FR: normalizedValues.frontRightMm,
+        RL: normalizedValues.rearLeftMm,
+        RR: normalizedValues.rearRightMm,
       },
       legacySource: command.source ?? source,
       linkedDocumentUrl: command.linkedDocumentUrl,
@@ -319,10 +354,10 @@ export class TireLifecycleService {
 
     const kFactors = shouldCalibrate
       ? await this.wearModel.calibrateFromMeasurement(setup.id, {
-          frontLeftMm: values.frontLeftMm ?? undefined,
-          frontRightMm: values.frontRightMm ?? undefined,
-          rearLeftMm: values.rearLeftMm ?? undefined,
-          rearRightMm: values.rearRightMm ?? undefined,
+          frontLeftMm: normalizedValues.frontLeftMm ?? undefined,
+          frontRightMm: normalizedValues.frontRightMm ?? undefined,
+          rearLeftMm: normalizedValues.rearLeftMm ?? undefined,
+          rearRightMm: normalizedValues.rearRightMm ?? undefined,
         })
       : null;
 
@@ -339,10 +374,10 @@ export class TireLifecycleService {
           measuredAt: measuredAt.toISOString(),
           odometerKm: resolvedOdometer,
           values: {
-            FL: values.frontLeftMm,
-            FR: values.frontRightMm,
-            RL: values.rearLeftMm,
-            RR: values.rearRightMm,
+            FL: normalizedValues.frontLeftMm,
+            FR: normalizedValues.frontRightMm,
+            RL: normalizedValues.rearLeftMm,
+            RR: normalizedValues.rearRightMm,
           },
           workshopName: command.workshopName ?? null,
           linkedExtractionId:
@@ -350,6 +385,8 @@ export class TireLifecycleService {
           documentExtractionId: command.documentExtractionId ?? command.linkedExtractionId ?? null,
           linkedDocumentUrl: command.linkedDocumentUrl ?? null,
           notes: command.notes ?? null,
+          bookingId: command.bookingId ?? null,
+          handoverSessionId: command.handoverSessionId ?? null,
           calibrationApplied: shouldCalibrate,
           kFactors,
         },

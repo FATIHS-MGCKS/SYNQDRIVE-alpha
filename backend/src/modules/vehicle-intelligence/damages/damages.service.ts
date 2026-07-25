@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -40,6 +41,7 @@ import {
   type DamageResponseDto,
   type DamageStatsDto,
 } from './damage.mapper';
+import { assertDamageMutable } from '@shared/damage/damage-status-transition.util';
 
 // Bound base64 damage images stored directly in Postgres (vehicle_damage_images).
 // TODO(object-storage): replace inline base64 persistence with object storage keys;
@@ -527,7 +529,13 @@ export class DamagesService {
     dto: UpdateDamageDto,
     organizationId?: string,
   ): Promise<DamageResponseDto> {
-    await this.assertDamageBelongsToVehicle(vehicleId, damageId);
+    const existingRow = await this.assertDamageBelongsToVehicle(vehicleId, damageId);
+    const currentStatus = deriveDamageStatus(existingRow);
+    try {
+      assertDamageMutable(currentStatus);
+    } catch {
+      throw new ConflictException('Final damage records cannot be modified silently');
+    }
     const orgId = organizationId ?? (await this.requireVehicleOrganizationId(vehicleId));
 
     await this.validateForeignKeys(orgId, vehicleId, {

@@ -74,10 +74,15 @@ export function OperatorTaskCard({
           </p>
         )}
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Aufgabenstatus">
           <StatusChip tone={taskStatusTone(model.status, model.isOverdue)} dot>
             {model.isOverdue ? 'Überfällig' : taskStatusLabelDe(model.status)}
           </StatusChip>
+          {model.checklist?.blocked && (
+            <StatusChip tone="warning" dot>
+              Blockiert
+            </StatusChip>
+          )}
           {model.autoResolved && (
             <StatusChip tone="success" dot>
               Automatisch erledigt
@@ -88,6 +93,7 @@ export function OperatorTaskCard({
               className={`text-[10px] font-medium tabular-nums ${
                 model.timingWarn ? 'text-[color:var(--status-critical)]' : 'text-muted-foreground'
               }`}
+              aria-label={model.timingLabel}
             >
               {model.timingLabel}
             </span>
@@ -115,8 +121,8 @@ export function OperatorTaskCard({
               />
             </div>
             {model.checklist.blocked && model.checklist.blockerLabel && (
-              <p className="text-[10px] font-medium text-[color:var(--status-watch)]">
-                {model.checklist.blockerLabel}
+              <p className="text-[10px] font-medium text-[color:var(--status-watch)]" role="status">
+                Blockiert: {model.checklist.blockerLabel}
               </p>
             )}
           </div>
@@ -143,6 +149,7 @@ export function OperatorTaskCard({
               void runAction(actions.primary!);
             }}
             className="sq-3d-btn sq-3d-btn--primary flex min-h-[48px] w-full items-center justify-center px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 disabled:opacity-60"
+            aria-label={actions.primary.label}
           >
             {actions.primary.label}
           </button>

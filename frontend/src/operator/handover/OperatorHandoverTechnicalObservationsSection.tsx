@@ -69,7 +69,8 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
       <div>
         <p className="text-sm font-semibold">Technische Beobachtungen</p>
         <p className="text-[11px] text-muted-foreground">
-          Technische Auffälligkeiten — nicht jede Beobachtung ist ein Schaden.
+          Technische Auffälligkeiten — Hinweis, keine bestätigte Diagnose. Schweregrad blockiert
+          nicht automatisch; Vermietung nur bei explizitem Toggle.
         </p>
       </div>
 
