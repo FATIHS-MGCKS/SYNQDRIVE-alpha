@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Audit ID** | `operator-app-production-readiness-2026-07` |
-| **Prompt** | **1** (baseline) · **2** (Dateiinventur) · **3** (Dokumentationsabgleich) · **4** (Datenfluss-Traceability) |
+| **Prompt** | **1** (baseline) · **2** (Dateiinventur) · **3** (Dokumentationsabgleich) · **4** (Datenfluss) · **5** (Permissions) |
 | **Repository** | `https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **Audited commit** | `1d0f2caebe56aa1ecd23295aa33d20e953daa95d` (Prompt 1) · Branch-HEAD nach Prompt 2 |
 | **Audit branch** | `audit/operator-app-production-readiness-2026-07` |
@@ -597,6 +597,7 @@ Operator-Mutationen (Booking, Handover, Task, Damage, Document Apply) gehen übe
 | Traceability-Matrix | ✅ Kap. 22 |
 | Dokumentationsabgleich (Prompt 3) | ✅ Kap. 25 |
 | Vollständige Datenfluss-Traceability (Prompt 4) | ✅ Kap. 26 |
+| Permission-Modell (Prompt 5) | ✅ Kap. 27 + `architecture/OPERATOR_PERMISSIONS_2026-07-25.md` |
 | Security-Hardening | ⏳ Ausstehend |
 | PWA/Offline | ⏳ Ausstehend |
 | E2E Operator-Matrix | ⏳ Ausstehend |
@@ -1241,6 +1242,60 @@ QR-Scanner: **nicht implementiert** (Textsuche only).
 
 ---
 
+## 27. Permission-Modell (Prompt 5)
+
+**Ziel:** Granulares Operator-Permission-Modell auf Basis der zentralen SynqDrive-IAM-Architektur — **kein paralleles Berechtigungssystem**.
+
+**Vollständige Spezifikation:** `architecture/OPERATOR_PERMISSIONS_2026-07-25.md`
+
+### 27.1 Wiederverwendete Komponenten
+
+| Komponente | Pfad | Verwendung |
+|------------|------|------------|
+| `PERMISSION_MODULE_KEYS` | `backend/src/shared/auth/permission.constants.ts` | + `operator-app` |
+| `PermissionsGuard` / `OrgScopingGuard` | `backend/src/shared/auth/` | Endpoint-Enforcement (Migration ausstehend) |
+| `evaluateModulePermission` | `backend/src/shared/auth/permission.util.ts` | Level-Ableitung read⊃write⊃manage |
+| `EffectiveAccessEngine` | `effective-access-engine.ts` | Station-Scope, Overrides |
+| `StationAccessService` | `station-access.service.ts` | Stations-Filter (kontextuell) |
+| Task/Eligibility registries | tasks/bookings modules | Muster für Action-Registry |
+| `OrganizationRole` templates | `organization-role.defaults.ts` | Default-Rollen-Mapping |
+| Frontend `hasPermission` | `RentalContext.tsx` | UI-Gates |
+
+### 27.2 Neues (konsistente Erweiterung)
+
+| Artefakt | Pfad |
+|----------|------|
+| Operator action registry (28 actions) | `backend/src/modules/operator-app/operator-permission.constants.ts` |
+| `evaluateOperatorPermission()` | `operator-permission.util.ts` |
+| `@RequireOperatorPermission` | `decorators/require-operator-permission.decorator.ts` |
+| Default bundles | `operator-permission.defaults.ts` |
+| Matrix tests | `operator.permissions.matrix.spec.ts` |
+| Frontend facade | `frontend/src/operator/lib/operatorPermissions.ts` |
+
+### 27.3 Rollen-Mapping (Default-Templates)
+
+| systemKey | Operator-Shell | Operative Writes | Supervisor |
+|-----------|----------------|------------------|------------|
+| `field_agent` | `operator-app.write` | bookings/tasks/fleet-condition write | eligibility override |
+| `station_manager` | `operator-app.manage` | + `fleet-condition.manage` | verify paths |
+| `employee` | **`operator-app.read` only** | keine Handover-Writes | nein |
+| `driver` | kein `operator-app` | — | — |
+
+### 27.4 Endpoint-Migration
+
+**Ausstehend (bewusst Prompt 5):** Controller behalten Domain-`@RequirePermission`; `@RequireOperatorPermission` bereit für schrittweise Migration. Kontextuelle Regeln (Station, Assignment, finalized) in Services.
+
+### 27.5 Findings
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| PERM-001 | P1 | Endpunkte noch nicht auf Operator-Registry migriert |
+| PERM-002 | P1 | Bestehende Memberships ohne `operator-app` Backfill |
+| PERM-003 | P2 | `fieldAgentAccess` fehlt in Frontend `AuthUser` |
+| PERM-004 | P2 | Operator-UI action gates noch nicht flächendeckend |
+
+---
+
 ## Anhang A — Geänderte Dateien
 
 | Prompt | Datei | Aktion |
@@ -1254,6 +1309,15 @@ QR-Scanner: **nicht implementiert** (Textsuche only).
 | 3 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.829 |
 | 4 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 26 Datenfluss-Traceability + Findings DF-001–013 |
 | 4 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.830 |
+| 5 | `backend/src/modules/operator-app/*` | Permission registry + tests |
+| 5 | `backend/src/shared/auth/permission.constants.ts` | `operator-app` module |
+| 5 | `backend/src/modules/users/defaults/organization-role.defaults.ts` | Rollen-Mapping |
+| 5 | `frontend/src/operator/lib/operatorPermissions.ts` | Frontend facade |
+| 5 | `frontend/src/operator/lib/operatorAccess.ts` | `operator.app.access` gate |
+| 5 | `frontend/src/rental/components/users-roles/constants.ts` | IAM UI |
+| 5 | `architecture/OPERATOR_PERMISSIONS_2026-07-25.md` | Architektur-Spec |
+| 5 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 27 |
+| 5 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.831 |
 
 ---
 
@@ -1263,3 +1327,4 @@ QR-Scanner: **nicht implementiert** (Textsuche only).
 - `AGENTS.md`
 - `docs/audits/booking-post-remediation-production-readiness-2026-07.md`
 - `architecture/DOCUMENT_INTAKE_V2_ENTRY_POINTS_2026-07-17.md`
+- `architecture/OPERATOR_PERMISSIONS_2026-07-25.md`

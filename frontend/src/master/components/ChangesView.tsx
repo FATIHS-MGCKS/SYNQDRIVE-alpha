@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-permission-model-v49831-2026-07-25',
+    version: '4.9.831',
+    title: 'V4.9.831 — Operator App: granulares Permission-Modell (Prompt 5)',
+    summary: [
+      'Neues Modul `operator-app` (read/write/manage) — einzige neue Permission-Key; operative Actions mappen auf bestehende Domänen.',
+      '28 `operator.*` Actions in Registry (`operator-permission.constants.ts`) + `evaluateOperatorPermission`.',
+      'Rollen-Templates aktualisiert: field_agent/station_manager write; employee read-only; driver ohne operator-app.',
+      'Frontend: `operatorPermissions.ts`, `operatorAccess` prüft `operator.app.access`.',
+      'Architektur: `architecture/OPERATOR_PERMISSIONS_2026-07-25.md`; Matrix-Tests backend + frontend.',
+    ],
+    reason: 'Production-Readiness Prompt 5 — kein paralleles Operator-Berechtigungssystem; IAM-konsistente Granularität.',
+    previousBehavior: 'Operator-Zugang nur über Membership-Rolle (WORKER/SUB_ADMIN); keine operator-app Module-Flags.',
+    details: 'architecture/OPERATOR_PERMISSIONS_2026-07-25.md; docs/audits/operator-app-production-readiness-2026-07.md §27',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:00:00.000Z',
+  },
+  {
     id: 'operator-app-dataflow-traceability-v49830-2026-07-25',
     version: '4.9.830',
     title: 'V4.9.830 — Operator App: vollständige Datenfluss-Traceability (Prompt 4)',

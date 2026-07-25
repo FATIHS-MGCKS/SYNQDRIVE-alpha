@@ -13,6 +13,7 @@ export const OPERATOR_DENIED_MEMBERSHIP_ROLES = ['DRIVER'] as const;
 export type OperatorAccessDenialReason =
   | 'unauthenticated'
   | 'forbidden_role'
+  | 'forbidden_permission'
   | 'no_organization'
   | 'no_rental_product';
 
