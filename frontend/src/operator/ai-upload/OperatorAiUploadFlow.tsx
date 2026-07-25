@@ -12,6 +12,10 @@ import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorCameraCapture } from '../hooks/useOperatorCameraCapture';
 import {
+  OperatorFullScreenDialog,
+  useOperatorDialogTitleId,
+} from '../components/OperatorFullScreenDialog';
+import {
   CONTEXT_MODE_LABELS,
   OPERATOR_DOC_TYPE_OPTIONS,
   OPERATOR_UPLOAD_SOURCE,
@@ -182,38 +186,12 @@ export function OperatorAiUploadFlow({ action }: Props) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[140] flex flex-col bg-background"
-      style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
-      role="dialog"
-      aria-modal
-      aria-labelledby="operator-ai-upload-title"
-    >
-      <header className="shrink-0 border-b border-border/50 px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">AI Upload</p>
-            <h2 id="operator-ai-upload-title" className="truncate text-base font-bold text-foreground">
-              {action.vehicleLabel}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <StatusChip tone="info">{FLOW_STATUS_LABEL_DE[flow.flow]}</StatusChip>
-          <StatusChip tone="neutral">{CONTEXT_MODE_LABELS[contextMode]}</StatusChip>
-        </div>
-      </header>
+    <OperatorFullScreenDialog onClose={handleClose} zIndexClass="z-[140]">
+      <OperatorAiUploadHeader vehicleLabel={action.vehicleLabel} onClose={handleClose} />
+      <div className="mt-2 flex flex-wrap gap-1.5 px-4" aria-live="polite">
+        <StatusChip tone="info">{FLOW_STATUS_LABEL_DE[flow.flow]}</StatusChip>
+        <StatusChip tone="neutral">{CONTEXT_MODE_LABELS[contextMode]}</StatusChip>
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5">
         {showCapture && (
@@ -336,22 +314,31 @@ export function OperatorAiUploadFlow({ action }: Props) {
             )}
 
             {(pickError || flow.errorMessage) && flow.flow === 'failed' && (
-              <p className="text-xs text-[color:var(--status-critical)]">
+              <p role="alert" className="text-xs text-[color:var(--status-critical)]">
                 {pickError ?? flow.errorMessage}
               </p>
             )}
             {pickError && flow.flow === 'idle' && (
-              <p className="text-xs text-[color:var(--status-critical)]">{pickError}</p>
+              <p role="alert" className="text-xs text-[color:var(--status-critical)]">
+                {pickError}
+              </p>
             )}
             {flow.validationError && flow.flow === 'idle' && (
-              <p className="text-xs text-[color:var(--status-critical)]">{flow.validationError}</p>
+              <p role="alert" className="text-xs text-[color:var(--status-critical)]">
+                {flow.validationError}
+              </p>
             )}
           </div>
         )}
 
         {flow.isBusy && !showAwaitingType && (
-          <div className="flex flex-col items-center py-16 text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-[color:var(--brand)]" />
+          <div
+            className="flex flex-col items-center py-16 text-center"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <Loader2 className="h-10 w-10 motion-safe:animate-spin text-[color:var(--brand)]" aria-hidden />
             <p className="mt-4 text-sm font-semibold">{FLOW_STATUS_LABEL_DE[flow.flow]}</p>
             {flow.uploadedFileName && (
               <p className="mt-1 text-xs text-muted-foreground">{flow.uploadedFileName}</p>
@@ -458,7 +445,9 @@ export function OperatorAiUploadFlow({ action }: Props) {
                 </button>
               )}
               {pickError && isTireDoc && (
-                <p className="text-xs text-[color:var(--status-critical)]">{pickError}</p>
+                <p role="alert" className="text-xs text-[color:var(--status-critical)]">
+                  {pickError}
+                </p>
               )}
               <div className="flex gap-2">
                 <button
@@ -509,6 +498,37 @@ export function OperatorAiUploadFlow({ action }: Props) {
           )}
         </div>
       </footer>
-    </div>
+    </OperatorFullScreenDialog>
+  );
+}
+
+function OperatorAiUploadHeader({
+  vehicleLabel,
+  onClose,
+}: {
+  vehicleLabel: string;
+  onClose: () => void;
+}) {
+  const titleId = useOperatorDialogTitleId();
+
+  return (
+    <header className="shrink-0 border-b border-border/50 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">AI Upload</p>
+          <h2 id={titleId} className="truncate text-base font-bold text-foreground">
+            {vehicleLabel}
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+          aria-label="Schließen"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+    </header>
   );
 }

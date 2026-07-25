@@ -11,6 +11,7 @@ import { OperatorHeader } from './components/OperatorHeader';
 import { OperatorDataProvider } from './context/OperatorDataContext';
 import { OperatorShellProvider, useOperatorShell } from './context/OperatorShellContext';
 import { OPERATOR_LAYOUT_BREAKPOINTS } from './lib/operatorDeviceCapabilities';
+import { OPERATOR_MAIN_ID, OPERATOR_SKIP_LINK_ID } from './lib/operatorA11y';
 import { useOperatorDeviceCapabilities } from './hooks/useOperatorDeviceCapabilities';
 import { OperatorMoreView } from './views/OperatorMoreView';
 import { OperatorScanView } from './views/OperatorScanView';
@@ -65,9 +66,18 @@ function OperatorShellInner() {
       <OperatorConnectivityBridge />
       <OperatorConnectivityBanner />
       {desktopFallback && <OperatorDesktopFallbackBanner />}
+      <a
+        id={OPERATOR_SKIP_LINK_ID}
+        href={`#${OPERATOR_MAIN_ID}`}
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-lg"
+      >
+        Zum Inhalt springen
+      </a>
       <OperatorHeader />
       <main
-        className={`mx-auto flex w-full flex-1 flex-col overflow-hidden px-4 pt-4 ${
+        id={OPERATOR_MAIN_ID}
+        tabIndex={-1}
+        className={`mx-auto flex w-full flex-1 flex-col overflow-hidden px-4 pt-4 focus:outline-none ${
           desktopFallback ? '' : 'max-w-lg md:max-w-none md:px-6'
         }`}
         style={{

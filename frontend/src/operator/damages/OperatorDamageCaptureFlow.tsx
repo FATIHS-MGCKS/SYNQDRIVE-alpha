@@ -5,6 +5,10 @@ import type { DamageResponse, DamageSource } from '../../rental/lib/damage.types
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
+import {
+  OperatorFullScreenDialog,
+  useOperatorDialogTitleId,
+} from '../components/OperatorFullScreenDialog';
 import { OperatorDamageDetailsStep } from './OperatorDamageDetailsStep';
 import { OperatorDamagePhotoStep, type OperatorDamagePhotoItem } from './OperatorDamagePhotoStep';
 import { OperatorDamageReviewStep } from './OperatorDamageReviewStep';
@@ -162,46 +166,19 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
   const isLast = step === 'review';
 
   return (
-    <div
-      className="fixed inset-0 z-[130] flex flex-col bg-background"
-      style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
-      role="dialog"
-      aria-modal
-      aria-labelledby="operator-damage-capture-title"
-    >
+    <OperatorFullScreenDialog open={isOpen} onClose={onClose}>
       <header className="shrink-0 border-b border-border/50 px-4 py-3">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 md:max-w-2xl">
-          <button
-            type="button"
-            onClick={back}
-            className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Zurück"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="min-w-0 flex-1 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Schaden erfassen
-            </p>
-            <h2 id="operator-damage-capture-title" className="truncate text-base font-bold">
-              {STEP_LABELS[step]}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="mx-auto mt-3 h-1 max-w-lg overflow-hidden rounded-full bg-muted md:max-w-2xl">
+        <OperatorDamageCaptureHeader step={step} onBack={back} onClose={onClose} />
+        <div
+          className="mx-auto mt-3 h-1.5 max-w-lg overflow-hidden rounded-full bg-muted md:max-w-2xl"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
+          aria-label={`Fortschritt Schritt ${stepIndex(step) + 1} von ${OPERATOR_DAMAGE_CAPTURE_STEPS.length}`}
+        >
           <div
-            className="h-full rounded-full bg-[color:var(--brand)] transition-all duration-300"
+            className="h-full rounded-full bg-[color:var(--brand)] motion-safe:transition-all motion-safe:duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -270,10 +247,14 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
         )}
 
         {step === 'details' && stepError && (
-          <p className="mt-3 text-xs text-[color:var(--status-critical)]">{stepError}</p>
+          <p role="alert" className="mt-3 text-xs text-[color:var(--status-critical)]">
+            {stepError}
+          </p>
         )}
         {submitError && (
-          <p className="mt-3 text-xs text-[color:var(--status-critical)]">{submitError}</p>
+          <p role="alert" className="mt-3 text-xs text-[color:var(--status-critical)]">
+            {submitError}
+          </p>
         )}
       </div>
 
@@ -306,6 +287,47 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
           )}
         </div>
       </footer>
+    </OperatorFullScreenDialog>
+  );
+}
+
+function OperatorDamageCaptureHeader({
+  step,
+  onBack,
+  onClose,
+}: {
+  step: OperatorDamageCaptureStep;
+  onBack: () => void;
+  onClose: () => void;
+}) {
+  const titleId = useOperatorDialogTitleId();
+
+  return (
+    <div className="mx-auto flex max-w-lg items-center justify-between gap-3 md:max-w-2xl">
+      <button
+        type="button"
+        onClick={onBack}
+        className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+        aria-label="Zurück"
+      >
+        <ChevronLeft className="h-5 w-5" aria-hidden />
+      </button>
+      <div className="min-w-0 flex-1 text-center">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Schaden erfassen
+        </p>
+        <h2 id={titleId} className="truncate text-base font-bold">
+          {STEP_LABELS[step]}
+        </h2>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+        aria-label="Schließen"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
     </div>
   );
 }

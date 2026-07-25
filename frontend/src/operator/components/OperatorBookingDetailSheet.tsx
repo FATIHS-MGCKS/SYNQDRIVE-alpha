@@ -12,6 +12,10 @@ import { useOperatorShell } from '../context/OperatorShellContext';
 import { canOperatorMarkNoShow } from '../bookings/operatorBooking.utils';
 import { OperatorBookingDocumentsPanel } from '../documents/OperatorBookingDocumentsPanel';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
+import {
+  OperatorFullScreenDialog,
+  useOperatorDialogTitleId,
+} from './OperatorFullScreenDialog';
 import { OperatorGlassCard } from './OperatorGlassCard';
 
 interface OperatorBookingDetailSheetProps {
@@ -79,28 +83,8 @@ export function OperatorBookingDetailSheet({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col bg-background"
-      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-      role="dialog"
-      aria-modal
-    >
-      <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Buchung</p>
-          <h2 className="truncate text-base font-bold text-foreground">
-            {item.vehicleName} · {item.plate}
-          </h2>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-          aria-label="Schließen"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </header>
+    <OperatorFullScreenDialog onClose={onClose} zIndexClass="z-50">
+      <OperatorBookingDetailHeader item={item} onClose={onClose} />
 
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 space-y-4">
         <OperatorGlassCard className="space-y-3 p-4">
@@ -134,11 +118,20 @@ export function OperatorBookingDetailSheet({
         </OperatorGlassCard>
 
         {loading && (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
+          <div
+            className="flex items-center justify-center py-8 text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-5 w-5 motion-safe:animate-spin" aria-hidden />
+            <span className="sr-only">Buchungsdetails werden geladen</span>
           </div>
         )}
-        {error && <p className="text-sm text-[color:var(--status-critical)]">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-[color:var(--status-critical)]">
+            {error}
+          </p>
+        )}
 
         {detail && detail.health.rentalBlocked && (
           <OperatorGlassCard className="border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">
@@ -264,6 +257,35 @@ export function OperatorBookingDetailSheet({
           </button>
         </div>
       </div>
-    </div>
+    </OperatorFullScreenDialog>
+  );
+}
+
+function OperatorBookingDetailHeader({
+  item,
+  onClose,
+}: {
+  item: OperatorTodayBookingItem;
+  onClose: () => void;
+}) {
+  const titleId = useOperatorDialogTitleId();
+
+  return (
+    <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Buchung</p>
+        <h2 id={titleId} className="truncate text-base font-bold text-foreground">
+          {item.vehicleName} · {item.plate}
+        </h2>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+        aria-label="Schließen"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
+    </header>
   );
 }

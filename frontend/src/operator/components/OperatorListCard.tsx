@@ -25,7 +25,6 @@ export function OperatorListCard({
 }: OperatorListCardProps) {
   return (
     <OperatorGlassCard
-      as="button"
       onClick={onClick}
       disabled={disabled || !onClick}
       className="w-full p-4 text-left"

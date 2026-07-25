@@ -61,19 +61,23 @@ export function OperatorHandoverStepSignatures({
       </OperatorHandoverField>
 
       {!isTablet && (
-        <div className="sq-tab-bar w-full">
+        <div className="sq-tab-bar w-full" role="tablist" aria-label="Unterschrift Rolle">
           <button
             type="button"
+            role="tab"
+            aria-selected={mobileSigPhase === 'customer'}
             data-active={mobileSigPhase === 'customer' ? 'true' : undefined}
-            className="flex-1 min-h-[44px]"
+            className="flex-1 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
             onClick={() => setMobileSigPhase('customer')}
           >
             Kunde
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={mobileSigPhase === 'staff'}
             data-active={mobileSigPhase === 'staff' ? 'true' : undefined}
-            className="flex-1 min-h-[44px]"
+            className="flex-1 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
             onClick={() => setMobileSigPhase('staff')}
           >
             Mitarbeiter
@@ -111,7 +115,10 @@ export function OperatorHandoverStepSignatures({
       </div>
 
       {stepErrors.length > 0 && (
-        <ul className="space-y-1 rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] px-3 py-2 text-xs text-[color:var(--status-critical)]">
+        <ul
+          role="alert"
+          className="space-y-1 rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] px-3 py-2 text-xs text-[color:var(--status-critical)]"
+        >
           {stepErrors.map((e) => (
             <li key={e}>{e}</li>
           ))}

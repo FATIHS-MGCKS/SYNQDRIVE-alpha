@@ -35,7 +35,6 @@ export function OperatorMoreView() {
         <h2 className="sq-section-label mb-2 px-0.5">Aktionen</h2>
         <div className="grid gap-2">
           <OperatorGlassCard
-            as="button"
             onClick={() => openSheet({ type: 'booking-create' })}
             className="flex min-h-[56px] items-center gap-3 p-4"
           >
@@ -48,7 +47,6 @@ export function OperatorMoreView() {
             </span>
           </OperatorGlassCard>
           <OperatorGlassCard
-            as="button"
             onClick={() => pickVehicle('ai')}
             className="flex min-h-[56px] items-center gap-3 p-4"
           >
@@ -61,7 +59,6 @@ export function OperatorMoreView() {
             </span>
           </OperatorGlassCard>
           <OperatorGlassCard
-            as="button"
             onClick={() => pickVehicle('tire')}
             className="flex min-h-[56px] items-center gap-3 p-4"
           >
@@ -119,7 +116,6 @@ export function OperatorMoreView() {
       <section>
         <h2 className="sq-section-label mb-2 px-0.5">Navigation</h2>
         <OperatorGlassCard
-          as="button"
           onClick={() => {
             setScanQuery('');
             setActiveTab('scan');

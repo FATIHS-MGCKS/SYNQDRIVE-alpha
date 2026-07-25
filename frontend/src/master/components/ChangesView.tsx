@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-accessibility-v49858-2026-07-25',
+    version: '4.9.858',
+    title: 'V4.9.858 — Operator App: Accessibility-Audit (Prompt 33)',
+    summary: [
+      'Shared A11y-Utilities (`operatorA11y`, `useOperatorDialogA11y`, `OperatorFullScreenDialog`) für Fokusfalle, Escape, Fokus-Rückgabe.',
+      'Shell: Skip-Link, main-Landmark, Bottom-Nav aria-label/current, Connectivity-Banner aria-live.',
+      'Alle Fullscreen-Sheets/Flows: korrektes aria-labelledby, progressbar-ARIA, Fehler als role=alert.',
+      'Formulare: OperatorHandoverField aria-describedby/invalid; SignaturePad Canvas-Labels; GlassCard als button.',
+      'Vitest + Playwright/Axe Tests; manuelle VoiceOver/TalkBack-Fälle in Audit-Dokument.',
+    ],
+    reason:
+      'Production-Readiness Prompt 33: Operator App für Feldpersonal barrierefrei bedienbar (Tastatur, Screenreader, Touch).',
+    previousBehavior:
+      'Dialoge ohne Fokusmanagement; teils fehlende Labels/Live-Regions; klickbare divs; uneinheitliche Fokus-Ringe.',
+    details:
+      'docs/audits/operator-app-accessibility-2026-07.md, frontend/src/operator/lib/operatorA11y.ts, operator-a11y.ui.test.tsx, e2e/operator-a11y.spec.ts',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-07-25T00:00:00.000Z',
+  },
+  {
     id: 'operator-device-capabilities-v49857-2026-07-25',
     version: '4.9.857',
     title: 'V4.9.857 — Operator App: Device-/Viewport-Capabilities (Prompt 32)',

@@ -7,6 +7,7 @@ import type {
 } from '../../rental/components/handover/HandoverProtocolDialog';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
+import { OperatorFullScreenDialog } from '../components/OperatorFullScreenDialog';
 import {
   buildOperatorHandoverPayload,
   canAdvanceFromStep,
@@ -56,6 +57,7 @@ export function OperatorHandoverFlow({
 }: OperatorHandoverFlowProps) {
   const isTablet = useOperatorTabletLayout();
   const { openSheet } = useOperatorShell();
+  const handoverTitleId = 'operator-handover-title';
   const [step, setStep] = useState<OperatorHandoverStepId>('vehicle');
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -225,12 +227,11 @@ export function OperatorHandoverFlow({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-[120] flex flex-col bg-background"
-      style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
+    <OperatorFullScreenDialog
+      open={isOpen}
+      onClose={onClose}
+      titleId={handoverTitleId}
+      zIndexClass="z-[120]"
     >
       <header className="shrink-0 border-b border-border/50 px-4 py-3">
         <div className="flex items-center justify-between gap-3">
@@ -238,7 +239,7 @@ export function OperatorHandoverFlow({
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Handover · {title}
             </p>
-            <h1 className="truncate font-display text-lg font-bold">
+            <h1 id={handoverTitleId} className="truncate font-display text-lg font-bold">
               {booking ? `${booking.vehicleName} · ${booking.plate}` : 'Laden…'}
             </h1>
           </div>
@@ -246,26 +247,33 @@ export function OperatorHandoverFlow({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
+            className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+            aria-label="Handover schließen"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
+          aria-label={`Fortschritt Schritt ${stepIndex(step) + 1} von ${OPERATOR_HANDOVER_STEPS.length}`}
+        >
           <div
-            className="h-full rounded-full bg-[color:var(--brand)] transition-all duration-300"
+            className="h-full rounded-full bg-[color:var(--brand)] motion-safe:transition-all motion-safe:duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="mt-2 text-[11px] font-semibold text-muted-foreground">
+        <p className="mt-2 text-[11px] font-semibold text-muted-foreground" aria-live="polite">
           Schritt {stepIndex(step) + 1}/{OPERATOR_HANDOVER_STEPS.length}: {STEP_LABELS[step]}
         </p>
       </header>
 
       <div className={`flex min-h-0 flex-1 ${isTablet ? 'flex-row gap-0' : 'flex-col'}`}>
         {isTablet && (
-          <nav className="hidden w-44 shrink-0 border-r border-border/50 p-3 md:block">
+          <nav className="hidden w-44 shrink-0 border-r border-border/50 p-3 md:block" aria-label="Handover-Schritte">
             <ul className="space-y-1">
               {OPERATOR_HANDOVER_STEPS.map((s) => (
                 <li key={s}>
@@ -275,7 +283,8 @@ export function OperatorHandoverFlow({
                       setStepError(null);
                       setStep(s);
                     }}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-xs font-semibold ${
+                    aria-current={step === s ? 'step' : undefined}
+                    className={`w-full rounded-lg px-3 py-2 text-left text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 ${
                       step === s
                         ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
                         : 'text-muted-foreground hover:bg-muted'
@@ -292,10 +301,14 @@ export function OperatorHandoverFlow({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
           {stepContent}
           {stepError && (
-            <p className="mt-3 text-sm text-[color:var(--status-critical)]">{stepError}</p>
+            <p role="alert" className="mt-3 text-sm text-[color:var(--status-critical)]">
+              {stepError}
+            </p>
           )}
           {submitError && (
-            <p className="mt-3 text-sm text-[color:var(--status-critical)]">{submitError}</p>
+            <p role="alert" className="mt-3 text-sm text-[color:var(--status-critical)]">
+              {submitError}
+            </p>
           )}
         </div>
       </div>
@@ -336,6 +349,6 @@ export function OperatorHandoverFlow({
           )}
         </div>
       </footer>
-    </div>
+    </OperatorFullScreenDialog>
   );
 }
