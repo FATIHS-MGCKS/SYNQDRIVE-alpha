@@ -1,11 +1,14 @@
 # Remediation
 
-Empfohlene Korrekturen und Umsetzungspläne — **ohne Ausführung** bis explizite Freigabe in späteren Prompts.
+Empfohlene Korrekturen und Umsetzungspläne — **ohne Ausführung** bis explizite Freigabe.
 
-Jeder Remediation-Eintrag verweist auf:
+| Dokument | Inhalt |
+|----------|--------|
+| [`vehicle-warning-remediation-plan.md`](./vehicle-warning-remediation-plan.md) | Work Packages WP-B0 … WP-19 |
+| [`implementation-sequence.md`](./implementation-sequence.md) | 19 Phasen + Feature Flags |
+| [`test-strategy.md`](./test-strategy.md) | Test-IDs, Shadow Mode, Abnahme |
+| [`deployment-rollback-plan.md`](./deployment-rollback-plan.md) | Deploy, Rollback, Backfill |
 
-- Finding-ID (z. B. `VW-P1-03`)
-- Charter-Regeln §8 (Ursache, Auswirkungen, Rollback, Tests)
-- Ziel-Commit / PR (wenn umgesetzt)
+**Findings-Register:** [`../22-consolidated-findings.md`](../22-consolidated-findings.md) (42 kanonische Findings, Prompt 25/26).
 
-**Prompt 1:** Dieses Verzeichnis ist vorbereitet; keine Remediation durchgeführt.
+Jeder Eintrag verweist auf Finding-IDs (`VW-F-###`), Charter §8 und Acceptance Criteria.
