@@ -13,7 +13,7 @@ if [[ ! -f "$LOCAL_ENV" ]]; then
   exit 1
 fi
 
-MISTRAL_LINES="$(grep -E '^(# MISTRAL|# AI Gateway|AI_|MISTRAL_|DOCUMENT_AI_)' "$LOCAL_ENV" || true)"
+MISTRAL_LINES="$(grep -E '^(# MISTRAL|# AI Gateway|# Fleet Chat|AI_|MISTRAL_|DOCUMENT_AI_|FLEET_CHAT_)' "$LOCAL_ENV" || true)"
 if [[ -z "$MISTRAL_LINES" ]]; then
   echo "ERROR: no AI_/MISTRAL_/DOCUMENT_AI_ lines in $LOCAL_ENV" >&2
   exit 1
@@ -24,7 +24,7 @@ trap 'rm -f "$TMP"' EXIT
 
 {
   ssh -i "$SSH_KEY" -o BatchMode=yes "${SSH_USER}@${VPS_HOST}" \
-    "grep -v -E '^(# MISTRAL|# AI Gateway|AI_|MISTRAL_|DOCUMENT_AI_)' '$REMOTE_ENV' || true"
+    "grep -v -E '^(# MISTRAL|# AI Gateway|# Fleet Chat|AI_|MISTRAL_|DOCUMENT_AI_|FLEET_CHAT_)' '$REMOTE_ENV' || true"
   printf '%s\n' "$MISTRAL_LINES"
 } > "$TMP"
 

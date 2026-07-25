@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-deployment-runbook-v49823-2026-07-25',
+    version: '4.9.823',
+    title: 'V4.9.823 — Fleet AI deployment runbook & rollout flags (Prompt 30)',
+    summary: [
+      'Full configuration audit for Fleet AI domain grounding deploy readiness.',
+      'FLEET_CHAT_DOMAIN_GROUNDING_ENABLED + FLEET_CHAT_ORG_ALLOWLIST rollout flags.',
+      'Legacy direct-LLM fallback when orchestrator disabled; public GET /api/v1/ai/health.',
+      'docs/deployment/ai-agent-domain-grounding-deployment-runbook-2026-07.md',
+    ],
+    reason: 'Controlled production rollout requires env audit, backup/migrate order, smoke tests, and rollback without uncontrolled deploy.',
+    previousBehavior: 'Orchestrator always active; ai/health JWT-only; no documented deploy runbook.',
+    details:
+      'Runbook covers prerequisites, backup, migration, deploy order, smoke tests, monitoring, rollback, abort criteria, logs. Production default: domain grounding OFF until explicitly enabled.',
+    affectsArchitecture: true,
+    module: 'AI Assistant',
+    createdAt: '2026-07-25T02:50:00.000Z',
+  },
+  {
     id: 'fleet-ai-security-audit-v49822-2026-07-25',
     version: '4.9.822',
     title: 'V4.9.822 — Fleet AI security & hallucination audit (Prompt 29)',

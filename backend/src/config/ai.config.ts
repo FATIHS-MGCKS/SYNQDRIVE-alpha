@@ -14,6 +14,14 @@ function parsePositiveIntEnv(value: string | undefined, defaultValue: number): n
   return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
 }
 
+function parseUuidAllowlist(value: string | undefined): string[] {
+  if (value == null || value.trim() === '') return [];
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 export type AiProviderId = 'mistral';
 
 export default registerAs('ai', () => ({
@@ -93,4 +101,14 @@ export default registerAs('ai', () => ({
     60_000,
   ),
   agentLlmRetryBackoffMs: parsePositiveIntEnv(process.env.AI_AGENT_LLM_RETRY_BACKOFF_MS, 500),
+  /**
+   * Domain-grounded Fleet Chat orchestrator (tools + evidence composer).
+   * Production default OFF until explicitly enabled; non-production defaults ON.
+   */
+  fleetChatDomainGroundingEnabled: parseBooleanEnv(
+    process.env.FLEET_CHAT_DOMAIN_GROUNDING_ENABLED,
+    (process.env.NODE_ENV || 'development') !== 'production',
+  ),
+  /** When non-empty, only listed organization UUIDs receive the orchestrator path. */
+  fleetChatOrgAllowlist: parseUuidAllowlist(process.env.FLEET_CHAT_ORG_ALLOWLIST),
 }));

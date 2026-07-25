@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
+import aiConfig from '@config/ai.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
 import { FleetChatOrchestratorService } from './fleet-chat-orchestrator.service';
@@ -17,6 +19,8 @@ import {
   toClientStructuredPayload,
 } from './chat-fleet-structured.dto';
 import type { FleetChatResponseType } from './fleet-chat-evidence-response/fleet-chat-evidence-response.enums';
+import { FLEET_CHAT_SYSTEM_PROMPT } from '../vehicle-resolution/ai-vehicle-resolution.llm';
+import { isFleetChatDomainGroundingEnabled } from './fleet-chat-rollout.util';
 
 export interface ChatMessageResult {
   id?: string;
@@ -45,6 +49,8 @@ export class ChatService {
     private readonly requestAudit: AiRequestAuditService,
     private readonly agentLimits: AiAgentLimitsService,
     private readonly toolCache: AiAgentToolCacheService,
+    @Inject(aiConfig.KEY)
+    private readonly aiConfiguration: ConfigType<typeof aiConfig>,
   ) {}
 
   isConfigured(): boolean {
@@ -317,6 +323,10 @@ export class ChatService {
 
     onProgress?.('tools');
 
+    if (!isFleetChatDomainGroundingEnabled(orgId, this.aiConfiguration)) {
+      return this.runLegacyDirectLlm(orgId, content, identity, onProgress);
+    }
+
     try {
       const result = await this.orchestrator.orchestrate(context, { message: content });
       this.requestAudit.recordFleetRequest(context, result);
@@ -343,6 +353,56 @@ export class ChatService {
       const structured = this.buildFallbackStructured(fallbackText, 'TEMPORARY_UNAVAILABLE', true);
       return { text: fallbackText, structured };
     }
+  }
+
+  /**
+   * Controlled fallback when domain grounding is disabled — direct Mistral chat with history,
+   * no domain tools or evidence composer (pre-orchestrator behaviour).
+   */
+  private async runLegacyDirectLlm(
+    orgId: string,
+    content: string,
+    identity: ChatSessionIdentity,
+    onProgress?: (type: keyof typeof PROGRESS_LABELS) => void,
+  ): Promise<{ text: string; structured?: ChatFleetStructuredPayload }> {
+    onProgress?.('composing');
+    const locale = identity.locale === 'en' ? 'en' : 'de';
+    const history = await this.getHistory(orgId, this.agentLimits.getMaxConversationHistory());
+    const conversational = history
+      .filter((message) => message.role === 'user' || message.role === 'assistant')
+      .map((message) => ({
+        role: message.role as 'user' | 'assistant',
+        content: message.content,
+      }));
+
+    const localeHint =
+      locale === 'en'
+        ? 'Respond in English unless the user writes in another language.'
+        : 'Antworte auf Deutsch, sofern der Nutzer nicht in einer anderen Sprache schreibt.';
+
+    const result = await this.llm.complete({
+      purpose: 'chat',
+      messages: [
+        { role: 'system', content: `${FLEET_CHAT_SYSTEM_PROMPT}\n${localeHint}` },
+        ...conversational,
+      ],
+      maxTokens: this.aiConfiguration.agentMaxTokensPerLlmCall,
+    });
+
+    const text = result.content.trim() || (
+      locale === 'en'
+        ? "I'm sorry, I couldn't generate a response. Please try again."
+        : 'Es konnte keine Antwort erstellt werden. Bitte versuchen Sie es erneut.'
+    );
+
+    return {
+      text,
+      structured: {
+        ...this.buildFallbackStructured(text, 'DIRECT_ANSWER', false),
+        usedDeterministicFallback: false,
+        warnings: ['legacy_direct_llm'],
+      },
+    };
   }
 
   private buildLimitStructured(limitError: AiAgentLimitException): ChatFleetStructuredPayload {
