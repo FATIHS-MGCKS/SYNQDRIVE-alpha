@@ -10868,6 +10868,15 @@ enum WorkflowConditionOperator {
   IS_FALSE
   CONTAINS
   STARTS_WITH
+  NOT_EXISTS
+  ENDS_WITH
+  CHANGED_FROM
+  CHANGED_TO
+  DURATION_EXCEEDED
+  WITHIN_TIME_WINDOW
+  BEFORE
+  AFTER
+  BETWEEN
 }
 
 enum WorkflowActionCapabilityStatus {
