@@ -214,6 +214,20 @@ describe('WorkflowActionPolicyService', () => {
     expect(result.violations.some((v) => v.code === 'CAPABILITY_DISABLED')).toBe(true);
   });
 
+  it('allows sms.send preview when capability enabled', () => {
+    const result = policyService.evaluate({
+      organizationId: ORG,
+      actionType: 'sms.send',
+      eventType: 'booking.returned',
+      entityType: 'booking',
+      scopeType: 'organization',
+      actorPermissions: ['WORKFLOW_CUSTOMER_CONTACT'],
+      mode: 'preview',
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.policy.capabilityGate).toBe('ENABLED');
+  });
+
   it('rejects cross-tenant evaluation without organizationId', () => {
     const result = policyService.evaluate({
       organizationId: '',

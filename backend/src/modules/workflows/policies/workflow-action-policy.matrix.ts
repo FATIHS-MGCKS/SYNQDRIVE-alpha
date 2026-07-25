@@ -307,6 +307,36 @@ export const WORKFLOW_ACTION_POLICY_MATRIX: Record<string, WorkflowActionTechnic
     ],
   }),
 
+  // ── Customer SMS (production adapter) ──
+
+  'sms.send': policy({
+    actionType: 'sms.send',
+    policyVersion: '2026-07-1',
+    capabilityGate: 'ENABLED',
+    riskClass: 'HIGH',
+    requiredPermission: 'WORKFLOW_CUSTOMER_CONTACT',
+    approvalRule: 'REQUIRED',
+    allowedTriggers: ALL_TRIGGERS,
+    allowedEntityTypes: ['customer', 'booking'],
+    allowedScopes: ['organization'],
+    timeout: BASE_TIMEOUT,
+    retry: { maxAttempts: 2, initialBackoffMs: 30_000, maxBackoffMs: 120_000 },
+    maxAttempts: 2,
+    fallbackCapable: true,
+    dataCategories: ['COMMUNICATION', 'PII'],
+    auditLevel: 'FORENSIC',
+    retentionClass: 'COMPLIANCE',
+    dryRunAvailable: true,
+    compensationPossible: false,
+    prohibitUnverifiedDiagnosisOnTriggers: VEHICLE_HEALTH_CRITICAL_TRIGGERS,
+    highRiskSafeguards: [
+      { code: 'OPT_IN_REQUIRED', description: 'SMS opt-in and channel consent required' },
+      { code: 'QUIET_HOURS', description: 'Transactional SMS respects org quiet hours' },
+      { code: 'RATE_LIMIT', description: 'Org and per-contact frequency limits enforced' },
+      { code: 'WHATSAPP_FALLBACK', description: 'Optional SMS fallback after failed WhatsApp delivery' },
+    ],
+  }),
+
   // ── Disabled future / external actions (policy defined, capability DISABLED) ──
 
   'customer.contact.email': policy({

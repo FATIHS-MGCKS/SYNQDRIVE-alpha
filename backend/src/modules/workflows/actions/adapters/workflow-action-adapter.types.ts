@@ -149,3 +149,36 @@ export interface WhatsAppAiMessageSendActionConfig {
   /** Risk flags from AI pipeline — triggers approval gate when present. */
   sensitiveFlags?: string[];
 }
+
+export type WorkflowSmsLocale = 'de' | 'en';
+
+export type WorkflowSmsTemplateKey =
+  | 'booking_follow_up'
+  | 'pickup_reminder'
+  | 'workflow_operational';
+
+export type WorkflowSmsDeliveryStatus =
+  | 'PREPARED'
+  | 'QUEUED'
+  | 'SENDING'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'UNDELIVERED'
+  | 'FAILED';
+
+export interface SmsSendActionConfig {
+  templateKey: WorkflowSmsTemplateKey;
+  templateVersion: string;
+  locale?: WorkflowSmsLocale;
+  recipient: WorkflowWhatsAppRecipientRef;
+  toPhone?: string;
+  params?: Record<string, string>;
+  messageKind?: WorkflowWhatsAppMessageKind;
+  respectQuietHours?: boolean;
+  verifiedDiagnosis?: boolean;
+  maxSegments?: number;
+  /** Link SMS as fallback after failed WhatsApp delivery (same org). */
+  fallbackFromWhatsAppMessageId?: string;
+  /** Risk flags — require workflow approval when present. */
+  sensitiveFlags?: string[];
+}

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-sms-send-v49846-2026-07-25',
+    version: '4.9.846',
+    title: 'V4.9.846 — Workflow sms.send Action Adapter (Phase 8 Prompt 36)',
+    summary: [
+      'Production sms.send via Twilio tenant subaccounts (parent + org subaccount model).',
+      'WorkflowSmsSendService: OrgSmsConfig sender resolution, E.164, consent, quiet hours, idempotency.',
+      'outbound_sms + outbound_sms_events persistence with MessageSid and status webhooks.',
+      'SmsModule: messaging, consent, status/inbound webhooks with signature + replay protection.',
+      'WhatsApp fallback link via fallbackFromWhatsAppMessageId after failed delivery.',
+      '13 dedicated tests + workflow suites passing.',
+    ],
+    reason: 'Workflows need governed SMS on existing Twilio architecture without secrets in definitions.',
+    previousBehavior: 'Twilio module was voice-only; no outbound SMS workflow action existed.',
+    details: 'docs/integrations/workflow-sms-action-2026-07.md. Handler: sms-send.action-handler.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T15:00:00.000Z',
+  },
+  {
     id: 'workflow-whatsapp-actions-v49845-2026-07-25',
     version: '4.9.845',
     title: 'V4.9.845 — Workflow WhatsApp Action Adapters (Phase 8 Prompt 35)',

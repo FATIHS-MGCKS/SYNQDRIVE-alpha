@@ -8,6 +8,7 @@ import { BookingFlagActionHandler } from './handlers/booking-flag.action-handler
 import { EmailSendActionHandler } from './handlers/email-send.action-handler';
 import { WhatsAppTemplateSendActionHandler } from './handlers/whatsapp-template-send.action-handler';
 import { WhatsAppAiMessageSendActionHandler } from './handlers/whatsapp-ai-message-send.action-handler';
+import { SmsSendActionHandler } from './handlers/sms-send.action-handler';
 import { NotificationInAppSendActionHandler } from './handlers/notification-in-app-send.action-handler';
 import { NotificationPrepareActionHandler } from './handlers/notification-prepare.action-handler';
 import { TaskCreateActionHandler } from './handlers/task-create.action-handler';
@@ -19,6 +20,8 @@ import { WorkflowEmailCommunicationPolicyService } from './adapters/workflow-ema
 import { WorkflowEmailSendService } from './adapters/workflow-email-send.service';
 import { WorkflowWhatsAppCommunicationPolicyService } from './adapters/workflow-whatsapp-communication-policy.service';
 import { WorkflowWhatsAppSendService } from './adapters/workflow-whatsapp-send.service';
+import { WorkflowSmsSendService } from './adapters/workflow-sms-send.service';
+import { WorkflowSmsCommunicationPolicyService } from './adapters/workflow-sms-communication-policy.service';
 
 export const WORKFLOW_ACTION_HANDLER_CLASSES = [
   TaskCreateActionHandler,
@@ -28,6 +31,7 @@ export const WORKFLOW_ACTION_HANDLER_CLASSES = [
   EmailSendActionHandler,
   WhatsAppTemplateSendActionHandler,
   WhatsAppAiMessageSendActionHandler,
+  SmsSendActionHandler,
   NotificationPrepareActionHandler,
   ApprovalRequestActionHandler,
   BookingFlagActionHandler,
@@ -42,6 +46,8 @@ export const WORKFLOW_ACTION_ADAPTER_SERVICES = [
   WorkflowEmailCommunicationPolicyService,
   WorkflowWhatsAppSendService,
   WorkflowWhatsAppCommunicationPolicyService,
+  WorkflowSmsSendService,
+  WorkflowSmsCommunicationPolicyService,
 ] as const;
 
 export const WORKFLOW_ACTION_HANDLER_PROVIDERS = [

@@ -6,6 +6,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
+import { SmsModule } from '@modules/sms/sms.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import emailConfig from '@config/email.config';
 import { WorkflowActionAuditService } from './adapters/workflow-action-audit.service';
@@ -29,6 +30,7 @@ import { WorkflowActionNoopSecretsResolver } from './workflow-action-secrets.res
     RentalHealthModule,
     OutboundEmailModule,
     WhatsAppModule,
+    SmsModule,
     forwardRef(() => DocumentsModule),
   ],
   providers: [

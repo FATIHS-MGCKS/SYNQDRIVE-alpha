@@ -14,6 +14,9 @@ import { WhatsAppConsentService } from '@modules/whatsapp/whatsapp-consent.servi
 import { WhatsAppMessagePolicyService } from '@modules/whatsapp/whatsapp-message-policy.service';
 import { WhatsAppProviderService } from '@modules/whatsapp/providers/whatsapp-provider.service';
 import { WhatsAppTemplateService } from '@modules/whatsapp/whatsapp-template.service';
+import { OutboundSmsService } from '@modules/sms/outbound-sms.service';
+import { SmsConsentService } from '@modules/sms/sms-consent.service';
+import { SmsMessagingService } from '@modules/sms/sms-messaging.service';
 import { WhatsAppWebhookService } from '@modules/whatsapp/whatsapp-webhook.service';
 import emailConfig from '@config/email.config';
 import {
@@ -255,6 +258,12 @@ describe('whatsapp workflow action adapters', () => {
         { provide: EmailProviderRegistry, useValue: { resolve: () => ({ sendEmail: jest.fn() }) } },
         { provide: GeneratedDocumentsService, useValue: { getById: jest.fn() } },
         { provide: DOCUMENTS_STORAGE, useValue: { getObject: jest.fn() } },
+        {
+          provide: SmsMessagingService,
+          useValue: { resolveSender: jest.fn(), sendSms: jest.fn(), isSimulateEnabled: () => true },
+        },
+        { provide: SmsConsentService, useValue: { assertCanSend: jest.fn(), getConsent: jest.fn() } },
+        { provide: OutboundSmsService, useValue: { recordEvent: jest.fn() } },
         { provide: WhatsAppTemplateService, useValue: templateService },
         { provide: WhatsAppProviderService, useValue: providerService },
         { provide: WhatsAppConsentService, useValue: consentService },

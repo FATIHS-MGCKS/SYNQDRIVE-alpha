@@ -150,6 +150,7 @@ describe('WorkflowActionRegistryService', () => {
     expect(registry.has('task.create')).toBe(true);
     expect(registry.has('email.send')).toBe(true);
     expect(registry.has('whatsapp.template.send')).toBe(true);
+    expect(registry.has('sms.send')).toBe(true);
     expect(registry.listTypes()).toContain('alert.create');
   });
 

@@ -14,6 +14,7 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 | `email.send` | MEDIUM | `WORKFLOW_CUSTOMER_CONTACT` | `OutboundEmailPolicyService` + Resend via `WorkflowEmailSendService` |
 | `whatsapp.template.send` | HIGH | `WORKFLOW_CUSTOMER_CONTACT` | Meta Cloud API via `WorkflowWhatsAppSendService` + org templates |
 | `whatsapp.ai_message.send` | CRITICAL | `WORKFLOW_CUSTOMER_CONTACT` | **DISABLED** until AI pipeline; free-text + transparency disclaimer |
+| `sms.send` | HIGH | `WORKFLOW_CUSTOMER_CONTACT` | Twilio subaccount via `WorkflowSmsSendService`, templates, fallback link |
 
 ## Cross-cutting adapter infrastructure
 
@@ -27,6 +28,7 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 - **Email send service** — `workflow-email-send.service.ts` (org identity, idempotency, attachments, delivery status)
 - **WhatsApp send service** — `workflow-whatsapp-send.service.ts` (template + AI paths, consent, quiet hours, idempotency)
 - **WhatsApp communication policy** — `workflow-whatsapp-communication-policy.service.ts`
+- **SMS send service** — `workflow-sms-send.service.ts` (Twilio tenant, templates, segments, WhatsApp fallback link)
 - **Recipient roles** — `workflow-recipient-role.util.ts`
 
 Each handler implements: validate, authorize, preview (dry-run), execute, classifyError, timeout/retry/idempotency via `BaseWorkflowActionHandler`.
@@ -50,6 +52,6 @@ Each handler implements: validate, authorize, preview (dry-run), execute, classi
 
 ## Module wiring
 
-`WorkflowActionRegistryModule` imports `TasksModule`, `NotificationsModule`, `RentalHealthModule`, `OutboundEmailModule`, `WhatsAppModule`.
+`WorkflowActionRegistryModule` imports `TasksModule`, `NotificationsModule`, `RentalHealthModule`, `OutboundEmailModule`, `WhatsAppModule`, `SmsModule`.
 
-See also: `docs/integrations/workflow-whatsapp-action-2026-07.md`.
+See also: `docs/integrations/workflow-whatsapp-action-2026-07.md`, `docs/integrations/workflow-sms-action-2026-07.md`.

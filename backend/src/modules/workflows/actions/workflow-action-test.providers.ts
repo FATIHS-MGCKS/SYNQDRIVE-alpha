@@ -7,6 +7,9 @@ import { WhatsAppConsentService } from '@modules/whatsapp/whatsapp-consent.servi
 import { WhatsAppMessagePolicyService } from '@modules/whatsapp/whatsapp-message-policy.service';
 import { WhatsAppProviderService } from '@modules/whatsapp/providers/whatsapp-provider.service';
 import { WhatsAppTemplateService } from '@modules/whatsapp/whatsapp-template.service';
+import { SmsConsentService } from '@modules/sms/sms-consent.service';
+import { SmsMessagingService } from '@modules/sms/sms-messaging.service';
+import { OutboundSmsService } from '@modules/sms/outbound-sms.service';
 
 /** Minimal email adapter mocks for workflow action unit tests. */
 export const workflowEmailTestProviders = [
@@ -76,7 +79,41 @@ export const workflowWhatsAppTestProviders = [
   { provide: WhatsAppMessagePolicyService, useClass: WhatsAppMessagePolicyService },
 ];
 
+export const workflowSmsTestProviders = [
+  {
+    provide: SmsMessagingService,
+    useValue: {
+      isSimulateEnabled: jest.fn().mockReturnValue(true),
+      isConfiguredForOrganization: jest.fn().mockResolvedValue(true),
+      resolveSender: jest.fn().mockResolvedValue({
+        messagingServiceSid: 'MG_TEST',
+        fromSenderRef: 'MG:MG_TEST',
+        fromMasked: '+49***0000',
+      }),
+      sendSms: jest.fn().mockResolvedValue({
+        providerMessageSid: 'SM_TEST_1',
+        status: 'SENT_SIMULATED',
+        segmentCount: 1,
+      }),
+    },
+  },
+  {
+    provide: SmsConsentService,
+    useValue: {
+      assertCanSend: jest.fn().mockResolvedValue(undefined),
+      getConsent: jest.fn().mockResolvedValue({
+        optedInAt: new Date(),
+        optedOutAt: null,
+        marketingAllowed: false,
+        transactionalAllowed: true,
+      }),
+    },
+  },
+  { provide: OutboundSmsService, useValue: { recordEvent: jest.fn().mockResolvedValue({}) } },
+];
+
 export const workflowActionAdapterTestProviders = [
   ...workflowEmailTestProviders,
   ...workflowWhatsAppTestProviders,
+  ...workflowSmsTestProviders,
 ];
