@@ -11,8 +11,15 @@ export {
   OPERATOR_BASE_PATH,
   buildOperatorEntryUrl,
   buildOperatorVehicleUrl,
+  buildOperatorVehicleDamageUrl,
   buildOperatorBookingUrl,
+  buildOperatorHandoverUrl,
+  buildOperatorReturnUrl,
+  buildOperatorTaskUrl,
+  buildOperatorDraftUrl,
   buildOperatorScanQueryUrl,
+  buildOperatorTabUrl,
+  parseOperatorPath,
 } from './lib/operatorRoutes';
 export { useOperatorToday } from './hooks/useOperatorToday';
 export type { OperatorTodaySnapshot, OperatorTodayBookingItem } from './lib/operatorData';

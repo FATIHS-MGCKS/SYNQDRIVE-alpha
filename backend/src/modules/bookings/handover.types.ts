@@ -1,5 +1,8 @@
 // V4.6.75 — Booking Handover Protocol contract (pickup + return).
 // V4.9.759 — performedBy* is server-derived from authenticated user; client fields rejected.
+// V4.9.849 — signatureBindings tie drawn signatures to signable content (Prompt 24).
+
+import type { HandoverSignatureBindingInput } from './handover-session/handover-signature-binding.types';
 
 export type HandoverKind = 'PICKUP' | 'RETURN';
 
@@ -70,4 +73,6 @@ export interface CreateHandoverProtocolPayload {
   actualStationId?: string | null;
   /** Technical observations to persist with the handover protocol (canonical VehicleComplaint rows). */
   technicalObservations?: HandoverTechnicalObservationDraft[];
+  /** Operator flow: content-bound signature metadata (required when sessionId present). */
+  signatureBindings?: HandoverSignatureBindingInput[];
 }

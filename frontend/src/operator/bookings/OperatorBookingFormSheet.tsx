@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { api, type BookingDetailDto, type CustomerApiRecord, type OperatorBookingUpdatePayload, type Station } from '../../lib/api';
+import { operatorApi } from '../lib/operatorApi';
+import type { OperatorCustomerSearchItemDto } from '../lib/operatorData.types';
+import { api, type BookingDetailDto, type OperatorBookingUpdatePayload, type Station } from '../../lib/api';
 import { buildBookingCreatePayload } from '../../rental/lib/entityMappers';
 import { StationSelectFields } from '../../rental/components/stations/StationSelectFields';
 import { usePricingSimulation } from '../../rental/hooks/usePricingSimulation';
@@ -52,7 +54,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
   const [detailError, setDetailError] = useState<string | null>(null);
 
   const [customerSearch, setCustomerSearch] = useState('');
-  const [customers, setCustomers] = useState<CustomerApiRecord[]>([]);
+  const [customers, setCustomers] = useState<OperatorCustomerSearchItemDto[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
   const [customerId, setCustomerId] = useState(action.prefillCustomerId ?? '');
 
@@ -79,7 +81,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
   }, [allVehicles, vehicleSearch]);
 
   const selectedVehicle = allVehicles.find((v) => v.id === vehicleId);
-  const selectedCustomer = customers.find((c) => c.id === customerId);
+  const selectedCustomer = customers.find((c) => c.customerId === customerId);
 
   useEffect(() => {
     if (!orgId) return;
@@ -100,12 +102,12 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
   useEffect(() => {
     if (!orgId || isEdit || !action.prefillCustomerId) return;
     let cancelled = false;
-    api.customers
-      .get(orgId, action.prefillCustomerId)
+    operatorApi
+      .getCustomerSummary(orgId, action.prefillCustomerId)
       .then((c) => {
         if (!cancelled) {
           setCustomers([c]);
-          setCustomerId(c.id);
+          setCustomerId(c.customerId);
         }
       })
       .catch(() => {});
@@ -118,11 +120,17 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     if (!orgId || isEdit) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
+      const q = customerSearch.trim();
+      if (q.length < 2) {
+        setCustomers([]);
+        setCustomersLoading(false);
+        return;
+      }
       setCustomersLoading(true);
-      api.customers
-        .list(orgId, { search: customerSearch.trim() || undefined, limit: 50 })
-        .then((res) => {
-          if (!cancelled) setCustomers(res.data ?? []);
+      operatorApi
+        .searchCustomers(orgId, customerSearch.trim(), 20)
+        .then((rows) => {
+          if (!cancelled) setCustomers(rows ?? []);
         })
         .catch(() => {
           if (!cancelled) setCustomers([]);
@@ -372,14 +380,18 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
                   >
                     <option value="">Kunde wählen…</option>
                     {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {customerDisplayName(c)}
+                      <option key={c.customerId} value={c.customerId}>
+                        {c.displayName ?? c.customerRef}
+                        {c.emailMasked ? ` · ${c.emailMasked}` : ''}
                       </option>
                     ))}
                   </select>
                 </label>
                 {selectedCustomer && (
-                  <p className="text-xs text-muted-foreground">{customerDisplayName(selectedCustomer)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedCustomer.displayName ?? selectedCustomer.customerRef}
+                    {selectedCustomer.phoneMasked ? ` · ${selectedCustomer.phoneMasked}` : ''}
+                  </p>
                 )}
               </>
             )}

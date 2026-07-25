@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
-import { api } from '../../lib/api';
-import type { DamageResponse, DamageSource } from '../../rental/lib/damage.types';
+import type { DamageResponse } from '../../rental/lib/damage.types';
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
+import { useRentalOrg } from '../../rental/RentalContext';
+import { operatorApi, operatorDamageToDamageResponse } from '../lib/operatorApi';
+import type { OperatorDamageCaptureSource } from '../lib/operatorData.types';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorDamageDetailsStep } from './OperatorDamageDetailsStep';
 import { OperatorDamagePhotoStep, type OperatorDamagePhotoItem } from './OperatorDamagePhotoStep';
 import { OperatorDamageReviewStep } from './OperatorDamageReviewStep';
 import {
-  buildOperatorDamagePayload,
+  buildOperatorDamageCaptureBody,
   DEFAULT_OPERATOR_DAMAGE_FORM,
   OPERATOR_DAMAGE_CAPTURE_STEPS,
-  resolveDamageSource,
+  resolveOperatorDamageSource,
   validateOperatorDamageStep,
   type OperatorDamageCaptureStep,
   type OperatorDamageFormState,
@@ -33,7 +35,7 @@ export interface OperatorDamageCaptureContext {
   customerId?: string;
   customerName?: string;
   bookingLabel?: string;
-  source?: DamageSource;
+  source?: OperatorDamageCaptureSource;
   handoverKind?: HandoverDialogKind;
   reportedBy?: string;
   skipVehicleConfirm?: boolean;
@@ -53,6 +55,7 @@ function stepIndex(step: OperatorDamageCaptureStep): number {
 
 export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }: Props) {
   const isTablet = useOperatorTabletLayout();
+  const { orgId } = useRentalOrg();
   const { openSheet, triggerRefresh } = useOperatorShell();
   const [step, setStep] = useState<OperatorDamageCaptureStep>('vehicle');
   const [form, setForm] = useState<OperatorDamageFormState>(DEFAULT_OPERATOR_DAMAGE_FORM);
@@ -61,14 +64,16 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [savedDamageId, setSavedDamageId] = useState<string | null>(null);
+  const captureKeyRef = useRef(crypto.randomUUID());
 
   const source = useMemo(
-    () => resolveDamageSource(context?.source, context?.handoverKind),
+    () => resolveOperatorDamageSource(context?.source, context?.handoverKind),
     [context?.source, context?.handoverKind],
   );
 
   useEffect(() => {
     if (!isOpen) return;
+    captureKeyRef.current = crypto.randomUUID();
     setForm(DEFAULT_OPERATOR_DAMAGE_FORM);
     setPhotos([]);
     setStepError(null);
@@ -105,7 +110,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
   }, [step, onClose]);
 
   const handleSave = useCallback(async () => {
-    if (!context?.vehicleId || submitting) return;
+    if (!context?.vehicleId || !orgId || submitting) return;
     const err = validateOperatorDamageStep('details', form, photos.length);
     if (err) {
       setSubmitError(err);
@@ -116,7 +121,8 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
     setSubmitError(null);
     try {
       const images = photos.map((p) => ({ imageData: p.dataUrl, caption: p.caption }));
-      const payload = buildOperatorDamagePayload(form, {
+      const body = buildOperatorDamageCaptureBody(form, {
+        captureKey: captureKeyRef.current,
         source,
         bookingId: context.bookingId,
         customerId: context.customerId,
@@ -124,7 +130,8 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
         images,
       });
 
-      const created = await api.vehicleIntelligence.createVehicleDamage(context.vehicleId, payload);
+      const result = await operatorApi.captureDamage(orgId, context.vehicleId, body);
+      const created = operatorDamageToDamageResponse(result.damage);
       setSavedDamageId(created.id);
 
       window.dispatchEvent(
@@ -139,7 +146,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
     } finally {
       setSubmitting(false);
     }
-  }, [context, form, photos, source, submitting, triggerRefresh, onSaved, onClose]);
+  }, [context, form, orgId, photos, source, submitting, triggerRefresh, onSaved, onClose]);
 
   const openAiUpload = useCallback(() => {
     if (!context?.vehicleId) return;

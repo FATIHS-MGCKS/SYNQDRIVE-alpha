@@ -3,10 +3,10 @@ import type {
   DamageLocationView,
   DamageRentalImpact,
   DamageSeverity,
-  DamageSource,
 } from '../../rental/lib/damage.types';
 import { DESCRIPTION_MAX_LENGTH } from '../../rental/lib/damage.types';
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
+import type { OperatorDamageCaptureSource } from '../lib/operatorData.types';
 
 export type OperatorDamageCaptureStep = 'vehicle' | 'photos' | 'details' | 'review';
 
@@ -67,14 +67,22 @@ export const DEFAULT_OPERATOR_DAMAGE_FORM: OperatorDamageFormState = {
   locationLabel: '',
 };
 
-export function resolveDamageSource(
-  explicit?: DamageSource,
+export function resolveOperatorDamageSource(
+  explicit?: OperatorDamageCaptureSource,
   handoverKind?: HandoverDialogKind,
-): DamageSource {
+): OperatorDamageCaptureSource {
   if (explicit) return explicit;
-  if (handoverKind === 'PICKUP') return 'PICKUP_HANDOVER';
-  if (handoverKind === 'RETURN') return 'RETURN_HANDOVER';
-  return 'INSPECTION';
+  if (handoverKind === 'PICKUP') return 'pickup';
+  if (handoverKind === 'RETURN') return 'return';
+  return 'operator_inspection';
+}
+
+/** @deprecated use resolveOperatorDamageSource — kept for legacy payload builder tests */
+export function resolveDamageSource(
+  explicit?: OperatorDamageCaptureSource,
+  handoverKind?: HandoverDialogKind,
+): OperatorDamageCaptureSource {
+  return resolveOperatorDamageSource(explicit, handoverKind);
 }
 
 export function applyLocationChip(
@@ -111,10 +119,38 @@ export function validateOperatorDamageStep(
   return null;
 }
 
+export function buildOperatorDamageCaptureBody(
+  form: OperatorDamageFormState,
+  ctx: {
+    captureKey: string;
+    source: OperatorDamageCaptureSource;
+    bookingId?: string;
+    customerId?: string;
+    reportedBy?: string;
+    images: { imageData: string; caption?: string }[];
+  },
+) {
+  const locationLabel = form.locationLabel.trim() || undefined;
+  return {
+    captureKey: ctx.captureKey,
+    source: ctx.source,
+    damageType: form.damageType,
+    severity: form.severity,
+    rentalImpact: form.rentalImpact,
+    description: form.description.trim() || undefined,
+    locationView: form.locationView,
+    locationLabel,
+    bookingId: ctx.bookingId,
+    customerId: ctx.customerId,
+    reportedBy: ctx.reportedBy,
+    images: ctx.images,
+  };
+}
+
 export function buildOperatorDamagePayload(
   form: OperatorDamageFormState,
   ctx: {
-    source: DamageSource;
+    source: OperatorDamageCaptureSource;
     bookingId?: string;
     customerId?: string;
     reportedBy?: string;
@@ -122,11 +158,19 @@ export function buildOperatorDamagePayload(
   },
 ): CreateVehicleDamageInput {
   const locationLabel = form.locationLabel.trim() || undefined;
+  const canonicalSource =
+    ctx.source === 'pickup'
+      ? 'PICKUP_HANDOVER'
+      : ctx.source === 'return'
+        ? 'RETURN_HANDOVER'
+        : ctx.source === 'manual'
+          ? 'MANUAL'
+          : 'INSPECTION';
   return {
     damageType: form.damageType,
     severity: form.severity,
     rentalImpact: form.rentalImpact,
-    source: ctx.source,
+    source: canonicalSource,
     description: form.description.trim() || undefined,
     locationView: form.locationView,
     locationLabel,

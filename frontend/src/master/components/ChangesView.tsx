@@ -35,6 +35,347 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-routing-resume-v49854-2026-07-25',
+    version: '4.9.854',
+    title: 'V4.9.854 — Operator App: Routing, Deep Links & Resume (Prompt 29)',
+    summary: [
+      'Prozess-Routen: `/operator/bookings/:id/handover|return`, `/operator/tasks/:id`, `/operator/vehicles/:id/damage`, `/operator/drafts/:id`.',
+      '`OperatorProcessRouteBridge` rekonstruiert Vorgänge nach Refresh aus Serverdaten (Booking-Context, Vehicle-Resume, Handover-Session-Resume).',
+      'Browser-Zurück schließt Overlays und navigiert zur Eltern-Route; Bottom-Nav synchronisiert Tab per `?tab=`.',
+      'Sichere Fehler-UI bei ungültiger ID, fremder Org (403/404), finalisiertem Vorgang oder abgebrochenem Entwurf.',
+      'Backend: `GET …/operator/handover-sessions/:sessionId/resume`, `GET …/operator/vehicles/:vehicleId/resume` (org-scoped).',
+      'Tests: `operatorRoutes.test.ts` (Deep Link, Refresh, Back, invalid ID, finalized, cancelled draft) + Service-Specs.',
+    ],
+    reason:
+      'Production-Readiness Prompt 29: Operative Vorgänge in der Operator App stabil adressierbar und nach Refresh wiederherstellbar machen.',
+    previousBehavior:
+      'Nur `/operator`, `/operator/vehicles/:id`, `/operator/bookings/:id`; Handover/Damage/Tasks als flüchtige Overlay-State ohne URL.',
+    details:
+      'Frontend: `operatorRoutes`, `operatorRouteResume`, `useOperatorNavigation`, `OperatorProcessRouteBridge`, Provider-URL-Sync. Keine Query-Parameter für Autorisierung.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:30:00.000Z',
+  },
+  {
+    id: 'operator-tire-measure-hardening-v49853-2026-07-25',
+    version: '4.9.853',
+    title: 'V4.9.853 — Operator App: gehärtete manuelle Reifenmessung (Prompt 28)',
+    summary: [
+      'Zentrale mm-Validierung (`tire-measurement-validation.util`) in Operator-API und `TireLifecycleService`.',
+      'Eindeutige Positionen VL/VR/HL/HR; Locale-sichere Dezimalwerte; Plausibilitätsgrenzen 0–20 mm serverseitig.',
+      'Operator-Endpoint `…/tire-measurements/capture` mit `captureKey`-Idempotenz, manueller Bestätigung und Audit.',
+      'Handover-/Booking-Kontext (`bookingId`, `handoverSessionId`) auf `VehicleTireTreadMeasurement`.',
+      'Keine Auto-Blockierung außerhalb zentraler Tire-Health-/Rental-Health-Regeln.',
+      'UI: numerische Tastatur, klare Fehler/Hinweise mit Text+Icon, Bestätigungs-Checkbox, Touch Targets.',
+    ],
+    reason:
+      'Production-Readiness Prompt 28: Manuelle Reifenmessung in der Operator App auditieren und härten.',
+    previousBehavior:
+      'Operator schrieb direkt über Vehicle-Intelligence-API ohne Idempotenz, Audit, serverseitige Plausibilität oder Handover-Verknüpfung.',
+    details:
+      'Backend: `operator-tire-measure` submodule, `OperatorTireMeasurementIdempotency`, Prisma booking/handover FKs. Frontend: `operatorApi.captureTireMeasurement`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T20:30:00.000Z',
+  },
+  {
+    id: 'operator-observations-consolidation-v49852-2026-07-25',
+    version: '4.9.852',
+    title: 'V4.9.852 — Operator App: konsolidierte Technical-Observations-Domain (Prompt 27)',
+    summary: [
+      'Kanonische Domain `VehicleComplaint` / Technical Observations — Beobachtung ≠ Diagnose.',
+      'Zentrale Policy: `blocksRental` nur explizit; Warning/Critical setzen kein Maintenance und erzeugen keine Tasks automatisch.',
+      'Handover-Persistenz über `persistHandoverTechnicalObservationsInTransaction` mit Protokoll-Idempotenz.',
+      'Post-Commit: Notification-Sync + Audit (`TECHNICAL_OBSERVATION_*`, `HANDOVER_PERSISTED`) via `TechnicalObservationsService`.',
+      'Legacy `createVehicleComplaint` ohne Auto-Task; Tasks nur über explizites `convert-to-task` mit `dedupKey`.',
+      'Tests: Policy, Handover-Idempotenz, Notification-Dedup, Org-Scope, Status-Audit.',
+    ],
+    reason:
+      'Production-Readiness Prompt 27: Technische Beobachtungen auditieren und mit Health/Tasks/Service/Notifications korrekt verknüpfen.',
+    previousBehavior:
+      'Handover schrieb `vehicleComplaint` direkt in Executors/Legacy-Service — ohne Notifications, Audit oder zentrale Blocker-Regeln; Complaints erzeugten still Auto-Tasks.',
+    details:
+      'Backend: `technical-observation-policy.util`, `handover-technical-observation.persistence`, `technical-observation-audit.service`, Wiring in Pickup/Return Complete + `bookings-handover.service`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T20:00:00.000Z',
+  },
+  {
+    id: 'operator-damage-consolidation-v49851-2026-07-25',
+    version: '4.9.851',
+    title: 'V4.9.851 — Operator App: konsolidierte Damage-Capture-Domain (Prompt 26)',
+    summary: [
+      'Operator-Damage-API auf kanonischer `VehicleDamage`-Domain — keine parallele Schadenstabelle.',
+      'Zentrale Operator-DTOs mit Quellen: pickup, return, operator_inspection, manual; KI nur über Document-Intake.',
+      'Deduplizierung (Typ/Area/Description) + idempotente `captureKey` gegen Retry-Duplikate.',
+      'Haftung serverseitig abgeleitet — kein automatischer Kundenhaftungsentscheid; finale Schäden nicht still editierbar.',
+      'Audit Events: CAPTURED, DEDUPLICATED, CAPTURE_IDEMPOTENT, UPDATE_BLOCKED.',
+      'Frontend: Handover + Capture-Flow über `operatorApi.captureDamage` / `listActiveDamages`.',
+    ],
+    reason:
+      'Production-Readiness Prompt 26: Damage-Capture in Operator App auditieren und an kanonische Domain binden.',
+    previousBehavior:
+      'Operator rief `api.vehicleIntelligence.createVehicleDamage` direkt auf — ohne Dedup, Idempotenz oder Audit.',
+    details:
+      'Backend: `operator-damage` submodule, shared `damage-dedup.util`, `damage-status-transition.util`, `OperatorDamageCaptureIdempotency`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:30:00.000Z',
+  },
+  {
+    id: 'operator-data-minimization-v49850-2026-07-25',
+    version: '4.9.850',
+    title: 'V4.9.850 — Operator App: Datenminimierung Dokumente & Kundendaten (Prompt 25)',
+    summary: [
+      'Neues Operator-API-Modul `/organizations/:orgId/operator/*` mit prozessbezogenen minimierten DTOs (Pickup, Return, Damage, Dokumentprüfung, Task, Booking-Form).',
+      'Maskierte Kundenfelder (Name, E-Mail, Telefon); Dokumentstatus statt Inhalt für Worker (`bookings.read`).',
+      'Gesonderte Vollansicht nur mit `customers.read` — kurzlebige HMAC Preview-Tokens (5 min), Audit `OPERATOR_SENSITIVE_DOCUMENT_VIEW`.',
+      'Frontend: `operatorSensitiveFetch` (`cache: no-store`), keine `/uploads/`-Prefetch-URLs; Detail/Handover/Dokumente über minimierte APIs.',
+      'Tests: Worker vs. Prüfer, fremde Org, Audit bei Preview-Grant, kein HTTP-Cache für sensitive Requests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 25: Datenminimierung für Operator-Prozesse — nur notwendige Felder übertragen und anzeigen.',
+    previousBehavior:
+      'Operator lud vollständige `BookingDetailDto` / `api.customers.list` und öffnete Kundendokumente über statische `/uploads/`-URLs ohne Audit.',
+    details:
+      'Backend: `operator-app` module, `operator-data.mapper`, `operator-document-preview.service`, `operator-document-audit.service`. Frontend: `operatorApi`, `OperatorBookingDocumentsPanel`, `OperatorBookingDetailSheet`, `OperatorHandoverProvider`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:05:00.000Z',
+  },
+  {
+    id: 'operator-signature-binding-v49849-2026-07-25',
+    version: '4.9.849',
+    title: 'V4.9.849 — Operator App: Signatur-Bindung an Protokollinhalt (Prompt 24)',
+    summary: [
+      'Signatur-Bindungsmodell: signerRole, signerReference, bookingId, handoverSessionId, draftVersion, signableContentHash, imageContentSha256, signedAt, capturedBy, organizationId, stationId, storageClientUploadId.',
+      'Signable-Content-Hash ohne Signaturfelder — Änderungen invalidieren Unterschriften im Operator-Wizard.',
+      'Backend validiert Bindings bei Operator-Abschluss; verknüpft SIGNATURE-Uploads; Audit SIGNATURE_BOUND.',
+      'Frontend: Einwilligungstexte, Touch/a11y, stabile Upload-IDs, keine rohen Signaturen im Draft-Buffer.',
+      'Tests für Bindung, Content-Change, fremde Referenz, fehlende Rollen-Signaturen.',
+    ],
+    reason:
+      'Production-Readiness Prompt 24: Signatur eindeutig an geprüften Inhalt binden.',
+    previousBehavior:
+      'Signaturen als austauschbare PNG-Data-URLs ohne Content-Hash; keine Invalidierung bei Feldänderungen.',
+    details:
+      'handover-signature-binding.*, operatorHandoverSignableContent.ts, migration SIGNATURE_BOUND, docs/audits §45.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:55:00.000Z',
+  },
+  {
+    id: 'operator-upload-security-hardening-v49848-2026-07-25',
+    version: '4.9.848',
+    title: 'V4.9.848 — Operator App: Upload-Pipeline Security Hardening (Prompt 22)',
+    summary: [
+      'Security-Audit der Operator-Upload-Pipeline: Magic Bytes (`file-type`), MIME/Extension/Kind-Validierung, Bilddimensionen, JPEG-EXIF-Strip (APP1/IPTC), Dateinamen-Sanitization.',
+      'Private `DocumentStoragePort`-Speicher statt Base64 in Postgres; server-generierte Objektpfade; autorisierter Download mit sicherem `Content-Disposition`.',
+      '`OrgScopingGuard` + `PermissionsGuard` auf Upload-Controller; Station-Scope bei Register; `assertRequiredUploadsComplete` in Pickup/Return-Complete.',
+      'Retention-Scheduler (6h) für abgelaufene Uploads; Orphan-Cleanup löscht Storage-Objekte; Multer-Limit-Fehler strukturiert.',
+      'Frontend: Client-Size/MIME-Precheck, Dateinamen-Sanitization, keine Storage-Pfade in Fehlermeldungen.',
+      '15+ Backend- + 3 Frontend-Security-Tests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 22: Upload-Pipeline auditieren und eindeutige Sicherheitslücken schließen.',
+    previousBehavior:
+      'Uploads als Base64 in Postgres ohne Magic-Byte-Prüfung, ohne Controller-Guards, ohne privaten Object Store, ohne serverseitige Pflicht-Upload-Prüfung beim Handover-Abschluss.',
+    details:
+      'backend/src/modules/operator-upload/*, bookings handover complete services, migration storage_object_key, docs/audits §44. Malware-Scan bleibt externe Infrastrukturvoraussetzung.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:45:00.000Z',
+  },
+  {
+    id: 'operator-connectivity-banner-v49847-2026-07-25',
+    version: '4.9.847',
+    title: 'V4.9.847 — Operator App: Connectivity Banner & Status (Prompt 21)',
+    summary: [
+      'Neues Connectivity-Aggregat: Browser-Offline, Backend-Health (`/api/v1/health`), Auth-401, partielle API-Fehler, Upload-Queue, Draft-Sync — ohne `navigator.onLine` als alleinige Wahrheit.',
+      'Priorisierte Banner-Zustände mit handlungsorientierten, technisch garantierten UX-Texten; `aria-live="polite"` + fester Banner-Slot gegen Layout-Sprünge.',
+      'Health-Probe nur bei Start, `online`, Sichtbarkeit (>45s) und nach API-5xx — kein aggressives Polling.',
+      'Draft-/Upload-Signale über Events; `OperatorConnectivityBridge` für Today/Tasks-Partial-Failures.',
+      '14 Unit-Tests für Priorisierungslogik.',
+    ],
+    reason:
+      'Production-Readiness Prompt 21: Verbindungsstatus differenziert und ehrlich — keine falschen Sync-Zusicherungen.',
+    previousBehavior:
+      '`OperatorConnectivityBanner` zeigte nur bei `navigator.onLine === false` einen generischen Offline-Hinweis ohne Queue/Draft/Auth/Backend-Signale.',
+    details:
+      'frontend/src/operator/connectivity/*, OperatorConnectivityBanner.tsx, OperatorConnectivityBridge.tsx, useOperatorToday.ts, useOperatorHandoverDraft.ts, api.ts (auth/api events). Audit §43.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:35:00.000Z',
+  },
+  {
+    id: 'operator-upload-queue-v49846-2026-07-25',
+    version: '4.9.846',
+    title: 'V4.9.846 — Operator App: Upload-Queue & Retry (Prompt 20)',
+    summary: [
+      'Neues `OperatorUpload`-Modell + API (`POST/GET …/operator-uploads`) mit `clientUploadId`-Deduplizierung, Status-Lifecycle und Draft-Session-Validierung.',
+      'Frontend `OperatorUploadQueue`: IndexedDB-Blob-Puffer, begrenzter Retry-Backoff, Abbruch, Fortschritt, keine Wiederholung bei Validierungsfehlern.',
+      'Handover-Abschluss blockiert bei offenen Pflicht-Uploads; Signaturen werden vor Submit über die Queue hochgeladen.',
+      'Orphan-Cleanup für verwaiste Uploads; Content-Hash-Deduplizierung verhindert doppelte Dateien.',
+      '9 Backend- + 6 Frontend-Tests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 20: robuste Uploads für Schäden, Dokumente, Signaturen etc. ohne Duplikate und mit sichtbarem Status.',
+    previousBehavior:
+      'Sofort-Uploads ohne Queue, ohne clientUploadId, ohne Retry-Policy, ohne Draft-Zuordnungsschutz.',
+    details:
+      'Audit §42, `operator-upload.service.ts`, `operatorUploadQueue.ts`, `OperatorHandoverFlow.tsx`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T22:00:00.000Z',
+  },
+  {
+    id: 'operator-handover-draft-wizard-sync-v49845-2026-07-25',
+    version: '4.9.845',
+    title: 'V4.9.845 — Operator App: Handover-Wizard ↔ Draft-Sync (Prompt 19)',
+    summary: [
+      'Production-Sync-Layer `useOperatorHandoverDraft`: debounced Autosave (800ms), `flushSave` bei Step-Wechsel/Schließen/Submit, `AbortController`, Retry nur bei Netzwerk/5xx.',
+      'Sichtbarer Speicherstatus (`OperatorHandoverSaveStatus`) und Konflikt-Dialog — kein stilles Überschreiben bei `VERSION_CONFLICT`.',
+      'Minimaler `sessionStorage`-Puffer (Metadaten only, 5min TTL) — keine Signaturen, Ausweise oder Dokumentbilder.',
+      'Resume-Hinweise auf Today-/Booking-Karten (`useOperatorHandoverDraftHints`) + Draft-Cleanup nach erfolgreichem Abschluss.',
+      '`ApiHttpError` für strukturierte API-Fehlercodes; Frontend-Tests für Buffer, Sync-Retry und Hook-Hydration.',
+    ],
+    reason:
+      'Production-Readiness Prompt 19: Wizard mit serverseitigem Draft verbinden — sicher speichern, resume, Konflikte behandeln.',
+    previousBehavior:
+      'Basis-Autosave aus Prompt 18 ohne Status-UI, ohne Konflikt-Dialog, ohne Flush bei Navigation, ohne Resume-Badges.',
+    details:
+      'Audit §41, `useOperatorHandoverDraft.ts`, `operatorHandoverDraftBuffer.ts`, `OperatorHandoverFlow.tsx`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T21:30:00.000Z',
+  },
+  {
+    id: 'operator-handover-draft-lifecycle-v49844-2026-07-25',
+    version: '4.9.844',
+    title: 'V4.9.844 — Operator App: serverseitiger Handover-Draft-Lifecycle (Prompt 18)',
+    summary: [
+      'Erweitert `BookingHandoverSession` um `currentStep`, `stationId`, `startedBy/assignedTo/updatedBy`, `expiresAt` (7-Tage-Retention).',
+      'Typed Draft-Payload (`schemaVersion` 1): Formulardaten, Upload-Refs, Schaden-IDs, technische Beobachtungen, Signaturstatus (ohne Rohbilder).',
+      'Neue Draft-API: `POST/GET/PATCH/DELETE …/handover/drafts/:kind` mit Optimistic Lock (`expectedVersion`), Station-Scope, Step-Validierung.',
+      'Operator `OperatorHandoverFlow` nutzt `useOperatorHandoverDraft` — Autosave alle 800ms, Resume nach Refresh/Gerätewechsel, `sessionId`+`expectedVersion` beim Abschluss.',
+      'Abgelaufene Drafts werden kontrolliert auf `CANCELLED` gesetzt; terminaler Status nicht editierbar. 8 Integrationstests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 18: kein kritischer Wizard-State nur im React Context; Konflikte und Datenverlust vermeiden.',
+    previousBehavior:
+      'Wizard-State nur lokal; Session-API aus Prompt 14 ohne Operator-Anbindung.',
+    details:
+      'Audit §40, `bookings-handover-draft.service.ts`, `useOperatorHandoverDraft.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T20:15:00.000Z',
+  },
+  {
+    id: 'operator-handover-completion-record-v49843-2026-07-25',
+    version: '4.9.843',
+    title: 'V4.9.843 — Operator App: manipulationssicherer Handover-Abschlussdatensatz (Prompt 17)',
+    summary: [
+      'Neues Prisma-Modell `BookingHandoverCompletionRecord` mit kanonischem Payload-JSON, SHA-256-Hashes (`payloadHash`, `signedContentHash`), Versionierung und Supersede-Kette.',
+      'Protokoll-Versionierung: `BookingHandoverProtocol` erhält `version`, `isCurrent`, `supersededById` — kein stilles Überschreiben finaler Inhalte.',
+      'Abschluss bei Pickup/Return (atomare Commands + Legacy) erzeugt automatisch Completion-Record + Audit-Event (`CREATED`).',
+      'Korrektur-Command `CorrectHandoverCompletionService` — Permission `operator.handover.override`, Pflicht-`correctionReason`, neue Version ohne Mutation des Originals; erneute Signaturen bei geändertem signiertem Inhalt.',
+      'API: `GET …/handover/completion-records/:kind`, `POST …/handover/completion-records/:kind/correct`.',
+    ],
+    reason:
+      'Production-Readiness Prompt 17: unterzeichnete Übergabeinhalte bindend, nachvollziehbare Korrekturen, kein direktes Editieren finaler Felder.',
+    previousBehavior:
+      'Nur `BookingHandoverProtocol` ohne eingefrorenen Snapshot, Hash oder Korrekturversionierung.',
+    details:
+      'Audit §39, `handover-completion-payload.canonical.ts`, `correct-handover-completion.service.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:45:00.000Z',
+  },
+  {
+    id: 'operator-complete-return-handover-v49842-2026-07-25',
+    version: '4.9.842',
+    title: 'V4.9.842 — Operator App: atomischer Return-Abschluss-Command (Prompt 16)',
+    summary: [
+      'Neuer autoritativer Command `CompleteReturnHandoverService.completeReturnHandover` mit atomarer Transaktion.',
+      'API: `POST …/handover/return/complete` — Permission `operator.handover.complete`, Pflicht-`idempotencyKey`, optional Session-`expectedVersion`.',
+      'Transaktion: Return-Protokoll + Booking COMPLETED + Vehicle-Status via `resolveReturnVehicleUpdate` (kein Maintenance aus Beobachtungen) + Schäden verknüpfen + Observations + Session COMPLETED + Idempotency-Cache.',
+      'Post-Commit: ActivityLog, PDF-Enqueue, Task-Automation, `booking.returned` + `booking.completed` Workflow-Events (idempotent), Cache-Invalidierung.',
+      'Operator-Frontend nutzt neuen Endpoint; Legacy `POST …/handover/return` unverändert. 9 Integrationstests + Executor-Unit-Tests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 16: kein partieller Abschluss, keine doppelten Schäden/Dokumente/Notifications bei Retry, zentrale Vehicle-Availability-Logik.',
+    previousBehavior:
+      'Return-Abschluss nur über Legacy-POST ohne dedizierten Idempotency-Key und ohne Session-Finalisierung.',
+    details:
+      'Audit §38, `complete-return-handover.service.ts`, `handover-return-completion.executor.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:15:00.000Z',
+  },
+  {
+    id: 'operator-complete-pickup-handover-v49841-2026-07-25',
+    version: '4.9.841',
+    title: 'V4.9.841 — Operator App: atomischer Pickup-Abschluss-Command (Prompt 15)',
+    summary: [
+      'Neuer autoritativer Command `CompletePickupHandoverService.completePickupHandover` mit atomarer Transaktion.',
+      'API: `POST …/handover/pickup/complete` — Permission `operator.handover.complete`, Pflicht-`idempotencyKey`, optional Session-`expectedVersion`.',
+      'Transaktion: Protokoll + Booking ACTIVE + Vehicle RENTED + Schäden + technische Beobachtungen + Session COMPLETED + Idempotency-Cache.',
+      'Post-Commit: ActivityLog, PDF-Enqueue, Task-Automation, `booking.activated` Workflow-Event (idempotent), Cache-Invalidierung.',
+      'Operator-Frontend nutzt neuen Endpoint; Legacy `POST …/handover/pickup` unverändert. 10 Integrationstests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 15: kein partieller Abschluss, keine doppelten Notifications, Race-sichere Idempotenz.',
+    previousBehavior:
+      'Pickup-Abschluss nur über Legacy-POST ohne dedizierten Idempotency-Key und ohne Session-Finalisierung.',
+    details:
+      'Audit §37, `complete-pickup-handover.service.ts`, `handover-pickup-completion.executor.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:45:00.000Z',
+  },
+  {
+    id: 'operator-handover-session-sm-v49840-2026-07-25',
+    version: '4.9.840',
+    title: 'V4.9.840 — Operator App: serverseitige Handover-Session State-Machine (Prompt 14)',
+    summary: [
+      'Neues Prisma-Modell `BookingHandoverSession` + Enum `HandoverSessionStatus` mit partiellem Unique-Index (eine aktive Session pro booking/kind).',
+      'Zentraler Domain-Layer: `HandoverStateMachine`, `HandoverTransitionPolicy` (Pickup), `ReturnTransitionPolicy`, Übergangs-Matrix, stabile Fehlercodes.',
+      'Alle Übergänge validieren Status-Matrix, Permission, Tenant/Station-Scope, Version, Booking/Vehicle, Pickup-Gate, Signaturen, Dokumente, Blocker.',
+      'API: `GET …/handover/sessions/:kind`, `POST …/handover/sessions/:kind/transition` — COMPLETE-Transaktion bewusst deferred.',
+      '36 Unit-Tests für erlaubte/verbotene Übergänge, Overrides, Version-Konflikte, Terminal-Immutability.',
+    ],
+    reason:
+      'Production-Readiness Prompt 14: keine frei editierbaren Statusstrings; Zustandsentscheidung zentral serverseitig.',
+    previousBehavior:
+      'Kein server-persistierter Handover-Draft; Wizard-State nur im Frontend; Legacy POST erzeugt Protokoll atomar.',
+    details:
+      'Audit §36, `architecture/OPERATOR_HANDOVER_STATE_MACHINE_2026-07-25.md`. Legacy `POST …/handover/pickup|return` unverändert.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:30:00.000Z',
+  },
+  {
+    id: 'operator-handover-state-machine-v49839-2026-07-25',
+    version: '4.9.839',
+    title: 'V4.9.839 — Operator App: Handover State-Machine Analyse (Prompt 13)',
+    summary: [
+      'Vollständige Ist-Analyse Pickup/Return: Datenmodelle, Wizard, Endpunkte, Drafts, Signaturen, Schäden, Dokumente, Booking/Vehicle-Status, Notifications, Audit.',
+      'Verbindliche mehrschichtige Ist-State-Machine (Booking + Protokoll ABSENT→FINAL + ephemeres UI).',
+      'Ziel-State-Machine mit `BookingHandoverSession`: not_started, draft, in_progress, awaiting_requirements, awaiting_signature, submitted, completed, cancelled, superseded.',
+      '14 Befunde (HSM-001…014): fehlende Draft-States, returnProtocolStatus-Mehrdeutigkeit, doppelte UIs, asymmetrische Idempotenz, keine Versionierung.',
+      'Migrationsrisiken + 10 Akzeptanzkriterien für Implementierung (Prompt 14+). Keine produktiven Übergänge geändert.',
+    ],
+    reason:
+      'Production-Readiness Prompt 13: verbindliche Lifecycle-Dokumentation vor Session/Draft-Implementierung.',
+    previousBehavior:
+      'Handover-Lifecycle implizit über Booking-Status + Protokoll-Existenz; kein dokumentiertes Zielmodell für Draft/Resume/Cancel.',
+    details:
+      'Audit §35, `architecture/OPERATOR_HANDOVER_STATE_MACHINE_2026-07-25.md`. Explizit unverändert: BookingsHandoverService, Prisma, Wizard-Submit.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:50:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',
