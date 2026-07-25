@@ -4,13 +4,12 @@ import {
   registerVehicleOperationalInvalidationHandler,
   vehicleOperationalQueryKeys,
 } from '../../rental/lib/vehicle-operational-query';
-import { useOperatorShell } from '../context/OperatorShellContext';
+import { invalidateTaskQueries } from '../../lib/tasks/invalidate';
 import { useOperatorData } from '../context/OperatorDataContext';
 
 /** Registers operator-scoped invalidation handlers for vehicle operational state. */
 export function OperatorHandoverRefreshBridge() {
   const { orgId } = useRentalOrg();
-  const { triggerRefresh } = useOperatorShell();
   const { reloadToday, reloadTasks } = useOperatorData();
 
   useEffect(() => {
@@ -19,7 +18,6 @@ export function OperatorHandoverRefreshBridge() {
     const unregisterToday = registerVehicleOperationalInvalidationHandler(
       vehicleOperationalQueryKeys.operatorToday(orgId),
       () => {
-        triggerRefresh();
         void reloadToday();
       },
     );
@@ -27,7 +25,6 @@ export function OperatorHandoverRefreshBridge() {
     const unregisterTasks = registerVehicleOperationalInvalidationHandler(
       vehicleOperationalQueryKeys.operatorTasks(orgId),
       () => {
-        triggerRefresh();
         void reloadTasks();
       },
     );
@@ -36,20 +33,20 @@ export function OperatorHandoverRefreshBridge() {
       unregisterToday();
       unregisterTasks();
     };
-  }, [orgId, triggerRefresh, reloadToday, reloadTasks]);
+  }, [orgId, reloadToday, reloadTasks]);
 
   useEffect(() => {
     const onDamageCreated = () => {
-      triggerRefresh();
       void reloadToday();
       void reloadTasks();
+      if (orgId) {
+        invalidateTaskQueries({ orgId, lists: true, summary: true, buckets: ['NOW', 'TODAY', 'UPCOMING', 'PLANNED', 'UNASSIGNED'] });
+      }
     };
     const onTireMeasurementSaved = () => {
-      triggerRefresh();
       void reloadToday();
     };
     const onTaskUpdated = () => {
-      triggerRefresh();
       void reloadToday();
       void reloadTasks();
     };
@@ -61,7 +58,7 @@ export function OperatorHandoverRefreshBridge() {
       window.removeEventListener('operator:tire-measurement-saved', onTireMeasurementSaved);
       window.removeEventListener('operator:task-updated', onTaskUpdated);
     };
-  }, [triggerRefresh, reloadToday, reloadTasks]);
+  }, [orgId, reloadToday, reloadTasks]);
 
   return null;
 }

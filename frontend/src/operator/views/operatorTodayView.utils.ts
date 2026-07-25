@@ -114,7 +114,7 @@ export function hasAnyTaskBucketContent(
 
 export function hasOperatorTodaySecondaryContent(snapshot: OperatorTodaySnapshot): boolean {
   return (
-    snapshot.dueNow.length > 0 ||
+    snapshot.urgentHandovers.length > 0 ||
     snapshot.pickupsToday.length > 0 ||
     snapshot.returnsToday.length > 0 ||
     snapshot.blockedVehicles.length > 0

@@ -4,11 +4,18 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { api, type ApiTask, type ApiTaskSummary } from '../../lib/api';
 import { fetchAllTasks } from '../../lib/tasks-pagination';
+import {
+  currentTaskQueryGeneration,
+  fetchTaskSummaryDeduped,
+  isStaleTaskQueryResponse,
+  resetTaskQueryScope,
+} from '../../lib/tasks/task-query-client';
 import { matchesTaskListInvalidation, matchesTaskSummaryInvalidation, subscribeTaskQueryInvalidation } from '../../lib/tasks/invalidate';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
 import { useRentalOrg } from '../../rental/RentalContext';
@@ -18,6 +25,7 @@ import { useOperatorShell } from './OperatorShellContext';
 interface OperatorDataContextValue {
   pickups: TodayBookingApiRow[];
   returns: TodayBookingApiRow[];
+  /** Canonical org-wide ALL_OPEN task snapshot for badges + default Tasks tab. */
   tasks: ApiTask[];
   taskSummary: ApiTaskSummary | null;
   tasksByVehicleId: Map<string, number>;
@@ -32,6 +40,22 @@ interface OperatorDataContextValue {
 
 const OperatorDataCtx = createContext<OperatorDataContextValue | null>(null);
 
+function clearOperatorDataState(setters: {
+  setPickups: (v: TodayBookingApiRow[]) => void;
+  setReturns: (v: TodayBookingApiRow[]) => void;
+  setTasks: (v: ApiTask[]) => void;
+  setTaskSummary: (v: ApiTaskSummary | null) => void;
+  setTodayError: (v: string | null) => void;
+  setTasksError: (v: string | null) => void;
+}) {
+  setters.setPickups([]);
+  setters.setReturns([]);
+  setters.setTasks([]);
+  setters.setTaskSummary(null);
+  setters.setTodayError(null);
+  setters.setTasksError(null);
+}
+
 export function OperatorDataProvider({ children }: { children: ReactNode }) {
   const { orgId } = useRentalOrg();
   const { refreshToken, setSyncState } = useOperatorShell();
@@ -45,6 +69,25 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
   const [todayError, setTodayError] = useState<string | null>(null);
   const [tasksError, setTasksError] = useState<string | null>(null);
 
+  const todayGenerationRef = useRef(0);
+  const tasksGenerationRef = useRef(0);
+
+  useEffect(() => {
+    todayGenerationRef.current += 1;
+    tasksGenerationRef.current += 1;
+    if (orgId) resetTaskQueryScope(orgId);
+    clearOperatorDataState({
+      setPickups,
+      setReturns,
+      setTasks,
+      setTaskSummary,
+      setTodayError,
+      setTasksError,
+    });
+    setTodayLoading(Boolean(orgId));
+    setTasksLoading(Boolean(orgId));
+  }, [orgId]);
+
   const reloadToday = useCallback(async (): Promise<boolean> => {
     if (!orgId) {
       setPickups([]);
@@ -52,6 +95,7 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
       setTodayLoading(false);
       return true;
     }
+    const generation = ++todayGenerationRef.current;
     setTodayLoading(true);
     setTodayError(null);
     try {
@@ -59,14 +103,16 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
         api.bookings.todayPickups(orgId),
         api.bookings.todayReturns(orgId),
       ]);
+      if (generation !== todayGenerationRef.current) return false;
       setPickups(normalizeTodayRows(pRes));
       setReturns(normalizeTodayRows(rRes));
       return true;
     } catch (e) {
+      if (generation !== todayGenerationRef.current) return false;
       setTodayError(e instanceof Error ? e.message : 'Heute-Daten fehlgeschlagen');
       return false;
     } finally {
-      setTodayLoading(false);
+      if (generation === todayGenerationRef.current) setTodayLoading(false);
     }
   }, [orgId]);
 
@@ -77,21 +123,25 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
       setTasksLoading(false);
       return true;
     }
+    const generation = currentTaskQueryGeneration(orgId);
+    tasksGenerationRef.current = generation;
     setTasksLoading(true);
     setTasksError(null);
     try {
       const [taskList, sum] = await Promise.all([
         fetchAllTasks(orgId, { bucket: 'ALL_OPEN' }),
-        api.tasks.summary(orgId).catch(() => null),
+        fetchTaskSummaryDeduped(orgId, generation).catch(() => null),
       ]);
+      if (isStaleTaskQueryResponse(orgId, generation)) return false;
       setTasks(taskList);
       setTaskSummary(sum);
       return true;
     } catch (e) {
+      if (isStaleTaskQueryResponse(orgId, tasksGenerationRef.current)) return false;
       setTasksError(e instanceof Error ? e.message : 'Aufgaben fehlgeschlagen');
       return false;
     } finally {
-      setTasksLoading(false);
+      if (!isStaleTaskQueryResponse(orgId, tasksGenerationRef.current)) setTasksLoading(false);
     }
   }, [orgId]);
 
@@ -114,7 +164,12 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
       if (!orgId || detail.orgId !== orgId) return;
       if (matchesTaskListInvalidation(detail, orgId)) void reloadTasks();
       if (matchesTaskSummaryInvalidation(detail, orgId)) {
-        void api.tasks.summary(orgId).then(setTaskSummary).catch(() => undefined);
+        const generation = currentTaskQueryGeneration(orgId);
+        void fetchTaskSummaryDeduped(orgId, generation)
+          .then((summary) => {
+            if (!isStaleTaskQueryResponse(orgId, generation)) setTaskSummary(summary);
+          })
+          .catch(() => undefined);
       }
     });
   }, [orgId, reloadTasks]);

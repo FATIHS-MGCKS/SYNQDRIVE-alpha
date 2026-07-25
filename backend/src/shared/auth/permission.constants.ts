@@ -39,6 +39,8 @@ export const PERMISSION_MODULE_KEYS = [
   'rental-rules-overrides',
   'booking-eligibility',
   'booking-eligibility-override',
+  /** Operator App shell access (today/scan); operational writes map to domain modules. */
+  'operator-app',
 ] as const;
 
 export type PermissionModuleKey = (typeof PERMISSION_MODULE_KEYS)[number];

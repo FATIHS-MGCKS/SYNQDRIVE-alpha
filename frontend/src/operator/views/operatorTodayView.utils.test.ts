@@ -66,12 +66,16 @@ function feedState(
 
 function snapshot(partial: Partial<OperatorTodaySnapshot>): OperatorTodaySnapshot {
   return {
-    dueNow: [],
+    overduePickups: [],
+    overdueReturns: [],
     pickupsToday: [],
     returnsToday: [],
+    urgentHandovers: [],
+    dueNow: [],
     totalOpenTasksCount: 0,
     blockedVehicles: [],
     taskFeed: feedState({ buckets: {} }),
+    orgTimezone: 'Europe/Berlin',
     ...partial,
   };
 }

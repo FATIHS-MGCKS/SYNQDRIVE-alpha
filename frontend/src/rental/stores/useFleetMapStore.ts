@@ -54,6 +54,7 @@ interface OptimisticOperationalEntry {
 
 interface FleetMapState {
   vehicles: FleetMapVehicle[];
+  fleetMapOrgId: string | null;
   filters: FleetMapFilters;
   selectedVehicleId: string | null;
   loading: boolean;
@@ -75,6 +76,7 @@ const pendingOptimisticPatches = new Map<string, OptimisticOperationalEntry>();
 
 export const useFleetMapStore = create<FleetMapState>((set) => ({
   vehicles: [],
+  fleetMapOrgId: null,
   filters: { stationId: ALL_STATIONS_FILTER },
   selectedVehicleId: null,
   loading: false,
@@ -119,9 +121,11 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
     pendingOptimisticPatches.delete(token);
   },
   fetchFleetMap: async (orgId: string) => {
+    const requestOrgId = orgId;
     if (!orgId) {
       set({
         vehicles: [],
+        fleetMapOrgId: null,
         selectedVehicleId: null,
         loading: false,
         error: null,
@@ -130,7 +134,7 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
       return;
     }
 
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, fleetMapOrgId: requestOrgId });
     try {
       const response = await api.vehicles.fleetMap(orgId);
       const rawVehicles = normalizeFleetMapApiResponse(response);
@@ -155,6 +159,7 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
       );
 
       set((state) => {
+        if (state.fleetMapOrgId !== requestOrgId) return state;
         const nextFilter =
           state.filters.stationId === ALL_STATIONS_FILTER ||
           stationIds.has(state.filters.stationId)
@@ -188,9 +193,12 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
         }
       }
     } catch (error) {
-      set({
-        loading: false,
-        error: error instanceof Error ? error.message : 'Failed to load fleet map',
+      set((state) => {
+        if (state.fleetMapOrgId !== requestOrgId) return state;
+        return {
+          loading: false,
+          error: error instanceof Error ? error.message : 'Failed to load fleet map',
+        };
       });
     }
   },

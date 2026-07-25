@@ -156,13 +156,13 @@ export function OperatorTodayView() {
 
   const sectionExtras = useMemo(() => {
     const extras: Partial<Record<'NOW' | 'TODAY', ReactNode>> = {};
-    if (snapshot.dueNow.length > 0) {
+    if (snapshot.urgentHandovers.length > 0) {
       extras.NOW = (
         <div className="space-y-2">
           <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Übergaben jetzt
+            Verspätete Übergaben
           </p>
-          {renderHandoverCards(snapshot.dueNow)}
+          {renderHandoverCards(snapshot.urgentHandovers)}
         </div>
       );
     }
@@ -178,7 +178,7 @@ export function OperatorTodayView() {
       );
     }
     return extras;
-  }, [renderHandoverCards, snapshot.dueNow, snapshot.pickupsToday, snapshot.returnsToday]);
+  }, [renderHandoverCards, snapshot.urgentHandovers, snapshot.pickupsToday, snapshot.returnsToday]);
 
   if (!orgLoading && !orgId) {
     return (

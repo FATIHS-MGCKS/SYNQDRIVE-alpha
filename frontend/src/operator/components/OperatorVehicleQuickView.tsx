@@ -264,7 +264,8 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
       )}
 
       {/* Blockers */}
-      {(data.health?.rental_blocked ||
+      {(snapshot?.runtime.isBlocked ||
+        (snapshot?.runtime.blockReasons.length ?? 0) > 0 ||
         (snapshot?.contradictions.length ?? 0) > 0 ||
         data.healthError) && (
         <SectionCard title="Blocker & Hinweise">
@@ -273,9 +274,9 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
               Rental Health nicht geladen: {data.healthError}
             </p>
           )}
-          {data.health?.blocking_reasons?.map((r) => (
-            <p key={r} className="text-sm text-foreground">
-              · {r}
+          {snapshot?.runtime.blockReasons.map((reason) => (
+            <p key={reason.id} className="text-sm text-foreground">
+              · {reason.title}
             </p>
           ))}
           {snapshot?.contradictions.map((c) => (

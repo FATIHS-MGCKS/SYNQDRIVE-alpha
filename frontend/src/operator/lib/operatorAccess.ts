@@ -5,6 +5,7 @@ import {
   type OperatorAccessDenialReason,
   type OperatorAccessEvaluation,
 } from './operatorAccess.types';
+import { canPerformOperatorAction } from './operatorPermissions';
 
 const ALLOWED = new Set<string>(OPERATOR_ALLOWED_MEMBERSHIP_ROLES);
 const DENIED = new Set<string>(OPERATOR_DENIED_MEMBERSHIP_ROLES);
@@ -15,7 +16,8 @@ function normalizeMembershipRole(user: AuthUser | null): string {
 
 /**
  * Defensive gate for the Operator entry point.
- * MASTER_ADMIN always; rental staff roles only (excludes DRIVER / unknown roles).
+ * Requires `operator.app.access` (operator-app.read) in addition to allowed membership roles.
+ * MASTER_ADMIN always allowed; DRIVER and unknown roles denied.
  * Security enforcement remains on backend — this is UX + routing defense.
  */
 export function evaluateOperatorAccess(user: AuthUser | null = getStoredUser()): OperatorAccessEvaluation {
@@ -34,6 +36,9 @@ export function evaluateOperatorAccess(user: AuthUser | null = getStoredUser()):
   }
   if (!ALLOWED.has(role)) {
     return { allowed: false, reason: 'forbidden_role' };
+  }
+  if (!canPerformOperatorAction(user, 'operator.app.access')) {
+    return { allowed: false, reason: 'forbidden_permission' };
   }
   return { allowed: true };
 }
@@ -56,6 +61,12 @@ export function operatorAccessDenialMessage(reason: OperatorAccessDenialReason):
       return {
         title: 'Keine Berechtigung',
         description: 'Du hast keine Berechtigung für die Operator App.',
+      };
+    case 'forbidden_permission':
+      return {
+        title: 'Operator-Zugriff nicht freigeschaltet',
+        description:
+          'Dein Konto hat keine Operator-App-Berechtigung (operator-app). Bitte wende dich an einen Administrator.',
       };
     case 'no_organization':
       return {

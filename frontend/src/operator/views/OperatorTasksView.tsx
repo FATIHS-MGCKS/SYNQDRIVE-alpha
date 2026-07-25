@@ -9,6 +9,7 @@ import { useFleetVehicles } from '../../rental/FleetContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { canReuseOperatorAllOpenTasks } from '../lib/operatorTasksOwnership';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
@@ -33,7 +34,7 @@ const PRIORITY_OPTIONS: Array<ApiTaskPriority | 'all'> = ['all', 'CRITICAL', 'HI
 
 export function OperatorTasksView() {
   const { orgId } = useRentalOrg();
-  const { taskSummary, tasksLoading, tasksError, reloadTasks } = useOperatorData();
+  const { taskSummary, tasks, tasksLoading, tasksError, reloadTasks } = useOperatorData();
   const { fleetVehicles } = useFleetVehicles();
   const { openSheet, pendingTasksBookingId, setPendingTasksBookingId } = useOperatorShell();
   const isTablet = useOperatorTabletLayout();
@@ -47,6 +48,10 @@ export function OperatorTasksView() {
   const [remoteLoading, setRemoteLoading] = useState(false);
 
   const apiFilters = useMemo(() => buildTaskListApiFilters(filters, userId), [filters, userId]);
+  const reuseSharedTasks = useMemo(
+    () => canReuseOperatorAllOpenTasks(filters, apiFilters),
+    [filters, apiFilters],
+  );
 
   const listFilters = useMemo(
     () => ({ bucket: 'ALL_OPEN' as const, ...apiFilters }),
@@ -54,7 +59,7 @@ export function OperatorTasksView() {
   );
 
   const fetchRemoteTasks = useCallback(async () => {
-    if (!orgId) {
+    if (!orgId || reuseSharedTasks) {
       setRemoteTasks([]);
       return;
     }
@@ -67,11 +72,15 @@ export function OperatorTasksView() {
     } finally {
       setRemoteLoading(false);
     }
-  }, [listFilters, orgId]);
+  }, [listFilters, orgId, reuseSharedTasks]);
 
   const reloadTaskLists = useCallback(async () => {
+    if (reuseSharedTasks) {
+      await reloadTasks();
+      return;
+    }
     await Promise.all([reloadTasks(), fetchRemoteTasks()]);
-  }, [fetchRemoteTasks, reloadTasks]);
+  }, [fetchRemoteTasks, reloadTasks, reuseSharedTasks]);
 
   useEffect(() => {
     if (!pendingTasksBookingId) return;
@@ -86,12 +95,17 @@ export function OperatorTasksView() {
   }, [userId]);
 
   useEffect(() => {
+    if (reuseSharedTasks) {
+      setRemoteTasks([]);
+      return;
+    }
     void fetchRemoteTasks();
-  }, [fetchRemoteTasks]);
+  }, [fetchRemoteTasks, reuseSharedTasks]);
 
   const vehicleById = useMemo(() => buildFleetVehicleById(fleetVehicles), [fleetVehicles]);
 
-  const sourceTasks = remoteTasks;
+  const sourceTasks = reuseSharedTasks ? tasks : remoteTasks;
+  const listLoading = reuseSharedTasks ? tasksLoading : remoteLoading || tasksLoading;
   const canonicalTasks = useMemo(
     () => filterCanonicalOperatorTasks(sourceTasks),
     [sourceTasks],
@@ -274,11 +288,11 @@ export function OperatorTasksView() {
       {summaryRow}
       {filterBar}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-2">
-        {(tasksLoading || remoteLoading) && <SkeletonRows rows={5} />}
-        {!tasksLoading && !remoteLoading && tasksError && (
+        {listLoading && <SkeletonRows rows={5} />}
+        {!listLoading && tasksError && (
           <ErrorState compact error={tasksError} onRetry={() => void reloadTasks()} />
         )}
-        {!tasksLoading && !remoteLoading && !tasksError && filtered.length === 0 && (
+        {!listLoading && !tasksError && filtered.length === 0 && (
           <EmptyState
             compact
             icon={<ListTodo className="h-5 w-5" />}
@@ -290,8 +304,8 @@ export function OperatorTasksView() {
             }
           />
         )}
-        {!tasksLoading &&
-          !remoteLoading &&
+        {!listLoading &&
+          !tasksError &&
           filtered.map((task) => (
             <OperatorTaskCardConnected
               key={task.id}

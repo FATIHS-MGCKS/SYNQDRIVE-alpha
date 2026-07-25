@@ -3,11 +3,12 @@ import type { VehicleHealthResponse, RentalHealthModule, RentalHealthState } fro
 import type { VehicleData } from '../../rental/data/vehicles';
 import { derivePickupGate, deriveReturnGate } from './operatorData';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
-import { selectOperationalStatus, VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
 import {
-  isOperationalStatusUnreliable,
-  resolveUnreliableOperationalStatusDisplay,
-} from '../../rental/lib/vehicle-operational-unknown-display';
+  buildOperatorVehicleRuntimeState,
+  runtimeContradictionMessages,
+  runtimeHasOpenCleaningReason,
+} from './operatorVehicleRuntime';
+import type { VehicleRuntimeState } from '../../rental/components/dashboard/runtime/dashboardRuntimeTypes';
 
 export type OperatorVehicleFilter =
   | 'all'
@@ -36,6 +37,7 @@ export interface OperatorVehicleStatusSnapshot {
   releaseTone: StatusTone;
   contradictions: string[];
   healthAvailable: boolean;
+  runtime: VehicleRuntimeState;
 }
 
 export const OPERATOR_VEHICLE_FILTERS: { id: OperatorVehicleFilter; label: string }[] = [
@@ -92,40 +94,46 @@ export function isHealthKnownForVehicle(
   return healthMap.has(vehicleId);
 }
 
-/** Conservative contradiction detection — never infer block from module severity alone. */
-export function detectOperatorStatusContradictions(
-  vehicle: VehicleData,
-  health: VehicleHealthResponse | null | undefined,
-): string[] {
-  const issues: string[] = [];
-  if (!health) return issues;
-
-  const operationalStatus = selectOperationalStatus(vehicle);
-
-  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && health.rental_blocked) {
-    issues.push('Fahrzeugstatus „Verfügbar“, Rental Health meldet Block.');
+function mapRuntimeToPrimaryStatus(runtime: VehicleRuntimeState): OperatorPrimaryStatus {
+  if (runtime.operationalStatus === 'unknown') return 'review_required';
+  if (runtime.isBlocked || runtime.rentalReadiness === 'blocked') return 'blocked';
+  if (runtime.isMaintenance || runtime.operationalStatus === 'maintenance') {
+    return runtime.blockLevel === 'hard_blocked' ? 'out_of_service' : 'in_service';
   }
   if (
-    operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED &&
-    !vehicle.bookingContext?.activeBooking?.bookingId &&
-    !vehicle.activeBookingId &&
-    !vehicle.activeCustomerName
+    runtime.operationalStatus === 'active_rented' ||
+    runtime.operationalStatus === 'reserved'
   ) {
-    issues.push('Status „Aktiv vermietet“ ohne aktive Buchungsreferenz.');
+    return 'rented';
   }
-  if (
-    operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED &&
-    !vehicle.bookingContext?.reservedBooking?.bookingId &&
-    !vehicle.reservedBookingId &&
-    !vehicle.reservedCustomerName
-  ) {
-    issues.push('Status „Reserviert“ ohne Reservierungsreferenz.');
-  }
-  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE && vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK' && !health.rental_blocked) {
-    issues.push('Operativer Wartungsblock ohne rental_blocked in Rental Health.');
-  }
+  if (runtime.isReadyToRent) return 'ready';
+  return 'review_required';
+}
 
-  return issues;
+function mapRuntimeToReleaseDecision(runtime: VehicleRuntimeState): OperatorReleaseDecision {
+  if (runtime.operationalStatus === 'unknown') return 'unavailable';
+  if (runtime.isBlocked) return 'no';
+  if (runtime.isMaintenance) return 'no';
+  if (runtime.operationalStatus === 'active_rented') return 'no';
+  if (runtime.operationalStatus === 'reserved') return 'review';
+  if (runtime.isReadyToRent) return 'yes';
+  return 'review';
+}
+
+function releaseTone(decision: OperatorReleaseDecision): StatusTone {
+  if (decision === 'yes') return 'success';
+  if (decision === 'no') return 'critical';
+  if (decision === 'unavailable') return 'neutral';
+  return 'watch';
+}
+
+function primaryToneForStatus(status: OperatorPrimaryStatus, runtime: VehicleRuntimeState): StatusTone {
+  if (status === 'ready') return 'success';
+  if (status === 'blocked' || status === 'out_of_service') return 'critical';
+  if (status === 'in_service') return 'watch';
+  if (status === 'rented') return 'info';
+  if (runtime.isWarning) return 'watch';
+  return 'neutral';
 }
 
 export function deriveOperatorVehicleStatusSnapshot(
@@ -133,121 +141,25 @@ export function deriveOperatorVehicleStatusSnapshot(
   health: VehicleHealthResponse | null | undefined,
   healthKnown: boolean,
 ): OperatorVehicleStatusSnapshot {
-  const contradictions = healthKnown ? detectOperatorStatusContradictions(vehicle, health) : [];
-  const unreliable = isOperationalStatusUnreliable(vehicle);
-  const unreliableDisplay = resolveUnreliableOperationalStatusDisplay(vehicle, { locale: 'de' });
-
-  if (unreliable) {
-    return {
-      primaryStatus: 'review_required',
-      primaryLabel: unreliableDisplay?.badgeLabel ?? PRIMARY_STATUS_LABELS.review_required,
-      primaryTone: 'neutral',
-      releaseDecision: 'unavailable',
-      releaseLabel: RELEASE_LABELS.unavailable,
-      releaseTone: 'neutral',
-      contradictions,
-      healthAvailable: healthKnown,
-    };
-  }
-
-  if (!healthKnown) {
-    return {
-      primaryStatus: 'review_required',
-      primaryLabel: PRIMARY_STATUS_LABELS.review_required,
-      primaryTone: 'watch',
-      releaseDecision: 'unavailable',
-      releaseLabel: RELEASE_LABELS.unavailable,
-      releaseTone: 'watch',
-      contradictions,
-      healthAvailable: false,
-    };
-  }
-
-  if (contradictions.length > 0) {
-    return {
-      primaryStatus: 'review_required',
-      primaryLabel: PRIMARY_STATUS_LABELS.review_required,
-      primaryTone: 'watch',
-      releaseDecision: 'review',
-      releaseLabel: RELEASE_LABELS.review,
-      releaseTone: 'watch',
-      contradictions,
-      healthAvailable: true,
-    };
-  }
-
-  if (health?.rental_blocked) {
-    return {
-      primaryStatus: 'blocked',
-      primaryLabel: PRIMARY_STATUS_LABELS.blocked,
-      primaryTone: 'critical',
-      releaseDecision: 'no',
-      releaseLabel: RELEASE_LABELS.no,
-      releaseTone: 'critical',
-      contradictions,
-      healthAvailable: true,
-    };
-  }
-
-  const operationalStatus = selectOperationalStatus(vehicle);
-
-  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
-    const outOfService = vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK';
-    return {
-      primaryStatus: outOfService ? 'out_of_service' : 'in_service',
-      primaryLabel: PRIMARY_STATUS_LABELS[outOfService ? 'out_of_service' : 'in_service'],
-      primaryTone: outOfService ? 'critical' : 'watch',
-      releaseDecision: 'no',
-      releaseLabel: RELEASE_LABELS.no,
-      releaseTone: 'critical',
-      contradictions,
-      healthAvailable: true,
-    };
-  }
-
-  if (
-    operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED ||
-    operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED
-  ) {
-    return {
-      primaryStatus: 'rented',
-      primaryLabel: PRIMARY_STATUS_LABELS.rented,
-      primaryTone: 'info',
-      releaseDecision:
-        operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'review' : 'no',
-      releaseLabel:
-        operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED
-          ? RELEASE_LABELS.review
-          : RELEASE_LABELS.no,
-      releaseTone:
-        operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'watch' : 'info',
-      contradictions,
-      healthAvailable: true,
-    };
-  }
-
-  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
-    return {
-      primaryStatus: 'ready',
-      primaryLabel: PRIMARY_STATUS_LABELS.ready,
-      primaryTone: 'success',
-      releaseDecision: 'yes',
-      releaseLabel: RELEASE_LABELS.yes,
-      releaseTone: 'success',
-      contradictions,
-      healthAvailable: true,
-    };
-  }
+  const runtime = buildOperatorVehicleRuntimeState({
+    vehicle,
+    health: health ?? undefined,
+    locale: 'de',
+  });
+  const contradictions = healthKnown ? runtimeContradictionMessages(runtime) : [];
+  const primaryStatus = mapRuntimeToPrimaryStatus(runtime);
+  const releaseDecision = healthKnown ? mapRuntimeToReleaseDecision(runtime) : 'unavailable';
 
   return {
-    primaryStatus: 'review_required',
-    primaryLabel: PRIMARY_STATUS_LABELS.review_required,
-    primaryTone: 'watch',
-    releaseDecision: 'review',
-    releaseLabel: RELEASE_LABELS.review,
-    releaseTone: 'watch',
+    primaryStatus,
+    primaryLabel: PRIMARY_STATUS_LABELS[primaryStatus],
+    primaryTone: primaryToneForStatus(primaryStatus, runtime),
+    releaseDecision,
+    releaseLabel: RELEASE_LABELS[releaseDecision],
+    releaseTone: releaseTone(releaseDecision),
     contradictions,
-    healthAvailable: true,
+    healthAvailable: healthKnown,
+    runtime,
   };
 }
 
@@ -259,26 +171,26 @@ export function vehicleMatchesOperatorFilter(
   openTaskCount: number,
 ): boolean {
   if (filter === 'all') return true;
-  if (filter === 'blocked') return Boolean(health?.rental_blocked);
+
+  const runtime = buildOperatorVehicleRuntimeState({
+    vehicle,
+    health: health ?? undefined,
+    locale: 'de',
+  });
+
+  if (filter === 'blocked') return runtime.isBlocked;
   if (filter === 'rented') {
-    const status = selectOperationalStatus(vehicle);
     return (
-      status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED ||
-      status === VEHICLE_OPERATIONAL_STATUS.RESERVED
+      runtime.operationalStatus === 'active_rented' ||
+      runtime.operationalStatus === 'reserved'
     );
   }
-  if (filter === 'service') {
-    return selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
-  }
+  if (filter === 'service') return runtime.isMaintenance;
   if (filter === 'open_work') {
-    return openTaskCount > 0 || vehicle.cleaningStatus === 'Needs Cleaning';
+    return openTaskCount > 0 || runtimeHasOpenCleaningReason(runtime);
   }
   if (filter === 'ready') {
-    if (!healthKnown || health?.rental_blocked) return false;
-    if (isOperationalStatusUnreliable(vehicle)) return false;
-    if (selectOperationalStatus(vehicle) !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return false;
-    if (vehicle.cleaningStatus !== 'Clean') return false;
-    return detectOperatorStatusContradictions(vehicle, health).length === 0;
+    return healthKnown && runtime.isReadyToRent;
   }
   return true;
 }

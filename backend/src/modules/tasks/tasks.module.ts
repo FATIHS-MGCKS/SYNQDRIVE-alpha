@@ -14,9 +14,10 @@ import { TaskAutomationAdminService } from './automation/task-automation-admin.s
 import { TaskAutomationAdminController } from './automation/task-automation-admin.controller';
 import { TaskAutomationSimulationService } from './automation/task-automation-simulation.service';
 import { TaskPermissionService } from './task-permission.service';
+import { OperatorAppModule } from '@modules/operator-app/operator-app.module';
 
 @Module({
-  imports: [ActivityLogModule, TaskAutomationOutboxCoreModule],
+  imports: [ActivityLogModule, TaskAutomationOutboxCoreModule, OperatorAppModule],
   controllers: [TasksController, TaskAutomationAdminController],
   providers: [
     TasksService,
