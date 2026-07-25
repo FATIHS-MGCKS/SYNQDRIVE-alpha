@@ -2484,6 +2484,46 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 48. Operator Technical Observations Consolidation (Prompt 27)
+
+### 48.1 Kanonische Domain
+
+- Einzige Persistenz: `VehicleComplaint` (API: Technical Observations)
+- Beobachtung = Hinweis/Evidenz — keine automatisch bestätigte Diagnose
+- Handover schreibt über `persistHandoverTechnicalObservationsInTransaction`, nicht inline in Executors
+
+### 48.2 Zentrale Policy (`technical-observation-policy.util`)
+
+| Regel | Verhalten |
+|-------|-----------|
+| `blocksRental` | Nur wenn explizit `true` — nie aus Severity abgeleitet |
+| Maintenance | `shouldAutoSetMaintenanceFromObservation()` → **false** |
+| Tasks | `shouldAutoCreateTaskFromObservation()` → **false**; nur `convert-to-task` mit `dedupKey` |
+| Module Critical | `CRITICAL` urgency oder `blocksRental` → Health-Modul critical (informational) |
+| Rental Gate | `collectBlockingReasons` nur bei `blocksRental === true` |
+
+### 48.3 Handover-Quellen & Idempotenz
+
+| Kontext | `ComplaintSource` |
+|---------|-------------------|
+| Pickup | `OPERATOR_HANDOVER` |
+| Return | `OPERATOR_RETURN` |
+
+- Idempotenz: `handoverProtocolId` + normalisierte `description` (case-insensitive)
+- Post-Commit: `TechnicalObservationsService.syncHandoverCreatedObservations` → Notifications + Audit
+
+### 48.4 Audit Events
+
+`TECHNICAL_OBSERVATION_CREATED`, `RESOLVED`, `DISMISSED`, `CONVERTED`, `HANDOVER_PERSISTED`
+
+### 48.5 Tests
+
+- `technical-observation-policy.util.spec.ts`
+- `handover-technical-observation.persistence.spec.ts`
+- `technical-observations.service.spec.ts` (Org-Scope, Audit, Notification-Sync, convert dedup)
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

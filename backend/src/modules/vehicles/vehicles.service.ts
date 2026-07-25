@@ -2500,34 +2500,9 @@ export class VehiclesService {
         urgency: urgency as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
         region: body.region?.trim() || null,
         source: 'MANUAL',
+        blocksRental: false,
       },
     });
-
-    const taskPriority =
-      urgency === 'CRITICAL'
-        ? 'CRITICAL'
-        : urgency === 'HIGH'
-          ? 'HIGH'
-          : urgency === 'LOW'
-            ? 'LOW'
-            : 'NORMAL';
-
-    try {
-      await this.tasksService.createManualTask(
-        organizationId,
-        {
-          title: `Complaint: ${body.description.slice(0, 72)}${body.description.length > 72 ? '…' : ''}`,
-          description: body.description,
-          category: 'VEHICLE_COMPLAINT',
-          type: 'CUSTOM',
-          priority: taskPriority,
-          vehicleId,
-        },
-        createdByUserId,
-      );
-    } catch (err: any) {
-      this.logger.warn(`Could not create OrgTask for complaint: ${err?.message ?? err}`);
-    }
 
     return complaint;
   }

@@ -5,11 +5,7 @@ import {
   Prisma,
   VehicleStatus,
 } from '@prisma/client';
-import {
-  parseAffectedArea,
-  parseCategory,
-  parseSeverity,
-} from '@modules/technical-observations/technical-observations.mapper';
+import { persistHandoverTechnicalObservationsInTransaction } from '@modules/technical-observations/handover-technical-observation.persistence';
 import type { PickupGateEvaluation } from '../booking-pickup-gate/booking-pickup-gate.types';
 import {
   PICKUP_GATE_EVENT_TYPE,
@@ -81,6 +77,7 @@ export interface ExecutePickupHandoverCompletionResult {
     updatedAt: Date;
   };
   booking: { id: string; status: string; vehicleId: string };
+  createdTechnicalObservationIds: string[];
 }
 
 export function normalizeTechnicalObservationDrafts(
@@ -316,26 +313,17 @@ export async function executePickupHandoverCompletionInTransaction(
   const observationDrafts = normalizeTechnicalObservationDrafts(
     payload.technicalObservations,
   );
-  for (const draft of observationDrafts) {
-    await tx.vehicleComplaint.create({
-      data: {
-        organizationId: orgId,
-        vehicleId: booking.vehicleId,
-        createdByUserId: actor.userId,
-        description: draft.description,
-        urgency: parseSeverity(draft.severity),
-        category: parseCategory(draft.category),
-        affectedArea: parseAffectedArea(draft.affectedArea),
-        status: 'ACTIVE',
-        source: 'OPERATOR_HANDOVER',
-        blocksRental: draft.blocksRental ?? false,
-        bookingId,
-        customerId: booking.customerId,
-        handoverProtocolId: protocol.id,
-        stationId: actualStationId,
-      },
-    });
-  }
+  const observationPersist = await persistHandoverTechnicalObservationsInTransaction(tx, {
+    organizationId: orgId,
+    vehicleId: booking.vehicleId,
+    bookingId,
+    customerId: booking.customerId,
+    handoverProtocolId: protocol.id,
+    stationId: actualStationId,
+    createdByUserId: actor.userId,
+    source: 'OPERATOR_HANDOVER',
+    drafts: observationDrafts,
+  });
 
   if (gateEvaluation?.overrideUsed) {
     await input.pickupGateAudit.appendInTransaction(tx, {
@@ -415,5 +403,9 @@ export async function executePickupHandoverCompletionInTransaction(
     });
   }
 
-  return { protocol, booking: updatedBooking };
+  return {
+    protocol,
+    booking: updatedBooking,
+    createdTechnicalObservationIds: observationPersist.createdIds,
+  };
 }

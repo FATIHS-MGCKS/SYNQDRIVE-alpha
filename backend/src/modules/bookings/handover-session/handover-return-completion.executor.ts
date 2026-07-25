@@ -5,11 +5,7 @@ import {
   Prisma,
   VehicleStatus,
 } from '@prisma/client';
-import {
-  parseAffectedArea,
-  parseCategory,
-  parseSeverity,
-} from '@modules/technical-observations/technical-observations.mapper';
+import { persistHandoverTechnicalObservationsInTransaction } from '@modules/technical-observations/handover-technical-observation.persistence';
 import type { HandoverActorContext } from '../booking-pickup-gate/booking-pickup-gate.types';
 import type { CreateHandoverProtocolPayload } from '../handover.types';
 import {
@@ -61,11 +57,8 @@ export interface ExecuteReturnHandoverCompletionResult {
     updatedAt: Date;
   };
   booking: { id: string; status: string; vehicleId: string };
+  createdTechnicalObservationIds: string[];
 }
-
-/**
- * Central return vehicle availability transition — does not set IN_SERVICE from observations.
- */
 export function resolveReturnVehicleUpdate(input: {
   vehicleStatus: VehicleStatus;
   otherActiveBookings: number;
@@ -254,26 +247,17 @@ export async function executeReturnHandoverCompletionInTransaction(
   }
 
   const observationDrafts = normalizeTechnicalObservationDrafts(payload.technicalObservations);
-  for (const draft of observationDrafts) {
-    await tx.vehicleComplaint.create({
-      data: {
-        organizationId: orgId,
-        vehicleId: booking.vehicleId,
-        createdByUserId: actor.userId,
-        description: draft.description,
-        urgency: parseSeverity(draft.severity),
-        category: parseCategory(draft.category),
-        affectedArea: parseAffectedArea(draft.affectedArea),
-        status: 'ACTIVE',
-        source: 'OPERATOR_RETURN',
-        blocksRental: draft.blocksRental ?? false,
-        bookingId,
-        customerId: booking.customerId,
-        handoverProtocolId: protocol.id,
-        stationId: actualStationId,
-      },
-    });
-  }
+  const observationPersist = await persistHandoverTechnicalObservationsInTransaction(tx, {
+    organizationId: orgId,
+    vehicleId: booking.vehicleId,
+    bookingId,
+    customerId: booking.customerId,
+    handoverProtocolId: protocol.id,
+    stationId: actualStationId,
+    createdByUserId: actor.userId,
+    source: 'OPERATOR_RETURN',
+    drafts: observationDrafts,
+  });
 
   if (sessionId) {
     const sessionUpdate = await tx.bookingHandoverSession.updateMany({
@@ -340,5 +324,9 @@ export async function executeReturnHandoverCompletionInTransaction(
     });
   }
 
-  return { protocol, booking: updatedBooking };
+  return {
+    protocol,
+    booking: updatedBooking,
+    createdTechnicalObservationIds: observationPersist.createdIds,
+  };
 }

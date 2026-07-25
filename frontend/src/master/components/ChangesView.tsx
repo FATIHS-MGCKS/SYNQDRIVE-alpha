@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-observations-consolidation-v49852-2026-07-25',
+    version: '4.9.852',
+    title: 'V4.9.852 — Operator App: konsolidierte Technical-Observations-Domain (Prompt 27)',
+    summary: [
+      'Kanonische Domain `VehicleComplaint` / Technical Observations — Beobachtung ≠ Diagnose.',
+      'Zentrale Policy: `blocksRental` nur explizit; Warning/Critical setzen kein Maintenance und erzeugen keine Tasks automatisch.',
+      'Handover-Persistenz über `persistHandoverTechnicalObservationsInTransaction` mit Protokoll-Idempotenz.',
+      'Post-Commit: Notification-Sync + Audit (`TECHNICAL_OBSERVATION_*`, `HANDOVER_PERSISTED`) via `TechnicalObservationsService`.',
+      'Legacy `createVehicleComplaint` ohne Auto-Task; Tasks nur über explizites `convert-to-task` mit `dedupKey`.',
+      'Tests: Policy, Handover-Idempotenz, Notification-Dedup, Org-Scope, Status-Audit.',
+    ],
+    reason:
+      'Production-Readiness Prompt 27: Technische Beobachtungen auditieren und mit Health/Tasks/Service/Notifications korrekt verknüpfen.',
+    previousBehavior:
+      'Handover schrieb `vehicleComplaint` direkt in Executors/Legacy-Service — ohne Notifications, Audit oder zentrale Blocker-Regeln; Complaints erzeugten still Auto-Tasks.',
+    details:
+      'Backend: `technical-observation-policy.util`, `handover-technical-observation.persistence`, `technical-observation-audit.service`, Wiring in Pickup/Return Complete + `bookings-handover.service`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T20:00:00.000Z',
+  },
+  {
     id: 'operator-damage-consolidation-v49851-2026-07-25',
     version: '4.9.851',
     title: 'V4.9.851 — Operator App: konsolidierte Damage-Capture-Domain (Prompt 26)',
