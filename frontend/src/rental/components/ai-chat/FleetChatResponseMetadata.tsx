@@ -3,6 +3,7 @@ import type { FleetChatStructuredPayload } from '../../lib/ai-chat/fleet-chat-re
 import {
   fleetChatResponseTypeLabel,
   isWarningResponseType,
+  isClarificationResponseType,
   formatFleetDataAgeLabel,
   formatVehicleRefLabel,
   sanitizeSourceLabel,
@@ -28,7 +29,11 @@ export function FleetChatResponseMetadata({
   const freshnessLabel = formatFleetDataAgeLabel(structured.dataFreshness, locale);
   const sourceLabels = structured.sources.map((s: { label: string }) => sanitizeSourceLabel(s.label, locale));
   const hasWarnings = structured.warnings.length > 0;
-  const showStatusBanner = isWarningResponseType(structured.responseType) || structured.partial || hasWarnings;
+  const showStatusBanner =
+    isWarningResponseType(structured.responseType) ||
+    isClarificationResponseType(structured.responseType) ||
+    structured.partial ||
+    hasWarnings;
 
   const muted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
   const warnBg = isDarkMode ? 'bg-amber-900/20 border-amber-800/40' : 'bg-amber-50 border-amber-200';

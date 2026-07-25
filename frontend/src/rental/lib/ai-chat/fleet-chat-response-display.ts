@@ -48,6 +48,10 @@ export function isWarningResponseType(responseType: FleetChatResponseType): bool
   );
 }
 
+export function isClarificationResponseType(responseType: FleetChatResponseType): boolean {
+  return responseType === 'AMBIGUITY_QUESTION';
+}
+
 export function sanitizeUserVisibleText(text: string): string {
   return text
     .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [redacted]')
