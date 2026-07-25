@@ -68,6 +68,8 @@ export class BatteryEvidenceService {
     const observedAt =
       data.observedAt instanceof Date ? data.observedAt : new Date(data.observedAt);
 
+    if (!data.vehicleId) return null;
+
     return this.prisma.batteryEvidence.upsert({
       where: {
         battery_evidence_dedup_key: {

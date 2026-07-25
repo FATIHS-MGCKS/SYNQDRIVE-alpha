@@ -53,6 +53,7 @@ import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconc
 import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
 import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
+import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-warning-gdpr.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     VoiceWebhookIngestionModule,
     VoiceAssistantModule,
     IamDataRetentionModule,
+    VehicleWarningGdprModule,
     BookingDocumentGenerationModule,
   ],
   providers: [

@@ -59,4 +59,23 @@ export class BatteryV2JobDeadLetterService {
   async countBacklog(): Promise<number> {
     return this.prisma.batteryV2JobDeadLetter.count();
   }
+
+  /**
+   * Clear transient DLQ rows so reconciliation can re-enqueue on the next tick.
+   */
+  async clearReplayableDeadLetters(limit = 25): Promise<number> {
+    const rows = await this.prisma.batteryV2JobDeadLetter.findMany({
+      where: {
+        errorCode: { in: ['LOCK_CONTENTION', 'TRANSIENT_INFRA', 'PROVIDER_UNAVAILABLE'] },
+      },
+      orderBy: { failedAt: 'asc' },
+      take: limit,
+      select: { id: true },
+    });
+    if (rows.length === 0) return 0;
+    await this.prisma.batteryV2JobDeadLetter.deleteMany({
+      where: { id: { in: rows.map((r) => r.id) } },
+    });
+    return rows.length;
+  }
 }

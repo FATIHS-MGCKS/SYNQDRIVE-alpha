@@ -6,6 +6,7 @@ import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
+import { shouldApplyVlsTelemetryUpdate } from '@modules/dimo/vls-monotonic-merge.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripDetectionOrchestrationService } from '../../modules/vehicle-intelligence/trips/trip-detection-orchestration.service';
 import { BatteryV2SnapshotObservationProducer } from '../../modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-observation.producer';
@@ -118,13 +119,32 @@ export class DimoSnapshotProcessor extends WorkerHost {
       const normalized = this.normalizeSnapshot(signals);
       const batteryMap = mapDimoBatterySignals(signals);
       const lvBatteryObservedAt = resolveLvBatteryObservedAt(batteryMap);
+      const fetchedAt = new Date();
+
+      // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
+      if (
+        previousState &&
+        !shouldApplyVlsTelemetryUpdate(normalized.lastSeenAt, previousState.sourceTimestamp)
+      ) {
+        await this.prisma.vehicleLatestState.update({
+          where: { vehicleId },
+          data: {
+            providerFetchedAt: fetchedAt,
+            syncJobRef: `snapshot:${job.id}`,
+          },
+        });
+        this.logger.debug(
+          `VLS monotonic guard: skipped stale snapshot for ${vehicleId} ` +
+            `(incoming=${normalized.lastSeenAt?.toISOString()} existing=${previousState.sourceTimestamp?.toISOString()})`,
+        );
+        return;
+      }
 
       // Track stale snapshots (data age > 5 min indicates vehicle is not actively sending)
       const STALE_THRESHOLD_MS = 5 * 60_000;
       if (normalized.lastSeenAt && Date.now() - normalized.lastSeenAt.getTime() > STALE_THRESHOLD_MS) {
         this.tripMetrics?.staleSnapshots.inc({ vehicle_profile: 'UNKNOWN' });
       }
-      const fetchedAt = new Date();
       const latestState = await this.prisma.vehicleLatestState.upsert({
         where: { vehicleId },
         create: {

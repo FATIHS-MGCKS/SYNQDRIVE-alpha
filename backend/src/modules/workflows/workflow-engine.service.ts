@@ -14,6 +14,20 @@ import {
   type WorkflowScopeDef,
 } from './workflow-definition.validator';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import {
+  assertLiveExecution,
+  WorkflowExecutionMode,
+} from './workflow-execution-mode';
+import { evaluateWorkflowScope } from './workflow-scope.evaluator';
+import { WorkflowShadowGateService } from './shadow/workflow-shadow-gate.service';
+import { WorkflowShadowService } from './shadow/workflow-shadow.service';
+import { WorkflowRuntimeRolloutService } from './rollout/workflow-runtime-rollout.service';
+import { shouldRunWorkflowLive } from './shadow/workflow-shadow-comparison.util';
+import { ConfigService } from '@nestjs/config';
+
+export interface ExecuteWorkflowOptions {
+  executionMode: WorkflowExecutionMode;
+}
 
 export interface WorkflowDomainEvent {
   organizationId: string;
@@ -32,15 +46,49 @@ export class WorkflowEngineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actionExecutor: WorkflowActionExecutorService,
+    private readonly shadowGate: WorkflowShadowGateService,
+    private readonly shadowService: WorkflowShadowService,
+    private readonly rollout: WorkflowRuntimeRolloutService,
+    private readonly config: ConfigService,
   ) {}
 
   async processEvent(event: WorkflowDomainEvent): Promise<string[]> {
-    const workflows = await this.findMatchingWorkflows(event);
-    const runIds: string[] = [];
+    const liveCandidates = await this.findMatchingWorkflows(event);
+    const shadowCandidates = await this.findShadowCandidateWorkflows(event);
+    const workflows = new Map<string, OrgWorkflow>();
+    for (const wf of [...liveCandidates, ...shadowCandidates]) {
+      workflows.set(wf.id, wf);
+    }
 
-    for (const workflow of workflows) {
-      const runId = await this.executeWorkflow(workflow, event);
-      if (runId) runIds.push(runId);
+    const runIds: string[] = [];
+    let shadowEvaluations = 0;
+    const maxShadow =
+      this.config.get<number>('workflowShadow.maxEvaluationsPerEvent')
+      ?? this.config.get<number>('workflowRuntimeRollout.maxEvaluationsPerEvent')
+      ?? 20;
+
+    for (const workflow of workflows.values()) {
+      const rolloutFlags = await this.rollout.resolveEffectiveFlags(event.organizationId, workflow.id);
+      const gate = await this.shadowGate.resolve(event.organizationId, workflow);
+
+      const runLive =
+        rolloutFlags.runLiveEngine
+        && gate.runLive
+        && shouldRunWorkflowLive(workflow)
+        && !workflow.shadowEnabled;
+
+      if (runLive) {
+        const runId = await this.executeWorkflow(workflow, event, {
+          executionMode: WorkflowExecutionMode.LIVE,
+        });
+        if (runId) runIds.push(runId);
+      }
+
+      const runShadow = rolloutFlags.runShadow && gate.runShadow;
+      if (runShadow && shadowEvaluations < maxShadow) {
+        shadowEvaluations += 1;
+        this.shadowService.scheduleShadowEvaluation(workflow, event);
+      }
     }
     return runIds;
   }
@@ -62,28 +110,42 @@ export class WorkflowEngineService {
     });
   }
 
-  private matchesScope(scope: WorkflowScopeDef, event: WorkflowDomainEvent): boolean {
-    if (!scope || scope.type === 'organization') return true;
-    const vehicleId =
-      event.entityType === 'vehicle'
-        ? event.entityId
-        : (event.payload.vehicleId as string | undefined);
-    if (scope.type === 'vehicle' && scope.vehicleIds?.length) {
-      return !!vehicleId && scope.vehicleIds.includes(vehicleId);
-    }
-    if (scope.type === 'station' && scope.stationIds?.length) {
-      const stationId = event.payload.stationId as string | undefined;
-      return !!stationId && scope.stationIds.includes(stationId);
-    }
-    return true;
+  /** Workflows eligible for shadow evaluation (includes shadow-only pilots). */
+  async findShadowCandidateWorkflows(event: WorkflowDomainEvent): Promise<OrgWorkflow[]> {
+    const orgEnabled = await this.shadowGate.isOrgShadowEnabled(event.organizationId);
+    if (!orgEnabled) return [];
+
+    const eventType = normalizeTriggerType(event.type);
+    const rows = await this.prisma.orgWorkflow.findMany({
+      where: {
+        organizationId: event.organizationId,
+        status: 'ACTIVE',
+        OR: [{ shadowEnabled: true }, { systemMetadata: { not: Prisma.DbNull } }],
+      },
+    });
+
+    return rows.filter((wf) => {
+      const trigger = wf.trigger as { type?: string };
+      const wfType = normalizeTriggerType(trigger?.type ?? '');
+      return wfType === eventType;
+    });
   }
 
   async executeWorkflow(
     workflow: OrgWorkflow,
     event: WorkflowDomainEvent,
+    options: ExecuteWorkflowOptions,
   ): Promise<string | null> {
-    const scope = workflow.scope as unknown as WorkflowScopeDef;
-    if (!this.matchesScope(scope, event)) {
+    assertLiveExecution(
+      options.executionMode,
+      'WorkflowEngineService.executeWorkflow',
+    );
+
+    const scopeResult = evaluateWorkflowScope(
+      workflow.scope as unknown as WorkflowScopeDef,
+      event,
+    );
+    if (!scopeResult.passed) {
       return null;
     }
 
@@ -160,6 +222,7 @@ export class WorkflowEngineService {
         entityId: event.entityId,
         payload: event.payload,
         idempotencyKey,
+        executionMode: WorkflowExecutionMode.LIVE,
       });
 
       await this.prisma.orgWorkflowActionRun.update({

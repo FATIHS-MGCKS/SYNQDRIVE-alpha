@@ -272,6 +272,12 @@ export interface VehicleHealthResponse {
     vehicle_alerts: RentalHealthModule;
   };
   generated_at: string;
+  /** Alias for generated_at — cross-surface contract. */
+  evaluated_at?: string;
+  /** Ready for rental when pipeline is complete and no hard blockers apply. */
+  rental_readiness?: 'ready' | 'not_ready' | 'unevaluable';
+  /** Monotonic projection version for cache coherence. */
+  projection_version?: string;
   /** Fleet read-model only — detail route omits these fields. */
   cache_stale?: boolean;
   data_partial?: boolean;
@@ -2321,18 +2327,89 @@ export interface WorkflowDto {
   createdAt: string;
   updatedAt: string;
 }
+export interface WorkflowListItemDto extends WorkflowDto {
+  riskClass: 'LOW' | 'HIGH' | 'CRITICAL';
+  sourceType: 'custom' | 'system' | 'migrated';
+  approvalStatus: 'none' | 'pending' | 'approved';
+  activeVersion: number;
+  lastRunAt: string | null;
+  lastRunOutcome:
+    | 'none'
+    | 'success'
+    | 'failed'
+    | 'partial'
+    | 'waiting_approval'
+    | 'skipped'
+    | 'policy_blocked';
+  lastRunLabel: string | null;
+  hasLegacyMapping: boolean;
+  unavailableActionCount: number;
+}
 export interface WorkflowStatsDto {
   total: number;
   active: number;
   draft: number;
   disabled: number;
   invalid: number;
+  pendingActivation?: number;
+  archived?: number;
   totalRuns: number;
   successfulRuns: number;
   failedRuns: number;
   waitingApprovalRuns: number;
   runsLast24h: number;
   lastRunAt: string | null;
+}
+export interface WorkflowAuditEventDto {
+  id: string;
+  organizationId: string;
+  workflowId?: string | null;
+  workflowRunId?: string | null;
+  actionRunId?: string | null;
+  eventType: string;
+  retentionClass: string;
+  retentionDays?: number;
+  actorUserId?: string | null;
+  correlationId?: string | null;
+  summary: string;
+  payload: Record<string, unknown>;
+  payloadHash?: string | null;
+  aiTransparency?: Record<string, unknown> | null;
+  legalHold?: boolean;
+  createdAt: string;
+}
+export interface WorkflowChangeRequestDiffDto {
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+export interface WorkflowChangeRequestDto {
+  id: string;
+  organizationId: string;
+  workflowId: string;
+  operation: string;
+  status: string;
+  makerUserId: string;
+  checkerUserId?: string | null;
+  makerReason: string;
+  checkerReason?: string | null;
+  proposedDefinition: Record<string, unknown>;
+  proposedDefinitionHash: string;
+  proposedWorkflowVersion: number;
+  proposedStatus: string;
+  expiresAt: string;
+  emergencyOverride?: boolean;
+  emergencyReason?: string | null;
+  decisionVersion: number;
+  decidedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  diff?: WorkflowChangeRequestDiffDto[] | null;
+  expired?: boolean;
+}
+export interface WorkflowMutationResultDto extends WorkflowDto {
+  pendingActivation?: boolean;
+  changeRequest?: WorkflowChangeRequestDto | null;
 }
 export interface WorkflowActionRunDto {
   id: string;
@@ -2380,14 +2457,89 @@ export interface WorkflowCreatePayload {
   actions: WorkflowActionDto[];
   scope?: WorkflowScopeDto;
   status?: string;
+  activationReason?: string;
 }
 export type WorkflowUpdatePayload = Partial<WorkflowCreatePayload>;
 export interface WorkflowTestPayload {
   payload?: Record<string, unknown>;
   entityType?: string;
   entityId?: string;
+  eventType?: string;
+  proposedDefinition?: Record<string, unknown>;
+  sourceRevisionType?: 'saved' | 'draft';
+}
+export interface WorkflowPlannedActionDto {
+  index: number;
+  actionType: string;
+  riskClass: string;
+  requiresApproval: boolean;
+  status: 'PLANNED' | 'SKIPPED' | 'BLOCKED' | 'ERROR';
+  policyBlockers: string[];
+  resolvedRecipients?: Array<{ channel: string; masked: string }>;
+  preview?: Record<string, unknown>;
+  validationErrors: string[];
+  expectedFallback?: string;
+  skipReason?: string;
+}
+export interface WorkflowExecutionPlanDto {
+  executionMode: 'DRY_RUN';
+  executed: false;
+  message: string;
+  requestId: string;
+  correlationId: string;
+  assessedAt: string;
+  riskClass: 'LOW' | 'HIGH' | 'CRITICAL';
+  sourceRevision: {
+    type: 'saved' | 'draft';
+    version: number;
+  };
+  workflowId: string;
+  workflowVersion: number;
+  workflowName: string;
+  event: {
+    type: string;
+    entityType?: string | null;
+    entityId?: string | null;
+    normalizedPayload: Record<string, unknown>;
+  };
+  scope: {
+    passed: boolean;
+    scopeType: string;
+    reason?: string;
+    details?: Record<string, unknown>;
+  };
+  conditions: {
+    passed: boolean;
+    results: Array<{ path: string; operator: string; passed: boolean }>;
+  };
+  plannedActions: WorkflowPlannedActionDto[];
+  skippedActions: WorkflowPlannedActionDto[];
+  validationErrors: string[];
+  policyBlockers: string[];
+  wouldCreateApprovals: boolean;
+}
+export interface WorkflowRevisionDiffChangeDto {
+  kind: string;
+  field: string;
+  label: string;
+  before?: unknown;
+  after?: unknown;
+  detail?: string;
+}
+export interface WorkflowRevisionDiffResultDto {
+  hasChanges: boolean;
+  changes: WorkflowRevisionDiffChangeDto[];
+  baselineVersion: number;
+  proposedVersion: number;
+  baselineRiskClass: string;
+  proposedRiskClass: string;
+  actor?: string | null;
+  changedAt?: string | null;
+  reason?: string | null;
 }
 export interface WorkflowTestResultDto {
+  executed?: false;
+  plan?: WorkflowExecutionPlanDto;
   runIds: string[];
   runs: WorkflowRunDto[];
   message?: string;
@@ -4855,36 +5007,119 @@ export const api = {
       get<
         import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRuleRevisionDto[]
       >(`/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/revisions`),
-    replayDeadLetterOutbox: (orgId: string, outboxId: string) =>
-      post<{ outboxId: string; status: 'PENDING' }>(
+    replayDeadLetterOutbox: (orgId: string, outboxId: string, data: { makerReason: string }) =>
+      post<{ pendingApproval: boolean; outboxId: string; changeRequest?: WorkflowChangeRequestDto; status?: 'PENDING' }>(
         `/organizations/${orgId}/task-automation/outbox/${encodeURIComponent(outboxId)}/replay`,
-        {},
+        data,
       ),
   },
   workflows: {
-    list: (orgId: string, params?: { status?: string; category?: string }) => {
+    list: (
+      orgId: string,
+      params?: {
+        status?: string;
+        category?: string;
+        search?: string;
+        includeSystem?: boolean;
+        includeArchived?: boolean;
+      },
+    ) => {
       const q = new URLSearchParams();
       if (params?.status) q.set('status', params.status);
       if (params?.category) q.set('category', params.category);
+      if (params?.search) q.set('search', params.search);
+      if (params?.includeSystem) q.set('includeSystem', 'true');
+      if (params?.includeArchived) q.set('includeArchived', 'true');
       const qs = q.toString();
-      return get<WorkflowDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
+      return get<WorkflowListItemDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
     },
     stats: (orgId: string) => get<WorkflowStatsDto>(`/organizations/${orgId}/workflows/stats`),
+    catalog: (orgId: string) =>
+      get<import('../rental/components/workflow-automation/workflow-config.types').WorkflowCatalogDto>(
+        `/organizations/${orgId}/workflows/catalog`,
+      ),
     get: (orgId: string, id: string) => get<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`),
-    create: (orgId: string, data: WorkflowCreatePayload) => post<WorkflowDto>(`/organizations/${orgId}/workflows`, data),
-    update: (orgId: string, id: string, data: WorkflowUpdatePayload) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`, data),
-    toggle: (orgId: string, id: string) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/toggle`, {}),
+    create: (orgId: string, data: WorkflowCreatePayload) =>
+      post<WorkflowMutationResultDto>(`/organizations/${orgId}/workflows`, data),
+    update: (orgId: string, id: string, data: WorkflowUpdatePayload) =>
+      patch<WorkflowMutationResultDto>(`/organizations/${orgId}/workflows/${id}`, data),
+    toggle: (orgId: string, id: string, data?: { activationReason?: string }) =>
+      patch<WorkflowMutationResultDto>(`/organizations/${orgId}/workflows/${id}/toggle`, data ?? {}),
     duplicate: (orgId: string, id: string) => post<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/duplicate`, {}),
     remove: (orgId: string, id: string) => del<{ deleted: boolean }>(`/organizations/${orgId}/workflows/${id}`),
     listRuns: (orgId: string, workflowId: string, limit = 25) =>
       get<WorkflowRunDto[]>(`/organizations/${orgId}/workflows/${workflowId}/runs?limit=${limit}`),
     getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
+    dryRun: (orgId: string, workflowId: string, data?: WorkflowTestPayload, init?: RequestInit) =>
+      request<WorkflowExecutionPlanDto>(
+        `/organizations/${orgId}/workflows/${workflowId}/dry-run`,
+        { method: 'POST', body: JSON.stringify(data ?? {}), ...init },
+      ),
+    revisionDiff: (
+      orgId: string,
+      workflowId: string,
+      data: { proposedDefinition: Record<string, unknown>; reason?: string },
+      init?: RequestInit,
+    ) =>
+      request<WorkflowRevisionDiffResultDto>(
+        `/organizations/${orgId}/workflows/${workflowId}/revision-diff`,
+        { method: 'POST', body: JSON.stringify(data), ...init },
+      ),
     test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
       post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
-    approveActionRun: (orgId: string, actionRunId: string) =>
-      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, {}),
+    approveActionRun: (
+      orgId: string,
+      actionRunId: string,
+      data: { reason: string; decisionVersion?: number; emergencyOverride?: boolean; emergencyReason?: string },
+    ) =>
+      post<WorkflowActionRunDto>(
+        `/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`,
+        data,
+      ),
     rejectActionRun: (orgId: string, actionRunId: string, reason?: string) =>
       post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/reject`, { reason }),
+    listChangeRequests: (orgId: string, workflowId: string) =>
+      get<WorkflowChangeRequestDto[]>(`/organizations/${orgId}/workflows/${workflowId}/change-requests`),
+    listAuditEvents: (
+      orgId: string,
+      params?: { workflowId?: string; eventType?: string; limit?: number; cursor?: string },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.workflowId) q.set('workflowId', params.workflowId);
+      if (params?.eventType) q.set('eventType', params.eventType);
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.cursor) q.set('cursor', params.cursor);
+      const qs = q.toString();
+      return get<{ items: WorkflowAuditEventDto[]; nextCursor: string | null }>(
+        `/organizations/${orgId}/workflows/audit-events${qs ? `?${qs}` : ''}`,
+      );
+    },
+    getAuditEvent: (orgId: string, eventId: string) =>
+      get<WorkflowAuditEventDto>(`/organizations/${orgId}/workflows/audit-events/${eventId}`),
+    getAuditRetention: (orgId: string) =>
+      get<{ classes: Array<Record<string, unknown>> }>(
+        `/organizations/${orgId}/workflows/audit-events/retention`,
+      ),
+    getChangeRequest: (orgId: string, requestId: string) =>
+      get<WorkflowChangeRequestDto>(`/organizations/${orgId}/workflows/change-requests/${requestId}`),
+    approveChangeRequest: (
+      orgId: string,
+      requestId: string,
+      data: { reason: string; decisionVersion?: number; emergencyOverride?: boolean; emergencyReason?: string },
+    ) =>
+      post<{ changeRequest: WorkflowChangeRequestDto; workflow?: WorkflowDto }>(
+        `/organizations/${orgId}/workflows/change-requests/${requestId}/approve`,
+        data,
+      ),
+    rejectChangeRequest: (
+      orgId: string,
+      requestId: string,
+      data: { reason: string; decisionVersion?: number },
+    ) =>
+      post<WorkflowChangeRequestDto>(
+        `/organizations/${orgId}/workflows/change-requests/${requestId}/reject`,
+        data,
+      ),
   },
   billing: {
     subscriptions: () => get<any[]>('/admin/billing/subscriptions'),

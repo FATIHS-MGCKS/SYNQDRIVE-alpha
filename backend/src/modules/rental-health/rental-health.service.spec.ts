@@ -8,6 +8,7 @@ describe('RentalHealthService (unit)', () => {
     vehicle: { findFirst: jest.fn() },
     vehicleLatestState: { findUnique: jest.fn() },
     vehicleComplaint: { findMany: jest.fn() },
+    vehicleDamage: { findMany: jest.fn().mockResolvedValue([]) },
   };
   const battery = { getSummary: jest.fn() };
   const tires = { getSummary: jest.fn() };

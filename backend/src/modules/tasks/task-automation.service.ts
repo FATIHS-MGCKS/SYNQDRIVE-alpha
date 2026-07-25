@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { Prisma, TaskPriority, TaskSource, TaskType } from '@prisma/client';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -45,6 +45,8 @@ import { TaskAutomationOutboxEnqueueService } from './outbox/task-automation-out
 import { TaskAutomationOutboxExecutionContext } from './outbox/task-automation-outbox-execution.context';
 import { buildOutboxMeta } from './outbox/task-automation-outbox-meta.util';
 import { sanitizeAutomationError } from './outbox/task-automation-outbox-error.util';
+import type { TaskAutomationExecutionRouterService } from '@modules/workflows/task-automation-bridge/task-automation-execution-router.service';
+import type { TaskAutomationMaterializationPayload } from '@modules/workflows/task-automation-bridge/task-automation-workflow-bridge.types';
 
 export interface BookingLifecycleTaskInput {
   id: string;
@@ -95,6 +97,14 @@ export class TaskAutomationService {
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
     private readonly ruleResolver: TaskAutomationRuleResolverService,
+    @Optional()
+    @Inject(forwardRef(() => {
+      // Lazy require avoids static circular import between tasks and workflows modules.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      return require('@modules/workflows/task-automation-bridge/task-automation-execution-router.service')
+        .TaskAutomationExecutionRouterService as typeof import('@modules/workflows/task-automation-bridge/task-automation-execution-router.service').TaskAutomationExecutionRouterService;
+    }))
+    private readonly workflowRouter?: TaskAutomationExecutionRouterService,
   ) {}
 
   private async resolveMaterializationRule(
@@ -233,28 +243,73 @@ export class TaskAutomationService {
       dueDate?: Date | null;
       activatesAt?: Date | null;
       metadata?: Prisma.InputJsonValue;
+      routing?: {
+        catalogKey: TaskAutomationCatalogKey;
+        ruleId: string;
+        entityType?: string;
+        entityId?: string;
+      };
     },
   ): Promise<void> {
-    await this.tasks.upsertByDedup(orgId, generatedKey, {
+    const legacyExecute = async () => {
+      await this.tasks.upsertByDedup(orgId, generatedKey, {
+        title: payload.title,
+        description: payload.description,
+        category: payload.category,
+        type: payload.type,
+        sourceType: payload.sourceType,
+        priority: payload.priority ?? 'NORMAL',
+        vehicleId: payload.vehicleId ?? null,
+        bookingId: payload.bookingId ?? null,
+        customerId: payload.customerId ?? null,
+        vendorId: payload.vendorId ?? null,
+        documentId: payload.documentId ?? null,
+        source: payload.source,
+        dueDate: payload.dueDate ?? null,
+        activatesAt: payload.activatesAt ?? new Date(),
+        metadata: payload.metadata ?? { generatedKey },
+        checklist: payload.withChecklist
+          ? checklistForType(payload.type)
+          : payload.checklist,
+      });
+    };
+
+    if (!payload.routing || !this.workflowRouter) {
+      await legacyExecute();
+      return;
+    }
+
+    const materialization: TaskAutomationMaterializationPayload = {
+      organizationId: orgId,
+      catalogKey: payload.routing.catalogKey,
+      ruleId: payload.routing.ruleId,
+      dedupKey: generatedKey,
       title: payload.title,
       description: payload.description,
       category: payload.category,
       type: payload.type,
       sourceType: payload.sourceType,
-      priority: payload.priority ?? 'NORMAL',
-      vehicleId: payload.vehicleId ?? null,
-      bookingId: payload.bookingId ?? null,
-      customerId: payload.customerId ?? null,
-      vendorId: payload.vendorId ?? null,
-      documentId: payload.documentId ?? null,
       source: payload.source,
-      dueDate: payload.dueDate ?? null,
-      activatesAt: payload.activatesAt ?? new Date(),
-      metadata: payload.metadata ?? { generatedKey },
-      checklist: payload.withChecklist
-        ? checklistForType(payload.type)
-        : payload.checklist,
-    });
+      priority: payload.priority,
+      vehicleId: payload.vehicleId,
+      bookingId: payload.bookingId,
+      customerId: payload.customerId,
+      vendorId: payload.vendorId,
+      documentId: payload.documentId,
+      dueDate: payload.dueDate,
+      activatesAt: payload.activatesAt,
+      withChecklist: payload.withChecklist,
+      checklist: payload.checklist,
+      metadata:
+        payload.metadata && typeof payload.metadata === 'object' && !Array.isArray(payload.metadata)
+          ? (payload.metadata as Record<string, unknown>)
+          : undefined,
+      entityType: payload.routing.entityType,
+      entityId: payload.routing.entityId,
+      eventType: 'task.automation.materialize',
+    };
+
+    await this.workflowRouter.route({ payload: materialization, legacyExecute });
   }
 
   /**
@@ -659,6 +714,12 @@ export class TaskAutomationService {
       dueDate: timing.dueDate,
       priority: resolved.effective.priority,
       metadata: this.buildPreparationMetadata(dedupKey, timing, booking),
+      routing: {
+        catalogKey: 'BOOKING_PREPARATION',
+        ruleId: rule.ruleId,
+        entityType: 'BOOKING',
+        entityId: booking.id,
+      },
     });
   }
 
@@ -690,6 +751,12 @@ export class TaskAutomationService {
         BOOKING_PICKUP_TIMING_RULE.activationLeadBeforePickupMs,
         booking,
       ),
+      routing: {
+        catalogKey: 'BOOKING_PICKUP',
+        ruleId: rule.ruleId,
+        entityType: 'BOOKING',
+        entityId: booking.id,
+      },
     });
   }
 
@@ -721,6 +788,12 @@ export class TaskAutomationService {
         BOOKING_RETURN_TIMING_RULE.activationLeadBeforeReturnMs,
         booking,
       ),
+      routing: {
+        catalogKey: 'BOOKING_RETURN',
+        ruleId: rule.ruleId,
+        entityType: 'BOOKING',
+        entityId: booking.id,
+      },
     });
   }
 
@@ -888,6 +961,12 @@ export class TaskAutomationService {
           generatedKey: key,
           automation: buildAutomationMetadataBlock('REPAIR_REQUIRED'),
         },
+        routing: {
+          catalogKey: 'REPAIR_REQUIRED',
+          ruleId: repairRule.ruleId,
+          entityType: 'VEHICLE',
+          entityId: input.vehicleId,
+        },
       });
     } catch (err: unknown) {
       await this.handleAutomationFailure(
@@ -975,6 +1054,12 @@ export class TaskAutomationService {
           sortOrder: index,
           isRequired: true,
         })),
+        routing: {
+          catalogKey: 'DOCUMENT_PACKAGE_INCOMPLETE',
+          ruleId: documentRule.ruleId,
+          entityType: 'BOOKING',
+          entityId: input.bookingId,
+        },
       });
 
       const existing = await this.prisma.orgTask.findFirst({

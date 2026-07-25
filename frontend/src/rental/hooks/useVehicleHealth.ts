@@ -1,9 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../../lib/api';
 import type { FleetRentalHealthQuery, VehicleHealthResponse } from '../../lib/api';
+import {
+  registerRentalHealthReloadHandler,
+  registerRentalHealthVehicleReloadHandler,
+} from '../lib/rental-health-query';
 
 interface UseVehicleHealthState {
   data: VehicleHealthResponse | null;
+  rentalReadiness: VehicleHealthResponse['rental_readiness'] | null;
+  projectionVersion: string | null;
   loading: boolean;
   error: string | null;
   reload: () => void;
@@ -56,7 +62,24 @@ export function useVehicleHealth(
     };
   }, [load]);
 
-  return { data, loading, error, reload: load };
+  useEffect(() => {
+    if (!orgId || !vehicleId) return;
+    const unregisterVehicle = registerRentalHealthVehicleReloadHandler(orgId, vehicleId, load);
+    const unregisterOrg = registerRentalHealthReloadHandler(orgId, load);
+    return () => {
+      unregisterVehicle();
+      unregisterOrg();
+    };
+  }, [orgId, vehicleId, load]);
+
+  return {
+    data,
+    rentalReadiness: data?.rental_readiness ?? null,
+    projectionVersion: data?.projection_version ?? null,
+    loading,
+    error,
+    reload: load,
+  };
 }
 
 export interface UseFleetHealthMapOptions {
@@ -136,6 +159,13 @@ export function useFleetHealthMap(
       cancelRef.current = true;
     };
   }, [load]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    return registerRentalHealthReloadHandler(orgId, () => {
+      void load();
+    });
+  }, [orgId, load]);
 
   return { map, loading, error, fetchedAt, reload: load };
 }

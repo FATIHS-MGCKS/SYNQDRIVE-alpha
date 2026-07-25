@@ -6,12 +6,20 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { VehicleHealthAdapterSource } from '@modules/notifications/adapters/notification-adapter.types';
+import { FindingBridgeService } from '../findings/finding-bridge.service';
 import type {
   StructuredTireAlertCandidate,
   TireAlertSyncResult,
 } from './tire-health-alert.types';
 import { buildTireAlertNotificationCode } from './tire-health-alert.registry';
 import { TireHealthObservabilityService } from './tire-health-observability.service';
+
+/** VW-F-026: keep tire alerts open briefly when telemetry evidence goes stale. */
+const TIRE_ALERT_EVIDENCE_GRACE_MS = Math.max(
+  0,
+  Number.parseInt(process.env.TIRE_ALERT_EVIDENCE_GRACE_MS ?? String(6 * 60 * 60_000), 10) ||
+    6 * 60 * 60_000,
+);
 
 @Injectable()
 export class TireHealthAlertService {
@@ -20,6 +28,7 @@ export class TireHealthAlertService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly observability?: TireHealthObservabilityService,
+    @Optional() private readonly findingBridge?: FindingBridgeService,
   ) {}
 
   async syncAlerts(args: {
@@ -56,6 +65,16 @@ export class TireHealthAlertService {
 
     for (const row of openRows) {
       if (!candidateByKey.has(row.dedupeKey)) {
+        const staleEvidence = row.pressureFreshness === 'stale';
+        const withinGrace =
+          TIRE_ALERT_EVIDENCE_GRACE_MS > 0 &&
+          now.getTime() - row.lastSeenAt.getTime() < TIRE_ALERT_EVIDENCE_GRACE_MS;
+        if (staleEvidence || withinGrace) {
+          if (staleEvidence) {
+            void this.findingBridge?.expire(args.organizationId, `tire_alert:${row.dedupeKey}`);
+          }
+          continue;
+        }
         await this.prisma.tireHealthAlert.update({
           where: { id: row.id },
           data: {
@@ -65,6 +84,10 @@ export class TireHealthAlertService {
           },
         });
         resolved.push(row.dedupeKey);
+        void this.findingBridge?.resolveTireAlert({
+          organizationId: args.organizationId,
+          alertDedupeKey: row.dedupeKey,
+        });
         this.observability?.recordAlert({
           action: 'resolved',
           alertType: row.alertType,
@@ -176,6 +199,15 @@ export class TireHealthAlertService {
         throw error;
       }
       newlyOpened.push(candidate.dedupeKey);
+      void this.findingBridge?.syncTireAlertActive({
+        organizationId: args.organizationId,
+        vehicleId: args.vehicleId,
+        alertDedupeKey: candidate.dedupeKey,
+        severity: candidate.severity,
+        title: candidate.alertType,
+        message: candidate.reasonCode,
+        sourceRef: candidate.dedupeKey,
+      });
       this.observability?.recordAlert({
         action: 'created',
         alertType: candidate.alertType,

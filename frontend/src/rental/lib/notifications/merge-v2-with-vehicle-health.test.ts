@@ -71,7 +71,7 @@ describe('mergeV2NotificationsWithVehicleHealth', () => {
     expect(merged).toHaveLength(1);
   });
 
-  it('skips bridge health when V2 already has any health notification for the vehicle', () => {
+  it('keeps supplemental health when V2 has a different health notification for the same vehicle', () => {
     const v2 = [
       item('veh-1', {
         id: 'n1',
@@ -83,8 +83,7 @@ describe('mergeV2NotificationsWithVehicleHealth', () => {
       item('veh-1', { semanticKey: 'vehicle:veh-1:health:tires_monitor', issueType: 'tire_monitor' }),
     ];
     const merged = mergeV2NotificationsWithVehicleHealth(v2, health);
-    expect(merged).toHaveLength(1);
-    expect(merged[0].semanticKey).toBe('VEHICLE:veh-1:VEHICLE_HEALTH:ACTIVE_DTC');
+    expect(merged).toHaveLength(2);
   });
 });
 

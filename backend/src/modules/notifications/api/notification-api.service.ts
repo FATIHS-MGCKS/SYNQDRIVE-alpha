@@ -386,6 +386,7 @@ export class NotificationApiService {
           orgId,
           membershipRole,
           membership.stationScope,
+          user.id,
         );
 
     const preferences = await this.prisma.userNotificationPreference.findMany({

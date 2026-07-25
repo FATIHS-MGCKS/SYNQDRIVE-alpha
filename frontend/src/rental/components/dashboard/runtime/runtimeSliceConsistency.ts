@@ -77,6 +77,10 @@ export function resolveFleetTabCountsFromRuntime(
   };
 }
 
+/**
+ * Legacy selector-based tab counts from flat vehicle lists.
+ * @deprecated Prefer `resolveFleetTabCountsFromRuntime` when runtime vehicle states exist.
+ */
 export function countFleetVehiclesBySelector(
   vehicles: VehicleData[],
 ): Record<FleetCommandTab, number> {

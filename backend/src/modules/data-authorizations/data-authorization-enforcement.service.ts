@@ -29,9 +29,9 @@ type AuthorizationRow = OrgDataAuthorization;
  *
  * Integration status (2026-06):
  * - WIRED: VehiclesService.getLiveGps (DIMO / GPS_LOCATION / LIVE_MAP)
+ * - WIRED: AiHealthCareAggregationService.getAiHealthCare (HIGH_MOBILITY / HEALTH_SIGNALS / VEHICLE_HEALTH_SUMMARY)
  * - TODO: DIMO telemetry ingestion workers — TELEMETRY_DATA before persist
  * - TODO: Trip behavior enrichment — TRIP_DATA / DRIVING_BEHAVIOR
- * - TODO: Vehicle health signal reads — HEALTH_SIGNALS / DTC_CODES
  * - TODO: Alerts pipeline — ALERTS purpose
  * - TODO: Misuse-case aggregator — ABUSE_MISUSE_DETECTION
  * Use isAuthorized() for gradual rollout; assertDataAuthorization() for hard enforcement.

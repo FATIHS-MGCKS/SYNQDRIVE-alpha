@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { PrismaService } from '@shared/database/prisma.service';
+import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { HealthSummaryService, HealthSummaryAgentResponse } from './health-summary.service';
 import { HmSignalUsageService, HmAiHealthCareSignals } from '../../high-mobility/high-mobility-signal-usage.service';
 import { DtcService } from '../dtc/dtc.service';
@@ -121,6 +123,7 @@ export class AiHealthCareAggregationService {
   private readonly logger = new Logger(AiHealthCareAggregationService.name);
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly healthSummaryService: HealthSummaryService,
     private readonly hmSignalUsageService: HmSignalUsageService,
     private readonly dtcService: DtcService,
@@ -128,9 +131,31 @@ export class AiHealthCareAggregationService {
     private readonly tireHealthService: TireHealthService,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly dashboardWarningLightsService: DashboardWarningLightsService,
+    @Optional() private readonly dataAuthEnforcement?: DataAuthorizationEnforcementService,
   ) {}
 
   async getAiHealthCare(vehicleId: string): Promise<AiHealthCareResponse> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (vehicle?.organizationId && this.dataAuthEnforcement) {
+      const authorized = await this.dataAuthEnforcement.isAuthorized({
+        orgId: vehicle.organizationId,
+        vehicleId,
+        sourceType: 'HIGH_MOBILITY',
+        dataCategory: 'HEALTH_SIGNALS',
+        purpose: 'VEHICLE_HEALTH_SUMMARY',
+        processorType: 'SYNQDRIVE',
+      });
+      if (!authorized) {
+        this.logger.warn(
+          `AI health care denied by data authorization: vehicleId=${vehicleId} orgId=${vehicle.organizationId}`,
+        );
+        return this.buildDataAuthorizationDeniedResponse(vehicleId);
+      }
+    }
+
     // Parallel read of all inputs — failures are silenced per-source
     const [baseSummary, hmActive, dtcSummary, brakeHealth, tireHealth, batterySummary, dashboardWarningLights] =
       await Promise.all([
@@ -437,5 +462,57 @@ export class AiHealthCareAggregationService {
       case 'HIGH': return 'HIGH';
       default:     return 'UNKNOWN';
     }
+  }
+
+  /** VW-F-040: graceful denial when org lacks HEALTH_SIGNALS data authorization. */
+  private buildDataAuthorizationDeniedResponse(vehicleId: string): AiHealthCareResponse {
+    const dashboardWarningLights: DashboardWarningLightsResponse = {
+      vehicleId,
+      provider: 'NONE',
+      connectionStatus: 'not_connected',
+      supportStatus: 'not_connected',
+      freshness: 'no_data',
+      overallStatus: 'unknown',
+      lastObservedAt: null,
+      message: 'Gesundheitsdaten nicht freigegeben — Datenautorisierung fehlt.',
+      lights: [],
+      rentalHealthReady: false,
+    };
+
+    return {
+      aiStatus: 'NO_RECENT_DATA',
+      summaryText: 'Gesundheitsdaten nicht freigegeben — Datenautorisierung fehlt.',
+      reasons: ['Keine aktive Datenautorisierung für Fahrzeug-Gesundheitssignale.'],
+      oilLevelDisplay: { mode: 'no_data', value: null, label: 'Keine Daten' },
+      indicators: {
+        limpMode: null,
+        brakeWarning: null,
+        tirePressureWarning: null,
+        batteryWarningLight: null,
+      },
+      overallStatus: {
+        level: 'watch',
+        title: 'Datenautorisierung erforderlich',
+        shortSummary: 'Gesundheitsdaten sind für diese Organisation nicht freigegeben.',
+      },
+      positives: [],
+      watchpoints: ['Datenautorisierung für HEALTH_SIGNALS erforderlich.'],
+      futureOutlook: { summary: '', items: [] },
+      preventiveRecommendations: [],
+      maintenanceFocus: [],
+      dataConfidence: { level: 'low', reason: 'Data authorization not granted' },
+      hmIndicators: {
+        oilLevel: null,
+        limpMode: null,
+        brakeLiningPreWarning: null,
+        tirePressureWarning: null,
+      },
+      lastHmUpdate: null,
+      hmHealthActive: false,
+      hmFreshnessStatus: 'no_data',
+      hmLastErrorAt: null,
+      hmLastErrorMessage: null,
+      dashboardWarningLights,
+    };
   }
 }

@@ -103,7 +103,15 @@ describe('Notification access policies', () => {
       vehicle: { findMany: jest.fn(async () => [{ id: 'veh-a' }]) },
       booking: { findMany: jest.fn(async () => [{ id: 'book-a' }]) },
     };
-    const svc = new NotificationStationScopeService(prisma as any);
+    const stationAccess = {
+      resolve: jest.fn(async () => ({
+        bypassScope: false,
+        allowedStationIds: null,
+        membershipRole: MembershipRole.WORKER,
+        userId: 'user-1',
+      })),
+    };
+    const svc = new NotificationStationScopeService(prisma as any, stationAccess as any);
 
     it('loads vehicles and bookings for station scope', async () => {
       const ctx = await svc.buildScopeContext('org-1', MembershipRole.WORKER, 'station-a');

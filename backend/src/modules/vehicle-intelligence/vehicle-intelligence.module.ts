@@ -1,5 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
 import { VehicleIntelligenceController } from './vehicle-intelligence.controller';
 import { DamagesOrgController } from './damages/damages-org.controller';
 import { BatteryService } from './battery/battery.service';
@@ -214,6 +215,10 @@ import {
   BatteryShadowValidationController,
   BatteryShadowValidationService,
 } from './battery-health/shadow-validation';
+import { VehicleIntelligencePermissionGuard } from './vehicle-intelligence-permission.guard';
+import { VehicleFindingsModule } from './findings/findings.module';
+import { FindingLifecycleService } from './findings/finding-lifecycle.service';
+import { FindingBridgeService } from './findings/finding-bridge.service';
 
 @Module({
   imports: [
@@ -227,6 +232,8 @@ import {
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
     forwardRef(() => NotificationsModule),
+    DataAuthorizationsModule,
+    VehicleFindingsModule,
     TasksModule,
     BatteryV2JobsProducerModule,
     BullModule.registerQueue(
@@ -241,6 +248,7 @@ import {
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController],
   providers: [
+    VehicleIntelligencePermissionGuard,
     BatteryService,
     TiresService,
     TireWearModelService,
@@ -285,6 +293,8 @@ import {
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    FindingLifecycleService,
+    FindingBridgeService,
     DtcKnowledgeService,
     DtcKnowledgeEnrichmentService,
     DtcAiResearchService,
@@ -479,6 +489,8 @@ import {
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    FindingLifecycleService,
+    FindingBridgeService,
     DtcKnowledgeService,
     DtcKnowledgeEnrichmentService,
     DrivingEventsService,

@@ -1,7 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
 export interface RentalEntityNavigationValue {
-  openVehicleById: (vehicleId: string) => void;
+  openVehicleById: (
+    vehicleId: string,
+    options?: { module?: string },
+  ) => void;
   openBookingById: (bookingId: string) => void;
   openCustomerById: (customerId: string) => void;
   openInvoiceById: (invoiceId: string) => void;

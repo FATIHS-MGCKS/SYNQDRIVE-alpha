@@ -45,6 +45,7 @@ import {
   isBrakeRentalHardBlocked,
 } from './brake-rental-health.policy';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
+import { VehicleHealthWorkflowEmitter } from './vehicle-health-workflow.emitter';
 import type { BrakeRentalHealthModuleHealth } from './brake-rental-health.types';
 
 export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
@@ -64,6 +65,9 @@ export interface RentalHealthGateResult {
  * and CONFIRMED are the new V1 statuses. RESOLVED and REJECTED are ignored.
  */
 const OPEN_COMPLAINT_STATUSES = ['ACTIVE', 'OPEN', 'IN_REVIEW', 'CONFIRMED', 'NEW'] as const;
+
+/** Bumped when rental-health response contract or blocking policy changes (VW-F-033). */
+export const RENTAL_HEALTH_PROJECTION_VERSION = 'rh-projection-v2';
 
 /**
  * Rental Health V1 — consumption-only aggregation layer.
@@ -96,6 +100,7 @@ export class RentalHealthService {
     @Optional() private readonly tireObservability?: TireHealthObservabilityService,
     @Optional() private readonly brakeObservability?: BrakeHealthObservabilityService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
+    @Optional() private readonly healthWorkflowEmitter?: VehicleHealthWorkflowEmitter,
   ) {}
 
   /**
@@ -134,6 +139,7 @@ export class RentalHealthService {
       currentOdoRes,
       complaintsRes,
       complianceRes,
+      damagesRes,
     ] = await Promise.allSettled([
       this.battery.getSummary(vehicleId),
       this.hm.getTirePressureSignals(vehicleId).then((hmTirePressure) =>
@@ -163,6 +169,16 @@ export class RentalHealthService {
         lastBokraftDate: vehicle.lastBokraftDate,
         nextBokraftDate: vehicle.nextBokraftDate,
       }),
+      this.prisma.vehicleDamage.findMany({
+        where: {
+          vehicleId,
+          organizationId: orgId,
+          status: 'OPEN',
+          rentalImpact: { in: ['BLOCK_RENTAL', 'SAFETY_CRITICAL'] },
+        },
+        select: { id: true, description: true, rentalImpact: true },
+        take: 10,
+      }),
     ]);
 
     const batterySummary = unwrap(batteryRes);
@@ -182,6 +198,8 @@ export class RentalHealthService {
     const complaintsLoaded = complaintsRes.status === 'fulfilled';
     const openComplaints = complaintsLoaded ? (unwrap(complaintsRes) ?? []) : [];
     const complianceEval = unwrap(complianceRes);
+    const rentalBlockingDamages =
+      damagesRes.status === 'fulfilled' ? (damagesRes.value ?? []) : [];
     const serviceComplianceModule = complianceEval
       ? this.serviceCompliance.toRentalModuleHealth(
           complianceEval,
@@ -237,20 +255,34 @@ export class RentalHealthService {
       dtcSummary,
       brakeSummary,
       batterySummary,
+      rentalBlockingDamages,
     );
 
-    const health = {
+    const evaluatedAt = new Date().toISOString();
+    const rental_blocked = resolveRentalBlockedState(availability, blocking_reasons);
+    const rental_readiness: VehicleHealth['rental_readiness'] =
+      availability !== 'ready' || rental_blocked === null
+        ? 'unevaluable'
+        : rental_blocked
+          ? 'not_ready'
+          : 'ready';
+
+    const health: VehicleHealth = {
       vehicle_id: vehicleId,
       organization_id: orgId,
       overall_state,
       availability,
-      rental_blocked: resolveRentalBlockedState(availability, blocking_reasons),
+      rental_blocked,
       blocking_reasons,
       modules: modulesWithAvailability,
-      generated_at: new Date().toISOString(),
+      generated_at: evaluatedAt,
+      evaluated_at: evaluatedAt,
+      rental_readiness,
+      projection_version: RENTAL_HEALTH_PROJECTION_VERSION,
     };
 
     this.fleetHealthObservability?.recordVehicleHealth(health);
+    this.healthWorkflowEmitter?.emitIfRentalHealthBandChanged(health);
     return health;
   }
 
@@ -682,6 +714,7 @@ export class RentalHealthService {
     dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
     brakeSummary: BrakeHealthSummaryDto | null,
     batterySummary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
+    rentalBlockingDamages: Array<{ description: string | null; rentalImpact: string }> = [],
   ): string[] {
     const reasons: string[] = [];
 
@@ -705,6 +738,18 @@ export class RentalHealthService {
     const rentalBlockingObservation = openComplaints.find((c) => c.blocksRental === true);
     if (rentalBlockingObservation) {
       reasons.push('Technische Beobachtung blockiert Vermietung');
+    }
+
+    if (rentalBlockingDamages.length > 0) {
+      reasons.push('Schaden blockiert Vermietung');
+    }
+
+    if (
+      modules.service_compliance.state === 'critical' &&
+      !complianceEval?.tuvBokraft.tuvOverdue &&
+      !complianceEval?.tuvBokraft.bokraftOverdue
+    ) {
+      reasons.push(`Service: ${modules.service_compliance.reason}`);
     }
 
     if (hmAi?.limpModeActive === true) {

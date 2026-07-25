@@ -528,6 +528,7 @@ export class BatteryDataDiagnosticService {
     });
 
     for (const row of rows) {
+      if (!row.vehicleId) continue;
       this.push(
         findings,
         'lv_wrong_soh_percent_evidence',
@@ -958,6 +959,7 @@ export class BatteryDataDiagnosticService {
       if (!evidence.measurementId || existingMeasurements.has(evidence.measurementId)) {
         continue;
       }
+      if (!evidence.vehicleId) continue;
       this.push(
         findings,
         'partial_write_chain',

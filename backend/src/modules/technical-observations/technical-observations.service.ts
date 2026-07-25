@@ -1,10 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
 import {
+  ActivityAction,
+  ActivityEntity,
   ComplaintLifecycleStatus,
   DamageType,
   Prisma,
@@ -12,10 +15,12 @@ import {
   VehicleComplaint,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 import { TasksService } from '../tasks/tasks.service';
 import { ServiceCasesService } from '../service-cases/service-cases.service';
 import { DamagesService } from '../vehicle-intelligence/damages/damages.service';
+import { FindingBridgeService } from '../vehicle-intelligence/findings/finding-bridge.service';
 import {
   technicalObservationDedupKey,
 } from '../tasks/automation/task-automation-rule.util';
@@ -29,6 +34,10 @@ import {
   parseStatus,
   type TechnicalObservationDto,
 } from './technical-observations.mapper';
+import {
+  ACTIVE_COMPLAINT_STATUSES,
+  buildComplaintCreateDedupeKey,
+} from './complaint-dedupe.util';
 import type {
   ConvertObservationToTaskDto,
   CreateTechnicalObservationDto,
@@ -53,6 +62,8 @@ export class TechnicalObservationsService {
     private readonly serviceCases: ServiceCasesService,
     private readonly damages: DamagesService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly activityLog?: ActivityLogService,
+    @Optional() private readonly findingBridge?: FindingBridgeService,
   ) {}
 
   async list(
@@ -131,6 +142,30 @@ export class TechnicalObservationsService {
     const description = body.description.trim();
     const title = body.title?.trim() || null;
     const initialStatus: ComplaintLifecycleStatus = 'ACTIVE';
+    const source = parseSource(body.source);
+    const category = parseCategory(body.category);
+    const affectedArea = parseAffectedArea(body.affectedArea);
+    const dedupeKey = buildComplaintCreateDedupeKey({
+      vehicleId,
+      source,
+      category,
+      affectedArea,
+      description,
+    });
+
+    const existing = await this.prisma.vehicleComplaint.findFirst({
+      where: {
+        organizationId: orgId,
+        vehicleId,
+        dedupeKey,
+        status: { in: [...ACTIVE_COMPLAINT_STATUSES] },
+      },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'An active technical observation with the same content already exists',
+      );
+    }
 
     const row = await this.prisma.vehicleComplaint.create({
       data: {
@@ -142,10 +177,10 @@ export class TechnicalObservationsService {
         description,
         urgency: parseSeverity(body.severity),
         region: body.region?.trim() || null,
-        category: parseCategory(body.category),
-        affectedArea: parseAffectedArea(body.affectedArea),
+        category,
+        affectedArea,
         status: initialStatus,
-        source: parseSource(body.source),
+        source,
         blocksRental: body.blocksRental ?? false,
         bookingId: body.bookingId ?? null,
         customerId: body.customerId ?? null,
@@ -154,11 +189,27 @@ export class TechnicalObservationsService {
         stationId: body.stationId ?? null,
         locationContext: body.locationContext?.trim() || null,
         notes: body.notes?.trim() || null,
+        dedupeKey,
       },
     });
 
     const dto = mapObservationRow(row);
+    void this.recordObservationAudit('CREATE', orgId, vehicleId, row.id, createdByUserId, {
+      dedupeKey,
+      source,
+    });
     void this.syncV2ObservationActive(orgId, vehicleId, row, dto);
+    if (row.dedupeKey) {
+      void this.findingBridge?.syncComplaintActive({
+        organizationId: orgId,
+        vehicleId,
+        dedupeKey: row.dedupeKey,
+        severity: row.urgency,
+        title: row.title,
+        message: row.description,
+        sourceRef: row.id,
+      });
+    }
     return dto;
   }
 
@@ -193,6 +244,9 @@ export class TechnicalObservationsService {
       where: { id: existing.id },
       data,
     });
+    void this.recordObservationAudit('UPDATE', orgId, vehicleId, row.id, undefined, {
+      status: row.status,
+    });
     return mapObservationRow(row);
   }
 
@@ -213,6 +267,9 @@ export class TechnicalObservationsService {
       },
     });
     const dto = mapObservationRow(row);
+    void this.recordObservationAudit('UPDATE', orgId, vehicleId, row.id, resolvedByUserId, {
+      action: 'resolve',
+    });
     void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
     return dto;
   }
@@ -234,6 +291,9 @@ export class TechnicalObservationsService {
       },
     });
     const dto = mapObservationRow(row);
+    void this.recordObservationAudit('UPDATE', orgId, vehicleId, row.id, dismissedByUserId, {
+      action: 'dismiss',
+    });
     void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
     return dto;
   }
@@ -295,6 +355,9 @@ export class TechnicalObservationsService {
     });
 
     const dto = mapObservationRow(row);
+    void this.recordObservationAudit('CONVERT', orgId, vehicleId, row.id, actorUserId, {
+      taskId: task.id,
+    });
     void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
     return { observation: dto, taskId: task.id };
   }
@@ -498,6 +561,30 @@ export class TechnicalObservationsService {
     }
   }
 
+  private async recordObservationAudit(
+    action: ActivityAction,
+    orgId: string,
+    vehicleId: string,
+    observationId: string,
+    userId?: string,
+    meta?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.activityLog) return;
+    await this.activityLog.log({
+      organizationId: orgId,
+      userId,
+      action,
+      entity: ActivityEntity.VEHICLE,
+      entityId: vehicleId,
+      description: `Technical observation ${action.toLowerCase()} (${observationId.slice(0, 8)})`,
+      metaJson: {
+        auditAction: 'technical_observation',
+        observationId,
+        ...meta,
+      },
+    });
+  }
+
   private async observationLabel(vehicleId: string, row: VehicleComplaint): Promise<string> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -535,6 +622,12 @@ export class TechnicalObservationsService {
     row: VehicleComplaint,
     dto: TechnicalObservationDto,
   ): Promise<void> {
+    if (row.dedupeKey) {
+      void this.findingBridge?.resolveComplaint({
+        organizationId: orgId,
+        dedupeKey: row.dedupeKey,
+      });
+    }
     if (!this.notificationIngest) return;
     const label = await this.observationLabel(vehicleId, row);
     await this.notificationIngest.syncTechnicalObservationResolved({
