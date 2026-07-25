@@ -1626,6 +1626,9 @@ model Organization {
   whatsappConsents                       WhatsAppConsent[]
   whatsappTemplates                      WhatsAppTemplate[]
   whatsappAiSuggestions                  WhatsAppAiSuggestion[]
+  orgSmsConfig                           OrgSmsConfig?
+  outboundSms                            OutboundSms[]
+  smsConsents                            SmsConsent[]
   voiceAssistant                         VoiceAssistant?
   voiceConversations                     VoiceConversation[]
   insightPolicy                          TenantInsightPolicy?
@@ -5134,12 +5137,14 @@ model Customer {
   driverAttributionsAsBookingCustomer    DriverAttribution[]         @relation("DriverAttributionBookingCustomer")
   driverAttributionsAsDriver             DriverAttribution[]         @relation("DriverAttributionDriver")
   outboundEmails                         OutboundEmail[]
+  outboundSms                            OutboundSms[]
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingPaymentRequests                 BookingPaymentRequest[]
 
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
   whatsappConsents      WhatsAppConsent[]
+  smsConsents           SmsConsent[]
 
   @@index([organizationId])
   @@index([email])
@@ -5605,6 +5610,7 @@ model Booking {
   vehicleDamages          VehicleDamage[]
   whatsappConversations   WhatsAppConversation[]
   outboundEmails          OutboundEmail[]
+  outboundSms             OutboundSms[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
   documentGenerationJobs        BookingDocumentGenerationJob[]
   pickupGateAuditEvents         BookingPickupGateAuditEvent[]
@@ -10740,6 +10746,7 @@ model OrgWorkflow {
   lastTriggeredAt DateTime?      @map("last_triggered_at")
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
+  systemMetadata  Json?          @map("system_metadata")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -10797,6 +10804,7 @@ model OrgWorkflowActionRun {
   requiresApproval Boolean                 @default(false) @map("requires_approval")
   approvedByUserId String?                 @map("approved_by_user_id")
   approvedAt       DateTime?               @map("approved_at")
+  policySnapshot   Json?                   @map("policy_snapshot")
   startedAt        DateTime?               @map("started_at")
   finishedAt       DateTime?               @map("finished_at")
   createdAt        DateTime                @default(now()) @map("created_at")
@@ -11128,6 +11136,7 @@ enum OutboundEmailSourceType {
   PAYMENT_REFUND
   PAYMENT_DISPUTE
   BILLING_EMAIL
+  WORKFLOW
 }
 
 enum OutboundEmailStatus {
@@ -11319,6 +11328,131 @@ model BillingEmailSuppression {
   @@unique([organizationId, email])
   @@index([organizationId])
   @@map("billing_email_suppressions")
+}
+
+// ── SMS / Twilio messaging (workflow + transactional) ──
+
+enum OutboundSmsSourceType {
+  WORKFLOW
+  MANUAL
+  WHATSAPP_FALLBACK
+  SYSTEM
+}
+
+enum OutboundSmsStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  UNDELIVERED
+  SENT_SIMULATED
+}
+
+enum OutboundSmsEventType {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  UNDELIVERED
+}
+
+model OrgSmsConfig {
+  id                    String   @id @default(uuid())
+  organizationId        String   @unique @map("organization_id")
+  isActive              Boolean  @default(false) @map("is_active")
+  /// Twilio Messaging Service SID — preferred sender when set.
+  messagingServiceSid   String?  @map("messaging_service_sid")
+  /// Twilio Phone Number SID fallback when no messaging service.
+  fromPhoneNumberSid    String?  @map("from_phone_number_sid")
+  /// Masked sender display for audit/UI.
+  fromMaskedNumber      String?  @map("from_masked_number")
+  defaultLocale         String   @default("de") @map("default_locale")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("org_sms_config")
+}
+
+model SmsConsent {
+  id                   String    @id @default(uuid())
+  organizationId       String    @map("organization_id")
+  phoneNormalized      String    @map("phone_normalized")
+  customerId           String?   @map("customer_id")
+  optedInAt            DateTime? @map("opted_in_at")
+  optedOutAt           DateTime? @map("opted_out_at")
+  marketingAllowed     Boolean   @default(false) @map("marketing_allowed")
+  transactionalAllowed Boolean   @default(true) @map("transactional_allowed")
+  source               String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, phoneNormalized])
+  @@index([organizationId])
+  @@map("sms_consents")
+}
+
+model OutboundSms {
+  id                         String                @id @default(uuid())
+  organizationId             String                @map("organization_id")
+  bookingId                  String?               @map("booking_id")
+  customerId                 String?               @map("customer_id")
+  sourceType                 OutboundSmsSourceType @map("source_type")
+  status                     OutboundSmsStatus     @default(QUEUED)
+  toPhoneNormalized          String                @map("to_phone_normalized")
+  toPhoneMasked              String                @map("to_phone_masked")
+  fromSenderRef              String?               @map("from_sender_ref")
+  body                       String
+  templateKey                String?               @map("template_key")
+  templateVersion            String?               @map("template_version")
+  locale                     String?
+  segmentCount               Int?                  @map("segment_count")
+  estimatedCostUsd           Decimal?              @map("estimated_cost_usd") @db.Decimal(10, 6)
+  provider                   String?
+  providerMessageSid         String?               @unique @map("provider_message_sid")
+  sendIdempotencyKey         String?               @map("send_idempotency_key")
+  fallbackFromWhatsAppMsgId  String?               @map("fallback_from_whatsapp_msg_id")
+  errorCode                  String?               @map("error_code")
+  errorMessage               String?               @map("error_message")
+  sentAt                     DateTime?             @map("sent_at")
+  deliveredAt                DateTime?             @map("delivered_at")
+  createdAt                  DateTime              @default(now()) @map("created_at")
+  updatedAt                  DateTime              @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking      Booking?          @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer     Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  events       OutboundSmsEvent[]
+
+  @@unique([organizationId, sendIdempotencyKey], map: "outbound_sms_org_send_idempotency_key")
+  @@index([organizationId])
+  @@index([organizationId, customerId])
+  @@index([organizationId, bookingId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("outbound_sms")
+}
+
+model OutboundSmsEvent {
+  id                    String               @id @default(uuid())
+  outboundSmsId         String               @map("outbound_sms_id")
+  eventType             OutboundSmsEventType @map("event_type")
+  payload               Json?
+  webhookIdempotencyKey String?              @map("webhook_idempotency_key")
+  occurredAt            DateTime             @default(now()) @map("occurred_at")
+
+  outboundSms OutboundSms @relation(fields: [outboundSmsId], references: [id], onDelete: Cascade)
+
+  @@unique([outboundSmsId, webhookIdempotencyKey])
+  @@index([outboundSmsId])
+  @@index([eventType])
+  @@map("outbound_sms_events")
 }
 
 // ------------------------------------------------
@@ -11992,6 +12126,7 @@ model TwilioWebhookEvent {
   id              String    @id @default(uuid())
   organizationId  String?   @map("organization_id")
   callSid         String?   @map("call_sid")
+  messageSid      String?   @map("message_sid")
   externalEventId String    @map("external_event_id")
   eventType       String?   @map("event_type")
   payload         Json
@@ -12006,6 +12141,7 @@ model TwilioWebhookEvent {
   @@unique([externalEventId])
   @@index([organizationId, createdAt])
   @@index([callSid])
+  @@index([messageSid])
   @@map("twilio_webhook_events")
 }
 

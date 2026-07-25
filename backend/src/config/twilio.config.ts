@@ -25,6 +25,9 @@ export default registerAs('twilio', () => {
     region,
     edge,
     voiceWebhookBaseUrl,
+    smsSimulateEnabled:
+      process.env.TWILIO_SMS_SIMULATE_ENABLED === 'true' ||
+      (process.env.NODE_ENV !== 'production' && process.env.TWILIO_SMS_SIMULATE_ENABLED !== 'false'),
     configured: Boolean(accountSid && apiKeySid && apiKeySecret),
     webhookSigningConfigured: Boolean(authToken),
   };
