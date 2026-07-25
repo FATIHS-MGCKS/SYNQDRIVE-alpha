@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-backend-auth-audit-v49833-2026-07-25',
+    version: '4.9.833',
+    title: 'V4.9.833 — Operator App: Backend-Autorisierungs-Audit (Prompt 7)',
+    summary: [
+      'Vollständiger Auth-Audit aller 51 Operator-Endpunkte (10 Prüfpunkte pro Route).',
+      'Fix AUTHZ-OP-001: `VehicleOwnershipGuard` prüft jetzt ACTIVE-Membership + setzt `tenantId`.',
+      '17 neue Negative-/Guard-Tests (fremde Org, Membership, Customer-Verification, Query-Patterns).',
+      '9 Findings dokumentiert (AUTHZ-OP-001–009); nur eindeutige Tenant-Gaps behoben.',
+    ],
+    reason:
+      'Production-Readiness Prompt 7: IDOR-/Tenant-Isolation für Operator-API absichern ohne State-Machine-Änderungen vorwegzunehmen.',
+    previousBehavior:
+      'Vehicle-Scoped-Routen prüften Fahrzeug-Org-Match, aber nicht ACTIVE-Membership des Users.',
+    details:
+      'backend/src/shared/auth/vehicle-ownership.guard.ts; vehicle-ownership.guard.spec.ts; operator-endpoints-auth-audit.spec.ts; docs/audits/operator-app-production-readiness-2026-07.md §29.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:30:00.000Z',
+  },
+  {
     id: 'operator-app-frontend-gates-v49832-2026-07-25',
     version: '4.9.832',
     title: 'V4.9.832 — Operator App: zentrale Frontend Access Gates (Prompt 6)',

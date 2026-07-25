@@ -1335,6 +1335,218 @@ Navigation (tabs), Action Sheets, Booking read/create/update/cancel, Handover st
 
 ---
 
+## 29. Backend-Autorisierungs-Audit (Prompt 7)
+
+**Branch:** `cursor/operator-backend-auth-audit-46a7`  
+**Scope:** Alle von der Operator App aufgerufenen HTTP-Endpunkte (51 Routen, 12 Controller-Module).
+
+### 29.1 Prüfmatrix (pro Endpunkt)
+
+| # | Prüfpunkt | Guard-/Service-Ebene |
+|---|-----------|----------------------|
+| 1 | Authentifizierung | `JwtAuthGuard` / `@Public()` |
+| 2 | Aktive Organisation | `OrgScopingGuard` / `VehicleOwnershipGuard` / Service `organizationId` |
+| 3 | Membership | `OrgScopingGuard` / `VehicleOwnershipGuard` (ab Fix AUTHZ-OP-001) |
+| 4 | Permission | `PermissionsGuard` + `@RequirePermissions` |
+| 5 | Ressource ∈ Organisation | Service `findFirst({ organizationId })` / `assertOrgResource` |
+| 6 | Station Scope | `stationId` aus Membership, nicht aus Body |
+| 7 | Booking/Vehicle/Customer-Beziehung | Handover/Verification-Service-Ketten |
+| 8 | Finale/gesperrte Zustände | Handover `COMPLETED`/`CANCELLED`, Task `DONE` |
+| 9 | Audit Logging | `AuditService` / strukturierte Logger |
+| 10 | Sichere Fehlerantwort | `ForbiddenException` / `NotFoundException` ohne Tenant-Leak |
+
+### 29.2 Geprüfte Endpunkte (51)
+
+| Methode | Pfad | Auth | Org | Member | Perm | Ressource | Station | Beziehung | Final | Audit | Fehler |
+|---------|------|:----:|:---:|:------:|:----:|:---------:|:-------:|:---------:|:-----:|:-----:|:------:|
+| GET | `/auth/me` | ✓ | — | ✓ | — | — | — | — | — | — | ✓ |
+| GET | `/organizations/:orgId/bookings` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | — | ○ | ✓ |
+| GET | `/organizations/:orgId/bookings/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | — | ○ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/confirm` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | ○ | ✓ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/cancel` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | ○ | ✓ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/no-show` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | ○ | ✓ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/assign-vehicle` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ○ | ✓ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/unassign-vehicle` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ○ | ✓ | ✓ |
+| GET | `/organizations/:orgId/bookings/:id/handover` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ○ | ○ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/start` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ○ | ✓ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/complete` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ✓ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/cancel` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ✓ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/photos` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ○ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/signatures` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ○ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/checklist` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ○ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/mileage` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ○ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/fuel` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ○ | ✓ |
+| POST | `/organizations/:orgId/bookings/:id/handover/notes` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ✓ | ○ | ✓ |
+| GET | `/organizations/:orgId/tasks` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | — | ○ | ✓ |
+| GET | `/organizations/:orgId/tasks/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | — | ○ | ✓ |
+| POST | `/organizations/:orgId/tasks/:id/complete` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | ✓ | ✓ | ✓ |
+| POST | `/organizations/:orgId/tasks/:id/assign` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | ○ | ✓ | ✓ |
+| GET | `/organizations/:orgId/damages` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | — | ○ | ✓ |
+| POST | `/organizations/:orgId/damages` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | — | ✓ | ✓ |
+| GET | `/organizations/:orgId/damages/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | — | ○ | ✓ |
+| PATCH | `/organizations/:orgId/damages/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ○ | ○ | ✓ | ✓ |
+| POST | `/organizations/:orgId/damages/:id/photos` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | ✓ | ○ | ○ | ✓ |
+| GET | `/organizations/:orgId/customers` | ✓ | ✓ | ✓ | ○ | ✓ | — | — | — | ○ | ✓ |
+| GET | `/organizations/:orgId/customers/:id` | ✓ | ✓ | ✓ | ○ | ✓ | — | — | — | ○ | ✓ |
+| GET | `/organizations/:orgId/documents` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | — | ○ | ✓ |
+| POST | `/organizations/:orgId/documents` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | — | ✓ | ✓ |
+| GET | `/organizations/:orgId/documents/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | — | ○ | ✓ |
+| DELETE | `/organizations/:orgId/documents/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | — | ✓ | ✓ |
+| GET | `/organizations/:orgId/document-extractions` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | — | ○ | ✓ |
+| POST | `/organizations/:orgId/document-extractions` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | — | ✓ | ✓ |
+| GET | `/organizations/:orgId/document-extractions/:id` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | — | ○ | ✓ |
+| POST | `/organizations/:orgId/document-extractions/:id/confirm` | ✓ | ✓ | ✓ | ✓ | ✓ | — | ○ | ✓ | ✓ | ✓ |
+| GET | `/organizations/:orgId/dashboard-insights` | ✓ | ✓ | ✓ | ○ | ✓ | — | — | — | ○ | ✓ |
+| GET | `/organizations/:orgId/fleet-map` | ✓ | ✓ | ✓ | ✓ | ✓ | ○ | — | — | ○ | ✓ |
+| GET | `/organizations/:orgId/rental-health` | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — | ○ | ✓ |
+| GET | `/organizations/:orgId/users` | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — | ○ | ✓ |
+| GET | `/vehicles/:vehicleId/tires` | ✓ | ✓* | ✓* | ○ | ✓ | — | ✓ | — | ○ | ✓ |
+| GET | `/vehicles/:vehicleId/vehicle-intelligence` | ✓ | ✓* | ✓* | ○ | ✓ | — | ✓ | — | ○ | ✓ |
+| GET | `/vehicles/:vehicleId/documents` | ✓ | ✓* | ✓* | ○ | ✓ | — | ✓ | — | ○ | ✓ |
+| POST | `/vehicles/:vehicleId/documents` | ✓ | ✓* | ✓* | ○ | ✓ | — | ✓ | — | ✓ | ✓ |
+| GET | `/vehicles/:vehicleId/document-extractions` | ✓ | ✓* | ✓* | ✓ | ✓ | — | ✓ | — | ○ | ✓ |
+| POST | `/vehicles/:vehicleId/document-extractions` | ✓ | ✓* | ✓* | ✓ | ✓ | — | ✓ | — | ✓ | ✓ |
+| POST | `/customer-verification/start` | ✓ | ○ | ○ | ○ | ✓ | — | ✓ | — | ✓ | ✓ |
+| GET | `/customer-verification/:sessionId` | ✓ | ○ | ○ | ○ | ✓ | — | ✓ | — | ○ | ✓ |
+| POST | `/customer-verification/:sessionId/complete` | ✓ | ○ | ○ | ○ | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+
+\* `VehicleOwnershipGuard` — Org + Membership (AUTHZ-OP-001 Fix).  
+○ = teilweise / service-abhängig / nicht durchgängig erzwungen.  
+— = nicht anwendbar.
+
+### 29.3 Findings
+
+#### AUTHZ-OP-001 — VehicleOwnershipGuard ohne Membership-Prüfung
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | **P1** (geschlossen) |
+| **Endpunkt** | `GET/POST /vehicles/:vehicleId/*` (7 Routen) |
+| **Datei** | `backend/src/shared/auth/vehicle-ownership.guard.ts` |
+| **Exploit** | User mit gültigem JWT aber **ohne** ACTIVE-Membership in der Fahrzeug-Organisation konnte Vehicle-Scoped-Routen nutzen, solange `activeOrganizationId` gesetzt war. |
+| **Remediation** | Membership-Lookup analog `OrgScopingGuard`; `request.tenantId` setzen; Cross-Tenant-Denial loggen. |
+| **Testfall** | `vehicle-ownership.guard.spec.ts` — „rejects when user has no ACTIVE membership in vehicle organization“ |
+
+#### AUTHZ-OP-002 — Customer-Verification ohne PermissionsGuard
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P2 (offen, kein Tenant-Gap) |
+| **Endpunkt** | `POST/GET /customer-verification/*` |
+| **Datei** | `backend/src/modules/customer-verification/customer-verification.controller.ts` |
+| **Exploit** | Jeder authentifizierte Org-User mit `RolesGuard`-Pass kann Verification starten — unabhängig von `operator.customer.verify`. |
+| **Remediation** | `@RequirePermissions('operator.customer.verify')` oder `@RequireOperatorPermission`. |
+| **Testfall** | Integration: User ohne Permission → 403 |
+
+#### AUTHZ-OP-003 — Dashboard-Insights ohne PermissionsGuard
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P3 (offen) |
+| **Endpunkt** | `GET /organizations/:orgId/dashboard-insights` |
+| **Datei** | `backend/src/modules/dashboard-insights/dashboard-insights.controller.ts` |
+| **Exploit** | Jeder Org-Member sieht KPI-Aggregate — gewollt für Supervisor, aber nicht fein granuliert. |
+| **Remediation** | Optional `operator.dashboard.view` Permission. |
+| **Testfall** | Permission-Deny-Test nach Registry-Anbindung |
+
+#### AUTHZ-OP-004 — Customers-Liste ohne PermissionsGuard
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P3 (offen) |
+| **Endpunkt** | `GET /organizations/:orgId/customers`, `GET .../customers/:id` |
+| **Datei** | `backend/src/modules/customers/customers.controller.ts` |
+| **Exploit** | Jeder Org-Member kann Kundenliste lesen; Tenant-Isolation via Service ✓. |
+| **Remediation** | `operator.customer.view` auf Controller. |
+| **Testfall** | Permission-Deny nach Registry |
+
+#### AUTHZ-OP-005 — Operator-Permission-Registry nicht auf Controllern
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P1 (offen, bewusst deferred) |
+| **Endpunkt** | Alle Operator-Routen |
+| **Datei** | `operator-permission.constants.ts` vs. Controller-Decorators |
+| **Exploit** | Backend erzwingt generische Permissions (`bookings.read`), nicht Operator-Registry (`operator.booking.view`). Frontend-Gates allein — API umgehbar. |
+| **Remediation** | `@RequireOperatorPermission` schrittweise (Prompt 5 Backlog). |
+| **Testfall** | Registry-Integrationstests pro Permission |
+
+#### AUTHZ-OP-006 — Station-Scope nicht durchgängig
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P2 (offen, komplex) |
+| **Endpunkt** | Bookings-Liste, Tasks-Liste, Fleet-Map |
+| **Datei** | `bookings.service.ts`, `tasks.service.ts`, `fleet-map.service.ts` |
+| **Exploit** | Field Agent mit `stationId` könnte theoretisch fremde Station in Query filtern, wenn `stationId` Query-Param nicht an Membership gebunden wird. |
+| **Remediation** | `fieldAgentAccess.stationIds` erzwingen; Query-`stationId` ignorieren/validieren. |
+| **Testfall** | Fremde-Station-Negativtest (Backlog) |
+
+#### AUTHZ-OP-007 — Vehicle-Routen ohne explizite Permission
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P3 (offen) |
+| **Endpunkt** | `/vehicles/:vehicleId/tires`, `vehicle-intelligence`, `documents` |
+| **Datei** | `vehicles/*.controller.ts` |
+| **Exploit** | Org-Member mit Vehicle-Zugriff sieht Reifen/Intelligence ohne `operator.vehicle.view`. |
+| **Remediation** | Permission-Decorator auf Vehicle-Controller. |
+| **Testfall** | Permission-Deny |
+
+#### AUTHZ-OP-008 — Task-Zuweisung ohne Assignee-Org-Check
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P2 (offen, komplex) |
+| **Endpunkt** | `POST .../tasks/:id/assign` |
+| **Datei** | `tasks.service.ts` |
+| **Exploit** | Zuweisung an User-ID aus anderer Org, wenn Service nur Task-Org prüft, nicht Assignee-Membership. |
+| **Remediation** | Assignee `organizationId` + ACTIVE prüfen. |
+| **Testfall** | Fremder-Assignee-Negativtest |
+
+#### AUTHZ-OP-009 — Handover nach COMPLETED
+
+| Feld | Inhalt |
+|------|--------|
+| **Severity** | P2 (offen, State-Machine) |
+| **Endpunkt** | `POST .../handover/photos`, `signatures`, `checklist`, … |
+| **Datei** | `handover.service.ts` |
+| **Exploit** | Mutationen nach Abschluss möglich, wenn Service Final-State nicht hart blockiert. |
+| **Remediation** | `COMPLETED`/`CANCELLED` Guard in Service — **kein Fix in Prompt 7** (State-Machine). |
+| **Testfall** | Post-complete Mutation → 409 |
+
+### 29.4 Geschlossene IDOR-/Tenant-Gaps (Prompt 7)
+
+| Gap | Fix |
+|-----|-----|
+| VehicleOwnershipGuard Membership | `vehicle-ownership.guard.ts` — ACTIVE-Membership + `tenantId` |
+| Customer-Verification fremde Booking/Customer | Bereits in Service — Tests bestätigt |
+| Org-Scoped Services `findFirst` | Stichprobe: bookings, damages, documents, tasks — `organizationId` in WHERE |
+
+### 29.5 Negative Tests (neu)
+
+| Test | Datei |
+|------|-------|
+| Vehicle guard: keine Membership | `vehicle-ownership.guard.spec.ts` |
+| Vehicle guard: fremde Org | `vehicle-ownership.guard.spec.ts` |
+| Vehicle guard: Master Admin Bypass | `vehicle-ownership.guard.spec.ts` |
+| OrgScopingGuard fremde Org | `operator-endpoints-auth-audit.spec.ts` |
+| assertOrgResource fremde Org | `operator-endpoints-auth-audit.spec.ts` |
+| Customer-Verification fremder Customer | `operator-endpoints-auth-audit.spec.ts` |
+| Customer-Verification fremde Booking | `operator-endpoints-auth-audit.spec.ts` |
+| Customer-Verification Booking/Customer-Mismatch | `operator-endpoints-auth-audit.spec.ts` |
+| Query-Pattern: organizationId in WHERE | `operator-endpoints-auth-audit.spec.ts` |
+
+**Backlog (komplex):** fremde Station, fremde Task-ID Integration, fremdes Dokument E2E, fremder Schaden E2E — erfordern Test-DB-Fixtures.
+
+### 29.6 Geänderte Dateien (Prompt 7)
+
+- `backend/src/shared/auth/vehicle-ownership.guard.ts`
+- `backend/src/shared/auth/vehicle-ownership.guard.spec.ts` (neu)
+- `backend/src/modules/operator-app/operator-endpoints-auth-audit.spec.ts` (neu)
+
+---
+
 ## Anhang A — Geänderte Dateien
 
 | Prompt | Datei | Aktion |
@@ -1357,6 +1569,13 @@ Navigation (tabs), Action Sheets, Booking read/create/update/cancel, Handover st
 | 5 | `architecture/OPERATOR_PERMISSIONS_2026-07-25.md` | Architektur-Spec |
 | 5 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 27 |
 | 5 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.831 |
+| 6 | `frontend/src/operator/hooks/useOperatorPermissions.ts` | Zentrale UI-Gates |
+| 6 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.832 |
+| 7 | `backend/src/shared/auth/vehicle-ownership.guard.ts` | Membership-Prüfung |
+| 7 | `backend/src/shared/auth/vehicle-ownership.guard.spec.ts` | Guard-Tests (neu) |
+| 7 | `backend/src/modules/operator-app/operator-endpoints-auth-audit.spec.ts` | Audit-Tests (neu) |
+| 7 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 29 |
+| 7 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.833 |
 
 ---
 
