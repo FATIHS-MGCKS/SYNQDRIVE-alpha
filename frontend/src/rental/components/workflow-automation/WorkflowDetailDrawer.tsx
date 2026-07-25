@@ -35,7 +35,7 @@ interface WorkflowDetailDrawerProps {
 function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-2 border-b border-border/50 pb-4 last:border-0">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
       <div className="text-sm text-foreground">{children}</div>
     </section>
   );

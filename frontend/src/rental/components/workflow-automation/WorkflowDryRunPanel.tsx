@@ -84,7 +84,10 @@ export function WorkflowDryRunPanel({
           </StatusChip>
         </MetaRow>
         <MetaRow label={t('workflowAutomation.simulate.requestId')}>
-          <span className="font-mono text-xs">{plan.requestId}</span>
+          <span className="font-mono text-xs break-all">{plan.requestId}</span>
+        </MetaRow>
+        <MetaRow label={t('workflowAutomation.simulate.correlationId')}>
+          <span className="font-mono text-xs break-all">{plan.correlationId}</span>
         </MetaRow>
         <MetaRow label={t('workflowAutomation.simulate.timestamp')}>
           {new Date(plan.assessedAt).toLocaleString()}
@@ -200,12 +203,6 @@ export function WorkflowDryRunPanel({
             ))}
           </ul>
         </Block>
-      )}
-
-      {requestId && requestId !== plan.requestId && (
-        <p className="text-xs text-muted-foreground" aria-hidden>
-          stale
-        </p>
       )}
     </section>
   );

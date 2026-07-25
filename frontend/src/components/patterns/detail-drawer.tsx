@@ -111,7 +111,7 @@ export function DetailDrawer({
             <div className="min-w-0 flex-1 space-y-1.5">
               {eyebrow && <div className="sq-section-label">{eyebrow}</div>}
               <div className="flex min-w-0 items-center gap-2.5">
-                <SheetTitle className="min-w-0 truncate text-[16px]" data-slot="sheet-title">
+                <SheetTitle className="min-w-0 break-words text-[16px]" data-slot="sheet-title">
                   {title}
                 </SheetTitle>
                 {status}
