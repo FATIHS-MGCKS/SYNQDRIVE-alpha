@@ -1,5 +1,6 @@
 import { WorkflowEventOutboxStatus, Prisma } from '@prisma/client';
 import { WorkflowEventOutboxEnqueueService } from './workflow-event-outbox-enqueue.service';
+import { WorkflowIdempotencyService } from '../idempotency/workflow-idempotency.service';
 import {
   FIXTURE_OUTBOX_BOOKING_ID,
   FIXTURE_OUTBOX_ORG_ID,
@@ -68,6 +69,28 @@ function createOutboxHarness() {
       }),
       create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
         if (txFailed) throw new Error('outbox insert failed');
+        const dupEvent = outboxRows.find((r) => r.eventId === data.eventId);
+        if (dupEvent) {
+          const err = new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+            code: 'P2002',
+            clientVersion: '5',
+            meta: { target: ['event_id'] },
+          });
+          throw err;
+        }
+        const dupKey = outboxRows.find(
+          (r) =>
+            r.organizationId === data.organizationId
+            && r.idempotencyKey === data.idempotencyKey,
+        );
+        if (dupKey) {
+          const err = new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+            code: 'P2002',
+            clientVersion: '5',
+            meta: { target: ['organization_id', 'idempotency_key'] },
+          });
+          throw err;
+        }
         const row: OutboxRow = {
           id: `outbox-${++outboxSeq}`,
           eventId: data.eventId as string,
@@ -103,7 +126,14 @@ function createOutboxHarness() {
     }),
   };
 
-  const service = new WorkflowEventOutboxEnqueueService();
+  const idempotency = {
+    isUniqueConstraintError: (err: unknown) =>
+      err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002',
+    recordDecision: jest.fn().mockResolvedValue({}),
+    explainDuplicateSuppression: jest.fn().mockReturnValue('duplicate'),
+  } as unknown as WorkflowIdempotencyService;
+
+  const service = new WorkflowEventOutboxEnqueueService(idempotency);
 
   return {
     service,

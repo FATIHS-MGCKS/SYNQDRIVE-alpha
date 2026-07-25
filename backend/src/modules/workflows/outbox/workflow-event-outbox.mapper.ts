@@ -5,6 +5,7 @@ import { serializeWorkflowDomainEventEnvelope } from '../envelope';
 export function envelopeToOutboxCreateData(
   envelope: WorkflowDomainEventEnvelope,
   idempotencyKey: string,
+  occurrenceId?: string | null,
 ): Prisma.WorkflowEventOutboxUncheckedCreateInput {
   return {
     eventId: envelope.eventId,
@@ -20,6 +21,7 @@ export function envelopeToOutboxCreateData(
     causationId: envelope.causationId,
     source: envelope.source,
     idempotencyKey,
+    occurrenceId: occurrenceId ?? null,
     occurredAt: new Date(envelope.occurredAt),
     receivedAt: new Date(envelope.receivedAt),
     payload: envelope.payload as Prisma.InputJsonValue,

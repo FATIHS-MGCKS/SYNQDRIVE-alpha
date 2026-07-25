@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { ObservabilityModule } from '@modules/observability/observability.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { WorkflowIdempotencyModule } from '../idempotency';
 import { WorkflowEventOutboxRepository } from './workflow-event-outbox.repository';
 import { WorkflowEventOutboxEnqueueService } from './workflow-event-outbox-enqueue.service';
 import { WorkflowEventOutboxEmitterService } from './workflow-event-outbox-emitter.service';
@@ -17,6 +18,7 @@ import { WorkflowEventOutboxObservabilityService } from './workflow-event-outbox
     PrismaModule,
     ConfigModule,
     ObservabilityModule,
+    WorkflowIdempotencyModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.WORKFLOW_EVENT_OUTBOX }),
   ],
   providers: [

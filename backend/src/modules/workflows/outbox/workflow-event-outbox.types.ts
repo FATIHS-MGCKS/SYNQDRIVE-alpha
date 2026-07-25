@@ -12,8 +12,10 @@ export interface WorkflowEventOutboxEnqueueInput {
   correlationId?: string;
   causationId?: string | null;
   metadata?: Record<string, unknown>;
-  /** Business idempotency key — defaults to `{eventType}:{entityId}`. */
+  /** Business idempotency key — defaults to `{eventType}:{occurrenceId}`. */
   idempotencyKey?: string;
+  /** Stable business occurrence — folded into idempotencyKey when set. */
+  occurrenceId?: string | null;
   eventId?: string;
 }
 

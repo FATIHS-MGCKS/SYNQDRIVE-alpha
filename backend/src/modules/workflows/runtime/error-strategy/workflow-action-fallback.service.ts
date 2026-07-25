@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { buildWorkflowActionIdempotencyKey } from '../../idempotency';
 import { WorkflowActionRunRuntimeRepository } from '../workflow-action-run-runtime.repository';
 import { isActionCompensatable } from './workflow-action-error-strategy.constants';
 
@@ -56,20 +57,23 @@ export class WorkflowActionFallbackService {
     fallbackDepth: number;
     fallbackAction: FallbackActionDef;
     runIdempotencyKey: string;
+    occurrenceId?: string | null;
   }) {
     if (input.fallbackDepth >= this.maxFallbackDepth) {
       throw new BadRequestException('Maximum fallback depth exceeded');
     }
 
     const fallbackIndex = input.parentActionIndex + 1;
-    const idempotencyKey = `${input.runIdempotencyKey}:fallback:${input.parentActionRunId}:${input.fallbackAction.actionKey}`;
-
-    const existing = await this.prisma.workflowActionRun.findFirst({
-      where: { organizationId: input.organizationId, idempotencyKey },
+    const occurrenceId = input.occurrenceId ?? input.runIdempotencyKey.split(':').slice(-1)[0] ?? input.parentActionRunId;
+    const idempotencyKey = buildWorkflowActionIdempotencyKey({
+      organizationId: input.organizationId,
+      workflowVersionId: input.workflowVersionId,
+      actionStableId: input.fallbackAction.actionKey,
+      occurrenceId: `${occurrenceId}:fallback:${input.parentActionRunId}`,
     });
-    if (existing) return existing;
 
-    const inputSnapshot = {
+    try {
+      const inputSnapshot = {
       actionKey: input.fallbackAction.actionKey,
       actionIndex: fallbackIndex,
       actionType: input.fallbackAction.actionType,
@@ -104,9 +108,21 @@ export class WorkflowActionFallbackService {
         fallbackDepth: input.fallbackDepth + 1,
         maxAttempts: 5,
         idempotencyKey,
+        occurrenceId: `${occurrenceId}:fallback:${input.parentActionRunId}`,
+        actionStableId: input.fallbackAction.actionKey,
+        providerIdempotencyKey: idempotencyKey,
         input: (input.fallbackAction.config ?? {}) as Prisma.InputJsonValue,
         inputSnapshot: inputSnapshot as Prisma.InputJsonValue,
       },
     });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        const existing = await this.prisma.workflowActionRun.findFirst({
+          where: { organizationId: input.organizationId, idempotencyKey },
+        });
+        if (existing) return existing;
+      }
+      throw err;
+    }
   }
 }

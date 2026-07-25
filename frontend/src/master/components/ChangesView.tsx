@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-idempotency-v49839-2026-07-25',
+    version: '4.9.839',
+    title: 'V4.9.839 — Workflow occurrence/action idempotency (Phase 6 Prompt 29)',
+    summary: [
+      'Target formula: organizationId + workflowVersionId + actionStableId + occurrenceId = Action Idempotency Key.',
+      'DB unique constraints on run (org+version+occurrence) and action (org+version+actionStableId+occurrence); atomic insert + P2002 handling.',
+      'workflow_idempotency_decisions audit table for explainable DUPLICATE_SUPPRESSED / FORCE_REPLAY decisions.',
+      'Outbox persists occurrenceId; dispatch passes occurrence-based keys (not eventId UUID) to engine.',
+      'Tests: duplicate event, two DTCs same vehicle, two pickup-overdue bookings, parallel workers, replay modes, cross-tenant.',
+    ],
+    reason: 'Entity-only deduplication caused collisions (multiple DTCs per vehicle) and missed duplicates (eventId-based run keys).',
+    previousBehavior: 'Outbox fallback eventType:entityId; run key eventId:workflow:defId; action key runKey:action:index; check-then-create without atomic guard.',
+    details: 'docs/architecture/workflow-idempotency-strategy-2026-07.md. Module: backend/src/modules/workflows/idempotency/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T11:00:00.000Z',
+  },
+  {
     id: 'workflow-durable-timers-v49838-2026-07-25',
     version: '4.9.838',
     title: 'V4.9.838 — Durable workflow timers & delay steps (Phase 6 Prompt 28)',

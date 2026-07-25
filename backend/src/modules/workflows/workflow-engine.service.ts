@@ -14,6 +14,7 @@ import {
   type WorkflowScopeDef,
 } from './workflow-definition.validator';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import { resolveWorkflowOccurrenceId } from './idempotency';
 
 export interface WorkflowDomainEvent {
   organizationId: string;
@@ -23,6 +24,11 @@ export interface WorkflowDomainEvent {
   payload: Record<string, unknown>;
   occurredAt?: Date;
   idempotencyKey?: string;
+  eventId?: string;
+  correlationId?: string;
+  causationId?: string;
+  occurrenceId?: string;
+  metadata?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -95,41 +101,25 @@ export class WorkflowEngineService {
       return this.createSkippedRun(workflow, event, conditionEval);
     }
 
-    const baseKey =
-      event.idempotencyKey ??
-      `${event.type}:${event.entityType ?? 'none'}:${event.entityId ?? 'none'}`;
-    const idempotencyKey = `${baseKey}:workflow:${workflow.id}`;
+    const occurrenceId = this.resolveOccurrenceId(event);
+    const idempotencyKey = `${event.organizationId}:legacy:${workflow.id}:${occurrenceId}`;
 
-    const existing = await this.prisma.orgWorkflowRun.findUnique({
-      where: {
-        organizationId_idempotencyKey: {
+    try {
+      const run = await this.prisma.orgWorkflowRun.create({
+        data: {
           organizationId: event.organizationId,
+          workflowId: workflow.id,
+          workflowVersion: workflow.version,
+          eventType: event.type,
+          entityType: event.entityType ?? null,
+          entityId: event.entityId ?? null,
+          status: 'RUNNING',
+          inputPayload: event.payload as unknown as Prisma.InputJsonValue,
+          conditionResult: conditionEval as unknown as Prisma.InputJsonValue,
           idempotencyKey,
+          startedAt: event.occurredAt ?? new Date(),
         },
-      },
-    });
-    if (existing) {
-      this.logger.debug(
-        `Skipping duplicate workflow run ${idempotencyKey} for org ${event.organizationId}`,
-      );
-      return existing.id;
-    }
-
-    const run = await this.prisma.orgWorkflowRun.create({
-      data: {
-        organizationId: event.organizationId,
-        workflowId: workflow.id,
-        workflowVersion: workflow.version,
-        eventType: event.type,
-        entityType: event.entityType ?? null,
-        entityId: event.entityId ?? null,
-        status: 'RUNNING',
-        inputPayload: event.payload as unknown as Prisma.InputJsonValue,
-        conditionResult: conditionEval as unknown as Prisma.InputJsonValue,
-        idempotencyKey,
-        startedAt: event.occurredAt ?? new Date(),
-      },
-    });
+      });
 
     const actions = (workflow.actions as unknown as WorkflowActionDef[]) ?? [];
     let runStatus: WorkflowRunStatus = 'SUCCESS';
@@ -203,6 +193,38 @@ export class WorkflowEngineService {
     });
 
     return run.id;
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        const existing = await this.prisma.orgWorkflowRun.findUnique({
+          where: {
+            organizationId_idempotencyKey: {
+              organizationId: event.organizationId,
+              idempotencyKey,
+            },
+          },
+        });
+        if (existing) {
+          this.logger.debug(
+            `Skipping duplicate workflow run ${idempotencyKey} for org ${event.organizationId}`,
+          );
+          return existing.id;
+        }
+      }
+      throw err;
+    }
+  }
+
+  private resolveOccurrenceId(event: WorkflowDomainEvent): string {
+    if (event.occurrenceId?.trim()) return event.occurrenceId.trim();
+    return resolveWorkflowOccurrenceId({
+      eventType: event.type,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      eventId: event.eventId,
+      payload: event.payload,
+      metadata: event.metadata,
+      occurrenceId: event.occurrenceId,
+    });
   }
 
   private async createSkippedRun(
@@ -210,36 +232,39 @@ export class WorkflowEngineService {
     event: WorkflowDomainEvent,
     conditionResult: unknown,
   ): Promise<string> {
-    const baseKey =
-      event.idempotencyKey ??
-      `${event.type}:${event.entityType ?? 'none'}:${event.entityId ?? 'none'}`;
-    const idempotencyKey = `${baseKey}:workflow:${workflow.id}:skipped`;
+    const occurrenceId = this.resolveOccurrenceId(event);
+    const idempotencyKey = `${event.organizationId}:legacy:${workflow.id}:${occurrenceId}:skipped`;
 
-    const existing = await this.prisma.orgWorkflowRun.findUnique({
-      where: {
-        organizationId_idempotencyKey: {
+    try {
+      const run = await this.prisma.orgWorkflowRun.create({
+        data: {
           organizationId: event.organizationId,
+          workflowId: workflow.id,
+          workflowVersion: workflow.version,
+          eventType: event.type,
+          entityType: event.entityType ?? null,
+          entityId: event.entityId ?? null,
+          status: 'SKIPPED',
+          inputPayload: event.payload as unknown as Prisma.InputJsonValue,
+          conditionResult: conditionResult as unknown as Prisma.InputJsonValue,
           idempotencyKey,
+          finishedAt: new Date(),
         },
-      },
-    });
-    if (existing) return existing.id;
-
-    const run = await this.prisma.orgWorkflowRun.create({
-      data: {
-        organizationId: event.organizationId,
-        workflowId: workflow.id,
-        workflowVersion: workflow.version,
-        eventType: event.type,
-        entityType: event.entityType ?? null,
-        entityId: event.entityId ?? null,
-        status: 'SKIPPED',
-        inputPayload: event.payload as unknown as Prisma.InputJsonValue,
-        conditionResult: conditionResult as unknown as Prisma.InputJsonValue,
-        idempotencyKey,
-        finishedAt: new Date(),
-      },
-    });
-    return run.id;
+      });
+      return run.id;
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        const existing = await this.prisma.orgWorkflowRun.findUnique({
+          where: {
+            organizationId_idempotencyKey: {
+              organizationId: event.organizationId,
+              idempotencyKey,
+            },
+          },
+        });
+        if (existing) return existing.id;
+      }
+      throw err;
+    }
   }
 }

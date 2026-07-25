@@ -1730,6 +1730,7 @@ model Organization {
   workflowDeliveries                                        WorkflowDelivery[]
   workflowEventOutbox                                       WorkflowEventOutbox[]
   workflowTimers                                            WorkflowTimer[]
+  workflowIdempotencyDecisions                              WorkflowIdempotencyDecision[]
   workflowRevisions                                         WorkflowRevision[]
   workflowRuntimeStatusTransitions                          WorkflowRuntimeStatusTransition[]
   workflowExecutionSnapshots                                WorkflowExecutionSnapshot[]
@@ -11297,6 +11298,10 @@ model WorkflowRun {
   /// Set only while status = WAITING_FOR_APPROVAL.
   approvalId           String?                  @unique @map("approval_id")
   idempotencyKey       String                   @map("idempotency_key")
+  /// Stable business occurrence — same fact re-delivered maps here (no PII).
+  occurrenceId         String?                  @map("occurrence_id")
+  /// Source domain event instance id.
+  eventId              String?                  @map("event_id")
   correlationId        String?                  @map("correlation_id")
   /// Domain event payload — may contain PII; minimize at write time.
   inputPayload         Json                     @map("input_payload")
@@ -11332,6 +11337,7 @@ model WorkflowRun {
   executionSnapshot WorkflowExecutionSnapshot?
 
   @@unique([organizationId, idempotencyKey], map: "workflow_runs_org_idempotency_key")
+  @@unique([organizationId, workflowVersionId, occurrenceId], map: "workflow_runs_org_version_occurrence_key")
   @@index([organizationId, workflowDefinitionId, createdAt])
   @@index([organizationId, status, createdAt])
   @@index([organizationId, entityType, entityId])
@@ -11374,6 +11380,12 @@ model WorkflowActionRun {
   fallbackDepth        Int                            @default(0) @map("fallback_depth")
   partialFailure       Boolean                        @default(false) @map("partial_failure")
   idempotencyKey       String                         @map("idempotency_key")
+  /// Stable business occurrence copied from parent run.
+  occurrenceId         String?                        @map("occurrence_id")
+  /// Stable action identifier within version graph (actionKey).
+  actionStableId       String?                        @map("action_stable_id")
+  /// Key passed to external providers — same formula as idempotencyKey.
+  providerIdempotencyKey String?                      @map("provider_idempotency_key")
   /// Frozen action input at first claim — no secrets.
   inputSnapshot        Json?                          @map("input_snapshot")
   input                Json?
@@ -11408,6 +11420,7 @@ model WorkflowActionRun {
 
   @@unique([workflowRunId, actionIndex], map: "workflow_action_runs_run_index_key")
   @@unique([organizationId, idempotencyKey], map: "workflow_action_runs_org_idempotency_key")
+  @@unique([organizationId, workflowVersionId, actionStableId, occurrenceId], map: "workflow_action_runs_occurrence_action_key")
   @@index([organizationId, status])
   @@index([workflowRunId, actionIndex])
   @@index([workflowActionId])
@@ -11551,6 +11564,8 @@ model WorkflowEventOutbox {
   causationId      String?                   @map("causation_id")
   source           String
   idempotencyKey   String                    @map("idempotency_key")
+  /// Stable business occurrence for deduplication (no PII).
+  occurrenceId     String?                   @map("occurrence_id")
   occurredAt       DateTime                  @map("occurred_at")
   receivedAt       DateTime                  @default(now()) @map("received_at")
   /// Minimized payload — entity refs only, no secrets.
@@ -11575,6 +11590,7 @@ model WorkflowEventOutbox {
   workflowRun  WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, idempotencyKey], map: "workflow_event_outbox_org_idempotency_key")
+  @@index([organizationId, occurrenceId])
   @@index([status, availableAt])
   @@index([organizationId, eventType, createdAt])
   @@index([correlationId])
@@ -11612,6 +11628,30 @@ model WorkflowTimer {
   @@index([organizationId, workflowRunId])
   @@index([organizationId, occurrenceId])
   @@map("workflow_timers")
+}
+
+/// Explainable idempotency / deduplication audit log.
+model WorkflowIdempotencyDecision {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  entityType     String   @map("entity_type")
+  scopeKey       String   @map("scope_key")
+  outcome        String
+  reason         String
+  occurrenceId   String?  @map("occurrence_id")
+  eventId        String?  @map("event_id")
+  correlationId  String?  @map("correlation_id")
+  causationId    String?  @map("causation_id")
+  workflowRunId  String?  @map("workflow_run_id")
+  actionId       String?  @map("action_id")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, scopeKey, createdAt])
+  @@index([organizationId, occurrenceId])
+  @@map("workflow_idempotency_decisions")
 }
 
 /// Append-only audit trail for definition/version lifecycle.

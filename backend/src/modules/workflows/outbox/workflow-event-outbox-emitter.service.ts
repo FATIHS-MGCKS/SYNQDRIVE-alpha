@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import workflowEventOutboxConfig from '@config/workflow-event-outbox.config';
-import { buildWorkflowOutboxIdempotencyKey } from './workflow-event-outbox.constants';
+import { buildWorkflowOutboxOccurrenceKey } from '../idempotency';
 import { WorkflowEventOutboxEnqueueService } from './workflow-event-outbox-enqueue.service';
 import type {
   WorkflowEventEmitGroup,
@@ -50,11 +50,8 @@ export class WorkflowEventOutboxEmitterService {
     const idempotencyKey =
       input.idempotencyKey?.trim()
       ?? (input.occurrenceId
-        ? buildWorkflowOutboxIdempotencyKey([input.eventType, input.occurrenceId])
-        : buildWorkflowOutboxIdempotencyKey([
-          input.eventType,
-          input.entityId ?? input.payload?.bookingId?.toString() ?? '',
-        ]));
+        ? buildWorkflowOutboxOccurrenceKey(input.eventType, input.occurrenceId)
+        : undefined);
 
     return this.enqueue.enqueueInTransaction(tx, {
       organizationId: input.organizationId,
@@ -70,6 +67,7 @@ export class WorkflowEventOutboxEmitterService {
       metadata: input.metadata,
       eventId: input.eventId,
       idempotencyKey,
+      occurrenceId: input.occurrenceId,
     });
   }
 

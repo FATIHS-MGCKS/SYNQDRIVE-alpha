@@ -3,7 +3,11 @@ import { Prisma, WorkflowEventOutboxStatus } from '@prisma/client';
 import { createWorkflowDomainEventEnvelope } from '../envelope';
 import { envelopeToOutboxCreateData } from './workflow-event-outbox.mapper';
 import {
-  buildWorkflowOutboxIdempotencyKey,
+  buildWorkflowOutboxOccurrenceKey,
+  resolveWorkflowOccurrenceId,
+  WorkflowIdempotencyService,
+} from '../idempotency';
+import {
   truncateOutboxErrorSummary,
 } from './workflow-event-outbox.constants';
 import type {
@@ -14,6 +18,8 @@ import { WorkflowEventOutboxEnqueueError } from './workflow-event-outbox.types';
 
 @Injectable()
 export class WorkflowEventOutboxEnqueueService {
+  constructor(private readonly idempotency: WorkflowIdempotencyService) {}
+
   /**
    * Atomically enqueue a validated workflow domain event inside an existing transaction.
    * Rolls back the caller transaction when envelope validation fails.
@@ -30,24 +36,19 @@ export class WorkflowEventOutboxEnqueueService {
       );
     }
 
+    const occurrenceId = resolveWorkflowOccurrenceId({
+      eventType: input.eventType,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      eventId: input.eventId,
+      occurrenceId: input.occurrenceId,
+      payload: input.payload,
+      metadata: input.metadata,
+    });
+
     const idempotencyKey =
       input.idempotencyKey?.trim()
-      ?? buildWorkflowOutboxIdempotencyKey([
-        input.eventType,
-        input.entityId ?? input.payload?.bookingId?.toString() ?? input.payload?.invoiceId?.toString() ?? input.payload?.vehicleId?.toString() ?? '',
-      ]);
-
-    const existing = await tx.workflowEventOutbox.findUnique({
-      where: {
-        organizationId_idempotencyKey: {
-          organizationId: input.organizationId.trim(),
-          idempotencyKey,
-        },
-      },
-    });
-    if (existing) {
-      return this.toRecord(existing);
-    }
+      ?? buildWorkflowOutboxOccurrenceKey(input.eventType, occurrenceId);
 
     const envelopeResult = createWorkflowDomainEventEnvelope({
       organizationId: input.organizationId,
@@ -60,7 +61,10 @@ export class WorkflowEventOutboxEnqueueService {
       entityId: input.entityId,
       correlationId: input.correlationId,
       causationId: input.causationId,
-      metadata: input.metadata,
+      metadata: {
+        ...(input.metadata ?? {}),
+        occurrenceId,
+      },
       eventId: input.eventId,
     });
 
@@ -74,28 +78,30 @@ export class WorkflowEventOutboxEnqueueService {
 
     const envelope = envelopeResult.envelope;
 
-    const duplicateEventId = await tx.workflowEventOutbox.findUnique({
-      where: { eventId: envelope.eventId },
-    });
-    if (duplicateEventId) {
-      throw new WorkflowEventOutboxEnqueueError(
-        `Duplicate eventId: ${envelope.eventId}`,
-        'DUPLICATE_EVENT_ID',
-        'eventId',
-      );
-    }
-
     try {
       const row = await tx.workflowEventOutbox.create({
-        data: envelopeToOutboxCreateData(envelope, idempotencyKey),
+        data: envelopeToOutboxCreateData(envelope, idempotencyKey, occurrenceId),
       });
+      await this.idempotency.recordDecision(
+        {
+          organizationId: input.organizationId.trim(),
+          entityType: 'OUTBOX',
+          scopeKey: idempotencyKey,
+          outcome: 'ACCEPTED',
+          reason: 'Outbox row created',
+          occurrenceId,
+          eventId: envelope.eventId,
+          correlationId: envelope.correlationId,
+          causationId: envelope.causationId,
+        },
+        tx,
+      );
       return this.toRecord(row);
     } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError
-        && err.code === 'P2002'
-      ) {
-        const target = Array.isArray(err.meta?.target) ? err.meta.target.join(',') : '';
+      if (this.idempotency.isUniqueConstraintError(err)) {
+        const target = Array.isArray((err as Prisma.PrismaClientKnownRequestError).meta?.target)
+          ? ((err as Prisma.PrismaClientKnownRequestError).meta?.target as string[]).join(',')
+          : '';
         if (target.includes('event_id')) {
           throw new WorkflowEventOutboxEnqueueError(
             `Duplicate eventId: ${envelope.eventId}`,
@@ -111,7 +117,26 @@ export class WorkflowEventOutboxEnqueueService {
             },
           },
         });
-        if (raced) return this.toRecord(raced);
+        if (raced) {
+          await this.idempotency.recordDecision(
+            {
+              organizationId: input.organizationId.trim(),
+              entityType: 'OUTBOX',
+              scopeKey: idempotencyKey,
+              outcome: 'DUPLICATE_SUPPRESSED',
+              reason: this.idempotency.explainDuplicateSuppression({
+                entityType: 'OUTBOX',
+                scopeKey: idempotencyKey,
+                existingId: raced.id,
+              }),
+              occurrenceId,
+              eventId: envelope.eventId,
+              correlationId: envelope.correlationId,
+            },
+            tx,
+          );
+          return this.toRecord(raced);
+        }
       }
       throw err;
     }

@@ -4,6 +4,7 @@ import workflowRuntimeConfig from '@config/workflow-runtime.config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { WorkflowActionExecutorService } from '../workflow-action-executor.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { WorkflowIdempotencyModule } from '../idempotency';
 import { WorkflowActionRunRuntimeRepository } from './workflow-action-run-runtime.repository';
 import { WorkflowActionRunRuntimeService } from './workflow-action-run-runtime.service';
 import { WorkflowActionRunExecutorService } from './workflow-action-run-executor.service';
@@ -34,7 +35,7 @@ import { WorkflowDelayResumeService } from './timers/workflow-delay-resume.servi
 import { WorkflowTimerFireService } from './timers/workflow-timer-fire.service';
 
 @Module({
-  imports: [PrismaModule, TasksModule, ConfigModule.forFeature(workflowRuntimeConfig), WorkflowTimersCoreModule],
+  imports: [PrismaModule, TasksModule, ConfigModule.forFeature(workflowRuntimeConfig), WorkflowTimersCoreModule, WorkflowIdempotencyModule],
   controllers: [WorkflowApprovalController, WorkflowRunController],
   providers: [
     WorkflowRunRuntimeRepository,

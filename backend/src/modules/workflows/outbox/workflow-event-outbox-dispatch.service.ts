@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { buildWorkflowDomainEventEnvelope } from '../envelope';
 import type { WorkflowDomainEventEnvelope } from '../envelope';
+import { resolveOccurrenceIdFromEnvelope } from '../idempotency';
 import { WorkflowEngineService, type WorkflowDomainEvent } from '../workflow-engine.service';
 import { outboxRowToEnvelope } from './workflow-event-outbox.mapper';
 import {
@@ -30,7 +31,7 @@ export class WorkflowEventOutboxDispatchService {
     await this.assertTenant(row.organizationId);
 
     const validated = this.revalidateEnvelope(storedEnvelope, row.organizationId);
-    const engineEvent = this.toEngineEvent(validated);
+    const engineEvent = this.toEngineEvent(validated, row);
     return this.engine.processEvent(engineEvent);
   }
 
@@ -90,15 +91,29 @@ export class WorkflowEventOutboxDispatchService {
     return result.envelope;
   }
 
-  private toEngineEvent(envelope: WorkflowDomainEventEnvelope): WorkflowDomainEvent {
+  private toEngineEvent(
+    envelope: WorkflowDomainEventEnvelope,
+    row: WorkflowEventOutboxRow,
+  ): WorkflowDomainEvent {
+    const occurrenceId =
+      row.occurrenceId
+      ?? (typeof envelope.metadata.occurrenceId === 'string'
+        ? envelope.metadata.occurrenceId
+        : resolveOccurrenceIdFromEnvelope(envelope));
+
     return {
       organizationId: envelope.organizationId,
       type: envelope.eventType,
       entityType: envelope.entityType ?? undefined,
       entityId: envelope.entityId ?? undefined,
-      payload: { ...envelope.payload },
+      payload: { ...envelope.payload, occurrenceId },
       occurredAt: new Date(envelope.occurredAt),
-      idempotencyKey: envelope.eventId,
+      idempotencyKey: row.idempotencyKey,
+      eventId: envelope.eventId,
+      correlationId: envelope.correlationId,
+      causationId: envelope.causationId ?? undefined,
+      occurrenceId,
+      metadata: { ...envelope.metadata, occurrenceId },
     };
   }
 }

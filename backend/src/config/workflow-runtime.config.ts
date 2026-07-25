@@ -24,4 +24,9 @@ export default registerAs('workflowRuntime', () => ({
   ),
   /** Log warning when timer fires later than this threshold (ms). */
   timerLateWarningMs: parseInt(process.env.WORKFLOW_RUNTIME_TIMER_LATE_WARNING_MS ?? '60000', 10),
+  /** Deduplication audit window — uniqueness enforced by DB constraints regardless. */
+  idempotencyDedupWindowMs: parseInt(
+    process.env.WORKFLOW_IDEMPOTENCY_DEDUP_WINDOW_MS ?? String(90 * 24 * 60 * 60 * 1000),
+    10,
+  ),
 }));

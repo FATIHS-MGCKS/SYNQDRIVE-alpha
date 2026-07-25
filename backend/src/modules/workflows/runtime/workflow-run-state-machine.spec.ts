@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { WorkflowRunOrchestratorService } from './workflow-run-orchestrator.service';
 import { WorkflowRunWorkerService } from './workflow-run-worker.service';
 import { WorkflowRunOrchestratorRepository } from './workflow-run-orchestrator.repository';
+import { WorkflowIdempotencyService } from '../idempotency/workflow-idempotency.service';
 import { WorkflowActionRunRuntimeRepository } from './workflow-action-run-runtime.repository';
 import { WorkflowRunRuntimeRepository } from './workflow-run-runtime.repository';
 import { WorkflowRunRuntimeService } from './workflow-run-runtime.service';
@@ -24,6 +25,14 @@ const ACTION_1 = 'action-0001';
 const ACTION_2 = 'action-0002';
 const DEF_ID = 'def-0001';
 const VER_ID = 'ver-0001';
+
+function createIdempotencyMock() {
+  return {
+    isUniqueConstraintError: jest.fn().mockReturnValue(false),
+    recordDecision: jest.fn().mockResolvedValue({}),
+    explainDuplicateSuppression: jest.fn().mockReturnValue('duplicate'),
+  } as unknown as WorkflowIdempotencyService;
+}
 
 function envelope(): WorkflowDomainEventEnvelope {
   return {
@@ -199,13 +208,23 @@ describe('WorkflowRunStateMachine', () => {
   });
 
   describe('WorkflowRunOrchestratorService', () => {
-    it('returns existing run on idempotent create', async () => {
+    it('returns existing run on idempotent create (constraint conflict)', async () => {
       const prisma = createPrismaMock();
-      const existing = { id: RUN_ID, organizationId: ORG_A };
+      const existing = { id: RUN_ID, organizationId: ORG_A, actionRuns: [] };
+      prisma.workflowVersion.findFirst.mockResolvedValue(versionGraph());
+      prisma.workflowPolicySnapshot.findUnique.mockResolvedValue({ id: 'policy-1' });
+      const p2002 = Object.assign(new Error('dup'), {
+        code: 'P2002',
+        constructor: { name: 'PrismaClientKnownRequestError' },
+      });
+      prisma.$transaction.mockRejectedValue(p2002);
       prisma.workflowRun.findUnique.mockResolvedValue(existing);
 
+      const idempotency = createIdempotencyMock();
+      (idempotency.isUniqueConstraintError as jest.Mock).mockReturnValue(true);
+
       const repo = new WorkflowRunOrchestratorRepository(prisma as never);
-      const service = new WorkflowRunOrchestratorService(repo);
+      const service = new WorkflowRunOrchestratorService(repo, idempotency);
 
       const result = await service.createRunFromMatch({
         organizationId: ORG_A,
@@ -214,7 +233,9 @@ describe('WorkflowRunStateMachine', () => {
       });
 
       expect(result).toBe(existing);
-      expect(prisma.workflowVersion.findFirst).not.toHaveBeenCalled();
+      expect(idempotency.recordDecision).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'DUPLICATE_SUPPRESSED' }),
+      );
     });
 
     it('creates skipped run when conditions fail', async () => {
@@ -224,6 +245,10 @@ describe('WorkflowRunStateMachine', () => {
         versionGraph({
           conditionGroups: [
             {
+              id: 'cg-1',
+              parentGroupId: null,
+              logicOperator: 'ALL',
+              sortOrder: 0,
               conditions: [
                 {
                   fieldPath: 'payload.bookingId',
@@ -247,7 +272,7 @@ describe('WorkflowRunStateMachine', () => {
       prisma.__tx.workflowRun.findFirstOrThrow.mockResolvedValue(skippedRun);
 
       const repo = new WorkflowRunOrchestratorRepository(prisma as never);
-      const service = new WorkflowRunOrchestratorService(repo);
+      const service = new WorkflowRunOrchestratorService(repo, createIdempotencyMock());
       const result = await service.createRunFromMatch({
         organizationId: ORG_A,
         match: match(),
@@ -271,7 +296,7 @@ describe('WorkflowRunStateMachine', () => {
       });
 
       const repo = new WorkflowRunOrchestratorRepository(prisma as never);
-      const service = new WorkflowRunOrchestratorService(repo);
+      const service = new WorkflowRunOrchestratorService(repo, createIdempotencyMock());
       await service.createRunFromMatch({
         organizationId: ORG_A,
         match: match(),

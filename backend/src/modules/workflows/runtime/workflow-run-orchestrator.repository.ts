@@ -4,6 +4,10 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { evaluatePrismaConditionGroups } from '../conditions';
 import type { WorkflowDomainEventEnvelope } from '../envelope';
+import {
+  buildWorkflowActionIdempotencyKey,
+  buildWorkflowProviderIdempotencyKey,
+} from '../idempotency';
 import type { WorkflowMatcherMatchedWorkflow } from '../matcher/workflow-matcher.types';
 import { WORKFLOW_RUNTIME_STATUS_ERROR_CODES } from './workflow-runtime-status.errors';
 
@@ -24,6 +28,7 @@ export interface CreateWorkflowRunInput {
   match: WorkflowMatcherMatchedWorkflow;
   envelope: WorkflowDomainEventEnvelope;
   idempotencyKey: string;
+  occurrenceId: string;
 }
 
 @Injectable()
@@ -129,6 +134,8 @@ export class WorkflowRunOrchestratorRepository {
           entityId: input.envelope.entityId ?? null,
           status: input.skipped ? 'SKIPPED' : 'PENDING',
           idempotencyKey: input.idempotencyKey,
+          occurrenceId: input.occurrenceId,
+          eventId: input.envelope.eventId,
           correlationId: input.envelope.correlationId,
           inputPayload: payload as Prisma.InputJsonValue,
           definitionSnapshot: definitionSnapshot as Prisma.InputJsonValue,
@@ -172,7 +179,19 @@ export class WorkflowRunOrchestratorRepository {
 
       if (!input.skipped) {
         for (const action of input.version.actions) {
-          const actionIdempotencyKey = `${input.idempotencyKey}:action:${action.actionIndex}`;
+          const actionStableId = action.actionKey;
+          const actionIdempotencyKey = buildWorkflowActionIdempotencyKey({
+            organizationId: input.organizationId,
+            workflowVersionId: input.match.workflowVersionId,
+            actionStableId,
+            occurrenceId: input.occurrenceId,
+          });
+          const providerIdempotencyKey = buildWorkflowProviderIdempotencyKey({
+            organizationId: input.organizationId,
+            workflowVersionId: input.match.workflowVersionId,
+            actionStableId,
+            occurrenceId: input.occurrenceId,
+          });
           const errorStrategy =
             (action as { errorStrategy?: string }).errorStrategy ?? 'STOP_WORKFLOW';
           const blockingOnFailure = !['CONTINUE', 'SKIP_ACTION', 'MARK_PARTIAL', 'EXECUTE_FALLBACK'].includes(
@@ -209,6 +228,9 @@ export class WorkflowRunOrchestratorRepository {
               compensatable: (action as { compensatable?: boolean }).compensatable ?? false,
               maxAttempts: 5,
               idempotencyKey: actionIdempotencyKey,
+              occurrenceId: input.occurrenceId,
+              actionStableId,
+              providerIdempotencyKey,
               input: (action.config ?? {}) as Prisma.InputJsonValue,
               inputSnapshot: inputSnapshot as Prisma.InputJsonValue,
             },
