@@ -89,9 +89,16 @@ function adminPermissions(): MembershipPermissionsMap {
     })),
     mergePermissions(
       legalDocumentFullPermissions(),
-      mergePermissions(rentalRulesFullPermissions(), bookingEligibilityFullPermissions()),
+      mergePermissions(
+        rentalRulesFullPermissions(),
+        mergePermissions(bookingEligibilityFullPermissions(), adminEmergencyOverridePermissions()),
+      ),
     ),
   );
+}
+
+function adminEmergencyOverridePermissions(): MembershipPermissionsMap {
+  return { 'workflow-emergency-override': all(false, false, true) };
 }
 
 function subAdminPermissions(): MembershipPermissionsMap {

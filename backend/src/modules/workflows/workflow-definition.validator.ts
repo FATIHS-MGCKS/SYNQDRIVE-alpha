@@ -133,7 +133,13 @@ export function validateWorkflowDefinition(input: {
     };
   });
 
-  const conditions = Array.isArray(input.conditions) ? input.conditions : [];
+  const conditions = input.conditions;
+  const normalizedConditions =
+    conditions === undefined
+      ? []
+      : Array.isArray(conditions) || (typeof conditions === 'object' && conditions !== null)
+        ? conditions
+        : [];
 
   const scope = input.scope ?? { type: 'organization' };
   if (!scope.type) {
@@ -142,7 +148,7 @@ export function validateWorkflowDefinition(input: {
 
   return {
     trigger: { ...trigger, type: canonicalTrigger },
-    conditions,
+    conditions: normalizedConditions as WorkflowConditionDef[],
     actions: normalizedActions,
     scope,
   };

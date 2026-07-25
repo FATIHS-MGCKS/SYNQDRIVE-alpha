@@ -29,6 +29,7 @@ export { default as billingEmailConfig } from './billing-email.config';
 export { default as billingReconciliationConfig } from './billing-reconciliation.config';
 export { default as billingStripeSyncConfig } from './billing-stripe-sync.config';
 export { default as taskAutomationOutboxConfig } from './task-automation-outbox.config';
+export { default as taskAutomationWorkflowRuntimeConfig, resolveTaskAutomationWorkflowRuntimeMode } from './task-automation-workflow-runtime.config';
 export { default as deviceConnectionWebhookInboxConfig } from './device-connection-webhook-inbox.config';
 export { default as connectivityRecoveryConfig } from './connectivity-recovery.config';
 export {

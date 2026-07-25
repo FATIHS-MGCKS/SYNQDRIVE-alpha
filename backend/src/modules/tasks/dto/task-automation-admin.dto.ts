@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
@@ -111,6 +112,13 @@ export class ResetTaskAutomationRuleOverrideDto {
   @IsString()
   @MaxLength(500)
   reason?: string | null;
+}
+
+export class ReplayDeadLetterOutboxDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  makerReason!: string;
 }
 
 export class SimulateTaskAutomationRuleDto {

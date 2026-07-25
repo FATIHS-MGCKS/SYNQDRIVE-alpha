@@ -1,0 +1,246 @@
+name: Workflow Automation — Production Readiness CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/workflows/**'
+      - 'backend/src/modules/tasks/outbox/**'
+      - 'backend/src/modules/tasks/automation/**'
+      - 'backend/src/modules/business-insights/detectors/pickup-overdue*'
+      - 'frontend/src/rental/components/workflow-automation/**'
+      - 'frontend/src/rental/components/WorkflowAutomationView.tsx'
+      - 'frontend/e2e/workflow-automation-*'
+      - 'docs/testing/workflow-automation-*'
+      - '.github/workflows/workflow-automation-production-readiness.yml'
+  push:
+    branches:
+      - main
+      - 'cursor/workflow-*'
+
+concurrency:
+  group: workflow-automation-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  install-lockfile:
+    name: Install (lockfile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+
+  lint:
+    name: Lint
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm run lint:all
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run lint:all
+        working-directory: frontend
+
+  typecheck:
+    name: Typecheck
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci && npx tsc --noEmit -p tsconfig.json
+        working-directory: backend
+      - run: npm ci && npx tsc -b
+        working-directory: frontend
+
+  prisma-validate:
+    name: Prisma validate
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: bash scripts/test/verify-prisma-migration-timestamps.sh
+        working-directory: backend
+      - run: npm run prisma:validate
+        working-directory: backend
+
+  backend-unit:
+    name: Backend unit tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:workflow-automation:verify:unit
+        working-directory: backend
+
+  backend-integration:
+    name: Backend integration tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:workflow-automation:integration && npm run test:workflow-automation:security
+        working-directory: backend
+
+  frontend-component:
+    name: Frontend component tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run test:workflow-automation
+        working-directory: frontend
+
+  playwright-e2e:
+    name: Playwright E2E
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:workflow-automation:e2e
+        working-directory: frontend
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: workflow-automation-playwright-artifacts
+          path: |
+            frontend/playwright-report/**
+            frontend/test-results/**
+          retention-days: 14
+
+  accessibility:
+    name: Accessibility (axe)
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:workflow-automation:a11y
+        working-directory: frontend
+        env:
+          CI: 'true'
+
+  production-build:
+    name: Production build
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci && npx prisma generate && npm run build
+        working-directory: backend
+      - run: npm ci && npm run build
+        working-directory: frontend
+
+  security-scan:
+    name: Security / dependency scan
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: bash scripts/audits/audit-dependencies.sh
+
+  ci-gate:
+    name: CI gate (all critical jobs)
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - typecheck
+      - prisma-validate
+      - backend-unit
+      - backend-integration
+      - frontend-component
+      - playwright-e2e
+      - accessibility
+      - production-build
+      - security-scan
+    steps:
+      - run: echo "Workflow automation production readiness CI passed"

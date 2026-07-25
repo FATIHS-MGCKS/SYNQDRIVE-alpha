@@ -35,13 +35,29 @@ describe('TaskAutomationAdminService', () => {
     scheduleOutboxIds: jest.fn(),
   };
 
+  const outboxRepoWithFind = {
+    ...outboxRepo,
+    findById: jest.fn(),
+  };
+
+  const makerChecker = {
+    submitDeadLetterReplayRequest: jest.fn(),
+    formatChangeRequest: jest.fn((row: unknown) => row),
+  };
+
+  const workflowTemplateService = {
+    findTemplateByCatalogKey: jest.fn(),
+  };
+
   const service = new TaskAutomationAdminService(
     prisma as any,
     resolver as any,
     overrideService as any,
     simulation as any,
-    outboxRepo as any,
+    outboxRepoWithFind as any,
     outboxScheduler as any,
+    makerChecker as any,
+    workflowTemplateService as any,
   );
 
   const baseResolved = {
@@ -223,13 +239,36 @@ describe('TaskAutomationAdminService', () => {
     expect(revisions[0]?.changedByName).toBe('Anna Admin');
   });
 
-  it('replays a dead-letter outbox row', async () => {
+  it('submits maker-checker request for dead-letter force replay', async () => {
+    outboxRepoWithFind.findById.mockResolvedValue({
+      id: 'outbox-1',
+      organizationId: orgId,
+      status: 'DEAD_LETTER',
+    });
+    makerChecker.submitDeadLetterReplayRequest.mockResolvedValue({
+      id: 'cr-1',
+      operation: 'WORKFLOW_DEAD_LETTER_FORCE_REPLAY',
+    });
+
+    const result = await service.replayDeadLetterOutbox(
+      orgId,
+      'outbox-1',
+      { id: 'user-1' },
+      'External side effect requires replay',
+    );
+
+    expect(makerChecker.submitDeadLetterReplayRequest).toHaveBeenCalled();
+    expect(result.pendingApproval).toBe(true);
+    expect(outboxRepo.requeueDeadLetter).not.toHaveBeenCalled();
+  });
+
+  it('executes dead-letter replay after approval', async () => {
     outboxRepo.requeueDeadLetter.mockResolvedValue(true);
 
-    const result = await service.replayDeadLetterOutbox(orgId, 'outbox-1');
+    const result = await service.executeDeadLetterReplay(orgId, 'outbox-1');
 
     expect(outboxRepo.requeueDeadLetter).toHaveBeenCalledWith('outbox-1', orgId);
     expect(outboxScheduler.scheduleOutboxIds).toHaveBeenCalledWith(['outbox-1']);
-    expect(result).toEqual({ outboxId: 'outbox-1', status: 'PENDING' });
+    expect(result).toEqual({ pendingApproval: false, outboxId: 'outbox-1', status: 'PENDING' });
   });
 });

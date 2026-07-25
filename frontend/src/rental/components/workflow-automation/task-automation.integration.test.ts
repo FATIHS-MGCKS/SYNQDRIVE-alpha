@@ -15,7 +15,8 @@ describe('task automation workflow integration', () => {
 
     expect(appSource).toContain("hasPermission('workflow-automation', 'read')");
     expect(appSource).toContain("hasPermission('workflow-automation', 'write')");
-    expect(workflowSource).toContain('Aufgaben-Automationen');
+    expect(workflowSource).toContain('WorkflowOverviewSection');
+    expect(workflowSource).toContain('workflow-automation-no-access');
     expect(drawerSource).toContain('TaskAutomationSimulationPanel');
     expect(sidebarSource).toContain("hasPermission('workflow-automation', 'read')");
   });
