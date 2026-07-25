@@ -179,6 +179,13 @@ export class WorkflowRunOrchestratorRepository {
       if (!input.skipped) {
         for (const action of input.version.actions) {
           const actionIdempotencyKey = `${input.idempotencyKey}:action:${action.actionIndex}`;
+          const inputSnapshot = {
+            actionKey: action.actionKey,
+            actionIndex: action.actionIndex,
+            actionType: action.actionType,
+            workflowActionId: action.id,
+            config: action.config ?? {},
+          };
           await tx.workflowActionRun.create({
             data: {
               organizationId: input.organizationId,
@@ -191,8 +198,11 @@ export class WorkflowRunOrchestratorRepository {
               actionType: action.actionType,
               status: 'PENDING',
               requiresApproval: action.requiresApproval,
+              blockingOnFailure: true,
+              maxAttempts: 5,
               idempotencyKey: actionIdempotencyKey,
               input: (action.config ?? {}) as Prisma.InputJsonValue,
+              inputSnapshot: inputSnapshot as Prisma.InputJsonValue,
             },
           });
         }

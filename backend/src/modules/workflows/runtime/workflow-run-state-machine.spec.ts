@@ -8,7 +8,7 @@ import { WorkflowRunRuntimeRepository } from './workflow-run-runtime.repository'
 import { WorkflowRunRuntimeService } from './workflow-run-runtime.service';
 import { WorkflowActionRunRuntimeService } from './workflow-action-run-runtime.service';
 import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-audit.service';
-import { WorkflowRuntimeActionExecutorAdapter } from './workflow-runtime-action-executor.adapter';
+import { WorkflowActionRunExecutorService } from './workflow-action-run-executor.service';
 import {
   assertWorkflowRunTransitionOrThrow,
   assertWorkflowActionRunTransitionOrThrow,
@@ -296,30 +296,29 @@ describe('WorkflowRunStateMachine', () => {
       const actionRuns = new WorkflowActionRunRuntimeRepository(prisma as never);
       const runs = new WorkflowRunRuntimeRepository(prisma as never);
       const orchestratorRepo = new WorkflowRunOrchestratorRepository(prisma as never);
-      const audit = new WorkflowRuntimeStatusAuditService(prisma as never);
       const runRuntime = new WorkflowRunRuntimeService(
         prisma as never,
         runs,
         actionRuns,
-        audit,
+        new WorkflowRuntimeStatusAuditService(prisma as never),
       );
-      const executor = {
-        buildActionDef: jest.fn(),
-        execute: jest.fn().mockResolvedValue(executorResult),
-      } as unknown as WorkflowRuntimeActionExecutorAdapter;
+      const actionExecutor = {
+        executeClaimed: jest.fn().mockResolvedValue({
+          status: executorResult.status,
+          errorSummary: executorResult.errorMessage,
+        }),
+      } as unknown as WorkflowActionRunExecutorService;
 
       const worker = new WorkflowRunWorkerService(
-        prisma as never,
         config,
         actionRuns,
         runs,
         orchestratorRepo,
         runRuntime,
-        audit,
-        executor,
+        actionExecutor,
       );
 
-      return { prisma, worker, executor, runRuntime };
+      return { prisma, worker, actionExecutor, runRuntime };
     }
 
     it('executes complete successful run (single action)', async () => {
@@ -345,6 +344,7 @@ describe('WorkflowRunStateMachine', () => {
           nextAttemptAt: null,
           actionType: 'task.create',
           requiresApproval: false,
+          blockingOnFailure: true,
           input: {},
           lockVersion: 1,
           attemptCount: 0,
@@ -394,6 +394,7 @@ describe('WorkflowRunStateMachine', () => {
           nextAttemptAt: null,
           actionType: 'task.create',
           requiresApproval: false,
+          blockingOnFailure: true,
           input: {},
           lockVersion: 1,
           attemptCount: 0,
@@ -443,6 +444,7 @@ describe('WorkflowRunStateMachine', () => {
           nextAttemptAt: null,
           actionType: 'task.create',
           requiresApproval: false,
+          blockingOnFailure: true,
           input: {},
           lockVersion: 1,
           attemptCount: 0,
@@ -495,7 +497,6 @@ describe('WorkflowRunStateMachine', () => {
       } as unknown as ConfigService;
       const actionRuns = new WorkflowActionRunRuntimeRepository(prisma as never);
       const worker = new WorkflowRunWorkerService(
-        prisma as never,
         config,
         actionRuns,
         new WorkflowRunRuntimeRepository(prisma as never),
@@ -506,8 +507,7 @@ describe('WorkflowRunStateMachine', () => {
           actionRuns,
           new WorkflowRuntimeStatusAuditService(prisma as never),
         ),
-        new WorkflowRuntimeStatusAuditService(prisma as never),
-        { buildActionDef: jest.fn(), execute: jest.fn() } as never,
+        { executeClaimed: jest.fn() } as never,
       );
 
       prisma.workflowActionRun.findMany.mockResolvedValue([{ id: ACTION_1, organizationId: ORG_A }]);

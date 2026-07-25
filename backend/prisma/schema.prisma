@@ -11315,12 +11315,25 @@ model WorkflowActionRun {
   /// Set only while status = WAITING_FOR_APPROVAL.
   approvalId           String?                        @unique @map("approval_id")
   attemptCount         Int                            @default(0) @map("attempt_count")
+  maxAttempts          Int                            @default(5) @map("max_attempts")
   nextAttemptAt        DateTime?                      @map("next_attempt_at")
+  timeoutAt            DateTime?                      @map("timeout_at")
   requiresApproval     Boolean                        @default(false) @map("requires_approval")
+  /// When false, a permanent failure on this action does not block subsequent actions.
+  blockingOnFailure    Boolean                        @default(true) @map("blocking_on_failure")
   idempotencyKey       String                         @map("idempotency_key")
+  /// Frozen action input at first claim — no secrets.
+  inputSnapshot        Json?                          @map("input_snapshot")
   input                Json?
   output               Json?
+  /// Minimized execution result for audit/UI — no secrets or raw PII.
+  resultSummary        Json?                          @map("result_summary")
+  errorCode            String?                        @map("error_code")
+  errorCategory        String?                        @map("error_category")
+  errorSummary         String?                        @map("error_summary")
   errorMessage         String?                        @map("error_message")
+  /// Opaque provider-side reference (message ID, task ID) — never secrets.
+  providerReference    String?                        @map("provider_reference")
   approvedByUserId     String?                        @map("approved_by_user_id")
   approvedAt           DateTime?                      @map("approved_at")
   claimedByWorkerId    String?                        @map("claimed_by_worker_id")
