@@ -16,6 +16,7 @@ import type { Request, Response } from 'express';
 import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
+import { normalizeDtcCodes } from '../vehicle-intelligence/dtc/dtc-code-normalizer.util';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
 import {
@@ -257,9 +258,7 @@ export class DimoWebhookController {
   }
 
   private async handleDtcEvent(vehicleId: string, dtcValue: any) {
-    const codes = typeof dtcValue === 'string'
-      ? dtcValue.split(',').map((c: string) => c.trim()).filter(Boolean)
-      : Array.isArray(dtcValue) ? dtcValue : [];
+    const codes = normalizeDtcCodes(dtcValue);
 
     this.logger.log(`DTC webhook for vehicle ${vehicleId}: ${codes.length} codes`);
 

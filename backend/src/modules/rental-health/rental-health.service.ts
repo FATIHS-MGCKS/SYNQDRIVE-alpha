@@ -45,6 +45,7 @@ import {
   isBrakeRentalHardBlocked,
 } from './brake-rental-health.policy';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
+import { VehicleHealthWorkflowEmitter } from './vehicle-health-workflow.emitter';
 import type { BrakeRentalHealthModuleHealth } from './brake-rental-health.types';
 
 export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
@@ -99,6 +100,7 @@ export class RentalHealthService {
     @Optional() private readonly tireObservability?: TireHealthObservabilityService,
     @Optional() private readonly brakeObservability?: BrakeHealthObservabilityService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
+    @Optional() private readonly healthWorkflowEmitter?: VehicleHealthWorkflowEmitter,
   ) {}
 
   /**
@@ -280,6 +282,7 @@ export class RentalHealthService {
     };
 
     this.fleetHealthObservability?.recordVehicleHealth(health);
+    this.healthWorkflowEmitter?.emitIfRentalHealthBandChanged(health);
     return health;
   }
 

@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-warnings-remediation-be-phase2-v49829-2026-07-25',
+    version: '4.9.829',
+    title: 'V4.9.829 — Vehicle Warnings Remediation BE Phase 2',
+    summary: [
+      'VehicleFinding model + FindingLifecycleService (minimal upsert/ack/resolve/supersede).',
+      'Migration: battery_evidence + vehicle_dtc_events FK CASCADE→SET NULL (VW-F-009); complaint dedupe_key + partial unique.',
+      'VLS monotonic sourceTimestamp guard in DimoSnapshotProcessor (VW-F-008).',
+      'DTC webhook uses normalizeDtcCodes; dimo-dtc.processor deduplicated to shared util.',
+      'Insight publish per-dedupeKey swap (VW-F-027); battery V2 idempotency before lock.',
+      'Workflow vehicle.health.* emitter on rental-health severity transitions (VW-F-034).',
+      'Technical observations ActivityLog audit; complaint create dedupe (VW-F-025).',
+      'GDPR: insight-redaction helper + retention/erasure job stubs (WP-16).',
+    ],
+    reason: 'Backend vehicle-warnings audit remediation WP-02–04, WP-14, WP-16 subset.',
+    previousBehavior: 'No canonical finding table; VLS last-write-wins; insight publish deactivated all active rows; complaints without dedupe/audit; CASCADE deleted evidence on vehicle delete.',
+    details:
+      'Migration 20260725200000_vehicle_warnings_phase2_integrity. architecture/VEHICLE_WARNINGS_REMEDIATION_PHASE2_2026-07-25.md. Bridges to VehicleFinding not wired yet.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T22:10:00.000Z',
+  },
+  {
     id: 'vehicle-warnings-remediation-fe-phase2-v49828-2026-07-25',
     version: '4.9.828',
     title: 'V4.9.828 — Vehicle Warnings Remediation FE Phase 2',

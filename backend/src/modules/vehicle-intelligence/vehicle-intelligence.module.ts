@@ -214,6 +214,9 @@ import {
   BatteryShadowValidationController,
   BatteryShadowValidationService,
 } from './battery-health/shadow-validation';
+import { VehicleIntelligencePermissionGuard } from './vehicle-intelligence-permission.guard';
+import { VehicleFindingsModule } from './findings/findings.module';
+import { FindingLifecycleService } from './findings/finding-lifecycle.service';
 
 @Module({
   imports: [
@@ -227,6 +230,7 @@ import {
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
     forwardRef(() => NotificationsModule),
+    VehicleFindingsModule,
     TasksModule,
     BatteryV2JobsProducerModule,
     BullModule.registerQueue(
@@ -286,6 +290,7 @@ import {
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    FindingLifecycleService,
     DtcKnowledgeService,
     DtcKnowledgeEnrichmentService,
     DtcAiResearchService,
@@ -480,6 +485,7 @@ import {
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    FindingLifecycleService,
     DtcKnowledgeService,
     DtcKnowledgeEnrichmentService,
     DrivingEventsService,

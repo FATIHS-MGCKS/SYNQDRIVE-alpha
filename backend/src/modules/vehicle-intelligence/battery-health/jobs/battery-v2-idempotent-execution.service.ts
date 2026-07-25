@@ -32,17 +32,17 @@ export class BatteryV2IdempotentExecutionService {
     const { jobType, payload, handler } = input;
     validateBatteryV2JobIdempotencyKey(jobType, payload.idempotencyKey);
 
+    if (await this.isJobAlreadyCompleted(jobType, payload)) {
+      this.logger.debug(
+        `Battery V2 job skipped (idempotent): type=${jobType} key=${payload.idempotencyKey}`,
+      );
+      return { skipped: true, skipReason: 'already_completed' };
+    }
+
     const scope = this.vehicleLock.scopeForJobType(jobType);
     const lock = await this.vehicleLock.acquire(payload.vehicleId, scope);
 
     try {
-      if (await this.isJobAlreadyCompleted(jobType, payload)) {
-        this.logger.debug(
-          `Battery V2 job skipped (idempotent): type=${jobType} key=${payload.idempotencyKey}`,
-        );
-        return { skipped: true, skipReason: 'already_completed' };
-      }
-
       this.logger.debug(
         `Battery V2 job executing: type=${jobType} vehicle=${payload.vehicleId} key=${payload.idempotencyKey} correlation=${payload.correlationId}`,
       );

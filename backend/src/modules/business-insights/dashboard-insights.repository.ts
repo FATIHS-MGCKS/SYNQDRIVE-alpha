@@ -74,9 +74,17 @@ export class DashboardInsightsRepository {
   }
 
   async publishInsights(organizationId: string, runId: string, candidates: InsightCandidate[]) {
+    const dedupeKeys = [...new Set(candidates.map((c) => c.dedupeKey))];
+    if (dedupeKeys.length === 0) return;
+
     await this.prisma.$transaction([
+      // VW-F-027: per-dedupeKey publish-swap — do not deactivate unrelated active insights
       this.prisma.dashboardInsight.updateMany({
-        where: { organizationId, isActive: true },
+        where: {
+          organizationId,
+          isActive: true,
+          dedupeKey: { in: dedupeKeys },
+        },
         data: { isActive: false },
       }),
       ...candidates.map((c) =>

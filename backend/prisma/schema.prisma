@@ -1583,6 +1583,7 @@ model Organization {
   brakeServiceApplications               BrakeServiceApplication[]
   brakeServiceOutbox                     BrakeServiceOutbox[]
   vehicleComplaints                      VehicleComplaint[]
+  vehicleFindings                        VehicleFinding[]
   vehicleDrivingAssessmentQualities      VehicleDrivingAssessmentQuality[]
   orgIntegrations                        OrganizationIntegration[]
   subscriptions                          BillingSubscription[]
@@ -2902,6 +2903,7 @@ model Vehicle {
   documentExtractions                    VehicleDocumentExtraction[]
   vendorVehicles                         VendorVehicle[]
   complaints                             VehicleComplaint[]
+  findings                               VehicleFinding[]
   drivingAssessmentQuality               VehicleDrivingAssessmentQuality?
   dataSourceLinks                        VehicleDataSourceLink[]
   hmSignalGroupStates                    HmSignalGroupState[]
@@ -3009,6 +3011,26 @@ enum TechnicalObservationAffectedArea {
   UNKNOWN
 }
 
+/// Canonical finding lifecycle (VW WP-02) — bridges domain alerts without replacing them yet.
+enum VehicleFindingStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+  SUPERSEDED
+  EXPIRED
+}
+
+enum VehicleFindingSourceType {
+  TIRE_ALERT
+  BRAKE_ALERT
+  BATTERY_ALERT
+  DTC
+  COMPLAINT
+  INSIGHT
+  CONNECTIVITY
+  OTHER
+}
+
 model VehicleComplaint {
   id                   String                            @id @default(uuid())
   organizationId       String                            @map("organization_id")
@@ -3045,6 +3067,8 @@ model VehicleComplaint {
   linkedServiceCaseId  String?                           @map("linked_service_case_id")
   linkedServiceTaskId  String?                           @map("linked_service_task_id")
   notes                String?
+  /// Idempotency key for create dedupe (VW-F-025).
+  dedupeKey            String?                           @map("dedupe_key")
   createdAt            DateTime                          @default(now()) @map("created_at")
   updatedAt            DateTime                          @updatedAt @map("updated_at")
 
@@ -3055,7 +3079,35 @@ model VehicleComplaint {
   @@index([organizationId])
   @@index([organizationId, vehicleId, status])
   @@index([bookingId])
+  @@index([organizationId, dedupeKey])
   @@map("vehicle_complaints")
+}
+
+model VehicleFinding {
+  id             String                   @id @default(uuid())
+  organizationId String                   @map("organization_id")
+  vehicleId      String?                  @map("vehicle_id")
+  sourceType     VehicleFindingSourceType @map("source_type")
+  sourceRef      String?                  @map("source_ref")
+  dedupeKey      String                   @map("dedupe_key")
+  status         VehicleFindingStatus     @default(ACTIVE)
+  severity       String?
+  title          String?
+  message        String?
+  detectedAt     DateTime                 @map("detected_at")
+  acknowledgedAt DateTime?                @map("acknowledged_at")
+  resolvedAt     DateTime?                @map("resolved_at")
+  metadataJson   Json?                    @map("metadata_json")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, dedupeKey], map: "vehicle_findings_org_dedupe_key")
+  @@index([organizationId, status])
+  @@index([vehicleId, status])
+  @@map("vehicle_findings")
 }
 
 // LTE_R1 native-event quality monitor — Fahrbewertung reliability only.
@@ -8698,7 +8750,7 @@ model HvBatteryHealthCurrent {
 
 model BatteryEvidence {
   id                   String                    @id @default(uuid())
-  vehicleId            String                    @map("vehicle_id")
+  vehicleId            String?                   @map("vehicle_id")
   measurementId        String?                   @map("measurement_id")
   scope                BatteryEvidenceScope
   sourceType           BatteryEvidenceSourceType @map("source_type")
@@ -8714,7 +8766,7 @@ model BatteryEvidence {
   metadataJson         Json?                     @map("metadata_json")
   createdAt            DateTime                  @default(now()) @map("created_at")
 
-  vehicle            Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle            Vehicle?                   @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   measurement        BatteryMeasurement?        @relation(fields: [measurementId], references: [id], onDelete: SetNull)
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
@@ -9106,7 +9158,7 @@ model BrakeRecalculationAudit {
 
 model VehicleDtcEvent {
   id              String      @id @default(uuid())
-  vehicleId       String      @map("vehicle_id")
+  vehicleId       String?     @map("vehicle_id")
   dtcCode         String      @map("dtc_code")
   description     String?
   severity        DtcSeverity @default(WARNING)
@@ -9118,7 +9170,7 @@ model VehicleDtcEvent {
   rawPayload      Json?       @map("raw_payload")
   createdAt       DateTime    @default(now()) @map("created_at")
 
-  vehicle       Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   brakeEvidence BrakeEvidence[]
 
   @@index([vehicleId])
