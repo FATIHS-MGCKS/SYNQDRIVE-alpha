@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiHttpError } from '../../lib/httpError';
 import {
   extractDraftConflict,
+  extractHandoverDraftStepValidationMessage,
   isHandoverDraftVersionConflict,
   withDraftSaveRetry,
 } from './operatorHandoverDraftSync';
@@ -38,5 +39,26 @@ describe('operatorHandoverDraftSync', () => {
 
     await expect(withDraftSaveRetry(op)).rejects.toBe(err);
     expect(op).toHaveBeenCalledTimes(1);
+  });
+
+  it('extracts step validation messages', () => {
+    const flat = new ApiHttpError(
+      400,
+      { code: 'HANDOVER_DRAFT_STEP_INVALID', message: 'Kilometerstand ist erforderlich' },
+      '/draft',
+    );
+    expect(extractHandoverDraftStepValidationMessage(flat)).toBe('Kilometerstand ist erforderlich');
+
+    const nested = new ApiHttpError(
+      400,
+      {
+        message: {
+          code: 'HANDOVER_DRAFT_STEP_INVALID',
+          message: 'Station ist erforderlich',
+        },
+      },
+      '/draft',
+    );
+    expect(extractHandoverDraftStepValidationMessage(nested)).toBe('Station ist erforderlich');
   });
 });

@@ -15,6 +15,7 @@ interface Props {
   form: OperatorHandoverFormApi;
   onTireMeasure?: () => void;
   tireMeasureHint?: string;
+  fieldErrors?: Record<string, string>;
 }
 
 export function OperatorHandoverStepCondition({
@@ -23,19 +24,22 @@ export function OperatorHandoverStepCondition({
   form,
   onTireMeasure,
   tireMeasureHint,
+  fieldErrors,
 }: Props) {
   const fuelLabel = form.state.fuelFull ? 'Voll' : `${form.state.fuelPercent}%`;
   const odometerError =
-    kind === 'RETURN' &&
+    fieldErrors?.odometerKm ??
+    (kind === 'RETURN' &&
     booking.pickupOdometerKm != null &&
     form.state.odometerKm &&
     Number(form.state.odometerKm) < booking.pickupOdometerKm
       ? `Mindestens ${booking.pickupOdometerKm.toLocaleString('de-DE')} km (Pickup)`
-      : undefined;
+      : undefined);
+  const missingOdometer = !form.state.odometerKm?.trim() ? 'Kilometerstand ist Pflicht' : undefined;
 
   return (
     <div className="space-y-4">
-      <OperatorHandoverField label="Kilometerstand *" error={odometerError}>
+      <OperatorHandoverField label="Kilometerstand *" error={odometerError ?? missingOdometer}>
         <div className="flex items-center gap-2">
           <Gauge className="h-4 w-4 text-muted-foreground" />
           <input
@@ -125,7 +129,10 @@ export function OperatorHandoverStepCondition({
       </div>
 
       {form.state.checks.warningLightsOn && (
-        <OperatorHandoverField label="Warnleuchten — Beschreibung *">
+        <OperatorHandoverField
+          label="Warnleuchten — Beschreibung *"
+          error={fieldErrors?.warningLightsNotes}
+        >
           <textarea
             value={form.state.warningLightsNotes}
             onChange={(e) => form.patchState({ warningLightsNotes: e.target.value })}

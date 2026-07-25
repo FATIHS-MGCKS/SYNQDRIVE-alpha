@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-handover-wizard-ux-v49856-2026-07-25',
+    version: '4.9.856',
+    title: 'V4.9.856 — Operator App: Pickup/Return-Wizard UX (Prompt 31)',
+    summary: [
+      'Schrittvalidierung client + server (`validateStep` beim Vorwärtsnavigieren); Kilometerstand/Warnleuchten auf Zustand-Schritt aligned.',
+      'Tablet-Sidenav blockiert Sprünge ohne erfüllte Pflichtschritte; Feldfehler nahe am Input.',
+      'Entwurf verwerfen + Schließen-Guard bei Offline/Konflikt; Resume-Hinweis + Signatur-Neuzeichnen-Banner.',
+      'Abschluss: verbindliche CTAs, Submit-Phasen (Speichern/Upload/Abschluss), Erfolgsbestätigung ohne erneutes Bearbeiten.',
+      'Save-Status „Entwurf gespeichert“; Double-Submit-Schutz beibehalten.',
+      'Tests: Payload/Navigation, Draft-Sync Step-Errors, Review/Success/Confirm UI, Backend Step-Validation-Spec.',
+    ],
+    reason:
+      'Production-Readiness Prompt 31: bestehenden Handover-Wizard verständlicher, fehlerresistenter und mobile-ready machen — ohne neue Features.',
+    previousBehavior:
+      'Server validierte Kilometerstand auf Fahrzeug-Schritt; `validateStep` ungenutzt; Tablet-Sprünge ohne Gate; sofortiges Schließen nach Erfolg; Debug-Upload-Refs sichtbar.',
+    details:
+      'Frontend: `OperatorHandoverFlow`, `useOperatorHandoverDraft`, `operatorHandoverPayload`, Step-Komponenten, `OperatorHandoverSuccessScreen`, `OperatorHandoverConfirmDialog`. Backend: `handover-session-draft-step.validation.ts`. Audit §52.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:45:00.000Z',
+  },
+  {
     id: 'operator-today-tasks-ux-v49855-2026-07-25',
     version: '4.9.855',
     title: 'V4.9.855 — Operator App: Today- & Tasks-UX (Prompt 30)',

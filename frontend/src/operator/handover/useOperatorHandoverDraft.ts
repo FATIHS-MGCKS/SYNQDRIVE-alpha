@@ -14,6 +14,7 @@ import {
 import {
   dispatchHandoverDraftEvent,
   extractDraftConflict,
+  extractHandoverDraftStepValidationMessage,
   HANDOVER_DRAFT_AUTOSAVE_MS,
   isHandoverDraftVersionConflict,
   withDraftSaveRetry,
@@ -42,6 +43,7 @@ export function useOperatorHandoverDraft(
   const [saveStatus, setSaveStatus] = useState<HandoverDraftSaveStatus>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<HandoverDraftConflictInfo | null>(null);
+  const [stepValidationError, setStepValidationError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(isBrowserOnline);
 
   const hydratedRef = useRef(false);
@@ -157,7 +159,7 @@ export function useOperatorHandoverDraft(
   }, []);
 
   const runSave = useCallback(
-    async (options?: { immediate?: boolean }): Promise<boolean> => {
+    async (options?: { immediate?: boolean; validateStep?: OperatorHandoverStepId }): Promise<boolean> => {
       if (!orgId || !bookingId || !draftMetaRef.current?.editable || !hydratedRef.current) {
         return true;
       }
@@ -180,6 +182,7 @@ export function useOperatorHandoverDraft(
       setSaveStatus('saving');
       dispatchHandoverDraftConnectivity({ status: 'saving' });
       setSyncError(null);
+      setStepValidationError(null);
 
       try {
         const updated = await withDraftSaveRetry(
@@ -193,6 +196,7 @@ export function useOperatorHandoverDraft(
                 expectedVersion: draftMetaRef.current!.version,
                 currentStep: stepRef.current,
                 draft: payload,
+                validateStep: options?.validateStep,
               },
               { signal: controller.signal },
             );
@@ -205,12 +209,21 @@ export function useOperatorHandoverDraft(
         applyDraftRecord(updated, false);
         setSaveStatus('saved');
         setConflict(null);
+        setStepValidationError(null);
         dispatchHandoverDraftEvent('handover:draft-saved');
         dispatchHandoverDraftConnectivity({ status: 'saved' });
         return true;
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return false;
         if (seq !== saveSeqRef.current) return false;
+
+        const stepMessage = extractHandoverDraftStepValidationMessage(err);
+        if (stepMessage) {
+          setStepValidationError(stepMessage);
+          setSaveStatus('error');
+          setSyncError(stepMessage);
+          return false;
+        }
 
         if (isHandoverDraftVersionConflict(err)) {
           const info = extractDraftConflict(err);
@@ -240,18 +253,21 @@ export function useOperatorHandoverDraft(
     [orgId, bookingId, kind, applyDraftRecord],
   );
 
-  const flushSave = useCallback(async (): Promise<boolean> => {
-    if (flushPromiseRef.current) return flushPromiseRef.current;
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    const promise = runSave({ immediate: true }).finally(() => {
-      flushPromiseRef.current = null;
-    });
-    flushPromiseRef.current = promise;
-    return promise;
-  }, [runSave]);
+  const flushSave = useCallback(
+    async (options?: { validateStep?: OperatorHandoverStepId }): Promise<boolean> => {
+      if (flushPromiseRef.current) return flushPromiseRef.current;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      const promise = runSave({ immediate: true, validateStep: options?.validateStep }).finally(() => {
+        flushPromiseRef.current = null;
+      });
+      flushPromiseRef.current = promise;
+      return promise;
+    },
+    [runSave],
+  );
 
   const scheduleSave = useCallback(() => {
     if (!isOpen || !hydratedRef.current || !draftMetaRef.current?.editable || conflictRef.current) return;
@@ -327,6 +343,29 @@ export function useOperatorHandoverDraft(
     hydratedRef.current = false;
     setSaveStatus('idle');
     setConflict(null);
+    setStepValidationError(null);
+  }, [orgId, bookingId, kind]);
+
+  const cancelDraft = useCallback(async (): Promise<boolean> => {
+    if (!orgId || !bookingId || !draftMetaRef.current) return true;
+    try {
+      await api.bookings.cancelHandoverDraft(orgId, bookingId, kind, {
+        expectedVersion: draftMetaRef.current.version,
+      });
+      clearOperatorHandoverDraftBuffer(orgId, bookingId, kind);
+      dispatchHandoverDraftEvent('handover:draft-cleared');
+      setDraftMeta(null);
+      draftMetaRef.current = null;
+      hydratedRef.current = false;
+      setSaveStatus('idle');
+      setConflict(null);
+      setStepValidationError(null);
+      return true;
+    } catch (err: unknown) {
+      setSyncError(isApiHttpError(err) ? err.message : 'Entwurf konnte nicht verworfen werden');
+      setSaveStatus('error');
+      return false;
+    }
   }, [orgId, bookingId, kind]);
 
   return {
@@ -336,10 +375,12 @@ export function useOperatorHandoverDraft(
     saveStatus,
     isOnline,
     conflict,
+    stepValidationError,
     sessionId: draftMeta?.id ?? null,
     expectedVersion: draftMeta?.version ?? null,
     reloadDraft: loadOrCreate,
     flushSave,
+    cancelDraft,
     resolveConflictAcceptServer,
     resolveConflictKeepLocal,
     clearDraftAfterComplete,

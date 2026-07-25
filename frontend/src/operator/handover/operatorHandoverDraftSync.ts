@@ -14,6 +14,7 @@ export type HandoverDraftSaveStatus =
   | 'error';
 
 export const HANDOVER_DRAFT_VERSION_CONFLICT = 'HANDOVER_DRAFT_VERSION_CONFLICT';
+export const HANDOVER_DRAFT_STEP_INVALID = 'HANDOVER_DRAFT_STEP_INVALID';
 
 export interface HandoverDraftConflictInfo {
   expectedVersion: number;
@@ -37,6 +38,22 @@ export function extractDraftConflict(err: unknown): HandoverDraftConflictInfo | 
         ? body.message
         : 'Der Entwurf wurde parallel bearbeitet.',
   };
+}
+
+export function extractHandoverDraftStepValidationMessage(err: unknown): string | null {
+  if (!isApiHttpError(err) || err.status !== 400) return null;
+  const body = err.body;
+  if (body.code === HANDOVER_DRAFT_STEP_INVALID) {
+    return typeof body.message === 'string' ? body.message : 'Schritt unvollständig';
+  }
+  const nested = body.message;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+    const record = nested as { code?: unknown; message?: unknown };
+    if (record.code === HANDOVER_DRAFT_STEP_INVALID) {
+      return typeof record.message === 'string' ? record.message : 'Schritt unvollständig';
+    }
+  }
+  return null;
 }
 
 export async function withDraftSaveRetry<T>(

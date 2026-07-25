@@ -8,9 +8,10 @@ interface Props {
   kind: HandoverDialogKind;
   booking: HandoverDialogBookingInfo;
   form: OperatorHandoverFormApi;
+  fieldErrors?: Record<string, string>;
 }
 
-export function OperatorHandoverStepVehicle({ kind, booking, form }: Props) {
+export function OperatorHandoverStepVehicle({ kind, booking, form, fieldErrors }: Props) {
   const scheduled = kind === 'PICKUP' ? booking.startDate : booking.endDate;
   const stationName =
     kind === 'PICKUP'
@@ -46,7 +47,10 @@ export function OperatorHandoverStepVehicle({ kind, booking, form }: Props) {
       </div>
 
       {form.stationOptions.length > 0 && (
-        <OperatorHandoverField label="Tatsächliche Station">
+        <OperatorHandoverField
+          label="Tatsächliche Station *"
+          error={fieldErrors?.actualStationId}
+        >
           <select
             value={form.state.actualStationId}
             onChange={(e) => form.patchState({ actualStationId: e.target.value })}

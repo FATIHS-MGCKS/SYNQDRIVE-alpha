@@ -12,7 +12,7 @@ const STATUS_COPY: Record<
   { label: string; tone: 'muted' | 'brand' | 'success' | 'watch' | 'critical' }
 > = {
   saving: { label: 'Wird gespeichert…', tone: 'brand' },
-  saved: { label: 'Gespeichert', tone: 'success' },
+  saved: { label: 'Entwurf gespeichert', tone: 'success' },
   offline: { label: 'Offline', tone: 'watch' },
   conflict: { label: 'Konflikt', tone: 'critical' },
   error: { label: 'Fehler', tone: 'critical' },

@@ -2623,6 +2623,35 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 52. Pickup/Return Wizard UX (Prompt 31 — V4.9.856)
+
+### 52.1 Schrittlogik & Validierung
+
+- Client: `validateOperatorHandover`, `canAdvanceFromStep`, `canNavigateToStep`, `firstBlockingStepIssue`.
+- Server: `validateStep` auf Draft-PATCH beim Vorwärtsgehen; Kilometerstand + Warnleuchten auf `condition`, Station auf `vehicle`.
+- Tablet-Sidenav: disabled wenn Zwischenschritte unvollständig.
+
+### 52.2 Draft / Abbruch / Resume
+
+- Save-Status: „Entwurf gespeichert“; Schließen-Guard bei offline/conflict/saving/error.
+- `cancelHandoverDraft` via „Entwurf verwerfen“ (Desktop-Header + Mobile-Footer).
+- Resume-Banner + Signatur-Hinweis (keine Bitmap-Rehydration — Neuzeichnen Pflicht).
+
+### 52.3 Abschluss
+
+- CTAs: „Übergabe/Rückgabe verbindlich abschließen“.
+- Submit-Phasen: flush → upload → complete; Erfolgsscreen blockiert weitere Bearbeitung.
+- Review-Schritt unverändert als vollständige Prüfung vor finalem CTA.
+
+### 52.4 Tests
+
+- `operatorHandoverPayload.test.ts`
+- `operatorHandoverDraftSync.test.ts`
+- `OperatorHandoverFlow.test.tsx`
+- `handover-session-draft-step.validation.spec.ts`
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

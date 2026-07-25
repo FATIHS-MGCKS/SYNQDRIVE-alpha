@@ -7,6 +7,7 @@ import {
 } from '../../rental/lib/technical-observations-ui';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
 import type { OperatorHandoverValidationIssue } from './operatorHandoverPayload';
+import { getOperatorHandoverFinalizeLabel } from './operatorHandoverPayload';
 import { collectTechnicalObservationsForPayload } from './operatorHandoverTechnicalObservations';
 
 interface Props {
@@ -17,8 +18,7 @@ interface Props {
 }
 
 export function OperatorHandoverStepReview({ kind, booking, form, issues }: Props) {
-  const primaryLabel =
-    kind === 'PICKUP' ? 'Pickup bestätigen & Buchung aktivieren' : 'Rückgabe bestätigen & abschließen';
+  const primaryLabel = getOperatorHandoverFinalizeLabel(kind);
 
   const observationPayload = collectTechnicalObservationsForPayload(kind, form.state);
   const manualDrafts = form.state.technicalObservationDrafts;

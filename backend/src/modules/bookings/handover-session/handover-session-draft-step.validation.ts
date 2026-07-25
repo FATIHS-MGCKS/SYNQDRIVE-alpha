@@ -25,22 +25,32 @@ export function validateHandoverDraftStep(
       if (!form.actualStationId?.trim()) {
         issues.push({ step, field: 'actualStationId', message: 'Station ist erforderlich' });
       }
+      break;
+    }
+    case 'condition': {
       const odo = Number(form.odometerKm);
       if (!form.odometerKm?.trim() || !Number.isFinite(odo) || odo < 0) {
         issues.push({ step, field: 'odometerKm', message: 'Kilometerstand ist erforderlich' });
-      }
-      if (kind === 'RETURN' && context?.pickupOdometerKm != null && odo < context.pickupOdometerKm) {
+      } else if (
+        kind === 'RETURN' &&
+        context?.pickupOdometerKm != null &&
+        odo < context.pickupOdometerKm
+      ) {
         issues.push({
           step,
           field: 'odometerKm',
           message: 'Rückgabe-Kilometerstand darf nicht unter Pickup liegen',
         });
       }
-      break;
-    }
-    case 'condition': {
       if (!Number.isFinite(form.fuelPercent) || form.fuelPercent < 0 || form.fuelPercent > 100) {
         issues.push({ step, field: 'fuelPercent', message: 'Tankstand 0–100 %' });
+      }
+      if (form.checks.warningLightsOn && !form.warningLightsNotes?.trim()) {
+        issues.push({
+          step,
+          field: 'warningLightsNotes',
+          message: 'Warnleuchten müssen beschrieben werden',
+        });
       }
       break;
     }

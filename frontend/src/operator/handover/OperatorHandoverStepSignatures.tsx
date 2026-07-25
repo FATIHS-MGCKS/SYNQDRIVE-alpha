@@ -9,7 +9,6 @@ import {
   createOperatorHandoverSignatureBinding,
   HANDOVER_OPERATOR_SIGNATURE_CONSENT_TEXT,
   HANDOVER_SIGNATURE_CONSENT_TEXT,
-  signatureClientUploadId,
 } from './operatorHandoverSignatureBinding';
 import type { OperatorHandoverBookingRef } from './operatorHandoverPayload';
 
@@ -18,11 +17,13 @@ interface Props {
   staffOptions: { id: string; name: string }[];
   isDarkMode: boolean;
   stepErrors: string[];
+  fieldErrors?: Record<string, string>;
   orgId: string;
   kind: HandoverDialogKind;
   booking: OperatorHandoverBookingRef;
   handoverSessionId: string | null;
   draftVersion: number | null;
+  resumeSignatureHint?: boolean;
 }
 
 export function OperatorHandoverStepSignatures({
@@ -30,11 +31,13 @@ export function OperatorHandoverStepSignatures({
   staffOptions,
   isDarkMode,
   stepErrors,
+  fieldErrors,
   orgId,
   kind,
   booking,
   handoverSessionId,
   draftVersion,
+  resumeSignatureHint = false,
 }: Props) {
   const isTablet = useOperatorTabletLayout();
   const [mobileSigPhase, setMobileSigPhase] = useState<'customer' | 'staff'>('customer');
@@ -110,7 +113,16 @@ export function OperatorHandoverStepSignatures({
         </p>
       )}
 
-      <OperatorHandoverField label="Übergabe durch *">
+      {resumeSignatureHint && (
+        <p
+          role="status"
+          className="rounded-xl border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] px-3 py-2 text-xs text-[color:var(--brand-ink)]"
+        >
+          Unterschriften aus dem Entwurf müssen aus Sicherheitsgründen erneut gezeichnet werden.
+        </p>
+      )}
+
+      <OperatorHandoverField label="Übergabe durch *" error={fieldErrors?.staff}>
         {staffOptions.length > 0 ? (
           <select
             value={form.state.staffId}
@@ -204,10 +216,8 @@ export function OperatorHandoverStepSignatures({
               helperText="Zeichnen ist Pflicht — Name ergänzt nur das Protokoll."
               ariaDescription={HANDOVER_SIGNATURE_CONSENT_TEXT}
             />
-            {handoverSessionId && (
-              <p className="text-[10px] text-muted-foreground">
-                Upload-Referenz: {signatureClientUploadId(handoverSessionId, 'customer')}
-              </p>
+            {import.meta.env.DEV && handoverSessionId && (
+              <p className="text-[10px] text-muted-foreground">Draft-Session: {handoverSessionId}</p>
             )}
           </div>
         )}
@@ -241,10 +251,8 @@ export function OperatorHandoverStepSignatures({
               helperText="Zeichnen ist Pflicht."
               ariaDescription={HANDOVER_OPERATOR_SIGNATURE_CONSENT_TEXT}
             />
-            {handoverSessionId && (
-              <p className="text-[10px] text-muted-foreground">
-                Upload-Referenz: {signatureClientUploadId(handoverSessionId, 'operator')}
-              </p>
+            {import.meta.env.DEV && handoverSessionId && (
+              <p className="text-[10px] text-muted-foreground">Draft-Session: {handoverSessionId}</p>
             )}
           </div>
         )}
