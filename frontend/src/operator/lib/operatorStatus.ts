@@ -2,10 +2,10 @@ import type { StatusTone } from '../../components/patterns';
 import type { VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
 import {
-  selectOperationalStatus,
-  VEHICLE_OPERATIONAL_STATUS,
-} from '../../rental/lib/vehicle-operational-state';
-import { isOperationalStatusUnreliable } from '../../rental/lib/vehicle-operational-unknown-display';
+  buildOperatorVehicleRuntimeState,
+  runtimeHasOpenCleaningReason,
+  runtimeHealthAttentionReasons,
+} from './operatorVehicleRuntime';
 
 export type OperatorStatusKind =
   | 'ready'
@@ -42,45 +42,40 @@ function badge(kind: OperatorStatusKind, tone: StatusTone, label?: string): Oper
   return { kind, label: label ?? STATUS_LABELS[kind], tone };
 }
 
-/** Derive display badges from canonical fleet + rental-health data only. */
+/** Derive display badges from canonical vehicle runtime state only. */
 export function deriveVehicleOperatorStatuses(
   vehicle: VehicleData,
   health?: VehicleHealthResponse | null,
   openTaskCount = 0,
 ): OperatorStatusBadge[] {
+  const runtime = buildOperatorVehicleRuntimeState({ vehicle, health, locale: 'de' });
   const badges: OperatorStatusBadge[] = [];
-  const operationalStatus = selectOperationalStatus(vehicle);
-  const unreliable = isOperationalStatusUnreliable(vehicle);
 
-  if (unreliable) {
+  if (runtime.operationalStatus === 'unknown') {
     badges.push(badge('maintenance', 'neutral', 'Status nicht verfügbar'));
     return badges;
   }
 
-  if (health?.rental_blocked) {
+  if (runtime.isBlocked) {
     badges.push(badge('blocked', 'critical'));
   }
 
-  if (vehicle.cleaningStatus === 'Needs Cleaning') {
+  if (runtimeHasOpenCleaningReason(runtime)) {
     badges.push(badge('cleaning', 'watch'));
   }
 
-  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
+  if (runtime.isMaintenance) {
     badges.push(badge('maintenance', 'watch'));
-  } else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
+  } else if (runtime.operationalStatus === 'active_rented') {
     badges.push(badge('rented', 'info'));
-  } else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
+  } else if (runtime.operationalStatus === 'reserved') {
     badges.push(badge('reserved', 'info'));
   }
 
-  const modules = health?.modules;
-  const hasDamageSignal =
-    modules?.complaints?.state === 'critical' ||
-    modules?.complaints?.state === 'warning' ||
-    modules?.error_codes?.state === 'critical';
-
-  if (hasDamageSignal) {
-    badges.push(badge('damage', modules?.complaints?.state === 'critical' ? 'critical' : 'watch'));
+  const healthAttention = runtimeHealthAttentionReasons(runtime);
+  if (healthAttention.length > 0) {
+    const critical = healthAttention.some((reason) => reason.severity === 'critical');
+    badges.push(badge('damage', critical ? 'critical' : 'watch'));
   }
 
   if (openTaskCount > 0) {
@@ -93,12 +88,7 @@ export function deriveVehicleOperatorStatuses(
     );
   }
 
-  if (
-    badges.length === 0 &&
-    operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE &&
-    !health?.rental_blocked &&
-    vehicle.cleaningStatus === 'Clean'
-  ) {
+  if (runtime.isReadyToRent) {
     badges.push(badge('ready', 'success'));
   }
 

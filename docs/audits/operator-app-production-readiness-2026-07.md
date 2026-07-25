@@ -1583,6 +1583,56 @@ flowchart TB
 
 ---
 
+## 33. Vehicle-Runtime-Konsolidierung (Prompt 11 — V4.9.837)
+
+**Datum:** 2026-07-25  
+**Ziel:** Operator nutzt dieselbe Ready-to-Rent-/Telemetry-/Blocker-Wahrheit wie Dashboard, Fleet und Vehicle Detail.
+
+### 33.1 Entfernte Schattenlogik
+
+| Schattenlogik | Ersetzt durch |
+|---------------|---------------|
+| `deriveVehicleOperatorStatuses`: `AVAILABLE + Clean + !rental_blocked` → ready | `runtime.isReadyToRent` |
+| Modul-Warning `complaints/error_codes` → damage badge ohne Runtime | `runtimeHealthAttentionReasons(runtime)` |
+| `vehicleMatchesOperatorFilter('ready')`: lokale operational + cleaning checks | `runtime.isReadyToRent` |
+| `deriveOperatorVehicleStatusSnapshot`: manuelle operationalStatus-Matrix | `mapRuntimeToPrimaryStatus(runtime)` |
+| `detectOperatorStatusContradictions` (lokale Heuristiken) | `runtimeContradictionMessages(runtime)` |
+| Today `blockedVehicles`: nur `health.rental_blocked` | `runtime.isBlocked` + `runtime.blockReasons` |
+| Quick View Blocker: `health.blocking_reasons` only | `snapshot.runtime.blockReasons` |
+
+### 33.2 Zentrale verwendete Funktionen
+
+| Funktion | Modul |
+|----------|-------|
+| `buildVehicleRuntimeStates` | `vehicleRuntimeStateBuilder.ts` |
+| `deriveIsReadyForRenting` | `rentalReadiness.ts` |
+| `deriveTelemetryState` | `vehicleRuntimeStateBuilder.ts` |
+| `resolveVehicleRuntimeOperationalBlock` | `vehicleRuntimeStateBuilder.ts` |
+| `buildOperatorVehicleRuntimeState` | `operatorVehicleRuntime.ts` (thin wrapper) |
+
+### 33.3 Abgedeckte Zustände
+
+- Operational: `available`, `reserved`, `active_rented`, `maintenance`, `unavailable`, `unknown`
+- Telemetry: `live`, `standby`, `soft_offline`, `offline`, `unknown`
+- Rental readiness: `ready`, `not_ready`, `blocked`
+- Block level: `none`, `soft_blocked`, `hard_blocked`
+- Health/compliance severity via Runtime reasons (warning ≠ auto-blocked)
+
+### 33.4 Tests (10)
+
+`operatorVehicleRuntime.test.ts` + `operatorStatus.test.ts` — Parity mit `buildVehicleRuntimeStates` für ready/blocked/telemetry/offline.
+
+### 33.5 Geänderte Dateien
+
+- `frontend/src/operator/lib/operatorVehicleRuntime.ts` (neu)
+- `frontend/src/operator/lib/operatorVehicleRuntime.test.ts` (neu)
+- `frontend/src/operator/lib/operatorStatus.ts`
+- `frontend/src/operator/lib/operatorVehicleQuickView.utils.ts`
+- `frontend/src/operator/lib/operatorData.ts`
+- `frontend/src/operator/components/OperatorVehicleQuickView.tsx`
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

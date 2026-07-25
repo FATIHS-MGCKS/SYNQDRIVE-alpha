@@ -27,6 +27,7 @@ import {
   scheduledAtForTodayKind,
   type TodayHandoverKind,
 } from '../../rental/lib/today-booking-contract';
+import { buildOperatorVehicleRuntimeState } from './operatorVehicleRuntime';
 import type { OperatorScanBookingHit } from '../hooks/useOperatorScanSearch';
 
 export type OperatorHandoverKind = TodayHandoverKind;
@@ -198,14 +199,26 @@ export function buildOperatorTodaySnapshot(input: {
 
   const blockedVehicles: OperatorBlockedVehicleItem[] = [];
   for (const v of input.fleetVehicles) {
-    const h = input.healthMap.get(v.id);
-    if (!h?.rental_blocked) continue;
+    const health = input.healthMap.get(v.id);
+    const runtime = buildOperatorVehicleRuntimeState({
+      vehicle: v,
+      health,
+      healthMap: input.healthMap,
+      locale,
+    });
+    if (!runtime.isBlocked) continue;
+    const primaryReason =
+      runtime.blockReasons[0]?.title ??
+      health?.blocking_reasons?.[0] ??
+      'Vermietung blockiert';
     blockedVehicles.push({
       vehicleId: v.id,
       label: [v.model, v.make].filter(Boolean).join(' ').trim() || v.model,
       plate: v.license,
       station: v.station ?? '',
-      reasons: h.blocking_reasons ?? [],
+      reasons: runtime.blockReasons.length
+        ? runtime.blockReasons.map((reason) => reason.title)
+        : [primaryReason],
     });
   }
 

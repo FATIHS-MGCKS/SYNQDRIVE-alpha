@@ -41,6 +41,8 @@ Provider stack in `OperatorShell.tsx`: `OperatorShellProvider` → `OperatorDama
 
 **Booking contracts (V4.9.836):** Today rows use shared `TodayBookingApiRow` + `today-booking-contract.ts` (no operator-specific status enums). Status via `normalizeBookingStatus`; actions via `getBookingActionMatrix`.
 
+**Vehicle runtime (V4.9.837):** Ready-to-rent, telemetry, and blockers via `buildVehicleRuntimeStates` through `operatorVehicleRuntime.ts` — no local shadow calculations.
+
 ## Device guard (UX only)
 
 `useIsOperatorDevice` treats viewports ≤1280px or coarse pointer as operator devices.  

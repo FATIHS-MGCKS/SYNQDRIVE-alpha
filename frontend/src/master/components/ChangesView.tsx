@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-vehicle-runtime-v49837-2026-07-25',
+    version: '4.9.837',
+    title: 'V4.9.837 — Operator App: zentrale Vehicle-Runtime-Wahrheit (Prompt 11)',
+    summary: [
+      'Neues `operatorVehicleRuntime.ts` — Wrapper um `buildVehicleRuntimeStates` (Dashboard/Fleet/Detail).',
+      'Operator Status-Badges, Filter und Quick-View-Snapshot leiten aus `VehicleRuntimeState` ab.',
+      'Entfernt: lokale readyToRent-Heuristiken (available+clean+!rental_blocked), vereinfachte Health-Warnungsaggregation.',
+      'Today blocked vehicles nutzen `runtime.blockReasons` statt nur `rental_blocked`.',
+      'Quick View zeigt kanonische Blockergründe aus Runtime.',
+      '10 Parity-Tests Operator ↔ Runtime Builder.',
+    ],
+    reason:
+      'Production-Readiness Prompt 11: Operator darf Vehicle-Status und Ready-to-Rent nicht lokal neu berechnen.',
+    previousBehavior:
+      'Operator leitete Bereit/Blockiert/Release lokal aus operationalStatus + cleaningStatus + rental_blocked; Modul-Warnungen vereinfacht.',
+    details: 'Audit §33. Zentrale Module: vehicleRuntimeStateBuilder, rentalReadiness, deriveTelemetryState.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:40:00.000Z',
+  },
+  {
     id: 'operator-app-booking-contracts-v49836-2026-07-25',
     version: '4.9.836',
     title: 'V4.9.836 — Operator App: zentrale Booking-Contracts (Prompt 10)',
