@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TaskAutomationOutboxRepository } from '../outbox/task-automation-outbox.repository';
 import { TaskAutomationOutboxSchedulerService } from '../outbox/task-automation-outbox-scheduler.service';
+import type { TaskAutomationWorkflowRuntimeMode } from '@config/task-automation-workflow-runtime.config';
+import type { TaskAutomationExecutionRouterService } from '@modules/workflows/task-automation-bridge/task-automation-execution-router.service';
+import type { TaskAutomationWorkflowTemplateService } from '@modules/workflows/task-automation-bridge/task-automation-workflow-template.service';
 import {
   buildEffectiveChecklistItems,
   validateChecklistOverridePayload,
@@ -84,6 +87,13 @@ export interface TaskAutomationRuleAdminDto {
     updatedByUserId: string | null;
     updatedByName: string | null;
   };
+  workflow: {
+    templateId: string | null;
+    templateName: string | null;
+    catalogRuleId: string;
+    runtimeMode: TaskAutomationWorkflowRuntimeMode;
+    systemTemplate: boolean;
+  };
 }
 
 export interface TaskAutomationRulesOverviewDto {
@@ -94,6 +104,7 @@ export interface TaskAutomationRulesOverviewDto {
     customized: number;
     disabled: number;
   };
+  runtimeMode: TaskAutomationWorkflowRuntimeMode;
 }
 
 @Injectable()
@@ -105,10 +116,29 @@ export class TaskAutomationAdminService {
     private readonly simulation: TaskAutomationSimulationService,
     private readonly outboxRepo: TaskAutomationOutboxRepository,
     private readonly outboxScheduler: TaskAutomationOutboxSchedulerService,
+    @Optional()
+    private readonly workflowTemplateService?: TaskAutomationWorkflowTemplateService,
+    @Optional()
+    private readonly workflowExecutionRouter?: TaskAutomationExecutionRouterService,
   ) {}
 
   async listRules(orgId: string): Promise<TaskAutomationRulesOverviewDto> {
     const rules = listMaterializationAutomationRules();
+    if (this.workflowTemplateService) {
+      await this.workflowTemplateService.ensureSystemTemplates(orgId);
+    }
+    const templateLinks = this.workflowTemplateService
+      ? await Promise.all(
+          rules.map(async (rule) => ({
+            ruleId: rule.ruleId,
+            link: await this.workflowTemplateService!.findTemplateByCatalogKey(
+              orgId,
+              rule.catalogKey!,
+            ),
+          })),
+        )
+      : [];
+    const templateByRuleId = new Map(templateLinks.map((entry) => [entry.ruleId, entry.link]));
     const overrideRows = await this.prisma.orgTaskAutomationRuleOverride.findMany({
       where: { organizationId: orgId },
       include: {
@@ -121,7 +151,7 @@ export class TaskAutomationAdminService {
       rules.map(async (rule) => {
         const resolved = await this.resolver.resolveTaskAutomationRule(orgId, rule.ruleId);
         const overrideRow = overrideByRuleId.get(rule.ruleId) ?? null;
-        return this.toAdminDto(rule, resolved, overrideRow);
+        return this.toAdminDto(rule, resolved, overrideRow, templateByRuleId.get(rule.ruleId) ?? null);
       }),
     );
 
@@ -133,6 +163,7 @@ export class TaskAutomationAdminService {
         customized: resolvedRules.filter((rule) => rule.hasOrgOverride).length,
         disabled: resolvedRules.filter((rule) => !rule.effectivelyEnabled).length,
       },
+      runtimeMode: this.workflowExecutionRouter?.getMode() ?? 'legacy',
     };
   }
 
@@ -150,7 +181,14 @@ export class TaskAutomationAdminService {
       },
     });
 
-    return this.toAdminDto(rule, resolved, overrideRow);
+    return this.toAdminDto(
+      rule,
+      resolved,
+      overrideRow,
+      this.workflowTemplateService
+        ? await this.workflowTemplateService.findTemplateByCatalogKey(orgId, rule.catalogKey!)
+        : null,
+    );
   }
 
   async upsertOverride(
@@ -251,6 +289,11 @@ export class TaskAutomationAdminService {
         email: string | null;
       } | null;
     } | null,
+    templateLink: {
+      workflowId: string;
+      workflowName: string;
+      systemMetadata: { systemTemplate: true; catalogRuleId: string };
+    } | null,
   ): TaskAutomationRuleAdminDto {
     const allowedOverrideFields = [...getOrgOverridableFieldKeys(rule)];
     const checklist = buildEffectiveChecklistItems({
@@ -302,6 +345,13 @@ export class TaskAutomationAdminService {
         updatedAt: overrideRow?.updatedAt.toISOString() ?? null,
         updatedByUserId: overrideRow?.updatedByUserId ?? null,
         updatedByName: updatedByName ?? null,
+      },
+      workflow: {
+        templateId: templateLink?.workflowId ?? null,
+        templateName: templateLink?.workflowName ?? null,
+        catalogRuleId: rule.ruleId,
+        runtimeMode: this.workflowExecutionRouter?.getMode() ?? 'legacy',
+        systemTemplate: templateLink?.systemMetadata.systemTemplate ?? true,
       },
     };
   }

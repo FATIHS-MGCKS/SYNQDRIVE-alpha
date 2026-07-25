@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
@@ -14,9 +14,14 @@ import { TaskAutomationAdminService } from './automation/task-automation-admin.s
 import { TaskAutomationAdminController } from './automation/task-automation-admin.controller';
 import { TaskAutomationSimulationService } from './automation/task-automation-simulation.service';
 import { TaskPermissionService } from './task-permission.service';
+import { TaskAutomationWorkflowBridgeModule } from '@modules/workflows/task-automation-bridge/task-automation-workflow-bridge.module';
 
 @Module({
-  imports: [ActivityLogModule, TaskAutomationOutboxCoreModule],
+  imports: [
+    ActivityLogModule,
+    TaskAutomationOutboxCoreModule,
+    forwardRef(() => TaskAutomationWorkflowBridgeModule),
+  ],
   controllers: [TasksController, TaskAutomationAdminController],
   providers: [
     TasksService,
