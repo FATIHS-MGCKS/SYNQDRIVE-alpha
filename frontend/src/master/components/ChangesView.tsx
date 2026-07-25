@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-vps-control-audit-v49862-2026-07-25',
+    version: '4.9.862',
+    title: 'V4.9.862 — Workflow Automation VPS control audit (Phase 12 Prompt 52)',
+    summary: [
+      'Read-only VPS control audit: deploy commit, PM2/workers, BullMQ, PostgreSQL, workflow tables, secrets presence, monitoring, backups.',
+      'docs/audits/workflow-automation-vps-control-audit-2026-07.md — CONDITIONAL NO-GO for Workflow Runtime rollout until Phase 11 deploy + migrations.',
+      'Pass 2 re-verification (16:22 UTC): scheduler BullMQ job-id colon error (1933×), battery.v2 failed=25.',
+    ],
+    reason:
+      'Phase 12 Prompt 52: non-destructive production infrastructure audit before Workflow Runtime rollout.',
+    previousBehavior: 'No consolidated workflow-automation VPS control audit on file.',
+    details:
+      'Audit only — no queues cleared, no provider actions, no secret values exported. PR #893.',
+    affectsArchitecture: false,
+    module: 'Automation',
+    createdAt: '2026-07-25T16:24:00.000Z',
+  },
+  {
     id: 'workflow-runtime-rollout-v49861-2026-07-25',
     version: '4.9.861',
     title: 'V4.9.861 — Workflow Runtime Controlled Rollout (Phase 11 Prompt 51)',
