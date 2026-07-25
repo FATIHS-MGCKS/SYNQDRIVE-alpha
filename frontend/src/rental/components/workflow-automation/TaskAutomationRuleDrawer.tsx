@@ -1,8 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ClipboardList, RotateCcw, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../../lib/api';
 import { Button } from '../../../components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../components/ui/alert-dialog';
 import { DetailDrawer } from '../../../components/patterns';
 import { useRentalOrg } from '../../RentalContext';
 import { RuleValueTile } from '../shared/rental-requirements-ui';
@@ -33,6 +43,7 @@ interface TaskAutomationRuleDrawerProps {
   onOpenChange: (open: boolean) => void;
   onSave: (ruleId: string, payload: ReturnType<typeof buildOverridePayload>) => Promise<unknown>;
   onReset: (ruleId: string, expectedVersion?: number) => Promise<unknown>;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
 function ToggleField({
@@ -58,9 +69,9 @@ function ToggleField({
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
           {source && (
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               Quelle: <span className="font-medium text-foreground/80">{source}</span>
             </p>
           )}
@@ -69,14 +80,15 @@ function ToggleField({
           type="button"
           disabled={disabled}
           onClick={() => onChange(!checked)}
-          className={`relative h-6 w-11 rounded-full transition-colors ${
+          className={`relative min-h-11 min-w-11 rounded-full transition-colors ${
             checked ? 'bg-brand' : 'bg-muted'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
           aria-pressed={checked}
+          aria-label={label}
         >
           <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-              checked ? 'translate-x-5' : 'translate-x-0.5'
+            className={`absolute top-1 h-9 w-9 rounded-full bg-white shadow transition-transform ${
+              checked ? 'translate-x-5' : 'translate-x-1'
             }`}
           />
         </button>
@@ -86,6 +98,7 @@ function ToggleField({
 }
 
 function SelectField({
+  id,
   label,
   value,
   options,
@@ -94,6 +107,7 @@ function SelectField({
   source,
   onChange,
 }: {
+  id: string;
   label: string;
   value: string;
   options: Array<{ value: string; label: string }>;
@@ -108,14 +122,15 @@ function SelectField({
         highlighted ? 'border-l-[3px] border-l-[color:var(--brand)]/45' : ''
       }`}
     >
-      <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </label>
       <select
+        id={id}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm"
+        className="mt-1.5 min-h-11 w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -124,7 +139,7 @@ function SelectField({
         ))}
       </select>
       {source && (
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           Quelle: <span className="font-medium text-foreground/80">{source}</span>
         </p>
       )}
@@ -133,6 +148,7 @@ function SelectField({
 }
 
 function NumberField({
+  id,
   label,
   value,
   disabled,
@@ -141,6 +157,7 @@ function NumberField({
   helper,
   onChange,
 }: {
+  id: string;
   label: string;
   value: number;
   disabled?: boolean;
@@ -155,19 +172,20 @@ function NumberField({
         highlighted ? 'border-l-[3px] border-l-[color:var(--brand)]/45' : ''
       }`}
     >
-      <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </label>
       <input
+        id={id}
         type="number"
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1.5 w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm"
+        className="mt-1.5 min-h-11 w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm"
       />
-      <p className="mt-1 text-[10px] text-muted-foreground">{helper ?? formatOffsetMinutesDe(value)}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{helper ?? formatOffsetMinutesDe(value)}</p>
       {source && (
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           Quelle: <span className="font-medium text-foreground/80">{source}</span>
         </p>
       )}
@@ -183,6 +201,7 @@ export function TaskAutomationRuleDrawer({
   onOpenChange,
   onSave,
   onReset,
+  returnFocusRef,
 }: TaskAutomationRuleDrawerProps) {
   const { orgId } = useRentalOrg();
   const [form, setForm] = useState<TaskAutomationOverrideFormState | null>(null);
@@ -196,6 +215,8 @@ export function TaskAutomationRuleDrawer({
   >([]);
   const [revisionsLoading, setRevisionsLoading] = useState(false);
   const [revisionsError, setRevisionsError] = useState<string | null>(null);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (open && rule) {
@@ -279,6 +300,17 @@ export function TaskAutomationRuleDrawer({
       changedFields.has('enabled'),
   );
 
+  const requestClose = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen && changedFields.size > 0) {
+        setCloseConfirmOpen(true);
+        return;
+      }
+      onOpenChange(nextOpen);
+    },
+    [changedFields.size, onOpenChange],
+  );
+
   if (!rule || !form) return null;
 
   const allowed = new Set(rule.allowedOverrideFields);
@@ -310,9 +342,6 @@ export function TaskAutomationRuleDrawer({
 
   const handleReset = async () => {
     if (!canWrite || !rule.hasOrgOverride) return;
-    if (!confirm('Alle eigenen Anpassungen für diese Regel auf den SynqDrive-Standard zurücksetzen?')) {
-      return;
-    }
     try {
       await onReset(rule.ruleId, rule.audit.version ?? undefined);
       toast.success('Auf SynqDrive-Standard zurückgesetzt');
@@ -359,16 +388,18 @@ export function TaskAutomationRuleDrawer({
   };
 
   return (
+    <>
     <DetailDrawer
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={requestClose}
+      returnFocusRef={returnFocusRef}
       widthClassName="sm:max-w-2xl"
       eyebrow="Aufgaben-Automation"
       title={rule.nameDe}
       description={rule.descriptionDe}
       status={
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${
             rule.effectivelyEnabled
               ? 'bg-status-success-soft text-status-success'
               : 'bg-muted text-muted-foreground'
@@ -385,16 +416,16 @@ export function TaskAutomationRuleDrawer({
               variant="outline"
               size="sm"
               disabled={saving || !rule.hasOrgOverride}
-              onClick={() => void handleReset()}
+              onClick={() => setResetConfirmOpen(true)}
             >
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
               Auf SynqDrive-Standard zurücksetzen
             </Button>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => requestClose(false)}>
                 Abbrechen
               </Button>
-              <Button type="button" size="sm" disabled={saving || changedFields.size === 0} onClick={() => void handleSave()}>
+              <Button type="button" size="sm" className="min-h-11" disabled={saving || changedFields.size === 0} onClick={() => void handleSave()}>
                 <Save className="mr-1.5 h-3.5 w-3.5" />
                 {saving ? 'Speichern…' : 'Speichern'}
               </Button>
@@ -439,7 +470,9 @@ export function TaskAutomationRuleDrawer({
             Änderungshistorie
           </h3>
           {revisionsLoading && (
-            <p className="text-xs text-muted-foreground">Revisionen werden geladen…</p>
+            <p className="text-xs text-muted-foreground" aria-busy="true" aria-live="polite">
+              Revisionen werden geladen…
+            </p>
           )}
           {revisionsError && (
             <p className="text-xs text-destructive">{revisionsError}</p>
@@ -489,10 +522,14 @@ export function TaskAutomationRuleDrawer({
 
           {canWrite && (
             <div className="rounded-lg border border-border/60 px-3 py-2.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <label
+                htmlFor="task-automation-change-reason"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
                 Änderungsgrund (optional)
               </label>
               <textarea
+                id="task-automation-change-reason"
                 value={changeReason}
                 onChange={(e) => setChangeReason(e.target.value)}
                 rows={2}
@@ -538,6 +575,7 @@ export function TaskAutomationRuleDrawer({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {allowed.has('activationOffsetMinutes') && (
               <NumberField
+                id="task-automation-activation-offset"
                 label="Aktivierungs-Offset (Minuten)"
                 value={form.activationOffsetMinutes ?? 0}
                 disabled={!canWrite}
@@ -550,6 +588,7 @@ export function TaskAutomationRuleDrawer({
             )}
             {allowed.has('dueOffsetMinutes') && (
               <NumberField
+                id="task-automation-due-offset"
                 label="Fälligkeits-Offset (Minuten)"
                 value={form.dueOffsetMinutes ?? 0}
                 disabled={!canWrite}
@@ -562,6 +601,7 @@ export function TaskAutomationRuleDrawer({
             )}
             {allowed.has('priority') && (
               <SelectField
+                id="task-automation-priority"
                 label="Standardpriorität"
                 value={form.priority ?? rule.default.priority}
                 disabled={!canWrite}
@@ -580,6 +620,7 @@ export function TaskAutomationRuleDrawer({
             )}
             {allowed.has('assignmentStrategy') && (
               <SelectField
+                id="task-automation-assignment"
                 label="Zuweisung"
                 value={form.assignmentStrategy ?? rule.default.assignmentStrategy}
                 disabled={!canWrite}
@@ -626,7 +667,7 @@ export function TaskAutomationRuleDrawer({
                         {item.description && (
                           <p className="mt-0.5 text-xs text-muted-foreground">{item.description}</p>
                         )}
-                        <p className="mt-1 text-[10px] text-muted-foreground">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {item.isRequired ? 'Pflichtpunkt' : 'Optional'} · SynqDrive-Standard
                         </p>
                       </div>
@@ -680,5 +721,45 @@ export function TaskAutomationRuleDrawer({
         )}
       </div>
     </DetailDrawer>
+
+    <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Ungespeicherte Änderungen</AlertDialogTitle>
+          <AlertDialogDescription>
+            Es gibt ungespeicherte Anpassungen an dieser Aufgaben-Automation. Möchten Sie den Drawer wirklich schließen?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Weiter bearbeiten</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setCloseConfirmOpen(false);
+              onOpenChange(false);
+            }}
+          >
+            Verwerfen
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Auf SynqDrive-Standard zurücksetzen?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Alle eigenen Anpassungen für diese Regel werden entfernt. Bereits aktive Aufgaben bleiben unverändert.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+          <AlertDialogAction onClick={() => void handleReset()}>
+            Zurücksetzen
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

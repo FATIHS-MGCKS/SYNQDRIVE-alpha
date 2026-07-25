@@ -1211,6 +1211,7 @@ enum ActivityEntity {
   TASK_AUTOMATION_RULE // org task automation rule override
   INVOICE // org invoice
   FINE // fine record
+  WORKFLOW // org workflow automation
   VENDOR // external service provider / supplier
   VENDOR_VEHICLE_LINK // vendor ↔ vehicle relationship
   ORGANIZATION_INVITE // tenant user invite
@@ -10693,6 +10694,30 @@ enum WorkflowStatus {
   DRAFT
   DISABLED
   INVALID
+  PENDING_ACTIVATION
+  ARCHIVED
+}
+
+enum WorkflowMakerCheckerOperation {
+  WORKFLOW_PUBLISH_HIGH_CRITICAL
+  WORKFLOW_ACTIVATE_EXTERNAL_AI
+  WORKFLOW_APPROVE_AI_CALL
+  WORKFLOW_BOOKING_CANCEL
+  WORKFLOW_CUSTOMER_BLOCK
+  WORKFLOW_PAYMENT_CHARGE
+  WORKFLOW_SENSITIVE_POLICY_CHANGE
+  WORKFLOW_SECRET_PROVIDER_CONFIG
+  WORKFLOW_DEAD_LETTER_FORCE_REPLAY
+  WORKFLOW_RUNTIME_ACTION
+}
+
+enum WorkflowChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  SUPERSEDED
+  CANCELLED
 }
 
 enum WorkflowRunStatus {
@@ -10720,6 +10745,39 @@ enum WorkflowApprovalStatus {
   EXPIRED
 }
 
+enum WorkflowAuditEventType {
+  WORKFLOW_CREATED
+  WORKFLOW_DRAFT_CHANGED
+  WORKFLOW_PUBLISHED
+  WORKFLOW_ACTIVATED
+  WORKFLOW_DEACTIVATED
+  WORKFLOW_ARCHIVED
+  WORKFLOW_DRY_RUN
+  WORKFLOW_EXTERNAL_TEST
+  WORKFLOW_RUN_STARTED
+  WORKFLOW_CONDITION_EVALUATED
+  WORKFLOW_ACTION_STARTED
+  WORKFLOW_ACTION_SUCCEEDED
+  WORKFLOW_ACTION_RETRY
+  WORKFLOW_ERROR
+  WORKFLOW_APPROVAL_REQUESTED
+  WORKFLOW_APPROVAL_APPROVED
+  WORKFLOW_APPROVAL_REJECTED
+  WORKFLOW_APPROVAL_EXPIRED
+  WORKFLOW_RUN_ABORTED
+  WORKFLOW_DEAD_LETTER
+  WORKFLOW_REPLAY
+  WORKFLOW_POLICY_BLOCKED
+  WORKFLOW_RECIPIENT_RESOLVED
+  WORKFLOW_PROVIDER_STATUS
+}
+
+enum WorkflowAuditRetentionClass {
+  TECHNICAL_LOG
+  REVISION_AUDIT
+  GOVERNANCE_AUDIT
+}
+
 model OrgWorkflow {
   id              String         @id @default(uuid())
   organizationId  String         @map("organization_id")
@@ -10743,7 +10801,9 @@ model OrgWorkflow {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  runs OrgWorkflowRun[]
+  runs            OrgWorkflowRun[]
+  changeRequests  OrgWorkflowChangeRequest[]
+  auditEvents     OrgWorkflowAuditEvent[]
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -10811,16 +10871,27 @@ model OrgWorkflowActionRun {
 }
 
 model OrgWorkflowApproval {
-  id                String                 @id @default(uuid())
-  organizationId    String                 @map("organization_id")
-  workflowRunId     String                 @map("workflow_run_id")
-  actionRunId       String                 @map("action_run_id")
-  status            WorkflowApprovalStatus @default(PENDING)
-  requestedBySystem Boolean                @default(true) @map("requested_by_system")
-  approvedByUserId  String?                @map("approved_by_user_id")
-  reason            String?
-  createdAt         DateTime               @default(now()) @map("created_at")
-  decidedAt         DateTime?              @map("decided_at")
+  id                     String                 @id @default(uuid())
+  organizationId         String                 @map("organization_id")
+  workflowRunId          String                 @map("workflow_run_id")
+  actionRunId            String                 @map("action_run_id")
+  status                 WorkflowApprovalStatus @default(PENDING)
+  requestedBySystem      Boolean                @default(true) @map("requested_by_system")
+  requestedByUserId      String?                @map("requested_by_user_id")
+  makerUserId            String?                @map("maker_user_id")
+  lastEditorUserId       String?                @map("last_editor_user_id")
+  approvedByUserId       String?                @map("approved_by_user_id")
+  checkerReason          String?                @map("checker_reason")
+  reason                 String?
+  operationType          WorkflowMakerCheckerOperation? @map("operation_type")
+  approvedWorkflowVersion Int?                  @map("approved_workflow_version")
+  approvedDefinitionHash String?                @map("approved_definition_hash")
+  expiresAt              DateTime?              @map("expires_at")
+  emergencyOverride      Boolean                @default(false) @map("emergency_override")
+  emergencyReason        String?                @map("emergency_reason")
+  decisionVersion        Int                    @default(1) @map("decision_version")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  decidedAt              DateTime?              @map("decided_at")
 
   workflowRun OrgWorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
 
@@ -10828,7 +10899,68 @@ model OrgWorkflowApproval {
   @@index([workflowRunId])
   @@index([actionRunId])
   @@index([status])
+  @@index([expiresAt])
   @@map("org_workflow_approvals")
+}
+
+model OrgWorkflowChangeRequest {
+  id                     String                        @id @default(uuid())
+  organizationId         String                        @map("organization_id")
+  workflowId             String                        @map("workflow_id")
+  operation              WorkflowMakerCheckerOperation
+  status                 WorkflowChangeRequestStatus   @default(PENDING)
+  makerUserId            String                        @map("maker_user_id")
+  checkerUserId          String?                       @map("checker_user_id")
+  makerReason            String                        @map("maker_reason")
+  checkerReason          String?                       @map("checker_reason")
+  proposedDefinition     Json                          @map("proposed_definition")
+  proposedDefinitionHash String                        @map("proposed_definition_hash")
+  baselineDefinitionHash String                        @map("baseline_definition_hash")
+  proposedWorkflowVersion Int                          @map("proposed_workflow_version")
+  proposedStatus         WorkflowStatus                @map("proposed_status")
+  expiresAt              DateTime                      @map("expires_at")
+  emergencyOverride      Boolean                       @default(false) @map("emergency_override")
+  emergencyReason        String?                       @map("emergency_reason")
+  decisionVersion        Int                           @default(1) @map("decision_version")
+  decidedAt              DateTime?                     @map("decided_at")
+  createdAt              DateTime                      @default(now()) @map("created_at")
+  updatedAt              DateTime                      @updatedAt @map("updated_at")
+
+  workflow OrgWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([workflowId])
+  @@index([organizationId, workflowId, status])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("org_workflow_change_requests")
+}
+
+model OrgWorkflowAuditEvent {
+  id             String                      @id @default(uuid())
+  organizationId String                      @map("organization_id")
+  workflowId     String?                     @map("workflow_id")
+  workflowRunId  String?                     @map("workflow_run_id")
+  actionRunId    String?                     @map("action_run_id")
+  eventType      WorkflowAuditEventType        @map("event_type")
+  retentionClass WorkflowAuditRetentionClass @map("retention_class")
+  actorUserId    String?                     @map("actor_user_id")
+  correlationId  String?                     @map("correlation_id")
+  summary        String
+  payload        Json                        @default("{}")
+  payloadHash    String?                     @map("payload_hash")
+  aiTransparency Json?                       @map("ai_transparency")
+  legalHold      Boolean                     @default(false) @map("legal_hold")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+
+  workflow OrgWorkflow? @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, workflowId])
+  @@index([organizationId, eventType])
+  @@index([workflowRunId])
+  @@index([retentionClass])
+  @@map("org_workflow_audit_events")
 }
 
 // ------------------------------------------------
