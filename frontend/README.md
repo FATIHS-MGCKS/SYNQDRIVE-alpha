@@ -34,12 +34,15 @@ Copy environment variables from the project root / backend docs. Typical local d
 ```
 src/
   rental/          # Rental operator UI (dashboard, fleet, bookings, settings, …)
+  operator/        # Mobile/tablet field-ops shell at /operator (see operator/README.md)
   master/          # Internal master / architecture / changelog views
   lib/api.ts       # Typed API client (org-scoped REST)
   components/      # Shared UI patterns
 ```
 
 Settings and admin pages live under `src/rental/components/` (e.g. stations, users, data authorization). The API layer in `src/lib/api.ts` mirrors backend routes and DTOs.
+
+The **Operator** surface (`src/operator/`) is a separate route bundle for mobile/tablet field work (handover, damages, tasks, scan). It reuses rental domain hooks and canonical backend APIs — it is **not** an installable PWA today (no service worker / manifest). See `src/operator/README.md` and `docs/audits/operator-app-production-readiness-2026-07.md`.
 
 ## Notes
 

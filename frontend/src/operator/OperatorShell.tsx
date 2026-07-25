@@ -83,13 +83,13 @@ export function OperatorShell() {
   return (
     <OperatorShellProvider>
       <OperatorDamageCaptureProvider>
-        <OperatorHandoverProvider isDarkMode={isDarkMode}>
-          <FleetProvider>
+        <FleetProvider>
+          <OperatorHandoverProvider isDarkMode={isDarkMode}>
             <OperatorDataProvider>
               <OperatorShellInner />
             </OperatorDataProvider>
-          </FleetProvider>
-        </OperatorHandoverProvider>
+          </OperatorHandoverProvider>
+        </FleetProvider>
       </OperatorDamageCaptureProvider>
     </OperatorShellProvider>
   );

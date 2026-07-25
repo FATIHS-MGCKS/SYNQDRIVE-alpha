@@ -52,7 +52,7 @@ export class TasksController {
 
   @Get('organizations/:orgId/tasks')
   @RequireTaskPermission('tasks.read')
-  async findAll(@Param('orgId') orgId: string, @Query() query: ListTasksQueryDto) {
+  async findAll(@Param('orgId') orgId: string, @Query() query: ListTasksQueryDto, @Req() req: TaskAuthRequest) {
     return this.tasksService.listTasks(orgId, {
       status: query.status,
       priority: query.priority,
@@ -68,6 +68,7 @@ export class TasksController {
       serviceCaseId: query.serviceCaseId,
       invoiceId: query.invoiceId,
       stationId: query.stationId,
+      actorUserId: req.user?.id,
       activatesFrom: query.activatesFrom,
       activatesTo: query.activatesTo,
       dueFrom: query.dueFrom,
@@ -222,6 +223,7 @@ export class TasksController {
         actualCostCents: body.actualCostCents,
         overrideIncompleteChecklist: body.overrideIncompleteChecklist,
         overrideReason: body.overrideReason,
+        scopeOverrideReason: body.scopeOverrideReason,
       },
       req.user?.id ? { id: req.user.id, platformRole: req.user.platformRole } : undefined,
     );

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../../api';
-import { unwrapTaskListPage } from '../../tasks-pagination';
 import { matchesTaskListInvalidation, subscribeTaskQueryInvalidation } from '../invalidate';
+import {
+  currentTaskQueryGeneration,
+  fetchTaskListDeduped,
+  isStaleTaskQueryResponse,
+  resetTaskQueryScope,
+} from '../task-query-client';
 import { taskQueryKeys } from '../query-keys';
 import type { ApiTask, TaskBucket, TaskListFilters } from '../types';
 
@@ -40,10 +44,28 @@ export function useTaskList({
   const tasksRef = useRef<ApiTask[]>([]);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
+  const generationRef = useRef(0);
 
   useEffect(() => {
     tasksRef.current = tasks;
   }, [tasks]);
+
+  useEffect(() => {
+    if (!orgId) {
+      generationRef.current += 1;
+      setTasks([]);
+      setError(null);
+      setHasMore(false);
+      setNextCursor(null);
+      return;
+    }
+    resetTaskQueryScope(orgId);
+    generationRef.current = currentTaskQueryGeneration(orgId);
+    setTasks([]);
+    setError(null);
+    setHasMore(false);
+    setNextCursor(null);
+  }, [orgId]);
 
   const queryKey = bucket
     ? taskQueryKeys.listBucket(orgId ?? '', bucket, filters)
@@ -57,25 +79,31 @@ export function useTaskList({
       setNextCursor(null);
       return [];
     }
+    const generation = generationRef.current;
     setLoading(true);
     setError(null);
     try {
-      const mergedFilters: TaskListFilters = {
-        ...filtersRef.current,
-        ...(bucket ? { bucket } : {}),
-      };
-      const page = unwrapTaskListPage(await api.tasks.list(orgId, mergedFilters));
+      const page = await fetchTaskListDeduped({
+        orgId,
+        filters: filtersRef.current,
+        bucket,
+        generation,
+      });
+      if (isStaleTaskQueryResponse(orgId, generation)) return tasksRef.current;
       setTasks(page.data);
       setHasMore(Boolean(page.meta.nextCursor));
       setNextCursor(page.meta.nextCursor);
       return page.data;
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return tasksRef.current;
+      }
       const message = err instanceof Error ? err.message : 'Aufgaben konnten nicht geladen werden';
       setError(message);
       if (!tasksRef.current.length) setTasks([]);
       return tasksRef.current;
     } finally {
-      setLoading(false);
+      if (!isStaleTaskQueryResponse(orgId, generation)) setLoading(false);
     }
   }, [bucket, enabled, orgId]);
 

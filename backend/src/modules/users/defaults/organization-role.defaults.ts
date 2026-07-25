@@ -16,6 +16,11 @@ import {
   rentalRulesReadPermissions,
   rentalRulesViewerPermissions,
 } from '@modules/rental-rules/rental-rules-permission.defaults';
+import {
+  operatorAppReadPermissions,
+  operatorFieldAgentWritePermissions,
+  operatorSupervisorPermissions,
+} from '@modules/operator-app/operator-permission.defaults';
 
 export interface DefaultRoleTemplate {
   systemKey: string;
@@ -73,6 +78,7 @@ function adminPermissions(): MembershipPermissionsMap {
     'invoices', 'fines', 'price-tariffs', 'tasks', 'vendor-management',
     'ai-assistant', 'workflow-automation', 'document-upload', 'company-info',
     'users-roles', 'fleet-connectivity', 'data-analyse', 'data-authorization', 'billing', 'support',
+    'operator-app',
   ] as const;
   const perms: MembershipPermissionsMap = {};
   for (const key of keys) {
@@ -157,15 +163,18 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Buchungen, Flotte und Kunden im Tagesgeschäft.',
     membershipRole: MembershipRole.SUB_ADMIN,
     permissions: mergePermissions(
-      workerReadPermissions(['bookings', 'customers', 'fleet']),
+      operatorFieldAgentWritePermissions(),
       mergePermissions(
-        paymentModulePermissions({
-          payments: { read: true, write: true },
-          disputesRead: true,
-        }),
+        workerReadPermissions(['bookings', 'customers', 'fleet', 'document-upload']),
         mergePermissions(
-          rentalRulesReadPermissions(),
-          bookingEligibilityOverridePermissions(),
+          paymentModulePermissions({
+            payments: { read: true, write: true },
+            disputesRead: true,
+          }),
+          mergePermissions(
+            rentalRulesReadPermissions(),
+            bookingEligibilityOverridePermissions(),
+          ),
         ),
       ),
     ),
@@ -198,17 +207,23 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.SUB_ADMIN,
     fieldAgentAccessDefault: true,
     permissions: mergePermissions(
-      workerReadPermissions(['stations', 'bookings', 'fleet', 'tasks']),
       mergePermissions(
-        paymentModulePermissions({
-          payments: { read: true, write: true },
-          disputesRead: true,
-        }),
+        operatorSupervisorPermissions(),
         mergePermissions(
-          rentalRulesFleetOperatorPermissions(),
-          bookingEligibilityOverridePermissions(),
+          workerReadPermissions(['stations', 'bookings', 'fleet', 'tasks', 'fleet-condition', 'document-upload']),
+          mergePermissions(
+            paymentModulePermissions({
+              payments: { read: true, write: true },
+              disputesRead: true,
+            }),
+            mergePermissions(
+              rentalRulesFleetOperatorPermissions(),
+              bookingEligibilityOverridePermissions(),
+            ),
+          ),
         ),
       ),
+      { 'fleet-condition': all(true, true, true) },
     ),
   },
   {
@@ -217,12 +232,15 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Standardzugriff für operative Mitarbeit.',
     membershipRole: MembershipRole.WORKER,
     permissions: mergePermissions(
-      workerReadPermissions(),
+      operatorAppReadPermissions(),
       mergePermissions(
-        paymentModulePermissions({ payments: { read: true, write: false } }),
+        workerReadPermissions(),
         mergePermissions(
-          rentalRulesViewerPermissions(),
-          bookingEligibilityReviewerPermissions(),
+          paymentModulePermissions({ payments: { read: true, write: false } }),
+          mergePermissions(
+            rentalRulesViewerPermissions(),
+            bookingEligibilityReviewerPermissions(),
+          ),
         ),
       ),
     ),
@@ -241,12 +259,15 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     membershipRole: MembershipRole.WORKER,
     fieldAgentAccessDefault: true,
     permissions: mergePermissions(
-      workerReadPermissions(['bookings', 'fleet', 'tasks']),
+      operatorFieldAgentWritePermissions(),
       mergePermissions(
-        paymentModulePermissions({ payments: { read: true, write: false } }),
+        workerReadPermissions(['bookings', 'fleet', 'tasks', 'fleet-condition', 'document-upload']),
         mergePermissions(
-          rentalRulesReadPermissions(),
-          bookingEligibilityOverridePermissions(),
+          paymentModulePermissions({ payments: { read: true, write: false } }),
+          mergePermissions(
+            rentalRulesReadPermissions(),
+            bookingEligibilityOverridePermissions(),
+          ),
         ),
       ),
     ),
@@ -257,10 +278,13 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Werkstatt, Servicepartner und Fahrzeugzustand.',
     membershipRole: MembershipRole.WORKER,
     permissions: mergePermissions(
-      workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet']),
+      operatorAppReadPermissions(),
       mergePermissions(
-        paymentModulePermissions({ payments: { read: true, write: false } }),
-        rentalRulesViewerPermissions(),
+        workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet', 'document-upload']),
+        mergePermissions(
+          paymentModulePermissions({ payments: { read: true, write: false } }),
+          rentalRulesViewerPermissions(),
+        ),
       ),
     ),
   },

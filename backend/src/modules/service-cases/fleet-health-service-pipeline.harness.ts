@@ -5,6 +5,7 @@ import { ServiceOverdueTaskService } from '@modules/vehicle-intelligence/service
 import { TechnicalObservationsService } from '@modules/technical-observations/technical-observations.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { makeOperatorResourceScopeMock } from '@modules/operator-app/__fixtures__/operator-resource-scope.mock';
 import { TaskLinkedObjectResolverService } from '@modules/tasks/task-linked-object-resolver.service';
 import { VendorsService } from '@modules/vendors/vendors.service';
 import { ServiceCasesService } from './service-cases.service';
@@ -29,7 +30,7 @@ export function createFleetHealthServicePipelineHarness(): FleetHealthServicePip
   const audit = { record: jest.fn() } as unknown as AuditService;
   const damages = { create: jest.fn() } as unknown as DamagesService;
 
-  const tasks = new TasksService(prisma, activityLog, linkedObjectResolver);
+  const tasks = new TasksService(prisma, activityLog, linkedObjectResolver, makeOperatorResourceScopeMock() as any);
   const serviceOverdueTasks = {
     linkServiceCase: jest.fn().mockResolvedValue(undefined),
     onServiceCaseCompleted: jest.fn().mockResolvedValue(undefined),
