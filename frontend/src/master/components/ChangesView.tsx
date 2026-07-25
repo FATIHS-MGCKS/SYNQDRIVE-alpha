@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-audit-logging-v49828-2026-07-25',
+    version: '4.9.828',
+    title: 'V4.9.828 — Operator App Audit Logging (Prompt 35)',
+    summary: [
+      'OperatorAuditModule: strukturierte Audit-Events für sensitive Operator-Aktionen.',
+      'BusinessAuditOutbox-Pipeline mit Idempotenz, minimierten Payloads, Tenant-Scope-API.',
+      'Abdeckung: Handover, Bookings, Damages, Tasks, Documents, Verification, Tire, Permission Denied.',
+      'Keine Signaturen/Dokumentinhalte/Tokens in Audit-Payloads.',
+    ],
+    reason: 'Operator App Production Readiness — nachvollziehbares Audit Logging sensitiver Aktionen.',
+    previousBehavior: 'Sparse audit coverage; HTTP interceptor only; keine Operator-spezifischen strukturierten Events.',
+    details: 'Audit: docs/audits/operator-app-audit-logging-2026-07.md. API: GET /organizations/:orgId/operator/audit-events.',
+    affectsArchitecture: true,
+    module: 'Operator WebApp',
+    createdAt: '2026-07-25T20:30:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

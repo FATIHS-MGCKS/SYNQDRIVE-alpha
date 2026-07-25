@@ -4,6 +4,7 @@ import {
   Header,
   Param,
   Post,
+  Req,
   Res,
   StreamableFile,
   UseGuards,
@@ -51,10 +52,17 @@ export class DocumentsController {
   async downloadRentalContract(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: { requestId?: string },
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     const ctx = await this.rentalContract.getDownloadContext(orgId, bookingId);
-    const dl = await this.generated.getDownload(orgId, ctx.generatedDocumentId);
+    const dl = await this.generated.getDownload(
+      orgId,
+      ctx.generatedDocumentId,
+      userId,
+      req.requestId,
+    );
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDispositionInline(dl.fileName),
@@ -153,9 +161,11 @@ export class DocumentsController {
   async download(
     @Param('orgId') orgId: string,
     @Param('documentId') documentId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: { requestId?: string },
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const dl = await this.generated.getDownload(orgId, documentId);
+    const dl = await this.generated.getDownload(orgId, documentId, userId, req.requestId);
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDispositionInline(dl.fileName),

@@ -2,6 +2,11 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { PermissionActor } from '@shared/auth/permission.util';
 import { checklistForType, type TaskChecklistTemplateItem } from './task-templates';
@@ -202,6 +207,7 @@ export class TasksService {
     private readonly activityLog: ActivityLogService,
     private readonly linkedObjectResolver: TaskLinkedObjectResolverService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   // ─── Serialization ─────────────────────────────────────────────────────
@@ -1490,6 +1496,34 @@ export class TasksService {
 
     if (to === 'DONE' && checklistGate.checklistOverridden) {
       await this.recordTaskChecklistOverrideActivityLog(orgId, id, actorUserId, checklistGate);
+      void this.operatorAudit.record({
+        organizationId: orgId,
+        action: BusinessAuditAction.OPERATOR_TASK_COMPLETION_OVERRIDE,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.TASK,
+        entityId: id,
+        actorUserId: actorUserId ?? null,
+        outcome: 'SUCCESS',
+        correlationId: `task-complete-override:${id}`,
+        changeReason: checklistGate.overrideReason ?? null,
+        description: 'Task completed with checklist override',
+        critical: true,
+      });
+    }
+
+    if (to === 'DONE') {
+      void this.operatorAudit.record({
+        organizationId: orgId,
+        action: BusinessAuditAction.OPERATOR_TASK_COMPLETED,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.TASK,
+        entityId: id,
+        actorUserId: actorUserId ?? null,
+        outcome: 'SUCCESS',
+        correlationId: `task-complete:${id}`,
+        description: 'Task completed',
+        metadata: {
+          checklistOverridden: checklistGate.checklistOverridden,
+        },
+      });
     }
 
     const result = await this.getTaskById(id, orgId);

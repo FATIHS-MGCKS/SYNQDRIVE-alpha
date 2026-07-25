@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
   BadRequestException,
   NotFoundException,
@@ -48,6 +49,8 @@ import {
 } from './booking-eligibility-approval/dto/booking-eligibility-approval.dto';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import { BusinessAuditAction, BUSINESS_AUDIT_ENTITY_TYPE } from '@modules/business-audit/business-audit.constants';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -68,6 +71,7 @@ export class BookingsController {
     private readonly allowedDriversService: BookingAllowedDriversService,
     private readonly eligibilityApprovalService: BookingEligibilityApprovalService,
     private readonly eligibilityDecisionService: BookingEligibilityDecisionService,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   @Get('today/pickups')
@@ -378,9 +382,25 @@ export class BookingsController {
   async findDetail(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
+    @Req() req?: { requestId?: string },
   ) {
     const detail = await this.bookingsService.findDetail(orgId, id);
     if (!detail) throw new NotFoundException(`Booking ${id} not found`);
+    if (detail.customer?.id) {
+      void this.operatorAudit.record({
+        organizationId: orgId,
+        action: BusinessAuditAction.OPERATOR_CUSTOMER_SENSITIVE_VIEW,
+        entityType: BUSINESS_AUDIT_ENTITY_TYPE.CUSTOMER,
+        entityId: detail.customer.id,
+        actorUserId: userId ?? null,
+        outcome: 'SUCCESS',
+        correlationId: `booking-detail-customer:${id}:${detail.customer.id}`,
+        requestId: req?.requestId ?? null,
+        description: 'Booking detail with customer sensitive data viewed',
+        metadata: { bookingId: id },
+      });
+    }
     return detail;
   }
 

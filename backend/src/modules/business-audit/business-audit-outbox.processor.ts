@@ -140,6 +140,16 @@ export class BusinessAuditOutboxProcessorService {
       case BUSINESS_AUDIT_ENTITY_TYPE.BOOKING:
       case BUSINESS_AUDIT_ENTITY_TYPE.BOOKING_ELIGIBILITY_APPROVAL:
         return ActivityEntity.BOOKING;
+      case BUSINESS_AUDIT_ENTITY_TYPE.CUSTOMER:
+        return ActivityEntity.CUSTOMER;
+      case BUSINESS_AUDIT_ENTITY_TYPE.TASK:
+        return ActivityEntity.TASK;
+      case BUSINESS_AUDIT_ENTITY_TYPE.DAMAGE:
+      case BUSINESS_AUDIT_ENTITY_TYPE.HANDOVER_PROTOCOL:
+      case BUSINESS_AUDIT_ENTITY_TYPE.TIRE_MEASUREMENT:
+      case BUSINESS_AUDIT_ENTITY_TYPE.TECHNICAL_OBSERVATION:
+      case BUSINESS_AUDIT_ENTITY_TYPE.DOCUMENT_EXTRACTION:
+        return ActivityEntity.VEHICLE;
       default:
         return ActivityEntity.ORGANIZATION;
     }
@@ -156,6 +166,12 @@ export class BusinessAuditOutboxProcessorService {
       case BusinessAuditAction.MANUAL_APPROVAL_REQUESTED:
       case BusinessAuditAction.MANUAL_APPROVAL_EXPIRED:
         return 'WARN';
+      case BusinessAuditAction.OPERATOR_PERMISSION_DENIED:
+        return 'WARN';
+      case BusinessAuditAction.OPERATOR_HANDOVER_OVERRIDE:
+      case BusinessAuditAction.OPERATOR_TASK_COMPLETION_OVERRIDE:
+      case BusinessAuditAction.OPERATOR_BOOKING_CANCELLED:
+        return 'CRITICAL';
       default:
         return 'INFO';
     }

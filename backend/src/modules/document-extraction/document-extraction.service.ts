@@ -105,6 +105,11 @@ import { DocumentActionPlanPreviewService } from './document-action-plan-preview
 import { DocumentApplyResultService } from './document-apply-result.service';
 import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
 import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
 import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
 import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
 import {
@@ -372,6 +377,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly applyResultService: DocumentApplyResultService,
     private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
     private readonly followUpContactPrepareService: DocumentFollowUpContactPrepareService,
+    private readonly operatorAudit: OperatorAuditService,
     private readonly followUpResyncService: DocumentFollowUpResyncService,
     private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
   ) {}
@@ -1495,6 +1501,18 @@ export class DocumentExtractionService implements OnModuleInit {
     if (extractionStatus === 'PARTIALLY_APPLIED') {
       this.observability.recordPartialApply('partial_lifecycle');
     }
+    void this.operatorAudit.record({
+      organizationId: updated.organizationId ?? existing.organizationId ?? '',
+      action: BusinessAuditAction.OPERATOR_DOCUMENT_VERIFICATION,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.DOCUMENT_EXTRACTION,
+      entityId: extractionId,
+      actorUserId: userId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `extraction-confirm:${extractionId}`,
+      description: 'Document extraction confirmed',
+      metadata: { vehicleId, documentType: applyDocumentType, status: extractionStatus },
+      critical: true,
+    });
     return applyResult.detail ? { ...updated, applyResult: applyResult.detail } : updated;
   }
 
@@ -2214,6 +2232,18 @@ export class DocumentExtractionService implements OnModuleInit {
   async deleteFile(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
     await this.lifecycle.softDeleteFile({ record, userId });
+    void this.operatorAudit.record({
+      organizationId: record.organizationId ?? '',
+      action: BusinessAuditAction.OPERATOR_UPLOAD_DELETED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.DOCUMENT_EXTRACTION,
+      entityId: extractionId,
+      actorUserId: userId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `extraction-delete:${extractionId}`,
+      description: 'Operator upload file deleted',
+      metadata: { vehicleId, status: record.status },
+      critical: true,
+    });
     return this.getPublicForVehicle(vehicleId, extractionId);
   }
 

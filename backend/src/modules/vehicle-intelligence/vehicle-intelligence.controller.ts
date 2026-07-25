@@ -1516,8 +1516,9 @@ export class VehicleIntelligenceController {
   async createDamage(
     @Param('vehicleId') vehicleId: string,
     @Body() body: CreateDamageDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.damagesService.create(vehicleId, body);
+    return this.damagesService.create(vehicleId, body, undefined, req.user?.id);
   }
 
   /**
@@ -1542,8 +1543,9 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Param('id') id: string,
     @Body() body: UpdateDamageDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.damagesService.update(vehicleId, id, body);
+    return this.damagesService.update(vehicleId, id, body, undefined, req.user?.id);
   }
 
   @Patch('damages/:id/place')

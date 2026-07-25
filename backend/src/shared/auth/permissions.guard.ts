@@ -18,6 +18,7 @@ import {
   resolvePermissionOrgId,
 } from './permission.util';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
 
 /**
  * Permission-based authorization using `OrganizationMembership.permissions` JSON.
@@ -39,6 +40,7 @@ export class PermissionsGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
+    @Optional() private readonly operatorAudit?: OperatorAuditService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -86,6 +88,14 @@ export class PermissionsGuard implements CanActivate {
         `PermissionsGuard: user ${user.id} missing ${required.module}.${required.level} in org ${orgId}`,
       );
       this.iamMetrics?.recordEffectiveAccessDenied(required.module, required.level);
+      this.operatorAudit?.recordPermissionDenied({
+        organizationId: orgId,
+        actorUserId: user.id,
+        module: required.module,
+        level: required.level,
+        route: request.route?.path ?? request.url,
+        requestId: request.requestId,
+      });
       throw new ForbiddenException(
         `Missing permission: ${required.module}.${required.level}`,
       );

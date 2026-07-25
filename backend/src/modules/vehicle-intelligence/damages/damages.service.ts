@@ -16,6 +16,12 @@ import {
   TaskPriority,
 } from '@prisma/client';
 import { TasksService } from '../../tasks/tasks.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
+import { minimizeDamageAuditState } from '@modules/operator-audit/operator-audit-payload.util';
 import { damageRepairDedupKey } from '../../tasks/automation/task-automation-rule.util';
 import type { CreateDamageDto } from './dto/create-damage.dto';
 import type { CreateDamageRepairTaskDto } from './dto/create-damage-repair-task.dto';
@@ -125,6 +131,7 @@ export class DamagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasks: TasksService,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   /**
@@ -456,6 +463,7 @@ export class DamagesService {
     vehicleId: string,
     dto: CreateDamageDto,
     organizationId?: string,
+    actorUserId?: string | null,
   ): Promise<DamageResponseDto> {
     dto.images?.forEach((img) => this.validateImagePayload(img.imageData));
 
@@ -518,6 +526,27 @@ export class DamagesService {
       include: DAMAGE_INCLUDE,
     });
 
+    void this.operatorAudit.record({
+      organizationId: orgId,
+      action: BusinessAuditAction.OPERATOR_DAMAGE_CREATED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.DAMAGE,
+      entityId: row.id,
+      actorUserId: actorUserId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `damage-create:${row.id}`,
+      after: minimizeDamageAuditState({
+        id: row.id,
+        status: row.status,
+        severity: row.severity,
+        evidenceStatus: row.evidenceStatus,
+        damageType: row.damageType,
+        bookingId: row.bookingId,
+        imageCount: row.images?.length ?? 0,
+      }),
+      description: 'Vehicle damage created',
+      metadata: { vehicleId, bookingId: dto.bookingId ?? null },
+    });
+
     return mapDamageToResponse(row);
   }
 
@@ -526,6 +555,7 @@ export class DamagesService {
     damageId: string,
     dto: UpdateDamageDto,
     organizationId?: string,
+    actorUserId?: string | null,
   ): Promise<DamageResponseDto> {
     await this.assertDamageBelongsToVehicle(vehicleId, damageId);
     const orgId = organizationId ?? (await this.requireVehicleOrganizationId(vehicleId));
@@ -581,6 +611,35 @@ export class DamagesService {
       where: { id: damageId },
       data,
       include: DAMAGE_INCLUDE,
+    });
+
+    const action =
+      dto.evidenceStatus === DamageEvidenceStatus.COMPLETE
+        ? BusinessAuditAction.OPERATOR_DAMAGE_VERIFIED
+        : BusinessAuditAction.OPERATOR_DAMAGE_UPDATED;
+
+    void this.operatorAudit.record({
+      organizationId: orgId,
+      action,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.DAMAGE,
+      entityId: damageId,
+      actorUserId: actorUserId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `damage-update:${damageId}:${row.updatedAt.toISOString()}`,
+      after: minimizeDamageAuditState({
+        id: row.id,
+        status: row.status,
+        severity: row.severity,
+        evidenceStatus: row.evidenceStatus,
+        damageType: row.damageType,
+        bookingId: row.bookingId,
+        imageCount: row.images?.length ?? 0,
+      }),
+      description:
+        action === BusinessAuditAction.OPERATOR_DAMAGE_VERIFIED
+          ? 'Damage evidence verified'
+          : 'Vehicle damage updated',
+      metadata: { vehicleId },
     });
 
     return mapDamageToResponse(row);

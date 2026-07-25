@@ -9,6 +9,11 @@ import {
 } from './storage/document-storage.interface';
 import { DOCUMENT_ORIGIN, DOCUMENT_STATUS, DOCUMENT_TYPE } from './documents.constants';
 import { dedupeDocumentsByType } from './document-list-dedupe.util';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
 
 export interface CreateGeneratedDocumentInput {
   organizationId: string;
@@ -72,6 +77,7 @@ export class GeneratedDocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   async createFromPdf(input: CreateGeneratedDocumentInput): Promise<GeneratedDocument> {
@@ -228,8 +234,30 @@ export class GeneratedDocumentsService {
   }
 
   /** Returns a stream + headers for an authenticated download. Serves the stored file. */
-  async getDownload(orgId: string, documentId: string): Promise<DocumentDownload> {
+  async getDownload(
+    orgId: string,
+    documentId: string,
+    actorUserId?: string | null,
+    requestId?: string | null,
+  ): Promise<DocumentDownload> {
     const doc = await this.getById(orgId, documentId);
+    void this.operatorAudit.record({
+      organizationId: orgId,
+      action: BusinessAuditAction.OPERATOR_DOCUMENT_FULL_VIEW,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+      entityId: doc.bookingId ?? documentId,
+      actorUserId: actorUserId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `document-view:${documentId}`,
+      requestId: requestId ?? null,
+      description: 'Generated document downloaded',
+      metadata: {
+        documentId,
+        documentType: doc.documentType,
+        bookingId: doc.bookingId,
+        vehicleId: doc.vehicleId,
+      },
+    });
     const stream = await this.storage.getObjectStream(doc.objectKey);
     return {
       stream,

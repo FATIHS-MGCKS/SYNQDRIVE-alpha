@@ -76,6 +76,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
 import { AccountModule } from '@modules/account/account.module';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
+import { OperatorAuditModule } from '@modules/operator-audit/operator-audit.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { HealthModule } from '@modules/health/health.module';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
@@ -199,6 +200,7 @@ export class AppModule {
         AccountModule,
         IamMfaModule,
         IamDataRetentionModule,
+        OperatorAuditModule,
         NotificationsModule,
         HealthModule,
 

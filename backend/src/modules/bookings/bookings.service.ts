@@ -34,6 +34,12 @@ import {
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
+import { OperatorAuditService } from '@modules/operator-audit/operator-audit.service';
+import {
+  BusinessAuditAction,
+  BUSINESS_AUDIT_ENTITY_TYPE,
+} from '@modules/business-audit/business-audit.constants';
+import { minimizeBookingAuditState } from '@modules/operator-audit/operator-audit-payload.util';
 import {
   assertValidBookingWindow,
   buildOverlapWhere,
@@ -133,6 +139,7 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly operatorAudit: OperatorAuditService,
   ) {}
 
   /**
@@ -425,6 +432,20 @@ export class BookingsService {
 
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
+
+    void this.operatorAudit.record({
+      organizationId: orgId,
+      action: BusinessAuditAction.OPERATOR_BOOKING_CREATED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+      entityId: booking.id,
+      actorUserId: options?.userId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `booking-create:${booking.id}`,
+      stationId: booking.pickupStationId ?? null,
+      after: minimizeBookingAuditState(booking),
+      description: 'Booking created',
+      metadata: { vehicleId: booking.vehicleId, customerId: booking.customerId },
+    });
 
     return {
       ...booking,
@@ -2195,6 +2216,21 @@ export class BookingsService {
       updated.vehicleId,
       existing.vehicleId,
     );
+
+    void this.operatorAudit.record({
+      organizationId: orgId,
+      action: BusinessAuditAction.OPERATOR_BOOKING_UPDATED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+      entityId: id,
+      actorUserId: options?.userId ?? null,
+      outcome: 'SUCCESS',
+      correlationId: `booking-update:${id}:${updated.updatedAt?.toISOString?.() ?? Date.now()}`,
+      stationId: updated.pickupStationId ?? existing.pickupStationId ?? null,
+      before: minimizeBookingAuditState(existing),
+      after: minimizeBookingAuditState(updated),
+      description: 'Booking updated',
+    });
+
     return updated;
   }
 
@@ -2251,10 +2287,24 @@ export class BookingsService {
     await this.fleetMapCache.invalidate(orgId);
     await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
 
+    await this.operatorAudit.record({
+      organizationId: orgId,
+      action: BusinessAuditAction.OPERATOR_BOOKING_CANCELLED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.BOOKING,
+      entityId: id,
+      outcome: 'SUCCESS',
+      correlationId: `booking-cancel:${id}`,
+      stationId: booking.pickupStationId ?? null,
+      before: minimizeBookingAuditState(booking),
+      after: minimizeBookingAuditState(updated),
+      description: 'Booking cancelled',
+      critical: true,
+    });
+
     return updated;
   }
 
-  // V4.6.81 — No-show transition. Distinct from a regular cancel because
+  // V4.6.81 — No-show transition.
   // a no-show means the customer failed to appear after the pickup
   // window opened, not that the booking was called off in advance. We
   // reuse `cancelledAt` as the operational timestamp (same contract the
