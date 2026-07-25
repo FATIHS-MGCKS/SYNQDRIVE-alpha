@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-durable-timers-v49838-2026-07-25',
+    version: '4.9.838',
+    title: 'V4.9.838 — Durable workflow timers & delay steps (Phase 6 Prompt 28)',
+    summary: [
+      'PostgreSQL workflow_timers as source of truth: organizationId, occurrenceId, dueAt (fireAt), replace/cancel/reschedule.',
+      'Booking pickup overdue: schedule at pickupAt+30min, recheck on fire, emit booking.pickup_overdue when conditions pass.',
+      'workflow.delay action: WAITING + RESUME_DELAY timer; RETRY_BACKOFF timers for failed-retryable actions.',
+      'Idempotent fire via markFired; late execution logging; max delay 30 days; 60s scheduler poll (no second guarantees).',
+      'Tests: schedule, replace, cancel, restart-safe, duplicate fire, late worker, pickup/cancel guards, DST, cross-tenant, delay resume.',
+    ],
+    reason: 'Time-based workflows need durable timers that survive restarts and re-validate business conditions at fire time.',
+    previousBehavior: 'WorkflowTimer table existed but schedule() was never called; no delay action; pickup overdue only on lifecycle refresh.',
+    details: 'docs/architecture/workflow-durable-timers-2026-07.md. Module: backend/src/modules/workflows/runtime/timers/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T10:00:00.000Z',
+  },
+  {
     id: 'workflow-condition-operators-v49837-2026-07-25',
     version: '4.9.837',
     title: 'V4.9.837 — Workflow condition operator matrix (Phase 6 Prompt 27)',

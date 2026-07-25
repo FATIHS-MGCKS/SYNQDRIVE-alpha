@@ -18,6 +18,7 @@ export class WorkflowTimerRepository {
       timerType: WorkflowTimerType;
       fireAt: Date;
       idempotencyKey: string;
+      occurrenceId?: string | null;
       payload?: Prisma.InputJsonValue;
     },
   ) {
@@ -31,7 +32,22 @@ export class WorkflowTimerRepository {
         status: 'SCHEDULED',
         fireAt: input.fireAt,
         idempotencyKey: input.idempotencyKey,
+        occurrenceId: input.occurrenceId ?? null,
         payload: input.payload ?? {},
+      },
+    });
+  }
+
+  cancelScheduledByOccurrence(tx: Tx, orgId: string, occurrenceId: string, now = new Date()) {
+    return tx.workflowTimer.updateMany({
+      where: {
+        organizationId: orgId,
+        occurrenceId,
+        status: 'SCHEDULED',
+      },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: now,
       },
     });
   }

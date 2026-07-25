@@ -28,9 +28,13 @@ import { WorkflowRuntimeSchedulerService } from './workflow-runtime-scheduler.se
 import { WorkflowActionFallbackService } from './error-strategy/workflow-action-fallback.service';
 import { WorkflowActionCompensationService } from './error-strategy/workflow-action-compensation.service';
 import { WorkflowErrorStrategyExplainService } from './error-strategy/workflow-error-strategy-explain.service';
+import { WorkflowTimersCoreModule } from './timers/workflow-timers-core.module';
+import { WorkflowDelayActionService } from './timers/workflow-delay-action.service';
+import { WorkflowDelayResumeService } from './timers/workflow-delay-resume.service';
+import { WorkflowTimerFireService } from './timers/workflow-timer-fire.service';
 
 @Module({
-  imports: [PrismaModule, TasksModule, ConfigModule.forFeature(workflowRuntimeConfig)],
+  imports: [PrismaModule, TasksModule, ConfigModule.forFeature(workflowRuntimeConfig), WorkflowTimersCoreModule],
   controllers: [WorkflowApprovalController, WorkflowRunController],
   providers: [
     WorkflowRunRuntimeRepository,
@@ -56,6 +60,9 @@ import { WorkflowErrorStrategyExplainService } from './error-strategy/workflow-e
     WorkflowErrorStrategyExplainService,
     WorkflowRuntimeActionExecutorAdapter,
     WorkflowActionExecutorService,
+    WorkflowDelayActionService,
+    WorkflowDelayResumeService,
+    WorkflowTimerFireService,
   ],
   exports: [
     WorkflowRunRuntimeService,
@@ -67,6 +74,7 @@ import { WorkflowErrorStrategyExplainService } from './error-strategy/workflow-e
     WorkflowRunCancellationService,
     WorkflowRunWorkerService,
     WorkflowRuntimeSchedulerService,
+    WorkflowTimersCoreModule,
   ],
 })
 export class WorkflowRuntimeModule {}

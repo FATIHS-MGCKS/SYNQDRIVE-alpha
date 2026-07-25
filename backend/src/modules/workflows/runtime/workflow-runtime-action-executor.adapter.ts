@@ -3,6 +3,7 @@ import type { WorkflowActionRun, WorkflowRun } from '@prisma/client';
 import { WorkflowActionExecutorService } from '../workflow-action-executor.service';
 import type { WorkflowActionDef } from '../workflow-definition.validator';
 import type { WorkflowActionRunStatus } from './workflow-runtime-status.constants';
+import { WorkflowDelayActionService } from './timers/workflow-delay-action.service';
 
 export interface CanonicalActionExecutionResult {
   status: WorkflowActionRunStatus;
@@ -23,7 +24,10 @@ const RETRYABLE_ERROR_PATTERNS = [
 
 @Injectable()
 export class WorkflowRuntimeActionExecutorAdapter {
-  constructor(private readonly legacyExecutor: WorkflowActionExecutorService) {}
+  constructor(
+    private readonly legacyExecutor: WorkflowActionExecutorService,
+    private readonly delayAction: WorkflowDelayActionService,
+  ) {}
 
   async execute(
     action: WorkflowActionDef,
@@ -33,6 +37,10 @@ export class WorkflowRuntimeActionExecutorAdapter {
     maxAttempts: number,
     options?: { resumedAfterApproval?: boolean },
   ): Promise<CanonicalActionExecutionResult> {
+    if (action.type === 'workflow.delay') {
+      return this.delayAction.execute(action, run, actionRun);
+    }
+
     const inputPayload =
       run.inputPayload && typeof run.inputPayload === 'object' && !Array.isArray(run.inputPayload)
         ? (run.inputPayload as Record<string, unknown>)

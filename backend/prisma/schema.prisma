@@ -11591,7 +11591,10 @@ model WorkflowTimer {
   approvalId     String?             @unique @map("approval_id")
   timerType      WorkflowTimerType   @map("timer_type")
   status         WorkflowTimerStatus @default(SCHEDULED)
+  /// Stable business occurrence key for replace/cancel (e.g. booking.pickup_overdue:…).
+  occurrenceId   String?             @map("occurrence_id")
   idempotencyKey String              @map("idempotency_key")
+  /// UTC due instant — same semantics as dueAt in API docs.
   fireAt         DateTime            @map("fire_at")
   firedAt        DateTime?           @map("fired_at")
   cancelledAt    DateTime?           @map("cancelled_at")
@@ -11607,6 +11610,7 @@ model WorkflowTimer {
   @@unique([organizationId, idempotencyKey], map: "workflow_timers_org_idempotency_key")
   @@index([status, fireAt])
   @@index([organizationId, workflowRunId])
+  @@index([organizationId, occurrenceId])
   @@map("workflow_timers")
 }
 
