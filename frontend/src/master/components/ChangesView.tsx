@@ -195,7 +195,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     ],
     reason: 'Workflow automation must be usable on 320px phones, with keyboard/screenreader support, without a visual redesign.',
     previousBehavior: '10–11px filter chips, 32px icon buttons, truncated titles, no focus return from drawers.',
-    details: 'detail-drawer.tsx, WorkflowOverviewSection.tsx, WorkflowConfigDrawer.tsx, TaskAutomationRulesSection.tsx, workflow-mobile-a11y.test.ts.',
+    details: 'detail-drawer.tsx, WorkflowOverviewSection.tsx, WorkflowConfigDrawer.tsx, TaskAutomationRuleDrawer.tsx (AlertDialog reset/unsaved), TaskAutomationRulesSection.tsx, workflow-mobile-a11y.test.ts, docs/audits/workflow-automation-ui-mobile-readiness-2026-07.md.',
     affectsArchitecture: false,
     module: 'Automation',
     createdAt: '2026-07-25T23:55:00.000Z',
