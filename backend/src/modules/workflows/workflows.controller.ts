@@ -14,10 +14,14 @@ import { WorkflowsService } from './workflows.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import {
+  ApproveWorkflowActionDto,
   CreateWorkflowDto,
+  DecideWorkflowChangeRequestDto,
   RejectWorkflowActionDto,
   TestWorkflowDto,
+  ToggleWorkflowDto,
   UpdateWorkflowDto,
 } from './dto';
 
@@ -45,10 +49,41 @@ export class WorkflowsController {
     return this.service.getStats(orgId);
   }
 
+  @Get('change-requests/:requestId')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async getChangeRequest(
+    @Param('orgId') orgId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.service.getChangeRequest(orgId, requestId);
+  }
+
   @Get('runs/:runId')
   @Roles(...WORKFLOW_READ_ROLES)
   async getRun(@Param('orgId') orgId: string, @Param('runId') runId: string) {
     return this.service.getRun(orgId, runId);
+  }
+
+  @Post('change-requests/:requestId/approve')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async approveChangeRequest(
+    @Param('orgId') orgId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: DecideWorkflowChangeRequestDto,
+    @Req() req: { user?: PermissionActor & { id: string } },
+  ) {
+    return this.service.approveChangeRequest(orgId, requestId, req.user!, body);
+  }
+
+  @Post('change-requests/:requestId/reject')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async rejectChangeRequest(
+    @Param('orgId') orgId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: DecideWorkflowChangeRequestDto,
+    @Req() req: { user?: PermissionActor & { id: string } },
+  ) {
+    return this.service.rejectChangeRequest(orgId, requestId, req.user!, body);
   }
 
   @Post('action-runs/:actionRunId/approve')
@@ -56,9 +91,10 @@ export class WorkflowsController {
   async approveAction(
     @Param('orgId') orgId: string,
     @Param('actionRunId') actionRunId: string,
-    @Req() req: { user?: { id?: string } },
+    @Body() body: ApproveWorkflowActionDto,
+    @Req() req: { user?: PermissionActor & { id?: string } },
   ) {
-    return this.service.approveActionRun(orgId, actionRunId, req.user?.id);
+    return this.service.approveActionRun(orgId, actionRunId, req.user?.id, body, req.user);
   }
 
   @Post('action-runs/:actionRunId/reject')
@@ -70,6 +106,12 @@ export class WorkflowsController {
     @Req() req: { user?: { id?: string } },
   ) {
     return this.service.rejectActionRun(orgId, actionRunId, req.user?.id, body.reason);
+  }
+
+  @Get(':id/change-requests')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async listChangeRequests(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.service.listChangeRequests(orgId, id);
   }
 
   @Get(':id/runs')
@@ -127,6 +169,7 @@ export class WorkflowsController {
   async toggle(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Body() body: ToggleWorkflowDto,
     @Req() req: { user?: { id?: string; name?: string; email?: string } },
   ) {
     const user = req.user || {};
@@ -135,6 +178,7 @@ export class WorkflowsController {
       id,
       user.id,
       user.name || user.email || 'System',
+      body.activationReason,
     );
   }
 
@@ -160,8 +204,9 @@ export class WorkflowsController {
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: TestWorkflowDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.service.testWorkflow(orgId, id, body);
+    return this.service.testWorkflow(orgId, id, body, req.user?.id);
   }
 
   @Delete(':id')

@@ -71,6 +71,50 @@ interface WorkflowRun {
   }>;
 }
 
+interface WorkflowChangeRequest {
+  id: string;
+  status: string;
+  operation: string;
+  makerUserId: string;
+  checkerUserId?: string | null;
+  makerReason: string;
+  checkerReason?: string | null;
+  expiresAt: string;
+  decisionVersion: number;
+  emergencyOverride?: boolean;
+  diff?: Array<{ field: string; before: unknown; after: unknown }> | null;
+  expired?: boolean;
+}
+
+const SENSITIVE_ACTION_PREFIXES = ['ai_', 'ai.'];
+const SENSITIVE_ACTION_TYPES = new Set([
+  'request_approval',
+  'ai_suggest',
+  'ai_execute',
+  'ai_send_message',
+  'ai_book_appointment',
+]);
+
+function workflowRequiresActivationApproval(wf: {
+  category?: string;
+  actions?: ActionDef[];
+  status?: string;
+}): boolean {
+  if (wf.category === 'ai_permissions') return true;
+  return (wf.actions || []).some((action) =>
+    SENSITIVE_ACTION_TYPES.has(action.type)
+    || SENSITIVE_ACTION_PREFIXES.some((prefix) => action.type.startsWith(prefix)),
+  );
+}
+
+function promptActivationReason(actionLabel: string): string | null {
+  const reason = window.prompt(
+    `${actionLabel} requires four-eyes approval. Enter reason for the activation request:`,
+  );
+  if (!reason?.trim()) return null;
+  return reason.trim();
+}
+
 interface Props {
   isDarkMode: boolean;
   canWrite?: boolean;
@@ -277,6 +321,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: str
   DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
   DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
   INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
+  PENDING_ACTIVATION: { label: 'Pending approval', color: 'purple', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
 };
 
 const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
@@ -354,8 +399,15 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
 
   const handleToggle = async (wf: Workflow) => {
     if (!orgId) return;
+    const enabling = wf.status !== 'ACTIVE';
+    let activationReason: string | undefined;
+    if (enabling && workflowRequiresActivationApproval(wf)) {
+      const reason = promptActivationReason('Activating this workflow');
+      if (!reason) return;
+      activationReason = reason;
+    }
     try {
-      await api.workflows.toggle(orgId, wf.id);
+      await api.workflows.toggle(orgId, wf.id, activationReason ? { activationReason } : undefined);
       loadData();
     } catch (e) { console.error(e); }
   };
@@ -410,6 +462,13 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
 
   const handleSave = async () => {
     if (!orgId || !builderData?.name || !builderData.category || !builderData.trigger || !builderData.actions?.length) return;
+    const activating = (builderData.status || 'DRAFT') === 'ACTIVE';
+    let activationReason: string | undefined;
+    if (activating && workflowRequiresActivationApproval(builderData)) {
+      const reason = promptActivationReason('Publishing this workflow');
+      if (!reason) return;
+      activationReason = reason;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -421,6 +480,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         actions: builderData.actions,
         scope: builderData.scope || { type: 'organization' },
         status: builderData.status || 'DRAFT',
+        ...(activationReason ? { activationReason } : {}),
       };
       if (builderData.id) {
         await api.workflows.update(orgId, builderData.id, payload);
@@ -824,6 +884,9 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const [runsLoading, setRunsLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const [changeRequests, setChangeRequests] = useState<WorkflowChangeRequest[]>([]);
+  const [changeRequestsLoading, setChangeRequestsLoading] = useState(true);
+  const [decisionBusy, setDecisionBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -833,6 +896,55 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       .catch(() => setRuns([]))
       .finally(() => setRunsLoading(false));
   }, [orgId, wf.id]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    setChangeRequestsLoading(true);
+    api.workflows.listChangeRequests(orgId, wf.id)
+      .then((rows) => setChangeRequests(rows as WorkflowChangeRequest[]))
+      .catch(() => setChangeRequests([]))
+      .finally(() => setChangeRequestsLoading(false));
+  }, [orgId, wf.id, wf.status]);
+
+  const handleApproveRequest = async (request: WorkflowChangeRequest) => {
+    if (!orgId) return;
+    const reason = window.prompt('Approval reason (required):');
+    if (!reason?.trim()) return;
+    setDecisionBusy(request.id);
+    try {
+      await api.workflows.approveChangeRequest(orgId, request.id, {
+        reason: reason.trim(),
+        decisionVersion: request.decisionVersion,
+      });
+      onRefresh();
+      const rows = await api.workflows.listChangeRequests(orgId, wf.id);
+      setChangeRequests(rows as WorkflowChangeRequest[]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDecisionBusy(null);
+    }
+  };
+
+  const handleRejectRequest = async (request: WorkflowChangeRequest) => {
+    if (!orgId) return;
+    const reason = window.prompt('Rejection reason (required):');
+    if (!reason?.trim()) return;
+    setDecisionBusy(request.id);
+    try {
+      await api.workflows.rejectChangeRequest(orgId, request.id, {
+        reason: reason.trim(),
+        decisionVersion: request.decisionVersion,
+      });
+      onRefresh();
+      const rows = await api.workflows.listChangeRequests(orgId, wf.id);
+      setChangeRequests(rows as WorkflowChangeRequest[]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDecisionBusy(null);
+    }
+  };
 
   const handleTest = async () => {
     if (!orgId) return;
@@ -941,6 +1053,85 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       {testError && (
         <div className={`text-xs px-3 py-2 rounded-lg border ${isDarkMode ? 'bg-amber-900/20 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
           {testError}
+        </div>
+      )}
+
+      {(wf.status === 'PENDING_ACTIVATION' || changeRequests.some((cr) => cr.status === 'PENDING')) && (
+        <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+            <p className={`text-xs font-semibold ${textPrimary}`}>Four-eyes activation control</p>
+          </div>
+          {changeRequestsLoading ? (
+            <p className={`text-xs ${textSecondary}`}>Loading approval requests…</p>
+          ) : changeRequests.length === 0 ? (
+            <p className={`text-xs ${textSecondary}`}>No change requests recorded yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {changeRequests.map((request) => (
+                <div key={request.id} className={`rounded-lg border ${cardBorder} p-3 ${isDarkMode ? 'bg-white/[0.02]' : 'bg-gray-50'}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                        request.status === 'PENDING'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-status-ai-soft dark:text-status-ai'
+                          : request.status === 'APPROVED'
+                            ? 'bg-green-100 text-green-700 dark:bg-status-positive-soft dark:text-status-positive'
+                            : 'bg-gray-100 text-gray-600 dark:bg-muted dark:text-muted-foreground'
+                      }`}>
+                        {request.status}
+                      </span>
+                      <span className={`text-[10px] ${textSecondary}`}>{request.operation}</span>
+                    </div>
+                    <span className={`text-[10px] ${textSecondary}`}>
+                      Expires {new Date(request.expiresAt).toLocaleString('de-DE')}
+                      {request.expired ? ' (expired)' : ''}
+                    </span>
+                  </div>
+                  <div className={`mt-2 grid grid-cols-2 gap-2 text-[11px] ${textSecondary}`}>
+                    <div><span className={labelClass}>Maker</span><p className={valueClass}>{request.makerUserId.slice(0, 8)}…</p></div>
+                    <div><span className={labelClass}>Checker</span><p className={valueClass}>{request.checkerUserId ? `${request.checkerUserId.slice(0, 8)}…` : '—'}</p></div>
+                    <div className="col-span-2"><span className={labelClass}>Maker reason</span><p className={valueClass}>{request.makerReason}</p></div>
+                    {request.checkerReason && (
+                      <div className="col-span-2"><span className={labelClass}>Checker reason</span><p className={valueClass}>{request.checkerReason}</p></div>
+                    )}
+                  </div>
+                  {request.diff && request.diff.length > 0 && (
+                    <div className="mt-2">
+                      <p className={`${labelClass} mb-1`}>Diff</p>
+                      <div className="space-y-1">
+                        {request.diff.map((entry) => (
+                          <p key={entry.field} className={`text-[10px] ${textSecondary}`}>
+                            <strong className={textPrimary}>{entry.field}</strong>: {String(entry.before ?? '—')} → {String(entry.after ?? '—')}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {canWrite && request.status === 'PENDING' && !request.expired && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={decisionBusy === request.id}
+                        onClick={() => handleApproveRequest(request)}
+                        className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        disabled={decisionBusy === request.id}
+                        onClick={() => handleRejectRequest(request)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-medium border ${cardBorder} ${textPrimary}`}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

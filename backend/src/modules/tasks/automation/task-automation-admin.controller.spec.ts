@@ -134,11 +134,23 @@ describe('TaskAutomationAdminController', () => {
     expect(admin.listRuleRevisions).toHaveBeenCalledWith(orgId, ruleId);
   });
 
-  it('replays dead-letter outbox rows', async () => {
-    const payload = { outboxId: 'outbox-1', status: 'PENDING' };
+  it('replays dead-letter outbox rows via maker-checker request', async () => {
+    const payload = { pendingApproval: true, outboxId: 'outbox-1', changeRequest: { id: 'cr-1' } };
     admin.replayDeadLetterOutbox.mockResolvedValue(payload);
 
-    await expect(controller.replayDeadLetterOutbox(orgId, 'outbox-1')).resolves.toEqual(payload);
-    expect(admin.replayDeadLetterOutbox).toHaveBeenCalledWith(orgId, 'outbox-1');
+    await expect(
+      controller.replayDeadLetterOutbox(
+        orgId,
+        'outbox-1',
+        { makerReason: 'Replay after provider fix' },
+        { user: actor },
+      ),
+    ).resolves.toEqual(payload);
+    expect(admin.replayDeadLetterOutbox).toHaveBeenCalledWith(
+      orgId,
+      'outbox-1',
+      actor,
+      'Replay after provider fix',
+    );
   });
 });

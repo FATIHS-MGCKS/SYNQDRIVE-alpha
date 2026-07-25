@@ -10693,6 +10693,29 @@ enum WorkflowStatus {
   DRAFT
   DISABLED
   INVALID
+  PENDING_ACTIVATION
+}
+
+enum WorkflowMakerCheckerOperation {
+  WORKFLOW_PUBLISH_HIGH_CRITICAL
+  WORKFLOW_ACTIVATE_EXTERNAL_AI
+  WORKFLOW_APPROVE_AI_CALL
+  WORKFLOW_BOOKING_CANCEL
+  WORKFLOW_CUSTOMER_BLOCK
+  WORKFLOW_PAYMENT_CHARGE
+  WORKFLOW_SENSITIVE_POLICY_CHANGE
+  WORKFLOW_SECRET_PROVIDER_CONFIG
+  WORKFLOW_DEAD_LETTER_FORCE_REPLAY
+  WORKFLOW_RUNTIME_ACTION
+}
+
+enum WorkflowChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  SUPERSEDED
+  CANCELLED
 }
 
 enum WorkflowRunStatus {
@@ -10743,7 +10766,8 @@ model OrgWorkflow {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  runs OrgWorkflowRun[]
+  runs            OrgWorkflowRun[]
+  changeRequests  OrgWorkflowChangeRequest[]
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -10811,16 +10835,27 @@ model OrgWorkflowActionRun {
 }
 
 model OrgWorkflowApproval {
-  id                String                 @id @default(uuid())
-  organizationId    String                 @map("organization_id")
-  workflowRunId     String                 @map("workflow_run_id")
-  actionRunId       String                 @map("action_run_id")
-  status            WorkflowApprovalStatus @default(PENDING)
-  requestedBySystem Boolean                @default(true) @map("requested_by_system")
-  approvedByUserId  String?                @map("approved_by_user_id")
-  reason            String?
-  createdAt         DateTime               @default(now()) @map("created_at")
-  decidedAt         DateTime?              @map("decided_at")
+  id                     String                 @id @default(uuid())
+  organizationId         String                 @map("organization_id")
+  workflowRunId          String                 @map("workflow_run_id")
+  actionRunId            String                 @map("action_run_id")
+  status                 WorkflowApprovalStatus @default(PENDING)
+  requestedBySystem      Boolean                @default(true) @map("requested_by_system")
+  requestedByUserId      String?                @map("requested_by_user_id")
+  makerUserId            String?                @map("maker_user_id")
+  lastEditorUserId       String?                @map("last_editor_user_id")
+  approvedByUserId       String?                @map("approved_by_user_id")
+  checkerReason          String?                @map("checker_reason")
+  reason                 String?
+  operationType          WorkflowMakerCheckerOperation? @map("operation_type")
+  approvedWorkflowVersion Int?                  @map("approved_workflow_version")
+  approvedDefinitionHash String?                @map("approved_definition_hash")
+  expiresAt              DateTime?              @map("expires_at")
+  emergencyOverride      Boolean                @default(false) @map("emergency_override")
+  emergencyReason        String?                @map("emergency_reason")
+  decisionVersion        Int                    @default(1) @map("decision_version")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  decidedAt              DateTime?              @map("decided_at")
 
   workflowRun OrgWorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
 
@@ -10828,7 +10863,41 @@ model OrgWorkflowApproval {
   @@index([workflowRunId])
   @@index([actionRunId])
   @@index([status])
+  @@index([expiresAt])
   @@map("org_workflow_approvals")
+}
+
+model OrgWorkflowChangeRequest {
+  id                     String                        @id @default(uuid())
+  organizationId         String                        @map("organization_id")
+  workflowId             String                        @map("workflow_id")
+  operation              WorkflowMakerCheckerOperation
+  status                 WorkflowChangeRequestStatus   @default(PENDING)
+  makerUserId            String                        @map("maker_user_id")
+  checkerUserId          String?                       @map("checker_user_id")
+  makerReason            String                        @map("maker_reason")
+  checkerReason          String?                       @map("checker_reason")
+  proposedDefinition     Json                          @map("proposed_definition")
+  proposedDefinitionHash String                        @map("proposed_definition_hash")
+  baselineDefinitionHash String                        @map("baseline_definition_hash")
+  proposedWorkflowVersion Int                          @map("proposed_workflow_version")
+  proposedStatus         WorkflowStatus                @map("proposed_status")
+  expiresAt              DateTime                      @map("expires_at")
+  emergencyOverride      Boolean                       @default(false) @map("emergency_override")
+  emergencyReason        String?                       @map("emergency_reason")
+  decisionVersion        Int                           @default(1) @map("decision_version")
+  decidedAt              DateTime?                     @map("decided_at")
+  createdAt              DateTime                      @default(now()) @map("created_at")
+  updatedAt              DateTime                      @updatedAt @map("updated_at")
+
+  workflow OrgWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([workflowId])
+  @@index([organizationId, workflowId, status])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("org_workflow_change_requests")
 }
 
 // ------------------------------------------------

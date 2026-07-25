@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-maker-checker-v49852-2026-07-25',
+    version: '4.9.852',
+    title: 'V4.9.852 — Workflow Maker-Checker / Four-Eyes Controls (Phase 9 Prompt 42)',
+    summary: [
+      'OrgWorkflowChangeRequest + extended OrgWorkflowApproval for dual-control on sensitive workflow changes.',
+      'HIGH/CRITICAL publish → PENDING_ACTIVATION until independent checker approves with reason.',
+      'Runtime action approvals: maker≠checker, version hash match, expiry, optimistic decisionVersion.',
+      'Emergency override via workflow-emergency-override.manage + mandatory audit reason.',
+      'API: change-request approve/reject, action-run approve requires reason + diff endpoints.',
+    ],
+    reason: 'Sensitive workflow operations require four-eyes separation — not single-operator trust.',
+    previousBehavior: 'Coarse approval gates without maker-checker separation, version invalidation, or expiry.',
+    details: 'docs/security/workflow-maker-checker-2026-07.md. Module: workflows/maker-checker/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T21:00:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

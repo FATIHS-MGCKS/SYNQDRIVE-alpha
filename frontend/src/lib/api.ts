@@ -2327,12 +2327,46 @@ export interface WorkflowStatsDto {
   draft: number;
   disabled: number;
   invalid: number;
+  pendingActivation?: number;
   totalRuns: number;
   successfulRuns: number;
   failedRuns: number;
   waitingApprovalRuns: number;
   runsLast24h: number;
   lastRunAt: string | null;
+}
+export interface WorkflowChangeRequestDiffDto {
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+export interface WorkflowChangeRequestDto {
+  id: string;
+  organizationId: string;
+  workflowId: string;
+  operation: string;
+  status: string;
+  makerUserId: string;
+  checkerUserId?: string | null;
+  makerReason: string;
+  checkerReason?: string | null;
+  proposedDefinition: Record<string, unknown>;
+  proposedDefinitionHash: string;
+  proposedWorkflowVersion: number;
+  proposedStatus: string;
+  expiresAt: string;
+  emergencyOverride?: boolean;
+  emergencyReason?: string | null;
+  decisionVersion: number;
+  decidedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  diff?: WorkflowChangeRequestDiffDto[] | null;
+  expired?: boolean;
+}
+export interface WorkflowMutationResultDto extends WorkflowDto {
+  pendingActivation?: boolean;
+  changeRequest?: WorkflowChangeRequestDto | null;
 }
 export interface WorkflowActionRunDto {
   id: string;
@@ -2380,6 +2414,7 @@ export interface WorkflowCreatePayload {
   actions: WorkflowActionDto[];
   scope?: WorkflowScopeDto;
   status?: string;
+  activationReason?: string;
 }
 export type WorkflowUpdatePayload = Partial<WorkflowCreatePayload>;
 export interface WorkflowTestPayload {
@@ -4833,10 +4868,10 @@ export const api = {
       get<
         import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRuleRevisionDto[]
       >(`/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/revisions`),
-    replayDeadLetterOutbox: (orgId: string, outboxId: string) =>
-      post<{ outboxId: string; status: 'PENDING' }>(
+    replayDeadLetterOutbox: (orgId: string, outboxId: string, data: { makerReason: string }) =>
+      post<{ pendingApproval: boolean; outboxId: string; changeRequest?: WorkflowChangeRequestDto; status?: 'PENDING' }>(
         `/organizations/${orgId}/task-automation/outbox/${encodeURIComponent(outboxId)}/replay`,
-        {},
+        data,
       ),
   },
   workflows: {
@@ -4849,9 +4884,12 @@ export const api = {
     },
     stats: (orgId: string) => get<WorkflowStatsDto>(`/organizations/${orgId}/workflows/stats`),
     get: (orgId: string, id: string) => get<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`),
-    create: (orgId: string, data: WorkflowCreatePayload) => post<WorkflowDto>(`/organizations/${orgId}/workflows`, data),
-    update: (orgId: string, id: string, data: WorkflowUpdatePayload) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`, data),
-    toggle: (orgId: string, id: string) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/toggle`, {}),
+    create: (orgId: string, data: WorkflowCreatePayload) =>
+      post<WorkflowMutationResultDto>(`/organizations/${orgId}/workflows`, data),
+    update: (orgId: string, id: string, data: WorkflowUpdatePayload) =>
+      patch<WorkflowMutationResultDto>(`/organizations/${orgId}/workflows/${id}`, data),
+    toggle: (orgId: string, id: string, data?: { activationReason?: string }) =>
+      patch<WorkflowMutationResultDto>(`/organizations/${orgId}/workflows/${id}/toggle`, data ?? {}),
     duplicate: (orgId: string, id: string) => post<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/duplicate`, {}),
     remove: (orgId: string, id: string) => del<{ deleted: boolean }>(`/organizations/${orgId}/workflows/${id}`),
     listRuns: (orgId: string, workflowId: string, limit = 25) =>
@@ -4859,10 +4897,39 @@ export const api = {
     getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
     test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
       post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
-    approveActionRun: (orgId: string, actionRunId: string) =>
-      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, {}),
+    approveActionRun: (
+      orgId: string,
+      actionRunId: string,
+      data: { reason: string; decisionVersion?: number; emergencyOverride?: boolean; emergencyReason?: string },
+    ) =>
+      post<WorkflowActionRunDto>(
+        `/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`,
+        data,
+      ),
     rejectActionRun: (orgId: string, actionRunId: string, reason?: string) =>
       post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/reject`, { reason }),
+    listChangeRequests: (orgId: string, workflowId: string) =>
+      get<WorkflowChangeRequestDto[]>(`/organizations/${orgId}/workflows/${workflowId}/change-requests`),
+    getChangeRequest: (orgId: string, requestId: string) =>
+      get<WorkflowChangeRequestDto>(`/organizations/${orgId}/workflows/change-requests/${requestId}`),
+    approveChangeRequest: (
+      orgId: string,
+      requestId: string,
+      data: { reason: string; decisionVersion?: number; emergencyOverride?: boolean; emergencyReason?: string },
+    ) =>
+      post<{ changeRequest: WorkflowChangeRequestDto; workflow?: WorkflowDto }>(
+        `/organizations/${orgId}/workflows/change-requests/${requestId}/approve`,
+        data,
+      ),
+    rejectChangeRequest: (
+      orgId: string,
+      requestId: string,
+      data: { reason: string; decisionVersion?: number },
+    ) =>
+      post<WorkflowChangeRequestDto>(
+        `/organizations/${orgId}/workflows/change-requests/${requestId}/reject`,
+        data,
+      ),
   },
   billing: {
     subscriptions: () => get<any[]>('/admin/billing/subscriptions'),

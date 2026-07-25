@@ -12,6 +12,12 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
+import { WorkflowMakerCheckerService } from '../maker-checker/workflow-maker-checker.service';
+import {
+  buildDefinitionSnapshot,
+  computeWorkflowDefinitionHash,
+} from '../maker-checker/workflow-maker-checker.util';
+import { resolveActionOperation } from '../maker-checker/workflow-maker-checker.constants';
 import type { WorkflowActionDef } from './workflow-definition.validator';
 
 export interface ActionExecutionContext {
@@ -32,6 +38,7 @@ export class WorkflowActionExecutorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
+    private readonly makerChecker: WorkflowMakerCheckerService,
   ) {}
 
   async execute(
@@ -39,16 +46,43 @@ export class WorkflowActionExecutorService {
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
     if (action.requiresApproval) {
-      await this.prisma.orgWorkflowApproval.create({
-        data: {
-          organizationId: ctx.organizationId,
-          workflowRunId: ctx.workflowRunId,
-          actionRunId: ctx.actionRunId,
-          status: 'PENDING',
-          requestedBySystem: true,
-          reason: `Approval required for ${action.type}`,
-        },
+      const workflow = await this.prisma.orgWorkflow.findFirst({
+        where: { id: ctx.workflowId, organizationId: ctx.organizationId },
+        select: { version: true, updatedById: true, name: true, category: true, trigger: true, conditions: true, actions: true, scope: true, status: true },
       });
+      const makerUserId =
+        typeof ctx.payload.triggeredByUserId === 'string'
+          ? ctx.payload.triggeredByUserId
+          : null;
+      const definitionHash = workflow
+        ? computeWorkflowDefinitionHash(buildDefinitionSnapshot(workflow as any))
+        : null;
+
+      await this.makerChecker.createRuntimeApproval({
+        orgId: ctx.organizationId,
+        workflowRunId: ctx.workflowRunId,
+        actionRunId: ctx.actionRunId,
+        actionType: action.type,
+        makerUserId,
+        lastEditorUserId: workflow?.updatedById ?? null,
+        reason: `Approval required for ${action.type}`,
+      });
+
+      if (workflow && definitionHash) {
+        await this.prisma.orgWorkflowApproval.updateMany({
+          where: {
+            organizationId: ctx.organizationId,
+            actionRunId: ctx.actionRunId,
+            status: 'PENDING',
+          },
+          data: {
+            approvedWorkflowVersion: workflow.version,
+            approvedDefinitionHash: definitionHash,
+            operationType: resolveActionOperation(action.type),
+          },
+        });
+      }
+
       return {
         status: 'WAITING_APPROVAL',
         output: { message: 'Awaiting approval before execution' },
@@ -224,17 +258,18 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<Record<string, unknown>> {
-    await this.prisma.orgWorkflowApproval.create({
-      data: {
-        organizationId: ctx.organizationId,
-        workflowRunId: ctx.workflowRunId,
-        actionRunId: ctx.actionRunId,
-        status: 'PENDING',
-        requestedBySystem: true,
-        reason:
-          (typeof action.config?.message === 'string' && action.config.message) ||
-          'Workflow approval requested',
-      },
+    await this.makerChecker.createRuntimeApproval({
+      orgId: ctx.organizationId,
+      workflowRunId: ctx.workflowRunId,
+      actionRunId: ctx.actionRunId,
+      actionType: action.type,
+      makerUserId:
+        typeof ctx.payload.triggeredByUserId === 'string'
+          ? ctx.payload.triggeredByUserId
+          : null,
+      reason:
+        (typeof action.config?.message === 'string' && action.config.message)
+        || 'Workflow approval requested',
     });
     return { waitingApproval: true };
   }
@@ -261,15 +296,16 @@ export class WorkflowActionExecutorService {
         config: action.config ?? {},
       } as Prisma.InputJsonValue,
     });
-    await this.prisma.orgWorkflowApproval.create({
-      data: {
-        organizationId: ctx.organizationId,
-        workflowRunId: ctx.workflowRunId,
-        actionRunId: ctx.actionRunId,
-        status: 'PENDING',
-        requestedBySystem: true,
-        reason: 'AI suggestion requires human approval',
-      },
+    await this.makerChecker.createRuntimeApproval({
+      orgId: ctx.organizationId,
+      workflowRunId: ctx.workflowRunId,
+      actionRunId: ctx.actionRunId,
+      actionType: action.type,
+      makerUserId:
+        typeof ctx.payload.triggeredByUserId === 'string'
+          ? ctx.payload.triggeredByUserId
+          : null,
+      reason: 'AI suggestion requires human approval',
     });
     return { suggestionTaskId: task.id, suggestionOnly: true };
   }
