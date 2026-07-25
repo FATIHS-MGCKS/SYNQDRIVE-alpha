@@ -1,3 +1,4 @@
+import type { TranslationKey } from '../i18n/translations/en';
 import type { VehicleDetailTab } from './vehicle-overview.types';
 import { VEHICLE_DETAIL_TAB_KEYS } from './vehicle-overview-navigation';
 
@@ -23,6 +24,19 @@ export const VEHICLE_DETAIL_TAB_PANEL_ID: Record<VehicleDetailTab, string> = {
   'vehicle-requirements': 'vehicle-detail-panel-vehicle-requirements',
 };
 
+/** i18n keys for vehicle detail tab labels (use with `useLanguage().t`). */
+export const VEHICLE_DETAIL_TAB_TRANSLATION_KEYS: Record<VehicleDetailTab, TranslationKey> = {
+  overview: 'vehicle.overview',
+  trips: 'vehicle.trips',
+  'health-errors': 'vehicleDetail.tab.health',
+  damages: 'vehicle.damages',
+  documents: 'vehicle.documents',
+  'vehicle-bookings': 'vehicle.bookings',
+  'vehicle-tasks': 'vehicle.taskList',
+  'vehicle-requirements': 'vehicleDetail.tab.requirements',
+};
+
+/** English fallback labels for E2E exports and static tests. */
 export const VEHICLE_DETAIL_TAB_LABELS: Record<VehicleDetailTab, string> = {
   overview: 'Overview',
   trips: 'Trips',

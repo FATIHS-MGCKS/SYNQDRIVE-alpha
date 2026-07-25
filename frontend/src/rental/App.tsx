@@ -78,6 +78,7 @@ import { VoiceAssistantView } from './components/VoiceAssistantView';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
+  VehicleDetailConfirmDialogs,
   VehicleDetailHeader,
   VehicleDetailTabBar,
   VehicleDetailTabPanel,
@@ -1232,125 +1233,27 @@ function RentalAppContent() {
             />
           </VehicleDetailTabPanel>
         ) : null}
-      {/* Cleaning Status Warning Modal */}
-      {showCleaningWarning && (
-        <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
-          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border surface-premium">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full sq-tone-watch flex items-center justify-center shrink-0">
-                <Icon name="alert-triangle" className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground font-display">
-                Reinigungsaufgabe anlegen
-              </h3>
-            </div>
-            <p className="mb-5 text-sm text-muted-foreground">
-              Der Reinigungsstatus wird auf „Needs Cleaning“ gesetzt und eine echte Reinigungsaufgabe
-              für dieses Fahrzeug erstellt — sofern noch keine offene Aufgabe existiert.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowCleaningWarning(false)}
-                disabled={cleaningStatusBusy}
-                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press disabled:opacity-60"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={confirmCleaningChange}
-                disabled={cleaningStatusBusy}
-                className="flex-1 px-3 py-2 rounded-md font-semibold text-white transition-all duration-200 shadow-sm sq-press bg-[color:var(--status-watch)] hover:opacity-90 disabled:opacity-60"
-              >
-                {cleaningStatusBusy ? 'Wird gespeichert…' : 'Bestätigen'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Vehicle Status Warning Modal */}
-      {showStatusWarning && (
-        <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
-          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border surface-premium">
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                pendingStatus === 'Manual Block' ? 'sq-tone-critical' : 'sq-tone-warning'
-              }`}>
-                {pendingStatus === 'Manual Block' ? (
-                  <Icon name="x-circle" className="w-5 h-5" />
-                ) : (
-                  <Icon name="wrench" className="w-5 h-5" />
-                )}
-              </div>
-              <h3 className="text-base font-semibold text-foreground font-display">
-                Change Vehicle Status
-              </h3>
-            </div>
-            <p className="mb-5 text-sm text-muted-foreground">
-              {pendingStatus === 'Manual Block' 
-                ? 'You are about to manually block this vehicle. It will no longer be available for bookings until you change the status back to "Available".'
-                : 'You are about to set this vehicle to maintenance mode. It will be unavailable for bookings and a maintenance task may be required.'}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setShowStatusWarning(false);
-                  setPendingStatus(null);
-                }}
-                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmStatusChange}
-                className={`flex-1 px-3 py-2 text-white rounded-md font-semibold transition-all duration-200 shadow-sm sq-press hover:opacity-90 ${
-                  pendingStatus === 'Manual Block'
-                    ? 'bg-[color:var(--status-critical)]'
-                    : 'bg-[color:var(--status-warning)]'
-                }`}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Station Change Warning Modal */}
-      {showStationWarning && (
-        <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
-          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border surface-premium">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full sq-tone-brand flex items-center justify-center shrink-0">
-                <Icon name="map-pin" className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground font-display">
-                Relocate Vehicle
-              </h3>
-            </div>
-            <p className="mb-5 text-sm text-muted-foreground">
-              Are you sure you want to relocate this vehicle from <span className="font-semibold">{currentStation}</span> to <span className="font-semibold">{pendingStation}</span>? This action will update the vehicle's location in the system.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setShowStationWarning(false);
-                  setPendingStation(null);
-                }}
-                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmStationChange}
-                className="flex-1 px-3 py-2 rounded-md font-semibold text-brand-foreground transition-all duration-200 shadow-sm sq-press bg-brand hover:bg-[color:var(--brand-hover)]"
-              >
-                Confirm Relocation
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <VehicleDetailConfirmDialogs
+        showCleaningWarning={showCleaningWarning}
+        onCleaningOpenChange={setShowCleaningWarning}
+        cleaningStatusBusy={cleaningStatusBusy}
+        onConfirmCleaningChange={confirmCleaningChange}
+        showStatusWarning={showStatusWarning}
+        onStatusOpenChange={(open) => {
+          setShowStatusWarning(open);
+          if (!open) setPendingStatus(null);
+        }}
+        pendingStatus={pendingStatus}
+        onConfirmStatusChange={confirmStatusChange}
+        showStationWarning={showStationWarning}
+        onStationOpenChange={(open) => {
+          setShowStationWarning(open);
+          if (!open) setPendingStation(null);
+        }}
+        currentStation={currentStation}
+        pendingStation={pendingStation}
+        onConfirmStationChange={confirmStationChange}
+      />
 
     </AppShell>
     </HandoverProvider>

@@ -2380,7 +2380,7 @@ model IamAuditOutbox {
   afterSummary   String?              @map("after_summary")
   reason         String?
   payload        Json
-  status         IamAuditOutboxStatus @default(PENDING) @map("processing_status")
+  status         IamAuditOutboxStatus @default(PENDING)
   attempts       Int                  @default(0)
   nextRetryAt    DateTime             @default(now()) @map("next_retry_at")
   processedAt    DateTime?            @map("processed_at")

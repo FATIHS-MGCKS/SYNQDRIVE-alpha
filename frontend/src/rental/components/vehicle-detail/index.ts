@@ -11,6 +11,7 @@ export {
   mapHealthSeverityDisplay,
   mapDataCoverageDisplay,
 } from './vehicle-health-display.mapper';
+export { VehicleDetailConfirmDialogs } from './VehicleDetailConfirmDialogs';
 export { VehicleDetailTabBar } from './VehicleDetailTabBar';
 export { VehicleDetailTabPanel } from './VehicleDetailTabPanel';
 export { VehicleTripsFilterBar } from './VehicleTripsFilterBar';
