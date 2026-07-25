@@ -56,6 +56,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-25T12:45:00.000Z',
   },
   {
+    id: 'workflow-e2e-acceptance-v49863-2026-07-25',
+    version: '4.9.863',
+    title: 'V4.9.863 — Workflow Automation E2E Production Acceptance (Phase 12 Prompt 53)',
+    summary: [
+      'E2E acceptance report: 12 mandatory scenarios vs production VPS + repo CI harness (~404 automated tests PASS on feature branch).',
+      'Production verdict FAIL (10 blocked) — Phase 11 not deployed; 2 PASS (tenant isolation, legacy-only no double-run).',
+      'docs/audits/workflow-automation-e2e-acceptance-2026-07.md — no real customers contacted.',
+    ],
+    reason:
+      'Phase 12 Prompt 53 requires documented production acceptance before Workflow Runtime go-live; VPS audit (Prompt 52) was prerequisite.',
+    previousBehavior: 'No consolidated E2E acceptance matrix for Workflow Automation on production.',
+    details:
+      'Read-only VPS checks + CI on cursor/workflow-runtime-rollout-2a81. Mutating prod E2E deferred until deploy.',
+    affectsArchitecture: false,
+    module: 'Automation',
+    createdAt: '2026-07-25T16:32:00.000Z',
+  },
+  {
     id: 'workflow-vps-control-audit-v49862-2026-07-25',
     version: '4.9.862',
     title: 'V4.9.862 — Workflow Automation VPS control audit (Phase 12 Prompt 52)',
