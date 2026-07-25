@@ -8,6 +8,7 @@ import {
   type HandoverTechnicalObservationPayloadItem,
   type OperatorHandoverObservationDraft,
 } from './operatorHandoverTechnicalObservations';
+import type { OperatorHandoverSignatureBinding } from './operatorHandoverSignatureBinding';
 
 export type OperatorHandoverStepId =
   | 'vehicle'
@@ -67,6 +68,9 @@ export interface OperatorHandoverFormState {
   selectedDamageIds: Set<string>;
   tireMeasurementCaptured: boolean;
   technicalObservationDrafts: OperatorHandoverObservationDraft[];
+  customerSignatureBinding: OperatorHandoverSignatureBinding | null;
+  staffSignatureBinding: OperatorHandoverSignatureBinding | null;
+  signaturesInvalidated: boolean;
 }
 
 export type { HandoverTechnicalObservationPayloadItem, OperatorHandoverObservationDraft };
@@ -137,6 +141,9 @@ export function createInitialHandoverState(
     selectedDamageIds: new Set<string>(),
     tireMeasurementCaptured: false,
     technicalObservationDrafts: [],
+    customerSignatureBinding: null,
+    staffSignatureBinding: null,
+    signaturesInvalidated: false,
   };
 }
 
@@ -174,6 +181,10 @@ export function buildOperatorHandoverPayload(input: OperatorHandoverPayloadInput
     damageIds: Array.from(state.selectedDamageIds),
     actualStationId: state.actualStationId || null,
     technicalObservations: collectTechnicalObservationsForPayload(kind, state),
+    signatureBindings: [
+      ...(state.customerSignatureBinding ? [state.customerSignatureBinding] : []),
+      ...(state.staffSignatureBinding ? [state.staffSignatureBinding] : []),
+    ],
   };
 }
 
@@ -225,7 +236,7 @@ export function validateOperatorHandover(
     issues.push({ step: 'signatures', field: 'staff', message: 'Mitarbeiter muss ausgewählt oder erfasst werden' });
   }
 
-  if (!state.customerSigData) {
+  if (!state.customerSigData || state.signaturesInvalidated || !state.customerSignatureBinding) {
     issues.push({
       step: 'signatures',
       field: 'customerSignature',
@@ -233,7 +244,7 @@ export function validateOperatorHandover(
     });
   }
 
-  if (!state.staffSigData) {
+  if (!state.staffSigData || state.signaturesInvalidated || !state.staffSignatureBinding) {
     issues.push({
       step: 'signatures',
       field: 'staffSignature',

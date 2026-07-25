@@ -6043,6 +6043,7 @@ enum HandoverCompletionAuditEventType {
   CREATED
   CORRECTED
   SUPERSEDED
+  SIGNATURE_BOUND
 }
 
 /// Immutable tamper-evident completion snapshot per handover protocol version (Prompt 17).

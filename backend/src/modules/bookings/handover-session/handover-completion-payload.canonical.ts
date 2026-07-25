@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import type { HandoverKind } from '../handover.types';
 import type { CreateHandoverProtocolPayload, HandoverTechnicalObservationDraft } from '../handover.types';
+import type { HandoverSignatureBindingRecord } from './handover-signature-binding.types';
 import { normalizeTechnicalObservationDrafts } from './handover-pickup-completion.executor';
 
 export const HANDOVER_COMPLETION_PAYLOAD_VERSION = 1;
@@ -44,7 +45,24 @@ export interface HandoverCompletionCanonicalPayload {
   customerSignatureDataUrl: string | null;
   staffSignatureName: string | null;
   staffSignatureDataUrl: string | null;
+  signatureBindings?: HandoverSignatureBindingRecord[];
 }
+
+/** Content reviewed and signed — excludes signature images/names (Prompt 24). */
+const SIGNABLE_CONTENT_KEYS: Array<keyof HandoverCompletionCanonicalPayload> = [
+  'odometerKm',
+  'fuelPercent',
+  'fuelFull',
+  'exteriorClean',
+  'interiorClean',
+  'tiresSeasonOk',
+  'warningLightsOn',
+  'warningLightsNotes',
+  'notes',
+  'documentsAcknowledged',
+  'damageIds',
+  'technicalObservations',
+];
 
 const SIGNED_CONTENT_KEYS: Array<keyof HandoverCompletionCanonicalPayload> = [
   'odometerKm',
@@ -139,6 +157,16 @@ export function hashHandoverCompletionPayload(
   return hashCanonicalValue(canonical);
 }
 
+export function hashHandoverSignableContent(
+  canonical: HandoverCompletionCanonicalPayload,
+): string {
+  const signableSubset: Record<string, unknown> = {};
+  for (const key of SIGNABLE_CONTENT_KEYS) {
+    signableSubset[key] = canonical[key];
+  }
+  return hashCanonicalValue(signableSubset);
+}
+
 export function hashHandoverSignedContent(
   canonical: HandoverCompletionCanonicalPayload,
 ): string {
@@ -149,11 +177,12 @@ export function hashHandoverSignedContent(
   return hashCanonicalValue(signedSubset);
 }
 
+/** True when reviewed handover fields changed — signatures must be renewed. */
 export function signedHandoverContentChanged(
   previous: HandoverCompletionCanonicalPayload,
   next: HandoverCompletionCanonicalPayload,
 ): boolean {
-  return hashHandoverSignedContent(previous) !== hashHandoverSignedContent(next);
+  return hashHandoverSignableContent(previous) !== hashHandoverSignableContent(next);
 }
 
 export function assertHandoverSignaturesPresent(
