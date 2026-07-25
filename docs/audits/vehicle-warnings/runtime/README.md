@@ -1,6 +1,17 @@
-# Runtime
+# Runtime — Vehicle Warnings Audit (Prompt 23/26)
 
-VPS-, PM2-, Queue- und Metrics-Befunde (read-only).
+VPS-, PM2-, Queue-, Redis- und Log-Befunde (**read-only**, anonymisiert).
+
+| Datei | Inhalt |
+|-------|--------|
+| [`vps-runtime-inventory.md`](./vps-runtime-inventory.md) | Host, PM2, Docker, Versionen, Logpfade, Queue-Namen |
+| [`ingestion-observations.md`](./ingestion-observations.md) | DIMO Poll, DB-Aggregate, Warning-Materialisierung |
+| [`queue-observations.md`](./queue-observations.md) | BullMQ wait/active/failed |
+| [`redis-observations.md`](./redis-observations.md) | Speicher, Keyspace, Cache-Patterns |
+| [`application-log-observations.md`](./application-log-observations.md) | PM2/Nginx/API-Fehler |
+| [`time-and-version-observations.md`](./time-and-version-observations.md) | NTP, Deploy-Timeline, Commits |
+
+**Audit-Zeitpunkt (UTC):** 2026-07-25T17:53Z · **Hostname anonymisiert:** `VPS-PROD-01`
 
 ## Erlaubte Erfassung
 
