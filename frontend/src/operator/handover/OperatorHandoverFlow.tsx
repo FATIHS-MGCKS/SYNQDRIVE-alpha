@@ -142,10 +142,9 @@ export function OperatorHandoverFlow({
       } else {
         await api.bookings.createReturnHandover(orgId, booking.id, payload);
       }
-      // Server generates pickup/return protocol PDFs after handover — refresh bundle (no frontend PDF).
-      await form.reloadDocuments();
       onSuccess?.();
       onClose();
+      void form.reloadDocuments();
     } catch (err: unknown) {
       const e = err as { data?: { message?: string }; message?: string };
       const msg = e?.data?.message ?? e?.message ?? 'Übergabe konnte nicht gespeichert werden';
@@ -226,6 +225,7 @@ export function OperatorHandoverFlow({
 
   return (
     <div
+      data-testid="operator-handover-flow"
       className="fixed inset-0 z-[120] flex flex-col bg-background"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
@@ -324,6 +324,7 @@ export function OperatorHandoverFlow({
           ) : (
             <button
               type="button"
+              data-testid="operator-handover-submit"
               onClick={() => void handleSubmit()}
               disabled={submitting || allIssues.length > 0}
               className="sq-3d-btn sq-3d-btn--primary flex min-h-[52px] flex-[2] items-center justify-center gap-2 font-semibold disabled:opacity-50"

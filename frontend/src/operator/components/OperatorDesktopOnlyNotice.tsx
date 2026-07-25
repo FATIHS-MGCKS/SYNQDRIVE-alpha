@@ -4,7 +4,10 @@ import { OperatorLinkCard } from './OperatorLinkCard';
 
 export function OperatorDesktopOnlyNotice() {
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center px-5 py-10">
+    <div
+      data-testid="operator-desktop-only"
+      className="min-h-[100dvh] bg-background flex flex-col items-center justify-center px-5 py-10"
+    >
       <div className="w-full max-w-md space-y-6 text-center">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl sq-tone-brand">
           <Smartphone className="h-7 w-7" />

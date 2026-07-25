@@ -58,7 +58,10 @@ function OperatorShellInner() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
+    <div
+      data-testid="operator-shell"
+      className="flex min-h-[100dvh] flex-col bg-background text-foreground"
+    >
       <OperatorHandoverRefreshBridge />
       <OperatorDeepLinkBridge />
       <OperatorConnectivityBanner />

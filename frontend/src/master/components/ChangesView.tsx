@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-e2e-v49832-2026-07-25',
+    version: '4.9.832',
+    title: 'V4.9.832 — Operator App E2E acceptance (Prompt 39)',
+    summary: [
+      'Playwright E2E: `operator-fixtures.ts`, flow/access-resilience/responsive specs — 28 scenarios (26 Playwright cases).',
+      'npm scripts `test:operator:e2e` (mobile-375 core) + `test:operator:e2e:responsive` (7 viewports + desktop fallback).',
+      'Fixes: task mock route ordering (GET detail vs list, PATCH mutations), handover close before async document reload, testids.',
+      'Audit: `docs/audits/operator-app-e2e-acceptance-2026-07.md` — PASS (partial: new-damage capture wizard).',
+    ],
+    reason: 'Production-readiness Prompt 39 — end-to-end acceptance for Operator pickup/return, tasks, scan, access, and resilience.',
+    previousBehavior:
+      'Prompt 38 added unit/integration tests only; no Playwright coverage for Operator shell flows.',
+    details:
+      'frontend/e2e/operator-*.ts, OperatorHandoverFlow submit UX, operator testids, docs/audits/operator-app-e2e-acceptance-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Operator WebApp',
+    createdAt: '2026-07-25T21:55:00.000Z',
+  },
+  {
     id: 'operator-app-test-coverage-v49831-2026-07-25',
     version: '4.9.831',
     title: 'V4.9.831 — Operator App test coverage (Prompt 38)',

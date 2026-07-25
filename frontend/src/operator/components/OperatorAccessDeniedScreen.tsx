@@ -15,6 +15,7 @@ export function OperatorAccessDeniedScreen({ reason }: Props) {
 
   return (
     <div
+      data-testid="operator-access-denied"
       className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-5 py-10"
       style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

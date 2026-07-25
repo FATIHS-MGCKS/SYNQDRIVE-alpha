@@ -24,6 +24,8 @@
     "test:legal-documents:verify": "bash scripts/test/legal-documents-verify.sh all",
     "test:legal-documents:verify:unit": "bash scripts/test/legal-documents-verify.sh unit",
     "test:operator": "vitest run src/operator",
+    "test:operator:e2e": "playwright test -c e2e/playwright.config.ts operator-flow.spec.ts operator-access-resilience.spec.ts operator-responsive.spec.ts --project=mobile-375",
+    "test:operator:e2e:responsive": "playwright test -c e2e/playwright.config.ts operator-responsive.spec.ts",
     "test:bookings": "vitest run booking-wizard-eligibility booking-payment booking-vehicle-preflight vehicle-operational-booking vehicle-booking-risk booking-production-test-matrix bookingHandoverGates bookingUtils",
     "test:bookings:e2e": "playwright test -c e2e/playwright.config.ts bookings-planner.spec.ts --project=desktop-1280",
     "test:bookings:verify": "bash scripts/test/bookings-verify.sh all",
