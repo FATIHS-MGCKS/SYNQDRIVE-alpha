@@ -8,10 +8,13 @@ import { WorkflowRunOrchestratorRepository } from './workflow-run-orchestrator.r
 import { WorkflowRunRuntimeRepository } from './workflow-run-runtime.repository';
 import { WorkflowRunRuntimeService } from './workflow-run-runtime.service';
 import { WorkflowActionRunExecutorService } from './workflow-action-run-executor.service';
+import { WorkflowRunCancellationService } from './cancellation/workflow-run-cancellation.service';
 import { WORKFLOW_RUNTIME_STATUS_ERROR_CODES } from './workflow-runtime-status.errors';
 import {
   TERMINAL_WORKFLOW_ACTION_RUN_STATUSES,
+  TERMINAL_WORKFLOW_RUN_STATUSES,
   type WorkflowActionRunStatus,
+  type WorkflowRunStatus,
 } from './workflow-runtime-status.constants';
 import { resolveWorkflowRuntimeWorkerId } from './workflow-runtime.worker-id.util';
 
@@ -26,6 +29,7 @@ export class WorkflowRunWorkerService {
     private readonly orchestratorRepo: WorkflowRunOrchestratorRepository,
     private readonly runRuntime: WorkflowRunRuntimeService,
     private readonly actionExecutor: WorkflowActionRunExecutorService,
+    private readonly cancellation: WorkflowRunCancellationService,
   ) {}
 
   private get leaseMs() {
@@ -41,7 +45,10 @@ export class WorkflowRunWorkerService {
   }
 
   private get actionTimeoutMs() {
-    return this.config.get<number>('workflowRuntime.actionTimeoutMs', 120000);
+    const configured = this.config.get<number>('workflowRuntime.actionTimeoutMs', 120000);
+    const minMs = this.config.get<number>('workflowRuntime.minActionTimeoutMs', 5000);
+    const maxMs = this.config.get<number>('workflowRuntime.maxActionTimeoutMs', 600000);
+    return Math.min(maxMs, Math.max(minMs, configured));
   }
 
   private get maxRunDurationMs() {
@@ -49,11 +56,17 @@ export class WorkflowRunWorkerService {
   }
 
   async processRun(orgId: string, runId: string, workerId = resolveWorkflowRuntimeWorkerId()) {
+    await this.cancellation.assertOrgNotLocked(orgId);
+
     const run = await this.runs.findByIdOrThrow(orgId, runId);
     this.orchestratorRepo.assertTenant(run, orgId);
 
+    if (TERMINAL_WORKFLOW_RUN_STATUSES.has(run.status as WorkflowRunStatus)) {
+      return { processed: false, reason: 'run_terminal' };
+    }
+
     if (this.isRunExpired(run.startedAt)) {
-      await this.cancelRunForMaxDuration(orgId, runId, run.lockVersion);
+      await this.cancelRunForMaxDuration(orgId, runId);
       return { processed: false, reason: 'max_duration_exceeded' };
     }
 
@@ -83,8 +96,13 @@ export class WorkflowRunWorkerService {
       return { processed: false, reason: 'claim_conflict' };
     }
 
-    const heartbeat = this.startHeartbeat(orgId, claimed.id, workerId);
+    const heartbeat = this.startHeartbeat(orgId, runId, claimed.id, workerId);
     try {
+      const currentRun = await this.runs.findById(orgId, runId);
+      if (!currentRun || currentRun.status === 'CANCELLED') {
+        return { processed: false, reason: 'run_cancelled_during_execution' };
+      }
+
       const result = await this.actionExecutor.executeClaimed(orgId, claimed.id, {
         type: 'WORKER',
         source: workerId,
@@ -112,6 +130,23 @@ export class WorkflowRunWorkerService {
       if (released) recovered += 1;
     }
     return recovered;
+  }
+
+  async cancelExpiredRuns(limit?: number) {
+    const batch = await this.runs.listExpiredByMaxDuration(
+      this.maxRunDurationMs,
+      limit ?? this.config.get<number>('workflowRuntime.pollBatchSize', 25),
+    );
+    let cancelled = 0;
+    for (const row of batch) {
+      try {
+        await this.cancelRunForMaxDuration(row.organizationId, row.id);
+        cancelled += 1;
+      } catch {
+        // Concurrent cancel or terminal transition
+      }
+    }
+    return cancelled;
   }
 
   async findOpenActionRuns(orgId: string) {
@@ -155,9 +190,20 @@ export class WorkflowRunWorkerService {
     return false;
   }
 
-  private startHeartbeat(orgId: string, actionRunId: string, workerId: string) {
+  private startHeartbeat(
+    orgId: string,
+    runId: string,
+    actionRunId: string,
+    workerId: string,
+  ) {
     return setInterval(() => {
-      void this.actionRuns.renewHeartbeat(orgId, actionRunId, workerId, this.leaseMs).catch((err) => {
+      void (async () => {
+        const run = await this.runs.findById(orgId, runId);
+        if (!run || run.status === 'CANCELLED') {
+          return;
+        }
+        await this.actionRuns.renewHeartbeat(orgId, actionRunId, workerId, this.leaseMs);
+      })().catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         this.logger.warn(`Heartbeat failed for action ${actionRunId}: ${message}`);
       });
@@ -168,13 +214,13 @@ export class WorkflowRunWorkerService {
     return Date.now() - startedAt.getTime() > this.maxRunDurationMs;
   }
 
-  private async cancelRunForMaxDuration(orgId: string, runId: string, lockVersion: number) {
-    await this.runRuntime.transitionStatus(orgId, runId, {
-      toStatus: 'CANCELLED',
-      expectedLockVersion: lockVersion,
+  private async cancelRunForMaxDuration(orgId: string, runId: string) {
+    await this.cancellation.cancelRun({
+      organizationId: orgId,
+      runId,
       actor: { type: 'SYSTEM', source: 'worker.max_duration' },
       reason: 'Maximum run duration exceeded',
-      errorMessage: WORKFLOW_RUNTIME_STATUS_ERROR_CODES.MAX_RUN_DURATION_EXCEEDED,
+      source: 'MAX_RUN_DURATION',
     });
   }
 }

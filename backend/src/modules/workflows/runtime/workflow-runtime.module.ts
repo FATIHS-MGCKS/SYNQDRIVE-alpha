@@ -21,10 +21,14 @@ import { WorkflowApprovalResumeService } from './approval/workflow-approval-resu
 import { WorkflowApprovalPreExecutionValidator } from './approval/workflow-approval-pre-execution.validator';
 import { WorkflowApprovalNotificationPrepareService } from './approval/workflow-approval-notification.prepare.service';
 import { WorkflowApprovalLegacyBridgeService } from './approval/workflow-approval-legacy.bridge';
+import { WorkflowRunCancellationService } from './cancellation/workflow-run-cancellation.service';
+import { WorkflowTimerRepository } from './cancellation/workflow-timer.repository';
+import { WorkflowRunController } from './workflow-run.controller';
+import { WorkflowRuntimeSchedulerService } from './workflow-runtime-scheduler.service';
 
 @Module({
   imports: [PrismaModule, TasksModule, ConfigModule.forFeature(workflowRuntimeConfig)],
-  controllers: [WorkflowApprovalController],
+  controllers: [WorkflowApprovalController, WorkflowRunController],
   providers: [
     WorkflowRunRuntimeRepository,
     WorkflowActionRunRuntimeRepository,
@@ -40,7 +44,10 @@ import { WorkflowApprovalLegacyBridgeService } from './approval/workflow-approva
     WorkflowApprovalPauseService,
     WorkflowActionRunExecutorService,
     WorkflowApprovalResumeService,
+    WorkflowTimerRepository,
+    WorkflowRunCancellationService,
     WorkflowRunWorkerService,
+    WorkflowRuntimeSchedulerService,
     WorkflowRuntimeActionExecutorAdapter,
     WorkflowActionExecutorService,
   ],
@@ -51,7 +58,9 @@ import { WorkflowApprovalLegacyBridgeService } from './approval/workflow-approva
     WorkflowActionRunExecutorService,
     WorkflowApprovalPauseService,
     WorkflowApprovalResumeService,
+    WorkflowRunCancellationService,
     WorkflowRunWorkerService,
+    WorkflowRuntimeSchedulerService,
   ],
 })
 export class WorkflowRuntimeModule {}
