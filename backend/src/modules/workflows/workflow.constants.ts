@@ -46,6 +46,7 @@ export const WORKFLOW_ACTION_TYPES = [
   'whatsapp.template.send',
   'whatsapp.ai_message.send',
   'sms.send',
+  'voice.call.start',
   'booking.flag',
   'ai.suggest_action',
 ] as const;
@@ -63,6 +64,7 @@ export const APPROVAL_REQUIRED_ACTIONS = new Set<string>([
   'whatsapp.template.send',
   'whatsapp.ai_message.send',
   'sms.send',
+  'voice.call.start',
   'invoice.charge',
   'booking.cancel',
 ]);
@@ -90,6 +92,8 @@ export const LEGACY_ACTION_TO_CANONICAL: Record<string, WorkflowActionType> = {
   customer_contact_whatsapp: 'whatsapp.template.send',
   sms_send: 'sms.send',
   customer_contact_sms: 'sms.send',
+  voice_call_start: 'voice.call.start',
+  voice_call: 'voice.call.start',
   ai_suggest: 'ai.suggest_action',
   request_approval: 'approval.request',
   workflow_approval: 'workflow.approval.request',

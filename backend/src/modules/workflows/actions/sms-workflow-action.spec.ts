@@ -8,6 +8,7 @@ import { SmsConsentService } from '@modules/sms/sms-consent.service';
 import { SmsMessagingService } from '@modules/sms/sms-messaging.service';
 import { OutboundSmsService } from '@modules/sms/outbound-sms.service';
 import { SmsWebhookService } from '@modules/sms/sms-webhook.service';
+import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
 import emailConfig from '@config/email.config';
 import twilioConfig from '@config/twilio.config';
 import {
@@ -201,6 +202,10 @@ describe('sms.send workflow action adapter', () => {
         { provide: SmsMessagingService, useValue: messaging },
         { provide: SmsConsentService, useValue: consent },
         { provide: OutboundSmsService, useValue: { recordEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: VoiceCallOrchestrationService,
+          useValue: { orchestrateOutboundCall: jest.fn() },
+        },
       ],
     }).compile();
 

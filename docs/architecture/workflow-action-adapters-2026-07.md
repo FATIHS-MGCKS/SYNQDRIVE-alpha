@@ -15,6 +15,7 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 | `whatsapp.template.send` | HIGH | `WORKFLOW_CUSTOMER_CONTACT` | Meta Cloud API via `WorkflowWhatsAppSendService` + org templates |
 | `whatsapp.ai_message.send` | CRITICAL | `WORKFLOW_CUSTOMER_CONTACT` | **DISABLED** until AI pipeline; free-text + transparency disclaimer |
 | `sms.send` | HIGH | `WORKFLOW_CUSTOMER_CONTACT` | Twilio subaccount via `WorkflowSmsSendService`, templates, fallback link |
+| `voice.call.start` | HIGH | `WORKFLOW_VOICE_CALL` | SynqDrive Voice Orchestrator via `WorkflowVoiceCallStartService`, scenarios, MCP allowlist |
 
 ## Cross-cutting adapter infrastructure
 
@@ -29,6 +30,8 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 - **WhatsApp send service** — `workflow-whatsapp-send.service.ts` (template + AI paths, consent, quiet hours, idempotency)
 - **WhatsApp communication policy** — `workflow-whatsapp-communication-policy.service.ts`
 - **SMS send service** — `workflow-sms-send.service.ts` (Twilio tenant, templates, segments, WhatsApp fallback link)
+- **Voice call start service** — `workflow-voice-call-start.service.ts` (orchestrator delegation, scenarios, call plan dry-run)
+- **Voice communication policy** — `workflow-voice-call-communication-policy.service.ts`
 - **Recipient roles** — `workflow-recipient-role.util.ts`
 
 Each handler implements: validate, authorize, preview (dry-run), execute, classifyError, timeout/retry/idempotency via `BaseWorkflowActionHandler`.

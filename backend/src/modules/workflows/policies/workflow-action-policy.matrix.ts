@@ -390,6 +390,35 @@ export const WORKFLOW_ACTION_POLICY_MATRIX: Record<string, WorkflowActionTechnic
     ],
   }),
 
+  'voice.call.start': policy({
+    actionType: 'voice.call.start',
+    policyVersion: '2026-07-1',
+    capabilityGate: 'ENABLED',
+    riskClass: 'HIGH',
+    requiredPermission: 'WORKFLOW_VOICE_CALL',
+    approvalRule: 'REQUIRED',
+    allowedTriggers: ['customer.complaint.created', 'invoice.overdue', 'booking.returned'],
+    allowedEntityTypes: ['customer', 'booking'],
+    allowedScopes: ['organization'],
+    timeout: { defaultMs: 300_000, maxMs: 600_000 },
+    retry: { maxAttempts: 1, initialBackoffMs: 60_000, maxBackoffMs: 120_000 },
+    maxAttempts: 1,
+    fallbackCapable: false,
+    dataCategories: ['COMMUNICATION', 'PII'],
+    auditLevel: 'FORENSIC',
+    retentionClass: 'COMPLIANCE',
+    dryRunAvailable: true,
+    compensationPossible: false,
+    prohibitUnverifiedDiagnosisOnTriggers: VEHICLE_HEALTH_CRITICAL_TRIGGERS,
+    highRiskSafeguards: [
+      { code: 'ORCHESTRATOR_ONLY', description: 'Workflow must use SynqDrive Voice Orchestrator — no direct provider orchestration' },
+      { code: 'BUDGET_GATE', description: 'Voice budget and protection policies enforced by orchestrator' },
+      { code: 'AI_TRANSPARENCY', description: 'AI transparency announcement required at call start' },
+      { code: 'TOOL_ALLOWLIST', description: 'MCP tools restricted to approved scenario allowlist' },
+      { code: 'HUMAN_ESCALATION', description: 'Emergency/safety scenarios escalate to humans — no auto diagnosis' },
+    ],
+  }),
+
   'voice.call': policy({
     actionType: 'voice.call',
     policyVersion: '2026-07-1',
@@ -410,7 +439,7 @@ export const WORKFLOW_ACTION_POLICY_MATRIX: Record<string, WorkflowActionTechnic
     dryRunAvailable: false,
     compensationPossible: false,
     highRiskSafeguards: [
-      { code: 'BUDGET_GATE', description: 'Voice budget and protection policies' },
+      { code: 'DEPRECATED_ALIAS', description: 'Use voice.call.start instead' },
     ],
   }),
 

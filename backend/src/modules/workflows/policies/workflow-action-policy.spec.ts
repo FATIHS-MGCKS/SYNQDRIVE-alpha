@@ -214,6 +214,20 @@ describe('WorkflowActionPolicyService', () => {
     expect(result.violations.some((v) => v.code === 'CAPABILITY_DISABLED')).toBe(true);
   });
 
+  it('allows voice.call.start preview when capability enabled', () => {
+    const result = policyService.evaluate({
+      organizationId: ORG,
+      actionType: 'voice.call.start',
+      eventType: 'invoice.overdue',
+      entityType: 'booking',
+      scopeType: 'organization',
+      actorPermissions: ['WORKFLOW_VOICE_CALL'],
+      mode: 'preview',
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.policy.capabilityGate).toBe('ENABLED');
+  });
+
   it('allows sms.send preview when capability enabled', () => {
     const result = policyService.evaluate({
       organizationId: ORG,

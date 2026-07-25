@@ -10,6 +10,7 @@ import { WhatsAppTemplateService } from '@modules/whatsapp/whatsapp-template.ser
 import { SmsConsentService } from '@modules/sms/sms-consent.service';
 import { SmsMessagingService } from '@modules/sms/sms-messaging.service';
 import { OutboundSmsService } from '@modules/sms/outbound-sms.service';
+import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
 
 /** Minimal email adapter mocks for workflow action unit tests. */
 export const workflowEmailTestProviders = [
@@ -112,8 +113,25 @@ export const workflowSmsTestProviders = [
   { provide: OutboundSmsService, useValue: { recordEvent: jest.fn().mockResolvedValue({}) } },
 ];
 
+export const workflowVoiceTestProviders = [
+  {
+    provide: VoiceCallOrchestrationService,
+    useValue: {
+      orchestrateOutboundCall: jest.fn().mockResolvedValue({
+        conversationId: 'conv-test-1',
+        maskedConversationRef: 'conv_***',
+        maskedCallRef: 'CA_***',
+        status: 'started',
+        dryRun: false,
+        idempotentReplay: false,
+      }),
+    },
+  },
+];
+
 export const workflowActionAdapterTestProviders = [
   ...workflowEmailTestProviders,
   ...workflowWhatsAppTestProviders,
   ...workflowSmsTestProviders,
+  ...workflowVoiceTestProviders,
 ];

@@ -9,6 +9,7 @@ import { EmailSendActionHandler } from './handlers/email-send.action-handler';
 import { WhatsAppTemplateSendActionHandler } from './handlers/whatsapp-template-send.action-handler';
 import { WhatsAppAiMessageSendActionHandler } from './handlers/whatsapp-ai-message-send.action-handler';
 import { SmsSendActionHandler } from './handlers/sms-send.action-handler';
+import { VoiceCallStartActionHandler } from './handlers/voice-call-start.action-handler';
 import { NotificationInAppSendActionHandler } from './handlers/notification-in-app-send.action-handler';
 import { NotificationPrepareActionHandler } from './handlers/notification-prepare.action-handler';
 import { TaskCreateActionHandler } from './handlers/task-create.action-handler';
@@ -22,6 +23,8 @@ import { WorkflowWhatsAppCommunicationPolicyService } from './adapters/workflow-
 import { WorkflowWhatsAppSendService } from './adapters/workflow-whatsapp-send.service';
 import { WorkflowSmsSendService } from './adapters/workflow-sms-send.service';
 import { WorkflowSmsCommunicationPolicyService } from './adapters/workflow-sms-communication-policy.service';
+import { WorkflowVoiceCallStartService } from './adapters/workflow-voice-call-start.service';
+import { WorkflowVoiceCallCommunicationPolicyService } from './adapters/workflow-voice-call-communication-policy.service';
 
 export const WORKFLOW_ACTION_HANDLER_CLASSES = [
   TaskCreateActionHandler,
@@ -32,6 +35,7 @@ export const WORKFLOW_ACTION_HANDLER_CLASSES = [
   WhatsAppTemplateSendActionHandler,
   WhatsAppAiMessageSendActionHandler,
   SmsSendActionHandler,
+  VoiceCallStartActionHandler,
   NotificationPrepareActionHandler,
   ApprovalRequestActionHandler,
   BookingFlagActionHandler,
@@ -48,6 +52,8 @@ export const WORKFLOW_ACTION_ADAPTER_SERVICES = [
   WorkflowWhatsAppCommunicationPolicyService,
   WorkflowSmsSendService,
   WorkflowSmsCommunicationPolicyService,
+  WorkflowVoiceCallStartService,
+  WorkflowVoiceCallCommunicationPolicyService,
 ] as const;
 
 export const WORKFLOW_ACTION_HANDLER_PROVIDERS = [

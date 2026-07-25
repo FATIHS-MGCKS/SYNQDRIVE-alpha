@@ -182,3 +182,78 @@ export interface SmsSendActionConfig {
   /** Risk flags — require workflow approval when present. */
   sensitiveFlags?: string[];
 }
+
+export type WorkflowVoiceCallPurpose =
+  | 'transactional'
+  | 'support'
+  | 'collections'
+  | 'emergency';
+
+export type WorkflowVoiceScenarioKey =
+  | 'booking_follow_up'
+  | 'invoice_reminder'
+  | 'complaint_resolution'
+  | 'operational_workflow'
+  | 'emergency_safety';
+
+export type WorkflowVoiceRecipientRef =
+  | { type: 'customer'; customerId: string }
+  | { type: 'booking'; bookingId: string };
+
+export interface VoiceCallStartActionConfig {
+  scenarioKey: WorkflowVoiceScenarioKey;
+  scenarioVersion: string;
+  callPurpose: WorkflowVoiceCallPurpose;
+  recipient: WorkflowVoiceRecipientRef;
+  toPhone?: string;
+  agentVersion?: number;
+  toolAllowlist?: string[];
+  maxDurationSeconds?: number;
+  respectCallHours?: boolean;
+  verifiedDiagnosis?: boolean;
+  includeTechnicalDiagnosis?: boolean;
+  sensitiveFlags?: string[];
+}
+
+export interface WorkflowVoiceCallPlan {
+  scenarioKey: WorkflowVoiceScenarioKey;
+  scenarioVersion: string;
+  callPurpose: WorkflowVoiceCallPurpose;
+  maskedRecipient: string;
+  agentDeploymentId: string;
+  agentVersion: number;
+  maxDurationSeconds: number;
+  aiTransparencyRequired: boolean;
+  toolAllowlist: string[];
+  emergencyEscalation: boolean;
+  dryRun: true;
+}
+
+export interface WorkflowVoiceCallStartResult {
+  conversationId: string;
+  idempotencyKey: string;
+  maskedRecipient: string;
+  duplicate: boolean;
+  status: string;
+  dryRun: boolean;
+  twilioCallSid: string | null;
+  elevenLabsConversationId: string | null;
+  agentDeploymentId: string | null;
+  agentVersion: number | null;
+  scenarioKey: string | null;
+  scenarioVersion: string | null;
+  toolAllowlist: string[];
+  maxDurationSeconds: number | null;
+  callPlan?: WorkflowVoiceCallPlan;
+}
+
+export interface WorkflowVoicePostCallResult {
+  conversationId: string;
+  lifecycleState: string;
+  outcome: string;
+  resultSummary: string | null;
+  durationSeconds: number | null;
+  escalated: boolean;
+  escalationReason: string | null;
+  transcriptStored: false;
+}

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-voice-call-start-v49847-2026-07-25',
+    version: '4.9.847',
+    title: 'V4.9.847 — Workflow voice.call.start Action Adapter (Phase 8 Prompt 37)',
+    summary: [
+      'Production voice.call.start via SynqDrive Voice Orchestrator — no direct Twilio/ElevenLabs orchestration from workflows.',
+      'WorkflowVoiceCallStartService: approved scenarios, tool allowlist, call hours, consent, idempotency.',
+      'Delegates to VoiceCallOrchestrationService for budget, MCP tokens, CallSid, ElevenLabs ConvId.',
+      'Dry run produces Call Plan only; post-call summary without transcript in workflow output.',
+      '14 dedicated tests + workflow suites passing.',
+    ],
+    reason: 'Workflows need governed outbound AI voice on existing orchestrator architecture.',
+    previousBehavior: 'voice.call policy stub existed but no workflow adapter or orchestrator wiring.',
+    details: 'docs/integrations/workflow-voice-action-2026-07.md. Handler: voice-call-start.action-handler.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T16:00:00.000Z',
+  },
+  {
     id: 'workflow-sms-send-v49846-2026-07-25',
     version: '4.9.846',
     title: 'V4.9.846 — Workflow sms.send Action Adapter (Phase 8 Prompt 36)',
