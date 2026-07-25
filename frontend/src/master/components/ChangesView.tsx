@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-post-deployment-acceptance-v49825-2026-07-25',
+    version: '4.9.825',
+    title: 'V4.9.825 — Fleet AI post-deployment acceptance (Prompt 32)',
+    summary: [
+      'Final acceptance audit after 32-prompt Fleet AI overhaul.',
+      'Verdict: FAIL — code verified (456 AI tests); Production still on 62aaf1fe without orchestrator.',
+      'fleet-ai-acceptance-2026-07.spec.ts — 12 WOB-L 7503 questions + EN/provider cases.',
+      'docs/audits/ai-agent-domain-grounding-post-deployment-acceptance-2026-07.md',
+    ],
+    reason: 'Close Prompt 32 with binding PASS/FAIL decision against production and acceptance criteria.',
+    previousBehavior: 'No formal post-deployment acceptance artifact for domain-grounded Fleet AI.',
+    details:
+      'Lokal PASS for all 12 acceptance questions via pipeline fixtures; Prod BLOCKED/FAIL until merge #847–#850 and controlled deploy per runbook.',
+    affectsArchitecture: false,
+    module: 'AI Assistant',
+    createdAt: '2026-07-25T02:59:00.000Z',
+  },
+  {
     id: 'fleet-ai-vps-control-audit-v49824-2026-07-25',
     version: '4.9.824',
     title: 'V4.9.824 — Fleet AI VPS control audit (Prompt 31)',
