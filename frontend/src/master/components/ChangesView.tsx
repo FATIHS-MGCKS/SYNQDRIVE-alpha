@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-vps-control-audit-v49834-2026-07-25',
+    version: '4.9.834',
+    title: 'V4.9.834 — Operator App VPS control audit runbook (Prompt 41)',
+    summary: [
+      'Read-only VPS/production control audit runbook for Operator go-live: 24 control areas with safe masked commands.',
+      'Covers deploy layout (/opt/synqdrive), PM2, Nginx/TLS, Postgres/Redis/BullMQ, document upload/OCR workers, notifications/outbox, health, metrics, backups, retention, rate limits, tenant isolation.',
+      'No VPS execution in Prompt 41 — no secrets, PII, or production handover/upload smoke.',
+      'Audit: docs/audits/operator-app-vps-control-audit-2026-07.md',
+    ],
+    reason:
+      'Prepare safe production control audit before Operator VPS verification and deploy.',
+    previousBehavior:
+      'Prompt 40 repo regression complete; no VPS-specific Operator audit runbook.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Operator',
+    createdAt: '2026-07-25T22:15:00.000Z',
+  },
+  {
     id: 'operator-app-production-readiness-v49833-2026-07-25',
     version: '4.9.833',
     title: 'V4.9.833 — Operator App production readiness regression (Prompt 40)',
