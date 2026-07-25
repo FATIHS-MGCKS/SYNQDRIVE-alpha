@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-production-readiness-baseline-v49827-2026-07-25',
+    version: '4.9.827',
+    title: 'V4.9.827 — Operator App: Production-Readiness Baseline-Audit (Prompt 1)',
+    summary: [
+      'Branch audit/operator-app-production-readiness-2026-07 — reine Bestandsaufnahme, keine funktionalen Änderungen.',
+      'docs/audits/operator-app-production-readiness-2026-07.md — 20 Kapitel: Routen, APIs, Rollen, Modelle, Handover, PWA-Stand, Tests.',
+      '117 Dateien unter frontend/src/operator/ inventarisiert; konsumiert kanonische Bookings/Tasks/Documents/Vehicle-Intelligence APIs.',
+      'Findings/Remediation/Gates als Platzhalter für Prompt-Serie 2+.',
+    ],
+    reason: 'Production-Readiness-Umsetzung Operator App — dokumentierter Ist-Zustand als Audit-Grundlage.',
+    previousBehavior: 'Kein zentrales Operator-Production-Readiness-Audit-Artefakt im Repo.',
+    details: 'docs/audits/operator-app-production-readiness-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Operations',
+    createdAt: '2026-07-25T16:50:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',
