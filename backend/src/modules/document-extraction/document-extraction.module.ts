@@ -184,6 +184,7 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     DocumentExtractionHealthService,
     DocumentIntakeReconciliationService,
     DocumentIntakeActionRecoveryService,
+    DocumentLifecycleService,
   ],
 })
 export class DocumentExtractionModule {}

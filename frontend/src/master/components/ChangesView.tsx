@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-privacy-retention-v49827-2026-07-25',
+    version: '4.9.827',
+    title: 'V4.9.827 — Operator App Datenschutz & Retention (Prompt 34)',
+    summary: [
+      'Datenschutz-/Retention-Konzept für 12 Operator-Datenkategorien dokumentiert.',
+      'OperatorRetentionModule: Draft-Cleanup, Signatur-Redaktion, Orphan-Uploads, OCR-Cache-Strip.',
+      'Booking Evidence Legal Hold + konfigurierbare Fristen (default 0 = rechtlich zu bestätigen).',
+      'Audit-Privacy (keine Signature-Data-URLs in Logs) + Client-Privacy-Helfer.',
+      'Tests: Cleanup, Legal Hold, Tenant Scope.',
+    ],
+    reason: 'Operator App Production Readiness — nachvollziehbares DSGVO/Retention-Konzept und automatisierte Bereinigung.',
+    previousBehavior: 'Operator-Evidence ohne Operator-spezifische Retention; keine Booking-Legal-Hold; Signaturen nur clientseitig beim Close geleert.',
+    details:
+      'Audit: docs/audits/operator-app-privacy-retention-2026-07.md. Architektur: architecture/OPERATOR_APP_DATA_RETENTION_2026-07-25.md. APIs unter /organizations/:orgId/operator/*.',
+    affectsArchitecture: true,
+    module: 'Operator WebApp',
+    createdAt: '2026-07-25T20:10:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

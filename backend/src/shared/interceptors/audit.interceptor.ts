@@ -7,6 +7,10 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { AuditService } from '@modules/activity-log/audit.service';
+import {
+  sanitizeOperatorAuditDescription,
+  sanitizeOperatorAuditRoute,
+} from '@modules/operator-retention/operator-audit-privacy.util';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
 
 // HTTP methods that mutate state
@@ -82,13 +86,22 @@ export class AuditInterceptor implements NestInterceptor {
     const action = deriveAction(req.method, statusCode);
     const isError = statusCode >= 400;
 
+    const rawUrl = String(req.url ?? '');
+    const route = req.route?.path
+      ? `${req.method} ${req.route.path}`
+      : `${req.method} ${sanitizeOperatorAuditRoute(rawUrl)}`;
+    const description = sanitizeOperatorAuditDescription(
+      `${req.method} ${sanitizeOperatorAuditRoute(rawUrl)} → ${statusCode}`,
+      route,
+    );
+
     void this.audit.record({
       actorUserId: req.user?.id,
       actorOrganizationId: req.user?.organizationId ?? req.tenantId,
       action,
       entity,
-      description: `${req.method} ${req.url} → ${statusCode}`,
-      route: req.route?.path ? `${req.method} ${req.route.path}` : `${req.method} ${req.url}`,
+      description,
+      route,
       ipAddress: req.ip ?? req.connection?.remoteAddress,
       userAgent: req.headers?.['user-agent'],
       level: statusCode >= 500 ? 'CRITICAL' : isError ? 'WARN' : 'INFO',

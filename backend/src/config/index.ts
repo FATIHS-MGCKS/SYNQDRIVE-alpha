@@ -44,6 +44,7 @@ export { default as batteryV2RetentionConfig } from './battery-v2-retention.conf
 export { default as voiceRetentionConfig } from './voice-retention.config';
 export { default as documentRetentionConfig } from './document-retention.config';
 export { default as legalDocumentRetentionConfig } from './legal-document-retention.config';
+export { default as operatorDataRetentionConfig } from './operator-data-retention.config';
 export { default as iamDataRetentionConfig } from './iam-data-retention.config';
 export {
   default as iamConfig,

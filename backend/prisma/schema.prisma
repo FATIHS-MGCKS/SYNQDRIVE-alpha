@@ -1613,6 +1613,8 @@ model Organization {
   bookings                               Booking[]
   bookingAllowedDrivers                  BookingAllowedDriver[]
   bookingHandoverProtocols               BookingHandoverProtocol[]
+  operatorHandoverDrafts                 OperatorHandoverDraft[]
+  operatorBookingEvidenceLegalHolds    OperatorBookingEvidenceLegalHold[]
   activityLogs                           ActivityLog[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   vendors                                Vendor[]
@@ -5598,6 +5600,8 @@ model Booking {
   actualReturnStation     Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
   rentalDrivingAnalyses   RentalDrivingAnalysis[]
   handoverProtocols       BookingHandoverProtocol[]
+  operatorHandoverDrafts  OperatorHandoverDraft[]
+  operatorEvidenceLegalHold OperatorBookingEvidenceLegalHold?
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
   priceSnapshots          BookingPriceSnapshot[]
@@ -6014,6 +6018,47 @@ model BookingHandoverProtocol {
   @@index([organizationId])
   @@index([vehicleId])
   @@map("booking_handover_protocols")
+}
+
+/// Server-side operator handover wizard drafts (TTL-managed; signatures excluded from payload).
+model OperatorHandoverDraft {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  bookingId      String       @map("booking_id")
+  kind           HandoverKind
+  stepId         String?      @map("step_id")
+  payload        Json
+  expiresAt      DateTime     @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, bookingId, kind])
+  @@index([organizationId, expiresAt])
+  @@map("operator_handover_drafts")
+}
+
+/// Blocks operator evidence retention (signatures, linked uploads) for a booking dispute.
+model OperatorBookingEvidenceLegalHold {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  bookingId        String    @unique @map("booking_id")
+  active           Boolean   @default(true)
+  reason           String?
+  setAt            DateTime  @default(now()) @map("set_at")
+  setByUserId      String?   @map("set_by_user_id")
+  releasedAt       DateTime? @map("released_at")
+  releasedByUserId String?   @map("released_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, active])
+  @@map("operator_booking_evidence_legal_holds")
 }
 
 /// Rental-period analysis input coverage (P59).
