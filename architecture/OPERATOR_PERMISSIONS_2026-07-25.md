@@ -87,6 +87,18 @@ Controllers should adopt `@RequireOperatorPermission('operator.…')` per handle
 - Task assignment check for `operator.task.complete`
 - Finalized protocol / applied extraction guards
 
+## Station and assignment scope (V4.9.834 — Prompt 8)
+
+`OperatorResourceScopeService` (`backend/src/modules/operator-app/`) centralizes operator station/assignment enforcement:
+
+1. Scope from `StationAccessService` / `EffectiveAccessEngine` — never from request `stationId`
+2. Bookings: pickup/return/actual stations OR vehicle home/current in allowlist
+3. Tasks: assignee OR `metadata.stationId` OR linked booking/vehicle in scope
+4. Handover: `fieldAgentAccess` + station scope; supervisor `tasks.manage` + `scopeOverrideReason`
+5. Override audit: Activity log `OPERATOR_STATION_SCOPE_OVERRIDE`
+
+Audit: `docs/audits/operator-app-production-readiness-2026-07.md` §30.
+
 ## Backfill
 
 Existing org memberships need `operator-app` in materialized JSON when roles are re-assigned or via ops backfill script (not included in Prompt 5).

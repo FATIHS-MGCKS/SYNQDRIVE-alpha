@@ -35,7 +35,9 @@ All write paths go through existing org-scoped REST APIs:
 | Pickup verification (manual) | `OperatorPickupCheckSheet` | `customerVerification.submitManualPickupCheck` |
 | Booking documents | `OperatorBookingDocumentsPanel` | `documents.listForBooking` |
 
-Provider stack in `OperatorShell.tsx`: `OperatorShellProvider` → `OperatorDamageCaptureProvider` → `OperatorHandoverProvider` → `FleetProvider` → `OperatorDataProvider`.
+Provider stack in `OperatorShell.tsx`: `OperatorShellProvider` → `OperatorDamageCaptureProvider` → `FleetProvider` → `OperatorHandoverProvider` → `OperatorDataProvider`.
+
+**State ownership (V4.9.835):** Today pickups/returns + canonical `ALL_OPEN` tasks/summary live in `OperatorDataProvider`. Today feed buckets (`NOW`/`TODAY`/…) use `useTaskList` with in-flight dedup (`task-query-flight`). Default Tasks tab reuses `OperatorDataProvider.tasks` when filters are default. Fleet vehicles/health: `FleetProvider` + `useFleetMapStore` (org-guarded). Handover dialog state: `OperatorHandoverProvider`. Shell UI: `OperatorShellProvider`.
 
 ## Device guard (UX only)
 

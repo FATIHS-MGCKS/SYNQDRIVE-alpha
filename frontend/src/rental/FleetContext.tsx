@@ -113,7 +113,22 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   }, [setStationFilter]);
 
   useEffect(() => {
-    if (!orgId) return;
+    if (!orgId) {
+      useFleetMapStore.setState({
+        vehicles: [],
+        fleetMapOrgId: null,
+        selectedVehicleId: null,
+        loading: false,
+        error: null,
+      });
+      return;
+    }
+
+    useFleetMapStore.setState({
+      fleetMapOrgId: orgId,
+      vehicles: [],
+      selectedVehicleId: null,
+    });
     void fetchFleetMap(orgId);
   }, [orgId, fetchFleetMap]);
 

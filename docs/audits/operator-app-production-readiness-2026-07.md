@@ -78,7 +78,9 @@ Einstieg zusätzlich über `OperatorEntryButton` in der Rental-Topbar (`frontend
 
 ### 2.5 Provider-Stack in `OperatorShell`
 
-Reihenfolge (äußer → innen): `OperatorShellProvider` → `OperatorDamageCaptureProvider` → `OperatorHandoverProvider` → `FleetProvider` → `OperatorDataProvider` → UI.
+Reihenfolge (äußer → innen): `OperatorShellProvider` → `OperatorDamageCaptureProvider` → `FleetProvider` → `OperatorHandoverProvider` → `OperatorDataProvider` → UI.
+
+> **V4.9.835:** `FleetProvider` umschließt jetzt `OperatorHandoverProvider`, damit Fleet-Invalidierungshandler vor Handover-Bridge registriert sind und kein Provider auf einen noch nicht gemounteten Child-Context zugreift.
 
 ---
 
@@ -1390,6 +1392,135 @@ QR-Scanner: **nicht implementiert** (Textsuche only).
 - `backend/src/modules/tasks/tasks.service.ts`
 - `backend/src/modules/tasks/tasks.controller.ts`
 - `backend/src/modules/tasks/dto/task.dto.ts`
+
+---
+
+## 31. Provider-/Cache-Konsolidierung (Prompt 9 — V4.9.835)
+
+**Datum:** 2026-07-25  
+**Ziel:** Keine parallelen Doppelrequests, keine inkonsistenten Task-/Fleet-Caches, kein Tenant-Leak nach Org-Wechsel, klare State-Ownership.
+
+### 31.1 Provider-Abhängigkeitsgrafik
+
+```mermaid
+flowchart TB
+  subgraph global["Globale Provider (OperatorApp)"]
+    RP[RentalProvider<br/>orgId, memberships, permissions]
+  end
+
+  subgraph shell["OperatorShell"]
+    OSP[OperatorShellProvider<br/>tabs, sheets, refreshToken, syncState]
+    ODCP[OperatorDamageCaptureProvider<br/>damage modal state]
+    FP[FleetProvider<br/>fleet map + health batch]
+    OHP[OperatorHandoverProvider<br/>handover dialog + booking hydrate]
+    ODP[OperatorDataProvider<br/>today bookings + ALL_OPEN tasks + summary]
+  end
+
+  subgraph hooks["Hooks / dedup layer"]
+    UTL[useTaskList<br/>bucket lists]
+    TQF[task-query-flight<br/>in-flight dedup + org generation]
+    UFS[useFleetMapStore<br/>Zustand fleet map]
+  end
+
+  RP --> OSP
+  OSP --> ODCP
+  ODCP --> FP
+  FP --> OHP
+  OHP --> ODP
+  ODP --> UTL
+  UTL --> TQF
+  FP --> UFS
+
+  OHP -.->|useRentalOrg| RP
+  ODP -.->|useRentalOrg + useOperatorShell| RP
+  ODP -.->|useOperatorShell| OSP
+  UTL -.->|useOperatorData taskSummary| ODP
+```
+
+**Verschachtelungsreihenfolge (nach Refactor):** `OperatorShellProvider` → `OperatorDamageCaptureProvider` → **`FleetProvider`** → **`OperatorHandoverProvider`** → `OperatorDataProvider`.
+
+**Context-Zugriff:** Kein Provider liest einen Context, der erst in seinen Children bereitgestellt wird. `OperatorDataProvider` sitzt innerhalb von Fleet/Handover und nutzt `useRentalOrg` (RentalProvider) + `useOperatorShell` (Parent). `useOperatorTodayFeed` liest `taskSummary` aus `OperatorDataProvider` — nur unterhalb von `OperatorDataProvider` erlaubt (Today-Tab).
+
+### 31.2 Vorherige Überschneidungen (CACHE-OP-*)
+
+| ID | Problem | Auswirkung |
+|----|---------|------------|
+| CACHE-OP-001 | `OperatorDataProvider` + `useOperatorTodayFeed` (`useTaskSummary`) | Doppelter `GET /tasks/summary` |
+| CACHE-OP-002 | `OperatorDataProvider` ALL_OPEN + `OperatorTasksView` Remote-Liste bei Default-Filtern | Doppelter `GET /tasks` (ALL_OPEN) |
+| CACHE-OP-003 | `OperatorHandoverRefreshBridge`: `triggerRefresh()` + `reloadToday/Tasks` | Dreifacher Reload-Zyklus |
+| CACHE-OP-004 | `useOperatorTaskActions`: `invalidateTaskQueries` + `reloadTasks()` | Redundante Invalidierung |
+| CACHE-OP-005 | `useTaskList` Bucket-Hooks ohne In-Flight-Dedup | Bis zu 5 parallele identische Bucket-Requests bei Remount |
+| CACHE-OP-006 | `useFleetMapStore` global, kein `fleetMapOrgId`-Guard | Stale Fleet-Daten nach Org-Wechsel möglich |
+| CACHE-OP-007 | `FleetProvider` unter `OperatorHandoverProvider` | Fleet-Invalidierung erst nach Handover-Mount |
+
+### 31.3 Neue State Ownership
+
+| Zustand | Owner | Hinweis |
+|---------|-------|---------|
+| `orgId`, Membership, Permissions | `RentalProvider` | Org-Wechsel → `window.location.reload()` |
+| Tab, Sheets, `refreshToken`, Sync-Banner | `OperatorShellProvider` | rein UI |
+| Damage-Capture-Modal | `OperatorDamageCaptureProvider` | lokal |
+| Handover-Dialog, Booking-Hydration | `OperatorHandoverProvider` | keine Task-/Fleet-Kopie |
+| Fleet vehicles + Health-Map | `FleetProvider` + `useFleetMapStore` | org-guarded fetch |
+| Today pickups/returns | `OperatorDataProvider` | kanonisch |
+| ALL_OPEN tasks + summary + `tasksByVehicleId` | `OperatorDataProvider` | kanonisch für Badges + Default Tasks-Tab |
+| Today feed buckets NOW/TODAY/… | `useTaskList` (pro Bucket) | dedup via `task-query-flight` |
+| Tasks-Tab gefiltert | `OperatorTasksView` remote state | nur wenn `canReuseOperatorAllOpenTasks` false |
+| Task-Mutationen | `invalidateTaskQueries` Bus | kein manuelles `reloadTasks` in Actions |
+
+### 31.4 Entfernte Doppelrequests
+
+| Vorher | Nachher |
+|--------|---------|
+| Summary: OperatorData + TodayFeed | Summary nur `OperatorDataProvider`; TodayFeed liest Context |
+| Tasks-Tab Default: OperatorData + Remote | Remote-Fetch übersprungen bei Default-Filtern |
+| Handover-Bridge: refreshToken bump + reloads | Nur gezieltes `reloadToday` / `reloadTasks` |
+| Task complete: invalidate + reloadTasks | Nur `invalidateTaskQueries` (Listener in OperatorData) |
+| Parallele Bucket-Fetches | `runTaskQueryFlight` dedupliziert gleiche Query-Keys |
+
+### 31.5 Cache-Key- und Invalidierungsregeln
+
+**Task query keys** (`frontend/src/lib/tasks/query-keys.ts`):
+
+- `['tasks', orgId, 'list', …filters]`
+- `['tasks', orgId, 'list', 'bucket', bucket, …filters]`
+- `['tasks', orgId, 'summary']`
+
+**Org-Scope:**
+
+- `resetTaskQueryScope(orgId)` bei Org-Wechsel → `bumpTaskQueryOrgGeneration` verwirft in-flight + stale responses
+- `OperatorDataProvider` / `useTaskList`: Generation-Guards (`isStaleTaskQueryResponse`)
+- `useFleetMapStore`: `fleetMapOrgId` — Response nur angewendet wenn `state.fleetMapOrgId === requestOrgId`
+- `FleetProvider`: leert vehicles bei `orgId`-Wechsel vor Refetch
+
+**Vehicle operational keys** (unverändert): `vehicleOperationalQueryKeys.*(orgId)` — Station optional in Fleet-Filter-State, nicht in globalem Key.
+
+### 31.6 Tests
+
+| Datei | Abdeckung |
+|-------|-----------|
+| `task-query-flight.test.ts` | In-flight dedup, org generation bump / Abort |
+| `operatorTasksOwnership.test.ts` | Default Tasks-Tab reuse vs. gefiltert |
+| `useFleetMapStore.test.ts` | Stale response nach Org-Wechsel, leeres orgId |
+
+### 31.7 Geänderte Dateien
+
+- `frontend/src/lib/tasks/task-query-flight.ts` (neu)
+- `frontend/src/lib/tasks/task-query-client.ts` (neu)
+- `frontend/src/lib/tasks/task-query-flight.test.ts` (neu)
+- `frontend/src/lib/tasks/hooks/useTaskList.ts`
+- `frontend/src/operator/lib/operatorTasksOwnership.ts` (neu)
+- `frontend/src/operator/lib/operatorTasksOwnership.test.ts` (neu)
+- `frontend/src/operator/context/OperatorDataContext.tsx`
+- `frontend/src/operator/hooks/useOperatorTodayFeed.ts`
+- `frontend/src/operator/views/OperatorTasksView.tsx`
+- `frontend/src/operator/components/OperatorHandoverRefreshBridge.tsx`
+- `frontend/src/operator/tasks/useOperatorTaskActions.ts`
+- `frontend/src/operator/OperatorShell.tsx`
+- `frontend/src/rental/FleetContext.tsx`
+- `frontend/src/rental/stores/useFleetMapStore.ts`
+- `frontend/src/rental/stores/useFleetMapStore.test.ts` (neu)
+- `frontend/src/operator/README.md`
 
 ---
 

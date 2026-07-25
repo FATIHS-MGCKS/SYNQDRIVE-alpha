@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-provider-cache-v49835-2026-07-25',
+    version: '4.9.835',
+    title: 'V4.9.835 — Operator App: Provider-/Cache-Konsolidierung (Prompt 9)',
+    summary: [
+      'Provider-Reihenfolge: FleetProvider umschließt OperatorHandoverProvider (Invalidierung vor Handover-Bridge).',
+      'Kanonische ALL_OPEN tasks + summary nur in OperatorDataProvider; TodayFeed + Default Tasks-Tab reuse.',
+      'task-query-flight: In-Flight-Dedup + Org-Generation-Guards gegen Race Conditions nach Org-Wechsel.',
+      'useFleetMapStore: fleetMapOrgId-Guard verwirft stale Responses; FleetProvider leert bei Org-Wechsel.',
+      'OperatorHandoverRefreshBridge + Task-Actions: redundante reloads entfernt.',
+      'Tests: task-query-flight, operatorTasksOwnership, useFleetMapStore org-guard.',
+    ],
+    reason:
+      'Production-Readiness Prompt 9: keine parallelen Doppelrequests, kein Tenant-Leak, klare State-Ownership.',
+    previousBehavior:
+      'Summary und ALL_OPEN tasks wurden parallel von OperatorData, TodayFeed und Tasks-Tab geladen; Fleet-Store ohne Org-Guard; Handover-Bridge triggerte mehrfache Reloads.',
+    details:
+      'Audit §31 in docs/audits/operator-app-production-readiness-2026-07.md. Neue Module: task-query-flight.ts, task-query-client.ts, operatorTasksOwnership.ts.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:35:00.000Z',
+  },
+  {
     id: 'operator-app-station-scope-v49834-2026-07-25',
     version: '4.9.834',
     title: 'V4.9.834 — Operator App: Station- und Assignment-Autorisierung (Prompt 8)',
