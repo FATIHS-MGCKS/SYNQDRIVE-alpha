@@ -2253,6 +2253,34 @@ Frontend: `operatorHandoverDraftBuffer.test.ts`, `operatorHandoverDraftSync.test
 
 ---
 
+## 42. Operator Upload Queue & Retry (Prompt 20)
+
+### 42.1 Queue-Architektur
+
+Client: `OperatorUploadQueue` (singleton) + IndexedDB-Blob-Puffer + `useOperatorUploadQueue` Hook. Server: `OperatorUpload` Registry mit `clientUploadId`-Deduplizierung pro Organisation.
+
+### 42.2 Idempotenz
+
+`@@unique([organizationId, clientUploadId])` — erneutes `register` liefert bestehenden Datensatz; identischer Content-Hash kann auf vorhandene `targetRefId` verweisen (kein doppelter Upload).
+
+### 42.3 Status
+
+`PENDING` → `UPLOADING` → `UPLOADED` / `PROCESSING` / `FAILED` / `CANCELLED`. Validierungsfehler (`OPERATOR_UPLOAD_VALIDATION`) nicht retryable. Max 5 Versuche mit Backoff.
+
+### 42.4 Draft-Sicherheit
+
+`handoverSessionId` wird serverseitig gegen `organizationId` + `bookingId` + editierbaren Session-Status validiert — manipulierte fremde Draft-IDs werden abgewiesen.
+
+### 42.5 Orphan Cleanup
+
+`POST …/operator-uploads/cleanup-orphans` — storniert verwaiste/fehlgeschlagene Uploads ohne aktive Session.
+
+### 42.6 Tests
+
+Backend: 9 Integrationstests (`operator-upload.integration.spec.ts`). Frontend: `operatorUploadQueue.test.ts`.
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

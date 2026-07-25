@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-upload-queue-v49846-2026-07-25',
+    version: '4.9.846',
+    title: 'V4.9.846 — Operator App: Upload-Queue & Retry (Prompt 20)',
+    summary: [
+      'Neues `OperatorUpload`-Modell + API (`POST/GET …/operator-uploads`) mit `clientUploadId`-Deduplizierung, Status-Lifecycle und Draft-Session-Validierung.',
+      'Frontend `OperatorUploadQueue`: IndexedDB-Blob-Puffer, begrenzter Retry-Backoff, Abbruch, Fortschritt, keine Wiederholung bei Validierungsfehlern.',
+      'Handover-Abschluss blockiert bei offenen Pflicht-Uploads; Signaturen werden vor Submit über die Queue hochgeladen.',
+      'Orphan-Cleanup für verwaiste Uploads; Content-Hash-Deduplizierung verhindert doppelte Dateien.',
+      '9 Backend- + 6 Frontend-Tests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 20: robuste Uploads für Schäden, Dokumente, Signaturen etc. ohne Duplikate und mit sichtbarem Status.',
+    previousBehavior:
+      'Sofort-Uploads ohne Queue, ohne clientUploadId, ohne Retry-Policy, ohne Draft-Zuordnungsschutz.',
+    details:
+      'Audit §42, `operator-upload.service.ts`, `operatorUploadQueue.ts`, `OperatorHandoverFlow.tsx`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T22:00:00.000Z',
+  },
+  {
     id: 'operator-handover-draft-wizard-sync-v49845-2026-07-25',
     version: '4.9.845',
     title: 'V4.9.845 — Operator App: Handover-Wizard ↔ Draft-Sync (Prompt 19)',

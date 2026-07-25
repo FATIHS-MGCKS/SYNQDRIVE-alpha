@@ -40,6 +40,7 @@ import { CustomersModule } from '@modules/customers/customers.module';
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 import { MisuseCasesModule } from '@modules/vehicle-intelligence/misuse-cases/misuse-cases.module';
 import { BookingsModule } from '@modules/bookings/bookings.module';
+import { OperatorUploadModule } from '@modules/operator-upload/operator-upload.module';
 import { RentalDrivingAnalysisModule } from '@modules/rental-driving-analysis/rental-driving-analysis.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { BusinessAuditModule } from '@modules/business-audit/business-audit.module';
@@ -224,6 +225,7 @@ export class AppModule {
         CustomerVerificationModule,
         MisuseCasesModule,
         BookingsModule,
+        OperatorUploadModule,
         RentalDrivingAnalysisModule,
         ActivityLogModule,
         BusinessAuditModule,
