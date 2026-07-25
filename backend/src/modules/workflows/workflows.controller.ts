@@ -16,6 +16,7 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import {
   CreateWorkflowDto,
+  PreviewWorkflowRiskDto,
   RejectWorkflowActionDto,
   TestWorkflowDto,
   UpdateWorkflowDto,
@@ -37,6 +38,21 @@ export class WorkflowsController {
     @Query('category') category?: string,
   ) {
     return this.service.findByOrg(orgId, { status, category });
+  }
+
+  @Get('risk-registry')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async riskRegistry(@Param('orgId') orgId: string) {
+    return this.service.getRiskRegistry(orgId);
+  }
+
+  @Post('risk/preview')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async previewRisk(
+    @Param('orgId') orgId: string,
+    @Body() body: PreviewWorkflowRiskDto,
+  ) {
+    return this.service.previewWorkflowRisk(orgId, body);
   }
 
   @Get('stats')
@@ -80,6 +96,12 @@ export class WorkflowsController {
     @Query('limit') limit?: string,
   ) {
     return this.service.listRuns(orgId, id, limit ? Number(limit) : 25);
+  }
+
+  @Get(':id/risk')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async getWorkflowRisk(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.service.getWorkflowRisk(orgId, id);
   }
 
   @Get(':id')

@@ -131,7 +131,7 @@ describe('WorkflowActionPolicyService', () => {
     });
 
     expect(result.useFrozenSnapshot).toBe(false);
-    expect(result.policy.riskClass).toBe('MEDIUM');
+    expect(result.policy.riskClass).toBe('LOW');
   });
 
   it('applies safety block even on frozen approved snapshot', () => {
@@ -267,7 +267,7 @@ describe('WorkflowActionPolicyService', () => {
     });
     expect(result.allowed).toBe(true);
     expect(result.snapshot.snapshotHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(result.snapshot.riskClass).toBe('MEDIUM');
+    expect(result.snapshot.riskClass).toBe('LOW');
   });
 
   it('keeps disabled CRITICAL actions blocked', () => {

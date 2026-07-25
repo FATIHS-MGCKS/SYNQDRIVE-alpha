@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { RISK_CLASS_RANK } from '../actions/workflow-action-registry.constants';
 import type { WorkflowActionRiskClass } from '../actions/workflow-action-registry.types';
 import { getWorkflowActionPolicy } from './workflow-action-policy.matrix';
+import { getActionRiskClass } from '../risk/workflow-risk.registry';
 import { buildPolicySnapshot } from './workflow-action-policy.snapshot';
 import { WorkflowActionSafetyBlockService } from './workflow-action-safety-block.service';
 import type {
@@ -74,6 +75,7 @@ export class WorkflowActionPolicyService {
     }
 
     this.assertRiskNotDowngraded(activePolicy.riskClass, input.clientRiskClass, violations);
+    this.assertRegistryRiskFloor(input.actionType, activePolicy.riskClass, violations);
     this.assertPermission(input.actorPermissions ?? [], activePolicy.requiredPermission, violations);
     this.assertTrigger(input.eventType, activePolicy, violations);
     this.assertEntityType(input.entityType, activePolicy, violations);
@@ -165,6 +167,20 @@ export class WorkflowActionPolicyService {
       dryRunAvailable: snapshot.dryRunAvailable,
       compensationPossible: snapshot.compensationPossible,
     };
+  }
+
+  private assertRegistryRiskFloor(
+    actionType: string,
+    policyRisk: WorkflowActionRiskClass,
+    violations: WorkflowActionPolicyViolation[],
+  ): void {
+    const registryRisk = getActionRiskClass(actionType);
+    if (RISK_CLASS_RANK[policyRisk] < RISK_CLASS_RANK[registryRisk]) {
+      violations.push({
+        code: 'RISK_DOWNGRADE',
+        message: `Policy risk ${policyRisk} is below risk registry floor ${registryRisk} for ${actionType}`,
+      });
+    }
   }
 
   private assertRiskNotDowngraded(

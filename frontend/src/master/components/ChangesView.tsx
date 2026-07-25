@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-risk-classification-v49850-2026-07-25',
+    version: '4.9.850',
+    title: 'V4.9.850 — Workflow Risk Classification Registry & Calculator (Phase 9 Prompt 40)',
+    summary: [
+      'Central WORKFLOW_RISK_REGISTRY with LOW/MEDIUM/HIGH/CRITICAL for actions, triggers, semantic categories.',
+      'WorkflowRiskCalculatorService: max-action risk + combination rules (AI+contact, multi-channel, critical triggers).',
+      'Risk policy bindings: permission, approval, maker-checker, audit, rollout flag, max reach, warnings.',
+      'API: GET risk-registry, POST risk/preview, GET :id/risk; workflow detail + test include riskAssessment.',
+      'Policy service validates matrix risk ≥ registry floor; safety overrides block immediately.',
+    ],
+    reason: 'Workflow risk must be server-authoritative and drive approval, audit, and rollout gates.',
+    previousBehavior: 'Per-action riskClass in policy matrix only; no workflow-level aggregation or combination rules.',
+    details: 'docs/security/workflow-risk-classification-2026-07.md. Module: workflows/risk/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T19:00:00.000Z',
+  },
+  {
     id: 'workflow-communication-policy-engine-v49849-2026-07-25',
     version: '4.9.849',
     title: 'V4.9.849 — Central Workflow Communication Policy Engine (Phase 9 Prompt 39)',

@@ -5,10 +5,11 @@ import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { WorkflowActionRegistryModule } from './actions/workflow-action-registry.module';
+import { WorkflowRiskModule } from './risk/workflow-risk.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
-  imports: [TasksModule, WorkflowActionRegistryModule],
+  imports: [TasksModule, WorkflowActionRegistryModule, WorkflowRiskModule],
   controllers: [WorkflowsController],
   providers: [
     WorkflowsService,
