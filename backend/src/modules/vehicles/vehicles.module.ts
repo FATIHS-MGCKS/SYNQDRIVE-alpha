@@ -20,7 +20,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
   imports: [
     ConfigModule.forFeature(dimoConfig),
     ActivityLogModule,
-    DimoModule,
+    forwardRef(() => DimoModule),
     forwardRef(() => VehicleIntelligenceModule),
     DataAuthorizationsModule,
     TasksModule,

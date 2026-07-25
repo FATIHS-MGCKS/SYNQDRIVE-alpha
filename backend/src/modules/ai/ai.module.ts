@@ -54,7 +54,7 @@ import { AiHealthController } from './ai-health.controller';
   imports: [
     PrismaModule,
     RedisModule,
-    VehiclesModule,
+    forwardRef(() => VehiclesModule),
     DataAuthorizationsModule,
     forwardRef(() => RentalHealthModule),
     TasksModule,

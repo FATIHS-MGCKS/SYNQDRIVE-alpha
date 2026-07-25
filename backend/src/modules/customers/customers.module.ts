@@ -9,7 +9,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 
 @Module({
-  imports: [VehicleIntelligenceModule, CustomerVerificationModule],
+  imports: [forwardRef(() => VehicleIntelligenceModule), CustomerVerificationModule],
   controllers: [CustomersController],
   providers: [
     CustomersService,

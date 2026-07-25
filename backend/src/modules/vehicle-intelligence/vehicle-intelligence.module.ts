@@ -218,7 +218,7 @@ import {
 @Module({
   imports: [
     forwardRef(() => DimoModule),
-    AiModule,
+    forwardRef(() => AiModule),
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
     forwardRef(() => HighMobilityModule),
