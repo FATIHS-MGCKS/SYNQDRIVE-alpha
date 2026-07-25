@@ -1,23 +1,20 @@
-# SynqDrive Operator (Web / PWA foundation)
+# Operator App (field / tablet)
 
-Mobile/tablet-only field operations shell at `/operator`.
+Mobile-first operator surface for pickups, returns, damages, and vehicle checks.
 
-## Entry
+## Device & layout strategy (V4.9.857)
 
-- Topbar button **Operator** (rental + master apps), visible for `MASTER_ADMIN`, `ORG_ADMIN`, `SUB_ADMIN`, `WORKER`.
-- Desktop: opens modal with copyable `/operator` URL.
-- Mobile/tablet: navigates directly to `/operator`.
+Capability detection lives in `lib/operatorDeviceCapabilities.ts` — **not a security boundary**.
 
-## Device guard (UX only)
+- **Field mode** (default): phones, tablets, touch terminals, iPad+keyboard, Surface, landscape tablets, zoomed viewports.
+- **Desktop fallback**: wide mouse-primary desktops (≥1280px, no touch) show a centered ~430px shell + warning banner — app remains reachable.
+- **Split layouts** (`useOperatorTabletLayout`): viewport ≥768px, independent of coarse-pointer heuristics.
+- **Camera**: `useOperatorCameraCapture` — file/gallery upload always available; camera button falls back to file picker when `getUserMedia` is unavailable.
 
-`useIsOperatorDevice` treats viewports ≤1280px or coarse pointer as operator devices.  
-Development escape: `VITE_ALLOW_OPERATOR_DESKTOP=true` in `.env.local`.
+Override for local dev: `VITE_ALLOW_OPERATOR_DESKTOP=true` forces field layout on desktop.
 
-## Security
+Auth/roles: `OperatorAccessGuard` only — never derive permissions from device detection.
 
-`canAccessOperatorApp()` is a frontend gate only; backend APIs remain org-scoped.  
-Not a substitute for server-side authorization.
-
-## Next steps (TODO)
+## Wiring
 
 Wire placeholders in `OperatorShell` to existing handover, damage, and task flows — no duplicate backends.

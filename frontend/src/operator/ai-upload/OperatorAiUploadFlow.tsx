@@ -10,6 +10,7 @@ import { DocumentExtractionFlowStatus } from '../../rental/components/documents/
 import { useLanguage } from '../../rental/i18n/LanguageContext';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { useOperatorCameraCapture } from '../hooks/useOperatorCameraCapture';
 import {
   CONTEXT_MODE_LABELS,
   OPERATOR_DOC_TYPE_OPTIONS,
@@ -33,6 +34,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
   const { t, locale } = useLanguage();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const camera = useOperatorCameraCapture();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
@@ -283,11 +285,19 @@ export function OperatorAiUploadFlow({ action }: Props) {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => cameraRef.current?.click()}
+                onClick={() => {
+                  if (!camera.cameraCaptureLikely) {
+                    galleryRef.current?.click();
+                    return;
+                  }
+                  cameraRef.current?.click();
+                }}
                 className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]/40"
               >
                 <Camera className="h-8 w-8 text-[color:var(--brand)]" />
-                <span className="text-sm font-semibold">Kamera</span>
+                <span className="text-sm font-semibold">
+                  {camera.cameraCaptureLikely ? 'Kamera' : 'Datei wählen'}
+                </span>
               </button>
               <button
                 type="button"
@@ -320,6 +330,10 @@ export function OperatorAiUploadFlow({ action }: Props) {
                 e.target.value = '';
               }}
             />
+
+            {camera.hint && (
+              <p className="text-[11px] text-muted-foreground">{camera.hint}</p>
+            )}
 
             {(pickError || flow.errorMessage) && flow.flow === 'failed' && (
               <p className="text-xs text-[color:var(--status-critical)]">

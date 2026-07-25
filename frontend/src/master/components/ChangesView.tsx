@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-device-capabilities-v49857-2026-07-25',
+    version: '4.9.857',
+    title: 'V4.9.857 — Operator App: Device-/Viewport-Capabilities (Prompt 32)',
+    summary: [
+      'Capability Detection (`operatorDeviceCapabilities`) statt harter Viewport/`pointer:coarse`-Sperre.',
+      'Operator App technisch immer erreichbar; Desktop-Notfallzugriff in ~430px-Shell + Warnbanner.',
+      'Tablet-Split ab 768px ohne `useIsOperatorDevice`-Gate; iPad+Keyboard/Surface/Touch-Terminals bleiben im Field-Modus.',
+      'Kamera: gezielter Fallback auf Galerie/Datei wenn `getUserMedia` fehlt (Damage + AI Upload).',
+      'Entry-Modal: „Notfallzugriff öffnen“ statt harter Blockade.',
+      'Tests für Breakpoints 320–1280px und Experience-Mode-Entscheidungen.',
+    ],
+    reason:
+      'Production-Readiness Prompt 32: Geräte nicht fehlerhaft an grober Viewport-Grenze blockieren; Security weiter nur über Auth/Rollen.',
+    previousBehavior:
+      '`useIsOperatorDevice` blockierte `/operator` auf Desktop >1280px ohne Touch; `useOperatorTabletLayout` hing an derselben Heuristik.',
+    details:
+      'Neu: `operatorDeviceCapabilities.ts`, `useOperatorDeviceCapabilities`, `OperatorDesktopFallbackBanner`, `useOperatorCameraCapture`. Entfernt: harte `OperatorDesktopOnlyNotice`-Sperre in `OperatorShell`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:45:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',
