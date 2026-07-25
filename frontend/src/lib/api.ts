@@ -2458,8 +2458,82 @@ export interface WorkflowTestPayload {
   payload?: Record<string, unknown>;
   entityType?: string;
   entityId?: string;
+  eventType?: string;
+  proposedDefinition?: Record<string, unknown>;
+  sourceRevisionType?: 'saved' | 'draft';
+}
+export interface WorkflowPlannedActionDto {
+  index: number;
+  actionType: string;
+  riskClass: string;
+  requiresApproval: boolean;
+  status: 'PLANNED' | 'SKIPPED' | 'BLOCKED' | 'ERROR';
+  policyBlockers: string[];
+  resolvedRecipients?: Array<{ channel: string; masked: string }>;
+  preview?: Record<string, unknown>;
+  validationErrors: string[];
+  expectedFallback?: string;
+  skipReason?: string;
+}
+export interface WorkflowExecutionPlanDto {
+  executionMode: 'DRY_RUN';
+  executed: false;
+  message: string;
+  requestId: string;
+  correlationId: string;
+  assessedAt: string;
+  riskClass: 'LOW' | 'HIGH' | 'CRITICAL';
+  sourceRevision: {
+    type: 'saved' | 'draft';
+    version: number;
+  };
+  workflowId: string;
+  workflowVersion: number;
+  workflowName: string;
+  event: {
+    type: string;
+    entityType?: string | null;
+    entityId?: string | null;
+    normalizedPayload: Record<string, unknown>;
+  };
+  scope: {
+    passed: boolean;
+    scopeType: string;
+    reason?: string;
+    details?: Record<string, unknown>;
+  };
+  conditions: {
+    passed: boolean;
+    results: Array<{ path: string; operator: string; passed: boolean }>;
+  };
+  plannedActions: WorkflowPlannedActionDto[];
+  skippedActions: WorkflowPlannedActionDto[];
+  validationErrors: string[];
+  policyBlockers: string[];
+  wouldCreateApprovals: boolean;
+}
+export interface WorkflowRevisionDiffChangeDto {
+  kind: string;
+  field: string;
+  label: string;
+  before?: unknown;
+  after?: unknown;
+  detail?: string;
+}
+export interface WorkflowRevisionDiffResultDto {
+  hasChanges: boolean;
+  changes: WorkflowRevisionDiffChangeDto[];
+  baselineVersion: number;
+  proposedVersion: number;
+  baselineRiskClass: string;
+  proposedRiskClass: string;
+  actor?: string | null;
+  changedAt?: string | null;
+  reason?: string | null;
 }
 export interface WorkflowTestResultDto {
+  executed?: false;
+  plan?: WorkflowExecutionPlanDto;
   runIds: string[];
   runs: WorkflowRunDto[];
   message?: string;
@@ -4948,6 +5022,21 @@ export const api = {
     listRuns: (orgId: string, workflowId: string, limit = 25) =>
       get<WorkflowRunDto[]>(`/organizations/${orgId}/workflows/${workflowId}/runs?limit=${limit}`),
     getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
+    dryRun: (orgId: string, workflowId: string, data?: WorkflowTestPayload, init?: RequestInit) =>
+      request<WorkflowExecutionPlanDto>(
+        `/organizations/${orgId}/workflows/${workflowId}/dry-run`,
+        { method: 'POST', body: JSON.stringify(data ?? {}), ...init },
+      ),
+    revisionDiff: (
+      orgId: string,
+      workflowId: string,
+      data: { proposedDefinition: Record<string, unknown>; reason?: string },
+      init?: RequestInit,
+    ) =>
+      request<WorkflowRevisionDiffResultDto>(
+        `/organizations/${orgId}/workflows/${workflowId}/revision-diff`,
+        { method: 'POST', body: JSON.stringify(data), ...init },
+      ),
     test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
       post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
     approveActionRun: (

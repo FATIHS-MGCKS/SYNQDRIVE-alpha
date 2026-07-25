@@ -25,6 +25,9 @@ import {
 } from './workflow-list.mapper';
 import { redactWorkflowRunPayload } from './audit/workflow-audit-sanitize.util';
 import { getWorkflowCatalog } from './workflow-catalog';
+import { WorkflowDryRunService } from './workflow-dry-run.service';
+import type { WorkflowExecutionPlan } from './workflow-execution-plan.types';
+import { buildWorkflowRevisionDiffFromRows } from './workflow-revision-diff.util';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -44,6 +47,7 @@ export class WorkflowsService {
     private readonly makerChecker: WorkflowMakerCheckerService,
     private readonly taskAutomationAdmin: TaskAutomationAdminService,
     private readonly workflowAudit: WorkflowAuditService,
+    private readonly workflowDryRun: WorkflowDryRunService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -707,47 +711,107 @@ export class WorkflowsService {
     return this.workflowAudit.getEvent(orgId, eventId);
   }
 
-  async testWorkflow(
+  async dryRunWorkflow(
     orgId: string,
     workflowId: string,
-    dto: { payload?: Record<string, unknown>; entityType?: string; entityId?: string },
+    dto: {
+      payload?: Record<string, unknown>;
+      entityType?: string;
+      entityId?: string;
+      eventType?: string;
+      proposedDefinition?: Record<string, unknown>;
+      sourceRevisionType?: 'saved' | 'draft';
+    },
     triggeredByUserId?: string,
-  ) {
+  ): Promise<WorkflowExecutionPlan> {
     const wf = await this.prisma.orgWorkflow.findFirst({
       where: { id: workflowId, organizationId: orgId },
     });
     if (!wf) throw new NotFoundException('Workflow not found');
 
-    const isExternalTest = Boolean((dto.payload as Record<string, unknown> | undefined)?.externalTest);
     this.workflowAudit.recordFireAndForget({
       orgId,
-      eventType: isExternalTest ? 'WORKFLOW_EXTERNAL_TEST' : 'WORKFLOW_DRY_RUN',
+      eventType: 'WORKFLOW_DRY_RUN',
       workflowId,
       actorUserId: triggeredByUserId,
-      summary: isExternalTest
-        ? `External workflow test started for ${wf.name}`
-        : `Dry run started for ${wf.name}`,
-      payload: { entityType: dto.entityType, entityId: dto.entityId },
-    });
-
-    const runId = await this.workflowEngine.executeWorkflow(wf, {
-      organizationId: orgId,
-      type: 'manual.test',
-      entityType: dto.entityType,
-      entityId: dto.entityId,
+      summary: `Dry run requested for ${wf.name}`,
       payload: {
-        ...(dto.payload ?? {}),
-        manualTest: true,
-        triggeredByUserId,
+        entityType: dto.entityType,
+        entityId: dto.entityId,
+        sourceRevisionType: dto.sourceRevisionType ?? (dto.proposedDefinition ? 'draft' : 'saved'),
       },
-      idempotencyKey: `manual.test:${workflowId}:${Date.now()}`,
     });
 
-    if (!runId) {
-      return { runIds: [], runs: [], message: 'Workflow skipped (scope/conditions)' };
-    }
-    const run = await this.getRun(orgId, runId);
-    return { runIds: [runId], runs: [run] };
+    return this.workflowDryRun.buildExecutionPlan(orgId, workflowId, dto);
+  }
+
+  async buildRevisionDiff(
+    orgId: string,
+    workflowId: string,
+    dto: {
+      proposedDefinition: Record<string, unknown>;
+      reason?: string;
+    },
+    actor?: { id?: string; name?: string; email?: string },
+  ) {
+    const existing = await this.prisma.orgWorkflow.findFirst({
+      where: { id: workflowId, organizationId: orgId },
+    });
+    if (!existing) throw new NotFoundException('Workflow not found');
+
+    const validated = validateWorkflowDefinition({
+      name: (dto.proposedDefinition.name as string) ?? existing.name,
+      category: (dto.proposedDefinition.category as string) ?? existing.category,
+      trigger: (dto.proposedDefinition.trigger ?? existing.trigger) as any,
+      conditions: (dto.proposedDefinition.conditions ?? existing.conditions) as any,
+      actions: (dto.proposedDefinition.actions ?? existing.actions) as any,
+      scope: (dto.proposedDefinition.scope ?? existing.scope) as any,
+    });
+
+    const proposedRow = {
+      name: (dto.proposedDefinition.name as string) ?? existing.name,
+      description:
+        dto.proposedDefinition.description !== undefined
+          ? (dto.proposedDefinition.description as string | null)
+          : existing.description,
+      category: (dto.proposedDefinition.category as string) ?? existing.category,
+      trigger: validated.trigger,
+      conditions: validated.conditions,
+      actions: validated.actions,
+      scope: validated.scope,
+      status: (dto.proposedDefinition.status as string) ?? existing.status,
+      version: existing.version + 1,
+    };
+
+    return buildWorkflowRevisionDiffFromRows({
+      baselineRow: existing,
+      proposedRow,
+      actor: actor?.name || actor?.email || actor?.id || null,
+      changedAt: new Date(),
+      reason: dto.reason ?? null,
+    });
+  }
+
+  async testWorkflow(
+    orgId: string,
+    workflowId: string,
+    dto: {
+      payload?: Record<string, unknown>;
+      entityType?: string;
+      entityId?: string;
+      proposedDefinition?: Record<string, unknown>;
+      sourceRevisionType?: 'saved' | 'draft';
+    },
+    triggeredByUserId?: string,
+  ) {
+    const plan = await this.dryRunWorkflow(orgId, workflowId, dto, triggeredByUserId);
+    return {
+      executed: false as const,
+      plan,
+      message: plan.message,
+      runIds: [] as string[],
+      runs: [] as unknown[],
+    };
   }
 
   async approveActionRun(

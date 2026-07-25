@@ -12,19 +12,11 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
-import { WorkflowMakerCheckerService } from '../maker-checker/workflow-maker-checker.service';
-import { WorkflowAuditService } from '../audit/workflow-audit.service';
-import {
-  buildAiCallOpeningScript,
-  buildAiMessageTransparency,
-} from '../audit/workflow-ai-transparency.util';
-import { summarizeWorkflowError } from '../audit/workflow-audit-sanitize.util';
-import {
-  buildDefinitionSnapshot,
-  computeWorkflowDefinitionHash,
-} from '../maker-checker/workflow-maker-checker.util';
-import { resolveActionOperation } from '../maker-checker/workflow-maker-checker.constants';
 import type { WorkflowActionDef } from './workflow-definition.validator';
+import {
+  assertLiveExecution,
+  WorkflowExecutionMode,
+} from './workflow-execution-mode';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -37,6 +29,7 @@ export interface ActionExecutionContext {
   entityId?: string | null;
   payload: Record<string, unknown>;
   idempotencyKey: string;
+  executionMode: WorkflowExecutionMode;
 }
 
 @Injectable()
@@ -44,52 +37,25 @@ export class WorkflowActionExecutorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
-    private readonly makerChecker: WorkflowMakerCheckerService,
-    private readonly workflowAudit: WorkflowAuditService,
   ) {}
 
   async execute(
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
+    assertLiveExecution(ctx.executionMode, 'WorkflowActionExecutorService.execute');
+
     if (action.requiresApproval) {
-      const workflow = await this.prisma.orgWorkflow.findFirst({
-        where: { id: ctx.workflowId, organizationId: ctx.organizationId },
-        select: { version: true, updatedById: true, name: true, category: true, trigger: true, conditions: true, actions: true, scope: true, status: true },
+      await this.prisma.orgWorkflowApproval.create({
+        data: {
+          organizationId: ctx.organizationId,
+          workflowRunId: ctx.workflowRunId,
+          actionRunId: ctx.actionRunId,
+          status: 'PENDING',
+          requestedBySystem: true,
+          reason: `Approval required for ${action.type}`,
+        },
       });
-      const makerUserId =
-        typeof ctx.payload.triggeredByUserId === 'string'
-          ? ctx.payload.triggeredByUserId
-          : null;
-      const definitionHash = workflow
-        ? computeWorkflowDefinitionHash(buildDefinitionSnapshot(workflow as any))
-        : null;
-
-      await this.makerChecker.createRuntimeApproval({
-        orgId: ctx.organizationId,
-        workflowRunId: ctx.workflowRunId,
-        actionRunId: ctx.actionRunId,
-        actionType: action.type,
-        makerUserId,
-        lastEditorUserId: workflow?.updatedById ?? null,
-        reason: `Approval required for ${action.type}`,
-      });
-
-      if (workflow && definitionHash) {
-        await this.prisma.orgWorkflowApproval.updateMany({
-          where: {
-            organizationId: ctx.organizationId,
-            actionRunId: ctx.actionRunId,
-            status: 'PENDING',
-          },
-          data: {
-            approvedWorkflowVersion: workflow.version,
-            approvedDefinitionHash: definitionHash,
-            operationType: resolveActionOperation(action.type),
-          },
-        });
-      }
-
       return {
         status: 'WAITING_APPROVAL',
         output: { message: 'Awaiting approval before execution' },
@@ -117,62 +83,12 @@ export class WorkflowActionExecutorService {
             output: await this.execAiSuggest(action, ctx),
           };
         default:
-          this.workflowAudit.recordFireAndForget({
-            orgId: ctx.organizationId,
-            eventType: 'WORKFLOW_POLICY_BLOCKED',
-            workflowId: ctx.workflowId,
-            workflowRunId: ctx.workflowRunId,
-            actionRunId: ctx.actionRunId,
-            summary: `Unsupported or blocked action type: ${action.type}`,
-            payload: { actionType: action.type },
-          });
           throw new BadRequestException(`Unsupported action type: ${action.type}`);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      this.workflowAudit.recordFireAndForget({
-        orgId: ctx.organizationId,
-        eventType: 'WORKFLOW_ERROR',
-        workflowId: ctx.workflowId,
-        workflowRunId: ctx.workflowRunId,
-        actionRunId: ctx.actionRunId,
-        summary: summarizeWorkflowError(message),
-        payload: { actionType: action.type },
-      });
       return { status: 'FAILED', errorMessage: message };
     }
-  }
-
-  private async resolveOrganizationName(orgId: string): Promise<string> {
-    const org = await this.prisma.organization.findFirst({
-      where: { id: orgId },
-      select: { companyName: true },
-    });
-    return org?.companyName?.trim() || 'your organization';
-  }
-
-  private async recordAiTransparency(
-    ctx: ActionExecutionContext,
-    actionType: string,
-    channel: 'message' | 'voice' | 'suggestion',
-  ): Promise<Record<string, unknown>> {
-    const orgName = await this.resolveOrganizationName(ctx.organizationId);
-    const transparency = buildAiMessageTransparency(orgName, channel);
-    this.workflowAudit.recordFireAndForget({
-      orgId: ctx.organizationId,
-      eventType: 'WORKFLOW_PROVIDER_STATUS',
-      workflowId: ctx.workflowId,
-      workflowRunId: ctx.workflowRunId,
-      actionRunId: ctx.actionRunId,
-      summary: `AI transparency metadata recorded for ${actionType}`,
-      aiTransparency: transparency,
-      payload: {
-        modelId: transparency.modelId,
-        promptVersion: transparency.promptVersion,
-        ...(channel === 'voice' ? { openingScript: buildAiCallOpeningScript(orgName) } : {}),
-      },
-    });
-    return transparency as unknown as Record<string, unknown>;
   }
 
   private vehicleIdFromPayload(ctx: ActionExecutionContext): string | undefined {
@@ -295,7 +211,7 @@ export class WorkflowActionExecutorService {
     const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:notification`;
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title: 'Notification draft (not sent)',
-      description: message.slice(0, 120),
+      description: message,
       category: 'workflow_notification',
       type: 'CUSTOM',
       sourceType: 'SYSTEM',
@@ -308,15 +224,6 @@ export class WorkflowActionExecutorService {
         preparedOnly: true,
       } as Prisma.InputJsonValue,
     });
-    this.workflowAudit.recordFireAndForget({
-      orgId: ctx.organizationId,
-      eventType: 'WORKFLOW_RECIPIENT_RESOLVED',
-      workflowId: ctx.workflowId,
-      workflowRunId: ctx.workflowRunId,
-      actionRunId: ctx.actionRunId,
-      summary: 'Notification recipient resolved (redacted)',
-      payload: { target: config.target ?? 'admin', channel: config.channel ?? 'internal' },
-    });
     return { preparedOnly: true, taskId: task.id };
   }
 
@@ -324,18 +231,17 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<Record<string, unknown>> {
-    await this.makerChecker.createRuntimeApproval({
-      orgId: ctx.organizationId,
-      workflowRunId: ctx.workflowRunId,
-      actionRunId: ctx.actionRunId,
-      actionType: action.type,
-      makerUserId:
-        typeof ctx.payload.triggeredByUserId === 'string'
-          ? ctx.payload.triggeredByUserId
-          : null,
-      reason:
-        (typeof action.config?.message === 'string' && action.config.message)
-        || 'Workflow approval requested',
+    await this.prisma.orgWorkflowApproval.create({
+      data: {
+        organizationId: ctx.organizationId,
+        workflowRunId: ctx.workflowRunId,
+        actionRunId: ctx.actionRunId,
+        status: 'PENDING',
+        requestedBySystem: true,
+        reason:
+          (typeof action.config?.message === 'string' && action.config.message) ||
+          'Workflow approval requested',
+      },
     });
     return { waitingApproval: true };
   }
@@ -344,7 +250,6 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<Record<string, unknown>> {
-    const transparency = await this.recordAiTransparency(ctx, action.type, 'suggestion');
     const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:ai_suggest`;
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title: 'AI action suggestion (approval required)',
@@ -363,17 +268,16 @@ export class WorkflowActionExecutorService {
         config: action.config ?? {},
       } as Prisma.InputJsonValue,
     });
-    await this.makerChecker.createRuntimeApproval({
-      orgId: ctx.organizationId,
-      workflowRunId: ctx.workflowRunId,
-      actionRunId: ctx.actionRunId,
-      actionType: action.type,
-      makerUserId:
-        typeof ctx.payload.triggeredByUserId === 'string'
-          ? ctx.payload.triggeredByUserId
-          : null,
-      reason: 'AI suggestion requires human approval',
+    await this.prisma.orgWorkflowApproval.create({
+      data: {
+        organizationId: ctx.organizationId,
+        workflowRunId: ctx.workflowRunId,
+        actionRunId: ctx.actionRunId,
+        status: 'PENDING',
+        requestedBySystem: true,
+        reason: 'AI suggestion requires human approval',
+      },
     });
-    return { suggestionTaskId: task.id, suggestionOnly: true, aiTransparency: transparency };
+    return { suggestionTaskId: task.id, suggestionOnly: true };
   }
 }

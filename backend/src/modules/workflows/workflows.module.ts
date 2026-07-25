@@ -4,6 +4,8 @@ import { WorkflowsService } from './workflows.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import { WorkflowActionPreviewService } from './workflow-action-preview.service';
+import { WorkflowDryRunService } from './workflow-dry-run.service';
 import { WorkflowMakerCheckerModule } from './maker-checker/workflow-maker-checker.module';
 import { WorkflowAuditModule } from './audit/workflow-audit.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
@@ -16,6 +18,8 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     WorkflowEngineService,
     WorkflowEventService,
     WorkflowActionExecutorService,
+    WorkflowActionPreviewService,
+    WorkflowDryRunService,
   ],
   exports: [WorkflowsService, WorkflowEventService, WorkflowEngineService],
 })

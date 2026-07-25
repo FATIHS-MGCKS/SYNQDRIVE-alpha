@@ -23,6 +23,7 @@ import {
   TestWorkflowDto,
   ToggleWorkflowDto,
   UpdateWorkflowDto,
+  WorkflowRevisionDiffDto,
 } from './dto';
 
 const WORKFLOW_READ_ROLES = ['ORG_ADMIN', 'SUB_ADMIN', 'MASTER_ADMIN'] as const;
@@ -244,6 +245,28 @@ export class WorkflowsController {
       user.id,
       user.name || user.email || 'System',
     );
+  }
+
+  @Post(':id/dry-run')
+  @Roles(...WORKFLOW_WRITE_ROLES)
+  async dryRun(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: TestWorkflowDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.service.dryRunWorkflow(orgId, id, body, req.user?.id);
+  }
+
+  @Post(':id/revision-diff')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async revisionDiff(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: WorkflowRevisionDiffDto,
+    @Req() req: { user?: { id?: string; name?: string; email?: string } },
+  ) {
+    return this.service.buildRevisionDiff(orgId, id, body, req.user);
   }
 
   @Post(':id/test')

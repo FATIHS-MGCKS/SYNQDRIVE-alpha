@@ -175,6 +175,28 @@ export class TestWorkflowDto {
   @IsOptional()
   @IsString()
   entityId?: string;
+
+  @IsOptional()
+  @IsString()
+  eventType?: string;
+
+  @IsOptional()
+  @IsObject()
+  proposedDefinition?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsIn(['saved', 'draft'])
+  sourceRevisionType?: 'saved' | 'draft';
+}
+
+export class WorkflowRevisionDiffDto {
+  @IsObject()
+  proposedDefinition!: Record<string, unknown>;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  reason?: string;
 }
 
 export class RejectWorkflowActionDto {
