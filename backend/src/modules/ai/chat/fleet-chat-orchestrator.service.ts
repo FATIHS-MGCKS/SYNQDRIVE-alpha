@@ -9,7 +9,12 @@ import { AiDomainToolRegistry } from '../registry/ai-domain-tool-registry.servic
 import { FleetChatIntentRouterService } from '../routing/fleet-chat-intent-router.service';
 import type { FleetChatRouteResult } from '../routing/fleet-chat-intent.types';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
-import { FLEET_CHAT_SYSTEM_PROMPT } from '../vehicle-resolution/ai-vehicle-resolution.llm';
+import {
+  buildActiveRulesBlock,
+  buildFleetChatSystemMessage,
+  detectActiveScenarios,
+  type FleetChatAnswerScenario,
+} from './fleet-chat-policy';
 import {
   mergeEvidenceForLlm,
   summarizeToolDataForLlm,
@@ -228,6 +233,7 @@ export class FleetChatOrchestratorService {
       (toolRecords.length === 0 ||
         toolRecords.every((record) => record.outcome.allowLlmInference));
 
+    const activeScenarios = detectActiveScenarios(route, toolRecords, partial);
     const compositionStarted = Date.now();
     const composed = composeFleetChatResponse({
       userMessage: input.message,
@@ -237,6 +243,7 @@ export class FleetChatOrchestratorService {
       evidenceSummaries,
       partial,
       allowLlmInference,
+      activeScenarios,
     });
     compositionMs = Date.now() - compositionStarted;
 
@@ -247,7 +254,7 @@ export class FleetChatOrchestratorService {
       const llmStarted = Date.now();
       try {
         responseText = await withTimeout(
-          this.callLlm(composed.llmUserContext, route.language),
+          this.callLlm(composed.llmUserContext, route.language, activeScenarios),
           FLEET_CHAT_ORCHESTRATOR_LLM_TIMEOUT_MS,
           'LLM',
         );
@@ -297,20 +304,18 @@ export class FleetChatOrchestratorService {
   private async callLlm(
     userContext: string,
     language: 'de' | 'en' | 'unknown',
+    activeScenarios: readonly FleetChatAnswerScenario[],
   ): Promise<string> {
-    const localeHint =
-      language === 'de'
-        ? 'Antworte auf Deutsch.'
-        : language === 'en'
-          ? 'Answer in English.'
-          : 'Prefer the user language.';
+    const systemContent = buildFleetChatSystemMessage(language, {
+      scenarios: activeScenarios,
+    });
 
     const result = await this.llm.complete({
       purpose: 'chat',
       temperature: 0.2,
       maxTokens: 768,
       messages: [
-        { role: 'system', content: `${FLEET_CHAT_SYSTEM_PROMPT}\n${localeHint}` },
+        { role: 'system', content: systemContent },
         {
           role: 'user',
           content: `Grounded facts (do not invent beyond this):\n${userContext}`,

@@ -209,3 +209,15 @@ must be wrapped as `AiEvidence` with explicit:
 - `ChatService` legacy enrichment path unchanged until controller passes auth context.
 - Tests: `fleet-chat-orchestrator.spec.ts` (8); **270/270** AI module.
 
+### Prompt 18 — Fleet Chat policy (2026-07-25)
+
+- Added `backend/src/modules/ai/chat/fleet-chat-policy/` — versioned compact system prompt
+  (`FLEET_CHAT_POLICY_VERSION=1.0.0`) and scenario-specific answer rules.
+- `detectActiveScenarios()` derives rules from route + tool outcomes (live/last-known/stale
+  position, health full/limited, overdue return, inconsistency, permission, ambiguity, partial).
+- Operative answer structure: direct → reason → timestamp → freshness → source → limitations →
+  next step (action only).
+- Wired: `FleetChatOrchestratorService`, `fleet-chat-response.composer`, legacy
+  `FLEET_CHAT_SYSTEM_PROMPT` re-export.
+- Tests: `fleet-chat-policy.spec.ts` (golden/snapshot rules).
+

@@ -3,6 +3,7 @@ import type { AiDomainQueryOutcome } from '../evidence/ai-domain-error.types';
 import type { AiEvidence } from '../evidence/ai-evidence.types';
 import type { FleetChatRouteResult } from '../routing/fleet-chat-intent.types';
 import type { FleetChatIntent } from '../routing/fleet-chat-intent.enums';
+import type { FleetChatAnswerScenario } from './fleet-chat-policy/fleet-chat-policy.constants';
 
 export const FLEET_CHAT_ORCHESTRATOR_LLM_TIMEOUT_MS = 25_000;
 export const FLEET_CHAT_ORCHESTRATOR_TOOL_BUDGET_MS = 30_000;
@@ -46,6 +47,7 @@ export interface FleetChatComposerInput {
   readonly evidenceSummaries: readonly FleetChatEvidenceSummary[];
   readonly partial: boolean;
   readonly allowLlmInference: boolean;
+  readonly activeScenarios?: readonly FleetChatAnswerScenario[];
 }
 
 export interface FleetChatEvidenceSummary {

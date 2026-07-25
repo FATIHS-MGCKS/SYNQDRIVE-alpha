@@ -5,6 +5,13 @@ import {
   sanitizeAiVehicleUserText,
 } from './ai-vehicle-resolution.hints';
 import { toLlmSafeVehicleCandidate } from './ai-vehicle-resolution.matcher';
+import { FLEET_CHAT_POLICY_CORE_PROMPT } from '../chat/fleet-chat-policy/fleet-chat-policy.prompt';
+
+export {
+  FLEET_CHAT_POLICY_CORE_PROMPT,
+  FLEET_CHAT_POLICY_VERSION,
+  buildFleetChatSystemMessage,
+} from '../chat/fleet-chat-policy';
 
 export function resolveChatVehicleTokenIds(
   resolution: Pick<AiVehicleResolutionResult, 'resolvedVehicleId' | 'allowedDataScope'> | null | undefined,
@@ -127,8 +134,5 @@ Identify vehicles by license plate, display name, or make/model. Internal ids an
 User message: ${safeUserMessage}`;
 }
 
-export const FLEET_CHAT_SYSTEM_PROMPT = `You are SynqDrive Fleet Assistant — a helpful AI for fleet and rental operators.
-Answer clearly and practically. Do not invent vehicle telemetry, odometer readings, or live DIMO data you were not given.
-When fleet context is attached, use it to identify which vehicle the user means.
-Never reveal internal database ids or full VIN values to the user unless they explicitly provided them.
-Prefer German when the user writes in German.`;
+/** @deprecated Use `buildFleetChatSystemMessage()` — kept for legacy ChatService imports. */
+export const FLEET_CHAT_SYSTEM_PROMPT = FLEET_CHAT_POLICY_CORE_PROMPT;

@@ -1,4 +1,5 @@
 import type { FleetChatComposerInput } from './fleet-chat-orchestrator.types';
+import { buildActiveRulesBlock } from './fleet-chat-policy';
 
 export interface FleetChatComposedResponse {
   readonly directResponse: string | null;
@@ -75,6 +76,14 @@ export function composeFleetChatResponse(
 
   for (const summary of input.evidenceSummaries.slice(0, 14)) {
     lines.push(`[${summary.source}] ${summary.summary}`);
+  }
+
+  const rulesBlock =
+    input.activeScenarios && input.activeScenarios.length > 0
+      ? buildActiveRulesBlock(input.language, input.activeScenarios)
+      : null;
+  if (rulesBlock) {
+    lines.push(rulesBlock);
   }
 
   return {
