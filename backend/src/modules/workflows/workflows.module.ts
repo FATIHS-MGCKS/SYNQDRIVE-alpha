@@ -4,10 +4,11 @@ import { WorkflowsService } from './workflows.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import { WorkflowActionRegistryModule } from './actions/workflow-action-registry.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
-  imports: [TasksModule],
+  imports: [TasksModule, WorkflowActionRegistryModule],
   controllers: [WorkflowsController],
   providers: [
     WorkflowsService,
