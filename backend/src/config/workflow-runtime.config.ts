@@ -14,4 +14,5 @@ export default registerAs('workflowRuntime', () => ({
   pollBatchSize: parseInt(process.env.WORKFLOW_RUNTIME_POLL_BATCH ?? '25', 10),
   approvalTtlHours: parseInt(process.env.WORKFLOW_RUNTIME_APPROVAL_TTL_HOURS ?? '72', 10),
   schedulerEnabled: process.env.WORKFLOW_RUNTIME_SCHEDULER_ENABLED !== 'false',
+  maxFallbackDepth: parseInt(process.env.WORKFLOW_RUNTIME_MAX_FALLBACK_DEPTH ?? '3', 10),
 }));

@@ -179,12 +179,22 @@ export class WorkflowRunOrchestratorRepository {
       if (!input.skipped) {
         for (const action of input.version.actions) {
           const actionIdempotencyKey = `${input.idempotencyKey}:action:${action.actionIndex}`;
+          const errorStrategy =
+            (action as { errorStrategy?: string }).errorStrategy ?? 'STOP_WORKFLOW';
+          const blockingOnFailure = !['CONTINUE', 'SKIP_ACTION', 'MARK_PARTIAL', 'EXECUTE_FALLBACK'].includes(
+            errorStrategy,
+          );
           const inputSnapshot = {
             actionKey: action.actionKey,
             actionIndex: action.actionIndex,
             actionType: action.actionType,
             workflowActionId: action.id,
             config: action.config ?? {},
+            errorStrategy,
+            fallbackActionKey: (action as { fallbackActionKey?: string }).fallbackActionKey ?? null,
+            compensateActionKey: (action as { compensateActionKey?: string }).compensateActionKey ?? null,
+            compensatable: (action as { compensatable?: boolean }).compensatable ?? false,
+            blockingOnFailure,
           };
           await tx.workflowActionRun.create({
             data: {
@@ -198,7 +208,11 @@ export class WorkflowRunOrchestratorRepository {
               actionType: action.actionType,
               status: 'PENDING',
               requiresApproval: action.requiresApproval,
-              blockingOnFailure: true,
+              blockingOnFailure,
+              errorStrategy: errorStrategy as never,
+              fallbackActionKey: (action as { fallbackActionKey?: string }).fallbackActionKey ?? null,
+              compensateActionKey: (action as { compensateActionKey?: string }).compensateActionKey ?? null,
+              compensatable: (action as { compensatable?: boolean }).compensatable ?? false,
               maxAttempts: 5,
               idempotencyKey: actionIdempotencyKey,
               input: (action.config ?? {}) as Prisma.InputJsonValue,

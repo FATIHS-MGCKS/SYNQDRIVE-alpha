@@ -43,6 +43,10 @@ export function buildInputSnapshot(
     workflowActionId: string | null;
     requiresApproval: boolean;
     blockingOnFailure: boolean;
+    errorStrategy?: string;
+    fallbackActionKey?: string | null;
+    compensateActionKey?: string | null;
+    compensatable?: boolean;
     input: unknown;
   },
 ): Record<string, unknown> {
@@ -57,6 +61,10 @@ export function buildInputSnapshot(
     workflowActionId: actionRun.workflowActionId,
     requiresApproval: actionRun.requiresApproval,
     blockingOnFailure: actionRun.blockingOnFailure,
+    errorStrategy: actionRun.errorStrategy ?? 'STOP_WORKFLOW',
+    fallbackActionKey: actionRun.fallbackActionKey ?? null,
+    compensateActionKey: actionRun.compensateActionKey ?? null,
+    compensatable: actionRun.compensatable ?? false,
     config,
     capturedAt: new Date().toISOString(),
   }) as Record<string, unknown>;
@@ -132,6 +140,10 @@ export function resolveActionFromRunSnapshot(
           workflowActionId: actionRun.workflowActionId,
           requiresApproval: Boolean(entry.requiresApproval ?? actionRun.requiresApproval),
           blockingOnFailure: Boolean(entry.blockingOnFailure ?? actionRun.blockingOnFailure),
+          errorStrategy: String(entry.errorStrategy ?? (actionRun as { errorStrategy?: string }).errorStrategy ?? 'STOP_WORKFLOW'),
+          fallbackActionKey: (entry.fallbackActionKey as string | null | undefined) ?? (actionRun as { fallbackActionKey?: string | null }).fallbackActionKey ?? null,
+          compensateActionKey: (entry.compensateActionKey as string | null | undefined) ?? (actionRun as { compensateActionKey?: string | null }).compensateActionKey ?? null,
+          compensatable: Boolean(entry.compensatable ?? (actionRun as { compensatable?: boolean }).compensatable ?? false),
           config: stripSecretsFromValue(config) as Record<string, unknown>,
         };
       }
@@ -149,6 +161,10 @@ export function resolveActionFromRunSnapshot(
     workflowActionId: actionRun.workflowActionId,
     requiresApproval: actionRun.requiresApproval,
     blockingOnFailure: actionRun.blockingOnFailure,
+    errorStrategy: (actionRun as { errorStrategy?: string }).errorStrategy ?? 'STOP_WORKFLOW',
+    fallbackActionKey: (actionRun as { fallbackActionKey?: string | null }).fallbackActionKey ?? null,
+    compensateActionKey: (actionRun as { compensateActionKey?: string | null }).compensateActionKey ?? null,
+    compensatable: (actionRun as { compensatable?: boolean }).compensatable ?? false,
     config: stripSecretsFromValue(config) as Record<string, unknown>,
   };
 }

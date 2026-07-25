@@ -70,7 +70,7 @@ export class WorkflowRunWorkerService {
       return { processed: false, reason: 'max_duration_exceeded' };
     }
 
-    if (['WAITING', 'WAITING_FOR_APPROVAL', 'COMPLETED', 'PARTIALLY_COMPLETED', 'FAILED', 'CANCELLED', 'SKIPPED'].includes(run.status)) {
+    if (['WAITING', 'WAITING_FOR_APPROVAL', 'COMPLETED', 'COMPLETED_WITH_FALLBACK', 'PARTIALLY_COMPLETED', 'FAILED', 'CANCELLED', 'SKIPPED'].includes(run.status)) {
       return { processed: false, reason: 'run_not_executable' };
     }
 

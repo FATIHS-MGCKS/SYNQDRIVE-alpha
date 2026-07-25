@@ -60,6 +60,9 @@ export class WorkflowActionRunRuntimeRepository {
       providerReference?: string | null;
       inputSnapshot?: Prisma.InputJsonValue;
       timeoutAt?: Date | null;
+      appliedErrorStrategy?: string | null;
+      partialFailure?: boolean;
+      blockingOnFailure?: boolean;
     },
   ) {
     const updated = await tx.workflowActionRun.updateMany({
@@ -85,6 +88,13 @@ export class WorkflowActionRunRuntimeRepository {
         ...(input.providerReference !== undefined ? { providerReference: input.providerReference } : {}),
         ...(input.inputSnapshot !== undefined ? { inputSnapshot: input.inputSnapshot } : {}),
         ...(input.timeoutAt !== undefined ? { timeoutAt: input.timeoutAt } : {}),
+        ...(input.appliedErrorStrategy !== undefined
+          ? { appliedErrorStrategy: input.appliedErrorStrategy as never }
+          : {}),
+        ...(input.partialFailure !== undefined ? { partialFailure: input.partialFailure } : {}),
+        ...(input.blockingOnFailure !== undefined
+          ? { blockingOnFailure: input.blockingOnFailure }
+          : {}),
       },
     });
     return updated.count;
@@ -299,6 +309,9 @@ export class WorkflowActionRunRuntimeRepository {
       finishedAt?: Date | null;
       attemptCount?: number;
       nextAttemptAt?: Date | null;
+      appliedErrorStrategy?: string | null;
+      partialFailure?: boolean;
+      blockingOnFailure?: boolean;
     },
   ) {
     const updated = await tx.workflowActionRun.updateMany({
@@ -326,6 +339,13 @@ export class WorkflowActionRunRuntimeRepository {
         finishedAt: input.finishedAt ?? null,
         attemptCount: input.attemptCount,
         nextAttemptAt: input.nextAttemptAt ?? null,
+        ...(input.appliedErrorStrategy !== undefined
+          ? { appliedErrorStrategy: input.appliedErrorStrategy as never }
+          : {}),
+        ...(input.partialFailure !== undefined ? { partialFailure: input.partialFailure } : {}),
+        ...(input.blockingOnFailure !== undefined
+          ? { blockingOnFailure: input.blockingOnFailure }
+          : {}),
       },
     });
     return updated.count;

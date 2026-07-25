@@ -125,10 +125,19 @@ describe('workflow-run-status derivation', () => {
     expect(countSuccessfulActions(['SUCCEEDED', 'SKIPPED'])).toBe(1);
   });
 
-  it('derives PARTIALLY_COMPLETED only for mixed success and permanent failure', () => {
-    expect(deriveWorkflowRunStatusFromActions(['SUCCEEDED', 'FAILED_PERMANENT'])).toBe(
-      'PARTIALLY_COMPLETED',
-    );
+  it('derives PARTIALLY_COMPLETED only for mixed success and non-blocking permanent failure', () => {
+    expect(
+      deriveWorkflowRunStatusFromActions([
+        { status: 'SUCCEEDED', blockingOnFailure: true, partialFailure: false, isFallbackRun: false },
+        { status: 'FAILED_PERMANENT', blockingOnFailure: false, partialFailure: true, isFallbackRun: false },
+      ]),
+    ).toBe('PARTIALLY_COMPLETED');
+    expect(
+      deriveWorkflowRunStatusFromActions([
+        { status: 'SUCCEEDED', blockingOnFailure: true, partialFailure: false, isFallbackRun: false },
+        { status: 'FAILED_PERMANENT', blockingOnFailure: true, partialFailure: false, isFallbackRun: false },
+      ]),
+    ).toBe('FAILED');
     expect(deriveWorkflowRunStatusFromActions(['SKIPPED', 'FAILED_PERMANENT'])).toBe('FAILED');
   });
 

@@ -161,10 +161,22 @@ describe('WorkflowRunStateMachine', () => {
       expect(deriveWorkflowRunStatusFromActions(['SUCCEEDED', 'SUCCEEDED'])).toBe('COMPLETED');
     });
 
-    it('derives PARTIALLY_COMPLETED on mixed success/failure', () => {
-      expect(deriveWorkflowRunStatusFromActions(['SUCCEEDED', 'FAILED_PERMANENT'])).toBe(
-        'PARTIALLY_COMPLETED',
-      );
+    it('derives PARTIALLY_COMPLETED on mixed success/non-blocking failure', () => {
+      expect(
+        deriveWorkflowRunStatusFromActions([
+          { status: 'SUCCEEDED', blockingOnFailure: true, partialFailure: false, isFallbackRun: false },
+          { status: 'FAILED_PERMANENT', blockingOnFailure: false, partialFailure: true, isFallbackRun: false },
+        ]),
+      ).toBe('PARTIALLY_COMPLETED');
+    });
+
+    it('derives FAILED when blocking action permanently fails', () => {
+      expect(
+        deriveWorkflowRunStatusFromActions([
+          { status: 'SUCCEEDED', blockingOnFailure: true, partialFailure: false, isFallbackRun: false },
+          { status: 'FAILED_PERMANENT', blockingOnFailure: true, partialFailure: false, isFallbackRun: false },
+        ]),
+      ).toBe('FAILED');
     });
 
     it('derives FAILED when all actions fail permanently', () => {
