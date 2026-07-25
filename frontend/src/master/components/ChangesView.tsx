@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-production-gate-v49838-2026-07-25',
+    version: '4.9.838',
+    title: 'V4.9.838 — Operator App final production gate check (Prompt 45)',
+    summary: [
+      'Strict 20-gate evaluation: 14 PASS / 6 FAIL; 5 critical FAIL (Gates 3, 7, 8, 12, 20).',
+      'Verdict NO-GO for full production-ready claim; CONDITIONAL read-only availability on prod remains valid.',
+      'Tests re-run: 114 Vitest + 11 Jest + 23 integration + 18 Playwright E2E; FE/BE builds PASS.',
+      'Release gate: docs/releases/operator-app-production-gate-2026-07.md',
+    ],
+    reason: 'Final technical gate check closing Operator production-readiness program Prompt 45.',
+    previousBehavior: 'Prompt 44 post-remediation audit: CONDITIONAL GO with 12 program gates.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-07-25T22:26:00.000Z',
+  },
+  {
     id: 'operator-app-post-remediation-v49837-2026-07-25',
     version: '4.9.837',
     title: 'V4.9.837 — Operator App post-remediation readiness audit (Prompt 44)',

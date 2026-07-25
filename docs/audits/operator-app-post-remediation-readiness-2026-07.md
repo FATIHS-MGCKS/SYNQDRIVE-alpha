@@ -459,11 +459,51 @@ Blockers:
 | `docs/audits/operator-app-production-readiness-2026-07.md` | 40 |
 | `docs/audits/operator-app-vps-control-audit-2026-07.md` | 41–42 |
 | `docs/audits/operator-app-production-smoke-2026-07.md` | 43 |
-| `docs/runbooks/operator-app-incident-response.md` | — |
+| `docs/releases/operator-app-production-gate-2026-07.md` | 45 |
+
+---
+
+## Prompt 45 — Final 20-gate decision (supersedes §6–7 gate counts)
+
+| Metric | Prompt 44 | Prompt 45 (strict) |
+|--------|-----------|---------------------|
+| Gates evaluated | 12 (program) | **20 (technical)** |
+| Gates PASS | 7 | **14** |
+| Gates FAIL | 5 | **6** |
+| Critical FAIL | 1 (GAP-043-001) | **5** (Gates 3, 7, 8, 12, 20) |
+| **Final verdict** | CONDITIONAL GO | **NO-GO** |
+
+### Prompt 45 gate table (all 20)
+
+| # | Gate | Result |
+|---|------|--------|
+| 1 | UI-to-Backend traceability | PASS |
+| 2 | Auth + permissions | PASS |
+| 3 | Tenant isolation + station scope | **FAIL** |
+| 4 | Central booking/vehicle/health truth | PASS |
+| 5 | Handover/return state machine | PASS |
+| 6 | Atomic transactions | PASS |
+| 7 | Idempotency + optimistic locking | **FAIL** |
+| 8 | Server drafts / resume / conflict | **FAIL** |
+| 9 | Upload queue + storage | PASS |
+| 10 | Signature + completion binding | PASS |
+| 11 | Damage / observation / tire | PASS |
+| 12 | DSGVO / retention / deletion | **FAIL** |
+| 13 | Audit logging | PASS |
+| 14 | Security hardening | PASS |
+| 15 | Observability + runbooks | **FAIL** |
+| 16 | Test coverage | PASS |
+| 17 | Mobile readiness | PASS |
+| 18 | Accessibility | **FAIL** |
+| 19 | VPS runtime audit | PASS |
+| 20 | Production smoke | **FAIL** |
+
+**Rule:** Any critical gate FAIL ⇒ No-Go. Operator App must not be described as fully production-ready until Gates 3, 7, 8, 12, and 20 pass.
 
 ---
 
 ## Changed files (Prompt 44)
+
 
 - `docs/audits/operator-app-post-remediation-readiness-2026-07.md` (this file)
 - `frontend/src/master/components/ChangesView.tsx` — V4.9.837

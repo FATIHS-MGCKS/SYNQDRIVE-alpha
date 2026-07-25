@@ -181,6 +181,19 @@
 
 ---
 
+## C.1 Prompt 45 — Gate 19 re-validation (2026-07-25)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Gate 19 VPS/runtime audit | **PASS** | Prompt 42 live audit remains valid; no new VPS execution in Prompt 45 |
+| Production spot-check | **PASS** | `GET /operator` 200, `GET /api/v1/health` 200 @ 2026-07-25T22:23 UTC |
+| Gate 12 retention (VPS) | **FAIL** | F-042-005 unchanged — retention dryRun |
+| Gate 20 write smoke | **FAIL** | GAP-043-001 unchanged |
+
+**Prompt 45 overall release verdict:** **NO-GO** — see `docs/releases/operator-app-production-gate-2026-07.md`
+
+---
+
 ## 0. Safe audit helpers (run on VPS as `root` or deploy user)
 
 Load once per SSH session. These helpers enforce masking and read-only defaults.

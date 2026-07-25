@@ -252,3 +252,24 @@ Deploy Operator App when:
 - `frontend/e2e/operator-flow.spec.ts` — lint cleanup
 - `frontend/src/master/components/ChangesView.tsx` — V4.9.833 entry
 - `frontend/src/master/components/ArchitekturView.tsx` — regression audit reference
+
+---
+
+## 9. Prompt 45 — Final 20-gate technical check (2026-07-25)
+
+**Verdict: NO-GO** for full production-ready claim (5 critical gate FAILs).
+
+| Gate area | Prompt 45 result | Cross-ref |
+|-----------|------------------|-----------|
+| UI traceability | PASS | §2 cross-area (Operator diff limited) |
+| Auth / permissions | PASS | W-REG not applicable |
+| Tenant + station scope | **FAIL** | Station scope gap (TC-GAP-006) |
+| State machine / transactions | PASS | Handover tests green |
+| Idempotency / optimistic lock | **FAIL** | TC-GAP-004 deferred |
+| Server drafts | **FAIL** | TC-GAP-003 deferred |
+| Tests (operator) | PASS | §5 totals confirmed Prompt 45 |
+| Production smoke | **FAIL** | GAP-043-001 |
+
+**Prompt 45 re-run:** `test:operator` 114 PASS; handover 11 PASS; integration 23 PASS; E2E 18 PASS; FE build PASS; BE build PASS; BE `tsc` FAIL (W-REG-001).
+
+**Release gate document:** `docs/releases/operator-app-production-gate-2026-07.md`
