@@ -19,6 +19,7 @@ export function useOperatorHandoverForm(
   kind: HandoverDialogKind,
   orgId: string,
   booking: HandoverDialogBookingInfo | null,
+  options?: { skipResetOnOpen?: boolean },
 ) {
   const [state, setState] = useState<OperatorHandoverFormState>(() =>
     createInitialHandoverState(booking, kind),
@@ -39,11 +40,11 @@ export function useOperatorHandoverForm(
   );
 
   useEffect(() => {
-    if (!isOpen || !booking) return;
+    if (!isOpen || !booking || options?.skipResetOnOpen) return;
     telemetryAppliedRef.current = null;
     setState(createInitialHandoverState(booking, kind));
     setDamageError(null);
-  }, [isOpen, booking?.id, kind, booking]);
+  }, [isOpen, booking?.id, kind, booking, options?.skipResetOnOpen]);
 
   useEffect(() => {
     if (!isOpen || !booking) return;

@@ -27,6 +27,8 @@ import {
   parseCategory,
   parseSeverity,
 } from '@modules/technical-observations/technical-observations.mapper';
+import { createHandoverCompletionRecordInTransaction } from './handover-session/handover-completion-record.service';
+import { currentHandoverProtocolWhere } from './handover-session/handover-protocol.query';
 import type { HandoverTechnicalObservationDraft } from './handover.types';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
@@ -87,8 +89,8 @@ export class BookingsHandoverService {
     this.validatePayload(payload);
 
     if (kind === 'PICKUP') {
-      const existingPickup = await this.prisma.bookingHandoverProtocol.findUnique({
-        where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
+      const existingPickup = await this.prisma.bookingHandoverProtocol.findFirst({
+        where: currentHandoverProtocolWhere(bookingId, 'PICKUP'),
       });
       if (existingPickup) {
         const currentBooking = await this.prisma.booking.findFirst({
@@ -186,8 +188,8 @@ export class BookingsHandoverService {
 
     // Uniqueness defence for RETURN (PICKUP handled above with idempotent replay).
     if (kind === 'RETURN') {
-      const existingReturn = await this.prisma.bookingHandoverProtocol.findUnique({
-        where: { bookingId_kind: { bookingId, kind: 'RETURN' } },
+      const existingReturn = await this.prisma.bookingHandoverProtocol.findFirst({
+        where: currentHandoverProtocolWhere(bookingId, 'RETURN'),
         select: { id: true },
       });
       if (existingReturn) {
@@ -255,8 +257,8 @@ export class BookingsHandoverService {
             bookingUpdateData.actualReturnStation = { connect: { id: actualStationId } };
           }
           // kmDriven = return odometer − pickup odometer (if pickup exists).
-          const pickup = await tx.bookingHandoverProtocol.findUnique({
-            where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
+          const pickup = await tx.bookingHandoverProtocol.findFirst({
+            where: currentHandoverProtocolWhere(bookingId, 'PICKUP'),
             select: { odometerKm: true },
           });
           if (pickup && pickup.odometerKm != null) {
@@ -403,6 +405,21 @@ export class BookingsHandoverService {
             correlationId: `pickup:${bookingId}`,
           });
         }
+
+        await createHandoverCompletionRecordInTransaction(tx, {
+          orgId,
+          bookingId,
+          vehicleId: booking.vehicleId,
+          customerId: booking.customerId,
+          stationId: actualStationId ?? null,
+          protocolId: created.id,
+          kind,
+          protocolVersion: 1,
+          documentVersion: 1,
+          performedAt: created.performedAt,
+          payload,
+          actor,
+        });
 
         return [created, booking2] as const;
       },

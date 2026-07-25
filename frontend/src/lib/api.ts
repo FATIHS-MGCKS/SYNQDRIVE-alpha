@@ -770,8 +770,11 @@ function put<T>(path: string, body: unknown) {
   return request<T>(path, { method: 'PUT', body: JSON.stringify(body) });
 }
 
-function del<T>(path: string) {
-  return request<T>(path, { method: 'DELETE' });
+function del<T>(path: string, body?: unknown) {
+  return request<T>(path, {
+    method: 'DELETE',
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
 }
 
 // ── Task Action Layer types (V4.8.3 + V2 detail/buckets) ───────────────────
@@ -3872,8 +3875,18 @@ export const api = {
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
     createPickupHandover: (orgId: string, bookingId: string, data: any) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
-    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
-      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    completePickupHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup/complete`, data),
+    completeReturnHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return/complete`, data),
+    getHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN') =>
+      get<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`),
+    createHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN', data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`, data),
+    updateHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN', data: any) =>
+      patch<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`, data),
+    cancelHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN', data?: any) =>
+      del<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/drafts/${kind}`, data),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.
