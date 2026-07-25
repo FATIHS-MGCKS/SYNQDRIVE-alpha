@@ -3,9 +3,9 @@
 | Field | Value |
 |-------|-------|
 | **Audit ID** | `operator-app-production-readiness-2026-07` |
-| **Prompt** | **1** (baseline inventory — no functional changes) |
+| **Prompt** | **1** (baseline) · **2** (vollständige Dateiinventur + Traceability-Matrix) |
 | **Repository** | `https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha` |
-| **Audited commit** | `1d0f2caebe56aa1ecd23295aa33d20e953daa95d` |
+| **Audited commit** | `1d0f2caebe56aa1ecd23295aa33d20e953daa95d` (Prompt 1) · Branch-HEAD nach Prompt 2 |
 | **Audit branch** | `audit/operator-app-production-readiness-2026-07` |
 | **Baseline branch** | `main` |
 | **Audit date** | 2026-07-25 UTC |
@@ -571,9 +571,20 @@ Operator-Mutationen (Booking, Handover, Task, Damage, Document Apply) gehen übe
 
 ## 18. Findings
 
-**Status: Baseline — noch keine systematische Bewertung.**
+**Status: Inventur-basierte Vorfindings (Prompt 2) — noch keine vollständige P0/P1/P2-Bewertung.**
 
-Dieser Prompt erfasst nur den Ist-Zustand. Findings (P0/P1/P2), Security-Negative-Tests und Production-Gap-Analyse folgen in späteren Prompts der Serie.
+| ID | Schwere | Bereich | Finding | Evidenz |
+|----|---------|---------|---------|---------|
+| INV-001 | P1 | Security | `tasks.start` / `tasks.waiting` ohne `@RequireTaskPermission` | `tasks.controller.ts` L193–201 |
+| INV-002 | P1 | Security | Vehicle-Damage-Routen ohne `@RequirePermission` (nur `VehicleOwnershipGuard`) | `vehicle-intelligence.controller.ts` damages-Handler |
+| INV-003 | P1 | Security | Frontend-Zugang (`canAccessOperatorApp`, Device-Guard) ist explizit **kein** Security-Boundary | `operatorAccess.ts`, `README.md` |
+| INV-004 | P2 | PWA/Offline | Kein Service Worker, kein Manifest, keine Offline-Queue; Banner suggeriert Sync | `index.html`, `OperatorConnectivityBanner.tsx` |
+| INV-005 | P2 | Tests | Keine dedizierte Operator-E2E-/Security-Matrix | `frontend/e2e/` |
+| INV-006 | P2 | Datenfluss | Parallele Task-Ladepfade (`OperatorDataContext`, `useOperatorTodayFeed`, `OperatorTasksView` remote) | Mehrfach `api.tasks.*` |
+| INV-007 | P2 | UX/Fehler | `OperatorTasksView.fetchRemoteTasks` schluckt Fehler (`catch → []`) | `OperatorTasksView.tsx` L65–67 |
+| INV-008 | P3 | Doku | `README.md` „Wire placeholders“ veraltet — Flows sind verdrahtet | `README.md` L21–23 |
+| INV-009 | P3 | API | Deprecated Alias `vehicleIntelligence.damagesActive` noch in Handover-Form | `useOperatorHandoverForm.ts` |
+| INV-010 | P3 | Feature | QR-Scanner / QR-Link-Generator nur Platzhalter-UI | `OperatorScanView`, `OperatorLinkCard` |
 
 ---
 
@@ -581,7 +592,9 @@ Dieser Prompt erfasst nur den Ist-Zustand. Findings (P0/P1/P2), Security-Negativ
 
 | Bereich | Status |
 |---------|--------|
-| Baseline-Audit | ✅ Dieses Dokument (Prompt 1) |
+| Baseline-Audit (Prompt 1) | ✅ |
+| Vollständige Dateiinventur (Prompt 2) | ✅ Kap. 21–24 |
+| Traceability-Matrix | ✅ Kap. 22 |
 | Security-Hardening | ⏳ Ausstehend |
 | PWA/Offline | ⏳ Ausstehend |
 | E2E Operator-Matrix | ⏳ Ausstehend |
@@ -608,11 +621,293 @@ Vorläufige Kategorien (ohne Pass/Fail):
 
 ---
 
-## Anhang A — Geänderte Dateien (Prompt 1)
+## 21. Vollständige Dateiinventur (`frontend/src/operator/**`)
 
-| Datei | Aktion |
-|-------|--------|
-| `docs/audits/operator-app-production-readiness-2026-07.md` | Neu (dieses Dokument) |
+**Stand:** 117 Dateien (67× `.tsx`, 49× `.ts`, 1× `README.md`). Keine Service-Worker-/PWA-Dateien im Operator-Modul oder Frontend-Root.
+
+**Legende Spalten:** API = direkte `api.*`-Aufrufe oder transitive Hooks; W = Schreiboperation; Rolle = Frontend-Rollenprüfung; Org = `orgId`-Bezug; St = Stationsbezug; State = Cache/State; L/E = Loading/Error; T = Testdatei vorhanden.
+
+### 21.1 Root & Routing
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T | TODO/Platzhalter |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|------------------|
+| `OperatorApp.tsx` | Router `/operator`, `RentalProvider`, Toaster | — | — | via Guard | via Rental | — | — | — | — | — |
+| `OperatorShell.tsx` | Provider-Stack, Tab-Switch, Device-Guard | — | — | `useIsOperatorDevice` | — | — | Shell-Context | — | — | — |
+| `index.ts` | Public exports für Rental/Master | — | — | — | — | — | — | — | — | — |
+| `README.md` | Dev-Doku Entry/Device/Security | — | — | dokumentiert | — | — | — | — | — | **TODO veraltet** (L21–23) |
+
+### 21.2 `lib/` — Typen, Routen, Access, Daten
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `operatorTypes.ts` | Tab-IDs, `OperatorSheetAction`, Sync-State-Typen | — | — | — | — | — | Typen | — | — |
+| `operatorRoutes.ts` | Deep-Link-Auflösung, URL-Builder | — | — | — | — | — | Pure fn | — | — |
+| `operatorAccess.ts` | Frontend-Zugang ORG_ADMIN/SUB_ADMIN/WORKER/MASTER | — | — | **Ja** (`evaluateOperatorAccess`) | — | — | `getStoredUser` | — | — |
+| `operatorAccess.types.ts` | Allowed/Denied Roles, Denial-Reasons | — | — | Konstanten | — | — | — | — | — |
+| `operatorData.ts` | Today-Snapshot, Gate-Ableitung, Scan→Detail-Mapping | — (nutzt Rental-Gates) | — | — | indirekt | St aus API-Rows | Pure/derive | — | — |
+| `operatorStatus.ts` | Vehicle-Status-Badges für Listen | — | — | — | — | — | Pure | — | ✅ |
+| `operatorVehicleQuickView.utils.ts` | Quick-View-Labels, Health-Module, Pickup/Return-Row-Finder | — | — | — | — | St aus Rows | Pure | — | — |
+
+### 21.3 `context/`
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `OperatorShellContext.tsx` | Tab, Deep-Link-State, Sheets, `refreshToken`, `syncState` | — | — | — | — | — | React Context | — | — |
+| `OperatorDataContext.tsx` | Today Pickups/Returns + Tasks + Summary | `bookings.todayPickups/Returns`, `tasks.summary`, `fetchAllTasks` | — | — | **orgId** | — | useState, invalidation subscribe | ✅ loading/error per domain | — |
+
+### 21.4 `hooks/`
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `useIsOperatorDevice.ts` | Viewport/Touch UX-Guard | — | — | — | — | — | matchMedia | — | — |
+| `useOperatorNetworkStatus.ts` | `navigator.onLine` | — | — | — | — | — | useSyncExternalStore | — | — |
+| `useOperatorTabletLayout.ts` | Tablet Split-Layout (≥768px) | — | — | — | — | — | matchMedia | — | — |
+| `useOperatorToday.ts` | Today-Aggregat Hook | transitiv DataContext + TodayFeed | — | — | orgId | — | useMemo snapshot | ✅ stale/offline/reload | — |
+| `useOperatorTodayFeed.ts` | Task-Buckets NOW/TODAY/… via `useTaskList` | `tasks.list` (5× bucket), `tasks.summary` | — | **hasPermission** für UNASSIGNED | orgId | — | React Query hooks | ✅ per bucket | — |
+| `operatorTodayFeed.utils.ts` | Bucket-Slice-Builder, UNASSIGNED-Gate | — | — | role+permission check | — | — | Pure | — | ✅ |
+| `useOperatorVehiclesData.ts` | Fleet-Liste + Health (FleetContext) | transitiv `vehicles.fleetMap`, `rentalHealth.*` | — | — | orgId | St in VehicleData | FleetContext | ✅ health L/E | — |
+| `useOperatorVehicleQuickViewData.ts` | Quick-View-Datenaggregation | damages, tires, docs, `tasks.forVehicle` | — | — | orgId | St aus vehicle/pickups | local useState + OperatorData | ✅ partial swallow `.catch` | — |
+| `useOperatorScanSearch.ts` | Scan: Fleet-Filter + Booking-Suche | `bookings.get`, `bookings.list` | — | — | orgId | — | useState | ✅ bookingsError | — |
+| `useOperatorBookingMutations.ts` | Booking CRUD/Cancel/NoShow | `bookings.create/update/cancel/markNoShow` | **Ja** | — | orgId | St in payload | mutating/error + toast | ✅ toast errors | — |
+| `useOperatorOperationalAlerts.ts` | Dashboard-Insights (max 5) | `dashboardInsights.get` | — | — | orgId | — | useState | ✅ catch→[] | — |
+
+### 21.5 `views/`
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `OperatorTodayView.tsx` | Tagesüberblick, Handover-CTAs, Alerts | transitiv Hooks | Sheet-W | — | orgId | St in Cards | local detail state | ✅ Skeleton/Error/Empty | — |
+| `operatorTodayView.utils.ts` | Empty/stale/banner-Logik | — | — | — | — | — | Pure | — | ✅ |
+| `OperatorVehiclesView.tsx` | Fahrzeugliste + Filter + Quick View | transitiv | Sheet-W | — | orgId | St in list | filter/search local | ✅ | — |
+| `OperatorScanView.tsx` | Textsuche, Booking/Vehicle-Treffer | transitiv scan hook | Handover-W | — | orgId | — | shell deep-link state | ✅ | — |
+| `OperatorTasksView.tsx` | Task-Liste, Filter, Detail | `tasks.list` (+ DataContext) | Sheet-W | scope mine/all | orgId | booking filter | remoteTasks local | ⚠️ remote catch→[] | — |
+| `OperatorMoreView.tsx` | Shortcuts AI/Tire/Booking, Theme, Link Rental | — | Sheet open | — | — | — | picker local | — | — |
+
+**Scan-Platzhalter:** `OperatorScanView.tsx` L114 — QR-Scanner „später/MVP“.
+
+### 21.6 `components/` (Shell, Nav, Cards, Bridges)
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `OperatorAccessGuard.tsx` | Auth + Rolle + Rental businessType | `organizations.getProfile` | — | **Ja** | **orgId** | — | gate state machine | ✅ retry | — |
+| `OperatorAccessDeniedScreen.tsx` | Denial UX | — | — | — | — | — | — | — | — |
+| `OperatorAccessLoadingScreen.tsx` | Loading UX | — | — | — | — | — | — | — | — |
+| `OperatorActionSheets.tsx` | Sheet-Router (AI, Task, Booking, Verify, Tire) | — | — | — | — | — | shell `sheetAction` | — | — |
+| `OperatorDeepLinkBridge.tsx` | URL→Shell-State Sync | — | — | — | — | — | useEffect | — | — |
+| `OperatorHandoverRefreshBridge.tsx` | Invalidation nach Handover/Damage/Task | — | — | — | orgId | — | window events + registry | — | — |
+| `OperatorConnectivityBanner.tsx` | Offline-Hinweis | — | — | — | — | — | `navigator.onLine` | — | — |
+| `OperatorHeader.tsx` | Titel, Sync-Indikator, Refresh | — | — | — | — | — | `syncState` | ✅ error dot | — |
+| `OperatorBottomNav.tsx` | 5 Tabs | — | — | — | — | — | shell tab | — | — |
+| `OperatorDesktopOnlyNotice.tsx` | Desktop-Blocker | — | — | Device | — | — | — | — | — |
+| `OperatorEntryButton.tsx` | Rental-Topbar-Einstieg | — | — | `canAccessOperatorApp` | — | — | modal state | — | — |
+| `OperatorEntryModal.tsx` | Desktop: URL kopieren | — | — | — | — | — | — | — | — |
+| `OperatorLinkCard.tsx` | Deep-Link-Karte | — | — | — | — | — | — | — | **QR folgt später** |
+| `OperatorBookingCard.tsx` | Today/Scan Booking-Karte | — | — | — | — | St | props | — | — |
+| `OperatorBookingDetailSheet.tsx` | Booking-Detail + Gates | `bookings.detail` | Sheet actions | — | orgId | St | local load | ✅ | — |
+| `OperatorScanBookingCard.tsx` | Scan Booking-Karte | — | — | — | — | — | props | — | — |
+| `OperatorScanVehicleCard.tsx` | Scan Vehicle-Karte | — | — | — | — | St | props | — | — |
+| `OperatorTodaySection.tsx` | Section-Wrapper | — | — | — | — | — | — | — | — |
+| `OperatorTodayTaskFeed.tsx` | Task-Bucket-Rendering | — | — | — | — | — | props | — | ✅ |
+| `OperatorListCard.tsx` | Generische Listenkarte | — | — | — | — | — | — | — | — |
+| `OperatorGlassCard.tsx` | Glassmorphism Card | — | — | — | — | — | — | — | — |
+| `OperatorStatusChip.tsx` | Status-Chip | — | — | — | — | — | — | — | — |
+| `OperatorTabletFrame.tsx` | Split List/Detail Layout | — | — | — | — | — | — | — | — |
+| `OperatorVehicleQuickView.tsx` | Fahrzeug-Hub (Handover, Damage, AI, Tasks) | transitiv quick-view hook | **Ja** (sheets) | — | orgId | St | hook state | ✅ Skeleton | — |
+| `OperatorAiUploadSheet.tsx` | Sheet wrapper AI Upload | — | — | — | — | — | — | — | — |
+| `OperatorTireMeasureSheet.tsx` | Sheet wrapper Tire | — | — | — | — | — | — | — | — |
+| `OperatorTaskSheet.tsx` | Sheet wrapper Task create/detail | — | — | — | — | — | — | — | — |
+
+### 21.7 `handover/` — Pickup & Return (gemeinsamer Flow, `kind` unterscheidet)
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `OperatorHandoverProvider.tsx` | Modal-State, Staff-Liste, Booking-Hydration | `users.listByOrg`, `bookings.detail/get` | — | — | orgId | **Ja** (stations in booking) | isOpen/booking state | ✅ fallback get | — |
+| `OperatorHandoverFlow.tsx` | 6-Step Wizard, Submit | `createPickup/ReturnHandover` | **Ja** | — | orgId | actualStationId | step/form state | ✅ submit error | — |
+| `useOperatorHandoverForm.ts` | Form-State, Damages, Docs, Telemetry | `stations.list`, `documents.listForBooking`, `damagesActive`, telemetry | — | — | orgId | **Ja** | useState + cleanup sigs | ✅ | — |
+| `operatorHandoverPayload.ts` | Validierung, Payload-Build | — | — | — | — | St in payload | Pure | — | ✅ |
+| `operatorHandoverUi.tsx` | Shared UI bits | — | — | — | — | — | — | — | — |
+| `operatorHandoverTechnicalObservations.ts` | Observation drafts/chips | — | — | — | — | — | Pure | — | — |
+| `OperatorHandoverStepVehicle.tsx` | Step 1 Fahrzeug/Station | — | — | — | — | **Ja** | form | — | — |
+| `OperatorHandoverStepCondition.tsx` | Step 2 Odometer/Fuel/Checks | — | — | — | — | — | form | — | — |
+| `OperatorHandoverStepDamages.tsx` | Step 3 Schaden-Auswahl/Erfassung | via DamageCapture | — | — | — | — | form | — | — |
+| `OperatorHandoverStepDocuments.tsx` | Step 4 Dokument-Ack | via documents hook | — | — | orgId | — | form | — | — |
+| `OperatorHandoverStepSignatures.tsx` | Step 5 Kunde/Mitarbeiter-Signaturen | — | — | — | — | — | canvas state | — | — |
+| `OperatorHandoverStepReview.tsx` | Step 6 Review | — | — | — | — | — | — | — | — |
+| `OperatorHandoverTechnicalObservationsSection.tsx` | Tech-Obs UI | — | — | — | — | — | drafts | — | — |
+| `handover/index.ts` | Re-exports | — | — | — | — | — | — | — | — |
+
+**Hinweis:** Separater Return-Flow existiert nicht — `HandoverDialogKind` = `PICKUP` | `RETURN` steuert API-Endpunkt und Validierung.
+
+### 21.8 `damages/`
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `OperatorDamageCaptureProvider.tsx` | Modal-State, Context | — | — | — | — | — | isOpen/context | — | — |
+| `OperatorDamageCaptureFlow.tsx` | 4-Step Capture + Submit | `createVehicleDamage` | **Ja** | — | via vehicle org | booking link | form/photos | ✅ submit error | — |
+| `operatorDamagePayload.ts` | Form defaults, validation, payload | — | — | — | — | — | Pure | — | — |
+| `operatorDamageImage.utils.ts` | Image resize/dataURL | — | — | — | — | — | Pure | — | — |
+| `OperatorDamagePhotoStep.tsx` | Foto-Step | — | — | — | — | — | local photos | — | — |
+| `OperatorDamageDetailsStep.tsx` | Klassifizierung-Step | — | — | — | — | — | form | — | — |
+| `OperatorDamageReviewStep.tsx` | Review-Step | — | — | — | — | — | — | — | — |
+
+### 21.9 `bookings/`
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `OperatorBookingFormSheet.tsx` | Create/Edit Booking | `stations.list`, `customers.list/get`, `bookings.detail`, mutations | **Ja** | — | orgId | **Ja** pick/return station | form state | ✅ | — |
+| `OperatorBookingCancelSheet.tsx` | Cancel | `bookings.detail`, `cancel` | **Ja** | — | orgId | — | form | ✅ | — |
+| `OperatorBookingNoShowSheet.tsx` | No-Show | `bookings.detail`, `markNoShow` | **Ja** | — | orgId | — | form | ✅ | — |
+| `operatorBooking.utils.ts` | Error formatting, display helpers | — | — | — | — | — | Pure | — | — |
+| `operatorBookingSheetShell.tsx` | Shared sheet chrome | — | — | — | — | — | — | — | — |
+
+### 21.10 `tasks/`
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `OperatorTasksView.tsx` | (siehe views) | — | — | — | — | — | — | — | — |
+| `OperatorTaskCard.tsx` | Task-Karten-UI | — | — | — | — | — | props | — | ✅ |
+| `OperatorTaskCardConnected.tsx` | Card + Actions wiring | via `useOperatorTaskActions` | **Ja** | — | orgId | — | — | toast | — |
+| `OperatorTaskDetail.tsx` | Task-Detail in Sheet | `tasks.get` | via actions | — | orgId | — | local | ✅ | — |
+| `OperatorTaskCreateForm.tsx` | Manuelle Task-Erstellung | `tasks.create` | **Ja** | — | orgId | optional stationId metadata | form | ✅ | — |
+| `useOperatorTaskActions.ts` | start/wait/complete/comment/checklist | `tasks.*` mutations | **Ja** | — | orgId | — | busy via parent | toast | — |
+| `useOperatorTaskCardController.ts` | Card expand/collapse | — | — | — | — | — | local | — | — |
+| `operatorTask.utils.ts` | Filter/sort/API filter build | — | — | — | — | — | Pure | — | — |
+| `operatorTodayTasks.ts` | Canonical task filter | — | — | — | — | — | Pure | — | ✅ |
+| `operatorTaskDisplay.utils.ts` | Labels, vehicle map | — | — | — | — | — | Pure | — | ✅ |
+| `operatorTaskCard.utils.ts` | Card helper | — | — | — | — | — | Pure | — | ✅ |
+
+### 21.11 `documents/`, `ai-upload/`, `tire-measure/`, `verification/`
+
+| Datei | Verantwortung | API | W | Rolle | Org | St | State | L/E | T |
+|-------|---------------|-----|---|-------|-----|----|----|-----|---|
+| `useOperatorBookingDocuments.ts` | Booking-Dokument-Slots | `documents.listForBooking` | — | — | orgId | — | useState | ✅ | — |
+| `operatorBookingDocuments.utils.ts` | Slot-Mapping | — | — | — | — | — | Pure | — | — |
+| `OperatorBookingDocumentsPanel.tsx` | UI + Kundendokumente | `customerDocuments.list`, `documents.open` | — | — | orgId | — | local | ✅ | — |
+| `OperatorAiUploadFlow.tsx` | AI Upload UI | `useDocumentExtractionFlow` → ~12 endpoints | **confirm** | — | orgId | — | flow state | ✅ flow errors | — |
+| `OperatorAiUploadReview.tsx` | Review/Confirm panel | confirm via flow | **Ja** | — | orgId | — | — | — | — |
+| `operatorAiUpload.config.ts` | Doc types, `operator_app` source | — | — | — | — | — | constants | — | — |
+| `OperatorTireMeasureFlow.tsx` | Reifen-UI | via payload hook | **Ja** | — | — | — | multi-step | ✅ | — |
+| `useOperatorTireMeasureData.ts` | Tire setups load | `tires`, `tireHealthSummary` | — | — | — | — | useState | ✅ catch | — |
+| `operatorTireMeasurePayload.ts` | Measurement submit | `addTireMeasurement`, `addTireHealthMeasurement` | **Ja** | — | — | — | — | throw | — |
+| `operatorTireMeasure.utils.ts` | Tread parsing | — | — | — | — | — | Pure | — | — |
+| `operatorTireMeasure.types.ts` | Types | — | — | — | — | — | — | — | — |
+| `OperatorTireMeasureTreadGrid.tsx` | Tread input grid | — | — | — | — | — | — | — | — |
+| `OperatorPickupCheckSheet.tsx` | Manuelle Pickup-Verifikation | `customerVerification.submitManualPickupCheck` | **Ja** | — | service-resolved | — | form | ✅ | — |
+| `operatorPickupCheckPayload.ts` | Payload build | — | — | — | — | — | Pure | — | ✅ |
+
+### 21.12 Globale Provider (außerhalb `operator/`, von Operator genutzt)
+
+| Provider | Datei | Operator-relevante APIs | Org | Rolle/Permission |
+|----------|-------|-------------------------|-----|------------------|
+| `RentalProvider` | `rental/RentalContext.tsx` | `auth.memberships`, `auth.switchOrganization`, `organizations.list` | **Ja** | membership role, `hasPermission` |
+| `FleetProvider` | `rental/FleetContext.tsx` | `vehicles.fleetMap`, `rentalHealth.getFleetScoped` | **Ja** | `fleet.read` (health) |
+| `AppThemeProvider` | `context/AppThemeContext.tsx` | — | — | — |
+| `ProtectedRoute` | `App.tsx` | JWT session | — | `isAuthenticated` |
+
+### 21.13 Service Worker / PWA
+
+| Suche | Ergebnis |
+|-------|----------|
+| `serviceWorker`, `service-worker`, `manifest.webmanifest`, `vite-plugin-pwa` im `frontend/` | **0 Treffer** |
+| `index.html` | Kein Manifest-Link, kein SW-Register |
+
+### 21.14 Redundante / obsolete Implementierungen
+
+| Befund | Details |
+|--------|---------|
+| Doppelte Task-Loads | `OperatorDataContext` lädt `ALL_OPEN`; `useOperatorTodayFeed` lädt 5 Buckets; `OperatorTasksView` lädt gefiltert remote — gleiche Domäne, verschiedene Caches |
+| Deprecated API-Alias | `damagesActive` vs `getVehicleDamagesActive` |
+| Veraltete README | Behauptet unwired placeholders — Handover/Damage/Task sind implementiert |
+| `useHandover` Alias | `OperatorHandoverProvider` exportiert Drop-in für Rental `useHandover` — beabsichtigt, kein Duplicate-Flow |
+
+---
+
+## 22. Traceability-Matrix (Operator UI → Backend)
+
+**Legende:** `GAP` = Verbindung nicht vollständig nachweisbar oder Permission/Audit unklar.
+
+### 22.1 Schreiboperationen (kritische Pfade)
+
+| UI-Aktion | React-Komponente | Hook/Provider | API-Client | Backend-Controller | Service | Prisma | Permission | Audit Event | Test |
+|-----------|------------------|---------------|------------|-------------------|---------|--------|------------|-------------|------|
+| Pickup-Handover abschließen | `OperatorHandoverFlow` | `useOperatorHandoverForm` | `bookings.createPickupHandover` | `BookingsController.createPickupHandover` | `BookingsHandoverService.createHandover` | `BookingHandoverProtocol`, `Booking`, `VehicleComplaint`, `VehicleDamage` | `bookings.write` | `BookingPickupGateAuditEvent` (bei Override); TaskAutomation | `operatorHandoverPayload.test.ts`; Backend handover specs |
+| Return-Handover abschließen | `OperatorHandoverFlow` |同上 | `bookings.createReturnHandover` | `BookingsController.createReturnHandover` | `BookingsHandoverService.createHandover` |同上 | `bookings.write` | TaskAutomation on return |同上 |
+| Buchung anlegen | `OperatorBookingFormSheet` | `useOperatorBookingMutations` | `bookings.create` | `BookingsController.create` | `BookingsService.create` | `Booking` | `bookings.write` | TaskAutomation | `test:bookings` (domain) |
+| Buchung bearbeiten | `OperatorBookingFormSheet` | `useOperatorBookingMutations` | `bookings.update` | `BookingsController.update` | `BookingsService.update` | `Booking` | `bookings.write` | TaskAutomation | domain |
+| Buchung stornieren | `OperatorBookingCancelSheet` | `useOperatorBookingMutations` | `bookings.cancel` | `BookingsController.cancel` | `BookingsService.cancel` | `Booking` | `bookings.manage` | TaskAutomation | domain |
+| No-Show markieren | `OperatorBookingNoShowSheet` | `useOperatorBookingMutations` | `bookings.markNoShow` | `BookingsController.markNoShow` | `BookingsService.markNoShow` | `Booking` | `bookings.write` | TaskAutomation | domain |
+| Schaden erfassen | `OperatorDamageCaptureFlow` | `OperatorDamageCaptureProvider` | `vehicleIntelligence.createVehicleDamage` | `VehicleIntelligenceController.createDamage` | `DamagesService.create` | `VehicleDamage`, `VehicleDamageImage` | **GAP** — nur `VehicleOwnershipGuard` | **GAP** — kein dediziertes Audit-Event nachgewiesen | — |
+| Task erstellen | `OperatorTaskCreateForm` | — | `tasks.create` | `TasksController.create` | `TasksService.createManualTask` | `OrgTask`, `TaskChecklistItem` | `tasks.create` | `TaskEvent` CREATED | `operatorTodayTasks.test.ts` |
+| Task starten | `OperatorTaskCardConnected` | `useOperatorTaskActions` | `tasks.start` | `TasksController.start` | `TasksService.startTask` | `OrgTask` | **GAP** — kein `@RequireTaskPermission` | `TaskEvent` STATUS_CHANGED | — |
+| Task → Wartend | `OperatorTaskCardConnected` | `useOperatorTaskActions` | `tasks.waiting` | `TasksController.waiting` | `TasksService.moveTaskToWaiting` | `OrgTask` | **GAP** | `TaskEvent` | — |
+| Task abschließen | `OperatorTaskCardConnected` | `useOperatorTaskActions` | `tasks.complete` | `TasksController.complete` | `TasksService.completeTask` | `OrgTask` | `tasks.complete` | `TaskEvent` | — |
+| Task Kommentar | `OperatorTaskDetail` | `useOperatorTaskActions` | `tasks.addComment` | `TasksController.addComment` | `TasksService.addComment` | `TaskComment` | `tasks.update` (implizit) | `TaskEvent` COMMENT | — |
+| Checklist-Item | `OperatorTaskDetail` | `useOperatorTaskActions` | `tasks.updateChecklistItem` | `TasksController.updateChecklistItem` | `TasksService.updateChecklistItem` | `TaskChecklistItem` | `tasks.update` | `TaskEvent` | — |
+| Reifen messen | `OperatorTireMeasureFlow` | `operatorTireMeasurePayload` | `addTireMeasurement` / `addTireHealthMeasurement` | `VehicleIntelligenceController` | `TireLifecycleService.recordMeasurement` | `VehicleTireTreadMeasurement`, `TireEvent` | **GAP** — ownership only | `TireEvent` | — |
+| AI Upload bestätigen | `OperatorAiUploadFlow` | `useDocumentExtractionFlow` | `confirmDocumentExtraction` / `confirmByOrg` | `DocumentExtractionController.confirm` | `DocumentExtractionService.confirm` | `VehicleDocumentExtraction` + apply targets | `document-upload.write` | extraction pipeline | document-intake tests |
+| Pickup-Verifikation | `OperatorPickupCheckSheet` | — | `customerVerification.submitManualPickupCheck` | `CustomerVerificationController.createManualPickupCheck` | `CustomerVerificationService.createManualPickupCheck` | `CustomerVerificationCheck` | **GAP** — `RolesGuard` only | `CustomerTimelineEvent` | `operatorPickupCheckPayload.test.ts` |
+
+### 22.2 Leseoperationen (Auswahl)
+
+| UI-Aktion | Komponente | API-Client | Controller | Service | Permission | Test |
+|-----------|------------|------------|------------|---------|------------|------|
+| Today Pickups/Returns | `OperatorDataContext` | `todayPickups/Returns` | `BookingsController` | `BookingsService.findTodays*` | `bookings.read` | — |
+| Task-Buckets Today | `useOperatorTodayFeed` | `tasks.list` (bucket) | `TasksController.findAll` | `TasksService.listTasks` | `tasks.read` | `operatorTodayFeed.utils.test.ts` |
+| Fahrzeug-Flotte | `FleetProvider` | `vehicles.fleetMap` | `VehiclesController.getFleetMap` | `VehiclesService.getFleetMapData` | OrgScoping | fleet tests |
+| Fleet Health | `FleetProvider` | `rentalHealth.getFleetScoped` | `RentalHealthController` | `RentalHealthFleetService` | `fleet.read` | — |
+| Booking-Detail Gates | `OperatorBookingDetailSheet` | `bookings.detail` | `BookingsController.findDetail` | `BookingsService.findDetail` | `bookings.read` | — |
+| Scan-Suche | `useOperatorScanSearch` | `bookings.list/get` | `BookingsController` | `BookingsService` | `bookings.read` | — |
+| Booking-Dokumente | `useOperatorBookingDocuments` | `documents.listForBooking` | `DocumentsController` | `BookingDocumentBundleService` | `bookings.read` | — |
+| Aktive Schäden | Quick View / Handover | `getVehicleDamagesActive` | `VehicleIntelligenceController` | `DamagesService.findActive` | **GAP** | — |
+| Org-Gate Rental | `OperatorAccessGuard` | `organizations.getProfile` | `TenantOrganizationProfileController` | `OrganizationsService.getTenantProfile` | OrgScoping | — |
+| Dashboard Alerts | `useOperatorOperationalAlerts` | `dashboardInsights.get` | `DashboardInsightsController` | `DashboardInsightsRepository` | OrgScoping | — |
+
+### 22.3 API-Verbindungsstatistik (Prompt 2)
+
+| Metrik | Anzahl |
+|--------|--------|
+| Geprüfte Operator-Dateien | **117** |
+| Distinct `api.*`-Client-Methoden (direkt + transitive Provider/Flows) | **51** |
+| Davon Schreiboperationen | **18** |
+| Traceability-Zeilen mit explizitem `GAP` | **9** |
+
+---
+
+## 23. GAP-Register
+
+| GAP-ID | Beschreibung | Betroffene Pfade |
+|--------|--------------|------------------|
+| GAP-001 | Kein `@RequirePermission` auf Vehicle-Damage-CRUD | `POST/PATCH /vehicles/:id/damages*` |
+| GAP-002 | `tasks.start` / `tasks.waiting` ohne `@RequireTaskPermission` | `PATCH .../tasks/:id/start|waiting` |
+| GAP-003 | `customerVerification.submitManualPickupCheck` — Permission-Modell unklar vs. `customers`/`bookings` | `POST /customer-verification/manual-pickup-check` |
+| GAP-004 | `customers.list/get` — kein explizites `@RequirePermission` im Operator-Pfad nachgewiesen | `CustomersController` |
+| GAP-005 | Kein Operator-E2E-Test → UI→API→DB End-to-End nicht abgesichert | `frontend/e2e/` |
+| GAP-006 | Kein PWA/Offline-Persistenz → „Sync“-Copy irreführend bei Offline | Operator Connectivity/Today stale banner |
+| GAP-007 | Damage-Create ohne nachgewiesenes dediziertes Audit-Event | `DamagesService.create` |
+| GAP-008 | Tire-Measurement ohne explizite Permission-Deklaration | `VehicleIntelligenceController` tire routes |
+| GAP-009 | `OperatorAiUploadReview` — Schema/Action-Plan-Hooks laut Code-Pfad optional/inaktiv | AI Upload confirm path |
+
+---
+
+## 24. TODO- und Platzhalter-Register
+
+| ID | Datei | Zeile/Inhalt | Typ |
+|----|-------|--------------|-----|
+| PH-001 | `README.md` | „Wire placeholders in OperatorShell“ | **Veraltetes TODO** |
+| PH-002 | `OperatorScanView.tsx` | QR-Scanner später / MVP | **Feature-Platzhalter** |
+| PH-003 | `OperatorLinkCard.tsx` | QR-Code-Generator folgt später | **Feature-Platzhalter** |
+| PH-004 | `OperatorAiUploadFlow.tsx` | „Typ kann später korrigiert werden“ | UX-Hinweis (kein Blocker) |
+
+**Anzahl echte TODO/Platzhalter:** **4** (davon 1 veraltete Doku)
+
+---
+
+## Anhang A — Geänderte Dateien
+
+| Prompt | Datei | Aktion |
+|--------|-------|--------|
+| 1 | `docs/audits/operator-app-production-readiness-2026-07.md` | Neu |
+| 1 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.827 |
+| 2 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 18–24 Inventur + Matrix |
 
 ---
 

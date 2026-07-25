@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-file-inventory-v49828-2026-07-25',
+    version: '4.9.828',
+    title: 'V4.9.828 — Operator App: vollständige Dateiinventur + Traceability (Prompt 2)',
+    summary: [
+      'docs/audits/operator-app-production-readiness-2026-07.md — Kap. 21–24: 117 Dateien inventarisiert.',
+      'Traceability-Matrix UI → API → Controller → Service → Prisma → Permission → Audit → Test.',
+      '51 distinct API-Verbindungen, 9 GAPs, 4 TODO/Platzhalter dokumentiert.',
+      'Keine funktionalen Änderungen an der Operator App.',
+    ],
+    reason: 'Production-Readiness Prompt 2 — nachweisbare Vollinventur als Audit-Grundlage.',
+    previousBehavior: 'Nur High-Level-Baseline (Prompt 1), keine Datei-für-Datei-Matrix.',
+    details: 'docs/audits/operator-app-production-readiness-2026-07.md §21–24',
+    affectsArchitecture: false,
+    module: 'Operations',
+    createdAt: '2026-07-25T17:05:00.000Z',
+  },
+  {
     id: 'operator-app-production-readiness-baseline-v49827-2026-07-25',
     version: '4.9.827',
     title: 'V4.9.827 — Operator App: Production-Readiness Baseline-Audit (Prompt 1)',
