@@ -2,6 +2,7 @@ import {
   buildHandoverCompletionCanonicalPayload,
   hashHandoverCompletionPayload,
   hashHandoverSignedContent,
+  hashHandoverSignableContent,
   signedHandoverContentChanged,
 } from './handover-completion-payload.canonical';
 
@@ -60,5 +61,18 @@ describe('handover-completion-payload.canonical', () => {
     );
     expect(signedHandoverContentChanged(original, changed)).toBe(false);
     expect(hashHandoverSignedContent(original)).toBe(hashHandoverSignedContent(changed));
+  });
+
+  it('does not require re-signature when only signature images change', () => {
+    const original = buildHandoverCompletionCanonicalPayload(basePayload, baseContext);
+    const changed = buildHandoverCompletionCanonicalPayload(
+      {
+        ...basePayload,
+        customerSignatureDataUrl: 'data:image/png;base64,changed',
+      },
+      baseContext,
+    );
+    expect(signedHandoverContentChanged(original, changed)).toBe(false);
+    expect(hashHandoverSignableContent(original)).toBe(hashHandoverSignableContent(changed));
   });
 });

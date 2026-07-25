@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 import type { HandoverActorContext } from '../booking-pickup-gate/booking-pickup-gate.types';
 import type { CreateHandoverProtocolPayload } from '../handover.types';
+import type { HandoverSignatureBindingRecord } from './handover-signature-binding.types';
 import {
   buildHandoverCompletionCanonicalPayload,
   hashHandoverCompletionPayload,
@@ -28,6 +29,7 @@ export interface CreateHandoverCompletionRecordInput {
   previousVersionId?: string | null;
   correctionReason?: string | null;
   overrideUserId?: string | null;
+  signatureBindings?: HandoverSignatureBindingRecord[];
 }
 
 export interface HandoverCompletionRecordResult {
@@ -54,6 +56,9 @@ export async function createHandoverCompletionRecordInTransaction(
     protocolVersion: input.protocolVersion,
     performedAt: input.performedAt.toISOString(),
   });
+  if (input.signatureBindings?.length) {
+    canonical.signatureBindings = input.signatureBindings;
+  }
 
   const payloadHash = hashHandoverCompletionPayload(canonical);
   const signedContentHash = hashHandoverSignedContent(canonical);

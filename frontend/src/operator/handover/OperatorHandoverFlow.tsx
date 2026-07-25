@@ -29,6 +29,7 @@ import { OperatorHandoverConflictDialog } from './OperatorHandoverConflictDialog
 import { useOperatorUploadQueue } from '../upload-queue/useOperatorUploadQueue';
 import { OperatorUploadStatusList } from '../upload-queue/OperatorUploadStatusList';
 import { dataUrlToBlob } from '../upload-queue/operatorUploadQueue.utils';
+import { signatureClientUploadId } from './operatorHandoverSignatureBinding';
 
 const STEP_LABELS: Record<OperatorHandoverStepId, string> = {
   vehicle: 'Fahrzeug',
@@ -181,7 +182,8 @@ export function OperatorHandoverFlow({
     const saved = await draftSync.flushSave();
     if (!saved && draftSync.conflict) return;
 
-    if (form.state.customerSigData?.trim()) {
+    const sessionId = draftSync.sessionId;
+    if (form.state.customerSigData?.trim() && sessionId) {
       const blob = dataUrlToBlob(form.state.customerSigData);
       if (blob) {
         await uploadQueue.enqueue({
@@ -190,10 +192,11 @@ export function OperatorHandoverFlow({
           fileName: 'customer-signature.png',
           mimeType: 'image/png',
           required: true,
+          clientUploadId: signatureClientUploadId(sessionId, 'customer'),
         });
       }
     }
-    if (form.state.staffSigData?.trim()) {
+    if (form.state.staffSigData?.trim() && sessionId) {
       const blob = dataUrlToBlob(form.state.staffSigData);
       if (blob) {
         await uploadQueue.enqueue({
@@ -202,6 +205,7 @@ export function OperatorHandoverFlow({
           fileName: 'staff-signature.png',
           mimeType: 'image/png',
           required: true,
+          clientUploadId: signatureClientUploadId(sessionId, 'operator'),
         });
       }
     }
@@ -314,12 +318,17 @@ export function OperatorHandoverFlow({
       {step === 'documents' && (
         <OperatorHandoverStepDocuments booking={booking} form={form} onAiUpload={openAiUpload} />
       )}
-      {step === 'signatures' && (
+      {step === 'signatures' && bookingRef && (
         <OperatorHandoverStepSignatures
           form={form}
           staffOptions={staffOptions}
           isDarkMode={isDarkMode}
           stepErrors={currentStepIssues.map((i) => i.message)}
+          orgId={orgId}
+          kind={kind}
+          booking={bookingRef}
+          handoverSessionId={draftSync.sessionId}
+          draftVersion={draftSync.expectedVersion}
         />
       )}
       {step === 'review' && (

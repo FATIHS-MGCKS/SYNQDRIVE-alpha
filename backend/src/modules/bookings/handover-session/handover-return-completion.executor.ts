@@ -17,6 +17,9 @@ import {
   type PickupHandoverBookingRow,
 } from './handover-pickup-completion.executor';
 import { createHandoverCompletionRecordInTransaction } from './handover-completion-record.service';
+import { buildHandoverCompletionCanonicalPayload, hashHandoverSignableContent } from './handover-completion-payload.canonical';
+import { recordSignatureBindingAuditEvents } from './handover-signature-binding.complete';
+import type { HandoverSignatureBindingRecord } from './handover-signature-binding.types';
 import { currentHandoverProtocolWhere } from './handover-protocol.query';
 
 export interface ExecuteReturnHandoverCompletionInput {
@@ -27,6 +30,7 @@ export interface ExecuteReturnHandoverCompletionInput {
   pickupOdometerKm: number;
   sessionId?: string | null;
   sessionVersion?: number | null;
+  signatureBindings?: HandoverSignatureBindingRecord[];
 }
 
 export interface ExecuteReturnHandoverCompletionResult {
@@ -296,7 +300,7 @@ export async function executeReturnHandoverCompletionInTransaction(
     }
   }
 
-  await createHandoverCompletionRecordInTransaction(tx, {
+  const completionRecord = await createHandoverCompletionRecordInTransaction(tx, {
     orgId,
     bookingId,
     vehicleId: booking.vehicleId,
@@ -309,7 +313,32 @@ export async function executeReturnHandoverCompletionInTransaction(
     performedAt: protocol.performedAt,
     payload,
     actor,
+    signatureBindings: input.signatureBindings,
   });
+
+  if (input.signatureBindings?.length) {
+    const canonical = buildHandoverCompletionCanonicalPayload(payload, {
+      organizationId: orgId,
+      bookingId,
+      vehicleId: booking.vehicleId,
+      customerId: booking.customerId,
+      stationId: actualStationId,
+      kind: 'RETURN',
+      documentVersion: 1,
+      protocolVersion: 1,
+      performedAt: protocol.performedAt.toISOString(),
+    });
+    canonical.signatureBindings = input.signatureBindings;
+    await recordSignatureBindingAuditEvents(tx, {
+      organizationId: orgId,
+      bookingId,
+      kind: 'RETURN',
+      completionRecordId: completionRecord.id,
+      bindings: input.signatureBindings,
+      signableContentHash: hashHandoverSignableContent(canonical),
+      actor,
+    });
+  }
 
   return { protocol, booking: updatedBooking };
 }

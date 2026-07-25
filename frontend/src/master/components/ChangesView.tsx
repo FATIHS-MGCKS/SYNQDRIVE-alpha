@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-signature-binding-v49849-2026-07-25',
+    version: '4.9.849',
+    title: 'V4.9.849 — Operator App: Signatur-Bindung an Protokollinhalt (Prompt 24)',
+    summary: [
+      'Signatur-Bindungsmodell: signerRole, signerReference, bookingId, handoverSessionId, draftVersion, signableContentHash, imageContentSha256, signedAt, capturedBy, organizationId, stationId, storageClientUploadId.',
+      'Signable-Content-Hash ohne Signaturfelder — Änderungen invalidieren Unterschriften im Operator-Wizard.',
+      'Backend validiert Bindings bei Operator-Abschluss; verknüpft SIGNATURE-Uploads; Audit SIGNATURE_BOUND.',
+      'Frontend: Einwilligungstexte, Touch/a11y, stabile Upload-IDs, keine rohen Signaturen im Draft-Buffer.',
+      'Tests für Bindung, Content-Change, fremde Referenz, fehlende Rollen-Signaturen.',
+    ],
+    reason:
+      'Production-Readiness Prompt 24: Signatur eindeutig an geprüften Inhalt binden.',
+    previousBehavior:
+      'Signaturen als austauschbare PNG-Data-URLs ohne Content-Hash; keine Invalidierung bei Feldänderungen.',
+    details:
+      'handover-signature-binding.*, operatorHandoverSignableContent.ts, migration SIGNATURE_BOUND, docs/audits §45.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:55:00.000Z',
+  },
+  {
     id: 'operator-upload-security-hardening-v49848-2026-07-25',
     version: '4.9.848',
     title: 'V4.9.848 — Operator App: Upload-Pipeline Security Hardening (Prompt 22)',

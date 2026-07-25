@@ -17,6 +17,9 @@ import {
 } from '../booking-pickup-gate/booking-pickup-gate.constants';
 import type { BookingPickupGateAuditService } from '../booking-pickup-gate/booking-pickup-gate-audit.service';
 import { createHandoverCompletionRecordInTransaction } from './handover-completion-record.service';
+import { hashHandoverSignableContent, buildHandoverCompletionCanonicalPayload } from './handover-completion-payload.canonical';
+import { recordSignatureBindingAuditEvents } from './handover-signature-binding.complete';
+import type { HandoverSignatureBindingRecord } from './handover-signature-binding.types';
 import { currentHandoverProtocolWhere } from './handover-protocol.query';
 import type {
   CreateHandoverProtocolPayload,
@@ -47,6 +50,7 @@ export interface ExecutePickupHandoverCompletionInput {
   sessionId?: string | null;
   sessionVersion?: number | null;
   pickupGateAudit: BookingPickupGateAuditService;
+  signatureBindings?: HandoverSignatureBindingRecord[];
 }
 
 export interface ExecutePickupHandoverCompletionResult {
@@ -371,7 +375,7 @@ export async function executePickupHandoverCompletionInTransaction(
     }
   }
 
-  await createHandoverCompletionRecordInTransaction(tx, {
+  const completionRecord = await createHandoverCompletionRecordInTransaction(tx, {
     orgId,
     bookingId,
     vehicleId: booking.vehicleId,
@@ -384,7 +388,32 @@ export async function executePickupHandoverCompletionInTransaction(
     performedAt: protocol.performedAt,
     payload,
     actor,
+    signatureBindings: input.signatureBindings,
   });
+
+  if (input.signatureBindings?.length) {
+    const canonical = buildHandoverCompletionCanonicalPayload(payload, {
+      organizationId: orgId,
+      bookingId,
+      vehicleId: booking.vehicleId,
+      customerId: booking.customerId,
+      stationId: actualStationId,
+      kind: 'PICKUP',
+      documentVersion: 1,
+      protocolVersion: 1,
+      performedAt: protocol.performedAt.toISOString(),
+    });
+    canonical.signatureBindings = input.signatureBindings;
+    await recordSignatureBindingAuditEvents(tx, {
+      organizationId: orgId,
+      bookingId,
+      kind: 'PICKUP',
+      completionRecordId: completionRecord.id,
+      bindings: input.signatureBindings,
+      signableContentHash: hashHandoverSignableContent(canonical),
+      actor,
+    });
+  }
 
   return { protocol, booking: updatedBooking };
 }

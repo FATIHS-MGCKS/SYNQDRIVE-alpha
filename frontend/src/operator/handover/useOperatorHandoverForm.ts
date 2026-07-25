@@ -14,6 +14,35 @@ import {
 } from './operatorHandoverPayload';
 import type { OperatorHandoverObservationDraft } from './operatorHandoverTechnicalObservations';
 
+const SIGNABLE_INVALIDATION_FIELDS: Array<keyof OperatorHandoverFormState> = [
+  'odometerKm',
+  'fuelPercent',
+  'fuelFull',
+  'checks',
+  'warningLightsNotes',
+  'notes',
+  'selectedDamageIds',
+  'technicalObservationDrafts',
+  'tireMeasurementCaptured',
+  'actualStationId',
+];
+
+function patchInvalidatesSignatures(patch: Partial<OperatorHandoverFormState>): boolean {
+  return SIGNABLE_INVALIDATION_FIELDS.some((key) => key in patch);
+}
+
+function clearInvalidatedSignatures(
+  prev: OperatorHandoverFormState,
+): Partial<OperatorHandoverFormState> {
+  return {
+    customerSigData: null,
+    staffSigData: null,
+    customerSignatureBinding: null,
+    staffSignatureBinding: null,
+    signaturesInvalidated: true,
+  };
+}
+
 export function useOperatorHandoverForm(
   isOpen: boolean,
   kind: HandoverDialogKind,
@@ -134,13 +163,19 @@ export function useOperatorHandoverForm(
   }, [isOpen, booking?.vehicleId, kind, booking]);
 
   const patchState = useCallback((patch: Partial<OperatorHandoverFormState>) => {
-    setState((prev) => ({ ...prev, ...patch }));
+    setState((prev) => {
+      const invalidation = patchInvalidatesSignatures(patch)
+        ? clearInvalidatedSignatures(prev)
+        : {};
+      return { ...prev, ...patch, ...invalidation };
+    });
   }, []);
 
   const toggleCheck = useCallback(
     (field: keyof OperatorHandoverFormState['checks']) => {
       setState((prev) => ({
         ...prev,
+        ...clearInvalidatedSignatures(prev),
         checks: { ...prev.checks, [field]: !prev.checks[field] },
       }));
     },
@@ -152,7 +187,11 @@ export function useOperatorHandoverForm(
       const next = new Set(prev.selectedDamageIds);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      return { ...prev, selectedDamageIds: next };
+      return {
+        ...prev,
+        ...clearInvalidatedSignatures(prev),
+        selectedDamageIds: next,
+      };
     });
   }, []);
 

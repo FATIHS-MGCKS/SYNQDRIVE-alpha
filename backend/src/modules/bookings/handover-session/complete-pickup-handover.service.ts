@@ -36,6 +36,10 @@ import { OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS } from './operator-handover-p
 import { resolveWritableStation } from './handover-session-context.util';
 import { currentHandoverProtocolWhere } from './handover-protocol.query';
 import { OperatorUploadService } from '@modules/operator-upload/operator-upload.service';
+import {
+  assertOperatorSessionSignatureBindings,
+} from './handover-signature-binding.complete';
+import type { HandoverSignatureBindingRecord } from './handover-signature-binding.types';
 
 export interface CompletePickupHandoverCommandInput {
   organizationId: string;
@@ -90,7 +94,7 @@ export class CompletePickupHandoverService {
 
     await this.assertCompletePermission(input.actor, input.organizationId);
     validatePickupHandoverPayload(input.payload);
-    this.assertSignaturesPresent(input.payload);
+    this.assertSignaturesPresent(input.payload, Boolean(input.sessionId));
     this.assertDocumentsAcknowledged(input.payload);
 
     const cached = await this.prisma.bookingHandoverPickupCompletionIdempotency.findUnique({
@@ -192,8 +196,11 @@ export class CompletePickupHandoverService {
       );
     }
 
+    let validatedSignatureBindings: HandoverSignatureBindingRecord[] | undefined;
+    let sessionDraftVersion: number | undefined;
+
     if (input.sessionId) {
-      await this.assertSessionReadyForComplete(
+      const sessionMeta = await this.assertSessionReadyForComplete(
         input.organizationId,
         input.bookingId,
         input.sessionId,
@@ -204,6 +211,7 @@ export class CompletePickupHandoverService {
         input.organizationId,
         input.sessionId,
       );
+      sessionDraftVersion = sessionMeta.version;
     }
 
     const rentalGate = await this.rentalHealth.isRentalBlocked(
@@ -265,6 +273,29 @@ export class CompletePickupHandoverService {
 
     const performedAt = resolvePickupPerformedAt(input.payload, booking.startDate);
 
+    if (input.sessionId && sessionDraftVersion != null) {
+      validatedSignatureBindings = await assertOperatorSessionSignatureBindings(this.prisma, {
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        handoverSessionId: input.sessionId,
+        draftVersion: sessionDraftVersion,
+        stationId: stationId ?? null,
+        payload: input.payload,
+        actor: input.actor,
+        canonicalContext: {
+          organizationId: input.organizationId,
+          bookingId: input.bookingId,
+          vehicleId: booking.vehicleId,
+          customerId: booking.customerId,
+          stationId: stationId ?? null,
+          kind: 'PICKUP',
+          documentVersion: 1,
+          protocolVersion: 1,
+          performedAt: (performedAt ?? new Date()).toISOString(),
+        },
+      });
+    }
+
     const txResult = await this.prisma.$transaction(async (tx) => {
       const result = await executePickupHandoverCompletionInTransaction(tx, {
         orgId: input.organizationId,
@@ -276,6 +307,7 @@ export class CompletePickupHandoverService {
         sessionId: input.sessionId,
         sessionVersion: input.expectedVersion ?? null,
         pickupGateAudit: this.pickupGateAudit,
+        signatureBindings: validatedSignatureBindings,
       });
 
       const response: CompletePickupHandoverResult = {
@@ -337,7 +369,7 @@ export class CompletePickupHandoverService {
     sessionId: string,
     expectedVersion: number | null,
     vehicleId: string,
-  ): Promise<void> {
+  ): Promise<{ version: number }> {
     const session = await this.prisma.bookingHandoverSession.findFirst({
       where: { id: sessionId, organizationId: orgId, bookingId, kind: 'PICKUP' },
     });
@@ -366,19 +398,29 @@ export class CompletePickupHandoverService {
         message: `Session status ${session.status} cannot complete pickup`,
       });
     }
+    return { version: session.version };
   }
 
-  private assertSignaturesPresent(payload: CreateHandoverProtocolPayload): void {
-    const hasCustomer = Boolean(
-      payload.customerSignatureDataUrl?.trim() || payload.customerSignatureName?.trim(),
-    );
-    const hasStaff = Boolean(
-      payload.staffSignatureDataUrl?.trim() || payload.staffSignatureName?.trim(),
-    );
+  private assertSignaturesPresent(
+    payload: CreateHandoverProtocolPayload,
+    requireDrawn = false,
+  ): void {
+    const hasCustomer = requireDrawn
+      ? Boolean(payload.customerSignatureDataUrl?.trim())
+      : Boolean(
+          payload.customerSignatureDataUrl?.trim() || payload.customerSignatureName?.trim(),
+        );
+    const hasStaff = requireDrawn
+      ? Boolean(payload.staffSignatureDataUrl?.trim())
+      : Boolean(
+          payload.staffSignatureDataUrl?.trim() || payload.staffSignatureName?.trim(),
+        );
     if (!hasCustomer || !hasStaff) {
       throw new ConflictException({
         code: COMPLETE_PICKUP_HANDOVER_ERROR.SIGNATURE_REQUIRED,
-        message: 'Customer and staff signatures are required',
+        message: requireDrawn
+          ? 'Customer and staff drawn signatures are required'
+          : 'Customer and staff signatures are required',
       });
     }
   }

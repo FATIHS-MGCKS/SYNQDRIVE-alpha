@@ -2379,6 +2379,37 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 45. Operator Signature Content Binding (Prompt 24)
+
+### 45.1 Bindungsmodell
+
+| Feld | Zweck |
+|------|--------|
+| `signerRole` | `customer` \| `operator` |
+| `signerReference` | `customerId` oder `staffId` |
+| `signableContentHash` | SHA-256 kanonisierter Protokollinhalt ohne Signaturfelder |
+| `imageContentSha256` | SHA-256 der PNG-Bytes |
+| `handoverSessionId` + `draftVersion` | Draft-Stand zum Signaturzeitpunkt |
+| `storageClientUploadId` | Private Upload-Referenz (`signature-{role}-{sessionId}`) |
+
+### 45.2 Abschlusslogik
+
+- Operator-Flow (`sessionId`): `signatureBindings` Pflicht; gezeichnete Signaturen Pflicht.
+- Validierung vor Tx: Hash-Match, Upload-Ownership, keine fremden `clientUploadId`.
+- Completion-Record speichert Bindings in `payloadCanonical`; Audit `SIGNATURE_BOUND`.
+
+### 45.3 Datenschutz
+
+- Keine rohen Signatur-Bitmaps in Logs oder Draft-Buffer; nur Hashes + Storage-Referenzen.
+
+### 45.4 Tests
+
+- `handover-signature-binding.validation.spec.ts`
+- `handover-completion-payload.canonical.spec.ts`
+- `operatorHandoverSignatureBinding.test.ts`
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`
