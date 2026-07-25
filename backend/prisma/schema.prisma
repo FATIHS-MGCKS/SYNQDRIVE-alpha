@@ -10799,6 +10799,8 @@ model OrgWorkflow {
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
   systemMetadata  Json?          @map("system_metadata")
+  /// When true, workflow is evaluated in shadow mode only (no LIVE execution until promoted).
+  shadowEnabled   Boolean        @default(false) @map("shadow_enabled")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -10863,6 +10865,80 @@ model TaskAutomationWorkflowMigrationRecord {
   @@index([organizationId])
   @@index([migrationRunId])
   @@map("task_automation_workflow_migration_records")
+}
+
+enum WorkflowShadowRunStatus {
+  PLANNED
+  SKIPPED_SCOPE
+  SKIPPED_CONDITIONS
+  POLICY_BLOCKED
+  ERROR
+}
+
+model OrgWorkflowShadowSettings {
+  organizationId         String   @id @map("organization_id")
+  enabled                Boolean  @default(false)
+  legacyCompareEnabled   Boolean  @default(true) @map("legacy_compare_enabled")
+  retentionDays          Int      @default(30) @map("retention_days")
+  updatedByUserId        String?  @map("updated_by_user_id")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@map("org_workflow_shadow_settings")
+}
+
+model OrgWorkflowShadowRun {
+  id                   String                  @id @default(uuid())
+  organizationId       String                  @map("organization_id")
+  workflowId           String                  @map("workflow_id")
+  workflowVersion      Int                     @map("workflow_version")
+  eventType            String                  @map("event_type")
+  entityType           String?                 @map("entity_type")
+  entityId             String?                 @map("entity_id")
+  eventIdempotencyKey  String                  @map("event_idempotency_key")
+  status               WorkflowShadowRunStatus
+  wouldTrigger         Boolean                 @default(false) @map("would_trigger")
+  wouldCreateApprovals Boolean                 @default(false) @map("would_create_approvals")
+  plannedActionCount   Int                     @default(0) @map("planned_action_count")
+  policyBlockerCount   Int                     @default(0) @map("policy_blocker_count")
+  executionPlan        Json                    @map("execution_plan")
+  correlationId        String                  @map("correlation_id")
+  occurredAt           DateTime                @map("occurred_at")
+  expiresAt            DateTime?               @map("expires_at")
+  createdAt            DateTime                @default(now()) @map("created_at")
+
+  comparisons OrgWorkflowShadowComparison[]
+
+  @@unique([organizationId, eventIdempotencyKey, workflowId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, wouldTrigger])
+  @@index([expiresAt])
+  @@map("org_workflow_shadow_runs")
+}
+
+model OrgWorkflowShadowComparison {
+  id                     String   @id @default(uuid())
+  organizationId         String   @map("organization_id")
+  shadowRunId            String   @map("shadow_run_id")
+  catalogKey             String?  @map("catalog_key")
+  legacyRuleId           String?  @map("legacy_rule_id")
+  dedupKey               String?  @map("dedup_key")
+  legacyTaskId           String?  @map("legacy_task_id")
+  workflowWouldTrigger   Boolean  @default(false) @map("workflow_would_trigger")
+  legacyDidExecute       Boolean  @default(false) @map("legacy_did_execute")
+  hasDeviation           Boolean  @default(false) @map("has_deviation")
+  deviationReasons       Json     @default("[]") @map("deviation_reasons")
+  comparison             Json     @default("{}") @map("comparison")
+  triggerAtDeltaMs       Int?     @map("trigger_at_delta_ms")
+  dueAtDeltaMs           Int?     @map("due_at_delta_ms")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  shadowRun OrgWorkflowShadowRun @relation(fields: [shadowRunId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, hasDeviation])
+  @@index([organizationId, createdAt])
+  @@index([shadowRunId])
+  @@map("org_workflow_shadow_comparisons")
 }
 
 model OrgWorkflowRun {

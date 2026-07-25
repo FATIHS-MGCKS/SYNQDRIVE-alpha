@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-shadow-mode-v49860-2026-07-25',
+    version: '4.9.860',
+    title: 'V4.9.860 — Workflow Runtime Shadow Mode (Phase 11 Prompt 50)',
+    summary: [
+      'Real shadow mode: domain events → scope/conditions/policy/approval plan without LIVE side effects.',
+      'Persisted shadow data model: `org_workflow_shadow_runs`, `org_workflow_shadow_comparisons`, `org_workflow_shadow_settings`.',
+      'Per-org + per-workflow (`shadowEnabled`) activation; no silent promotion to LIVE.',
+      'Legacy vs workflow comparison: trigger timing, task type, priority, dedup, recipients, deviation reasons.',
+      'Admin API: `GET/PATCH .../workflows/shadow/*` for settings, runs, deviations.',
+      'Bridge router uses full `WorkflowDryRunService` plan + persisted comparisons in `TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE=shadow`.',
+      'Docs: `docs/operations/workflow-shadow-mode-2026-07.md`.',
+    ],
+    reason:
+      'Production validation of the new Workflow Runtime must observe real events and compare against legacy automation without mutating state or polluting live metrics.',
+    previousBehavior:
+      'Shadow was in-memory preview only (`drainShadowLog`) with no persistence, legacy diff, or org/workflow-level controls.',
+    details:
+      'WorkflowShadowModule, WorkflowExecutionMode.SHADOW, workflow-shadow.config.ts, migration 20260725140000_workflow_shadow_mode.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T15:00:00.000Z',
+  },
+  {
     id: 'workflow-production-test-matrix-v49859-2026-07-25',
     version: '4.9.859',
     title: 'V4.9.859 — Workflow Automation Production Readiness Test Suite (Phase 11 Prompt 49)',

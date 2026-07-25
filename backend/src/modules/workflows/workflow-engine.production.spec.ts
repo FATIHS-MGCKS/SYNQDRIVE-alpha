@@ -79,14 +79,42 @@ function makePrisma() {
   } as any;
 }
 
+function makeShadowDeps() {
+  return {
+    shadowGate: {
+      resolve: jest.fn().mockResolvedValue({
+        runShadow: false,
+        runLive: true,
+        legacyCompare: false,
+        orgShadowEnabled: false,
+      }),
+      isOrgShadowEnabled: jest.fn().mockResolvedValue(false),
+    },
+    shadowService: {
+      scheduleShadowEvaluation: jest.fn(),
+    },
+  };
+}
+
+function makeEngine(
+  prisma: ReturnType<typeof makePrisma>,
+  upsertByDedup: jest.Mock = jest.fn().mockResolvedValue({ id: 'task-1' }),
+) {
+  const shadow = makeShadowDeps();
+  const engine = new WorkflowEngineService(
+    prisma,
+    new WorkflowActionExecutorService(prisma, { upsertByDedup } as unknown as TasksService),
+    shadow.shadowGate as never,
+    shadow.shadowService as never,
+  );
+  return { engine, shadow };
+}
+
 describe('WorkflowEngineService production scenarios', () => {
   describe('matcher (scenario 9)', () => {
     it('matches only ACTIVE enabled workflows with same normalized trigger', async () => {
       const prisma = makePrisma();
-      const engine = new WorkflowEngineService(
-        prisma,
-        new WorkflowActionExecutorService(prisma, { upsertByDedup: jest.fn() } as unknown as TasksService),
-      );
+      const { engine } = makeEngine(prisma);
 
       prisma.orgWorkflow.findMany.mockResolvedValue([
         makeWorkflow({ id: 'wf-match', trigger: { type: 'manual.test' } }),
@@ -103,10 +131,7 @@ describe('WorkflowEngineService production scenarios', () => {
 
     it('isolates tenants in findMany query', async () => {
       const prisma = makePrisma();
-      const engine = new WorkflowEngineService(
-        prisma,
-        new WorkflowActionExecutorService(prisma, { upsertByDedup: jest.fn() } as unknown as TasksService),
-      );
+      const { engine } = makeEngine(prisma);
       prisma.orgWorkflow.findMany.mockResolvedValue([]);
 
       await engine.findMatchingWorkflows({
@@ -127,10 +152,7 @@ describe('WorkflowEngineService production scenarios', () => {
     it('returns existing run id on duplicate idempotency key without second task write', async () => {
       const prisma = makePrisma();
       const upsertByDedup = jest.fn().mockResolvedValue({ id: 'task-1' });
-      const engine = new WorkflowEngineService(
-        prisma,
-        new WorkflowActionExecutorService(prisma, { upsertByDedup } as unknown as TasksService),
-      );
+      const { engine } = makeEngine(prisma, upsertByDedup);
       const wf = makeWorkflow();
       prisma.orgWorkflowActionRun.create.mockResolvedValue({ id: 'ar-0' });
       prisma.orgWorkflowActionRun.update.mockResolvedValue({});
@@ -165,10 +187,7 @@ describe('WorkflowEngineService production scenarios', () => {
     it('stops run at WAITING_APPROVAL without executing subsequent actions', async () => {
       const prisma = makePrisma();
       const upsertByDedup = jest.fn().mockResolvedValue({ id: 'task-1' });
-      const engine = new WorkflowEngineService(
-        prisma,
-        new WorkflowActionExecutorService(prisma, { upsertByDedup } as unknown as TasksService),
-      );
+      const { engine } = makeEngine(prisma, upsertByDedup);
       const wf = makeWorkflow({
         actions: [
           { type: 'workflow.approval.request', config: { message: 'Approve' } },
@@ -208,10 +227,7 @@ describe('WorkflowEngineService production scenarios', () => {
         .fn()
         .mockResolvedValueOnce({ id: 'task-ok' })
         .mockRejectedValueOnce(new Error('simulated failure'));
-      const engine = new WorkflowEngineService(
-        prisma,
-        new WorkflowActionExecutorService(prisma, { upsertByDedup } as unknown as TasksService),
-      );
+      const { engine } = makeEngine(prisma, upsertByDedup);
       const wf = makeWorkflow({
         actions: [
           { type: 'task.create', config: { title: 'First' } },
@@ -245,10 +261,7 @@ describe('WorkflowEngineService production scenarios', () => {
   describe('cancellation via scope/conditions (scenario 37)', () => {
     it('does not create a run when scope fails closed', async () => {
       const prisma = makePrisma();
-      const engine = new WorkflowEngineService(
-        prisma,
-        new WorkflowActionExecutorService(prisma, { upsertByDedup: jest.fn() } as unknown as TasksService),
-      );
+      const { engine } = makeEngine(prisma);
       const wf = makeWorkflow({
         scope: { type: 'vehicle', vehicleIds: ['v-allowed'] },
       });
@@ -265,10 +278,7 @@ describe('WorkflowEngineService production scenarios', () => {
 
     it('creates SKIPPED run when conditions fail', async () => {
       const prisma = makePrisma();
-      const engine = new WorkflowEngineService(
-        prisma,
-        new WorkflowActionExecutorService(prisma, { upsertByDedup: jest.fn() } as unknown as TasksService),
-      );
+      const { engine } = makeEngine(prisma);
       const wf = makeWorkflow({
         conditions: [{ field: 'health_score', operator: 'gt', value: 90 }],
       });

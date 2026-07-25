@@ -7,9 +7,9 @@ import { WorkflowActionCoreModule } from './workflow-action-core.module';
 import { TaskAutomationWorkflowBridgeModule } from './task-automation-bridge/task-automation-workflow-bridge.module';
 import { TaskAutomationWorkflowMigrationService } from './migration/task-automation-workflow-migration.service';
 import { TaskAutomationWorkflowMigrationController } from './migration/task-automation-workflow-migration.controller';
-import { WorkflowDryRunService } from './workflow-dry-run.service';
 import { WorkflowMakerCheckerModule } from './maker-checker/workflow-maker-checker.module';
 import { WorkflowAuditModule } from './audit/workflow-audit.module';
+import { WorkflowShadowModule } from './shadow/workflow-shadow.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -19,13 +19,13 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     TaskAutomationWorkflowBridgeModule,
     WorkflowMakerCheckerModule,
     WorkflowAuditModule,
+    WorkflowShadowModule,
   ],
   controllers: [WorkflowsController, TaskAutomationWorkflowMigrationController],
   providers: [
     WorkflowsService,
     WorkflowEngineService,
     WorkflowEventService,
-    WorkflowDryRunService,
     TaskAutomationWorkflowMigrationService,
   ],
   exports: [
@@ -35,6 +35,7 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     WorkflowActionCoreModule,
     TaskAutomationWorkflowBridgeModule,
     TaskAutomationWorkflowMigrationService,
+    WorkflowShadowModule,
   ],
 })
 export class WorkflowsModule {}

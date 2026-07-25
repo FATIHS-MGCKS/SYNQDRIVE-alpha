@@ -227,13 +227,34 @@ describe('WorkflowActionExecutorService live guard', () => {
 });
 
 describe('WorkflowEngineService LIVE mode', () => {
+  function makeShadowMocks() {
+    return {
+      shadowGate: {
+        resolve: jest.fn().mockResolvedValue({
+          runShadow: false,
+          runLive: true,
+          legacyCompare: false,
+          orgShadowEnabled: false,
+        }),
+        isOrgShadowEnabled: jest.fn().mockResolvedValue(false),
+      },
+      shadowService: { scheduleShadowEvaluation: jest.fn() },
+    };
+  }
+
   it('executes supported actions when LIVE mode is explicit', async () => {
     const prisma = makePrisma();
     const tasksService = {
       upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }),
     } as unknown as TasksService;
     const actionExecutor = new WorkflowActionExecutorService(prisma, tasksService);
-    const engine = new WorkflowEngineService(prisma, actionExecutor);
+    const shadow = makeShadowMocks();
+    const engine = new WorkflowEngineService(
+      prisma,
+      actionExecutor,
+      shadow.shadowGate as never,
+      shadow.shadowService as never,
+    );
 
     const wf = makeWorkflow({
       actions: [{ type: 'task.create', config: { title: 'Live task' } }],
@@ -268,7 +289,13 @@ describe('WorkflowEngineService LIVE mode', () => {
       prisma,
       { upsertByDedup: jest.fn() } as unknown as TasksService,
     );
-    const engine = new WorkflowEngineService(prisma, actionExecutor);
+    const shadow = makeShadowMocks();
+    const engine = new WorkflowEngineService(
+      prisma,
+      actionExecutor,
+      shadow.shadowGate as never,
+      shadow.shadowService as never,
+    );
     const wf = makeWorkflow({
       actions: [{ type: 'task.create', config: { title: 'Blocked' } }],
     });

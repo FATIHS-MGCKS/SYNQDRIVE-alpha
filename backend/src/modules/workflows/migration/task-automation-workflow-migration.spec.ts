@@ -10,6 +10,9 @@ import { getAutomationRuleByCatalogKey, listMaterializationAutomationRules } fro
 import { TaskAutomationRuleResolverService } from '@modules/tasks/automation/task-automation-rule-resolver.service';
 import { WorkflowActionExecutorService } from '../workflow-action-executor.service';
 import { WorkflowActionPreviewService } from '../workflow-action-preview.service';
+import { WorkflowDryRunService } from '../workflow-dry-run.service';
+import { WorkflowShadowGateService } from '../shadow/workflow-shadow-gate.service';
+import { WorkflowShadowService } from '../shadow/workflow-shadow.service';
 import { TaskAutomationExecutionRouterService } from '../task-automation-bridge/task-automation-execution-router.service';
 import { TaskAutomationWorkflowMaterializerService } from '../task-automation-bridge/task-automation-workflow-materializer.service';
 import { TaskAutomationWorkflowTemplateService } from '../task-automation-bridge/task-automation-workflow-template.service';
@@ -181,16 +184,65 @@ describe('Task automation workflow migration', () => {
       }),
     };
 
+    const dryRun = {
+      planWorkflow: jest.fn(async (_wf, _event) => ({
+        executionMode: 'DRY_RUN',
+        executed: false,
+        message: 'dry',
+        requestId: 'req',
+        correlationId: 'corr',
+        assessedAt: new Date().toISOString(),
+        riskClass: 'LOW',
+        sourceRevision: { type: 'saved', version: 1 },
+        workflowId: 'wf-preview',
+        workflowVersion: 1,
+        workflowName: 'Preview',
+        event: { type: 'task.automation.materialize', normalizedPayload: {} },
+        scope: { passed: true, scopeType: 'organization' },
+        conditions: { passed: true, results: [] },
+        plannedActions: [
+          {
+            index: 0,
+            actionType: 'task.create',
+            riskClass: 'INTERNAL',
+            requiresApproval: false,
+            status: 'PLANNED',
+            policyBlockers: [],
+            validationErrors: [],
+            preview: { title: 'Shadow task', dedupKey: 'booking:prep:b-test' },
+          },
+        ],
+        skippedActions: [],
+        validationErrors: [],
+        policyBlockers: [],
+        wouldCreateApprovals: false,
+      })),
+    };
+
+    const shadowService = {
+      legacySnapshotFromDedup: jest.fn().mockResolvedValue(null),
+      persistBridgeEvaluation: jest.fn().mockResolvedValue('shadow-run-1'),
+      recordLegacyComparison: jest.fn().mockResolvedValue('cmp-1'),
+    };
+
+    const shadowGate = {
+      isOrgShadowEnabled: jest.fn().mockResolvedValue(true),
+      isLegacyCompareEnabled: jest.fn().mockResolvedValue(true),
+    };
+
     const module = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ load: [taskAutomationWorkflowRuntimeConfig] })],
       providers: [
         TaskAutomationWorkflowTemplateService,
         WorkflowActionPreviewService,
         WorkflowActionExecutorService,
+        { provide: WorkflowDryRunService, useValue: dryRun },
         TaskAutomationWorkflowMaterializerService,
         TaskAutomationExecutionRouterService,
         TaskAutomationWorkflowMigrationService,
         TaskAutomationRuleResolverService,
+        { provide: WorkflowShadowService, useValue: shadowService },
+        { provide: WorkflowShadowGateService, useValue: shadowGate },
         { provide: PrismaService, useValue: prisma },
         { provide: TasksService, useValue: tasksService },
         { provide: TaskAutomationRuleResolverService, useValue: resolver },

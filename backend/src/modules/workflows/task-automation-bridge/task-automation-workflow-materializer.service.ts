@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { WorkflowDryRunService } from '../workflow-dry-run.service';
 import { WorkflowActionPreviewService } from '../workflow-action-preview.service';
 import {
   WorkflowActionExecutorService,
@@ -9,6 +10,8 @@ import {
 } from '../workflow-action-executor.service';
 import { WorkflowExecutionMode } from '../workflow-execution-mode';
 import type { WorkflowActionDef } from '../workflow-definition.validator';
+import type { WorkflowExecutionPlan } from '../workflow-execution-plan.types';
+import type { WorkflowDomainEvent } from '../workflow-engine.service';
 import type {
   TaskAutomationMaterializationPayload,
   TaskAutomationShadowResult,
@@ -22,6 +25,7 @@ export class TaskAutomationWorkflowMaterializerService {
   constructor(
     private readonly actionExecutor: WorkflowActionExecutorService,
     private readonly actionPreview: WorkflowActionPreviewService,
+    private readonly dryRun: WorkflowDryRunService,
     private readonly templateService: TaskAutomationWorkflowTemplateService,
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
@@ -30,43 +34,65 @@ export class TaskAutomationWorkflowMaterializerService {
   async materializeViaWorkflow(
     payload: TaskAutomationMaterializationPayload,
     mode: 'execute' | 'preview',
-  ): Promise<{ taskId?: string; shadow?: TaskAutomationShadowResult }> {
+  ): Promise<{ taskId?: string; shadow?: TaskAutomationShadowResult; plan?: WorkflowExecutionPlan }> {
     const template = await this.templateService.ensureTemplateForCatalogKey(
       payload.organizationId,
       payload.catalogKey,
     );
 
-    const actionConfig = this.buildTaskCreateConfig(payload);
-    const action: WorkflowActionDef = { type: 'task.create', config: actionConfig };
-    const ctx = this.buildExecutionContext(payload, template.workflowId);
+    const workflow = await this.prisma.orgWorkflow.findFirst({
+      where: { id: template.workflowId, organizationId: payload.organizationId },
+    });
+    if (!workflow) {
+      throw new Error(`Workflow template ${template.workflowId} not found`);
+    }
+
+    const event = this.buildDomainEvent(payload);
 
     if (mode === 'preview') {
-      const planned = await this.actionPreview.previewAction({
-        action,
-        index: 0,
-        ctx: {
-          organizationId: ctx.organizationId,
-          payload: ctx.payload,
-          entityType: ctx.entityType,
-          entityId: ctx.entityId,
-          eventType: ctx.eventType,
-        },
+      const plan = await this.dryRun.planWorkflow(workflow, event, {
+        correlationId: randomUUID(),
       });
+      const shadowPlan: WorkflowExecutionPlan = {
+        ...plan,
+        executionMode: WorkflowExecutionMode.SHADOW,
+        message: 'Shadow evaluation — no actions executed.',
+      };
+
+      const wouldTrigger =
+        shadowPlan.scope.passed
+        && shadowPlan.conditions.passed
+        && shadowPlan.plannedActions.length > 0
+        && shadowPlan.policyBlockers.length === 0;
+
+      const taskPreview = shadowPlan.plannedActions.find((a) => a.actionType === 'task.create');
+
       return {
+        plan: shadowPlan,
         shadow: {
           catalogKey: payload.catalogKey,
           ruleId: payload.ruleId,
           dedupKey: payload.dedupKey,
-          previewSummary: planned.preview?.title
-            ? `Would create task "${planned.preview.title}"`
-            : 'Would create task via workflow runtime',
-          plannedEffects: [
-            `task.create dedup=${payload.dedupKey}`,
-            `workflow=${template.workflowId}`,
-          ],
+          workflowId: template.workflowId,
+          previewSummary: taskPreview?.preview?.title
+            ? `Would create task "${taskPreview.preview.title}"`
+            : wouldTrigger
+              ? 'Workflow would execute planned actions'
+              : 'Workflow would not trigger',
+          plannedEffects: shadowPlan.plannedActions.map(
+            (action) => `${action.actionType}:${action.status}`,
+          ),
+          wouldTrigger,
+          wouldCreateApprovals: shadowPlan.wouldCreateApprovals,
+          plannedActionCount: shadowPlan.plannedActions.length,
+          policyBlockers: shadowPlan.policyBlockers,
         },
       };
     }
+
+    const actionConfig = this.buildTaskCreateConfig(payload);
+    const action: WorkflowActionDef = { type: 'task.create', config: actionConfig };
+    const ctx = this.buildExecutionContext(payload, template.workflowId);
 
     const existing = await this.tasksService.findActiveByDedup(
       payload.organizationId,
@@ -92,6 +118,29 @@ export class TaskAutomationWorkflowMaterializerService {
     }
     const taskId = typeof result.output?.taskId === 'string' ? result.output.taskId : undefined;
     return { taskId };
+  }
+
+  private buildDomainEvent(payload: TaskAutomationMaterializationPayload): WorkflowDomainEvent {
+    return {
+      organizationId: payload.organizationId,
+      type: payload.eventType ?? 'task.automation.materialize',
+      entityType: payload.entityType,
+      entityId: payload.entityId,
+      payload: {
+        catalogKey: payload.catalogKey,
+        ruleId: payload.ruleId,
+        dedupKey: payload.dedupKey,
+        bookingId: payload.bookingId,
+        vehicleId: payload.vehicleId,
+        title: payload.title,
+        priority: payload.priority,
+        type: payload.type,
+        activatesAt: payload.activatesAt?.toISOString(),
+        dueDate: payload.dueDate?.toISOString(),
+      },
+      occurredAt: new Date(),
+      idempotencyKey: `task-auto:${payload.organizationId}:${payload.ruleId}:${payload.dedupKey}`,
+    };
   }
 
   private buildTaskCreateConfig(payload: TaskAutomationMaterializationPayload): Record<string, unknown> {

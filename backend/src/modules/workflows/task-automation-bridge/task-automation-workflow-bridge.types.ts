@@ -56,6 +56,11 @@ export interface TaskAutomationShadowResult {
   catalogKey: TaskAutomationCatalogKey;
   ruleId: string;
   dedupKey: string;
+  workflowId: string;
   previewSummary: string;
   plannedEffects: string[];
+  wouldTrigger: boolean;
+  wouldCreateApprovals: boolean;
+  plannedActionCount: number;
+  policyBlockers: string[];
 }

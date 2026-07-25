@@ -4,6 +4,7 @@
  */
 export enum WorkflowExecutionMode {
   DRY_RUN = 'DRY_RUN',
+  SHADOW = 'SHADOW',
   LIVE = 'LIVE',
 }
 

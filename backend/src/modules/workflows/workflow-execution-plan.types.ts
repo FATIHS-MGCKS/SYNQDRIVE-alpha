@@ -32,7 +32,7 @@ export interface WorkflowPlannedAction {
 }
 
 export interface WorkflowExecutionPlan {
-  executionMode: WorkflowExecutionMode.DRY_RUN;
+  executionMode: WorkflowExecutionMode.DRY_RUN | WorkflowExecutionMode.SHADOW;
   executed: false;
   message: string;
   requestId: string;

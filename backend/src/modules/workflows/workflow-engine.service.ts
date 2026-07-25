@@ -19,6 +19,9 @@ import {
   WorkflowExecutionMode,
 } from './workflow-execution-mode';
 import { evaluateWorkflowScope } from './workflow-scope.evaluator';
+import { WorkflowShadowGateService } from './shadow/workflow-shadow-gate.service';
+import { WorkflowShadowService } from './shadow/workflow-shadow.service';
+import { shouldRunWorkflowLive } from './shadow/workflow-shadow-comparison.util';
 
 export interface ExecuteWorkflowOptions {
   executionMode: WorkflowExecutionMode;
@@ -41,17 +44,36 @@ export class WorkflowEngineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actionExecutor: WorkflowActionExecutorService,
+    private readonly shadowGate: WorkflowShadowGateService,
+    private readonly shadowService: WorkflowShadowService,
   ) {}
 
   async processEvent(event: WorkflowDomainEvent): Promise<string[]> {
-    const workflows = await this.findMatchingWorkflows(event);
-    const runIds: string[] = [];
+    const liveCandidates = await this.findMatchingWorkflows(event);
+    const shadowCandidates = await this.findShadowCandidateWorkflows(event);
+    const workflows = new Map<string, OrgWorkflow>();
+    for (const wf of [...liveCandidates, ...shadowCandidates]) {
+      workflows.set(wf.id, wf);
+    }
 
-    for (const workflow of workflows) {
-      const runId = await this.executeWorkflow(workflow, event, {
-        executionMode: WorkflowExecutionMode.LIVE,
-      });
-      if (runId) runIds.push(runId);
+    const runIds: string[] = [];
+    let shadowEvaluations = 0;
+    const maxShadow = 20;
+
+    for (const workflow of workflows.values()) {
+      const gate = await this.shadowGate.resolve(event.organizationId, workflow);
+
+      if (gate.runLive && shouldRunWorkflowLive(workflow)) {
+        const runId = await this.executeWorkflow(workflow, event, {
+          executionMode: WorkflowExecutionMode.LIVE,
+        });
+        if (runId) runIds.push(runId);
+      }
+
+      if (gate.runShadow && shadowEvaluations < maxShadow) {
+        shadowEvaluations += 1;
+        this.shadowService.scheduleShadowEvaluation(workflow, event);
+      }
     }
     return runIds;
   }
@@ -63,6 +85,27 @@ export class WorkflowEngineService {
         organizationId: event.organizationId,
         status: 'ACTIVE',
         enabled: true,
+      },
+    });
+
+    return rows.filter((wf) => {
+      const trigger = wf.trigger as { type?: string };
+      const wfType = normalizeTriggerType(trigger?.type ?? '');
+      return wfType === eventType;
+    });
+  }
+
+  /** Workflows eligible for shadow evaluation (includes shadow-only pilots). */
+  async findShadowCandidateWorkflows(event: WorkflowDomainEvent): Promise<OrgWorkflow[]> {
+    const orgEnabled = await this.shadowGate.isOrgShadowEnabled(event.organizationId);
+    if (!orgEnabled) return [];
+
+    const eventType = normalizeTriggerType(event.type);
+    const rows = await this.prisma.orgWorkflow.findMany({
+      where: {
+        organizationId: event.organizationId,
+        status: 'ACTIVE',
+        OR: [{ shadowEnabled: true }, { systemMetadata: { not: Prisma.DbNull } }],
       },
     });
 

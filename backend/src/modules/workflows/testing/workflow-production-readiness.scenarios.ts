@@ -70,7 +70,7 @@ export const WORKFLOW_PRODUCTION_SCENARIOS: WorkflowProductionScenario[] = [
   { id: 37, name: 'Cancellation', layer: 'integration', status: 'automated', testRef: 'workflow-engine.production.spec.ts' },
   { id: 38, name: 'Process restart', layer: 'queue', status: 'automated', testRef: 'task-automation-outbox.spec.ts' },
   { id: 39, name: 'Legacy migration', layer: 'integration', status: 'automated', testRef: 'task-automation-workflow-migration.spec.ts' },
-  { id: 40, name: 'Shadow mode', layer: 'integration', status: 'automated', testRef: 'task-automation-workflow-migration.spec.ts' },
+  { id: 40, name: 'Shadow mode', layer: 'integration', status: 'automated', testRef: 'workflow-shadow.spec.ts' },
   { id: 41, name: 'Mobile UI', layer: 'frontend', status: 'automated', testRef: 'workflow-mobile-a11y.test.ts' },
   { id: 42, name: 'Accessibility', layer: 'frontend', status: 'automated', testRef: 'workflow-mobile-a11y.test.ts' },
 ];
