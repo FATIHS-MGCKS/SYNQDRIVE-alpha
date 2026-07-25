@@ -3,7 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TaskLinkedObjectResolverService } from './task-linked-object-resolver.service';
 import { TaskAutomationService } from './task-automation.service';
 import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
-import { TasksService } from './tasks.service';
+import { makeOperatorResourceScopeMock } from '@modules/operator-app/__fixtures__/operator-resource-scope.mock';
 import { createBookingTaskTestStore, type BookingTaskTestStore } from './booking-task-test-store';
 import { createNoopTaskAutomationOutboxDeps } from './outbox/task-automation-outbox-test.util';
 import { createDefaultTaskAutomationRuleResolverMock } from './automation/task-automation-rule-resolver.test.util';
@@ -26,7 +26,7 @@ export function createBookingTaskPipelineHarness(options?: {
     resolveForTask: jest.fn().mockResolvedValue([]),
   } as unknown as TaskLinkedObjectResolverService;
 
-  const tasks = new TasksService(prisma, activityLog, linkedObjectResolver);
+  const tasks = new TasksService(prisma, activityLog, linkedObjectResolver, makeOperatorResourceScopeMock() as any);
   const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
   const vehicleCleaningTasks = new VehicleCleaningTaskService(
     prisma,

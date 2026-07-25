@@ -68,6 +68,8 @@ export interface CreateHandoverProtocolPayload {
   damageIds?: string[];
   /** Actual station where handover occurred (defaults to planned station). */
   actualStationId?: string | null;
+  /** Supervisor override when booking/vehicle is outside actor station scope. */
+  scopeOverrideReason?: string | null;
   /** Technical observations to persist with the handover protocol (canonical VehicleComplaint rows). */
   technicalObservations?: HandoverTechnicalObservationDraft[];
 }

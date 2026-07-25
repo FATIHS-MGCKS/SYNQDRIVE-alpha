@@ -1321,6 +1321,78 @@ QR-Scanner: **nicht implementiert** (Textsuche only).
 
 ---
 
+## 30. Station- und Assignment-Autorisierung (Prompt 8)
+
+**Branch:** `cursor/operator-station-scope-46a7`  
+**Ziel:** Operatoren dürfen nicht organisationsweit alle Vorgänge bearbeiten — Scope aus Membership/DB, nie aus Request-Parametern.
+
+### 30.1 Implementierte Scope-Regeln
+
+| Regel | Verhalten |
+|-------|-----------|
+| Lesbare Stationen | `StationAccessService` + `EffectiveAccessEngine` → `allowedStationIds` |
+| Bearbeitbare Stationen | Gleiche Allowlist; Handover zusätzlich `fieldAgentAccess` |
+| Booking-Zugriff | Pickup/Return/Actual-Station **ODER** Fahrzeug `homeStationId`/`currentStationId` in Allowlist |
+| Task-Zugriff | Zugewiesen an Actor **ODER** `metadata.stationId` **ODER** verknüpftes Booking/Fahrzeug in Scope |
+| Task-Abschluss | Assignee **ODER** Station-Scope **ODER** Supervisor (`tasks.manage`) + `scopeOverrideReason` |
+| Client-`stationId` | Nur Schnittmenge mit Membership-Allowlist — nie Scope-Erweiterung |
+| `actualStationId` (Handover) | Muss geplante Booking-Station sein; Scope-Check serverseitig |
+| Org Admin | `stationBypass` via Engine (ORG_ADMIN / Stations V2 off) |
+| Supervisor-Override | `tasks.manage` + Pflicht-Begründung + Activity-Log `OPERATOR_STATION_SCOPE_OVERRIDE` |
+| Final-State | Unverändert (DONE/CANCELLED Tasks, Handover-State-Machine deferred) |
+
+### 30.2 Zentrale Policy-Komponenten
+
+| Komponente | Pfad |
+|------------|------|
+| Types | `operator-resource-scope.types.ts` |
+| Pure Policy | `operator-resource-scope.policy.ts` |
+| Nest Service | `operator-resource-scope.service.ts` |
+| Module | `operator-app.module.ts` |
+| Station Resolution (reused) | `StationAccessService`, `effective-access-engine.ts` |
+
+**Verdrahtung:** `BookingsService` (list/today/detail), `BookingsHandoverService` (pickup/return), `TasksService` (list/detail/complete).
+
+### 30.3 Testabdeckung (16 Policy-Tests)
+
+| Szenario | Status |
+|----------|--------|
+| Operator Station A → Station A | ✓ |
+| Operator Station A → Station B nicht | ✓ |
+| Org Admin organisationsweit | ✓ |
+| Supervisor Override mit Begründung | ✓ |
+| Override ohne Begründung → 400 | ✓ |
+| Fehlende Station-Zuordnung → leer | ✓ |
+| Booking Pickup/Return-Mismatch (OR) | ✓ |
+| Fahrzeug in anderer Station (vehicle current) | ✓ |
+| Zugewiesene Task cross-station lesbar | ✓ |
+| Fremde Task ohne Override nicht completable | ✓ |
+| `actualStationId` Validierung | ✓ |
+
+### 30.4 Verbleibende Sonderfälle
+
+| ID | Thema |
+|----|-------|
+| SCOPE-001 | Damages/Vehicle-Intelligence: nur `VehicleOwnershipGuard`, kein Station-Scope auf `POST /vehicles/:id/damages` |
+| SCOPE-002 | Documents org-scoped ohne Station-Filter |
+| SCOPE-003 | `dashboard-insights` / `fleet-map` ohne Station-Scope auf Listenebene |
+| SCOPE-004 | Task-List-Scope via Booking/Vehicle-ID-Lookup (zusätzliche DB-Queries) — Performance-Tuning später |
+| SCOPE-005 | Handover Final-State Guard (AUTHZ-OP-009) unverändert |
+
+### 30.5 Geänderte Dateien
+
+- `backend/src/modules/operator-app/operator-resource-scope.*`
+- `backend/src/modules/operator-app/operator-app.module.ts`
+- `backend/src/modules/bookings/bookings.service.ts`
+- `backend/src/modules/bookings/bookings-handover.service.ts`
+- `backend/src/modules/bookings/bookings.controller.ts`
+- `backend/src/modules/bookings/handover.types.ts`
+- `backend/src/modules/tasks/tasks.service.ts`
+- `backend/src/modules/tasks/tasks.controller.ts`
+- `backend/src/modules/tasks/dto/task.dto.ts`
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

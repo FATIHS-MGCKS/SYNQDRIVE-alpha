@@ -32,6 +32,7 @@ import { BookingEligibilityDecisionService } from './booking-eligibility-decisio
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
 import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-booking-context.service';
+import { OperatorAppModule } from '@modules/operator-app/operator-app.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-
     forwardRef(() => PaymentsModule),
     forwardRef(() => VehiclesModule),
     ActivityLogModule,
+    OperatorAppModule,
   ],
   controllers: [BookingsController],
   providers: [

@@ -53,8 +53,8 @@ describe('TasksController', () => {
 
   it('delegates list to TasksService.listTasks with bucket filters', async () => {
     tasksService.listTasks.mockResolvedValue([]);
-    await controller.findAll(orgId, { bucket: 'NOW', status: 'OPEN' } as any);
-    expect(tasksService.listTasks).toHaveBeenCalledWith(orgId, expect.objectContaining({ bucket: 'NOW', status: 'OPEN' }));
+    await controller.findAll(orgId, { bucket: 'NOW', status: 'OPEN' } as any, { user } as any);
+    expect(tasksService.listTasks).toHaveBeenCalledWith(orgId, expect.objectContaining({ bucket: 'NOW', status: 'OPEN', actorUserId: user.id }));
   });
 
   it('delegates getTaskById with actor context', async () => {
