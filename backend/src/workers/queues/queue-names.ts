@@ -28,4 +28,5 @@ export const QUEUE_NAMES = {
   VOICE_WEBHOOK_PROCESS: 'voice.webhook.process',
   /** Device connection webhook inbox async processing — connectivity retry/DLQ. */
   CONNECTIVITY_WEBHOOK_PROCESS: 'connectivity.webhook.process',
+  WORKFLOW_EVENT_OUTBOX: 'workflow.event.outbox',
 } as const;

@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-domain-event-sources-v49828-2026-07-25',
+    version: '4.9.828',
+    title: 'V4.9.828 — Workflow domain event source wiring (Phase 4 Prompt 18)',
+    summary: [
+      'Priority Fachmodule emit via WorkflowEventOutboxEmitterService (feature-flagged per group).',
+      'Wired: booking lifecycle/timing, vehicle health/DTC/telemetry, billing invoice/payment, customer verification/documents, damages, service, task overdue.',
+      'Stable occurrenceIds for recurring findings; correlationId/causationId on lifecycle events.',
+      'Customer document expiring daily cron; connectivity telemetry events from ConnectivityAlertService.',
+      'Tests: workflow-event-source.spec.ts; registry doc §8 source table updated.',
+    ],
+    reason: 'Connect domain truth services to transactional outbox so workflow automation reacts to canonical business facts.',
+    previousBehavior: 'Only a few producers (confirmed/returned/overdue/critical) wrote outbox rows; most registry events had no backend source.',
+    details:
+      'WORKFLOW_EVENT_EMIT_* env flags per group. Parallel notification paths remain for gradual rollout. Gaps documented: geofence, connectivity lost/restored, support, notification bridge.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T09:00:00.000Z',
+  },
+  {
+    id: 'workflow-event-outbox-worker-v49827-2026-07-25',
+    version: '4.9.827',
+    title: 'V4.9.827 — Workflow domain event outbox worker (Phase 4 Prompt 17)',
+    summary: [
+      'BullMQ worker on queue workflow.event.outbox with atomic claim, workerId, lease + heartbeat.',
+      'Exponential backoff + jitter, max attempts, error classification (retryable/permanent/validation/tenant).',
+      'Dead letter + audited replay API (summary only, no raw DLQ in frontend).',
+      'Prometheus metrics: lag, throughput, failures, dead-letter; structured logs with eventId/correlationId.',
+      'Graceful shutdown, health endpoint, ops runbook docs/operations/workflow-event-outbox-operations-2026-07.md.',
+    ],
+    reason: 'Dispatch validated workflow domain events from transactional outbox reliably at scale.',
+    previousBehavior: 'Outbox rows stayed PENDING after enqueue — no dispatch worker.',
+    details:
+      'Includes foundation from Prompts 14–16 (registry, envelope, transactional outbox) on branch. Replay: POST .../workflow-event-outbox/dead-letters/:id/replay.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T08:30:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

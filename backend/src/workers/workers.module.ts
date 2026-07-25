@@ -9,6 +9,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automation-outbox.module';
+import { WorkflowEventOutboxModule } from '@modules/workflows/outbox/workflow-event-outbox.module';
 import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
 import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
@@ -29,6 +30,7 @@ import { NotificationEvaluationProcessor } from './processors/notification-evalu
 import { NotificationDeliveryProcessor } from './processors/notification-delivery.processor';
 import { PaymentEmailProcessor } from './processors/payment-email.processor';
 import { TaskAutomationOutboxProcessor } from './processors/task-automation-outbox.processor';
+import { WorkflowEventOutboxProcessor } from './processors/workflow-event-outbox.processor';
 import { BatteryV2Processor } from './processors/battery-v2.processor';
 import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
 import { DeviceConnectionWebhookProcessor } from './processors/device-connection-webhook.processor';
@@ -52,7 +54,9 @@ import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.s
 import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
 import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
 import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
+import { CustomerDocumentExpiringScheduler } from './schedulers/customer-document-expiring.scheduler';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
+import { CustomersModule } from '@modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -75,6 +79,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
       { name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS },
       { name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS },
       { name: QUEUE_NAMES.BOOKING_DOCUMENT_GENERATION },
+      { name: QUEUE_NAMES.WORKFLOW_EVENT_OUTBOX },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -83,12 +88,14 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     PaymentsModule,
     BillingModule,
     TaskAutomationOutboxModule,
+    WorkflowEventOutboxModule,
     BatteryV2JobsProducerModule,
     BatteryV2JobsModule,
     VoiceWebhookIngestionModule,
     VoiceAssistantModule,
     IamDataRetentionModule,
     BookingDocumentGenerationModule,
+    CustomersModule,
   ],
   providers: [
     // Processors
@@ -106,6 +113,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     NotificationDeliveryProcessor,
     PaymentEmailProcessor,
     TaskAutomationOutboxProcessor,
+    WorkflowEventOutboxProcessor,
     BatteryV2Processor,
     VoiceWebhookProcessor,
     DeviceConnectionWebhookProcessor,
@@ -130,6 +138,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     BatteryV2RetentionScheduler,
     VoiceRetentionScheduler,
     IamDataRetentionScheduler,
+    CustomerDocumentExpiringScheduler,
   ],
 })
 export class WorkersModule {}

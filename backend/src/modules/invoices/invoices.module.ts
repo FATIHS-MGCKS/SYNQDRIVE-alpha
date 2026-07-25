@@ -13,10 +13,12 @@ import { InvoiceOverdueSchedulerService } from './invoice-overdue-scheduler.serv
 import { InvoiceAttachmentsService } from './invoice-attachments.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { WorkflowEventOutboxCoreModule } from '@modules/workflows/outbox/workflow-event-outbox-core.module';
 
 @Module({
   imports: [
     TasksModule,
+    WorkflowEventOutboxCoreModule,
     forwardRef(() => DocumentsModule),
     forwardRef(() => OutboundEmailModule),
   ],

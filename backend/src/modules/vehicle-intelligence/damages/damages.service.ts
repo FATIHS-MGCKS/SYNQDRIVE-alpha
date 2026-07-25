@@ -40,6 +40,7 @@ import {
   type DamageResponseDto,
   type DamageStatsDto,
 } from './damage.mapper';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
 
 // Bound base64 damage images stored directly in Postgres (vehicle_damage_images).
 // TODO(object-storage): replace inline base64 persistence with object storage keys;
@@ -125,6 +126,7 @@ export class DamagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasks: TasksService,
+    private readonly workflowEmitter: WorkflowEventOutboxEmitterService,
   ) {}
 
   /**
@@ -476,46 +478,80 @@ export class DamagesService {
     const source = dto.source ?? DamageSource.MANUAL;
     const liabilityStatus = dto.liabilityStatus ?? defaultLiabilityForSource(source);
 
-    const row = await this.prisma.vehicleDamage.create({
-      data: {
-        vehicle: { connect: { id: vehicleId } },
-        damageType: dto.damageType,
-        severity,
-        status: dto.status ?? DamageStatus.OPEN,
-        description: dto.description,
-        locationView: dto.locationView ?? DamageLocationView.UNKNOWN,
-        locationX: dto.locationX,
-        locationY: dto.locationY,
-        locationLabel: dto.locationLabel,
-        estimatedCostCents: dto.estimatedCostCents,
-        repairCostCents: dto.repairCostCents,
-        chargedToCustomerCents: dto.chargedToCustomerCents,
-        depositHoldCents: dto.depositHoldCents,
-        source,
-        rentalImpact: dto.rentalImpact ?? defaultRentalImpactForSeverity(severity),
-        evidenceStatus,
-        liabilityStatus,
-        liabilityNote: dto.liabilityNote,
-        reportedBy: dto.reportedBy,
-        ...(dto.bookingId ? { booking: { connect: { id: dto.bookingId } } } : {}),
-        ...(dto.customerId ? { customer: { connect: { id: dto.customerId } } } : {}),
-        ...(dto.handoverProtocolId
-          ? { handoverProtocol: { connect: { id: dto.handoverProtocolId } } }
-          : {}),
-        ...(dto.taskId ? { task: { connect: { id: dto.taskId } } } : {}),
-        ...(imageCount
-          ? {
-              images: {
-                create: dto.images!.map((img) => ({
-                  imageData: img.imageData,
-                  caption: img.caption,
-                  mimeType: this.extractImageMime(img.imageData),
-                })),
-              },
-            }
-          : {}),
-      },
-      include: DAMAGE_INCLUDE,
+    const row = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.vehicleDamage.create({
+        data: {
+          vehicle: { connect: { id: vehicleId } },
+          damageType: dto.damageType,
+          severity,
+          status: dto.status ?? DamageStatus.OPEN,
+          description: dto.description,
+          locationView: dto.locationView ?? DamageLocationView.UNKNOWN,
+          locationX: dto.locationX,
+          locationY: dto.locationY,
+          locationLabel: dto.locationLabel,
+          estimatedCostCents: dto.estimatedCostCents,
+          repairCostCents: dto.repairCostCents,
+          chargedToCustomerCents: dto.chargedToCustomerCents,
+          depositHoldCents: dto.depositHoldCents,
+          source,
+          rentalImpact: dto.rentalImpact ?? defaultRentalImpactForSeverity(severity),
+          evidenceStatus,
+          liabilityStatus,
+          liabilityNote: dto.liabilityNote,
+          reportedBy: dto.reportedBy,
+          ...(dto.bookingId ? { booking: { connect: { id: dto.bookingId } } } : {}),
+          ...(dto.customerId ? { customer: { connect: { id: dto.customerId } } } : {}),
+          ...(dto.handoverProtocolId
+            ? { handoverProtocol: { connect: { id: dto.handoverProtocolId } } }
+            : {}),
+          ...(dto.taskId ? { task: { connect: { id: dto.taskId } } } : {}),
+          ...(imageCount
+            ? {
+                images: {
+                  create: dto.images!.map((img) => ({
+                    imageData: img.imageData,
+                    caption: img.caption,
+                    mimeType: this.extractImageMime(img.imageData),
+                  })),
+                },
+              }
+            : {}),
+        },
+        include: DAMAGE_INCLUDE,
+      });
+
+      const severityLabel =
+        severity === DamageSeverity.SEVERE
+          ? 'severe'
+          : severity === DamageSeverity.MODERATE
+            ? 'moderate'
+            : 'minor';
+
+      await this.workflowEmitter.enqueueInTransaction(tx, {
+        group: 'damage',
+        organizationId: orgId,
+        eventType: 'damage.reported',
+        source: 'damages',
+        entityType: 'damage',
+        entityId: created.id,
+        idempotencyKey: `damage.reported:${created.id}`,
+        correlationId: `vehicle-damage:${vehicleId}`,
+        payload: {
+          damageId: created.id,
+          vehicleId,
+          severity: severityLabel,
+          reportedBy:
+            source === DamageSource.MANUAL
+              ? 'operator'
+              : source === DamageSource.HANDOVER
+                ? 'inspection'
+                : 'system',
+          ...(dto.bookingId ? { bookingId: dto.bookingId } : {}),
+        },
+      });
+
+      return created;
     });
 
     return mapDamageToResponse(row);

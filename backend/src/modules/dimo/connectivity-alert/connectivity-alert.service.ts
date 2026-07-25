@@ -1,5 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import { buildVehicleFindingOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
 import { NotificationCoreService } from '@modules/notifications/notification-core.service';
 import { NotificationRepository } from '@modules/notifications/notification.repository';
 import {
@@ -44,6 +46,7 @@ export class ConnectivityAlertService {
     private readonly prisma: PrismaService,
     private readonly notificationCore: NotificationCoreService,
     @Optional() private readonly notificationRepository?: NotificationRepository,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {}
 
   async onDeviceUnplugged(input: DeviceUnplugAlertInput): Promise<void> {
@@ -171,6 +174,7 @@ export class ConnectivityAlertService {
         severity: NotificationSeverity.WARNING,
         sourceRef: `connectivity:telemetry:soft:${input.vehicleId}`,
       });
+      await this.emitTelemetryWorkflowEvent(input, 'vehicle.telemetry.soft_offline');
       await this.resolveStateAlert({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
@@ -183,6 +187,7 @@ export class ConnectivityAlertService {
         severity: NotificationSeverity.WARNING,
         sourceRef: `connectivity:telemetry:offline:${input.vehicleId}`,
       });
+      await this.emitTelemetryWorkflowEvent(input, 'vehicle.telemetry.offline');
       await this.resolveStateAlert({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
@@ -275,6 +280,61 @@ export class ConnectivityAlertService {
         eventType: ConnectivityAlertType.CONNECTIVITY_STATE_UNKNOWN,
       });
     }
+  }
+
+  private async emitTelemetryWorkflowEvent(
+    input: RuntimeConnectivityAlertSyncInput,
+    eventType: 'vehicle.telemetry.soft_offline' | 'vehicle.telemetry.offline',
+  ): Promise<void> {
+    if (!this.workflowEmitter?.isGroupEnabled('vehicleTelemetry')) return;
+
+    const lastSignalAt = this.resolveLastSignalIso(input);
+    if (!lastSignalAt) return;
+
+    const occurrenceId = buildVehicleFindingOccurrenceId(
+      eventType,
+      input.vehicleId,
+      input.telemetryFreshness,
+    );
+
+    await this.workflowEmitter.enqueueStandalone({
+      group: 'vehicleTelemetry',
+      organizationId: input.organizationId,
+      eventType,
+      source: 'telemetry',
+      entityType: 'vehicle',
+      entityId: input.vehicleId,
+      correlationId: `vehicle-telemetry:${input.vehicleId}`,
+      occurrenceId,
+      occurredAt: input.observedAt,
+      payload: {
+        vehicleId: input.vehicleId,
+        lastSignalAt,
+        ...(input.minutesSinceSignal != null
+          ? { minutesSinceSignal: input.minutesSinceSignal }
+          : {}),
+        source: this.mapTelemetrySource(input.provider),
+      },
+    });
+  }
+
+  private resolveLastSignalIso(input: RuntimeConnectivityAlertSyncInput): string | null {
+    if (!input.lastSignalAt) return null;
+    const date =
+      input.lastSignalAt instanceof Date
+        ? input.lastSignalAt
+        : new Date(input.lastSignalAt);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString();
+  }
+
+  private mapTelemetrySource(
+    provider: string,
+  ): 'dimo' | 'hm' | 'aggregated' {
+    const normalized = provider.trim().toUpperCase();
+    if (normalized === 'DIMO') return 'dimo';
+    if (normalized === 'HM' || normalized === 'HIGH_MOBILITY') return 'hm';
+    return 'aggregated';
   }
 
   private vehicleTemplateParams(input: {

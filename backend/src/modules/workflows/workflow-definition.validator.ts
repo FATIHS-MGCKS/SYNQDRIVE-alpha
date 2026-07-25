@@ -2,13 +2,16 @@ import { BadRequestException } from '@nestjs/common';
 import {
   APPROVAL_REQUIRED_ACTIONS,
   LEGACY_ACTION_TO_CANONICAL,
-  LEGACY_TRIGGER_TO_EVENT,
   WORKFLOW_ACTION_TYPES,
   WORKFLOW_CATEGORIES,
   WORKFLOW_EVENT_TYPES,
   type WorkflowActionType,
   type WorkflowEventType,
 } from './workflow.constants';
+import {
+  LEGACY_TRIGGER_TO_EVENT,
+  resolveCanonicalEventType,
+} from './registry';
 import { normalizeVehicleStatusInput } from './vehicle-status.util';
 
 export interface WorkflowTriggerDef {
@@ -37,7 +40,7 @@ export interface WorkflowScopeDef {
 
 export function normalizeTriggerType(raw: string): WorkflowEventType | string {
   if ((WORKFLOW_EVENT_TYPES as readonly string[]).includes(raw)) return raw;
-  return LEGACY_TRIGGER_TO_EVENT[raw] ?? raw;
+  return resolveCanonicalEventType(raw);
 }
 
 export function normalizeActionType(raw: string): string {
