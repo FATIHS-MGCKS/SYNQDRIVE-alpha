@@ -21,7 +21,9 @@ import type {
   OperatorBookingContextDto,
   OperatorCustomerSearchItemDto,
   OperatorDocumentPreviewGrantDto,
+  OperatorHandoverSessionResumeDto,
   OperatorProcess,
+  OperatorVehicleResumeDto,
 } from './operator-data.types';
 import { OPERATOR_DOCUMENT_PERMISSION_REQUIREMENTS } from './operator-app-permission.constants';
 import { OperatorDocumentAuditService } from './operator-document-audit.service';
@@ -73,6 +75,68 @@ export class OperatorAppService {
       canStartPickup: detail.core.status === 'CONFIRMED',
       canStartReturn: detail.core.status === 'ACTIVE',
     });
+  }
+
+  async getHandoverSessionResume(
+    orgId: string,
+    sessionId: string,
+    actor: { userId: string; membershipRole?: string | null; platformRole?: string | null },
+  ): Promise<OperatorHandoverSessionResumeDto> {
+    await this.assertBookingsRead(actor, orgId);
+    const session = await this.prisma.bookingHandoverSession.findFirst({
+      where: { id: sessionId, organizationId: orgId },
+      select: {
+        id: true,
+        bookingId: true,
+        vehicleId: true,
+        kind: true,
+        status: true,
+        expiresAt: true,
+      },
+    });
+    if (!session) {
+      throw new NotFoundException('Handover session not found');
+    }
+
+    const expired =
+      session.expiresAt != null && session.expiresAt.getTime() <= Date.now();
+    const terminal = ['COMPLETED', 'CANCELLED', 'SUPERSEDED'].includes(session.status);
+
+    return {
+      sessionId: session.id,
+      bookingId: session.bookingId,
+      vehicleId: session.vehicleId,
+      kind: session.kind,
+      lifecycleStatus: session.status,
+      editable: !terminal && !expired,
+      expired,
+    };
+  }
+
+  async getVehicleResume(
+    orgId: string,
+    vehicleId: string,
+    actor: { userId: string; membershipRole?: string | null; platformRole?: string | null },
+  ): Promise<OperatorVehicleResumeDto> {
+    await this.assertBookingsRead(actor, orgId);
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId: orgId },
+      select: {
+        id: true,
+        make: true,
+        model: true,
+        licensePlate: true,
+      },
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+    const displayName = [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim() || 'Fahrzeug';
+    return {
+      vehicleId: vehicle.id,
+      displayName,
+      licensePlate: vehicle.licensePlate ?? '',
+    };
   }
 
   async searchCustomers(

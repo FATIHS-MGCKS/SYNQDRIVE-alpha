@@ -6,6 +6,7 @@ import { OperatorConnectivityBanner } from './components/OperatorConnectivityBan
 import { OperatorConnectivityBridge } from './connectivity/OperatorConnectivityBridge';
 import { OperatorDesktopOnlyNotice } from './components/OperatorDesktopOnlyNotice';
 import { OperatorHandoverRefreshBridge } from './components/OperatorHandoverRefreshBridge';
+import { OperatorProcessRouteBridge } from './components/OperatorProcessRouteBridge';
 import { OperatorHeader } from './components/OperatorHeader';
 import { OperatorDataProvider } from './context/OperatorDataContext';
 import { OperatorShellProvider, useOperatorShell } from './context/OperatorShellContext';
@@ -62,6 +63,7 @@ function OperatorShellInner() {
     <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
       <OperatorHandoverRefreshBridge />
       <OperatorDeepLinkBridge />
+      <OperatorProcessRouteBridge />
       <OperatorConnectivityBridge />
       <OperatorConnectivityBanner />
       <OperatorHeader />

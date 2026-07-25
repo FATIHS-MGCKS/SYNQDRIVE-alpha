@@ -6,9 +6,14 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { DamageSource } from '../../rental/lib/damage.types';
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 import type { DamageResponse } from '../../rental/lib/damage.types';
+import {
+  buildOperatorVehicleUrl,
+  parseOperatorPath,
+} from '../lib/operatorRoutes';
 import {
   OperatorDamageCaptureFlow,
   type OperatorDamageCaptureContext,
@@ -31,10 +36,12 @@ export interface OperatorDamageCaptureOpenArgs {
 
 interface OperatorDamageCaptureContextValue {
   openDamageCapture: (args: OperatorDamageCaptureOpenArgs) => void;
+  closeDamageCapture: () => void;
 }
 
 const OperatorDamageCaptureCtx = createContext<OperatorDamageCaptureContextValue>({
   openDamageCapture: () => {},
+  closeDamageCapture: () => {},
 });
 
 export function useOperatorDamageCapture() {
@@ -42,10 +49,16 @@ export function useOperatorDamageCapture() {
 }
 
 export function OperatorDamageCaptureProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [context, setContext] = useState<OperatorDamageCaptureContext | null>(null);
 
   const openDamageCapture = useCallback((args: OperatorDamageCaptureOpenArgs) => {
+    const targetPath = `/operator/vehicles/${encodeURIComponent(args.vehicleId)}/damage`;
+    if (location.pathname !== targetPath) {
+      navigate(targetPath);
+    }
     setContext({
       vehicleId: args.vehicleId,
       vehicleName: args.vehicleName ?? 'Fahrzeug',
@@ -61,18 +74,25 @@ export function OperatorDamageCaptureProvider({ children }: { children: ReactNod
       onCreated: args.onCreated,
     });
     setIsOpen(true);
-  }, []);
+  }, [location.pathname, navigate]);
 
-  const handleClose = useCallback(() => {
+  const closeDamageCapture = useCallback(() => {
     setIsOpen(false);
-  }, []);
+    const route = parseOperatorPath(location.pathname);
+    if (route?.kind === 'vehicle-damage' && route.vehicleId) {
+      navigate(buildOperatorVehicleUrl(route.vehicleId), { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
-  const value = useMemo(() => ({ openDamageCapture }), [openDamageCapture]);
+  const value = useMemo(
+    () => ({ openDamageCapture, closeDamageCapture }),
+    [openDamageCapture, closeDamageCapture],
+  );
 
   return (
     <OperatorDamageCaptureCtx.Provider value={value}>
       {children}
-      <OperatorDamageCaptureFlow isOpen={isOpen} onClose={handleClose} context={context} />
+      <OperatorDamageCaptureFlow isOpen={isOpen} onClose={closeDamageCapture} context={context} />
     </OperatorDamageCaptureCtx.Provider>
   );
 }

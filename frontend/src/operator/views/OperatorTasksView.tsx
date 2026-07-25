@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { ListTodo, Plus } from 'lucide-react';
 import { apiTaskPriorityLabelDe } from '../../lib/tasks/task-labels';
 import { api, type ApiTask, type ApiTaskPriority } from '../../lib/api';
@@ -9,6 +10,7 @@ import { useFleetVehicles } from '../../rental/FleetContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { useOperatorNavigation } from '../hooks/useOperatorNavigation';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
@@ -36,6 +38,8 @@ export function OperatorTasksView() {
   const { taskSummary, tasksLoading, tasksError, reloadTasks } = useOperatorData();
   const { fleetVehicles } = useFleetVehicles();
   const { openSheet, pendingTasksBookingId, setPendingTasksBookingId } = useOperatorShell();
+  const { openTask: navigateToTask, goToTab } = useOperatorNavigation();
+  const routeTaskId = useParams().taskId ?? null;
   const isTablet = useOperatorTabletLayout();
   const userId = getOperatorUserId();
 
@@ -142,12 +146,36 @@ export function OperatorTasksView() {
     });
   };
 
+  useEffect(() => {
+    if (!routeTaskId) return;
+    setSelectedTaskId(routeTaskId);
+  }, [routeTaskId]);
+
+  useEffect(() => {
+    if (!routeTaskId || !orgId) return;
+    if (sourceTasks.some((task) => task.id === routeTaskId)) return;
+    let cancelled = false;
+    void api.tasks
+      .get(orgId, routeTaskId)
+      .then((task) => {
+        if (cancelled) return;
+        setRemoteTasks((current) =>
+          current.some((row) => row.id === task.id) ? current : sortOperatorTasks([...current, task]),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, routeTaskId, sourceTasks]);
+
   const openTask = useCallback(
     (task: ApiTask, options?: { focusComment?: boolean }) => {
       setFocusComment(Boolean(options?.focusComment));
       setSelectedTaskId(task.id);
+      navigateToTask(task.id);
     },
-    [],
+    [navigateToTask],
   );
 
   const summaryRow = taskSummary && (
@@ -351,6 +379,7 @@ export function OperatorTasksView() {
           onClick={() => {
             setSelectedTaskId(null);
             setFocusComment(false);
+            goToTab('tasks', { replace: true });
           }}
         >
           ← Zurück zur Liste

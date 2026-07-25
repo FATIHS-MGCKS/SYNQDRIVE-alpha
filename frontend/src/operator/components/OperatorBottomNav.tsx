@@ -6,6 +6,8 @@ import {
   ScanLine,
 } from 'lucide-react';
 import type { OperatorTab } from '../lib/operatorTypes';
+import { buildOperatorTabUrl } from '../lib/operatorRoutes';
+import { useOperatorNavigation } from '../hooks/useOperatorNavigation';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
 const NAV_ITEMS: { id: OperatorTab; label: string; icon: typeof CalendarDays }[] = [
@@ -18,6 +20,7 @@ const NAV_ITEMS: { id: OperatorTab; label: string; icon: typeof CalendarDays }[]
 
 export function OperatorBottomNav() {
   const { activeTab, setActiveTab } = useOperatorShell();
+  const { goToTab } = useOperatorNavigation();
 
   return (
     <nav
@@ -33,7 +36,10 @@ export function OperatorBottomNav() {
             <button
               key={item.id}
               type="button"
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                goToTab(item.id);
+              }}
               data-active={active ? 'true' : undefined}
               className={`sq-press flex min-h-[52px] min-w-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
                 active
@@ -41,6 +47,7 @@ export function OperatorBottomNav() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               aria-current={active ? 'page' : undefined}
+              aria-label={`${item.label} (${buildOperatorTabUrl(item.id)})`}
             >
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors ${

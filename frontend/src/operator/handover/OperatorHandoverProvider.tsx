@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
 import type {
@@ -14,6 +15,12 @@ import type {
   HandoverDialogKind,
 } from '../../rental/components/handover/HandoverProtocolDialog';
 import { mapOperatorContextToHandoverBooking, operatorApi } from '../lib/operatorApi';
+import {
+  buildOperatorBookingUrl,
+  buildOperatorHandoverUrl,
+  buildOperatorReturnUrl,
+  parseOperatorPath,
+} from '../lib/operatorRoutes';
 import { OperatorHandoverFlow } from './OperatorHandoverFlow';
 import { invalidateVehicleOperationalState } from '../../rental/lib/vehicle-operational-query';
 
@@ -24,11 +31,15 @@ export interface OperatorHandoverOpenArgs {
 }
 
 interface OperatorHandoverContextValue {
-  openHandover: (args: OperatorHandoverOpenArgs) => void;
+  openHandover: (args: OperatorHandoverOpenArgs) => void | Promise<void>;
+  closeHandover: () => void;
+  isHandoverOpen: boolean;
 }
 
 const OperatorHandoverCtx = createContext<OperatorHandoverContextValue>({
   openHandover: () => {},
+  closeHandover: () => {},
+  isHandoverOpen: false,
 });
 
 export function useOperatorHandover() {
@@ -48,6 +59,8 @@ export function OperatorHandoverProvider({
   isDarkMode: boolean;
 }) {
   const { orgId } = useRentalOrg();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [kind, setKind] = useState<HandoverDialogKind>('PICKUP');
   const [booking, setBooking] = useState<HandoverDialogBookingInfo | null>(null);
@@ -80,6 +93,14 @@ export function OperatorHandoverProvider({
 
   const openHandover = useCallback(
     async ({ bookingId, kind: nextKind, booking: seed }: OperatorHandoverOpenArgs) => {
+      const targetPath =
+        nextKind === 'RETURN'
+          ? buildOperatorReturnUrl(bookingId)
+          : buildOperatorHandoverUrl(bookingId);
+      if (location.pathname !== targetPath) {
+        navigate(targetPath);
+      }
+
       setKind(nextKind);
       setIsOpen(true);
 
@@ -115,8 +136,25 @@ export function OperatorHandoverProvider({
         /* keep seed */
       }
     },
-    [orgId],
+    [orgId, location.pathname, navigate],
   );
+
+  const closeHandover = useCallback(() => {
+    setIsOpen(false);
+    const route = parseOperatorPath(location.pathname);
+    if (route?.kind === 'draft' && booking?.id) {
+      navigate(buildOperatorBookingUrl(booking.id), { replace: true });
+      return;
+    }
+    if (route?.kind === 'booking-handover' || route?.kind === 'booking-return') {
+      const bookingId = route.bookingId ?? booking?.id;
+      if (bookingId) {
+        navigate(buildOperatorBookingUrl(bookingId), { replace: true });
+        return;
+      }
+      navigate('/operator', { replace: true });
+    }
+  }, [booking?.id, location.pathname, navigate]);
 
   const handleSuccess = useCallback(() => {
     if (orgId && booking?.vehicleId) {
@@ -136,14 +174,17 @@ export function OperatorHandoverProvider({
     window.dispatchEvent(new CustomEvent('handover:completed'));
   }, [booking, orgId, kind]);
 
-  const value = useMemo(() => ({ openHandover }), [openHandover]);
+  const value = useMemo(
+    () => ({ openHandover, closeHandover, isHandoverOpen: isOpen }),
+    [openHandover, closeHandover, isOpen],
+  );
 
   return (
     <OperatorHandoverCtx.Provider value={value}>
       {children}
       <OperatorHandoverFlow
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={closeHandover}
         kind={kind}
         orgId={orgId}
         booking={booking}

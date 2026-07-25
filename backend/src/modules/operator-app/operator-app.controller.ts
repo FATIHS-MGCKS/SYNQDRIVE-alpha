@@ -38,6 +38,34 @@ export class OperatorAppController {
     });
   }
 
+  @Get('handover-sessions/:sessionId/resume')
+  @RequirePermission('bookings', 'read')
+  getHandoverSessionResume(
+    @Param('orgId') orgId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: { id: string; membershipRole?: string; platformRole?: string },
+  ) {
+    return this.operatorApp.getHandoverSessionResume(orgId, sessionId, {
+      userId: user.id,
+      membershipRole: user.membershipRole,
+      platformRole: user.platformRole,
+    });
+  }
+
+  @Get('vehicles/:vehicleId/resume')
+  @RequirePermission('bookings', 'read')
+  getVehicleResume(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @CurrentUser() user: { id: string; membershipRole?: string; platformRole?: string },
+  ) {
+    return this.operatorApp.getVehicleResume(orgId, vehicleId, {
+      userId: user.id,
+      membershipRole: user.membershipRole,
+      platformRole: user.platformRole,
+    });
+  }
+
   @Get('customers/search')
   @RequirePermission('bookings', 'read')
   searchCustomers(

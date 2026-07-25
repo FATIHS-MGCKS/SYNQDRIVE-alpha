@@ -85,6 +85,22 @@ export interface OperatorDocumentPreviewGrantDto {
   audited: true;
 }
 
+export interface OperatorHandoverSessionResumeDto {
+  sessionId: string;
+  bookingId: string;
+  vehicleId: string;
+  kind: 'PICKUP' | 'RETURN';
+  lifecycleStatus: string;
+  editable: boolean;
+  expired: boolean;
+}
+
+export interface OperatorVehicleResumeDto {
+  vehicleId: string;
+  displayName: string;
+  licensePlate: string;
+}
+
 export interface OperatorBookingActionGateDto {
   allowed: boolean;
   reason: string | null;

@@ -9,6 +9,8 @@ describe('OperatorAppService', () => {
   const prisma = {
     customerDocument: { findMany: jest.fn() },
     customer: { findFirst: jest.fn(), findMany: jest.fn() },
+    bookingHandoverSession: { findFirst: jest.fn() },
+    vehicle: { findFirst: jest.fn() },
   };
   const customerDocuments = {
     getDocument: jest.fn(),
@@ -184,5 +186,67 @@ describe('OperatorAppService', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(audit.logSensitiveDocumentView).not.toHaveBeenCalled();
+  });
+
+  it('resumes handover session scoped to organization', async () => {
+    jest.spyOn(permissionUtil, 'assertMembershipPermission').mockResolvedValue(undefined);
+    prisma.bookingHandoverSession.findFirst.mockResolvedValue({
+      id: 'session-1',
+      bookingId: 'booking-1',
+      vehicleId: 'vehicle-1',
+      kind: 'PICKUP',
+      status: 'DRAFT',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+    });
+
+    const resume = await service.getHandoverSessionResume('org-1', 'session-1', workerActor);
+
+    expect(resume).toEqual(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        bookingId: 'booking-1',
+        editable: true,
+        expired: false,
+      }),
+    );
+    expect(prisma.bookingHandoverSession.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'session-1', organizationId: 'org-1' },
+      }),
+    );
+  });
+
+  it('rejects foreign organization handover session resume', async () => {
+    jest.spyOn(permissionUtil, 'assertMembershipPermission').mockResolvedValue(undefined);
+    prisma.bookingHandoverSession.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.getHandoverSessionResume('org-foreign', 'session-1', workerActor),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('marks cancelled handover session as non-editable', async () => {
+    jest.spyOn(permissionUtil, 'assertMembershipPermission').mockResolvedValue(undefined);
+    prisma.bookingHandoverSession.findFirst.mockResolvedValue({
+      id: 'session-1',
+      bookingId: 'booking-1',
+      vehicleId: 'vehicle-1',
+      kind: 'PICKUP',
+      status: 'CANCELLED',
+      expiresAt: null,
+    });
+
+    const resume = await service.getHandoverSessionResume('org-1', 'session-1', workerActor);
+    expect(resume.editable).toBe(false);
+    expect(resume.lifecycleStatus).toBe('CANCELLED');
+  });
+
+  it('rejects foreign organization vehicle resume', async () => {
+    jest.spyOn(permissionUtil, 'assertMembershipPermission').mockResolvedValue(undefined);
+    prisma.vehicle.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.getVehicleResume('org-foreign', 'vehicle-1', workerActor),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

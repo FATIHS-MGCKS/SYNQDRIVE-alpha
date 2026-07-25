@@ -5,8 +5,10 @@ import type {
   OperatorDamageCaptureSource,
   OperatorDamageListItemDto,
   OperatorDocumentPreviewGrantDto,
+  OperatorHandoverSessionResumeDto,
   OperatorProcess,
   OperatorTireMeasurementCaptureResultDto,
+  OperatorVehicleResumeDto,
 } from './operatorData.types';
 import type { DamageResponse, DamageSeverity, DamageSource } from '../../rental/lib/damage.types';
 import type { HandoverDialogBookingInfo, HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
@@ -76,6 +78,18 @@ export const operatorApi = {
   getBookingContext(orgId: string, bookingId: string, process: OperatorProcess) {
     return operatorSensitiveJson<OperatorBookingContextDto>(
       `/organizations/${orgId}/operator/bookings/${bookingId}/context?process=${encodeURIComponent(process)}`,
+    );
+  },
+
+  getHandoverSessionResume(orgId: string, sessionId: string) {
+    return operatorSensitiveJson<OperatorHandoverSessionResumeDto>(
+      `/organizations/${orgId}/operator/handover-sessions/${sessionId}/resume`,
+    );
+  },
+
+  getVehicleResume(orgId: string, vehicleId: string) {
+    return operatorSensitiveJson<OperatorVehicleResumeDto>(
+      `/organizations/${orgId}/operator/vehicles/${vehicleId}/resume`,
     );
   },
 

@@ -2557,6 +2557,43 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 50. Routing, Deep Links & Process Resume (Prompt 29 — V4.9.854)
+
+### 50.1 Kanonische Routen
+
+| Route | Zweck |
+|-------|--------|
+| `/operator` | Shell-Home (Tab via `?tab=`) |
+| `/operator/vehicles/:vehicleId` | Fahrzeug-Fokus (Scan) |
+| `/operator/vehicles/:vehicleId/damage` | Schadenerfassung (Overlay + Server-Resume) |
+| `/operator/bookings/:bookingId` | Buchungs-Fokus |
+| `/operator/bookings/:bookingId/handover` | Übergabe (Pickup) |
+| `/operator/bookings/:bookingId/return` | Rückgabe |
+| `/operator/tasks/:taskId` | Aufgaben-Detail |
+| `/operator/drafts/:draftId` | Handover-Session-Entwurf (→ Redirect auf handover/return) |
+
+### 50.2 Resume-Verhalten
+
+- `OperatorProcessRouteBridge` parst Pfad, validiert UUID, lädt org-scoped Server-State.
+- Handover/Return: `GET …/operator/bookings/:id/context?process=` + `evaluateHandoverResume`.
+- Damage: `GET …/operator/vehicles/:id/resume`.
+- Draft: `GET …/operator/handover-sessions/:sessionId/resume` → Redirect + Handover-Open.
+- Task: `GET …/tasks/:id` (Validierung); Detail in `OperatorTasksView` via `useParams`.
+- Fehler: `OperatorRouteError` (invalid-id, 403/404, finalized, draft-cancelled).
+- Provider `open`/`close` synchronisieren URL; Browser-Zurück schließt Overlays.
+
+### 50.3 Backend (neu)
+
+- `GET /organizations/:orgId/operator/handover-sessions/:sessionId/resume`
+- `GET /organizations/:orgId/operator/vehicles/:vehicleId/resume`
+
+### 50.4 Tests
+
+- `frontend/src/operator/lib/operatorRoutes.test.ts`
+- `backend/src/modules/operator-app/operator-app.service.spec.ts` (resume + foreign org)
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

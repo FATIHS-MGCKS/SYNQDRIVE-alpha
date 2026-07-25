@@ -45,15 +45,28 @@ export function OperatorShellProvider({ children }: { children: ReactNode }) {
   const deepLink = resolveOperatorDeepLink(
     typeof window !== 'undefined' ? window.location.pathname : '/operator',
     searchParams,
-    { vehicleId: params.vehicleId, bookingId: params.bookingId },
+    {
+      vehicleId: params.vehicleId,
+      bookingId: params.bookingId,
+      taskId: params.taskId,
+      draftId: params.draftId,
+    },
   );
 
   const initialTab =
     deepLink?.type === 'tab'
       ? deepLink.tab
-      : deepLink?.type === 'vehicle' || deepLink?.type === 'booking' || deepLink?.type === 'scan'
-        ? 'scan'
-        : parseTab(searchParams.get('tab')) ?? 'today';
+      : deepLink?.type === 'task'
+        ? 'tasks'
+        : deepLink?.type === 'vehicle' ||
+            deepLink?.type === 'booking' ||
+            deepLink?.type === 'scan' ||
+            deepLink?.type === 'vehicle-damage' ||
+            deepLink?.type === 'booking-handover' ||
+            deepLink?.type === 'booking-return' ||
+            deepLink?.type === 'draft'
+          ? 'scan'
+          : parseTab(searchParams.get('tab')) ?? 'today';
 
   const initialQuery =
     deepLink?.type === 'scan' ? deepLink.query : (searchParams.get('q') ?? '');

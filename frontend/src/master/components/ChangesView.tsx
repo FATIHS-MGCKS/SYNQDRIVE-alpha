@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-routing-resume-v49854-2026-07-25',
+    version: '4.9.854',
+    title: 'V4.9.854 — Operator App: Routing, Deep Links & Resume (Prompt 29)',
+    summary: [
+      'Prozess-Routen: `/operator/bookings/:id/handover|return`, `/operator/tasks/:id`, `/operator/vehicles/:id/damage`, `/operator/drafts/:id`.',
+      '`OperatorProcessRouteBridge` rekonstruiert Vorgänge nach Refresh aus Serverdaten (Booking-Context, Vehicle-Resume, Handover-Session-Resume).',
+      'Browser-Zurück schließt Overlays und navigiert zur Eltern-Route; Bottom-Nav synchronisiert Tab per `?tab=`.',
+      'Sichere Fehler-UI bei ungültiger ID, fremder Org (403/404), finalisiertem Vorgang oder abgebrochenem Entwurf.',
+      'Backend: `GET …/operator/handover-sessions/:sessionId/resume`, `GET …/operator/vehicles/:vehicleId/resume` (org-scoped).',
+      'Tests: `operatorRoutes.test.ts` (Deep Link, Refresh, Back, invalid ID, finalized, cancelled draft) + Service-Specs.',
+    ],
+    reason:
+      'Production-Readiness Prompt 29: Operative Vorgänge in der Operator App stabil adressierbar und nach Refresh wiederherstellbar machen.',
+    previousBehavior:
+      'Nur `/operator`, `/operator/vehicles/:id`, `/operator/bookings/:id`; Handover/Damage/Tasks als flüchtige Overlay-State ohne URL.',
+    details:
+      'Frontend: `operatorRoutes`, `operatorRouteResume`, `useOperatorNavigation`, `OperatorProcessRouteBridge`, Provider-URL-Sync. Keine Query-Parameter für Autorisierung.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:30:00.000Z',
+  },
+  {
     id: 'operator-tire-measure-hardening-v49853-2026-07-25',
     version: '4.9.853',
     title: 'V4.9.853 — Operator App: gehärtete manuelle Reifenmessung (Prompt 28)',
