@@ -47,7 +47,6 @@ const network: NetworkControls = {
 
 let pickupAttempts = 0;
 let taskCompleteAttempts = 0;
-let uploadAttempts = 0;
 
 const bookings = new Map<string, Record<string, unknown>>();
 const bookingDetails = new Map<string, BookingDetailDto>();
@@ -359,7 +358,6 @@ function seedOperatorState() {
   protocols.clear();
   pickupAttempts = 0;
   taskCompleteAttempts = 0;
-  uploadAttempts = 0;
   Object.assign(network, {
     offline: false,
     latencyMs: 0,
@@ -702,7 +700,6 @@ async function installOperatorRouteHandler(page: Page, profile: OperatorE2EProfi
     }
 
     if (url.includes('/document-extractions') && method === 'POST') {
-      uploadAttempts += 1;
       if (network.failNextUpload) {
         network.failNextUpload = false;
         return route.fulfill({ status: 422, body: JSON.stringify({ message: 'Upload rejected (E2E)' }) });
@@ -937,7 +934,7 @@ export async function advanceHandoverThroughSignatures(
   await page.getByRole('button', { name: 'Weiter' }).click();
 }
 
-export async function submitHandover(page: Page, kind: 'PICKUP' | 'RETURN' = 'PICKUP') {
+export async function submitHandover(page: Page) {
   const submit = page.getByTestId('operator-handover-submit');
   await expect(submit).toBeEnabled({ timeout: 20_000 });
   await submit.click();

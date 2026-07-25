@@ -17,7 +17,7 @@ import {
 test.describe('Operator App E2E — core field flows', () => {
   test.describe.configure({ mode: 'serial' });
 
-  test.beforeEach(async ({ page }, testInfo) => {
+  test.beforeEach(async (_context, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-375', 'Serial operator flows run on mobile-375');
   });
 
@@ -83,7 +83,7 @@ test.describe('Operator App E2E — core field flows', () => {
     await openOperatorApp(page);
     await page.getByRole('button', { name: 'Return starten' }).first().click();
     await advanceHandoverThroughSignatures(page, '15120', 'RETURN');
-    await submitHandover(page, 'RETURN');
+    await submitHandover(page);
     await expect(page.getByTestId('operator-handover-flow')).toHaveCount(0, { timeout: 20_000 });
 
     await page.goto(`/operator/bookings/${BOOKING_RETURN_ID}`, { waitUntil: 'domcontentloaded' });

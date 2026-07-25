@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-production-readiness-v49833-2026-07-25',
+    version: '4.9.833',
+    title: 'V4.9.833 — Operator App production readiness regression (Prompt 40)',
+    summary: [
+      'Full-repo regression battery after Operator Prompts 1–39: install, typecheck, lint, unit/integration/E2E, builds, Prisma validate, dependency audit, knip dead-code, madge circular-deps.',
+      'Operator suites green: 114 frontend unit + 11 backend handover + 26 Playwright E2E cases; no cross-area regressions attributed to Operator diff.',
+      'Audit: docs/audits/operator-app-production-readiness-2026-07.md — CONDITIONAL GO for Operator; repo-wide pre-existing warnings documented (IAM, Fleet health tests, backend tsc specs, npm audit).',
+      'Lint cleanup in operator E2E fixtures (unused vars).',
+    ],
+    reason:
+      'Close Operator production-readiness program with independent full regression and documented residual repo risks.',
+    previousBehavior:
+      'Prompt 39 delivered E2E acceptance; no consolidated full-repo regression report.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Operator',
+    createdAt: '2026-07-25T22:10:00.000Z',
+  },
+  {
     id: 'operator-app-e2e-v49832-2026-07-25',
     version: '4.9.832',
     title: 'V4.9.832 — Operator App E2E acceptance (Prompt 39)',
