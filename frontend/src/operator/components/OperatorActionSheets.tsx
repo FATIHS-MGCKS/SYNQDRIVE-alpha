@@ -6,10 +6,23 @@ import { OperatorPickupCheckSheet } from '../verification/OperatorPickupCheckShe
 import { OperatorAiUploadSheet } from './OperatorAiUploadSheet';
 import { OperatorTireMeasureSheet } from './OperatorTireMeasureSheet';
 import { OperatorTaskSheet } from './OperatorTaskSheet';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
+import { operatorSheetPermission } from '../lib/operatorPermissionGate.utils';
+import { OperatorSheetDenied } from './OperatorSheetDenied';
 
 export function OperatorActionSheets() {
   const { sheetAction, closeSheet } = useOperatorShell();
+  const { loading, can } = useOperatorPermissions();
+
   if (!sheetAction) return null;
+
+  if (!loading) {
+    const required = operatorSheetPermission(sheetAction);
+    if (!can(required)) {
+      return <OperatorSheetDenied action={sheetAction} />;
+    }
+  }
+
   if (sheetAction.type === 'ai-upload') {
     return <OperatorAiUploadSheet action={sheetAction} />;
   }

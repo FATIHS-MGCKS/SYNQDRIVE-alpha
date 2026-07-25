@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from 'react';
 import { api } from '../../lib/api';
+import { getStoredUser, isMasterAdmin } from '../../lib/auth';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { evaluateOperatorPermission } from '../lib/operatorPermissions';
 import type {
   HandoverDialogBookingInfo,
   HandoverDialogKind,
@@ -46,7 +48,7 @@ export function OperatorHandoverProvider({
   children: ReactNode;
   isDarkMode: boolean;
 }) {
-  const { orgId } = useRentalOrg();
+  const { orgId, userRole, userPermissions } = useRentalOrg();
   const [isOpen, setIsOpen] = useState(false);
   const [kind, setKind] = useState<HandoverDialogKind>('PICKUP');
   const [booking, setBooking] = useState<HandoverDialogBookingInfo | null>(null);
@@ -79,6 +81,15 @@ export function OperatorHandoverProvider({
 
   const openHandover = useCallback(
     async ({ bookingId, kind: nextKind, booking: seed }: OperatorHandoverOpenArgs) => {
+      const permissionAction = nextKind === 'PICKUP' ? 'operator.handover.start' : 'operator.return.start';
+      if (!isMasterAdmin()) {
+        const allowed = evaluateOperatorPermission(userPermissions, permissionAction, {
+          membershipRole: userRole,
+          fieldAgentAccess: getStoredUser()?.fieldAgentAccess ?? false,
+        });
+        if (!allowed) return;
+      }
+
       setKind(nextKind);
       setIsOpen(true);
 
@@ -165,7 +176,7 @@ export function OperatorHandoverProvider({
         }
       }
     },
-    [orgId],
+    [orgId, userPermissions, userRole],
   );
 
   const handleSuccess = useCallback(() => {

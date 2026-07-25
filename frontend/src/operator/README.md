@@ -6,9 +6,23 @@ Mobile/tablet-oriented field-operations surface at `/operator` inside the existi
 
 ## Entry
 
-- Topbar button **Operator** (rental + master apps), visible for `MASTER_ADMIN`, `ORG_ADMIN`, `SUB_ADMIN`, `WORKER`.
+- Topbar button **Operator** (rental + master apps), visible when `operator.app.access` is granted (`evaluateOperatorAccess` / `canAccessOperatorApp`).
 - Desktop: opens modal with copyable `/operator` URL (`OperatorEntryModal` + `OperatorLinkCard`).
 - Mobile/tablet: navigates directly to `/operator`.
+
+## Permissions (UX gates)
+
+Frontend gates are **UX only** — backend RBAC remains authoritative.
+
+| Hook / utility | Path | Role |
+|----------------|------|------|
+| `useOperatorPermissions()` | `hooks/useOperatorPermissions.ts` | Central `can` / `gate` / `gateFor` for all `operator.*` actions |
+| `useOperatorGatedSheet()` | `hooks/useOperatorGatedSheet.ts` | Permission-checked `openSheet` |
+| `operatorPermissionGate.utils` | `lib/operatorPermissionGate.utils.ts` | Tab/sheet → action mapping, gate merge |
+| `OperatorPermissionGate` | `components/OperatorPermissionGate.tsx` | Conditional render (skip data prefetch) |
+| `OperatorGatedActionButton` | `components/OperatorGatedActionButton.tsx` | Accessible disabled actions with `title` / `aria-disabled` |
+
+Registry: `lib/operatorPermissions.ts` (aligned with `backend/.../operator-permission.constants.ts`).
 
 ## Tabs
 

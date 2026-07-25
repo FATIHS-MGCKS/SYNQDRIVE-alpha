@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { ApiTask, ApiTaskSummary } from '../../lib/api';
 import {
   bucketsAffectedByTaskMutation,
-  canViewOperatorUnassignedBucket,
   dedupeTasksById,
   mergeOperatorTodayActionableTasks,
   bucketCount,
 } from './operatorTodayFeed.utils';
+import { canViewOperatorUnassignedBucket } from '../lib/operatorPermissionGate.utils';
 import { matchesTaskListInvalidation } from '../../lib/tasks/invalidate';
 
 function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id'>): ApiTask {
@@ -82,20 +82,20 @@ describe('operatorTodayFeed.utils', () => {
   it('gates unassigned bucket by tasks.manage permission', () => {
     expect(
       canViewOperatorUnassignedBucket({
-        userRole: 'WORKER',
-        hasPermission: () => false,
+        isMasterAdmin: false,
+        hasTasksManage: false,
       }),
     ).toBe(false);
     expect(
       canViewOperatorUnassignedBucket({
-        userRole: 'WORKER',
-        hasPermission: (module, level) => module === 'tasks' && level === 'manage',
+        isMasterAdmin: false,
+        hasTasksManage: true,
       }),
     ).toBe(true);
     expect(
       canViewOperatorUnassignedBucket({
-        userRole: 'ORG_ADMIN',
-        hasPermission: () => false,
+        isMasterAdmin: true,
+        hasTasksManage: false,
       }),
     ).toBe(true);
   });

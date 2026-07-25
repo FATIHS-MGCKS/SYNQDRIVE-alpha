@@ -20,7 +20,7 @@
 |-----------|------|------|
 | Module keys | `backend/src/shared/auth/permission.constants.ts` | `operator-app` added |
 | Membership JSON | `OrganizationMembership.permissions` | Storage (unchanged shape) |
-| Guard | `PermissionsGuard` + `OrgScopingGuard` | Enforcement |
+| Guard | `PermissionsGuard` + `OrgScopingGuard` + `VehicleOwnershipGuard` | Enforcement |
 | Effective access | `effective-access-engine.ts` | Station scope, overrides |
 | Station filter | `station-access.service.ts` | Resource station checks |
 | Task actions | `task-permission.constants.ts` | Pattern reference |
@@ -77,6 +77,30 @@
 | `service` | read | fleet-condition read/write (no handover) | denied |
 | `driver` | — | denied | denied |
 | `read_only` | read | read-only | denied |
+
+## Frontend facade (Prompt 6)
+
+| Component | Path | Role |
+|-----------|------|------|
+| Action registry mirror | `frontend/src/operator/lib/operatorPermissions.ts` | `evaluateOperatorPermission` / `canPerformOperatorAction` |
+| Central hook | `hooks/useOperatorPermissions.ts` | `can`, `gate`, `gateFor` for all UI surfaces |
+| Gated sheets | `hooks/useOperatorGatedSheet.ts` | Permission-checked `openSheet` |
+| Tab/sheet mapping | `lib/operatorPermissionGate.utils.ts` | `OPERATOR_TAB_PERMISSIONS`, `operatorSheetPermission` |
+| Denial copy | `lib/operatorPermissionMessages.ts` | Human-readable disabled reasons |
+| Conditional render | `components/OperatorPermissionGate.tsx` | Skip mount/prefetch without read access |
+| Accessible buttons | `components/OperatorGatedActionButton.tsx` | `title`, `aria-disabled` |
+
+**Important:** Frontend gates are UX only. Backend `PermissionsGuard` / services remain authoritative.
+
+## Vehicle-scoped routes (Prompt 7)
+
+Routes under `/vehicles/:vehicleId/*` use `VehicleOwnershipGuard` (no explicit `orgId` in path). As of V4.9.833 the guard enforces:
+
+1. Vehicle belongs to JWT `activeOrganizationId`
+2. User has **ACTIVE** `organizationMembership` in that org (same invariant as `OrgScopingGuard`)
+3. `request.tenantId` stamped for downstream services
+
+Master Admin bypass unchanged. Audit: `docs/audits/operator-app-production-readiness-2026-07.md` §29.
 
 ## Endpoint migration (deferred)
 

@@ -1,42 +1,58 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
 /**
  * Guards routes mounted at `:vehicleId` without an explicit org in the path.
  *
  * Rules:
  *  - MASTER_ADMIN: full pass-through.
- *  - Org member: vehicle must belong to their organizationId.
- *  - If vehicleId is not in the route params, the guard passes (route is not vehicle-specific).
+ *  - Org member: vehicle must belong to JWT `organizationId` AND user must have
+ *    an ACTIVE membership in that organization (same invariant as OrgScopingGuard).
+ *  - If vehicleId is absent from route params, the guard passes.
  */
 @Injectable()
 export class VehicleOwnershipGuard implements CanActivate {
   private readonly logger = new Logger(VehicleOwnershipGuard.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // If no authenticated user, defer to the auth guard (which runs first globally)
     if (!user) return true;
 
-    // MASTER_ADMIN can access any vehicle
-    if (user.platformRole === 'MASTER_ADMIN') return true;
+    if (user.platformRole === 'MASTER_ADMIN') {
+      const vehicleId: string | undefined = request.params?.vehicleId;
+      if (vehicleId) {
+        const vehicle = await this.prisma.vehicle.findUnique({
+          where: { id: vehicleId },
+          select: { organizationId: true },
+        });
+        if (vehicle?.organizationId) {
+          request.tenantId = vehicle.organizationId;
+        }
+      }
+      return true;
+    }
 
     const vehicleId: string | undefined = request.params?.vehicleId;
     if (!vehicleId) return true;
 
     const organizationId: string | undefined = user.organizationId;
     if (!organizationId) {
-      // User has no org — cannot access any vehicle-scoped data
       throw new NotFoundException('Vehicle not found');
     }
 
@@ -52,6 +68,24 @@ export class VehicleOwnershipGuard implements CanActivate {
       throw new NotFoundException('Vehicle not found');
     }
 
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: {
+        userId: user.id,
+        organizationId,
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      this.logger.warn(
+        `VehicleOwnershipGuard: no active membership for user ${user.id} in org ${organizationId}`,
+      );
+      this.iamMetrics?.recordCrossTenantDenial('membership');
+      throw new ForbiddenException('You do not have access to this organization');
+    }
+
+    request.tenantId = organizationId;
     return true;
   }
 }

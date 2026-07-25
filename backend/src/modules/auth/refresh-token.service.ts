@@ -54,6 +54,7 @@ type MembershipWithOrg = {
   status: MembershipStatus;
   membershipVersion: number;
   permissions: unknown;
+  fieldAgentAccess: boolean;
   organization: { companyName: string | null; logoUrl: string | null } | null;
 };
 
@@ -517,6 +518,7 @@ export class RefreshTokenService {
       membershipVersion: row.membershipVersion,
       permissions: row.permissions,
       organizationRoleId: row.organizationRoleId,
+      fieldAgentAccess: row.fieldAgentAccess,
       organization: row.organization,
     };
   }

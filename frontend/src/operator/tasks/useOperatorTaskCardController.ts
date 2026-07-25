@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import type { ApiTask, CompleteTaskPayload } from '../../lib/api';
-import { useRentalOrg } from '../../rental/RentalContext';
 import { taskRequiresResolutionNote } from '../../rental/lib/task-detail.utils';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import type { OperatorTaskCardActionKind } from './operatorTaskCard.utils';
 import { useOperatorTaskActions } from './useOperatorTaskActions';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
 
 export interface UseOperatorTaskCardControllerOptions {
   onTaskChanged?: () => void | Promise<void>;
@@ -16,14 +16,11 @@ export function useOperatorTaskCardController({
   onTaskChanged,
   onOpenTask,
 }: UseOperatorTaskCardControllerOptions) {
-  const { userRole, hasPermission } = useRentalOrg();
+  const { can } = useOperatorPermissions();
   const { setPendingTasksBookingId, setActiveTab, setSelectedVehicleId } = useOperatorShell();
   const { openHandover } = useOperatorHandover();
 
-  const canOverrideChecklist =
-    userRole === 'ORG_ADMIN' ||
-    userRole === 'MASTER_ADMIN' ||
-    hasPermission('tasks', 'manage');
+  const canOverrideChecklist = can('operator.task.complete', { allowSupervisorFallback: true });
 
   const { mutating, start, waiting, complete } = useOperatorTaskActions(() => {
     void onTaskChanged?.();
