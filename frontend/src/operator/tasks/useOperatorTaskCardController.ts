@@ -45,7 +45,7 @@ export function useOperatorTaskCardController({
               onOpenTask(task);
               return null;
             }
-            await complete(task.id);
+            await complete(task.id, undefined, task.updatedAt);
             return null;
           case 'comment':
             onOpenTask(task, { focusComment: true });
@@ -118,6 +118,7 @@ export function useOperatorTaskCardController({
     mutating,
     canOverrideChecklist,
     handleAction,
-    completeWithNote: (taskId: string, payload?: CompleteTaskPayload) => complete(taskId, payload),
+    completeWithNote: (taskId: string, payload?: CompleteTaskPayload, expectedUpdatedAt?: string) =>
+      complete(taskId, payload, expectedUpdatedAt),
   };
 }

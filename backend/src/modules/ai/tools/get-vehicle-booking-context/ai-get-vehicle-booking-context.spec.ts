@@ -2,7 +2,7 @@ import { MembershipRole } from '@prisma/client';
 import { AiGetVehicleBookingContextTool } from './ai-get-vehicle-booking-context.tool';
 import { buildAiExecutionContext } from '../../execution/ai-execution-context.builder';
 import type { AiExecutionContext } from '../../execution/ai-execution-context.types';
-import type { AiVehicleScopeResolver } from '../../execution/ai-execution-context.types';
+import type { AiPrismaVehicleScopeResolver } from '../ai-prisma-vehicle-scope.resolver';
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ORG_ID = '99999999-9999-4999-8999-999999999999';
@@ -81,7 +81,7 @@ function makeOperationalContext(overrides: Record<string, unknown> = {}) {
 describe('AiGetVehicleBookingContextTool', () => {
   let prisma: { vehicle: { findFirst: jest.Mock } };
   let vehicleBookingContext: { getVehicleBookingOperationalContext: jest.Mock };
-  let vehicleScopeResolver: AiVehicleScopeResolver;
+  let vehicleScopeResolver: AiPrismaVehicleScopeResolver;
   let tool: AiGetVehicleBookingContextTool;
 
   beforeEach(() => {
@@ -101,11 +101,12 @@ describe('AiGetVehicleBookingContextTool', () => {
       getVehicleBookingOperationalContext: jest.fn().mockResolvedValue(makeOperationalContext()),
     };
     vehicleScopeResolver = {
+      prisma: prisma as never,
       findVehicleInOrganization: jest.fn(async (vehicleId, organizationId) => {
         if (vehicleId !== VEHICLE_ID || organizationId !== ORG_ID) return null;
         return { id: VEHICLE_ID, organizationId: ORG_ID, currentStationId: null };
       }),
-    };
+    } as unknown as AiPrismaVehicleScopeResolver;
     tool = new AiGetVehicleBookingContextTool(
       prisma as never,
       vehicleBookingContext as never,

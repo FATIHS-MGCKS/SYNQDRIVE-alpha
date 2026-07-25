@@ -7,6 +7,7 @@ import { TireSetupStatus, VehicleStatus } from '@prisma/client';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 
 @Injectable()
 export class TireRecalculationScheduler {
@@ -46,7 +47,10 @@ export class TireRecalculationScheduler {
         'tire-recalc',
         { vehicleId: s.vehicleId },
         {
-          jobId: `tire-recalc:${s.vehicleId}:${hourBucket}`,
+          jobId: sanitizeBullMqJobId({
+            namespace: 'tire-recalc',
+            key: `${s.vehicleId}:${hourBucket}`,
+          }),
           removeOnComplete: { count: 500, age: 24 * 3600 },
           removeOnFail: { count: 1000, age: 7 * 24 * 3600 },
         },

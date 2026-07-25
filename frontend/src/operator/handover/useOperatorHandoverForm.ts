@@ -13,6 +13,10 @@ import {
   type OperatorHandoverFormState,
 } from './operatorHandoverPayload';
 import type { OperatorHandoverObservationDraft } from './operatorHandoverTechnicalObservations';
+import {
+  mergeHandoverDraftIntoState,
+  serializeHandoverDraftState,
+} from './operatorHandoverDraft.utils';
 
 export function useOperatorHandoverForm(
   isOpen: boolean,
@@ -28,6 +32,9 @@ export function useOperatorHandoverForm(
   const [loadingDamages, setLoadingDamages] = useState(false);
   const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
   const [damageError, setDamageError] = useState<string | null>(null);
+  const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const telemetryAppliedRef = useRef<string | null>(null);
 
   const { prefill: telemetryPrefill, vehicle: telemetryVehicle } = useHandoverVehicleTelemetryPrefill(
@@ -41,9 +48,50 @@ export function useOperatorHandoverForm(
   useEffect(() => {
     if (!isOpen || !booking) return;
     telemetryAppliedRef.current = null;
-    setState(createInitialHandoverState(booking, kind));
+    setDraftHydrated(false);
+    setDraftUpdatedAt(null);
+    const base = createInitialHandoverState(booking, kind);
+    setState(base);
     setDamageError(null);
-  }, [isOpen, booking?.id, kind, booking]);
+    if (!orgId) {
+      setDraftHydrated(true);
+      return;
+    }
+    let cancelled = false;
+    void api.bookings
+      .getHandoverDraft(orgId, booking.id, kind)
+      .then((draft) => {
+        if (cancelled) return;
+        if (draft?.payload) {
+          setState(mergeHandoverDraftIntoState(base, draft.payload));
+          setDraftUpdatedAt(draft.updatedAt);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDraftHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, booking?.id, kind, booking, orgId]);
+
+  useEffect(() => {
+    if (!isOpen || !booking || !orgId || !draftHydrated) return;
+    if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    draftSaveTimerRef.current = setTimeout(() => {
+      void api.bookings
+        .saveHandoverDraft(orgId, booking.id, {
+          kind,
+          payload: serializeHandoverDraftState(state) as unknown as Record<string, unknown>,
+          ...(draftUpdatedAt ? { expectedUpdatedAt: draftUpdatedAt } : {}),
+        })
+        .then((saved) => setDraftUpdatedAt(saved.updatedAt))
+        .catch(() => undefined);
+    }, 1500);
+    return () => {
+      if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    };
+  }, [isOpen, booking, orgId, kind, state, draftHydrated, draftUpdatedAt]);
 
   useEffect(() => {
     if (!isOpen || !booking) return;

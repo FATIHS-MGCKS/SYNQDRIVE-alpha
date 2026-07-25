@@ -415,6 +415,7 @@ export interface CompleteTaskPayload {
   actualCostCents?: number;
   overrideIncompleteChecklist?: boolean;
   overrideReason?: string;
+  expectedUpdatedAt?: string;
 }
 
 export interface UpdateChecklistItemPayload {

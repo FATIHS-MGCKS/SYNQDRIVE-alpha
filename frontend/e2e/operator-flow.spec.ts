@@ -2,8 +2,10 @@ import { expect, test } from '@playwright/test';
 
 import {
   advanceHandoverThroughSignatures,
+  advanceHandoverToDamagesStep,
   BOOKING_PICKUP_ID,
   BOOKING_RETURN_ID,
+  completeOperatorDamageCapture,
   openOperatorApp,
   operatorNavButton,
   SCAN_INVALID_QUERY,
@@ -76,6 +78,17 @@ test.describe('Operator App E2E — core field flows', () => {
     await page.getByRole('button', { name: 'Zurück' }).click();
     await page.getByRole('button', { name: 'Weiter' }).click();
     await expect(page.getByText('Reifendruck niedrig E2E')).toBeVisible();
+  });
+
+  test('16 — return new-damage photo wizard', async ({ page }) => {
+    test.setTimeout(90_000);
+    await openOperatorApp(page);
+    await page.getByRole('button', { name: 'Return starten' }).first().click();
+    await advanceHandoverToDamagesStep(page, '15120');
+    await page.getByRole('button', { name: 'Neuen Schaden erfassen' }).click();
+    await completeOperatorDamageCapture(page);
+    await expect(page.getByText('Neuer Schaden E2E')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Stoßstange hinten')).toBeVisible();
   });
 
   test('15–20 — return handover with new damage note and immutable completion', async ({ page }) => {

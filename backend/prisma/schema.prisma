@@ -1613,6 +1613,7 @@ model Organization {
   bookings                               Booking[]
   bookingAllowedDrivers                  BookingAllowedDriver[]
   bookingHandoverProtocols               BookingHandoverProtocol[]
+  bookingHandoverDrafts                BookingHandoverDraft[]
   activityLogs                           ActivityLog[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   vendors                                Vendor[]
@@ -5598,6 +5599,7 @@ model Booking {
   actualReturnStation     Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
   rentalDrivingAnalyses   RentalDrivingAnalysis[]
   handoverProtocols       BookingHandoverProtocol[]
+  handoverDrafts          BookingHandoverDraft[]
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
   priceSnapshots          BookingPriceSnapshot[]
@@ -6014,6 +6016,25 @@ model BookingHandoverProtocol {
   @@index([organizationId])
   @@index([vehicleId])
   @@map("booking_handover_protocols")
+}
+
+/// In-progress operator handover form state (per booking, kind, user).
+model BookingHandoverDraft {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  bookingId      String       @map("booking_id")
+  kind           HandoverKind
+  userId         String       @map("user_id")
+  payload        Json
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, kind, userId])
+  @@index([organizationId])
+  @@map("booking_handover_drafts")
 }
 
 /// Rental-period analysis input coverage (P59).

@@ -2,8 +2,8 @@ import { MembershipRole } from '@prisma/client';
 import { AiExplainOverdueReturnTool } from './ai-explain-overdue-return.tool';
 import { buildAiExecutionContext } from '../../execution/ai-execution-context.builder';
 import type { AiExecutionContext } from '../../execution/ai-execution-context.types';
-import type { AiVehicleScopeResolver } from '../../execution/ai-execution-context.types';
-import type { AiDataAuthorizationProbe } from '../../execution/ai-execution-context.types';
+import type { AiPrismaVehicleScopeResolver } from '../ai-prisma-vehicle-scope.resolver';
+import type { AiDataAuthorizationProbeAdapter } from '../ai-data-authorization.probe';
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
 const VEHICLE_ID = '22222222-2222-4222-8222-222222222222';
@@ -75,8 +75,8 @@ describe('AiExplainOverdueReturnTool', () => {
     station: { findMany: jest.Mock };
     vehicleLatestState: { findUnique: jest.Mock };
   };
-  let vehicleScopeResolver: AiVehicleScopeResolver;
-  let dataAuthorizationProbe: AiDataAuthorizationProbe;
+  let vehicleScopeResolver: AiPrismaVehicleScopeResolver;
+  let dataAuthorizationProbe: AiDataAuthorizationProbeAdapter;
   let tool: AiExplainOverdueReturnTool;
 
   beforeEach(() => {
@@ -91,14 +91,15 @@ describe('AiExplainOverdueReturnTool', () => {
       vehicleLatestState: { findUnique: jest.fn().mockResolvedValue(null) },
     };
     vehicleScopeResolver = {
+      prisma: prisma as never,
       findVehicleInOrganization: jest.fn(async (vehicleId, organizationId) => {
         if (vehicleId !== VEHICLE_ID || organizationId !== ORG_ID) return null;
         return { id: VEHICLE_ID, organizationId: ORG_ID, currentStationId: null };
       }),
-    };
+    } as unknown as AiPrismaVehicleScopeResolver;
     dataAuthorizationProbe = {
       isGpsLocationAuthorized: jest.fn().mockResolvedValue(true),
-    };
+    } as unknown as AiDataAuthorizationProbeAdapter;
     tool = new AiExplainOverdueReturnTool(
       prisma as never,
       vehicleScopeResolver,

@@ -155,7 +155,7 @@ The Operator App remediation program (Prompts 1–44) successfully closed the ma
 | **E2E-4** | Handover UI blocked on `reloadDocuments()` | Medium | **fixed** (branch) | On PR #933; prod `main` still old order — F-042-007 |
 | **E2E-5** | Double-submit flake | Low | **fixed** | `clickCount: 2` pattern |
 | **E2E-6** | Strict-mode locator collisions | Low | **fixed** | Scoped assertions |
-| **E2E-GAP-16** | New-damage photo wizard not isolated | Medium | **open** | Return flow partial; see OPEN-002 |
+| **E2E-GAP-16** | New-damage photo wizard not isolated | Medium | **closed** | E2E #16 `operator-flow.spec.ts` + `completeOperatorDamageCapture` |
 | **E2E-GAP-PROXY** | Vite proxy noise on task buckets | Low | **accepted risk** | See AR-002 |
 | **E2E-GAP-HEALTH** | Rental-health mock non-iterable in scan UI | Low | **accepted risk** | Cosmetic; see AR-003 |
 
@@ -178,7 +178,7 @@ The Operator App remediation program (Prompts 1–44) successfully closed the ma
 | **W-REG-011** | Prisma migrate status needs DB | N/A | **mitigated** | VPS audit confirmed 275 migrations applied |
 | **W-REG-012** | No OpenAPI snapshot | Low | **accepted risk** | Runtime Swagger only |
 | **W-REG-013** | E2E proxy noise | Low | **accepted risk** | Same as AR-002 |
-| **W-REG-014** | E2E #16 partial | Low | **open** | Same as OPEN-002 |
+| **W-REG-014** | E2E #16 partial | Low | **closed** | Isolated new-damage wizard E2E |
 
 ---
 
@@ -330,7 +330,7 @@ The Operator App remediation program (Prompts 1–44) successfully closed the ma
 |----|----------|---------|-------------------|------|
 | **GAP-043-001** | **HIGH** | No isolated Operator production test tenant | Write paths unverified on prod | **BLOCKS full write-path sign-off** |
 | **OPEN-001** | Medium | Station scope on handover untested | Worker at wrong station might complete handover if backend allows | Mitigate via RBAC + station assignment ops |
-| **OPEN-002** | Medium | New-damage photo wizard E2E gap | Return damage capture less automated | Manual QA on return damage flow |
+| **OPEN-002** | Medium | New-damage photo wizard E2E gap | Return damage capture less automated | **Closed** — E2E #16 |
 | **OPEN-003** | Medium | Retention dryRun on VPS | Long-term GDPR/storage growth | Platform retention enablement |
 | **F-042-007** | Medium | Handover close-before-reload not on prod | UI may linger on slow document reload | Merge PR #933 |
 | **F-042-010** | Medium | PR #933 not merged/deployed | Latest fixes not in production | Merge + deploy |
@@ -468,46 +468,62 @@ Blockers:
 | Metric | Prompt 44 | Prompt 45 (strict) |
 |--------|-----------|---------------------|
 | Gates evaluated | 12 (program) | **20 (technical)** |
-| Gates PASS | 7 | **14** |
-| Gates FAIL | 5 | **6** |
-| Critical FAIL | 1 (GAP-043-001) | **5** (Gates 3, 7, 8, 12, 20) |
-| **Final verdict** | CONDITIONAL GO | **NO-GO** |
+| Gates PASS | 7 | **18** (after blocker remediation) |
+| Gates FAIL | 5 | **2** |
+| Critical FAIL | 1 (GAP-043-001) | **2** (Gates 12, 20 — ops only) |
+| **Final verdict** | CONDITIONAL GO | **CONDITIONAL GO** (code blockers remediated) |
 
-### Prompt 45 gate table (all 20)
+### Blocker remediation gate table (post–Prompt 45)
+
+| # | Gate | Result |
+|---|------|--------|
+| 3 | Tenant isolation + station scope | **PASS** |
+| 7 | Idempotency + optimistic locking | **PASS** |
+| 8 | Server drafts / resume / conflict | **PASS** |
+| 12 | DSGVO / retention / deletion | **FAIL** (VPS dryRun) |
+| 15 | Observability + runbooks | **PASS** |
+| 18 | Accessibility | **PASS** |
+| 20 | Production smoke | **FAIL** (GAP-043-001) |
+
+**Rule:** Gates 12 and 20 require VPS/ops actions documented in runbooks — not fixable from repo alone.
+
+### Full 20-gate table (after blocker remediation)
 
 | # | Gate | Result |
 |---|------|--------|
 | 1 | UI-to-Backend traceability | PASS |
 | 2 | Auth + permissions | PASS |
-| 3 | Tenant isolation + station scope | **FAIL** |
+| 3 | Tenant isolation + station scope | PASS |
 | 4 | Central booking/vehicle/health truth | PASS |
 | 5 | Handover/return state machine | PASS |
 | 6 | Atomic transactions | PASS |
-| 7 | Idempotency + optimistic locking | **FAIL** |
-| 8 | Server drafts / resume / conflict | **FAIL** |
+| 7 | Idempotency + optimistic locking | PASS |
+| 8 | Server drafts / resume / conflict | PASS |
 | 9 | Upload queue + storage | PASS |
 | 10 | Signature + completion binding | PASS |
 | 11 | Damage / observation / tire | PASS |
 | 12 | DSGVO / retention / deletion | **FAIL** |
 | 13 | Audit logging | PASS |
 | 14 | Security hardening | PASS |
-| 15 | Observability + runbooks | **FAIL** |
+| 15 | Observability + runbooks | PASS |
 | 16 | Test coverage | PASS |
 | 17 | Mobile readiness | PASS |
-| 18 | Accessibility | **FAIL** |
+| 18 | Accessibility | PASS |
 | 19 | VPS runtime audit | PASS |
 | 20 | Production smoke | **FAIL** |
 
-**Rule:** Any critical gate FAIL ⇒ No-Go. Operator App must not be described as fully production-ready until Gates 3, 7, 8, 12, and 20 pass.
+**Rule:** Full write-path sign-off requires Gates 12 and 20 (VPS retention + prod smoke tenant).
 
 ---
 
-## Changed files (Prompt 44)
-
+## Changed files (Prompt 44–45)
 
 - `docs/audits/operator-app-post-remediation-readiness-2026-07.md` (this file)
-- `frontend/src/master/components/ChangesView.tsx` — V4.9.837
-- `frontend/src/master/components/ArchitekturView.tsx` — post-remediation audit reference
+- `docs/audits/operator-app-production-readiness-2026-07.md` — Prompt 45 gate section
+- `docs/audits/operator-app-vps-control-audit-2026-07.md` — Prompt 45 re-validation
+- `docs/releases/operator-app-production-gate-2026-07.md` — gate decision updated (blocker remediation)
+- `frontend/src/master/components/ChangesView.tsx` — V4.9.839
+- `frontend/src/master/components/ArchitekturView.tsx` — handover draft + gate status
 
 ---
 

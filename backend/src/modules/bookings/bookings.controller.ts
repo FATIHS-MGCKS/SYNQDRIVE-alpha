@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Delete,
   Body,
   Param,
@@ -14,6 +15,7 @@ import {
 import { MembershipRole } from '@prisma/client';
 import { BookingsService } from './bookings.service';
 import { BookingsHandoverService } from './bookings-handover.service';
+import { BookingHandoverDraftService } from './booking-handover-draft.service';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
 import {
   assertCanManageBookingDrivers,
@@ -55,6 +57,7 @@ import { toBookingCreateInput, toBookingUpdateInput } from './booking-input.sani
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { resolveHandoverActor } from './handover-actor.util';
+import { GetHandoverDraftQueryDto, UpsertHandoverDraftDto } from './dto/booking-handover-draft.dto';
 
 @Controller('organizations/:orgId/bookings')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
@@ -62,6 +65,7 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
+    private readonly handoverDraftService: BookingHandoverDraftService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
@@ -480,6 +484,50 @@ export class BookingsController {
     @Param('id') bookingId: string,
   ) {
     return this.handoverService.findForBooking(orgId, bookingId);
+  }
+
+  @Get(':id/handover/draft')
+  @RequirePermission('bookings', 'read')
+  async getHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Query() query: GetHandoverDraftQueryDto,
+    @CurrentUser() user: { id?: string },
+  ) {
+    const actor = resolveHandoverActor(user);
+    return this.handoverDraftService.getDraft(orgId, bookingId, query.kind, actor.userId);
+  }
+
+  @Put(':id/handover/draft')
+  @RequirePermission('bookings', 'write')
+  async upsertHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string },
+    @Body() body: UpsertHandoverDraftDto,
+  ) {
+    const actor = resolveHandoverActor(user);
+    return this.handoverDraftService.upsertDraft(
+      orgId,
+      bookingId,
+      body.kind,
+      actor.userId,
+      body.payload,
+      body.expectedUpdatedAt,
+    );
+  }
+
+  @Delete(':id/handover/draft')
+  @RequirePermission('bookings', 'write')
+  async deleteHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Query() query: GetHandoverDraftQueryDto,
+    @CurrentUser() user: { id?: string },
+  ) {
+    const actor = resolveHandoverActor(user);
+    await this.handoverDraftService.deleteDraft(orgId, bookingId, query.kind, actor.userId);
+    return { ok: true };
   }
 
   @Post(':id/handover/pickup')

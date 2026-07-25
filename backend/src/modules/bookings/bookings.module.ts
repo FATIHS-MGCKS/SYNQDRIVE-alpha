@@ -17,6 +17,7 @@ import { CustomerVerificationModule } from '@modules/customer-verification/custo
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
+import { BookingHandoverDraftService } from './booking-handover-draft.service';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
 import { DepositResolverModule } from '@modules/deposit/deposit-resolver.module';
@@ -68,6 +69,7 @@ import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-
     BookingEligibilityRecheckService,
     BookingEligibilityRecheckSchedulerService,
     BookingWizardDraftService,
+    BookingHandoverDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
   ],

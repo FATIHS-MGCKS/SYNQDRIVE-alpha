@@ -3874,6 +3874,28 @@ export const api = {
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
     createReturnHandover: (orgId: string, bookingId: string, data: any) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+    getHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN') =>
+      get<{
+        id: string;
+        bookingId: string;
+        kind: string;
+        payload: Record<string, unknown>;
+        updatedAt: string;
+      } | null>(`/organizations/${orgId}/bookings/${bookingId}/handover/draft?kind=${kind}`),
+    saveHandoverDraft: (
+      orgId: string,
+      bookingId: string,
+      data: { kind: 'PICKUP' | 'RETURN'; payload: Record<string, unknown>; expectedUpdatedAt?: string },
+    ) =>
+      put<{
+        id: string;
+        bookingId: string;
+        kind: string;
+        payload: Record<string, unknown>;
+        updatedAt: string;
+      }>(`/organizations/${orgId}/bookings/${bookingId}/handover/draft`, data),
+    deleteHandoverDraft: (orgId: string, bookingId: string, kind: 'PICKUP' | 'RETURN') =>
+      del<{ ok: boolean }>(`/organizations/${orgId}/bookings/${bookingId}/handover/draft?kind=${kind}`),
   },
   // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
   // rental contract, handover protocols, final invoice) + downloads.

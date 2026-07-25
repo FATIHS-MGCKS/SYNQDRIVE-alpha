@@ -223,6 +223,10 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsBoolean()
   blocksVehicleAvailability?: boolean;
+
+  @IsOptional()
+  @IsISO8601()
+  expectedUpdatedAt?: string;
 }
 
 export class AssignTaskDto {
@@ -258,6 +262,10 @@ export class CompleteTaskDto {
   @IsString()
   @MaxLength(2000)
   overrideReason?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  expectedUpdatedAt?: string;
 }
 
 export class AddCommentDto {

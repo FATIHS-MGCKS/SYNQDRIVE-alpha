@@ -174,6 +174,7 @@ export class TasksController {
         estimatedCostCents: body.estimatedCostCents,
         actualCostCents: body.actualCostCents,
         blocksVehicleAvailability: body.blocksVehicleAvailability,
+        expectedUpdatedAt: body.expectedUpdatedAt,
       },
       req.user?.id,
     );
@@ -222,6 +223,7 @@ export class TasksController {
         actualCostCents: body.actualCostCents,
         overrideIncompleteChecklist: body.overrideIncompleteChecklist,
         overrideReason: body.overrideReason,
+        expectedUpdatedAt: body.expectedUpdatedAt,
       },
       req.user?.id ? { id: req.user.id, platformRole: req.user.platformRole } : undefined,
     );

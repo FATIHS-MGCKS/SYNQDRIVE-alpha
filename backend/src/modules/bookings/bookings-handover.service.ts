@@ -41,6 +41,8 @@ import {
 } from './booking-pickup-gate/booking-pickup-gate.constants';
 import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-gate.types';
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
+import { StationAccessService } from '@shared/stations/station-access.service';
+import { BookingHandoverDraftService } from './booking-handover-draft.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -69,6 +71,8 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly stationAccess: StationAccessService,
+    private readonly handoverDraftService: BookingHandoverDraftService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -125,6 +129,11 @@ export class BookingsHandoverService {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
+
+    const resolvedStationId =
+      payload.actualStationId ??
+      (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
+    await this.assertHandoverStationScope(orgId, actor, booking, resolvedStationId);
 
     // V4.6.81 — Backdate support. When the operator records a pickup that
     // actually happened earlier (customer was late, dispatcher logs after
@@ -481,6 +490,14 @@ export class BookingsHandoverService {
     await this.fleetMapCache.invalidate(orgId);
     await this.rentalHealthSummaryCache.invalidate(orgId, booking.vehicleId);
 
+    void this.handoverDraftService
+      .deleteDraftsForBooking(orgId, bookingId)
+      .catch((err) => {
+        this.logger.warn(
+          `Failed to clear handover drafts booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+
     return {
       booking: { id: updatedBooking.id, status: updatedBooking.status },
       protocol: this.mapProtocol(protocol),
@@ -523,6 +540,24 @@ export class BookingsHandoverService {
       map.set(dto.bookingId, list);
     }
     return map;
+  }
+
+  private async assertHandoverStationScope(
+    orgId: string,
+    actor: HandoverActorContext,
+    booking: { pickupStationId: string | null; returnStationId: string | null },
+    actualStationId: string | null | undefined,
+  ): Promise<void> {
+    const access = await this.stationAccess.resolve(actor.userId, orgId);
+    if (actualStationId) {
+      this.stationAccess.assertStationReadable(access, actualStationId);
+    }
+    if (booking.pickupStationId) {
+      this.stationAccess.assertStationReadable(access, booking.pickupStationId);
+    }
+    if (booking.returnStationId) {
+      this.stationAccess.assertStationReadable(access, booking.returnStationId);
+    }
   }
 
   // V4.6.81 — Accept an optional backdated `performedAt` for PICKUP so

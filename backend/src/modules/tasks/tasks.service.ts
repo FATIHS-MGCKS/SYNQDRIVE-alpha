@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
@@ -117,6 +117,7 @@ export interface CompleteTaskInput {
   actualCostCents?: number;
   overrideIncompleteChecklist?: boolean;
   overrideReason?: string;
+  expectedUpdatedAt?: string;
 }
 
 export interface UpdateTaskInput {
@@ -130,6 +131,7 @@ export interface UpdateTaskInput {
   metadata?: Prisma.InputJsonValue;
   category?: string;
   blocksVehicleAvailability?: boolean;
+  expectedUpdatedAt?: string;
 }
 
 export interface ListTasksFilters {
@@ -620,6 +622,24 @@ export class TasksService {
     const task = await this.prisma.orgTask.findFirst({ where: { id, organizationId: orgId } });
     if (!task) throw new NotFoundException('Task not found');
     return task;
+  }
+
+  private assertTaskOptimisticLock(
+    task: { updatedAt: Date },
+    expectedUpdatedAt?: string,
+  ): void {
+    if (!expectedUpdatedAt) return;
+    const expectedMs = new Date(expectedUpdatedAt).getTime();
+    if (Number.isNaN(expectedMs)) {
+      throw new BadRequestException('expectedUpdatedAt must be a valid ISO-8601 timestamp');
+    }
+    if (task.updatedAt.getTime() !== expectedMs) {
+      throw new ConflictException({
+        code: 'TASK_OPTIMISTIC_LOCK',
+        message: 'Task was modified by another session. Refresh and retry.',
+        serverUpdatedAt: task.updatedAt.toISOString(),
+      });
+    }
   }
 
   private assertChecklistMutable(task: { status: TaskStatus }): void {
@@ -1351,6 +1371,7 @@ export class TasksService {
 
   async updateTask(orgId: string, id: string, data: UpdateTaskInput, actorUserId?: string) {
     const existing = await this.loadTaskOrThrow(id, orgId);
+    this.assertTaskOptimisticLock(existing, data.expectedUpdatedAt);
     if (existing.status === 'DONE' || existing.status === 'CANCELLED') {
       throw new BadRequestException('A completed or cancelled task can no longer be edited');
     }
@@ -1425,6 +1446,7 @@ export class TasksService {
   ) {
     const actorUserId = actor?.id;
     const task = await this.loadTaskOrThrow(id, orgId);
+    this.assertTaskOptimisticLock(task, extra?.expectedUpdatedAt);
     assertTaskTransition(task.status, to);
     if (task.status === to) return this.getTaskById(id, orgId);
 

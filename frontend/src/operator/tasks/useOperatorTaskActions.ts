@@ -65,8 +65,15 @@ export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => 
   );
 
   const complete = useCallback(
-    (taskId: string, payload?: CompleteTaskPayload) =>
-      run(() => api.tasks.complete(orgId!, taskId, payload), 'Aufgabe erledigt'),
+    (taskId: string, payload?: CompleteTaskPayload, expectedUpdatedAt?: string) =>
+      run(
+        () =>
+          api.tasks.complete(orgId!, taskId, {
+            ...payload,
+            ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+          }),
+        'Aufgabe erledigt',
+      ),
     [orgId, run],
   );
 

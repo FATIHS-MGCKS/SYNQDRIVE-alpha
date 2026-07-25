@@ -523,6 +523,23 @@ describe('TasksService', () => {
     expect(prisma.orgTask.update).not.toHaveBeenCalled();
   });
 
+  it('rejects complete when expectedUpdatedAt is stale', async () => {
+    const updatedAt = new Date('2026-07-15T10:00:00.000Z');
+    prisma.orgTask.findFirst.mockResolvedValue(baseTask({ status: 'IN_PROGRESS', updatedAt }));
+
+    await expect(
+      svc.completeTask(
+        'org1',
+        't1',
+        { resolutionNote: 'done', expectedUpdatedAt: '2026-07-15T09:00:00.000Z' },
+        { id: 'u1' },
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'TASK_OPTIMISTIC_LOCK' }),
+    });
+    expect(prisma.orgTask.update).not.toHaveBeenCalled();
+  });
+
   it('requires a resolution note to complete a BRAKE_CHECK', async () => {
     prisma.orgTask.findFirst.mockResolvedValue(baseTask({ status: 'IN_PROGRESS', type: 'BRAKE_CHECK' }));
 

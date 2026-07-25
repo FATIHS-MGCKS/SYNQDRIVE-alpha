@@ -52,6 +52,18 @@ const bookings = new Map<string, Record<string, unknown>>();
 const bookingDetails = new Map<string, BookingDetailDto>();
 const tasks = new Map<string, ApiTask>();
 const protocols = new Map<string, { pickup?: Record<string, unknown>; return?: Record<string, unknown> }>();
+const handoverDrafts = new Map<string, { payload: Record<string, unknown>; updatedAt: string }>();
+const activeDamages: Array<{
+  id: string;
+  damageType: string;
+  severity: string;
+  description: string;
+  locationLabel: string | null;
+}> = [];
+
+function handoverDraftKey(bookingId: string, kind: string) {
+  return `${bookingId}:${kind}`;
+}
 
 function basePermissions() {
   return {
@@ -356,6 +368,15 @@ function seedOperatorState() {
   bookingDetails.clear();
   tasks.clear();
   protocols.clear();
+  handoverDrafts.clear();
+  activeDamages.length = 0;
+  activeDamages.push({
+    id: DAMAGE_EXISTING_ID,
+    damageType: 'SCRATCH',
+    severity: 'MINOR',
+    description: 'Kratzer Tür VL',
+    locationLabel: 'Tür VL',
+  });
   pickupAttempts = 0;
   taskCompleteAttempts = 0;
   Object.assign(network, {
@@ -577,6 +598,55 @@ async function installOperatorRouteHandler(page: Page, profile: OperatorE2EProfi
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { total: 0 } }) });
     }
 
+    if (
+      url.includes(`/organizations/${OPERATOR_E2E_ORG_ID}/bookings/`) &&
+      url.includes('/handover/draft') &&
+      method === 'GET'
+    ) {
+      const bookingId = url.split('/bookings/')[1]?.split('/')[0] ?? '';
+      const kind = new URL(url, 'http://localhost').searchParams.get('kind') ?? 'PICKUP';
+      const draft = handoverDrafts.get(handoverDraftKey(bookingId, kind));
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(draft ?? null),
+      });
+    }
+
+    if (
+      url.includes(`/organizations/${OPERATOR_E2E_ORG_ID}/bookings/`) &&
+      url.includes('/handover/draft') &&
+      method === 'PUT'
+    ) {
+      const bookingId = url.split('/bookings/')[1]?.split('/')[0] ?? '';
+      let body: { kind?: string; payload?: Record<string, unknown> } = {};
+      try {
+        const raw = route.request().postData();
+        body = raw ? (JSON.parse(raw) as typeof body) : {};
+      } catch {
+        body = {};
+      }
+      const kind = body.kind ?? 'PICKUP';
+      const updatedAt = new Date().toISOString();
+      handoverDrafts.set(handoverDraftKey(bookingId, kind), {
+        payload: body.payload ?? {},
+        updatedAt,
+      });
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: `draft-${bookingId}-${kind}`,
+          bookingId,
+          kind,
+          userId: 'user-operator-e2e',
+          payload: body.payload ?? {},
+          updatedAt,
+          createdAt: updatedAt,
+        }),
+      });
+    }
+
     if (url.includes(`/organizations/${OPERATOR_E2E_ORG_ID}/bookings/${BOOKING_PICKUP_ID}/handover/pickup`) && method === 'POST') {
       pickupAttempts += 1;
       if (network.failNextPickup) {
@@ -674,28 +744,23 @@ async function installOperatorRouteHandler(page: Page, profile: OperatorE2EProfi
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: DAMAGE_EXISTING_ID,
-            damageType: 'SCRATCH',
-            severity: 'MINOR',
-            description: 'Kratzer Tür VL',
-            locationLabel: 'Tür VL',
-          },
-        ]),
+        body: JSON.stringify(activeDamages),
       });
     }
 
     if (url.includes(`/vehicles/${VEHICLE_ID}/damages`) && method === 'POST') {
+      const created = {
+        id: 'dmg-op-e2e-new',
+        damageType: 'DENT',
+        severity: 'MODERATE',
+        description: 'Neuer Schaden E2E',
+        locationLabel: 'Stoßstange hinten',
+      };
+      activeDamages.push(created);
       return route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'dmg-op-e2e-new',
-          damageType: 'DENT',
-          severity: 'MODERATE',
-          description: 'Neuer Schaden E2E',
-        }),
+        body: JSON.stringify(created),
       });
     }
 
@@ -905,6 +970,38 @@ export async function submitOperatorTaskCompleteDialog(page: Page) {
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog.locator('select').selectOption('VEHICLE_CLEANED');
   await dialog.getByRole('button', { name: 'Abschließen' }).click();
+}
+
+const DAMAGE_CAPTURE_TEST_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+export async function advanceHandoverToDamagesStep(page: Page, odometerKm: string) {
+  await expect(page.getByTestId('operator-handover-flow')).toBeVisible();
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await page.getByPlaceholder('z. B. 48500').fill(odometerKm);
+  await page.getByPlaceholder(/Technische Beobachtung beschreiben|Was ist aufgefallen/i).fill('Reifendruck niedrig E2E');
+  await page.getByRole('button', { name: 'Beobachtung hinzufügen' }).click();
+  await expect(page.getByText('Reifendruck niedrig E2E')).toBeVisible();
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await expect(page.getByRole('button', { name: 'Neuen Schaden erfassen' })).toBeVisible({ timeout: 15_000 });
+}
+
+export async function completeOperatorDamageCapture(page: Page) {
+  const dialog = page.locator('[aria-labelledby="operator-damage-capture-title"]');
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
+  await dialog.locator('input[type="file"][accept="image/*"]').last().setInputFiles({
+    name: 'damage-e2e.png',
+    mimeType: 'image/png',
+    buffer: DAMAGE_CAPTURE_TEST_PNG,
+  });
+  await expect(dialog.locator('img[alt="Schadenfoto"]')).toBeVisible({ timeout: 15_000 });
+  await dialog.getByRole('button', { name: 'Weiter' }).click();
+  await dialog.getByPlaceholder('Was ist passiert? Sichtbare Details…').fill('Neuer Schaden E2E');
+  await dialog.getByRole('button', { name: 'Weiter' }).click();
+  await dialog.getByRole('button', { name: 'Schaden speichern' }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 20_000 });
 }
 
 export async function advanceHandoverThroughSignatures(

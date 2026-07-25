@@ -159,6 +159,18 @@ function createHarness(options: {
   const bookingEligibilityRecheck = {
     processPickupPrecheck: jest.fn().mockResolvedValue(undefined),
   };
+  const stationAccess = {
+    resolve: jest.fn().mockResolvedValue({
+      bypassScope: true,
+      allowedStationIds: null,
+      membershipRole: 'WORKER',
+      userId: actor.userId,
+    }),
+    assertStationReadable: jest.fn(),
+  };
+  const handoverDraftService = {
+    deleteDraftsForBooking: jest.fn().mockResolvedValue(undefined),
+  };
   const fleetMapCache = { invalidate: jest.fn().mockResolvedValue(undefined) };
   const rentalHealthSummaryCache = { invalidate: jest.fn().mockResolvedValue(undefined) };
   const bookingDocumentGenerationDispatcher = {
@@ -182,6 +194,8 @@ function createHarness(options: {
     { appendInTransaction: jest.fn() } as never,
     bookingEligibilityEnforcement as never,
     bookingEligibilityRecheck as never,
+    stationAccess as never,
+    handoverDraftService as never,
   );
 
   return {

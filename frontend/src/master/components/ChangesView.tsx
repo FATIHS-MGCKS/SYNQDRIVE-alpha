@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-blocker-remediation-v49839-2026-07-25',
+    version: '4.9.839',
+    title: 'V4.9.839 — Operator App production blocker remediation',
+    summary: [
+      'Gate 3: station scope on handover via StationAccessService.assertStationReadable.',
+      'Gate 7: task optimistic locking with expectedUpdatedAt (409 TASK_OPTIMISTIC_LOCK).',
+      'Gate 8: BookingHandoverDraft server API + debounced client sync; migration 20260725230000.',
+      'Gate 15/18: operator incident/smoke/retention runbooks + operator-a11y.spec.ts (axe).',
+      'OPEN-002 closed: E2E #16 return new-damage photo wizard isolated.',
+      '20-gate re-eval: 18 PASS / 2 FAIL (Gates 12 VPS retention, 20 prod smoke tenant).',
+    ],
+    reason: 'Close all repo-fixable Prompt 45 production blockers on branch cursor/operator-e2e-46a7.',
+    previousBehavior: 'Prompt 45 NO-GO — 14 PASS / 6 FAIL (Gates 3, 7, 8, 12, 15, 18, 20).',
+    details:
+      'Backend: bookings-handover.service.ts, booking-handover-draft.service.ts, tasks.service.ts. Frontend: useOperatorHandoverForm.ts, operator-a11y.spec.ts, operator-flow.spec.ts #16. Docs: docs/releases/operator-app-production-gate-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-07-25T23:00:00.000Z',
+  },
+  {
     id: 'operator-app-production-gate-v49838-2026-07-25',
     version: '4.9.838',
     title: 'V4.9.838 — Operator App final production gate check (Prompt 45)',
