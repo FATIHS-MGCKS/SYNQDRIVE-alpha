@@ -327,6 +327,84 @@ describe('Task automation workflow migration', () => {
       const linkB = await templateService.findTemplateByCatalogKey(ORG_B, 'BOOKING_PREPARATION');
       expect(linkA?.workflowId).not.toBe(linkB?.workflowId);
     });
+
+    it('dry-run analyzes without persisting workflow rows', async () => {
+      const report = await migrationService.run({ organizationId: ORG_A, mode: 'dry-run' });
+      expect(report.stats.migrated).toBeGreaterThanOrEqual(13);
+      expect(prisma._workflows.size).toBe(0);
+      expect(prisma._migrationRecords.size).toBe(0);
+    });
+
+    it('continues partial migration without duplicating completed rules', async () => {
+      const prepRule = getAutomationRuleByCatalogKey('BOOKING_PREPARATION');
+      prisma.taskAutomationWorkflowMigrationRecord.upsert({
+        where: {
+          organizationId_legacyRuleId: {
+            organizationId: ORG_A,
+            legacyRuleId: prepRule.ruleId,
+          },
+        },
+        create: {
+          organizationId: ORG_A,
+          legacyRuleId: prepRule.ruleId,
+          workflowId: 'wf-existing',
+          status: 'MIGRATED',
+          migrationRunId: 'prior-run',
+        },
+        update: {},
+      });
+      prisma._workflows.set('wf-existing', {
+        id: 'wf-existing',
+        organizationId: ORG_A,
+        version: 2,
+        isTemplate: true,
+        systemMetadata: { catalogKey: 'BOOKING_PREPARATION', systemTemplate: true },
+      });
+
+      const report = await migrationService.run({ organizationId: ORG_A, mode: 'execute' });
+      expect(report.rules.find((r) => r.legacyRuleId === prepRule.ruleId)?.status).toBe(
+        'already_migrated',
+      );
+      expect(report.stats.alreadyMigrated).toBeGreaterThanOrEqual(1);
+      expect(report.stats.migrated).toBeGreaterThanOrEqual(12);
+    });
+
+    it('preserves checklist overrides in task.create action config', async () => {
+      const rule = getAutomationRuleByCatalogKey('DOCUMENT_PACKAGE_INCOMPLETE');
+      resolver.resolveTaskAutomationRule.mockImplementation(async () => ({
+        ruleId: rule.ruleId,
+        catalogKey: rule.catalogKey,
+        materializesTask: true,
+        effectivelyEnabled: true,
+        override: { version: 1 },
+        effective: {
+          enabled: true,
+          activationOffsetMinutes: 0,
+          dueOffsetMinutes: 0,
+          priority: 'NORMAL',
+          assignmentStrategy: 'STATION_FROM_BOOKING',
+          assignedUserId: null,
+          assignedRoleKey: null,
+          stationScope: null,
+          escalationConfig: null,
+          notificationConfig: null,
+          checklistOverrides: {
+            hiddenOptionalTitles: ['Optional step'],
+            additionalItems: [{ title: 'Extra check', description: 'Org-specific', isRequired: true }],
+          },
+          ruleConfig: {},
+        },
+      }));
+
+      await migrationService.run({ organizationId: ORG_A, mode: 'execute' });
+      const link = await templateService.findTemplateByCatalogKey(ORG_A, 'DOCUMENT_PACKAGE_INCOMPLETE');
+      const row = prisma._workflows.get(link!.workflowId);
+      const actionConfig = (row?.actions as Array<{ config: Record<string, unknown> }>)[0].config;
+      expect(actionConfig.checklistOverrides).toEqual({
+        hiddenOptionalTitles: ['Optional step'],
+        additionalItems: [{ title: 'Extra check', description: 'Org-specific', isRequired: true }],
+      });
+    });
   });
 
   describe('duplicate execution prevention', () => {
