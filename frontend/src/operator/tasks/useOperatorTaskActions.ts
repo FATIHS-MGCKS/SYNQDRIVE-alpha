@@ -4,12 +4,10 @@ import { api, type ApiTaskDetail, type CompleteTaskPayload } from '../../lib/api
 import { invalidateTaskQueries } from '../../lib/tasks/invalidate';
 import { bucketsAffectedByTaskMutation } from '../hooks/operatorTodayFeed.utils';
 import { useRentalOrg } from '../../rental/RentalContext';
-import { useOperatorData } from '../context/OperatorDataContext';
 import { dispatchOperatorTaskUpdated } from './operatorTask.utils';
 
 export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => void) {
   const { orgId } = useRentalOrg();
-  const { reloadTasks } = useOperatorData();
   const [mutating, setMutating] = useState(false);
 
   const afterMutation = useCallback(
@@ -29,10 +27,9 @@ export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => 
           detail: true,
         });
       }
-      await reloadTasks();
       return task;
     },
-    [onTaskChanged, orgId, reloadTasks],
+    [onTaskChanged, orgId],
   );
 
   const run = useCallback(

@@ -1,6 +1,6 @@
 import type { BookingDetailDto, CustomerApiRecord } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
-import { normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
+import { getBookingActionMatrix } from '../../rental/components/booking-detail/bookingActionRules';
 
 export function customerDisplayName(c: CustomerApiRecord): string {
   if (c.name?.trim()) return c.name.trim();
@@ -72,18 +72,7 @@ export function formatOperatorBookingError(message: string): { title: string; de
 }
 
 export function canOperatorMarkNoShow(detail: BookingDetailDto): { allowed: boolean; reason?: string } {
-  const status = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
-  if (status !== 'confirmed') {
-    return { allowed: false, reason: 'No-Show nur bei bestätigten Buchungen möglich' };
-  }
-  if (detail.handover.pickup) {
-    return { allowed: false, reason: 'Pickup bereits erfasst' };
-  }
-  const startMs = new Date(detail.core.startDate).getTime();
-  if (Number.isNaN(startMs) || startMs > Date.now()) {
-    return { allowed: false, reason: 'Geplanter Abholzeitpunkt liegt noch in der Zukunft' };
-  }
-  return { allowed: true };
+  return getBookingActionMatrix(detail).no_show;
 }
 
 const INPUT_CLASS =

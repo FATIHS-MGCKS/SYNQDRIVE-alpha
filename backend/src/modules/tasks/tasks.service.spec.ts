@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { TasksService } from './tasks.service';
+import { makeOperatorResourceScopeMock } from '@modules/operator-app/__fixtures__/operator-resource-scope.mock';
 
 // Minimal OrgTask row factory for the prisma mock.
 function baseTask(over: Record<string, unknown> = {}) {
@@ -97,7 +97,12 @@ describe('TasksService', () => {
     activityLog = { log: jest.fn().mockResolvedValue({}) };
     linkedObjectResolver = { resolveForTask: jest.fn().mockResolvedValue([]) };
     prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma));
-    svc = new TasksService(prisma as any, activityLog as any, linkedObjectResolver as any);
+    svc = new TasksService(
+      prisma as any,
+      activityLog as any,
+      linkedObjectResolver as any,
+      makeOperatorResourceScopeMock() as any,
+    );
   });
 
   it('creates a manual task with defaults and records a CREATED event', async () => {

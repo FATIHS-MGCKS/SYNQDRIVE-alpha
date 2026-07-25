@@ -58,6 +58,7 @@ import {
   type TaskListPageResult,
 } from './tasks-list-cursor.util';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
+import { OperatorResourceScopeService } from '@modules/operator-app/operator-resource-scope.service';
 
 // ─── Domain constants (V4.8.3 Task Action Layer) ─────────────────────────
 
@@ -117,6 +118,8 @@ export interface CompleteTaskInput {
   actualCostCents?: number;
   overrideIncompleteChecklist?: boolean;
   overrideReason?: string;
+  /** Supervisor override for cross-station / unassigned task completion. */
+  scopeOverrideReason?: string;
 }
 
 export interface UpdateTaskInput {
@@ -147,6 +150,8 @@ export interface ListTasksFilters {
   serviceCaseId?: string;
   invoiceId?: string;
   stationId?: string;
+  /** When set, operator station scope is enforced server-side. */
+  actorUserId?: string;
   activatesFrom?: string;
   activatesTo?: string;
   dueFrom?: string;
@@ -201,6 +206,7 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly activityLog: ActivityLogService,
     private readonly linkedObjectResolver: TaskLinkedObjectResolverService,
+    private readonly operatorScope: OperatorResourceScopeService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
 
@@ -726,7 +732,15 @@ export class TasksService {
     if (serviceCaseId) where.serviceCaseId = serviceCaseId;
     if (invoiceId) where.invoiceId = invoiceId;
 
-    if (stationId) {
+    if (filters.actorUserId) {
+      const scope = await this.operatorScope.resolve(filters.actorUserId, orgId);
+      const scopeWhere = await this.operatorScope.buildTaskListScopeWhere(
+        scope,
+        filters.actorUserId,
+        stationId,
+      );
+      if (scopeWhere) andFilters.push(scopeWhere);
+    } else if (stationId) {
       andFilters.push({
         metadata: {
           path: ['stationId'],
@@ -876,6 +890,17 @@ export class TasksService {
       },
     });
     if (!task) throw new NotFoundException('Task not found');
+
+    if (actor?.id) {
+      const scope = await this.operatorScope.resolve(actor.id, orgId);
+      const vehicle = task.vehicleId
+        ? await this.prisma.vehicle.findFirst({
+            where: { id: task.vehicleId, organizationId: orgId },
+            select: { homeStationId: true, currentStationId: true },
+          })
+        : null;
+      this.operatorScope.assertTaskReadable(scope, task, actor.id, vehicle);
+    }
 
     const linkedObjects = await this.linkedObjectResolver.resolveForTask(orgId, {
       vehicleId: task.vehicleId,
@@ -1439,6 +1464,29 @@ export class TasksService {
     if (to === 'DONE') {
       if (!actorUserId) {
         throw new BadRequestException('An authenticated user is required to complete a task');
+      }
+      const scope = await this.operatorScope.resolve(actorUserId, orgId);
+      const vehicle = task.vehicleId
+        ? await this.prisma.vehicle.findFirst({
+            where: { id: task.vehicleId, organizationId: orgId },
+            select: { homeStationId: true, currentStationId: true },
+          })
+        : null;
+      const scopeGate = this.operatorScope.assertTaskCompletable(
+        scope,
+        task,
+        actorUserId,
+        { scopeOverrideReason: extra?.scopeOverrideReason },
+        vehicle,
+      );
+      if (scopeGate.overrideApplied && scopeGate.overrideReason) {
+        await this.operatorScope.recordScopeOverrideAudit({
+          organizationId: orgId,
+          actorUserId,
+          resourceKind: 'task',
+          resourceId: id,
+          reason: scopeGate.overrideReason,
+        });
       }
       const effectiveActivation = this.effectiveActivatesAt(task);
       if (effectiveActivation > now) {

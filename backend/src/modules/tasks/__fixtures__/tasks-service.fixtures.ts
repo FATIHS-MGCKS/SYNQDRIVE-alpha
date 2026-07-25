@@ -1,5 +1,6 @@
 import type { TaskStatus } from '@prisma/client';
 import { TasksService } from '../tasks.service';
+import { makeOperatorResourceScopeMock } from '@modules/operator-app/__fixtures__/operator-resource-scope.mock';
 
 /** Canonical OrgTask row factory for TasksService unit tests. */
 export function baseTask(over: Record<string, unknown> = {}) {
@@ -90,11 +91,17 @@ export type TasksPrismaMock = ReturnType<typeof makeTasksPrismaMock>;
 export function createTasksServiceHarness(prisma: TasksPrismaMock = makeTasksPrismaMock()) {
   const activityLog = { log: jest.fn().mockResolvedValue({}) };
   const linkedObjectResolver = { resolveForTask: jest.fn().mockResolvedValue([]) };
+  const operatorScope = makeOperatorResourceScopeMock();
   prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
     fn(prisma),
   );
-  const svc = new TasksService(prisma as any, activityLog as any, linkedObjectResolver as any);
-  return { svc, prisma, activityLog, linkedObjectResolver };
+  const svc = new TasksService(
+    prisma as any,
+    activityLog as any,
+    linkedObjectResolver as any,
+    operatorScope as any,
+  );
+  return { svc, prisma, activityLog, linkedObjectResolver, operatorScope };
 }
 
 /** Stages prisma mocks for a successful status transition + getTaskById reload. */

@@ -14,15 +14,24 @@ import {
   deriveBookingReturnGate,
   todayRowToPickupGateInput,
   todayRowToReturnGateInput,
+  type BookingHandoverGate,
 } from '../../rental/lib/bookingHandoverGates';
+import {
+  filterOperatorOperationalTodayRows,
+  inferTodayHandoverKind,
+  isDueWithinWindow,
+  mapBookingListRowToTodayRow,
+  resolveTodayCustomerName,
+  resolveTodayStationLabel,
+  resolveTodayVehicleDisplay,
+  scheduledAtForTodayKind,
+  type TodayHandoverKind,
+} from '../../rental/lib/today-booking-contract';
 import type { OperatorScanBookingHit } from '../hooks/useOperatorScanSearch';
 
-export type OperatorHandoverKind = 'PICKUP' | 'RETURN';
+export type OperatorHandoverKind = TodayHandoverKind;
 
-export interface OperatorActionGate {
-  allowed: boolean;
-  reason?: string;
-}
+export type OperatorActionGate = BookingHandoverGate;
 
 export interface OperatorTodayBookingItem {
   bookingId: string;
@@ -62,24 +71,7 @@ export interface OperatorTodaySnapshot {
   taskFeed: OperatorTodayFeedState;
 }
 
-const DUE_NOW_WINDOW_MS = 2 * 60 * 60 * 1000;
-
-function normalizeTodayRows(res: unknown): TodayBookingApiRow[] {
-  if (Array.isArray(res)) return res as TodayBookingApiRow[];
-  if (res && typeof res === 'object' && Array.isArray((res as { data?: unknown }).data)) {
-    return (res as { data: TodayBookingApiRow[] }).data;
-  }
-  return [];
-}
-
-export { normalizeTodayRows };
-
-function isDueNow(iso: string | undefined, nowMs: number): boolean {
-  if (!iso) return false;
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return false;
-  return t <= nowMs + DUE_NOW_WINDOW_MS;
-}
+export { normalizeBookingList as normalizeTodayRows } from '../../rental/components/dashboard/dashboardUtils';
 
 function healthForVehicle(
   vehicleId: string | undefined,
@@ -101,39 +93,61 @@ export function deriveReturnGate(row: TodayBookingApiRow): OperatorActionGate {
   return deriveBookingReturnGate(todayRowToReturnGateInput(row));
 }
 
+function mapTodayRowToOperatorItem(
+  row: TodayBookingApiRow,
+  kind: OperatorHandoverKind,
+  locale: string,
+  nowMs: number,
+  gates: { pickupGate: OperatorActionGate; returnGate: OperatorActionGate },
+): OperatorTodayBookingItem | null {
+  const bookingId = String(row.id ?? '');
+  if (!bookingId) return null;
+
+  const status = normalizeBookingStatus(row.statusEnum, row.status);
+  const scheduledAt = scheduledAtForTodayKind(row, kind);
+  const isDone =
+    kind === 'PICKUP' ? Boolean(row.pickupProtocol) : Boolean(row.returnProtocol);
+  const isOverdue = Boolean(row.isOverdue);
+  const { vehicleName, plate } = resolveTodayVehicleDisplay(row);
+
+  return {
+    bookingId,
+    kind,
+    vehicleId: String(row.vehicleId ?? ''),
+    customerId: row.customerId ?? null,
+    vehicleName,
+    plate,
+    customerName: resolveTodayCustomerName(row),
+    station: resolveTodayStationLabel(row, kind),
+    scheduledAt,
+    timeLabel: formatApiTime(scheduledAt, locale) || '—',
+    status,
+    statusLabel: bookingStatusLabel(status),
+    isOverdue,
+    isDueNow: isOverdue || isDueWithinWindow(scheduledAt, nowMs),
+    isDone,
+    pickupGate: gates.pickupGate,
+    returnGate: gates.returnGate,
+    raw: row,
+  };
+}
+
 export function mapPickupRow(
   row: TodayBookingApiRow,
   healthMap: Map<string, VehicleHealthResponse>,
   locale: string,
   nowMs: number,
 ): OperatorTodayBookingItem | null {
-  const bookingId = String(row.id ?? '');
-  if (!bookingId) return null;
-  const status = normalizeBookingStatus(row.statusEnum, row.status);
-  const scheduledAt = String(row.startDate ?? '');
-  const isDone = Boolean(row.pickupProtocol);
-  const isOverdue = Boolean(row.isOverdue);
-  const pickupGate = derivePickupGate(row, healthMap);
-  return {
-    bookingId,
-    kind: 'PICKUP',
-    vehicleId: String(row.vehicleId ?? ''),
-    customerId: row.customerId ?? null,
-    vehicleName: row.vehicleName ?? '—',
-    plate: row.vehicleLicense ?? '',
-    customerName: row.customerName ?? '',
-    station: row.pickupStationName ?? row.stationLabel ?? row.station ?? '',
-    scheduledAt,
-    timeLabel: formatApiTime(scheduledAt, locale) || '—',
-    status,
-    statusLabel: bookingStatusLabel(status),
-    isOverdue,
-    isDueNow: isOverdue || isDueNow(scheduledAt, nowMs),
-    isDone,
-    pickupGate,
-    returnGate: { allowed: false, reason: 'Kein Return bei Abholung' },
-    raw: row,
-  };
+  return mapTodayRowToOperatorItem(
+    row,
+    'PICKUP',
+    locale,
+    nowMs,
+    {
+      pickupGate: derivePickupGate(row, healthMap),
+      returnGate: { allowed: false, reason: 'Kein Return bei Abholung' },
+    },
+  );
 }
 
 export function mapReturnRow(
@@ -141,33 +155,16 @@ export function mapReturnRow(
   locale: string,
   nowMs: number,
 ): OperatorTodayBookingItem | null {
-  const bookingId = String(row.id ?? '');
-  if (!bookingId) return null;
-  const status = normalizeBookingStatus(row.statusEnum, row.status);
-  const scheduledAt = String(row.endDate ?? '');
-  const isDone = Boolean(row.returnProtocol);
-  const isOverdue = Boolean(row.isOverdue);
-  const returnGate = deriveReturnGate(row);
-  return {
-    bookingId,
-    kind: 'RETURN',
-    vehicleId: String(row.vehicleId ?? ''),
-    customerId: row.customerId ?? null,
-    vehicleName: row.vehicleName ?? '—',
-    plate: row.vehicleLicense ?? '',
-    customerName: row.customerName ?? '',
-    station: row.returnStationName ?? row.stationLabel ?? row.station ?? '',
-    scheduledAt,
-    timeLabel: formatApiTime(scheduledAt, locale) || '—',
-    status,
-    statusLabel: bookingStatusLabel(status),
-    isOverdue,
-    isDueNow: isOverdue || isDueNow(scheduledAt, nowMs),
-    isDone,
-    pickupGate: { allowed: false, reason: 'Kein Pickup bei Rückgabe' },
-    returnGate,
-    raw: row,
-  };
+  return mapTodayRowToOperatorItem(
+    row,
+    'RETURN',
+    locale,
+    nowMs,
+    {
+      pickupGate: { allowed: false, reason: 'Kein Pickup bei Rückgabe' },
+      returnGate: deriveReturnGate(row),
+    },
+  );
 }
 
 export function buildOperatorTodaySnapshot(input: {
@@ -181,11 +178,11 @@ export function buildOperatorTodaySnapshot(input: {
   const locale = input.locale ?? 'de';
   const nowMs = Date.now();
 
-  const pickupsToday = input.pickups
+  const pickupsToday = filterOperatorOperationalTodayRows(input.pickups)
     .map((r) => mapPickupRow(r, input.healthMap, locale, nowMs))
     .filter((x): x is OperatorTodayBookingItem => x !== null);
 
-  const returnsToday = input.returns
+  const returnsToday = filterOperatorOperationalTodayRows(input.returns)
     .map((r) => mapReturnRow(r, locale, nowMs))
     .filter((x): x is OperatorTodayBookingItem => x !== null);
 
@@ -244,43 +241,69 @@ export function toHandoverBookingSeed(item: OperatorTodayBookingItem) {
 export function mapScanBookingToDetailItem(
   hit: OperatorScanBookingHit,
   locale = 'de',
+  nowMs = Date.now(),
 ): OperatorTodayBookingItem {
-  const status = normalizeBookingStatus(hit.statusEnum, hit.status);
-  const startIso = hit.startDate ?? '';
-  const endIso = hit.endDate ?? '';
-  const nowMs = Date.now();
-  const endMs = endIso ? new Date(endIso).getTime() : NaN;
-  const kind: OperatorHandoverKind =
-    Number.isFinite(endMs) && endMs <= nowMs + 2 * 60 * 60 * 1000 ? 'RETURN' : 'PICKUP';
-  const scheduledAt = kind === 'RETURN' && endIso ? endIso : startIso;
-  const raw: TodayBookingApiRow = {
-    id: hit.bookingId,
-    vehicleId: hit.vehicleId,
-    vehicleName: hit.vehicleName,
-    vehicleLicense: hit.plate,
-    customerName: hit.customerName,
-    startDate: startIso,
-    endDate: endIso,
-    status: hit.status,
-    statusEnum: hit.statusEnum,
-  };
+  const raw =
+    hit.todayRow ??
+    mapBookingListRowToTodayRow({
+      id: hit.bookingId,
+      vehicleId: hit.vehicleId,
+      vehicleName: hit.vehicleName,
+      vehicleLicense: hit.plate,
+      customerName: hit.customerName,
+      startDate: hit.startDate,
+      endDate: hit.endDate,
+      status: hit.status,
+      statusEnum: hit.statusEnum,
+      pickupProtocol: hit.pickupProtocol,
+      returnProtocol: hit.returnProtocol,
+      isOverdue: hit.isOverdue,
+      pickupStationName: hit.pickupStationName,
+      returnStationName: hit.returnStationName,
+      pickupStationId: hit.pickupStationId,
+      returnStationId: hit.returnStationId,
+      stationLabel: hit.stationLabel,
+      station: hit.station,
+    }) ?? {
+      id: hit.bookingId,
+      vehicleId: hit.vehicleId,
+      vehicleName: hit.vehicleName,
+      vehicleLicense: hit.plate,
+      customerName: hit.customerName,
+      startDate: hit.startDate,
+      endDate: hit.endDate,
+      status: hit.status,
+      statusEnum: hit.statusEnum,
+    };
+
+  const kind = inferTodayHandoverKind(raw, nowMs);
+  const scheduledAt = scheduledAtForTodayKind(raw, kind);
+  const status = normalizeBookingStatus(raw.statusEnum, raw.status);
+  const { vehicleName, plate } = resolveTodayVehicleDisplay(raw);
+  const isOverdue = Boolean(raw.isOverdue);
+  const isDone =
+    kind === 'PICKUP' ? Boolean(raw.pickupProtocol) : Boolean(raw.returnProtocol);
+
   return {
     bookingId: hit.bookingId,
     kind,
     vehicleId: hit.vehicleId,
-    vehicleName: hit.vehicleName,
-    plate: hit.plate,
-    customerName: hit.customerName,
-    station: '',
+    customerId: raw.customerId ?? null,
+    vehicleName,
+    plate,
+    customerName: resolveTodayCustomerName(raw),
+    station: resolveTodayStationLabel(raw, kind),
     scheduledAt,
     timeLabel: formatApiTime(scheduledAt, locale) || '—',
     status,
     statusLabel: bookingStatusLabel(status),
-    isOverdue: false,
-    isDueNow: false,
-    isDone: false,
+    isOverdue,
+    isDueNow: isOverdue || isDueWithinWindow(scheduledAt, nowMs),
+    isDone,
     pickupGate: { allowed: false },
     returnGate: { allowed: false },
     raw,
   };
 }
+
+export { mapBookingListRowToTodayRow } from '../../rental/lib/today-booking-contract';

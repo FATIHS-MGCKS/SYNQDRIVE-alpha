@@ -39,6 +39,7 @@ import {
   buildOverlapWhere,
 } from './booking-conflict.util';
 import type { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
+import { OperatorResourceScopeService } from '@modules/operator-app/operator-resource-scope.service';
 import type {
   BookingDetailDto,
   BookingStationContext,
@@ -133,7 +134,20 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly operatorScope: OperatorResourceScopeService,
   ) {}
+
+  private async appendOperatorBookingScope(
+    orgId: string,
+    andClauses: Prisma.BookingWhereInput[],
+    actorUserId: string | undefined,
+    requestedStationId?: string,
+  ): Promise<void> {
+    if (!actorUserId) return;
+    const scope = await this.operatorScope.resolve(actorUserId, orgId);
+    const scopeWhere = this.operatorScope.buildBookingListScopeWhere(scope, requestedStationId);
+    if (scopeWhere) andClauses.push(scopeWhere);
+  }
 
   /**
    * Enforce the rental-health gate for booking create/update. Fails CLOSED in
@@ -438,7 +452,7 @@ export class BookingsService {
     };
   }
 
-  async findAll(orgId: string, params?: ListBookingsQueryDto) {
+  async findAll(orgId: string, params?: ListBookingsQueryDto, actorUserId?: string) {
     const page = Math.max(1, params?.page || 1);
     const limit = Math.min(500, Math.max(1, params?.limit || 100));
     const skip = (page - 1) * limit;
@@ -446,13 +460,15 @@ export class BookingsService {
 
     const andClauses: Prisma.BookingWhereInput[] = [{ organizationId: orgId }];
 
+    await this.appendOperatorBookingScope(orgId, andClauses, actorUserId, params?.stationId);
+
     if (params?.status) {
       const statuses = Array.isArray(params.status) ? params.status : [params.status];
       andClauses.push({ status: { in: statuses } });
     }
     if (params?.vehicleId) andClauses.push({ vehicleId: params.vehicleId });
     if (params?.customerId) andClauses.push({ customerId: params.customerId });
-    if (params?.stationId) {
+    if (!actorUserId && params?.stationId) {
       andClauses.push({
         OR: [
           { pickupStationId: params.stationId },
@@ -849,13 +865,27 @@ export class BookingsService {
     return map;
   }
 
-  async findById(orgId: string, id: string) {
+  async findById(orgId: string, id: string, actorUserId?: string) {
     const b = await this.prisma.booking.findFirst({
       where: { id, organizationId: orgId },
       include: { customer: true, vehicle: true },
     });
 
     if (!b) return null;
+
+    if (actorUserId) {
+      const scope = await this.operatorScope.resolve(actorUserId, orgId);
+      this.operatorScope.assertBookingReadable(
+        scope,
+        b,
+        b.vehicle
+          ? {
+              homeStationId: b.vehicle.homeStationId,
+              currentStationId: b.vehicle.currentStationId,
+            }
+          : null,
+      );
+    }
 
     let stationName = '';
     if (b.pickupStationId) {
@@ -1385,7 +1415,7 @@ export class BookingsService {
     return org?.timezone?.trim() || DEFAULT_TARIFF_TIMEZONE;
   }
 
-  async findTodaysPickups(orgId: string) {
+  async findTodaysPickups(orgId: string, actorUserId?: string) {
     // V4.6.81 — "Pick Up Today" must also surface overdue pickups so the
     // operator still sees them on the dashboard. Previously the window
     // was strictly `startDate ∈ [today_start, today_end]`, which hid
@@ -1410,17 +1440,12 @@ export class BookingsService {
     );
     const overdueLookbackStart = zonedLookbackStart(dateOnly, 7, orgTimezone);
 
-    const data = await this.prisma.booking.findMany({
-      where: {
+    const scopeClauses: Prisma.BookingWhereInput[] = [
+      {
         organizationId: orgId,
         status: { in: ['PENDING', 'CONFIRMED'] as BookingStatus[] },
         OR: [
           { startDate: { gte: todayStart, lte: todayEnd } },
-          // Overdue branch: CONFIRMED bookings whose start has passed
-          // but still sit without a pickup handover protocol. We widen
-          // by 7 days to keep the list bounded — anything older is
-          // operationally stale and should flow through the bookings
-          // archive, not the dashboard tile.
           {
             status: 'CONFIRMED' as BookingStatus,
             startDate: { gte: overdueLookbackStart, lt: todayStart },
@@ -1428,6 +1453,11 @@ export class BookingsService {
           },
         ],
       },
+    ];
+    await this.appendOperatorBookingScope(orgId, scopeClauses, actorUserId);
+
+    const data = await this.prisma.booking.findMany({
+      where: scopeClauses.length === 1 ? scopeClauses[0] : { AND: scopeClauses },
       include: { customer: true, vehicle: true },
       orderBy: { startDate: 'asc' },
     });
@@ -1485,6 +1515,7 @@ export class BookingsService {
         startDate: b.startDate.toISOString(),
         endDate: b.endDate.toISOString(),
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
+        statusEnum: b.status,
         dailyRate: (b.dailyRateCents || 0) / 100,
         totalPrice: (b.totalPriceCents || 0) / 100,
         pickupProtocol: redactHandoverProtocolForList(pickup),
@@ -1574,19 +1605,24 @@ export class BookingsService {
     };
   }
 
-  async findTodaysReturns(orgId: string) {
+  async findTodaysReturns(orgId: string, actorUserId?: string) {
     const orgTimezone = await this.resolveOrgTimezone(orgId);
     const { todayStart, todayEnd } = resolveZonedCalendarDayWindow(
       new Date(),
       orgTimezone,
     );
 
-    const data = await this.prisma.booking.findMany({
-      where: {
+    const scopeClauses: Prisma.BookingWhereInput[] = [
+      {
         organizationId: orgId,
         endDate: { gte: todayStart, lte: todayEnd },
         status: { in: ['ACTIVE', 'CONFIRMED'] as BookingStatus[] },
       },
+    ];
+    await this.appendOperatorBookingScope(orgId, scopeClauses, actorUserId);
+
+    const data = await this.prisma.booking.findMany({
+      where: scopeClauses.length === 1 ? scopeClauses[0] : { AND: scopeClauses },
       include: { customer: true, vehicle: true },
       orderBy: { endDate: 'asc' },
     });
@@ -1666,6 +1702,7 @@ export class BookingsService {
         startDate: b.startDate.toISOString(),
         endDate: b.endDate.toISOString(),
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
+        statusEnum: b.status,
         dailyRate: (b.dailyRateCents || 0) / 100,
         totalPrice: (b.totalPriceCents || 0) / 100,
         pickupProtocol: redactHandoverProtocolForList(pickup),

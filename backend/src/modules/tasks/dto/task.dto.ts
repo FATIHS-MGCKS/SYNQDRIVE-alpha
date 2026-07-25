@@ -258,6 +258,12 @@ export class CompleteTaskDto {
   @IsString()
   @MaxLength(2000)
   overrideReason?: string;
+
+  /** Supervisor override for cross-station or unassigned task completion. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  scopeOverrideReason?: string;
 }
 
 export class AddCommentDto {
