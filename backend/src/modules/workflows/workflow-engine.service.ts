@@ -83,6 +83,7 @@ export class WorkflowEngineService {
     event: WorkflowDomainEvent,
   ): Promise<string | null> {
     const scope = workflow.scope as unknown as WorkflowScopeDef;
+    const scopeType = scope?.type ?? 'organization';
     if (!this.matchesScope(scope, event)) {
       return null;
     }
@@ -160,7 +161,10 @@ export class WorkflowEngineService {
         entityId: event.entityId,
         payload: event.payload,
         idempotencyKey,
+        scopeType,
       });
+
+      const policySnapshot = result.policySnapshot as Prisma.InputJsonValue | undefined;
 
       await this.prisma.orgWorkflowActionRun.update({
         where: { id: actionRun.id },
@@ -169,6 +173,7 @@ export class WorkflowEngineService {
           output: (result.output ?? undefined) as unknown as Prisma.InputJsonValue,
           errorMessage: result.errorMessage ?? null,
           finishedAt: new Date(),
+          ...(policySnapshot ? { policySnapshot } : {}),
         },
       });
 
