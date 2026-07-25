@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-handover-state-machine-v49839-2026-07-25',
+    version: '4.9.839',
+    title: 'V4.9.839 — Operator App: Handover State-Machine Analyse (Prompt 13)',
+    summary: [
+      'Vollständige Ist-Analyse Pickup/Return: Datenmodelle, Wizard, Endpunkte, Drafts, Signaturen, Schäden, Dokumente, Booking/Vehicle-Status, Notifications, Audit.',
+      'Verbindliche mehrschichtige Ist-State-Machine (Booking + Protokoll ABSENT→FINAL + ephemeres UI).',
+      'Ziel-State-Machine mit `BookingHandoverSession`: not_started, draft, in_progress, awaiting_requirements, awaiting_signature, submitted, completed, cancelled, superseded.',
+      '14 Befunde (HSM-001…014): fehlende Draft-States, returnProtocolStatus-Mehrdeutigkeit, doppelte UIs, asymmetrische Idempotenz, keine Versionierung.',
+      'Migrationsrisiken + 10 Akzeptanzkriterien für Implementierung (Prompt 14+). Keine produktiven Übergänge geändert.',
+    ],
+    reason:
+      'Production-Readiness Prompt 13: verbindliche Lifecycle-Dokumentation vor Session/Draft-Implementierung.',
+    previousBehavior:
+      'Handover-Lifecycle implizit über Booking-Status + Protokoll-Existenz; kein dokumentiertes Zielmodell für Draft/Resume/Cancel.',
+    details:
+      'Audit §35, `architecture/OPERATOR_HANDOVER_STATE_MACHINE_2026-07-25.md`. Explizit unverändert: BookingsHandoverService, Prisma, Wizard-Submit.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:50:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',
