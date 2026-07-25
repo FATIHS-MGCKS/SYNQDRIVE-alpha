@@ -439,7 +439,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.810',
     title: 'V4.9.810 — VD A11y modals/i18n + IAM outbox schema fix + prod smoke runbook',
     summary: [
-      'IAM outbox: Prisma `status` column mapping fixed (`processing_status` drift → VPS-RES-006 errors every 15s).',
+      'IAM outbox: Prisma `status` field re-aligned with DB column `processing_status` (migration 20260724200000).',
       'Vehicle Detail: cleaning/status/station confirm dialogs → Radix AlertDialog (VD-A11Y-001).',
       'Tab labels wired to i18n (`vehicle.*` / `vehicleDetail.tab.*`) — DE/EN (VD-A11Y-002).',
       'Runbook: `docs/runbooks/vehicle-detail-production-smoke.md` for production DIMO soak (DEPLOY-SMOKE).',
