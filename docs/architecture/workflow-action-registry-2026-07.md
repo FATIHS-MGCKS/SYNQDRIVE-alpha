@@ -62,6 +62,7 @@ Each handler exposes:
 | `alert.create` | MEDIUM | `WORKFLOW_EXECUTE` |
 | `notification.prepare` | LOW | `WORKFLOW_EXECUTE` |
 | `vehicle.status.update` | HIGH | `WORKFLOW_VEHICLE_WRITE` |
+| `email.send` | MEDIUM | `WORKFLOW_CUSTOMER_CONTACT` |
 | `workflow.approval.request` | MEDIUM | `WORKFLOW_EXECUTE` |
 | `ai.suggest_action` | CRITICAL | `WORKFLOW_AI_SUGGEST` |
 

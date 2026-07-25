@@ -72,3 +72,37 @@ export interface VehicleStatusUpdateActionConfig {
   reason?: string;
   vehicleId?: string;
 }
+
+export type WorkflowEmailLocale = 'de' | 'en';
+
+export type WorkflowEmailTemplateKey =
+  | 'booking_follow_up'
+  | 'invoice_reminder'
+  | 'workflow_operational';
+
+export type WorkflowEmailRecipientRef =
+  | { type: 'customer'; customerId: string }
+  | { type: 'booking'; bookingId: string };
+
+export type WorkflowEmailDeliveryStatus =
+  | 'PREPARED'
+  | 'QUEUED'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'BOUNCED'
+  | 'FAILED'
+  | 'SUPPRESSED';
+
+export interface EmailSendActionConfig {
+  templateId: WorkflowEmailTemplateKey;
+  templateVersion: string;
+  locale?: WorkflowEmailLocale;
+  subject?: string;
+  recipient: WorkflowEmailRecipientRef;
+  /** Explicit address — requires WORKFLOW_CUSTOMER_CONTACT when entity has no email. */
+  toEmail?: string;
+  params?: Record<string, string>;
+  attachmentDocumentIds?: string[];
+  respectSendWindow?: boolean;
+  verifiedDiagnosis?: boolean;
+}

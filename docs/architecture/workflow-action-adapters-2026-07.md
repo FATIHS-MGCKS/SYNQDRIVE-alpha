@@ -11,6 +11,7 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 | `approval.request` | MEDIUM | `WORKFLOW_EXECUTE` | `WorkflowActionApprovalService` — single pause gate |
 | `booking.flag` | MEDIUM | `WORKFLOW_EXECUTE` | `extrasJson.workflowFlags` — enum flags only |
 | `vehicle.status.update` | HIGH | `WORKFLOW_VEHICLE_WRITE` | Transition matrix + `RentalHealthService` gate |
+| `email.send` | MEDIUM | `WORKFLOW_CUSTOMER_CONTACT` | `OutboundEmailPolicyService` + Resend via `WorkflowEmailSendService` |
 
 ## Cross-cutting adapter infrastructure
 
@@ -20,6 +21,8 @@ Phase 7 Prompt 31 — production-ready internal workflow action adapters on top 
 - **Booking flags** — `workflow-booking-flag.util.ts`
 - **Vehicle policy** — `workflow-vehicle-status.policy.ts`
 - **Notification templates** — `workflow-notification-templates.ts`
+- **Email templates** — `workflow-email-templates.ts` (`booking_follow_up`, `invoice_reminder`, `workflow_operational`)
+- **Email send service** — `workflow-email-send.service.ts` (org identity, idempotency, attachments, delivery status)
 - **Recipient roles** — `workflow-recipient-role.util.ts`
 
 Each handler implements: validate, authorize, preview (dry-run), execute, classifyError, timeout/retry/idempotency via `BaseWorkflowActionHandler`.

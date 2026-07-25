@@ -46,6 +46,7 @@ export class WorkflowActionSafetyBlockService {
     if (!criticalTriggers.has(input.eventType)) return { blocked: false };
 
     const customerFacingActions = new Set([
+      'email.send',
       'customer.contact.email',
       'customer.contact.whatsapp',
       'voice.call',

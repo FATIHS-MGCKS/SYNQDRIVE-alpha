@@ -1,8 +1,15 @@
 import { Test } from '@nestjs/testing';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationCoreService } from '@modules/notifications/notification-core.service';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
+import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
+import { OutboundEmailPolicyService } from '@modules/outbound-email/outbound-email-policy.service';
+import { OutboundEmailService } from '@modules/outbound-email/outbound-email.service';
+import { EmailProviderRegistry } from '@modules/outbound-email/providers/email-provider.registry';
+import emailConfig from '@config/email.config';
 import {
   createWorkflowActionPiiSafeLogger,
   WorkflowActionNoopSecretsResolver,
@@ -22,6 +29,47 @@ import { BaseWorkflowActionHandler } from './handlers/base-workflow-action.handl
 import type { WorkflowActionExecuteResult } from './workflow-action-registry.types';
 
 const ORG = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+const emailAdapterTestProviders = [
+  { provide: GeneratedDocumentsService, useValue: { getById: jest.fn() } },
+  { provide: DOCUMENTS_STORAGE, useValue: { getObject: jest.fn() } },
+  {
+    provide: OutboundEmailPolicyService,
+    useValue: {
+      resolveIdentity: jest.fn().mockResolvedValue({
+        fromEmail: 'noreply@test.eu',
+        fromName: 'Test',
+        replyToEmail: 'support@test.eu',
+      }),
+      isValidEmail: (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e),
+      validateRecipientEmails: jest.fn(),
+    },
+  },
+  { provide: OutboundEmailService, useValue: { recordEvent: jest.fn() } },
+  {
+    provide: EmailProviderRegistry,
+    useValue: {
+      resolve: () => ({
+        sendEmail: jest.fn().mockResolvedValue({
+          provider: 'dev',
+          providerMessageId: 'msg-1',
+          status: 'SENT_SIMULATED',
+        }),
+      }),
+    },
+  },
+];
+
+const prismaMock = {
+  vehicle: { findFirst: jest.fn().mockResolvedValue({ id: 'veh-1' }), update: jest.fn() },
+  booking: { findFirst: jest.fn().mockResolvedValue({ id: 'booking-1', customerId: 'cust-1' }), update: jest.fn() },
+  orgWorkflowApproval: { create: jest.fn(), findFirst: jest.fn() },
+  organization: { findUnique: jest.fn().mockResolvedValue({ companyName: 'Test', timezone: 'Europe/Berlin', orgEmailSettings: null, emailSignature: null }) },
+  customer: { findFirst: jest.fn() },
+  generatedDocument: { findMany: jest.fn().mockResolvedValue([]) },
+  billingEmailSuppression: { findFirst: jest.fn().mockResolvedValue(null) },
+  outboundEmail: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn(), update: jest.fn(), count: jest.fn().mockResolvedValue(0) },
+};
 
 function baseContext(overrides: Partial<WorkflowActionExecutionContext> = {}): WorkflowActionExecutionContext {
   return {
@@ -75,19 +123,21 @@ describe('WorkflowActionRegistryService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
+      imports: [ConfigModule.forRoot({ load: [emailConfig], ignoreEnvFile: true })],
       providers: [
         WorkflowActionPolicyService,
         WorkflowActionSafetyBlockService,
         ...WORKFLOW_ACTION_HANDLER_PROVIDERS,
         workflowActionHandlersProvider,
         WorkflowActionRegistryService,
-        { provide: PrismaService, useValue: { vehicle: { findFirst: jest.fn().mockResolvedValue({ id: 'veh-1' }), update: jest.fn() }, booking: { findFirst: jest.fn().mockResolvedValue({ id: 'booking-1', customerId: 'cust-1' }), update: jest.fn() }, orgWorkflowApproval: { create: jest.fn(), findFirst: jest.fn() } } },
+        { provide: PrismaService, useValue: prismaMock },
         {
           provide: TasksService,
           useValue: { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }), findActiveByDedup: jest.fn().mockResolvedValue(null) },
         },
         { provide: NotificationCoreService, useValue: { ingestCandidate: jest.fn().mockResolvedValue({ enabled: true, operation: 'created', notification: { id: 'n1' } }) } },
         { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false, reasons: [] }) } },
+        ...emailAdapterTestProviders,
       ],
     }).compile();
 
@@ -97,6 +147,7 @@ describe('WorkflowActionRegistryService', () => {
 
   it('registers built-in handlers', () => {
     expect(registry.has('task.create')).toBe(true);
+    expect(registry.has('email.send')).toBe(true);
     expect(registry.listTypes()).toContain('alert.create');
   });
 
@@ -121,6 +172,7 @@ describe('WorkflowActionRegistryExecutorService', () => {
       findActiveByDedup: jest.fn().mockResolvedValue(null),
     };
     const module = await Test.createTestingModule({
+      imports: [ConfigModule.forRoot({ load: [emailConfig], ignoreEnvFile: true })],
       providers: [
         WorkflowActionPolicyService,
         WorkflowActionSafetyBlockService,
@@ -129,10 +181,11 @@ describe('WorkflowActionRegistryExecutorService', () => {
         WorkflowActionRegistryService,
         WorkflowActionRegistryExecutorService,
         WorkflowActionNoopSecretsResolver,
-        { provide: PrismaService, useValue: { vehicle: { findFirst: jest.fn().mockResolvedValue({ id: 'veh-1' }), update: jest.fn() }, booking: { findFirst: jest.fn().mockResolvedValue({ id: 'booking-1', customerId: 'cust-1' }), update: jest.fn() }, orgWorkflowApproval: { create: jest.fn(), findFirst: jest.fn() } } },
+        { provide: PrismaService, useValue: prismaMock },
         { provide: TasksService, useValue: tasksService },
         { provide: NotificationCoreService, useValue: { ingestCandidate: jest.fn().mockResolvedValue({ enabled: true, operation: 'created', notification: { id: 'n1' } }) } },
         { provide: RentalHealthService, useValue: { isRentalBlocked: jest.fn().mockResolvedValue({ blocked: false, reasons: [] }) } },
+        ...emailAdapterTestProviders,
       ],
     }).compile();
 

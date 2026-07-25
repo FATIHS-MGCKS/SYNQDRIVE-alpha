@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-email-send-v49844-2026-07-25',
+    version: '4.9.844',
+    title: 'V4.9.844 — Workflow email.send Action Adapter (Phase 8 Prompt 34)',
+    summary: [
+      'Production email.send workflow action via existing OutboundEmail + Resend stack.',
+      'Typed config: templateId/version, locale, entity recipient refs, optional document attachments.',
+      'Org identity + reply-to from OutboundEmailPolicyService; idempotency via sendIdempotencyKey.',
+      'Delivery status model: PREPARED/QUEUED/SENT/DELIVERED/BOUNCED/FAILED/SUPPRESSED.',
+      'Communication policy: send window, billing suppression, MIME/size attachment guards.',
+      'Policy: WORKFLOW_CUSTOMER_CONTACT, approval REQUIRED, dry-run preview, masked recipients in audit.',
+      '13 dedicated tests + 54 total workflow action/policy tests passing.',
+    ],
+    reason: 'Workflows need customer email as a governed action without a parallel mail stack.',
+    previousBehavior: 'customer.contact.email policy existed but was DISABLED with no handler.',
+    details: 'docs/architecture/workflow-action-adapters-2026-07.md. Handler: email-send.action-handler.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T13:00:00.000Z',
+  },
+  {
     id: 'task-automation-workflow-bridge-v49843-2026-07-25',
     version: '4.9.843',
     title: 'V4.9.843 — Task Automation → Workflow Runtime Bridge (Phase 7 Prompt 33)',

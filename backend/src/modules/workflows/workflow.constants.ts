@@ -42,6 +42,7 @@ export const WORKFLOW_ACTION_TYPES = [
   'workflow.approval.request',
   'notification.in_app.send',
   'notification.prepare',
+  'email.send',
   'booking.flag',
   'ai.suggest_action',
 ] as const;
@@ -55,6 +56,7 @@ export const APPROVAL_REQUIRED_ACTIONS = new Set<string>([
   'ai.send_message',
   'ai.book_appointment',
   'customer.contact.send',
+  'customer.contact.email',
   'invoice.charge',
   'booking.cancel',
 ]);
@@ -73,6 +75,10 @@ export const LEGACY_ACTION_TO_CANONICAL: Record<string, WorkflowActionType> = {
   send_notification: 'notification.in_app.send',
   send_in_app_notification: 'notification.in_app.send',
   notification_send: 'notification.in_app.send',
+  send_email: 'email.send',
+  email_send: 'email.send',
+  customer_contact_email: 'email.send',
+  customer_contact_send: 'email.send',
   ai_suggest: 'ai.suggest_action',
   request_approval: 'approval.request',
   workflow_approval: 'workflow.approval.request',

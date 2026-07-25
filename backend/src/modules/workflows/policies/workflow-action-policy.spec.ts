@@ -156,18 +156,34 @@ describe('WorkflowActionPolicyService', () => {
   });
 
   it('blocks unverified diagnosis on critical vehicle triggers for customer email', () => {
+    for (const actionType of ['customer.contact.email', 'email.send']) {
+      const result = policyService.evaluate({
+        organizationId: ORG,
+        actionType,
+        eventType: 'vehicle.dtc.critical',
+        entityType: 'customer',
+        scopeType: 'organization',
+        actorPermissions: ['WORKFLOW_CUSTOMER_CONTACT'],
+        mode: 'execute',
+        actionConfig: { body: 'DTC P0420 detected' },
+      });
+      expect(result.allowed).toBe(false);
+      expect(result.violations.some((v) => v.code === 'UNVERIFIED_DIAGNOSIS')).toBe(true);
+    }
+  });
+
+  it('allows email.send preview when capability enabled', () => {
     const result = policyService.evaluate({
       organizationId: ORG,
-      actionType: 'customer.contact.email',
-      eventType: 'vehicle.dtc.critical',
-      entityType: 'customer',
+      actionType: 'email.send',
+      eventType: 'booking.returned',
+      entityType: 'booking',
       scopeType: 'organization',
       actorPermissions: ['WORKFLOW_CUSTOMER_CONTACT'],
-      mode: 'execute',
-      actionConfig: { body: 'DTC P0420 detected' },
+      mode: 'preview',
     });
-    expect(result.allowed).toBe(false);
-    expect(result.violations.some((v) => v.code === 'UNVERIFIED_DIAGNOSIS')).toBe(true);
+    expect(result.allowed).toBe(true);
+    expect(result.policy.capabilityGate).toBe('ENABLED');
   });
 
   it('rejects cross-tenant evaluation without organizationId', () => {

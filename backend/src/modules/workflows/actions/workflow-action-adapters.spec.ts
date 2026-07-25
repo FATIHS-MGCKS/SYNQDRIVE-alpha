@@ -1,9 +1,16 @@
 import { Test } from '@nestjs/testing';
+import { ConfigModule } from '@nestjs/config';
 import { VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationCoreService } from '@modules/notifications/notification-core.service';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
+import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
+import { OutboundEmailPolicyService } from '@modules/outbound-email/outbound-email-policy.service';
+import { OutboundEmailService } from '@modules/outbound-email/outbound-email.service';
+import { EmailProviderRegistry } from '@modules/outbound-email/providers/email-provider.registry';
+import emailConfig from '@config/email.config';
 import {
   createWorkflowActionPiiSafeLogger,
   WorkflowActionNoopSecretsResolver,
@@ -62,6 +69,23 @@ function createPrismaMock() {
       findFirst: jest.fn(),
       create: jest.fn(),
     },
+    organization: {
+      findUnique: jest.fn().mockResolvedValue({
+        companyName: 'Test',
+        timezone: 'Europe/Berlin',
+        emailSignature: null,
+        orgEmailSettings: { signatureHtml: null },
+      }),
+    },
+    customer: { findFirst: jest.fn() },
+    generatedDocument: { findMany: jest.fn().mockResolvedValue([]) },
+    billingEmailSuppression: { findFirst: jest.fn().mockResolvedValue(null) },
+    outboundEmail: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      update: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+    },
   };
 }
 
@@ -99,6 +123,7 @@ describe('Workflow production action adapters', () => {
     };
 
     const module = await Test.createTestingModule({
+      imports: [ConfigModule.forRoot({ load: [emailConfig], ignoreEnvFile: true })],
       providers: [
         WorkflowActionPolicyService,
         WorkflowActionSafetyBlockService,
@@ -110,6 +135,33 @@ describe('Workflow production action adapters', () => {
         { provide: TasksService, useValue: tasksService },
         { provide: NotificationCoreService, useValue: notifications },
         { provide: RentalHealthService, useValue: rentalHealth },
+        {
+          provide: OutboundEmailPolicyService,
+          useValue: {
+            resolveIdentity: jest.fn().mockResolvedValue({
+              fromEmail: 'noreply@test.eu',
+              fromName: 'Test',
+              replyToEmail: 'support@test.eu',
+            }),
+            isValidEmail: (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e),
+            validateRecipientEmails: jest.fn(),
+          },
+        },
+        { provide: OutboundEmailService, useValue: { recordEvent: jest.fn() } },
+        {
+          provide: EmailProviderRegistry,
+          useValue: {
+            resolve: () => ({
+              sendEmail: jest.fn().mockResolvedValue({
+                provider: 'dev',
+                providerMessageId: 'msg-1',
+                status: 'SENT_SIMULATED',
+              }),
+            }),
+          },
+        },
+        { provide: GeneratedDocumentsService, useValue: { getById: jest.fn() } },
+        { provide: DOCUMENTS_STORAGE, useValue: { getObject: jest.fn() } },
       ],
     }).compile();
 

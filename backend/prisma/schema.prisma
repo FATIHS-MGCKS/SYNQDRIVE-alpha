@@ -11130,6 +11130,7 @@ enum OutboundEmailSourceType {
   PAYMENT_REFUND
   PAYMENT_DISPUTE
   BILLING_EMAIL
+  WORKFLOW
 }
 
 enum OutboundEmailStatus {
