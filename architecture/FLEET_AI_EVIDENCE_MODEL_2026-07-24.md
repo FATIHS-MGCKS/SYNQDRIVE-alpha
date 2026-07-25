@@ -209,3 +209,15 @@ must be wrapped as `AiEvidence` with explicit:
 - `ChatService` legacy enrichment path unchanged until controller passes auth context.
 - Tests: `fleet-chat-orchestrator.spec.ts` (8); **270/270** AI module.
 
+### Prompt 20 — Fleet Chat evidence response composer (2026-07-25)
+
+- Added `backend/src/modules/ai/chat/fleet-chat-evidence-response/` —
+  `FleetChatEvidenceResponseComposerService`.
+- Response types: DIRECT_ANSWER, LOCATION_SUMMARY, HEALTH_SUMMARY, OVERDUE_EXPLANATION,
+  PARTIAL_DATA, INCONSISTENT_STATE, PERMISSION_RESTRICTED, AMBIGUITY_QUESTION, …
+- Structured API metadata: `responseType`, `dataFreshness`, `sources`, `warnings`, `partial`,
+  `correlationId`, optional `actions`, optional `evidenceSummary`.
+- Deterministic fallback when LLM output fails evidence validation.
+- Golden tests: location, health, overdue (DE core questions).
+- Wired into `FleetChatOrchestratorService` → `FleetChatOrchestrateResult.structuredResponse`.
+

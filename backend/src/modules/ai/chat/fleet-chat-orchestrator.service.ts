@@ -12,9 +12,9 @@ import { LlmGatewayService } from '../llm/llm-gateway.service';
 import { FLEET_CHAT_SYSTEM_PROMPT } from '../vehicle-resolution/ai-vehicle-resolution.llm';
 import {
   mergeEvidenceForLlm,
-  summarizeToolDataForLlm,
 } from './fleet-chat-evidence.util';
-import { composeFleetChatResponse } from './fleet-chat-response.composer';
+import type { FleetChatEvidenceApiResponse } from './fleet-chat-evidence-response/fleet-chat-evidence-response.types';
+import { FleetChatEvidenceResponseComposerService } from './fleet-chat-evidence-response/fleet-chat-evidence-response.service';
 import type {
   FleetChatOrchestrateInput,
   FleetChatOrchestrateResult,
@@ -96,6 +96,7 @@ export class FleetChatOrchestratorService {
     private readonly intentRouter: FleetChatIntentRouterService,
     private readonly toolRegistry: AiDomainToolRegistry,
     private readonly llm: LlmGatewayService,
+    private readonly evidenceResponseComposer: FleetChatEvidenceResponseComposerService,
   ) {}
 
   async orchestrate(
@@ -214,9 +215,6 @@ export class FleetChatOrchestratorService {
       toolsMs = Date.now() - toolsStarted;
     }
 
-    const evidenceSummaries = toolRecords.flatMap((record) =>
-      summarizeToolDataForLlm(record.toolName, record.outcome.data),
-    );
     const mergedEvidence = mergeEvidenceForLlm(toolRecords);
     const partial =
       route.ambiguities.length > 0 ||
@@ -229,25 +227,28 @@ export class FleetChatOrchestratorService {
         toolRecords.every((record) => record.outcome.allowLlmInference));
 
     const compositionStarted = Date.now();
-    const composed = composeFleetChatResponse({
+    const evidenceComposeBase = {
+      correlationId: context.correlationId,
       userMessage: input.message,
       language: route.language,
       route,
       toolRecords,
-      evidenceSummaries,
+      mergedEvidence,
       partial,
       allowLlmInference,
-    });
+    };
+    const prepared = this.evidenceResponseComposer.prepare(evidenceComposeBase);
     compositionMs = Date.now() - compositionStarted;
 
-    let responseText = composed.directResponse ?? '';
+    let responseText = prepared.directResponse ?? '';
+    let structuredResponse: FleetChatEvidenceApiResponse | null = null;
     let llmUsed = false;
 
-    if (!composed.skipLlm && composed.llmUserContext) {
+    if (!prepared.skipLlm && prepared.llmUserContext) {
       const llmStarted = Date.now();
       try {
         responseText = await withTimeout(
-          this.callLlm(composed.llmUserContext, route.language),
+          this.callLlm(prepared.llmUserContext, route.language),
           FLEET_CHAT_ORCHESTRATOR_LLM_TIMEOUT_MS,
           'LLM',
         );
@@ -260,6 +261,13 @@ export class FleetChatOrchestratorService {
       }
       llmMs = Date.now() - llmStarted;
     }
+
+    structuredResponse = this.evidenceResponseComposer.finalize(
+      evidenceComposeBase,
+      llmUsed ? prepared.responseType : 'TEMPORARY_UNAVAILABLE',
+      responseText,
+    );
+    responseText = structuredResponse.text;
 
     const toolsSucceeded = toolRecords
       .filter((record) => record.success)
@@ -285,6 +293,7 @@ export class FleetChatOrchestratorService {
       toolsRequested,
       toolsSucceeded,
       toolsFailed,
+      structuredResponse,
     });
   }
 
@@ -362,6 +371,7 @@ export class FleetChatOrchestratorService {
     toolsRequested: readonly AiDomainToolName[];
     toolsSucceeded: readonly AiDomainToolName[];
     toolsFailed: readonly AiDomainToolName[];
+    structuredResponse?: FleetChatEvidenceApiResponse;
   }): FleetChatOrchestrateResult {
     return {
       responseText: input.responseText,
@@ -371,6 +381,7 @@ export class FleetChatOrchestratorService {
       partial: input.partial,
       allowLlmInference: input.allowLlmInference,
       llmUsed: input.llmUsed,
+      structuredResponse: input.structuredResponse,
       audit: {
         correlationId: input.context.correlationId,
         requestId: input.context.requestId,

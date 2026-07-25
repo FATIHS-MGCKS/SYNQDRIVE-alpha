@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-evidence-response-v49813-2026-07-25',
+    version: '4.9.813',
+    title: 'V4.9.813 — Fleet Chat evidence response composer (Prompt 20)',
+    summary: [
+      'FleetChatEvidenceResponseComposerService — evidence-based answer composition with structured API metadata.',
+      'Response types: LOCATION_SUMMARY, HEALTH_SUMMARY, OVERDUE_EXPLANATION, PARTIAL_DATA, …',
+      'Deterministic fallback when LLM output fails evidence validation; golden tests for 3 core DE questions.',
+      'Orchestrator returns structuredResponse alongside responseText.',
+    ],
+    reason: 'Prompt 20/32 — production-ready evidence-based Fleet Chat response composition.',
+    previousBehavior: 'Orchestrator returned plain LLM text without structured response metadata.',
+    details:
+      'backend/src/modules/ai/chat/fleet-chat-evidence-response/, fleet-chat-orchestrator.service.ts',
+    affectsArchitecture: true,
+    module: 'Fleet AI / Chat',
+    createdAt: '2026-07-25T00:35:00.000Z',
+  },
+  {
     id: 'evaluations-production-release-v49810-2026-07-24',
     version: '4.9.810',
     title: 'V4.9.810 — Auswertungen production release (IAM fix + station filter)',

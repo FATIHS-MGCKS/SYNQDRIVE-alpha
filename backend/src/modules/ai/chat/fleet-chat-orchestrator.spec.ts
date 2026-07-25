@@ -7,6 +7,12 @@ import { FleetChatOrchestratorService } from './fleet-chat-orchestrator.service'
 import { FleetChatIntentRouterService } from '../routing/fleet-chat-intent-router.service';
 import { AiDomainToolRegistry } from '../registry/ai-domain-tool-registry.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
+import { FleetChatEvidenceResponseComposerService } from './fleet-chat-evidence-response/fleet-chat-evidence-response.service';
+import {
+  composeFleetChatEvidenceResponse,
+  finalizeFleetChatEvidenceResponse,
+  prepareFleetChatEvidenceResponse,
+} from './fleet-chat-evidence-response/fleet-chat-evidence-response.composer';
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = '22222222-2222-4222-8222-222222222222';
@@ -125,10 +131,22 @@ function createOrchestrator(input: {
     ...input.llm,
   } as unknown as LlmGatewayService;
 
+  const evidenceComposer = {
+    prepare: jest.fn((input) => {
+      const prepared = prepareFleetChatEvidenceResponse(input);
+      return prepared;
+    }),
+    finalize: jest.fn((input, responseType, llmRawText) =>
+      finalizeFleetChatEvidenceResponse(input, responseType, llmRawText),
+    ),
+    compose: jest.fn((input) => composeFleetChatEvidenceResponse(input)),
+  } as unknown as FleetChatEvidenceResponseComposerService;
+
   const orchestrator = new FleetChatOrchestratorService(
     intentRouter,
     toolRegistry,
     llm,
+    evidenceComposer,
   );
 
   return { orchestrator, intentRouter, toolRegistry, llm, executeRegisteredTool };
@@ -338,6 +356,7 @@ describe('FleetChatOrchestratorService — integration', () => {
     });
 
     expect(result.responseText).toMatch(/nicht verarbeiten|could not process/i);
+    expect(result.structuredResponse?.responseType).toBe('TEMPORARY_UNAVAILABLE');
     expect(result.llmUsed).toBe(false);
   });
 

@@ -3,6 +3,7 @@ import type { AiDomainQueryOutcome } from '../evidence/ai-domain-error.types';
 import type { AiEvidence } from '../evidence/ai-evidence.types';
 import type { FleetChatRouteResult } from '../routing/fleet-chat-intent.types';
 import type { FleetChatIntent } from '../routing/fleet-chat-intent.enums';
+import type { FleetChatEvidenceApiResponse } from './fleet-chat-evidence-response/fleet-chat-evidence-response.types';
 
 export const FLEET_CHAT_ORCHESTRATOR_LLM_TIMEOUT_MS = 25_000;
 export const FLEET_CHAT_ORCHESTRATOR_TOOL_BUDGET_MS = 30_000;
@@ -67,6 +68,7 @@ export interface FleetChatOrchestrateResult {
   readonly audit: FleetChatOrchestratorAudit;
   readonly performance: FleetChatOrchestratorPerformance;
   readonly llmUsed: boolean;
+  readonly structuredResponse?: FleetChatEvidenceApiResponse;
 }
 
 export interface FleetChatOrchestrateInput {
