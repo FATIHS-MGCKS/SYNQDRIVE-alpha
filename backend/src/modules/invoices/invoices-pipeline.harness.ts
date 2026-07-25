@@ -8,6 +8,7 @@ import { DOCUMENT_RENDERER } from '@modules/documents/renderers/render-model';
 import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
 import { TaskLinkedObjectResolverService } from '@modules/tasks/task-linked-object-resolver.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { makeOperatorResourceScopeMock } from '@modules/operator-app/__fixtures__/operator-resource-scope.mock';
 import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
 import { OutboundEmailPolicyService } from '@modules/outbound-email/outbound-email-policy.service';
 import { OutboundEmailService } from '@modules/outbound-email/outbound-email.service';
@@ -113,7 +114,12 @@ export function createInvoicePipelineHarness(): InvoicePipelineHarness {
   const linkedObjectResolver = {
     resolveForTask: jest.fn().mockResolvedValue([]),
   } as unknown as TaskLinkedObjectResolverService;
-  const tasks = new TasksService(prisma, activityLog as unknown as ActivityLogService, linkedObjectResolver);
+  const tasks = new TasksService(
+    prisma,
+    activityLog as unknown as ActivityLogService,
+    linkedObjectResolver,
+    makeOperatorResourceScopeMock() as any,
+  );
   const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
   const invoicePaymentTasks = new InvoicePaymentTaskService(
     prisma,

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-station-scope-v49834-2026-07-25',
+    version: '4.9.834',
+    title: 'V4.9.834 — Operator App: Station- und Assignment-Autorisierung (Prompt 8)',
+    summary: [
+      'Zentraler `OperatorResourceScopeService` + Policy-Layer — keine Scope-Logik in Controllern.',
+      'Bookings (list/today/detail) + Handover + Tasks (list/detail/complete) serverseitig station-scoped.',
+      'Client-`stationId` nur Schnittmenge mit Membership; `actualStationId` aus DB-Kontext validiert.',
+      'Supervisor-Override: `tasks.manage` + Pflicht-Begründung + Activity-Log.',
+      '16 Policy-Tests (Station A/B, Org Admin, Override, Pickup/Return, Fahrzeug-Station).',
+    ],
+    reason:
+      'Production-Readiness Prompt 8: Field Agents dürfen nicht organisationsweit alle Vorgänge bearbeiten.',
+    previousBehavior:
+      'Bookings/Tasks filterten optional nach Client-`stationId` ohne Membership-Bindung; Handover ohne Station-Scope.',
+    details:
+      'backend/src/modules/operator-app/operator-resource-scope.*; BookingsService, BookingsHandoverService, TasksService; Audit §30.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:30:00.000Z',
+  },
+  {
     id: 'operator-app-permission-model-v49831-2026-07-25',
     version: '4.9.831',
     title: 'V4.9.831 — Operator App: granulares Permission-Modell (Prompt 5)',
