@@ -2524,6 +2524,39 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 49. Operator Tire Measurement Hardening (Prompt 28)
+
+### 49.1 Kanonische Pipeline
+
+- Operator-API delegiert an `TireLifecycleService.recordMeasurement` → `VehicleTireTreadMeasurement` + `TireEvent` + `TireHealthService.recalculate`
+- Keine parallele Messdomäne; Rental-Block nur über `tire-rental-health.policy`
+
+### 49.2 Validierung (`tire-measurement-validation.util`)
+
+| Regel | Verhalten |
+|-------|-----------|
+| Einheit | mm (0–20) |
+| Positionen | Vorne links/rechts, Hinten links/rechts |
+| Locale | Komma/Punkt als Dezimaltrennzeichen |
+| Negativ / >20 mm | Hard error |
+| Achsdifferenz / niedriges Profil | Warning (nicht blockierend) |
+| Saison | Kontext für Warn-Text (Sommer/Winter/Ganzjahr) |
+
+### 49.3 Operator Capture
+
+- `captureKey` → `operator_tire_measurement_idempotency`
+- `confirmed: true` erforderlich (manuelle Bestätigung)
+- Kontext: `bookingId`, `handoverSessionId`, `source` (manual/workshop/ai_confirmed)
+- Audit: `CAPTURED`, `CAPTURE_IDEMPOTENT`, `VALIDATION_FAILED`
+
+### 49.4 Tests
+
+- `tire-measurement-validation.util.spec.ts`
+- `operator-tire-measure.service.spec.ts`
+- `operatorTireMeasure.utils.test.ts`
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

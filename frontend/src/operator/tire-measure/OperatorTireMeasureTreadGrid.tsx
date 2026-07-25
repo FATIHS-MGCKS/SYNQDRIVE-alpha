@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react';
 import type { OperatorTirePlausibilityWarning, OperatorTireTreadForm } from './operatorTireMeasure.types';
 import { TREAD_MAX_MM, TREAD_MIN_MM } from './operatorTireMeasure.utils';
 
@@ -40,13 +41,18 @@ export function OperatorTireMeasureTreadGrid({ tread, onChange, warnings }: Prop
               <input
                 type="text"
                 inputMode="decimal"
-                className="h-14 w-full rounded-2xl border border-border surface-premium px-4 text-center text-xl font-semibold tabular-nums shadow-sm"
+                pattern="[0-9.,]*"
+                autoComplete="off"
+                className="h-14 min-h-[56px] w-full rounded-2xl border border-border surface-premium px-4 text-center text-xl font-semibold tabular-nums shadow-sm"
                 value={tread[key]}
                 onChange={(e) => set(key, e.target.value)}
                 placeholder="—"
-                aria-label={`${long} Profiltiefe mm`}
+                aria-label={`${long} Profiltiefe in Millimeter`}
+                aria-describedby={`tire-${key}-unit`}
               />
-              <p className="mt-1 text-center text-[10px] text-muted-foreground">mm</p>
+              <p id={`tire-${key}-unit`} className="mt-1 text-center text-[10px] font-semibold text-muted-foreground">
+                mm
+              </p>
             </label>
           ))}
         </div>
@@ -57,13 +63,17 @@ export function OperatorTireMeasureTreadGrid({ tread, onChange, warnings }: Prop
       </p>
 
       {warnings.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2" role="status" aria-live="polite">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Plausibilitätshinweise
+          </p>
           {warnings.map((w) => (
             <div
               key={w.id}
-              className="rounded-xl border border-[color:var(--status-watch)]/35 bg-[color:var(--status-watch)]/[0.06] px-3 py-2 text-xs text-foreground"
+              className="flex items-start gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs text-foreground"
             >
-              {w.message}
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-watch)]" aria-hidden />
+              <span>{w.message}</span>
             </div>
           ))}
         </div>

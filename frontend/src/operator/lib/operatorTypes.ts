@@ -29,10 +29,11 @@ export type OperatorSheetAction =
       vehicleId: string;
       vehicleLabel: string;
       bookingId?: string;
+      handoverSessionId?: string;
       initialOdometerKm?: number;
       prefilledTread?: { fl?: number; fr?: number; rl?: number; rr?: number };
       sourceHint?: 'manual' | 'workshop' | 'ai_confirmed';
-      onSuccess?: () => void;
+      onSuccess?: (measurementId?: string) => void;
     }
   | {
       type: 'task-create';

@@ -11,6 +11,9 @@ import { OperatorDocumentPreviewService } from './operator-document-preview.serv
 import { OperatorDamageController } from './damage/operator-damage.controller';
 import { OperatorDamageService } from './damage/operator-damage.service';
 import { OperatorDamageAuditService } from './damage/operator-damage-audit.service';
+import { OperatorTireMeasureController } from './tire-measure/operator-tire-measure.controller';
+import { OperatorTireMeasureService } from './tire-measure/operator-tire-measure.service';
+import { OperatorTireMeasureAuditService } from './tire-measure/operator-tire-measure-audit.service';
 
 @Module({
   imports: [
@@ -20,14 +23,16 @@ import { OperatorDamageAuditService } from './damage/operator-damage-audit.servi
     ActivityLogModule,
     forwardRef(() => VehicleIntelligenceModule),
   ],
-  controllers: [OperatorAppController, OperatorDamageController],
+  controllers: [OperatorAppController, OperatorDamageController, OperatorTireMeasureController],
   providers: [
     OperatorAppService,
     OperatorDocumentAuditService,
     OperatorDocumentPreviewService,
     OperatorDamageService,
     OperatorDamageAuditService,
+    OperatorTireMeasureService,
+    OperatorTireMeasureAuditService,
   ],
-  exports: [OperatorAppService, OperatorDamageService],
+  exports: [OperatorAppService, OperatorDamageService, OperatorTireMeasureService],
 })
 export class OperatorAppModule {}
