@@ -143,22 +143,8 @@ must be wrapped as `AiEvidence` with explicit:
 - Guards: `assertAiHealthAccess` + `resolveAiVehicleAccess`.
 - Per-domain `AiHealthDomainSlice` with structured facts; no DTCs ⇒ healthy;
   unknown data explicitly marked.
-- Tests: `ai-explain-overdue-return.spec.ts` (6) + `overdue-return-explanation.util.spec.ts` (7); **235/235** AI module.
-
-### Prompt 14 — `get_vehicle_booking_context` domain tool (2026-07-24)
-
-- Added `backend/src/modules/ai/tools/get-vehicle-booking-context/` — structured
-  operational booking/return context for Fleet AI.
-- Canonical service: `backend/src/modules/bookings/vehicle-booking-context/`
-  — `VehicleBookingContextService` reuses `buildFleetBookingContextFromRows`,
-  `VehiclesService.deriveFleetStatusContext`, handover protocols, pricing-quote
-  extension (`returnAt` vs PATCH `endDate`).
-- Output: `contextKind`, current/reserved/upcoming snapshots, `runtimeState`,
-  `openProcessSteps`, `nextRelevantDeadline`, `pickupOverdue`, `returnOverdue`,
-  `reasonCodes`, `inconsistencyFlags`.
-- Customer PII: `customerDisplayName` only when `assertAiCustomerDataAccess`.
-- Tests: util (8) + tool (5); **243/243** AI module.
-
+- Tests: `ai-get-vehicle-health-summary.spec.ts` + mapper spec; **229/229** AI module
+  before Prompt 13.
 
 ### Prompt 13 — `explain_overdue_return` domain tool (2026-07-24)
 
@@ -177,5 +163,21 @@ must be wrapped as `AiEvidence` with explicit:
   `assertAiLocationAccess` for `latestKnownLocation`.
 - Only current ACTIVE booking is used as cause; historical `bookingId` flagged
   `HISTORICAL_BOOKING_NOT_CURRENT`.
-- Tests: `ai-explain-overdue-return.spec.ts` (6) + mapper util (7).
+- Tests: `ai-explain-overdue-return.spec.ts` (6) + `overdue-return-explanation.util.spec.ts` (7);
+  **235/235** AI module.
+
+### Prompt 14 — `get_vehicle_booking_context` domain tool (2026-07-24)
+
+- Added `backend/src/modules/ai/tools/get-vehicle-booking-context/` — structured
+  operational booking/return context for Fleet AI.
+- Canonical service: `backend/src/modules/bookings/vehicle-booking-context/`
+  — `VehicleBookingContextService` reuses `buildFleetBookingContextFromRows`,
+  `VehiclesService.deriveFleetStatusContext`, handover protocols, pricing-quote
+  extension (`returnAt` vs PATCH `endDate`).
+- Output: `contextKind`, current/reserved/upcoming snapshots, `runtimeState`,
+  `openProcessSteps`, `nextRelevantDeadline`, `pickupOverdue`, `returnOverdue`,
+  `reasonCodes`, `inconsistencyFlags`.
+- Customer PII: `customerDisplayName` only when `assertAiCustomerDataAccess`.
+- Tests: `vehicle-booking-context.util.spec.ts` (8) + `ai-get-vehicle-booking-context.spec.ts` (5);
+  **240/240** AI module.
 
