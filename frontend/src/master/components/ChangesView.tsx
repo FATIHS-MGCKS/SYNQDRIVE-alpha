@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-handover-draft-wizard-sync-v49845-2026-07-25',
+    version: '4.9.845',
+    title: 'V4.9.845 — Operator App: Handover-Wizard ↔ Draft-Sync (Prompt 19)',
+    summary: [
+      'Production-Sync-Layer `useOperatorHandoverDraft`: debounced Autosave (800ms), `flushSave` bei Step-Wechsel/Schließen/Submit, `AbortController`, Retry nur bei Netzwerk/5xx.',
+      'Sichtbarer Speicherstatus (`OperatorHandoverSaveStatus`) und Konflikt-Dialog — kein stilles Überschreiben bei `VERSION_CONFLICT`.',
+      'Minimaler `sessionStorage`-Puffer (Metadaten only, 5min TTL) — keine Signaturen, Ausweise oder Dokumentbilder.',
+      'Resume-Hinweise auf Today-/Booking-Karten (`useOperatorHandoverDraftHints`) + Draft-Cleanup nach erfolgreichem Abschluss.',
+      '`ApiHttpError` für strukturierte API-Fehlercodes; Frontend-Tests für Buffer, Sync-Retry und Hook-Hydration.',
+    ],
+    reason:
+      'Production-Readiness Prompt 19: Wizard mit serverseitigem Draft verbinden — sicher speichern, resume, Konflikte behandeln.',
+    previousBehavior:
+      'Basis-Autosave aus Prompt 18 ohne Status-UI, ohne Konflikt-Dialog, ohne Flush bei Navigation, ohne Resume-Badges.',
+    details:
+      'Audit §41, `useOperatorHandoverDraft.ts`, `operatorHandoverDraftBuffer.ts`, `OperatorHandoverFlow.tsx`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T21:30:00.000Z',
+  },
+  {
     id: 'operator-handover-draft-lifecycle-v49844-2026-07-25',
     version: '4.9.844',
     title: 'V4.9.844 — Operator App: serverseitiger Handover-Draft-Lifecycle (Prompt 18)',

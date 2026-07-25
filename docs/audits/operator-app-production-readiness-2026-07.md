@@ -2221,6 +2221,38 @@ Signaturen: nur Status (`captured` + `name`), keine Rohbilder im Draft.
 
 ---
 
+## 41. Operator Handover Wizard ↔ Draft Sync (Prompt 19)
+
+### 41.1 Sync-Verhalten
+
+| Aspekt | Verhalten |
+|--------|-----------|
+| Initial | `GET` Draft oder `POST` create beim Öffnen des Wizards |
+| Autosave | Debounce 800ms auf Formularänderungen |
+| Sofort-Save | Step-Wechsel, Schließen, Submit (`flushSave`) |
+| Version | `expectedVersion` auf jedem PATCH |
+| Abort | `AbortController` bricht veraltete Saves ab |
+| Retry | Nur bei Netzwerk/5xx (max 3, Backoff) — nie bei `VERSION_CONFLICT` |
+| Status | `saving` / `saved` / `offline` / `conflict` / `error` |
+
+### 41.2 Konfliktstrategie
+
+Bei `HANDOVER_DRAFT_VERSION_CONFLICT`: Autosave stoppt, Dialog mit **Server-Stand laden** (Server gewinnt) oder **Lokal fortfahren** (Version nachziehen, expliziter Re-Save). Kein stilles Überschreiben neuerer Serverdaten.
+
+### 41.3 Lokaler Puffer
+
+`sessionStorage` (`sq:operator-handover-draft-buffer`): nur `orgId`, `bookingId`, `kind`, `sessionId`, `version`, `step`, `updatedAt` — TTL 5min, kein Formular/keine Signaturen/Bilder. Nach Sync oder Abschluss gelöscht.
+
+### 41.4 Resume-Hinweise
+
+`useOperatorHandoverDraftHints` auf Today-/Booking-Karten und Detail-Sheet; Badge „Entwurf · Schritt X“, CTA „Fortsetzen“.
+
+### 41.5 Tests
+
+Frontend: `operatorHandoverDraftBuffer.test.ts`, `operatorHandoverDraftSync.test.ts`, `useOperatorHandoverDraft.test.ts`.
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

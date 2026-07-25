@@ -10,6 +10,10 @@ import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns'
 import { useFleetVehicles } from '../../rental/FleetContext';
 import type { ApiTask } from '../../lib/api';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
+import {
+  getOperatorHandoverDraftHint,
+  useOperatorHandoverDraftHints,
+} from '../handover/useOperatorHandoverDraftHints';
 import { useOperatorToday } from '../hooks/useOperatorToday';
 import { useOperatorOperationalAlerts } from '../hooks/useOperatorOperationalAlerts';
 import { OperatorBookingCard } from '../components/OperatorBookingCard';
@@ -84,6 +88,15 @@ export function OperatorTodayView() {
   const [detailItem, setDetailItem] = useState<OperatorTodayBookingItem | null>(null);
   const [plannedOpen, setPlannedOpen] = useState(false);
 
+  const draftLookupTargets = useMemo(() => {
+    const items = [...snapshot.dueNow, ...snapshot.pickupsToday, ...snapshot.returnsToday];
+    return items
+      .filter((item) => !item.isDone)
+      .map((item) => ({ bookingId: item.bookingId, kind: item.kind }));
+  }, [snapshot.dueNow, snapshot.pickupsToday, snapshot.returnsToday]);
+
+  const draftHints = useOperatorHandoverDraftHints(orgId ?? undefined, draftLookupTargets);
+
   const vehicleById = useMemo(() => buildFleetVehicleById(fleetVehicles), [fleetVehicles]);
 
   const hasTaskBuckets = hasAnyTaskBucketContent(
@@ -144,6 +157,7 @@ export function OperatorTodayView() {
           <OperatorBookingCard
             key={`${item.kind}-${item.bookingId}`}
             item={item}
+            draftHint={getOperatorHandoverDraftHint(draftHints, item.bookingId, item.kind)}
             onPickupStart={() => startHandover(item, 'PICKUP')}
             onReturnStart={() => startHandover(item, 'RETURN')}
             onDetails={() => setDetailItem(item)}
@@ -151,7 +165,7 @@ export function OperatorTodayView() {
         ))}
       </div>
     ),
-    [startHandover],
+    [startHandover, draftHints],
   );
 
   const sectionExtras = useMemo(() => {
