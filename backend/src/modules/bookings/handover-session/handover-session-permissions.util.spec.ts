@@ -16,6 +16,7 @@ describe('handover-session-permissions.util', () => {
       }),
     ).toEqual({
       canWriteBookings: true,
+      canCompletePickup: true,
       canOverrideScope: true,
       canOverridePickupGate: true,
       canSupersede: true,

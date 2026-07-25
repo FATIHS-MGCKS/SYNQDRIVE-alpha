@@ -116,6 +116,7 @@ describe('handover-pickup-transition.policy', () => {
           canWriteBookings: true,
           canOverrideScope: true,
           canOverridePickupGate: false,
+          canCompletePickup: true,
           canSupersede: true,
         },
       }),
@@ -156,7 +157,27 @@ describe('handover-pickup-transition.policy', () => {
     expect(decision.code).toBe(HANDOVER_SESSION_ERROR.SIGNATURE_REQUIRED);
   });
 
-  it('denies COMPLETE in this release', () => {
+  it('denies COMPLETE without operator.handover.complete permission', () => {
+    const decision = evaluatePickupTransitionPolicy(
+      buildHandoverTransitionInput({
+        fromStatus: 'SUBMITTED',
+        toStatus: 'COMPLETED',
+        action: 'COMPLETE',
+        currentVersion: 3,
+        expectedVersion: 3,
+        permissions: {
+          canWriteBookings: true,
+          canCompletePickup: false,
+          canOverrideScope: true,
+          canOverridePickupGate: true,
+          canSupersede: true,
+        },
+      }),
+    );
+    expect(decision.code).toBe(HANDOVER_SESSION_ERROR.PERMISSION_DENIED);
+  });
+
+  it('allows COMPLETE from SUBMITTED with permission', () => {
     const decision = evaluatePickupTransitionPolicy(
       buildHandoverTransitionInput({
         fromStatus: 'SUBMITTED',
@@ -166,7 +187,7 @@ describe('handover-pickup-transition.policy', () => {
         expectedVersion: 3,
       }),
     );
-    expect(decision.code).toBe(HANDOVER_SESSION_ERROR.COMPLETE_NOT_IMPLEMENTED);
+    expect(decision).toEqual({ allowed: true });
   });
 
   it('denies scope override without reason', () => {

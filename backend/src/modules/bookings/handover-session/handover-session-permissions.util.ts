@@ -9,10 +9,7 @@ type MembershipRow = {
   permissions: unknown;
 };
 
-/**
- * Resolves handover session permission flags from membership permissions.
- * Scope override uses `bookings.manage` until `operator.handover.override` is registered.
- */
+import { OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS } from './operator-handover-permission.constants';
 export function resolveHandoverSessionPermissions(
   membership: MembershipRow | null,
   actor: HandoverActorContext,
@@ -20,6 +17,7 @@ export function resolveHandoverSessionPermissions(
   if (actor.platformRole === 'MASTER_ADMIN') {
     return {
       canWriteBookings: true,
+      canCompletePickup: true,
       canOverrideScope: true,
       canOverridePickupGate: true,
       canSupersede: true,
@@ -35,10 +33,25 @@ export function resolveHandoverSessionPermissions(
 
   const overrideHandover =
     LEGAL_DOCUMENT_PERMISSION_REQUIREMENTS['legal_documents.override_handover'];
+  const completePickup =
+    OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS['operator.handover.complete'];
+  const overrideScope =
+    OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS['operator.handover.override'];
 
   return {
     canWriteBookings: evaluateModulePermission(permissions, 'bookings', 'write', options),
-    canOverrideScope: evaluateModulePermission(permissions, 'bookings', 'manage', options),
+    canCompletePickup: evaluateModulePermission(
+      permissions,
+      completePickup.module,
+      completePickup.level,
+      options,
+    ),
+    canOverrideScope: evaluateModulePermission(
+      permissions,
+      overrideScope.module,
+      overrideScope.level,
+      options,
+    ),
     canOverridePickupGate: evaluateModulePermission(
       permissions,
       overrideHandover.module,

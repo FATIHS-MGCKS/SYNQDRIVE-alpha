@@ -169,10 +169,19 @@ export function evaluateHandoverTransitionBase(
   }
 
   if (action === 'COMPLETE') {
-    return denyHandoverTransition(
-      HANDOVER_SESSION_ERROR.COMPLETE_NOT_IMPLEMENTED,
-      'Session completion transaction is not available in this release — use legacy handover POST',
-    );
+    if (!input.permissions.canCompletePickup) {
+      return denyHandoverTransition(
+        HANDOVER_SESSION_ERROR.PERMISSION_DENIED,
+        'Missing operator.handover.complete permission',
+      );
+    }
+    if (input.fromStatus !== 'SUBMITTED') {
+      return denyHandoverTransition(
+        HANDOVER_SESSION_ERROR.TRANSITION_FORBIDDEN,
+        'COMPLETE requires SUBMITTED session status — use pickup/complete command',
+      );
+    }
+    return allowHandoverTransition();
   }
 
   return allowHandoverTransition();

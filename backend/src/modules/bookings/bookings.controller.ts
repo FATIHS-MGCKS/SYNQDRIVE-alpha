@@ -55,11 +55,13 @@ import { toBookingCreateInput, toBookingUpdateInput } from './booking-input.sani
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { BookingsHandoverSessionService } from './handover-session/bookings-handover-session.service';
+import { CompletePickupHandoverService } from './handover-session/complete-pickup-handover.service';
 import {
   isHandoverSessionAction,
   isHandoverSessionStatusValue,
 } from './handover-session/bookings-handover-session.service';
 import type { HandoverSessionTransitionBodyDto } from './handover-session/dto/handover-session.dto';
+import type { CompletePickupHandoverBodyDto } from './handover-session/dto/complete-pickup-handover.dto';
 import { resolveHandoverActor } from './handover-actor.util';
 import type { HandoverKind } from '@prisma/client';
 
@@ -70,6 +72,7 @@ export class BookingsController {
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
     private readonly handoverSessionService: BookingsHandoverSessionService,
+    private readonly completePickupHandoverService: CompletePickupHandoverService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
@@ -488,6 +491,30 @@ export class BookingsController {
     @Param('id') bookingId: string,
   ) {
     return this.handoverService.findForBooking(orgId, bookingId);
+  }
+
+  @Post(':id/handover/pickup/complete')
+  @RequirePermission('bookings', 'write')
+  async completePickupHandover(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CompletePickupHandoverBodyDto,
+  ) {
+    if (!body?.idempotencyKey?.trim()) {
+      throw new BadRequestException('idempotencyKey is required');
+    }
+    const { idempotencyKey, sessionId, expectedVersion, scopeOverrideReason, ...payload } = body;
+    return this.completePickupHandoverService.completePickupHandover({
+      organizationId: orgId,
+      bookingId,
+      idempotencyKey: idempotencyKey.trim(),
+      payload,
+      actor: resolveHandoverActor(user),
+      sessionId: sessionId ?? null,
+      expectedVersion: expectedVersion ?? null,
+      scopeOverrideReason: scopeOverrideReason ?? null,
+    });
   }
 
   @Post(':id/handover/pickup')

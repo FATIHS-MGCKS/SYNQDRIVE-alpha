@@ -66,6 +66,7 @@ export interface HandoverSessionBlocker {
 
 export interface HandoverSessionPermissionContext {
   canWriteBookings: boolean;
+  canCompletePickup: boolean;
   canOverrideScope: boolean;
   canOverridePickupGate: boolean;
   canSupersede: boolean;

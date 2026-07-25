@@ -1614,6 +1614,7 @@ model Organization {
   bookingAllowedDrivers                  BookingAllowedDriver[]
   bookingHandoverProtocols               BookingHandoverProtocol[]
   bookingHandoverSessions                BookingHandoverSession[]
+  bookingHandoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
   activityLogs                           ActivityLog[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   vendors                                Vendor[]
@@ -5601,6 +5602,7 @@ model Booking {
   rentalDrivingAnalyses   RentalDrivingAnalysis[]
   handoverProtocols       BookingHandoverProtocol[]
   handoverSessions        BookingHandoverSession[]
+  handoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
   priceSnapshots          BookingPriceSnapshot[]
@@ -6060,6 +6062,25 @@ model BookingHandoverSession {
   @@index([bookingId, kind])
   @@index([vehicleId])
   @@map("booking_handover_sessions")
+}
+
+/// Idempotent replay cache for pickup handover completion commands (Prompt 15).
+model BookingHandoverPickupCompletionIdempotency {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  bookingId      String   @map("booking_id")
+  idempotencyKey String   @map("idempotency_key")
+  sessionId      String?  @map("session_id")
+  protocolId     String   @map("protocol_id")
+  responseJson   Json     @map("response_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey], map: "booking_handover_pickup_completion_org_idempotency_key")
+  @@index([bookingId], map: "booking_handover_pickup_completion_booking_id_idx")
+  @@map("booking_handover_pickup_completion_idempotency")
 }
 
 /// Rental-period analysis input coverage (P59).

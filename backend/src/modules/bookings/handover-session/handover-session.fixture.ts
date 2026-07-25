@@ -7,6 +7,7 @@ import { HANDOVER_SESSION_NOT_STARTED } from './handover-session.types';
 
 const defaultPermissions: HandoverSessionPermissionContext = {
   canWriteBookings: true,
+  canCompletePickup: true,
   canOverrideScope: true,
   canOverridePickupGate: true,
   canSupersede: true,
