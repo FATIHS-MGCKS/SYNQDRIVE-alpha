@@ -107,6 +107,11 @@ export class CreateWorkflowDto {
   @IsOptional()
   @IsIn(['DRAFT', 'ACTIVE', 'DISABLED'])
   status?: 'DRAFT' | 'ACTIVE' | 'DISABLED';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  activationReason?: string;
 }
 
 export class UpdateWorkflowDto {
@@ -151,6 +156,11 @@ export class UpdateWorkflowDto {
   @IsOptional()
   @IsIn(['DRAFT', 'ACTIVE', 'DISABLED', 'INVALID'])
   status?: 'DRAFT' | 'ACTIVE' | 'DISABLED' | 'INVALID';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  activationReason?: string;
 }
 
 export class TestWorkflowDto {
@@ -165,6 +175,28 @@ export class TestWorkflowDto {
   @IsOptional()
   @IsString()
   entityId?: string;
+
+  @IsOptional()
+  @IsString()
+  eventType?: string;
+
+  @IsOptional()
+  @IsObject()
+  proposedDefinition?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsIn(['saved', 'draft'])
+  sourceRevisionType?: 'saved' | 'draft';
+}
+
+export class WorkflowRevisionDiffDto {
+  @IsObject()
+  proposedDefinition!: Record<string, unknown>;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  reason?: string;
 }
 
 export class RejectWorkflowActionDto {
@@ -172,4 +204,56 @@ export class RejectWorkflowActionDto {
   @IsString()
   @MaxLength(2000)
   reason?: string;
+}
+
+export class ApproveWorkflowActionDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  reason!: string;
+
+  @IsOptional()
+  decisionVersion?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  emergencyOverride?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  emergencyReason?: string;
+}
+
+export class SubmitWorkflowActivationDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  reason!: string;
+}
+
+export class DecideWorkflowChangeRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  reason!: string;
+
+  @IsOptional()
+  decisionVersion?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  emergencyOverride?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  emergencyReason?: string;
+}
+
+export class ToggleWorkflowDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  activationReason?: string;
 }

@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { WorkflowMakerCheckerService } from '@modules/workflows/maker-checker/workflow-maker-checker.service';
+import { requiresMakerCheckerForDeadLetterReplay } from '@modules/workflows/maker-checker/workflow-maker-checker.constants';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import { TaskAutomationOutboxRepository } from '../outbox/task-automation-outbox.repository';
 import { TaskAutomationOutboxSchedulerService } from '../outbox/task-automation-outbox-scheduler.service';
 import {
@@ -105,6 +108,7 @@ export class TaskAutomationAdminService {
     private readonly simulation: TaskAutomationSimulationService,
     private readonly outboxRepo: TaskAutomationOutboxRepository,
     private readonly outboxScheduler: TaskAutomationOutboxSchedulerService,
+    private readonly makerChecker: WorkflowMakerCheckerService,
   ) {}
 
   async listRules(orgId: string): Promise<TaskAutomationRulesOverviewDto> {
@@ -228,13 +232,41 @@ export class TaskAutomationAdminService {
     }));
   }
 
-  async replayDeadLetterOutbox(orgId: string, outboxId: string) {
+  async replayDeadLetterOutbox(
+    orgId: string,
+    outboxId: string,
+    maker: PermissionActor & { id: string },
+    makerReason: string,
+  ) {
+    const row = await this.outboxRepo.findById(outboxId, orgId);
+    if (!row || row.status !== 'DEAD_LETTER') {
+      throw new NotFoundException(`Dead-letter outbox row ${outboxId} not found for organization`);
+    }
+
+    if (requiresMakerCheckerForDeadLetterReplay()) {
+      const changeRequest = await this.makerChecker.submitDeadLetterReplayRequest({
+        orgId,
+        outboxId,
+        maker,
+        makerReason,
+      });
+      return {
+        pendingApproval: true as const,
+        outboxId,
+        changeRequest: this.makerChecker.formatChangeRequest(changeRequest),
+      };
+    }
+
+    return this.executeDeadLetterReplay(orgId, outboxId);
+  }
+
+  async executeDeadLetterReplay(orgId: string, outboxId: string) {
     const requeued = await this.outboxRepo.requeueDeadLetter(outboxId, orgId);
     if (!requeued) {
       throw new NotFoundException(`Dead-letter outbox row ${outboxId} not found for organization`);
     }
     await this.outboxScheduler.scheduleOutboxIds([outboxId]);
-    return { outboxId, status: 'PENDING' as const };
+    return { pendingApproval: false as const, outboxId, status: 'PENDING' as const };
   }
 
   private toAdminDto(

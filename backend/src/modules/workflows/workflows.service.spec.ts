@@ -76,10 +76,28 @@ describe('evaluateWorkflowConditions', () => {
     expect(result.passed).toBe(true);
   });
 
-  it('fails when condition does not match', () => {
+  it('evaluates any match group', () => {
     const result = evaluateWorkflowConditions(
-      [{ field: 'overdue_days', operator: 'greater_than', value: 14 }],
-      { overdueDays: 5 },
+      {
+        match: 'any',
+        rules: [
+          { field: 'overdue_days', operator: 'greater_than', value: 14 },
+          { field: 'health_score', operator: 'less_than', value: 30 },
+        ],
+      },
+      { overdueDays: 5, healthScore: 20 },
+    );
+    expect(result.passed).toBe(true);
+  });
+
+  it('supports negated all group', () => {
+    const result = evaluateWorkflowConditions(
+      {
+        match: 'all',
+        negate: true,
+        rules: [{ path: 'payload.severity', operator: 'equals', value: 'critical' }],
+      },
+      { severity: 'critical' },
     );
     expect(result.passed).toBe(false);
   });
