@@ -27,6 +27,20 @@ export type VoiceOutboundCallRequest = {
   customerId?: string | null;
   bookingId?: string | null;
   initiatedByUserId?: string | null;
+  workflowSource?: VoiceWorkflowCallSource;
+};
+
+export type VoiceWorkflowCallSource = {
+  workflowRunId: string;
+  actionRunId: string;
+  workflowId: string;
+  actionIndex: number;
+  scenarioKey: string;
+  scenarioVersion: string;
+  callPurpose: string;
+  maxDurationSeconds?: number;
+  toolAllowlist?: string[];
+  aiTransparencyRequired?: boolean;
 };
 
 export type VoiceOutboundCallResult = {
