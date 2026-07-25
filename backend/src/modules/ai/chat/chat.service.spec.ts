@@ -154,12 +154,22 @@ describe('ChatService — fleet orchestrator wiring', () => {
     const orchestrator = { orchestrate: jest.fn() };
     const contextResolver = { resolve: jest.fn() };
     const requestAudit = { recordFleetRequest: jest.fn() };
+    const agentLimits = {
+      acquireChatRequest: jest.fn().mockResolvedValue({ slotKey: 'disabled' }),
+      releaseChatRequest: jest.fn(),
+      withRequestTimeout: jest.fn((_id, promise) => promise),
+      resolveLimitError: jest.fn().mockReturnValue(null),
+      getMaxConversationHistory: jest.fn().mockReturnValue(100),
+    };
+    const toolCache = { clearRequest: jest.fn() };
     const svc = new ChatService(
       prisma as any,
       llm as any,
       orchestrator as any,
       contextResolver as any,
       requestAudit as any,
+      agentLimits as any,
+      toolCache as any,
     );
 
     const result = await svc.ensureAgent(ORG_ID);
@@ -186,12 +196,22 @@ describe('ChatService — fleet orchestrator wiring', () => {
       }),
     };
     const requestAudit = { recordFleetRequest: jest.fn() };
+    const agentLimits = {
+      acquireChatRequest: jest.fn().mockResolvedValue({ slotKey: 'disabled' }),
+      releaseChatRequest: jest.fn(),
+      withRequestTimeout: jest.fn((_id, promise) => promise),
+      resolveLimitError: jest.fn().mockReturnValue(null),
+      getMaxConversationHistory: jest.fn().mockReturnValue(100),
+    };
+    const toolCache = { clearRequest: jest.fn() };
     const svc = new ChatService(
       prisma as any,
       llm as any,
       orchestrator as any,
       contextResolver as any,
       requestAudit as any,
+      agentLimits as any,
+      toolCache as any,
     );
 
     const result = await svc.sendMessage(ORG_ID, 'Wie ist die Gesundheit?', {
@@ -211,12 +231,22 @@ describe('ChatService — fleet orchestrator wiring', () => {
     const orchestrator = { orchestrate: jest.fn() };
     const contextResolver = { resolve: jest.fn() };
     const requestAudit = { recordFleetRequest: jest.fn() };
+    const agentLimits = {
+      acquireChatRequest: jest.fn().mockResolvedValue({ slotKey: 'disabled' }),
+      releaseChatRequest: jest.fn(),
+      withRequestTimeout: jest.fn((_id, promise) => promise),
+      resolveLimitError: jest.fn().mockReturnValue(null),
+      getMaxConversationHistory: jest.fn().mockReturnValue(100),
+    };
+    const toolCache = { clearRequest: jest.fn() };
     const svc = new ChatService(
       prisma as any,
       llm as any,
       orchestrator as any,
       contextResolver as any,
       requestAudit as any,
+      agentLimits as any,
+      toolCache as any,
     );
 
     const result = await svc.sendMessage(ORG_ID, 'Hello');

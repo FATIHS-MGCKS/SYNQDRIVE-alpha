@@ -4,6 +4,10 @@ import { LlmGatewayService } from '../llm/llm-gateway.service';
 import { FleetChatOrchestratorService } from './fleet-chat-orchestrator.service';
 import { ChatExecutionContextResolver } from './chat-execution-context.resolver';
 import { AiRequestAuditService } from '../audit/ai-request-audit.service';
+import { AiAgentLimitsService } from '../limits/ai-agent-limits.service';
+import { AiAgentToolCacheService } from '../limits/ai-agent-tool-cache.service';
+import { AiAgentLimitException } from '../limits/ai-agent-limit.errors';
+import type { AiChatRequestSlot } from '../limits/ai-agent-limit.types';
 import type { ChatSessionIdentity } from './chat-session.types';
 import {
   type ChatFleetStructuredPayload,
@@ -39,6 +43,8 @@ export class ChatService {
     private readonly orchestrator: FleetChatOrchestratorService,
     private readonly contextResolver: ChatExecutionContextResolver,
     private readonly requestAudit: AiRequestAuditService,
+    private readonly agentLimits: AiAgentLimitsService,
+    private readonly toolCache: AiAgentToolCacheService,
   ) {}
 
   isConfigured(): boolean {
@@ -91,13 +97,53 @@ export class ChatService {
     orgId: string,
     content: string,
     session?: ChatSessionIdentity,
+    clientIp?: string | null,
   ): Promise<ChatMessageResult> {
-    const { error } = await this.ensureAgentSafe(orgId);
-    if (error) return this.persistAssistant(orgId, error);
+    let slot: AiChatRequestSlot | null = null;
+    let correlationId = 'unknown';
+    try {
+      const identity = session ?? {
+        userId: 'system',
+        platformRole: null,
+        locale: 'de',
+      };
+      const context = await this.contextResolver.resolve(orgId, identity);
+      if (context) {
+        correlationId = context.correlationId;
+        slot = await this.agentLimits.acquireChatRequest({
+          organizationId: orgId,
+          userId: context.userId,
+          correlationId: context.correlationId,
+          clientIp,
+        });
+      }
 
-    await this.saveUserMessage(orgId, content);
-    const outcome = await this.runFleetOrchestrator(orgId, content, session);
-    return this.persistAssistant(orgId, outcome.text, outcome.structured);
+      const { error } = await this.ensureAgentSafe(orgId);
+      if (error) return this.persistAssistant(orgId, error);
+
+      await this.saveUserMessage(orgId, content);
+      const outcome = await this.agentLimits.withRequestTimeout(
+        correlationId,
+        this.runFleetOrchestrator(orgId, content, session),
+      );
+      return this.persistAssistant(orgId, outcome.text, outcome.structured);
+    } catch (err: unknown) {
+      const limitError = this.agentLimits.resolveLimitError(
+        err,
+        session?.locale === 'en' ? 'en' : 'de',
+      );
+      if (limitError) {
+        return this.persistAssistant(
+          orgId,
+          limitError.resolveText(session?.locale === 'en' ? 'en' : 'de'),
+          this.buildLimitStructured(limitError),
+        );
+      }
+      throw err;
+    } finally {
+      await this.agentLimits.releaseChatRequest(slot);
+      this.toolCache.clearRequest(correlationId);
+    }
   }
 
   async streamMessage(
@@ -106,39 +152,99 @@ export class ChatService {
     emit: (event: string, data: unknown) => void,
     isClosed: () => boolean,
     session?: ChatSessionIdentity,
+    clientIp?: string | null,
   ): Promise<void> {
-    const { error } = await this.ensureAgentSafe(orgId);
-    if (error) {
-      const saved = await this.persistAssistant(orgId, error);
-      if (!isClosed()) emit('result', this.toResultDto(saved));
-      return;
-    }
-    if (!isClosed()) emit('status', { agentReady: true });
+    const locale = session?.locale === 'en' ? 'en' : 'de';
+    let slot: AiChatRequestSlot | null = null;
+    let correlationId = 'unknown';
 
-    await this.saveUserMessage(orgId, content);
-
-    const locale = session?.locale ?? 'de';
-    const emitProgress = (type: keyof typeof PROGRESS_LABELS) => {
-      if (!isClosed()) {
-        const labels = PROGRESS_LABELS[type];
-        emit('progress', {
-          type,
-          content: locale === 'en' ? labels.en : labels.de,
+    try {
+      const identity = session ?? {
+        userId: 'system',
+        platformRole: null,
+        locale: 'de',
+      };
+      const context = await this.contextResolver.resolve(orgId, identity);
+      if (context) {
+        correlationId = context.correlationId;
+        slot = await this.agentLimits.acquireChatRequest({
+          organizationId: orgId,
+          userId: context.userId,
+          correlationId: context.correlationId,
+          clientIp,
         });
       }
-    };
 
-    emitProgress('thinking');
-    emitProgress('routing');
+      const { error } = await this.ensureAgentSafe(orgId);
+      if (error) {
+        const saved = await this.persistAssistant(orgId, error);
+        if (!isClosed()) emit('result', this.toResultDto(saved));
+        return;
+      }
+      if (!isClosed()) emit('status', { agentReady: true });
 
-    const outcome = await this.runFleetOrchestrator(orgId, content, session, emitProgress);
-    emitProgress('composing');
+      await this.saveUserMessage(orgId, content);
 
-    const saved = await this.persistAssistant(orgId, outcome.text, outcome.structured);
-    if (!isClosed()) emit('result', this.toResultDto(saved));
+      const emitProgress = (type: keyof typeof PROGRESS_LABELS) => {
+        if (!isClosed()) {
+          const labels = PROGRESS_LABELS[type];
+          emit('progress', {
+            type,
+            content: locale === 'en' ? labels.en : labels.de,
+          });
+        }
+      };
+
+      emitProgress('thinking');
+      emitProgress('routing');
+
+      const outcome = await this.agentLimits.withRequestTimeout(
+        correlationId,
+        this.runFleetOrchestrator(orgId, content, session, emitProgress),
+      );
+      emitProgress('composing');
+
+      const saved = await this.persistAssistant(orgId, outcome.text, outcome.structured);
+      if (!isClosed()) emit('result', this.toResultDto(saved));
+    } catch (err: unknown) {
+      const limitError = this.agentLimits.resolveLimitError(err, locale);
+      if (limitError) {
+        const saved = await this.persistAssistant(
+          orgId,
+          limitError.resolveText(locale),
+          this.buildLimitStructured(limitError),
+        );
+        if (!isClosed()) {
+          emit(
+            'error',
+            buildChatStreamError(limitError.resolveText(locale), correlationId),
+          );
+          emit('result', this.toResultDto(saved));
+        }
+        return;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`[Chat] streamMessage failed for org ${orgId}: ${message}`);
+      if (!isClosed()) {
+        emit(
+          'error',
+          buildChatStreamError(
+            locale === 'en'
+              ? "I'm sorry, something unexpected happened while processing your request. Please try again in a moment."
+              : 'Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut.',
+            correlationId,
+          ),
+        );
+      }
+    } finally {
+      await this.agentLimits.releaseChatRequest(slot);
+      this.toolCache.clearRequest(correlationId);
+    }
   }
 
   async getHistory(orgId: string, limit = 100, before?: string) {
+    const maxHistory = this.agentLimits.getMaxConversationHistory();
+    const effectiveLimit = Math.min(limit, maxHistory);
     const where: Record<string, unknown> = { organizationId: orgId };
     if (before) {
       where.createdAt = { lt: new Date(before) };
@@ -147,7 +253,7 @@ export class ChatService {
     const messages = await this.prisma.chatMessage.findMany({
       where,
       orderBy: { createdAt: 'asc' },
-      take: limit,
+      take: effectiveLimit,
       select: {
         id: true,
         role: true,
@@ -223,6 +329,13 @@ export class ChatService {
         : this.buildFallbackStructured(result.responseText, 'TEMPORARY_UNAVAILABLE', result.partial);
       return { text: result.responseText, structured };
     } catch (err: unknown) {
+      const limitError = this.agentLimits.resolveLimitError(
+        err,
+        context?.locale === 'en' ? 'en' : 'de',
+      );
+      if (limitError) {
+        throw limitError;
+      }
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`[Chat] orchestrator failed for org ${orgId}: ${message}`);
       const fallbackText =
@@ -230,6 +343,17 @@ export class ChatService {
       const structured = this.buildFallbackStructured(fallbackText, 'TEMPORARY_UNAVAILABLE', true);
       return { text: fallbackText, structured };
     }
+  }
+
+  private buildLimitStructured(limitError: AiAgentLimitException): ChatFleetStructuredPayload {
+    return {
+      ...this.buildFallbackStructured(
+        limitError.resolveText('de'),
+        'TEMPORARY_UNAVAILABLE',
+        true,
+      ),
+      warnings: [limitError.kind],
+    };
   }
 
   private buildFallbackStructured(

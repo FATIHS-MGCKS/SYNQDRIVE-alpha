@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { MembershipRole } from '@prisma/client';
 import { evaluateModulePermission } from '@shared/auth/permission.util';
 import type { AiExecutionContext } from '../execution/ai-execution-context.types';
@@ -35,6 +36,7 @@ import {
   buildAiDomainToolRegistryAuditPayload,
 } from './ai-domain-tool-registry.audit';
 import { AiRequestAuditService } from '../audit/ai-request-audit.service';
+import { AiAgentToolCacheService } from '../limits/ai-agent-tool-cache.service';
 import type {
   AiDomainToolDefinition,
   AiDomainToolExecuteOptions,
@@ -94,6 +96,7 @@ export class AiDomainToolRegistry {
     private readonly explainOverdueReturnTool: AiExplainOverdueReturnTool,
     private readonly getVehicleBookingContextTool: AiGetVehicleBookingContextTool,
     private readonly requestAudit: AiRequestAuditService,
+    private readonly toolCache: AiAgentToolCacheService,
   ) {
     this.executors = {
       [AI_GET_VEHICLE_LOCATION_TOOL]: (context, input, nowMs) =>
@@ -243,11 +246,23 @@ export class AiDomainToolRegistry {
     const startedAt = Date.now();
 
     try {
-      const outcome = await withTimeout(
-        executor(verifiedContext, inputValidation.normalized, nowMs),
-        input.options?.timeoutOverrideMs ?? definition.timeoutMs,
-        () => new Error('AI_DOMAIN_TOOL_TIMEOUT'),
-      );
+      const normalized = inputValidation.normalized as Record<string, unknown>;
+      const cacheKeySuffix = createHash('sha256')
+        .update(JSON.stringify(normalized))
+        .digest('hex')
+        .slice(0, 16);
+
+      const outcome = await this.toolCache.getOrExecute({
+        context: verifiedContext,
+        definition,
+        cacheKeySuffix,
+        execute: async () =>
+          withTimeout(
+            executor(verifiedContext, normalized, nowMs),
+            input.options?.timeoutOverrideMs ?? definition.timeoutMs,
+            () => new Error('AI_DOMAIN_TOOL_TIMEOUT'),
+          ),
+      });
 
       assertNoProviderDetailsInOutcome(outcome.data);
 

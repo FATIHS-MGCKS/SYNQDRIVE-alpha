@@ -40,11 +40,20 @@ import { AiDomainToolRegistry } from './registry/ai-domain-tool-registry.service
 import { FleetChatIntentRouterService } from './routing/fleet-chat-intent-router.service';
 import { FleetChatOrchestratorService } from './chat/fleet-chat-orchestrator.service';
 import { FleetChatEvidenceResponseComposerService } from './chat/fleet-chat-evidence-response/fleet-chat-evidence-response.service';
+import { RedisModule } from '@shared/redis/redis.module';
+import { AiAgentLimitsService } from './limits/ai-agent-limits.service';
+import { AiAgentRateLimitService } from './limits/ai-agent-rate-limit.service';
+import { AiAgentConcurrencyService } from './limits/ai-agent-concurrency.service';
+import { AiAgentTokenBudgetService } from './limits/ai-agent-token-budget.service';
+import { AiAgentToolCacheService } from './limits/ai-agent-tool-cache.service';
+import { AiLlmCircuitBreakerService } from './limits/ai-llm-circuit-breaker.service';
+import { AiAgentLlmExecutorService } from './limits/ai-agent-llm-executor.service';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
   imports: [
     PrismaModule,
+    RedisModule,
     VehiclesModule,
     DataAuthorizationsModule,
     forwardRef(() => RentalHealthModule),
@@ -98,6 +107,13 @@ import { AiHealthController } from './ai-health.controller';
     ChatExecutionContextResolver,
     AiRequestAuditService,
     AiAuditRetentionService,
+    AiAgentLimitsService,
+    AiAgentRateLimitService,
+    AiAgentConcurrencyService,
+    AiAgentTokenBudgetService,
+    AiAgentToolCacheService,
+    AiLlmCircuitBreakerService,
+    AiAgentLlmExecutorService,
     ChatService,
   ],
   exports: [

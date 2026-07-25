@@ -78,6 +78,10 @@ function createRegistryWithMocks(input: {
   const bookingTool = { execute: jest.fn(input.bookingExecute) };
 
   const requestAudit = { recordToolEvent: jest.fn() };
+  const toolCache = {
+    getOrExecute: jest.fn(async ({ execute }) => execute()),
+    clearRequest: jest.fn(),
+  };
 
   const registry = new AiDomainToolRegistry(
     locationTool as unknown as AiGetVehicleLocationTool,
@@ -86,6 +90,7 @@ function createRegistryWithMocks(input: {
     overdueTool as unknown as AiExplainOverdueReturnTool,
     bookingTool as unknown as AiGetVehicleBookingContextTool,
     requestAudit as unknown as import('../audit/ai-request-audit.service').AiRequestAuditService,
+    toolCache as unknown as import('../limits/ai-agent-tool-cache.service').AiAgentToolCacheService,
   );
 
   return {

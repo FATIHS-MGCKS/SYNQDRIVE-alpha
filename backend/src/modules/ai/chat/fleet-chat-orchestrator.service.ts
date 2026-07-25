@@ -3,12 +3,12 @@ import type { AiExecutionContext } from '../execution/ai-execution-context.types
 import { resolveAiExecutionContextError } from '../execution/ai-execution-context.validation';
 import {
   createAiDomainToolInvocationTracker,
+  type AiDomainToolInvocationTracker,
   type AiDomainToolName,
 } from '../registry/ai-domain-tool-registry.types';
 import { AiDomainToolRegistry } from '../registry/ai-domain-tool-registry.service';
 import { FleetChatIntentRouterService } from '../routing/fleet-chat-intent-router.service';
 import type { FleetChatRouteResult } from '../routing/fleet-chat-intent.types';
-import { LlmGatewayService } from '../llm/llm-gateway.service';
 import { FLEET_CHAT_SYSTEM_PROMPT } from '../vehicle-resolution/ai-vehicle-resolution.llm';
 import {
   mergeEvidenceForLlm,
@@ -20,6 +20,9 @@ import {
 } from '../audit/ai-request-audit.builder';
 import { AI_DOMAIN_TOOL_DEFINITION_BY_NAME } from '../registry/ai-domain-tool-registry.definitions';
 import type { LlmCompleteResult } from '../llm/llm.types';
+import { AiAgentLlmExecutorService } from '../limits/ai-agent-llm-executor.service';
+import { AiAgentLimitsService } from '../limits/ai-agent-limits.service';
+import { AiAgentToolCacheService } from '../limits/ai-agent-tool-cache.service';
 import type {
   FleetChatOrchestrateInput,
   FleetChatOrchestrateResult,
@@ -100,7 +103,9 @@ export class FleetChatOrchestratorService {
   constructor(
     private readonly intentRouter: FleetChatIntentRouterService,
     private readonly toolRegistry: AiDomainToolRegistry,
-    private readonly llm: LlmGatewayService,
+    private readonly llmExecutor: AiAgentLlmExecutorService,
+    private readonly agentLimits: AiAgentLimitsService,
+    private readonly toolCache: AiAgentToolCacheService,
     private readonly evidenceResponseComposer: FleetChatEvidenceResponseComposerService,
   ) {}
 
@@ -187,17 +192,20 @@ export class FleetChatOrchestratorService {
       }
 
       const toolsStarted = Date.now();
+      const invocationTracker = createAiDomainToolInvocationTracker();
+      const maxToolInvocations = this.agentLimits.getMaxToolInvocationsPerChatRequest();
+      const cappedTools = toolsRequested.slice(0, maxToolInvocations);
       try {
         const executions = await withTimeout(
           Promise.all(
-            toolsRequested.map(async (toolName) => {
+            cappedTools.map(async (toolName) => {
               const toolStarted = Date.now();
               const outcome = await this.toolRegistry.executeRegisteredTool({
                 context,
                 toolName,
                 rawInput: buildToolInput(toolName, vehicleId, input.bookingId),
                 options: {
-                  invocationTracker: createAiDomainToolInvocationTracker(),
+                  invocationTracker,
                 },
               });
               return {
@@ -254,7 +262,7 @@ export class FleetChatOrchestratorService {
       const llmStarted = Date.now();
       try {
         llmResult = await withTimeout(
-          this.callLlm(prepared.llmUserContext, route.language),
+          this.callLlm(context, prepared.llmUserContext, route.language),
           FLEET_CHAT_ORCHESTRATOR_LLM_TIMEOUT_MS,
           'LLM',
         );
@@ -312,6 +320,7 @@ export class FleetChatOrchestratorService {
   }
 
   private async callLlm(
+    context: AiExecutionContext,
     userContext: string,
     language: 'de' | 'en' | 'unknown',
   ): Promise<LlmCompleteResult> {
@@ -322,10 +331,10 @@ export class FleetChatOrchestratorService {
           ? 'Answer in English.'
           : 'Prefer the user language.';
 
-    return this.llm.complete({
+    return this.llmExecutor.completeForChat(context, {
       purpose: 'chat',
       temperature: 0.2,
-      maxTokens: 768,
+      maxTokens: this.agentLimits.getMaxTokensPerLlmCall(),
       messages: [
         { role: 'system', content: `${FLEET_CHAT_SYSTEM_PROMPT}\n${localeHint}` },
         {
@@ -430,7 +439,7 @@ export class FleetChatOrchestratorService {
         dataSources,
         toolsUsed: input.toolsRequested,
         errorCodes,
-        modelProvider: input.llmUsed ? this.llm.activeProviderId : null,
+        modelProvider: input.llmUsed ? this.llmExecutor.getActiveProviderId() : null,
         modelName: input.llmResult?.model ?? null,
         tokenUsage: input.llmResult?.usage ?? null,
         timestamp: new Date().toISOString(),

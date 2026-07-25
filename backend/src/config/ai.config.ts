@@ -44,4 +44,53 @@ export default registerAs('ai', () => ({
   auditRetentionDays: parsePositiveIntEnv(process.env.AI_AUDIT_RETENTION_DAYS, 730),
   /** When true, emit verbose debug audit lines (never in production by default). */
   auditDebugLogging: parseBooleanEnv(process.env.AI_AUDIT_DEBUG_LOGGING, false),
+  /** Master switch for Fleet AI agent limits, cache, and budgets. */
+  agentLimitsEnabled: parseBooleanEnv(process.env.AI_AGENT_LIMITS_ENABLED, true),
+  agentLimitsFailOpen: parseBooleanEnv(process.env.AI_AGENT_LIMITS_FAIL_OPEN, true),
+  agentRateLimitEnabled: parseBooleanEnv(process.env.AI_AGENT_RATE_LIMIT_ENABLED, true),
+  agentRateLimitWindowMs: parsePositiveIntEnv(process.env.AI_AGENT_RATE_LIMIT_WINDOW_MS, 60_000),
+  agentRateLimitPerUserPerMinute: parsePositiveIntEnv(
+    process.env.AI_AGENT_RATE_LIMIT_PER_USER_PER_MINUTE,
+    30,
+  ),
+  agentRateLimitPerOrgPerMinute: parsePositiveIntEnv(
+    process.env.AI_AGENT_RATE_LIMIT_PER_ORG_PER_MINUTE,
+    120,
+  ),
+  agentRateLimitPerIpPerMinute: parsePositiveIntEnv(
+    process.env.AI_AGENT_RATE_LIMIT_PER_IP_PER_MINUTE,
+    60,
+  ),
+  agentMaxConcurrentPerOrg: parsePositiveIntEnv(process.env.AI_AGENT_MAX_CONCURRENT_PER_ORG, 5),
+  agentMaxConcurrentPerUser: parsePositiveIntEnv(process.env.AI_AGENT_MAX_CONCURRENT_PER_USER, 2),
+  agentMaxToolInvocationsPerChatRequest: parsePositiveIntEnv(
+    process.env.AI_AGENT_MAX_TOOL_INVOCATIONS_PER_CHAT,
+    8,
+  ),
+  agentMaxLlmRetries: parsePositiveIntEnv(process.env.AI_AGENT_MAX_LLM_RETRIES, 1),
+  agentMaxTokensPerLlmCall: parsePositiveIntEnv(process.env.AI_AGENT_MAX_TOKENS_PER_LLM_CALL, 768),
+  agentTokenBudgetEnabled: parseBooleanEnv(process.env.AI_AGENT_TOKEN_BUDGET_ENABLED, true),
+  agentTokenBudgetPerUserPerDay: parsePositiveIntEnv(
+    process.env.AI_AGENT_TOKEN_BUDGET_PER_USER_PER_DAY,
+    100_000,
+  ),
+  agentTokenBudgetPerOrgPerDay: parsePositiveIntEnv(
+    process.env.AI_AGENT_TOKEN_BUDGET_PER_ORG_PER_DAY,
+    500_000,
+  ),
+  agentMaxConversationHistory: parsePositiveIntEnv(
+    process.env.AI_AGENT_MAX_CONVERSATION_HISTORY,
+    100,
+  ),
+  agentRequestTimeoutMs: parsePositiveIntEnv(process.env.AI_AGENT_REQUEST_TIMEOUT_MS, 45_000),
+  agentToolCacheEnabled: parseBooleanEnv(process.env.AI_AGENT_TOOL_CACHE_ENABLED, true),
+  agentCircuitBreakerFailureThreshold: parsePositiveIntEnv(
+    process.env.AI_AGENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+    5,
+  ),
+  agentCircuitBreakerCooldownMs: parsePositiveIntEnv(
+    process.env.AI_AGENT_CIRCUIT_BREAKER_COOLDOWN_MS,
+    60_000,
+  ),
+  agentLlmRetryBackoffMs: parsePositiveIntEnv(process.env.AI_AGENT_LLM_RETRY_BACKOFF_MS, 500),
 }));

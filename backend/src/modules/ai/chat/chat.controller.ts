@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, Headers, Res, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Headers, Res, Req, UseGuards, Logger } from '@nestjs/common';
+import type { Request } from 'express';
 import { Response } from 'express';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -6,6 +7,7 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { resolveAiRequestId } from '../execution/ai-execution-context.builder';
+import { resolveChatClientIp } from './chat-http.util';
 import { ChatService, buildChatStreamError } from './chat.service';
 import type { ChatSessionIdentity } from './chat-session.types';
 
@@ -42,6 +44,7 @@ export class ChatController {
     @Body() body: { content: string },
     @CurrentUser() user: ChatAuthedUser | undefined,
     @Headers('x-request-id') requestIdHeader?: string,
+    @Req() req?: Request,
   ) {
     if (!body.content?.trim()) {
       return {
@@ -56,6 +59,7 @@ export class ChatController {
         orgId,
         body.content.trim(),
         this.toSessionIdentity(user, requestIdHeader),
+        resolveChatClientIp(req!),
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -77,6 +81,7 @@ export class ChatController {
     @Res() res: Response,
     @CurrentUser() user: ChatAuthedUser | undefined,
     @Headers('x-request-id') requestIdHeader?: string,
+    @Req() req?: Request,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -110,6 +115,7 @@ export class ChatController {
         send,
         () => closed.value,
         this.toSessionIdentity(user, requestIdHeader),
+        resolveChatClientIp(req!),
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

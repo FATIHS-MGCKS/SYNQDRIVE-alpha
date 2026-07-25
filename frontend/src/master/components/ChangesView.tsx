@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-chat-limits-v49819-2026-07-25',
+    version: '4.9.819',
+    title: 'V4.9.819 — AI agent limits, cache & cost boundaries (Prompt 26)',
+    summary: [
+      'Redis rate limits per org/user (+ supplementary IP), concurrency slots, daily token budgets.',
+      'Circuit breaker + LLM retries/backoff; per-tool and request timeouts; tool invocation cap per chat.',
+      'Org-scoped tool cache: live location 3s only; never cache last-known as live; no cross-tenant permission cache.',
+      'User-facing DE/EN limit messages for rate limit, budget, provider overload, circuit open, timeouts.',
+    ],
+    reason:
+      'Production guardrails for Fleet AI Assistant cost, abuse, and provider resilience.',
+    previousBehavior:
+      'Only global Nest throttler (200/min/IP); no org/user budgets, concurrency, circuit breaker, or governed tool cache.',
+    details:
+      'backend/src/modules/ai/limits/*, ChatService acquire/release, AiDomainToolRegistry cache wrapper, AiAgentLlmExecutorService. Env: AI_AGENT_* in backend/.env.example. See architecture/AI_AGENT_LIMITS_AND_CACHE_2026-07-25.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T00:00:00.000Z',
+  },
+  {
     id: 'fleet-ai-chat-audit-v49818-2026-07-25',
     version: '4.9.818',
     title: 'V4.9.818 — AI request audit logging (Prompt 25)',

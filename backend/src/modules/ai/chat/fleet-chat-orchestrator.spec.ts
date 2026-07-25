@@ -6,7 +6,9 @@ import type { AiDomainToolName } from '../registry/ai-domain-tool-registry.types
 import { FleetChatOrchestratorService } from './fleet-chat-orchestrator.service';
 import { FleetChatIntentRouterService } from '../routing/fleet-chat-intent-router.service';
 import { AiDomainToolRegistry } from '../registry/ai-domain-tool-registry.service';
-import { LlmGatewayService } from '../llm/llm-gateway.service';
+import { AiAgentLlmExecutorService } from '../limits/ai-agent-llm-executor.service';
+import { AiAgentLimitsService } from '../limits/ai-agent-limits.service';
+import { AiAgentToolCacheService } from '../limits/ai-agent-tool-cache.service';
 import { FleetChatEvidenceResponseComposerService } from './fleet-chat-evidence-response/fleet-chat-evidence-response.service';
 import {
   composeFleetChatEvidenceResponse,
@@ -102,7 +104,7 @@ function makeOutcome(
 function createOrchestrator(input: {
   route?: FleetChatRouteResult;
   toolOutcomes?: Record<string, ReturnType<typeof makeOutcome>>;
-  llm?: Partial<LlmGatewayService>;
+  llmExecutor?: Partial<AiAgentLlmExecutorService>;
 }) {
   const intentRouter = {
     route: jest.fn().mockResolvedValue(input.route ?? makeRoute()),
@@ -125,16 +127,15 @@ function createOrchestrator(input: {
     executeRegisteredTool,
   } as unknown as AiDomainToolRegistry;
 
-  const llm = {
-    isConfigured: jest.fn().mockReturnValue(true),
-    complete: jest.fn().mockResolvedValue({
+  const llmExecutor = {
+    completeForChat: jest.fn().mockResolvedValue({
       content: 'Synthesized fleet answer.',
       model: 'mistral-large-latest',
       usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
     }),
-    activeProviderId: 'mistral',
-    ...input.llm,
-  } as unknown as LlmGatewayService;
+    getActiveProviderId: jest.fn().mockReturnValue('mistral'),
+    ...input.llmExecutor,
+  } as unknown as AiAgentLlmExecutorService;
 
   const evidenceComposer = {
     prepare: jest.fn((input) => {
@@ -147,19 +148,31 @@ function createOrchestrator(input: {
     compose: jest.fn((input) => composeFleetChatEvidenceResponse(input)),
   } as unknown as FleetChatEvidenceResponseComposerService;
 
+  const agentLimits = {
+    getMaxToolInvocationsPerChatRequest: jest.fn().mockReturnValue(8),
+    getMaxLlmRetries: jest.fn().mockReturnValue(1),
+    getMaxTokensPerLlmCall: jest.fn().mockReturnValue(768),
+  } as unknown as AiAgentLimitsService;
+
+  const toolCache = {
+    clearRequest: jest.fn(),
+  } as unknown as AiAgentToolCacheService;
+
   const orchestrator = new FleetChatOrchestratorService(
     intentRouter,
     toolRegistry,
-    llm,
+    llmExecutor,
+    agentLimits,
+    toolCache,
     evidenceComposer,
   );
 
-  return { orchestrator, intentRouter, toolRegistry, llm, executeRegisteredTool };
+  return { orchestrator, intentRouter, toolRegistry, llmExecutor, executeRegisteredTool };
 }
 
 describe('FleetChatOrchestratorService — integration', () => {
   it('handles single location question', async () => {
-    const { orchestrator, executeRegisteredTool, llm } = createOrchestrator({
+    const { orchestrator, executeRegisteredTool, llmExecutor } = createOrchestrator({
       route: makeRoute({
         primaryIntent: 'VEHICLE_LOCATION',
         requiredTools: ['get_vehicle_location'],
@@ -183,7 +196,7 @@ describe('FleetChatOrchestratorService — integration', () => {
     );
     expect(result.llmUsed).toBe(true);
     expect(result.audit.toolsSucceeded).toContain('get_vehicle_location');
-    expect(llm.complete).toHaveBeenCalled();
+    expect(llmExecutor.completeForChat).toHaveBeenCalled();
   });
 
   it('handles health question', async () => {
@@ -260,7 +273,7 @@ describe('FleetChatOrchestratorService — integration', () => {
   });
 
   it('returns clarification for ambiguous vehicle', async () => {
-    const { orchestrator, llm } = createOrchestrator({
+    const { orchestrator, llmExecutor } = createOrchestrator({
       route: makeRoute({
         primaryIntent: 'AMBIGUOUS',
         clarificationNeeded: {
@@ -298,7 +311,7 @@ describe('FleetChatOrchestratorService — integration', () => {
 
     expect(result.responseText).toContain('Kennzeichen');
     expect(result.llmUsed).toBe(false);
-    expect(llm.complete).not.toHaveBeenCalled();
+    expect(llmExecutor.completeForChat).not.toHaveBeenCalled();
   });
 
   it('allows partial answer when one tool fails', async () => {
@@ -343,7 +356,7 @@ describe('FleetChatOrchestratorService — integration', () => {
   });
 
   it('handles full provider outage without throwing', async () => {
-    const { orchestrator, llm } = createOrchestrator({
+    const { orchestrator, llmExecutor } = createOrchestrator({
       route: makeRoute({ requiredTools: ['get_vehicle_location'] }),
       toolOutcomes: {
         get_vehicle_location: makeOutcome('get_vehicle_location', {
@@ -351,8 +364,8 @@ describe('FleetChatOrchestratorService — integration', () => {
           longitude: 2,
         }),
       },
-      llm: {
-        complete: jest.fn().mockRejectedValue(new Error('LLM_TIMEOUT')),
+      llmExecutor: {
+        completeForChat: jest.fn().mockRejectedValue(new Error('LLM_TIMEOUT')),
       },
     });
 

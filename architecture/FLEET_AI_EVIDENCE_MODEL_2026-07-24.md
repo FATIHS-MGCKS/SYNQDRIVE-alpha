@@ -260,3 +260,11 @@ must be wrapped as `AiEvidence` with explicit:
 - Retention: `AI_AUDIT_RETENTION_DAYS` (default 730d) via `AiAuditRetentionService`.
 - See `architecture/AI_REQUEST_AUDIT_LOGGING_2026-07-25.md`.
 
+### Prompt 26 — AI agent limits, cache & cost boundaries (2026-07-25)
+
+- Redis-backed rate limits (org/user/IP), concurrency slots, daily token budgets.
+- `AiAgentLlmExecutorService`: circuit breaker, retries with backoff, budget record after success.
+- `AiAgentToolCacheService`: org-scoped keys; live location 3s only; never cache last-known as live; booking/return no long TTL.
+- `AiAgentLimitException` → user-facing DE/EN messages for rate limit, budget, provider overload, circuit open, timeouts.
+- See `architecture/AI_AGENT_LIMITS_AND_CACHE_2026-07-25.md`.
+
