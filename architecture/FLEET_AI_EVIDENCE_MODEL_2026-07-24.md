@@ -221,3 +221,13 @@ must be wrapped as `AiEvidence` with explicit:
 - Golden tests: location, health, overdue (DE core questions).
 - Wired into `FleetChatOrchestratorService` → `FleetChatOrchestrateResult.structuredResponse`.
 
+### Prompt 21 — AI Frontend structured Fleet Chat response (2026-07-25)
+
+- `ChatService` calls `FleetChatOrchestratorService` with verified `AiExecutionContext`
+  (`ChatExecutionContextResolver` from JWT + membership).
+- SSE `result` and history include client-safe `structured` payload (no internal tool ids;
+  `correlationId` omitted from persisted structured JSON).
+- Prisma `chat_messages.structured_payload` JSON column for chat history metadata.
+- Frontend `AIAssistantView` + `fleet-chat-response-display` + `safe-markdown` + metadata components.
+- Vitest: 11 response-type component tests + display + XSS-safe markdown.
+

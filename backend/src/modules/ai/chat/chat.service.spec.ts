@@ -1,10 +1,12 @@
+import { MembershipRole } from '@prisma/client';
 import { ChatService } from './chat.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
-import { AiVehicleResolutionService } from '../vehicle-resolution/ai-vehicle-resolution.service';
-import { VehicleStatus } from '@prisma/client';
+import { FleetChatOrchestratorService } from './fleet-chat-orchestrator.service';
+import { ChatExecutionContextResolver } from './chat-execution-context.resolver';
+import type { FleetChatOrchestrateResult } from './fleet-chat-orchestrator.types';
 
 const ORG_ID = 'org-uuid-1';
-const VEHICLE_ID = 'veh-1';
+const USER_ID = 'user-uuid-1';
 
 function makePrisma(overrides: Record<string, unknown> = {}) {
   const base = {
@@ -13,10 +15,13 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
         agentName: 'acme_chatagent',
         dimoAgentId: 'mistral',
       }),
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue({
+        agentName: 'acme_chatagent',
+        dimoAgentId: 'mistral',
+      }),
     },
     organization: {
-      findUnique: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue({ shortCode: 'acme', companyName: 'Acme GmbH' }),
       update: jest.fn(),
     },
     chatMessage: {
@@ -25,43 +30,104 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
       }),
     },
-    vehicle: {
-      findMany: jest.fn().mockResolvedValue([
-        {
-          id: VEHICLE_ID,
-          organizationId: ORG_ID,
-          licensePlate: 'B-XY 1234',
-          vehicleName: 'Golf 1',
-          make: 'VW',
-          model: 'Golf',
-          year: 2020,
-          vin: 'WVWZZZ1JZYW000001',
-          fuelType: 'PETROL',
-          status: VehicleStatus.AVAILABLE,
-          currentStationId: 'station-1',
-          dimoVehicle: { tokenId: 872 },
-        },
-      ]),
-    },
-    booking: {
-      findFirst: jest.fn().mockResolvedValue(null),
+    organizationMembership: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'mem-1',
+        role: MembershipRole.WORKER,
+        status: 'ACTIVE',
+        permissions: {},
+        stationScope: null,
+        stationIds: null,
+        fieldAgentAccess: false,
+      }),
     },
   };
   return { ...base, ...overrides };
 }
 
-function makeLlm(overrides: Record<string, unknown> = {}) {
+function makeOrchestratorResult(
+  overrides: Partial<FleetChatOrchestrateResult> = {},
+): FleetChatOrchestrateResult {
   return {
-    isConfigured: jest.fn().mockReturnValue(true),
-    isStreamingEnabled: jest.fn().mockReturnValue(false),
-    activeProviderId: 'mistral',
-    complete: jest.fn().mockResolvedValue({ content: 'Fleet answer' }),
-    stream: jest.fn(),
+    responseText: 'Fleet answer from orchestrator',
+    route: {
+      detectedIntents: ['VEHICLE_HEALTH'],
+      primaryIntent: 'VEHICLE_HEALTH',
+      vehicleReferences: [],
+      bookingReferences: [],
+      requiredTools: [],
+      ambiguities: [],
+      clarificationNeeded: null,
+      confidence: 0.9,
+      language: 'de',
+      securityFlags: [],
+      vehicleResolution: {
+        resolvedVehicleId: null,
+        displayName: null,
+        licensePlate: null,
+        matchType: 'none',
+        confidence: 0,
+        ambiguity: { isAmbiguous: true, reason: 'none', candidates: [] },
+        allowedDataScope: {
+          inOrganization: true,
+          inStationScope: true,
+          hasDimoTelemetry: false,
+          operational: true,
+          vehicleStatus: null,
+        },
+      },
+      intentScores: [],
+      sanitizedMessage: '',
+      usedLlmClassification: false,
+    },
+    toolRecords: [],
+    mergedEvidence: [],
+    partial: false,
+    allowLlmInference: true,
+    llmUsed: true,
+    structuredResponse: {
+      text: 'Fleet answer from orchestrator',
+      responseType: 'HEALTH_SUMMARY',
+      vehicle: null,
+      dataFreshness: {
+        freshness: 'unknown',
+        observedAt: null,
+        isLastKnown: false,
+        label: null,
+      },
+      sources: [],
+      warnings: [],
+      partial: false,
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      correlationId: 'corr-1',
+      usedDeterministicFallback: false,
+    },
+    audit: {
+      correlationId: 'corr-1',
+      requestId: 'req-1',
+      organizationId: ORG_ID,
+      userId: USER_ID,
+      channel: 'fleet_chat',
+      primaryIntent: 'VEHICLE_HEALTH',
+      detectedIntents: ['VEHICLE_HEALTH'],
+      toolsRequested: [],
+      toolsSucceeded: [],
+      toolsFailed: [],
+      partial: false,
+      securityFlags: [],
+    },
+    performance: {
+      routingMs: 1,
+      toolsMs: 2,
+      compositionMs: 3,
+      llmMs: 4,
+      totalMs: 10,
+    },
     ...overrides,
   };
 }
 
-describe('ChatService — Mistral fleet chat', () => {
+describe('ChatService — fleet orchestrator wiring', () => {
   it('ensureAgent registers provider id in organizationChatAgent', async () => {
     const prisma = makePrisma({
       organizationChatAgent: {
@@ -71,14 +137,16 @@ describe('ChatService — Mistral fleet chat', () => {
           dimoAgentId: 'mistral',
         }),
       },
-      organization: {
-        findUnique: jest.fn().mockResolvedValue({ shortCode: 'acme', companyName: 'Acme GmbH' }),
-        update: jest.fn(),
-      },
     });
-    const llm = makeLlm();
-    const vehicleResolution = new AiVehicleResolutionService(prisma as any);
-    const svc = new ChatService(prisma as any, llm as any, vehicleResolution);
+    const llm = { isConfigured: jest.fn().mockReturnValue(true), activeProviderId: 'mistral' };
+    const orchestrator = { orchestrate: jest.fn() };
+    const contextResolver = { resolve: jest.fn() };
+    const svc = new ChatService(
+      prisma as any,
+      llm as any,
+      orchestrator as any,
+      contextResolver as any,
+    );
 
     const result = await svc.ensureAgent(ORG_ID);
 
@@ -90,47 +158,52 @@ describe('ChatService — Mistral fleet chat', () => {
     );
   });
 
-  it('sendMessage enriches fleet context via structured vehicle resolver', async () => {
+  it('sendMessage uses fleet orchestrator and returns structured payload', async () => {
     const prisma = makePrisma();
-    const llm = makeLlm();
-    const vehicleResolution = new AiVehicleResolutionService(prisma as any);
-    const svc = new ChatService(prisma as any, llm as any, vehicleResolution);
-
-    await svc.sendMessage(ORG_ID, 'What is the fuel level of B-XY 1234?');
-
-    expect(prisma.vehicle.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { organizationId: ORG_ID },
+    const llm = { isConfigured: jest.fn().mockReturnValue(true), activeProviderId: 'mistral' };
+    const orchestrator = {
+      orchestrate: jest.fn().mockResolvedValue(makeOrchestratorResult()),
+    };
+    const contextResolver = {
+      resolve: jest.fn().mockResolvedValue({
+        organizationId: ORG_ID,
+        userId: USER_ID,
+        correlationId: 'corr-1',
       }),
+    };
+    const svc = new ChatService(
+      prisma as any,
+      llm as any,
+      orchestrator as any,
+      contextResolver as any,
     );
-    expect(llm.complete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        purpose: 'chat',
-        messages: expect.arrayContaining([
-          expect.objectContaining({
-            role: 'user',
-            content: expect.stringMatching(/B-XY 1234/),
-          }),
-        ]),
-      }),
-    );
-    const userMessage = (llm.complete as jest.Mock).mock.calls[0][0].messages.find(
-      (message: { role: string }) => message.role === 'user',
-    ).content as string;
-    expect(userMessage).toContain('Resolved fleet vehicle');
-    expect(userMessage).not.toContain('WVWZZZ');
-    expect(userMessage).not.toContain(VEHICLE_ID);
+
+    const result = await svc.sendMessage(ORG_ID, 'Wie ist die Gesundheit?', {
+      userId: USER_ID,
+      platformRole: null,
+    });
+
+    expect(orchestrator.orchestrate).toHaveBeenCalled();
+    expect(result.content).toBe('Fleet answer from orchestrator');
+    expect(result.structured?.responseType).toBe('HEALTH_SUMMARY');
+    expect(JSON.stringify(result.structured)).not.toContain('corr-1');
   });
 
   it('sendMessage returns config error when LLM is not configured', async () => {
     const prisma = makePrisma();
-    const llm = makeLlm({ isConfigured: jest.fn().mockReturnValue(false) });
-    const vehicleResolution = new AiVehicleResolutionService(prisma as any);
-    const svc = new ChatService(prisma as any, llm as any, vehicleResolution);
+    const llm = { isConfigured: jest.fn().mockReturnValue(false) };
+    const orchestrator = { orchestrate: jest.fn() };
+    const contextResolver = { resolve: jest.fn() };
+    const svc = new ChatService(
+      prisma as any,
+      llm as any,
+      orchestrator as any,
+      contextResolver as any,
+    );
 
     const result = await svc.sendMessage(ORG_ID, 'Hello');
 
     expect(result.content).toMatch(/not configured/i);
-    expect(llm.complete).not.toHaveBeenCalled();
+    expect(orchestrator.orchestrate).not.toHaveBeenCalled();
   });
 });

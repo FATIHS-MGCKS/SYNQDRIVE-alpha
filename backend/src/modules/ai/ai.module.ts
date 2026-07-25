@@ -21,6 +21,7 @@ import { TireSpecAiService } from './vehicle-specs/tire-spec-ai.service';
 import { AiTireSpecJobService } from './vehicle-specs/ai-tire-spec-job.service';
 import { VehicleSpecsController } from './vehicle-specs/vehicle-specs.controller';
 import { ChatService } from './chat/chat.service';
+import { ChatExecutionContextResolver } from './chat/chat-execution-context.resolver';
 import { ChatController } from './chat/chat.controller';
 import { AiVehicleResolutionService } from './vehicle-resolution/ai-vehicle-resolution.service';
 import { AiDataAuthorizationProbeAdapter } from './tools/ai-data-authorization.probe';
@@ -91,6 +92,7 @@ import { AiHealthController } from './ai-health.controller';
     FleetChatIntentRouterService,
     FleetChatEvidenceResponseComposerService,
     FleetChatOrchestratorService,
+    ChatExecutionContextResolver,
     ChatService,
   ],
   exports: [

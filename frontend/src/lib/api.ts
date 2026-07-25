@@ -583,7 +583,17 @@ export type ChatStreamEvent =
   | { event: 'status'; data: { agentReady: boolean } }
   | { event: 'progress'; data: { type: string; content: string } }
   | { event: 'result'; data: ChatMessageResponse }
-  | { event: 'error'; data: { message: string } };
+  | { event: 'error'; data: ChatStreamErrorPayload };
+
+export type ChatStreamErrorPayload = {
+  message: string;
+  technicalDetails?: {
+    correlationId?: string;
+    code?: string;
+  };
+};
+
+export type ChatStreamTechnicalDetails = NonNullable<ChatStreamErrorPayload['technicalDetails']>;
 
 /**
  * Stream a chat message to the AI Assistant via SSE. The backend keeps the
@@ -10761,7 +10771,45 @@ export interface ChatMessageResponse {
   role: string;
   content: string;
   createdAt: string;
+  structured?: FleetChatStructuredPayload;
 }
+
+export interface FleetChatStructuredPayload {
+  responseType: FleetChatResponseType;
+  vehicle: { displayName: string | null; licensePlate: string | null } | null;
+  dataFreshness: {
+    freshness: string;
+    observedAt: string | null;
+    isLastKnown: boolean;
+    label: string | null;
+  };
+  sources: { label: string }[];
+  warnings: string[];
+  partial: boolean;
+  generatedAt: string;
+  actions?: {
+    kind: string;
+    messageDe: string;
+    messageEn: string;
+  }[];
+  usedDeterministicFallback: boolean;
+}
+
+export const FLEET_CHAT_RESPONSE_TYPES = [
+  'DIRECT_ANSWER',
+  'LOCATION_SUMMARY',
+  'HEALTH_SUMMARY',
+  'OVERDUE_EXPLANATION',
+  'BOOKING_SUMMARY',
+  'COMBINED_SUMMARY',
+  'PARTIAL_DATA',
+  'INCONSISTENT_STATE',
+  'PERMISSION_RESTRICTED',
+  'AMBIGUITY_QUESTION',
+  'TEMPORARY_UNAVAILABLE',
+] as const;
+
+export type FleetChatResponseType = (typeof FLEET_CHAT_RESPONSE_TYPES)[number];
 
 export interface ChatAgentInfo {
   agent: { agentName: string; dimoAgentId: string; createdAt: string } | null;

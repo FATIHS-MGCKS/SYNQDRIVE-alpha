@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-frontend-structured-chat-v49814-2026-07-25',
+    version: '4.9.814',
+    title: 'V4.9.814 — AI Frontend structured Fleet Chat response (Prompt 21)',
+    summary: [
+      'ChatService wired to FleetChatOrchestratorService with auth-scoped AiExecutionContext.',
+      'SSE/API `structured` payload: responseType, sources, dataFreshness, warnings, partial — correlationId only in technical error details.',
+      'AIAssistantView: safe markdown (no HTML execution), metadata panel, loading/error/retry without duplicate messages.',
+      'Vitest: all 11 FleetChatResponseType component + display + safe-markdown specs.',
+    ],
+    reason: 'Prompt 21/32 — production-ready AI frontend for structured Fleet Chat responses.',
+    previousBehavior:
+      'AI chat rendered assistant content as plain string only; markdown used dangerouslySetInnerHTML; orchestrator not exposed to frontend.',
+    details:
+      'backend chat.service/controller, prisma chat_messages.structured_payload, frontend/src/rental/lib/ai-chat/, frontend/src/rental/components/ai-chat/',
+    affectsArchitecture: true,
+    module: 'Fleet AI / Chat',
+    createdAt: '2026-07-25T00:40:00.000Z',
+  },
+  {
     id: 'fleet-ai-evidence-response-v49813-2026-07-25',
     version: '4.9.813',
     title: 'V4.9.813 — Fleet Chat evidence response composer (Prompt 20)',

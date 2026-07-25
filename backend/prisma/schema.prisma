@@ -10528,11 +10528,12 @@ model OrganizationChatAgent {
 }
 
 model ChatMessage {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
-  role           String
-  content        String
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  role               String
+  content            String
+  structuredPayload  Json?    @map("structured_payload")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

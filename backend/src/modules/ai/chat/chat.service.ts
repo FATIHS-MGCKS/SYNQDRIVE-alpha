@@ -1,26 +1,32 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { LlmGatewayService } from '../llm/llm-gateway.service';
-import { AiVehicleResolutionService } from '../vehicle-resolution/ai-vehicle-resolution.service';
+import { FleetChatOrchestratorService } from './fleet-chat-orchestrator.service';
+import { ChatExecutionContextResolver } from './chat-execution-context.resolver';
+import type { ChatSessionIdentity } from './chat-session.types';
 import {
-  buildEnrichedChatMessage,
-  FLEET_CHAT_SYSTEM_PROMPT,
-  formatChatScopeLog,
-  resolveChatVehicleTokenIds,
-} from '../vehicle-resolution/ai-vehicle-resolution.llm';
+  type ChatFleetStructuredPayload,
+  type ChatMessageResultDto,
+  type ChatStreamErrorDto,
+  parseStoredStructuredPayload,
+  toClientStructuredPayload,
+} from './chat-fleet-structured.dto';
+import type { FleetChatResponseType } from './fleet-chat-evidence-response/fleet-chat-evidence-response.enums';
 
 export interface ChatMessageResult {
   id?: string;
   role: string;
   content: string;
   createdAt: Date;
+  structured?: ChatFleetStructuredPayload;
 }
 
-interface LlmChatResult {
-  success: boolean;
-  response?: string;
-  error?: string;
-}
+const PROGRESS_LABELS: Record<string, { de: string; en: string }> = {
+  thinking: { de: 'Anfrage wird analysiert…', en: 'Analyzing request…' },
+  routing: { de: 'Absicht wird erkannt…', en: 'Detecting intent…' },
+  tools: { de: 'Flottendaten werden geladen…', en: 'Loading fleet data…' },
+  composing: { de: 'Antwort wird zusammengestellt…', en: 'Composing response…' },
+};
 
 @Injectable()
 export class ChatService {
@@ -29,18 +35,14 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly llm: LlmGatewayService,
-    private readonly vehicleResolution: AiVehicleResolutionService,
+    private readonly orchestrator: FleetChatOrchestratorService,
+    private readonly contextResolver: ChatExecutionContextResolver,
   ) {}
 
   isConfigured(): boolean {
     return this.llm.isConfigured();
   }
 
-  /**
-   * Ensures org metadata exists for chat. `dimoAgentId` field is kept for API
-   * compatibility — it stores the active LLM provider id (e.g. mistral).
-   * OrganizationChatAgent table cleanup is a separate future migration.
-   */
   async ensureAgent(orgId: string): Promise<{ agentName: string; dimoAgentId: string }> {
     const existing = await this.prisma.organizationChatAgent.findUnique({
       where: { organizationId: orgId },
@@ -83,19 +85,17 @@ export class ChatService {
     return { agentName: record.agentName, dimoAgentId: record.dimoAgentId };
   }
 
-  async sendMessage(orgId: string, content: string): Promise<ChatMessageResult> {
+  async sendMessage(
+    orgId: string,
+    content: string,
+    session?: ChatSessionIdentity,
+  ): Promise<ChatMessageResult> {
     const { error } = await this.ensureAgentSafe(orgId);
     if (error) return this.persistAssistant(orgId, error);
 
     await this.saveUserMessage(orgId, content);
-    const { enrichedMessage, tokenIds } = await this.buildContext(orgId, content);
-
-    const result = await this.callLlm(enrichedMessage);
-    if (!result.success) {
-      return this.persistAssistant(orgId, formatChatError(result));
-    }
-
-    return this.persistAssistant(orgId, result.response || 'No response received.');
+    const outcome = await this.runFleetOrchestrator(orgId, content, session);
+    return this.persistAssistant(orgId, outcome.text, outcome.structured);
   }
 
   async streamMessage(
@@ -103,6 +103,7 @@ export class ChatService {
     content: string,
     emit: (event: string, data: unknown) => void,
     isClosed: () => boolean,
+    session?: ChatSessionIdentity,
   ): Promise<void> {
     const { error } = await this.ensureAgentSafe(orgId);
     if (error) {
@@ -113,17 +114,25 @@ export class ChatService {
     if (!isClosed()) emit('status', { agentReady: true });
 
     await this.saveUserMessage(orgId, content);
-    const { enrichedMessage, tokenIds } = await this.buildContext(orgId, content);
 
-    const result = await this.callLlm(enrichedMessage, (chunk) => {
-      if (!isClosed()) emit('progress', chunk);
-    });
+    const locale = session?.locale ?? 'de';
+    const emitProgress = (type: keyof typeof PROGRESS_LABELS) => {
+      if (!isClosed()) {
+        const labels = PROGRESS_LABELS[type];
+        emit('progress', {
+          type,
+          content: locale === 'en' ? labels.en : labels.de,
+        });
+      }
+    };
 
-    const text = result.success
-      ? result.response || 'No response received.'
-      : formatChatError(result);
+    emitProgress('thinking');
+    emitProgress('routing');
 
-    const saved = await this.persistAssistant(orgId, text);
+    const outcome = await this.runFleetOrchestrator(orgId, content, session, emitProgress);
+    emitProgress('composing');
+
+    const saved = await this.persistAssistant(orgId, outcome.text, outcome.structured);
     if (!isClosed()) emit('result', this.toResultDto(saved));
   }
 
@@ -137,15 +146,26 @@ export class ChatService {
       where,
       orderBy: { createdAt: 'asc' },
       take: limit,
-      select: { id: true, role: true, content: true, createdAt: true },
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        structuredPayload: true,
+        createdAt: true,
+      },
     });
 
-    return messages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    return messages.map((m) => {
+      const structured = parseStoredStructuredPayload(m.structuredPayload);
+      const dto: ChatMessageResultDto = {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt.toISOString(),
+        ...(structured ? { structured } : {}),
+      };
+      return dto;
+    });
   }
 
   async clearHistory(orgId: string) {
@@ -162,9 +182,72 @@ export class ChatService {
     return { agent, messageCount };
   }
 
-  private async ensureAgentSafe(
+  private async runFleetOrchestrator(
     orgId: string,
-  ): Promise<{ error?: string }> {
+    content: string,
+    session?: ChatSessionIdentity,
+    onProgress?: (type: keyof typeof PROGRESS_LABELS) => void,
+  ): Promise<{ text: string; structured?: ChatFleetStructuredPayload }> {
+    if (!this.isConfigured()) {
+      return {
+        text: 'The AI assistant is not configured on this server. Please contact your administrator.',
+      };
+    }
+
+    const identity: ChatSessionIdentity = session ?? {
+      userId: 'system',
+      platformRole: null,
+      locale: 'de',
+    };
+
+    const context = await this.contextResolver.resolve(orgId, identity);
+    if (!context) {
+      return {
+        text: "I'm sorry, I couldn't verify your access to this organization. Please try again.",
+      };
+    }
+
+    onProgress?.('tools');
+
+    try {
+      const result = await this.orchestrator.orchestrate(context, { message: content });
+      const structured = result.structuredResponse
+        ? toClientStructuredPayload(result.structuredResponse)
+        : this.buildFallbackStructured(result.responseText, 'TEMPORARY_UNAVAILABLE', result.partial);
+      return { text: result.responseText, structured };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`[Chat] orchestrator failed for org ${orgId}: ${message}`);
+      const fallbackText =
+        "I'm sorry, I couldn't process your request right now. Please try again.";
+      const structured = this.buildFallbackStructured(fallbackText, 'TEMPORARY_UNAVAILABLE', true);
+      return { text: fallbackText, structured };
+    }
+  }
+
+  private buildFallbackStructured(
+    text: string,
+    responseType: FleetChatResponseType,
+    partial: boolean,
+  ): ChatFleetStructuredPayload {
+    return {
+      responseType,
+      vehicle: null,
+      dataFreshness: {
+        freshness: 'unknown',
+        observedAt: null,
+        isLastKnown: false,
+        label: null,
+      },
+      sources: [],
+      warnings: [],
+      partial,
+      generatedAt: new Date().toISOString(),
+      usedDeterministicFallback: true,
+    };
+  }
+
+  private async ensureAgentSafe(orgId: string): Promise<{ error?: string }> {
     if (!this.isConfigured()) {
       return {
         error:
@@ -183,86 +266,44 @@ export class ChatService {
     }
   }
 
-  private async buildContext(
-    orgId: string,
-    content: string,
-  ): Promise<{ enrichedMessage: string; tokenIds?: number[] }> {
-    const { fleet, resolution } = await this.vehicleResolution.resolveFromMessage({
-      organizationId: orgId,
-      message: content,
-    });
-    const tokenIds = resolveChatVehicleTokenIds(resolution, fleet);
-    const enrichedMessage = buildEnrichedChatMessage(content, fleet, resolution);
-    this.logger.log(`[Chat] ${formatChatScopeLog(orgId, resolution)}`);
-    return { enrichedMessage, tokenIds };
-  }
-
-  private async callLlm(
-    enrichedMessage: string,
-    onChunk?: (event: { type: string; content: string }) => void,
-  ): Promise<LlmChatResult> {
-    if (!this.isConfigured()) {
-      return { success: false, error: 'AI provider not configured' };
-    }
-
-    const messages = [
-      { role: 'system' as const, content: FLEET_CHAT_SYSTEM_PROMPT },
-      { role: 'user' as const, content: enrichedMessage },
-    ];
-
-    try {
-      if (onChunk && this.llm.isStreamingEnabled()) {
-        let content = '';
-        await this.llm.stream({
-          purpose: 'chat',
-          messages,
-          onEvent: async (evt) => {
-            if (evt.type === 'delta' && evt.delta) {
-              onChunk({ type: 'token', content: evt.delta });
-            }
-            if (evt.type === 'delta' && evt.content && !evt.delta) {
-              onChunk({ type: 'token', content: evt.content });
-            }
-            if (evt.type === 'done') {
-              content = evt.content ?? content;
-            }
-            if (evt.type === 'error') {
-              throw new Error(evt.error ?? 'Stream failed');
-            }
-          },
-        });
-        return { success: true, response: content };
-      }
-
-      const result = await this.llm.complete({ purpose: 'chat', messages });
-      return { success: true, response: result.content };
-    } catch (err: unknown) {
-      return { success: false, error: sanitizeChatError(err) };
-    }
-  }
-
   private async saveUserMessage(orgId: string, content: string): Promise<void> {
     await this.prisma.chatMessage
       .create({ data: { organizationId: orgId, role: 'user', content } })
       .catch(() => {});
   }
 
-  private async persistAssistant(orgId: string, content: string): Promise<ChatMessageResult> {
+  private async persistAssistant(
+    orgId: string,
+    content: string,
+    structured?: ChatFleetStructuredPayload,
+  ): Promise<ChatMessageResult> {
     const saved = await this.prisma.chatMessage
       .create({
-        data: { organizationId: orgId, role: 'assistant', content },
+        data: {
+          organizationId: orgId,
+          role: 'assistant',
+          content,
+          ...(structured ? { structuredPayload: structured as object } : {}),
+        },
         select: { id: true, createdAt: true },
       })
       .catch(() => ({ id: undefined as string | undefined, createdAt: new Date() }));
-    return { id: saved.id, role: 'assistant', content, createdAt: saved.createdAt };
+    return {
+      id: saved.id,
+      role: 'assistant',
+      content,
+      createdAt: saved.createdAt,
+      structured,
+    };
   }
 
-  private toResultDto(msg: ChatMessageResult) {
+  private toResultDto(msg: ChatMessageResult): ChatMessageResultDto {
     return {
       id: msg.id,
       role: msg.role,
       content: msg.content,
       createdAt: msg.createdAt.toISOString(),
+      ...(msg.structured ? { structured: msg.structured } : {}),
     };
   }
 
@@ -278,20 +319,12 @@ export class ChatService {
   }
 }
 
-function formatChatError(result: LlmChatResult): string {
-  if (!result.error) {
-    return "I'm sorry, I couldn't process your request right now. Please try again.";
-  }
-  if (/not configured/i.test(result.error)) {
-    return 'The AI assistant is not configured on this server. Please contact your administrator.';
-  }
-  return `I'm sorry, I couldn't complete your request. ${result.error.slice(0, 200)}`;
-}
-
-function sanitizeChatError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
-  return raw
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [redacted]')
-    .replace(/sk-[A-Za-z0-9]+/gi, 'sk-[redacted]')
-    .slice(0, 300);
+export function buildChatStreamError(
+  message: string,
+  correlationId?: string,
+): ChatStreamErrorDto {
+  return {
+    message,
+    ...(correlationId ? { technicalDetails: { correlationId } } : {}),
+  };
 }

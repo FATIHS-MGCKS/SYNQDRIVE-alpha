@@ -5,7 +5,15 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { api, streamChatMessage } from '../../lib/api';
-import type { ChatMessageResponse, ChatStreamEvent } from '../../lib/api';
+import type { ChatMessageResponse, ChatStreamEvent, ChatStreamTechnicalDetails } from '../../lib/api';
+import { FleetChatResponseMetadata } from './ai-chat/FleetChatResponseMetadata';
+import { FleetChatTechnicalErrorDetails } from './ai-chat/FleetChatTechnicalErrorDetails';
+import { renderSafeMarkdown } from '../lib/ai-chat/safe-markdown';
+import {
+  mapProgressContent,
+  sanitizeUserVisibleText,
+} from '../lib/ai-chat/fleet-chat-response-display';
+import type { FleetChatStructuredPayload } from '../lib/ai-chat/fleet-chat-response.types';
 
 interface AIAssistantViewProps {
   isDarkMode: boolean;
@@ -16,10 +24,14 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  structured?: FleetChatStructuredPayload;
+  isError?: boolean;
+  technicalDetails?: ChatStreamTechnicalDetails;
 }
 
 export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
-  const { t } = useLanguage();
+  const { t, locale: appLocale } = useLanguage();
+  const locale = appLocale === 'en' ? 'en' : 'de';
   const { orgId } = useRentalOrg();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -71,6 +83,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           role: m.role as 'user' | 'assistant',
           content: m.content,
           timestamp: new Date(m.createdAt),
+          structured: m.structured,
         }));
 
         setMessages(loaded);
@@ -118,15 +131,18 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
         if (evt.event === 'status') {
           if (evt.data.agentReady) setAgentReady(true);
         } else if (evt.event === 'progress') {
-          if (evt.data.content) setThinkingLabel(evt.data.content);
+          if (evt.data.content) {
+            setThinkingLabel(mapProgressContent(evt.data.type, evt.data.content));
+          }
         } else if (evt.event === 'result') {
           settled = true;
           if (!agentReady) setAgentReady(true);
           const aiMsg: ChatMessage = {
             id: evt.data.id || `ai-${Date.now()}`,
             role: 'assistant',
-            content: evt.data.content,
+            content: sanitizeUserVisibleText(evt.data.content),
             timestamp: new Date(evt.data.createdAt),
+            structured: evt.data.structured,
           };
           setMessages(prev => [...prev, aiMsg]);
         } else if (evt.event === 'error') {
@@ -134,8 +150,10 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           const errorMsg: ChatMessage = {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: evt.data.message || "I'm sorry, something went wrong. Please try again.",
+            content: sanitizeUserVisibleText(evt.data.message || "I'm sorry, something went wrong. Please try again."),
             timestamp: new Date(),
+            isError: true,
+            technicalDetails: evt.data.technicalDetails,
           };
           setMessages(prev => [...prev, errorMsg]);
         }
@@ -156,7 +174,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
         streamAbortRef.current = null;
       },
     );
-  }, [input, isTyping, orgId, agentReady]);
+  }, [input, isTyping, orgId, agentReady, locale]);
 
   useEffect(() => {
     return () => { streamAbortRef.current?.abort(); };
@@ -199,98 +217,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
     ? 'bg-neutral-900 border border-neutral-800'
     : 'bg-white border border-gray-200';
 
-  const renderMarkdown = (text: string) => {
-    const lines = text.split('\n');
-    const elements: import('react').ReactElement[] = [];
-    let tableMode = false;
-    let tableRows: string[][] = [];
-    let tableHeaders: string[] = [];
-
-    const flushTable = () => {
-      if (tableHeaders.length > 0) {
-        elements.push(
-          <div key={`table-${elements.length}`} className="my-3 overflow-x-auto">
-            <table className={`w-full text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              <thead>
-                <tr className={isDarkMode ? 'border-b border-neutral-700' : 'border-b border-gray-200'}>
-                  {tableHeaders.map((h, i) => (
-                    <th key={i} className={`px-3 py-2 text-left text-[11px] font-semibold ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{h.trim()}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tableRows.map((row, ri) => (
-                  <tr key={ri} className={isDarkMode ? 'border-b border-neutral-800' : 'border-b border-gray-100'}>
-                    {row.map((cell, ci) => (
-                      <td key={ci} className="px-3 py-2 text-xs">{cell.trim()}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      }
-      tableHeaders = [];
-      tableRows = [];
-      tableMode = false;
-    };
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      if (line.startsWith('|') && line.endsWith('|')) {
-        const cells = line.split('|').filter(c => c.trim() !== '');
-        if (!tableMode) {
-          tableMode = true;
-          tableHeaders = cells;
-          continue;
-        }
-        if (cells.every(c => /^[-:]+$/.test(c.trim()))) continue;
-        tableRows.push(cells);
-        continue;
-      } else if (tableMode) {
-        flushTable();
-      }
-
-      if (!line.trim()) {
-        elements.push(<div key={`br-${i}`} className="h-2" />);
-        continue;
-      }
-
-      let processed = line;
-
-      if (/^\d+\.\s/.test(processed)) {
-        const content = processed.replace(/^\d+\.\s/, '');
-        elements.push(
-          <div key={`li-${i}`} className="flex gap-2 ml-1 mb-1">
-            <span className={`text-xs shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{processed.match(/^\d+/)?.[0]}.</span>
-            <span className="text-[10px]" dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-          </div>
-        );
-        continue;
-      }
-
-      if (processed.startsWith('- ')) {
-        const content = processed.slice(2);
-        elements.push(
-          <div key={`bullet-${i}`} className="flex gap-2 ml-1 mb-1">
-            <span className={`text-xs shrink-0 mt-1 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`}>•</span>
-            <span className="text-[10px]" dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-          </div>
-        );
-        continue;
-      }
-
-      elements.push(
-        <p key={`p-${i}`} className="text-xs mb-1" dangerouslySetInnerHTML={{ __html: processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-      );
-    }
-
-    if (tableMode) flushTable();
-
-    return elements;
-  };
+  const renderMarkdown = (text: string) => renderSafeMarkdown(text, { isDarkMode });
 
   const messageCount = messages.filter(m => m.role === 'user').length;
 
@@ -461,15 +388,37 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                         ? isDarkMode
                           ? 'bg-purple-600/20 border border-purple-500/20'
                           : 'bg-purple-50 border border-purple-200/40'
-                        : isDarkMode
-                          ? 'surface-premium'
-                          : 'bg-gray-50/80'
+                        : msg.isError
+                          ? isDarkMode
+                            ? 'bg-red-900/15 border border-red-800/30'
+                            : 'bg-red-50 border border-red-100'
+                          : isDarkMode
+                            ? 'surface-premium'
+                            : 'bg-gray-50/80'
                     }`}>
                       {msg.role === 'user' ? (
                         <p className={`text-xs ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{msg.content}</p>
                       ) : (
-                        <div className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+                        <div
+                          className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}
+                          role={msg.isError ? 'alert' : undefined}
+                          aria-live={msg.isError ? 'polite' : undefined}
+                        >
                           {renderMarkdown(msg.content)}
+                          {msg.structured && !msg.isError && (
+                            <FleetChatResponseMetadata
+                              structured={msg.structured}
+                              isDarkMode={isDarkMode}
+                              locale={locale}
+                            />
+                          )}
+                          {msg.isError && msg.technicalDetails && (
+                            <FleetChatTechnicalErrorDetails
+                              technicalDetails={msg.technicalDetails}
+                              locale={locale}
+                              isDarkMode={isDarkMode}
+                            />
+                          )}
                         </div>
                       )}
                     </div>

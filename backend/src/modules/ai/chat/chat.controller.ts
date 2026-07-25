@@ -1,10 +1,20 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, Res, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Headers, Res, UseGuards, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
-import { ChatService } from './chat.service';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { resolveAiRequestId } from '../execution/ai-execution-context.builder';
+import { ChatService, buildChatStreamError } from './chat.service';
+import type { ChatSessionIdentity } from './chat-session.types';
+
+interface ChatAuthedUser {
+  id: string;
+  platformRole?: string | null;
+  locale?: string;
+  timezone?: string;
+}
 
 @Controller('organizations/:orgId/chat')
 @UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
@@ -30,6 +40,8 @@ export class ChatController {
   async sendMessage(
     @Param('orgId') orgId: string,
     @Body() body: { content: string },
+    @CurrentUser() user: ChatAuthedUser | undefined,
+    @Headers('x-request-id') requestIdHeader?: string,
   ) {
     if (!body.content?.trim()) {
       return {
@@ -40,7 +52,11 @@ export class ChatController {
     }
 
     try {
-      return await this.chatService.sendMessage(orgId, body.content.trim());
+      return await this.chatService.sendMessage(
+        orgId,
+        body.content.trim(),
+        this.toSessionIdentity(user, requestIdHeader),
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`[Chat] Unhandled error in sendMessage for org ${orgId}: ${message}`);
@@ -59,6 +75,8 @@ export class ChatController {
     @Param('orgId') orgId: string,
     @Body() body: { content: string },
     @Res() res: Response,
+    @CurrentUser() user: ChatAuthedUser | undefined,
+    @Headers('x-request-id') requestIdHeader?: string,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -86,14 +104,22 @@ export class ChatController {
     }
 
     try {
-      await this.chatService.streamMessage(orgId, body.content.trim(), send, () => closed.value);
+      await this.chatService.streamMessage(
+        orgId,
+        body.content.trim(),
+        send,
+        () => closed.value,
+        this.toSessionIdentity(user, requestIdHeader),
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`[Chat] Unhandled error in streamMessage for org ${orgId}: ${message}`);
-      send('error', {
-        message:
+      send(
+        'error',
+        buildChatStreamError(
           "I'm sorry, something unexpected happened while processing your request. Please try again in a moment.",
-      });
+        ),
+      );
     }
 
     if (!closed.value) res.end();
@@ -113,5 +139,19 @@ export class ChatController {
   @RequirePermission('ai-assistant', 'write')
   async clearHistory(@Param('orgId') orgId: string) {
     return this.chatService.clearHistory(orgId);
+  }
+
+  private toSessionIdentity(
+    user: ChatAuthedUser | undefined,
+    requestIdHeader?: string,
+  ): ChatSessionIdentity | undefined {
+    if (!user?.id) return undefined;
+    return {
+      userId: user.id,
+      platformRole: user.platformRole ?? null,
+      locale: user.locale,
+      timezone: user.timezone,
+      requestId: resolveAiRequestId(requestIdHeader),
+    };
   }
 }
