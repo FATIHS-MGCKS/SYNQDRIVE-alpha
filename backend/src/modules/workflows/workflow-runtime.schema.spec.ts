@@ -68,9 +68,9 @@ describe('Workflow canonical runtime schema (Phase 3 Prompt 10)', () => {
     expect(sql).not.toMatch(/DELETE FROM/i);
     expect(sql).toContain('workflow_runs_org_idempotency_key');
     expect(sql).toContain('workflow_approvals_action_run_id_key');
-    expect(sql).toContain('workflow_approvals_pending_expiry_idx');
+    expect(sql).toContain('workflow_approvals_organization_id_status_expires_at_idx');
     expect(sql).toContain('workflow_timers_status_fire_at_idx');
-    expect(sql).toContain('workflow_event_outbox_status_available_idx');
+    expect(sql).toContain('workflow_event_outbox_status_available_at_idx');
     expect(sql).toContain('workflow_definitions_org_slug_active_key');
   });
 

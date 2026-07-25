@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-matcher-v49829-2026-07-25',
+    version: '4.9.829',
+    title: 'V4.9.829 — Canonical workflow matcher (Phase 5 Prompt 19)',
+    summary: [
+      'WorkflowMatcherService maps validated domain event envelopes to active workflow versions — match-only, no action execution.',
+      'Index-backed Prisma query on workflow_triggers (organizationId, triggerType) joined to active published versions.',
+      'Fail-closed scope (ORGANIZATION / STATION / VEHICLE bindings), eventVersion guard, feature flags, rollout %, capabilities.',
+      'Deterministic ordering, standardized skip reasons for dry-run explainability, per-workflow error isolation.',
+      '16 unit tests including cross-tenant, 250-candidate performance budget.',
+    ],
+    reason: 'Workflow automation needs a canonical, auditable matcher before run orchestration.',
+    previousBehavior: 'WorkflowEngineService matched legacy OrgWorkflow JSON in-memory and immediately executed actions.',
+    details:
+      'docs/architecture/workflow-matcher-2026-07.md. Matcher not yet wired into outbox dispatch — engine integration is next phase.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T09:30:00.000Z',
+  },
+  {
     id: 'workflow-domain-event-sources-v49828-2026-07-25',
     version: '4.9.828',
     title: 'V4.9.828 — Workflow domain event source wiring (Phase 4 Prompt 18)',
