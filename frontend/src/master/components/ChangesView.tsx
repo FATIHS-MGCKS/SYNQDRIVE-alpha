@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    title: 'V4.9.831 — Data Auth Production Rollout Shadow Mode (Prompt 43)',
+    summary: [
+      'VPS Production Rollout: 6080dbd @ 20260725083109_data-auth-rc via vps-deploy-data-auth-staging.sh.',
+      'Alle 6 Domains im Shadow Mode (*_SHADOW_MODE=true, *_FAIL_CLOSED=false); globale Guards verifiziert.',
+      'data_auth_* Metriken live; data_auth_dev_bypass_enabled=0; PM2 health OK.',
+      '14/15 Runtime-Szenarien PASS; Fail-closed-Flip nach 24h Soak ausstehend.',
+    ],
+    reason: 'Prompt 42 CONDITIONAL GO erlaubte kontrollierten Production-Rollout im Shadow Mode.',
+    previousBehavior: 'Production auf main (1d0f2ca) ohne Data-Auth-Binary; 0 data_auth Metriken.',
+    details: 'docs/operations/data-authorization-production-rollout-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-25T08:45:00.000Z',
+  },
+  {
     title: 'V4.9.830 — Data Auth Staging RC Live (Prompt 42 Re-run)',
     summary: [
       'VPS RC deploy erfolgreich: 5f76e378 @ 20260724084334_data-auth-rc; PM2 health OK.',
