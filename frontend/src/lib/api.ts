@@ -1,5 +1,6 @@
 import { getToken, clearAuth } from './auth';
 import { ApiHttpError, formatHttpErrorMessage } from './httpError';
+import { dispatchOperatorApiFailure, dispatchOperatorAuthExpired, dispatchOperatorApiSuccess } from '../operator/connectivity/operatorConnectivity.events';
 import {
   buildFleetRentalHealthQueryString,
   fetchAllFleetRentalHealth as collectFleetRentalHealthPages,
@@ -684,13 +685,20 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    cache: 'no-store',
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      cache: 'no-store',
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    dispatchOperatorApiFailure(path);
+    throw err;
+  }
 
   if (res.status === 401 && !path.includes('/auth/')) {
+    dispatchOperatorAuthExpired();
     clearAuth();
     window.location.href = '/login';
     throw new Error('Session expired');
@@ -698,8 +706,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    if (res.status >= 500 || res.status === 408 || res.status === 429) {
+      dispatchOperatorApiFailure(path);
+    }
     throw new ApiHttpError(res.status, body, path);
   }
+
+  dispatchOperatorApiSuccess();
 
   if (res.status === 204) {
     return undefined as T;
@@ -1126,6 +1139,7 @@ async function fetchBlob(path: string): Promise<Blob> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (res.status === 401) {
+    dispatchOperatorAuthExpired();
     clearAuth();
     window.location.href = '/login';
     throw new Error('Session expired');

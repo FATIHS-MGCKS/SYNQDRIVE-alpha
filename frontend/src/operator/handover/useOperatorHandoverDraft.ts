@@ -20,6 +20,8 @@ import {
   type HandoverDraftConflictInfo,
   type HandoverDraftSaveStatus,
 } from './operatorHandoverDraftSync';
+import { dispatchHandoverDraftConnectivity } from '../connectivity/operatorConnectivity.events';
+import { operatorConnectivityStore } from '../connectivity/operatorConnectivityStore';
 import type { OperatorHandoverFormState, OperatorHandoverStepId } from './operatorHandoverPayload';
 
 function isBrowserOnline(): boolean {
@@ -80,6 +82,7 @@ export function useOperatorHandoverDraft(
           step: record.currentStep ?? stepRef.current,
           updatedAt: Date.now(),
         });
+        operatorConnectivityStore.setDraftBufferedLocally(true);
       }
     },
     [orgId, bookingId, kind, patchState, setStep],
@@ -112,6 +115,7 @@ export function useOperatorHandoverDraft(
         setSyncError(e?.message ?? 'Entwurf konnte nicht geladen werden');
       }
       setSaveStatus(isBrowserOnline() ? 'error' : 'offline');
+      dispatchHandoverDraftConnectivity({ status: isBrowserOnline() ? 'error' : 'offline' });
     }
   }, [orgId, bookingId, kind, applyDraftRecord]);
 
@@ -128,6 +132,7 @@ export function useOperatorHandoverDraft(
         saveTimerRef.current = null;
       }
       saveAbortRef.current?.abort();
+      dispatchHandoverDraftConnectivity({ status: 'cleared' });
       return;
     }
     void loadOrCreate();
@@ -141,6 +146,7 @@ export function useOperatorHandoverDraft(
       setIsOnline(false);
       saveAbortRef.current?.abort();
       setSaveStatus((prev) => (prev === 'saving' ? 'offline' : prev === 'saved' ? prev : 'offline'));
+      dispatchHandoverDraftConnectivity({ status: 'offline' });
     };
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
@@ -162,6 +168,7 @@ export function useOperatorHandoverDraft(
       if (conflictRef.current) return false;
       if (!isBrowserOnline()) {
         setSaveStatus('offline');
+        dispatchHandoverDraftConnectivity({ status: 'offline' });
         return false;
       }
 
@@ -171,6 +178,7 @@ export function useOperatorHandoverDraft(
       const seq = ++saveSeqRef.current;
 
       setSaveStatus('saving');
+      dispatchHandoverDraftConnectivity({ status: 'saving' });
       setSyncError(null);
 
       try {
@@ -198,6 +206,7 @@ export function useOperatorHandoverDraft(
         setSaveStatus('saved');
         setConflict(null);
         dispatchHandoverDraftEvent('handover:draft-saved');
+        dispatchHandoverDraftConnectivity({ status: 'saved' });
         return true;
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return false;
@@ -218,11 +227,13 @@ export function useOperatorHandoverDraft(
         if (!isBrowserOnline() || (err instanceof Error && err.message === 'offline')) {
           setSaveStatus('offline');
           setSyncError('Offline — Entwurf wird nach Verbindungsaufbau gespeichert.');
+          dispatchHandoverDraftConnectivity({ status: 'offline' });
           return false;
         }
 
         setSaveStatus('error');
         setSyncError(isApiHttpError(err) ? err.message : 'Autosave fehlgeschlagen');
+        dispatchHandoverDraftConnectivity({ status: 'error' });
         return false;
       }
     },
