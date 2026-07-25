@@ -103,7 +103,12 @@ export class WorkflowRunRuntimeService {
     const run = await this.runs.findByIdOrThrow(orgId, runId);
     const actions = await this.actionRuns.listByRun(orgId, runId);
     const derived = deriveWorkflowRunStatusFromActions(
-      actions.map((a) => a.status as WorkflowActionRunStatus),
+      actions.map((a) => ({
+        status: a.status as WorkflowActionRunStatus,
+        blockingOnFailure: a.blockingOnFailure,
+        partialFailure: a.partialFailure,
+        isFallbackRun: a.isFallbackRun,
+      })),
     );
 
     if (!derived || derived === (run.status as WorkflowRunStatus)) {

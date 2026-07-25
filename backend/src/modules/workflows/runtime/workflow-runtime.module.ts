@@ -25,6 +25,9 @@ import { WorkflowRunCancellationService } from './cancellation/workflow-run-canc
 import { WorkflowTimerRepository } from './cancellation/workflow-timer.repository';
 import { WorkflowRunController } from './workflow-run.controller';
 import { WorkflowRuntimeSchedulerService } from './workflow-runtime-scheduler.service';
+import { WorkflowActionFallbackService } from './error-strategy/workflow-action-fallback.service';
+import { WorkflowActionCompensationService } from './error-strategy/workflow-action-compensation.service';
+import { WorkflowErrorStrategyExplainService } from './error-strategy/workflow-error-strategy-explain.service';
 
 @Module({
   imports: [PrismaModule, TasksModule, ConfigModule.forFeature(workflowRuntimeConfig)],
@@ -48,6 +51,9 @@ import { WorkflowRuntimeSchedulerService } from './workflow-runtime-scheduler.se
     WorkflowRunCancellationService,
     WorkflowRunWorkerService,
     WorkflowRuntimeSchedulerService,
+    WorkflowActionFallbackService,
+    WorkflowActionCompensationService,
+    WorkflowErrorStrategyExplainService,
     WorkflowRuntimeActionExecutorAdapter,
     WorkflowActionExecutorService,
   ],

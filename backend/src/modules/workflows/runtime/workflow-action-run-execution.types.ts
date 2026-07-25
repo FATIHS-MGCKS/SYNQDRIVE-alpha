@@ -52,6 +52,10 @@ export interface WorkflowActionSnapshotEntry {
   workflowActionId: string | null;
   requiresApproval: boolean;
   blockingOnFailure: boolean;
+  errorStrategy: string;
+  fallbackActionKey?: string | null;
+  compensateActionKey?: string | null;
+  compensatable: boolean;
   config: Record<string, unknown>;
 }
 

@@ -51,6 +51,26 @@ export class WorkflowActionDto {
   @IsOptional()
   @IsBoolean()
   requiresApproval?: boolean;
+
+  @IsOptional()
+  @IsString()
+  errorStrategy?: string;
+
+  @IsOptional()
+  @IsString()
+  fallbackActionKey?: string;
+
+  @IsOptional()
+  @IsString()
+  compensateActionKey?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  compensatable?: boolean;
+
+  @IsOptional()
+  @IsString()
+  actionKey?: string;
 }
 
 export class WorkflowScopeDto {

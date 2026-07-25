@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-error-strategies-v49834-2026-07-25',
+    version: '4.9.834',
+    title: 'V4.9.834 — Workflow error strategies & partial failures (Phase 5 Prompt 24)',
+    summary: [
+      'WorkflowActionErrorStrategy enum: STOP_WORKFLOW, CONTINUE, SKIP_ACTION, REQUEST_APPROVAL, EXECUTE_FALLBACK, RETRY, MARK_PARTIAL, COMPENSATE_PREVIOUS.',
+      'Per-action errorStrategy in definition + runtime snapshot; WorkflowActionErrorStrategyResolver applies strategy after classification.',
+      'Fallback actions materialized as own WorkflowActionRun with parentActionRunId, maxFallbackDepth loop guard.',
+      'COMPLETED_WITH_FALLBACK run status; PARTIALLY_COMPLETED for non-blocking partial failures; blocking failures prevent COMPLETED.',
+      'Compensation only for explicitly compensatable internal actions; external notification.prepare never compensatable. 18 strategy tests + 111 runtime suite.',
+    ],
+    reason: 'Workflow failures need explicit, auditable strategies — not emergent blockingOnFailure behavior alone.',
+    previousBehavior: 'blockingOnFailure hardcoded true; no errorStrategy, fallback runs, or COMPLETED_WITH_FALLBACK.',
+    details: 'docs/architecture/workflow-error-strategies-2026-07.md. Migration 20260726250000_workflow_error_strategies.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T16:00:00.000Z',
+  },
+  {
     id: 'workflow-cancellation-timeouts-v49833-2026-07-25',
     version: '4.9.833',
     title: 'V4.9.833 — Workflow cancellation, timeouts & stale runs (Phase 5 Prompt 23)',

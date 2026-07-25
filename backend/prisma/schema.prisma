@@ -10883,6 +10883,8 @@ enum WorkflowRuntimeRunStatus {
   WAITING
   WAITING_FOR_APPROVAL
   COMPLETED
+  /// Run completed with at least one successful fallback after a primary action failure.
+  COMPLETED_WITH_FALLBACK
   PARTIALLY_COMPLETED
   FAILED
   CANCELLED
@@ -10939,6 +10941,17 @@ enum WorkflowApprovalRejectionStrategy {
   CANCEL_RUN
   SKIP_ACTION
   EXECUTE_FALLBACK
+}
+
+enum WorkflowActionErrorStrategy {
+  STOP_WORKFLOW
+  CONTINUE
+  SKIP_ACTION
+  REQUEST_APPROVAL
+  EXECUTE_FALLBACK
+  RETRY
+  MARK_PARTIAL
+  COMPENSATE_PREVIOUS
 }
 
 enum WorkflowDeliveryChannel {
@@ -11197,6 +11210,11 @@ model WorkflowAction {
   actionIndex               Int                             @map("action_index")
   actionType                String                          @map("action_type")
   requiresApproval          Boolean                         @default(false) @map("requires_approval")
+  errorStrategy             WorkflowActionErrorStrategy     @default(STOP_WORKFLOW) @map("error_strategy")
+  fallbackActionKey         String?                         @map("fallback_action_key")
+  compensateActionKey       String?                         @map("compensate_action_key")
+  /// Only true for explicitly marked internal, technically reversible actions.
+  compensatable             Boolean                         @default(false)
   capabilityStatusAtPublish WorkflowActionCapabilityStatus? @map("capability_status_at_publish")
   /// Action config — no API keys, tokens, or provider secrets.
   config                    Json                            @default("{}")
@@ -11336,6 +11354,15 @@ model WorkflowActionRun {
   requiresApproval     Boolean                        @default(false) @map("requires_approval")
   /// When false, a permanent failure on this action does not block subsequent actions.
   blockingOnFailure    Boolean                        @default(true) @map("blocking_on_failure")
+  errorStrategy        WorkflowActionErrorStrategy    @default(STOP_WORKFLOW) @map("error_strategy")
+  fallbackActionKey    String?                        @map("fallback_action_key")
+  compensateActionKey  String?                        @map("compensate_action_key")
+  compensatable        Boolean                        @default(false)
+  appliedErrorStrategy WorkflowActionErrorStrategy?   @map("applied_error_strategy")
+  parentActionRunId    String?                        @map("parent_action_run_id")
+  isFallbackRun        Boolean                        @default(false) @map("is_fallback_run")
+  fallbackDepth        Int                            @default(0) @map("fallback_depth")
+  partialFailure       Boolean                        @default(false) @map("partial_failure")
   idempotencyKey       String                         @map("idempotency_key")
   /// Frozen action input at first claim — no secrets.
   inputSnapshot        Json?                          @map("input_snapshot")
@@ -11361,6 +11388,8 @@ model WorkflowActionRun {
   organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workflowRun    WorkflowRun        @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
   workflowAction WorkflowAction?    @relation(fields: [workflowActionId], references: [id], onDelete: SetNull)
+  parentActionRun WorkflowActionRun? @relation("WorkflowActionRunFallback", fields: [parentActionRunId], references: [id], onDelete: SetNull)
+  fallbackRuns    WorkflowActionRun[] @relation("WorkflowActionRunFallback")
   waitingApproval WorkflowApproval? @relation("WorkflowActionRunWaitingApproval", fields: [approvalId], references: [id], onDelete: SetNull)
   approval       WorkflowApproval?
   deliveries     WorkflowDelivery[]

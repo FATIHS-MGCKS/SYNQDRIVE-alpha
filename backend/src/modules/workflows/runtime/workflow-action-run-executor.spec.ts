@@ -229,6 +229,16 @@ describe('WorkflowActionRunExecutor', () => {
       const approvalPause = {
         finalizeExecutionApproval: jest.fn().mockResolvedValue({ id: 'approval-1' }),
       };
+      const fallback = {
+        resolveFallbackActionFromSnapshot: jest.fn(),
+        materializeFallbackRun: jest.fn(),
+      };
+      const compensation = {
+        compensatePrevious: jest.fn(),
+      };
+      const worker = {
+        processRun: jest.fn().mockResolvedValue({ processed: true }),
+      };
 
       const service = new WorkflowActionRunExecutorService(
         prisma as never,
@@ -239,8 +249,11 @@ describe('WorkflowActionRunExecutor', () => {
         audit,
         adapter,
         approvalPause as never,
+        fallback as never,
+        compensation as never,
+        worker as never,
       );
-      return { service, adapter, actionRuns, prisma, runRuntime };
+      return { service, adapter, actionRuns, prisma, runRuntime, fallback, worker };
     }
 
     it('returns idempotent replay for already succeeded action', async () => {

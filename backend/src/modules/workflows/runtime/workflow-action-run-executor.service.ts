@@ -1,8 +1,10 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -22,7 +24,6 @@ import {
 } from './workflow-action-run-execution.types';
 import {
   classifyActionError,
-  resolveStatusFromClassification,
 } from './workflow-action-run-error.classifier';
 import {
   buildInputSnapshot,
@@ -34,6 +35,10 @@ import {
 import { WorkflowApprovalPauseService } from './approval/workflow-approval-pause.service';
 import { computeWorkflowOutboxBackoffMs } from '../outbox/workflow-event-outbox-error.util';
 import type { WorkflowActionDef } from '../workflow-definition.validator';
+import { resolveErrorStrategy } from './error-strategy/workflow-action-error-strategy.resolver';
+import { WorkflowActionFallbackService } from './error-strategy/workflow-action-fallback.service';
+import { WorkflowActionCompensationService } from './error-strategy/workflow-action-compensation.service';
+import { WorkflowRunWorkerService } from './workflow-run-worker.service';
 
 @Injectable()
 export class WorkflowActionRunExecutorService {
@@ -48,6 +53,10 @@ export class WorkflowActionRunExecutorService {
     private readonly audit: WorkflowRuntimeStatusAuditService,
     private readonly adapter: WorkflowRuntimeActionExecutorAdapter,
     private readonly approvalPause: WorkflowApprovalPauseService,
+    private readonly fallback: WorkflowActionFallbackService,
+    private readonly compensation: WorkflowActionCompensationService,
+    @Inject(forwardRef(() => WorkflowRunWorkerService))
+    private readonly worker: WorkflowRunWorkerService,
   ) {}
 
   private get defaultMaxAttempts() {
@@ -64,6 +73,10 @@ export class WorkflowActionRunExecutorService {
 
   private get maxRetryBackoffMs() {
     return this.config.get<number>('workflowRuntime.maxRetryBackoffMs', 900000);
+  }
+
+  private get maxFallbackDepth() {
+    return this.config.get<number>('workflowRuntime.maxFallbackDepth', 3);
   }
 
   /**
@@ -320,7 +333,19 @@ export class WorkflowActionRunExecutorService {
       maxAttempts: actionRun.maxAttempts ?? ctx.policy.maxActionAttempts,
       timedOut: input.timedOut,
     });
-    const status = resolveStatusFromClassification(classification);
+
+    const resolution = resolveErrorStrategy(classification, {
+      errorStrategy: (actionRun.errorStrategy ?? ctx.actionSnapshot.errorStrategy) as never,
+      actionType: actionRun.actionType,
+      fallbackActionKey: actionRun.fallbackActionKey ?? ctx.actionSnapshot.fallbackActionKey,
+      compensateActionKey: actionRun.compensateActionKey ?? ctx.actionSnapshot.compensateActionKey,
+      compensatable: actionRun.compensatable ?? ctx.actionSnapshot.compensatable,
+      blockingOnFailure: actionRun.blockingOnFailure,
+      fallbackDepth: actionRun.fallbackDepth ?? 0,
+      maxFallbackDepth: this.maxFallbackDepth,
+    });
+
+    const status = resolution.targetStatus;
     const nextAttemptAt =
       status === 'FAILED_RETRYABLE'
         ? new Date(
@@ -334,20 +359,67 @@ export class WorkflowActionRunExecutorService {
           )
         : null;
 
+    if (resolution.compensatePrevious && resolution.compensateActionKey) {
+      await this.compensation.compensatePrevious({
+        organizationId: orgId,
+        workflowRunId: runId,
+        failedActionRunId: actionRun.id,
+        compensateActionKey: resolution.compensateActionKey,
+        actionType: actionRun.actionType,
+        compensatable: actionRun.compensatable,
+      });
+    }
+
     await this.atomicComplete(orgId, runId, actionRun, {
       toStatus: status,
       errorCode: classification.errorCode,
       errorCategory: classification.errorCategory,
-      errorSummary: classification.errorSummary,
-      finishedAt: status === 'FAILED_PERMANENT' ? new Date() : null,
+      errorSummary: resolution.auditReason,
+      finishedAt: ['FAILED_PERMANENT', 'SKIPPED'].includes(status) ? new Date() : null,
       nextAttemptAt,
+      appliedErrorStrategy: resolution.appliedStrategy,
+      partialFailure: resolution.partialFailure,
+      blockingOnFailure: resolution.blockingOnFailure,
     });
+
+    if (resolution.requestApproval) {
+      await this.approvalPause.finalizeExecutionApproval({
+        organizationId: orgId,
+        workflowRunId: runId,
+        workflowVersionId: ctx.run.workflowVersionId,
+        actionRunId: actionRun.id,
+        reason: resolution.auditReason,
+      });
+    }
+
+    if (resolution.executeFallback && resolution.fallbackActionKey) {
+      const fallbackAction = this.fallback.resolveFallbackActionFromSnapshot(
+        ctx.run.definitionSnapshot,
+        resolution.fallbackActionKey,
+      );
+      if (fallbackAction) {
+        await this.fallback.materializeFallbackRun({
+          organizationId: orgId,
+          workflowRunId: runId,
+          workflowDefinitionId: actionRun.workflowDefinitionId,
+          workflowVersionId: actionRun.workflowVersionId,
+          parentActionRunId: actionRun.id,
+          parentActionIndex: actionRun.actionIndex,
+          fallbackDepth: actionRun.fallbackDepth ?? 0,
+          fallbackAction,
+          runIdempotencyKey: ctx.run.idempotencyKey,
+        });
+        await this.worker.processRun(orgId, runId);
+      }
+    } else if (status === 'SKIPPED' || status === 'FAILED_PERMANENT') {
+      await this.worker.processRun(orgId, runId);
+    }
 
     return {
       status,
       errorCode: classification.errorCode,
       errorCategory: classification.errorCategory,
-      errorSummary: classification.errorSummary,
+      errorSummary: resolution.auditReason,
     };
   }
 
@@ -366,6 +438,9 @@ export class WorkflowActionRunExecutorService {
       approvalId?: string | null;
       finishedAt?: Date | null;
       nextAttemptAt?: Date | null;
+      appliedErrorStrategy?: string;
+      partialFailure?: boolean;
+      blockingOnFailure?: boolean;
     },
   ) {
     await this.prisma.$transaction(async (tx) => {
@@ -386,6 +461,9 @@ export class WorkflowActionRunExecutorService {
         finishedAt: patch.finishedAt ?? null,
         attemptCount: actionRun.attemptCount,
         nextAttemptAt: patch.nextAttemptAt ?? null,
+        appliedErrorStrategy: patch.appliedErrorStrategy ?? null,
+        partialFailure: patch.partialFailure ?? false,
+        blockingOnFailure: patch.blockingOnFailure,
       });
       if (count === 0) {
         throw new ConflictException({
@@ -407,6 +485,8 @@ export class WorkflowActionRunExecutorService {
           errorCategory: patch.errorCategory ?? null,
           providerReference: patch.providerReference ?? null,
           attemptCount: actionRun.attemptCount,
+          appliedErrorStrategy: patch.appliedErrorStrategy ?? null,
+          partialFailure: patch.partialFailure ?? false,
         },
       });
     });
