@@ -1613,6 +1613,8 @@ model Organization {
   bookings                               Booking[]
   bookingAllowedDrivers                  BookingAllowedDriver[]
   bookingHandoverProtocols               BookingHandoverProtocol[]
+  bookingHandoverSessions                BookingHandoverSession[]
+  bookingHandoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
   activityLogs                           ActivityLog[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   vendors                                Vendor[]
@@ -2856,6 +2858,7 @@ model Vehicle {
   pollLogs                               DimoPollLog[]
   bookings                               Booking[]
   handoverProtocols                      BookingHandoverProtocol[]
+  handoverSessions                       BookingHandoverSession[]
   drivingEvents                          DrivingEvent[]
   batterySnapshots                       BatteryHealthSnapshot[]
   hvBatterySnapshots                     HvBatteryHealthSnapshot[]
@@ -5598,6 +5601,8 @@ model Booking {
   actualReturnStation     Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
   rentalDrivingAnalyses   RentalDrivingAnalysis[]
   handoverProtocols       BookingHandoverProtocol[]
+  handoverSessions        BookingHandoverSession[]
+  handoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
   priceSnapshots          BookingPriceSnapshot[]
@@ -6014,6 +6019,68 @@ model BookingHandoverProtocol {
   @@index([organizationId])
   @@index([vehicleId])
   @@map("booking_handover_protocols")
+}
+
+// V4.9.840 — Server-side handover session lifecycle (draft → submit); protocol remains completion artifact.
+enum HandoverSessionStatus {
+  DRAFT
+  IN_PROGRESS
+  AWAITING_REQUIREMENTS
+  AWAITING_SIGNATURE
+  SUBMITTED
+  COMPLETED
+  CANCELLED
+  SUPERSEDED
+}
+
+model BookingHandoverSession {
+  id                    String                @id @default(uuid())
+  organizationId        String                @map("organization_id")
+  bookingId             String                @map("booking_id")
+  vehicleId             String                @map("vehicle_id")
+  kind                  HandoverKind
+  status                HandoverSessionStatus
+  version               Int                   @default(1)
+  payloadJson           Json?                 @map("payload_json")
+  blockingRequirements  Json?                 @map("blocking_requirements")
+  lockedByUserId        String?               @map("locked_by_user_id")
+  lockedAt              DateTime?             @map("locked_at")
+  scopeOverrideReason   String?               @map("scope_override_reason")
+  cancelReason          String?               @map("cancel_reason")
+  supersededById        String?               @map("superseded_by_id")
+  completedProtocolId   String?               @map("completed_protocol_id")
+  submittedAt           DateTime?             @map("submitted_at")
+  cancelledAt           DateTime?             @map("cancelled_at")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([bookingId, kind])
+  @@index([vehicleId])
+  @@map("booking_handover_sessions")
+}
+
+/// Idempotent replay cache for pickup handover completion commands (Prompt 15).
+model BookingHandoverPickupCompletionIdempotency {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  bookingId      String   @map("booking_id")
+  idempotencyKey String   @map("idempotency_key")
+  sessionId      String?  @map("session_id")
+  protocolId     String   @map("protocol_id")
+  responseJson   Json     @map("response_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey], map: "booking_handover_pickup_completion_org_idempotency_key")
+  @@index([bookingId], map: "booking_handover_pickup_completion_booking_id_idx")
+  @@map("booking_handover_pickup_completion_idempotency")
 }
 
 /// Rental-period analysis input coverage (P59).

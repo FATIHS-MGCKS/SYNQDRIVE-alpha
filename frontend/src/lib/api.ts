@@ -3872,6 +3872,8 @@ export const api = {
       get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
     createPickupHandover: (orgId: string, bookingId: string, data: any) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
+    completePickupHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup/complete`, data),
     createReturnHandover: (orgId: string, bookingId: string, data: any) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
   },
