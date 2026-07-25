@@ -2410,6 +2410,40 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 46. Operator Data Minimization (Prompt 25)
+
+### 46.1 Prozess-DTOs
+
+| Prozess | Minimalfelder |
+|---------|----------------|
+| Pickup / Return | Buchung, Fahrzeug, maskierter Kunde, Stationsnamen, Dokument-Slots (Status), Handover-Hinweise |
+| Damage | wie Pickup/Return ohne Kontaktdaten |
+| Dokumentprüfung | Status + `canViewFull`; Vollansicht nur mit `customers.read` |
+| Task | Buchungs-/Fahrzeug-Kontext ohne Finanz/Risiko |
+| Booking-Form | maskierte Suche/Summary; Kontakt nur bei `customers.read` |
+
+### 46.2 Permissions
+
+| Code | RBAC | Bedeutung |
+|------|------|-----------|
+| `operator.documents.view_status` | `bookings.read` | Slot-Status, keine Dokument-IDs |
+| `operator.documents.view_full` | `customers.read` | Preview-Grant + Dokument-IDs |
+
+### 46.3 Preview & Audit
+
+- `POST …/preview-grant` → HMAC-Token (5 min), ActivityLog `OPERATOR_SENSITIVE_DOCUMENT_VIEW`
+- `GET …/operator/preview/:token` — `Cache-Control: no-store`
+- Keine statischen `/uploads/`-URLs im Operator-Frontend
+
+### 46.4 Tests
+
+- `operator-data.mapper.spec.ts`
+- `operator-document-preview.service.spec.ts`
+- `operator-app.service.spec.ts`
+- `operatorSensitiveFetch.test.ts`
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

@@ -11,13 +11,10 @@ import { OperatorToggleRow } from './operatorHandoverUi';
 
 
 interface Props {
-
   booking: HandoverDialogBookingInfo;
-
   form: OperatorHandoverFormApi;
-
+  kind: 'PICKUP' | 'RETURN';
   onAiUpload?: () => void;
-
 }
 
 
@@ -28,7 +25,7 @@ const DOCUMENTS_ACK_LABEL =
 
 
 
-export function OperatorHandoverStepDocuments({ booking, form, onAiUpload }: Props) {
+export function OperatorHandoverStepDocuments({ booking, form, kind, onAiUpload }: Props) {
 
   const { orgId } = useRentalOrg();
 
@@ -47,7 +44,7 @@ export function OperatorHandoverStepDocuments({ booking, form, onAiUpload }: Pro
         bookingId={booking.id}
 
         customerId={booking.customerId ?? undefined}
-
+        process={kind}
         onAiUpload={onAiUpload}
 
       />
