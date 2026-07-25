@@ -31,7 +31,8 @@ import { BookingEligibilityApprovalService } from './booking-eligibility-approva
 import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
-import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-booking-context.service';
+import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
+import { BookingsHandoverSessionService } from './handover-session/bookings-handover-session.service';
 
 @Module({
   imports: [
@@ -51,12 +52,14 @@ import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-
     OutboundEmailModule,
     forwardRef(() => PaymentsModule),
     forwardRef(() => VehiclesModule),
+    forwardRef(() => RentalHealthModule),
     ActivityLogModule,
   ],
   controllers: [BookingsController],
   providers: [
     BookingsService,
     BookingsHandoverService,
+    BookingsHandoverSessionService,
     VehicleBookingContextService,
     BookingAllowedDriversService,
     BookingRentalEligibilityService,
@@ -74,6 +77,7 @@ import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-
   exports: [
     BookingsService,
     BookingsHandoverService,
+    BookingsHandoverSessionService,
     BookingRentalEligibilityService,
     BookingEligibilityGatekeeperService,
     BookingEligibilityEnforcementService,
