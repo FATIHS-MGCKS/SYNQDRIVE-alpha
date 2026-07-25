@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-production-go-live-v49826-2026-07-25',
+    version: '4.9.826',
+    title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',
+    summary: [
+      'Production deploy release 20260725075156_v4994 (commit ed742a0) on app.synqdrive.eu.',
+      'Hotfixes: Nest forwardRef circular deps + concrete DI types for domain tools.',
+      'FLEET_CHAT_DOMAIN_GROUNDING_ENABLED=true; AI_AGENT_* and audit env on VPS.',
+      'Infra smokes PASS: health, readiness, ai/health, Mistral probe; acceptance PASS WITH CONDITIONS.',
+    ],
+    reason: 'Operator-requested go-live without soak — enable domain-grounded Fleet AI on production.',
+    previousBehavior: 'Production on legacy chat commit 62aaf1fe without orchestrator or Fleet AI migrations.',
+    details:
+      'Post-deploy acceptance updated; authenticated 12-question WOB-L-7503 prod matrix waived per operator instruction.',
+    affectsArchitecture: true,
+    module: 'AI Assistant',
+    createdAt: '2026-07-25T07:58:00.000Z',
+  },
+  {
     id: 'fleet-ai-post-deployment-acceptance-v49825-2026-07-25',
     version: '4.9.825',
     title: 'V4.9.825 — Fleet AI post-deployment acceptance (Prompt 32)',
