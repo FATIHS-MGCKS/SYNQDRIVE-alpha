@@ -35,6 +35,7 @@ import { AiExplainOverdueReturnTool } from './tools/explain-overdue-return/ai-ex
 import { AiGetVehicleBookingContextTool } from './tools/get-vehicle-booking-context/ai-get-vehicle-booking-context.tool';
 import { AiDomainToolRegistry } from './registry/ai-domain-tool-registry.service';
 import { FleetChatIntentRouterService } from './routing/fleet-chat-intent-router.service';
+import { FleetChatOrchestratorService } from './chat/fleet-chat-orchestrator.service';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
@@ -87,6 +88,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleBookingContextTool,
     AiDomainToolRegistry,
     FleetChatIntentRouterService,
+    FleetChatOrchestratorService,
     ChatService,
   ],
   exports: [
@@ -108,6 +110,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleBookingContextTool,
     AiDomainToolRegistry,
     FleetChatIntentRouterService,
+    FleetChatOrchestratorService,
     ChatService,
   ],
 })

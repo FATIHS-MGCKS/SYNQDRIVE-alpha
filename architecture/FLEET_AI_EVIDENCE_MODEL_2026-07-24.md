@@ -48,7 +48,9 @@ must be wrapped as `AiEvidence` with explicit:
 - **Domain services** (Vehicles, RentalHealth, Bookings, …) remain source of truth.
 - Future AI tools map service DTOs → `AiEvidence`; they must not embed business logic.
 - `validateAiEvidence({ forLlm: true })` blocks raw PII in `pii`/`restricted` records.
-- No parallel AI module — extends existing `backend/src/modules/ai/`.
+- Tool-Versionen vorbereiten, ohne unnötige Komplexität einzuführen.
+- **Intent router:** `FleetChatIntentRouterService` — closed intent taxonomy,
+  combined questions, hardened vehicle resolver only; no LLM tool execution from user text.
 
 ### Next prompts
 
@@ -178,21 +180,21 @@ must be wrapped as `AiEvidence` with explicit:
   `openProcessSteps`, `nextRelevantDeadline`, `pickupOverdue`, `returnOverdue`,
   `reasonCodes`, `inconsistencyFlags`.
 - Customer PII: `customerDisplayName` only when `assertAiCustomerDataAccess`.
-- Tests: `vehicle-booking-context.util.spec.ts` (8) + `ai-get-vehicle-booking-context.spec.ts` (5);
-  **240/240** AI module before Prompt 15.
+- Tests: `ai-explain-overdue-return.spec.ts` (6) + `overdue-return-explanation.util.spec.ts` (7);
+  **235/235** AI module before Prompt 15.
 
 ### Prompt 15 — `AiDomainToolRegistry` (2026-07-25)
 
-- Added `backend/src/modules/ai/registry/` — central typed registry for all
-  five domain tools (Prompt 15/32).
-- `AI_DOMAIN_TOOL_DEFINITIONS` — per-tool metadata: name, version, description,
-  input/output schema, allowed roles, required permissions, data classification,
-  timeout, retry behavior, audit level, allowed channels, cache rule, personal
-  data, `maxInvocationsPerRequest`.
-- `AiDomainToolRegistry` — explicit executor map only (no dynamic method names);
-  mandatory `AiExecutionContext`; full input validation; central timeout;
-  standardized `AiDomainQueryOutcome` errors; structured audit payloads;
-  `toLlmOutcome()` strips diagnostics/provider details.
-- **Not wired to ChatService yet** — orchestrator integration follows next prompt.
-- Tests: `ai-domain-tool-registry.spec.ts` (11); **251/251** AI module.
+- Added `backend/src/modules/ai/registry/` — closed typed registry for five domain tools.
+- `AiDomainToolRegistry` — explicit handlers only; preflight + central timeout.
+
+### Prompt 16 — Fleet Chat intent router (2026-07-25)
+
+- Added `backend/src/modules/ai/routing/` — controlled intent + entity router for Fleet Chat.
+- `FleetChatIntentRouterService` + `routeFleetChatMessage()` — deterministic DE/EN keyword
+  rules; hardened `AiVehicleResolutionService` for vehicle refs; combined intents
+  (`COMBINED_VEHICLE_STATUS`); injection/tool-name stripping before scoring.
+- Optional schema-validated LLM classification via `purpose: 'router'` when enabled.
+- **Not wired to ChatService** yet — orchestrator follows next prompt.
+- Tests: `fleet-chat-intent-router.spec.ts` (11); **262/262** AI module.
 
