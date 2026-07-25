@@ -21,6 +21,12 @@ import {
   DIMO_TELEMETRY_SYSTEM_KEY,
 } from './data-authorization.constants';
 import {
+  buildCursorFilter,
+  buildListOrderBy,
+  encodeListCursor,
+  normalizeSortField,
+} from './data-authorization-list-cursor.util';
+import {
   calculateAuthorizationRiskLevel,
   normalizeDataCategories,
 } from './data-authorization-risk.util';
@@ -386,7 +392,7 @@ export class DataAuthorizationsService {
     await this.ensureDimoTelemetryAuthorization(orgId);
 
     const limit = Math.min(Math.max(filters?.limit ?? 50, 1), 100);
-    const sort = filters?.sort ?? 'createdAt';
+    const sort = normalizeSortField(filters?.sort);
     const dir = filters?.dir === 'asc' ? 'asc' : 'desc';
     const now = new Date();
     const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -457,38 +463,18 @@ export class DataAuthorizationsService {
     }
 
     if (filters?.cursor) {
-      try {
-        const decoded = JSON.parse(
-          Buffer.from(filters.cursor, 'base64url').toString('utf8'),
-        ) as { id: string; createdAt: string };
-        const cursorDate = new Date(decoded.createdAt);
+      const cursorFilter = buildCursorFilter(filters.cursor, sort, dir);
+      if (cursorFilter) {
         where.AND = [
           ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-          {
-            OR: [
-              { createdAt: dir === 'desc' ? { lt: cursorDate } : { gt: cursorDate } },
-              {
-                createdAt: cursorDate,
-                id: dir === 'desc' ? { lt: decoded.id } : { gt: decoded.id },
-              },
-            ],
-          },
+          cursorFilter,
         ];
-      } catch {
-        // ignore invalid cursor
       }
     }
 
-    const orderBy: Prisma.OrgDataAuthorizationOrderByWithRelationInput[] =
-      sort === 'title'
-        ? [{ title: dir }]
-        : sort === 'expiresAt'
-          ? [{ expiresAt: dir }]
-          : [{ isSystemGenerated: 'desc' }, { createdAt: dir }];
-
     const rows = await this.prisma.orgDataAuthorization.findMany({
       where,
-      orderBy,
+      orderBy: buildListOrderBy(sort, dir),
       take: limit + 1,
     });
 
@@ -496,11 +482,7 @@ export class DataAuthorizationsService {
     let nextCursor: string | null = null;
     if (rows.length > limit) {
       page = rows.slice(0, limit);
-      const last = page[page.length - 1]!;
-      nextCursor = Buffer.from(
-        JSON.stringify({ id: last.id, createdAt: last.createdAt.toISOString() }),
-        'utf8',
-      ).toString('base64url');
+      nextCursor = encodeListCursor(page[page.length - 1]!, sort, dir);
     }
 
     const mapped = page.map((r) => this.format(r, now));
