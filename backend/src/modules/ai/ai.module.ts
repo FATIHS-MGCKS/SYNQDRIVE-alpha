@@ -33,6 +33,7 @@ import { AiGetVehicleTelemetryStatusTool } from './tools/get-vehicle-telemetry-s
 import { AiGetVehicleHealthSummaryTool } from './tools/get-vehicle-health-summary/ai-get-vehicle-health-summary.tool';
 import { AiExplainOverdueReturnTool } from './tools/explain-overdue-return/ai-explain-overdue-return.tool';
 import { AiGetVehicleBookingContextTool } from './tools/get-vehicle-booking-context/ai-get-vehicle-booking-context.tool';
+import { AiDomainToolRegistry } from './registry/ai-domain-tool-registry.service';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
@@ -83,6 +84,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleHealthSummaryTool,
     AiExplainOverdueReturnTool,
     AiGetVehicleBookingContextTool,
+    AiDomainToolRegistry,
     ChatService,
   ],
   exports: [
@@ -102,6 +104,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleHealthSummaryTool,
     AiExplainOverdueReturnTool,
     AiGetVehicleBookingContextTool,
+    AiDomainToolRegistry,
     ChatService,
   ],
 })

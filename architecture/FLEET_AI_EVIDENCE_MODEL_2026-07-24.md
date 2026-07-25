@@ -179,5 +179,20 @@ must be wrapped as `AiEvidence` with explicit:
   `reasonCodes`, `inconsistencyFlags`.
 - Customer PII: `customerDisplayName` only when `assertAiCustomerDataAccess`.
 - Tests: `vehicle-booking-context.util.spec.ts` (8) + `ai-get-vehicle-booking-context.spec.ts` (5);
-  **240/240** AI module.
+  **240/240** AI module before Prompt 15.
+
+### Prompt 15 — `AiDomainToolRegistry` (2026-07-25)
+
+- Added `backend/src/modules/ai/registry/` — central typed registry for all
+  five domain tools (Prompt 15/32).
+- `AI_DOMAIN_TOOL_DEFINITIONS` — per-tool metadata: name, version, description,
+  input/output schema, allowed roles, required permissions, data classification,
+  timeout, retry behavior, audit level, allowed channels, cache rule, personal
+  data, `maxInvocationsPerRequest`.
+- `AiDomainToolRegistry` — explicit executor map only (no dynamic method names);
+  mandatory `AiExecutionContext`; full input validation; central timeout;
+  standardized `AiDomainQueryOutcome` errors; structured audit payloads;
+  `toLlmOutcome()` strips diagnostics/provider details.
+- **Not wired to ChatService yet** — orchestrator integration follows next prompt.
+- Tests: `ai-domain-tool-registry.spec.ts` (11); **251/251** AI module.
 
