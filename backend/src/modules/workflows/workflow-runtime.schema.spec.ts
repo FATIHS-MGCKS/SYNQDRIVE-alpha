@@ -39,6 +39,13 @@ describe('Workflow canonical runtime schema (Phase 3 Prompt 10)', () => {
     expect(schema).toContain('model WorkflowApproval');
     expect(schema).toContain('model WorkflowDelivery');
     expect(schema).toContain('model WorkflowEventOutbox');
+    expect(schema).toMatch(/enum WorkflowEventOutboxStatus[\s\S]*?CLAIMED/);
+    expect(schema).toMatch(/enum WorkflowEventOutboxStatus[\s\S]*?DISPATCHED/);
+    expect(schema).toMatch(/enum WorkflowEventOutboxStatus[\s\S]*?RETRY_SCHEDULED/);
+    expect(schema).toMatch(/model WorkflowEventOutbox[\s\S]*?eventId/);
+    expect(schema).toMatch(/model WorkflowEventOutbox[\s\S]*?claimedAt/);
+    expect(schema).toMatch(/model WorkflowEventOutbox[\s\S]*?leaseExpiresAt/);
+    expect(schema).toMatch(/model WorkflowEventOutbox[\s\S]*?attemptCount/);
     expect(schema).toContain('model WorkflowTimer');
     expect(schema).toContain('model WorkflowRevision');
     expect(schema).toContain('model WorkflowPolicySnapshot');

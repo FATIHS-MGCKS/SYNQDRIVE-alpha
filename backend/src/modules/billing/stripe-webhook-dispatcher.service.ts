@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '@shared/database/prisma.service';
 import { getStripeClient } from './stripe-client.util';
@@ -9,6 +10,7 @@ import { StripeBillingAdapter } from './adapters/stripe-billing.adapter';
 import { StripePaymentMethodService } from './stripe-payment-method.service';
 import { StripePaymentLedgerService } from './stripe-payment-ledger.service';
 import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
+import { WorkflowEventOutboxEnqueueService } from '@modules/workflows/outbox/workflow-event-outbox-enqueue.service';
 import { BillingDomainEventType } from './domain/billing-domain.events';
 import { buildBillingOutboxIdempotencyKey } from './domain/billing-outbox';
 import {
@@ -35,6 +37,7 @@ export class StripeWebhookDispatcherService {
     private readonly paymentMethods: StripePaymentMethodService,
     private readonly paymentLedger: StripePaymentLedgerService,
     private readonly outbox: BillingDomainEventOutboxService,
+    private readonly workflowOutbox: WorkflowEventOutboxEnqueueService,
   ) {}
 
   async dispatch(context: StripeWebhookDispatchContext): Promise<StripeWebhookDispatchResult> {
@@ -323,11 +326,59 @@ export class StripeWebhookDispatcherService {
               source: event.type,
             },
           });
+          await this.enqueueWorkflowInvoiceOverdue(tx, {
+            organizationId,
+            invoiceId: localInvoiceId,
+            invoice,
+          });
+        }
+
+        if (
+          invoiceEventType === BillingDomainEventType.INVOICE_OVERDUE
+          && event.type === 'invoice.marked_uncollectible'
+        ) {
+          await this.enqueueWorkflowInvoiceOverdue(tx, {
+            organizationId,
+            invoiceId: localInvoiceId,
+            invoice,
+          });
         }
       });
     }
 
     return { outcome: 'processed', organizationId };
+  }
+
+  private async enqueueWorkflowInvoiceOverdue(
+    tx: Prisma.TransactionClient,
+    input: {
+      organizationId: string;
+      invoiceId: string;
+      invoice: Stripe.Invoice;
+    },
+  ): Promise<void> {
+    const dueAt = input.invoice.due_date
+      ? new Date(input.invoice.due_date * 1000).toISOString()
+      : new Date().toISOString();
+    const daysOverdue = input.invoice.due_date
+      ? Math.max(0, Math.floor((Date.now() - input.invoice.due_date * 1000) / 86_400_000))
+      : 0;
+
+    await this.workflowOutbox.enqueueInTransaction(tx, {
+      organizationId: input.organizationId,
+      eventType: 'invoice.overdue',
+      source: 'billing',
+      entityType: 'invoice',
+      entityId: input.invoiceId,
+      idempotencyKey: `invoice.overdue:${input.invoiceId}`,
+      correlationId: `billing-invoice:${input.invoiceId}`,
+      payload: {
+        invoiceId: input.invoiceId,
+        dueAt,
+        daysOverdue,
+        amountCents: input.invoice.amount_due ?? 0,
+      },
+    });
   }
 
   private async handlePaymentIntentEvent(

@@ -10951,8 +10951,9 @@ enum WorkflowDeliveryStatus {
 
 enum WorkflowEventOutboxStatus {
   PENDING
-  PROCESSING
-  PROCESSED
+  CLAIMED
+  DISPATCHED
+  RETRY_SCHEDULED
   DEAD_LETTER
 }
 
@@ -11434,26 +11435,43 @@ model WorkflowDelivery {
   @@map("workflow_deliveries")
 }
 
-/// Durable transactional outbox for workflow domain events.
+/// Durable transactional outbox for workflow domain events (canonical envelope).
 model WorkflowEventOutbox {
-  id             String                    @id @default(uuid())
-  organizationId String                    @map("organization_id")
-  workflowRunId  String?                   @map("workflow_run_id")
-  eventType      String                    @map("event_type")
-  aggregateType  String?                   @map("aggregate_type")
-  aggregateId    String?                   @map("aggregate_id")
-  correlationId  String?                   @map("correlation_id")
-  idempotencyKey String                    @map("idempotency_key")
-  /// Event payload — may contain PII depending on event type.
-  payload        Json
-  status         WorkflowEventOutboxStatus @default(PENDING)
-  attempts       Int                       @default(0)
-  availableAt    DateTime                  @default(now()) @map("available_at")
-  processedAt    DateTime?                 @map("processed_at")
-  deadLetteredAt DateTime?                 @map("dead_lettered_at")
-  lastError      String?                   @map("last_error")
-  createdAt      DateTime                  @default(now()) @map("created_at")
-  updatedAt      DateTime                  @updatedAt @map("updated_at")
+  id               String                    @id @default(uuid())
+  /// Globally unique workflow domain event identifier.
+  eventId          String                    @unique @map("event_id")
+  organizationId   String                    @map("organization_id")
+  workflowRunId    String?                   @map("workflow_run_id")
+  eventType        String                    @map("event_type")
+  eventVersion     String                    @default("1.0.0") @map("event_version")
+  schemaVersion    String                    @default("1.0.0") @map("schema_version")
+  entityType       String?                   @map("entity_type")
+  entityId         String?                   @map("entity_id")
+  aggregateType    String?                   @map("aggregate_type")
+  aggregateId      String?                   @map("aggregate_id")
+  correlationId    String                    @map("correlation_id")
+  causationId      String?                   @map("causation_id")
+  source           String
+  idempotencyKey   String                    @map("idempotency_key")
+  occurredAt       DateTime                  @map("occurred_at")
+  receivedAt       DateTime                  @default(now()) @map("received_at")
+  /// Minimized payload — entity refs only, no secrets.
+  payload          Json
+  metadata         Json                      @default("{}")
+  /// Full immutable envelope for dispatch (JSON-serializable).
+  envelope         Json
+  status           WorkflowEventOutboxStatus @default(PENDING)
+  attemptCount     Int                       @default(0) @map("attempt_count")
+  availableAt      DateTime                  @default(now()) @map("available_at")
+  claimedAt        DateTime?                 @map("claimed_at")
+  claimedBy        String?                   @map("claimed_by")
+  leaseExpiresAt   DateTime?                 @map("lease_expires_at")
+  dispatchedAt     DateTime?                 @map("dispatched_at")
+  deadLetteredAt   DateTime?                 @map("dead_lettered_at")
+  lastErrorCode    String?                   @map("last_error_code")
+  lastErrorSummary String?                   @map("last_error_summary")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workflowRun  WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
@@ -11462,6 +11480,7 @@ model WorkflowEventOutbox {
   @@index([status, availableAt])
   @@index([organizationId, eventType, createdAt])
   @@index([correlationId])
+  @@index([organizationId, createdAt])
   @@map("workflow_event_outbox")
 }
 

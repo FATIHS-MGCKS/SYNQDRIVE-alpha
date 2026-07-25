@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-transactional-outbox-v49823-2026-07-26',
+    version: '4.9.823',
+    title: 'V4.9.823 — Workflow transactional domain event outbox (Phase 4 Prompt 16)',
+    summary: [
+      '**Outbox**: `WorkflowEventOutboxEnqueueService.enqueueInTransaction` — atomic with business Prisma transactions.',
+      '**Schema**: canonical `workflow_event_outbox` — eventId, envelope JSON, CLAIMED/DISPATCHED/RETRY_SCHEDULED/DEAD_LETTER, lease fields.',
+      '**Wired**: bookings (`booking.confirmed`, `booking.returned`), billing (`invoice.overdue`), vehicle-health critical brake DTC.',
+      '**Removed**: handover fire-and-forget `scheduleEmit` + duplicate `booking.completed` workflow emit.',
+      '**Tests**: `workflow-event-outbox.spec.ts` — transactional rollback, idempotency, tenant, payload validation.',
+    ],
+    reason:
+      'Domain events must survive process crashes and roll back with failed business mutations — transactional outbox is the canonical persistence path.',
+    previousBehavior:
+      'WorkflowEventService.scheduleEmit was fire-and-forget without outbox persistence; handover emitted duplicate returned/completed events.',
+    details:
+      'Outbox dispatch worker not yet implemented — events stay PENDING until Prompt 17+.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-26T00:00:00.000Z',
+  },
+  {
     id: 'workflow-domain-event-envelope-v49822-2026-07-26',
     version: '4.9.822',
     title: 'V4.9.822 — Workflow domain event envelope (Phase 4 Prompt 15)',

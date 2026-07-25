@@ -16,6 +16,7 @@ import { WorkflowExecutionSnapshotRepository } from './snapshot/workflow-executi
 import { WorkflowExecutionSnapshotService } from './snapshot/workflow-execution-snapshot.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { WorkflowEventOutboxEnqueueService } from './outbox/workflow-event-outbox-enqueue.service';
 
 @Module({
   imports: [TasksModule, PrismaModule],
@@ -37,6 +38,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
     WorkflowRuntimeStatusAuditService,
     WorkflowExecutionSnapshotService,
     WorkflowExecutionSnapshotRepository,
+    WorkflowEventOutboxEnqueueService,
   ],
   exports: [
     WorkflowsService,
@@ -46,6 +48,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
     WorkflowRunRuntimeService,
     WorkflowActionRunRuntimeService,
     WorkflowExecutionSnapshotService,
+    WorkflowEventOutboxEnqueueService,
   ],
 })
 export class WorkflowsModule {}

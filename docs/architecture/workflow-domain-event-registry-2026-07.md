@@ -232,3 +232,13 @@ const trigger = resolveCanonicalEventType('vehicle_returned'); // booking.return
 ## 11. Event envelope (V4.9.822)
 
 Producers should build events via `createWorkflowDomainEventEnvelope()` in `backend/src/modules/workflows/envelope/`. The envelope wraps registry-validated payloads with `eventId`, UTC timestamps, correlation/causation chain, and `source`. Rejections produce structured dead-letter payloads — never silent drops.
+
+## 12. Transactional outbox (V4.9.823)
+
+Domain events that trigger workflow automation must be written via `WorkflowEventOutboxEnqueueService.enqueueInTransaction(tx, …)` in the **same** Prisma transaction as the business mutation.
+
+- Table: `workflow_event_outbox` — stores full canonical envelope JSON + indexed columns
+- Status lifecycle: `PENDING` → `CLAIMED` → `DISPATCHED` | `RETRY_SCHEDULED` | `DEAD_LETTER`
+- Idempotency: `@@unique([organizationId, idempotencyKey])` + global `eventId`
+- First wired producers: `bookings` (confirmed/returned), `billing` (invoice.overdue), `vehicle-health` (critical brake DTC)
+- Dispatch worker: pending (Prompt 17+)
