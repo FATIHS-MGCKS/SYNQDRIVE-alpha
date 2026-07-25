@@ -1726,6 +1726,7 @@ model Organization {
   workflowRuns                                              WorkflowRun[]
   workflowActionRuns                                        WorkflowActionRun[]
   workflowApprovals                                         WorkflowApproval[]
+  workflowApprovalComments                                  WorkflowApprovalComment[]
   workflowDeliveries                                        WorkflowDelivery[]
   workflowEventOutbox                                       WorkflowEventOutbox[]
   workflowTimers                                            WorkflowTimer[]
@@ -1840,6 +1841,7 @@ model User {
   workflowVersionsPublished            WorkflowVersion[]                       @relation("WorkflowVersionPublishedBy")
   workflowRevisionsActed               WorkflowRevision[]                      @relation("WorkflowRevisionActor")
   workflowApprovalsDecided             WorkflowApproval[]                      @relation("WorkflowApprovalDecidedBy")
+  workflowApprovalsRequested           WorkflowApproval[]                      @relation("WorkflowApprovalRequestedBy")
   workflowRunsTriggered                WorkflowRun[]                           @relation("WorkflowRunTriggeredBy")
   tireRentalHealthReviewGrants         TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities   VehicleBatteryReferenceCapacity[]
@@ -10932,6 +10934,12 @@ enum WorkflowRuntimeApprovalStatus {
   CANCELLED
 }
 
+enum WorkflowApprovalRejectionStrategy {
+  CANCEL_RUN
+  SKIP_ACTION
+  EXECUTE_FALLBACK
+}
+
 enum WorkflowDeliveryChannel {
   EMAIL
   SMS
@@ -11366,30 +11374,57 @@ model WorkflowApproval {
   id                String                        @id @default(uuid())
   organizationId    String                        @map("organization_id")
   workflowRunId     String                        @map("workflow_run_id")
+  workflowVersionId String                        @map("workflow_version_id")
   actionRunId       String                        @unique @map("action_run_id")
   status            WorkflowRuntimeApprovalStatus @default(PENDING)
   requestedBySystem Boolean                       @default(true) @map("requested_by_system")
+  requestedByUserId String?                       @map("requested_by_user_id")
   approverRoleScope String?                       @map("approver_role_scope")
   approvedByUserId  String?                       @map("approved_by_user_id")
   decidedByName     String?                       @map("decided_by_name")
   reason            String?
+  rejectionStrategy WorkflowApprovalRejectionStrategy @default(CANCEL_RUN) @map("rejection_strategy")
+  makerCheckerRequired Boolean                    @default(true) @map("maker_checker_required")
   /// Role/policy metadata only — no secrets.
   requestedPolicy   Json?                         @map("requested_policy")
   expiresAt         DateTime?                     @map("expires_at")
   decidedAt         DateTime?                     @map("decided_at")
+  notificationPreparedAt DateTime?                @map("notification_prepared_at")
+  /// Bridge to legacy `org_workflow_approvals.id` during migration.
+  legacyOrgWorkflowApprovalId String?              @unique @map("legacy_org_workflow_approval_id")
   createdAt         DateTime                      @default(now()) @map("created_at")
 
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workflowRun    WorkflowRun       @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
   actionRun      WorkflowActionRun @relation(fields: [actionRunId], references: [id], onDelete: Restrict)
   approvedByUser User?             @relation("WorkflowApprovalDecidedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  requestedByUser User?            @relation("WorkflowApprovalRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   expiryTimer    WorkflowTimer?
   runWaitingForApproval    WorkflowRun?       @relation("WorkflowRunWaitingApproval")
   actionRunWaitingApproval WorkflowActionRun? @relation("WorkflowActionRunWaitingApproval")
+  comments       WorkflowApprovalComment[]
 
   @@index([organizationId, workflowRunId])
   @@index([organizationId, status, expiresAt])
+  @@index([workflowVersionId])
   @@map("workflow_approvals")
+}
+
+/// Append-only approval decision comments for audit.
+model WorkflowApprovalComment {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  approvalId     String   @map("approval_id")
+  userId         String?  @map("user_id")
+  userName       String?  @map("user_name")
+  comment        String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approval       WorkflowApproval @relation(fields: [approvalId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, approvalId, createdAt])
+  @@map("workflow_approval_comments")
 }
 
 /// Append-only audit trail for workflow run and action run status transitions.

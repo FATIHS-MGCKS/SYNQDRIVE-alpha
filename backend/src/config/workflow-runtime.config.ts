@@ -10,4 +10,5 @@ export default registerAs('workflowRuntime', () => ({
   maxRetryBackoffMs: parseInt(process.env.WORKFLOW_RUNTIME_MAX_RETRY_BACKOFF_MS ?? '900000', 10),
   maxRunDurationMs: parseInt(process.env.WORKFLOW_RUNTIME_MAX_RUN_DURATION_MS ?? '86400000', 10),
   pollBatchSize: parseInt(process.env.WORKFLOW_RUNTIME_POLL_BATCH ?? '25', 10),
+  approvalTtlHours: parseInt(process.env.WORKFLOW_RUNTIME_APPROVAL_TTL_HOURS ?? '72', 10),
 }));

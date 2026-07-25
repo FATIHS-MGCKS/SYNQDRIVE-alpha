@@ -226,6 +226,10 @@ describe('WorkflowActionRunExecutor', () => {
       });
       prisma.__tx.workflowActionRun.updateMany.mockResolvedValue({ count: 1 });
 
+      const approvalPause = {
+        finalizeExecutionApproval: jest.fn().mockResolvedValue({ id: 'approval-1' }),
+      };
+
       const service = new WorkflowActionRunExecutorService(
         prisma as never,
         config,
@@ -234,6 +238,7 @@ describe('WorkflowActionRunExecutor', () => {
         runRuntime,
         audit,
         adapter,
+        approvalPause as never,
       );
       return { service, adapter, actionRuns, prisma, runRuntime };
     }
