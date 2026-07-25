@@ -1,0 +1,19 @@
+export const WORKFLOW_EXECUTION_SNAPSHOT_VERSION = 1;
+
+export const WORKFLOW_CAPABILITY_REVISION = '2026-07-26';
+
+export const WORKFLOW_SNAPSHOT_AUDIT_READ_ROLES = [
+  'ORG_ADMIN',
+  'SUB_ADMIN',
+  'MASTER_ADMIN',
+] as const;
+
+export const WORKFLOW_ACTION_RISK_CLASSES = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export type WorkflowActionRiskClass =
+  (typeof WORKFLOW_ACTION_RISK_CLASSES)[keyof typeof WORKFLOW_ACTION_RISK_CLASSES];

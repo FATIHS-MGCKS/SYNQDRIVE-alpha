@@ -1731,6 +1731,7 @@ model Organization {
   workflowTimers                                            WorkflowTimer[]
   workflowRevisions                                         WorkflowRevision[]
   workflowRuntimeStatusTransitions                          WorkflowRuntimeStatusTransition[]
+  workflowExecutionSnapshots                                WorkflowExecutionSnapshot[]
   workflowPolicySnapshots                                   WorkflowPolicySnapshot[]
   workflowFeatureFlags                                      WorkflowFeatureFlag[]
   workflowRolloutScopes                                     WorkflowRolloutScope[]
@@ -11221,6 +11222,25 @@ model WorkflowPolicySnapshot {
   @@map("workflow_policy_snapshots")
 }
 
+/// Immutable execution snapshot — frozen at workflow run start; never updated.
+model WorkflowExecutionSnapshot {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  workflowRunId   String   @unique @map("workflow_run_id")
+  snapshotVersion Int      @default(1) @map("snapshot_version")
+  contentHash     String   @map("content_hash") @db.VarChar(64)
+  /// Structured execution snapshot — no provider secrets; PII minimized.
+  payload         Json
+  capturedAt      DateTime @default(now()) @map("captured_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun  WorkflowRun  @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, capturedAt])
+  @@index([contentHash])
+  @@map("workflow_execution_snapshots")
+}
+
 /// Single workflow execution for a domain event.
 model WorkflowRun {
   id                   String                   @id @default(uuid())
@@ -11265,6 +11285,7 @@ model WorkflowRun {
   timers          WorkflowTimer[]
   outboxEvents    WorkflowEventOutbox[]
   statusTransitions WorkflowRuntimeStatusTransition[]
+  executionSnapshot WorkflowExecutionSnapshot?
 
   @@unique([organizationId, idempotencyKey], map: "workflow_runs_org_idempotency_key")
   @@index([organizationId, workflowDefinitionId, createdAt])

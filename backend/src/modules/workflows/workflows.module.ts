@@ -11,12 +11,19 @@ import { WorkflowActionRunRuntimeService } from './runtime/workflow-action-run-r
 import { WorkflowRunRuntimeRepository } from './runtime/workflow-run-runtime.repository';
 import { WorkflowActionRunRuntimeRepository } from './runtime/workflow-action-run-runtime.repository';
 import { WorkflowRuntimeStatusAuditService } from './runtime/workflow-runtime-status-audit.service';
+import { WorkflowExecutionSnapshotController } from './snapshot/workflow-execution-snapshot.controller';
+import { WorkflowExecutionSnapshotRepository } from './snapshot/workflow-execution-snapshot.repository';
+import { WorkflowExecutionSnapshotService } from './snapshot/workflow-execution-snapshot.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { PrismaModule } from '@shared/database/prisma.module';
 
 @Module({
   imports: [TasksModule, PrismaModule],
-  controllers: [WorkflowsController, WorkflowDefinitionsController],
+  controllers: [
+    WorkflowsController,
+    WorkflowDefinitionsController,
+    WorkflowExecutionSnapshotController,
+  ],
   providers: [
     WorkflowsService,
     WorkflowEngineService,
@@ -28,6 +35,8 @@ import { PrismaModule } from '@shared/database/prisma.module';
     WorkflowRunRuntimeRepository,
     WorkflowActionRunRuntimeRepository,
     WorkflowRuntimeStatusAuditService,
+    WorkflowExecutionSnapshotService,
+    WorkflowExecutionSnapshotRepository,
   ],
   exports: [
     WorkflowsService,
@@ -36,6 +45,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
     WorkflowDefinitionLifecycleService,
     WorkflowRunRuntimeService,
     WorkflowActionRunRuntimeService,
+    WorkflowExecutionSnapshotService,
   ],
 })
 export class WorkflowsModule {}
