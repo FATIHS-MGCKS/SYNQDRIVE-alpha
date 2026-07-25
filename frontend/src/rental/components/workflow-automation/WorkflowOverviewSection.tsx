@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Layers, Pencil, Play, Plus, RefreshCw, Search } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState, PageHeader, StatusChip } from '../../../components/patterns';
@@ -30,9 +30,9 @@ interface WorkflowOverviewSectionProps {
 
 function SummaryTile({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="booking-kpi-tile booking-kpi-tile--dense" data-testid="workflow-runtime-kpi">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-bold text-foreground">{value}</p>
+    <div className="booking-kpi-tile booking-kpi-tile--dense min-w-0" data-testid="workflow-runtime-kpi">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -50,23 +50,28 @@ function WorkflowRuntimeRow({
   canWrite: boolean;
   locale: string;
   busy: boolean;
-  onOpen: () => void;
-  onEdit: () => void;
+  onOpen: (trigger: HTMLElement) => void;
+  onEdit: (trigger: HTMLElement) => void;
   onToggle: () => void;
 }) {
   const { t } = useLanguage();
+  const inspectLabel = `${t('workflowAutomation.actions.inspect')}: ${item.name}`;
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      disabled={busy}
-      className="w-full rounded-xl border border-border/60 bg-card px-4 py-3 text-left transition-colors hover:bg-muted/20"
+    <div
+      className="w-full min-w-0 rounded-xl border border-border/60 bg-card px-3 py-3 sm:px-4"
       data-testid={`workflow-runtime-row-${item.id}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-foreground">{item.name}</h3>
+        <button
+          type="button"
+          onClick={(event) => onOpen(event.currentTarget)}
+          disabled={busy}
+          className="min-w-0 flex-1 rounded-lg text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={inspectLabel}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="break-words text-sm font-semibold text-foreground">{item.name}</h3>
             <StatusChip tone={workflowStatusTone(item.status)}>
               {workflowStatusLabel(item.status, t)}
             </StatusChip>
@@ -88,7 +93,7 @@ function WorkflowRuntimeRow({
           {item.description && (
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
           )}
-          <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
             <span>{t('workflowAutomation.columns.trigger')}: {workflowTriggerSummary(item, t)}</span>
             <span>{t('workflowAutomation.columns.conditions')}: {workflowConditionSummary(item, t)}</span>
             <span>{t('workflowAutomation.columns.actions')}: {workflowActionSummary(item, t)}</span>
@@ -104,8 +109,8 @@ function WorkflowRuntimeRow({
               {t('workflowAutomation.columns.version')}: v{item.activeVersion}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-            <StatusChip tone={workflowLastRunTone(item.lastRunOutcome)} className="text-[10px]">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <StatusChip tone={workflowLastRunTone(item.lastRunOutcome)}>
               {workflowLastRunOutcomeLabel(item.lastRunOutcome, t)}
             </StatusChip>
             {item.lastRunAt && (
@@ -114,33 +119,48 @@ function WorkflowRuntimeRow({
               </span>
             )}
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          </div>
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
           {canWrite && item.sourceType !== 'system' && (
             <>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="min-h-11 min-w-11"
                 title={item.status === 'ACTIVE' ? t('workflowAutomation.actions.disable') : t('workflowAutomation.actions.enable')}
+                aria-label={item.status === 'ACTIVE' ? t('workflowAutomation.actions.disable') : t('workflowAutomation.actions.enable')}
                 onClick={onToggle}
                 disabled={busy}
               >
-                <Play className={`h-3.5 w-3.5 ${item.status === 'ACTIVE' ? 'rotate-90' : ''}`} />
+                <Play className={`h-4 w-4 ${item.status === 'ACTIVE' ? 'rotate-90' : ''}`} />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit} disabled={busy}>
-                <Pencil className="h-3.5 w-3.5" />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="min-h-11 min-w-11"
+                aria-label={t('workflowAutomation.actions.edit')}
+                onClick={(event) => onEdit(event.currentTarget)}
+                disabled={busy}
+              >
+                <Pencil className="h-4 w-4" />
               </Button>
             </>
           )}
-          <span className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-foreground">
-            <Layers className="h-3 w-3" />
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center gap-1 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground"
+            onClick={(event) => onOpen(event.currentTarget)}
+            disabled={busy}
+          >
+            <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden />
             {t('workflowAutomation.actions.inspect')}
-          </span>
+          </button>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -162,19 +182,22 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
   const [selected, setSelected] = useState<WorkflowListItemDto | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [createMode, setCreateMode] = useState(false);
+  const drawerReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const filteredItems = useMemo(
     () => filterWorkflowItems(items, statusFilter, search, t),
     [items, statusFilter, search, t],
   );
 
-  const openItem = (item: WorkflowListItemDto) => {
+  const openItem = (item: WorkflowListItemDto, trigger: HTMLElement) => {
+    drawerReturnFocusRef.current = trigger;
     setSelected(item);
     setCreateMode(false);
     setConfigOpen(true);
   };
 
-  const openCreate = () => {
+  const openCreate = (trigger?: HTMLElement) => {
+    if (trigger) drawerReturnFocusRef.current = trigger;
     setSelected(null);
     setCreateMode(true);
     setConfigOpen(true);
@@ -190,7 +213,7 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
   };
 
   return (
-    <div className="space-y-4" data-testid="workflow-runtime-overview">
+    <div className="min-w-0 space-y-4 overflow-x-hidden" data-testid="workflow-runtime-overview">
       <PageHeader
         title={t('workflowAutomation.overview.title')}
         description={t('workflowAutomation.overview.description')}
@@ -201,7 +224,7 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
               {t('workflowAutomation.actions.refresh')}
             </Button>
             {canWrite && (
-              <Button type="button" size="sm" onClick={openCreate}>
+              <Button type="button" size="sm" className="min-h-11" onClick={(e) => openCreate(e.currentTarget)}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {t('workflowAutomation.actions.new')}
               </Button>
@@ -227,28 +250,35 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
         <SummaryTile label={t('workflowAutomation.stats.archived')} value={stats.archived} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] max-w-sm flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative min-w-0 flex-1 sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('workflowAutomation.search.placeholder')}
-            className="w-full rounded-lg border border-border bg-background py-2 pl-8 pr-3 text-xs"
+            className="min-h-11 w-full rounded-lg border border-border bg-background py-2 pl-10 pr-3 text-sm"
             data-testid="workflow-runtime-search"
+            aria-label={t('workflowAutomation.search.placeholder')}
           />
         </div>
-        <div className="flex flex-wrap gap-1" data-testid="workflow-runtime-filters">
+        <div
+          className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+          data-testid="workflow-runtime-filters"
+          role="group"
+          aria-label={t('workflowAutomation.filters.all')}
+        >
           {WORKFLOW_RUNTIME_FILTERS.map((filter) => (
             <button
               key={filter}
               type="button"
               onClick={() => setStatusFilter(filter)}
-              className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+              className={`shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition-colors min-h-11 ${
                 statusFilter === filter
                   ? 'bg-brand text-brand-foreground'
                   : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
               }`}
+              aria-pressed={statusFilter === filter}
               data-testid={`workflow-runtime-filter-${filter}`}
             >
               {t(`workflowAutomation.filters.${filter}`)}
@@ -292,7 +322,7 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
           compact={items.length > 0}
           action={
             canWrite && items.length === 0 ? (
-              <Button type="button" size="sm" onClick={openCreate}>
+              <Button type="button" size="sm" className="min-h-11" onClick={(e) => openCreate(e.currentTarget)}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {t('workflowAutomation.actions.new')}
               </Button>
@@ -310,8 +340,9 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
               canWrite={canWrite}
               locale={locale}
               busy={actionWorkflowId === item.id}
-              onOpen={() => openItem(item)}
-              onEdit={() => {
+              onOpen={(trigger) => openItem(item, trigger)}
+              onEdit={(trigger) => {
+                drawerReturnFocusRef.current = trigger;
                 setSelected(item);
                 setCreateMode(false);
                 setConfigOpen(true);
@@ -330,6 +361,7 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
         canWrite={canWrite}
         busy={Boolean(selected && actionWorkflowId === selected.id)}
         onSaved={() => void reload()}
+        returnFocusRef={drawerReturnFocusRef}
       />
     </div>
   );

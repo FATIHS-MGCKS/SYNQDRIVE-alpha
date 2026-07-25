@@ -84,7 +84,7 @@ export function WorkflowDryRunPanel({
           </StatusChip>
         </MetaRow>
         <MetaRow label={t('workflowAutomation.simulate.requestId')}>
-          <span className="font-mono text-[10px]">{plan.requestId}</span>
+          <span className="font-mono text-xs">{plan.requestId}</span>
         </MetaRow>
         <MetaRow label={t('workflowAutomation.simulate.timestamp')}>
           {new Date(plan.assessedAt).toLocaleString()}
@@ -92,7 +92,7 @@ export function WorkflowDryRunPanel({
       </div>
 
       <Block title={t('workflowAutomation.simulate.eventData')}>
-        <pre className="overflow-x-auto rounded-md bg-background/70 p-2 text-[10px] leading-relaxed">
+        <pre className="overflow-x-auto rounded-md bg-background/70 p-2 text-xs leading-relaxed">
           {JSON.stringify(sanitizeClientPreviewValue(plan.event), null, 2)}
         </pre>
       </Block>
@@ -104,7 +104,7 @@ export function WorkflowDryRunPanel({
             : t('workflowAutomation.simulate.scopeFailed')}
         </p>
         {plan.scope.reason && (
-          <p className="mt-1 text-[11px] text-muted-foreground">{plan.scope.reason}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{plan.scope.reason}</p>
         )}
       </Block>
 
@@ -118,7 +118,7 @@ export function WorkflowDryRunPanel({
           {plan.conditions.results.map((row) => (
             <li
               key={`${row.path}-${row.operator}`}
-              className="flex items-center justify-between rounded border border-border/40 px-2 py-1 text-[11px]"
+              className="flex items-center justify-between rounded border border-border/40 px-2 py-1 text-xs"
             >
               <span className="text-muted-foreground">
                 {row.path} {row.operator}
@@ -149,25 +149,25 @@ export function WorkflowDryRunPanel({
                     {action.status}
                   </StatusChip>
                   {action.requiresApproval && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       <Shield className="h-3 w-3" />
                       {t('workflowAutomation.simulate.approvalRequired')}
                     </span>
                   )}
                 </div>
                 {action.resolvedRecipients && action.resolvedRecipients.length > 0 && (
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {t('workflowAutomation.simulate.recipients')}:{' '}
                     {action.resolvedRecipients.map((r) => `${r.channel}:${r.masked}`).join(', ')}
                   </p>
                 )}
                 {action.expectedFallback && (
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {t('workflowAutomation.simulate.fallback')}: {action.expectedFallback}
                   </p>
                 )}
                 {action.skipReason && (
-                  <p className="mt-1 text-[10px] text-muted-foreground">{action.skipReason}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{action.skipReason}</p>
                 )}
               </li>
             ))}
@@ -203,7 +203,7 @@ export function WorkflowDryRunPanel({
       )}
 
       {requestId && requestId !== plan.requestId && (
-        <p className="text-[10px] text-muted-foreground" aria-hidden>
+        <p className="text-xs text-muted-foreground" aria-hidden>
           stale
         </p>
       )}
@@ -214,7 +214,7 @@ export function WorkflowDryRunPanel({
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-md border border-border/40 bg-background/50 px-2 py-1.5">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="mt-0.5 text-foreground">{children}</div>
     </div>
   );
@@ -223,7 +223,7 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <div className="mt-1.5">{children}</div>
     </div>
   );
