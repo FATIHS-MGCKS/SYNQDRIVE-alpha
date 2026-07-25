@@ -70,5 +70,22 @@ describe('workflow automation mobile readiness', () => {
     expect(section).toContain('min-h-11');
     expect(section).toContain('break-words');
     expect(section).toContain('returnFocusRef={drawerReturnFocusRef}');
+    expect(section).toContain('aria-busy="true"');
+  });
+
+  it('uses AlertDialog instead of native confirm in task automation drawer', () => {
+    const drawer = read('TaskAutomationRuleDrawer.tsx');
+    expect(drawer).toContain('AlertDialog');
+    expect(drawer).not.toContain('window.confirm');
+    expect(drawer).not.toMatch(/\bconfirm\(/);
+    expect(drawer).toContain('requestClose');
+    expect(drawer).toContain('min-h-11');
+    expect(drawer).toContain('htmlFor=');
+  });
+
+  it('avoids truncating drawer titles for long workflow names', () => {
+    const detailDrawer = readFileSync(resolve(patternsDir, 'detail-drawer.tsx'), 'utf8');
+    expect(detailDrawer).toContain('break-words');
+    expect(detailDrawer).not.toContain('truncate');
   });
 });

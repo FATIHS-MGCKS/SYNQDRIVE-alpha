@@ -300,6 +300,8 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
         <div
           className="rounded-xl border border-border/60 bg-card px-6 py-12 text-center"
           data-testid="workflow-runtime-loading"
+          aria-busy="true"
+          aria-live="polite"
         >
           <RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin text-muted-foreground" />
           <p className="text-xs text-muted-foreground">{t('workflowAutomation.loading')}</p>

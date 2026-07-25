@@ -211,7 +211,11 @@ export function TaskAutomationRulesSection({ canWrite = false }: TaskAutomationR
       </div>
 
       {loading && !overview ? (
-        <div className="rounded-xl border border-border/60 px-6 py-10 text-center text-sm text-muted-foreground">
+        <div
+          className="rounded-xl border border-border/60 px-6 py-10 text-center text-sm text-muted-foreground"
+          aria-busy="true"
+          aria-live="polite"
+        >
           <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin" />
           Aufgaben-Automationen werden geladen…
         </div>
