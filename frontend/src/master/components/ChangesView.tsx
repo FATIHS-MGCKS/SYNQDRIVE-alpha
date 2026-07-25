@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-vps-control-audit-v49824-2026-07-25',
+    version: '4.9.824',
+    title: 'V4.9.824 — Fleet AI VPS control audit (Prompt 31)',
+    summary: [
+      'Post-deploy VPS control audit on srv1374778 / app.synqdrive.eu.',
+      'Verdict: CONDITIONAL FAIL — infra OK; Fleet AI orchestrator not yet on production.',
+      'docs/audits/ai-agent-vps-control-audit-2026-07.md',
+    ],
+    reason: 'Validate production state after deployment prep; document gaps before Fleet AI go-live.',
+    previousBehavior: 'No VPS audit artifact for Fleet AI domain grounding rollout.',
+    details:
+      'Commit 62aaf1fe on VPS; missing structured_payload, ai_request_audit_logs, AI_AGENT env. Local flow tests PASS (75). ai/health public fix requires PR #849 deploy (dist hotfix attempted and reverted).',
+    affectsArchitecture: false,
+    module: 'AI Assistant',
+    createdAt: '2026-07-25T02:57:00.000Z',
+  },
+  {
     id: 'fleet-ai-deployment-runbook-v49823-2026-07-25',
     version: '4.9.823',
     title: 'V4.9.823 — Fleet AI deployment runbook & rollout flags (Prompt 30)',
