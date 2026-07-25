@@ -5,12 +5,13 @@ import { useTaskSummary } from '../../lib/tasks/hooks/useTaskSummary';
 import type { TaskBucket } from '../../lib/tasks/types';
 import {
   buildBucketSlice,
-  canViewOperatorUnassignedBucket,
   OPERATOR_TODAY_FEED_BUCKETS,
   type OperatorTodayBucketSlice,
   type OperatorTodayFeedBucket,
   type OperatorTodayFeedState,
 } from './operatorTodayFeed.utils';
+import { canViewOperatorUnassignedBucket } from '../lib/operatorPermissionGate.utils';
+import { isMasterAdmin } from '../../lib/auth';
 import { OPERATOR_TODAY_BUCKET_PREVIEW_LIMITS } from '../views/operatorTodayView.utils';
 
 export interface UseOperatorTodayFeedResult extends OperatorTodayFeedState {
@@ -27,9 +28,12 @@ function useBucketList(orgId: string | null, bucket: TaskBucket, enabled: boolea
 }
 
 export function useOperatorTodayFeed(): UseOperatorTodayFeedResult {
-  const { orgId, userRole, hasPermission } = useRentalOrg();
+  const { orgId, hasPermission } = useRentalOrg();
   const enabled = Boolean(orgId);
-  const canViewUnassigned = canViewOperatorUnassignedBucket({ userRole, hasPermission });
+  const canViewUnassigned = canViewOperatorUnassignedBucket({
+    isMasterAdmin: isMasterAdmin(),
+    hasTasksManage: hasPermission('tasks', 'manage'),
+  });
 
   const nowQuery = useBucketList(orgId, 'NOW', enabled);
   const todayQuery = useBucketList(orgId, 'TODAY', enabled);

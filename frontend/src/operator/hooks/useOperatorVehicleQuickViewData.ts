@@ -29,7 +29,17 @@ interface DocumentExtractionRow {
   createdAt: string;
 }
 
-export function useOperatorVehicleQuickViewData(vehicleId: string) {
+export interface OperatorVehicleQuickViewLoadOptions {
+  loadDamages?: boolean;
+  loadDocuments?: boolean;
+  loadTire?: boolean;
+}
+
+export function useOperatorVehicleQuickViewData(
+  vehicleId: string,
+  loadOptions: OperatorVehicleQuickViewLoadOptions = {},
+) {
+  const { loadDamages = true, loadDocuments = true, loadTire = true } = loadOptions;
   const { orgId } = useRentalOrg();
   const { fleetVehicles, healthMap, healthLoading, healthError } = useFleetVehicles();
   const { pickups, returns, tasks } = useOperatorData();
@@ -62,18 +72,24 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
 
   const reloadDetails = useCallback(async () => {
     if (!vehicleId) return;
-    setDamagesLoading(true);
-    setTireLoading(true);
-    setDocumentsLoading(true);
+    if (!loadDamages && !loadDocuments && !loadTire) return;
+    if (loadDamages) setDamagesLoading(true);
+    if (loadTire) setTireLoading(true);
+    if (loadDocuments) setDocumentsLoading(true);
     try {
       const [damageRows, tire, docs] = await Promise.all([
-        api.vehicleIntelligence.getVehicleDamagesActive(vehicleId).catch(() => []),
-        api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.documentExtractions(vehicleId).catch(() => []),
+        loadDamages ? api.vehicleIntelligence.getVehicleDamagesActive(vehicleId).catch(() => []) : Promise.resolve([]),
+        loadTire ? api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null) : Promise.resolve(null),
+        loadDocuments ? api.vehicleIntelligence.documentExtractions(vehicleId).catch(() => []) : Promise.resolve([]),
       ]);
-      setDamages(Array.isArray(damageRows) ? damageRows.filter(isActiveDamage) : []);
-      setTireSummary(tire);
-      const docRows = (Array.isArray(docs) ? docs : [])
+      if (loadDamages) {
+        setDamages(Array.isArray(damageRows) ? damageRows.filter(isActiveDamage) : []);
+      }
+      if (loadTire) {
+        setTireSummary(tire);
+      }
+      if (loadDocuments) {
+        const docRows = (Array.isArray(docs) ? docs : [])
         .map((d) => {
           const row = d as Record<string, unknown>;
           return {
@@ -92,13 +108,14 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
         .filter((d) => d.id)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 5);
-      setDocuments(docRows);
+        setDocuments(docRows);
+      }
     } finally {
-      setDamagesLoading(false);
-      setTireLoading(false);
-      setDocumentsLoading(false);
+      if (loadDamages) setDamagesLoading(false);
+      if (loadTire) setTireLoading(false);
+      if (loadDocuments) setDocumentsLoading(false);
     }
-  }, [vehicleId]);
+  }, [vehicleId, loadDamages, loadDocuments, loadTire]);
 
   useEffect(() => {
     void reloadDetails();

@@ -1,24 +1,14 @@
 import { getStoredUser, isAuthenticated, isMasterAdmin, type AuthUser } from '../../lib/auth';
 import {
-  OPERATOR_ALLOWED_MEMBERSHIP_ROLES,
-  OPERATOR_DENIED_MEMBERSHIP_ROLES,
   type OperatorAccessDenialReason,
   type OperatorAccessEvaluation,
 } from './operatorAccess.types';
 import { canPerformOperatorAction } from './operatorPermissions';
 
-const ALLOWED = new Set<string>(OPERATOR_ALLOWED_MEMBERSHIP_ROLES);
-const DENIED = new Set<string>(OPERATOR_DENIED_MEMBERSHIP_ROLES);
-
-function normalizeMembershipRole(user: AuthUser | null): string {
-  return user?.membershipRole?.toUpperCase().trim() ?? '';
-}
-
 /**
  * Defensive gate for the Operator entry point.
- * Requires `operator.app.access` (operator-app.read) in addition to allowed membership roles.
- * MASTER_ADMIN always allowed; DRIVER and unknown roles denied.
- * Security enforcement remains on backend — this is UX + routing defense.
+ * Requires `operator.app.access` (operator-app.read). MASTER_ADMIN always allowed.
+ * Security enforcement remains on backend — this is UX + routing defense only.
  */
 export function evaluateOperatorAccess(user: AuthUser | null = getStoredUser()): OperatorAccessEvaluation {
   if (!user || !isAuthenticated()) {
@@ -26,16 +16,6 @@ export function evaluateOperatorAccess(user: AuthUser | null = getStoredUser()):
   }
   if (isMasterAdmin()) {
     return { allowed: true };
-  }
-  const role = normalizeMembershipRole(user);
-  if (!role) {
-    return { allowed: false, reason: 'forbidden_role' };
-  }
-  if (DENIED.has(role)) {
-    return { allowed: false, reason: 'forbidden_role' };
-  }
-  if (!ALLOWED.has(role)) {
-    return { allowed: false, reason: 'forbidden_role' };
   }
   if (!canPerformOperatorAction(user, 'operator.app.access')) {
     return { allowed: false, reason: 'forbidden_permission' };
@@ -56,11 +36,6 @@ export function operatorAccessDenialMessage(reason: OperatorAccessDenialReason):
       return {
         title: 'Anmeldung erforderlich',
         description: 'Melde dich an, um die Operator App zu nutzen.',
-      };
-    case 'forbidden_role':
-      return {
-        title: 'Keine Berechtigung',
-        description: 'Du hast keine Berechtigung für die Operator App.',
       };
     case 'forbidden_permission':
       return {

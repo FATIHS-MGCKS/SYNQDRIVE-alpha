@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import type { OperatorTab } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { OPERATOR_TAB_PERMISSIONS } from '../lib/operatorPermissionGate.utils';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
 
 const NAV_ITEMS: { id: OperatorTab; label: string; icon: typeof CalendarDays }[] = [
   { id: 'today', label: 'Heute', icon: CalendarDays },
@@ -18,6 +20,7 @@ const NAV_ITEMS: { id: OperatorTab; label: string; icon: typeof CalendarDays }[]
 
 export function OperatorBottomNav() {
   const { activeTab, setActiveTab } = useOperatorShell();
+  const { loading, can, reason } = useOperatorPermissions();
 
   return (
     <nav
@@ -29,17 +32,25 @@ export function OperatorBottomNav() {
         {NAV_ITEMS.map((item) => {
           const active = activeTab === item.id;
           const Icon = item.icon;
+          const permitted = loading || can(OPERATOR_TAB_PERMISSIONS[item.id]);
+          const denial = reason(OPERATOR_TAB_PERMISSIONS[item.id]);
           return (
             <button
               key={item.id}
               type="button"
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                if (!permitted) return;
+                setActiveTab(item.id);
+              }}
+              disabled={!permitted}
+              aria-disabled={!permitted || undefined}
+              title={!permitted ? denial : undefined}
               data-active={active ? 'true' : undefined}
               className={`sq-press flex min-h-[52px] min-w-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
                 active
                   ? 'text-[color:var(--brand-ink)]'
                   : 'text-muted-foreground hover:text-foreground'
-              }`}
+              } disabled:cursor-not-allowed disabled:opacity-40`}
               aria-current={active ? 'page' : undefined}
             >
               <span

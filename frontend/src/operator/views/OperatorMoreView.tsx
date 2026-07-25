@@ -5,16 +5,25 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { themePreferenceLabel } from '../../lib/theme';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { useOperatorGatedSheet } from '../hooks/useOperatorGatedSheet';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
 import { useOperatorVehiclesData } from '../hooks/useOperatorVehiclesData';
 import { useState } from 'react';
 
 export function OperatorMoreView() {
-  const { openSheet, setActiveTab, setScanQuery } = useOperatorShell();
+  const { setActiveTab, setScanQuery } = useOperatorShell();
+  const openSheet = useOperatorGatedSheet();
+  const { gate } = useOperatorPermissions();
+  const bookingCreateGate = gate('operator.booking.create');
+  const documentUploadGate = gate('operator.document.upload');
+  const tireMeasureGate = gate('operator.tire_measurement.create');
   const { preference, cycleThemePreference } = useAppTheme();
   const { allVehicles } = useOperatorVehiclesData();
   const [pickerOpen, setPickerOpen] = useState<'ai' | 'tire' | null>(null);
 
   const pickVehicle = (type: 'ai' | 'tire') => {
+    const gate = type === 'ai' ? documentUploadGate : tireMeasureGate;
+    if (!gate.allowed) return;
     if (allVehicles.length === 1) {
       const v = allVehicles[0];
       const label = `${v.model} · ${v.license}`;
@@ -36,8 +45,10 @@ export function OperatorMoreView() {
         <div className="grid gap-2">
           <OperatorGlassCard
             as="button"
-            onClick={() => openSheet({ type: 'booking-create' })}
-            className="flex min-h-[56px] items-center gap-3 p-4"
+            onClick={() => bookingCreateGate.allowed && openSheet({ type: 'booking-create' })}
+            className={`flex min-h-[56px] items-center gap-3 p-4 ${!bookingCreateGate.allowed ? 'opacity-45 cursor-not-allowed' : ''}`}
+            title={bookingCreateGate.reason}
+            aria-disabled={!bookingCreateGate.allowed || undefined}
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]">
               <CalendarPlus className="h-5 w-5" />
@@ -50,7 +61,9 @@ export function OperatorMoreView() {
           <OperatorGlassCard
             as="button"
             onClick={() => pickVehicle('ai')}
-            className="flex min-h-[56px] items-center gap-3 p-4"
+            className={`flex min-h-[56px] items-center gap-3 p-4 ${!documentUploadGate.allowed ? 'opacity-45 cursor-not-allowed' : ''}`}
+            title={documentUploadGate.reason}
+            aria-disabled={!documentUploadGate.allowed || undefined}
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]">
               <Sparkles className="h-5 w-5" />
@@ -63,7 +76,9 @@ export function OperatorMoreView() {
           <OperatorGlassCard
             as="button"
             onClick={() => pickVehicle('tire')}
-            className="flex min-h-[56px] items-center gap-3 p-4"
+            className={`flex min-h-[56px] items-center gap-3 p-4 ${!tireMeasureGate.allowed ? 'opacity-45 cursor-not-allowed' : ''}`}
+            title={tireMeasureGate.reason}
+            aria-disabled={!tireMeasureGate.allowed || undefined}
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
               <Disc3 className="h-5 w-5" />

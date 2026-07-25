@@ -20,6 +20,7 @@ export type LoginMembershipCandidate = {
   membershipVersion: number;
   permissions?: unknown;
   organizationRoleId?: string | null;
+  fieldAgentAccess?: boolean;
   organization?: { companyName?: string | null; logoUrl?: string | null } | null;
 };
 

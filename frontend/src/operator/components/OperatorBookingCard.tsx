@@ -5,6 +5,7 @@ import {
   type BookingUiStatus,
 } from '../../rental/components/bookings/bookingStatus';
 import type { OperatorHandoverKind, OperatorTodayBookingItem } from '../lib/operatorData';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorStatusChip } from './OperatorStatusChip';
 import { pickupDueBadge, returnDueBadge } from '../lib/operatorStatus';
@@ -22,20 +23,28 @@ export function OperatorBookingCard({
   onReturnStart,
   onDetails,
 }: OperatorBookingCardProps) {
+  const { gateFor } = useOperatorPermissions();
   const kind: OperatorHandoverKind = item.kind;
+  const pickupGate = gateFor('operator.handover.start', item.pickupGate);
+  const returnGate = gateFor('operator.return.start', item.returnGate);
+  const readGate = gateFor('operator.booking.read');
   const primaryAction =
     kind === 'PICKUP'
-      ? { label: 'Pickup starten', gate: item.pickupGate, onClick: onPickupStart }
-      : { label: 'Return starten', gate: item.returnGate, onClick: onReturnStart };
+      ? { label: 'Pickup starten', gate: pickupGate, onClick: onPickupStart }
+      : { label: 'Return starten', gate: returnGate, onClick: onReturnStart };
 
   const dueBadge = kind === 'PICKUP' ? pickupDueBadge() : returnDueBadge();
+  const detailsAllowed = readGate.allowed && Boolean(onDetails);
 
   return (
     <OperatorGlassCard className="overflow-hidden p-0">
       <button
         type="button"
-        className="sq-press flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left"
-        onClick={onDetails}
+        className="sq-press flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left disabled:cursor-not-allowed disabled:opacity-60"
+        onClick={detailsAllowed ? onDetails : undefined}
+        disabled={!detailsAllowed}
+        aria-disabled={!detailsAllowed || undefined}
+        title={!readGate.allowed ? readGate.reason : undefined}
       >
         <span
           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
@@ -77,7 +86,7 @@ export function OperatorBookingCard({
             )}
           </span>
         </span>
-        {onDetails && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />}
+        {detailsAllowed && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />}
       </button>
 
       {!item.isDone && (
@@ -85,13 +94,14 @@ export function OperatorBookingCard({
           <button
             type="button"
             disabled={!primaryAction.gate.allowed}
+            aria-disabled={!primaryAction.gate.allowed || undefined}
             title={primaryAction.gate.reason}
             onClick={primaryAction.onClick}
             className="sq-press min-h-[48px] flex-1 rounded-xl bg-[color:var(--brand)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
           >
             {primaryAction.label}
           </button>
-          {onDetails && (
+          {detailsAllowed && (
             <button
               type="button"
               onClick={onDetails}
@@ -103,7 +113,7 @@ export function OperatorBookingCard({
         </div>
       )}
       {!item.isDone && !primaryAction.gate.allowed && primaryAction.gate.reason && (
-        <p className="border-t border-border/30 px-4 py-2 text-[11px] leading-snug text-muted-foreground">
+        <p className="border-t border-border/30 px-4 py-2 text-[11px] leading-snug text-muted-foreground" role="note">
           {primaryAction.gate.reason}
         </p>
       )}

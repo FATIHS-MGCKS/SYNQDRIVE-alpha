@@ -11,6 +11,8 @@ import { useFleetVehicles } from '../../rental/FleetContext';
 import type { ApiTask } from '../../lib/api';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorToday } from '../hooks/useOperatorToday';
+import { useOperatorGatedSheet } from '../hooks/useOperatorGatedSheet';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
 import { useOperatorOperationalAlerts } from '../hooks/useOperatorOperationalAlerts';
 import { OperatorBookingCard } from '../components/OperatorBookingCard';
 import { OperatorBookingDetailSheet } from '../components/OperatorBookingDetailSheet';
@@ -77,7 +79,10 @@ export function OperatorTodayView() {
     reload,
   } = useOperatorToday('de');
   const { openHandover } = useOperatorHandover();
-  const { openSheet, setActiveTab, setPendingTasksBookingId, setSelectedVehicleId } = useOperatorShell();
+  const openSheet = useOperatorGatedSheet();
+  const { gate } = useOperatorPermissions();
+  const bookingCreateGate = gate('operator.booking.create');
+  const { setActiveTab, setPendingTasksBookingId, setSelectedVehicleId } = useOperatorShell();
   const { fleetVehicles } = useFleetVehicles();
   const { alerts: operationalAlerts } = useOperatorOperationalAlerts(5);
   const isTablet = useOperatorTabletLayout();
@@ -195,8 +200,11 @@ export function OperatorTodayView() {
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain">
       <button
         type="button"
+        disabled={!bookingCreateGate.allowed}
+        aria-disabled={!bookingCreateGate.allowed || undefined}
+        title={bookingCreateGate.reason}
         onClick={() => openSheet({ type: 'booking-create' })}
-        className="sq-3d-btn sq-3d-btn--primary flex min-h-[48px] w-full items-center justify-center gap-2 font-semibold"
+        className="sq-3d-btn sq-3d-btn--primary flex min-h-[48px] w-full items-center justify-center gap-2 font-semibold disabled:opacity-45"
       >
         <Plus className="h-5 w-5" />
         Buchung aufnehmen
