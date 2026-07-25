@@ -79,7 +79,8 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { HealthModule } from '@modules/health/health.module';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
-import { SpaFallbackController } from './spa-fallback.controller';
+import { OperatorObservabilityModule } from '@modules/operator-observability/operator-observability.module';
+import { OperatorApiObservabilityInterceptor } from '@modules/operator-observability/operator-api.interceptor';
 
 async function isRedisCompatible(): Promise<boolean> {
   const logger = new Logger('RedisCheck');
@@ -143,6 +144,10 @@ export class AppModule {
           provide: APP_INTERCEPTOR,
           useClass: EvaluationsApiObservabilityInterceptor,
         },
+        {
+          provide: APP_INTERCEPTOR,
+          useClass: OperatorApiObservabilityInterceptor,
+        },
       ],
       imports: [
         ConfigModule.forRoot({
@@ -195,6 +200,7 @@ export class AppModule {
         StorageModule,
         AuthModule,
         SharedGuardsModule,
+        OperatorObservabilityModule,
         AuthApiModule,
         AccountModule,
         IamMfaModule,

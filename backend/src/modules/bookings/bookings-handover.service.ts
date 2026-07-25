@@ -6,6 +6,7 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import {
   BookingStatus,
@@ -28,6 +29,7 @@ import {
   parseSeverity,
 } from '@modules/technical-observations/technical-observations.mapper';
 import type { HandoverTechnicalObservationDraft } from './handover.types';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
@@ -69,6 +71,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -85,7 +88,47 @@ export class BookingsHandoverService {
     actor: HandoverActorContext,
   ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
     this.validatePayload(payload);
+    const handoverKind = kind === 'PICKUP' ? 'pickup' : 'return';
+    const logCtx = { correlationId: `handover:${bookingId}`, requestId: null };
+    this.operatorObservability?.recordHandoverStart(logCtx, handoverKind, orgId);
 
+    try {
+      return await this.createHandoverInternal(
+        orgId,
+        bookingId,
+        kind,
+        payload,
+        actor,
+        handoverKind,
+        logCtx,
+      );
+    } catch (err: unknown) {
+      const errorCode =
+        err && typeof err === 'object' && 'response' in err
+          ? String((err as { response?: { code?: string } }).response?.code ?? 'HANDOVER_FAILED')
+          : err instanceof ConflictException
+            ? 'HANDOVER_CONFLICT'
+            : 'HANDOVER_FAILED';
+      this.operatorObservability?.recordHandoverCompletion(
+        logCtx,
+        handoverKind,
+        orgId,
+        false,
+        errorCode,
+      );
+      throw err;
+    }
+  }
+
+  private async createHandoverInternal(
+    orgId: string,
+    bookingId: string,
+    kind: HandoverKind,
+    payload: CreateHandoverProtocolPayload,
+    actor: HandoverActorContext,
+    handoverKind: 'pickup' | 'return',
+    logCtx: { correlationId: string; requestId: string | null },
+  ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
     if (kind === 'PICKUP') {
       const existingPickup = await this.prisma.bookingHandoverProtocol.findUnique({
         where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
@@ -96,10 +139,18 @@ export class BookingsHandoverService {
           select: { id: true, status: true },
         });
         if (currentBooking?.status === 'ACTIVE') {
-          return {
+          this.operatorObservability?.recordIdempotencyReplay(`handover_${handoverKind}`, logCtx);
+          const result = {
             booking: { id: currentBooking.id, status: currentBooking.status },
             protocol: this.mapProtocol(existingPickup),
           };
+          this.operatorObservability?.recordHandoverCompletion(
+            logCtx,
+            handoverKind,
+            orgId,
+            true,
+          );
+          return result;
         }
         throw new ConflictException({
           message: 'Pickup-Protokoll existiert bereits für diese Buchung.',
@@ -481,10 +532,17 @@ export class BookingsHandoverService {
     await this.fleetMapCache.invalidate(orgId);
     await this.rentalHealthSummaryCache.invalidate(orgId, booking.vehicleId);
 
-    return {
+    const result = {
       booking: { id: updatedBooking.id, status: updatedBooking.status },
       protocol: this.mapProtocol(protocol),
     };
+    this.operatorObservability?.recordHandoverCompletion(
+      logCtx,
+      handoverKind,
+      orgId,
+      true,
+    );
+    return result;
   }
 
   async findForBooking(

@@ -3,7 +3,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
 import { ConfigService } from '@nestjs/config';
 import {
   CustomerEligibilityPolicy,
@@ -83,6 +85,7 @@ export class CustomerVerificationService {
     private readonly diditService: DiditService,
     private readonly configService: ConfigService,
     private readonly readModelHelper: CustomerVerificationReadModelService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
   ) {}
 
   async startDiditSession(
@@ -699,6 +702,15 @@ export class CustomerVerificationService {
     }
 
     await this.syncCustomerReadModel(organizationId, dto.customerId);
+
+    const rejected = checks.some((check) => check.status === 'REJECTED');
+    if (rejected) {
+      this.operatorObservability?.recordDocumentVerificationFailure('manual_pickup_rejected', {
+        correlationId: `pickup-check:${dto.bookingId}`,
+        requestId: null,
+        orgRef: organizationId.slice(0, 8),
+      });
+    }
 
     await this.prisma.customerTimelineEvent.create({
       data: {

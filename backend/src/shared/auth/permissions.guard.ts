@@ -18,6 +18,8 @@ import {
   resolvePermissionOrgId,
 } from './permission.util';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
+import { isOperatorApiPath } from '@modules/operator-observability/operator-observability.util';
 
 /**
  * Permission-based authorization using `OrganizationMembership.permissions` JSON.
@@ -39,6 +41,7 @@ export class PermissionsGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -53,6 +56,7 @@ export class PermissionsGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
+      this.recordOperatorAuthDenial(request, 'unauthorized');
       throw new ForbiddenException('Authentication required');
     }
 
@@ -69,6 +73,7 @@ export class PermissionsGuard implements CanActivate {
     });
 
     if (!membership) {
+      this.recordOperatorAuthDenial(request, 'tenant_scope');
       throw new ForbiddenException('You do not have access to this organization');
     }
 
@@ -86,11 +91,23 @@ export class PermissionsGuard implements CanActivate {
         `PermissionsGuard: user ${user.id} missing ${required.module}.${required.level} in org ${orgId}`,
       );
       this.iamMetrics?.recordEffectiveAccessDenied(required.module, required.level);
+      this.recordOperatorAuthDenial(request, 'forbidden');
       throw new ForbiddenException(
         `Missing permission: ${required.module}.${required.level}`,
       );
     }
 
     return true;
+  }
+
+  private recordOperatorAuthDenial(
+    request: { url?: string; requestId?: string },
+    reason: 'unauthorized' | 'forbidden' | 'tenant_scope',
+  ): void {
+    if (!isOperatorApiPath(request.url ?? '')) return;
+    this.operatorObservability?.recordAuthDenial(reason, {
+      correlationId: request.requestId ?? 'unknown',
+      requestId: request.requestId ?? null,
+    });
   }
 }

@@ -1,5 +1,6 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
 import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -202,6 +203,7 @@ export class TasksService {
     private readonly activityLog: ActivityLogService,
     private readonly linkedObjectResolver: TaskLinkedObjectResolverService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
   ) {}
 
   // ─── Serialization ─────────────────────────────────────────────────────
@@ -1520,7 +1522,24 @@ export class TasksService {
   }
 
   async completeTask(orgId: string, id: string, extra?: CompleteTaskInput, actor?: PermissionActor) {
-    return this.changeStatus(orgId, id, 'DONE', extra, actor);
+    try {
+      return await this.changeStatus(orgId, id, 'DONE', extra, actor);
+    } catch (err: unknown) {
+      const code =
+        err instanceof ConflictException &&
+        typeof err.getResponse() === 'object' &&
+        err.getResponse() !== null &&
+        'code' in (err.getResponse() as object)
+          ? String((err.getResponse() as { code?: string }).code)
+          : err instanceof BadRequestException
+            ? 'TASK_COMPLETION_VALIDATION'
+            : 'TASK_COMPLETION_FAILED';
+      if (code === 'TASK_OPTIMISTIC_LOCK') {
+        this.operatorObservability?.recordVersionConflict('task_complete');
+      }
+      this.operatorObservability?.recordTaskCompletionFailure(code);
+      throw err;
+    }
   }
 
   async cancelTask(orgId: string, id: string, actorUserId?: string) {
