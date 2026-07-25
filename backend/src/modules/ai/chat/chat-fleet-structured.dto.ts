@@ -1,5 +1,10 @@
 import type { FleetChatEvidenceApiResponse } from './fleet-chat-evidence-response/fleet-chat-evidence-response.types';
 import type { FleetChatResponseType } from './fleet-chat-evidence-response/fleet-chat-evidence-response.enums';
+import type { FleetChatToolExecutionRecord } from './fleet-chat-orchestrator.types';
+import {
+  attachCompactSummaryToClientPayload,
+  buildFleetChatCompactSummary,
+} from './chat-fleet-structured-compact.builder';
 
 /** Persisted + API payload for assistant messages (no internal tool ids in client view). */
 export interface ChatFleetStructuredPayload {
@@ -12,7 +17,23 @@ export interface ChatFleetStructuredPayload {
   readonly generatedAt: string;
   readonly actions?: FleetChatEvidenceApiResponse['actions'];
   readonly usedDeterministicFallback: boolean;
+  readonly compactSummary?: FleetChatCompactSummary;
 }
+
+export interface FleetChatCompactSummary {
+  readonly headline?: string;
+  readonly statusTone: FleetChatCompactFactTone;
+  readonly facts: readonly FleetChatCompactFact[];
+}
+
+export interface FleetChatCompactFact {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly tone?: FleetChatCompactFactTone;
+}
+
+export type FleetChatCompactFactTone = 'good' | 'warning' | 'critical' | 'neutral' | 'info';
 
 export interface ChatMessageResultDto {
   readonly id?: string;
@@ -40,8 +61,10 @@ const USER_FRIENDLY_SOURCE_LABELS: Record<string, string> = {
 
 export function toClientStructuredPayload(
   structured: FleetChatEvidenceApiResponse,
+  toolRecords?: readonly FleetChatToolExecutionRecord[],
+  locale: 'de' | 'en' = 'de',
 ): ChatFleetStructuredPayload {
-  return {
+  const base: ChatFleetStructuredPayload = {
     responseType: structured.responseType,
     vehicle: structured.vehicle,
     dataFreshness: structured.dataFreshness,
@@ -55,6 +78,15 @@ export function toClientStructuredPayload(
     generatedAt: structured.generatedAt,
     actions: structured.actions,
     usedDeterministicFallback: structured.usedDeterministicFallback,
+  };
+
+  if (toolRecords && toolRecords.length > 0) {
+    return attachCompactSummaryToClientPayload(base, structured, toolRecords, locale);
+  }
+
+  return {
+    ...base,
+    compactSummary: buildFleetChatCompactSummary(structured, [], locale),
   };
 }
 

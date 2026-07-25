@@ -37,6 +37,7 @@ describe('FleetChatResponseMetadata — all response types', () => {
       }
       if (responseType === 'AMBIGUITY_QUESTION') {
         expect(html).toContain('Rückfrage');
+        expect(html).toContain('Mehrdeutigkeit');
       }
       if (responseType === 'TEMPORARY_UNAVAILABLE') {
         expect(html).toContain('Vorübergehend nicht verfügbar');

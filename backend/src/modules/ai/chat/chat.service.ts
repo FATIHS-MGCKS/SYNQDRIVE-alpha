@@ -212,7 +212,11 @@ export class ChatService {
     try {
       const result = await this.orchestrator.orchestrate(context, { message: content });
       const structured = result.structuredResponse
-        ? toClientStructuredPayload(result.structuredResponse)
+        ? toClientStructuredPayload(
+            result.structuredResponse,
+            result.toolRecords,
+            result.route.language === 'en' ? 'en' : 'de',
+          )
         : this.buildFallbackStructured(result.responseText, 'TEMPORARY_UNAVAILABLE', result.partial);
       return { text: result.responseText, structured };
     } catch (err: unknown) {

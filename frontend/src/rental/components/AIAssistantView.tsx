@@ -6,7 +6,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { api, streamChatMessage } from '../../lib/api';
 import type { ChatMessageResponse, ChatStreamEvent, ChatStreamTechnicalDetails } from '../../lib/api';
-import { FleetChatResponseMetadata } from './ai-chat/FleetChatResponseMetadata';
+import { FleetChatStructuredContent } from './ai-chat/FleetChatStructuredContent';
 import { FleetChatTechnicalErrorDetails } from './ai-chat/FleetChatTechnicalErrorDetails';
 import { renderSafeMarkdown } from '../lib/ai-chat/safe-markdown';
 import {
@@ -217,8 +217,6 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
     ? 'bg-neutral-900 border border-neutral-800'
     : 'bg-white border border-gray-200';
 
-  const renderMarkdown = (text: string) => renderSafeMarkdown(text, { isDarkMode });
-
   const messageCount = messages.filter(m => m.role === 'user').length;
 
   return (
@@ -404,20 +402,24 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                           role={msg.isError ? 'alert' : undefined}
                           aria-live={msg.isError ? 'polite' : undefined}
                         >
-                          {renderMarkdown(msg.content)}
-                          {msg.structured && !msg.isError && (
-                            <FleetChatResponseMetadata
+                          {msg.structured && !msg.isError ? (
+                            <FleetChatStructuredContent
                               structured={msg.structured}
+                              content={msg.content}
                               isDarkMode={isDarkMode}
                               locale={locale}
                             />
-                          )}
-                          {msg.isError && msg.technicalDetails && (
-                            <FleetChatTechnicalErrorDetails
-                              technicalDetails={msg.technicalDetails}
-                              locale={locale}
-                              isDarkMode={isDarkMode}
-                            />
+                          ) : (
+                            <>
+                              {renderSafeMarkdown(msg.content, { isDarkMode })}
+                              {msg.isError && msg.technicalDetails && (
+                                <FleetChatTechnicalErrorDetails
+                                  technicalDetails={msg.technicalDetails}
+                                  locale={locale}
+                                  isDarkMode={isDarkMode}
+                                />
+                              )}
+                            </>
                           )}
                         </div>
                       )}

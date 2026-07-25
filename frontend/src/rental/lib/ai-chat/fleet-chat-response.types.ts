@@ -35,6 +35,22 @@ export interface FleetChatStructuredPayload {
     messageEn: string;
   }[];
   usedDeterministicFallback: boolean;
+  compactSummary?: FleetChatCompactSummary;
+}
+
+export type FleetChatCompactFactTone = 'good' | 'warning' | 'critical' | 'neutral' | 'info';
+
+export interface FleetChatCompactFact {
+  id: string;
+  label: string;
+  value: string;
+  tone?: FleetChatCompactFactTone;
+}
+
+export interface FleetChatCompactSummary {
+  headline?: string;
+  statusTone: FleetChatCompactFactTone;
+  facts: FleetChatCompactFact[];
 }
 
 export interface ChatStreamTechnicalDetails {

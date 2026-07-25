@@ -10793,6 +10793,11 @@ export interface FleetChatStructuredPayload {
     messageEn: string;
   }[];
   usedDeterministicFallback: boolean;
+  compactSummary?: {
+    headline?: string;
+    statusTone: 'good' | 'warning' | 'critical' | 'neutral' | 'info';
+    facts: { id: string; label: string; value: string; tone?: 'good' | 'warning' | 'critical' | 'neutral' | 'info' }[];
+  };
 }
 
 export const FLEET_CHAT_RESPONSE_TYPES = [
