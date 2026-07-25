@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-frontend-gates-v49832-2026-07-25',
+    version: '4.9.832',
+    title: 'V4.9.832 — Operator App: zentrale Frontend Access Gates (Prompt 6)',
+    summary: [
+      'Neuer Hook `useOperatorPermissions()` + `useOperatorGatedSheet()` — einheitliche `operator.*` Abfragen, keine Rollen-Hardcodings.',
+      '`operatorAccess` vereinfacht: nur `operator.app.access` (+ Master Admin); Rollen-Allowlists entfernt.',
+      'UI-Gates für Navigation, Sheets, Booking/Handover/Return, Damage, Dokumente, Tasks, Tire, Vehicle Quick View.',
+      'Kein sensibles Prefetch ohne Read-Permission; deaktivierte Aktionen mit `title`/`aria-disabled`.',
+      '`fieldAgentAccess` in Auth-Session/`AuthUser` für Handover-Gates.',
+    ],
+    reason:
+      'Production-Readiness Prompt 6: Frontend-Gates als UX-Schicht auf dem zentralen IAM-Modell, ohne parallele Permission-Library.',
+    previousBehavior:
+      'Verstreute `ORG_ADMIN`/`WORKER`-Checks, ungegatede Action Sheets, Booking-Detail lud ohne `operator.booking.read`.',
+    details:
+      'frontend/src/operator/hooks/useOperatorPermissions.ts, useOperatorGatedSheet.ts, lib/operatorPermissionMessages.ts, lib/operatorPermissionGate.utils.ts, components/OperatorPermissionGate.tsx, OperatorGatedActionButton.tsx, OperatorSheetDenied.tsx; Refactors in BottomNav, ActionSheets, BookingCard/Detail, VehicleQuickView, Today/More, Handover/Damage providers, documents hook; Tests; backend auth session fieldAgentAccess; Audit §28.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:15:00.000Z',
+  },
+  {
     id: 'operator-app-permission-model-v49831-2026-07-25',
     version: '4.9.831',
     title: 'V4.9.831 — Operator App: granulares Permission-Modell (Prompt 5)',

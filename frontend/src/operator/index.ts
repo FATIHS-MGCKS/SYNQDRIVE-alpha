@@ -6,6 +6,8 @@ export { OperatorDesktopOnlyNotice } from './components/OperatorDesktopOnlyNotic
 export { OperatorAccessGuard } from './components/OperatorAccessGuard';
 export { OperatorAccessDeniedScreen } from './components/OperatorAccessDeniedScreen';
 export { canAccessOperatorApp, evaluateOperatorAccess } from './lib/operatorAccess';
+export { useOperatorPermissions } from './hooks/useOperatorPermissions';
+export { useOperatorGatedSheet } from './hooks/useOperatorGatedSheet';
 export type { OperatorAccessDenialReason } from './lib/operatorAccess.types';
 export {
   OPERATOR_BASE_PATH,

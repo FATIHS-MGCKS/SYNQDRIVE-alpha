@@ -34,14 +34,6 @@ export interface OperatorTodayFeedState {
   canViewUnassigned: boolean;
 }
 
-export function canViewOperatorUnassignedBucket(input: {
-  userRole: string | null;
-  hasPermission: (module: string, level: 'read' | 'write' | 'manage') => boolean;
-}): boolean {
-  if (input.userRole === 'ORG_ADMIN' || input.userRole === 'MASTER_ADMIN') return true;
-  return input.hasPermission('tasks', 'manage');
-}
-
 export function dedupeTasksById(tasks: ApiTask[]): ApiTask[] {
   const seen = new Set<string>();
   const out: ApiTask[] = [];

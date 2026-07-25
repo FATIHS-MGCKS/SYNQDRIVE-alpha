@@ -31,7 +31,8 @@ import {
 } from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorGlassCard } from './OperatorGlassCard';
-import { useOperatorShell } from '../context/OperatorShellContext';
+import { useOperatorGatedSheet } from '../hooks/useOperatorGatedSheet';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
 import type { ApiTask } from '../../lib/api';
 import { taskStatusLabelDe, taskStatusTone } from '../../rental/lib/task-detail.utils';
 
@@ -61,10 +62,24 @@ function SectionCard({
 }
 
 export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicleQuickViewProps) {
-  const { openSheet } = useOperatorShell();
+  const openSheet = useOperatorGatedSheet();
   const { openHandover } = useOperatorHandover();
   const { openDamageCapture } = useOperatorDamageCapture();
-  const data = useOperatorVehicleQuickViewData(vehicleId);
+  const { can, gateFor } = useOperatorPermissions();
+  const data = useOperatorVehicleQuickViewData(vehicleId, {
+    loadDamages: can('operator.damage.read'),
+    loadDocuments: can('operator.document.read'),
+    loadTire: can('operator.vehicle.inspect'),
+  });
+
+  const pickupGate = gateFor('operator.handover.start', data.pickupAction?.gate);
+  const returnGate = gateFor('operator.return.start', data.returnAction?.gate);
+  const bookingCreateGate = gateFor('operator.booking.create');
+  const damageCreateGate = gateFor('operator.damage.create');
+  const documentUploadGate = gateFor('operator.document.upload');
+  const tireMeasureGate = gateFor('operator.tire_measurement.create');
+  const taskCreateGate = gateFor('operator.task.complete');
+  const taskReadGate = gateFor('operator.task.read');
 
   if (!data.vehicle) {
     return (
@@ -196,7 +211,9 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         {pickupItem && (
           <button
             type="button"
-            disabled={!data.pickupAction?.gate.allowed}
+            disabled={!pickupGate.allowed}
+            aria-disabled={!pickupGate.allowed || undefined}
+            title={pickupGate.reason}
             onClick={openPickup}
             className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-[color:var(--brand)]/30 bg-[color:var(--brand-soft)] px-4 text-left disabled:opacity-50"
           >
@@ -205,9 +222,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
               <span className="block text-sm font-semibold">Pickup starten</span>
               <span className="block truncate text-[11px] text-muted-foreground">
                 {pickupItem.customerName}
-                {!data.pickupAction?.gate.allowed && data.pickupAction?.gate.reason
-                  ? ` · ${data.pickupAction.gate.reason}`
-                  : ''}
+                {!pickupGate.allowed && pickupGate.reason ? ` · ${pickupGate.reason}` : ''}
               </span>
             </span>
           </button>
@@ -215,7 +230,9 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         {returnItem && (
           <button
             type="button"
-            disabled={!data.returnAction?.gate.allowed}
+            disabled={!returnGate.allowed}
+            aria-disabled={!returnGate.allowed || undefined}
+            title={returnGate.reason}
             onClick={openReturn}
             className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 surface-premium px-4 text-left disabled:opacity-50"
           >
@@ -224,22 +241,23 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
               <span className="block text-sm font-semibold">Return starten</span>
               <span className="block truncate text-[11px] text-muted-foreground">
                 {returnItem.customerName}
-                {!data.returnAction?.gate.allowed && data.returnAction?.gate.reason
-                  ? ` · ${data.returnAction.gate.reason}`
-                  : ''}
+                {!returnGate.allowed && returnGate.reason ? ` · ${returnGate.reason}` : ''}
               </span>
             </span>
           </button>
         )}
         <button
           type="button"
+          disabled={!bookingCreateGate.allowed}
+          aria-disabled={!bookingCreateGate.allowed || undefined}
+          title={bookingCreateGate.reason}
           onClick={() =>
             openSheet({
               type: 'booking-create',
               prefillVehicleId: vehicle.id,
             })
           }
-          className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 surface-premium px-4 text-left"
+          className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 surface-premium px-4 text-left disabled:opacity-50"
         >
           <CalendarPlus className="h-5 w-5 shrink-0 text-[color:var(--brand-ink)]" />
           <span className="min-w-0 flex-1">
@@ -322,6 +340,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
       </SectionCard>
 
       {/* Damages */}
+      {can('operator.damage.read') && (
       <SectionCard title="Aktive Schäden">
         {data.damagesLoading ? (
           <SkeletonRows rows={2} />
@@ -347,13 +366,18 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           </div>
         )}
       </SectionCard>
+      )}
 
       {/* Tasks */}
+      {taskReadGate.allowed && (
       <SectionCard
         title="Offene Aufgaben"
         action={
           <button
             type="button"
+            disabled={!taskCreateGate.allowed}
+            aria-disabled={!taskCreateGate.allowed || undefined}
+            title={taskCreateGate.reason}
             onClick={() =>
               openSheet({
                 type: 'task-create',
@@ -363,7 +387,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
                 onSuccess: () => void data.reloadDetails(),
               })
             }
-            className="sq-press inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2 text-[10px] font-semibold"
+            className="sq-press inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2 text-[10px] font-semibold disabled:opacity-45"
           >
             <Plus className="h-3 w-3" />
             Neu
@@ -393,13 +417,18 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           </div>
         )}
       </SectionCard>
+      )}
 
       {/* Tire */}
+      {can('operator.vehicle.inspect') && (
       <SectionCard
         title="Reifenprofil"
         action={
           <button
             type="button"
+            disabled={!tireMeasureGate.allowed}
+            aria-disabled={!tireMeasureGate.allowed || undefined}
+            title={tireMeasureGate.reason}
             onClick={() =>
               openSheet({
                 type: 'tire-measure',
@@ -409,7 +438,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
                 onSuccess: () => void data.reloadDetails(),
               })
             }
-            className="text-xs font-semibold text-[color:var(--brand-ink)]"
+            className="text-xs font-semibold text-[color:var(--brand-ink)] disabled:opacity-45"
           >
             Messung eintragen
           </button>
@@ -446,9 +475,10 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           </div>
         )}
       </SectionCard>
+      )}
 
       {/* Documents */}
-      {(data.documentsLoading || data.documents.length > 0) && (
+      {can('operator.document.read') && (data.documentsLoading || data.documents.length > 0) && (
         <SectionCard title="AI Uploads / Dokumente">
           {data.documentsLoading ? (
             <SkeletonRows rows={2} />
@@ -476,6 +506,8 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           title="Schaden aufnehmen"
           subtitle="Foto, Typ & Position"
           highlight
+          disabled={!damageCreateGate.allowed}
+          disabledReason={damageCreateGate.reason}
           onClick={() =>
             openDamageCapture({
               vehicleId,
@@ -490,6 +522,8 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           icon={<Sparkles className="h-4 w-4" />}
           title="AI Upload"
           subtitle="Dokument scannen & bestätigen"
+          disabled={!documentUploadGate.allowed}
+          disabledReason={documentUploadGate.reason}
           onClick={() =>
             openSheet({
               type: 'ai-upload',
@@ -504,6 +538,8 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           icon={<Disc3 className="h-4 w-4" />}
           title="Reifenprofil messen"
           subtitle="Profiltiefe erfassen"
+          disabled={!tireMeasureGate.allowed}
+          disabledReason={tireMeasureGate.reason}
           onClick={() =>
             openSheet({
               type: 'tire-measure',
@@ -517,6 +553,8 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
           icon={<ListTodo className="h-4 w-4" />}
           title="Aufgabe erstellen"
           subtitle="Operative Aufgabe am Fahrzeug"
+          disabled={!taskCreateGate.allowed}
+          disabledReason={taskCreateGate.reason}
           onClick={() =>
             openSheet({
               type: 'task-create',
@@ -565,18 +603,25 @@ function ActionButton({
   subtitle,
   onClick,
   highlight,
+  disabled,
+  disabledReason,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   onClick: () => void;
   highlight?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className={`sq-press flex min-h-[48px] items-center gap-3 rounded-xl border px-4 text-left ${
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      aria-disabled={disabled || undefined}
+      title={disabled ? disabledReason : undefined}
+      className={`sq-press flex min-h-[48px] items-center gap-3 rounded-xl border px-4 text-left disabled:cursor-not-allowed disabled:opacity-45 ${
         highlight
           ? 'border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/50'
           : 'border-border/60 surface-premium'

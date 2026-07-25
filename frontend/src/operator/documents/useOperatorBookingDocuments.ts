@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type BookingDocumentBundleView } from '../../lib/api';
 
-export function useOperatorBookingDocuments(orgId: string | undefined, bookingId: string | undefined) {
+export function useOperatorBookingDocuments(
+  orgId: string | undefined,
+  bookingId: string | undefined,
+  enabled = true,
+) {
   const [view, setView] = useState<BookingDocumentBundleView | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    if (!orgId || !bookingId) {
+    if (!enabled || !orgId || !bookingId) {
       setView(null);
+      setError(null);
       return;
     }
     setLoading(true);
@@ -22,7 +27,7 @@ export function useOperatorBookingDocuments(orgId: string | undefined, bookingId
     } finally {
       setLoading(false);
     }
-  }, [orgId, bookingId]);
+  }, [enabled, orgId, bookingId]);
 
   useEffect(() => {
     void reload();

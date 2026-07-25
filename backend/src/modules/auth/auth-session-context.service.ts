@@ -88,6 +88,7 @@ export class AuthSessionContextService {
           { read: boolean; write: boolean; manage?: boolean }
         >) ?? null,
       membershipId: membership?.id ?? null,
+      fieldAgentAccess: membership?.fieldAgentAccess ?? false,
     };
   }
 
@@ -100,6 +101,7 @@ export class AuthSessionContextService {
     status: MembershipStatus;
     membershipVersion: number;
     permissions: unknown;
+    fieldAgentAccess: boolean;
     organization: { companyName: string | null; logoUrl: string | null } | null;
   }): LoginMembershipCandidate {
     return {
@@ -111,6 +113,7 @@ export class AuthSessionContextService {
       membershipVersion: row.membershipVersion,
       permissions: row.permissions,
       organizationRoleId: row.organizationRoleId,
+      fieldAgentAccess: row.fieldAgentAccess,
       organization: row.organization,
     };
   }

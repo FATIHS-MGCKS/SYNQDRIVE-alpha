@@ -27,18 +27,25 @@ interface Props {
   orgId: string | undefined;
   bookingId: string | undefined;
   customerId?: string;
+  /** Skip API loads when read permission is denied. */
+  enabled?: boolean;
   /** Optional AI Upload CTA below document list */
   onAiUpload?: () => void;
+  aiUploadDeniedReason?: string;
   compact?: boolean;
 }
 
-function useOperatorCustomerDocuments(orgId: string | undefined, customerId: string | undefined) {
+function useOperatorCustomerDocuments(
+  orgId: string | undefined,
+  customerId: string | undefined,
+  enabled: boolean,
+) {
   const [documents, setDocuments] = useState<CustomerDocumentRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    if (!orgId || !customerId) {
+    if (!enabled || !orgId || !customerId) {
       setDocuments([]);
       return;
     }
@@ -53,7 +60,7 @@ function useOperatorCustomerDocuments(orgId: string | undefined, customerId: str
     } finally {
       setLoading(false);
     }
-  }, [orgId, customerId]);
+  }, [enabled, orgId, customerId]);
 
   useEffect(() => {
     void reload();
@@ -66,11 +73,13 @@ export function OperatorBookingDocumentsPanel({
   orgId,
   bookingId,
   customerId,
+  enabled = true,
   onAiUpload,
+  aiUploadDeniedReason,
   compact,
 }: Props) {
-  const { view, loading, error, reload } = useOperatorBookingDocuments(orgId, bookingId);
-  const customerDocs = useOperatorCustomerDocuments(orgId, customerId);
+  const { view, loading, error, reload } = useOperatorBookingDocuments(orgId, bookingId, enabled);
+  const customerDocs = useOperatorCustomerDocuments(orgId, customerId, enabled);
 
   const handleReload = () => {
     void reload();
@@ -215,7 +224,7 @@ export function OperatorBookingDocumentsPanel({
         </div>
       )}
 
-      {onAiUpload && (
+      {onAiUpload ? (
         <button
           type="button"
           onClick={onAiUpload}
@@ -229,7 +238,11 @@ export function OperatorBookingDocumentsPanel({
             </span>
           </span>
         </button>
-      )}
+      ) : aiUploadDeniedReason ? (
+        <p className="text-[11px] text-muted-foreground" role="note">
+          {aiUploadDeniedReason}
+        </p>
+      ) : null}
     </div>
   );
 }

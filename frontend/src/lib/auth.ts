@@ -22,6 +22,8 @@ export interface AuthUser {
   organizationLogoUrl?: string | null;
   membershipId?: string | null;
   permissions: Record<string, { read: boolean; write: boolean; manage?: boolean }> | null;
+  /** Copied from membership — required for field handover/signature UX gates. */
+  fieldAgentAccess?: boolean;
 }
 
 export function getToken(): string | null {

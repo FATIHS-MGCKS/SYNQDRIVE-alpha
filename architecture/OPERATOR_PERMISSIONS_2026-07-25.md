@@ -78,6 +78,20 @@
 | `driver` | — | denied | denied |
 | `read_only` | read | read-only | denied |
 
+## Frontend facade (Prompt 6)
+
+| Component | Path | Role |
+|-----------|------|------|
+| Action registry mirror | `frontend/src/operator/lib/operatorPermissions.ts` | `evaluateOperatorPermission` / `canPerformOperatorAction` |
+| Central hook | `hooks/useOperatorPermissions.ts` | `can`, `gate`, `gateFor` for all UI surfaces |
+| Gated sheets | `hooks/useOperatorGatedSheet.ts` | Permission-checked `openSheet` |
+| Tab/sheet mapping | `lib/operatorPermissionGate.utils.ts` | `OPERATOR_TAB_PERMISSIONS`, `operatorSheetPermission` |
+| Denial copy | `lib/operatorPermissionMessages.ts` | Human-readable disabled reasons |
+| Conditional render | `components/OperatorPermissionGate.tsx` | Skip mount/prefetch without read access |
+| Accessible buttons | `components/OperatorGatedActionButton.tsx` | `title`, `aria-disabled` |
+
+**Important:** Frontend gates are UX only. Backend `PermissionsGuard` / services remain authoritative.
+
 ## Endpoint migration (deferred)
 
 Controllers should adopt `@RequireOperatorPermission('operator.…')` per handler. Until migrated, existing `@RequirePermission` on domain modules remains authoritative. Service layer must add:

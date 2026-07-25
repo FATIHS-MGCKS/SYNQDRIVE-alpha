@@ -9,6 +9,9 @@ import {
 import type { DamageSource } from '../../rental/lib/damage.types';
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 import type { DamageResponse } from '../../rental/lib/damage.types';
+import { getStoredUser, isMasterAdmin } from '../../lib/auth';
+import { useRentalOrg } from '../../rental/RentalContext';
+import { evaluateOperatorPermission } from '../lib/operatorPermissions';
 import {
   OperatorDamageCaptureFlow,
   type OperatorDamageCaptureContext,
@@ -42,10 +45,18 @@ export function useOperatorDamageCapture() {
 }
 
 export function OperatorDamageCaptureProvider({ children }: { children: ReactNode }) {
+  const { userRole, userPermissions } = useRentalOrg();
   const [isOpen, setIsOpen] = useState(false);
   const [context, setContext] = useState<OperatorDamageCaptureContext | null>(null);
 
   const openDamageCapture = useCallback((args: OperatorDamageCaptureOpenArgs) => {
+    if (!isMasterAdmin()) {
+      const allowed = evaluateOperatorPermission(userPermissions, 'operator.damage.create', {
+        membershipRole: userRole,
+        fieldAgentAccess: getStoredUser()?.fieldAgentAccess ?? false,
+      });
+      if (!allowed) return;
+    }
     setContext({
       vehicleId: args.vehicleId,
       vehicleName: args.vehicleName ?? 'Fahrzeug',
@@ -61,7 +72,7 @@ export function OperatorDamageCaptureProvider({ children }: { children: ReactNod
       onCreated: args.onCreated,
     });
     setIsOpen(true);
-  }, []);
+  }, [userPermissions, userRole]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);

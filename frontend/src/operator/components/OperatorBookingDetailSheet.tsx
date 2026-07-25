@@ -9,6 +9,8 @@ import {
   normalizeBookingStatus,
 } from '../../rental/components/bookings/bookingStatus';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { useOperatorGatedSheet } from '../hooks/useOperatorGatedSheet';
+import { useOperatorPermissions } from '../hooks/useOperatorPermissions';
 import { canOperatorMarkNoShow } from '../bookings/operatorBooking.utils';
 import { OperatorBookingDocumentsPanel } from '../documents/OperatorBookingDocumentsPanel';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
@@ -28,13 +30,17 @@ export function OperatorBookingDetailSheet({
   onReturnStart,
 }: OperatorBookingDetailSheetProps) {
   const { orgId } = useRentalOrg();
-  const { openSheet, triggerRefresh } = useOperatorShell();
+  const openSheet = useOperatorGatedSheet();
+  const { triggerRefresh } = useOperatorShell();
+  const { loading: permissionsLoading, can, gateFor } = useOperatorPermissions();
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const canReadBooking = can('operator.booking.read');
+
   useEffect(() => {
-    if (!item || !orgId) {
+    if (!item || !orgId || permissionsLoading || !canReadBooking) {
       setDetail(null);
       setError(null);
       return;
@@ -56,17 +62,44 @@ export function OperatorBookingDetailSheet({
     return () => {
       cancelled = true;
     };
-  }, [item, orgId]);
+  }, [item, orgId, permissionsLoading, canReadBooking]);
 
   if (!item) return null;
 
+  if (!permissionsLoading && !canReadBooking) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-background"
+        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        role="dialog"
+        aria-modal
+      >
+        <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
+          <h2 className="text-base font-bold text-foreground">Buchung</h2>
+          <button type="button" onClick={onClose} className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60" aria-label="Schließen">
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        <p className="px-4 py-6 text-sm text-muted-foreground" role="alert">
+          {gateFor('operator.booking.read').reason}
+        </p>
+      </div>
+    );
+  }
+
   const matrix = detail ? getBookingActionMatrix(detail) : null;
-  const pickupGate = matrix?.pickup ?? item.pickupGate;
-  const returnGate = matrix?.return ?? item.returnGate;
+  const pickupGate = gateFor('operator.handover.start', matrix?.pickup ?? item.pickupGate);
+  const returnGate = gateFor('operator.return.start', matrix?.return ?? item.returnGate);
+  const editGate = gateFor('operator.booking.update', matrix?.edit);
+  const cancelGate = gateFor('operator.booking.cancel', matrix?.cancel);
   const status = detail
     ? normalizeBookingStatus(detail.core.statusEnum, detail.core.status)
     : item.status;
-  const noShowGate = detail ? canOperatorMarkNoShow(detail) : { allowed: false };
+  const noShowBusiness = detail ? canOperatorMarkNoShow(detail) : { allowed: false };
+  const noShowGate = gateFor('operator.booking.cancel', noShowBusiness);
+  const documentReadGate = gateFor('operator.document.read');
+  const documentVerifyGate = gateFor('operator.document.verify');
+  const documentUploadGate = gateFor('operator.document.upload');
 
   const openBookingAction = (
     type: 'booking-edit' | 'booking-cancel' | 'booking-no-show',
@@ -151,25 +184,32 @@ export function OperatorBookingDetailSheet({
           </OperatorGlassCard>
         )}
 
-        <OperatorGlassCard className="p-4">
-          <OperatorBookingDocumentsPanel
-            orgId={orgId}
-            bookingId={item.bookingId}
-            customerId={detail?.customer.customerId}
-            onAiUpload={() => {
-              if (!detail) return;
-              openSheet({
-                type: 'ai-upload',
-                vehicleId: detail.vehicle.vehicleId,
-                vehicleLabel: `${detail.vehicle.displayName} · ${detail.vehicle.licensePlate ?? ''}`,
-                bookingId: detail.core.bookingId,
-                customerId: detail.customer.customerId,
-                customerName: detail.customer.fullName ?? item.customerName,
-                contextMode: 'booking',
-              });
-            }}
-          />
-        </OperatorGlassCard>
+        {documentReadGate.allowed && (
+          <OperatorGlassCard className="p-4">
+            <OperatorBookingDocumentsPanel
+              orgId={orgId}
+              bookingId={item.bookingId}
+              customerId={detail?.customer.customerId}
+              enabled={documentReadGate.allowed}
+              onAiUpload={
+                documentUploadGate.allowed && detail
+                  ? () => {
+                      openSheet({
+                        type: 'ai-upload',
+                        vehicleId: detail.vehicle.vehicleId,
+                        vehicleLabel: `${detail.vehicle.displayName} · ${detail.vehicle.licensePlate ?? ''}`,
+                        bookingId: detail.core.bookingId,
+                        customerId: detail.customer.customerId,
+                        customerName: detail.customer.fullName ?? item.customerName,
+                        contextMode: 'booking',
+                      });
+                    }
+                  : undefined
+              }
+              aiUploadDeniedReason={!documentUploadGate.allowed ? documentUploadGate.reason : undefined}
+            />
+          </OperatorGlassCard>
+        )}
 
         {detail && item.kind === 'PICKUP' && (
           <OperatorGlassCard className="p-4 space-y-2">
@@ -178,6 +218,9 @@ export function OperatorBookingDetailSheet({
             </p>
             <button
               type="button"
+              disabled={!documentVerifyGate.allowed}
+              aria-disabled={!documentVerifyGate.allowed || undefined}
+              title={documentVerifyGate.reason}
               onClick={() =>
                 openSheet({
                   type: 'pickup-verification',
@@ -187,7 +230,7 @@ export function OperatorBookingDetailSheet({
                   onSuccess: () => triggerRefresh(),
                 })
               }
-              className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left"
+              className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left disabled:opacity-45"
             >
               <ClipboardCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm font-semibold">Prüfung beim Pickup erfassen</span>
@@ -202,8 +245,9 @@ export function OperatorBookingDetailSheet({
             </p>
             <button
               type="button"
-              disabled={!matrix.edit.allowed}
-              title={matrix.edit.reason}
+              disabled={!editGate.allowed}
+              aria-disabled={!editGate.allowed || undefined}
+              title={editGate.reason}
               onClick={() => openBookingAction('booking-edit')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left disabled:opacity-45"
             >
@@ -212,8 +256,9 @@ export function OperatorBookingDetailSheet({
             </button>
             <button
               type="button"
-              disabled={!matrix.cancel.allowed}
-              title={matrix.cancel.reason}
+              disabled={!cancelGate.allowed}
+              aria-disabled={!cancelGate.allowed || undefined}
+              title={cancelGate.reason}
               onClick={() => openBookingAction('booking-cancel')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
             >
@@ -225,6 +270,7 @@ export function OperatorBookingDetailSheet({
             <button
               type="button"
               disabled={!noShowGate.allowed}
+              aria-disabled={!noShowGate.allowed || undefined}
               title={noShowGate.reason}
               onClick={() => openBookingAction('booking-no-show')}
               className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
@@ -241,6 +287,7 @@ export function OperatorBookingDetailSheet({
           <button
             type="button"
             disabled={!pickupGate.allowed}
+            aria-disabled={!pickupGate.allowed || undefined}
             title={pickupGate.reason}
             onClick={() => {
               onClose();
@@ -253,6 +300,7 @@ export function OperatorBookingDetailSheet({
           <button
             type="button"
             disabled={!returnGate.allowed}
+            aria-disabled={!returnGate.allowed || undefined}
             title={returnGate.reason}
             onClick={() => {
               onClose();

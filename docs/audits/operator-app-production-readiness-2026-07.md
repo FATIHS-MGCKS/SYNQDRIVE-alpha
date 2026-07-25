@@ -1291,8 +1291,47 @@ QR-Scanner: **nicht implementiert** (Textsuche only).
 |----|----------|---------|
 | PERM-001 | P1 | Endpunkte noch nicht auf Operator-Registry migriert |
 | PERM-002 | P1 | Bestehende Memberships ohne `operator-app` Backfill |
-| PERM-003 | P2 | `fieldAgentAccess` fehlt in Frontend `AuthUser` |
-| PERM-004 | P2 | Operator-UI action gates noch nicht flächendeckend |
+| PERM-003 | P2 | ~~`fieldAgentAccess` fehlt in Frontend `AuthUser`~~ — behoben Prompt 6 (Auth-Session + `AuthUser`) |
+| PERM-004 | P2 | ~~Operator-UI action gates noch nicht flächendeckend~~ — behoben Prompt 6 (`useOperatorPermissions`) |
+
+---
+
+## 28. Frontend Access Gates (Prompt 6)
+
+**Ziel:** Konsistente Operator-UI-Gates über zentrale Permission-Hooks — keine verstreuten Rollen-Hardcodings, keine zweite Permission-Library.
+
+### 28.1 Entfernte Rollen-Hardcodings
+
+| Vorher | Nachher |
+|--------|---------|
+| `OPERATOR_ALLOWED_MEMBERSHIP_ROLES` / `OPERATOR_DENIED_MEMBERSHIP_ROLES` in `operatorAccess` | Nur `operator.app.access` (+ `MASTER_ADMIN` bypass) |
+| `userRole === 'ORG_ADMIN' \|\| 'MASTER_ADMIN'` in Task/Feed utils | `useOperatorPermissions` / `tasks.manage` via `hasPermission` |
+| Ungegated Buttons/Sheets | `gate` / `gateFor` + `useOperatorGatedSheet` |
+
+### 28.2 Zentrale Verwendung
+
+| Artefakt | Pfad |
+|----------|------|
+| `useOperatorPermissions()` | `frontend/src/operator/hooks/useOperatorPermissions.ts` |
+| Denial messages | `operatorPermissionMessages.ts` |
+| Tab/sheet mapping | `operatorPermissionGate.utils.ts` |
+| `OperatorPermissionGate` | Conditional render ohne Prefetch |
+| `OperatorGatedActionButton` | Accessible disabled state |
+
+### 28.3 Abgedeckte UI-Aktionen
+
+Navigation (tabs), Action Sheets, Booking read/create/update/cancel, Handover start/complete paths, Return start, Damage create, Document read/upload/verify, Signature (via handover gate), Task complete/override, Tire measurement, Vehicle quick-view actions, Booking detail prefetch guard.
+
+### 28.4 Tests
+
+`operatorAccess.test.ts`, `operatorPermissionGate.utils.test.ts`, `OperatorGatedActionButton.test.tsx` (+ bestehende `operatorPermissions.test.ts`, `operatorTodayFeed.utils.test.ts`).
+
+### 28.5 Findings
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| GATE-001 | P1 | Endpoint-Migration auf `@RequireOperatorPermission` weiterhin ausstehend (Prompt 5) |
+| GATE-002 | P2 | Bestehende Sessions ohne `fieldAgentAccess` im JWT bis Re-Login/Org-Switch |
 
 ---
 
