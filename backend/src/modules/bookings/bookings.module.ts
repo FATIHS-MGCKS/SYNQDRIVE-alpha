@@ -31,6 +31,7 @@ import { BookingEligibilityApprovalService } from './booking-eligibility-approva
 import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
+import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-booking-context.service';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
   providers: [
     BookingsService,
     BookingsHandoverService,
+    VehicleBookingContextService,
     BookingAllowedDriversService,
     BookingRentalEligibilityService,
     BookingEligibilityGatekeeperService,
@@ -81,6 +83,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     BookingEligibilityDecisionService,
     BookingEligibilityRecheckService,
     BookingEligibilityRecheckSchedulerService,
+    VehicleBookingContextService,
   ],
 })
 export class BookingsModule {}

@@ -29,5 +29,11 @@ export type {
   AiLatestKnownLocationRef,
 } from './explain-overdue-return/ai-explain-overdue-return.types';
 export { AiExplainOverdueReturnTool } from './explain-overdue-return/ai-explain-overdue-return.tool';
+export { AI_GET_VEHICLE_BOOKING_CONTEXT_TOOL } from './get-vehicle-booking-context/ai-get-vehicle-booking-context.types';
+export type {
+  AiGetVehicleBookingContextData,
+  AiGetVehicleBookingContextInput,
+} from './get-vehicle-booking-context/ai-get-vehicle-booking-context.types';
+export { AiGetVehicleBookingContextTool } from './get-vehicle-booking-context/ai-get-vehicle-booking-context.tool';
 export { AiPrismaVehicleScopeResolver } from './ai-prisma-vehicle-scope.resolver';
 export { AiDataAuthorizationProbeAdapter } from './ai-data-authorization.probe';

@@ -145,6 +145,21 @@ must be wrapped as `AiEvidence` with explicit:
   unknown data explicitly marked.
 - Tests: `ai-explain-overdue-return.spec.ts` (6) + `overdue-return-explanation.util.spec.ts` (7); **235/235** AI module.
 
+### Prompt 14 — `get_vehicle_booking_context` domain tool (2026-07-24)
+
+- Added `backend/src/modules/ai/tools/get-vehicle-booking-context/` — structured
+  operational booking/return context for Fleet AI.
+- Canonical service: `backend/src/modules/bookings/vehicle-booking-context/`
+  — `VehicleBookingContextService` reuses `buildFleetBookingContextFromRows`,
+  `VehiclesService.deriveFleetStatusContext`, handover protocols, pricing-quote
+  extension (`returnAt` vs PATCH `endDate`).
+- Output: `contextKind`, current/reserved/upcoming snapshots, `runtimeState`,
+  `openProcessSteps`, `nextRelevantDeadline`, `pickupOverdue`, `returnOverdue`,
+  `reasonCodes`, `inconsistencyFlags`.
+- Customer PII: `customerDisplayName` only when `assertAiCustomerDataAccess`.
+- Tests: util (8) + tool (5); **243/243** AI module.
+
+
 ### Prompt 13 — `explain_overdue_return` domain tool (2026-07-24)
 
 - Added `backend/src/modules/ai/tools/explain-overdue-return/` — deterministic

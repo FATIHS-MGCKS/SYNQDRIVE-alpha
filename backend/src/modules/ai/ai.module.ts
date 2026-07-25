@@ -4,6 +4,7 @@ import aiConfig from '@config/ai.config';
 import documentExtractionConfig from '@config/document-extraction.config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
+import { BookingsModule } from '@modules/bookings/bookings.module';
 import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { LlmGatewayService } from './llm/llm-gateway.service';
 import { LLM_PROVIDER } from './llm/llm-provider.token';
@@ -31,6 +32,7 @@ import { AiGetVehicleLocationTool } from './tools/get-vehicle-location/ai-get-ve
 import { AiGetVehicleTelemetryStatusTool } from './tools/get-vehicle-telemetry-status/ai-get-vehicle-telemetry-status.tool';
 import { AiGetVehicleHealthSummaryTool } from './tools/get-vehicle-health-summary/ai-get-vehicle-health-summary.tool';
 import { AiExplainOverdueReturnTool } from './tools/explain-overdue-return/ai-explain-overdue-return.tool';
+import { AiGetVehicleBookingContextTool } from './tools/get-vehicle-booking-context/ai-get-vehicle-booking-context.tool';
 import { AiHealthController } from './ai-health.controller';
 
 @Module({
@@ -41,6 +43,7 @@ import { AiHealthController } from './ai-health.controller';
     forwardRef(() => RentalHealthModule),
     TasksModule,
     forwardRef(() => VehicleIntelligenceModule),
+    forwardRef(() => BookingsModule),
     ConfigModule.forFeature(aiConfig),
     ConfigModule.forFeature(documentExtractionConfig),
   ],
@@ -79,6 +82,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleTelemetryStatusTool,
     AiGetVehicleHealthSummaryTool,
     AiExplainOverdueReturnTool,
+    AiGetVehicleBookingContextTool,
     ChatService,
   ],
   exports: [
@@ -97,6 +101,7 @@ import { AiHealthController } from './ai-health.controller';
     AiGetVehicleTelemetryStatusTool,
     AiGetVehicleHealthSummaryTool,
     AiExplainOverdueReturnTool,
+    AiGetVehicleBookingContextTool,
     ChatService,
   ],
 })
