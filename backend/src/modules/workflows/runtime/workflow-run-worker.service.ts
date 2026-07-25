@@ -1,38 +1,31 @@
 import {
-  ConflictException,
   Injectable,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@shared/database/prisma.service';
 import { WorkflowActionRunRuntimeRepository } from './workflow-action-run-runtime.repository';
 import { WorkflowRunOrchestratorRepository } from './workflow-run-orchestrator.repository';
 import { WorkflowRunRuntimeRepository } from './workflow-run-runtime.repository';
 import { WorkflowRunRuntimeService } from './workflow-run-runtime.service';
-import { WorkflowRuntimeActionExecutorAdapter } from './workflow-runtime-action-executor.adapter';
+import { WorkflowActionRunExecutorService } from './workflow-action-run-executor.service';
 import { WORKFLOW_RUNTIME_STATUS_ERROR_CODES } from './workflow-runtime-status.errors';
 import {
   TERMINAL_WORKFLOW_ACTION_RUN_STATUSES,
   type WorkflowActionRunStatus,
 } from './workflow-runtime-status.constants';
-import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-audit.service';
 import { resolveWorkflowRuntimeWorkerId } from './workflow-runtime.worker-id.util';
-import { computeWorkflowOutboxBackoffMs } from '../outbox/workflow-event-outbox-error.util';
 
 @Injectable()
 export class WorkflowRunWorkerService {
   private readonly logger = new Logger(WorkflowRunWorkerService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly actionRuns: WorkflowActionRunRuntimeRepository,
     private readonly runs: WorkflowRunRuntimeRepository,
     private readonly orchestratorRepo: WorkflowRunOrchestratorRepository,
     private readonly runRuntime: WorkflowRunRuntimeService,
-    private readonly audit: WorkflowRuntimeStatusAuditService,
-    private readonly executor: WorkflowRuntimeActionExecutorAdapter,
+    private readonly actionExecutor: WorkflowActionRunExecutorService,
   ) {}
 
   private get leaseMs() {
@@ -47,16 +40,8 @@ export class WorkflowRunWorkerService {
     return this.config.get<number>('workflowRuntime.staleRunningMs', 120000);
   }
 
-  private get maxActionAttempts() {
-    return this.config.get<number>('workflowRuntime.maxActionAttempts', 5);
-  }
-
-  private get retryBackoffMs() {
-    return this.config.get<number>('workflowRuntime.retryBackoffMs', 30000);
-  }
-
-  private get maxRetryBackoffMs() {
-    return this.config.get<number>('workflowRuntime.maxRetryBackoffMs', 900000);
+  private get actionTimeoutMs() {
+    return this.config.get<number>('workflowRuntime.actionTimeoutMs', 120000);
   }
 
   private get maxRunDurationMs() {
@@ -92,6 +77,7 @@ export class WorkflowRunWorkerService {
       nextAction.id,
       workerId,
       this.leaseMs,
+      this.actionTimeoutMs,
     );
     if (!claimed) {
       return { processed: false, reason: 'claim_conflict' };
@@ -99,17 +85,16 @@ export class WorkflowRunWorkerService {
 
     const heartbeat = this.startHeartbeat(orgId, claimed.id, workerId);
     try {
-      const actionDef = this.executor.buildActionDef(claimed);
-      const result = await this.executor.execute(
-        actionDef,
-        run,
-        claimed,
-        claimed.attemptCount,
-        this.maxActionAttempts,
-      );
-
-      await this.finalizeAction(orgId, runId, claimed, result);
-      return { processed: true, actionRunId: claimed.id, status: result.status };
+      const result = await this.actionExecutor.executeClaimed(orgId, claimed.id, {
+        type: 'WORKER',
+        source: workerId,
+      });
+      return {
+        processed: true,
+        actionRunId: claimed.id,
+        status: result.status,
+        idempotentReplay: result.idempotentReplay ?? false,
+      };
     } finally {
       clearInterval(heartbeat);
     }
@@ -129,6 +114,10 @@ export class WorkflowRunWorkerService {
     return recovered;
   }
 
+  async findOpenActionRuns(orgId: string) {
+    return this.actionRuns.findOpenActionRuns(orgId);
+  }
+
   private async findNextExecutableAction(orgId: string, runId: string) {
     const actions = await this.actionRuns.listByRun(orgId, runId);
     for (const action of actions) {
@@ -136,9 +125,7 @@ export class WorkflowRunWorkerService {
         continue;
       }
       const priorActions = actions.filter((a) => a.actionIndex < action.actionIndex);
-      const priorReady = priorActions.every((a) =>
-        TERMINAL_WORKFLOW_ACTION_RUN_STATUSES.has(a.status as WorkflowActionRunStatus),
-      );
+      const priorReady = priorActions.every((a) => this.isPriorActionSatisfied(a));
       if (priorReady) {
         return action;
       }
@@ -146,10 +133,22 @@ export class WorkflowRunWorkerService {
     return null;
   }
 
-  private isActionExecutable(status: WorkflowActionRunStatus, nextAttemptAt: Date | null) {
-    if (status === 'PENDING' || status === 'SKIPPED') {
-      return status === 'PENDING';
+  private isPriorActionSatisfied(action: {
+    status: string;
+    blockingOnFailure: boolean;
+  }): boolean {
+    const status = action.status as WorkflowActionRunStatus;
+    if (TERMINAL_WORKFLOW_ACTION_RUN_STATUSES.has(status)) {
+      if (status === 'FAILED_PERMANENT' && !action.blockingOnFailure) {
+        return true;
+      }
+      return status !== 'FAILED_PERMANENT';
     }
+    return false;
+  }
+
+  private isActionExecutable(status: WorkflowActionRunStatus, nextAttemptAt: Date | null) {
+    if (status === 'PENDING') return true;
     if (status === 'FAILED_RETRYABLE') {
       return !nextAttemptAt || nextAttemptAt <= new Date();
     }
@@ -163,97 +162,6 @@ export class WorkflowRunWorkerService {
         this.logger.warn(`Heartbeat failed for action ${actionRunId}: ${message}`);
       });
     }, this.heartbeatMs);
-  }
-
-  private async finalizeAction(
-    orgId: string,
-    runId: string,
-    actionRun: Awaited<ReturnType<WorkflowActionRunRuntimeRepository['claimForExecution']>>,
-    result: Awaited<ReturnType<WorkflowRuntimeActionExecutorAdapter['execute']>>,
-  ) {
-    if (!actionRun) {
-      throw new NotFoundException({
-        message: 'Action run not found after claim',
-        code: WORKFLOW_RUNTIME_STATUS_ERROR_CODES.ACTION_RUN_NOT_FOUND,
-      });
-    }
-
-    let approvalId: string | null = null;
-    if (result.status === 'WAITING_FOR_APPROVAL') {
-      const approval = await this.prisma.workflowApproval.create({
-        data: {
-          organizationId: orgId,
-          workflowRunId: runId,
-          actionRunId: actionRun.id,
-          status: 'PENDING',
-          requestedBySystem: true,
-          reason: `Approval required for ${actionRun.actionType}`,
-        },
-      });
-      approvalId = approval.id;
-    }
-
-    const nextAttemptAt =
-      result.status === 'FAILED_RETRYABLE'
-        ? new Date(
-            Date.now() +
-              computeWorkflowOutboxBackoffMs(
-                this.retryBackoffMs,
-                this.maxRetryBackoffMs,
-                0,
-                actionRun.attemptCount,
-              ),
-          )
-        : null;
-
-    const finishedAt = ['SUCCEEDED', 'FAILED_PERMANENT', 'SKIPPED', 'CANCELLED'].includes(
-      result.status,
-    )
-      ? new Date()
-      : null;
-
-    await this.prisma.$transaction(async (tx) => {
-      const count = await this.actionRuns.completeExecution(tx, {
-        orgId,
-        actionRunId: actionRun.id,
-        expectedLockVersion: actionRun.lockVersion,
-        toStatus: result.status,
-        output: (result.output ?? undefined) as never,
-        errorMessage: result.errorMessage ?? null,
-        waitingUntil: result.waitingUntil ?? null,
-        approvalId,
-        finishedAt,
-        attemptCount: actionRun.attemptCount,
-        nextAttemptAt,
-      });
-      if (count === 0) {
-        throw new ConflictException({
-          message: 'Action completion conflict',
-          code: WORKFLOW_RUNTIME_STATUS_ERROR_CODES.LOCK_CONFLICT,
-        });
-      }
-
-      await this.audit.recordActionRunTransition(tx, {
-        orgId,
-        workflowRunId: runId,
-        actionRunId: actionRun.id,
-        fromStatus: 'RUNNING',
-        toStatus: result.status,
-        actor: { type: 'WORKER', source: 'worker.execute' },
-        reason: result.errorMessage ?? 'Action completed',
-        metadata: {
-          attemptCount: actionRun.attemptCount,
-          nextAttemptAt: nextAttemptAt?.toISOString() ?? null,
-        },
-      });
-    });
-
-    await this.runRuntime.deriveAndApplyRunStatus(
-      orgId,
-      runId,
-      { type: 'WORKER', source: 'worker.finalize' },
-      'Derived after action execution',
-    );
   }
 
   private isRunExpired(startedAt: Date) {

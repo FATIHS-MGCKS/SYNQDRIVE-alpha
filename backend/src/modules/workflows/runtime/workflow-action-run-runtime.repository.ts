@@ -53,6 +53,13 @@ export class WorkflowActionRunRuntimeRepository {
       attemptCount?: number;
       nextAttemptAt?: Date | null;
       errorMessage?: string | null;
+      errorCode?: string | null;
+      errorCategory?: string | null;
+      errorSummary?: string | null;
+      resultSummary?: Prisma.InputJsonValue;
+      providerReference?: string | null;
+      inputSnapshot?: Prisma.InputJsonValue;
+      timeoutAt?: Date | null;
     },
   ) {
     const updated = await tx.workflowActionRun.updateMany({
@@ -71,9 +78,48 @@ export class WorkflowActionRunRuntimeRepository {
         attemptCount: input.attemptCount,
         nextAttemptAt: input.nextAttemptAt ?? null,
         ...(input.errorMessage !== undefined ? { errorMessage: input.errorMessage } : {}),
+        ...(input.errorCode !== undefined ? { errorCode: input.errorCode } : {}),
+        ...(input.errorCategory !== undefined ? { errorCategory: input.errorCategory } : {}),
+        ...(input.errorSummary !== undefined ? { errorSummary: input.errorSummary } : {}),
+        ...(input.resultSummary !== undefined ? { resultSummary: input.resultSummary } : {}),
+        ...(input.providerReference !== undefined ? { providerReference: input.providerReference } : {}),
+        ...(input.inputSnapshot !== undefined ? { inputSnapshot: input.inputSnapshot } : {}),
+        ...(input.timeoutAt !== undefined ? { timeoutAt: input.timeoutAt } : {}),
       },
     });
     return updated.count;
+  }
+
+  patchExecutionFields(
+    orgId: string,
+    actionRunId: string,
+    fields: {
+      inputSnapshot?: Prisma.InputJsonValue;
+      timeoutAt?: Date | null;
+      maxAttempts?: number;
+    },
+  ) {
+    return this.prisma.workflowActionRun.updateMany({
+      where: { id: actionRunId, organizationId: orgId },
+      data: fields,
+    });
+  }
+
+  findOpenActionRuns(orgId: string, now = new Date()) {
+    return this.prisma.workflowActionRun.findMany({
+      where: {
+        organizationId: orgId,
+        status: {
+          in: ['PENDING', 'RUNNING', 'FAILED_RETRYABLE', 'WAITING', 'WAITING_FOR_APPROVAL'],
+        },
+        OR: [
+          { status: { not: 'FAILED_RETRYABLE' } },
+          { nextAttemptAt: null },
+          { nextAttemptAt: { lte: now } },
+        ],
+      },
+      orderBy: [{ workflowRunId: 'asc' }, { actionIndex: 'asc' }],
+    });
   }
 
   listResumable(orgId: string, now = new Date()) {
@@ -117,9 +163,11 @@ export class WorkflowActionRunRuntimeRepository {
     actionRunId: string,
     workerId: string,
     leaseMs: number,
+    timeoutMs: number,
     now: Date = new Date(),
   ) {
     const leaseExpiresAt = new Date(now.getTime() + leaseMs);
+    const timeoutAt = new Date(now.getTime() + timeoutMs);
     const result = await this.prisma.workflowActionRun.updateMany({
       where: {
         id: actionRunId,
@@ -136,6 +184,7 @@ export class WorkflowActionRunRuntimeRepository {
         leaseExpiresAt,
         lastHeartbeatAt: now,
         startedAt: now,
+        timeoutAt,
         lockVersion: { increment: 1 },
         attemptCount: { increment: 1 },
       },
@@ -199,7 +248,12 @@ export class WorkflowActionRunRuntimeRepository {
       expectedLockVersion: number;
       toStatus: string;
       output?: Prisma.InputJsonValue;
+      resultSummary?: Prisma.InputJsonValue;
       errorMessage?: string | null;
+      errorCode?: string | null;
+      errorCategory?: string | null;
+      errorSummary?: string | null;
+      providerReference?: string | null;
       waitingUntil?: Date | null;
       approvalId?: string | null;
       finishedAt?: Date | null;
@@ -219,8 +273,14 @@ export class WorkflowActionRunRuntimeRepository {
         lockVersion: { increment: 1 },
         claimedByWorkerId: null,
         leaseExpiresAt: null,
+        lastHeartbeatAt: null,
         output: input.output,
+        resultSummary: input.resultSummary,
         errorMessage: input.errorMessage ?? null,
+        errorCode: input.errorCode ?? null,
+        errorCategory: input.errorCategory ?? null,
+        errorSummary: input.errorSummary ?? null,
+        providerReference: input.providerReference ?? null,
         waitingUntil: input.waitingUntil ?? null,
         approvalId: input.approvalId ?? null,
         finishedAt: input.finishedAt ?? null,

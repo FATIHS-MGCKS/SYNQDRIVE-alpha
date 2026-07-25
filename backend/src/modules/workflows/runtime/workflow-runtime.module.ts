@@ -6,6 +6,7 @@ import { WorkflowActionExecutorService } from '../workflow-action-executor.servi
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { WorkflowActionRunRuntimeRepository } from './workflow-action-run-runtime.repository';
 import { WorkflowActionRunRuntimeService } from './workflow-action-run-runtime.service';
+import { WorkflowActionRunExecutorService } from './workflow-action-run-executor.service';
 import { WorkflowRunOrchestratorRepository } from './workflow-run-orchestrator.repository';
 import { WorkflowRunOrchestratorService } from './workflow-run-orchestrator.service';
 import { WorkflowRunRuntimeRepository } from './workflow-run-runtime.repository';
@@ -24,6 +25,7 @@ import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-aud
     WorkflowRunRuntimeService,
     WorkflowActionRunRuntimeService,
     WorkflowRunOrchestratorService,
+    WorkflowActionRunExecutorService,
     WorkflowRunWorkerService,
     WorkflowRuntimeActionExecutorAdapter,
     WorkflowActionExecutorService,
@@ -32,6 +34,7 @@ import { WorkflowRuntimeStatusAuditService } from './workflow-runtime-status-aud
     WorkflowRunRuntimeService,
     WorkflowActionRunRuntimeService,
     WorkflowRunOrchestratorService,
+    WorkflowActionRunExecutorService,
     WorkflowRunWorkerService,
   ],
 })
