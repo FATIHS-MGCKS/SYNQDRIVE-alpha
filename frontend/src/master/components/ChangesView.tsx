@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-post-remediation-v49837-2026-07-25',
+    version: '4.9.837',
+    title: 'V4.9.837 — Operator App post-remediation readiness audit (Prompt 44)',
+    summary: [
+      'Full post-remediation audit across architecture, flows, security, compliance, tests, VPS — 47 tracked findings reconciled.',
+      'Verdict CONDITIONAL GO: 7/12 production gates pass; write-path sign-off NO-GO (GAP-043-001 test tenant; PR #933 not deployed).',
+      'Test re-run: 114 Vitest + 11 Jest handover + 18 Playwright E2E passed; prod spot-check /operator + health 200.',
+      'Audit: docs/audits/operator-app-post-remediation-readiness-2026-07.md',
+    ],
+    reason: 'Close Operator production-readiness program Prompt 44 with consolidated before/after findings matrix and honest Go/No-Go.',
+    previousBehavior: 'Prompts 38–43 delivered partial audits; no single post-remediation closure document.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-07-25T22:25:00.000Z',
+  },
+  {
     id: 'operator-app-production-smoke-v49836-2026-07-25',
     version: '4.9.836',
     title: 'V4.9.836 — Operator App production smoke test (Prompt 43)',
