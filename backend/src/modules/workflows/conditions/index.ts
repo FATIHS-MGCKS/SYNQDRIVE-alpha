@@ -34,6 +34,11 @@ export {
   buildConditionTreeFromPrismaGroups,
   nestPrismaConditionGroups,
 } from './workflow-condition-prisma.mapper';
+export {
+  WORKFLOW_CONDITION_OPERATOR_MATRIX,
+  WORKFLOW_CONDITION_UNSUPPORTED_OPERATORS,
+  getOperatorDefinition,
+} from './workflow-condition-operators';
 export { validateConditionTree, mapPrismaLogicOperator } from './workflow-condition-tree.validator';
 export type {
   WorkflowConditionEvaluationContext,

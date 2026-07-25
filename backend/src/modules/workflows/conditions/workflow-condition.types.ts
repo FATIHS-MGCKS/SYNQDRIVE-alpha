@@ -11,6 +11,9 @@ export const WORKFLOW_CONDITION_ERROR_CODES = {
   PAYLOAD_TOO_LARGE: 'CONDITION_PAYLOAD_TOO_LARGE',
   STRUCTURE_INVALID: 'CONDITION_STRUCTURE_INVALID',
   NOT_CHILD_COUNT: 'CONDITION_NOT_CHILD_COUNT',
+  CHANGE_CONTEXT_MISSING: 'CONDITION_CHANGE_CONTEXT_MISSING',
+  TIMEZONE_REQUIRED: 'CONDITION_TIMEZONE_REQUIRED',
+  REGEX_NOT_ALLOWED: 'CONDITION_REGEX_NOT_ALLOWED',
 } as const;
 
 export type WorkflowConditionDataType =
@@ -27,13 +30,22 @@ export type WorkflowConditionOperator =
   | 'notEquals'
   | 'in'
   | 'notIn'
-  | 'gt'
-  | 'gte'
-  | 'lt'
-  | 'lte'
+  | 'greaterThan'
+  | 'greaterThanOrEqual'
+  | 'lessThan'
+  | 'lessThanOrEqual'
   | 'exists'
+  | 'notExists'
   | 'contains'
   | 'startsWith'
+  | 'endsWith'
+  | 'before'
+  | 'after'
+  | 'between'
+  | 'changedFrom'
+  | 'changedTo'
+  | 'durationExceeded'
+  | 'withinTimeWindow'
   | 'is_true'
   | 'is_false';
 
@@ -86,6 +98,12 @@ export interface WorkflowConditionEvaluationContext {
   payload: Record<string, unknown>;
   permissions?: string[];
   dryRun?: boolean;
+  /** IANA timezone — required for withinTimeWindow. */
+  timezone?: string;
+  /** Previous field values keyed by registry path for changedFrom/changedTo. */
+  previous?: Record<string, unknown>;
+  /** UTC ISO-8601 anchor for durationExceeded (defaults to now). */
+  evaluatedAtUtc?: string;
 }
 
 export interface WorkflowConditionClauseResult {

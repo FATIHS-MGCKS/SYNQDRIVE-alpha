@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-condition-operators-v49837-2026-07-25',
+    version: '4.9.837',
+    title: 'V4.9.837 — Workflow condition operator matrix (Phase 6 Prompt 27)',
+    summary: [
+      'Full operator matrix: equals, notEquals, greaterThan/lessThan family, in/notIn, exists/notExists, contains, startsWith/endsWith, before/after/between, changedFrom/changedTo, durationExceeded, withinTimeWindow.',
+      'Type-safe per data type; aliases gt/gte/lt/lte normalize to canonical names.',
+      'changedFrom/changedTo require context.previous; withinTimeWindow requires context.timezone (DST via Intl).',
+      'UTC datetime comparisons; BigInt decimal ordering; regex operators explicitly rejected.',
+      'Operator matrix docs + workflow-condition-operators.spec.ts coverage.',
+    ],
+    reason: 'Workflow conditions need business-complete, type-safe operators with explicit temporal/change semantics — not a minimal subset.',
+    previousBehavior: 'Only basic equals/gt/contains operators; no change context, time windows, or notExists.',
+    details: 'docs/architecture/workflow-condition-engine-2026-07.md. Matrix: workflow-condition-operators.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T09:30:00.000Z',
+  },
+  {
     id: 'workflow-condition-tree-v49836-2026-07-25',
     version: '4.9.836',
     title: 'V4.9.836 — Nested workflow condition groups (Phase 6 Prompt 26)',
