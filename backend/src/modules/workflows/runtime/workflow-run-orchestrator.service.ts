@@ -47,7 +47,11 @@ export class WorkflowRunOrchestratorService {
         ? (input.envelope.payload as Record<string, unknown>)
         : {};
 
-    const conditionEval = this.repository.evaluateVersionConditions(version, payload);
+    const conditionEval = this.repository.evaluateVersionConditions(
+      version,
+      payload,
+      input.organizationId,
+    );
     const policySnapshot = await this.repository.getOrCreatePolicySnapshot(input.organizationId);
 
     if (!conditionEval.passed) {
