@@ -77,6 +77,16 @@ export class WorkflowApprovalRepository {
     });
   }
 
+  listActiveForRun(orgId: string, runId: string, tx: Tx = this.prisma) {
+    return tx.workflowApproval.findMany({
+      where: {
+        organizationId: orgId,
+        workflowRunId: runId,
+        status: { in: ['PENDING', 'APPROVED_PENDING_EXECUTION'] },
+      },
+    });
+  }
+
   async create(
     tx: Tx,
     input: {

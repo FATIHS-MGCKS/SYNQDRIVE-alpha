@@ -1843,6 +1843,7 @@ model User {
   workflowApprovalsDecided             WorkflowApproval[]                      @relation("WorkflowApprovalDecidedBy")
   workflowApprovalsRequested           WorkflowApproval[]                      @relation("WorkflowApprovalRequestedBy")
   workflowRunsTriggered                WorkflowRun[]                           @relation("WorkflowRunTriggeredBy")
+  workflowRunsCancelled                WorkflowRun[]                           @relation("WorkflowRunCancelledBy")
   tireRentalHealthReviewGrants         TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities   VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges      VehicleBatteryReferenceCapacityChange[]
@@ -11280,6 +11281,11 @@ model WorkflowRun {
   finishedAt           DateTime?                @map("finished_at")
   pausedAt             DateTime?                @map("paused_at")
   lastResumedAt        DateTime?                @map("last_resumed_at")
+  /// Set when status transitions to CANCELLED.
+  cancelledAt          DateTime?                @map("cancelled_at")
+  cancelledByUserId    String?                  @map("cancelled_by_user_id")
+  cancelledByActorType WorkflowRuntimeStatusActorType? @map("cancelled_by_actor_type")
+  cancelReason         String?                  @map("cancel_reason")
   createdAt            DateTime                 @default(now()) @map("created_at")
 
   organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -11287,6 +11293,7 @@ model WorkflowRun {
   version         WorkflowVersion        @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
   policySnapshot  WorkflowPolicySnapshot @relation(fields: [policySnapshotId], references: [id], onDelete: Restrict)
   triggeredByUser User?                  @relation("WorkflowRunTriggeredBy", fields: [triggeredByUserId], references: [id], onDelete: SetNull)
+  cancelledByUser User?                  @relation("WorkflowRunCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   waitingApproval WorkflowApproval?      @relation("WorkflowRunWaitingApproval", fields: [approvalId], references: [id], onDelete: SetNull)
   actionRuns      WorkflowActionRun[]
   approvals       WorkflowApproval[]

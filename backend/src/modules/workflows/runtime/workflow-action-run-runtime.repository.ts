@@ -234,10 +234,50 @@ export class WorkflowActionRunRuntimeRepository {
         claimedByWorkerId: null,
         leaseExpiresAt: null,
         lastHeartbeatAt: null,
+        timeoutAt: null,
         errorMessage: 'Processing lease expired before completion',
       },
     });
     return result.count > 0;
+  }
+
+  async forceTerminate(
+    tx: Tx,
+    input: {
+      orgId: string;
+      actionRunId: string;
+      fromStatuses: string[];
+      toStatus: string;
+      errorCode?: string | null;
+      errorCategory?: string | null;
+      errorSummary?: string | null;
+      finishedAt?: Date | null;
+    },
+  ) {
+    const result = await tx.workflowActionRun.updateMany({
+      where: {
+        id: input.actionRunId,
+        organizationId: input.orgId,
+        status: { in: input.fromStatuses as never },
+      },
+      data: {
+        status: input.toStatus as never,
+        lockVersion: { increment: 1 },
+        claimedByWorkerId: null,
+        leaseExpiresAt: null,
+        lastHeartbeatAt: null,
+        waitingUntil: null,
+        approvalId: null,
+        nextAttemptAt: null,
+        timeoutAt: null,
+        finishedAt: input.finishedAt ?? new Date(),
+        errorCode: input.errorCode ?? null,
+        errorCategory: input.errorCategory ?? null,
+        errorSummary: input.errorSummary ?? null,
+        errorMessage: input.errorSummary ?? null,
+      },
+    });
+    return result.count;
   }
 
   async completeExecution(

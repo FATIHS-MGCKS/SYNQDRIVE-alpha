@@ -309,6 +309,11 @@ describe('WorkflowRunStateMachine', () => {
         }),
       } as unknown as WorkflowActionRunExecutorService;
 
+      const cancellation = {
+        assertOrgNotLocked: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
+        cancelRun: jest.fn().mockResolvedValue({ status: 'CANCELLED' }),
+      };
+
       const worker = new WorkflowRunWorkerService(
         config,
         actionRuns,
@@ -316,9 +321,10 @@ describe('WorkflowRunStateMachine', () => {
         orchestratorRepo,
         runRuntime,
         actionExecutor,
+        cancellation as never,
       );
 
-      return { prisma, worker, actionExecutor, runRuntime };
+      return { prisma, worker, actionExecutor, runRuntime, cancellation };
     }
 
     it('executes complete successful run (single action)', async () => {
@@ -496,6 +502,10 @@ describe('WorkflowRunStateMachine', () => {
         get: jest.fn((_key: string, fallback: number) => fallback),
       } as unknown as ConfigService;
       const actionRuns = new WorkflowActionRunRuntimeRepository(prisma as never);
+      const cancellation = {
+        assertOrgNotLocked: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
+        cancelRun: jest.fn().mockResolvedValue({ status: 'CANCELLED' }),
+      };
       const worker = new WorkflowRunWorkerService(
         config,
         actionRuns,
@@ -508,6 +518,7 @@ describe('WorkflowRunStateMachine', () => {
           new WorkflowRuntimeStatusAuditService(prisma as never),
         ),
         { executeClaimed: jest.fn() } as never,
+        cancellation as never,
       );
 
       prisma.workflowActionRun.findMany.mockResolvedValue([{ id: ACTION_1, organizationId: ORG_A }]);

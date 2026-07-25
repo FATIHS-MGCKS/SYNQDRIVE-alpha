@@ -346,6 +346,7 @@ describe('WorkflowActionRunExecutor', () => {
         {} as never,
         {} as never,
         {} as never,
+        { assertOrgNotLocked: jest.fn(), cancelRun: jest.fn() } as never,
       );
       const satisfied = (worker as unknown as { isPriorActionSatisfied: (a: unknown) => boolean })
         .isPriorActionSatisfied({ status: 'FAILED_PERMANENT', blockingOnFailure: false });
@@ -360,6 +361,7 @@ describe('WorkflowActionRunExecutor', () => {
         {} as never,
         {} as never,
         {} as never,
+        { assertOrgNotLocked: jest.fn(), cancelRun: jest.fn() } as never,
       );
       const satisfied = (worker as unknown as { isPriorActionSatisfied: (a: unknown) => boolean })
         .isPriorActionSatisfied({ status: 'FAILED_PERMANENT', blockingOnFailure: true });

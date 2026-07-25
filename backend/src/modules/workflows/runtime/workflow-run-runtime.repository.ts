@@ -39,6 +39,10 @@ export class WorkflowRunRuntimeRepository {
       approvalId?: string | null;
       finishedAt?: Date | null;
       errorMessage?: string | null;
+      cancelledAt?: Date | null;
+      cancelledByUserId?: string | null;
+      cancelledByActorType?: string | null;
+      cancelReason?: string | null;
     },
   ) {
     const updated = await tx.workflowRun.updateMany({
@@ -55,9 +59,43 @@ export class WorkflowRunRuntimeRepository {
         approvalId: input.approvalId ?? null,
         finishedAt: input.finishedAt ?? null,
         ...(input.errorMessage !== undefined ? { errorMessage: input.errorMessage } : {}),
+        ...(input.cancelledAt !== undefined ? { cancelledAt: input.cancelledAt } : {}),
+        ...(input.cancelledByUserId !== undefined
+          ? { cancelledByUserId: input.cancelledByUserId }
+          : {}),
+        ...(input.cancelledByActorType !== undefined
+          ? { cancelledByActorType: input.cancelledByActorType as never }
+          : {}),
+        ...(input.cancelReason !== undefined ? { cancelReason: input.cancelReason } : {}),
       },
     });
     return updated.count;
+  }
+
+  listActive(orgId: string, limit = 25) {
+    return this.prisma.workflowRun.findMany({
+      where: {
+        organizationId: orgId,
+        status: {
+          in: ['PENDING', 'RUNNING', 'WAITING', 'WAITING_FOR_APPROVAL'],
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+    });
+  }
+
+  listExpiredByMaxDuration(maxDurationMs: number, limit = 25, now = new Date()) {
+    const startedBefore = new Date(now.getTime() - maxDurationMs);
+    return this.prisma.workflowRun.findMany({
+      where: {
+        status: { in: ['PENDING', 'RUNNING', 'WAITING', 'WAITING_FOR_APPROVAL'] },
+        startedAt: { lt: startedBefore },
+      },
+      orderBy: { startedAt: 'asc' },
+      take: limit,
+      select: { id: true, organizationId: true, lockVersion: true },
+    });
   }
 
   listResumable(orgId: string, now = new Date()) {

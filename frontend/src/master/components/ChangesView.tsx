@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-cancellation-timeouts-v49833-2026-07-25',
+    version: '4.9.833',
+    title: 'V4.9.833 — Workflow cancellation, timeouts & stale runs (Phase 5 Prompt 23)',
+    summary: [
+      'WorkflowRunCancellationService: user/system cancel with actor, reason, timestamp; cascade to non-terminal actions, approvals, timers.',
+      'Provider handoff rule: RUNNING action with providerReference → FAILED_PERMANENT (PROVIDER_UNCLEAR), not falsely marked CANCELLED.',
+      'Action timeouts clamped (min/max), timeout → retry or permanent failure; max run duration cancel via scheduler.',
+      'WorkflowRuntimeSchedulerService: stale RUNNING recovery, approval expiry, org ARCHIVED/SUSPENDED auto-cancel, timer deactivation.',
+      'API: GET/POST organizations/:orgId/workflow-runs/:runId/status|cancel. 16 cancellation tests + 93 total runtime suite.',
+    ],
+    reason: 'Workflow runs must be safely abortable, timeout-bounded, and recoverable without losing audit history or falsely claiming provider stop.',
+    previousBehavior: 'CANCELLED status existed but only via approval reject; max-duration cancelled run only; no timer deactivation; no user cancel API.',
+    details:
+      'docs/operations/workflow-cancellation-timeouts-2026-07.md. Migration 20260726240000_workflow_cancellation_timeouts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T14:00:00.000Z',
+  },
+  {
     id: 'workflow-approval-pause-resume-v49832-2026-07-25',
     version: '4.9.832',
     title: 'V4.9.832 — Workflow approval pause-and-resume (Phase 5 Prompt 22)',
