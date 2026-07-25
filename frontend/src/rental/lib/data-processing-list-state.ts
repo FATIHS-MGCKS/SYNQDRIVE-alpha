@@ -23,6 +23,35 @@ export type DataProcessingSectionFilterState = {
   limit: number;
 };
 
+/**
+ * The hub keeps a single filter state for every section, but the register and the
+ * legacy authorization endpoints accept different sort keys and reject unknown
+ * ones with HTTP 400. Each fetcher therefore narrows the shared sort value to
+ * what its own endpoint supports before building the request.
+ */
+export const LEGACY_AUTHORIZATION_SORT_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'title',
+  'expiresAt',
+  'status',
+] as const;
+
+export const REGISTER_SORT_FIELDS = [
+  'title',
+  'updatedAt',
+  'nextReviewDate',
+  'status',
+] as const;
+
+export function normalizeSectionSort<T extends string>(
+  sort: string,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  return allowed.includes(sort as T) ? (sort as T) : fallback;
+}
+
 export const DEFAULT_SECTION_FILTERS: DataProcessingSectionFilterState = {
   q: '',
   status: '',

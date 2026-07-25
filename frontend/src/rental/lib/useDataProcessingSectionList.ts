@@ -4,6 +4,9 @@ import {
   DEFAULT_SECTION_FILTERS,
   kpiToLegacyParams,
   kpiToRegisterParams,
+  LEGACY_AUTHORIZATION_SORT_FIELDS,
+  normalizeSectionSort,
+  REGISTER_SORT_FIELDS,
   syncDataProcessingFiltersToUrl,
 } from './data-processing-list-state';
 
@@ -130,7 +133,7 @@ export function buildRegisterFetcher() {
       status: filters.status || undefined,
       limit: filters.limit,
       cursor: filters.cursor ?? undefined,
-      sort: filters.sort,
+      sort: normalizeSectionSort(filters.sort, REGISTER_SORT_FIELDS, 'updatedAt'),
       dir: filters.dir,
       ...kpiParams,
     });
@@ -149,7 +152,7 @@ export function buildLegacyFetcher(extra?: Record<string, string | boolean>) {
       dataCategory: filters.dataCategory || undefined,
       limit: filters.limit,
       cursor: filters.cursor ?? undefined,
-      sort: filters.sort as 'createdAt' | 'title' | 'expiresAt',
+      sort: normalizeSectionSort(filters.sort, LEGACY_AUTHORIZATION_SORT_FIELDS, 'updatedAt'),
       dir: filters.dir,
       ...kpiParams,
       ...extra,

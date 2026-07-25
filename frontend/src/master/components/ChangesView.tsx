@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    title: 'V4.9.832 — Datenverarbeitung & Freigaben: Providerzugriffe wieder ladbar',
+    summary: [
+      'Providerzugriffe/Einwilligungen: `GET /data-authorizations` akzeptiert jetzt `sort=updatedAt` (+ `status`) — der Hub-Default lief vorher in HTTP 400 "Validation failed".',
+      'Route-Shadowing behoben: `DataAuthorizationsController` (`GET :id`) verschluckte `hub-metrics`, `coverage`, `processing-activity-register` und `deny-switch` → 404 "Authorization not found"; Controller-Reihenfolge korrigiert + Regressionstest.',
+      'Prisma-Drift geschlossen: `@map` für `processing_activity_dpias.identified_risks/proposed_measures/approved_measures`, `device_connection_episode_resolution_outbox.event_type` und `data_subject_consents.legal_basis_assessment_id` (+ Migration).',
+      'Keyset-Pagination folgt jetzt dem gewählten Sortierfeld statt immer `createdAt`; Cursor fremder Sortierung wird verworfen statt Seiten zu mischen.',
+      'Frontend normalisiert das geteilte Sortierfeld pro Sektion, damit `dpSort`-URL-Werte keine Sektion mehr leeren können.',
+    ],
+    reason:
+      'Production-Meldung "Bereich konnte nicht geladen werden — Validation failed" bei F.S Mobility Service; Telemetrieeinwilligung war korrekt ACTIVE (6/6 DIMO-Fahrzeuge), aber nicht darstellbar.',
+    previousBehavior:
+      'Providerzugriffe/Einwilligungen 400; KPI-Kacheln und Readiness 0/"Noch keine Daten" wegen 404 auf hub-metrics/coverage/register; DPIA-Scheduler crashte stündlich mit PrismaClientKnownRequestError.',
+    details:
+      'backend/src/modules/data-authorizations/{data-authorization-list-cursor.util.ts,data-authorizations.module.ts,data-authorizations.service.ts}, prisma/migrations/20260725120000_data_subject_consent_legal_basis_link',
+    affectsArchitecture: true,
+    module: 'Data Processing',
+    createdAt: '2026-07-25T12:10:00.000Z',
+  },
+  {
     title: 'V4.9.831 — Data Auth Production Rollout Shadow Mode (Prompt 43)',
     summary: [
       'VPS Production Rollout: 6080dbd @ 20260725083109_data-auth-rc via vps-deploy-data-auth-staging.sh.',

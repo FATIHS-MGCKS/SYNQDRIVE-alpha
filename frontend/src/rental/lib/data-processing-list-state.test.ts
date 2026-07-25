@@ -4,6 +4,9 @@ import {
   hasActiveFilters,
   kpiToLegacyParams,
   kpiToRegisterParams,
+  LEGACY_AUTHORIZATION_SORT_FIELDS,
+  normalizeSectionSort,
+  REGISTER_SORT_FIELDS,
 } from './data-processing-list-state';
 
 describe('data-processing-list-state', () => {
@@ -31,5 +34,43 @@ describe('data-processing-list-state', () => {
     expect(hasActiveFilters(DEFAULT_SECTION_FILTERS)).toBe(false);
     expect(hasActiveFilters({ ...DEFAULT_SECTION_FILTERS, kpi: 'blocking_gaps' })).toBe(true);
     expect(hasActiveFilters({ ...DEFAULT_SECTION_FILTERS, q: 'fleet' })).toBe(true);
+  });
+
+  describe('normalizeSectionSort', () => {
+    it('accepts the shared default sort on both endpoints', () => {
+      expect(DEFAULT_SECTION_FILTERS.sort).toBe('updatedAt');
+      expect(LEGACY_AUTHORIZATION_SORT_FIELDS).toContain('updatedAt');
+      expect(REGISTER_SORT_FIELDS).toContain('updatedAt');
+    });
+
+    it('keeps a sort field the target endpoint supports', () => {
+      expect(
+        normalizeSectionSort('expiresAt', LEGACY_AUTHORIZATION_SORT_FIELDS, 'updatedAt'),
+      ).toBe('expiresAt');
+      expect(normalizeSectionSort('nextReviewDate', REGISTER_SORT_FIELDS, 'updatedAt')).toBe(
+        'nextReviewDate',
+      );
+    });
+
+    // A sort value carried over from another section (or injected via the
+    // `dpSort` URL param) must not reach the API, which answers unknown sort
+    // fields with HTTP 400 and blanks the whole section.
+    it('falls back when the sort field belongs to a different endpoint', () => {
+      expect(
+        normalizeSectionSort('nextReviewDate', LEGACY_AUTHORIZATION_SORT_FIELDS, 'updatedAt'),
+      ).toBe('updatedAt');
+      expect(normalizeSectionSort('expiresAt', REGISTER_SORT_FIELDS, 'updatedAt')).toBe(
+        'updatedAt',
+      );
+    });
+
+    it('falls back for unknown values', () => {
+      expect(normalizeSectionSort('', LEGACY_AUTHORIZATION_SORT_FIELDS, 'updatedAt')).toBe(
+        'updatedAt',
+      );
+      expect(
+        normalizeSectionSort('__injected__', LEGACY_AUTHORIZATION_SORT_FIELDS, 'updatedAt'),
+      ).toBe('updatedAt');
+    });
   });
 });

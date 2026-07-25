@@ -7938,7 +7938,7 @@ model DeviceConnectionEpisodeResolutionOutbox {
   organizationId     String                                           @map("organization_id")
   vehicleId          String                                           @map("vehicle_id")
   episodeId          String                                           @map("episode_id")
-  eventType          DeviceConnectionEpisodeResolutionOutboxEventType
+  eventType          DeviceConnectionEpisodeResolutionOutboxEventType  @map("event_type")
   idempotencyKey     String                                           @unique @map("idempotency_key")
   payload            Json
   status             DeviceConnectionEpisodeResolutionOutboxStatus    @default(PENDING)
@@ -11414,9 +11414,9 @@ model ProcessingActivityDpia {
   assessmentOwnerUserId       String?                    @map("assessment_owner_user_id")
   privacyReviewerUserId       String?                    @map("privacy_reviewer_user_id")
   securityReviewerUserId      String?                    @map("security_reviewer_user_id")
-  identifiedRisks             Json?
-  proposedMeasures            Json?
-  approvedMeasures            Json?
+  identifiedRisks             Json?                      @map("identified_risks")
+  proposedMeasures            Json?                      @map("proposed_measures")
+  approvedMeasures            Json?                      @map("approved_measures")
   residualRisk                PrivacyResidualRiskLevel?  @map("residual_risk")
   residualRiskAccepted        Boolean                    @default(false) @map("residual_risk_accepted")
   residualRiskAcceptedByUserId String?                   @map("residual_risk_accepted_by_user_id")
@@ -11775,20 +11775,21 @@ model DataSubjectConsent {
   withdrawalReason             String?                    @map("withdrawal_reason") @db.Text
   expiresAt                    DateTime?                  @map("expires_at")
   legacyOrgDataAuthorizationId String?                    @unique @map("legacy_org_data_authorization_id")
+  legalBasisAssessmentId       String?                    @map("legal_basis_assessment_id")
   createdAt                    DateTime                   @default(now()) @map("created_at")
   updatedAt                    DateTime                   @updatedAt @map("updated_at")
 
   organization               Organization                    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   processingActivity         ProcessingActivity              @relation(fields: [processingActivityId], references: [id], onDelete: Restrict)
   legacyOrgDataAuthorization OrgDataAuthorization?           @relation("LegacyOrgAuthDataSubjectConsent", fields: [legacyOrgDataAuthorizationId], references: [id], onDelete: SetNull)
+  legalBasisAssessment       LegalBasisAssessment?           @relation(fields: [legalBasisAssessmentId], references: [id], onDelete: SetNull)
   statusEvents               DataSubjectConsentStatusEvent[]
   withdrawalPropagations     ConsentWithdrawalPropagation[]
-  LegalBasisAssessment       LegalBasisAssessment?           @relation(fields: [legalBasisAssessmentId], references: [id])
-  legalBasisAssessmentId     String?
 
   @@index([organizationId, consentStatus])
   @@index([processingActivityId])
   @@index([subjectType, dataSubjectReference])
+  @@index([legalBasisAssessmentId])
   @@map("data_subject_consents")
 }
 

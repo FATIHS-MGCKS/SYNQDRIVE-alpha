@@ -4,6 +4,7 @@ import {
   DATA_AUTHORIZATION_SCOPES,
   DATA_AUTHORIZATION_SOURCE_TYPES,
 } from '../data-authorization.constants';
+import { DATA_AUTHORIZATION_LIST_SORT_FIELDS } from '../data-authorization-list-cursor.util';
 
 const LIST_STATUSES = ['PENDING', 'ACTIVE', 'REVOKED', 'EXPIRED'] as const;
 const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
@@ -63,8 +64,8 @@ export class ListDataAuthorizationsQueryDto {
   limit?: number;
 
   @IsOptional()
-  @IsIn(['createdAt', 'title', 'expiresAt'])
-  sort?: 'createdAt' | 'title' | 'expiresAt';
+  @IsIn([...DATA_AUTHORIZATION_LIST_SORT_FIELDS])
+  sort?: (typeof DATA_AUTHORIZATION_LIST_SORT_FIELDS)[number];
 
   @IsOptional()
   @IsIn(['asc', 'desc'])

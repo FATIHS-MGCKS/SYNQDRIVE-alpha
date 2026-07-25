@@ -4760,7 +4760,7 @@ export const api = {
         revocationInProgress?: boolean;
         cursor?: string;
         limit?: number;
-        sort?: 'createdAt' | 'title' | 'expiresAt';
+        sort?: DataAuthorizationListSortField;
         dir?: 'asc' | 'desc';
       },
     ) => {
@@ -9578,6 +9578,22 @@ export interface DataAuthorizationStatsDto {
   highRisk: number;
   expiringSoon: number;
 }
+
+/**
+ * Sort fields accepted by `GET /organizations/:orgId/data-authorizations`.
+ * Must stay in sync with `DATA_AUTHORIZATION_LIST_SORT_FIELDS` on the backend —
+ * the endpoint rejects anything else with HTTP 400 `VALIDATION_FAILED`.
+ */
+export const DATA_AUTHORIZATION_LIST_SORT_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'title',
+  'expiresAt',
+  'status',
+] as const;
+
+export type DataAuthorizationListSortField =
+  (typeof DATA_AUTHORIZATION_LIST_SORT_FIELDS)[number];
 
 export interface DataAuthorizationListResponse {
   data: DataAuthorizationDto[];

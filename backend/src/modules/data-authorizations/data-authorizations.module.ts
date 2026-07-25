@@ -139,8 +139,13 @@ import { DataAuthMetricsRefreshService } from './observability/data-auth-metrics
       ).map((e) => ({ name: e.queueName })),
     ),
   ],
+  // Route order matters: every controller below shares the
+  // `organizations/:orgId/data-authorizations` prefix, and Express resolves the
+  // first registered match. `DataAuthorizationsController` owns the catch-all
+  // `:id` segment, so it MUST stay last — otherwise sibling literal paths such as
+  // `hub-metrics`, `coverage` or `processing-activity-register` are swallowed by
+  // `GET :id` and answered with "Authorization not found".
   controllers: [
-    DataAuthorizationsController,
     DataProcessingHubMetricsController,
     LegalBasisAssessmentController,
     DataSubjectConsentController,
@@ -158,6 +163,7 @@ import { DataAuthMetricsRefreshService } from './observability/data-auth-metrics
     ProcessorDpaController,
     RetentionDeletionController,
     ComplianceEvidenceController,
+    DataAuthorizationsController,
   ],
   providers: [
     DataAuthorizationsService,
