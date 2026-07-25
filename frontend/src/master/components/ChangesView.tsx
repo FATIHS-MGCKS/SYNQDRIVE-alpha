@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-automation-production-readiness-v49859-2026-07-25',
+    version: '4.9.859',
+    title: 'V4.9.859 — Workflow Automation Production Readiness Test Suite (Phase 11 Prompt 49)',
+    summary: [
+      '42-scenario production test matrix documented in `docs/testing/workflow-automation-production-test-matrix-2026-07.md`.',
+      'Backend: engine integration, concurrency, failure injection, security negative, scope/condition, channel contracts, pickup-overdue detector, production matrix anchor specs.',
+      'Frontend: Playwright E2E (flow, responsive 320px, axe a11y) with stateful mocked API — no real providers.',
+      'CI: `.github/workflows/workflow-automation-production-readiness.yml` + verify scripts (`test:workflow-automation:verify`).',
+      '170 backend + 40 frontend vitest + 6 Playwright tests PASS; builds PASS.',
+      'Fixes: audit retention map for rollout/kill-switch events; admin service migration record key; admin spec DI.',
+    ],
+    reason:
+      'Phase 11 requires comprehensive production-readiness coverage across unit, integration, queue, security, and E2E layers before cutover.',
+    previousBehavior:
+      'Workflow tests existed in isolation (~111 tests) without unified matrix, CI gate, or channel contract mocks.',
+    details:
+      'See docs/testing/workflow-automation-production-test-matrix-2026-07.md. Non-testable: real Resend/Twilio sends (contract mocks only).',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T16:20:00.000Z',
+  },
+  {
     id: 'task-automation-workflow-migration-v49858-2026-07-25',
     version: '4.9.858',
     title: 'V4.9.858 — Task Automation → Workflow Runtime Migration (Phase 11 Prompt 48)',

@@ -176,7 +176,7 @@ export class TaskAutomationAdminService {
       resolved,
       overrideRow,
       await this.prisma.taskAutomationWorkflowMigrationRecord.findUnique({
-        where: { organizationId_ruleId: { organizationId: orgId, ruleId } },
+        where: { organizationId_legacyRuleId: { organizationId: orgId, legacyRuleId: ruleId } },
       }),
     );
   }

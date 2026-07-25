@@ -45,6 +45,10 @@ describe('TaskAutomationAdminService', () => {
     formatChangeRequest: jest.fn((row: unknown) => row),
   };
 
+  const workflowTemplateService = {
+    findTemplateByCatalogKey: jest.fn(),
+  };
+
   const service = new TaskAutomationAdminService(
     prisma as any,
     resolver as any,
@@ -53,6 +57,7 @@ describe('TaskAutomationAdminService', () => {
     outboxRepoWithFind as any,
     outboxScheduler as any,
     makerChecker as any,
+    workflowTemplateService as any,
   );
 
   const baseResolved = {
