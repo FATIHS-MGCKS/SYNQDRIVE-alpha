@@ -44,8 +44,8 @@ Artifact: `backend/coverage/coverage-summary.json` after run.
 
 ### P1 — HTTP / E2E
 
-- No `ChatController` integration test (HTTP POST/SSE, wrong `:orgId`, `ai-assistant:write` IAM).
-- Playwright `e2e/ai-chat-responsive.spec.ts` covers layout only — no live SSE grounding contract on staging.
+- `ChatController` integration tests mock `ChatService` — no JWT `AuthGuard` + real orchestrator in-process.
+- Playwright `e2e/ai-chat-flow.spec.ts` covers 5 representative SSE flows (not all 27 × locale).
 
 ### P1 — Router LLM path
 

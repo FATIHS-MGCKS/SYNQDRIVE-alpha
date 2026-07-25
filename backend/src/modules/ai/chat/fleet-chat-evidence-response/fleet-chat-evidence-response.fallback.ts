@@ -139,6 +139,20 @@ export function buildDeterministicFallback(
       return buildHealthSummaryFallback(input);
     case 'OVERDUE_EXPLANATION':
       return buildOverdueExplanationFallback(input);
+    case 'BOOKING_SUMMARY':
+      return input.language === 'de'
+        ? 'Buchungskontext aus Domain-Tools — Kundendaten nur mit Berechtigung.'
+        : 'Booking context from domain tools — customer data only with permission.';
+    case 'COMBINED_SUMMARY': {
+      const parts = [
+        buildLocationSummaryFallback(input),
+        buildHealthSummaryFallback(input),
+        buildOverdueExplanationFallback(input),
+      ].filter((part, index, arr) => part.trim().length > 0 && arr.indexOf(part) === index);
+      const de = input.language === 'de';
+      const header = de ? 'Kombinierte Fahrzeugzusammenfassung:' : 'Combined vehicle summary:';
+      return parts.length > 0 ? `${header}\n${parts.join('\n')}` : buildDeterministicFallback(input, 'PARTIAL_DATA');
+    }
     case 'PERMISSION_RESTRICTED':
       return input.language === 'de'
         ? 'Für diese Anfrage fehlen Berechtigungen. Bitte Zugriff in SynqDrive anfordern.'

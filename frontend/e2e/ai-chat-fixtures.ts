@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
+import { buildFlowSseBody, resolveFlowStreamScenario } from './ai-chat-flow-fixtures';
 import { assertNoHorizontalOverflow } from './document-upload-fixtures';
 
 export { assertNoHorizontalOverflow };
@@ -160,6 +161,25 @@ export async function installAiChatMocks(page: Page, history: Array<Record<strin
 
     if (url.includes('/auth/me') && method === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockUser) });
+    }
+
+    if (
+      url.includes(`/organizations/${AI_CHAT_E2E_ORG_ID}/chat/message/stream`) &&
+      method === 'POST'
+    ) {
+      const body = route.request().postDataJSON() as { content?: string } | null;
+      const content = (body?.content ?? '').trim();
+      const scenario = resolveFlowStreamScenario(content);
+      const sseBody = buildFlowSseBody(scenario);
+      return route.fulfill({
+        status: 201,
+        contentType: 'text/event-stream; charset=utf-8',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+        body: sseBody,
+      });
     }
 
     if (url.includes(`/organizations/${AI_CHAT_E2E_ORG_ID}/chat/agent`) && method === 'GET') {

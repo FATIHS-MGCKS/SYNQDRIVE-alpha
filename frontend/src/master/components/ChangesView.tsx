@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-flow-e2e-v49821-2026-07-25',
+    version: '4.9.821',
+    title: 'V4.9.821 — Fleet AI full data flow E2E (Prompt 28)',
+    summary: [
+      'Integration tests for Frontend → API → Auth → Intent → Resolver → Tools → Evidence → LLM/fallback → Response.',
+      '27 binding scenarios (location, health, overdue, combined, security) × de/en in chat.flow.integration.spec.ts.',
+      'Playwright ai-chat-flow.spec.ts + SSE fixtures for POST /chat/message/stream.',
+      'BOOKING_SUMMARY and COMBINED_SUMMARY deterministic fallback branches.',
+    ],
+    reason: 'Production-ready E2E test matrix for complete Fleet AI Assistant data flow.',
+    previousBehavior: 'Unit/contract tests only; no table-driven pipeline integration or frontend SSE grounding.',
+    details:
+      'See architecture/FLEET_AI_FLOW_E2E_2026-07-25.md. New: fleet-ai-pipeline.harness.ts, fleet-ai-flow.fixtures.ts, chat.flow.integration.spec.ts, chat.controller.integration.spec.ts, e2e/ai-chat-flow*.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T01:00:00.000Z',
+  },
+  {
     id: 'fleet-ai-test-matrix-v49820-2026-07-25',
     version: '4.9.820',
     title: 'V4.9.820 — Fleet AI test matrix (Prompt 27)',
