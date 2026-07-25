@@ -10852,6 +10852,7 @@ enum WorkflowScopeBindingType {
 enum WorkflowConditionLogicOperator {
   AND
   OR
+  NOT
 }
 
 enum WorkflowConditionOperator {

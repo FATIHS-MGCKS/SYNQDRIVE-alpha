@@ -5,6 +5,12 @@ export const WORKFLOW_CONDITION_ERROR_CODES = {
   SENSITIVE_FIELD_DENIED: 'CONDITION_SENSITIVE_FIELD_DENIED',
   TENANT_VIOLATION: 'CONDITION_TENANT_VIOLATION',
   GROUP_EMPTY: 'CONDITION_GROUP_EMPTY',
+  TREE_DEPTH_EXCEEDED: 'CONDITION_TREE_DEPTH_EXCEEDED',
+  CLAUSE_COUNT_EXCEEDED: 'CONDITION_CLAUSE_COUNT_EXCEEDED',
+  NODE_COUNT_EXCEEDED: 'CONDITION_NODE_COUNT_EXCEEDED',
+  PAYLOAD_TOO_LARGE: 'CONDITION_PAYLOAD_TOO_LARGE',
+  STRUCTURE_INVALID: 'CONDITION_STRUCTURE_INVALID',
+  NOT_CHILD_COUNT: 'CONDITION_NOT_CHILD_COUNT',
 } as const;
 
 export type WorkflowConditionDataType =
@@ -33,6 +39,9 @@ export type WorkflowConditionOperator =
 
 export type WorkflowConditionPiiClass = 'none' | 'pii' | 'sensitive';
 
+/** Logical combinator for nested condition groups. */
+export type WorkflowConditionLogic = 'ALL' | 'ANY' | 'NOT';
+
 export interface WorkflowConditionFieldDefinition {
   path: string;
   dataType: WorkflowConditionDataType;
@@ -53,6 +62,24 @@ export interface WorkflowConditionInput {
   legacyField?: string;
 }
 
+export interface WorkflowConditionClauseNode {
+  kind: 'clause';
+  fieldPath: string;
+  operator: string;
+  value?: unknown;
+  legacyField?: string;
+  sortOrder?: number;
+}
+
+export interface WorkflowConditionGroupNode {
+  kind: 'group';
+  logic: WorkflowConditionLogic;
+  children: WorkflowConditionTreeNode[];
+  sortOrder?: number;
+}
+
+export type WorkflowConditionTreeNode = WorkflowConditionClauseNode | WorkflowConditionGroupNode;
+
 export interface WorkflowConditionEvaluationContext {
   organizationId: string;
   eventType?: string;
@@ -62,6 +89,7 @@ export interface WorkflowConditionEvaluationContext {
 }
 
 export interface WorkflowConditionClauseResult {
+  kind: 'clause';
   fieldPath: string;
   operator: WorkflowConditionOperator;
   passed: boolean;
@@ -69,12 +97,45 @@ export interface WorkflowConditionClauseResult {
   errorMessage?: string;
   actualType?: string;
   expectedType?: string;
+  /** PII-safe masked actual value for explain/dry-run. */
+  maskedActual?: string;
+  /** PII-safe masked expected value for explain/dry-run. */
+  expectedValue?: string;
   /** Safe summary — no raw PII values. */
   explain?: string;
 }
 
+export interface WorkflowConditionGroupResult {
+  kind: 'group';
+  logic: WorkflowConditionLogic;
+  passed: boolean;
+  children: WorkflowConditionTreeResultNode[];
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+export type WorkflowConditionTreeResultNode =
+  | WorkflowConditionClauseResult
+  | WorkflowConditionGroupResult;
+
+export interface WorkflowConditionTreeEvaluationResult {
+  passed: boolean;
+  root: WorkflowConditionGroupResult | null;
+  clauseCount: number;
+  dryRun: boolean;
+}
+
+/** @deprecated Flat result — use WorkflowConditionTreeEvaluationResult. */
 export interface WorkflowConditionEvaluationResult {
   passed: boolean;
   results: WorkflowConditionClauseResult[];
   dryRun: boolean;
+}
+
+export interface WorkflowConditionTreeValidationResult {
+  valid: boolean;
+  errors: Array<{ code: string; message: string }>;
+  clauseCount: number;
+  nodeCount: number;
+  maxDepth: number;
 }

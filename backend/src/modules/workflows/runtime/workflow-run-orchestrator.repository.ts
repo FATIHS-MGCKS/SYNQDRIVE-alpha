@@ -2,8 +2,7 @@ import { createHash } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import type { WorkflowConditionDef } from '../workflow-definition.validator';
-import { evaluateWorkflowConditions } from '../workflow-condition.evaluator';
+import { evaluatePrismaConditionGroups } from '../conditions';
 import type { WorkflowDomainEventEnvelope } from '../envelope';
 import type { WorkflowMatcherMatchedWorkflow } from '../matcher/workflow-matcher.types';
 import { WORKFLOW_RUNTIME_STATUS_ERROR_CODES } from './workflow-runtime-status.errors';
@@ -80,20 +79,14 @@ export class WorkflowRunOrchestratorRepository {
     version: WorkflowVersionGraph,
     payload: Record<string, unknown>,
     organizationId: string,
+    options?: { dryRun?: boolean; permissions?: string[] },
   ) {
-    const conditions: WorkflowConditionDef[] = version.conditionGroups
-      .flatMap((group) => group.conditions)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((condition) => ({
-        path: condition.fieldPath,
-        operator: condition.operator,
-        value:
-          condition.valueJson ??
-          condition.valueText ??
-          condition.valueNumber ??
-          condition.valueBoolean,
-      }));
-    return evaluateWorkflowConditions(conditions, payload, { organizationId });
+    return evaluatePrismaConditionGroups(version.conditionGroups, {
+      organizationId,
+      payload,
+      dryRun: options?.dryRun ?? false,
+      permissions: options?.permissions,
+    });
   }
 
   async createRunWithActions(
