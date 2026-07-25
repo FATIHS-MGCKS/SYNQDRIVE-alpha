@@ -125,4 +125,23 @@ export class FindingLifecycleService {
     }
     return result;
   }
+
+  /** VW-F-026: expire when evidence is lost (telemetry stale) after grace window. */
+  async expireFinding(
+    organizationId: string,
+    dedupeKey: string,
+    at: Date = new Date(),
+  ) {
+    return this.prisma.vehicleFinding.updateMany({
+      where: {
+        organizationId,
+        dedupeKey,
+        status: { in: [VehicleFindingStatus.ACTIVE, VehicleFindingStatus.ACKNOWLEDGED] },
+      },
+      data: {
+        status: VehicleFindingStatus.EXPIRED,
+        resolvedAt: at,
+      },
+    });
+  }
 }

@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { MembershipRole } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { StationAccessService } from '@shared/stations/station-access.service';
 import { isOrgWideNotification } from './notification-org-wide.policy';
 import type { NotificationAccessContext, NotificationScopeRow } from './notification-access.types';
 
 @Injectable()
 export class NotificationStationScopeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stationAccess: StationAccessService,
+  ) {}
 
   shouldApplyStationScope(role: MembershipRole, stationScope: string | null): boolean {
     const scope = stationScope?.trim();
@@ -14,11 +18,67 @@ export class NotificationStationScopeService {
     return role === MembershipRole.SUB_ADMIN || role === MembershipRole.WORKER;
   }
 
+  /**
+   * VW-F-031: prefer Stations V2 effective access when userId is available;
+   * legacy single stationScope string remains fallback.
+   */
   async buildScopeContext(
     orgId: string,
     role: MembershipRole,
     stationScope: string | null,
+    userId?: string,
   ): Promise<Pick<NotificationAccessContext, 'scopedStationId' | 'scopedVehicleIds' | 'scopedBookingIds' | 'bypassStationScope'>> {
+    if (userId) {
+      const access = await this.stationAccess.resolve(userId, orgId);
+      if (!access.bypassScope && access.allowedStationIds !== null) {
+        const stationIds = access.allowedStationIds;
+        if (stationIds.length === 0) {
+          return {
+            scopedVehicleIds: [],
+            scopedBookingIds: [],
+            bypassStationScope: false,
+            scopedStationId: undefined,
+          };
+        }
+        const [vehicles, bookings] = await Promise.all([
+          this.prisma.vehicle.findMany({
+            where: {
+              organizationId: orgId,
+              OR: [
+                { homeStationId: { in: stationIds } },
+                { currentStationId: { in: stationIds } },
+                { expectedStationId: { in: stationIds } },
+              ],
+            },
+            select: { id: true },
+          }),
+          this.prisma.booking.findMany({
+            where: {
+              organizationId: orgId,
+              OR: [
+                { pickupStationId: { in: stationIds } },
+                { returnStationId: { in: stationIds } },
+              ],
+            },
+            select: { id: true },
+          }),
+        ]);
+        return {
+          scopedStationId: stationIds.length === 1 ? stationIds[0] : undefined,
+          scopedVehicleIds: vehicles.map((v) => v.id),
+          scopedBookingIds: bookings.map((b) => b.id),
+          bypassStationScope: false,
+        };
+      }
+      if (access.bypassScope) {
+        return {
+          scopedVehicleIds: [],
+          scopedBookingIds: [],
+          bypassStationScope: true,
+        };
+      }
+    }
+
     if (!this.shouldApplyStationScope(role, stationScope)) {
       return {
         scopedVehicleIds: [],
@@ -70,8 +130,8 @@ export class NotificationStationScopeService {
       return true;
     }
 
-    if (!ctx.scopedStationId) {
-      return true;
+    if (!ctx.scopedStationId && ctx.scopedVehicleIds.length === 0) {
+      return false;
     }
 
     const target = (row.actionTarget ?? {}) as Record<string, string | undefined>;
@@ -82,17 +142,15 @@ export class NotificationStationScopeService {
     const bookingId =
       row.entityType === 'BOOKING' ? row.entityId : target.bookingId;
 
-    if (stationId === ctx.scopedStationId) return true;
+    if (stationId && ctx.scopedStationId && stationId === ctx.scopedStationId) {
+      return true;
+    }
     if (vehicleId && ctx.scopedVehicleIds.includes(vehicleId)) return true;
     if (bookingId && ctx.scopedBookingIds.includes(bookingId)) return true;
 
     return false;
   }
 
-  /**
-   * Re-resolve vehicle station at read time — handles vehicle station moves.
-   * If vehicle left scoped station after notification creation, hide unless booking-linked.
-   */
   async recheckVehicleStationScope(
     orgId: string,
     vehicleId: string,

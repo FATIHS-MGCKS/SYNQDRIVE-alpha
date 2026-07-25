@@ -6,6 +6,7 @@ import {
   type BrakeDtcProducerContext,
 } from '../brakes/brake-dtc-evidence.producer';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
+import { FindingBridgeService } from '../findings/finding-bridge.service';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ export class DtcService {
     private readonly prisma: PrismaService,
     @Optional() private readonly brakeDtcProducer?: BrakeDtcEvidenceProducerService,
     @Optional() private readonly rentalHealthSummaryCache?: RentalHealthSummaryCacheService,
+    @Optional() private readonly findingBridge?: FindingBridgeService,
   ) {}
 
   // ── Basic reads ─────────────────────────────────────────────────────────────
@@ -359,6 +361,18 @@ export class DtcService {
       await this.brakeDtcProducer?.onDtcUpserted(vehicleId, event, options.producerContext);
     }
 
+    const orgId = options?.producerContext?.organizationId;
+    if (orgId) {
+      await this.findingBridge?.syncDtcActive({
+        organizationId: orgId,
+        vehicleId,
+        dtcCode,
+        severity: event.severity,
+        description: event.description,
+        sourceRef: event.id,
+      });
+    }
+
     await this.invalidateRentalHealthCache(vehicleId);
     return event;
   }
@@ -395,6 +409,15 @@ export class DtcService {
         clearedAt,
         options.producerContext,
       );
+    }
+
+    const orgId = options?.producerContext?.organizationId;
+    if (orgId && result.count > 0) {
+      await this.findingBridge?.resolveDtc({
+        organizationId: orgId,
+        vehicleId,
+        dtcCode,
+      });
     }
 
     await this.invalidateRentalHealthCache(vehicleId);

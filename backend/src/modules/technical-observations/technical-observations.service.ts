@@ -20,6 +20,7 @@ import { NotificationProducerIngestService } from '@modules/notifications/adapte
 import { TasksService } from '../tasks/tasks.service';
 import { ServiceCasesService } from '../service-cases/service-cases.service';
 import { DamagesService } from '../vehicle-intelligence/damages/damages.service';
+import { FindingBridgeService } from '../vehicle-intelligence/findings/finding-bridge.service';
 import {
   technicalObservationDedupKey,
 } from '../tasks/automation/task-automation-rule.util';
@@ -62,6 +63,7 @@ export class TechnicalObservationsService {
     private readonly damages: DamagesService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
     @Optional() private readonly activityLog?: ActivityLogService,
+    @Optional() private readonly findingBridge?: FindingBridgeService,
   ) {}
 
   async list(
@@ -197,6 +199,17 @@ export class TechnicalObservationsService {
       source,
     });
     void this.syncV2ObservationActive(orgId, vehicleId, row, dto);
+    if (row.dedupeKey) {
+      void this.findingBridge?.syncComplaintActive({
+        organizationId: orgId,
+        vehicleId,
+        dedupeKey: row.dedupeKey,
+        severity: row.urgency,
+        title: row.title,
+        message: row.description,
+        sourceRef: row.id,
+      });
+    }
     return dto;
   }
 
@@ -609,6 +622,12 @@ export class TechnicalObservationsService {
     row: VehicleComplaint,
     dto: TechnicalObservationDto,
   ): Promise<void> {
+    if (row.dedupeKey) {
+      void this.findingBridge?.resolveComplaint({
+        organizationId: orgId,
+        dedupeKey: row.dedupeKey,
+      });
+    }
     if (!this.notificationIngest) return;
     const label = await this.observationLabel(vehicleId, row);
     await this.notificationIngest.syncTechnicalObservationResolved({

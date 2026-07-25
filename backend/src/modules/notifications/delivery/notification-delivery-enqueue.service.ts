@@ -83,6 +83,7 @@ export class NotificationDeliveryEnqueueService {
         input.notification.organizationId,
         membership.role,
         membership.stationScope,
+        membership.userId,
       );
       const inScope = this.stationScope.isNotificationInScope(
         {

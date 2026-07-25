@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-warnings-followups-v49866-2026-07-25',
+    version: '4.9.866',
+    title: 'V4.9.866 — Vehicle Warnings post-remediation follow-ups',
+    summary: [
+      'FindingBridgeService dual-writes DTC, tire alerts, and complaints into canonical vehicle_findings.',
+      'VW-F-026: 6h clear grace on health notification fleet-sweep + tire alert evidence defer.',
+      'VW-F-030: TPMS live-critical path in TireCriticalDetector + tires in rental-health notification projector.',
+      'VW-F-031: Notification station scope uses StationAccessService when userId is available.',
+      'GDPR: real retention deletes (flagged) + complaint/notification PII erasure orchestrator.',
+      'VW-F-038: optional rental-health Redis cache warm on worker boot.',
+      'Battery V2: DLQ replay clears transient LOCK_CONTENTION/INFRA rows when enabled.',
+    ],
+    reason:
+      'Close open follow-ups left after vehicle-warnings remediation deploy (bridges, hysteresis, TPMS, station scope, GDPR, cache warm, battery DLQ).',
+    previousBehavior:
+      'vehicle_findings table existed without domain bridges; notification clears were immediate; station scope used legacy single stationScope string; GDPR retention/erasure were stubs.',
+    details:
+      'finding-bridge.service.ts, notification-producer.ingest.service.ts, tire-critical.detector.ts, notification-station-scope.service.ts, vehicle-warning-retention.scheduler.ts, vehicle-warning-erasure.service.ts, rental-health-cache-warm.service.ts, battery-v2-job-dead-letter.service.ts. Env: VEHICLE_FINDING_BRIDGE_ENABLED, VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS, TIRE_ALERT_EVIDENCE_GRACE_MS, VEHICLE_WARNING_RETENTION_ENABLED, RENTAL_HEALTH_CACHE_WARM_ON_BOOT, BATTERY_V2_DLQ_REPLAY_ENABLED.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T23:10:00.000Z',
+  },
+  {
     id: 'workflow-runtime-live-ga-v49865-2026-07-25',
     version: '4.9.865',
     title: 'V4.9.865 — Workflow Runtime live on production (GENERAL_AVAILABILITY, cutover)',

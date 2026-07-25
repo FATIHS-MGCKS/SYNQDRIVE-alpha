@@ -12,7 +12,7 @@ Canonical finding row keyed by `(organization_id, dedupe_key)` with FSM:
 
 `ACTIVE` → `ACKNOWLEDGED` → `RESOLVED` / `SUPERSEDED` / `EXPIRED`
 
-Bridges from domain alerts/notifications are **not** wired yet — table + `FindingLifecycleService` only.
+Bridges from domain alerts/notifications are wired via `FindingBridgeService` (V4.9.866) — see `VEHICLE_WARNINGS_REMEDIATION_FOLLOWUPS_2026-07-25.md`.
 
 ### FK integrity (VW-F-009)
 
@@ -47,8 +47,8 @@ on severity-band transitions (in-memory per process).
 ## GDPR stubs (WP-16)
 
 - `insight-redaction.helper.ts` — role-based PII redaction for insight DTOs
-- `VehicleWarningRetentionScheduler` — cron stub (`VEHICLE_WARNING_RETENTION_ENABLED`)
-- `VehicleWarningErasureService` — customer erasure orchestrator stub
+- `VehicleWarningRetentionScheduler` — cron deletes when `VEHICLE_WARNING_RETENTION_ENABLED=true` (V4.9.866)
+- `VehicleWarningErasureService` — complaint + notification PII redaction (V4.9.866)
 
 ## Audit (VW-F-032)
 

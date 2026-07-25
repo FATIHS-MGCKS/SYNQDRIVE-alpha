@@ -218,6 +218,7 @@ import {
 import { VehicleIntelligencePermissionGuard } from './vehicle-intelligence-permission.guard';
 import { VehicleFindingsModule } from './findings/findings.module';
 import { FindingLifecycleService } from './findings/finding-lifecycle.service';
+import { FindingBridgeService } from './findings/finding-bridge.service';
 
 @Module({
   imports: [
@@ -293,6 +294,7 @@ import { FindingLifecycleService } from './findings/finding-lifecycle.service';
     EnrichmentJobsService,
     DtcService,
     FindingLifecycleService,
+    FindingBridgeService,
     DtcKnowledgeService,
     DtcKnowledgeEnrichmentService,
     DtcAiResearchService,
@@ -488,6 +490,7 @@ import { FindingLifecycleService } from './findings/finding-lifecycle.service';
     EnrichmentJobsService,
     DtcService,
     FindingLifecycleService,
+    FindingBridgeService,
     DtcKnowledgeService,
     DtcKnowledgeEnrichmentService,
     DrivingEventsService,

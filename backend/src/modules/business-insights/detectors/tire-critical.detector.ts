@@ -78,10 +78,16 @@ export class TireCriticalDetector implements InsightDetector {
         continue;
       }
 
-      if (!isAlertableStatus(overall)) continue;
+      const tpmsLiveCritical =
+        summary.pressureContext.tpmsWarning === true &&
+        summary.pressureContext.overallFreshness !== 'stale';
+
+      if (!isAlertableStatus(overall) && !tpmsLiveCritical) continue;
 
       let severity: InsightSeverity =
-        overall === 'CRITICAL' ? InsightSeverity.CRITICAL : InsightSeverity.WARNING;
+        overall === 'CRITICAL' || tpmsLiveCritical
+          ? InsightSeverity.CRITICAL
+          : InsightSeverity.WARNING;
       if (severity === InsightSeverity.CRITICAL && !hasMeasurement) {
         severity = InsightSeverity.WARNING;
       }
@@ -114,7 +120,12 @@ export class TireCriticalDetector implements InsightDetector {
           ? `Profiltiefe bei ${treadTxt} — Reifen umgehend austauschen.`
           : `Profiltiefe bei ${treadTxt} — Austausch zeitnah einplanen.`);
 
-      const reasons: string[] = [reasonCode ?? primaryAlert?.message ?? `Reifenzustand ${overall}`];
+      const reasons: string[] = [
+        reasonCode ?? primaryAlert?.message ?? `Reifenzustand ${overall}`,
+      ];
+      if (tpmsLiveCritical && !reasonCode) {
+        reasons.unshift('TPMS-Reifendruckwarnung aktiv');
+      }
       if (reasonCode) {
         reasons.push(localizeTireAlertAction(reasonCode, 'de'));
       }

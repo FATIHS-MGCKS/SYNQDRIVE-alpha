@@ -17,6 +17,7 @@ export type VehicleHealthNotificationEventType =
 const MODULE_EVENT_MAP = {
   battery: 'BATTERY_CRITICAL',
   brakes: 'BRAKE_CRITICAL',
+  tires: 'TIRE_CRITICAL',
 } as const satisfies Record<string, VehicleHealthNotificationEventType>;
 
 function shouldEmitHealthState(state: HealthState): boolean {
