@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState, PageHeader, StatusChip } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { WorkflowListItemDto } from '../../../lib/api';
-import { WorkflowDetailDrawer } from './WorkflowDetailDrawer';
+import { WorkflowConfigDrawer } from './WorkflowConfigDrawer';
 import type { WorkflowRuntimeFilter } from './workflow-runtime.types';
 import {
   filterWorkflowItems,
@@ -26,8 +26,6 @@ import { useRentalOrg } from '../../RentalContext';
 
 interface WorkflowOverviewSectionProps {
   canWrite?: boolean;
-  onOpenBuilder?: (item?: WorkflowListItemDto) => void;
-  onOpenFullDetail?: (item: WorkflowListItemDto) => void;
 }
 
 function SummaryTile({ label, value }: { label: string; value: number | string }) {
@@ -146,11 +144,7 @@ function WorkflowRuntimeRow({
   );
 }
 
-export function WorkflowOverviewSection({
-  canWrite = false,
-  onOpenBuilder,
-  onOpenFullDetail,
-}: WorkflowOverviewSectionProps) {
+export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSectionProps) {
   const { orgId } = useRentalOrg();
   const { locale, t } = useLanguage();
   const {
@@ -161,14 +155,13 @@ export function WorkflowOverviewSection({
     actionWorkflowId,
     reload,
     toggleWorkflow,
-    duplicateWorkflow,
-    archiveWorkflow,
   } = useWorkflowRuntimeCenter(orgId);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkflowRuntimeFilter>('all');
   const [selected, setSelected] = useState<WorkflowListItemDto | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [createMode, setCreateMode] = useState(false);
 
   const filteredItems = useMemo(
     () => filterWorkflowItems(items, statusFilter, search, t),
@@ -177,7 +170,14 @@ export function WorkflowOverviewSection({
 
   const openItem = (item: WorkflowListItemDto) => {
     setSelected(item);
-    setDrawerOpen(true);
+    setCreateMode(false);
+    setConfigOpen(true);
+  };
+
+  const openCreate = () => {
+    setSelected(null);
+    setCreateMode(true);
+    setConfigOpen(true);
   };
 
   const handleToggle = async (item: WorkflowListItemDto) => {
@@ -200,8 +200,8 @@ export function WorkflowOverviewSection({
               <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               {t('workflowAutomation.actions.refresh')}
             </Button>
-            {canWrite && onOpenBuilder && (
-              <Button type="button" size="sm" onClick={() => onOpenBuilder()}>
+            {canWrite && (
+              <Button type="button" size="sm" onClick={openCreate}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {t('workflowAutomation.actions.new')}
               </Button>
@@ -291,8 +291,8 @@ export function WorkflowOverviewSection({
           }
           compact={items.length > 0}
           action={
-            canWrite && items.length === 0 && onOpenBuilder ? (
-              <Button type="button" size="sm" onClick={() => onOpenBuilder()}>
+            canWrite && items.length === 0 ? (
+              <Button type="button" size="sm" onClick={openCreate}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {t('workflowAutomation.actions.new')}
               </Button>
@@ -311,37 +311,25 @@ export function WorkflowOverviewSection({
               locale={locale}
               busy={actionWorkflowId === item.id}
               onOpen={() => openItem(item)}
-              onEdit={() => onOpenBuilder?.(item)}
+              onEdit={() => {
+                setSelected(item);
+                setCreateMode(false);
+                setConfigOpen(true);
+              }}
               onToggle={() => void handleToggle(item)}
             />
           ))}
         </div>
       )}
 
-      <WorkflowDetailDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
+      <WorkflowConfigDrawer
+        open={configOpen}
+        onOpenChange={setConfigOpen}
         item={selected}
+        createMode={createMode}
         canWrite={canWrite}
         busy={Boolean(selected && actionWorkflowId === selected.id)}
-        onEdit={selected ? () => onOpenBuilder?.(selected) : undefined}
-        onOpenFullDetail={selected ? () => onOpenFullDetail?.(selected) : undefined}
-        onToggle={selected ? () => void handleToggle(selected) : undefined}
-        onDuplicate={
-          selected
-            ? async () => {
-                await duplicateWorkflow(selected.id);
-              }
-            : undefined
-        }
-        onArchive={
-          selected
-            ? async () => {
-                await archiveWorkflow(selected.id);
-                setDrawerOpen(false);
-              }
-            : undefined
-        }
+        onSaved={() => void reload()}
       />
     </div>
   );

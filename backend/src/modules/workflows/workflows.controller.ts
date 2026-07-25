@@ -52,6 +52,12 @@ export class WorkflowsController {
     });
   }
 
+  @Get('catalog')
+  @Roles(...WORKFLOW_READ_ROLES)
+  async catalog(@Param('orgId') orgId: string) {
+    return this.service.getCatalog(orgId);
+  }
+
   @Get('stats')
   @Roles(...WORKFLOW_READ_ROLES)
   async stats(@Param('orgId') orgId: string) {

@@ -4932,6 +4932,10 @@ export const api = {
       return get<WorkflowListItemDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
     },
     stats: (orgId: string) => get<WorkflowStatsDto>(`/organizations/${orgId}/workflows/stats`),
+    catalog: (orgId: string) =>
+      get<import('../rental/components/workflow-automation/workflow-config.types').WorkflowCatalogDto>(
+        `/organizations/${orgId}/workflows/catalog`,
+      ),
     get: (orgId: string, id: string) => get<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`),
     create: (orgId: string, data: WorkflowCreatePayload) =>
       post<WorkflowMutationResultDto>(`/organizations/${orgId}/workflows`, data),

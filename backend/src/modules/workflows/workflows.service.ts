@@ -24,6 +24,7 @@ import {
   type WorkflowListItemDto,
 } from './workflow-list.mapper';
 import { redactWorkflowRunPayload } from './audit/workflow-audit-sanitize.util';
+import { getWorkflowCatalog } from './workflow-catalog';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -50,6 +51,11 @@ export class WorkflowsService {
       ...wf,
       statusLabel: STATUS_DISPLAY[(wf.status as string)] || wf.status,
     };
+  }
+
+  async getCatalog(_orgId: string) {
+    void _orgId;
+    return getWorkflowCatalog();
   }
 
   async findByOrg(

@@ -562,11 +562,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         <TaskAutomationRulesSection canWrite={canWrite} />
       ) : (
         <>
-      <WorkflowOverviewSection
-        canWrite={canWrite}
-        onOpenBuilder={(item) => openBuilder(item ?? null)}
-        onOpenFullDetail={(item) => openDetail(item)}
-      />
+      <WorkflowOverviewSection canWrite={canWrite} />
 
       {/* Templates Section */}
       {showTemplates && (
