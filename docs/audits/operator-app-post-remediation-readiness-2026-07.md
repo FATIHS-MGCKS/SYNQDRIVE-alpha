@@ -468,9 +468,9 @@ Blockers:
 | Metric | Prompt 44 | Prompt 45 (strict) |
 |--------|-----------|---------------------|
 | Gates evaluated | 12 (program) | **20 (technical)** |
-| Gates PASS | 7 | **18** (after blocker remediation) |
-| Gates FAIL | 5 | **2** |
-| Critical FAIL | 1 (GAP-043-001) | **2** (Gates 12, 20 — ops only) |
+| Gates PASS | 7 | **19** (after deploy + retention) |
+| Gates FAIL | 5 | **1** (Gate 20) |
+| Critical FAIL | 1 (GAP-043-001) | **1** (GAP-043-001) |
 | **Final verdict** | CONDITIONAL GO | **CONDITIONAL GO** (code blockers remediated) |
 
 ### Blocker remediation gate table (post–Prompt 45)
@@ -480,7 +480,7 @@ Blockers:
 | 3 | Tenant isolation + station scope | **PASS** |
 | 7 | Idempotency + optimistic locking | **PASS** |
 | 8 | Server drafts / resume / conflict | **PASS** |
-| 12 | DSGVO / retention / deletion | **FAIL** (VPS dryRun) |
+| 12 | DSGVO / retention / deletion | **PASS** (VPS enabled 2026-07-25) |
 | 15 | Observability + runbooks | **PASS** |
 | 18 | Accessibility | **PASS** |
 | 20 | Production smoke | **FAIL** (GAP-043-001) |

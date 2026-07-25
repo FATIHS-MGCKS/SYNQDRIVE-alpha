@@ -187,7 +187,7 @@
 |-------|--------|----------|
 | Gate 19 VPS/runtime audit | **PASS** | Prompt 42 live audit remains valid; no new VPS execution in Prompt 45 |
 | Production spot-check | **PASS** | `GET /operator` 200, `GET /api/v1/health` 200 @ 2026-07-25T22:23 UTC |
-| Gate 12 retention (VPS) | **FAIL** | F-042-005 unchanged — runbook `operator-retention-enablement.md` added |
+| Gate 12 retention (VPS) | **PASS** | Document/Legal/IAM ENABLED dryRun=false @ 2026-07-25T23:36 UTC |
 | Gate 20 write smoke | **FAIL** | GAP-043-001 unchanged — runbook + preflight script added |
 
 **Release verdict:** **CONDITIONAL GO** — code blockers (Gates 3, 7, 8, 15, 18, OPEN-002) closed on branch; Gates 12 + 20 remain ops.
