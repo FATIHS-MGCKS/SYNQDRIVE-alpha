@@ -1524,6 +1524,65 @@ flowchart TB
 
 ---
 
+## 32. Booking-Contract-Konsolidierung (Prompt 10 — V4.9.836)
+
+**Datum:** 2026-07-25  
+**Ziel:** Eine autoritative Booking-Statusdefinition; Operator ohne parallele Typen/Mapper/Overdue-Heuristiken.
+
+### 32.1 Zentrale Contracts
+
+| Schicht | Modul | Rolle |
+|---------|-------|-------|
+| Backend Prisma | `BookingStatus` | `PENDING` … `NO_SHOW` |
+| Backend Today API | `findTodaysPickups/Returns` | `status` (Display) + **`statusEnum`** (kanonisch) |
+| Backend Detail | `BookingDetailDto` | Dossier-Wahrheit |
+| Frontend Status | `bookingStatus.tsx` → `normalizeBookingStatus` | Einzige UI-Status-Normalisierung |
+| Frontend Today Row | `dashboardTypes.TodayBookingApiRow` | Shared Operator + Dashboard |
+| Frontend Contract | `today-booking-contract.ts` | Mapper, Terminal-Filter, Labels, Handover-Kind |
+| Frontend Actions | `bookingActionRules.getBookingActionMatrix` | Pickup/Return/No-Show/Cancel Gates |
+
+### 32.2 Entfernte Booking-Duplikate
+
+| Entfernt / konsolidiert | Ersetzt durch |
+|-------------------------|---------------|
+| `normalizeTodayRows` (Operator-Kopie) | `normalizeBookingList` (dashboardUtils) |
+| `OperatorActionGate` (eigenes Interface) | `BookingHandoverGate` type alias |
+| Scan `mapBookingRow` mit `Record<string,unknown>` casts | `mapBookingListRowToTodayRow` |
+| `mapScanBookingToDetailItem` hardcoded `isOverdue: false` | Backend/API-Feld + Status-basiertes Kind |
+| `canOperatorMarkNoShow` eigene Logik | `getBookingActionMatrix(detail).no_show` |
+| EndDate-only Kind-Heuristik (Scan) | `inferTodayHandoverKind` (Status/Protokoll-first) |
+
+### 32.3 Statusabweichungen (behoben)
+
+| ID | Vorher | Nachher |
+|----|--------|---------|
+| STATUS-OP-001 | No-Show: Frontend erlaubte `pending` | Nur `confirmed` + nach `startDate` (Backend `resolveNoShowTransition`) |
+| STATUS-OP-002 | Today API ohne `statusEnum` | `statusEnum: b.status` in Pickups/Returns |
+| STATUS-OP-003 | Scan zeigte stornierte/no-show in Listensuche | `filterOperatorOperationalTodayRows` in Suche |
+| STATUS-OP-004 | UUID als `vehicleName` möglich | `resolveTodayVehicleDisplay` filtert UUIDs |
+
+### 32.4 Tests
+
+| Datei | Abdeckung |
+|-------|-----------|
+| `today-booking-contract.test.ts` | Terminal-Filter, UUID-Labels, Handover-Kind, List-Mapper |
+| `operatorData.test.ts` | Pickup/Return/Scan-Mapper, Overdue aus API |
+| `bookingActionRules.test.ts` | No-Show-Gate Lifecycle-Parität |
+
+### 32.5 Geänderte Dateien
+
+- `frontend/src/rental/lib/today-booking-contract.ts` (neu)
+- `frontend/src/rental/lib/today-booking-contract.test.ts` (neu)
+- `frontend/src/operator/lib/operatorData.ts`
+- `frontend/src/operator/lib/operatorData.test.ts` (neu)
+- `frontend/src/operator/hooks/useOperatorScanSearch.ts`
+- `frontend/src/operator/bookings/operatorBooking.utils.ts`
+- `frontend/src/rental/components/booking-detail/bookingActionRules.ts`
+- `frontend/src/rental/components/booking-detail/bookingActionRules.test.ts` (neu)
+- `backend/src/modules/bookings/bookings.service.ts` (Today `statusEnum`)
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

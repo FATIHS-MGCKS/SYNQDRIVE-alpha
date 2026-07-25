@@ -39,6 +39,8 @@ Provider stack in `OperatorShell.tsx`: `OperatorShellProvider` → `OperatorDama
 
 **State ownership (V4.9.835):** Today pickups/returns + canonical `ALL_OPEN` tasks/summary live in `OperatorDataProvider`. Today feed buckets (`NOW`/`TODAY`/…) use `useTaskList` with in-flight dedup (`task-query-flight`). Default Tasks tab reuses `OperatorDataProvider.tasks` when filters are default. Fleet vehicles/health: `FleetProvider` + `useFleetMapStore` (org-guarded). Handover dialog state: `OperatorHandoverProvider`. Shell UI: `OperatorShellProvider`.
 
+**Booking contracts (V4.9.836):** Today rows use shared `TodayBookingApiRow` + `today-booking-contract.ts` (no operator-specific status enums). Status via `normalizeBookingStatus`; actions via `getBookingActionMatrix`.
+
 ## Device guard (UX only)
 
 `useIsOperatorDevice` treats viewports ≤1280px or coarse pointer as operator devices.  

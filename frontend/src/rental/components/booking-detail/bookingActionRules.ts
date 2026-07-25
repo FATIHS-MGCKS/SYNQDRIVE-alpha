@@ -44,10 +44,14 @@ export function getBookingActionMatrix(detail: BookingDetailDto): BookingActionM
   })();
 
   const no_show: BookingActionGate = (() => {
-    if (status !== 'confirmed' && status !== 'pending') {
-      return gate(false, 'No-Show nur bei bestätigten oder ausstehenden Buchungen möglich');
+    if (status !== 'confirmed') {
+      return gate(false, 'No-Show nur bei bestätigten Buchungen möglich');
     }
     if (hasPickup) return gate(false, 'Pickup bereits erfasst — No-Show nicht möglich');
+    const startMs = new Date(detail.core.startDate).getTime();
+    if (Number.isNaN(startMs) || startMs > Date.now()) {
+      return gate(false, 'No-Show erst nach geplantem Abholzeitpunkt möglich');
+    }
     return gate(true);
   })();
 

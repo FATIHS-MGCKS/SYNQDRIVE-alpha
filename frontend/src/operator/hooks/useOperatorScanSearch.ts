@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
+import {
+  isOperatorOperationalTodayRow,
+  mapBookingListRowToTodayRow,
+} from '../../rental/lib/today-booking-contract';
+import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
 import { useOperatorVehiclesData } from './useOperatorVehiclesData';
 import { isUuidLike } from '../lib/operatorRoutes';
 
@@ -14,29 +19,52 @@ export interface OperatorScanBookingHit {
   statusEnum?: string;
   startDate?: string;
   endDate?: string;
+  pickupProtocol?: unknown;
+  returnProtocol?: unknown;
+  isOverdue?: boolean;
+  pickupStationName?: string;
+  returnStationName?: string;
+  pickupStationId?: string;
+  returnStationId?: string;
+  stationLabel?: string;
+  station?: string;
+  /** Canonical today row when mapped from list/get API. */
+  todayRow?: TodayBookingApiRow;
 }
 
-function normalizeBookingRows(res: unknown): Record<string, unknown>[] {
-  if (Array.isArray(res)) return res as Record<string, unknown>[];
-  if (res && typeof res === 'object' && Array.isArray((res as { data?: unknown }).data)) {
-    return (res as { data: Record<string, unknown>[] }).data;
-  }
-  return [];
-}
+function mapBookingRow(row: unknown): OperatorScanBookingHit | null {
+  const todayRow = mapBookingListRowToTodayRow(row);
+  if (!todayRow?.id) return null;
 
-function mapBookingRow(row: Record<string, unknown>): OperatorScanBookingHit | null {
-  const bookingId = String(row.id ?? row.bookingId ?? '');
-  if (!bookingId) return null;
+  const { vehicleName, plate } = (() => {
+    const name = todayRow.vehicleName ?? '';
+    const license = todayRow.vehicleLicense ?? '';
+    return {
+      vehicleName: name,
+      plate: license,
+    };
+  })();
+
   return {
-    bookingId,
-    vehicleId: String(row.vehicleId ?? ''),
-    vehicleName: String(row.vehicleName ?? row.vehicleModel ?? '—'),
-    plate: String(row.vehicleLicense ?? row.licensePlate ?? row.plate ?? ''),
-    customerName: String(row.customerName ?? '—'),
-    status: String(row.status ?? '—'),
-    statusEnum: row.statusEnum ? String(row.statusEnum) : undefined,
-    startDate: row.startDate ? String(row.startDate) : undefined,
-    endDate: row.endDate ? String(row.endDate) : undefined,
+    bookingId: todayRow.id,
+    vehicleId: todayRow.vehicleId ?? '',
+    vehicleName,
+    plate,
+    customerName: todayRow.customerName ?? '',
+    status: todayRow.status ?? '',
+    statusEnum: todayRow.statusEnum,
+    startDate: todayRow.startDate,
+    endDate: todayRow.endDate,
+    pickupProtocol: todayRow.pickupProtocol,
+    returnProtocol: todayRow.returnProtocol,
+    isOverdue: todayRow.isOverdue,
+    pickupStationName: todayRow.pickupStationName,
+    returnStationName: todayRow.returnStationName,
+    pickupStationId: todayRow.pickupStationId,
+    returnStationId: todayRow.returnStationId,
+    stationLabel: todayRow.stationLabel,
+    station: todayRow.station,
+    todayRow,
   };
 }
 
@@ -70,23 +98,34 @@ export function useOperatorScanSearch(
     const run = async () => {
       try {
         const hits: OperatorScanBookingHit[] = [];
-        if (isUuidLike(trimmed)) {
+        const directLookup = isUuidLike(trimmed);
+
+        if (directLookup) {
           try {
             const direct = await api.bookings.get(orgId, trimmed);
-            const mapped = mapBookingRow(direct as Record<string, unknown>);
+            const mapped = mapBookingRow(direct);
             if (mapped) hits.push(mapped);
           } catch {
             /* fall through to list search */
           }
         }
+
         const listRes = await api.bookings.list(orgId, { search: trimmed, limit: 12 });
-        const rows = normalizeBookingRows(listRes);
+        const rows = Array.isArray(listRes)
+          ? listRes
+          : listRes && typeof listRes === 'object' && Array.isArray((listRes as { data?: unknown }).data)
+            ? (listRes as { data: unknown[] }).data
+            : [];
+
         for (const row of rows) {
           const mapped = mapBookingRow(row);
-          if (mapped && !hits.some((h) => h.bookingId === mapped.bookingId)) {
-            hits.push(mapped);
+          if (!mapped || hits.some((h) => h.bookingId === mapped.bookingId)) continue;
+          if (!directLookup && mapped.todayRow && !isOperatorOperationalTodayRow(mapped.todayRow)) {
+            continue;
           }
+          hits.push(mapped);
         }
+
         if (!cancelled) setBookings(hits);
       } catch (e) {
         if (!cancelled) {
@@ -116,7 +155,7 @@ export function useOperatorScanSearch(
     api.bookings
       .get(orgId, focusedBookingId)
       .then((row) => {
-        if (!cancelled) setFocusedBooking(mapBookingRow(row as Record<string, unknown>));
+        if (!cancelled) setFocusedBooking(mapBookingRow(row));
       })
       .catch(() => {
         if (!cancelled) setFocusedBooking(null);

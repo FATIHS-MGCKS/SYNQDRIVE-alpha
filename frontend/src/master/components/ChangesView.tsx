@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-booking-contracts-v49836-2026-07-25',
+    version: '4.9.836',
+    title: 'V4.9.836 — Operator App: zentrale Booking-Contracts (Prompt 10)',
+    summary: [
+      'Neues `today-booking-contract.ts`: kanonische Today-Row-Mapper, Status-Filter, Fahrzeug-/Kunden-/Stations-Labels.',
+      'Operator nutzt `normalizeBookingStatus`, `BookingHandoverGate`, `getBookingActionMatrix` — keine parallelen Statusdefinitionen.',
+      'Scan-Suche: `mapBookingListRowToTodayRow`, Terminal-Status-Filter, kein hardcoded `isOverdue: false`.',
+      'No-Show-Gate aligned mit Backend-Lifecycle (nur CONFIRMED + nach Startzeit).',
+      'Today-API liefert `statusEnum`; Contract-/Mapping-Tests (12).',
+    ],
+    reason:
+      'Production-Readiness Prompt 10: eine autoritative Booking-Statusdefinition, keine Operator-Schatten-DTOs.',
+    previousBehavior:
+      'Doppelte normalizeTodayRows, Scan-Mapper mit erfundenen Defaults, abweichendes No-Show-Gate (pending erlaubt), UUID als Fahrzeugname möglich.',
+    details:
+      'Audit §32. Zentrale Module: today-booking-contract.ts, bookingActionRules.ts, dashboardTypes TodayBookingApiRow.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:40:00.000Z',
+  },
+  {
     id: 'operator-app-provider-cache-v49835-2026-07-25',
     version: '4.9.835',
     title: 'V4.9.835 — Operator App: Provider-/Cache-Konsolidierung (Prompt 9)',
