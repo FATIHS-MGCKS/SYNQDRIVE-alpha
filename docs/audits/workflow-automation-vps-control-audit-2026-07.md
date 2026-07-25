@@ -4,7 +4,7 @@
 |------|------|
 | **Audit ID** | `workflow-automation-vps-control-audit-2026-07` |
 | **Prompt** | Phase 12, Prompt 52 von 54 |
-| **Prüfzeit (UTC)** | 2026-07-25T12:26–12:30Z |
+| **Prüfzeit (UTC)** | 2026-07-25T12:26–12:30Z (Pass 1) · **Re-Verifikation 16:22–16:24Z** (Pass 2, read-only) |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` / `https://app.synqdrive.eu` |
 | **Deploy-Release** | `20260725083109_data-auth-rc` |
 | **Deploy-Commit** | `6080dbd260b01e8e091f17687799fbb73bde290a` |
@@ -49,6 +49,7 @@ Der aktive Release-Commit (`6080dbd`) entspricht **nicht** dem Stand von Phase 1
 | Weitere Releases (neuer) | **WARN** | `20260725083117_v4994` existiert, aber **nicht** als `current` verlinkt |
 | `origin/main` Drift | **P0** | ~91 Commits hinter lokalem `main`; Phase-11-Workflow-Arbeit nicht live |
 | Prisma `migrate status` (Release) | **PASS** | „Database schema is up to date!“ (**280** Migrationen im **deployten** Schema) |
+| `_prisma_migrations` Failed-Retries | **P2 INFO** | 13 Migrationen mit historischen **fehlgeschlagenen** Versuchen (`finished_at IS NULL`), je 1 erfolgreicher Apply — kein aktiver Blocker laut `migrate status` |
 | Shadow-Migration `20260725140000` | **FAIL** | **Nicht** angewendet |
 | Rollout-Migration `20260725160000` | **FAIL** | **Nicht** angewendet |
 | Workflow-Audit-Migration `20260725140000_workflow_audit_*` | **FAIL** | `org_workflow_audit_events` **fehlt** |
@@ -67,7 +68,7 @@ Der aktive Release-Commit (`6080dbd`) entspricht **nicht** dem Stand von Phase 1
 
 | Prüfpunkt | Ergebnis | Details |
 |-----------|----------|---------|
-| PM2 `synqdrive` | **PASS** | `online`, Uptime ~3 h zum Audit-Zeitpunkt |
+| PM2 `synqdrive` | **PASS** | `online`, Uptime ~7 h (Pass 2: seit 08:36 UTC) |
 | PM2 Restarts (historisch) | **P0** | **3161** Restarts — hohe Instabilität in der Vergangenheit |
 | Separate Worker-PM2-Instanz | **INFO** | **Keine** — BullMQ-Consumer laufen im API-Prozess |
 | Doppelte Worker | **PASS** | Nur **1** `node … main.js` Prozess |
@@ -84,7 +85,7 @@ Der aktive Release-Commit (`6080dbd`) entspricht **nicht** dem Stand von Phase 1
 | `notification.delivery` | 0 | 0 | 0 | — |
 | `voice.webhook.process` | 0 | 0 | 0 | — |
 | `dimo.vehicle.sync` | 0 | 0 | 1 | 1 (zset) |
-| `battery.v2` | 0 | 0 | 0 | **23** (zset) |
+| `battery.v2` | 0 | 0 | 0 | **25** (zset, Pass 2) |
 
 **Queue-Lag Workflow:** `task.automation` **0** — kein akuter Backlog.  
 **Stale Jobs:** `battery.v2` failed=23 (nicht Workflow-kritisch, aber Ops-Hinweis).  
@@ -157,7 +158,8 @@ Boot-Log des laufenden Prozesses zeigt:
 
 | Prüfpunkt | Ergebnis | Details |
 |-----------|----------|---------|
-| `GET /api/v1/health` | **PASS** | HTTP 200, uptime ~3.8 h |
+| `GET /api/v1/health` | **PASS** | HTTP 200, uptime ~7.8 h (Pass 2: `28000` s) |
+| `GET /api/v1/metrics` | **INFO** | HTTP **401** ohne Bearer (METRICS_BEARER_TOKEN erwartet) |
 | `GET /api/v1/health/readiness` | **PASS** | postgres/redis/clickhouse/workers ok |
 | Prometheus | **PASS** | Container running (localhost:9090) |
 | Grafana | **PASS** | Container running (localhost:3000) |
@@ -190,8 +192,10 @@ Boot-Log des laufenden Prozesses zeigt:
 |-----------|----------|---------|
 | PM2 Logs | **INFO** | ~197 MB unter `/root/.pm2/logs/` |
 | PM2 logrotate | **PASS** | Modul `pm2-logrotate` online; rotierte Dateien vorhanden |
-| PII-Muster (Zählung, kein Export) | **P1** | `password`-Treffer: 42; `authorization`-Treffer: 225 im Out-Log — Stichprobe auf Redaction empfohlen |
-| Workflow-Fehler im Error-Log | **INFO** | Nicht exhaustiv ausgewertet (read-only Spot-Check) |
+| PII-Muster (Zählung, kein Export) | **P1** | `password`-Treffer: **42**; `authorization`-Treffer: **234** im Out-Log (Pass 2) — Stichprobe auf Redaction empfohlen |
+| Scheduler Error (alle 30 s) | **P1** | **1933×** `Error: Custom Id cannot contain :` im Error-Log (Pass 2) — Ursache: `buildTaskAutomationOutboxJobId` nutzt `task-automation:${outboxId}`; BullMQ 5.70.4 verbietet `:` in Custom-Job-IDs |
+| BatteryV2 `HANDLER_FAILED` | **P2** | Sporadisch im Error-Log (vehicle/org IDs fingerprinted) |
+| Workflow-Fehler im Error-Log | **INFO** | Keine Workflow-Runtime-Fehler (Feature nicht deployt) |
 
 ---
 
@@ -227,7 +231,8 @@ Boot-Log des laufenden Prozesses zeigt:
 | P1-4 | UFW inactive | Host-Firewall-Policy mit Hostinger abstimmen; minimal SSH/API hardenen |
 | P1-5 | `STRIPE_WEBHOOK_SECRET` empty | Billing-Webhook-Signatur konfigurieren oder Scope dokumentieren |
 | P1-6 | Log-Muster `password`/`authorization` | Log-Sanitization-Audit; keine Tokens in PM2-Logs |
-| P1-7 | `battery.v2` failed=23 | Ops-Review (nicht Workflow, aber Queue-Hygiene) |
+| P1-7 | Scheduler `Custom Id cannot contain :` (1933×/Log) | Job-ID-Sanitizer für `task.automation` deployen (`bullmq-job-id.sanitizer`); bis dahin Outbox-Scheduler wirft bei jedem Poll |
+| P1-8 | `battery.v2` failed=25 | Ops-Review (nicht Workflow, aber Queue-Hygiene) |
 
 ### P2 — Mittel / Verbesserungen
 
@@ -303,7 +308,8 @@ Boot-Log des laufenden Prozesses zeigt:
 5. **Monitoring** — Workflow-Metriken (Outbox, `task.automation` failed, Shadow-Deviation) + Alertmanager.
 6. **Secrets-Hardening** — `backend.env` chmod 600; `STRIPE_WEBHOOK_SECRET` klären.
 7. **Rollback-Drill** — Kill Switch + Stage `DISABLED` testen (ohne Kundenkontakt).
-8. **Queue-Hygiene** — `battery.v2` failed Jobs reviewen (read-only Analyse zuerst).
+8. **Task-Automation-Scheduler** — BullMQ Job-ID ohne `:` deployen (behebt 30-s-Error-Spam).
+9. **Queue-Hygiene** — `battery.v2` failed Jobs reviewen (read-only Analyse zuerst).
 
 ---
 
