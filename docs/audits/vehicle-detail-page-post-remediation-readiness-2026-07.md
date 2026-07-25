@@ -236,11 +236,11 @@ Pre-deploy backup: `db-pre-deploy-20260724122936.sql.gz`
 |----|------|----------|--------|
 | VD-RT-003 | Background tab polling pause | P2 | **behoben** (V4.9.808) |
 | VD-MAP-ATTR | Mapbox attribution control | P2 | **behoben** (V4.9.808) |
-| VD-A11Y-001 | Cleaning/status modals not Radix Dialog | P2 | Follow-up |
-| VD-A11Y-002 | Hardcoded EN tab labels | P2 | i18n follow-up |
+| VD-A11Y-001 | Cleaning/status modals not Radix Dialog | P2 | **behoben** (V4.9.810) |
+| VD-A11Y-002 | Hardcoded EN tab labels | P2 | **behoben** (V4.9.810) |
 | VPS-RPXY-001 | HSTS header absent | P2 | **behoben** (V4.9.809) |
-| VPS-RES-006 | IAM outbox Prisma errors in PM2 log | P2 | Investigate background job failures |
-| DEPLOY-SMOKE | No authenticated prod UI soak with real DIMO | P2 | Operator verification in test org |
+| VPS-RES-006 | IAM outbox Prisma errors in PM2 log | P2 | **behoben** (V4.9.810) |
+| DEPLOY-SMOKE | No authenticated prod UI soak with real DIMO | P2 | **Runbook** — `docs/runbooks/vehicle-detail-production-smoke.md` |
 
 ---
 

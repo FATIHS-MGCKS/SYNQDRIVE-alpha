@@ -417,6 +417,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-24T12:00:00.000Z',
   },
   {
+    id: 'vehicle-detail-open-items-v49810-2026-07-25',
+    version: '4.9.810',
+    title: 'V4.9.810 — VD A11y modals/i18n + IAM outbox schema fix + prod smoke runbook',
+    summary: [
+      'IAM outbox: Prisma `status` column mapping fixed (`processing_status` drift → VPS-RES-006 errors every 15s).',
+      'Vehicle Detail: cleaning/status/station confirm dialogs → Radix AlertDialog (VD-A11Y-001).',
+      'Tab labels wired to i18n (`vehicle.*` / `vehicleDetail.tab.*`) — DE/EN (VD-A11Y-002).',
+      'Runbook: `docs/runbooks/vehicle-detail-production-smoke.md` for production DIMO soak (DEPLOY-SMOKE).',
+    ],
+    reason: 'Close remaining P2 follow-ups from post-remediation audit; fix production IAM outbox poll failures.',
+    previousBehavior: 'Custom div modals; hardcoded EN tabs; IAM scheduler Prisma column mismatch on prod DB.',
+    details:
+      'schema.prisma IamAuditOutbox; VehicleDetailConfirmDialogs.tsx; VehicleDetailTabBar i18n; production smoke checklist.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail / IAM',
+    createdAt: '2026-07-25T07:45:00.000Z',
+  },
+  {
     id: 'vehicle-detail-ci-nginx-hardening-v49809-2026-07-24',
     version: '4.9.809',
     title: 'V4.9.809 — Nginx HSTS/metrics hardening + backend CI typecheck fixes',

@@ -1022,6 +1022,24 @@ export const en = {
   'vehicle.currentStatus': 'Current Status',
   'vehicle.cleaningStatus': 'Cleaning Status',
   'vehicle.station': 'Station',
+  'vehicleDetail.tab.health': 'Health',
+  'vehicleDetail.tab.requirements': 'Requirements',
+  'vehicleDetail.tablistAria': 'Vehicle detail tabs',
+  'vehicleDetail.cleaningModal.title': 'Create cleaning task',
+  'vehicleDetail.cleaningModal.description':
+    'Cleaning status will be set to "Needs Cleaning" and a real cleaning task will be created for this vehicle — unless an open task already exists.',
+  'vehicleDetail.cleaningModal.confirm': 'Confirm',
+  'vehicleDetail.cleaningModal.confirmBusy': 'Saving…',
+  'vehicleDetail.statusModal.title': 'Change vehicle status',
+  'vehicleDetail.statusModal.manualBlock':
+    'You are about to manually block this vehicle. It will no longer be available for bookings until you change the status back to "Available".',
+  'vehicleDetail.statusModal.maintenance':
+    'You are about to set this vehicle to maintenance mode. It will be unavailable for bookings and a maintenance task may be required.',
+  'vehicleDetail.statusModal.confirm': 'Confirm',
+  'vehicleDetail.stationModal.title': 'Relocate vehicle',
+  'vehicleDetail.stationModal.description':
+    'Are you sure you want to relocate this vehicle from {from} to {to}? This action will update the vehicle\'s location in the system.',
+  'vehicleDetail.stationModal.confirm': 'Confirm relocation',
 
   // ─── Bookings ───
   'bookings.title': 'Bookings',

@@ -1123,6 +1123,24 @@ export const de: Record<TranslationKey, string> = {
   'vehicle.currentStatus': 'Aktueller Status',
   'vehicle.cleaningStatus': 'Reinigungsstatus',
   'vehicle.station': 'Standort',
+  'vehicleDetail.tab.health': 'Gesundheit',
+  'vehicleDetail.tab.requirements': 'Anforderungen',
+  'vehicleDetail.tablistAria': 'Fahrzeugdetail-Bereiche',
+  'vehicleDetail.cleaningModal.title': 'Reinigungsaufgabe anlegen',
+  'vehicleDetail.cleaningModal.description':
+    'Der Reinigungsstatus wird auf „Needs Cleaning“ gesetzt und eine echte Reinigungsaufgabe für dieses Fahrzeug erstellt — sofern noch keine offene Aufgabe existiert.',
+  'vehicleDetail.cleaningModal.confirm': 'Bestätigen',
+  'vehicleDetail.cleaningModal.confirmBusy': 'Wird gespeichert…',
+  'vehicleDetail.statusModal.title': 'Fahrzeugstatus ändern',
+  'vehicleDetail.statusModal.manualBlock':
+    'Das Fahrzeug wird manuell gesperrt. Es ist bis zur Rückstellung auf „Available“ nicht mehr buchbar.',
+  'vehicleDetail.statusModal.maintenance':
+    'Das Fahrzeug wird in den Wartungsmodus gesetzt. Es ist nicht buchbar; ggf. ist eine Wartungsaufgabe erforderlich.',
+  'vehicleDetail.statusModal.confirm': 'Bestätigen',
+  'vehicleDetail.stationModal.title': 'Fahrzeug umsetzen',
+  'vehicleDetail.stationModal.description':
+    'Möchten Sie dieses Fahrzeug von {from} nach {to} verlegen? Der Standort wird im System aktualisiert.',
+  'vehicleDetail.stationModal.confirm': 'Umsetzung bestätigen',
 
   // ─── Bookings ───
   'bookings.title': 'Buchungen',
