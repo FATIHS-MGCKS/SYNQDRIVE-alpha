@@ -10740,6 +10740,7 @@ model OrgWorkflow {
   lastTriggeredAt DateTime?      @map("last_triggered_at")
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
+  systemMetadata  Json?          @map("system_metadata")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -10797,6 +10798,7 @@ model OrgWorkflowActionRun {
   requiresApproval Boolean                 @default(false) @map("requires_approval")
   approvedByUserId String?                 @map("approved_by_user_id")
   approvedAt       DateTime?               @map("approved_at")
+  policySnapshot   Json?                   @map("policy_snapshot")
   startedAt        DateTime?               @map("started_at")
   finishedAt       DateTime?               @map("finished_at")
   createdAt        DateTime                @default(now()) @map("created_at")
@@ -11128,6 +11130,7 @@ enum OutboundEmailSourceType {
   PAYMENT_REFUND
   PAYMENT_DISPUTE
   BILLING_EMAIL
+  WORKFLOW
 }
 
 enum OutboundEmailStatus {

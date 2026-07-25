@@ -1,0 +1,1 @@
+ALTER TYPE "OutboundEmailSourceType" ADD VALUE IF NOT EXISTS 'WORKFLOW';
