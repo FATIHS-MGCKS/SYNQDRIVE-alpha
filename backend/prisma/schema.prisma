@@ -10824,7 +10824,12 @@ enum WorkflowDefinitionLifecycleStatus {
 enum WorkflowVersionStatus {
   DRAFT
   PUBLISHED
+  ACTIVE
+  DISABLED
+  ARCHIVED
+  /// @deprecated Superseded by DISABLED — retained for migration compatibility
   RETIRED
+  /// @deprecated Use definition remediation flags — retained for migration compatibility
   INVALID
 }
 
@@ -10939,6 +10944,9 @@ enum WorkflowTimerStatus {
 enum WorkflowRevisionType {
   DRAFT_SAVED
   PUBLISHED
+  ACTIVATED
+  DEACTIVATED
+  ARCHIVED
   RETIRED
   INVALIDATED
   REMEDIATION_FLAGGED
@@ -10970,6 +10978,8 @@ model WorkflowDefinition {
   isTemplate            Boolean                           @default(false) @map("is_template")
   draftVersionId        String?                           @unique @map("draft_version_id")
   publishedVersionId    String?                           @unique @map("published_version_id")
+  activeVersionId       String?                           @unique @map("active_version_id")
+  lockVersion           Int                               @default(1) @map("lock_version")
   versionCounter        Int                               @default(0) @map("version_counter")
   triggerCount          Int                               @default(0) @map("trigger_count")
   lastTriggeredAt       DateTime?                         @map("last_triggered_at")
@@ -10989,6 +10999,7 @@ model WorkflowDefinition {
   updatedByUser    User?                 @relation("WorkflowDefinitionUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   draftVersion     WorkflowVersion?      @relation("WorkflowDraftVersion", fields: [draftVersionId], references: [id], onDelete: SetNull)
   publishedVersion WorkflowVersion?      @relation("WorkflowPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+  activeVersion    WorkflowVersion?      @relation("WorkflowActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
   versions         WorkflowVersion[]     @relation("WorkflowDefinitionVersions")
   runs             WorkflowRun[]
   revisions        WorkflowRevision[]
@@ -11013,7 +11024,10 @@ model WorkflowVersion {
   supersedesVersionId  String?               @map("supersedes_version_id")
   publishedByUserId    String?               @map("published_by_user_id")
   publishedAt          DateTime?             @map("published_at")
+  activatedAt          DateTime?             @map("activated_at")
+  disabledAt           DateTime?             @map("disabled_at")
   retiredAt            DateTime?             @map("retired_at")
+  archivedAt           DateTime?             @map("archived_at")
   invalidatedAt        DateTime?             @map("invalidated_at")
   createdAt            DateTime              @default(now()) @map("created_at")
   updatedAt            DateTime              @updatedAt @map("updated_at")
@@ -11025,6 +11039,7 @@ model WorkflowVersion {
   supersededBy           WorkflowVersion[]        @relation("WorkflowVersionSupersedes")
   draftForDefinition     WorkflowDefinition?      @relation("WorkflowDraftVersion")
   publishedForDefinition WorkflowDefinition?      @relation("WorkflowPublishedVersion")
+  activeForDefinition    WorkflowDefinition?      @relation("WorkflowActiveVersion")
   trigger                WorkflowTrigger?
   scope                  WorkflowScope?
   conditionGroups        WorkflowConditionGroup[]

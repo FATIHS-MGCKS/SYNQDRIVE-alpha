@@ -2383,6 +2383,110 @@ export interface WorkflowTestResultDto {
   message?: string;
 }
 
+export type WorkflowVersionStatus =
+  | 'DRAFT'
+  | 'PUBLISHED'
+  | 'ACTIVE'
+  | 'DISABLED'
+  | 'ARCHIVED'
+  | 'RETIRED'
+  | 'INVALID';
+
+export type WorkflowDefinitionLifecycleStatus = 'ACTIVE' | 'ARCHIVED';
+
+export interface WorkflowDefinitionLifecyclePointers {
+  draftVersionId: string | null;
+  publishedVersionId: string | null;
+  activeVersionId: string | null;
+  lockVersion: number;
+}
+
+export interface WorkflowVersionSummaryDto {
+  id: string;
+  versionNumber: number;
+  status: WorkflowVersionStatus;
+  contentHash: string | null;
+  publishedAt: string | null;
+  activatedAt: string | null;
+  disabledAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+}
+
+export interface WorkflowDefinitionDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string | null;
+  category: string;
+  slug: string | null;
+  lifecycleStatus: WorkflowDefinitionLifecycleStatus;
+  draftVersionId: string | null;
+  publishedVersionId: string | null;
+  activeVersionId: string | null;
+  versionCounter: number;
+  lockVersion: number;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lifecycle: WorkflowDefinitionLifecyclePointers;
+  draftVersion?: WorkflowVersionSummaryDto | null;
+  publishedVersion?: WorkflowVersionSummaryDto | null;
+  activeVersion?: WorkflowVersionSummaryDto | null;
+  versions?: WorkflowVersionSummaryDto[];
+}
+
+export interface WorkflowVersionDetailDto extends WorkflowVersionSummaryDto {
+  organizationId: string;
+  workflowDefinitionId: string;
+  immutable: boolean;
+  graph: {
+    trigger: WorkflowTriggerDto;
+    scope?: WorkflowScopeDto;
+    conditions: WorkflowConditionDto[];
+    actions: WorkflowActionDto[];
+  };
+}
+
+export interface WorkflowDefinitionCreatePayload {
+  name: string;
+  description?: string;
+  category: string;
+  slug?: string;
+  trigger: WorkflowTriggerDto;
+  conditions?: WorkflowConditionDto[];
+  actions: WorkflowActionDto[];
+  scope?: WorkflowScopeDto;
+}
+
+export interface WorkflowDefinitionMetadataUpdatePayload {
+  name?: string;
+  description?: string;
+  slug?: string;
+  category?: string;
+}
+
+export interface WorkflowDraftUpdatePayload {
+  expectedLockVersion: number;
+  trigger?: WorkflowTriggerDto;
+  conditions?: WorkflowConditionDto[];
+  actions?: WorkflowActionDto[];
+  scope?: WorkflowScopeDto;
+  changeReason?: string;
+}
+
+export interface WorkflowLifecycleReasonPayload {
+  changeReason?: string;
+}
+
+export interface WorkflowActivatePayload extends WorkflowLifecycleReasonPayload {
+  versionId: string;
+}
+
+export interface WorkflowCreateDraftPayload extends WorkflowLifecycleReasonPayload {
+  sourceVersionId?: string;
+}
+
 // ── Account Self-Service (Settings → Account Information) ───────────────────
 export type AccountNotificationCategory =
   | 'BOOKINGS'
@@ -4853,6 +4957,34 @@ export const api = {
       post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, {}),
     rejectActionRun: (orgId: string, actionRunId: string, reason?: string) =>
       post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/reject`, { reason }),
+  },
+  workflowDefinitions: {
+    list: (orgId: string) =>
+      get<WorkflowDefinitionDto[]>(`/organizations/${orgId}/workflow-definitions`),
+    get: (orgId: string, definitionId: string) =>
+      get<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}`),
+    create: (orgId: string, data: WorkflowDefinitionCreatePayload) =>
+      post<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions`, data),
+    updateMetadata: (orgId: string, definitionId: string, data: WorkflowDefinitionMetadataUpdatePayload) =>
+      patch<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}`, data),
+    updateDraft: (orgId: string, definitionId: string, data: WorkflowDraftUpdatePayload) =>
+      patch<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}/draft`, data),
+    publish: (orgId: string, definitionId: string, data?: WorkflowLifecycleReasonPayload) =>
+      post<WorkflowVersionDetailDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}/publish`, data ?? {}),
+    activate: (orgId: string, definitionId: string, data: WorkflowActivatePayload) =>
+      post<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}/activate`, data),
+    deactivate: (orgId: string, definitionId: string, data?: WorkflowLifecycleReasonPayload) =>
+      post<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}/deactivate`, data ?? {}),
+    archive: (orgId: string, definitionId: string, data?: WorkflowLifecycleReasonPayload) =>
+      post<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}/archive`, data ?? {}),
+    createDraft: (orgId: string, definitionId: string, data?: WorkflowCreateDraftPayload) =>
+      post<WorkflowDefinitionDto>(`/organizations/${orgId}/workflow-definitions/${definitionId}/draft`, data ?? {}),
+    listVersions: (orgId: string, definitionId: string) =>
+      get<WorkflowVersionSummaryDto[]>(`/organizations/${orgId}/workflow-definitions/${definitionId}/versions`),
+    getVersion: (orgId: string, definitionId: string, versionId: string) =>
+      get<WorkflowVersionDetailDto>(
+        `/organizations/${orgId}/workflow-definitions/${definitionId}/versions/${versionId}`,
+      ),
   },
   billing: {
     subscriptions: () => get<any[]>('/admin/billing/subscriptions'),

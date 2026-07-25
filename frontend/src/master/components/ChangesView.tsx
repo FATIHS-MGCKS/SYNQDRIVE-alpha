@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-lifecycle-v49818-2026-07-26',
+    version: '4.9.818',
+    title: 'V4.9.818 — Workflow definition/version lifecycle API (Phase 3 Prompt 11)',
+    summary: [
+      '**Lifecycle**: `DRAFT` → `PUBLISHED` → `ACTIVE` / `DISABLED` / `ARCHIVED` on canonical `workflow_definitions` + `workflow_versions`.',
+      '**Service**: `WorkflowDefinitionLifecycleService` — draft edits (optimistic `lockVersion`), publish validation (trigger/scope/conditions/actions/capabilities), atomic active-version swap, deactivate, archive, branch-new-draft.',
+      '**API**: `/organizations/:orgId/workflow-definitions` — CRUD metadata, draft patch, publish/activate/deactivate/archive, version list/detail. `OrgScopingGuard` + `RolesGuard`.',
+      '**Audit**: every transition writes `WorkflowRevision` (`DRAFT_SAVED`, `PUBLISHED`, `ACTIVATED`, `DEACTIVATED`, `ARCHIVED`).',
+      '**Migration**: `20260726100000_workflow_lifecycle` — `active_version_id`, `lock_version`, version timestamps, partial unique index one ACTIVE per definition.',
+      '**Tests**: `workflow-definition-lifecycle.service.spec.ts` — draft/publish/immutability/activate/swap/deactivate/archive/tenant/parallel publish/invalid action.',
+      '**Frontend**: `api.workflowDefinitions.*` client types (no UI redesign). Legacy `/workflows` unchanged.',
+    ],
+    reason:
+      'Canonical workflow schema needed a production-safe definition/version lifecycle before engine cutover and pause-and-resume.',
+    previousBehavior:
+      'Only legacy `org_workflows` CRUD; no versioned draft/publish/activate lifecycle on `workflow_*` tables.',
+    details:
+      'workflow-definition-lifecycle.service.ts, workflow-definitions.controller.ts, workflow-publish.validator.ts, workflow-version-graph.service.ts, migration 20260726100000_workflow_lifecycle, frontend api.ts types.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-26T10:00:00.000Z',
+  },
+  {
     id: 'workflow-canonical-prisma-v49817-2026-07-25',
     version: '4.9.817',
     title: 'V4.9.817 — Workflow canonical Prisma schema + additive migration',

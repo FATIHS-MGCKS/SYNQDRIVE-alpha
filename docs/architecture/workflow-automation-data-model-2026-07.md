@@ -771,6 +771,31 @@ Prisma cannot enforce row-level immutability after publish. Enforcement points:
 2. `WorkflowVersion.definitionSnapshot` written once at publish.
 3. Optional DB trigger (future) — not in this migration to avoid lock risk on large fleets.
 
+### Definition/version lifecycle (V4.9.818 — implemented)
+
+| Version status | Meaning | Editable graph? | Can trigger new runs? |
+|----------------|---------|-----------------|----------------------|
+| `DRAFT` | Work in progress | Yes (single draft per definition) | No |
+| `PUBLISHED` | Validated, immutable snapshot | No | No (until activated) |
+| `ACTIVE` | Live configuration | No — branch new draft | Yes (engine cutover pending) |
+| `DISABLED` | Formerly active, stopped | No | No |
+| `ARCHIVED` | Retired definition/version | No | No |
+
+**Rules enforced in `WorkflowDefinitionLifecycleService`:**
+
+- Edits only on the current `DRAFT` version (`PATCH .../draft` + `expectedLockVersion`).
+- Publish validates trigger, scope, conditions, actions, and capability registry; writes `definitionSnapshot`.
+- Activation only from `PUBLISHED`; atomically disables prior `ACTIVE` version and sets `workflow_definitions.active_version_id`.
+- Deactivate clears `active_version_id` and sets version `DISABLED` — running runs are not cancelled.
+- Archive sets definition `lifecycleStatus=ARCHIVED`, clears draft/active pointers, archives open versions.
+- Active workflow changes require `POST .../draft` (branches from active/published source, increments `versionCounter`).
+- Every transition appends `WorkflowRevision` (`DRAFT_SAVED`, `PUBLISHED`, `ACTIVATED`, `DEACTIVATED`, `ARCHIVED`).
+- Approval-gated workflows may publish but cannot activate until Phase 5 pause-and-resume.
+
+**Migration:** `20260726100000_workflow_lifecycle` — enum extensions, `active_version_id`, `lock_version`, `activated_at`/`disabled_at`/`archived_at`, partial unique index `workflow_versions_one_active_per_definition`.
+
+**REST (parallel to legacy `/workflows`):** `/organizations/:orgId/workflow-definitions` — see `WorkflowDefinitionsController`.
+
 ### JSON field bindings (implemented)
 
 | Field | Model | Purpose | PII / secrets |
