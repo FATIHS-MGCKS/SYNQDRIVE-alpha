@@ -20,7 +20,7 @@
 |-----------|------|------|
 | Module keys | `backend/src/shared/auth/permission.constants.ts` | `operator-app` added |
 | Membership JSON | `OrganizationMembership.permissions` | Storage (unchanged shape) |
-| Guard | `PermissionsGuard` + `OrgScopingGuard` | Enforcement |
+| Guard | `PermissionsGuard` + `OrgScopingGuard` + `VehicleOwnershipGuard` | Enforcement |
 | Effective access | `effective-access-engine.ts` | Station scope, overrides |
 | Station filter | `station-access.service.ts` | Resource station checks |
 | Task actions | `task-permission.constants.ts` | Pattern reference |
