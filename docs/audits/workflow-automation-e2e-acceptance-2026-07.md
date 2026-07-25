@@ -1,73 +1,88 @@
-# Workflow Automation — End-to-End Production Acceptance — 2026-07
+# SynqDrive Workflow Automation — E2E Production Acceptance — 2026-07
 
 | Feld | Wert |
 |------|------|
 | **Audit ID** | `workflow-automation-e2e-acceptance-2026-07` |
 | **Prompt** | Phase 12, Prompt 53 von 54 |
-| **Prüfzeit (UTC)** | 2026-07-25T12:30–12:34Z |
-| **Voraussetzung** | [workflow-automation-vps-control-audit-2026-07.md](./workflow-automation-vps-control-audit-2026-07.md) |
+| **Prüfzeit (UTC)** | 2026-07-25T16:27–16:31Z |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` / `https://app.synqdrive.eu` |
-| **Deploy-Commit (VPS)** | `6080dbd2` (~91 Commits hinter Repo-`main`) |
-| **Repo-Teststand** | `main` / Workflow-Automation-Verify auf Workspace-HEAD |
-| **Test-Org (VPS)** | `VOICE_E2E_ORG_ID` gesetzt (Präfix `org-voic…`, **1** Org-Row, **0** Workflows) |
-| **Sandbox** | `WHATSAPP_SIMULATE_ENABLED=true`, `VOICE_E2E_ALLOW_LIVE_CALLS=false` |
-| **Kundenkontakt** | **Keine echten Kunden kontaktiert** — keine Live-PSTN, keine Prod-Workflow-Triggers mit Kundendaten |
-| **Gesamtverdict** | **CONDITIONAL FAIL** — CI-Harness **PASS**; **VPS Production E2E BLOCKED** |
+| **VPS-Deploy-Commit** | `6080dbd260b01e8e091f17687799fbb73bde290a` (`20260725083109_data-auth-rc`) |
+| **Repo-Test-Commit** | `cursor/workflow-runtime-rollout-2a81` (Phase-11-Workflow-Stand, **nicht** auf VPS) |
+| **Voraussetzung** | [workflow-automation-vps-control-audit-2026-07.md](./workflow-automation-vps-control-audit-2026-07.md) |
+| **Kontakt-Policy** | **Keine echten Kunden kontaktiert** — nur dedizierte Test-/Simulate-Konfiguration und automatisierte Harness-Tests |
+| **Gesamtverdict** | **FAIL (Production E2E)** — **PASS (Repo CI Harness)** auf Feature-Branch |
 
 ---
 
 ## Executive Summary
 
-Die **automatisierte Acceptance-Suite** (229 Backend-Unit + 66 Integration + 45 Frontend = **340 Tests**, alle **PASS**) deckt die Pflichtszenarien auf **Harness-/Sandbox-Ebene** ab (dedizierte Fixture-Orgs `org-a`/`org-b`, In-Memory-Outbox, Contract-Mocks, keine Live-Provider).
+Die **Production-VPS** kann die 12 Pflichtszenarien der neuen Workflow Runtime **nicht** End-to-End ausführen: Phase-11-Features (Shadow, Rollout, Migration Bridge, erweiterte Audit-Tabellen) sind **nicht deployt** (`CONDITIONAL NO-GO` aus Prompt 52). Legacy Task Automation läuft; `org_workflows` / `org_workflow_runs` sind leer.
 
-Eine **vollständige Production-E2E-Ausführung auf der VPS** ist zum Prüfzeitpunkt **nicht möglich**, weil:
+Die **automatisierte Akzeptanz** auf dem Repo-Stand `cursor/workflow-runtime-rollout-2a81` ist **grün**:
 
-1. Phase-11-Workflow-Runtime (Shadow, Rollout, Migration-Bridge) **nicht deployt** ist.
-2. **0** `org_workflows` / **0** `org_workflow_runs` auf Prod (inkl. Test-Org).
-3. `VOICE_E2E_ALLOW_LIVE_CALLS=false` — Voice-Szenario nur als Security/Contract, nicht als Live-Call.
-4. `EMAIL_SIMULATE_ENABLED=false` auf VPS — kein risikofreier E-Mail-Live-Test.
+| Suite | Ergebnis |
+|-------|----------|
+| Backend unit/service (`npm run test:workflow-automation`) | **229 PASS** |
+| Backend integration | **66 PASS** |
+| Backend security/audit/maker-checker | **33 PASS** |
+| Shadow mode | **7 PASS** |
+| Runtime rollout + kill switch + bridge | **24 PASS** |
+| Frontend workflow-automation Vitest | **45 PASS** |
+| **Gesamt (dedupliziert)** | **~404 PASS** |
 
-**Empfehlung:** Nach Deploy von Phase 11 + expliziter Sandbox-Env (`EMAIL_SIMULATE_ENABLED=true`) die VPS-E2E-Matrix wiederholen.
+**Empfehlung:** Production-E2E erst nach Deploy Phase 11 + Migrationen + Env-Konfiguration wiederholen. Bis dahin gilt Repo-CI als Nachweis der fachlichen Korrektheit; VPS nur für Legacy-Pfad und Sicherheits-Gates.
 
----
+### Testorganisation & Sandbox (Production)
 
-## Testmethodik
-
-| Tier | Beschreibung | Ausgeführt |
-|------|--------------|------------|
-| **A — CI Harness** | `npm run test:workflow-automation:verify` (Backend + Frontend), dedizierte Fixture-Tenants, keine Netzwerk-Provider | **JA** |
-| **B — VPS Infra Smoke** | Read-only Queue/DB/Flags, Auth-Guard-Probes, Voice-Preflight Security-Bundle | **JA** |
-| **C — VPS Live Workflow E2E** | API-Trigger mit Test-Org, Timer, WhatsApp, Voice PSTN | **NEIN** (blockiert) |
-
-**Befehle (Tier A):**
-
-```bash
-cd backend && npm run test:workflow-automation:verify   # 295 Tests PASS
-cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
-```
+| Ressource | Konfiguration | Verwendung |
+|-----------|---------------|------------|
+| `VOICE_E2E_ORG_ID` | **SET** in `backend.env` | Dedizierte Voice-Staging-Org (Präfix `org-voic…`, 1 Task in DB) |
+| `WHATSAPP_SIMULATE_ENABLED` | **SET** | Kein echter WhatsApp-Versand |
+| `EMAIL_SIMULATE_ENABLED` | **SET** | Kein echter E-Mail-Versand |
+| `VOICE_E2E_ALLOW_LIVE_CALLS` | **SET** | Live-Calls nur mit Allowlist; **kein Testanruf ausgeführt** |
+| Produktive Kunden-Orgs | `faa710c9…` (36 Tasks) | **Nicht** für E2E verwendet — nur aggregierte Zählung |
 
 ---
 
-## Messwerte (Tier A + B)
+## Messwerte (Production VPS, read-only)
 
-| Metrik | Tier A (Harness) | Tier B (VPS Prod) |
-|--------|------------------|-------------------|
-| Test-Suite-Laufzeit (Backend unit) | ~54 s (229 Tests) | — |
-| Integration-Harness | ~42 s (66 Tests) | — |
-| Frontend | ~0.9 s (45 Tests) | — |
-| `workflow-engine.production.spec.ts` | 184 ms / 7 Tests | N/A |
-| `task-automation-outbox.spec.ts` | 18.8 s / 10 Tests | N/A |
-| `workflow-runtime-rollout.spec.ts` | 15.5 s / 24 Tests | Feature nicht auf VPS |
-| Event-to-Match-Latenz | Nicht instrumentiert (In-Memory) | N/A |
-| Match-to-Action-Latenz | Nicht instrumentiert | N/A |
-| Timer-Abweichung | Deterministisch (`BOOKING_TASK_FIXED_NOW`) | N/A |
-| Queue-Lag `task.automation` | 0 (Mock) | **0** |
-| Retry-Dauer (Outbox) | Exponential backoff in Spec | N/A |
-| Delivery Status | Contract mock | N/A |
-| Duplicate Rate | Idempotency Specs PASS | **0** Runs |
-| Dead-Letter-Rate (Outbox) | Spec: DLQ after max attempts | **0** Outbox-Rows |
-| Worker Recovery | `recoverStaleProcessing` PASS | Workers enabled (readiness) |
-| Fehlercodes | Siehe Szenarien | Health 200 |
+| Metrik | Wert | Quelle |
+|--------|------|--------|
+| Event-to-Match-Latenz | **n/a** | 0 Workflow-Runs; Engine nicht aktiv |
+| Match-to-Action-Latenz | **n/a** | 0 Workflow-Action-Runs |
+| Timer-Abweichung | **n/a** | Keine Workflow-Timer-Tabelle auf VPS |
+| Queue-Lag `task.automation` | **0** | Redis `LLEN bull:task.automation:wait` |
+| Retry-Dauer (Outbox) | **n/a** | 0 Outbox-Einträge |
+| Delivery Status | **n/a** | Kein Workflow-Delivery auf Prod |
+| Duplicate Rate | **n/a** | Keine Events ausgelöst |
+| Dead-Letter-Rate (Outbox) | **0 %** | 0 Zeilen in `task_automation_outbox` |
+| Worker Recovery | **PASS** | Readiness `workersEnabled: true` |
+| Scheduler-Fehlercode | `Custom Id cannot contain :` | BullMQ Job-ID mit `:` (P1 aus VPS-Audit) |
+| API Health Latenz | **~60 ms** | `GET /api/v1/health` HTTPS |
+| Unauth Workflow API | **401** | Tenant-Guard aktiv |
+
+---
+
+## Szenario-Matrix (12 Pflichtszenarien)
+
+Legende: **Prod** = Live-VPS E2E · **CI** = Repo-Harness auf Feature-Branch
+
+| # | Szenario | Prod | CI | Gesamt |
+|---|----------|------|-----|--------|
+| 1 | Pickup 30 min überfällig | BLOCKED | PASS | **FAIL** |
+| 2 | Kritischer Fahrzeugfehler | BLOCKED | PARTIAL | **FAIL** |
+| 3 | Provider-Ausfall | BLOCKED | PASS | **FAIL** |
+| 4 | Doppelte Events | BLOCKED | PASS | **FAIL** |
+| 5 | Prozessneustart | BLOCKED | PASS | **FAIL** |
+| 6 | Cross-Tenant-Manipulation | PASS | PASS | **PASS** |
+| 7 | Dry Run | BLOCKED | PASS | **FAIL** |
+| 8 | Quiet Hours / Opt-out | BLOCKED | PARTIAL | **FAIL** |
+| 9 | Voice Call | BLOCKED | N/A | **FAIL** |
+| 10 | Dead Letter & Replay | BLOCKED | PASS | **FAIL** |
+| 11 | Kill Switch | BLOCKED | PASS | **FAIL** |
+| 12 | Legacy vs neue Engine | PASS | PASS | **PASS** |
+
+**Bestanden:** 2 · **Fehlgeschlagen/Blockiert:** 10
 
 ---
 
@@ -75,14 +90,15 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Fixture-Org `org-booking-task-a`; Booking `CONFIRMED`; Pickup-Zeit +30 min; `BOOKING_TASK_FIXED_NOW` |
-| **Schritte** | (A) `syncBookingPickupTiming` zweimal; (A) `computeBookingPickupTiming` bei +30 min; (B) VPS Queue/Outbox-Snapshot |
-| **Erwartet** | Overdue erkannt; Priority `HIGH`; kein Duplikat-Task; Timer/Re-Check idempotent; WhatsApp/Webhook/Admin nur mit Sandbox-Provider |
-| **Tatsächlich (A)** | Priority `HIGH`, genau 1 Pickup-Task nach Doppel-Sync; Timing-Util `isOverdue=true` |
-| **Tatsächlich (B)** | Kein Live-Trigger; `task.automation` Queue 0; Outbox 0 |
-| **Belege** | `booking-task.pipeline.integration.spec.ts` („escalates overdue pickup…"); `workflow-production-readiness.spec.ts` Szenario 13 |
-| **PASS/FAIL** | **PASS (A)** / **BLOCKED (B)** — WhatsApp/Status-Webhook/Admin-Fallback nicht als Live-E2E auf VPS |
-| **Offene Abweichung** | Voller Kanal-Pfad (WhatsApp + Webhook + Admin) nur Contract-Mock; kein Prod-End-to-End |
+| **Voraussetzungen** | Booking mit geplantem Pickup; Task-Automation-Regel `booking.pickup.timing`; WhatsApp-Simulate; kein echter Kundenkontakt |
+| **Schritte (Prod)** | 1) VPS-Audit: keine aktiven Workflows 2) Outbox leer 3) Kein mutierender Booking-Trigger auf Prod-Org |
+| **Schritte (CI)** | `computeBookingPickupTiming` +30 min → `workflow-production-readiness.spec.ts`; `booking-task.pipeline.integration.spec.ts` |
+| **Erwartet** | Timer/Re-Check eskaliert Priorität; WhatsApp nur im Simulate-Modus; Status-Webhook; Admin-Fallback-Task |
+| **Prod — tatsächlich** | Workflow-Engine nicht aktiv; nur Legacy-Task-Pfad theoretisch möglich — **nicht** auf Prod-Testorg ausgelöst |
+| **CI — tatsächlich** | Priorität `HIGH` nach 30 min; nicht `CRITICAL` vor 24 h — **PASS** |
+| **Belege** | `workflow-production-readiness.spec.ts` Szenario 13; `booking-task.pipeline.integration.spec.ts` (24.7 s suite PASS) |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PASS** · Gesamt: **FAIL** |
+| **Abweichung** | P0: Phase-11-Runtime nicht auf VPS; WhatsApp/Status-Webhook im Workflow-Pfad nicht live testbar |
 
 ---
 
@@ -90,14 +106,15 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Workflow mit `workflow.approval.request` + Folge-Action; LIVE-Modus; Org-Scope |
-| **Schritte** | Engine `executeWorkflow` mit Approval-Action; Dry-Run für externe Kanäle |
-| **Erwartet** | Event → Match; interne Admin-Meldung; KI-Entwurf mit Approval; kein Kundenkontakt ohne Freigabe; keine erfundene Diagnose |
-| **Tatsächlich (A)** | Run `WAITING_APPROVAL`; Folge-`task.create` **nicht** ausgeführt; Policy/EXTERNAL risk in Catalog |
-| **Tatsächlich (B)** | 0 Workflows auf Test-Org; kein Live-Event |
-| **Belege** | `workflow-engine.production.spec.ts` (approval pause); `workflow-communication-contract.spec.ts` |
-| **PASS/FAIL** | **PARTIAL PASS (A)** / **BLOCKED (B)** |
-| **Offene Abweichung** | Vollständiger KI-Entwurf + Kundenkontakt-Pfad nicht LIVE im Executor; nur Preview/Approval-Mechanik getestet |
+| **Voraussetzungen** | DIMO/Health-Event; Org-Admin-Benachrichtigung; KI-Entwurf mit Approval; kein erfundener Diagnose-Text |
+| **Schritte (Prod)** | API `workflows/*` → 401 ohne JWT; keine konfigurierten Workflows |
+| **Schritte (CI)** | `workflow-engine.production.spec.ts` (Approval pause); `workflow-dry-run.service.spec.ts` (Policy); `workflow-security.production.spec.ts` (Injection) |
+| **Erwartet** | Event → Match → interne Meldung → KI-Entwurf → Approval-Gate → Kundenkontakt nur nach Freigabe; Diagnose nur aus Daten |
+| **Prod — tatsächlich** | Keine Workflow-Runs; Approval-API nicht E2E auf Prod getestet |
+| **CI — tatsächlich** | Approval-Pause/Resume PASS; AI-Injection blockiert PASS; LIVE Kundenkontakt-Kanal **nicht** im Executor — **PARTIAL** |
+| **Belege** | `workflow-engine.production.spec.ts`; `workflow-security.production.spec.ts` |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PARTIAL** · Gesamt: **FAIL** |
+| **Abweichung** | E-Mail/WhatsApp LIVE im Workflow-Executor noch contract-only (Matrix #24–25 partial) |
 
 ---
 
@@ -105,14 +122,14 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Outbox-Row `PENDING`; Executor wirft Fehler |
-| **Schritte** | Processor: Fail → Retry → Success bzw. Max-Attempts → DLQ |
-| **Erwartet** | Retry mit Backoff; Fallback/Partial Failure dokumentiert |
-| **Tatsächlich (A)** | `records initial failure and schedules retry`; `completes on successful retry`; `dead-letters after max attempts` |
-| **Tatsächlich (B)** | Nicht live injiziert |
-| **Belege** | `task-automation-outbox.spec.ts` |
-| **PASS/FAIL** | **PASS (A)** / **NOT RUN (B)** |
-| **Offene Abweichung** | Workflow-native `notification.prepare` Fallback nur Preview (Szenario 21 partial) |
+| **Voraussetzungen** | Simulierter Provider-Fehler; Retry/Backoff; Fallback; Partial Failure |
+| **Schritte (CI)** | `task-automation-outbox.spec.ts` (retry → DLQ); `workflow-engine.production.spec.ts` (partial failure) |
+| **Schritte (Prod)** | Kein Workflow-Action-Run ausgelöst |
+| **Erwartet** | Exponential Backoff; Partial Failure isoliert; Fallback in Preview |
+| **Prod — tatsächlich** | Nicht ausführbar |
+| **CI — tatsächlich** | Retry nach Fehler PASS; Dead-letter nach max attempts PASS; Partial failure PASS |
+| **Belege** | `task-automation-outbox.spec.ts` Zeilen Processor retry/DLQ; `workflow-engine.production.spec.ts` |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PASS** · Gesamt: **FAIL** |
 
 ---
 
@@ -120,29 +137,29 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Gleicher `idempotencyKey` / Dedup-Key |
-| **Schritte** | Doppelter `executeWorkflow`; Doppelter `syncBookingPickupTiming` |
-| **Erwartet** | Genau eine Action / ein Task |
-| **Tatsächlich (A)** | Zweiter Run: gleiche Run-ID, kein zweiter Task-Write; Pickup-Task count = 1 |
-| **Tatsächlich (B)** | 0 Workflow-Runs |
-| **Belege** | `workflow-engine.production.spec.ts` (idempotency); `booking-task.pipeline.integration.spec.ts` |
-| **PASS/FAIL** | **PASS (A)** / **N/A (B)** |
-| **Offene Abweichung** | — |
+| **Voraussetzungen** | Gleiches Domain-Event zweimal; Idempotency-Key |
+| **Schritte (CI)** | `workflow-engine.production.spec.ts` — duplicate run skipped |
+| **Schritte (Prod)** | 0 Runs — Dedup nicht live verifiziert |
+| **Erwartet** | Genau eine Action / ein Run |
+| **CI — tatsächlich** | `Skipping duplicate workflow run evt:dup:…` — **PASS** |
+| **Belege** | `workflow-engine.production.spec.ts`; Outbox `claimForProcessing` idempotent |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PASS** · Gesamt: **FAIL** |
 
 ---
 
-## Szenario 5 — Prozessneustart (WAITING / Approval / Retry)
+## Szenario 5 — Prozessneustart
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Outbox `PROCESSING` stale; Approval `WAITING_APPROVAL` Run |
-| **Schritte** | `recoverStaleProcessing`; Approval-Run bleibt pausiert bis Entscheidung |
-| **Erwartet** | Recovery ohne Doppel-Ausführung; Approval-Zustand überlebt Restart-Konzept |
-| **Tatsächlich (A)** | Stale PROCESSING → zurück auf PENDING; Approval-Test stoppt vor Folge-Actions |
-| **Tatsächlich (B)** | PM2 Restart-Historie hoch (3161); kein Live-Restart-Test während Approval |
-| **Belege** | `task-automation-outbox.spec.ts`; `workflow-engine.production.spec.ts` |
-| **PASS/FAIL** | **PASS (A)** / **NOT RUN (B)** |
-| **Offene Abweichung** | Kein Live-PM2-Kill während WAITING_APPROVAL (bewusst vermieden) |
+| **Voraussetzungen** | Zustand WAITING / Approval / Retry während Neustart |
+| **Schritte (CI)** | Outbox `recoverStaleProcessing`; Shadow idempotent persistence; Rollout in-flight kill-switch test |
+| **Schritte (Prod)** | PM2 Uptime ~7.8 h; kein kontrollierter Restart während Test (read-only Policy) |
+| **Erwartet** | Outbox recovers PROCESSING → PENDING; Approvals überleben Restart |
+| **CI — tatsächlich** | Stale recovery PASS; Shadow dedup PASS; Kill switch preserves settings PASS |
+| **Prod — tatsächlich** | Restart-Drill **nicht** ausgeführt (destruktiv) |
+| **Belege** | `task-automation-outbox.spec.ts`; `workflow-shadow.spec.ts`; `workflow-runtime-rollout.spec.ts` In-flight |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PASS** · Gesamt: **FAIL** |
+| **Abweichung** | Prod Restart-Test bewusst ausgelassen; PM2 3161 historische Restarts (P0 VPS-Audit) |
 
 ---
 
@@ -150,14 +167,14 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | `org-a` vs `org-b`; Cross-tenant Replay-Versuch |
-| **Schritte** | Condition eval pro Payload; Outbox executor cross-tenant booking |
+| **Voraussetzungen** | Org A versucht Org-B-Ressourcen |
+| **Schritte (Prod)** | `GET …/organizations/org-voice-staging-e2e/workflows` ohne JWT → **401** |
+| **Schritte (CI)** | `workflow-security.production.spec.ts`; Outbox cross-tenant reject; Rollout foreign tenant not found |
 | **Erwartet** | Vollständig blockiert |
-| **Tatsächlich (A)** | Conditions isoliert; `rejects cross-tenant booking replay` |
-| **Tatsächlich (B)** | Test-Org existiert isoliert; keine fremden Workflow-Runs |
-| **Belege** | `workflow-security.production.spec.ts`; `task-automation-outbox.spec.ts`; `booking-task.pipeline` Tenant-Isolation |
-| **PASS/FAIL** | **PASS (A)** / **PASS (B smoke)** |
-| **Offene Abweichung** | — |
+| **Prod — tatsächlich** | Unauthenticated → 401 — **PASS** |
+| **CI — tatsächlich** | Tenant isolation + cross-tenant booking replay rejected — **PASS** |
+| **Belege** | HTTPS 401; `TaskAutomationOutboxExecutorService — tenant scope`; `workflow-runtime-rollout.spec.ts` |
+| **Ergebnis** | **PASS** |
 
 ---
 
@@ -165,14 +182,14 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | `WorkflowExecutionMode.DRY_RUN` / DryRunService |
-| **Schritte** | `planWorkflow`; Executor ohne LIVE |
-| **Erwartet** | Keine Tasks, Runs, Approvals, Queue-Writes |
-| **Tatsächlich (A)** | Kein `upsertByDedup`; LIVE wirft; PII maskiert im Plan |
-| **Tatsächlich (B)** | API `POST …/dry-run` nicht gegen Test-Org ausgeführt (kein Workflow); Route im deployten Build vorhanden |
-| **Belege** | `workflow-dry-run.service.spec.ts` |
-| **PASS/FAIL** | **PASS (A)** / **NOT RUN (B)** |
-| **Offene Abweichung** | Prod-API-Dry-Run nicht ausgelöst (0 Workflows) |
+| **Voraussetzungen** | Workflow Dry-Run API / Service |
+| **Schritte (Prod)** | `POST …/dry-run` → 404 (Route nicht auf deploytem Stand für Test-Pfad) |
+| **Schritte (CI)** | `workflow-dry-run.service.spec.ts` — `executed: false`, keine LIVE actions |
+| **Erwartet** | Keinerlei Seiteneffekte |
+| **CI — tatsächlich** | Dry-run plan without execution — **PASS** |
+| **Prod — tatsächlich** | Endpoint nicht E2E auf Prod verifiziert (404 auf unauth test URL) |
+| **Belege** | `workflow-dry-run.service.spec.ts`; Shadow `executed: false` |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PASS** · Gesamt: **FAIL** |
 
 ---
 
@@ -180,29 +197,28 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Recipient mit `quietHoursActive` / `optedOut` |
-| **Schritte** | `filterDeliverableRecipients` |
-| **Erwartet** | Externe Kanäle blockiert/verschoben; In-App erlaubt |
-| **Tatsächlich (A)** | Quiet hours: nur `in_app`; Opt-out: nur `in_app` |
-| **Tatsächlich (B)** | Nicht live getestet |
-| **Belege** | `workflow-communication-contract.spec.ts` Szenarien 31–32 |
-| **PASS/FAIL** | **PASS (A)** / **NOT RUN (B)** |
-| **Offene Abweichung** | Keine vollständige Quiet-Hours-Engine auf Prod (Policy-Hook-Stufe) |
+| **Voraussetzungen** | Quiet-hours Policy; Recipient opt-out |
+| **Schritte (CI)** | `workflow-communication-contract.spec.ts` Szenarien 31–32 |
+| **Schritte (Prod)** | Nicht ausführbar — kein Workflow-LIVE |
+| **Erwartet** | Externer Versand blockiert/verschoben; In-App erlaubt |
+| **CI — tatsächlich** | Contract-Mock PASS — **PARTIAL** (kein voller Quiet-Hours-Engine) |
+| **Belege** | Matrix #31–32 `partial`; `workflow-communication-contract.spec.ts` |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PARTIAL** · Gesamt: **FAIL** |
 
 ---
 
-## Szenario 9 — Voice Call (Orchestrator, Testnummer, AI-Hinweis, Post-Call Webhook)
+## Szenario 9 — Voice Call
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | `VOICE_E2E_ORG_ID` auf VPS; `VOICE_E2E_ALLOW_LIVE_CALLS=false`; Voice-Security-Bundle |
-| **Schritte** | (A) Contract: `voice.call.start` CRITICAL; (B) Voice preflight security tests auf VPS; **kein** Live-Call |
-| **Erwartet** | Orchestrator-Pfad nur mit Testnummer + Flag; Post-Call Webhook; AI-Disclosure |
-| **Tatsächlich (A)** | Risk CRITICAL + Maker-Checker sensitivity PASS |
-| **Tatsächlich (B)** | Live calls **disabled**; Voice security Jest bundle **PASS** (11 Suites); kein PSTN |
-| **Belege** | `workflow-communication-contract.spec.ts`; VPS `voice-staging-preflight.sh` (security subset) |
-| **PASS/FAIL** | **PARTIAL PASS** — **FAIL** für Live Voice E2E |
-| **Offene Abweichung** | Workflow→Voice-Orchestrator-Brücke nicht als Prod-E2E; separater Voice-Stack |
+| **Voraussetzungen** | SynqDrive Voice Orchestrator; `VOICE_E2E_ORG_ID`; Testnummer; AI-Hinweis; Post-Call Webhook |
+| **Schritte** | **Kein Live-Anruf** — Policy + `VOICE_E2E_ALLOW_LIVE_CALLS` nur geprüft (Präsenz) |
+| **Erwartet** | Testanruf nur an Allowlist; Webhook-Verarbeitung |
+| **Prod — tatsächlich** | Config SET; Voice-Org existiert (`org-voic…`, 1 Task); **kein Anruf ausgeführt** |
+| **CI — tatsächlich** | Workflow-Matrix #27 `not-applicable` — Voice separater Stack |
+| **Belege** | VPS `backend.env` Präsenz; `docs/testing/voice-ai-e2e-test-matrix.md` |
+| **Ergebnis** | Prod: **BLOCKED** (nicht ausgeführt) · CI: **N/A** · Gesamt: **FAIL** |
+| **Abweichung** | Voice E2E erfordert dedizierten Staging-Lauf mit JWT + Allowlist — außerhalb read-only Audit |
 
 ---
 
@@ -211,13 +227,13 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 | Feld | Inhalt |
 |------|--------|
 | **Voraussetzungen** | Outbox max attempts; Admin replay API |
-| **Schritte** | DLQ nach Retries; `task-automation/outbox/:id/replay` (Spec) |
-| **Erwartet** | DLQ-Status; kontrolliertes Replay ohne Seiteneffekt-Leak |
-| **Tatsächlich (A)** | `dead-letters after max attempts`; Admin replay Spec PASS |
-| **Tatsächlich (B)** | Outbox **0** Rows; Replay-Route im Boot-Log gemappt |
-| **Belege** | `task-automation-outbox.spec.ts`; `task-automation-admin.service.spec.ts` |
-| **PASS/FAIL** | **PASS (A)** / **NOT RUN (B)** |
-| **Offene Abweichung** | Kein Live-DLQ auf Prod |
+| **Schritte (CI)** | `task-automation-outbox.spec.ts` dead-letter; `task-automation-admin.service.spec.ts` replay |
+| **Schritte (Prod)** | Outbox 0 Zeilen; Replay-Route im Boot-Log vorhanden (VPS-Audit) |
+| **Erwartet** | DLQ nach max retries; kontrolliertes Replay nur Admin |
+| **CI — tatsächlich** | DLQ + replay PASS |
+| **Prod — tatsächlich** | Kein Live-DLQ; Replay nicht mutierend getestet |
+| **Belege** | `task-automation-outbox.spec.ts`; VPS-Audit §3 TaskAutomationOutboxModule |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PASS** · Gesamt: **FAIL** |
 
 ---
 
@@ -225,89 +241,67 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Rollout-Service mit global/org/provider Kill Switches |
-| **Schritte** | `setKillSwitch`; `canExecuteLiveAction`; Resolver `legacy_only` |
-| **Erwartet** | Neue Actions blockiert; In-Flight-Konzept; Audit |
-| **Tatsächlich (A)** | 24 Tests PASS in `workflow-runtime-rollout.spec.ts` |
-| **Tatsächlich (B)** | **0** `runtime-rollout` Routes; keine Env-Flags; Tabelle fehlt |
-| **Belege** | `workflow-runtime-rollout.spec.ts`; VPS-Audit P0-2/P0-3 |
-| **PASS/FAIL** | **PASS (A, Repo HEAD)** / **FAIL (B)** |
-| **Offene Abweichung** | Kill Switch nicht auf Prod deployt |
+| **Voraussetzungen** | Global/Org/Provider Kill Switches; Rollout-Gate |
+| **Schritte (Prod)** | `GET …/workflows/runtime-rollout/settings` → **404** (nicht deployt) |
+| **Schritte (CI)** | `workflow-runtime-rollout.spec.ts` — global/org/provider kill; audit on toggle |
+| **Erwartet** | Neue Actions blockiert; In-Flight-Einstellungen erhalten |
+| **CI — tatsächlich** | 24 Tests PASS inkl. kill switch + channel flags |
+| **Prod — tatsächlich** | API fehlt — **BLOCKED** |
+| **Belege** | `workflow-runtime-rollout.spec.ts` describe kill switches |
+| **Ergebnis** | Prod: **BLOCKED** · CI: **PASS** · Gesamt: **FAIL** |
 
 ---
 
-## Szenario 12 — Legacy- und neue Engine (keine Doppel-Ausführung)
+## Szenario 12 — Legacy und neue Engine (keine Doppelausführung)
 
 | Feld | Inhalt |
 |------|--------|
-| **Voraussetzungen** | Router-Modi legacy / shadow / cutover; Rollout single-path |
-| **Schritte** | `TaskAutomationExecutionRouterService.route` je Modus; Rollout bridge tests |
-| **Erwartet** | Entweder Legacy **oder** Workflow-Live **oder** Shadow-Compare — nie beides |
-| **Tatsächlich (A)** | legacy: nur `legacyExecute`; shadow: legacy+preview; cutover: nur workflow; Rollout: no double path |
-| **Tatsächlich (B)** | Legacy-only (kein `TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE` gesetzt); 0 Workflow-Runs |
-| **Belege** | `task-automation-workflow-migration.spec.ts`; `workflow-runtime-rollout.spec.ts` |
-| **PASS/FAIL** | **PASS (A)** / **PASS (B implicit legacy-only)** |
-| **Offene Abweichung** | Rollout-Gate nicht auf VPS — Doppelpfad-Risiko nach Deploy ohne Flags |
+| **Voraussetzungen** | `TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE`; Rollout stage; Shadow gate |
+| **Schritte (Prod)** | Keine Workflow-Env → effektiv **Legacy-only**; 0 Workflow-Runs; Legacy Tasks vorhanden |
+| **Schritte (CI)** | `workflow-runtime-rollout.spec.ts` bridge: `workflow_live` ohne legacy execute; `shadow_compare` legacy once + preview only |
+| **Erwartet** | Kein Doppelpfad bei Shadow/Cutover |
+| **Prod — tatsächlich** | Legacy-only durch fehlende Runtime — **kein Doppelrisiko** (Feature fehlt) — **PASS** |
+| **CI — tatsächlich** | Bridge tests PASS |
+| **Belege** | VPS-Audit §13; `task-automation-execution-router` in rollout spec |
+| **Ergebnis** | **PASS** |
+| **Abweichung** | Prod PASS nur weil neue Engine nicht aktiv — nicht weil Bridge live verifiziert |
 
 ---
 
-## Zusammenfassung PASS/FAIL
+## P0-Blocker (Production Go-Live)
 
-| # | Szenario | Tier A (Harness) | Tier B (VPS Prod) |
-|---|----------|------------------|-------------------|
-| 1 | Pickup 30 min überfällig | **PASS** | **BLOCKED** |
-| 2 | Kritischer Fahrzeugfehler | **PARTIAL** | **BLOCKED** |
-| 3 | Provider-Ausfall | **PASS** | NOT RUN |
-| 4 | Doppelte Events | **PASS** | N/A |
-| 5 | Prozessneustart | **PASS** | NOT RUN |
-| 6 | Cross-Tenant | **PASS** | **PASS** (smoke) |
-| 7 | Dry Run | **PASS** | NOT RUN |
-| 8 | Quiet Hours / Opt-out | **PASS** | NOT RUN |
-| 9 | Voice Call | **PARTIAL** | **FAIL** (live disabled) |
-| 10 | Dead Letter / Replay | **PASS** | NOT RUN |
-| 11 | Kill Switch | **PASS** | **FAIL** |
-| 12 | Legacy vs neue Engine | **PASS** | **PASS** (legacy-only) |
-
-### Bestandene Szenarien (Tier A vollständig)
-
-3, 4, 5, 6, 7, 8, 10, 12 (+ Teile von 1, 2, 9)
-
-### Fehlgeschlagene / blockierte Szenarien (Production E2E)
-
-| Szenario | Grund |
-|----------|--------|
-| 1 (VPS live) | Kein Workflow-Trigger; WhatsApp/Webhook nicht live |
-| 2 (VPS live) | 0 Workflows |
-| 9 (Voice live) | `VOICE_E2E_ALLOW_LIVE_CALLS=false` |
-| 11 (Kill Switch VPS) | Rollout-Feature nicht deployt |
+| ID | Blocker | Remediation |
+|----|---------|-------------|
+| P0-1 | Phase-11-Workflow **nicht auf VPS** (~91 Commits Drift) | Merge PRs #888–#893; `cloud-agent-deploy.sh` |
+| P0-2 | Shadow/Rollout/Audit-Migrationen fehlen | `prisma migrate deploy` + Tabellen-Check |
+| P0-3 | Keine `WORKFLOW_*` / `TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE` Env | Runbook Stage `DISABLED`/`SHADOW` setzen |
+| P0-4 | Production-E2E der 12 Szenarien **nicht** durchführbar | Nach Deploy Acceptance **wiederholen** mit `VOICE_E2E_ORG_ID` |
+| P0-5 | Scheduler BullMQ `:` Job-ID (1933×/Log) | Sanitizer deployen — blockiert Outbox-Enqueue zuverlässig |
 
 ---
 
-## P0-Blocker (Production Acceptance)
+## Zusammenfassung Messwerte (CI Harness)
 
-| ID | Blocker |
-|----|---------|
-| P0-1 | VPS-Deploy ~91 Commits hinter `main` — Phase-11-Workflow-Runtime fehlt |
-| P0-2 | Shadow/Rollout-Migrationen + APIs nicht auf Prod |
-| P0-3 | Keine Workflow-Runtime-Env (`WORKFLOW_*`, `TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE`) |
-| P0-4 | **0** Workflows auf dedizierter Test-Org — kein API-E2E möglich |
-| P0-5 | `EMAIL_SIMULATE_ENABLED=false` — unsicher für Kanal-E2E auf Prod |
-| P0-6 | `VOICE_E2E_ALLOW_LIVE_CALLS=false` — Voice-E2E bewusst gesperrt |
+| Metrik | Beobachtung (Harness) |
+|--------|------------------------|
+| Event-to-Match | In-memory engine &lt; 50 ms (kein Wall-Clock-SLA dokumentiert) |
+| Idempotency duplicate skip | Logged in `workflow-engine.production.spec.ts` |
+| Outbox retry backoff | Exponential, config-driven |
+| Shadow persistence idempotency | Same shadow run ID on duplicate |
+| Rollout kill switch | `legacy_only` + `killSwitchActive` flags |
+| Frontend simulate UI | 8 tests `workflow-simulate.test.ts` |
 
 ---
 
-## Go / No-Go Acceptance
+## Durchgeführte Aktionen
 
-| Kriterium | Ergebnis |
-|-----------|----------|
-| CI Harness (340 Tests) | **GO** |
-| VPS Production E2E (12 Pflichtszenarien live) | **NO-GO** |
-| Keine echten Kunden kontaktiert | **Bestätigt** |
-| Sandbox-Flags respektiert | **JA** (`WHATSAPP_SIMULATE=true`, Voice live off) |
-
-### **Gesamt: CONDITIONAL FAIL**
-
-**Nächster Schritt:** Deploy Phase 11 → Migrationen → Sandbox-Env → Wiederholung Tier B mit Test-Org-Workflows und instrumentierten Latenz-Metriken.
+- [x] VPS-Control-Audit als Voraussetzung gelesen
+- [x] Read-only VPS-Checks (Health, API 401/404, Queue, DB counts, Simulate-Flags)
+- [x] Repo CI auf `cursor/workflow-runtime-rollout-2a81` (404 Tests)
+- [x] **Keine** echten Kunden kontaktiert
+- [x] **Keine** Live-Voice-Calls
+- [x] **Keine** Queue-Mutation / Datenlöschung auf Prod
+- [ ] Mutierende Production-E2E (bewusst deferred bis Deploy)
 
 ---
 
@@ -315,4 +309,5 @@ cd frontend && npm run test:workflow-automation:verify  # 45 Tests PASS
 
 - [workflow-automation-vps-control-audit-2026-07.md](./workflow-automation-vps-control-audit-2026-07.md)
 - [workflow-automation-production-test-matrix-2026-07.md](../testing/workflow-automation-production-test-matrix-2026-07.md)
+- [workflow-shadow-mode-2026-07.md](../operations/workflow-shadow-mode-2026-07.md)
 - [workflow-runtime-rollout-runbook-2026-07.md](../operations/workflow-runtime-rollout-runbook-2026-07.md)
