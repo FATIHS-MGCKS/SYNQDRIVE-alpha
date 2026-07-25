@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
+import { WORKFLOW_PERMISSION_REQUIREMENTS } from '@modules/workflows/permissions/workflow-permission.constants';
 import { TaskAutomationAdminController } from './task-automation-admin.controller';
 
 function permissionOf(target: object, method: string) {
@@ -21,34 +22,40 @@ describe('TaskAutomationAdminController security', () => {
     expect(guards).toEqual(expect.arrayContaining([OrgScopingGuard, PermissionsGuard]));
   });
 
-  it('requires workflow-automation read for list/get/simulate', () => {
-    expect(permissionOf(TaskAutomationAdminController.prototype, 'listRules')).toEqual({
-      module: 'workflow-automation',
-      level: 'read',
-    });
-    expect(permissionOf(TaskAutomationAdminController.prototype, 'getRule')).toEqual({
-      module: 'workflow-automation',
-      level: 'read',
-    });
-    expect(permissionOf(TaskAutomationAdminController.prototype, 'simulateRule')).toEqual({
-      module: 'workflow-automation',
-      level: 'read',
-    });
-    expect(permissionOf(TaskAutomationAdminController.prototype, 'listRuleRevisions')).toEqual({
-      module: 'workflow-automation',
-      level: 'read',
-    });
+  it('requires workflow.read for list/get', () => {
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'listRules')).toEqual(
+      WORKFLOW_PERMISSION_REQUIREMENTS['workflow.read'],
+    );
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'getRule')).toEqual(
+      WORKFLOW_PERMISSION_REQUIREMENTS['workflow.read'],
+    );
   });
 
-  it('requires workflow-automation write for override mutations', () => {
-    expect(permissionOf(TaskAutomationAdminController.prototype, 'upsertOverride')).toEqual({
-      module: 'workflow-automation',
-      level: 'write',
-    });
-    expect(permissionOf(TaskAutomationAdminController.prototype, 'resetOverride')).toEqual({
-      module: 'workflow-automation',
-      level: 'write',
-    });
+  it('requires workflow.test_dry_run for simulate', () => {
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'simulateRule')).toEqual(
+      WORKFLOW_PERMISSION_REQUIREMENTS['workflow.test_dry_run'],
+    );
+  });
+
+  it('requires workflow.audit.read for revisions', () => {
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'listRuleRevisions')).toEqual(
+      WORKFLOW_PERMISSION_REQUIREMENTS['workflow.audit.read'],
+    );
+  });
+
+  it('requires workflow.template.manage for override mutations', () => {
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'upsertOverride')).toEqual(
+      WORKFLOW_PERMISSION_REQUIREMENTS['workflow.template.manage'],
+    );
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'resetOverride')).toEqual(
+      WORKFLOW_PERMISSION_REQUIREMENTS['workflow.template.manage'],
+    );
+  });
+
+  it('requires workflow.dead_letter.replay for outbox replay', () => {
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'replayDeadLetterOutbox')).toEqual(
+      WORKFLOW_PERMISSION_REQUIREMENTS['workflow.dead_letter.replay'],
+    );
   });
 });
 

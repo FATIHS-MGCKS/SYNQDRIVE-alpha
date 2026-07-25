@@ -45,6 +45,7 @@ import type {
   VoiceLegacyDiagnosticCallRequest,
   VoiceOutboundCallRequest,
   VoiceOutboundCallResult,
+  VoiceWorkflowCallSource,
 } from './voice-call-orchestration.types';
 
 @Injectable()
@@ -256,18 +257,20 @@ export class VoiceCallOrchestrationService {
 
     const dryRun = !isVoiceCallProviderStagingEnabled();
     if (dryRun) {
-      const conversation = await this.createOutboundConversation({
-        conversationId,
-        organizationId: request.organizationId,
-        assistantId: assistant.id,
-        deploymentId: deployment.id,
-        phoneNumberId: phone.id,
-        toE164: request.toE164,
-        idempotencyKey: request.idempotencyKey,
-        customerId: request.customerId,
-        bookingId: request.bookingId,
-        dryRun: true,
-      });
+    const conversation = await this.createOutboundConversation({
+      conversationId,
+      organizationId: request.organizationId,
+      assistantId: assistant.id,
+      deploymentId: deployment.id,
+      phoneNumberId: phone.id,
+      toE164: request.toE164,
+      idempotencyKey: request.idempotencyKey,
+      customerId: request.customerId,
+      bookingId: request.bookingId,
+      dryRun: true,
+      workflowSource: request.workflowSource,
+      initiatedByUserId: request.initiatedByUserId,
+    });
       return {
         conversationId: conversation.id,
         maskedConversationRef: null,
@@ -300,6 +303,8 @@ export class VoiceCallOrchestrationService {
       dryRun: false,
       providerConversationRef: providerResult.maskedConversationRef,
       providerCallRef: providerResult.maskedCallRef,
+      workflowSource: request.workflowSource,
+      initiatedByUserId: request.initiatedByUserId,
     });
 
     await this.bindConversationMcpIfEnabled({
@@ -448,6 +453,8 @@ export class VoiceCallOrchestrationService {
     dryRun: boolean;
     providerConversationRef?: string | null;
     providerCallRef?: string | null;
+    workflowSource?: VoiceWorkflowCallSource;
+    initiatedByUserId?: string | null;
   }) {
     return this.prisma.voiceConversation.create({
       data: {
@@ -470,6 +477,18 @@ export class VoiceCallOrchestrationService {
           bookingId: params.bookingId ?? null,
           providerConversationRef: params.providerConversationRef ?? null,
           providerCallRef: params.providerCallRef ?? null,
+          sourceType: params.workflowSource ? 'WORKFLOW' : null,
+          workflowRunId: params.workflowSource?.workflowRunId ?? null,
+          workflowActionRunId: params.workflowSource?.actionRunId ?? null,
+          workflowId: params.workflowSource?.workflowId ?? null,
+          workflowActionIndex: params.workflowSource?.actionIndex ?? null,
+          workflowScenarioKey: params.workflowSource?.scenarioKey ?? null,
+          workflowScenarioVersion: params.workflowSource?.scenarioVersion ?? null,
+          workflowCallPurpose: params.workflowSource?.callPurpose ?? null,
+          workflowMaxDurationSeconds: params.workflowSource?.maxDurationSeconds ?? null,
+          workflowToolAllowlist: params.workflowSource?.toolAllowlist ?? null,
+          workflowAiTransparencyRequired: params.workflowSource?.aiTransparencyRequired ?? null,
+          initiatedByUserId: params.initiatedByUserId ?? null,
         }),
       },
     });
