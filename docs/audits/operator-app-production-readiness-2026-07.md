@@ -1951,6 +1951,85 @@ stateDiagram-v2
 
 ---
 
+## 36. Handover-Session State-Machine (Prompt 14 — Implementierung)
+
+**Ziel:** Serverseitige, zentral validierte Übergänge für `BookingHandoverSession` — keine frei editierbaren Statusstrings, keine Frontend-only Zustandsentscheidung.
+
+### 36.1 Implementierte Komponenten
+
+| Komponente | Pfad | Rolle |
+|------------|------|-------|
+| Prisma | `BookingHandoverSession`, `HandoverSessionStatus` | Persistenz + `version` optimistic lock |
+| Matrix | `handover-session-transition.matrix.ts` | Erlaubte Status-Kanten |
+| Base policy | `handover-transition.base.ts` | Booking/Vehicle/Scope/Version/Permission |
+| Pickup policy | `handover-pickup-transition.policy.ts` | Gate, Eligibility, Dokumente, Signaturen |
+| Return policy | `return-transition.policy.ts` | Pickup-Protokoll, ACTIVE, Signaturen |
+| State machine | `handover-state-machine.ts` | Zentraler Evaluator |
+| Service | `bookings-handover-session.service.ts` | Context laden, persistieren |
+| API | `GET/POST …/handover/sessions/:kind[/transition]` | Operator/Rental Session-API |
+
+### 36.2 Erlaubte Übergänge (Matrix)
+
+| Von | Nach |
+|-----|------|
+| `NOT_STARTED` | `DRAFT`, `AWAITING_REQUIREMENTS` |
+| `DRAFT` | `IN_PROGRESS`, `AWAITING_REQUIREMENTS`, `AWAITING_SIGNATURE`, `CANCELLED` |
+| `IN_PROGRESS` | `AWAITING_REQUIREMENTS`, `AWAITING_SIGNATURE`, `SUBMITTED`, `CANCELLED`, `DRAFT` |
+| `AWAITING_REQUIREMENTS` | `IN_PROGRESS`, `DRAFT`, `AWAITING_SIGNATURE`, `CANCELLED` |
+| `AWAITING_SIGNATURE` | `IN_PROGRESS`, `SUBMITTED`, `CANCELLED` |
+| `SUBMITTED` | `IN_PROGRESS`, `COMPLETED` |
+| `COMPLETED` | `SUPERSEDED` |
+| `CANCELLED` / `SUPERSEDED` | *(keine)* |
+
+### 36.3 Verbotene Übergänge (Auswahl)
+
+- Beliebige Matrix-Kante nicht in §36.2
+- Terminal `CANCELLED` / `SUPERSEDED` → beliebig
+- `COMPLETED` → außer `SUPERSEDED`
+- `START` bei falschem Booking-Status (PICKUP ≠ CONFIRMED, RETURN ≠ ACTIVE)
+- `SUBMIT` ohne Signaturen / Odometer / (Pickup) Dokument-Bestätigung
+- `COMPLETE` in Prompt 14 (`HANDOVER_SESSION_COMPLETE_NOT_IMPLEMENTED`)
+- Version-Mismatch (`expectedVersion` ≠ `currentVersion`)
+- Lock-Konflikt (fremder User → `IN_PROGRESS`)
+- Scope ohne Override-Reason / Permission
+- Pickup-Gate hard blocks; soft blocks ohne Override
+
+### 36.4 Override-Regeln
+
+| Override | Permission | Pflichtfeld |
+|----------|------------|-------------|
+| Station scope | `bookings.manage` | `scopeOverrideReason` |
+| Pickup gate (soft) | `legal_documents.override_handover` | `pickupGateOverrideReason` |
+| Supersede | `bookings.manage` | `supersedeReason` |
+| Cancel | `bookings.write` | `cancelReason` |
+
+### 36.5 Tests
+
+36 Unit-Tests unter `backend/src/modules/bookings/handover-session/*.spec.ts`.
+
+### 36.6 Bewusst deferred
+
+- `COMPLETE` Transaktion (Protokoll + Booking + Vehicle) — folgt separat
+- Frontend-Wizard-Anbindung an Session-API
+- ActivityLog bei Session-Übergängen
+
+### 36.7 Geänderte Dateien (Prompt 14)
+
+| Datei | Änderung |
+|-------|----------|
+| `backend/prisma/schema.prisma` | `BookingHandoverSession` |
+| `backend/prisma/migrations/20260725140000_booking_handover_sessions/` | Migration |
+| `backend/src/modules/bookings/handover-session/*` | Domain + Service + Tests |
+| `backend/src/modules/bookings/bookings.controller.ts` | Session-Routes |
+| `backend/src/modules/bookings/bookings.module.ts` | Wiring |
+| `architecture/OPERATOR_HANDOVER_STATE_MACHINE_2026-07-25.md` | Prompt-14-Status |
+| `frontend/src/master/components/ChangesView.tsx` | V4.9.840 |
+| `frontend/src/master/components/ArchitekturView.tsx` | Architektur-Eintrag |
+
+**Unverändert:** `BookingsHandoverService` Legacy-Submit, Wizard-UI.
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

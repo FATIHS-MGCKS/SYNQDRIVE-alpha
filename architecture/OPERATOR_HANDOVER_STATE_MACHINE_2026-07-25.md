@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | V4.9.839 (Prompt 13 — analysis only) |
+| **Version** | V4.9.840 (Prompt 14 — server-side state machine) |
 | **Date** | 2026-07-25 |
-| **Status** | Target design documented; **no production transitions changed** |
+| **Status** | Session SM implemented; **COMPLETE transaction deferred** |
 | **Full audit** | `docs/audits/operator-app-production-readiness-2026-07.md` §35 |
 
 ---
@@ -40,6 +40,22 @@ Per `(bookingId, HandoverKind)` introduce **`BookingHandoverSession`** with:
 | `superseded` | Replaced by correction version |
 
 Existing protocols map to `completed`. Legacy POST endpoints remain as submit shortcuts during migration.
+
+---
+
+## Implemented (Prompt 14)
+
+| Component | Path |
+|-----------|------|
+| Prisma model | `BookingHandoverSession`, enum `HandoverSessionStatus` |
+| Transition matrix | `handover-session-transition.matrix.ts` |
+| Pickup policy | `handover-pickup-transition.policy.ts` |
+| Return policy | `return-transition.policy.ts` |
+| State machine | `handover-state-machine.ts` |
+| Service | `bookings-handover-session.service.ts` |
+| API | `GET/POST …/handover/sessions/:kind[/transition]` |
+
+**Deferred:** `COMPLETE` → protocol + booking/vehicle mutation (Prompt 15+).
 
 ---
 

@@ -54,7 +54,14 @@ import { UpdateBookingDto } from './dto/update-booking.dto';
 import { toBookingCreateInput, toBookingUpdateInput } from './booking-input.sanitizer';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CreateHandoverProtocolPayload } from './handover.types';
+import { BookingsHandoverSessionService } from './handover-session/bookings-handover-session.service';
+import {
+  isHandoverSessionAction,
+  isHandoverSessionStatusValue,
+} from './handover-session/bookings-handover-session.service';
+import type { HandoverSessionTransitionBodyDto } from './handover-session/dto/handover-session.dto';
 import { resolveHandoverActor } from './handover-actor.util';
+import type { HandoverKind } from '@prisma/client';
 
 @Controller('organizations/:orgId/bookings')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
@@ -62,6 +69,7 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
+    private readonly handoverSessionService: BookingsHandoverSessionService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
@@ -514,5 +522,56 @@ export class BookingsController {
       body,
       resolveHandoverActor(user),
     );
+  }
+
+  // V4.9.840 — Server-side handover session state machine (draft/resume/cancel).
+  @Get(':id/handover/sessions/:kind')
+  @RequirePermission('bookings', 'read')
+  async getHandoverSession(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverSessionService.getSessionView(
+      orgId,
+      bookingId,
+      kind,
+      resolveHandoverActor(user),
+    );
+  }
+
+  @Post(':id/handover/sessions/:kind/transition')
+  @RequirePermission('bookings', 'write')
+  async transitionHandoverSession(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: HandoverSessionTransitionBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    if (!body?.action || !isHandoverSessionAction(body.action)) {
+      throw new BadRequestException('Invalid handover session action');
+    }
+    if (body.toStatus && !isHandoverSessionStatusValue(body.toStatus)) {
+      throw new BadRequestException('Invalid handover session status');
+    }
+    return this.handoverSessionService.transition(
+      orgId,
+      bookingId,
+      kind,
+      body,
+      resolveHandoverActor(user),
+    );
+  }
+
+  private parseHandoverKind(kindParam: string): HandoverKind {
+    const normalized = kindParam?.toUpperCase();
+    if (normalized !== 'PICKUP' && normalized !== 'RETURN') {
+      throw new BadRequestException('kind must be pickup or return');
+    }
+    return normalized;
   }
 }

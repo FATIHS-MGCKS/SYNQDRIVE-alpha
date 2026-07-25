@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-handover-session-sm-v49840-2026-07-25',
+    version: '4.9.840',
+    title: 'V4.9.840 — Operator App: serverseitige Handover-Session State-Machine (Prompt 14)',
+    summary: [
+      'Neues Prisma-Modell `BookingHandoverSession` + Enum `HandoverSessionStatus` mit partiellem Unique-Index (eine aktive Session pro booking/kind).',
+      'Zentraler Domain-Layer: `HandoverStateMachine`, `HandoverTransitionPolicy` (Pickup), `ReturnTransitionPolicy`, Übergangs-Matrix, stabile Fehlercodes.',
+      'Alle Übergänge validieren Status-Matrix, Permission, Tenant/Station-Scope, Version, Booking/Vehicle, Pickup-Gate, Signaturen, Dokumente, Blocker.',
+      'API: `GET …/handover/sessions/:kind`, `POST …/handover/sessions/:kind/transition` — COMPLETE-Transaktion bewusst deferred.',
+      '36 Unit-Tests für erlaubte/verbotene Übergänge, Overrides, Version-Konflikte, Terminal-Immutability.',
+    ],
+    reason:
+      'Production-Readiness Prompt 14: keine frei editierbaren Statusstrings; Zustandsentscheidung zentral serverseitig.',
+    previousBehavior:
+      'Kein server-persistierter Handover-Draft; Wizard-State nur im Frontend; Legacy POST erzeugt Protokoll atomar.',
+    details:
+      'Audit §36, `architecture/OPERATOR_HANDOVER_STATE_MACHINE_2026-07-25.md`. Legacy `POST …/handover/pickup|return` unverändert.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:30:00.000Z',
+  },
+  {
     id: 'operator-handover-state-machine-v49839-2026-07-25',
     version: '4.9.839',
     title: 'V4.9.839 — Operator App: Handover State-Machine Analyse (Prompt 13)',
