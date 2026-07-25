@@ -14,8 +14,15 @@ import {
   type WorkflowScopeDef,
 } from './workflow-definition.validator';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
-import { WorkflowAuditService } from './audit/workflow-audit.service';
-import { summarizeWorkflowError } from './audit/workflow-audit-sanitize.util';
+import {
+  assertLiveExecution,
+  WorkflowExecutionMode,
+} from './workflow-execution-mode';
+import { evaluateWorkflowScope } from './workflow-scope.evaluator';
+
+export interface ExecuteWorkflowOptions {
+  executionMode: WorkflowExecutionMode;
+}
 
 export interface WorkflowDomainEvent {
   organizationId: string;
@@ -34,7 +41,6 @@ export class WorkflowEngineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actionExecutor: WorkflowActionExecutorService,
-    private readonly workflowAudit: WorkflowAuditService,
   ) {}
 
   async processEvent(event: WorkflowDomainEvent): Promise<string[]> {
@@ -42,7 +48,9 @@ export class WorkflowEngineService {
     const runIds: string[] = [];
 
     for (const workflow of workflows) {
-      const runId = await this.executeWorkflow(workflow, event);
+      const runId = await this.executeWorkflow(workflow, event, {
+        executionMode: WorkflowExecutionMode.LIVE,
+      });
       if (runId) runIds.push(runId);
     }
     return runIds;
@@ -65,45 +73,28 @@ export class WorkflowEngineService {
     });
   }
 
-  private matchesScope(scope: WorkflowScopeDef, event: WorkflowDomainEvent): boolean {
-    if (!scope || scope.type === 'organization') return true;
-    const vehicleId =
-      event.entityType === 'vehicle'
-        ? event.entityId
-        : (event.payload.vehicleId as string | undefined);
-    if (scope.type === 'vehicle' && scope.vehicleIds?.length) {
-      return !!vehicleId && scope.vehicleIds.includes(vehicleId);
-    }
-    if (scope.type === 'station' && scope.stationIds?.length) {
-      const stationId = event.payload.stationId as string | undefined;
-      return !!stationId && scope.stationIds.includes(stationId);
-    }
-    return true;
-  }
-
   async executeWorkflow(
     workflow: OrgWorkflow,
     event: WorkflowDomainEvent,
+    options: ExecuteWorkflowOptions,
   ): Promise<string | null> {
-    const scope = workflow.scope as unknown as WorkflowScopeDef;
-    if (!this.matchesScope(scope, event)) {
+    assertLiveExecution(
+      options.executionMode,
+      'WorkflowEngineService.executeWorkflow',
+    );
+
+    const scopeResult = evaluateWorkflowScope(
+      workflow.scope as unknown as WorkflowScopeDef,
+      event,
+    );
+    if (!scopeResult.passed) {
       return null;
     }
 
     const conditions = (workflow.conditions as unknown as WorkflowConditionDef[]) ?? [];
     const conditionEval = evaluateWorkflowConditions(conditions, event.payload);
     if (!conditionEval.passed) {
-      const skippedRunId = await this.createSkippedRun(workflow, event, conditionEval);
-      this.workflowAudit.recordFireAndForget({
-        orgId: event.organizationId,
-        eventType: 'WORKFLOW_CONDITION_EVALUATED',
-        workflowId: workflow.id,
-        workflowRunId: skippedRunId,
-        summary: `Conditions not met for workflow ${workflow.name}`,
-        payload: { passed: false, conditionResult: conditionEval },
-        correlationId: event.idempotencyKey,
-      });
-      return skippedRunId;
+      return this.createSkippedRun(workflow, event, conditionEval);
     }
 
     const baseKey =
@@ -142,30 +133,6 @@ export class WorkflowEngineService {
       },
     });
 
-    this.workflowAudit.recordFireAndForget({
-      orgId: event.organizationId,
-      eventType: 'WORKFLOW_RUN_STARTED',
-      workflowId: workflow.id,
-      workflowRunId: run.id,
-      summary: `Workflow run started: ${workflow.name}`,
-      payload: {
-        eventType: event.type,
-        entityType: event.entityType,
-        entityId: event.entityId,
-        workflowVersion: workflow.version,
-      },
-      correlationId: idempotencyKey,
-    });
-    this.workflowAudit.recordFireAndForget({
-      orgId: event.organizationId,
-      eventType: 'WORKFLOW_CONDITION_EVALUATED',
-      workflowId: workflow.id,
-      workflowRunId: run.id,
-      summary: `Conditions passed for workflow ${workflow.name}`,
-      payload: { passed: true },
-      correlationId: idempotencyKey,
-    });
-
     const actions = (workflow.actions as unknown as WorkflowActionDef[]) ?? [];
     let runStatus: WorkflowRunStatus = 'SUCCESS';
     let runError: string | null = null;
@@ -186,17 +153,6 @@ export class WorkflowEngineService {
         },
       });
 
-      this.workflowAudit.recordFireAndForget({
-        orgId: event.organizationId,
-        eventType: 'WORKFLOW_ACTION_STARTED',
-        workflowId: workflow.id,
-        workflowRunId: run.id,
-        actionRunId: actionRun.id,
-        summary: `Action started: ${action.type}`,
-        payload: { actionIndex: i },
-        correlationId: idempotencyKey,
-      });
-
       const result = await this.actionExecutor.execute(action, {
         organizationId: event.organizationId,
         workflowId: workflow.id,
@@ -208,6 +164,7 @@ export class WorkflowEngineService {
         entityId: event.entityId,
         payload: event.payload,
         idempotencyKey,
+        executionMode: WorkflowExecutionMode.LIVE,
       });
 
       await this.prisma.orgWorkflowActionRun.update({
@@ -219,39 +176,6 @@ export class WorkflowEngineService {
           finishedAt: new Date(),
         },
       });
-
-      if (result.status === 'SUCCESS') {
-        this.workflowAudit.recordFireAndForget({
-          orgId: event.organizationId,
-          eventType: 'WORKFLOW_ACTION_SUCCEEDED',
-          workflowId: workflow.id,
-          workflowRunId: run.id,
-          actionRunId: actionRun.id,
-          summary: `Action succeeded: ${action.type}`,
-          correlationId: idempotencyKey,
-        });
-      } else if (result.status === 'FAILED') {
-        this.workflowAudit.recordFireAndForget({
-          orgId: event.organizationId,
-          eventType: 'WORKFLOW_ERROR',
-          workflowId: workflow.id,
-          workflowRunId: run.id,
-          actionRunId: actionRun.id,
-          summary: summarizeWorkflowError(result.errorMessage ?? 'Action failed'),
-          payload: { actionType: action.type },
-          correlationId: idempotencyKey,
-        });
-      } else if (result.status === 'WAITING_APPROVAL') {
-        this.workflowAudit.recordFireAndForget({
-          orgId: event.organizationId,
-          eventType: 'WORKFLOW_APPROVAL_REQUESTED',
-          workflowId: workflow.id,
-          workflowRunId: run.id,
-          actionRunId: actionRun.id,
-          summary: `Approval requested for action ${action.type}`,
-          correlationId: idempotencyKey,
-        });
-      }
 
       if (result.status === 'FAILED') {
         runStatus = 'FAILED';
@@ -272,17 +196,6 @@ export class WorkflowEngineService {
         finishedAt: new Date(),
       },
     });
-
-    if (runStatus === 'FAILED') {
-      this.workflowAudit.recordFireAndForget({
-        orgId: event.organizationId,
-        eventType: 'WORKFLOW_RUN_ABORTED',
-        workflowId: workflow.id,
-        workflowRunId: run.id,
-        summary: summarizeWorkflowError(runError ?? 'Workflow run failed'),
-        correlationId: idempotencyKey,
-      });
-    }
 
     await this.prisma.orgWorkflow.update({
       where: { id: workflow.id },

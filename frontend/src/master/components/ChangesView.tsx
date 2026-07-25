@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-simulate-history-v49856-2026-07-25',
+    version: '4.9.856',
+    title: 'V4.9.856 — Workflow Dry-Run, Revision Diff & Execution History (Phase 10 Prompt 46)',
+    summary: [
+      'True dry-run: POST /workflows/:id/dry-run + /test delegates to plan-only execution (no action runs, no provider calls).',
+      'WorkflowDryRunPanel — no-execution banner, scope/condition tree, planned actions, masked recipients, policy blockers, request ID.',
+      'POST /workflows/:id/revision-diff — categorized trigger/scope/condition/action/approval/risk/policy changes with actor metadata.',
+      'WorkflowExecutionHistoryPanel — run status, version, action runs, partial failure, policy suppression, correlation; audit permission gate.',
+      'AbortController + sequence ID in useWorkflowSimulation prevents stale simulation results.',
+    ],
+    reason: 'Operators need safe simulation, understandable version comparison, and redacted execution history without race conditions or secret leakage.',
+    previousBehavior: 'POST /test executed LIVE workflow engine; simulation showed only a text message; history listed event type + date only.',
+    details: 'workflow-dry-run.service.ts, workflow-revision-diff.util.ts, WorkflowDryRunPanel.tsx, WorkflowRevisionDiffPanel.tsx, WorkflowExecutionHistoryPanel.tsx, useWorkflowSimulation.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T23:45:00.000Z',
+  },
+  {
     id: 'workflow-config-drawer-v49855-2026-07-25',
     version: '4.9.855',
     title: 'V4.9.855 — Workflow Config Drawer (Phase 10 Prompt 45)',

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
-  ChevronRight,
   Play,
   RefreshCw,
   Save,
@@ -45,14 +44,17 @@ import {
   parseBoundedNumberInput,
   validateWorkflowConfigForm,
 } from './workflow-config.utils';
-import { parseApiError } from './workflow-runtime.utils';
 import {
-  workflowLastRunOutcomeLabel,
+  parseApiError,
   workflowRiskLabel,
   workflowRiskTone,
   workflowStatusLabel,
   workflowStatusTone,
 } from './workflow-runtime.utils';
+import { WorkflowDryRunPanel } from './WorkflowDryRunPanel';
+import { WorkflowRevisionDiffPanel } from './WorkflowRevisionDiffPanel';
+import { WorkflowExecutionHistoryPanel } from './WorkflowExecutionHistoryPanel';
+import { useWorkflowRevisionDiff, useWorkflowSimulation } from './useWorkflowSimulation';
 
 interface WorkflowConfigDrawerProps {
   open: boolean;
@@ -97,13 +99,14 @@ export function WorkflowConfigDrawer({
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [runs, setRuns] = useState<WorkflowRunDto[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
-  const [testLoading, setTestLoading] = useState(false);
-  const [testMessage, setTestMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<ReturnType<typeof validateWorkflowConfigForm>>({});
 
   const sourceType = item?.sourceType ?? 'custom';
   const isSystem = sourceType === 'system';
   const workflowId = createMode ? null : item?.id ?? null;
+  const simulation = useWorkflowSimulation(orgId, workflowId);
+  const revisionDiff = useWorkflowRevisionDiff(orgId, workflowId);
+
   const editable = canWrite && (!isSystem || createMode);
 
   const dirty = useMemo(
@@ -120,8 +123,8 @@ export function WorkflowConfigDrawer({
     baselineRef.current = next;
     setForm(next);
     setFieldErrors({});
-    setTestMessage(null);
-  }, []);
+    simulation.reset();
+  }, [simulation.reset]);
 
   const loadDrawer = useCallback(async () => {
     if (!orgId || !open) return;
@@ -161,6 +164,20 @@ export function WorkflowConfigDrawer({
       .catch(() => setRuns([]))
       .finally(() => setRunsLoading(false));
   }, [orgId, workflowId, open]);
+
+  useEffect(() => {
+    if (!open || !workflowId || !dirty) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void revisionDiff.loadDiff(form, dirty);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [open, workflowId, dirty, form, revisionDiff.loadDiff]);
+
+  const runSimulation = () => {
+    void simulation.simulate(form, dirty);
+  };
 
   const requestClose = useCallback(
     (nextOpen: boolean) => {
@@ -206,22 +223,7 @@ export function WorkflowConfigDrawer({
     }
   };
 
-  const runTest = async () => {
-    if (!orgId || !workflowId) {
-      setTestMessage(t('workflowAutomation.editor.simulation.saveFirst'));
-      return;
-    }
-    setTestLoading(true);
-    setTestMessage(null);
-    try {
-      const result = await api.workflows.test(orgId, workflowId, {});
-      setTestMessage(result.message ?? t('workflowAutomation.editor.simulation.success'));
-    } catch (error: unknown) {
-      setTestMessage(parseApiError(error));
-    } finally {
-      setTestLoading(false);
-    }
-  };
+  const runTest = runSimulation;
 
   const sectionDisabled = (field: string) =>
     !editable || !isSystemFieldEditable(field, sourceType, catalog);
@@ -867,15 +869,20 @@ export function WorkflowConfigDrawer({
                       type="button"
                       variant="outline"
                       className="min-h-11"
-                      disabled={!workflowId || testLoading}
-                      onClick={() => void runTest()}
+                      disabled={!workflowId || simulation.loading}
+                      onClick={runTest}
                     >
                       <Play className="mr-1.5 h-4 w-4" />
-                      {testLoading
+                      {simulation.loading
                         ? t('workflowAutomation.editor.simulation.running')
                         : t('workflowAutomation.editor.simulation.run')}
                     </Button>
-                    {testMessage && <p className="text-xs text-muted-foreground">{testMessage}</p>}
+                    <WorkflowDryRunPanel
+                      plan={simulation.plan}
+                      loading={simulation.loading}
+                      error={simulation.error}
+                      requestId={simulation.requestId}
+                    />
                   </AccordionContent>
                 </AccordionItem>
 
@@ -883,12 +890,17 @@ export function WorkflowConfigDrawer({
                   <AccordionTrigger className="min-h-11 py-3 text-sm font-semibold">
                     {t('workflowAutomation.editor.sections.versions')}
                   </AccordionTrigger>
-                  <AccordionContent className="pb-4 text-sm text-muted-foreground">
+                  <AccordionContent className="space-y-3 pb-4">
                     <p>
                       {t('workflowAutomation.editor.versions.current', {
                         version: item?.activeVersion ?? item?.version ?? 1,
                       })}
                     </p>
+                    <WorkflowRevisionDiffPanel
+                      diff={revisionDiff.diff}
+                      loading={revisionDiff.loading}
+                      error={revisionDiff.error}
+                    />
                   </AccordionContent>
                 </AccordionItem>
 
@@ -897,38 +909,11 @@ export function WorkflowConfigDrawer({
                     {t('workflowAutomation.editor.sections.history')}
                   </AccordionTrigger>
                   <AccordionContent className="space-y-2 pb-4">
-                    {runsLoading && (
-                      <p className="text-xs text-muted-foreground">{t('workflowAutomation.loading')}</p>
-                    )}
-                    {!runsLoading && runs.length === 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {t('workflowAutomation.editor.history.empty')}
-                      </p>
-                    )}
-                    {runs.map((run) => (
-                      <div
-                        key={run.id}
-                        className="flex flex-col gap-1 rounded-lg border border-border/60 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="break-words font-medium text-foreground">
-                          {run.eventType}
-                        </span>
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                          <StatusChip tone={run.status === 'SUCCESS' ? 'success' : run.status === 'FAILED' ? 'critical' : 'neutral'}>
-                            {workflowLastRunOutcomeLabel(
-                              run.status === 'SUCCESS'
-                                ? 'success'
-                                : run.status === 'FAILED'
-                                  ? 'failed'
-                                  : 'partial',
-                              t,
-                            )}
-                          </StatusChip>
-                          <ChevronRight className="h-3 w-3" />
-                          {new Date(run.startedAt).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
+                    <WorkflowExecutionHistoryPanel
+                      runs={runs}
+                      loading={runsLoading}
+                      canViewAudit={canWrite || !createMode}
+                    />
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
