@@ -43,10 +43,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const exResponse = exception.getResponse();
       if (typeof exResponse === 'object' && exResponse !== null) {
+        const isProd = (process.env.NODE_ENV || 'development') === 'production';
+        const payload = { ...(exResponse as Record<string, unknown>) };
+        if (isProd && status >= 500) {
+          delete payload.stack;
+          delete payload.message;
+          payload.message = 'Internal server error';
+        }
         response.status(status).json({
-          ...(exResponse as Record<string, unknown>),
+          ...payload,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          ...(isProd && status >= 500 ? {} : { path: request.url }),
         });
         return;
       }
@@ -66,9 +73,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
-      message,
+      message: (process.env.NODE_ENV || 'development') === 'production' && status >= 500
+        ? 'Internal server error'
+        : message,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      ...((process.env.NODE_ENV || 'development') === 'production' && status >= 500
+        ? {}
+        : { path: request.url }),
     });
   }
 }

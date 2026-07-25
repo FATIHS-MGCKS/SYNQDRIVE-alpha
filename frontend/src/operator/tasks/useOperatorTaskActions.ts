@@ -6,6 +6,10 @@ import { bucketsAffectedByTaskMutation } from '../hooks/operatorTodayFeed.utils'
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { dispatchOperatorTaskUpdated } from './operatorTask.utils';
+import {
+  clearScopedIdempotencyKey,
+  operatorIdempotencyHeaders,
+} from '../lib/operatorIdempotency';
 
 export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => void) {
   const { orgId } = useRentalOrg();
@@ -64,8 +68,16 @@ export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => 
   );
 
   const complete = useCallback(
-    (taskId: string, payload?: CompleteTaskPayload) =>
-      run(() => api.tasks.complete(orgId!, taskId, payload), 'Aufgabe erledigt'),
+    (taskId: string, payload?: CompleteTaskPayload) => {
+      const scope = `task:complete:${taskId}`;
+      return run(async () => {
+        const task = await api.tasks.complete(orgId!, taskId, payload, {
+          headers: operatorIdempotencyHeaders(scope),
+        });
+        clearScopedIdempotencyKey(scope);
+        return task;
+      }, 'Aufgabe erledigt');
+    },
     [orgId, run],
   );
 

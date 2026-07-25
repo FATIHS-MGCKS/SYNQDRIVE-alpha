@@ -12,6 +12,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Header,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -165,6 +166,7 @@ export class CustomersController {
   }
 
   @Get(':id/documents')
+  @Header('Cache-Control', 'no-store')
   async listDocuments(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -257,6 +259,7 @@ export class CustomersController {
   }
 
   @Get(':id')
+  @Header('Cache-Control', 'no-store')
   async findOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,

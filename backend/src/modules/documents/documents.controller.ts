@@ -65,6 +65,7 @@ export class DocumentsController {
 
   @Get('bookings/:bookingId/documents')
   @RequirePermission('bookings', 'read')
+  @Header('Cache-Control', 'no-store')
   getBookingDocuments(@Param('orgId') orgId: string, @Param('bookingId') bookingId: string) {
     return this.bundle.getBundleView(orgId, bookingId);
   }

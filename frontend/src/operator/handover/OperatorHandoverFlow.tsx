@@ -23,6 +23,11 @@ import { OperatorHandoverStepReview } from './OperatorHandoverStepReview';
 import { OperatorHandoverStepSignatures } from './OperatorHandoverStepSignatures';
 import { OperatorHandoverStepVehicle } from './OperatorHandoverStepVehicle';
 import { useOperatorHandoverForm } from './useOperatorHandoverForm';
+import {
+  clearScopedIdempotencyKey,
+  operatorIdempotencyHeaders,
+} from '../lib/operatorIdempotency';
+import { markOperatorSensitiveViewActive, useOperatorSensitiveView } from '../hooks/useOperatorSensitiveView';
 
 const STEP_LABELS: Record<OperatorHandoverStepId, string> = {
   vehicle: 'Fahrzeug',
@@ -62,6 +67,16 @@ export function OperatorHandoverFlow({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useOperatorHandoverForm(isOpen, kind, orgId, booking);
+
+  useOperatorSensitiveView(() => {
+    setSubmitError(null);
+    setStepError(null);
+  });
+
+  useEffect(() => {
+    markOperatorSensitiveViewActive(isOpen);
+    return () => markOperatorSensitiveViewActive(false);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -137,11 +152,14 @@ export function OperatorHandoverFlow({
         booking: bookingRef,
         state: form.state,
       });
+      const idempotencyScope = `handover:${kind.toLowerCase()}:${booking.id}`;
+      const init = { headers: operatorIdempotencyHeaders(idempotencyScope) };
       if (kind === 'PICKUP') {
-        await api.bookings.createPickupHandover(orgId, booking.id, payload);
+        await api.bookings.createPickupHandover(orgId, booking.id, payload, init);
       } else {
-        await api.bookings.createReturnHandover(orgId, booking.id, payload);
+        await api.bookings.createReturnHandover(orgId, booking.id, payload, init);
       }
+      clearScopedIdempotencyKey(idempotencyScope);
       // Server generates pickup/return protocol PDFs after handover — refresh bundle (no frontend PDF).
       await form.reloadDocuments();
       onSuccess?.();

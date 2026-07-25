@@ -258,6 +258,11 @@ export class CompleteTaskDto {
   @IsString()
   @MaxLength(2000)
   overrideReason?: string;
+
+  /** Optimistic locking — reject completion when task was modified concurrently. */
+  @IsOptional()
+  @IsISO8601()
+  expectedUpdatedAt?: string;
 }
 
 export class AddCommentDto {

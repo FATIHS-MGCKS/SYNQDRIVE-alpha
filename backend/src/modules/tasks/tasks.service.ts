@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
@@ -117,6 +117,7 @@ export interface CompleteTaskInput {
   actualCostCents?: number;
   overrideIncompleteChecklist?: boolean;
   overrideReason?: string;
+  expectedUpdatedAt?: string;
 }
 
 export interface UpdateTaskInput {
@@ -1427,6 +1428,19 @@ export class TasksService {
     const task = await this.loadTaskOrThrow(id, orgId);
     assertTaskTransition(task.status, to);
     if (task.status === to) return this.getTaskById(id, orgId);
+
+    if (extra?.expectedUpdatedAt) {
+      const expected = new Date(extra.expectedUpdatedAt);
+      if (Number.isNaN(expected.getTime())) {
+        throw new BadRequestException('expectedUpdatedAt must be a valid ISO-8601 timestamp');
+      }
+      if (task.updatedAt.getTime() !== expected.getTime()) {
+        throw new ConflictException({
+          message: 'Task was modified by another session. Refresh and retry.',
+          code: 'TASK_OPTIMISTIC_LOCK',
+        });
+      }
+    }
 
     const now = new Date();
     const update: Prisma.OrgTaskUpdateInput = { status: to, updatedByUserId: actorUserId ?? null };

@@ -12,6 +12,8 @@ import { CustomerVerificationService } from './customer-verification.service';
 import { ListCustomerVerificationQueryDto } from './dto/list-customer-verification-query.dto';
 import { ManualPickupCheckDto } from './dto/manual-pickup-check.dto';
 import { StartDiditSessionDto } from './dto/start-didit-session.dto';
+import { OperatorRateLimitService } from '@modules/operator-security/operator-rate-limit.service';
+import { assertNoForbiddenOperatorBodyFields } from '@modules/operator-security/operator-client-field-guard.util';
 
 type AuthedRequest = {
   user?: {
@@ -26,6 +28,7 @@ type AuthedRequest = {
 export class CustomerVerificationController {
   constructor(
     private readonly customerVerificationService: CustomerVerificationService,
+    private readonly operatorRateLimit: OperatorRateLimitService,
   ) {}
 
   @Get('eligibility')
@@ -61,10 +64,19 @@ export class CustomerVerificationController {
   }
 
   @Post('manual-pickup-check')
-  createManualPickupCheck(
+  async createManualPickupCheck(
     @Req() req: AuthedRequest,
     @Body() body: ManualPickupCheckDto,
   ) {
+    assertNoForbiddenOperatorBodyFields(body);
+    const orgId = req.user?.organizationId;
+    if (orgId) {
+      await this.operatorRateLimit.assertAllowed({
+        organizationId: orgId,
+        userId: req.user?.id,
+        action: 'verification',
+      });
+    }
     return this.customerVerificationService.createManualPickupCheck(
       req.user!,
       body,

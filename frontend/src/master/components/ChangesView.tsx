@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-security-hardening-v49829-2026-07-25',
+    version: '4.9.829',
+    title: 'V4.9.829 — Operator App security hardening (Prompt 36)',
+    summary: [
+      'OperatorSecurityModule: Redis rate limits (scan/completion/verification) + Idempotency-Key replay protection.',
+      'Validated handover DTO whitelist; client actor/org fields rejected; return handover idempotent replay.',
+      'Task complete optimistic locking via expectedUpdatedAt; Cache-Control no-store on sensitive reads.',
+      'Frontend Idempotency-Key headers + bfcache mitigation on handover; production 500 error sanitization.',
+    ],
+    reason: 'Production-readiness Prompt 36 — close IDOR/mass-assignment/replay/rate-limit gaps on operator endpoints.',
+    previousBehavior: 'Handover used interface payloads without ValidationPipe DTO; no Redis idempotency for operator completions.',
+    details: 'Audit: docs/audits/operator-app-security-hardening-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Operator WebApp',
+    createdAt: '2026-07-25T20:30:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

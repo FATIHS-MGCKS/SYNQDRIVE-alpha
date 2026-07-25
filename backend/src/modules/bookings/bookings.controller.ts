@@ -10,7 +10,10 @@ import {
   UseGuards,
   BadRequestException,
   NotFoundException,
+  Header,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { MembershipRole } from '@prisma/client';
 import { BookingsService } from './bookings.service';
 import { BookingsHandoverService } from './bookings-handover.service';
@@ -54,7 +57,13 @@ import { UpdateBookingDto } from './dto/update-booking.dto';
 import { toBookingCreateInput, toBookingUpdateInput } from './booking-input.sanitizer';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CreateHandoverProtocolPayload } from './handover.types';
+import { CreateHandoverProtocolDto } from './dto/create-handover-protocol.dto';
+import { MarkBookingNoShowDto } from './dto/mark-booking-no-show.dto';
 import { resolveHandoverActor } from './handover-actor.util';
+import { OperatorRateLimitService } from '@modules/operator-security/operator-rate-limit.service';
+import { OperatorIdempotencyService } from '@modules/operator-security/operator-idempotency.service';
+import { readOperatorIdempotencyKey } from '@modules/operator-security/operator-idempotency.util';
+import { assertNoForbiddenOperatorBodyFields } from '@modules/operator-security/operator-client-field-guard.util';
 
 @Controller('organizations/:orgId/bookings')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
@@ -68,6 +77,8 @@ export class BookingsController {
     private readonly allowedDriversService: BookingAllowedDriversService,
     private readonly eligibilityApprovalService: BookingEligibilityApprovalService,
     private readonly eligibilityDecisionService: BookingEligibilityDecisionService,
+    private readonly operatorRateLimit: OperatorRateLimitService,
+    private readonly operatorIdempotency: OperatorIdempotencyService,
   ) {}
 
   @Get('today/pickups')
@@ -93,7 +104,15 @@ export class BookingsController {
   async findAll(
     @Param('orgId') orgId: string,
     @Query() query: ListBookingsQueryDto,
+    @CurrentUser('id') userId: string | undefined,
   ) {
+    if (query.search?.trim()) {
+      await this.operatorRateLimit.assertAllowed({
+        organizationId: orgId,
+        userId,
+        action: 'scan',
+      });
+    }
     return this.bookingsService.findAll(orgId, query);
   }
 
@@ -375,6 +394,7 @@ export class BookingsController {
 
   @Get(':id/detail')
   @RequirePermission('bookings', 'read')
+  @Header('Cache-Control', 'no-store')
   async findDetail(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -386,10 +406,17 @@ export class BookingsController {
 
   @Get(':id')
   @RequirePermission('bookings', 'read')
+  @Header('Cache-Control', 'no-store')
   async findOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
   ) {
+    await this.operatorRateLimit.assertAllowed({
+      organizationId: orgId,
+      userId,
+      action: 'scan',
+    });
     return this.bookingsService.findById(orgId, id);
   }
 
@@ -464,9 +491,23 @@ export class BookingsController {
   async markNoShow(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: { reason?: string | null } = {},
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: Request,
+    @Body() body: MarkBookingNoShowDto,
   ) {
-    return this.bookingsService.markNoShow(orgId, id, body?.reason ?? null);
+    assertNoForbiddenOperatorBodyFields(body);
+    await this.operatorRateLimit.assertAllowed({
+      organizationId: orgId,
+      userId,
+      action: 'completion',
+    });
+    const idempotencyKey = readOperatorIdempotencyKey(req.headers);
+    return this.operatorIdempotency.execute({
+      organizationId: orgId,
+      scope: `booking:no-show:${id}`,
+      idempotencyKey,
+      work: () => this.bookingsService.markNoShow(orgId, id, body?.reason ?? null),
+    });
   }
 
   // V4.6.75 — Handover routes (pickup + return).
@@ -475,6 +516,7 @@ export class BookingsController {
   // customer + staff signature, noted damage ids).
   @Get(':id/handover')
   @RequirePermission('bookings', 'read')
+  @Header('Cache-Control', 'no-store')
   async listHandovers(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
@@ -488,15 +530,29 @@ export class BookingsController {
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
-    @Body() body: CreateHandoverProtocolPayload,
+    @Req() req: Request,
+    @Body() body: CreateHandoverProtocolDto,
   ) {
-    return this.handoverService.createHandover(
-      orgId,
-      bookingId,
-      'PICKUP',
-      body,
-      resolveHandoverActor(user),
-    );
+    assertNoForbiddenOperatorBodyFields(body);
+    await this.operatorRateLimit.assertAllowed({
+      organizationId: orgId,
+      userId: user?.id,
+      action: 'completion',
+    });
+    const idempotencyKey = readOperatorIdempotencyKey(req.headers);
+    return this.operatorIdempotency.execute({
+      organizationId: orgId,
+      scope: `handover:pickup:${bookingId}`,
+      idempotencyKey,
+      work: () =>
+        this.handoverService.createHandover(
+          orgId,
+          bookingId,
+          'PICKUP',
+          body as CreateHandoverProtocolPayload,
+          resolveHandoverActor(user),
+        ),
+    });
   }
 
   @Post(':id/handover/return')
@@ -505,14 +561,28 @@ export class BookingsController {
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
     @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
-    @Body() body: CreateHandoverProtocolPayload,
+    @Req() req: Request,
+    @Body() body: CreateHandoverProtocolDto,
   ) {
-    return this.handoverService.createHandover(
-      orgId,
-      bookingId,
-      'RETURN',
-      body,
-      resolveHandoverActor(user),
-    );
+    assertNoForbiddenOperatorBodyFields(body);
+    await this.operatorRateLimit.assertAllowed({
+      organizationId: orgId,
+      userId: user?.id,
+      action: 'completion',
+    });
+    const idempotencyKey = readOperatorIdempotencyKey(req.headers);
+    return this.operatorIdempotency.execute({
+      organizationId: orgId,
+      scope: `handover:return:${bookingId}`,
+      idempotencyKey,
+      work: () =>
+        this.handoverService.createHandover(
+          orgId,
+          bookingId,
+          'RETURN',
+          body as CreateHandoverProtocolPayload,
+          resolveHandoverActor(user),
+        ),
+    });
   }
 }
