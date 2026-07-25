@@ -62,7 +62,7 @@ import { BookingPaymentCardService } from '@modules/payments/booking-payment-car
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { listInvalidationFactsFromMutation } from './booking-eligibility-gatekeeper/booking-eligibility-status-transition.matrix';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
-import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
 import {
   resolveEligibilityPolicyMode,
   shouldSkipEligibilityEnforcement,
@@ -133,6 +133,7 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly workflowEmitter: WorkflowEventOutboxEmitterService,
   ) {}
 
   /**
@@ -353,6 +354,41 @@ export class BookingsService {
         quotedPricingInput,
         tx,
       );
+
+      await this.workflowEmitter.enqueueInTransaction(tx, {
+        group: 'bookingLifecycle',
+        organizationId: orgId,
+        eventType: 'booking.created',
+        source: 'bookings',
+        entityType: 'booking',
+        entityId: created.id,
+        idempotencyKey: `booking.created:${created.id}`,
+        correlationId: `booking-lifecycle:${created.id}`,
+        payload: {
+          bookingId: created.id,
+          vehicleId: created.vehicleId,
+          customerId: created.customerId,
+          status: created.status,
+        },
+      });
+
+      if (created.status === 'CONFIRMED') {
+        await this.workflowEmitter.enqueueInTransaction(tx, {
+          group: 'bookingLifecycle',
+          organizationId: orgId,
+          eventType: 'booking.confirmed',
+          source: 'bookings',
+          entityType: 'booking',
+          entityId: created.id,
+          idempotencyKey: `booking.confirmed:${created.id}`,
+          correlationId: `booking-lifecycle:${created.id}`,
+          payload: {
+            bookingId: created.id,
+            vehicleId: created.vehicleId,
+            customerId: created.customerId,
+          },
+        });
+      }
 
       return created;
     });
@@ -2057,6 +2093,21 @@ export class BookingsService {
                 extrasJson: updatedBooking.extrasJson,
               },
             });
+            await this.workflowEmitter.enqueueInTransaction(tx, {
+              group: 'bookingLifecycle',
+              organizationId: orgId,
+              eventType: 'booking.confirmed',
+              source: 'bookings',
+              entityType: 'booking',
+              entityId: id,
+              idempotencyKey: `booking.confirmed:${id}`,
+              correlationId: `booking-lifecycle:${id}`,
+              payload: {
+                bookingId: id,
+                vehicleId: updatedBooking.vehicleId,
+                customerId: updatedBooking.customerId,
+              },
+            });
           }
           return updatedBooking;
         })
@@ -2218,19 +2269,15 @@ export class BookingsService {
 
     await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
 
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const bookingRow = await tx.booking.update({
         where: { id },
         data: {
           status: 'CANCELLED' as BookingStatus,
           cancelledAt: new Date(),
         },
-      }),
-      // Release the car for a replacement booking — but NEVER overwrite a
-      // maintenance / out-of-service state (same invariant the handover
-      // service enforces). `updateMany` + notIn applies the AVAILABLE flip
-      // only when the vehicle is not IN_SERVICE / OUT_OF_SERVICE.
-      this.prisma.vehicle.updateMany({
+      });
+      await tx.vehicle.updateMany({
         where: {
           id: booking.vehicleId,
           status: {
@@ -2238,8 +2285,25 @@ export class BookingsService {
           },
         },
         data: { status: VehicleStatus.AVAILABLE },
-      }),
-    ]);
+      });
+      await this.workflowEmitter.enqueueInTransaction(tx, {
+        group: 'bookingLifecycle',
+        organizationId: orgId,
+        eventType: 'booking.cancelled',
+        source: 'bookings',
+        entityType: 'booking',
+        entityId: id,
+        idempotencyKey: `booking.cancelled:${id}`,
+        correlationId: `booking-lifecycle:${id}`,
+        payload: {
+          bookingId: id,
+          vehicleId: booking.vehicleId,
+          reasonCode: 'operator_cancelled',
+          cancelledBy: 'operator',
+        },
+      });
+      return bookingRow;
+    });
 
     void this.taskAutomationService
       .supersedeBookingLifecycleOnCancellation(orgId, id)

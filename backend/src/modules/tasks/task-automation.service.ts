@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma, TaskPriority, TaskSource, TaskType } from '@prisma/client';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -19,6 +19,9 @@ import {
   shouldMaterializeFromResolvedRule,
 } from './automation/task-automation-effective-rule.util';
 import { TaskAutomationRuleResolverService } from './automation/task-automation-rule-resolver.service';
+import { WorkflowBookingTimingEmitterService } from '@modules/workflows/outbox/workflow-booking-timing-emitter.service';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import { buildWorkflowOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
 import type { ResolvedTaskAutomationRule, TaskAutomationCatalogKey } from './automation/task-automation-rule.types';
 import {
   computeBookingPickupTiming,
@@ -95,6 +98,8 @@ export class TaskAutomationService {
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
     private readonly ruleResolver: TaskAutomationRuleResolverService,
+    @Optional() private readonly bookingTimingEmitter?: WorkflowBookingTimingEmitterService,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {}
 
   private async resolveMaterializationRule(
@@ -412,6 +417,15 @@ export class TaskAutomationService {
       if (!existing || existing.status !== 'DONE') {
         await this.materializeBookingPickupTask(booking, timing, dedupKey);
       }
+
+      await this.bookingTimingEmitter?.emitPickupTimingStandalone({
+        organizationId: booking.organizationId,
+        bookingId: booking.id,
+        vehicleId: booking.vehicleId,
+        stationId: booking.pickupStationId,
+        timing,
+        now,
+      });
     } catch (err: unknown) {
       await this.handleAutomationFailure(
         buildOutboxMeta({
@@ -483,6 +497,15 @@ export class TaskAutomationService {
       if (!existing || existing.status !== 'DONE') {
         await this.materializeBookingReturnTask(booking, timing, dedupKey);
       }
+
+      await this.bookingTimingEmitter?.emitReturnTimingStandalone({
+        organizationId: booking.organizationId,
+        bookingId: booking.id,
+        vehicleId: booking.vehicleId,
+        stationId: booking.returnStationId,
+        timing,
+        now,
+      });
     } catch (err: unknown) {
       await this.handleAutomationFailure(
         buildOutboxMeta({
@@ -762,6 +785,38 @@ export class TaskAutomationService {
         ) as Prisma.InputJsonValue,
       },
     });
+    if (timing.isOverdue) {
+      await this.emitTaskOverdue(booking.organizationId, taskId, {
+        vehicleId: booking.vehicleId,
+        bookingId: booking.id,
+        dueAt: timing.milestoneAt.toISOString(),
+      });
+    }
+  }
+
+  private async emitTaskOverdue(
+    organizationId: string,
+    taskId: string,
+    context: { vehicleId?: string; bookingId?: string; dueAt: string },
+  ): Promise<void> {
+    if (!this.workflowEmitter?.isGroupEnabled('task')) return;
+    const dueDateOnly = context.dueAt.slice(0, 10);
+    await this.workflowEmitter.enqueueStandalone({
+      group: 'task',
+      organizationId,
+      eventType: 'task.overdue',
+      source: 'tasks',
+      entityType: 'task',
+      entityId: taskId,
+      correlationId: `task-lifecycle:${taskId}`,
+      occurrenceId: buildWorkflowOccurrenceId(['task.overdue', taskId, dueDateOnly]),
+      payload: {
+        taskId,
+        vehicleId: context.vehicleId,
+        bookingId: context.bookingId,
+        dueAt: context.dueAt,
+      },
+    });
   }
 
   private async refreshBookingReturnTask(
@@ -802,6 +857,13 @@ export class TaskAutomationService {
         ) as Prisma.InputJsonValue,
       },
     });
+    if (timing.isOverdue) {
+      await this.emitTaskOverdue(booking.organizationId, taskId, {
+        vehicleId: booking.vehicleId,
+        bookingId: booking.id,
+        dueAt: timing.milestoneAt.toISOString(),
+      });
+    }
   }
 
   /**

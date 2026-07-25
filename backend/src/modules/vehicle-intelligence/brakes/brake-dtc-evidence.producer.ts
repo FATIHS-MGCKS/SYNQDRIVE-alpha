@@ -24,6 +24,8 @@ import {
 import { mapDtcFreshnessToEvidenceFreshness } from './brake-evidence.domain';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 import { BrakeHealthObservabilityService } from './brake-health-observability.service';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import { buildVehicleFindingOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
 
 export type BrakeDtcSourceProvider = 'DIMO' | 'HIGH_MOBILITY' | 'OBD' | 'MANUAL';
 
@@ -51,6 +53,7 @@ export class BrakeDtcEvidenceProducerService {
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
     @Optional() private readonly brakeHealthAlerts?: BrakeHealthAlertService,
     @Optional() private readonly observability?: BrakeHealthObservabilityService,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {}
 
   async onDtcUpserted(
@@ -107,9 +110,113 @@ export class BrakeDtcEvidenceProducerService {
       return 'updated';
     }
 
-    await this.prisma.brakeEvidence.create({
-      data: payload,
-    });
+    const organizationId =
+      context.organizationId ?? (await this.loadOrganizationId(vehicleId)) ?? '';
+
+    if (
+      this.workflowEmitter?.isGroupEnabled('vehicleHealth')
+      && classification.severity === 'CRITICAL'
+      && classification.safetyClassified
+      && organizationId
+    ) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.brakeEvidence.create({ data: payload });
+        await this.workflowEmitter!.enqueueInTransaction(tx, {
+          group: 'vehicleHealth',
+          organizationId,
+          eventType: 'vehicle.health.critical',
+          source: 'vehicle-health',
+          entityType: 'vehicle',
+          entityId: vehicleId,
+          idempotencyKey: `vehicle.health.critical:${vehicleId}:brakes:${classification.normalizedCode}`,
+          correlationId: `vehicle-health:${vehicleId}`,
+          occurrenceId: buildVehicleFindingOccurrenceId(
+            'vehicle.health.critical',
+            vehicleId,
+            classification.normalizedCode,
+          ),
+          payload: {
+            vehicleId,
+            healthModule: 'brakes',
+            severityCode: 'critical',
+            metricCode: classification.normalizedCode,
+          },
+        });
+        await this.workflowEmitter!.enqueueInTransaction(tx, {
+          group: 'vehicleDtc',
+          organizationId,
+          eventType: 'vehicle.dtc.detected',
+          source: 'vehicle-health',
+          entityType: 'vehicle',
+          entityId: vehicleId,
+          correlationId: `vehicle-health:${vehicleId}`,
+          causationId: classification.normalizedCode,
+          occurrenceId: buildVehicleFindingOccurrenceId(
+            'vehicle.dtc.detected',
+            vehicleId,
+            classification.normalizedCode,
+          ),
+          payload: {
+            vehicleId,
+            dtcCode: classification.normalizedCode,
+            severity: 'critical',
+          },
+        });
+      });
+    } else if (
+      this.workflowEmitter?.isGroupEnabled('vehicleHealth')
+      && classification.severity === 'WARNING'
+      && organizationId
+    ) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.brakeEvidence.create({ data: payload });
+        await this.workflowEmitter!.enqueueInTransaction(tx, {
+          group: 'vehicleHealth',
+          organizationId,
+          eventType: 'vehicle.health.warning',
+          source: 'vehicle-health',
+          entityType: 'vehicle',
+          entityId: vehicleId,
+          correlationId: `vehicle-health:${vehicleId}`,
+          occurrenceId: buildVehicleFindingOccurrenceId(
+            'vehicle.health.warning',
+            vehicleId,
+            classification.normalizedCode,
+          ),
+          payload: {
+            vehicleId,
+            healthModule: 'brakes',
+            severityCode: 'warning',
+            metricCode: classification.normalizedCode,
+          },
+        });
+        if (this.workflowEmitter!.isGroupEnabled('vehicleDtc')) {
+          await this.workflowEmitter!.enqueueInTransaction(tx, {
+            group: 'vehicleDtc',
+            organizationId,
+            eventType: 'vehicle.dtc.detected',
+            source: 'vehicle-health',
+            entityType: 'vehicle',
+            entityId: vehicleId,
+            correlationId: `vehicle-health:${vehicleId}`,
+            occurrenceId: buildVehicleFindingOccurrenceId(
+              'vehicle.dtc.detected',
+              vehicleId,
+              classification.normalizedCode,
+            ),
+            payload: {
+              vehicleId,
+              dtcCode: classification.normalizedCode,
+              severity: 'warning',
+            },
+          });
+        }
+      });
+    } else {
+      await this.prisma.brakeEvidence.create({
+        data: payload,
+      });
+    }
     this.observability?.recordEvidence({
       action: 'created',
       source: 'DTC_SIGNAL',

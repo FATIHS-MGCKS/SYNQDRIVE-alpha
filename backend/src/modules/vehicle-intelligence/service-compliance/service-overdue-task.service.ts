@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InsightType, Prisma, TaskPriority, TaskType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
@@ -23,6 +23,8 @@ import {
   SERVICE_OVERDUE_TASK_RULE_ID,
   SERVICE_OVERDUE_TASK_RULE_VERSION,
 } from './service-overdue-task.rules';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import { buildVehicleFindingOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
 import { FULL_SERVICE_BASELINE_EVENT_TYPES } from '../service-events/service-events.constants';
 
 const ACTIVE_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING'] as const;
@@ -38,6 +40,7 @@ export class ServiceOverdueTaskService {
     private readonly ruleResolver: TaskAutomationRuleResolverService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {}
 
   private async handleAutomationFailure(
@@ -167,7 +170,32 @@ export class ServiceOverdueTaskService {
         priority: signal.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH',
       });
 
-      return await this.tasks.upsertByDedup(organizationId, signal.dedupeKey, payload);
+      const result = await this.tasks.upsertByDedup(organizationId, signal.dedupeKey, payload);
+
+      if (this.workflowEmitter?.isGroupEnabled('service') && signal.dueDate) {
+        const dueAt = new Date(signal.dueDate).toISOString();
+        await this.workflowEmitter.enqueueStandalone({
+          group: 'service',
+          organizationId,
+          eventType: 'service.due',
+          source: 'vehicle-health',
+          entityType: 'vehicle',
+          entityId: vehicleId,
+          correlationId: `vehicle-service:${vehicleId}`,
+          occurrenceId: buildVehicleFindingOccurrenceId(
+            'service.due',
+            vehicleId,
+            signal.dedupeKey,
+          ),
+          payload: {
+            vehicleId,
+            serviceType: signal.kind,
+            dueAt,
+          },
+        });
+      }
+
+      return result;
     } catch (err: unknown) {
       await this.handleAutomationFailure(
         organizationId,
