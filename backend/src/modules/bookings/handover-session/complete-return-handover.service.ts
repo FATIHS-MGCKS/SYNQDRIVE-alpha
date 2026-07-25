@@ -30,6 +30,7 @@ import { OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS } from './operator-handover-p
 import { resolveWritableStation } from './handover-session-context.util';
 import { currentHandoverProtocolWhere } from './handover-protocol.query';
 import { OperatorUploadService } from '@modules/operator-upload/operator-upload.service';
+import { TechnicalObservationsService } from '@modules/technical-observations/technical-observations.service';
 import { assertOperatorSessionSignatureBindings } from './handover-signature-binding.complete';
 import type { HandoverSignatureBindingRecord } from './handover-signature-binding.types';
 
@@ -66,6 +67,7 @@ export class CompleteReturnHandoverService {
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
     private readonly operatorUploads: OperatorUploadService,
+    private readonly technicalObservations: TechnicalObservationsService,
   ) {}
 
   async completeReturnHandover(
@@ -285,12 +287,22 @@ export class CompleteReturnHandoverService {
         },
       });
 
-      return response;
+      return {
+        response,
+        createdTechnicalObservationIds: result.createdTechnicalObservationIds,
+        protocolId: result.protocol.id,
+      };
     });
 
-    await this.runPostCommitSideEffects(input, booking, txResult);
+    await this.runPostCommitSideEffects(
+      input,
+      booking,
+      txResult.response,
+      txResult.createdTechnicalObservationIds,
+      txResult.protocolId,
+    );
 
-    return txResult;
+    return txResult.response;
   }
 
   private async assertCompletePermission(
@@ -403,8 +415,28 @@ export class CompleteReturnHandoverService {
       returnStationId: string | null;
     },
     result: CompleteReturnHandoverResult,
+    createdTechnicalObservationIds: string[] = [],
+    handoverProtocolId?: string,
   ): Promise<void> {
     if (result.idempotent) return;
+
+    if (createdTechnicalObservationIds.length > 0 && handoverProtocolId) {
+      void this.technicalObservations
+        .syncHandoverCreatedObservations({
+          organizationId: input.organizationId,
+          vehicleId: booking.vehicleId,
+          bookingId: booking.id,
+          handoverProtocolId,
+          source: 'OPERATOR_RETURN',
+          actorUserId: input.actor.userId,
+          createdObservationIds: createdTechnicalObservationIds,
+        })
+        .catch((err) => {
+          this.logger.error(
+            `syncHandoverCreatedObservations failed booking=${booking.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
+    }
 
     await this.activityLog.log({
       organizationId: input.organizationId,

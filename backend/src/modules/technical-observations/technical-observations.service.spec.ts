@@ -7,7 +7,7 @@ describe('TechnicalObservationsService', () => {
   const vehicleId = 'veh-1';
 
   const prisma = {
-    vehicle: { findFirst: jest.fn() },
+    vehicle: { findFirst: jest.fn(), findUnique: jest.fn() },
     vehicleComplaint: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
@@ -26,12 +26,19 @@ describe('TechnicalObservationsService', () => {
   const tasks = { createManualTask: jest.fn() };
   const serviceCases = { create: jest.fn() };
   const damages = { create: jest.fn() };
+  const notificationIngest = {
+    syncTechnicalObservationActive: jest.fn(),
+    syncTechnicalObservationResolved: jest.fn(),
+  };
+  const observationAudit = { log: jest.fn() };
 
   const svc = new TechnicalObservationsService(
     prisma as any,
     tasks as any,
     serviceCases as any,
     damages as any,
+    notificationIngest as any,
+    observationAudit as any,
   );
 
   const baseRow = (overrides: Record<string, unknown> = {}) => ({
@@ -87,6 +94,29 @@ describe('TechnicalObservationsService', () => {
     expect(result.orgId).toBe(orgA);
     expect(result.severity).toBe('medium');
     expect(result.blocksRental).toBe(false);
+    expect(observationAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'TECHNICAL_OBSERVATION_CREATED' }),
+    );
+    expect(tasks.createManualTask).not.toHaveBeenCalled();
+  });
+
+  it('critical severity without explicit blocksRental stays non-blocking', async () => {
+    prisma.vehicleComplaint.create.mockResolvedValue(
+      baseRow({ urgency: 'CRITICAL', blocksRental: false }),
+    );
+    const result = await svc.create(orgA, vehicleId, {
+      description: 'Grinding noise',
+      severity: 'critical',
+    });
+    expect(prisma.vehicleComplaint.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          urgency: 'CRITICAL',
+          blocksRental: false,
+        }),
+      }),
+    );
+    expect(result.blocksRental).toBe(false);
   });
 
   it('create rejects vehicle from another org', async () => {
@@ -123,6 +153,12 @@ describe('TechnicalObservationsService', () => {
         data: expect.objectContaining({ status: 'RESOLVED', blocksRental: false }),
       }),
     );
+    expect(observationAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'TECHNICAL_OBSERVATION_RESOLVED',
+        userId: 'user-1',
+      }),
+    );
   });
 
   it('dismiss clears rental block flag', async () => {
@@ -143,6 +179,7 @@ describe('TechnicalObservationsService', () => {
     const result = await svc.convertToTask(orgA, vehicleId, 'obs-1', {}, 'user-1');
     expect(result.taskId).toBe('task-1');
     expect(result.observation.status).toBe('converted');
+    expect(tasks.createManualTask).toHaveBeenCalledTimes(1);
     expect(tasks.createManualTask).toHaveBeenCalledWith(
       orgA,
       expect.objectContaining({
@@ -151,6 +188,43 @@ describe('TechnicalObservationsService', () => {
         vehicleId,
       }),
       'user-1',
+    );
+    expect(observationAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'TECHNICAL_OBSERVATION_CONVERTED',
+        meta: { taskId: 'task-1' },
+      }),
+    );
+  });
+
+  it('convert-to-task is not duplicated when already converted', async () => {
+    prisma.vehicleComplaint.findFirst.mockResolvedValue(
+      baseRow({ convertedToTaskId: 'task-existing' }),
+    );
+    await expect(
+      svc.convertToTask(orgA, vehicleId, 'obs-1', {}, 'user-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tasks.createManualTask).not.toHaveBeenCalled();
+  });
+
+  it('syncHandoverCreatedObservations emits notifications once per created id', async () => {
+    prisma.vehicleComplaint.findFirst.mockResolvedValue(baseRow({ id: 'obs-42' }));
+    prisma.vehicle.findUnique.mockResolvedValue({ licensePlate: 'M-AB 123' });
+    await svc.syncHandoverCreatedObservations({
+      organizationId: orgA,
+      vehicleId,
+      bookingId: 'book-1',
+      handoverProtocolId: 'proto-1',
+      source: 'OPERATOR_HANDOVER',
+      actorUserId: 'user-1',
+      createdObservationIds: ['obs-42'],
+    });
+    expect(notificationIngest.syncTechnicalObservationActive).toHaveBeenCalledTimes(1);
+    expect(observationAudit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'TECHNICAL_OBSERVATION_HANDOVER_PERSISTED',
+        source: 'OPERATOR_HANDOVER',
+      }),
     );
   });
 

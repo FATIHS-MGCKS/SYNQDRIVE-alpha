@@ -22,14 +22,11 @@ import {
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
-import {
-  parseAffectedArea,
-  parseCategory,
-  parseSeverity,
-} from '@modules/technical-observations/technical-observations.mapper';
+import { persistHandoverTechnicalObservationsInTransaction } from '@modules/technical-observations/handover-technical-observation.persistence';
+import { normalizeTechnicalObservationDrafts } from './handover-session/handover-pickup-completion.executor';
+import { TechnicalObservationsService } from '@modules/technical-observations/technical-observations.service';
 import { createHandoverCompletionRecordInTransaction } from './handover-session/handover-completion-record.service';
 import { currentHandoverProtocolWhere } from './handover-session/handover-protocol.query';
-import type { HandoverTechnicalObservationDraft } from './handover.types';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
@@ -71,6 +68,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityRecheckService))
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly technicalObservations: TechnicalObservationsService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -207,7 +205,7 @@ export class BookingsHandoverService {
         )
       : [];
 
-    const [protocol, updatedBooking] = await this.prisma.$transaction(
+    const handoverResult = await this.prisma.$transaction(
       async (tx) => {
         const created = await tx.bookingHandoverProtocol.create({
           data: {
@@ -365,33 +363,25 @@ export class BookingsHandoverService {
           });
         }
 
-        const observationDrafts = this.normalizeTechnicalObservationDrafts(
+        const observationDrafts = normalizeTechnicalObservationDrafts(
           payload.technicalObservations,
         );
-        if (observationDrafts.length > 0) {
-          const complaintSource =
-            kind === 'PICKUP' ? 'OPERATOR_HANDOVER' : 'OPERATOR_RETURN';
-          for (const draft of observationDrafts) {
-            await tx.vehicleComplaint.create({
-              data: {
-                organizationId: orgId,
-                vehicleId: booking.vehicleId,
-                createdByUserId: actor.userId,
-                description: draft.description,
-                urgency: parseSeverity(draft.severity),
-                category: parseCategory(draft.category),
-                affectedArea: parseAffectedArea(draft.affectedArea),
-                status: 'ACTIVE',
-                source: complaintSource,
-                blocksRental: draft.blocksRental ?? false,
-                bookingId,
-                customerId: booking.customerId,
-                handoverProtocolId: created.id,
-                stationId: actualStationId ?? null,
-              },
-            });
-          }
-        }
+        const complaintSource =
+          kind === 'PICKUP' ? 'OPERATOR_HANDOVER' : 'OPERATOR_RETURN';
+        const observationPersist = await persistHandoverTechnicalObservationsInTransaction(
+          tx,
+          {
+            organizationId: orgId,
+            vehicleId: booking.vehicleId,
+            bookingId,
+            customerId: booking.customerId,
+            handoverProtocolId: created.id,
+            stationId: actualStationId ?? null,
+            createdByUserId: actor.userId,
+            source: complaintSource,
+            drafts: observationDrafts,
+          },
+        );
 
         if (kind === 'PICKUP' && gateEvaluation?.overrideUsed) {
           await this.pickupGateAudit.appendInTransaction(tx, {
@@ -421,9 +411,35 @@ export class BookingsHandoverService {
           actor,
         });
 
-        return [created, booking2] as const;
+        return {
+          protocol: created,
+          booking: booking2,
+          observationPersist,
+        };
       },
     );
+
+    const protocol = handoverResult.protocol;
+    const updatedBooking = handoverResult.booking;
+
+    if (handoverResult.observationPersist.createdIds.length > 0) {
+      void this.technicalObservations
+        .syncHandoverCreatedObservations({
+          organizationId: orgId,
+          vehicleId: booking.vehicleId,
+          bookingId,
+          handoverProtocolId: protocol.id,
+          source: kind === 'PICKUP' ? 'OPERATOR_HANDOVER' : 'OPERATOR_RETURN',
+          actorUserId: actor.userId,
+          createdObservationIds: handoverResult.observationPersist.createdIds,
+          skippedDuplicateIds: handoverResult.observationPersist.skippedDuplicateIds,
+        })
+        .catch((err) => {
+          this.logger.error(
+            `syncHandoverCreatedObservations failed booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
+    }
 
     // After a successful handover, generate the protocol PDF (and, on return,
     // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
@@ -586,31 +602,6 @@ export class BookingsHandoverService {
     }
 
     return parsed;
-  }
-
-  private normalizeTechnicalObservationDrafts(
-    drafts: HandoverTechnicalObservationDraft[] | undefined,
-  ): HandoverTechnicalObservationDraft[] {
-    if (!Array.isArray(drafts)) return [];
-    const seen = new Set<string>();
-    const normalized: HandoverTechnicalObservationDraft[] = [];
-    for (const raw of drafts) {
-      if (!raw || typeof raw !== 'object') continue;
-      const description =
-        typeof raw.description === 'string' ? raw.description.trim() : '';
-      if (description.length < 3) continue;
-      const dedupeKey = description.toLowerCase();
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      normalized.push({
-        description,
-        category: raw.category,
-        affectedArea: raw.affectedArea,
-        severity: raw.severity,
-        blocksRental: raw.blocksRental === true,
-      });
-    }
-    return normalized;
   }
 
   private validatePayload(p: CreateHandoverProtocolPayload) {

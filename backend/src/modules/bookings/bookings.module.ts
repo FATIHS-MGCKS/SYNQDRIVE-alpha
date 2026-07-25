@@ -33,6 +33,7 @@ import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
 import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-booking-context.service';
 import { OperatorUploadModule } from '@modules/operator-upload/operator-upload.module';
+import { TechnicalObservationsModule } from '@modules/technical-observations/technical-observations.module';
 import { BookingsHandoverSessionService } from './handover-session/bookings-handover-session.service';
 import { CompletePickupHandoverService } from './handover-session/complete-pickup-handover.service';
 import { CompleteReturnHandoverService } from './handover-session/complete-return-handover.service';
@@ -60,6 +61,7 @@ import { BookingsHandoverDraftService } from './handover-session/bookings-handov
     forwardRef(() => VehiclesModule),
     ActivityLogModule,
     OperatorUploadModule,
+    TechnicalObservationsModule,
   ],
   controllers: [BookingsController],
   providers: [
