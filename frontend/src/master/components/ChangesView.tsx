@@ -35,7 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'workflow-runtime-ui-v49854-2026-07-25',
+    id: 'workflow-config-drawer-v49855-2026-07-25',
+    version: '4.9.855',
+    title: 'V4.9.855 — Workflow Config Drawer (Phase 10 Prompt 45)',
+    summary: [
+      'WorkflowConfigDrawer with 9 accordion sections: general, trigger, scope, conditions, actions, approvals, simulation, versions, history.',
+      'GET /workflows/catalog — server-only triggers, actions, operators, condition fields.',
+      'ALL/ANY/NOT condition groups, action reorder, inline validation, impact summary, unsaved AlertDialog.',
+      'Draft / Publish / Activate separated; system templates limited to allowed fields; recipient masking.',
+    ],
+    reason: 'Operators need a complete but understandable in-drawer configuration surface aligned with canonical runtime.',
+    previousBehavior: 'Read-only detail drawer + separate full-page legacy builder with client-side trigger/action lists.',
+    details: 'WorkflowConfigDrawer.tsx, workflow-config.utils.ts, workflow-catalog.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T23:30:00.000Z',
+  },
+  {
     version: '4.9.854',
     title: 'V4.9.854 — Workflow Runtime UI (Phase 10 Prompt 44)',
     summary: [
