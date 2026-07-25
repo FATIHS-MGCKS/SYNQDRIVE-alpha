@@ -42,6 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Prisma-Drift geschlossen: `@map` für `processing_activity_dpias.identified_risks/proposed_measures/approved_measures`, `device_connection_episode_resolution_outbox.event_type` und `data_subject_consents.legal_basis_assessment_id` (+ Migration).',
       'Keyset-Pagination folgt jetzt dem gewählten Sortierfeld statt immer `createdAt`; Cursor fremder Sortierung wird verworfen statt Seiten zu mischen.',
       'Frontend normalisiert das geteilte Sortierfeld pro Sektion, damit `dpSort`-URL-Werte keine Sektion mehr leeren können.',
+      'Verifiziert gegen lokale PostgreSQL 16 + laufendes UI: Providerzugriffe zeigt "DIMO Telemetry Authorization" als Aktiv mit vollem Fahrzeug-Scope; ein neu angelegtes DIMO-Fahrzeug wächst automatisch in den Scope (6 → 7). Postgres-Integrationsharness 33/41 statt vorher 41/41 rot.',
     ],
     reason:
       'Production-Meldung "Bereich konnte nicht geladen werden — Validation failed" bei F.S Mobility Service; Telemetrieeinwilligung war korrekt ACTIVE (6/6 DIMO-Fahrzeuge), aber nicht darstellbar.',
