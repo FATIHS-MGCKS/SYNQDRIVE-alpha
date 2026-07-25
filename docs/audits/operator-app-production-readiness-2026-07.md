@@ -2325,6 +2325,60 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 44. Operator Upload Pipeline Security (Prompt 22)
+
+### 44.1 Audit-Ergebnis & geschlossene Risiken
+
+| Risiko | Status |
+|--------|--------|
+| Fehlende `OrgScopingGuard` / `PermissionsGuard` | ✅ Geschlossen |
+| MIME-Spoofing ohne Magic Bytes | ✅ `file-type` + Kind-MIME-Matrix |
+| Base64-Blobs in Postgres (kein privater Object Store) | ✅ `DocumentStoragePort` |
+| Keine serverseitige Pflicht-Upload-Prüfung beim Handover-Abschluss | ✅ `assertRequiredUploadsComplete` in Pickup/Return |
+| Keine EXIF-/Standort-Metadaten-Entfernung | ✅ JPEG APP1/IPTC strip |
+| Personenbezogene / Pfad-Dateinamen | ✅ `sanitizeDocumentFileName` / Client-Sanitize |
+| Öffentliche URLs / erratbare Pfade | ✅ Auth-Download only; UUID-Server-Keys |
+| `expiresAt` ohne Durchsetzung | ✅ Retention-Scheduler (6h) |
+| Orphan-Bytes ohne Storage-Delete | ✅ Cleanup + Cancel löschen Objekte |
+| Multer-Oversize ohne strukturierte Antwort | ✅ `OperatorUploadMulterExceptionFilter` |
+
+### 44.2 Storage-Sicherheitsmodell
+
+- **Provider:** `DocumentStoragePort` (local dev / private S3 prod) — kein öffentlicher Bucket.
+- **Keys:** server-generiert unter `organizations/{orgId}/operator-uploads/bookings/{bookingId}/{kind}/{yyyy}/{mm}/{uuid}`; `organizationId` nie aus Client-Pfad.
+- **Download:** `GET …/:clientUploadId/download` — JWT + `bookings.read` + Org-Scope; `Cache-Control: private, no-store`; sicheres `Content-Disposition`.
+- **Keine presigned Public URLs** — jeder Download erneut autorisiert (kurzlebige Signed URLs optional bei S3 später; nicht erforderlich für Operator-Flow).
+
+### 44.3 Retention / Cleanup
+
+| Mechanismus | Intervall / Trigger |
+|-------------|---------------------|
+| `expiresAt` | 7 Tage, verlängert bei erfolgreichem Upload |
+| `OperatorUploadRetentionScheduler` | Cron `15 */6 * * *` — löscht abgelaufene Blobs |
+| `cleanupOrphans` | Manuell/API — PENDING/FAILED >24h ohne aktive Session |
+| FK Cascade | Booking/Org-Delete entfernt Metadaten |
+
+### 44.4 Tests
+
+- `operator-upload.security.spec.ts` — Magic/MIME/EXIF
+- `operator-upload-storage.util.spec.ts` — Key-Scope
+- `operator-upload.controller.security.spec.ts` — Guard-Stack
+- `operator-upload.integration.spec.ts` — Service + Storage
+- Frontend: `operatorUploadSanitize.test.ts`
+
+### 44.5 Offene Infrastrukturvoraussetzungen
+
+| Komponente | Status |
+|------------|--------|
+| **Malware/Virus-Scan (ClamAV o.ä.)** | ❌ Nicht angebunden — Quarantine-Scan wie Legal Documents empfohlen vor `putObject` |
+| **S3 SSE-KMS / Bucket-Policy** | ⚙️ Via `DOCUMENT_STORAGE_*` Prod-Konfiguration |
+| **WAF / Upload-Rate-Limit pro Org** | ❌ Nur globaler Throttler (200/min/IP) |
+| **PNG/WebP EXIF vollständig** | ⚠️ JPEG strip implementiert; PNG eXIf/WebP EXIF → Follow-up |
+| **Thumbnail-Generierung** | ❌ Nicht implementiert (kein Server-Preview außer Original-Download) |
+| **Backup Object Store** | ⚙️ `DOCUMENT_STORAGE_BACKUP_*` — Operator-Uploads folgen Private-Storage-Runbook |
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

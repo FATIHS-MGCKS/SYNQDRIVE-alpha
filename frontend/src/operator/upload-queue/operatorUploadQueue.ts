@@ -12,6 +12,11 @@ import {
   type OperatorUploadEnqueueInput,
   type OperatorUploadQueueItem,
 } from './operatorUploadQueue.types';
+import {
+  redactOperatorUploadErrorMessage,
+  sanitizeOperatorUploadClientFileName,
+  validateOperatorUploadClientFile,
+} from './operatorUploadSanitize';
 
 type QueueListener = () => void;
 
@@ -40,6 +45,14 @@ export class OperatorUploadQueue {
 
   async enqueue(input: OperatorUploadEnqueueInput): Promise<OperatorUploadQueueItem> {
     if (!this.context) throw new Error('Upload context not set');
+    const clientValidation = validateOperatorUploadClientFile({
+      size: input.file.size,
+      type: input.mimeType,
+    });
+    if (clientValidation) {
+      throw new Error(clientValidation);
+    }
+    const safeFileName = sanitizeOperatorUploadClientFileName(input.fileName);
     const clientUploadId = input.clientUploadId ?? createClientUploadId(input.kind.toLowerCase());
     const existing = this.items.get(clientUploadId);
     if (existing && (existing.status === 'uploaded' || existing.status === 'processing')) {
@@ -53,7 +66,7 @@ export class OperatorUploadQueue {
       clientUploadId,
       kind: input.kind,
       status: 'pending',
-      fileName: input.fileName,
+      fileName: safeFileName,
       mimeType: input.mimeType,
       required: input.required ?? false,
       progressPercent: 0,
@@ -76,7 +89,7 @@ export class OperatorUploadQueue {
       vehicleId: this.context.vehicleId,
       handoverSessionId: this.context.handoverSessionId ?? null,
       handoverKind: this.context.handoverKind ?? null,
-      fileName: input.fileName,
+      fileName: safeFileName,
       mimeType: input.mimeType,
       requiredForComplete: input.required ?? false,
     });
@@ -197,7 +210,9 @@ export class OperatorUploadQueue {
         if (err instanceof Error && err.name === 'AbortError') return;
         const errorCode = isApiHttpError(err) ? err.body.code : undefined;
         const retryable = errorCode ? !NON_RETRYABLE_ERROR_CODES.has(errorCode) : true;
-        const message = err instanceof Error ? err.message : 'Upload fehlgeschlagen';
+        const message = redactOperatorUploadErrorMessage(
+          err instanceof Error ? err.message : 'Upload fehlgeschlagen',
+        );
         if (!retryable || attempt >= OPERATOR_UPLOAD_MAX_RETRIES) {
           this.patchItem(item.clientUploadId, {
             status: 'failed',

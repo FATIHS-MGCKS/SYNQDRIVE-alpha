@@ -6200,6 +6200,8 @@ model OperatorUpload {
   fileName           String?              @map("file_name")
   fileSizeBytes      Int?                 @map("file_size_bytes")
   contentSha256      String?              @map("content_sha256")
+  storageObjectKey   String?              @map("storage_object_key")
+  storageProvider    String?              @map("storage_provider")
   storagePayload     Json?                @map("storage_payload")
   targetRefType      String?              @map("target_ref_type")
   targetRefId        String?              @map("target_ref_id")

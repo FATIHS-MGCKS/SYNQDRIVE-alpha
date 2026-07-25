@@ -29,6 +29,7 @@ import { executeReturnHandoverCompletionInTransaction } from './handover-return-
 import { OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS } from './operator-handover-permission.constants';
 import { resolveWritableStation } from './handover-session-context.util';
 import { currentHandoverProtocolWhere } from './handover-protocol.query';
+import { OperatorUploadService } from '@modules/operator-upload/operator-upload.service';
 
 export interface CompleteReturnHandoverCommandInput {
   organizationId: string;
@@ -62,6 +63,7 @@ export class CompleteReturnHandoverService {
     private readonly workflowEvents: WorkflowEventService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
+    private readonly operatorUploads: OperatorUploadService,
   ) {}
 
   async completeReturnHandover(
@@ -217,6 +219,10 @@ export class CompleteReturnHandoverService {
         input.sessionId,
         input.expectedVersion ?? null,
         booking.vehicleId,
+      );
+      await this.operatorUploads.assertRequiredUploadsComplete(
+        input.organizationId,
+        input.sessionId,
       );
     }
 

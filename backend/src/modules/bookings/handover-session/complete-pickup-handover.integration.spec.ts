@@ -82,6 +82,7 @@ function buildService(overrides: {
   fleetMapCache?: { invalidate: jest.Mock };
   rentalHealthSummaryCache?: { invalidate: jest.Mock };
   pickupGateAudit?: { appendInTransaction: jest.Mock };
+  operatorUploads?: { assertRequiredUploadsComplete: jest.Mock };
 }) {
   const txMocks = {
     $executeRaw: jest.fn().mockResolvedValue(0),
@@ -172,6 +173,7 @@ function buildService(overrides: {
     (overrides.workflowEvents ?? { scheduleEmit: jest.fn() }) as never,
     (overrides.fleetMapCache ?? { invalidate: jest.fn().mockResolvedValue(undefined) }) as never,
     (overrides.rentalHealthSummaryCache ?? { invalidate: jest.fn().mockResolvedValue(undefined) }) as never,
+    (overrides.operatorUploads ?? { assertRequiredUploadsComplete: jest.fn().mockResolvedValue(undefined) }) as never,
   );
 
   return { service, prisma, txMocks };
