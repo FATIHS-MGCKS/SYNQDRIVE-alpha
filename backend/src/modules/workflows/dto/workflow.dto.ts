@@ -173,3 +173,24 @@ export class RejectWorkflowActionDto {
   @MaxLength(2000)
   reason?: string;
 }
+
+export class PreviewWorkflowRiskDto {
+  @ValidateNested()
+  @Type(() => WorkflowTriggerDto)
+  trigger!: WorkflowTriggerDto;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowConditionDto)
+  conditions?: WorkflowConditionDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowActionDto)
+  actions!: WorkflowActionDto[];
+
+  @IsOptional()
+  @IsString()
+  eventType?: string;
+}

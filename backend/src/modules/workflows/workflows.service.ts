@@ -9,6 +9,8 @@ import { validateWorkflowDefinition } from './workflow-definition.validator';
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowEngineService } from './workflow-engine.service';
+import { WorkflowRiskCalculatorService } from './risk/workflow-risk-calculator.service';
+import type { PreviewWorkflowRiskDto } from './dto';
 
 const STATUS_DISPLAY: Record<string, string> = {
   ACTIVE: 'Active',
@@ -23,6 +25,7 @@ export class WorkflowsService {
     private readonly prisma: PrismaService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly workflowEngine: WorkflowEngineService,
+    private readonly riskCalculator: WorkflowRiskCalculatorService,
   ) {}
 
   private format(wf: Record<string, unknown>) {
@@ -30,6 +33,49 @@ export class WorkflowsService {
       ...wf,
       statusLabel: STATUS_DISPLAY[(wf.status as string)] || wf.status,
     };
+  }
+
+  private enrichWithRisk(
+    orgId: string,
+    wf: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const risk = this.riskCalculator.assessWorkflow({
+      organizationId: orgId,
+      trigger: wf.trigger as { type: string; config?: Record<string, unknown> },
+      conditions: (wf.conditions as PreviewWorkflowRiskDto['conditions']) ?? [],
+      actions: (wf.actions as PreviewWorkflowRiskDto['actions']) ?? [],
+      eventType: (wf.trigger as { type?: string })?.type,
+    });
+    return {
+      ...wf,
+      riskAssessment: risk,
+      riskClass: risk.workflowRiskClass,
+    };
+  }
+
+  getRiskRegistry(_orgId: string) {
+    return this.riskCalculator.listRegistry();
+  }
+
+  previewWorkflowRisk(orgId: string, dto: PreviewWorkflowRiskDto) {
+    return this.riskCalculator.assessWorkflow({
+      organizationId: orgId,
+      trigger: dto.trigger,
+      conditions: dto.conditions ?? [],
+      actions: dto.actions,
+      eventType: dto.eventType ?? dto.trigger.type,
+    });
+  }
+
+  async getWorkflowRisk(orgId: string, id: string) {
+    const wf = await this.findById(orgId, id);
+    return this.riskCalculator.assessWorkflow({
+      organizationId: orgId,
+      trigger: wf.trigger as { type: string; config?: Record<string, unknown> },
+      conditions: (wf.conditions as PreviewWorkflowRiskDto['conditions']) ?? [],
+      actions: (wf.actions as PreviewWorkflowRiskDto['actions']) ?? [],
+      eventType: (wf.trigger as { type?: string })?.type,
+    });
   }
 
   async findByOrg(orgId: string, filters?: { status?: string; category?: string }) {
@@ -49,7 +95,7 @@ export class WorkflowsService {
       where: { id, organizationId: orgId },
     });
     if (!row) throw new NotFoundException('Workflow not found');
-    return this.format(row as unknown as Record<string, unknown>);
+    return this.enrichWithRisk(orgId, this.format(row as unknown as Record<string, unknown>));
   }
 
   async create(orgId: string, dto: CreateWorkflowDto, userId?: string, userName?: string) {
@@ -280,7 +326,14 @@ export class WorkflowsService {
       return { runIds: [], runs: [], message: 'Workflow skipped (scope/conditions)' };
     }
     const run = await this.getRun(orgId, runId);
-    return { runIds: [runId], runs: [run] };
+    const riskAssessment = this.riskCalculator.assessWorkflow({
+      organizationId: orgId,
+      trigger: wf.trigger as { type: string; config?: Record<string, unknown> },
+      conditions: (wf.conditions as PreviewWorkflowRiskDto['conditions']) ?? [],
+      actions: (wf.actions as PreviewWorkflowRiskDto['actions']) ?? [],
+      eventType: 'manual.test',
+    });
+    return { runIds: [runId], runs: [run], riskAssessment };
   }
 
   async approveActionRun(orgId: string, actionRunId: string, userId?: string) {

@@ -57,6 +57,8 @@ import { WhatsAppProviderService } from './providers/whatsapp-provider.service';
     WhatsAppService,
     WhatsAppProviderService,
     WhatsAppTemplateService,
+    WhatsAppConsentService,
+    WhatsAppMessagePolicyService,
     WhatsAppAiRouterService,
     WhatsAppBookingReminderService,
     WhatsAppAutomationHooksService,
