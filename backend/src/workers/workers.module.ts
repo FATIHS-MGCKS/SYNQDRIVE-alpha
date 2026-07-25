@@ -54,7 +54,9 @@ import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.s
 import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
 import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
 import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
+import { CustomerDocumentExpiringScheduler } from './schedulers/customer-document-expiring.scheduler';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
+import { CustomersModule } from '@modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -93,6 +95,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     VoiceAssistantModule,
     IamDataRetentionModule,
     BookingDocumentGenerationModule,
+    CustomersModule,
   ],
   providers: [
     // Processors
@@ -135,6 +138,7 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
     BatteryV2RetentionScheduler,
     VoiceRetentionScheduler,
     IamDataRetentionScheduler,
+    CustomerDocumentExpiringScheduler,
   ],
 })
 export class WorkersModule {}

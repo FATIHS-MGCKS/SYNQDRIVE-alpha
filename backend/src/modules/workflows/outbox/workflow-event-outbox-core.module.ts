@@ -6,6 +6,8 @@ import { ObservabilityModule } from '@modules/observability/observability.module
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { WorkflowEventOutboxRepository } from './workflow-event-outbox.repository';
 import { WorkflowEventOutboxEnqueueService } from './workflow-event-outbox-enqueue.service';
+import { WorkflowEventOutboxEmitterService } from './workflow-event-outbox-emitter.service';
+import { WorkflowBookingTimingEmitterService } from './workflow-booking-timing-emitter.service';
 import { WorkflowEventOutboxSchedulerService } from './workflow-event-outbox-scheduler.service';
 import { WorkflowEventOutboxObservabilityService } from './workflow-event-outbox-observability.service';
 
@@ -20,11 +22,15 @@ import { WorkflowEventOutboxObservabilityService } from './workflow-event-outbox
   providers: [
     WorkflowEventOutboxRepository,
     WorkflowEventOutboxEnqueueService,
+    WorkflowEventOutboxEmitterService,
+    WorkflowBookingTimingEmitterService,
     WorkflowEventOutboxSchedulerService,
     WorkflowEventOutboxObservabilityService,
   ],
   exports: [
     WorkflowEventOutboxEnqueueService,
+    WorkflowEventOutboxEmitterService,
+    WorkflowBookingTimingEmitterService,
     WorkflowEventOutboxSchedulerService,
     WorkflowEventOutboxRepository,
     WorkflowEventOutboxObservabilityService,

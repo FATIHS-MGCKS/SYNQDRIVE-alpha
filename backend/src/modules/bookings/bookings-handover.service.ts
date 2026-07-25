@@ -20,7 +20,7 @@ import {
   HandoverProtocolDto,
 } from './handover.types';
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
-import { WorkflowEventOutboxEnqueueService } from '@modules/workflows/outbox/workflow-event-outbox-enqueue.service';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
   parseAffectedArea,
@@ -60,7 +60,7 @@ export class BookingsHandoverService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
     private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
-    private readonly workflowOutbox: WorkflowEventOutboxEnqueueService,
+    private readonly workflowEmitter: WorkflowEventOutboxEmitterService,
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
@@ -404,8 +404,28 @@ export class BookingsHandoverService {
           });
         }
 
+        if (kind === 'PICKUP') {
+          await this.workflowEmitter.enqueueInTransaction(tx, {
+            group: 'bookingLifecycle',
+            organizationId: orgId,
+            eventType: 'booking.picked_up',
+            source: 'bookings',
+            entityType: 'booking',
+            entityId: bookingId,
+            idempotencyKey: `booking.picked_up:${bookingId}`,
+            correlationId: `booking-handover:${bookingId}`,
+            causationId: created.id,
+            payload: {
+              bookingId,
+              vehicleId: booking2.vehicleId,
+              handoverProtocolId: created.id,
+            },
+          });
+        }
+
         if (kind === 'RETURN') {
-          await this.workflowOutbox.enqueueInTransaction(tx, {
+          await this.workflowEmitter.enqueueInTransaction(tx, {
+            group: 'bookingLifecycle',
             organizationId: orgId,
             eventType: 'booking.returned',
             source: 'bookings',
@@ -413,6 +433,7 @@ export class BookingsHandoverService {
             entityId: bookingId,
             idempotencyKey: `booking.returned:${bookingId}`,
             correlationId: `booking-handover:${bookingId}`,
+            causationId: created.id,
             payload: {
               bookingId,
               vehicleId: booking2.vehicleId,

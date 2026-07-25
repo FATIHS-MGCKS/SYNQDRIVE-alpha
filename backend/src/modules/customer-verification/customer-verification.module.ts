@@ -7,8 +7,10 @@ import { DiditService } from './providers/didit/didit.service';
 import { DiditSignatureService } from './providers/didit/didit-signature.service';
 import { DiditWebhookController } from './providers/didit/didit-webhook.controller';
 import { DiditWebhookService } from './providers/didit/didit-webhook.service';
+import { WorkflowEventOutboxCoreModule } from '@modules/workflows/outbox/workflow-event-outbox-core.module';
 
 @Module({
+  imports: [WorkflowEventOutboxCoreModule],
   controllers: [CustomerVerificationController, DiditWebhookController],
   providers: [
     CustomerVerificationService,

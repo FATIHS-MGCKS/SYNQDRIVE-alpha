@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-domain-event-sources-v49828-2026-07-25',
+    version: '4.9.828',
+    title: 'V4.9.828 — Workflow domain event source wiring (Phase 4 Prompt 18)',
+    summary: [
+      'Priority Fachmodule emit via WorkflowEventOutboxEmitterService (feature-flagged per group).',
+      'Wired: booking lifecycle/timing, vehicle health/DTC/telemetry, billing invoice/payment, customer verification/documents, damages, service, task overdue.',
+      'Stable occurrenceIds for recurring findings; correlationId/causationId on lifecycle events.',
+      'Customer document expiring daily cron; connectivity telemetry events from ConnectivityAlertService.',
+      'Tests: workflow-event-source.spec.ts; registry doc §8 source table updated.',
+    ],
+    reason: 'Connect domain truth services to transactional outbox so workflow automation reacts to canonical business facts.',
+    previousBehavior: 'Only a few producers (confirmed/returned/overdue/critical) wrote outbox rows; most registry events had no backend source.',
+    details:
+      'WORKFLOW_EVENT_EMIT_* env flags per group. Parallel notification paths remain for gradual rollout. Gaps documented: geofence, connectivity lost/restored, support, notification bridge.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T09:00:00.000Z',
+  },
+  {
     id: 'workflow-event-outbox-worker-v49827-2026-07-25',
     version: '4.9.827',
     title: 'V4.9.827 — Workflow domain event outbox worker (Phase 4 Prompt 17)',

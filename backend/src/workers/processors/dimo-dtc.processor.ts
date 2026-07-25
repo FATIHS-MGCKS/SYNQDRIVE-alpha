@@ -9,7 +9,8 @@ import { NotificationProducerIngestService } from '@modules/notifications/adapte
 import { normalizeDtcSeverityBand } from '@modules/vehicle-intelligence/dtc/dtc-severity.util';
 import type { VehicleHealthAdapterSource } from '@modules/notifications/adapters/notification-adapter.types';
 import { QUEUE_NAMES } from '../queues/queue-names';
-import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import { buildVehicleFindingOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -29,6 +30,7 @@ export class DimoDtcProcessor extends WorkerHost {
     private readonly dtcService: DtcService,
     @InjectQueue(QUEUE_NAMES.DTC_POLL) private readonly queue: Queue,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {
     super();
   }
@@ -157,6 +159,7 @@ export class DimoDtcProcessor extends WorkerHost {
       });
 
       await this.emitDtcHealthNotifications(vehicleId, previousCodes, newCodeSet);
+      await this.emitWorkflowDtcDetected(vehicleId, previousCodes, newCodeSet);
 
       this.logger.debug(
         `DTC poll success: vehicleId=${vehicleId} active=${newCodes.length}`,
@@ -242,6 +245,39 @@ export class DimoDtcProcessor extends WorkerHost {
       this.logger.warn(
         `DTC notification ingest failed for ${vehicleId}: ${(err as Error).message}`,
       );
+    }
+  }
+
+  private async emitWorkflowDtcDetected(
+    vehicleId: string,
+    previousCodes: Set<string>,
+    newCodeSet: Set<string>,
+  ): Promise<void> {
+    if (!this.workflowEmitter?.isGroupEnabled('vehicleDtc')) return;
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) return;
+
+    for (const code of newCodeSet) {
+      if (previousCodes.has(code)) continue;
+      await this.workflowEmitter.enqueueStandalone({
+        group: 'vehicleDtc',
+        organizationId: vehicle.organizationId,
+        eventType: 'vehicle.dtc.detected',
+        source: 'vehicle-health',
+        entityType: 'vehicle',
+        entityId: vehicleId,
+        correlationId: `vehicle-health:${vehicleId}`,
+        occurrenceId: buildVehicleFindingOccurrenceId('vehicle.dtc.detected', vehicleId, code),
+        payload: {
+          vehicleId,
+          dtcCode: code,
+          severity: 'warning',
+        },
+      });
     }
   }
 

@@ -15,6 +15,21 @@ export { WorkflowEventOutboxEnqueueError } from './workflow-event-outbox.types';
 export { envelopeToOutboxCreateData, outboxRowToEnvelope } from './workflow-event-outbox.mapper';
 
 export { WorkflowEventOutboxEnqueueService } from './workflow-event-outbox-enqueue.service';
+export { WorkflowEventOutboxEmitterService } from './workflow-event-outbox-emitter.service';
+export { WorkflowBookingTimingEmitterService } from './workflow-booking-timing-emitter.service';
+export {
+  buildWorkflowOccurrenceId,
+  buildBookingTimingOccurrenceId,
+  buildVehicleFindingOccurrenceId,
+  buildInvoiceTimingOccurrenceId,
+  buildDocumentExpiringOccurrenceId,
+} from './workflow-event-occurrence.util';
+export type {
+  WorkflowEventEmitGroup,
+  WorkflowEventEmitInput,
+  WorkflowEventEmitResult,
+  WorkflowTx,
+} from './workflow-event-outbox-emitter.types';
 export { WorkflowEventOutboxRepository } from './workflow-event-outbox.repository';
 export { WorkflowEventOutboxDispatchService } from './workflow-event-outbox-dispatch.service';
 export { WorkflowEventOutboxProcessorService } from './workflow-event-outbox-processor.service';

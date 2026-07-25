@@ -7,9 +7,14 @@ import { CustomerTimelineService } from './customer-timeline.service';
 import { CustomerRetentionService } from './customer-retention.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
+import { WorkflowEventOutboxCoreModule } from '@modules/workflows/outbox/workflow-event-outbox-core.module';
 
 @Module({
-  imports: [forwardRef(() => VehicleIntelligenceModule), CustomerVerificationModule],
+  imports: [
+    forwardRef(() => VehicleIntelligenceModule),
+    CustomerVerificationModule,
+    WorkflowEventOutboxCoreModule,
+  ],
   controllers: [CustomersController],
   providers: [
     CustomersService,
@@ -20,6 +25,7 @@ import { CustomerVerificationModule } from '@modules/customer-verification/custo
   ],
   exports: [
     CustomersService,
+    CustomerDocumentsService,
     CustomerEligibilityService,
     CustomerTimelineService,
   ],

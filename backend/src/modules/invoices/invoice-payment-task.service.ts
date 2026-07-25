@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   OrgInvoiceStatus,
   OrgInvoiceType,
@@ -34,6 +34,8 @@ import {
   legacyInvoiceUnpaidDedupKey,
   resolveInvoicePaymentDueDate,
 } from './invoice-payment-task.util';
+import { WorkflowEventOutboxEmitterService } from '@modules/workflows/outbox/workflow-event-outbox-emitter.service';
+import { buildInvoiceTimingOccurrenceId } from '@modules/workflows/outbox/workflow-event-occurrence.util';
 
 const invoicePaymentRule = getAutomationRuleByCatalogKey('INVOICE_PAYMENT_CHECK');
 
@@ -80,6 +82,7 @@ export class InvoicePaymentTaskService {
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
     private readonly ruleResolver: TaskAutomationRuleResolverService,
+    @Optional() private readonly workflowEmitter?: WorkflowEventOutboxEmitterService,
   ) {}
 
   private async handleAutomationFailure(
@@ -143,6 +146,32 @@ export class InvoicePaymentTaskService {
         invoiceDate: invoice.invoiceDate,
       });
       const timing = computeInvoicePaymentTaskTiming(dueDate, now, timeZone);
+
+      if (
+        this.workflowEmitter?.isGroupEnabled('billing')
+        && now.getTime() >= dueDate.getTime()
+        && invoice.status !== 'OVERDUE'
+      ) {
+        const dueAt = dueDate.toISOString();
+        await this.workflowEmitter.enqueueStandalone({
+          group: 'billing',
+          organizationId: orgId,
+          eventType: 'invoice.due',
+          source: 'billing',
+          entityType: 'invoice',
+          entityId: invoice.id,
+          correlationId: `billing-invoice:${invoice.id}`,
+          occurrenceId: buildInvoiceTimingOccurrenceId('invoice.due', invoice.id, dueAt.slice(0, 10)),
+          payload: {
+            invoiceId: invoice.id,
+            dueAt,
+            amountCents: invoice.outstandingCents,
+            ...(invoice.bookingId ? { bookingId: invoice.bookingId } : {}),
+            ...(invoice.customerId ? { customerId: invoice.customerId } : {}),
+          },
+        });
+      }
+
       const adjustedTiming = applyTimingOffsets({
         activatesAt: timing.activatesAt,
         dueDate: timing.dueDate,
