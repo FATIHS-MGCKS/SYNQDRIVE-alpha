@@ -796,6 +796,24 @@ Prisma cannot enforce row-level immutability after publish. Enforcement points:
 
 **REST (parallel to legacy `/workflows`):** `/organizations/:orgId/workflow-definitions` — see `WorkflowDefinitionsController`.
 
+### Runtime run/action status foundation (V4.9.819 — implemented)
+
+**Run statuses:** `PENDING`, `RUNNING`, `WAITING`, `WAITING_FOR_APPROVAL`, `COMPLETED`, `PARTIALLY_COMPLETED`, `FAILED`, `CANCELLED`, `SKIPPED`
+
+**Action run statuses:** `PENDING`, `RUNNING`, `WAITING`, `WAITING_FOR_APPROVAL`, `SUCCEEDED`, `FAILED_RETRYABLE`, `FAILED_PERMANENT`, `CANCELLED`, `SKIPPED`
+
+**Enforcement (`backend/src/modules/workflows/runtime/`):**
+
+- `workflow-runtime-status.transitions.ts` — central allowed-transition matrix + guards
+- `workflow-run-status.derivation.ts` — deterministic run status from action runs (`PARTIALLY_COMPLETED` = ≥1 success + ≥1 permanent failure; `SKIPPED` never counts as success)
+- `workflow-runtime-status.util.ts` — field rules: `finishedAt` terminal-only, `waitingUntil` only for `WAITING`, `approvalId` only for `WAITING_FOR_APPROVAL`, `attemptCount`/`nextAttemptAt` for retryable failures
+- `WorkflowRunRuntimeService` / `WorkflowActionRunRuntimeService` — optimistic `lockVersion`, tenant-scoped repository updates, append-only `WorkflowRuntimeStatusTransition` audit
+- Resumable queries for process restart (`listResumable`, `listResumableActionRuns`)
+
+**Migration:** `20260726200000_workflow_runtime_status_foundation`
+
+**Not in this prompt:** engine executor, worker dispatch, HTTP controllers for runtime transitions (services only).
+
 ### JSON field bindings (implemented)
 
 | Field | Model | Purpose | PII / secrets |

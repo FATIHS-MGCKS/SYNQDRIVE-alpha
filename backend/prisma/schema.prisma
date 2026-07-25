@@ -1730,6 +1730,7 @@ model Organization {
   workflowEventOutbox                                       WorkflowEventOutbox[]
   workflowTimers                                            WorkflowTimer[]
   workflowRevisions                                         WorkflowRevision[]
+  workflowRuntimeStatusTransitions                          WorkflowRuntimeStatusTransition[]
   workflowPolicySnapshots                                   WorkflowPolicySnapshot[]
   workflowFeatureFlags                                      WorkflowFeatureFlag[]
   workflowRolloutScopes                                     WorkflowRolloutScope[]
@@ -10875,23 +10876,50 @@ enum WorkflowActionCapabilityStatus {
 enum WorkflowRuntimeRunStatus {
   PENDING
   RUNNING
-  PAUSED
-  WAITING_APPROVAL
-  SUCCESS
+  WAITING
+  WAITING_FOR_APPROVAL
+  COMPLETED
+  PARTIALLY_COMPLETED
   FAILED
-  SKIPPED
   CANCELLED
+  SKIPPED
+  /// @deprecated Use `WAITING` — retained for migration compatibility
+  PAUSED
+  /// @deprecated Use `WAITING_FOR_APPROVAL`
+  WAITING_APPROVAL
+  /// @deprecated Use `COMPLETED`
+  SUCCESS
 }
 
 enum WorkflowRuntimeActionRunStatus {
   PENDING
   RUNNING
-  WAITING_APPROVAL
-  APPROVED_PENDING_EXECUTION
-  SUCCESS
-  FAILED
-  SKIPPED
+  WAITING
+  WAITING_FOR_APPROVAL
+  SUCCEEDED
+  FAILED_RETRYABLE
+  FAILED_PERMANENT
   CANCELLED
+  SKIPPED
+  /// @deprecated Use `WAITING_FOR_APPROVAL`
+  WAITING_APPROVAL
+  /// @deprecated Interim Phase 4 — resume in Phase 5
+  APPROVED_PENDING_EXECUTION
+  /// @deprecated Use `SUCCEEDED`
+  SUCCESS
+  /// @deprecated Use `FAILED_RETRYABLE` or `FAILED_PERMANENT`
+  FAILED
+}
+
+enum WorkflowRuntimeStatusEntityType {
+  RUN
+  ACTION_RUN
+}
+
+enum WorkflowRuntimeStatusActorType {
+  USER
+  SYSTEM
+  WORKER
 }
 
 enum WorkflowRuntimeApprovalStatus {
@@ -11205,6 +11233,11 @@ model WorkflowRun {
   entityType           String?                  @map("entity_type")
   entityId             String?                  @map("entity_id")
   status               WorkflowRuntimeRunStatus @default(PENDING)
+  lockVersion          Int                      @default(1) @map("lock_version")
+  /// Set only while status = WAITING.
+  waitingUntil         DateTime?                @map("waiting_until")
+  /// Set only while status = WAITING_FOR_APPROVAL.
+  approvalId           String?                  @unique @map("approval_id")
   idempotencyKey       String                   @map("idempotency_key")
   correlationId        String?                  @map("correlation_id")
   /// Domain event payload — may contain PII; minimize at write time.
@@ -11225,11 +11258,13 @@ model WorkflowRun {
   version         WorkflowVersion        @relation(fields: [workflowVersionId], references: [id], onDelete: Restrict)
   policySnapshot  WorkflowPolicySnapshot @relation(fields: [policySnapshotId], references: [id], onDelete: Restrict)
   triggeredByUser User?                  @relation("WorkflowRunTriggeredBy", fields: [triggeredByUserId], references: [id], onDelete: SetNull)
+  waitingApproval WorkflowApproval?      @relation("WorkflowRunWaitingApproval", fields: [approvalId], references: [id], onDelete: SetNull)
   actionRuns      WorkflowActionRun[]
   approvals       WorkflowApproval[]
   deliveries      WorkflowDelivery[]
   timers          WorkflowTimer[]
   outboxEvents    WorkflowEventOutbox[]
+  statusTransitions WorkflowRuntimeStatusTransition[]
 
   @@unique([organizationId, idempotencyKey], map: "workflow_runs_org_idempotency_key")
   @@index([organizationId, workflowDefinitionId, createdAt])
@@ -11252,6 +11287,13 @@ model WorkflowActionRun {
   actionIndex          Int                            @map("action_index")
   actionType           String                         @map("action_type")
   status               WorkflowRuntimeActionRunStatus @default(PENDING)
+  lockVersion          Int                            @default(1) @map("lock_version")
+  /// Set only while status = WAITING.
+  waitingUntil         DateTime?                      @map("waiting_until")
+  /// Set only while status = WAITING_FOR_APPROVAL.
+  approvalId           String?                        @unique @map("approval_id")
+  attemptCount         Int                            @default(0) @map("attempt_count")
+  nextAttemptAt        DateTime?                      @map("next_attempt_at")
   requiresApproval     Boolean                        @default(false) @map("requires_approval")
   idempotencyKey       String                         @map("idempotency_key")
   input                Json?
@@ -11266,9 +11308,11 @@ model WorkflowActionRun {
   organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workflowRun    WorkflowRun        @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
   workflowAction WorkflowAction?    @relation(fields: [workflowActionId], references: [id], onDelete: SetNull)
+  waitingApproval WorkflowApproval? @relation("WorkflowActionRunWaitingApproval", fields: [approvalId], references: [id], onDelete: SetNull)
   approval       WorkflowApproval?
   deliveries     WorkflowDelivery[]
   timers         WorkflowTimer[]
+  statusTransitions WorkflowRuntimeStatusTransition[]
 
   @@unique([workflowRunId, actionIndex], map: "workflow_action_runs_run_index_key")
   @@unique([organizationId, idempotencyKey], map: "workflow_action_runs_org_idempotency_key")
@@ -11301,10 +11345,37 @@ model WorkflowApproval {
   actionRun      WorkflowActionRun @relation(fields: [actionRunId], references: [id], onDelete: Restrict)
   approvedByUser User?             @relation("WorkflowApprovalDecidedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   expiryTimer    WorkflowTimer?
+  runWaitingForApproval    WorkflowRun?       @relation("WorkflowRunWaitingApproval")
+  actionRunWaitingApproval WorkflowActionRun? @relation("WorkflowActionRunWaitingApproval")
 
   @@index([organizationId, workflowRunId])
   @@index([organizationId, status, expiresAt])
   @@map("workflow_approvals")
+}
+
+/// Append-only audit trail for workflow run and action run status transitions.
+model WorkflowRuntimeStatusTransition {
+  id             String                         @id @default(uuid())
+  organizationId String                         @map("organization_id")
+  entityType     WorkflowRuntimeStatusEntityType @map("entity_type")
+  workflowRunId  String                         @map("workflow_run_id")
+  actionRunId    String?                        @map("action_run_id")
+  fromStatus     String                         @map("from_status")
+  toStatus       String                         @map("to_status")
+  actorType      WorkflowRuntimeStatusActorType   @map("actor_type")
+  actorId        String?                        @map("actor_id")
+  actorSource    String                         @map("actor_source")
+  reason         String?
+  occurredAt     DateTime                       @default(now()) @map("occurred_at")
+  metadata       Json?
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowRun  WorkflowRun        @relation(fields: [workflowRunId], references: [id], onDelete: Restrict)
+  actionRun    WorkflowActionRun? @relation(fields: [actionRunId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, workflowRunId, occurredAt])
+  @@index([organizationId, actionRunId, occurredAt])
+  @@map("workflow_runtime_status_transitions")
 }
 
 /// Provider delivery state for workflow side-effects — no secrets stored.

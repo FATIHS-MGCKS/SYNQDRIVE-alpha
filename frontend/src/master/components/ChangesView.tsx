@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-runtime-status-v49819-2026-07-26',
+    version: '4.9.819',
+    title: 'V4.9.819 — Workflow run/action runtime status foundation (Phase 3 Prompt 12)',
+    summary: [
+      '**Statuses**: canonical run (`PENDING`…`SKIPPED`) and action run (`PENDING`…`SKIPPED`) enums extended; legacy values retained for compatibility.',
+      '**Guards**: central transition matrix in `workflow-runtime-status.transitions.ts` — blocks illegal jumps and terminal mutations.',
+      '**Field rules**: `finishedAt` terminal-only; `waitingUntil` only for `WAITING`; `approvalId` only for `WAITING_FOR_APPROVAL`; `attemptCount`/`nextAttemptAt` for `FAILED_RETRYABLE`.',
+      '**Derivation**: `deriveWorkflowRunStatusFromActions` — `PARTIALLY_COMPLETED` only on mixed success + permanent failure; `SKIPPED` not counted as success.',
+      '**Services**: `WorkflowRunRuntimeService`, `WorkflowActionRunRuntimeService` with OCC `lockVersion`, tenant-scoped repositories, append-only `WorkflowRuntimeStatusTransition` audit.',
+      '**Migration**: `20260726200000_workflow_runtime_status_foundation`.',
+      '**Tests**: `workflow-runtime-status.spec.ts` — 24 cases (allowed/forbidden transitions, concurrency, derivation, field rules, cross-tenant).',
+      '**Scope**: status foundation only — no engine/worker execution yet.',
+    ],
+    reason:
+      'Canonical workflow runtime needs a robust, auditable status model before engine cutover and pause-and-resume.',
+    previousBehavior:
+      'Prisma enums used interim values (`SUCCESS`, `WAITING_APPROVAL`, `FAILED`) without transition guards, field invariants, or runtime audit.',
+    details:
+      'backend/src/modules/workflows/runtime/*, migration 20260726200000_workflow_runtime_status_foundation, docs/architecture/workflow-automation-data-model-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Workflow Automation',
+    createdAt: '2026-07-26T20:00:00.000Z',
+  },
+  {
     id: 'workflow-lifecycle-v49818-2026-07-26',
     version: '4.9.818',
     title: 'V4.9.818 — Workflow definition/version lifecycle API (Phase 3 Prompt 11)',
