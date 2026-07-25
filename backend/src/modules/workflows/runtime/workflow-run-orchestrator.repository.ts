@@ -79,6 +79,7 @@ export class WorkflowRunOrchestratorRepository {
   evaluateVersionConditions(
     version: WorkflowVersionGraph,
     payload: Record<string, unknown>,
+    organizationId: string,
   ) {
     const conditions: WorkflowConditionDef[] = version.conditionGroups
       .flatMap((group) => group.conditions)
@@ -92,7 +93,7 @@ export class WorkflowRunOrchestratorRepository {
           condition.valueNumber ??
           condition.valueBoolean,
       }));
-    return evaluateWorkflowConditions(conditions, payload);
+    return evaluateWorkflowConditions(conditions, payload, { organizationId });
   }
 
   async createRunWithActions(

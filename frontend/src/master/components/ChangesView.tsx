@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-condition-engine-v49835-2026-07-25',
+    version: '4.9.835',
+    title: 'V4.9.835 — Typed workflow condition engine (Phase 6 Prompt 25)',
+    summary: [
+      'WorkflowConditionEngine replaces implicit type-coercing evaluator with strict typed evaluation.',
+      'Condition Field Registry: boolean, integer, decimal, datetime, enum, string, array with per-type operators.',
+      'Error codes: CONDITION_FIELD_UNSUPPORTED, CONDITION_INPUT_INVALID, CONDITION_OPERATOR_INCOMPATIBLE, CONDITION_SENSITIVE_FIELD_DENIED, CONDITION_TENANT_VIOLATION.',
+      'No eval, no unbounded payload paths, no silent Number() coercion; PII-safe dry-run explain.',
+      '22 condition engine tests; legacy evaluateWorkflowConditions delegates to typed engine.',
+    ],
+    reason: 'Workflow conditions must be schema-backed, type-safe, and auditable — not loose JSON path matching with silent coercion.',
+    previousBehavior: 'workflow-condition.evaluator.ts used Number() coercion, unbounded payload.${field} fallback, and no field registry.',
+    details: 'docs/architecture/workflow-condition-engine-2026-07.md. Module: backend/src/modules/workflows/conditions/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T18:00:00.000Z',
+  },
+  {
     id: 'workflow-error-strategies-v49834-2026-07-25',
     version: '4.9.834',
     title: 'V4.9.834 — Workflow error strategies & partial failures (Phase 5 Prompt 24)',

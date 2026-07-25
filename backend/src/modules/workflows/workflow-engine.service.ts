@@ -88,7 +88,9 @@ export class WorkflowEngineService {
     }
 
     const conditions = (workflow.conditions as unknown as WorkflowConditionDef[]) ?? [];
-    const conditionEval = evaluateWorkflowConditions(conditions, event.payload);
+    const conditionEval = evaluateWorkflowConditions(conditions, event.payload, {
+      organizationId: event.organizationId,
+    });
     if (!conditionEval.passed) {
       return this.createSkippedRun(workflow, event, conditionEval);
     }
