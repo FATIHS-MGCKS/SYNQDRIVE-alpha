@@ -6128,21 +6128,27 @@ enum HandoverSessionStatus {
 model BookingHandoverSession {
   id                    String                @id @default(uuid())
   organizationId        String                @map("organization_id")
+  stationId             String?               @map("station_id")
   bookingId             String                @map("booking_id")
   vehicleId             String                @map("vehicle_id")
   kind                  HandoverKind
   status                HandoverSessionStatus
+  currentStep           String?               @map("current_step")
   version               Int                   @default(1)
   payloadJson           Json?                 @map("payload_json")
   blockingRequirements  Json?                 @map("blocking_requirements")
   lockedByUserId        String?               @map("locked_by_user_id")
   lockedAt              DateTime?             @map("locked_at")
+  startedByUserId       String?               @map("started_by_user_id")
+  assignedToUserId      String?               @map("assigned_to_user_id")
+  updatedByUserId       String?               @map("updated_by_user_id")
   scopeOverrideReason   String?               @map("scope_override_reason")
   cancelReason          String?               @map("cancel_reason")
   supersededById        String?               @map("superseded_by_id")
   completedProtocolId   String?               @map("completed_protocol_id")
   submittedAt           DateTime?             @map("submitted_at")
   cancelledAt           DateTime?             @map("cancelled_at")
+  expiresAt             DateTime?             @map("expires_at")
   createdAt             DateTime              @default(now()) @map("created_at")
   updatedAt             DateTime              @updatedAt @map("updated_at")
 
@@ -6153,6 +6159,7 @@ model BookingHandoverSession {
   @@index([organizationId])
   @@index([bookingId, kind])
   @@index([vehicleId])
+  @@index([expiresAt])
   @@map("booking_handover_sessions")
 }
 

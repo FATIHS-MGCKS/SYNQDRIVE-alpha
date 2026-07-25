@@ -66,6 +66,12 @@ import type { CompleteReturnHandoverBodyDto } from './handover-session/dto/compl
 import { CorrectHandoverCompletionService } from './handover-session/correct-handover-completion.service';
 import type { CorrectHandoverCompletionBodyDto } from './handover-session/dto/correct-handover-completion.dto';
 import { HandoverCompletionRecordQueryService } from './handover-session/handover-completion-record-query.service';
+import { BookingsHandoverDraftService } from './handover-session/bookings-handover-draft.service';
+import type {
+  CancelHandoverDraftBodyDto,
+  CreateHandoverDraftBodyDto,
+  UpdateHandoverDraftBodyDto,
+} from './handover-session/dto/handover-draft.dto';
 import { resolveHandoverActor } from './handover-actor.util';
 import type { HandoverKind } from '@prisma/client';
 
@@ -80,6 +86,7 @@ export class BookingsController {
     private readonly completeReturnHandoverService: CompleteReturnHandoverService,
     private readonly correctHandoverCompletionService: CorrectHandoverCompletionService,
     private readonly handoverCompletionRecordQueryService: HandoverCompletionRecordQueryService,
+    private readonly handoverDraftService: BookingsHandoverDraftService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
@@ -580,6 +587,86 @@ export class BookingsController {
       body,
       resolveHandoverActor(user),
     );
+  }
+
+  @Post(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'write')
+  async createHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CreateHandoverDraftBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverDraftService.createDraft({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      actor: resolveHandoverActor(user),
+      currentStep: body.currentStep,
+      draft: body.draft,
+      actualStationId: body.actualStationId ?? null,
+    });
+  }
+
+  @Get(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'read')
+  async getHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverDraftService.getDraft(orgId, bookingId, kind, resolveHandoverActor(user));
+  }
+
+  @Patch(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'write')
+  async updateHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: UpdateHandoverDraftBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    if (body.expectedVersion == null || !Number.isFinite(body.expectedVersion)) {
+      throw new BadRequestException('expectedVersion is required');
+    }
+    return this.handoverDraftService.updateDraft({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      actor: resolveHandoverActor(user),
+      expectedVersion: body.expectedVersion,
+      currentStep: body.currentStep,
+      draft: body.draft,
+      validateStep: body.validateStep,
+      actualStationId: body.actualStationId ?? null,
+      acquireLock: body.acquireLock,
+    });
+  }
+
+  @Delete(':id/handover/drafts/:kind')
+  @RequirePermission('bookings', 'write')
+  async cancelHandoverDraft(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CancelHandoverDraftBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverDraftService.cancelDraft({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      actor: resolveHandoverActor(user),
+      expectedVersion: body?.expectedVersion ?? null,
+      cancelReason: body?.cancelReason ?? null,
+    });
   }
 
   @Get(':id/handover/completion-records/:kind')

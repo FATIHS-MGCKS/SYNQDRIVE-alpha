@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | V4.9.843 (Prompt 17 — completion record) |
+| **Version** | V4.9.844 (Prompt 18 — server draft lifecycle) |
 | **Date** | 2026-07-25 |
-| **Status** | Session SM + atomic pickup/return complete + tamper-evident completion records |
+| **Status** | Session SM + drafts + atomic complete + completion records |
 | **Full audit** | `docs/audits/operator-app-production-readiness-2026-07.md` §35 |
 
 ---
@@ -78,6 +78,18 @@ Existing protocols map to `completed`. Legacy POST endpoints remain as submit sh
 | Permission | `operator.handover.complete` → `bookings.write` |
 
 Vehicle availability on return uses `resolveReturnVehicleUpdate()` — never sets maintenance from observations; respects `IN_SERVICE`/`OUT_OF_SERVICE` and other active bookings.
+
+### Draft lifecycle (Prompt 18)
+
+| Component | Path |
+|-----------|------|
+| Draft service | `bookings-handover-draft.service.ts` |
+| Payload schema | `handover-session-draft.payload.ts` |
+| Step validation | `handover-session-draft-step.validation.ts` |
+| API | `POST/GET/PATCH/DELETE …/handover/drafts/:kind` |
+| Frontend | `useOperatorHandoverDraft.ts`, `OperatorHandoverFlow.tsx` |
+
+---
 
 ### Completion record (Prompt 17)
 

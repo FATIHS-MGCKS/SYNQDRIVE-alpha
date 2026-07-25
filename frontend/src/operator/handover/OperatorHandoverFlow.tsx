@@ -23,6 +23,7 @@ import { OperatorHandoverStepReview } from './OperatorHandoverStepReview';
 import { OperatorHandoverStepSignatures } from './OperatorHandoverStepSignatures';
 import { OperatorHandoverStepVehicle } from './OperatorHandoverStepVehicle';
 import { useOperatorHandoverForm } from './useOperatorHandoverForm';
+import { useOperatorHandoverDraft } from './useOperatorHandoverDraft';
 
 const STEP_LABELS: Record<OperatorHandoverStepId, string> = {
   vehicle: 'Fahrzeug',
@@ -63,11 +64,21 @@ export function OperatorHandoverFlow({
   const pickupIdempotencyKeyRef = useRef<string | null>(null);
   const returnIdempotencyKeyRef = useRef<string | null>(null);
 
-  const form = useOperatorHandoverForm(isOpen, kind, orgId, booking);
+  const form = useOperatorHandoverForm(isOpen, kind, orgId, booking, { skipResetOnOpen: true });
+
+  const draftSync = useOperatorHandoverDraft(
+    isOpen,
+    orgId,
+    booking?.id,
+    kind,
+    step,
+    form.state,
+    form.patchState,
+    setStep,
+  );
 
   useEffect(() => {
     if (isOpen) {
-      setStep('vehicle');
       setStepError(null);
       setSubmitError(null);
       setSubmitting(false);
@@ -151,6 +162,8 @@ export function OperatorHandoverFlow({
         await api.bookings.completePickupHandover(orgId, booking.id, {
           ...payload,
           idempotencyKey: pickupIdempotencyKeyRef.current,
+          sessionId: draftSync.sessionId ?? undefined,
+          expectedVersion: draftSync.expectedVersion ?? undefined,
         });
       } else {
         if (!returnIdempotencyKeyRef.current) {
@@ -162,6 +175,8 @@ export function OperatorHandoverFlow({
         await api.bookings.completeReturnHandover(orgId, booking.id, {
           ...payload,
           idempotencyKey: returnIdempotencyKeyRef.current,
+          sessionId: draftSync.sessionId ?? undefined,
+          expectedVersion: draftSync.expectedVersion ?? undefined,
         });
       }
       // Server generates pickup/return protocol PDFs after handover — refresh bundle (no frontend PDF).

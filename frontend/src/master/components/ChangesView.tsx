@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-handover-draft-lifecycle-v49844-2026-07-25',
+    version: '4.9.844',
+    title: 'V4.9.844 — Operator App: serverseitiger Handover-Draft-Lifecycle (Prompt 18)',
+    summary: [
+      'Erweitert `BookingHandoverSession` um `currentStep`, `stationId`, `startedBy/assignedTo/updatedBy`, `expiresAt` (7-Tage-Retention).',
+      'Typed Draft-Payload (`schemaVersion` 1): Formulardaten, Upload-Refs, Schaden-IDs, technische Beobachtungen, Signaturstatus (ohne Rohbilder).',
+      'Neue Draft-API: `POST/GET/PATCH/DELETE …/handover/drafts/:kind` mit Optimistic Lock (`expectedVersion`), Station-Scope, Step-Validierung.',
+      'Operator `OperatorHandoverFlow` nutzt `useOperatorHandoverDraft` — Autosave alle 800ms, Resume nach Refresh/Gerätewechsel, `sessionId`+`expectedVersion` beim Abschluss.',
+      'Abgelaufene Drafts werden kontrolliert auf `CANCELLED` gesetzt; terminaler Status nicht editierbar. 8 Integrationstests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 18: kein kritischer Wizard-State nur im React Context; Konflikte und Datenverlust vermeiden.',
+    previousBehavior:
+      'Wizard-State nur lokal; Session-API aus Prompt 14 ohne Operator-Anbindung.',
+    details:
+      'Audit §40, `bookings-handover-draft.service.ts`, `useOperatorHandoverDraft.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T20:15:00.000Z',
+  },
+  {
     id: 'operator-handover-completion-record-v49843-2026-07-25',
     version: '4.9.843',
     title: 'V4.9.843 — Operator App: manipulationssicherer Handover-Abschlussdatensatz (Prompt 17)',
