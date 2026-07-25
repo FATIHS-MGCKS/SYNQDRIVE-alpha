@@ -2190,6 +2190,37 @@ Auth, `operator.handover.complete`, Tenant/Station-Scope, Booking `ACTIVE`, Pick
 
 ---
 
+## 40. Serverseitiger Handover-Draft-Lifecycle (Prompt 18)
+
+### 40.1 Draft-Modell
+
+Erweitert `BookingHandoverSession` (kein paralleles Draft-Table):
+
+| Feld | Inhalt |
+|------|--------|
+| `organizationId`, `stationId`, `bookingId`, `vehicleId`, `kind` | Tenant-/Entitätsbezug (server-derived) |
+| `status`, `currentStep`, `version` | Lifecycle + Optimistic Lock |
+| `payloadJson` | Typed draft: `form`, `uploadRefs`, `signatureStatus` |
+| `startedByUserId`, `assignedToUserId`, `updatedByUserId` | Ownership/Audit |
+| `expiresAt` | Retention (7 Tage, verlängert bei Update) |
+| `lockedByUserId` | Parallele Bearbeitung |
+
+Signaturen: nur Status (`captured` + `name`), keine Rohbilder im Draft.
+
+### 40.2 Endpunkte
+
+`POST/GET/PATCH/DELETE …/handover/drafts/:kind` — Permissions `bookings.write` / `bookings.read`.
+
+### 40.3 Versionierungsstrategie
+
+`expectedVersion` auf PATCH; `LOCK_CONFLICT` bei fremdem Lock; abgelaufene Drafts → `CANCELLED`; terminal → `NOT_EDITABLE`.
+
+### 40.4 Tests
+
+8 Integrationstests in `bookings-handover-draft.integration.spec.ts`.
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`
