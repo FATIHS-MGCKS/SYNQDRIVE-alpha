@@ -137,3 +137,16 @@ export interface OperatorDocumentPreviewGrantDto {
   expiresAt: string;
   audited: true;
 }
+
+export interface OperatorTireMeasurementCaptureResultDto {
+  measurementId: string;
+  tireSetupId: string;
+  idempotentReplay: boolean;
+  warnings: string[];
+  treadMm: {
+    frontLeft: number | null;
+    frontRight: number | null;
+    rearLeft: number | null;
+    rearRight: number | null;
+  };
+}

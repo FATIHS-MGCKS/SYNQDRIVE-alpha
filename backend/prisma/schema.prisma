@@ -1616,6 +1616,7 @@ model Organization {
   bookingHandoverSessions                BookingHandoverSession[]
   operatorUploads                        OperatorUpload[]
   operatorDamageCaptureIdempotency     OperatorDamageCaptureIdempotency[]
+  operatorTireMeasurementIdempotency   OperatorTireMeasurementIdempotency[]
   bookingHandoverCompletionRecords       BookingHandoverCompletionRecord[]
   bookingHandoverCompletionAuditEvents   BookingHandoverCompletionAuditEvent[]
   bookingHandoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
@@ -2866,6 +2867,7 @@ model Vehicle {
   handoverSessions                       BookingHandoverSession[]
   operatorUploads                        OperatorUpload[]
   operatorDamageCaptureIdempotency     OperatorDamageCaptureIdempotency[]
+  operatorTireMeasurementIdempotency   OperatorTireMeasurementIdempotency[]
   handoverCompletionRecords              BookingHandoverCompletionRecord[]
   drivingEvents                          DrivingEvent[]
   batterySnapshots                       BatteryHealthSnapshot[]
@@ -3369,17 +3371,24 @@ model VehicleTireTreadMeasurement {
   measuredAt            DateTime            @map("measured_at")
   createdAt             DateTime            @default(now()) @map("created_at")
   evidenceSource        TireEvidenceSource? @map("evidence_source")
+  bookingId             String?             @map("booking_id")
+  handoverSessionId     String?             @map("handover_session_id")
 
   tireSetup               VehicleTireSetup           @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
   documentExtraction      VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  booking                 Booking?                   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  handoverSession         BookingHandoverSession?    @relation(fields: [handoverSessionId], references: [id], onDelete: SetNull)
   wearDataPointsAsActual  TireWearDataPoint[]        @relation("WearDataPointActualMeasurement")
   setupsAsInitialEvidence VehicleTireSetup[]         @relation("SetupInitialTreadEvidence")
+  operatorCaptureIdempotency OperatorTireMeasurementIdempotency[]
 
   @@unique([vehicleId, documentExtractionId])
   @@index([vehicleId])
   @@index([tireSetupId])
   @@index([evidenceSource])
   @@index([documentExtractionId])
+  @@index([bookingId])
+  @@index([handoverSessionId])
   @@map("vehicle_tire_tread_measurements")
 }
 
@@ -5612,6 +5621,8 @@ model Booking {
   handoverSessions        BookingHandoverSession[]
   operatorUploads           OperatorUpload[]
   operatorDamageCaptureIdempotency OperatorDamageCaptureIdempotency[]
+  operatorTireMeasurementIdempotency OperatorTireMeasurementIdempotency[]
+  tireTreadMeasurements VehicleTireTreadMeasurement[]
   handoverCompletionRecords BookingHandoverCompletionRecord[]
   handoverCompletionAuditEvents BookingHandoverCompletionAuditEvent[]
   handoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
@@ -6163,6 +6174,8 @@ model BookingHandoverSession {
   booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   operatorUploads OperatorUpload[]
+  tireTreadMeasurements VehicleTireTreadMeasurement[]
+  operatorTireMeasurementIdempotency OperatorTireMeasurementIdempotency[]
 
   @@index([organizationId])
   @@index([bookingId, kind])
@@ -6255,6 +6268,30 @@ model OperatorDamageCaptureIdempotency {
   @@index([damageId])
   @@index([vehicleId])
   @@map("operator_damage_capture_idempotency")
+}
+
+/// Idempotent operator tire measurement capture keys (Prompt 28).
+model OperatorTireMeasurementIdempotency {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  captureKey       String   @map("capture_key")
+  measurementId    String   @map("measurement_id")
+  vehicleId        String   @map("vehicle_id")
+  bookingId        String?  @map("booking_id")
+  handoverSessionId String? @map("handover_session_id")
+  capturedByUserId String?  @map("captured_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  measurement  VehicleTireTreadMeasurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  handoverSession BookingHandoverSession? @relation(fields: [handoverSessionId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, captureKey])
+  @@index([measurementId])
+  @@index([vehicleId])
+  @@map("operator_tire_measurement_idempotency")
 }
 
 /// Idempotent replay cache for pickup handover completion commands (Prompt 15).

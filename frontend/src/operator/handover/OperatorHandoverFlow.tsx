@@ -271,6 +271,7 @@ export function OperatorHandoverFlow({
       vehicleId: booking.vehicleId,
       vehicleLabel: `${booking.vehicleName} · ${booking.plate}`,
       bookingId: booking.id,
+      handoverSessionId: draftSync.sessionId ?? undefined,
       initialOdometerKm: Number.isFinite(odo) ? odo : undefined,
       onSuccess: () => form.markTireMeasurementCaptured(),
     });

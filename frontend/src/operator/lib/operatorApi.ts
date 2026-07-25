@@ -6,6 +6,7 @@ import type {
   OperatorDamageListItemDto,
   OperatorDocumentPreviewGrantDto,
   OperatorProcess,
+  OperatorTireMeasurementCaptureResultDto,
 } from './operatorData.types';
 import type { DamageResponse, DamageSeverity, DamageSource } from '../../rental/lib/damage.types';
 import type { HandoverDialogBookingInfo, HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
@@ -147,6 +148,38 @@ export const operatorApi = {
   ) {
     return operatorSensitiveJson<OperatorDamageCaptureResultDto>(
       `/organizations/${orgId}/operator/vehicles/${vehicleId}/damages/capture`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  captureTireMeasurement(
+    orgId: string,
+    vehicleId: string,
+    body: {
+      captureKey: string;
+      confirmed: boolean;
+      tireSetupId?: string;
+      frontLeftMm?: number;
+      frontRightMm?: number;
+      rearLeftMm?: number;
+      rearRightMm?: number;
+      measuredAt?: string;
+      odometerKm?: number;
+      confirmOdometer?: boolean;
+      source?: 'manual' | 'workshop' | 'ai_confirmed';
+      workshopName?: string;
+      note?: string;
+      bookingId?: string;
+      handoverSessionId?: string;
+      stationId?: string;
+    },
+  ) {
+    return operatorSensitiveJson<OperatorTireMeasurementCaptureResultDto>(
+      `/organizations/${orgId}/operator/vehicles/${vehicleId}/tire-measurements/capture`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-tire-measure-hardening-v49853-2026-07-25',
+    version: '4.9.853',
+    title: 'V4.9.853 — Operator App: gehärtete manuelle Reifenmessung (Prompt 28)',
+    summary: [
+      'Zentrale mm-Validierung (`tire-measurement-validation.util`) in Operator-API und `TireLifecycleService`.',
+      'Eindeutige Positionen VL/VR/HL/HR; Locale-sichere Dezimalwerte; Plausibilitätsgrenzen 0–20 mm serverseitig.',
+      'Operator-Endpoint `…/tire-measurements/capture` mit `captureKey`-Idempotenz, manueller Bestätigung und Audit.',
+      'Handover-/Booking-Kontext (`bookingId`, `handoverSessionId`) auf `VehicleTireTreadMeasurement`.',
+      'Keine Auto-Blockierung außerhalb zentraler Tire-Health-/Rental-Health-Regeln.',
+      'UI: numerische Tastatur, klare Fehler/Hinweise mit Text+Icon, Bestätigungs-Checkbox, Touch Targets.',
+    ],
+    reason:
+      'Production-Readiness Prompt 28: Manuelle Reifenmessung in der Operator App auditieren und härten.',
+    previousBehavior:
+      'Operator schrieb direkt über Vehicle-Intelligence-API ohne Idempotenz, Audit, serverseitige Plausibilität oder Handover-Verknüpfung.',
+    details:
+      'Backend: `operator-tire-measure` submodule, `OperatorTireMeasurementIdempotency`, Prisma booking/handover FKs. Frontend: `operatorApi.captureTireMeasurement`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T20:30:00.000Z',
+  },
+  {
     id: 'operator-observations-consolidation-v49852-2026-07-25',
     version: '4.9.852',
     title: 'V4.9.852 — Operator App: konsolidierte Technical-Observations-Domain (Prompt 27)',
