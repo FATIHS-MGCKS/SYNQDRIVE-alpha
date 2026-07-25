@@ -10798,6 +10798,7 @@ model OrgWorkflow {
   lastTriggeredAt DateTime?      @map("last_triggered_at")
   triggerCount    Int            @default(0) @map("trigger_count")
   isTemplate      Boolean        @default(false) @map("is_template")
+  systemMetadata  Json?          @map("system_metadata")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -10811,6 +10812,57 @@ model OrgWorkflow {
   @@index([status])
   @@index([category])
   @@map("org_workflows")
+}
+
+enum TaskAutomationWorkflowMigrationStatus {
+  MIGRATED
+  ALREADY_MIGRATED
+  SKIPPED_CUSTOMIZED
+  REQUIRES_REMEDIATION
+  FAILED
+}
+
+enum TaskAutomationWorkflowMigrationMode {
+  DRY_RUN
+  EXECUTE
+}
+
+model TaskAutomationWorkflowMigrationRun {
+  id             String                              @id @default(uuid())
+  organizationId String?                             @map("organization_id")
+  mode           TaskAutomationWorkflowMigrationMode
+  stats          Json
+  details        Json                                @default("[]")
+  startedAt      DateTime                            @map("started_at")
+  finishedAt     DateTime?                           @map("finished_at")
+  createdAt      DateTime                            @default(now()) @map("created_at")
+
+  records TaskAutomationWorkflowMigrationRecord[]
+
+  @@index([organizationId])
+  @@map("task_automation_workflow_migration_runs")
+}
+
+model TaskAutomationWorkflowMigrationRecord {
+  id                      String                              @id @default(uuid())
+  organizationId            String                              @map("organization_id")
+  legacyRuleId            String                              @map("legacy_rule_id")
+  catalogKey              String?                             @map("catalog_key")
+  workflowId              String?                             @map("workflow_id")
+  status                  TaskAutomationWorkflowMigrationStatus
+  overrideSnapshot        Json?                               @map("override_snapshot")
+  remediationReason       String?                             @map("remediation_reason")
+  rollbackWorkflowVersion Int?                                @map("rollback_workflow_version")
+  migrationRunId          String?                             @map("migration_run_id")
+  createdAt               DateTime                            @default(now()) @map("created_at")
+  updatedAt               DateTime                            @updatedAt @map("updated_at")
+
+  migrationRun TaskAutomationWorkflowMigrationRun? @relation(fields: [migrationRunId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, legacyRuleId])
+  @@index([organizationId])
+  @@index([migrationRunId])
+  @@map("task_automation_workflow_migration_records")
 }
 
 model OrgWorkflowRun {

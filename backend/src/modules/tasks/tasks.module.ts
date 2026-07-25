@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { WorkflowMakerCheckerModule } from '@modules/workflows/maker-checker/workflow-maker-checker.module';
+import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { TaskAutomationService } from './task-automation.service';
@@ -17,7 +18,7 @@ import { TaskAutomationSimulationService } from './automation/task-automation-si
 import { TaskPermissionService } from './task-permission.service';
 
 @Module({
-  imports: [ActivityLogModule, TaskAutomationOutboxCoreModule, WorkflowMakerCheckerModule],
+  imports: [ActivityLogModule, TaskAutomationOutboxCoreModule, WorkflowMakerCheckerModule, forwardRef(() => WorkflowsModule)],
   controllers: [TasksController, TaskAutomationAdminController],
   providers: [
     TasksService,

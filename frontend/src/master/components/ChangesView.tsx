@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'task-automation-workflow-migration-v49858-2026-07-25',
+    version: '4.9.858',
+    title: 'V4.9.858 — Task Automation → Workflow Runtime Migration (Phase 11 Prompt 48)',
+    summary: [
+      'Idempotent migration service: catalog rules → per-org system workflow templates with override mirror.',
+      'Migration audit tables + rollback mapping (`legacyRuleId` → `workflowId`, `rollbackWorkflowVersion`).',
+      'Runtime feature flag: legacy | shadow | cutover (`TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE`).',
+      'Bridge router in `safeUpsert` — no duplicate task writes in shadow/cutover.',
+      'Legacy OrgWorkflow rows normalized where mappable; invalid overrides → `requires_remediation`.',
+      'Admin API: `POST/GET .../task-automation/workflow-migration/*`; rules DTO gains `workflow` + `runtimeMode`.',
+      '12 backend tests: fresh org, overrides, idempotency, remediation, cutover/rollback, tenant isolation.',
+    ],
+    reason:
+      'Controlled cutover path from Task Automation catalog to Workflow Runtime system templates without losing org overrides or rollback traceability.',
+    previousBehavior:
+      'Task materialization wrote directly via TasksService; no workflow template linkage or migration audit.',
+    details:
+      'See docs/migrations/task-automation-to-workflow-runtime-2026-07.md. Default runtime remains `legacy`.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T12:00:00.000Z',
+  },
+  {
     id: 'workflow-mobile-a11y-v49857-2026-07-25',
     version: '4.9.857',
     title: 'V4.9.857 — Workflow Automation Mobile & Accessibility (Phase 10 Prompt 47)',
