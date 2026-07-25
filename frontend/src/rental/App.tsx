@@ -56,6 +56,8 @@ import {
   invalidateVehicleOperationalAfterBookingChange,
   invalidateVehicleOperationalState,
 } from './lib/vehicle-operational-query';
+import type { HealthDetailTab } from './lib/health-detail-utils';
+import { resolveNotificationModuleTab } from './lib/health-detail-utils';
 import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles } from './FleetContext';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
@@ -225,6 +227,7 @@ function RentalAppContent() {
   // konsumiert das Feld in einem useEffect und setzt anschliessend
   // `setPendingBookingDetailId(null)` über den Reset-Callback zurück.
   const [pendingBookingDetailId, setPendingBookingDetailId] = useState<string | null>(null);
+  const [pendingHealthModuleTab, setPendingHealthModuleTab] = useState<HealthDetailTab | null>(null);
   const [pendingInvoiceDetailId, setPendingInvoiceDetailId] = useState<string | null>(null);
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [helpCenterAttempted, setHelpCenterAttempted] = useState(
@@ -581,9 +584,16 @@ function RentalAppContent() {
         if (match) {
           setSelectedVehicle(match);
           if (options?.module) {
+            if (options.module === 'trips') {
+              setPendingHealthModuleTab(null);
+              setCurrentView('trips');
+              return;
+            }
+            setPendingHealthModuleTab(resolveNotificationModuleTab(options.module));
             setCurrentView('health-errors');
             return;
           }
+          setPendingHealthModuleTab(null);
           setCurrentView('overview');
           return;
         }
@@ -946,6 +956,8 @@ function RentalAppContent() {
             <HealthErrorsView
               vehicleId={selectedVehicle?.id}
               fuelType={selectedVehicle?.fuelType}
+              initialModuleTab={pendingHealthModuleTab ?? undefined}
+              onConsumeInitialModuleTab={() => setPendingHealthModuleTab(null)}
               onOpenServiceCenter={() =>
                 openServiceCenter(
                   selectedVehicle?.id

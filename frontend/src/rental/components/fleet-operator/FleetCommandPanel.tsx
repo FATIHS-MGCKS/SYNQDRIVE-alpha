@@ -57,9 +57,20 @@ export interface FleetCommandPanelProps {
   canonicalCriticalVehicleIds?: ReadonlySet<string>;
   /** Tab badge counts from dashboard runtime vehicle states (same scope as contexts). */
   canonicalTabCounts?: Record<FleetCommandTab, number>;
+  /** When true, never fall back to visual-state tab counts (runtime SSOT). */
+  runtimeCountsActive?: boolean;
   futureBookingOnly?: boolean;
   onFutureBookingOnlyChange?: (value: boolean) => void;
 }
+
+const EMPTY_COMMAND_TAB_COUNTS: Record<FleetCommandTab, number> = {
+  All: 0,
+  Available: 0,
+  Reserved: 0,
+  Active: 0,
+  Maintenance: 0,
+  Unknown: 0,
+};
 
 export function FleetCommandPanel({
   contexts,
@@ -86,6 +97,7 @@ export function FleetCommandPanel({
   canonicalAlertCounts,
   canonicalCriticalVehicleIds,
   canonicalTabCounts,
+  runtimeCountsActive = false,
   futureBookingOnly = false,
   onFutureBookingOnlyChange,
 }: FleetCommandPanelProps) {
@@ -94,17 +106,17 @@ export function FleetCommandPanel({
     [canonicalCriticalVehicleIds],
   );
 
-  const tabCounts = useMemo(
-    () =>
-      canonicalTabCounts ??
-      computeCommandTabCounts(contexts, { futureBookingOnly }),
-    [canonicalTabCounts, contexts, futureBookingOnly],
-  );
+  const tabCounts = useMemo(() => {
+    if (canonicalTabCounts) return canonicalTabCounts;
+    if (runtimeCountsActive) return EMPTY_COMMAND_TAB_COUNTS;
+    return computeCommandTabCounts(contexts, { futureBookingOnly });
+  }, [canonicalTabCounts, runtimeCountsActive, contexts, futureBookingOnly]);
 
   const attentionStats = useMemo(() => {
     if (canonicalAlertCounts) return canonicalAlertCounts;
+    if (runtimeCountsActive) return { critical: 0, warning: 0 };
     return computeFleetCommandAttentionCounts(contexts, severityOptions);
-  }, [contexts, canonicalAlertCounts, severityOptions]);
+  }, [contexts, canonicalAlertCounts, runtimeCountsActive, severityOptions]);
 
   const visibleContexts = useMemo(
     () =>

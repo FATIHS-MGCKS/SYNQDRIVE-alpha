@@ -18,6 +18,14 @@ import {
   useFleetMapStore,
 } from '../stores/useFleetMapStore';
 import { buildFleetMapGeoJson, vehicleHasFleetLocation } from '../lib/fleetVisualState';
+import { buildVehicleRuntimeStates } from './dashboard/runtime/vehicleRuntimeStateBuilder';
+import {
+  resolveFleetTabCountsFromRuntime,
+} from './dashboard/runtime/runtimeSliceConsistency';
+import type { DashboardRuntimeModel } from './dashboard/runtime/dashboardRuntimeTypes';
+import {
+  resolveRuntimeFleetAlertCounts,
+} from '../lib/fleet-operator-panel';
 import { FleetMapControls } from './FleetMapControls';
 import { FleetMapVehicleStatusHud } from './fleet-operator/FleetMapVehicleStatusHud';
 import { FleetCommandPanel } from './fleet-operator/FleetCommandPanel';
@@ -129,6 +137,29 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     () => filterFleetByStation(vehicles, stationId),
     [vehicles, stationId],
   );
+
+  const fleetRuntimeTabCounts = useMemo(() => {
+    const states = buildVehicleRuntimeStates({
+      fleetVehicles: stationFiltered,
+      healthMap,
+      now: new Date(),
+    });
+    const scopeIds = new Set(stationFiltered.map((vehicle) => vehicle.id));
+    return resolveFleetTabCountsFromRuntime(
+      { vehicleStates: states } as DashboardRuntimeModel,
+      scopeIds,
+    );
+  }, [stationFiltered, healthMap]);
+
+  const fleetRuntimeAlertCounts = useMemo(() => {
+    const states = buildVehicleRuntimeStates({
+      fleetVehicles: stationFiltered,
+      healthMap,
+      now: new Date(),
+    });
+    const scopeIds = new Set(stationFiltered.map((vehicle) => vehicle.id));
+    return resolveRuntimeFleetAlertCounts(states, scopeIds);
+  }, [stationFiltered, healthMap]);
 
   const baseContexts = useMemo(
     () => buildFleetVehicleContexts(stationFiltered, getHealth),
@@ -432,6 +463,9 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
             onRefresh={handleRefreshNow}
             refreshing={loading}
             headerAction={stationFilterControl}
+            canonicalTabCounts={fleetRuntimeTabCounts}
+            canonicalAlertCounts={fleetRuntimeAlertCounts}
+            runtimeCountsActive
             futureBookingOnly={futureBookingOnly}
             onFutureBookingOnlyChange={setFutureBookingOnly}
             onRowClick={handleRowClick}

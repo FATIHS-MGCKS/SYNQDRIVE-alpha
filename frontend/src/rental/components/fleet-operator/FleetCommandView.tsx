@@ -148,6 +148,7 @@ export function FleetCommandView({
       canonicalAlertCounts={canonicalAlertCounts}
       canonicalCriticalVehicleIds={canonicalCriticalVehicleIds}
       canonicalTabCounts={canonicalTabCounts}
+      runtimeCountsActive={Boolean(dashboardRuntime)}
       futureBookingOnly={futureBookingOnly}
       onFutureBookingOnlyChange={setFutureBookingOnly}
       onRowClick={openVehicle}

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-warnings-remediation-fe-phase2-v49828-2026-07-25',
+    version: '4.9.828',
+    title: 'V4.9.828 — Vehicle Warnings Remediation FE Phase 2',
+    summary: [
+      'Runtime SSOT: vehicleRuntimeStateBuilder uses telemetryFreshness.ts canonical classification (VW-F-005).',
+      'Fleet Command: canonicalTabCounts/runtimeCountsActive — no visual-state fallback when runtime present (VW-F-004/F-006/F-016); FleetView builds runtime tab + alert counts.',
+      'Rental health: VehicleHealthResponse rental_readiness/projection_version; useVehicleHealth exposes fields; rental-health-query invalidate bus wired after mutations.',
+      'OPEN_VEHICLE_MODULE: App.tsx opens health-errors with moduleKeyToTab / resolveNotificationModuleTab; HealthErrorsView initialModuleTab opens module modal.',
+      'fleetVisualState/computeCommandTabCounts deprecated for command counts when runtime available.',
+    ],
+    reason: 'Frontend vehicle warnings audit remediation — runtime/health SSOT alignment.',
+    previousBehavior: 'Duplicate telemetry classification in runtime builder; Fleet Command tab badges from deriveFleetVisualState; OPEN_VEHICLE_MODULE landed on health-errors without module focus; health reload ad-hoc after mutations.',
+    details:
+      'Files: vehicleRuntimeStateBuilder.ts, FleetCommandPanel/View/FleetView, useVehicleHealth.ts, api.ts, App.tsx, HealthErrorsView, rental-health-query/, health-detail-utils, fleetVisualState, fleet-command-filters.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T21:50:00.000Z',
+  },
+  {
     id: 'vehicle-warnings-remediation-phase1-v49827-2026-07-25',
     version: '4.9.827',
     title: 'V4.9.827 — Vehicle Warnings Remediation Phase 1',

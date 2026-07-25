@@ -102,6 +102,10 @@ export function applyFleetCommandFilters<T extends FleetTabFilterContext>(
   return result;
 }
 
+/**
+ * Legacy visual-state tab counts from fleet contexts.
+ * @deprecated Prefer `resolveFleetTabCountsFromRuntime` when runtime vehicle states exist (VW-F-004).
+ */
 export function computeCommandTabCounts<T extends FleetTabFilterContext>(
   contexts: T[],
   options: { futureBookingOnly?: boolean } = {},

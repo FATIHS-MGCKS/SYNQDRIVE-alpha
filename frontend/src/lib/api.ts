@@ -272,6 +272,12 @@ export interface VehicleHealthResponse {
     vehicle_alerts: RentalHealthModule;
   };
   generated_at: string;
+  /** Alias for generated_at — cross-surface contract. */
+  evaluated_at?: string;
+  /** Ready for rental when pipeline is complete and no hard blockers apply. */
+  rental_readiness?: 'ready' | 'not_ready' | 'unevaluable';
+  /** Monotonic projection version for cache coherence. */
+  projection_version?: string;
   /** Fleet read-model only — detail route omits these fields. */
   cache_stale?: boolean;
   data_partial?: boolean;

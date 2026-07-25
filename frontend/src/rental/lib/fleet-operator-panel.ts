@@ -20,6 +20,7 @@ import {
 } from './fleetVehicleDisplay';
 
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
+import type { VehicleRuntimeState } from '../components/dashboard/runtime/dashboardRuntimeTypes';
 import {
   selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
@@ -62,6 +63,23 @@ export function resolveCanonicalFleetAlertCounts(
   const warning = runtime.vehicleStates.filter(
     (state) => state.isWarning && !state.isCritical && !state.isBlocked,
   ).length;
+  return { critical, warning };
+}
+
+/** Runtime-derived attention counts for Fleet Command when no dashboard slice is available. */
+export function resolveRuntimeFleetAlertCounts(
+  states: VehicleRuntimeState[],
+  scopeVehicleIds?: ReadonlySet<string>,
+): { critical: number; warning: number } {
+  const scoped = scopeVehicleIds
+    ? states.filter((state) => scopeVehicleIds.has(state.vehicleId))
+    : states;
+  let critical = 0;
+  let warning = 0;
+  for (const state of scoped) {
+    if (state.isCritical || state.isBlocked) critical += 1;
+    else if (state.isWarning) warning += 1;
+  }
   return { critical, warning };
 }
 

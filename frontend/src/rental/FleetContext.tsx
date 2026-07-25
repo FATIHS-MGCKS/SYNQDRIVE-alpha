@@ -16,6 +16,7 @@ import {
   registerVehicleOperationalInvalidationHandler,
   vehicleOperationalQueryKeys,
 } from './lib/vehicle-operational-query';
+import { registerRentalHealthReloadHandler } from './lib/rental-health-query';
 
 export type EffectiveHealthStatus = 'Critical' | 'Warning' | 'Good Health' | 'Unknown';
 
@@ -97,9 +98,14 @@ export function FleetProvider({ children }: { children: ReactNode }) {
       },
     );
 
+    const unregisterRentalHealthBus = registerRentalHealthReloadHandler(orgId, () => {
+      void reloadHealth();
+    });
+
     return () => {
       unregisterFleet();
       unregisterHealth();
+      unregisterRentalHealthBus();
     };
   }, [orgId, fetchFleetMap, reloadHealth]);
 

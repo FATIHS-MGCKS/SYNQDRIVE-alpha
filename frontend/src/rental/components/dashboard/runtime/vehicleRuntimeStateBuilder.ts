@@ -4,6 +4,11 @@ import type {
   InsightSeverity,
 } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
+import {
+  resolveTelemetryFreshness,
+  type TelemetryFreshness,
+  type TelemetryFreshnessInput,
+} from '../../../lib/telemetryFreshness';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
 import { mapCanonicalOperationalStatusToRuntime } from '../../../lib/fleet-map-vehicle-selectors';
 import {
@@ -48,10 +53,10 @@ import type {
 } from './dashboardRuntimeTypes';
 
 const MS_MINUTE = 60_000;
-const MS_HOUR = 60 * MS_MINUTE;
-const TELEMETRY_LIVE_MAX_MS = 15 * MS_MINUTE;
 const DEFAULT_DUE_SOON_MINUTES = 60;
+/** @deprecated Thresholds are fixed in `telemetryFreshness.ts` — kept for call-site compatibility. */
 const DEFAULT_SOFT_OFFLINE_HOURS = 24;
+/** @deprecated Thresholds are fixed in `telemetryFreshness.ts` — kept for call-site compatibility. */
 const DEFAULT_HARD_OFFLINE_HOURS = 48;
 
 /** Canonical backend operational read-model consumed by the runtime builder. */
@@ -140,22 +145,18 @@ export function resolveVehicleRuntimeOperationalBlock(
   };
 }
 
-interface VehicleTelemetryTimestampFields {
-  lastSignal?: string | null;
-  lastSeen?: string | null;
-  lastSeenAt?: string | null;
-  lastSnapshotAt?: string | null;
-  telemetryUpdatedAt?: string | null;
-  latestTelemetryAt?: string | null;
-  signalAgeMs?: number | null;
-  isLiveTracking?: boolean;
-  isFresh?: boolean;
-  online?: boolean;
-  onlineStatus?: string | null;
-  displayState?: string | null;
-  displayIgnition?: string | null;
-  speed?: number | null;
-}
+type VehicleTelemetryTimestampFields = VehicleData &
+  TelemetryFreshnessInput & {
+    lastSeen?: string | null;
+    lastSeenAt?: string | null;
+    lastSnapshotAt?: string | null;
+    telemetryUpdatedAt?: string | null;
+    latestTelemetryAt?: string | null;
+    providerObservedAt?: string | null;
+    lastValidTelemetryAt?: string | null;
+    receivedAt?: string | null;
+    latestStateUpdatedAt?: string | null;
+  };
 
 export interface RentalBlockingServiceCaseRef {
   id: string;
@@ -188,64 +189,49 @@ function parseTimeMs(iso: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-function latestTelemetryTimestampMs(vehicle: VehicleTelemetryTimestampFields): number | null {
-  const candidates = [
-    vehicle.lastSignal,
-    vehicle.lastSeen,
-    vehicle.lastSeenAt,
-    vehicle.lastSnapshotAt,
-    vehicle.telemetryUpdatedAt,
-    vehicle.latestTelemetryAt,
-  ]
-    .map(parseTimeMs)
-    .filter((ms): ms is number => ms != null);
-
-  if (candidates.length === 0) return null;
-  return Math.max(...candidates);
+function toTelemetryFreshnessInput(vehicle: VehicleTelemetryTimestampFields): TelemetryFreshnessInput {
+  return {
+    signalAgeMs: vehicle.signalAgeMs,
+    lastSignal: vehicle.lastSignal,
+    providerObservedAt:
+      vehicle.providerObservedAt ?? vehicle.lastSeenAt ?? vehicle.lastSnapshotAt ?? null,
+    lastValidTelemetryAt:
+      vehicle.lastValidTelemetryAt ?? vehicle.latestTelemetryAt ?? vehicle.telemetryUpdatedAt ?? null,
+    receivedAt: vehicle.receivedAt ?? null,
+    latestStateUpdatedAt: vehicle.latestStateUpdatedAt ?? vehicle.lastSeen ?? null,
+    onlineStatus: vehicle.onlineStatus ?? null,
+  };
 }
 
-function deriveSignalAgeMs(vehicle: VehicleTelemetryTimestampFields, nowMs: number): number | null {
-  const timestampMs = latestTelemetryTimestampMs(vehicle);
-  if (timestampMs != null) return Math.max(0, nowMs - timestampMs);
-
-  if (
-    typeof vehicle.signalAgeMs === 'number' &&
-    Number.isFinite(vehicle.signalAgeMs) &&
-    vehicle.signalAgeMs < Number.MAX_SAFE_INTEGER
-  ) {
-    return Math.max(0, vehicle.signalAgeMs);
+function mapTelemetryFreshnessToConnectionState(
+  freshness: TelemetryFreshness,
+): TelemetryConnectionState {
+  switch (freshness) {
+    case 'live':
+      return 'live';
+    case 'standby':
+      return 'standby';
+    case 'signal_delayed':
+      return 'soft_offline';
+    case 'offline':
+      return 'offline';
+    case 'no_signal':
+    default:
+      return 'unknown';
   }
-
-  return null;
 }
 
-function hasFreshLiveHint(vehicle: VehicleTelemetryTimestampFields, ageMs: number): boolean {
-  if (ageMs >= TELEMETRY_LIVE_MAX_MS) return false;
-  if (vehicle.isLiveTracking === true) return true;
-  if (vehicle.isFresh === true) return true;
-  if (vehicle.online === true || vehicle.onlineStatus === 'ONLINE') return true;
-  if (vehicle.displayState === 'MOVING') return true;
-  if (vehicle.displayIgnition === 'ON') return true;
-  return typeof vehicle.speed === 'number' && vehicle.speed > 0;
-}
-
+/** Canonical telemetry connection state — delegates to `telemetryFreshness.ts` (VW-F-005). */
 export function deriveTelemetryState(
   vehicle: VehicleData,
   now: Date,
-  softOfflineHours: number = DEFAULT_SOFT_OFFLINE_HOURS,
-  hardOfflineHours: number = DEFAULT_HARD_OFFLINE_HOURS,
+  _softOfflineHours: number = DEFAULT_SOFT_OFFLINE_HOURS,
+  _hardOfflineHours: number = DEFAULT_HARD_OFFLINE_HOURS,
 ): TelemetryConnectionState {
-  const nowMs = now.getTime();
-  const ageMs = deriveSignalAgeMs(vehicle as VehicleTelemetryTimestampFields, nowMs);
-  if (ageMs == null) return 'unknown';
-
-  if (ageMs < TELEMETRY_LIVE_MAX_MS || hasFreshLiveHint(vehicle, ageMs)) return 'live';
-
-  const softMs = Math.max(0, softOfflineHours) * MS_HOUR;
-  const hardMs = Math.max(softMs, hardOfflineHours * MS_HOUR);
-  if (ageMs < softMs) return 'standby';
-  if (ageMs < hardMs) return 'soft_offline';
-  return 'offline';
+  const freshness = resolveTelemetryFreshness(toTelemetryFreshnessInput(vehicle), {
+    now: now.getTime(),
+  });
+  return mapTelemetryFreshnessToConnectionState(freshness.freshness);
 }
 
 function vehicleDisplayName(vehicle: VehicleData): string {
