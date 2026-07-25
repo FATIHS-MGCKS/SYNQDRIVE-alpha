@@ -63,6 +63,9 @@ import {
 import type { HandoverSessionTransitionBodyDto } from './handover-session/dto/handover-session.dto';
 import { CompleteReturnHandoverService } from './handover-session/complete-return-handover.service';
 import type { CompleteReturnHandoverBodyDto } from './handover-session/dto/complete-return-handover.dto';
+import { CorrectHandoverCompletionService } from './handover-session/correct-handover-completion.service';
+import type { CorrectHandoverCompletionBodyDto } from './handover-session/dto/correct-handover-completion.dto';
+import { HandoverCompletionRecordQueryService } from './handover-session/handover-completion-record-query.service';
 import { resolveHandoverActor } from './handover-actor.util';
 import type { HandoverKind } from '@prisma/client';
 
@@ -75,6 +78,8 @@ export class BookingsController {
     private readonly handoverSessionService: BookingsHandoverSessionService,
     private readonly completePickupHandoverService: CompletePickupHandoverService,
     private readonly completeReturnHandoverService: CompleteReturnHandoverService,
+    private readonly correctHandoverCompletionService: CorrectHandoverCompletionService,
+    private readonly handoverCompletionRecordQueryService: HandoverCompletionRecordQueryService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly eligibilityGatekeeper: BookingEligibilityGatekeeperService,
     private readonly wizardDraftService: BookingWizardDraftService,
@@ -575,6 +580,41 @@ export class BookingsController {
       body,
       resolveHandoverActor(user),
     );
+  }
+
+  @Get(':id/handover/completion-records/:kind')
+  @RequirePermission('bookings', 'read')
+  async listHandoverCompletionRecords(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    return this.handoverCompletionRecordQueryService.listForBooking(orgId, bookingId, kind);
+  }
+
+  @Post(':id/handover/completion-records/:kind/correct')
+  @RequirePermission('bookings', 'manage')
+  async correctHandoverCompletion(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Param('kind') kindParam: string,
+    @CurrentUser() user: { id?: string; displayName?: string | null; name?: string | null; platformRole?: string; membershipRole?: string },
+    @Body() body: CorrectHandoverCompletionBodyDto,
+  ) {
+    const kind = this.parseHandoverKind(kindParam);
+    if (!body?.correctionReason?.trim()) {
+      throw new BadRequestException('correctionReason is required');
+    }
+    const { correctionReason, ...payload } = body;
+    return this.correctHandoverCompletionService.correctHandoverCompletion({
+      organizationId: orgId,
+      bookingId,
+      kind,
+      correctionReason: correctionReason.trim(),
+      payload,
+      actor: resolveHandoverActor(user),
+    });
   }
 
   // V4.9.840 — Server-side handover session state machine (draft/resume/cancel).

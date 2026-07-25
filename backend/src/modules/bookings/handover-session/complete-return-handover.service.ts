@@ -28,6 +28,7 @@ import {
 import { executeReturnHandoverCompletionInTransaction } from './handover-return-completion.executor';
 import { OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS } from './operator-handover-permission.constants';
 import { resolveWritableStation } from './handover-session-context.util';
+import { currentHandoverProtocolWhere } from './handover-protocol.query';
 
 export interface CompleteReturnHandoverCommandInput {
   organizationId: string;
@@ -92,8 +93,8 @@ export class CompleteReturnHandoverService {
       return { ...response, idempotent: true };
     }
 
-    const existingReturn = await this.prisma.bookingHandoverProtocol.findUnique({
-      where: { bookingId_kind: { bookingId: input.bookingId, kind: 'RETURN' } },
+    const existingReturn = await this.prisma.bookingHandoverProtocol.findFirst({
+      where: currentHandoverProtocolWhere(input.bookingId, 'RETURN'),
     });
     if (existingReturn) {
       const booking = await this.prisma.booking.findFirst({
@@ -151,8 +152,8 @@ export class CompleteReturnHandoverService {
       });
     }
 
-    const pickupProtocol = await this.prisma.bookingHandoverProtocol.findUnique({
-      where: { bookingId_kind: { bookingId: input.bookingId, kind: 'PICKUP' } },
+    const pickupProtocol = await this.prisma.bookingHandoverProtocol.findFirst({
+      where: currentHandoverProtocolWhere(input.bookingId, 'PICKUP'),
       select: { id: true, odometerKm: true },
     });
     if (!pickupProtocol) {

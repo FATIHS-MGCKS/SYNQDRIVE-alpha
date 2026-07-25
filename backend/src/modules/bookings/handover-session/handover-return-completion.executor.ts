@@ -16,6 +16,8 @@ import {
   normalizeTechnicalObservationDrafts,
   type PickupHandoverBookingRow,
 } from './handover-pickup-completion.executor';
+import { createHandoverCompletionRecordInTransaction } from './handover-completion-record.service';
+import { currentHandoverProtocolWhere } from './handover-protocol.query';
 
 export interface ExecuteReturnHandoverCompletionInput {
   orgId: string;
@@ -122,8 +124,8 @@ export async function executeReturnHandoverCompletionInTransaction(
     });
   }
 
-  const pickupProtocol = await tx.bookingHandoverProtocol.findUnique({
-    where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
+  const pickupProtocol = await tx.bookingHandoverProtocol.findFirst({
+    where: currentHandoverProtocolWhere(bookingId, 'PICKUP'),
     select: { id: true, odometerKm: true },
   });
   if (!pickupProtocol) {
@@ -133,8 +135,8 @@ export async function executeReturnHandoverCompletionInTransaction(
     });
   }
 
-  const existingReturn = await tx.bookingHandoverProtocol.findUnique({
-    where: { bookingId_kind: { bookingId, kind: 'RETURN' } },
+  const existingReturn = await tx.bookingHandoverProtocol.findFirst({
+    where: currentHandoverProtocolWhere(bookingId, 'RETURN'),
     select: { id: true },
   });
   if (existingReturn) {
@@ -293,6 +295,21 @@ export async function executeReturnHandoverCompletionInTransaction(
       });
     }
   }
+
+  await createHandoverCompletionRecordInTransaction(tx, {
+    orgId,
+    bookingId,
+    vehicleId: booking.vehicleId,
+    customerId: booking.customerId,
+    stationId: actualStationId,
+    protocolId: protocol.id,
+    kind: 'RETURN',
+    protocolVersion: 1,
+    documentVersion: 1,
+    performedAt: protocol.performedAt,
+    payload,
+    actor,
+  });
 
   return { protocol, booking: updatedBooking };
 }

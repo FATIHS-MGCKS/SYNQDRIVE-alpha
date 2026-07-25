@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | V4.9.842 (Prompt 16 — return complete command) |
+| **Version** | V4.9.843 (Prompt 17 — completion record) |
 | **Date** | 2026-07-25 |
-| **Status** | Session SM + atomic pickup/return complete implemented |
+| **Status** | Session SM + atomic pickup/return complete + tamper-evident completion records |
 | **Full audit** | `docs/audits/operator-app-production-readiness-2026-07.md` §35 |
 
 ---
@@ -78,6 +78,16 @@ Existing protocols map to `completed`. Legacy POST endpoints remain as submit sh
 | Permission | `operator.handover.complete` → `bookings.write` |
 
 Vehicle availability on return uses `resolveReturnVehicleUpdate()` — never sets maintenance from observations; respects `IN_SERVICE`/`OUT_OF_SERVICE` and other active bookings.
+
+### Completion record (Prompt 17)
+
+| Component | Path |
+|-----------|------|
+| Canonical payload + hash | `handover-completion-payload.canonical.ts` |
+| Record persistence | `handover-completion-record.service.ts` |
+| Correction command | `correct-handover-completion.service.ts` |
+| Prisma | `BookingHandoverCompletionRecord`, `BookingHandoverCompletionAuditEvent` |
+| Protocol versioning | `BookingHandoverProtocol.version`, `isCurrent`, `supersededById` |
 
 ---
 

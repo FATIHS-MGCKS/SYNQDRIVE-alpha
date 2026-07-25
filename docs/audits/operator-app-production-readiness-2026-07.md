@@ -2136,6 +2136,60 @@ Auth, `operator.handover.complete`, Tenant/Station-Scope, Booking `ACTIVE`, Pick
 
 ---
 
+## 39. Manipulationssicherer Handover-Abschlussdatensatz (Prompt 17)
+
+### 39.1 Completion-Record-Struktur
+
+`BookingHandoverCompletionRecord` (append-only, keine Updates auf `payloadCanonical`):
+
+| Feld | Bedeutung |
+|------|-----------|
+| `payloadCanonical` | Kanonisch serialisierter Abschlussinhalt (schemaVersion 1) |
+| `payloadHash` | SHA-256 über vollständigen Canonical-Payload |
+| `signedContentHash` | SHA-256 über signaturrelevante Felder |
+| `documentVersion` | Dokument-/PDF-Version (inkrement bei Korrektur) |
+| `version` | Versionsnummer in der Korrekturkette |
+| `completedAt` / `completedByUserId` / `completedByName` | Abschlusszeitpunkt und Actor |
+| `organizationId`, `stationId`, `bookingId`, `vehicleId`, `customerId` | Tenant- und Entitätsbezug |
+| `protocolId` | Verknüpftes `BookingHandoverProtocol` |
+| `previousVersionId` / `supersededById` | Versionskette |
+| `correctionReason` / `overrideUserId` | Nur bei Korrekturen |
+
+### 39.2 Hashing-/Versionierungsstrategie
+
+- `buildHandoverCompletionCanonicalPayload()` normalisiert Felder (sortierte `damageIds`, gerundete Odometer/Tankwerte).
+- `hashHandoverCompletionPayload()` — stabile JSON-Serialisierung + SHA-256.
+- `hashHandoverSignedContent()` — Hash nur über signaturrelevante Felder.
+- Bei Korrektur: `documentVersion++`, `version++`, altes Record `isCurrent=false`, `supersededAt` gesetzt.
+- Protokoll: `BookingHandoverProtocol` erhält `version`, `isCurrent`, `supersededById`; partieller Unique-Index `(bookingId, kind) WHERE is_current`.
+
+### 39.3 Korrekturprozess
+
+`POST …/handover/completion-records/:kind/correct`:
+
+1. Permission `operator.handover.override` (`bookings.manage`)
+2. Pflicht `correctionReason`
+3. Wenn `signedContentHash` sich ändert → neue Kunden-/Mitarbeiter-Signaturen erforderlich
+4. Transaktion: altes Protokoll superseded, neues Protokoll + neuer Completion-Record, Audit `CORRECTED` + `SUPERSEDED`
+5. Original-Record bleibt unverändert (nur `supersededById`/`isCurrent`)
+
+### 39.4 Tests
+
+- `handover-completion-payload.canonical.spec.ts` — Hash-Stabilität und Inhaltsänderung
+- `correct-handover-completion.integration.spec.ts` — Versionierung, Permission, Begründung, Signaturen, Integrität
+
+### 39.5 Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `handover-completion-payload.canonical.ts` | Canonical + Hash |
+| `handover-completion-record.service.ts` | Record create + audit |
+| `correct-handover-completion.service.ts` | Korrektur-Command |
+| Pickup/Return executors + Legacy handover | Record bei Abschluss |
+| Prisma + Migration | Completion record tables + protocol versioning |
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

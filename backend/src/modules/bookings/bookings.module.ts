@@ -35,6 +35,8 @@ import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-
 import { BookingsHandoverSessionService } from './handover-session/bookings-handover-session.service';
 import { CompletePickupHandoverService } from './handover-session/complete-pickup-handover.service';
 import { CompleteReturnHandoverService } from './handover-session/complete-return-handover.service';
+import { CorrectHandoverCompletionService } from './handover-session/correct-handover-completion.service';
+import { HandoverCompletionRecordQueryService } from './handover-session/handover-completion-record-query.service';
 
 @Module({
   imports: [
@@ -63,6 +65,8 @@ import { CompleteReturnHandoverService } from './handover-session/complete-retur
     BookingsHandoverSessionService,
     CompletePickupHandoverService,
     CompleteReturnHandoverService,
+    CorrectHandoverCompletionService,
+    HandoverCompletionRecordQueryService,
     VehicleBookingContextService,
     BookingAllowedDriversService,
     BookingRentalEligibilityService,
@@ -83,6 +87,8 @@ import { CompleteReturnHandoverService } from './handover-session/complete-retur
     BookingsHandoverSessionService,
     CompletePickupHandoverService,
     CompleteReturnHandoverService,
+    CorrectHandoverCompletionService,
+    HandoverCompletionRecordQueryService,
     BookingRentalEligibilityService,
     BookingEligibilityGatekeeperService,
     BookingEligibilityEnforcementService,

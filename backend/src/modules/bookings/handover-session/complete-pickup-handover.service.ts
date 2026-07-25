@@ -34,6 +34,7 @@ import {
 } from './handover-pickup-completion.executor';
 import { OPERATOR_HANDOVER_PERMISSION_REQUIREMENTS } from './operator-handover-permission.constants';
 import { resolveWritableStation } from './handover-session-context.util';
+import { currentHandoverProtocolWhere } from './handover-protocol.query';
 
 export interface CompletePickupHandoverCommandInput {
   organizationId: string;
@@ -103,8 +104,8 @@ export class CompletePickupHandoverService {
       return { ...response, idempotent: true };
     }
 
-    const existingPickup = await this.prisma.bookingHandoverProtocol.findUnique({
-      where: { bookingId_kind: { bookingId: input.bookingId, kind: 'PICKUP' } },
+    const existingPickup = await this.prisma.bookingHandoverProtocol.findFirst({
+      where: currentHandoverProtocolWhere(input.bookingId, 'PICKUP'),
     });
     if (existingPickup) {
       const booking = await this.prisma.booking.findFirst({

@@ -90,8 +90,24 @@ function buildService(overrides: {
       update: jest.fn().mockResolvedValue({ id: 'booking-1', status: 'ACTIVE', vehicleId: 'vehicle-1' }),
     },
     bookingHandoverProtocol: {
-      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn().mockResolvedValue(makeProtocol()),
+    },
+    bookingHandoverCompletionRecord: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({
+        id: 'completion-record-1',
+        version: 1,
+        documentVersion: 1,
+        payloadHash: 'hash',
+        signedContentHash: 'signed-hash',
+        protocolId: 'protocol-1',
+      }),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      update: jest.fn().mockResolvedValue({}),
+    },
+    bookingHandoverCompletionAuditEvent: {
+      create: jest.fn().mockResolvedValue({}),
     },
     vehicle: {
       findFirst: jest.fn().mockResolvedValue({ id: 'vehicle-1', status: 'AVAILABLE' }),
@@ -112,7 +128,7 @@ function buildService(overrides: {
       findUnique: jest.fn().mockResolvedValue(null),
     },
     bookingHandoverProtocol: {
-      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
     },
     booking: {
       findFirst: jest.fn().mockResolvedValue(bookingRow),
@@ -214,7 +230,7 @@ describe('CompletePickupHandoverService integration', () => {
     const { service } = buildService({
       prisma: {
         bookingHandoverProtocol: {
-          findUnique: jest.fn().mockResolvedValue(protocol),
+          findFirst: jest.fn().mockResolvedValue(protocol),
         },
         booking: {
           findFirst: jest.fn().mockResolvedValue({ ...bookingRow, status: 'ACTIVE' }),

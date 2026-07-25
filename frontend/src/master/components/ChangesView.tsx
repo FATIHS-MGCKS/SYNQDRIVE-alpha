@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-handover-completion-record-v49843-2026-07-25',
+    version: '4.9.843',
+    title: 'V4.9.843 — Operator App: manipulationssicherer Handover-Abschlussdatensatz (Prompt 17)',
+    summary: [
+      'Neues Prisma-Modell `BookingHandoverCompletionRecord` mit kanonischem Payload-JSON, SHA-256-Hashes (`payloadHash`, `signedContentHash`), Versionierung und Supersede-Kette.',
+      'Protokoll-Versionierung: `BookingHandoverProtocol` erhält `version`, `isCurrent`, `supersededById` — kein stilles Überschreiben finaler Inhalte.',
+      'Abschluss bei Pickup/Return (atomare Commands + Legacy) erzeugt automatisch Completion-Record + Audit-Event (`CREATED`).',
+      'Korrektur-Command `CorrectHandoverCompletionService` — Permission `operator.handover.override`, Pflicht-`correctionReason`, neue Version ohne Mutation des Originals; erneute Signaturen bei geändertem signiertem Inhalt.',
+      'API: `GET …/handover/completion-records/:kind`, `POST …/handover/completion-records/:kind/correct`.',
+    ],
+    reason:
+      'Production-Readiness Prompt 17: unterzeichnete Übergabeinhalte bindend, nachvollziehbare Korrekturen, kein direktes Editieren finaler Felder.',
+    previousBehavior:
+      'Nur `BookingHandoverProtocol` ohne eingefrorenen Snapshot, Hash oder Korrekturversionierung.',
+    details:
+      'Audit §39, `handover-completion-payload.canonical.ts`, `correct-handover-completion.service.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:45:00.000Z',
+  },
+  {
     id: 'operator-complete-return-handover-v49842-2026-07-25',
     version: '4.9.842',
     title: 'V4.9.842 — Operator App: atomischer Return-Abschluss-Command (Prompt 16)',

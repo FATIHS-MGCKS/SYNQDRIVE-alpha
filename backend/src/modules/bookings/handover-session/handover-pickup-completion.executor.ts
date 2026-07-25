@@ -16,6 +16,8 @@ import {
   PICKUP_GATE_OUTCOME,
 } from '../booking-pickup-gate/booking-pickup-gate.constants';
 import type { BookingPickupGateAuditService } from '../booking-pickup-gate/booking-pickup-gate-audit.service';
+import { createHandoverCompletionRecordInTransaction } from './handover-completion-record.service';
+import { currentHandoverProtocolWhere } from './handover-protocol.query';
 import type {
   CreateHandoverProtocolPayload,
   HandoverProtocolDto,
@@ -207,8 +209,8 @@ export async function executePickupHandoverCompletionInTransaction(
     });
   }
 
-  const existingPickup = await tx.bookingHandoverProtocol.findUnique({
-    where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
+  const existingPickup = await tx.bookingHandoverProtocol.findFirst({
+    where: currentHandoverProtocolWhere(bookingId, 'PICKUP'),
   });
   if (existingPickup) {
     throw new ConflictException({
@@ -368,6 +370,21 @@ export async function executePickupHandoverCompletionInTransaction(
       });
     }
   }
+
+  await createHandoverCompletionRecordInTransaction(tx, {
+    orgId,
+    bookingId,
+    vehicleId: booking.vehicleId,
+    customerId: booking.customerId,
+    stationId: actualStationId,
+    protocolId: protocol.id,
+    kind: 'PICKUP',
+    protocolVersion: 1,
+    documentVersion: 1,
+    performedAt: protocol.performedAt,
+    payload,
+    actor,
+  });
 
   return { protocol, booking: updatedBooking };
 }
