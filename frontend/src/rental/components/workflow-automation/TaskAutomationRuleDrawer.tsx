@@ -33,6 +33,7 @@ interface TaskAutomationRuleDrawerProps {
   onOpenChange: (open: boolean) => void;
   onSave: (ruleId: string, payload: ReturnType<typeof buildOverridePayload>) => Promise<unknown>;
   onReset: (ruleId: string, expectedVersion?: number) => Promise<unknown>;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
 function ToggleField({
@@ -58,9 +59,9 @@ function ToggleField({
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
           {source && (
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               Quelle: <span className="font-medium text-foreground/80">{source}</span>
             </p>
           )}
@@ -69,14 +70,15 @@ function ToggleField({
           type="button"
           disabled={disabled}
           onClick={() => onChange(!checked)}
-          className={`relative h-6 w-11 rounded-full transition-colors ${
+          className={`relative min-h-11 min-w-11 rounded-full transition-colors ${
             checked ? 'bg-brand' : 'bg-muted'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
           aria-pressed={checked}
+          aria-label={label}
         >
           <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-              checked ? 'translate-x-5' : 'translate-x-0.5'
+            className={`absolute top-1 h-9 w-9 rounded-full bg-white shadow transition-transform ${
+              checked ? 'translate-x-5' : 'translate-x-1'
             }`}
           />
         </button>
@@ -183,6 +185,7 @@ export function TaskAutomationRuleDrawer({
   onOpenChange,
   onSave,
   onReset,
+  returnFocusRef,
 }: TaskAutomationRuleDrawerProps) {
   const { orgId } = useRentalOrg();
   const [form, setForm] = useState<TaskAutomationOverrideFormState | null>(null);
@@ -362,13 +365,14 @@ export function TaskAutomationRuleDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
+      returnFocusRef={returnFocusRef}
       widthClassName="sm:max-w-2xl"
       eyebrow="Aufgaben-Automation"
       title={rule.nameDe}
       description={rule.descriptionDe}
       status={
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${
             rule.effectivelyEnabled
               ? 'bg-status-success-soft text-status-success'
               : 'bg-muted text-muted-foreground'

@@ -49,11 +49,11 @@ export function TaskAutomationSimulationPanel({
       data-testid="task-automation-simulation-panel"
     >
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Auswirkungsschätzung ({simulation.period.days} Tage)
         </p>
         <p className="mt-1 text-sm font-medium text-foreground">{simulation.summaryDe}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">{simulation.disclaimerDe}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{simulation.disclaimerDe}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -65,7 +65,7 @@ export function TaskAutomationSimulationPanel({
           { label: 'Auto-Auflösung', value: simulation.estimates.autoResolved },
         ].map((item) => (
           <div key={item.label} className="rounded-md border border-border/50 bg-background/60 px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
             <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">~{item.value}</p>
           </div>
         ))}
@@ -81,7 +81,7 @@ export function TaskAutomationSimulationPanel({
 
       {simulation.examples.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Beispiele
           </p>
           {simulation.examples.map((example, index) => (
@@ -90,7 +90,7 @@ export function TaskAutomationSimulationPanel({
               {example.contextDe && (
                 <p className="mt-0.5 text-muted-foreground">{example.contextDe}</p>
               )}
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {OUTCOME_LABELS[example.outcomeDe]}
               </p>
             </div>

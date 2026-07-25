@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-mobile-a11y-v49857-2026-07-25',
+    version: '4.9.857',
+    title: 'V4.9.857 — Workflow Automation Mobile & Accessibility (Phase 10 Prompt 47)',
+    summary: [
+      'Touch targets min 44px on filters, row actions, drawer close, and toggles.',
+      'Card-based runtime list with break-words, overflow-x-hidden, scrollable filter chips on narrow screens.',
+      'DetailDrawer: focus return, title focus on open, safe-area footer padding.',
+      'WorkflowConfigDrawer: aria-invalid/describedby on key fields; AlertDialog for unsaved changes.',
+      'Audit: docs/audits/workflow-automation-ui-mobile-readiness-2026-07.md',
+    ],
+    reason: 'Workflow automation must be usable on 320px phones, with keyboard/screenreader support, without a visual redesign.',
+    previousBehavior: '10–11px filter chips, 32px icon buttons, truncated titles, no focus return from drawers.',
+    details: 'detail-drawer.tsx, WorkflowOverviewSection.tsx, WorkflowConfigDrawer.tsx, TaskAutomationRulesSection.tsx, workflow-mobile-a11y.test.ts.',
+    affectsArchitecture: false,
+    module: 'Automation',
+    createdAt: '2026-07-25T23:55:00.000Z',
+  },
+  {
     id: 'workflow-simulate-history-v49856-2026-07-25',
     version: '4.9.856',
     title: 'V4.9.856 — Workflow Dry-Run, Revision Diff & Execution History (Phase 10 Prompt 46)',

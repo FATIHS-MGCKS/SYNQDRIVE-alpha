@@ -80,7 +80,7 @@ export function WorkflowExecutionHistoryPanel({
             >
               <div className="min-w-0 space-y-1">
                 <p className="break-words font-medium text-foreground">{run.eventType}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   v{run.workflowVersion} · {new Date(run.startedAt).toLocaleString()}
                   {run.finishedAt ? ` – ${new Date(run.finishedAt).toLocaleString()}` : ''}
                 </p>
@@ -98,7 +98,7 @@ export function WorkflowExecutionHistoryPanel({
             </button>
 
             {expanded && (
-              <div id={`workflow-run-${run.id}`} className="space-y-2 border-t border-border/50 px-3 py-2 text-[11px]">
+              <div id={`workflow-run-${run.id}`} className="space-y-2 border-t border-border/50 px-3 py-2 text-xs">
                 <Meta label={t('workflowAutomation.history.correlation')}>
                   <span className="font-mono">{formatRunCorrelation(run)}</span>
                 </Meta>
