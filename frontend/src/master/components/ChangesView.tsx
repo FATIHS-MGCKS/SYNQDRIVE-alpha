@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-connectivity-banner-v49847-2026-07-25',
+    version: '4.9.847',
+    title: 'V4.9.847 — Operator App: Connectivity Banner & Status (Prompt 21)',
+    summary: [
+      'Neues Connectivity-Aggregat: Browser-Offline, Backend-Health (`/api/v1/health`), Auth-401, partielle API-Fehler, Upload-Queue, Draft-Sync — ohne `navigator.onLine` als alleinige Wahrheit.',
+      'Priorisierte Banner-Zustände mit handlungsorientierten, technisch garantierten UX-Texten; `aria-live="polite"` + fester Banner-Slot gegen Layout-Sprünge.',
+      'Health-Probe nur bei Start, `online`, Sichtbarkeit (>45s) und nach API-5xx — kein aggressives Polling.',
+      'Draft-/Upload-Signale über Events; `OperatorConnectivityBridge` für Today/Tasks-Partial-Failures.',
+      '14 Unit-Tests für Priorisierungslogik.',
+    ],
+    reason:
+      'Production-Readiness Prompt 21: Verbindungsstatus differenziert und ehrlich — keine falschen Sync-Zusicherungen.',
+    previousBehavior:
+      '`OperatorConnectivityBanner` zeigte nur bei `navigator.onLine === false` einen generischen Offline-Hinweis ohne Queue/Draft/Auth/Backend-Signale.',
+    details:
+      'frontend/src/operator/connectivity/*, OperatorConnectivityBanner.tsx, OperatorConnectivityBridge.tsx, useOperatorToday.ts, useOperatorHandoverDraft.ts, api.ts (auth/api events). Audit §43.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:35:00.000Z',
+  },
+  {
     id: 'operator-upload-queue-v49846-2026-07-25',
     version: '4.9.846',
     title: 'V4.9.846 — Operator App: Upload-Queue & Retry (Prompt 20)',

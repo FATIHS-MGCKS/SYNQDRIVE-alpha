@@ -2281,6 +2281,50 @@ Backend: 9 Integrationstests (`operator-upload.integration.spec.ts`). Frontend: 
 
 ---
 
+## 43. Operator Connectivity Banner & Status (Prompt 21)
+
+### 43.1 Ziel
+
+Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit verwenden. Aussagen müssen technisch garantiert sein und handlungsorientiert formuliert werden.
+
+### 43.2 Zustände (priorisiert)
+
+| Priorität | State ID | Auslöser | UX-Text (DE) |
+|-----------|----------|----------|--------------|
+| 1 | `auth-expired` | HTTP 401 → `operator:auth-expired` | Anmeldung abgelaufen – Vorgang wurde als Draft erhalten. / … bitte erneut anmelden. |
+| 2 | `browser-offline` | `navigator.onLine === false` | Offline – Änderungen werden noch nicht synchronisiert. |
+| 3 | `backend-unreachable` | Health-Probe oder API-5xx/Netzwerkfehler | Server nicht erreichbar – gespeicherte Daten bleiben lokal. |
+| 4 | `upload-failed` | Pflicht-Upload `failed` (blocking) | Upload fehlgeschlagen – Abschluss ist noch nicht möglich. |
+| 5 | `draft-save-failed` | Draft-Autosave `error` | Entwurf konnte nicht gespeichert werden – lokale Änderungen bleiben erhalten. |
+| 6 | `connection-restored` | Reconnect + ausstehende Queue/Draft-Arbeit | Verbindung wiederhergestellt – N Uploads werden synchronisiert. |
+| 7 | `api-partial` | Today oder Tasks fehlgeschlagen, andere OK | Einige Daten konnten nicht geladen werden – Anzeige ist unvollständig. |
+| 8 | `upload-service-degraded` | Nicht-blockierende Upload-Fehler | Upload-Dienst gestört – einige Dateien warten auf erneuten Versuch. |
+| 9 | `queue-pending` | Queue `pending` | N Uploads ausstehend – Synchronisation bei Verbindung. |
+| 10 | `syncing` | Draft `saving` oder Upload `uploading` | Synchronisierung läuft… |
+| 11 | `synced` | Reconnect ohne ausstehende Arbeit (12s Fenster) | Vollständig synchronisiert. |
+
+### 43.3 Signale & Polling
+
+| Signal | Quelle | Polling |
+|--------|--------|---------|
+| Browser offline | `online`/`offline` Events | Event-driven |
+| Backend health | `GET /api/v1/health` | Start, `online`, Visibility (>45s), Retry nach Fehler (15s) |
+| Auth expired | `dispatchOperatorAuthExpired()` in `api.ts` | Event |
+| API partial | `OperatorConnectivityBridge` (Today/Tasks/syncState) | Bei Daten-Reload |
+| Upload queue | `operatorUploadQueue.subscribe` | Event-driven |
+| Draft sync | `operator:handover-draft-connectivity` CustomEvent | Event-driven |
+
+### 43.4 UI
+
+- `OperatorConnectivityBanner`: fester Slot (`36px`), `role="status"`, `aria-live="polite"`, `aria-atomic="true"`.
+- `useOperatorToday.offline` nutzt `browserOffline || backendUnreachable` statt nur `navigator.onLine`.
+
+### 43.5 Tests
+
+`operatorConnectivity.compute.test.ts` — 14 Prioritäts- und Banner-Tests.
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

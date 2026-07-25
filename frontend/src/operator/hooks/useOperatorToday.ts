@@ -3,7 +3,7 @@ import { useFleetVehicles } from '../../rental/FleetContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { buildOperatorTodaySnapshot, type OperatorTodaySnapshot } from '../lib/operatorData';
-import { useOperatorNetworkStatus } from './useOperatorNetworkStatus';
+import { useOperatorIsEffectivelyOffline } from '../connectivity/useOperatorConnectivityStatus';
 import { useOperatorTodayFeed } from './useOperatorTodayFeed';
 
 export interface UseOperatorTodayResult {
@@ -32,7 +32,7 @@ export function useOperatorToday(locale = 'de'): UseOperatorTodayResult {
     reloadToday,
   } = useOperatorData();
   const taskFeed = useOperatorTodayFeed();
-  const { online } = useOperatorNetworkStatus();
+  const effectivelyOffline = useOperatorIsEffectivelyOffline();
 
   const snapshot = useMemo(
     () =>
@@ -82,7 +82,7 @@ export function useOperatorToday(locale = 'de'): UseOperatorTodayResult {
     bookingsError: todayError,
     tasksError,
     isStale: taskFeed.isStale,
-    offline: !online,
+    offline: effectivelyOffline,
     reload,
   };
 }
