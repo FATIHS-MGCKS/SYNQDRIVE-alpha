@@ -1,20 +1,40 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { WorkflowsController } from './workflows.controller';
 import { WorkflowsService } from './workflows.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowEventService } from './workflow-event.service';
-import { WorkflowActionExecutorService } from './workflow-action-executor.service';
+import { WorkflowActionCoreModule } from './workflow-action-core.module';
+import { TaskAutomationWorkflowBridgeModule } from './task-automation-bridge/task-automation-workflow-bridge.module';
+import { TaskAutomationWorkflowMigrationService } from './migration/task-automation-workflow-migration.service';
+import { TaskAutomationWorkflowMigrationController } from './migration/task-automation-workflow-migration.controller';
+import { WorkflowDryRunService } from './workflow-dry-run.service';
+import { WorkflowMakerCheckerModule } from './maker-checker/workflow-maker-checker.module';
+import { WorkflowAuditModule } from './audit/workflow-audit.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
-  imports: [TasksModule],
-  controllers: [WorkflowsController],
+  imports: [
+    forwardRef(() => TasksModule),
+    WorkflowActionCoreModule,
+    TaskAutomationWorkflowBridgeModule,
+    WorkflowMakerCheckerModule,
+    WorkflowAuditModule,
+  ],
+  controllers: [WorkflowsController, TaskAutomationWorkflowMigrationController],
   providers: [
     WorkflowsService,
     WorkflowEngineService,
     WorkflowEventService,
-    WorkflowActionExecutorService,
+    WorkflowDryRunService,
+    TaskAutomationWorkflowMigrationService,
   ],
-  exports: [WorkflowsService, WorkflowEventService, WorkflowEngineService],
+  exports: [
+    WorkflowsService,
+    WorkflowEventService,
+    WorkflowEngineService,
+    WorkflowActionCoreModule,
+    TaskAutomationWorkflowBridgeModule,
+    TaskAutomationWorkflowMigrationService,
+  ],
 })
 export class WorkflowsModule {}

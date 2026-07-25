@@ -2,6 +2,7 @@ import { VehicleStatus } from '@prisma/client';
 
 /** Canonical MVP workflow event types. */
 export const WORKFLOW_EVENT_TYPES = [
+  'task.automation.materialize',
   'booking.returned',
   'booking.completed',
   'vehicle.health.warning',

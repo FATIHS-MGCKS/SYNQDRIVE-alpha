@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { WorkflowMakerCheckerService } from '@modules/workflows/maker-checker/workflow-maker-checker.service';
+import { requiresMakerCheckerForDeadLetterReplay } from '@modules/workflows/maker-checker/workflow-maker-checker.constants';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import { TaskAutomationOutboxRepository } from '../outbox/task-automation-outbox.repository';
 import { TaskAutomationOutboxSchedulerService } from '../outbox/task-automation-outbox-scheduler.service';
 import {
@@ -32,6 +35,8 @@ import type {
   TaskAutomationPlatformDefaults,
   TaskAutomationRuleDefinition,
 } from './task-automation-rule.types';
+import { resolveTaskAutomationWorkflowRuntimeMode } from '@config/task-automation-workflow-runtime.config';
+import { TaskAutomationWorkflowTemplateService } from '@modules/workflows/task-automation-bridge/task-automation-workflow-template.service';
 
 export interface TaskAutomationChecklistAdminView {
   platformItems: Array<{
@@ -84,6 +89,12 @@ export interface TaskAutomationRuleAdminDto {
     updatedByUserId: string | null;
     updatedByName: string | null;
   };
+  workflow: {
+    templateId: string | null;
+    templateName: string | null;
+    migrationStatus: string | null;
+  };
+  runtimeMode: ReturnType<typeof resolveTaskAutomationWorkflowRuntimeMode>;
 }
 
 export interface TaskAutomationRulesOverviewDto {
@@ -94,6 +105,7 @@ export interface TaskAutomationRulesOverviewDto {
     customized: number;
     disabled: number;
   };
+  runtimeMode: ReturnType<typeof resolveTaskAutomationWorkflowRuntimeMode>;
 }
 
 @Injectable()
@@ -105,6 +117,8 @@ export class TaskAutomationAdminService {
     private readonly simulation: TaskAutomationSimulationService,
     private readonly outboxRepo: TaskAutomationOutboxRepository,
     private readonly outboxScheduler: TaskAutomationOutboxSchedulerService,
+    private readonly makerChecker: WorkflowMakerCheckerService,
+    private readonly workflowTemplateService: TaskAutomationWorkflowTemplateService,
   ) {}
 
   async listRules(orgId: string): Promise<TaskAutomationRulesOverviewDto> {
@@ -116,12 +130,17 @@ export class TaskAutomationAdminService {
       },
     });
     const overrideByRuleId = new Map(overrideRows.map((row) => [row.ruleId, row]));
+    const migrationRecords = await this.prisma.taskAutomationWorkflowMigrationRecord.findMany({
+      where: { organizationId: orgId },
+    });
+    const migrationByRuleId = new Map(migrationRecords.map((row) => [row.legacyRuleId, row]));
 
     const resolvedRules = await Promise.all(
       rules.map(async (rule) => {
         const resolved = await this.resolver.resolveTaskAutomationRule(orgId, rule.ruleId);
         const overrideRow = overrideByRuleId.get(rule.ruleId) ?? null;
-        return this.toAdminDto(rule, resolved, overrideRow);
+        const migration = migrationByRuleId.get(rule.ruleId) ?? null;
+        return this.toAdminDto(orgId, rule, resolved, overrideRow, migration);
       }),
     );
 
@@ -133,6 +152,7 @@ export class TaskAutomationAdminService {
         customized: resolvedRules.filter((rule) => rule.hasOrgOverride).length,
         disabled: resolvedRules.filter((rule) => !rule.effectivelyEnabled).length,
       },
+      runtimeMode: resolveTaskAutomationWorkflowRuntimeMode(),
     };
   }
 
@@ -150,7 +170,15 @@ export class TaskAutomationAdminService {
       },
     });
 
-    return this.toAdminDto(rule, resolved, overrideRow);
+    return this.toAdminDto(
+      orgId,
+      rule,
+      resolved,
+      overrideRow,
+      await this.prisma.taskAutomationWorkflowMigrationRecord.findUnique({
+        where: { organizationId_ruleId: { organizationId: orgId, ruleId } },
+      }),
+    );
   }
 
   async upsertOverride(
@@ -228,16 +256,45 @@ export class TaskAutomationAdminService {
     }));
   }
 
-  async replayDeadLetterOutbox(orgId: string, outboxId: string) {
+  async replayDeadLetterOutbox(
+    orgId: string,
+    outboxId: string,
+    maker: PermissionActor & { id: string },
+    makerReason: string,
+  ) {
+    const row = await this.outboxRepo.findById(outboxId, orgId);
+    if (!row || row.status !== 'DEAD_LETTER') {
+      throw new NotFoundException(`Dead-letter outbox row ${outboxId} not found for organization`);
+    }
+
+    if (requiresMakerCheckerForDeadLetterReplay()) {
+      const changeRequest = await this.makerChecker.submitDeadLetterReplayRequest({
+        orgId,
+        outboxId,
+        maker,
+        makerReason,
+      });
+      return {
+        pendingApproval: true as const,
+        outboxId,
+        changeRequest: this.makerChecker.formatChangeRequest(changeRequest),
+      };
+    }
+
+    return this.executeDeadLetterReplay(orgId, outboxId);
+  }
+
+  async executeDeadLetterReplay(orgId: string, outboxId: string) {
     const requeued = await this.outboxRepo.requeueDeadLetter(outboxId, orgId);
     if (!requeued) {
       throw new NotFoundException(`Dead-letter outbox row ${outboxId} not found for organization`);
     }
     await this.outboxScheduler.scheduleOutboxIds([outboxId]);
-    return { outboxId, status: 'PENDING' as const };
+    return { pendingApproval: false as const, outboxId, status: 'PENDING' as const };
   }
 
-  private toAdminDto(
+  private async toAdminDto(
+    orgId: string,
     rule: TaskAutomationRuleDefinition,
     resolved: ResolvedTaskAutomationRule,
     overrideRow: {
@@ -251,7 +308,8 @@ export class TaskAutomationAdminService {
         email: string | null;
       } | null;
     } | null,
-  ): TaskAutomationRuleAdminDto {
+    migrationRecord?: { status: string; workflowId: string | null } | null,
+  ): Promise<TaskAutomationRuleAdminDto> {
     const allowedOverrideFields = [...getOrgOverridableFieldKeys(rule)];
     const checklist = buildEffectiveChecklistItems({
       taskType: rule.checklistTemplateId,
@@ -263,6 +321,10 @@ export class TaskAutomationAdminService {
           .filter(Boolean)
           .join(' ')
           .trim() || overrideRow.updatedBy.email
+      : null;
+
+    const templateLink = rule.catalogKey
+      ? await this.workflowTemplateService.findTemplateByCatalogKey(orgId, rule.catalogKey)
       : null;
 
     return {
@@ -303,6 +365,12 @@ export class TaskAutomationAdminService {
         updatedByUserId: overrideRow?.updatedByUserId ?? null,
         updatedByName: updatedByName ?? null,
       },
+      workflow: {
+        templateId: templateLink?.workflowId ?? migrationRecord?.workflowId ?? null,
+        templateName: templateLink?.workflowName ?? null,
+        migrationStatus: migrationRecord?.status ?? null,
+      },
+      runtimeMode: resolveTaskAutomationWorkflowRuntimeMode(),
     };
   }
 }
