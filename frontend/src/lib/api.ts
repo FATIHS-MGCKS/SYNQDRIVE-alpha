@@ -3917,7 +3917,7 @@ export const api = {
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new ApiHttpError(res.status, body, res.url);
+        throw new ApiHttpError(res.status, body, `/organizations/${orgId}/operator-uploads/${clientUploadId}/binary`);
       }
       return res.json();
     },

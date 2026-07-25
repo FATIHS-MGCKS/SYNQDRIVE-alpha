@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-upload-security-hardening-v49848-2026-07-25',
+    version: '4.9.848',
+    title: 'V4.9.848 — Operator App: Upload-Pipeline Security Hardening (Prompt 22)',
+    summary: [
+      'Security-Audit der Operator-Upload-Pipeline: Magic Bytes (`file-type`), MIME/Extension/Kind-Validierung, Bilddimensionen, JPEG-EXIF-Strip (APP1/IPTC), Dateinamen-Sanitization.',
+      'Private `DocumentStoragePort`-Speicher statt Base64 in Postgres; server-generierte Objektpfade; autorisierter Download mit sicherem `Content-Disposition`.',
+      '`OrgScopingGuard` + `PermissionsGuard` auf Upload-Controller; Station-Scope bei Register; `assertRequiredUploadsComplete` in Pickup/Return-Complete.',
+      'Retention-Scheduler (6h) für abgelaufene Uploads; Orphan-Cleanup löscht Storage-Objekte; Multer-Limit-Fehler strukturiert.',
+      'Frontend: Client-Size/MIME-Precheck, Dateinamen-Sanitization, keine Storage-Pfade in Fehlermeldungen.',
+      '15+ Backend- + 3 Frontend-Security-Tests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 22: Upload-Pipeline auditieren und eindeutige Sicherheitslücken schließen.',
+    previousBehavior:
+      'Uploads als Base64 in Postgres ohne Magic-Byte-Prüfung, ohne Controller-Guards, ohne privaten Object Store, ohne serverseitige Pflicht-Upload-Prüfung beim Handover-Abschluss.',
+    details:
+      'backend/src/modules/operator-upload/*, bookings handover complete services, migration storage_object_key, docs/audits §44. Malware-Scan bleibt externe Infrastrukturvoraussetzung.',
+    affectsArchitecture: true,
+    module: 'Operator App',
+    createdAt: '2026-07-25T18:45:00.000Z',
+  },
+  {
     id: 'operator-connectivity-banner-v49847-2026-07-25',
     version: '4.9.847',
     title: 'V4.9.847 — Operator App: Connectivity Banner & Status (Prompt 21)',

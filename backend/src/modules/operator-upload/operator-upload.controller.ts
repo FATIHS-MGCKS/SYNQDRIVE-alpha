@@ -2,31 +2,30 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Post,
+  StreamableFile,
   UploadedFile,
+  UseFilters,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { OperatorUploadKind } from '@prisma/client';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RolesGuard } from '@shared/auth/roles.guard';
+import { buildContentDispositionInline } from '@modules/documents/storage/document-storage-content-disposition.util';
+import { OPERATOR_UPLOAD_MAX_BYTES } from './operator-upload.constants';
+import { OperatorUploadMulterExceptionFilter } from './operator-upload-multer.filter';
 import { OperatorUploadService } from './operator-upload.service';
-
-interface RegisterOperatorUploadBody {
-  clientUploadId: string;
-  kind: OperatorUploadKind;
-  bookingId: string;
-  vehicleId: string;
-  handoverSessionId?: string | null;
-  handoverKind?: 'PICKUP' | 'RETURN' | null;
-  fileName?: string | null;
-  mimeType?: string | null;
-  requiredForComplete?: boolean;
-}
+import { RegisterOperatorUploadDto } from './register-operator-upload.dto';
 
 @Controller('organizations/:orgId/operator-uploads')
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class OperatorUploadController {
   constructor(private readonly uploads: OperatorUploadService) {}
 
@@ -50,7 +49,7 @@ export class OperatorUploadController {
   register(
     @Param('orgId') orgId: string,
     @CurrentUser() user: { id?: string },
-    @Body() body: RegisterOperatorUploadBody,
+    @Body() body: RegisterOperatorUploadDto,
   ) {
     return this.uploads.registerUpload({
       organizationId: orgId,
@@ -67,6 +66,23 @@ export class OperatorUploadController {
     });
   }
 
+  @Get(':clientUploadId/download')
+  @RequirePermission('bookings', 'read')
+  @Header('Cache-Control', 'private, no-store')
+  async download(
+    @Param('orgId') orgId: string,
+    @Param('clientUploadId') clientUploadId: string,
+  ): Promise<StreamableFile> {
+    const { stream, fileName, mimeType } = await this.uploads.getAuthorizedDownloadStream(
+      orgId,
+      clientUploadId,
+    );
+    return new StreamableFile(stream as never, {
+      type: mimeType,
+      disposition: buildContentDispositionInline(fileName),
+    });
+  }
+
   @Get(':clientUploadId')
   @RequirePermission('bookings', 'read')
   get(@Param('orgId') orgId: string, @Param('clientUploadId') clientUploadId: string) {
@@ -75,10 +91,11 @@ export class OperatorUploadController {
 
   @Post(':clientUploadId/binary')
   @RequirePermission('bookings', 'write')
+  @UseFilters(OperatorUploadMulterExceptionFilter)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 8 * 1024 * 1024 },
+      limits: { fileSize: OPERATOR_UPLOAD_MAX_BYTES, files: 1 },
     }),
   )
   uploadBinary(

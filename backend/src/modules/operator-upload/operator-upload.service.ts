@@ -1,7 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -11,17 +14,27 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { StationAccessService } from '@shared/stations/station-access.service';
+import {
+  DOCUMENTS_STORAGE,
+  type DocumentStoragePort,
+} from '@modules/documents/storage/document-storage.interface';
+import { resolveWritableStation } from '../bookings/handover-session/handover-session-context.util';
 import {
   OPERATOR_UPLOAD_ERROR,
   OPERATOR_UPLOAD_MAX_ATTEMPTS,
   OPERATOR_UPLOAD_RETENTION_MS,
 } from './operator-upload.constants';
 import { mapOperatorUpload, type OperatorUploadDto } from './operator-upload.mapper';
+import { OperatorUploadRetentionScheduler } from './operator-upload-retention.scheduler';
 import {
-  isRetryableUploadError,
-  sha256Base64,
-  validateOperatorUploadBinary,
-} from './operator-upload.validation';
+  sanitizeOperatorUploadFileName,
+  validateAndHardenOperatorUpload,
+} from './operator-upload.security';
+import {
+  assertOperatorUploadObjectKeyForOrg,
+} from './operator-upload-storage.util';
+import { isRetryableUploadError, sha256Hex } from './operator-upload.validation';
 
 const EDITABLE_SESSION_STATUSES: HandoverSessionStatus[] = [
   HandoverSessionStatus.DRAFT,
@@ -55,7 +68,14 @@ export interface UploadOperatorBinaryInput {
 
 @Injectable()
 export class OperatorUploadService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(OperatorUploadService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stationAccess: StationAccessService,
+    @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
+    private readonly retention: OperatorUploadRetentionScheduler,
+  ) {}
 
   async registerUpload(input: RegisterOperatorUploadInput): Promise<OperatorUploadDto> {
     const clientUploadId = input.clientUploadId?.trim();
@@ -77,7 +97,12 @@ export class OperatorUploadService {
 
     const booking = await this.prisma.booking.findFirst({
       where: { id: input.bookingId, organizationId: input.organizationId },
-      select: { id: true, vehicleId: true },
+      select: {
+        id: true,
+        vehicleId: true,
+        pickupStationId: true,
+        returnStationId: true,
+      },
     });
     if (!booking) {
       throw new NotFoundException({
@@ -92,7 +117,18 @@ export class OperatorUploadService {
       });
     }
 
+    await this.assertStationScope(
+      input.uploadedByUserId,
+      input.organizationId,
+      booking,
+      input.handoverKind ?? null,
+    );
+
     const session = await this.resolveSession(input);
+    const safeFileName =
+      input.fileName && input.mimeType
+        ? sanitizeOperatorUploadFileName(input.fileName, input.mimeType)
+        : input.fileName ?? null;
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + OPERATOR_UPLOAD_RETENTION_MS);
@@ -108,7 +144,7 @@ export class OperatorUploadService {
           handoverSessionId: session?.id ?? null,
           vehicleId: input.vehicleId,
           handoverKind: input.handoverKind ?? session?.kind ?? null,
-          fileName: input.fileName ?? null,
+          fileName: safeFileName,
           mimeType: input.mimeType ?? null,
           requiredForComplete: input.requiredForComplete ?? false,
           uploadedByUserId: input.uploadedByUserId ?? null,
@@ -160,7 +196,12 @@ export class OperatorUploadService {
 
     await this.assertSessionEditable(row.handoverSessionId, row.organizationId, row.bookingId);
 
-    const validation = validateOperatorUploadBinary(input.buffer, input.mimeType);
+    const validation = await validateAndHardenOperatorUpload({
+      buffer: input.buffer,
+      mimeType: input.mimeType,
+      fileName: input.fileName ?? row.fileName,
+      kind: row.kind,
+    });
     if (!validation.ok) {
       const failed = await this.prisma.operatorUpload.update({
         where: { id: row.id },
@@ -173,6 +214,9 @@ export class OperatorUploadService {
           lastAttemptAt: new Date(),
         },
       });
+      this.logger.warn(
+        `operator_upload_validation_failed orgId=${row.organizationId} uploadId=${row.id} code=${validation.code}`,
+      );
       throw new BadRequestException({
         code: validation.code,
         message: validation.message,
@@ -187,7 +231,11 @@ export class OperatorUploadService {
       });
     }
 
-    const contentSha256 = sha256Base64(input.buffer);
+    const hardenedBuffer = validation.hardenedBuffer ?? input.buffer;
+    const resolvedMime = validation.detectedMime ?? input.mimeType;
+    const sanitizedFileName = validation.sanitizedFileName ?? row.fileName;
+    const contentSha256 = sha256Hex(hardenedBuffer);
+
     const duplicate = await this.prisma.operatorUpload.findFirst({
       where: {
         organizationId: input.organizationId,
@@ -204,10 +252,12 @@ export class OperatorUploadService {
         data: {
           status: OperatorUploadStatus.UPLOADED,
           contentSha256,
-          fileSizeBytes: input.buffer.length,
-          mimeType: input.mimeType,
-          fileName: input.fileName ?? row.fileName,
+          fileSizeBytes: hardenedBuffer.length,
+          mimeType: resolvedMime,
+          fileName: sanitizedFileName,
           storagePayload: Prisma.DbNull,
+          storageObjectKey: duplicate.storageObjectKey,
+          storageProvider: duplicate.storageProvider,
           targetRefType: duplicate.targetRefType,
           targetRefId: duplicate.targetRefId,
           progressPercent: 100,
@@ -220,21 +270,39 @@ export class OperatorUploadService {
       return mapOperatorUpload(linked);
     }
 
-    const storagePayload = {
-      encoding: 'base64',
-      mimeType: input.mimeType,
-      data: input.buffer.toString('base64'),
-    } as Prisma.InputJsonValue;
+    let stored;
+    try {
+      stored = await this.storage.putObject({
+        organizationId: input.organizationId,
+        bookingId: row.bookingId,
+        documentType: `operator-upload-${row.kind.toLowerCase()}`,
+        originalName: sanitizedFileName ?? 'upload.bin',
+        buffer: hardenedBuffer,
+        mimeType: resolvedMime,
+      });
+    } catch (err) {
+      this.logger.error(
+        `operator_upload_storage_failed orgId=${row.organizationId} uploadId=${row.id}`,
+      );
+      throw new ConflictException({
+        code: OPERATOR_UPLOAD_ERROR.STORAGE_UNAVAILABLE,
+        message: 'Private upload storage unavailable',
+      });
+    }
+
+    assertOperatorUploadObjectKeyForOrg(stored.objectKey, input.organizationId);
 
     const updated = await this.prisma.operatorUpload.update({
       where: { id: row.id },
       data: {
         status: OperatorUploadStatus.UPLOADED,
-        mimeType: input.mimeType,
-        fileName: input.fileName ?? row.fileName,
-        fileSizeBytes: input.buffer.length,
+        mimeType: resolvedMime,
+        fileName: sanitizedFileName,
+        fileSizeBytes: hardenedBuffer.length,
         contentSha256,
-        storagePayload,
+        storageObjectKey: stored.objectKey,
+        storageProvider: stored.storageProvider,
+        storagePayload: Prisma.DbNull,
         progressPercent: 100,
         attemptCount: { increment: 1 },
         lastAttemptAt: new Date(),
@@ -245,7 +313,48 @@ export class OperatorUploadService {
       },
     });
 
+    this.logger.log(
+      `operator_upload_stored orgId=${row.organizationId} uploadId=${row.id} bytes=${hardenedBuffer.length}`,
+    );
     return mapOperatorUpload(updated);
+  }
+
+  async getAuthorizedDownloadStream(
+    organizationId: string,
+    clientUploadId: string,
+  ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
+    const row = await this.requireUpload(organizationId, clientUploadId);
+    if (row.status !== OperatorUploadStatus.UPLOADED && row.status !== OperatorUploadStatus.PROCESSING) {
+      throw new ConflictException({
+        code: OPERATOR_UPLOAD_ERROR.NOT_RETRYABLE,
+        message: 'Upload is not available for download',
+      });
+    }
+
+    if (row.storageObjectKey) {
+      assertOperatorUploadObjectKeyForOrg(row.storageObjectKey, organizationId);
+      const stream = await this.storage.getObjectStream(row.storageObjectKey);
+      return {
+        stream,
+        fileName: row.fileName ?? 'upload',
+        mimeType: row.mimeType ?? 'application/octet-stream',
+      };
+    }
+
+    const legacy = row.storagePayload as { encoding?: string; mimeType?: string; data?: string } | null;
+    if (legacy?.encoding === 'base64' && legacy.data) {
+      const { Readable } = await import('stream');
+      return {
+        stream: Readable.from(Buffer.from(legacy.data, 'base64')),
+        fileName: row.fileName ?? 'upload',
+        mimeType: legacy.mimeType ?? row.mimeType ?? 'application/octet-stream',
+      };
+    }
+
+    throw new NotFoundException({
+      code: OPERATOR_UPLOAD_ERROR.NOT_FOUND,
+      message: 'Upload content not found',
+    });
   }
 
   async markFailed(
@@ -282,12 +391,15 @@ export class OperatorUploadService {
         message: 'Cannot cancel completed upload',
       });
     }
+    await this.retention.deleteStoredObject(organizationId, row.storageObjectKey);
     const updated = await this.prisma.operatorUpload.update({
       where: { id: row.id },
       data: {
         status: OperatorUploadStatus.CANCELLED,
         cancelledAt: new Date(),
         storagePayload: Prisma.DbNull,
+        storageObjectKey: null,
+        storageProvider: null,
       },
     });
     return mapOperatorUpload(updated);
@@ -319,7 +431,11 @@ export class OperatorUploadService {
         handoverSessionId,
         requiredForComplete: true,
         status: {
-          notIn: [OperatorUploadStatus.UPLOADED, OperatorUploadStatus.PROCESSING, OperatorUploadStatus.CANCELLED],
+          notIn: [
+            OperatorUploadStatus.UPLOADED,
+            OperatorUploadStatus.PROCESSING,
+            OperatorUploadStatus.CANCELLED,
+          ],
         },
       },
     });
@@ -335,24 +451,43 @@ export class OperatorUploadService {
 
   async cleanupOrphans(organizationId: string, olderThanMs = 24 * 60 * 60 * 1000): Promise<number> {
     const cutoff = new Date(Date.now() - olderThanMs);
-    const result = await this.prisma.operatorUpload.updateMany({
+    const orphans = await this.prisma.operatorUpload.findMany({
       where: {
         organizationId,
-        status: { in: [OperatorUploadStatus.PENDING, OperatorUploadStatus.UPLOADING, OperatorUploadStatus.FAILED] },
+        status: {
+          in: [OperatorUploadStatus.PENDING, OperatorUploadStatus.UPLOADING, OperatorUploadStatus.FAILED],
+        },
         updatedAt: { lt: cutoff },
         OR: [
           { handoverSessionId: null },
           {
             handoverSession: {
-              status: { in: [HandoverSessionStatus.CANCELLED, HandoverSessionStatus.SUPERSEDED, HandoverSessionStatus.COMPLETED] },
+              status: {
+                in: [
+                  HandoverSessionStatus.CANCELLED,
+                  HandoverSessionStatus.SUPERSEDED,
+                  HandoverSessionStatus.COMPLETED,
+                ],
+              },
             },
           },
         ],
       },
+      select: { id: true, storageObjectKey: true },
+    });
+
+    for (const row of orphans) {
+      await this.retention.deleteStoredObject(organizationId, row.storageObjectKey);
+    }
+
+    const result = await this.prisma.operatorUpload.updateMany({
+      where: { id: { in: orphans.map((row) => row.id) } },
       data: {
         status: OperatorUploadStatus.CANCELLED,
         cancelledAt: new Date(),
         storagePayload: Prisma.DbNull,
+        storageObjectKey: null,
+        storageProvider: null,
         errorCode: OPERATOR_UPLOAD_ERROR.CANCELLED,
         errorMessage: 'Orphan upload cleaned up',
       },
@@ -375,6 +510,30 @@ export class OperatorUploadService {
     return row;
   }
 
+  private async assertStationScope(
+    userId: string | null | undefined,
+    organizationId: string,
+    booking: { pickupStationId: string | null; returnStationId: string | null },
+    handoverKind: 'PICKUP' | 'RETURN' | null,
+  ): Promise<void> {
+    if (!userId) return;
+    const stationId =
+      handoverKind === 'RETURN'
+        ? booking.returnStationId
+        : handoverKind === 'PICKUP'
+          ? booking.pickupStationId
+          : booking.pickupStationId ?? booking.returnStationId;
+    if (!stationId) return;
+
+    const stationAccess = await this.stationAccess.resolve(userId, organizationId);
+    if (!resolveWritableStation(stationAccess, stationId)) {
+      throw new ForbiddenException({
+        code: OPERATOR_UPLOAD_ERROR.SCOPE_DENIED,
+        message: 'Station scope denied for operator upload',
+      });
+    }
+  }
+
   private async resolveSession(input: RegisterOperatorUploadInput) {
     if (!input.handoverSessionId) return null;
 
@@ -391,7 +550,10 @@ export class OperatorUploadService {
         message: 'Handover session does not belong to booking/organization',
       });
     }
-    if (session.status === HandoverSessionStatus.CANCELLED || session.status === HandoverSessionStatus.SUPERSEDED) {
+    if (
+      session.status === HandoverSessionStatus.CANCELLED ||
+      session.status === HandoverSessionStatus.SUPERSEDED
+    ) {
       throw new ConflictException({
         code: OPERATOR_UPLOAD_ERROR.SESSION_CANCELLED,
         message: 'Handover session is cancelled',

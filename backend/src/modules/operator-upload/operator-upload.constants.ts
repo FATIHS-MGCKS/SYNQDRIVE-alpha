@@ -9,11 +9,15 @@ export const OPERATOR_UPLOAD_ERROR = {
   INCOMPLETE: 'OPERATOR_UPLOAD_INCOMPLETE',
   CANCELLED: 'OPERATOR_UPLOAD_CANCELLED',
   BOOKING_MISMATCH: 'OPERATOR_UPLOAD_BOOKING_MISMATCH',
+  SCOPE_DENIED: 'OPERATOR_UPLOAD_SCOPE_DENIED',
+  STORAGE_UNAVAILABLE: 'OPERATOR_UPLOAD_STORAGE_UNAVAILABLE',
 } as const;
 
 export const OPERATOR_UPLOAD_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export const OPERATOR_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
 export const OPERATOR_UPLOAD_MAX_ATTEMPTS = 5;
+export const OPERATOR_UPLOAD_MAX_PIXELS = 20_000_000;
+export const OPERATOR_UPLOAD_MAX_DIMENSION = 8192;
 
 export const OPERATOR_UPLOAD_ALLOWED_MIME = new Set([
   'image/jpeg',
@@ -23,3 +27,29 @@ export const OPERATOR_UPLOAD_ALLOWED_MIME = new Set([
   'image/gif',
   'application/pdf',
 ]);
+
+export const OPERATOR_UPLOAD_ALLOWED_EXTENSIONS = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.gif',
+  '.pdf',
+]);
+
+export const OPERATOR_IMAGE_MIME = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+
+export const OPERATOR_UPLOAD_KIND_ALLOWED_MIME: Record<string, ReadonlySet<string>> = {
+  DAMAGE_IMAGE: OPERATOR_IMAGE_MIME,
+  CONDITION_PHOTO: OPERATOR_IMAGE_MIME,
+  OBSERVATION_IMAGE: OPERATOR_IMAGE_MIME,
+  TIRE_EVIDENCE: OPERATOR_IMAGE_MIME,
+  SIGNATURE: new Set(['image/png', 'image/jpeg', 'image/jpg']),
+  DOCUMENT: new Set(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp']),
+};
