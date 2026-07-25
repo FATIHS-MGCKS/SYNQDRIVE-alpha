@@ -1613,6 +1613,11 @@ model Organization {
   bookings                               Booking[]
   bookingAllowedDrivers                  BookingAllowedDriver[]
   bookingHandoverProtocols               BookingHandoverProtocol[]
+  bookingHandoverSessions                BookingHandoverSession[]
+  bookingHandoverCompletionRecords       BookingHandoverCompletionRecord[]
+  bookingHandoverCompletionAuditEvents   BookingHandoverCompletionAuditEvent[]
+  bookingHandoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
+  bookingHandoverReturnCompletionIdempotency BookingHandoverReturnCompletionIdempotency[]
   activityLogs                           ActivityLog[]
   rentalDrivingAnalyses                  RentalDrivingAnalysis[]
   vendors                                Vendor[]
@@ -2856,6 +2861,8 @@ model Vehicle {
   pollLogs                               DimoPollLog[]
   bookings                               Booking[]
   handoverProtocols                      BookingHandoverProtocol[]
+  handoverSessions                       BookingHandoverSession[]
+  handoverCompletionRecords              BookingHandoverCompletionRecord[]
   drivingEvents                          DrivingEvent[]
   batterySnapshots                       BatteryHealthSnapshot[]
   hvBatterySnapshots                     HvBatteryHealthSnapshot[]
@@ -5598,6 +5605,11 @@ model Booking {
   actualReturnStation     Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
   rentalDrivingAnalyses   RentalDrivingAnalysis[]
   handoverProtocols       BookingHandoverProtocol[]
+  handoverSessions        BookingHandoverSession[]
+  handoverCompletionRecords BookingHandoverCompletionRecord[]
+  handoverCompletionAuditEvents BookingHandoverCompletionAuditEvent[]
+  handoverPickupCompletionIdempotency BookingHandoverPickupCompletionIdempotency[]
+  handoverReturnCompletionIdempotency BookingHandoverReturnCompletionIdempotency[]
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
   priceSnapshots          BookingPriceSnapshot[]
@@ -5980,6 +5992,10 @@ model BookingHandoverProtocol {
   bookingId                String       @map("booking_id")
   vehicleId                String       @map("vehicle_id")
   kind                     HandoverKind
+  version                  Int          @default(1)
+  isCurrent                Boolean      @default(true) @map("is_current")
+  supersededById           String?      @map("superseded_by_id")
+  supersededAt             DateTime?    @map("superseded_at")
   performedAt              DateTime     @default(now()) @map("performed_at")
   performedByUserId        String?      @map("performed_by_user_id")
   performedByName          String?      @map("performed_by_name")
@@ -6005,15 +6021,177 @@ model BookingHandoverProtocol {
   createdAt                DateTime     @default(now()) @map("created_at")
   updatedAt                DateTime     @updatedAt @map("updated_at")
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  booking        Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  vehicleDamages VehicleDamage[]
+  organization      Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking           Booking                         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle                         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  supersededBy      BookingHandoverProtocol?        @relation("HandoverProtocolSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes        BookingHandoverProtocol[]       @relation("HandoverProtocolSupersede")
+  vehicleDamages    VehicleDamage[]
+  completionRecords BookingHandoverCompletionRecord[]
 
-  @@unique([bookingId, kind])
   @@index([organizationId])
   @@index([vehicleId])
+  @@index([bookingId, kind, isCurrent])
+  @@index([supersededById])
   @@map("booking_handover_protocols")
+}
+
+enum HandoverCompletionAuditEventType {
+  CREATED
+  CORRECTED
+  SUPERSEDED
+}
+
+/// Immutable tamper-evident completion snapshot per handover protocol version (Prompt 17).
+model BookingHandoverCompletionRecord {
+  id                String       @id @default(uuid())
+  organizationId    String       @map("organization_id")
+  bookingId         String       @map("booking_id")
+  vehicleId         String       @map("vehicle_id")
+  customerId        String?      @map("customer_id")
+  stationId         String?      @map("station_id")
+  protocolId        String       @map("protocol_id")
+  kind              HandoverKind
+  documentVersion   Int          @default(1) @map("document_version")
+  version           Int          @default(1)
+  payloadCanonical  Json         @map("payload_canonical")
+  payloadHash       String       @map("payload_hash")
+  signedContentHash String       @map("signed_content_hash")
+  completedAt       DateTime     @map("completed_at")
+  completedByUserId String?      @map("completed_by_user_id")
+  completedByName   String?      @map("completed_by_name")
+  previousVersionId String?      @map("previous_version_id")
+  supersededById    String?      @map("superseded_by_id")
+  supersededAt      DateTime?    @map("superseded_at")
+  correctionReason  String?      @map("correction_reason")
+  overrideUserId    String?      @map("override_user_id")
+  isCurrent         Boolean      @default(true) @map("is_current")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  organization    Organization                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking         Booking                           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle         Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  protocol        BookingHandoverProtocol           @relation(fields: [protocolId], references: [id], onDelete: Restrict)
+  previousVersion BookingHandoverCompletionRecord?  @relation("HandoverCompletionVersionChain", fields: [previousVersionId], references: [id], onDelete: SetNull)
+  nextVersions    BookingHandoverCompletionRecord[] @relation("HandoverCompletionVersionChain")
+  supersededBy    BookingHandoverCompletionRecord?  @relation("HandoverCompletionSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes      BookingHandoverCompletionRecord[] @relation("HandoverCompletionSupersede")
+  auditEvents     BookingHandoverCompletionAuditEvent[]
+
+  @@unique([bookingId, kind, version])
+  @@index([organizationId])
+  @@index([protocolId])
+  @@index([bookingId, kind, isCurrent])
+  @@index([supersededById])
+  @@map("booking_handover_completion_records")
+}
+
+/// Append-only audit trail for handover completion records (Prompt 17).
+model BookingHandoverCompletionAuditEvent {
+  id                         String                           @id @default(uuid())
+  organizationId             String                           @map("organization_id")
+  bookingId                  String                           @map("booking_id")
+  kind                       HandoverKind
+  eventType                  HandoverCompletionAuditEventType @map("event_type")
+  completionRecordId         String                           @map("completion_record_id")
+  previousCompletionRecordId String?                          @map("previous_completion_record_id")
+  newCompletionRecordId      String?                          @map("new_completion_record_id")
+  actorUserId                String?                          @map("actor_user_id")
+  actorDisplayName           String?                          @map("actor_display_name")
+  correctionReason           String?                          @map("correction_reason")
+  payloadHash                String?                          @map("payload_hash")
+  signedContentHash          String?                          @map("signed_content_hash")
+  createdAt                  DateTime                         @default(now()) @map("created_at")
+
+  organization     Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking          Booking                         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  completionRecord BookingHandoverCompletionRecord @relation(fields: [completionRecordId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([bookingId, kind])
+  @@index([completionRecordId])
+  @@map("booking_handover_completion_audit_events")
+}
+
+// V4.9.840 — Server-side handover session lifecycle (draft → submit); protocol remains completion artifact.
+enum HandoverSessionStatus {
+  DRAFT
+  IN_PROGRESS
+  AWAITING_REQUIREMENTS
+  AWAITING_SIGNATURE
+  SUBMITTED
+  COMPLETED
+  CANCELLED
+  SUPERSEDED
+}
+
+model BookingHandoverSession {
+  id                    String                @id @default(uuid())
+  organizationId        String                @map("organization_id")
+  bookingId             String                @map("booking_id")
+  vehicleId             String                @map("vehicle_id")
+  kind                  HandoverKind
+  status                HandoverSessionStatus
+  version               Int                   @default(1)
+  payloadJson           Json?                 @map("payload_json")
+  blockingRequirements  Json?                 @map("blocking_requirements")
+  lockedByUserId        String?               @map("locked_by_user_id")
+  lockedAt              DateTime?             @map("locked_at")
+  scopeOverrideReason   String?               @map("scope_override_reason")
+  cancelReason          String?               @map("cancel_reason")
+  supersededById        String?               @map("superseded_by_id")
+  completedProtocolId   String?               @map("completed_protocol_id")
+  submittedAt           DateTime?             @map("submitted_at")
+  cancelledAt           DateTime?             @map("cancelled_at")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([bookingId, kind])
+  @@index([vehicleId])
+  @@map("booking_handover_sessions")
+}
+
+/// Idempotent replay cache for pickup handover completion commands (Prompt 15).
+model BookingHandoverPickupCompletionIdempotency {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  bookingId      String   @map("booking_id")
+  idempotencyKey String   @map("idempotency_key")
+  sessionId      String?  @map("session_id")
+  protocolId     String   @map("protocol_id")
+  responseJson   Json     @map("response_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey], map: "booking_handover_pickup_completion_org_idempotency_key")
+  @@index([bookingId], map: "booking_handover_pickup_completion_booking_id_idx")
+  @@map("booking_handover_pickup_completion_idempotency")
+}
+
+/// Idempotent replay cache for return handover completion commands (Prompt 16).
+model BookingHandoverReturnCompletionIdempotency {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  bookingId      String   @map("booking_id")
+  idempotencyKey String   @map("idempotency_key")
+  sessionId      String?  @map("session_id")
+  protocolId     String   @map("protocol_id")
+  responseJson   Json     @map("response_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey], map: "booking_handover_return_completion_org_idempotency_key")
+  @@index([bookingId], map: "booking_handover_return_completion_booking_id_idx")
+  @@map("booking_handover_return_completion_idempotency")
 }
 
 /// Rental-period analysis input coverage (P59).

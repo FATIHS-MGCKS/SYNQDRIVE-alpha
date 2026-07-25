@@ -32,6 +32,11 @@ import { BookingEligibilityDecisionService } from './booking-eligibility-decisio
 import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility-recheck/booking-eligibility-recheck.scheduler.service';
 import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-booking-context.service';
+import { BookingsHandoverSessionService } from './handover-session/bookings-handover-session.service';
+import { CompletePickupHandoverService } from './handover-session/complete-pickup-handover.service';
+import { CompleteReturnHandoverService } from './handover-session/complete-return-handover.service';
+import { CorrectHandoverCompletionService } from './handover-session/correct-handover-completion.service';
+import { HandoverCompletionRecordQueryService } from './handover-session/handover-completion-record-query.service';
 
 @Module({
   imports: [
@@ -57,6 +62,11 @@ import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-
   providers: [
     BookingsService,
     BookingsHandoverService,
+    BookingsHandoverSessionService,
+    CompletePickupHandoverService,
+    CompleteReturnHandoverService,
+    CorrectHandoverCompletionService,
+    HandoverCompletionRecordQueryService,
     VehicleBookingContextService,
     BookingAllowedDriversService,
     BookingRentalEligibilityService,
@@ -74,6 +84,11 @@ import { VehicleBookingContextService } from './vehicle-booking-context/vehicle-
   exports: [
     BookingsService,
     BookingsHandoverService,
+    BookingsHandoverSessionService,
+    CompletePickupHandoverService,
+    CompleteReturnHandoverService,
+    CorrectHandoverCompletionService,
+    HandoverCompletionRecordQueryService,
     BookingRentalEligibilityService,
     BookingEligibilityGatekeeperService,
     BookingEligibilityEnforcementService,
