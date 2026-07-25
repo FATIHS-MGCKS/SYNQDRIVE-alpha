@@ -881,7 +881,8 @@ export function WorkflowConfigDrawer({
                       plan={simulation.plan}
                       loading={simulation.loading}
                       error={simulation.error}
-                      requestId={simulation.requestId}
+                      sequence={simulation.sequence}
+                      activeSequence={simulation.activeSequence}
                     />
                   </AccordionContent>
                 </AccordionItem>

@@ -2,6 +2,7 @@ import type { WorkflowRevisionDiffResultDto } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { workflowRiskLabel, workflowRiskTone } from './workflow-runtime.utils';
+import { formatDiffValue } from './workflow-simulate.utils';
 
 const KIND_I18N: Record<string, string> = {
   trigger_changed: 'workflowAutomation.diff.kind.trigger',
@@ -141,16 +142,4 @@ export function WorkflowRevisionDiffPanel({
       </ul>
     </section>
   );
-}
-
-function formatDiffValue(value: unknown): string {
-  if (value == null) return '—';
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
 }

@@ -6,6 +6,7 @@ export interface WorkflowSimulationState {
   error: string | null;
   requestId: string | null;
   sequence: number;
+  activeSequence: number;
 }
 
 export interface WorkflowRevisionDiffState {

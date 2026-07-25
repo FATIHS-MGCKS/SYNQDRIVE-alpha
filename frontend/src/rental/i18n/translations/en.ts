@@ -212,6 +212,7 @@ export const en = {
   'workflowAutomation.simulate.revisionValue': '{type} v{version}',
   'workflowAutomation.simulate.riskClass': 'Risk class',
   'workflowAutomation.simulate.requestId': 'Request ID',
+  'workflowAutomation.simulate.correlationId': 'Correlation ID',
   'workflowAutomation.simulate.timestamp': 'Assessed at',
   'workflowAutomation.simulate.eventData': 'Event data',
   'workflowAutomation.simulate.scopeResult': 'Scope result',

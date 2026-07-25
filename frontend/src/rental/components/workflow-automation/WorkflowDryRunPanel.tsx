@@ -9,14 +9,17 @@ export function WorkflowDryRunPanel({
   plan,
   loading,
   error,
-  requestId,
+  sequence,
+  activeSequence,
 }: {
   plan: WorkflowExecutionPlanDto | null;
   loading: boolean;
   error: string | null;
-  requestId: string | null;
+  sequence: number;
+  activeSequence: number;
 }) {
   const { t } = useLanguage();
+  const isStale = sequence > 0 && sequence !== activeSequence;
 
   if (loading) {
     return (
@@ -51,7 +54,7 @@ export function WorkflowDryRunPanel({
     );
   }
 
-  if (!plan) return null;
+  if (!plan || isStale) return null;
 
   const allActions = [...plan.plannedActions, ...plan.skippedActions].sort(
     (a, b) => a.index - b.index,
@@ -84,7 +87,10 @@ export function WorkflowDryRunPanel({
           </StatusChip>
         </MetaRow>
         <MetaRow label={t('workflowAutomation.simulate.requestId')}>
-          <span className="font-mono text-[10px]">{plan.requestId}</span>
+          <span className="font-mono text-xs break-all">{plan.requestId}</span>
+        </MetaRow>
+        <MetaRow label={t('workflowAutomation.simulate.correlationId')}>
+          <span className="font-mono text-xs break-all">{plan.correlationId}</span>
         </MetaRow>
         <MetaRow label={t('workflowAutomation.simulate.timestamp')}>
           {new Date(plan.assessedAt).toLocaleString()}
@@ -200,12 +206,6 @@ export function WorkflowDryRunPanel({
             ))}
           </ul>
         </Block>
-      )}
-
-      {requestId && requestId !== plan.requestId && (
-        <p className="text-[10px] text-muted-foreground" aria-hidden>
-          stale
-        </p>
       )}
     </section>
   );

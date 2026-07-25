@@ -212,6 +212,7 @@ export const de: Record<TranslationKey, string> = {
   'workflowAutomation.simulate.revisionValue': '{type} v{version}',
   'workflowAutomation.simulate.riskClass': 'Risikoklasse',
   'workflowAutomation.simulate.requestId': 'Request-ID',
+  'workflowAutomation.simulate.correlationId': 'Korrelations-ID',
   'workflowAutomation.simulate.timestamp': 'Bewertet am',
   'workflowAutomation.simulate.eventData': 'Eventdaten',
   'workflowAutomation.simulate.scopeResult': 'Scope-Ergebnis',
