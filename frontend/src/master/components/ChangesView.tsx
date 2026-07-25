@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-warnings-remediation-phase3-v49830-2026-07-25',
+    version: '4.9.830',
+    title: 'V4.9.830 — Vehicle Warnings Remediation Phase 3 (final)',
+    summary: [
+      'DTC webhook clear parity with poll path — inactive codes cleared on webhook (VW-F-007).',
+      'Dashboard insights API redacts PII metrics/timeContext by membership role (VW-F-012).',
+      'AI Health Care checks org HEALTH_SIGNALS data authorization before aggregation (VW-F-040).',
+      'Production deploy: migrations 20260725180000 + 20260725200000.',
+    ],
+    reason: 'Close remaining P0/P1 audit gaps before production release.',
+    previousBehavior: 'DTC webhook upsert-only; insights returned raw PII to all roles; AI health ignored data authorization records.',
+    details:
+      'Files: dimo-webhook.controller.ts, dashboard-insights.controller.ts, ai-health-care-aggregation.service.ts, data-authorization-enforcement.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T23:00:00.000Z',
+  },
+  {
     id: 'vehicle-warnings-remediation-be-phase2-v49829-2026-07-25',
     version: '4.9.829',
     title: 'V4.9.829 — Vehicle Warnings Remediation BE Phase 2',

@@ -1,5 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
 import { VehicleIntelligenceController } from './vehicle-intelligence.controller';
 import { DamagesOrgController } from './damages/damages-org.controller';
 import { BatteryService } from './battery/battery.service';
@@ -230,6 +231,7 @@ import { FindingLifecycleService } from './findings/finding-lifecycle.service';
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
     forwardRef(() => NotificationsModule),
+    DataAuthorizationsModule,
     VehicleFindingsModule,
     TasksModule,
     BatteryV2JobsProducerModule,

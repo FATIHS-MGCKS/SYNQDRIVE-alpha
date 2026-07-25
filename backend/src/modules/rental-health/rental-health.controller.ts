@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Req, UnauthorizedException, UseGuards, Optional } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UnauthorizedException, UseGuards, Optional, Post, Delete, Body, NotFoundException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { RentalHealthService } from './rental-health.service';
