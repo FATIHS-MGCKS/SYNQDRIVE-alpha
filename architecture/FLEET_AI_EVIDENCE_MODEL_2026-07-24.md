@@ -231,3 +231,10 @@ must be wrapped as `AiEvidence` with explicit:
 - Frontend `AIAssistantView` + `fleet-chat-response-display` + `safe-markdown` + metadata components.
 - Vitest: 11 response-type component tests + display + XSS-safe markdown.
 
+### Prompt 22 — Fleet Chat compact summary readability (2026-07-25)
+
+- `compactSummary` on client structured payload — facts built from tool records per response type.
+- Frontend `FleetChatCompactSummaryCard` + `FleetChatStructuredContent` — mobile key-value layout, semantic tokens.
+- Warnings: last-known position, limited data, inconsistent state; next action footer.
+- Narrative de-duplication via collapsible "Vollständige Antwort".
+

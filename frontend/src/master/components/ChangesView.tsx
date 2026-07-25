@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-chat-compact-summary-v49815-2026-07-25',
+    version: '4.9.815',
+    title: 'V4.9.815 — Fleet Chat compact summary readability (Prompt 22)',
+    summary: [
+      'compactSummary on structured chat response with key-value facts per response type.',
+      'FleetChatCompactSummaryCard — mobile dl layout, semantic status tokens, overflow-safe labels.',
+      'Last-known / limited data / inconsistent warnings; narrative de-duplication in details.',
+      'Vitest: compact component tests for 5 main response types.',
+    ],
+    reason: 'Prompt 22/32 — improve structured answer readability in existing chat UI.',
+    previousBehavior: 'Metadata-only chips; same facts repeated in card and body text.',
+    details:
+      'backend chat-fleet-structured-compact.builder.ts, frontend FleetChatCompactSummaryCard + FleetChatStructuredContent',
+    affectsArchitecture: true,
+    module: 'Fleet AI / Chat',
+    createdAt: '2026-07-25T00:45:00.000Z',
+  },
+  {
     id: 'fleet-ai-frontend-structured-chat-v49814-2026-07-25',
     version: '4.9.814',
     title: 'V4.9.814 — AI Frontend structured Fleet Chat response (Prompt 21)',
