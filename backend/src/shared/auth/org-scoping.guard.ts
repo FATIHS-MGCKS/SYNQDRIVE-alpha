@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
+import { isOperatorApiPath } from '@modules/operator-observability/operator-observability.util';
 
 /**
  * OrgScopingGuard — centralized multi-tenant enforcement for org-scoped routes.
@@ -32,6 +34,7 @@ export class OrgScopingGuard implements CanActivate {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -61,6 +64,7 @@ export class OrgScopingGuard implements CanActivate {
         `OrgScopingGuard: user ${user.id} tried to access org ${orgId} but JWT claims org ${user.organizationId}`,
       );
       this.iamMetrics?.recordCrossTenantDenial('org_scoping');
+      this.recordOperatorTenantDenial(request);
       throw new ForbiddenException('You do not have access to this organization');
     }
 
@@ -79,6 +83,7 @@ export class OrgScopingGuard implements CanActivate {
         `OrgScopingGuard: no active membership for user ${user.id} in org ${orgId}`,
       );
       this.iamMetrics?.recordCrossTenantDenial('membership');
+      this.recordOperatorTenantDenial(request);
       throw new ForbiddenException('You do not have access to this organization');
     }
 
@@ -86,5 +91,13 @@ export class OrgScopingGuard implements CanActivate {
     request.tenantId = orgId;
 
     return true;
+  }
+
+  private recordOperatorTenantDenial(request: { url?: string; requestId?: string }): void {
+    if (!isOperatorApiPath(request.url ?? '')) return;
+    this.operatorObservability?.recordAuthDenial('tenant_scope', {
+      correlationId: request.requestId ?? 'unknown',
+      requestId: request.requestId ?? null,
+    });
   }
 }

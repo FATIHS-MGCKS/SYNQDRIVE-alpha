@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
 
 export interface TaskAutomationOutboxLogEvent {
   organizationId: string;
@@ -16,7 +17,10 @@ export interface TaskAutomationOutboxLogEvent {
 export class TaskAutomationOutboxObservabilityService {
   private readonly logger = new Logger(TaskAutomationOutboxObservabilityService.name);
 
-  constructor(private readonly metrics: TripMetricsService) {}
+  constructor(
+    private readonly metrics: TripMetricsService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
+  ) {}
 
   log(event: TaskAutomationOutboxLogEvent): void {
     this.logger.log({
@@ -42,6 +46,7 @@ export class TaskAutomationOutboxObservabilityService {
 
   recordFailed(ruleId: string, errorCode: string): void {
     this.metrics.taskAutomationOutboxFailed.inc({ rule_id: ruleId, error_code: errorCode });
+    this.operatorObservability?.recordOutboxFailure('task_automation', errorCode);
   }
 
   recordRetry(ruleId: string): void {

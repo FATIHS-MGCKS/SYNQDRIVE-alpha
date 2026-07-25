@@ -6,6 +6,7 @@ import {
   BadRequestException,
   ServiceUnavailableException,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConfigType } from '@nestjs/config';
@@ -107,6 +108,7 @@ import { DocumentFollowUpSuggestionService } from './document-follow-up-suggesti
 import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
 import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
 import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
 import {
   buildDocumentExtractionArchiveWhere,
   parseDocumentExtractionArchivePagination,
@@ -374,6 +376,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly followUpContactPrepareService: DocumentFollowUpContactPrepareService,
     private readonly followUpResyncService: DocumentFollowUpResyncService,
     private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
   ) {}
 
   onModuleInit(): void {
@@ -425,6 +428,7 @@ export class DocumentExtractionService implements OnModuleInit {
     }
     if (!isAllowedMimeType(input.mimeType)) {
       this.observability.recordUploadRejected('mime');
+      this.recordOperatorUploadOutcome(input.uploadSource, 'failure', 'mime_rejected');
       throw new BadRequestException(`Unsupported file type: ${input.mimeType}`);
     }
 
@@ -467,6 +471,7 @@ export class DocumentExtractionService implements OnModuleInit {
     } catch (error) {
       if (error instanceof DocumentExtractionPipelineError) {
         this.observability.recordUploadRejected('identification');
+        this.recordOperatorUploadOutcome(input.uploadSource, 'failure', error.code);
         throw new BadRequestException({
           message: error.safeMessage,
           errorCode: error.code,
@@ -490,6 +495,7 @@ export class DocumentExtractionService implements OnModuleInit {
     if (duplicateAssessment.blocked) {
       this.observability.recordDuplicateOutcome('blocked');
       this.observability.recordUploadRejected('duplicate');
+      this.recordOperatorUploadOutcome(input.uploadSource, 'failure', 'duplicate_blocked');
       throw new DocumentUploadDuplicateBlockedException(duplicateAssessment);
     }
 
@@ -667,6 +673,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     if (!enqueueResult.ok) {
       this.observability.recordUploadRejected('queue');
+      this.recordOperatorUploadOutcome(input.uploadSource, 'failure', 'queue_unavailable');
       const failed = await this.markEnqueueFailure(record.id, {
         errorPhase: 'QUEUE',
         errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.QUEUE_UNAVAILABLE,
@@ -691,7 +698,21 @@ export class DocumentExtractionService implements OnModuleInit {
       scope: resolvedVehicleId ? 'vehicle' : 'org',
       sourceSurface: input.sourceSurface ?? input.uploadSource ?? 'org_inbox',
     });
+    this.recordOperatorUploadOutcome(input.uploadSource, 'success', undefined, record.id);
     return queued;
+  }
+
+  private recordOperatorUploadOutcome(
+    uploadSource: string | null | undefined,
+    outcome: 'success' | 'failure',
+    errorCode?: string,
+    extractionId?: string,
+  ): void {
+    if (uploadSource !== 'operator_app') return;
+    this.operatorObservability?.recordUpload(outcome, errorCode, {
+      correlationId: extractionId ?? 'upload',
+      requestId: null,
+    });
   }
 
   // ── create (legacy client-supplied flow, kept for backward compat) ──────

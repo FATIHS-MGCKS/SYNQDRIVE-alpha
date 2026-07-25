@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { OperatorObservabilityService } from '@modules/operator-observability/operator-observability.service';
 import {
   DocumentExtractionLogEvent,
   DocumentExtractionLogStage,
@@ -47,7 +48,10 @@ import type { EntityCandidateRankingPipelineState } from './entity-candidate-ran
 export class DocumentExtractionObservabilityService {
   private readonly logger = new Logger(DocumentExtractionObservabilityService.name);
 
-  constructor(private readonly metrics: TripMetricsService) {}
+  constructor(
+    private readonly metrics: TripMetricsService,
+    @Optional() private readonly operatorObservability?: OperatorObservabilityService,
+  ) {}
 
   logEvent(event: DocumentExtractionLogEvent): void {
     const line = formatDocumentExtractionLog(event);
@@ -66,7 +70,12 @@ export class DocumentExtractionObservabilityService {
     this.metrics.documentExtractionJobs.inc({ status, stage });
   }
 
-  recordFailure(stage: string, errorCode: string, retryable: boolean): void {
+  recordFailure(
+    stage: string,
+    errorCode: string,
+    retryable: boolean,
+    options?: { uploadSource?: string | null; extractionId?: string },
+  ): void {
     this.metrics.documentExtractionFailures.inc({
       stage,
       error_code: errorCode,
@@ -74,6 +83,12 @@ export class DocumentExtractionObservabilityService {
     });
     if (stage === 'OCR') {
       recordDocumentOcrFailed(this.metrics, { errorCode, retryable });
+      if (options?.uploadSource === 'operator_app') {
+        this.operatorObservability?.recordOcrFailure(errorCode, retryable, {
+          correlationId: options.extractionId ?? 'ocr',
+          requestId: null,
+        });
+      }
     }
   }
 

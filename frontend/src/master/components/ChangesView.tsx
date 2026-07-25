@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-observability-v49830-2026-07-25',
+    version: '4.9.830',
+    title: 'V4.9.830 — Operator App observability (Prompt 37)',
+    summary: [
+      'OperatorObservabilityModule: Prometheus metrics, structured logs, API interceptor.',
+      'Handover/upload/task/auth/outbox instrumentation with low-cardinality labels only.',
+      'GET /health/operator for queue, storage, outbox, workers; incident runbook added.',
+      'Alert thresholds documented in operator-app-observability audit.',
+    ],
+    reason: 'Production-readiness Prompt 37 — operator API/error/handover/upload observability.',
+    previousBehavior: 'Operator routes relied on generic HTTP logs and shared document/trip metrics without operator-specific labels.',
+    details:
+      'Runbook: docs/runbooks/operator-app-incident-response.md. Audit: docs/audits/operator-app-observability-2026-07.md',
+    affectsArchitecture: true,
+    module: 'Operator WebApp',
+    createdAt: '2026-07-25T20:45:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',
