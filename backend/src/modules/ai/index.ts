@@ -264,6 +264,20 @@ export {
   AiDomainToolRegistry,
   createAiDomainToolInvocationTracker,
 } from './registry';
+export {
+  routeFleetChatMessage,
+  validateFleetChatLlmClassification,
+  FleetChatIntentRouterService,
+  FLEET_CHAT_INTENTS,
+} from './routing';
+export type {
+  FleetChatIntent,
+  FleetChatRouteResult,
+  FleetChatClarification,
+  FleetChatVehicleReference,
+  FleetChatBookingReference,
+  FleetChatSecurityFlag,
+} from './routing';
 export type {
   AiDomainToolCachePolicy,
   AiDomainToolAuditLevel,
