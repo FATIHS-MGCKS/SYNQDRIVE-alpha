@@ -48,7 +48,10 @@ must be wrapped as `AiEvidence` with explicit:
 - **Domain services** (Vehicles, RentalHealth, Bookings, …) remain source of truth.
 - Future AI tools map service DTOs → `AiEvidence`; they must not embed business logic.
 - `validateAiEvidence({ forLlm: true })` blocks raw PII in `pii`/`restricted` records.
-- Tool-Versionen vorbereiten, ohne unnötige Komplexität einzuführen.
+- **Intent router:** `FleetChatIntentRouterService` — closed intent taxonomy,
+  combined questions, hardened vehicle resolver only; no LLM tool execution from user text.
+- **Orchestrator:** `FleetChatOrchestratorService` — intent → registry tools (parallel
+  independent tools); partial results; token-light evidence; structured composer; audit metadata.
 - **Intent router:** `FleetChatIntentRouterService` — closed intent taxonomy,
   combined questions, hardened vehicle resolver only; no LLM tool execution from user text.
 
