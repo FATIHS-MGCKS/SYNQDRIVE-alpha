@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
+import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { BillingController } from './billing.controller';
 import { StripeWebhookController } from './stripe-webhook.controller';
 import { BillingService } from './billing.service';
@@ -75,7 +76,7 @@ import { BillingMonitoringService } from './billing-monitoring.service';
 import { StripeWebhookProcessorService } from './stripe-webhook.processor';
 
 @Module({
-  imports: [OutboundEmailModule],
+  imports: [OutboundEmailModule, forwardRef(() => WorkflowsModule)],
   controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController, BillingEmailDeliveryController],
   providers: [
     BillingService,

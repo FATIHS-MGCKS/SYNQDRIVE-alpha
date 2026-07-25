@@ -62,7 +62,7 @@ import { BookingPaymentCardService } from '@modules/payments/booking-payment-car
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { listInvalidationFactsFromMutation } from './booking-eligibility-gatekeeper/booking-eligibility-status-transition.matrix';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
-import { BookingEligibilityRecheckService } from './booking-eligibility-recheck/booking-eligibility-recheck.service';
+import { WorkflowEventOutboxEnqueueService } from '@modules/workflows/outbox/workflow-event-outbox-enqueue.service';
 import {
   resolveEligibilityPolicyMode,
   shouldSkipEligibilityEnforcement,
@@ -133,6 +133,7 @@ export class BookingsService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly workflowOutbox: WorkflowEventOutboxEnqueueService,
   ) {}
 
   /**
@@ -2055,6 +2056,20 @@ export class BookingsService {
                 endDate: updatedBooking.endDate,
                 paymentIntent: updatedBooking.paymentIntent,
                 extrasJson: updatedBooking.extrasJson,
+              },
+            });
+            await this.workflowOutbox.enqueueInTransaction(tx, {
+              organizationId: orgId,
+              eventType: 'booking.confirmed',
+              source: 'bookings',
+              entityType: 'booking',
+              entityId: id,
+              idempotencyKey: `booking.confirmed:${id}`,
+              correlationId: `booking-lifecycle:${id}`,
+              payload: {
+                bookingId: id,
+                vehicleId: updatedBooking.vehicleId,
+                customerId: updatedBooking.customerId,
               },
             });
           }

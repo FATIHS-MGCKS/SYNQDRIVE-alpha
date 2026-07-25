@@ -20,7 +20,7 @@ import {
   HandoverProtocolDto,
 } from './handover.types';
 import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
-import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
+import { WorkflowEventOutboxEnqueueService } from '@modules/workflows/outbox/workflow-event-outbox-enqueue.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
   parseAffectedArea,
@@ -60,7 +60,7 @@ export class BookingsHandoverService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
     private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
-    private readonly workflowEvents: WorkflowEventService,
+    private readonly workflowOutbox: WorkflowEventOutboxEnqueueService,
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
@@ -404,6 +404,23 @@ export class BookingsHandoverService {
           });
         }
 
+        if (kind === 'RETURN') {
+          await this.workflowOutbox.enqueueInTransaction(tx, {
+            organizationId: orgId,
+            eventType: 'booking.returned',
+            source: 'bookings',
+            entityType: 'booking',
+            entityId: bookingId,
+            idempotencyKey: `booking.returned:${bookingId}`,
+            correlationId: `booking-handover:${bookingId}`,
+            payload: {
+              bookingId,
+              vehicleId: booking2.vehicleId,
+              handoverProtocolId: created.id,
+            },
+          });
+        }
+
         return [created, booking2] as const;
       },
     );
@@ -442,26 +459,6 @@ export class BookingsHandoverService {
           );
         });
 
-      const eventBase = {
-        organizationId: orgId,
-        entityType: 'booking' as const,
-        entityId: bookingId,
-        payload: {
-          bookingId,
-          vehicleId: updatedBooking.vehicleId,
-          status: updatedBooking.status,
-        },
-      };
-      this.workflowEvents.scheduleEmit({
-        ...eventBase,
-        type: 'booking.returned',
-        idempotencyKey: `booking.returned:${bookingId}`,
-      });
-      this.workflowEvents.scheduleEmit({
-        ...eventBase,
-        type: 'booking.completed',
-        idempotencyKey: `booking.completed:${bookingId}`,
-      });
       this.runBackgroundTask(
         `taskAutomation.onReturnHandoverCompleted(${bookingId})`,
         this.taskAutomation.onReturnHandoverCompleted({
