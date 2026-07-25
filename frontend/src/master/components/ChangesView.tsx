@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-test-coverage-v49831-2026-07-25',
+    version: '4.9.831',
+    title: 'V4.9.831 — Operator App test coverage (Prompt 38)',
+    summary: [
+      'Frontend: +62 operator unit tests (access gates, deep links, sorting, timezones, handover validation, damage/tire, connectivity, double-submit guard).',
+      'Backend: `bookings-handover.service.spec.ts` — pickup/return lifecycle, tenant isolation, idempotency, rollback, immutable return.',
+      'Audit: `docs/audits/operator-app-test-coverage-2026-07.md`. npm script `test:operator`.',
+    ],
+    reason: 'Production-readiness Prompt 38 — systematic test gap closure with business assertions and stable clocks.',
+    previousBehavior:
+      'Operator frontend had strong Today/task utils coverage but thin access/routing/handover validation tests; `BookingsHandoverService` had only one idempotency mock.',
+    details:
+      'frontend/src/operator/**/*.test.*, operatorMutationPolicy.ts, backend/src/modules/bookings/bookings-handover.service.spec.ts, docs/audits/operator-app-test-coverage-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Operator WebApp',
+    createdAt: '2026-07-25T20:35:00.000Z',
+  },
+  {
     id: 'fleet-ai-production-go-live-v49826-2026-07-25',
     version: '4.9.826',
     title: 'V4.9.826 — Fleet AI production go-live (domain grounding)',

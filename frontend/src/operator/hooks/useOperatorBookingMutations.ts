@@ -10,6 +10,7 @@ import { useRentalOrg } from '../../rental/RentalContext';
 import { invalidateVehicleOperationalAfterBookingChange } from '../../rental/lib/vehicle-operational-query';
 import { formatOperatorBookingError } from '../bookings/operatorBooking.utils';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { isOperatorMutationBlocked } from '../lib/operatorMutationPolicy';
 
 function resolveVehicleIdFromUpdatePayload(
   payload: OperatorBookingUpdatePayload,
@@ -47,7 +48,7 @@ export function useOperatorBookingMutations() {
         toast.error('Organisation nicht geladen');
         return null;
       }
-      if (mutating) return null;
+      if (isOperatorMutationBlocked(orgId, mutating)) return null;
 
       setMutating(true);
       setError(null);

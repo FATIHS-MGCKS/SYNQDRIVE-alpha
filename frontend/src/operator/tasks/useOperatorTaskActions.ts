@@ -6,6 +6,7 @@ import { bucketsAffectedByTaskMutation } from '../hooks/operatorTodayFeed.utils'
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { dispatchOperatorTaskUpdated } from './operatorTask.utils';
+import { isOperatorMutationBlocked } from '../lib/operatorMutationPolicy';
 
 export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => void) {
   const { orgId } = useRentalOrg();
@@ -37,7 +38,7 @@ export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => 
 
   const run = useCallback(
     async (fn: () => Promise<ApiTaskDetail>, message: string): Promise<ApiTaskDetail | null> => {
-      if (!orgId || mutating) return null;
+      if (isOperatorMutationBlocked(orgId, mutating)) return null;
       setMutating(true);
       try {
         const updated = await fn();
