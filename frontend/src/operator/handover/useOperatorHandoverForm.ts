@@ -3,6 +3,7 @@ import { api, type Station } from '../../lib/api';
 import type { DamageResponse } from '../../rental/lib/damage.types';
 import { useHandoverVehicleTelemetryPrefill } from '../../rental/lib/useHandoverVehicleTelemetryPrefill';
 import { stationsForPickup, stationsForReturn } from '../../rental/lib/stationBookingUtils';
+import { assertNoOperatorSensitiveLocalStorage } from '../lib/operatorClientPrivacy';
 import type {
   HandoverDialogBookingInfo,
   HandoverDialogKind,
@@ -63,6 +64,7 @@ export function useOperatorHandoverForm(
   /** Drop signature bitmaps from memory when the flow closes (sensitive data). */
   useEffect(() => {
     if (isOpen) return;
+    assertNoOperatorSensitiveLocalStorage();
     setState((prev) => ({
       ...prev,
       customerSigData: null,
