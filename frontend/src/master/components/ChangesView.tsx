@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-today-tasks-ux-v49855-2026-07-25',
+    version: '4.9.855',
+    title: 'V4.9.855 — Operator App: Today- & Tasks-UX (Prompt 30)',
+    summary: [
+      'Heute: keine doppelten Übergabe-Karten zwischen „Jetzt“ und „Heute“; Handover-Task-Duplikate unterdrückt.',
+      'Klare Status-Trennung in Karten (überfällig, in Bearbeitung, blockiert, erledigt) mit Text+Badge, nicht nur Farbe.',
+      'Booking-Karten: deutsche CTAs, Buchungsreferenz `BK-…`, Blocker-Gründe sichtbar, Draft-Fortsetzen klar benannt.',
+      'Tasks: Header-Parität, Summary-Filter-Shortcuts, Remote-Fehlerzustand, Filter-zurücksetzen bei leerem Ergebnis.',
+      'Accessibility: aria-labels auf Primäraktionen, Status-Gruppen, Summary-Kacheln; Touch Targets ≥44px.',
+    ],
+    reason:
+      'Production-Readiness Prompt 30: Today- und Tasks-Ansichten verständlicher machen ohne neue Designsprache.',
+    previousBehavior:
+      'Doppelte Übergaben/Tasks, englische Pickup/Return-Labels, stille Listen-Fehler, wenig Blocker-Kontext.',
+    details:
+      'Utils: `operatorTodayHandover.utils`, `operatorTasksView.utils`, Handover-Task-Suppression in `operatorTodayTasks`. Bestehende Liquid-Glass/Surface-Tokens unverändert.',
+    affectsArchitecture: false,
+    module: 'Operator App',
+    createdAt: '2026-07-25T19:40:00.000Z',
+  },
+  {
     id: 'operator-routing-resume-v49854-2026-07-25',
     version: '4.9.854',
     title: 'V4.9.854 — Operator App: Routing, Deep Links & Resume (Prompt 29)',

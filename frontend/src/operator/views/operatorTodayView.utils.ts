@@ -30,7 +30,7 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   {
     bucket: 'NOW',
     title: 'Jetzt erforderlich',
-    subtitle: 'Überfällige, kritische und unmittelbar blockierende Aufgaben',
+    subtitle: 'Überfällig oder sofort fällig — als Nächstes bearbeiten',
     variant: 'critical',
     collapsible: false,
     defaultCollapsed: false,
@@ -39,7 +39,7 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   {
     bucket: 'TODAY',
     title: 'Heute',
-    subtitle: 'Heute fällige und aktivierte Aufgaben',
+    subtitle: 'Heute fällig, aber nicht überfällig',
     variant: 'default',
     collapsible: false,
     defaultCollapsed: false,

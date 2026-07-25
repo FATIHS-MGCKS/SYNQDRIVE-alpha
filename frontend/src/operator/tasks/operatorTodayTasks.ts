@@ -19,6 +19,29 @@ export function isLegacyPerTypeDocumentTask(task: ApiTask): boolean {
   return /^document:[^:]+:/.test(task.dedupKey);
 }
 
+/** Hide handover task cards when a dedicated booking handover card is shown in the same bucket. */
+export function shouldSuppressTaskForHandoverCard(
+  task: ApiTask,
+  suppressedHandoverKeys: Set<string>,
+): boolean {
+  if (!task.bookingId) return false;
+  if (task.type === 'BOOKING_PICKUP') {
+    return suppressedHandoverKeys.has(`${task.bookingId}:PICKUP`);
+  }
+  if (task.type === 'BOOKING_RETURN') {
+    return suppressedHandoverKeys.has(`${task.bookingId}:RETURN`);
+  }
+  return false;
+}
+
+export function filterTasksWithoutHandoverDuplicates(
+  tasks: ApiTask[],
+  suppressedHandoverKeys: Set<string>,
+): ApiTask[] {
+  if (suppressedHandoverKeys.size === 0) return tasks;
+  return tasks.filter((task) => !shouldSuppressTaskForHandoverCard(task, suppressedHandoverKeys));
+}
+
 /** Hide legacy per-type document tasks when a canonical package task exists for the booking. */
 export function filterCanonicalOperatorTasks(tasks: ApiTask[]): ApiTask[] {
   const bookingsWithPackageTask = new Set<string>();

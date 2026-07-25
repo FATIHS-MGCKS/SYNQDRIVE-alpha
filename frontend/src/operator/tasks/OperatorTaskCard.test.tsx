@@ -108,4 +108,36 @@ describe('OperatorTaskCard', () => {
     expect(html).not.toContain('Erledigen');
     expect(html).not.toContain('Kommentar');
   });
+
+  it('renders blocked checklist state with text and badge', () => {
+    const html = renderToStaticMarkup(
+      <OperatorTaskCard
+        task={task({
+          id: '4',
+          title: 'Checkliste offen',
+          type: 'VEHICLE_INSPECTION',
+          checklist: [
+            { id: 'c1', title: 'Reifen', isRequired: true, isDone: false },
+          ],
+          checklistProgress: {
+            totalItems: 1,
+            completedItems: 0,
+            requiredItems: 1,
+            completedRequiredItems: 0,
+            remainingRequiredItems: 1,
+            progressPercent: 0,
+            hasChecklist: true,
+            areRequiredItemsComplete: false,
+            canCompleteByChecklist: false,
+            completionBlockers: ['REQUIRED_CHECKLIST_ITEMS_OPEN'],
+          },
+        })}
+        onOpen={vi.fn()}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('Blockiert');
+    expect(html).toContain('Blockiert: Offene Pflichtpunkte vor Abschluss');
+  });
 });

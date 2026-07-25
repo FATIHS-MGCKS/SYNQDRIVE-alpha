@@ -2594,6 +2594,35 @@ Der globale Operator-Banner darf `navigator.onLine` nicht als alleinige Wahrheit
 
 ---
 
+## 51. Today & Tasks UX (Prompt 30 — V4.9.855)
+
+### 51.1 Today
+
+- Dedup: `dedupeHandoversExcludingDueNow` verhindert doppelte Übergabe-Karten in NOW/TODAY.
+- Task-Suppression: `shouldSuppressTaskForHandoverCard` blendet `BOOKING_PICKUP`/`BOOKING_RETURN` aus, wenn Übergabe-Karte im Bucket sichtbar ist.
+- Blockierte Fahrzeuge zeigen `reasons` als Subtitle; Stale-Banner ohne Auto-Sync-Versprechen.
+
+### 51.2 Tasks
+
+- Header + Summary-Kacheln als Filter-Shortcuts (Heute/Überfällig).
+- `remoteError` + `ErrorState` statt stiller Leerliste.
+- `Filter zurücksetzen` bei aktivem Filter und leerem Ergebnis.
+
+### 51.3 Accessibility / Konsistenz
+
+- aria-labels auf Booking-/Task-Primäraktionen und Status-Gruppen.
+- Booking-Referenz via `bookingRef()` — keine UUIDs in sichtbaren Labels.
+- Deutsche Handover-CTAs; Blocker mit „Blockiert:“-Präfix.
+
+### 51.4 Tests
+
+- `operatorTodayHandover.utils.test.ts`
+- `operatorTasksView.utils.test.ts`
+- `operatorTodayTasks.test.ts` (handover suppression)
+- `OperatorTaskCard.test.tsx` (blocked checklist)
+
+---
+
 ## Anhang B — Referenzen
 
 - `frontend/src/operator/README.md`

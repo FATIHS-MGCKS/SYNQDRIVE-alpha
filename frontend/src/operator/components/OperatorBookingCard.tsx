@@ -4,6 +4,7 @@ import {
   bookingStatusTone,
   type BookingUiStatus,
 } from '../../rental/components/bookings/bookingStatus';
+import { bookingRef } from '../../rental/components/bookings/bookingUtils';
 import type { OperatorHandoverKind, OperatorTodayBookingItem } from '../lib/operatorData';
 import type { OperatorHandoverDraftHint } from '../handover/useOperatorHandoverDraftHints';
 import { OperatorGlassCard } from './OperatorGlassCard';
@@ -30,12 +31,12 @@ export function OperatorBookingCard({
   const primaryAction =
     kind === 'PICKUP'
       ? {
-          label: hasMatchingDraft ? 'Pickup fortsetzen' : 'Pickup starten',
+          label: hasMatchingDraft ? 'Übergabe fortsetzen' : 'Übergabe starten',
           gate: item.pickupGate,
           onClick: onPickupStart,
         }
       : {
-          label: hasMatchingDraft ? 'Return fortsetzen' : 'Return starten',
+          label: hasMatchingDraft ? 'Rückgabe fortsetzen' : 'Rückgabe starten',
           gate: item.returnGate,
           onClick: onReturnStart,
         };
@@ -48,6 +49,7 @@ export function OperatorBookingCard({
         type="button"
         className="sq-press flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left"
         onClick={onDetails}
+        aria-label={`Buchung ${bookingRef(item.bookingId)}: ${item.vehicleName}${item.plate ? `, ${item.plate}` : ''}, ${item.customerName}`}
       >
         <span
           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
@@ -72,7 +74,11 @@ export function OperatorBookingCard({
               {item.timeLabel}
             </span>
           </span>
-          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{item.customerName}</span>
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+            {item.customerName}
+            <span className="text-muted-foreground/70"> · </span>
+            <span className="font-mono text-[11px]">{bookingRef(item.bookingId)}</span>
+          </span>
           {item.station && (
             <span className="mt-0.5 block truncate text-[11px] text-muted-foreground/80">{item.station}</span>
           )}
@@ -106,7 +112,12 @@ export function OperatorBookingCard({
           <button
             type="button"
             disabled={!primaryAction.gate.allowed}
-            title={primaryAction.gate.reason}
+            title={primaryAction.gate.reason ?? undefined}
+            aria-label={
+              primaryAction.gate.allowed
+                ? primaryAction.label
+                : `${primaryAction.label} nicht verfügbar: ${primaryAction.gate.reason ?? 'Unbekannter Grund'}`
+            }
             onClick={primaryAction.onClick}
             className="sq-press min-h-[48px] flex-1 rounded-xl bg-[color:var(--brand)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
           >
@@ -130,8 +141,11 @@ export function OperatorBookingCard({
         </p>
       )}
       {!item.isDone && !primaryAction.gate.allowed && primaryAction.gate.reason && (
-        <p className="border-t border-border/30 px-4 py-2 text-[11px] leading-snug text-muted-foreground">
-          {primaryAction.gate.reason}
+        <p
+          className="border-t border-border/30 px-4 py-2 text-[11px] leading-snug text-[color:var(--status-watch)]"
+          role="status"
+        >
+          Blockiert: {primaryAction.gate.reason}
         </p>
       )}
     </OperatorGlassCard>

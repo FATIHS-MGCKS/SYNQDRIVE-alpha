@@ -28,6 +28,10 @@ import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { buildFleetVehicleById } from '../tasks/operatorTaskDisplay.utils';
 import {
+  buildHandoverSuppressionKeys,
+  dedupeHandoversExcludingDueNow,
+} from './operatorTodayHandover.utils';
+import {
   countVisibleTaskFeedEntries,
   hasAnyTaskBucketContent,
   hasOperatorTodaySecondaryContent,
@@ -51,8 +55,8 @@ function OperatorTodayStaleBanner({ offline, onRetry }: { offline: boolean; onRe
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
           {offline
-            ? 'Die Anzeige basiert auf dem letzten erfolgreichen Abruf. Aktionen werden nach Verbindungsaufbau synchronisiert.'
-            : 'Der letzte Abruf ist fehlgeschlagen. Angezeigt werden die zuletzt geladenen Aufgaben.'}
+            ? 'Die Anzeige basiert auf dem letzten erfolgreichen Abruf. Bitte nach Verbindungsaufbau erneut laden.'
+            : 'Der letzte Abruf ist fehlgeschlagen. Angezeigt werden die zuletzt geladenen Daten.'}
         </p>
       </div>
       <button
@@ -168,6 +172,19 @@ export function OperatorTodayView() {
     [startHandover, draftHints],
   );
 
+  const todayHandovers = useMemo(
+    () => dedupeHandoversExcludingDueNow(snapshot.pickupsToday, snapshot.returnsToday, snapshot.dueNow),
+    [snapshot.pickupsToday, snapshot.returnsToday, snapshot.dueNow],
+  );
+
+  const suppressedHandoverKeysByBucket = useMemo(
+    () => ({
+      NOW: buildHandoverSuppressionKeys(snapshot.dueNow),
+      TODAY: buildHandoverSuppressionKeys(todayHandovers),
+    }),
+    [snapshot.dueNow, todayHandovers],
+  );
+
   const sectionExtras = useMemo(() => {
     const extras: Partial<Record<'NOW' | 'TODAY', ReactNode>> = {};
     if (snapshot.dueNow.length > 0) {
@@ -180,7 +197,6 @@ export function OperatorTodayView() {
         </div>
       );
     }
-    const todayHandovers = [...snapshot.pickupsToday, ...snapshot.returnsToday];
     if (todayHandovers.length > 0) {
       extras.TODAY = (
         <div className="space-y-2">
@@ -192,7 +208,7 @@ export function OperatorTodayView() {
       );
     }
     return extras;
-  }, [renderHandoverCards, snapshot.dueNow, snapshot.pickupsToday, snapshot.returnsToday]);
+  }, [renderHandoverCards, snapshot.dueNow, todayHandovers]);
 
   if (!orgLoading && !orgId) {
     return (
@@ -312,6 +328,7 @@ export function OperatorTodayView() {
                 onTaskChanged={() => void reload()}
                 onReload={() => void reload()}
                 sectionExtras={sectionExtras}
+                suppressedHandoverKeysByBucket={suppressedHandoverKeysByBucket}
               />
 
               {snapshot.blockedVehicles.length > 0 && (
@@ -324,8 +341,12 @@ export function OperatorTodayView() {
                     {snapshot.blockedVehicles.map((v) => (
                       <OperatorListCard
                         key={v.vehicleId}
-                        title={`${v.label} · ${v.plate}`}
-                        subtitle={v.station || undefined}
+                        title={`${v.label}${v.plate ? ` · ${v.plate}` : ''}`}
+                        subtitle={
+                          v.reasons.length > 0
+                            ? v.reasons.join(' · ')
+                            : v.station || 'Vermietung blockiert'
+                        }
                         badges={[{ kind: 'blocked', label: 'Blockiert', tone: 'critical' }]}
                         onClick={() => {
                           setSelectedVehicleId(v.vehicleId);

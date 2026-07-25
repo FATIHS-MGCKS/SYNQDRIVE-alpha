@@ -3,6 +3,8 @@ import type { ApiTask } from '../../lib/api';
 import {
   buildOperatorTodayTaskEntries,
   filterCanonicalOperatorTasks,
+  filterTasksWithoutHandoverDuplicates,
+  shouldSuppressTaskForHandoverCard,
 } from './operatorTodayTasks';
 
 function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'type'>): ApiTask {
@@ -88,5 +90,19 @@ describe('filterCanonicalOperatorTasks', () => {
     ]);
 
     expect(filtered.map((row) => row.id)).toEqual(['package']);
+  });
+});
+
+describe('handover task suppression', () => {
+  it('hides booking handover tasks when a handover card is shown', () => {
+    const suppressed = new Set(['b1:PICKUP']);
+    const pickupTask = task({ id: 'pickup', title: 'Übergabe', type: 'BOOKING_PICKUP', bookingId: 'b1' });
+    const tireTask = task({ id: 'tire', title: 'Reifen', type: 'TIRE_CHECK', bookingId: 'b1' });
+
+    expect(shouldSuppressTaskForHandoverCard(pickupTask, suppressed)).toBe(true);
+    expect(shouldSuppressTaskForHandoverCard(tireTask, suppressed)).toBe(false);
+    expect(filterTasksWithoutHandoverDuplicates([pickupTask, tireTask], suppressed).map((t) => t.id)).toEqual([
+      'tire',
+    ]);
   });
 });
