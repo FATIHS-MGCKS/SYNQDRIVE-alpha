@@ -90,7 +90,7 @@ export function WorkflowRevisionDiffPanel({
       </div>
 
       {(diff.actor || diff.changedAt || diff.reason) && (
-        <div className="grid grid-cols-1 gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
           {diff.actor && (
             <p>
               {t('workflowAutomation.diff.actor')}: <span className="text-foreground">{diff.actor}</span>
@@ -121,7 +121,7 @@ export function WorkflowRevisionDiffPanel({
             >
               <p className="font-medium text-foreground">{label}</p>
               {(change.before !== undefined || change.after !== undefined) && (
-                <div className="mt-1 grid grid-cols-1 gap-1 text-[10px] text-muted-foreground sm:grid-cols-2">
+                <div className="mt-1 grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
                   {change.before !== undefined && (
                     <p>
                       <span className="font-semibold">{t('workflowAutomation.diff.before')}:</span>{' '}

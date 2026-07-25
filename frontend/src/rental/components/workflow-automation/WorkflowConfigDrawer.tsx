@@ -64,19 +64,27 @@ interface WorkflowConfigDrawerProps {
   canWrite?: boolean;
   busy?: boolean;
   onSaved?: () => void;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
   return (
-    <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <label
+      htmlFor={htmlFor}
+      className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+    >
       {children}
     </label>
   );
 }
 
-function FieldError({ message }: { message?: string }) {
+function FieldError({ id, message }: { id?: string; message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-xs text-status-critical">{message}</p>;
+  return (
+    <p id={id} role="alert" className="mt-1 text-xs text-status-critical">
+      {message}
+    </p>
+  );
 }
 
 export function WorkflowConfigDrawer({
@@ -87,6 +95,7 @@ export function WorkflowConfigDrawer({
   canWrite = false,
   busy = false,
   onSaved,
+  returnFocusRef,
 }: WorkflowConfigDrawerProps) {
   const { orgId } = useRentalOrg();
   const { t } = useLanguage();
@@ -237,6 +246,7 @@ export function WorkflowConfigDrawer({
       <DetailDrawer
         open={open}
         onOpenChange={requestClose}
+        returnFocusRef={returnFocusRef}
         title={title}
         eyebrow={t('workflowAutomation.editor.eyebrow')}
         description={t('workflowAutomation.editor.description')}
@@ -308,7 +318,12 @@ export function WorkflowConfigDrawer({
           )}
 
           {loading && !loadError && (
-            <div className="py-10 text-center text-sm text-muted-foreground" data-testid="workflow-config-loading">
+            <div
+              className="py-10 text-center text-sm text-muted-foreground"
+              data-testid="workflow-config-loading"
+              aria-busy="true"
+              aria-live="polite"
+            >
               <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin" />
               {t('workflowAutomation.loading')}
             </div>
@@ -349,14 +364,19 @@ export function WorkflowConfigDrawer({
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 pb-4">
                     <div>
-                      <FieldLabel>{t('workflowAutomation.editor.fields.name')}</FieldLabel>
+                      <FieldLabel htmlFor="workflow-config-name">
+                        {t('workflowAutomation.editor.fields.name')}
+                      </FieldLabel>
                       <input
+                        id="workflow-config-name"
                         value={form.name}
                         disabled={sectionDisabled('name')}
                         onChange={(e) => updateForm({ name: e.target.value })}
                         className="mt-1.5 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
+                        aria-invalid={Boolean(fieldErrors.name)}
+                        aria-describedby={fieldErrors.name ? 'workflow-config-name-error' : undefined}
                       />
-                      <FieldError message={fieldErrors.name} />
+                      <FieldError id="workflow-config-name-error" message={fieldErrors.name} />
                     </div>
                     <div>
                       <FieldLabel>{t('workflowAutomation.editor.fields.description')}</FieldLabel>
@@ -392,12 +412,19 @@ export function WorkflowConfigDrawer({
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 pb-4">
                     <div>
-                      <FieldLabel>{t('workflowAutomation.editor.fields.trigger')}</FieldLabel>
+                      <FieldLabel htmlFor="workflow-config-trigger">
+                        {t('workflowAutomation.editor.fields.trigger')}
+                      </FieldLabel>
                       <select
+                        id="workflow-config-trigger"
                         value={form.triggerType}
                         disabled={sectionDisabled('trigger')}
                         onChange={(e) => updateForm({ triggerType: e.target.value })}
                         className="mt-1.5 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
+                        aria-invalid={Boolean(fieldErrors.triggerType)}
+                        aria-describedby={
+                          fieldErrors.triggerType ? 'workflow-config-trigger-error' : undefined
+                        }
                       >
                         {(catalog?.triggers ?? []).map((trigger) => (
                           <option key={trigger.type} value={trigger.type}>
@@ -408,7 +435,7 @@ export function WorkflowConfigDrawer({
                           </option>
                         ))}
                       </select>
-                      <FieldError message={fieldErrors.triggerType} />
+                      <FieldError id="workflow-config-trigger-error" message={fieldErrors.triggerType} />
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -844,15 +871,25 @@ export function WorkflowConfigDrawer({
                         : t('workflowAutomation.editor.approvalNotRequiredHint')}
                     </p>
                     <div>
-                      <FieldLabel>{t('workflowAutomation.editor.fields.changeReason')}</FieldLabel>
+                      <FieldLabel htmlFor="workflow-config-change-reason">
+                        {t('workflowAutomation.editor.fields.changeReason')}
+                      </FieldLabel>
                       <textarea
+                        id="workflow-config-change-reason"
                         value={form.changeReason}
                         disabled={!editable}
                         onChange={(e) => updateForm({ changeReason: e.target.value })}
                         rows={3}
                         className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        aria-invalid={Boolean(fieldErrors.changeReason)}
+                        aria-describedby={
+                          fieldErrors.changeReason ? 'workflow-config-change-reason-error' : undefined
+                        }
                       />
-                      <FieldError message={fieldErrors.changeReason} />
+                      <FieldError
+                        id="workflow-config-change-reason-error"
+                        message={fieldErrors.changeReason}
+                      />
                     </div>
                   </AccordionContent>
                 </AccordionItem>

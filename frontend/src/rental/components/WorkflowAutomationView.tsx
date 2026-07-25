@@ -503,42 +503,49 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   );
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Workflow Automation</h1>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info'}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="min-w-0 break-words font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
+              Workflow Automation
+            </h1>
+            <span className="shrink-0 rounded-full bg-status-info-soft px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-status-info">
               Beta Runtime
             </span>
           </div>
-          <p className={`text-xs mt-0.5 ${textSecondary}`}>
+          <p className={`mt-0.5 text-xs ${textSecondary}`}>
             Tenant-scoped automation with real execution logs — manual test and booking return hooks active
           </p>
         </div>
         {canWrite && mainTab === 'workflows' && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <button
               onClick={() => setShowTemplates(!showTemplates)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${hoverBg} transition-colors`}
+              className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium ${cardBorder} ${cardBg} ${textPrimary} ${hoverBg} transition-colors`}
+              aria-expanded={showTemplates}
             >
-              <Icon name="layers" className="w-3.5 h-3.5" />
+              <Icon name="layers" className="h-4 w-4 shrink-0" />
               Templates
-              {showTemplates ? <Icon name="chevron-up" className="w-3 h-3" /> : <Icon name="chevron-down" className="w-3 h-3" />}
+              {showTemplates ? <Icon name="chevron-up" className="h-3 w-3" /> : <Icon name="chevron-down" className="h-3 w-3" />}
             </button>
             <button
               onClick={() => openBuilder()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover transition-colors"
+              className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
             >
-              <Icon name="plus" className="w-3.5 h-3.5" />
+              <Icon name="plus" className="h-4 w-4 shrink-0" />
               New Workflow
             </button>
           </div>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        className="flex flex-wrap gap-2"
+        role="tablist"
+        aria-label={t('workflowAutomation.tabs.workflows')}
+      >
         {[
           { key: 'workflows', label: t('workflowAutomation.tabs.workflows') },
           { key: 'task-automations', label: t('workflowAutomation.tabs.taskAutomations') },
@@ -546,11 +553,13 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
           <button
             key={tab.key}
             type="button"
+            role="tab"
+            aria-selected={mainTab === tab.key}
             onClick={() => setMainTab(tab.key as 'workflows' | 'task-automations')}
-            className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+            className={`min-h-11 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
               mainTab === tab.key
                 ? 'bg-brand text-brand-foreground'
-                : `${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`
+                : `${isDarkMode ? 'text-gray-400 hover:bg-white/5 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`
             }`}
           >
             {tab.label}
@@ -571,7 +580,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
             <div className="flex items-center gap-2">
               <Icon name="sparkles" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
               <span className={`text-sm font-semibold ${textPrimary}`}>Starter Templates</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
+              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
                 {STARTER_TEMPLATES.length} ready
               </span>
             </div>
@@ -579,7 +588,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
               <Icon name="x" className={`w-3.5 h-3.5 ${textSecondary}`} />
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {STARTER_TEMPLATES.map((t, i) => {
               const cat = getCategoryMeta(t.category);
               const CatIcon = cat.icon;
@@ -597,12 +606,12 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
                     <CatIcon className={`w-4 h-4 mt-0.5 shrink-0 ${catColors[cat.color] || 'text-gray-500'}`} />
                     <div className="min-w-0">
                       <p className={`text-xs font-semibold ${textPrimary} truncate group-hover:text-status-info transition-colors`}>{t.name}</p>
-                      <p className={`text-[10px] mt-0.5 ${textSecondary} line-clamp-2`}>{t.description}</p>
-                      <div className="flex items-center gap-1 mt-1.5">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
+                      <p className={`mt-0.5 text-xs ${textSecondary} line-clamp-2`}>{t.description}</p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                        <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
                           {cat.label}
                         </span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
+                        <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
                           {t.actions.length} action{t.actions.length !== 1 ? 's' : ''}
                         </span>
                       </div>

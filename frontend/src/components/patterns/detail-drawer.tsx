@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../ui/utils';
 import {
@@ -33,6 +34,8 @@ export interface DetailDrawerProps {
   onContentOpenAutoFocus?: (event: Event) => void;
   /** Accessible label for the header close control. */
   closeLabel?: string;
+  /** Element to restore focus to when the drawer closes. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   children: ReactNode;
   className?: string;
   /** Drawer body surface — solid (L0) or elevated (L1). No glass/liquid. */
@@ -53,17 +56,44 @@ export function DetailDrawer({
   widthClassName = 'sm:max-w-lg',
   onContentOpenAutoFocus,
   closeLabel = 'Schließen',
+  returnFocusRef,
   children,
   className,
   surface = 'solid',
   footerSurface = 'frosted',
 }: DetailDrawerProps) {
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (wasOpenRef.current && !open) {
+      returnFocusRef?.current?.focus({ preventScroll: true });
+    }
+    wasOpenRef.current = open;
+  }, [open, returnFocusRef]);
+
+  const handleOpenAutoFocus = useCallback(
+    (event: Event) => {
+      if (onContentOpenAutoFocus) {
+        onContentOpenAutoFocus(event);
+        return;
+      }
+      event.preventDefault();
+      const content = event.currentTarget as HTMLElement;
+      const title = content.querySelector('[data-slot="sheet-title"]');
+      if (title instanceof HTMLElement) {
+        title.tabIndex = -1;
+        title.focus({ preventScroll: true });
+      }
+    },
+    [onContentOpenAutoFocus],
+  );
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={side}
         showCloseButton={false}
-        onOpenAutoFocus={onContentOpenAutoFocus}
+        onOpenAutoFocus={handleOpenAutoFocus}
         className={cn(
           'w-full gap-0 p-0 border-0 bg-transparent shadow-none text-foreground',
           surfaceClassName(surface),
@@ -93,7 +123,7 @@ export function DetailDrawer({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="sq-press flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/50 text-foreground shadow-sm transition-colors hover:bg-muted"
+              className="sq-press flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/50 text-foreground shadow-sm transition-colors hover:bg-muted"
               aria-label={closeLabel}
             >
               <X className="h-4 w-4" />
@@ -109,6 +139,7 @@ export function DetailDrawer({
           <div
             className={cn(
               'sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-border/70 px-5 py-3.5',
+              'pb-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.75rem))]',
               surfaceClassName(footerSurface),
             )}
           >
