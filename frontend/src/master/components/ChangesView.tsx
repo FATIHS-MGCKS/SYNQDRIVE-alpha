@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-post-remediation-audit-v49862-2026-07-25',
+    version: '4.9.862',
+    title: 'V4.9.862 — Workflow Automation post-remediation production readiness audit (Phase 12 Prompt 54)',
+    summary: [
+      'Final independent audit: docs/audits/workflow-automation-post-remediation-production-readiness-2026-07.md.',
+      '340 workflow tests PASS (229 BE unit + 66 integration + 45 FE); builds green.',
+      'Verdict: CONDITIONAL GO — code ready; VPS Phase 11 not deployed (~91 commits behind).',
+      'NO-GO on live VPS for Workflow Runtime rollout until deploy, migrations, env, kill switch.',
+      'No real customers contacted; 24h/7d/30d follow-up checklists documented.',
+    ],
+    reason:
+      'Phase 12 closure requires independent re-verification of all remediation areas against GO/NO-GO criteria — not prior prompt assertions.',
+    previousBehavior:
+      'Distributed phase audits (VPS, E2E) without consolidated post-remediation production readiness decision.',
+    details:
+      'docs/audits/workflow-automation-post-remediation-production-readiness-2026-07.md; synthesizes VPS + E2E + test matrix + compliance docs.',
+    affectsArchitecture: false,
+    module: 'Automation',
+    createdAt: '2026-07-25T12:45:00.000Z',
+  },
+  {
     id: 'workflow-runtime-rollout-v49861-2026-07-25',
     version: '4.9.861',
     title: 'V4.9.861 — Workflow Runtime Controlled Rollout (Phase 11 Prompt 51)',
