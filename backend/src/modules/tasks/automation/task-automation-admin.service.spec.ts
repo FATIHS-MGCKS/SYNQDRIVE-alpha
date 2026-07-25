@@ -14,6 +14,10 @@ describe('TaskAutomationAdminService', () => {
     orgTaskAutomationRuleOverrideRevision: {
       findMany: jest.fn(),
     },
+    taskAutomationWorkflowMigrationRecord: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   };
 
   const resolver = {
@@ -45,6 +49,10 @@ describe('TaskAutomationAdminService', () => {
     formatChangeRequest: jest.fn((row: unknown) => row),
   };
 
+  const workflowTemplateService = {
+    findTemplateByCatalogKey: jest.fn().mockResolvedValue(null),
+  };
+
   const service = new TaskAutomationAdminService(
     prisma as any,
     resolver as any,
@@ -53,6 +61,7 @@ describe('TaskAutomationAdminService', () => {
     outboxRepoWithFind as any,
     outboxScheduler as any,
     makerChecker as any,
+    workflowTemplateService as any,
   );
 
   const baseResolved = {

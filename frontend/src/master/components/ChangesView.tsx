@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-production-test-matrix-v49859-2026-07-25',
+    version: '4.9.859',
+    title: 'V4.9.859 — Workflow Automation Production Readiness Test Suite (Phase 11 Prompt 49)',
+    summary: [
+      '42-scenario production matrix with canonical registry (`workflow-production-readiness.scenarios.ts`).',
+      'New backend suites: scope/condition evaluators, engine production, communication contract mocks, security (injection + tenant isolation).',
+      'Unified verify script: `npm run test:workflow-automation:verify` (198 unit + 23 security + 66 integration = 245 backend tests).',
+      'Frontend production-readiness contracts: mobile layout + a11y (45 workflow-automation tests total).',
+      'Flaky fix: booking pickup/return handover tests use deterministic `BOOKING_TASK_FIXED_NOW`.',
+      'Documentation: `docs/testing/workflow-automation-production-test-matrix-2026-07.md`.',
+    ],
+    reason:
+      'Workflow Automation requires a traceable production-readiness test matrix across unit, integration, queue, security, and frontend layers before cutover.',
+    previousBehavior:
+      'Workflow tests existed but were not consolidated into a 42-scenario matrix with unified CI verify and documented partial/N/A gaps.',
+    details:
+      'backend/scripts/test/workflow-automation-backend-verify.sh, workflow-production-readiness*.spec.ts, workflow-engine.production.spec.ts, workflow-communication-contract.spec.ts, workflow-security.production.spec.ts, frontend workflow-production-readiness.test.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T14:00:00.000Z',
+  },
+  {
     id: 'task-automation-workflow-migration-v49858-2026-07-25',
     version: '4.9.858',
     title: 'V4.9.858 — Task Automation → Workflow Runtime Migration (Phase 11 Prompt 48)',

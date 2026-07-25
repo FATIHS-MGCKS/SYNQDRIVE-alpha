@@ -247,6 +247,7 @@ describe('Booking task pipeline integration', () => {
       const { store, automation } = createBookingTaskPipelineHarness();
       const booking = bookingConfirmed();
       await automation.ensureBookingLifecycleTasks(booking);
+      await automation.syncBookingPickupTiming(booking, { now: BOOKING_TASK_FIXED_NOW });
 
       const pickup = store.tasksByDedupKey(ids.orgA, bookingPickupDedupKey(ids.bookingA))[0]!;
       expect((pickup.activatesAt as Date).getTime()).toBeLessThanOrEqual(booking.startDate.getTime());
@@ -270,6 +271,7 @@ describe('Booking task pipeline integration', () => {
       const { store, automation } = createBookingTaskPipelineHarness();
       const active = bookingConfirmed({ status: 'ACTIVE' });
       await automation.ensureBookingLifecycleTasks(active);
+      await automation.syncBookingReturnTiming(active, { now: BOOKING_TASK_FIXED_NOW });
 
       const ret = store.tasksByDedupKey(ids.orgA, bookingReturnDedupKey(ids.bookingA))[0]!;
       expect((ret.activatesAt as Date).getTime()).toBeLessThanOrEqual(active.endDate.getTime());

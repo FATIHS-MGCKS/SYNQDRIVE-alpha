@@ -168,7 +168,7 @@ export class WorkflowsService {
     const requestedStatus = dto.status ?? 'DRAFT';
     const makerCheckerRequired =
       requestedStatus === 'ACTIVE'
-      && this.makerChecker.publishRequiresMakerChecker({ actions: validated.actions as Prisma.JsonArray });
+      && this.makerChecker.publishRequiresMakerChecker({ actions: validated.actions as unknown as Prisma.JsonArray });
 
     if (makerCheckerRequired) {
       if (!userId) throw new ForbiddenException('Authenticated maker required');
@@ -282,7 +282,7 @@ export class WorkflowsService {
     const makerCheckerRequired =
       activating
       && this.makerChecker.publishRequiresMakerChecker({
-        actions: validated.actions as Prisma.JsonArray,
+        actions: validated.actions as unknown as Prisma.JsonArray,
       });
 
     if (makerCheckerRequired && !dto.activationReason?.trim()) {
