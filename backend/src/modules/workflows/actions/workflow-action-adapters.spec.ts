@@ -16,6 +16,8 @@ import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
 } from './workflow-action-handlers.provider';
+import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
+import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 
 const ORG = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const OTHER_ORG = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -98,6 +100,8 @@ describe('Workflow production action adapters', () => {
 
     const module = await Test.createTestingModule({
       providers: [
+        WorkflowActionPolicyService,
+        WorkflowActionSafetyBlockService,
         ...WORKFLOW_ACTION_HANDLER_PROVIDERS,
         workflowActionHandlersProvider,
         WorkflowActionRegistryService,

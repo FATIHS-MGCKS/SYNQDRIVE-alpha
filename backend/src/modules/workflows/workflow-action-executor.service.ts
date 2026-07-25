@@ -21,6 +21,9 @@ export interface ActionExecutionContext {
   entityId?: string | null;
   payload: Record<string, unknown>;
   idempotencyKey: string;
+  scopeType?: string;
+  runApproved?: boolean;
+  policySnapshot?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -34,7 +37,12 @@ export class WorkflowActionExecutorService {
   async execute(
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
-  ): Promise<{ status: WorkflowActionRunStatus; output?: Record<string, unknown>; errorMessage?: string }> {
+  ): Promise<{
+    status: WorkflowActionRunStatus;
+    output?: Record<string, unknown>;
+    errorMessage?: string;
+    policySnapshot?: Record<string, unknown>;
+  }> {
     if (action.requiresApproval && !WORKFLOW_APPROVAL_GATE_ACTIONS.has(action.type)) {
       await this.prisma.orgWorkflowApproval.create({
         data: {
@@ -52,24 +60,28 @@ export class WorkflowActionExecutorService {
       };
     }
 
+    const registryContext = this.toRegistryContext(ctx);
     const result = await this.registryExecutor.execute(
       action.type,
       action.config ?? {},
-      this.toRegistryContext(ctx),
+      registryContext,
     );
     return {
       status: this.registryExecutor.toLegacyStatus(result),
       output: result.output,
       errorMessage: result.errorMessage,
+      policySnapshot: registryContext.policySnapshot,
     };
   }
 
   async preview(action: WorkflowActionDef, ctx: ActionExecutionContext) {
-    return this.registryExecutor.preview(
+    const registryContext = this.toRegistryContext(ctx);
+    const preview = await this.registryExecutor.preview(
       action.type,
       action.config ?? {},
-      this.toRegistryContext(ctx),
+      registryContext,
     );
+    return { ...preview, policySnapshot: registryContext.policySnapshot };
   }
 
   validateConfig(action: WorkflowActionDef, ctx: ActionExecutionContext) {
@@ -96,7 +108,9 @@ export class WorkflowActionExecutorService {
         correlationId: ctx.idempotencyKey,
       },
       workflowSnapshot: {},
-      policySnapshot: {},
+      policySnapshot: ctx.policySnapshot ?? {},
+      scopeType: ctx.scopeType ?? 'organization',
+      runApproved: ctx.runApproved ?? false,
       actor: {
         kind: 'system',
         permissions: ['WORKFLOW_EXECUTE', 'WORKFLOW_VEHICLE_WRITE', 'WORKFLOW_AI_SUGGEST'],

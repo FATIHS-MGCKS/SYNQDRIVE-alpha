@@ -10797,6 +10797,7 @@ model OrgWorkflowActionRun {
   requiresApproval Boolean                 @default(false) @map("requires_approval")
   approvedByUserId String?                 @map("approved_by_user_id")
   approvedAt       DateTime?               @map("approved_at")
+  policySnapshot   Json?                   @map("policy_snapshot")
   startedAt        DateTime?               @map("started_at")
   finishedAt       DateTime?               @map("finished_at")
   createdAt        DateTime                @default(now()) @map("created_at")

@@ -5,6 +5,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { WorkflowActionAuditService } from './adapters/workflow-action-audit.service';
 import { WorkflowActionApprovalService } from './adapters/workflow-action-approval.service';
+import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
+import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
@@ -16,6 +18,8 @@ import { WorkflowActionNoopSecretsResolver } from './workflow-action-secrets.res
 @Module({
   imports: [PrismaModule, TasksModule, NotificationsModule, RentalHealthModule],
   providers: [
+    WorkflowActionPolicyService,
+    WorkflowActionSafetyBlockService,
     ...WORKFLOW_ACTION_HANDLER_PROVIDERS,
     workflowActionHandlersProvider,
     WorkflowActionRegistryService,
@@ -28,6 +32,8 @@ import { WorkflowActionNoopSecretsResolver } from './workflow-action-secrets.res
     WorkflowActionNoopSecretsResolver,
     WorkflowActionAuditService,
     WorkflowActionApprovalService,
+    WorkflowActionPolicyService,
+    WorkflowActionSafetyBlockService,
   ],
 })
 export class WorkflowActionRegistryModule {}

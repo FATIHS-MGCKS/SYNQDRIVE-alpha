@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-action-policies-v49842-2026-07-25',
+    version: '4.9.842',
+    title: 'V4.9.842 — Workflow Action Technical Policies (Phase 7 Prompt 32)',
+    summary: [
+      'Binding server-side technical policy matrix for all workflow actions.',
+      'Per action: riskClass, permission, approvalRule, allowed triggers/entities/scopes, timeout, retry, maxAttempts, fallback, dataCategories, auditLevel, retentionClass, dryRun, compensation.',
+      'Policy enforced before preview and execute; snapshot stored on org_workflow_action_runs.policy_snapshot.',
+      'Frozen snapshot for approved runs — policy changes not retroactive; safety blocks always apply.',
+      'Safety block service: incident holds + unverified diagnosis guard on critical vehicle triggers.',
+      '12 policy unit tests + 40 total workflow action/policy tests passing.',
+    ],
+    reason: 'Action handlers alone cannot guarantee server-side risk, scope, and approval invariants across clients.',
+    previousBehavior: 'Risk class and permissions only on handler definitions; no trigger/scope matrix or durable policy snapshot.',
+    details: 'docs/architecture/workflow-action-policies-2026-07.md. Module: backend/src/modules/workflows/policies/.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-25T11:00:00.000Z',
+  },
+  {
     id: 'workflow-action-adapters-v49841-2026-07-25',
     version: '4.9.841',
     title: 'V4.9.841 — Workflow Production Action Adapters (Phase 7 Prompt 31)',

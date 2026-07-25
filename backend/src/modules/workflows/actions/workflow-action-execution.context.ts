@@ -27,6 +27,10 @@ export interface WorkflowActionExecutionContext {
   event: WorkflowActionEventContext;
   workflowSnapshot: Record<string, unknown>;
   policySnapshot: Record<string, unknown>;
+  /** Workflow scope.type from definition — used by technical policy. */
+  scopeType?: string;
+  /** True when action run was explicitly approved by a user. */
+  runApproved?: boolean;
   actor: WorkflowActionActorIdentity;
   correlationId: string;
   secretsResolver: WorkflowActionSecretsResolver;

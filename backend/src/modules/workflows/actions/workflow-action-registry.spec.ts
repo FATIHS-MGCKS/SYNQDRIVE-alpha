@@ -16,6 +16,8 @@ import {
   WORKFLOW_ACTION_HANDLER_PROVIDERS,
   workflowActionHandlersProvider,
 } from './workflow-action-handlers.provider';
+import { WorkflowActionPolicyService } from '../policies/workflow-action-policy.service';
+import { WorkflowActionSafetyBlockService } from '../policies/workflow-action-safety-block.service';
 import { BaseWorkflowActionHandler } from './handlers/base-workflow-action.handler';
 import type { WorkflowActionExecuteResult } from './workflow-action-registry.types';
 
@@ -74,6 +76,8 @@ describe('WorkflowActionRegistryService', () => {
   beforeEach(async () => {
     const module = await Test.createTestingModule({
       providers: [
+        WorkflowActionPolicyService,
+        WorkflowActionSafetyBlockService,
         ...WORKFLOW_ACTION_HANDLER_PROVIDERS,
         workflowActionHandlersProvider,
         WorkflowActionRegistryService,
@@ -118,6 +122,8 @@ describe('WorkflowActionRegistryExecutorService', () => {
     };
     const module = await Test.createTestingModule({
       providers: [
+        WorkflowActionPolicyService,
+        WorkflowActionSafetyBlockService,
         ...WORKFLOW_ACTION_HANDLER_PROVIDERS,
         workflowActionHandlersProvider,
         WorkflowActionRegistryService,
@@ -210,7 +216,8 @@ describe('WorkflowActionRegistryExecutorService — disabled capability', () => 
     };
     const registry = new WorkflowActionRegistryService([disabledHandler]);
     registry.onModuleInit();
-    const executor = new WorkflowActionRegistryExecutorService(registry);
+    const policyService = new WorkflowActionPolicyService(new WorkflowActionSafetyBlockService());
+    const executor = new WorkflowActionRegistryExecutorService(registry, policyService);
     await expect(
       executor.execute('disabled.action', {}, baseContext()),
     ).rejects.toMatchObject({ code: 'CAPABILITY_DISABLED' });
