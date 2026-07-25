@@ -72,7 +72,7 @@ const ENTRY_LIST_CLASS = 'flex flex-col gap-1 px-1 pb-1.5 sm:px-2';
 const ENTRY_LIST_ITEM_CLASS = 'list-none';
 
 function ctaLabelLegacy(cta: ActionQueueCta, de: boolean): string {
-  if (cta === 'open-vehicle') return de ? 'Fahrzeug öffnen' : 'Open vehicle';
+  if (cta === 'open-vehicle' || cta === 'open-vehicle-module') return de ? 'Fahrzeug öffnen' : 'Open vehicle';
   if (cta === 'open-booking') return de ? 'Buchung öffnen' : 'Open booking';
   if (cta === 'start-handover-pickup') return de ? 'Übergabe starten' : 'Start handover';
   if (cta === 'start-handover-return') return de ? 'Rückgabe starten' : 'Start return';
@@ -143,6 +143,7 @@ function runCta(
       if (item.returnItem) vm.handleConfirmReturn(item.returnItem);
       break;
     case 'open-vehicle':
+    case 'open-vehicle-module':
       if (item.vehicleId && onOpenVehicleById) onOpenVehicleById(item.vehicleId);
       break;
     case 'open-booking':
@@ -171,6 +172,7 @@ function runChildCta(child: ActionQueueChildAction, handlers: ActionQueueHandler
   const { onOpenVehicleById, onOpenBookingById, onOpenRentalView, onOpenPriceTariffs } = handlers;
   switch (child.cta) {
     case 'open-vehicle':
+    case 'open-vehicle-module':
       if (child.vehicleId && onOpenVehicleById) onOpenVehicleById(child.vehicleId);
       break;
     case 'open-booking':

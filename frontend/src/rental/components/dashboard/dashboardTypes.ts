@@ -176,6 +176,7 @@ export type ActionQueueCategory =
 
 export type ActionQueueCta =
   | 'open-vehicle'
+  | 'open-vehicle-module'
   | 'open-booking'
   | 'start-handover-pickup'
   | 'start-handover-return'
