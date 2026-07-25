@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-app-dataflow-traceability-v49830-2026-07-25',
+    version: '4.9.830',
+    title: 'V4.9.830 — Operator App: vollständige Datenfluss-Traceability (Prompt 4)',
+    summary: [
+      'Audit Kap. 26: Datenflussmatrix für alle 18 Fachbereiche (Read/Write) mit Permission, Cache, Tx, Audit, Idempotenz.',
+      '5 doppelte Wahrheiten identifiziert (DT-001–005); 8 kanonische Pfade verifiziert ohne Shadow-State.',
+      '13 neue Findings DF-001–013: 4× P1 Permissions, Transaktionslücken, Scan-Overdue, Task-Cache.',
+      'Keine Code-Refaktorierung — Dokumentation/audit only.',
+    ],
+    reason: 'Production-Readiness Prompt 4 — Traceability aller Operator-Datenflüsse vor Hardening.',
+    previousBehavior: 'Kap. 22 deckte Schreibpfade ab; vollständige Matrix inkl. Cache/Tx/Audit/Idempotenz fehlte.',
+    details: 'docs/audits/operator-app-production-readiness-2026-07.md §26',
+    affectsArchitecture: false,
+    module: 'Operator App',
+    createdAt: '2026-07-25T17:30:00.000Z',
+  },
+  {
     id: 'operator-app-doc-reconciliation-v49829-2026-07-25',
     version: '4.9.829',
     title: 'V4.9.829 — Operator App: Dokumentationsabgleich (Prompt 3)',

@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Audit ID** | `operator-app-production-readiness-2026-07` |
-| **Prompt** | **1** (baseline) · **2** (Dateiinventur) · **3** (Dokumentationsabgleich) |
+| **Prompt** | **1** (baseline) · **2** (Dateiinventur) · **3** (Dokumentationsabgleich) · **4** (Datenfluss-Traceability) |
 | **Repository** | `https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **Audited commit** | `1d0f2caebe56aa1ecd23295aa33d20e953daa95d` (Prompt 1) · Branch-HEAD nach Prompt 2 |
 | **Audit branch** | `audit/operator-app-production-readiness-2026-07` |
@@ -595,6 +595,8 @@ Operator-Mutationen (Booking, Handover, Task, Damage, Document Apply) gehen übe
 | Baseline-Audit (Prompt 1) | ✅ |
 | Vollständige Dateiinventur (Prompt 2) | ✅ Kap. 21–24 |
 | Traceability-Matrix | ✅ Kap. 22 |
+| Dokumentationsabgleich (Prompt 3) | ✅ Kap. 25 |
+| Vollständige Datenfluss-Traceability (Prompt 4) | ✅ Kap. 26 |
 | Security-Hardening | ⏳ Ausstehend |
 | PWA/Offline | ⏳ Ausstehend |
 | E2E Operator-Matrix | ⏳ Ausstehend |
@@ -986,6 +988,259 @@ Vorläufige Kategorien (ohne Pass/Fail):
 
 ---
 
+## 26. Vollständige Datenfluss-Traceability (Prompt 4)
+
+**Methode:** Code-Inspektion aller lesenden und schreibenden Operator-Datenflüsse über `frontend/src/operator/**`, konsumierte `api.*`-Clients, NestJS-Controller/Services, Prisma-Modelle, Permission-Decorators, Invalidierungs-Registry und vorhandene Tests. Keine Refaktorierung — nur dokumentierte Ist-Analyse.
+
+**Legende Matrix-Spalten:**
+
+| Spalte | Bedeutung |
+|--------|-----------|
+| **Auth. Quelle** | Kanonische Backend-Domäne / Tabelle — keine zweite Operator-Wahrheit |
+| **API** | HTTP-Pfad (Präfix `/api/v1` implizit) |
+| **Tenant** | `OrgScopingGuard` / JWT `organizationId` / Service `organizationId`-Filter |
+| **Station** | Stationsbezug in Query, Payload oder UI-Filter |
+| **Permission** | `@RequirePermission` / `@RequireTaskPermission` / nur `RolesGuard` |
+| **Validierung** | DTO / Service-Validierung / Frontend-Payload-Build |
+| **Output-DTO** | Response-Shape (vereinfacht) |
+| **Cache Key** | Frontend-Cache / State-Schlüssel |
+| **Invalidierung** | Mechanismus nach Mutation |
+| **Fehler** | UI- und API-Fehlerbehandlung |
+| **Audit** | Persistiertes Audit / Timeline / Event |
+| **Idempotenz** | Wiederholbarkeit bei Retry |
+| **Tx** | Transaktionsgrenze (`$transaction`) |
+| **Tests** | Nachweisbare Testabdeckung |
+
+### 26.1 Heute-Ansicht
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Today Pickups | `OperatorDataContext` → `useOperatorToday` | `Booking` + `BookingHandoverProtocol` | `GET /organizations/:orgId/bookings/today/pickups` | `OrgScopingGuard` + `organizationId` in Service | `pickupStationId` / `pickupStationName` in Row | `bookings.read` | Org-TZ-Tagesfenster + 7d-Overdue-Branch serverseitig | `TodayBookingApiRow[]` inkl. `isOverdue`, `minutesOverdue`, redigierte Protokolle | React state `pickups`; Registry `vehicle-operational:operator-today:{orgId}` | `refreshToken`, `invalidateVehicleOperationalState`, `OperatorHandoverRefreshBridge` | `todayError` + Skeleton in `OperatorTodayView` | — | Read-only | Read-only | — |
+| **R** Today Returns |同上 |同上 | `GET .../bookings/today/returns` |同上 | `returnStationId` / `returnStationName` | `bookings.read` | `buildTodayReturnSignals` serverseitig |同上 (Return-Felder) | React state `returns` |同上 |同上 | — | Read-only | Read-only | — |
+| **R** Today Snapshot-Ableitung | `buildOperatorTodaySnapshot` | Frontend-Ableitung aus API-Rows + `rentalHealth` | — (kein eigener Endpoint) | — | Station aus API-Row | — | `mapPickupRow` / `mapReturnRow`; Gates via `deriveBookingPickupGate` / `deriveBookingReturnGate` | `OperatorTodaySnapshot` | `useMemo` in `useOperatorToday` | Reload Today bei Invalidierung | Stale-Banner offline in `operatorTodayView.utils` | — | — | — | `operatorTodayView.utils.test.ts` |
+| **R** Blocked Vehicles | `buildOperatorTodaySnapshot` | `RentalHealthFleetService` → `rental_blocked` | transitiv `rentalHealth.getFleetScoped` | orgId | `vehicle.station` | `fleet.read` | `health.rental_blocked` serverseitig | `OperatorBlockedVehicleItem[]` | `FleetContext.healthMap` | `invalidateVehicleOperationalState` → `fleetHealth` | — | — | — | — | — |
+| **R** Operational Alerts | `useOperatorOperationalAlerts` | `DashboardInsightsRepository` (Business-Insights-Pipeline) | `GET /organizations/:orgId/dashboard-insights` | `OrgScopingGuard` | optional in Insight-Metriken | **GAP** — nur `OrgScopingGuard` + `RolesGuard` | Client-Filter `OPERATOR_INSIGHT_TYPES` | `{ insights[], generatedAt }` gefiltert | `useState` lokal, kein Persist | nur `orgId`-Effect | `catch → []` | Insight-Run-Metadaten (Backend) | Read-only | Read-only | — |
+| **R** Task-Feed Buckets | `useOperatorTodayFeed` | `OrgTask` | `GET /organizations/:orgId/tasks?bucket=NOW\|TODAY\|…` + `GET .../tasks/summary` | orgId in Service | optional `stationId` in Task-Metadaten | `tasks.read`; UNASSIGNED: `hasPermission` + Rolle | Bucket-Policy serverseitig | `ApiTask[]`, `ApiTaskSummary` | `taskQueryKeys.listBucket(orgId, bucket)` | `invalidateTaskQueries`, `subscribeTaskQueryInvalidation` | per-bucket `error` in Feed | `TaskEvent` bei Mutationen | Read-only | Read-only | `operatorTodayFeed.utils.test.ts` |
+
+**Gate-Ableitung Pickup/Return (Today):** Operator nutzt **dieselben** Shared-Functions wie Rental (`rental/lib/bookingHandoverGates.ts`). `isOverdue` kommt **vom Backend** (`findTodaysPickups` / `findTodaysReturns`), nicht neu berechnet. `isDueNow` ist reine UI-Heuristik (±2h Fenster in `operatorData.ts`) — kein fachlicher Status.
+
+### 26.2 Buchungen
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Booking-Detail | `OperatorBookingDetailSheet` | `Booking` + Protokolle + Eligibility | `GET /organizations/:orgId/bookings/:id` (`detail`) | orgId | pickup/return station fields | `bookings.read` | — | `BookingDetailDto` inkl. `eligibility`, `pickupProtocol`, `returnProtocol` | local `useState` | manuelles Reload bei Open | Error-State in Sheet | Eligibility-Evaluation serverseitig | Read-only | Read-only | `test:bookings` |
+| **R** Booking-Liste (Scan/Form) | `useOperatorScanSearch`, `OperatorBookingFormSheet` | `Booking` | `GET .../bookings?search=` / `GET .../bookings/:id` | orgId | in Row / Form | `bookings.read` | list pagination | Booking list row / detail | scan: `useState`; form: local | `refreshToken`, booking mutations | scan: `bookingsError`; form: toast | — | Read-only | Read-only | — |
+| **W** Create | `OperatorBookingFormSheet` | `Booking` | `POST .../bookings` | orgId | `pickupStationId`, `returnStationId` in Payload | `bookings.write` | DTO + Overlap-Gate (`VEHICLE_BOOKING_OVERLAP`) | Booking row | — | `invalidateVehicleOperationalAfterBookingChange` (`booking-created`) | toast via `useOperatorBookingMutations` | `TaskAutomation` | Nein (neue ID) | create + Invoice-Hook (nicht atomar mit Overlap-Check) | `test:bookings` |
+| **W** Update |同上 | `Booking` | `PATCH .../bookings/:id` | orgId | Station-Felder | `bookings.write` | Service-Validierung | Updated booking | — | `invalidateVehicleOperationalAfterBookingChange` (`booking-updated`) | toast | `TaskAutomation` | Nein | Service-abhängig | domain |
+| **W** Cancel | `OperatorBookingCancelSheet` | `Booking` | `POST .../bookings/:id/cancel` | orgId | — | `bookings.manage` | Status-Transition-Policy | Cancelled booking | — | `booking-cancelled` | toast | `TaskAutomation` | Nein | Service `$transaction` bei Status+Events | domain |
+| **W** No-Show | `OperatorBookingNoShowSheet` | `Booking` | `POST .../bookings/:id/mark-no-show` | orgId | — | `bookings.write` | CONFIRMED→NO_SHOW Policy | Updated booking | — | `booking-no-show` | toast | `TaskAutomation` | Nein | Service-abhängig | domain |
+
+**Booking-Status:** Kein Operator-lokaler Booking-State. UI zeigt `normalizeBookingStatus` auf API-`status`/`statusEnum`. Lifecycle-Übergänge (CONFIRMED→ACTIVE via Handover) ausschließlich serverseitig.
+
+### 26.3 Fahrzeuge & Fahrzeugstatus
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Fleet-Liste | `useOperatorVehiclesData` → `FleetContext` | `Vehicle` + Fleet-Map-Derivation | `GET /organizations/:orgId/vehicles/fleet-map` | orgId | `currentStationId` / station label | `fleet.read` (implizit Org) | — | `VehicleData[]` | `vehicleOperationalQueryKeys.fleetMap(orgId)` + Zustand store | `invalidateVehicleOperationalState` | health error in context | — | Read-only | Read-only | fleet tests |
+| **R** Fleet Health | `FleetContext` | `RentalHealthFleetService` | `GET /organizations/:orgId/rental-health/fleet` | orgId | — | `fleet.read` | — | `Map<vehicleId, VehicleHealthResponse>` | `vehicleOperationalQueryKeys.fleetHealth(orgId)` |同上 | `healthError` | — | Read-only | Read-only | — |
+| **R** Vehicle Quick View | `useOperatorVehicleQuickViewData` | Vehicle + Damages + Tires + Docs + Tasks | `GET /vehicles/:id/damages/active`, tires, `documents`, `tasks.forVehicle` | `VehicleOwnershipGuard` | vehicle.station | **GAP** damages/tires: ownership only | — | aggregiert lokal | local `useState` | window events + refresh | partial `.catch` swallow | — | Read-only | Read-only | — |
+| **R** Status-Badges | `deriveVehicleOperatorStatuses` | `selectOperationalStatus(vehicle)` + `rentalHealth` | — (Ableitung) | — | — | — | Shared `vehicle-operational-state` | `OperatorStatusBadge[]` | pure fn | fleet/health invalidation | — | — | — | — | `operatorStatus.test.ts` |
+
+**Fahrzeugstatus:** Operator **klassifiziert nicht eigenständig**. `selectOperationalStatus` aus `rental/lib/vehicle-operational-state` ist kanonisch; `Vehicle.status` DB-Spalte wird bei Handover explizit gesetzt (PICKUP→RENTED, RETURN→AVAILABLE). Quick-View-Konsistenzprüfungen in `operatorVehicleQuickView.utils.ts` sind **Display-Warnungen**, keine zweite Wahrheit.
+
+### 26.4 Aufgaben
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** ALL_OPEN (Context) | `OperatorDataContext` | `OrgTask` | `GET .../tasks?bucket=ALL_OPEN` + summary | orgId | — | `tasks.read` | bucket policy | `ApiTask[]`, `ApiTaskSummary` | React state | `subscribeTaskQueryInvalidation` | `tasksError` | — | Read-only | Read-only | — |
+| **R** Gefilterte Liste | `OperatorTasksView` | `OrgTask` | `GET .../tasks` + Filter | orgId | booking filter | `tasks.read` | `operatorTask.utils` filter build | `ApiTask[]` | local `remoteTasks` | manual + context | **GAP** `catch → []` | — | Read-only | Read-only | — |
+| **R** Task-Detail | `OperatorTaskDetail` | `OrgTask` + Events | `GET .../tasks/:id` | orgId | metadata | `tasks.read` | — | Task detail + timeline | local state | `invalidateTaskQueries({ detail })` | error UI | `TaskEvent` | Read-only | Read-only | task detail utils tests |
+| **W** Create | `OperatorTaskCreateForm` | `OrgTask` | `POST .../tasks` | orgId | optional `stationId` metadata | `tasks.create` | DTO | Created task | — | `invalidateTaskQueries` + `operator:task-updated` | toast | `TaskEvent` CREATED | Nein | `$transaction` create+checklist | `operatorTodayTasks.test.ts` |
+| **W** Start | `OperatorTaskCardConnected` | `OrgTask` | `PATCH .../tasks/:id/start` | orgId | — | **GAP** kein `@RequireTaskPermission` | `assertTaskTransition` | Updated task | — | `invalidateTaskQueries` | toast | `TaskEvent` STATUS_CHANGED | Status==target → noop | `$transaction` update+event | — |
+| **W** Waiting |同上 | `OrgTask` | `PATCH .../tasks/:id/waiting` | orgId | — | **GAP** | transition policy | Updated task | — |同上 | toast | `TaskEvent` | noop if same | `$transaction` | — |
+| **W** Complete |同上 | `OrgTask` | `PATCH .../tasks/:id/complete` | orgId | — | `tasks.complete` | checklist gate, resolution note | Updated task | — |同上 | toast | `TaskEvent` + optional activity log | Nein | `$transaction` | task completion tests |
+| **W** Comment / Checklist | `OperatorTaskDetail` | `TaskComment` / `TaskChecklistItem` | `POST comment`, `PATCH checklist` | orgId | — | `tasks.update` | Service validation | Updated entities | — | `invalidateTaskQueries` | toast | `TaskEvent` | Nein | `$transaction` | checklist tests |
+
+**Task `isOverdue`:** kommt vom Backend (`ApiTask.isOverdue`), Operator filtert/sortiert nur (`operatorTodayTasks.ts`).
+
+### 26.5 Pickup-Handover
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Form-Hydration | `useOperatorHandoverForm` | Booking, Stations, Damages, Docs | `bookings.detail`, `stations.list`, `damages/active`, `documents.listForBooking` | orgId + vehicle ownership | `actualStationId`, booking stations | `bookings.read`, damages **GAP** | — | mixed | form `useState` | on open | per-hook catch | — | — | — | — |
+| **W** Submit Pickup | `OperatorHandoverFlow` | `BookingHandoverProtocol`, `Booking`, `Vehicle` | `POST .../bookings/:id/handover/pickup` | orgId | `actualStationId` in payload | `bookings.write` | `operatorHandoverPayload` + `BookingsHandoverService.validatePayload` + Pickup-Gate + Eligibility | `{ booking, protocol }` | — | `invalidateVehicleOperationalState(handover-pickup)`, `handover:completed` event | `submitError` in Flow | `BookingPickupGateAuditEvent` bei Override; `TaskAutomation` | **Ja** — existierendes ACTIVE+PICKUP-Protokoll → Replay | **Ja** — `$transaction` Protocol+Booking+Vehicle+Damages+Complaints | `operatorHandoverPayload.test.ts`; backend handover specs |
+
+**Pickup-Gate / KYC:** Backend `BookingPickupGateService` + `BookingEligibilityEnforcementService` sind autoritativ. Frontend-Gates sind UX-Hinweise; Override via `pickupGateOverrideReason` + Audit.
+
+### 26.6 Return-Handover
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **W** Submit Return | `OperatorHandoverFlow` (kind=RETURN) |同上 | `POST .../bookings/:id/handover/return` | orgId | `actualStationId` | `bookings.write` | Return erfordert ACTIVE + Pickup-Protokoll |同上 | — | `invalidateVehicleOperationalState(handover-return)` |同上 | `TaskAutomation` on return | **Nein** — Duplicate → `HANDOVER_ALREADY_EXISTS` Conflict | **Ja** — `$transaction` |同上 |
+
+Return idempotency: kein Replay — zweiter Submit wirft `ConflictException`.
+
+### 26.7 Schäden
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Aktive Schäden | Handover / Quick View | `VehicleDamage` | `GET /vehicles/:vehicleId/damages/active` | `VehicleOwnershipGuard` | — | **GAP** — kein `@RequirePermission` | — | `DamageResponseDto[]` | form/quick-view state | handover reload | catch in quick view | — | Read-only | Read-only | — |
+| **W** Schaden erfassen | `OperatorDamageCaptureFlow` | `VehicleDamage` + `VehicleDamageImage` | `POST /vehicles/:vehicleId/damages` | vehicle→org via guard | optional booking link | **GAP** | `operatorDamagePayload` + `CreateDamageDto` + image validation | `DamageResponseDto` | — | `operator:damage-created` event → Today/Tasks reload | `submitError` | **GAP** — kein dediziertes Damage-Audit-Event | Nein | Nested create (Bilder in einem `create`) — ein Prisma-Statement | — |
+
+**Damage-Status:** Kein Operator-eigener Status. `DamageStatus`/`severity`/`rentalImpact` kommen aus `DamagesService.create` Defaults bzw. DTO.
+
+### 26.8 Technische Beobachtungen
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **W** (im Handover) | `OperatorHandoverTechnicalObservationsSection` | `VehicleComplaint` (technical observations) | embedded in Handover-Payload `technicalObservations[]` | orgId in Handover-Tx | `stationId` on complaint | `bookings.write` (Handover) | `operatorHandoverTechnicalObservations.ts` chips + drafts | `VehicleComplaint` rows | form drafts | Handover invalidation | in Handover submit | — | Nein | **Ja** — innerhalb Handover-`$transaction` | — |
+
+Kein separater Operator-Endpoint — Beobachtungen werden atomar mit Handover persistiert (`source: OPERATOR_HANDOVER` / `OPERATOR_RETURN`).
+
+### 26.9 Dokumente
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Booking-Dokument-Slots | `useOperatorBookingDocuments` | `BookingDocumentBundle` | `GET /organizations/:orgId/bookings/:bookingId/documents` | `OrgScopingGuard` | — | `bookings.read` | — | Bundle view DTO | `useState` | `form.reloadDocuments()` nach Handover/AI | error state | — | Read-only | Read-only | — |
+| **R** Kundendokumente | `OperatorBookingDocumentsPanel` | `CustomerDocument` | `GET .../customers/:id/documents` | orgId | — | **GAP** — nur `OrgScopingGuard` | — | document list | local | — | error UI | — | Read-only | Read-only | — |
+| **R** Dokument öffnen | Panel | Generated docs storage | `documents.open` / download routes | orgId | — | `bookings.read` | — | stream/url | — | — | toast | — | Read-only | Read-only | legal-doc tests |
+
+Handover Step 4: `documentsAcknowledged` Flag im Protokoll — keine separate Schreib-API im Operator.
+
+### 26.10 Signaturen
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **W** Kunde + Mitarbeiter | `OperatorHandoverStepSignatures` | `BookingHandoverProtocol` Felder | embedded in Handover POST | orgId | — | `bookings.write` | `operatorHandoverPayload` — beide Signaturen Pflicht | `customerSignatureDataUrl`, `staffSignatureDataUrl` in Protocol | canvas `useState`, cleanup on unmount | — | step validation | in Protocol row | Handover idempotency | Handover `$transaction` | payload test |
+
+Listen-Endpoints redigieren Signaturen (`redactHandoverProtocolForList`).
+
+### 26.11 Reifenmessung
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Tire Setups | `useOperatorTireMeasureData` | `VehicleTireSetup` | `GET /vehicles/:id/tires`, `GET .../tires/summary` | ownership | — | **GAP** | — | setup list + summary | local state | — | catch | — | Read-only | Read-only | — |
+| **W** Messung speichern | `OperatorTireMeasureFlow` | `VehicleTireTreadMeasurement`, `TireEvent` | `POST /vehicles/:id/tires/:setupId/measurements` oder `POST .../tires/measurement` | ownership | — | **GAP** | tread parsing `operatorTireMeasure.utils` + backend min-one-wheel | measurement + kFactors | — | `operator:tire-measurement-saved` | toast / throw | `TireEvent` MEASUREMENT | Nein | **GAP** — mehrere sequentielle Writes ohne `$transaction` | — |
+
+### 26.12 Verifikationen (KYC / Führerschein)
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **W** Manuelle Pickup-Prüfung | `OperatorPickupCheckSheet` | `CustomerVerificationCheck` | `POST /customer-verification/manual-pickup-check` | `resolveOrganizationId` + `assertCustomerInOrg` + `assertBookingInOrg` | — | **GAP** — nur `RolesGuard` | `ManualPickupCheckDto` + checklist resolution | `{ checks[] }` | — | kein expliziter Operator-Reload | toast | `CustomerTimelineEvent` NOTE_ADDED + `logVerificationTimeline` | **Nein** — Retry erzeugt Duplikat-Checks | **GAP** — 2× `create` in Schleife, nicht atomar | `operatorPickupCheckPayload.test.ts` |
+| **R** Eligibility (indirekt) | Booking-Detail / Handover-Gate | `CustomerEligibilityService` | in `bookings.detail` Response `eligibility` | orgId | — | `bookings.read` | server evaluation | `eligibility` block in detail | — | nach Pickup-Check manuell via Reload | — | eligibility audit trail (domain) | Read-only | Read-only | eligibility tests |
+
+Operator ruft **kein** `GET /customer-verification/eligibility` direkt auf — Eligibility kommt über Booking-Detail oder Pickup-Gate-Enforcement.
+
+### 26.13 Scan
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Fahrzeug-Suche | `useOperatorScanSearch` | `Vehicle` fleet map | Client-Filter auf `FleetContext` | orgId | station in vehicle | transitiv fleet | min 0 chars for fleet filter | `VehicleData[]` gefiltert | fleet map cache | `refreshToken` | — | — | Read-only | Read-only | — |
+| **R** Buchungs-Suche |同上 | `Booking` | `GET .../bookings/:id` + `GET .../bookings?search=` | orgId | — | `bookings.read` | min 2 chars search | `OperatorScanBookingHit[]` | local state | `refreshToken` | `bookingsError` | — | Read-only | Read-only | — |
+| **R** Scan→Detail Mapping | `mapScanBookingToDetailItem` | Frontend-Heuristik | — | — | — | — | kind PICKUP/RETURN heuristic | `OperatorTodayBookingItem` mit **`isOverdue: false` hardcoded** | — | detail reload via `bookings.detail` | — | — | — | — | — |
+
+QR-Scanner: **nicht implementiert** (Textsuche only).
+
+### 26.14 Upload / OCR (AI Upload)
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R+W** Intake-Flow | `OperatorAiUploadFlow` → `useDocumentExtractionFlow` | `VehicleDocumentExtraction` | `POST` upload/extract/poll + `POST .../confirm` (vehicle or org path) | org + vehicle scope | optional booking context | `document-upload.write` / `read` | unified intake pipeline; `source: operator_app` | extraction record + apply result | flow state in hook | `form.reloadDocuments` on complete | flow errors | `appendExtractionActionAudit` on confirm | confirm: **Ja** wenn bereits APPLIED | confirm `updateMany` + apply orchestrator (mehrstufig) | document-intake tests |
+| **W** Confirm | `OperatorAiUploadReview` | apply targets (tires, service, …) | `POST /vehicles/:vehicleId/document-extractions/:id/confirm` or org variant | ownership / org | — | `document-upload.write` | plausibility BLOCKER gate; `actionPlanFingerprint` | applied extraction | — | documents reload | — | confirm audit in plausibility JSON | status-guarded | apply may partial → `PARTIALLY_APPLIED` | rate-limit spec `operator_app` |
+
+`showEntityResolution={false}` — Entity-Binding-UI deaktiviert (IMP-006).
+
+### 26.15 Notifications
+
+| Op | UI | Auth. Quelle | API | Tenant | Station | Permission | Validierung | Output-DTO | Cache Key | Invalidierung | Fehler | Audit | Idempotenz | Tx | Tests |
+|----|-----|--------------|-----|--------|---------|------------|-------------|------------|-----------|---------------|--------|-------|------------|-----|-------|
+| **R** Operational Alerts | `useOperatorOperationalAlerts` | Business Insights | `GET .../dashboard-insights` | orgId | — | **GAP** | client type filter | top-N alerts | local | orgId only | catch→[] | insight run logs | Read-only | Read-only | — |
+
+**Kein** Push/In-App-Notification-Channel, **kein** WebSocket, **kein** Operator-Polling außer Insights-on-mount. UX-Feedback via `sonner` Toasts (nicht persistiert).
+
+### 26.16 Fahrzeugstatus & Booking-Status (Querschnitt)
+
+| Domäne | Autoritative Quelle | Operator-Verhalten | Doppelte Wahrheit? |
+|--------|---------------------|-------------------|-------------------|
+| Fahrzeugstatus (operational) | `vehicle-operational-state` + Fleet-Map-Derivation + `Vehicle.status` bei Handover | `deriveVehicleOperatorStatuses` nutzt `selectOperationalStatus` | **Nein** |
+| Ready-to-Rent / rental_blocked | `RentalHealthFleetService` | Pickup-Gate + blocked vehicle list | **Nein** |
+| Booking-Status | `Booking.status` (Prisma enum) | Anzeige + Gates; Mutationen nur via API | **Nein** |
+| Overdue Pickup/Return | `BookingsService.findTodays*` + Insight-Detektoren | Today: Backend-Felder; Scan-Detail: **hardcoded false** | **Teilweise** (Scan-Pfad) |
+| Task overdue | `TasksService` bucket queries | Anzeige only | **Nein** |
+
+### 26.17 Identifizierte doppelte Wahrheiten
+
+| ID | Bereich | Befund | Schwere | Operator betroffen? |
+|----|---------|--------|---------|-------------------|
+| DT-001 | Overdue | `mapScanBookingToDetailItem` setzt `isOverdue: false` statt API-Felder zu nutzen | P2 | **Ja** — Scan-Deep-Link |
+| DT-002 | Overdue / Insights | `PICKUP_OVERDUE` Insight vs. `findTodaysPickups.isOverdue` — gleiche Domäne, potenziell unterschiedliche Schwellen/Detektoren | P2 | **Ja** — Today-Banner + Alerts |
+| DT-003 | Tasks | Drei parallele Task-Caches (`OperatorDataContext` ALL_OPEN, `useOperatorTodayFeed` 5× bucket, `OperatorTasksView` remote) | P2 | **Ja** |
+| DT-004 | Station KPIs (Plattform) | `StationDetailView` filtert Bookings clientseitig für today pickups/returns statt `today/pickups` API | P2 | Nein (Rental), aber gleiche Booking-Domäne |
+| DT-005 | Due-Now | `isDueNow` ±2h rein UI-seitig in `operatorData.ts` — kein Backend-Feld | P3 | **Ja** — nur Sortierung/Badge, kein Gate |
+| — | Booking-State | Kein separater Operator-Booking-State | — | ✅ sauber |
+| — | Ready-to-Rent | Shared `deriveBookingPickupGate` + Backend Enforcement | — | ✅ sauber |
+| — | Vehicle Health | Shared `selectOperationalStatus` + `rentalHealth` | — | ✅ sauber |
+| — | Damage Status | `DamagesService` kanonisch | — | ✅ sauber |
+| — | Customer-Freigabe | `CustomerEligibility` + `CustomerVerification` + Pickup-Gate | — | ✅ sauber (kein Operator-Shadow) |
+| — | Telemetry Freshness | Operator konsumiert keine eigene Freshness-Regel | — | ✅ N/A im Operator-MVP |
+
+### 26.18 Findings (Datenfluss-Prompt 4)
+
+| ID | Severity | Bereich | Betroffene Dateien | Auswirkung | Empfohlene Remediation | Akzeptanzkriterium |
+|----|----------|---------|-------------------|------------|------------------------|-------------------|
+| DF-001 | **P1** | Permissions | `backend/src/modules/tasks/tasks.controller.ts` L193–201 | Jeder Org-Member mit JWT kann Tasks starten/warten ohne `tasks.update`-Prüfung | `@RequireTaskPermission('tasks.update')` auf `start` und `waiting` | Security-Negativtest: User ohne `tasks.update` → 403 |
+| DF-002 | **P1** | Permissions | `backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts` damages/tires Handler | Schaden/Reifen-Mutation nur via VehicleOwnership, kein Modul-Permission | `@RequirePermission('fleet-condition', 'write')` (oder fleet.write) auf POST/PATCH damages + tire measurements | IAM-Matrix-Test für Operator-Rolle WORKER |
+| DF-003 | **P1** | Permissions | `backend/src/modules/customer-verification/customer-verification.controller.ts` | Manuelle KYC/Führerschein-Prüfung ohne dediziertes Permission-Modul | `@RequirePermission('customers', 'write')` oder `bookings.write` + Dokumentation | Unauthorized-Rolle kann keinen Pickup-Check schreiben |
+| DF-004 | **P1** | Permissions | `backend/src/modules/customers/customers.controller.ts` | Booking-Form lädt Kunden ohne `@RequirePermission` | `@RequirePermission('customers', 'read')` auf list/get | Operator ohne customers.read sieht keinen Daten-Leak |
+| DF-005 | **P2** | Permissions | `backend/src/modules/business-insights/dashboard-insights.controller.ts` | Insights ohne Modul-Permission — org-scoped only | `@RequirePermission('dashboard', 'read')` oder bookings.read | Policy dokumentiert + Test |
+| DF-006 | **P2** | Transaktion | `backend/src/modules/vehicle-intelligence/tires/tire-lifecycle.service.ts` `recordMeasurement` | Measurement + Setup-Update + TireEvent + Recalc nicht atomar — Partial Failure möglich | `$transaction` um create+update+event; recalc async | Integrationstest: simulierter Fehler mid-flow hinterlässt keine orphaned measurement |
+| DF-007 | **P2** | Transaktion | `backend/src/modules/customer-verification/customer-verification.service.ts` `createManualPickupCheck` | ID + License Checks als 2 separate Creates — Retry erzeugt Duplikate | `$transaction` + idempotency key `(bookingId, provider=MANUAL, kind)` | Doppel-POST liefert gleiche Checks oder 409 |
+| DF-008 | **P2** | Doppelte Wahrheit | `frontend/src/operator/lib/operatorData.ts` `mapScanBookingToDetailItem` | Scan-Buchungsdetail zeigt nie Overdue | `isOverdue`/`minutesOverdue` aus `bookings.detail` oder list row | Scan-Treffer für überfällige Pickups zeigen Badge |
+| DF-009 | **P2** | Cache | `OperatorDataContext`, `useOperatorTodayFeed`, `OperatorTasksView` | Inkonsistente Task-Zähler / veraltete Listen nach Mutation | Einheitlicher Task-Query-Subscriber oder zentraler `useOperatorTasks` Hook | Nach Task-Complete aktualisieren Today-Feed + Tasks-Tab + Summary innerhalb 1s |
+| DF-010 | **P2** | Fehler-UX | `frontend/src/operator/views/OperatorTasksView.tsx` L65–67 | Netzwerkfehler erscheinen als leere Liste | Error-State + Retry wie `tasksError` aus Context | Vitest: mock reject → Error UI |
+| DF-011 | **P2** | Audit | `backend/src/modules/vehicle-intelligence/damages/damages.service.ts` `create` | Schadenserfassung ohne dediziertes Audit/Timeline-Event | `VehicleTimelineEvent` oder Damage-Audit analog Tasks | Audit-Log-Eintrag pro Damage-Create nachweisbar |
+| DF-012 | **P3** | API-Hygiene | `frontend/src/operator/handover/useOperatorHandoverForm.ts` | Deprecated `damagesActive` Alias | Migration zu `getVehicleDamagesActive` | Kein deprecated call im Operator-Modul |
+| DF-013 | **P3** | Idempotenz | `bookings-handover.service.ts` RETURN path | Return-Retry nach Erfolg → Conflict statt Replay | Optional idempotent return wie Pickup (wenn ACTIVE+protocol exists) | Doppel-Submit Return gibt bestehendes Protokoll zurück |
+
+### 26.19 Kritische fehlende Permissions (Zusammenfassung)
+
+| Endpoint / Aktion | Aktuell | Soll (empfohlen) | Finding |
+|-------------------|---------|------------------|---------|
+| `PATCH .../tasks/:id/start` | `RolesGuard` only | `@RequireTaskPermission('tasks.update')` | DF-001 |
+| `PATCH .../tasks/:id/waiting` | `RolesGuard` only | `@RequireTaskPermission('tasks.update')` | DF-001 |
+| `POST /vehicles/:id/damages` | `VehicleOwnershipGuard` | `fleet-condition.write` | DF-002 |
+| `POST /vehicles/:id/tires/*/measurements` | `VehicleOwnershipGuard` | `fleet-condition.write` | DF-002 |
+| `POST /customer-verification/manual-pickup-check` | `RolesGuard` | `customers.write` oder `bookings.write` | DF-003 |
+| `GET .../customers`, `GET .../customers/:id` | `OrgScopingGuard` | `customers.read` | DF-004 |
+| `GET .../dashboard-insights` | `OrgScopingGuard` | explizites read-Permission | DF-005 |
+
+**Hinweis:** `canAccessOperatorApp()` und Device-Guard bleiben **keine** Security-Boundary (INV-003).
+
+### 26.20 Fehlende Transaktionsgrenzen (Zusammenfassung)
+
+| Flow | Ist | Risiko | Finding |
+|------|-----|--------|---------|
+| Pickup/Return Handover | ✅ `$transaction` (Protocol, Booking, Vehicle, Damages link, Complaints) | gering | — |
+| Task Status-Wechsel | ✅ `$transaction` (Task + TaskEvent) | gering | — |
+| Damage Create | ✅ ein `prisma.vehicleDamage.create` inkl. nested images | gering | — |
+| Tire Measurement | ❌ 3+ sequentielle DB-Ops + async recalc | Partial state | DF-006 |
+| Manual Pickup Check | ❌ 2× create + timeline in Schleife | Duplikate bei Retry | DF-007 |
+| Document Extraction Confirm | ⚠️ `updateMany` dann Apply-Orchestrator | `PARTIALLY_APPLIED` möglich | dokumentiert in Intake-Architektur |
+| Booking Create | ⚠️ Overlap-Check dann create (Race möglich) | seltenes Doppel-Booking | Plattform-Risiko, nicht Operator-spezifisch |
+
+### 26.21 Cache- & Invalidierungs-Übersicht
+
+| Cache Key / State | Besitzer | Invalidierung |
+|-----------------|----------|---------------|
+| `vehicleOperationalQueryKeys.operatorToday(orgId)` | Registry + `OperatorHandoverRefreshBridge` | `invalidateVehicleOperationalState`, `triggerRefresh`, `reloadToday` |
+| `vehicleOperationalQueryKeys.operatorTasks(orgId)` | Registry + Bridge | Handover, booking mutations, task events |
+| `vehicleOperationalQueryKeys.fleetMap/fleetHealth(orgId)` | `FleetContext` / Zustand store | `invalidateVehicleOperationalState` |
+| `taskQueryKeys.listBucket(orgId, bucket)` | `useTaskList` / `useOperatorTodayFeed` | `invalidateTaskQueries` event bus |
+| `OperatorDataContext` React state | pickups/returns/tasks | `refreshToken`, `reloadAll`, task invalidation subscriber |
+| `OperatorTasksView.remoteTasks` | isoliert | **nicht** automatisch an Bus angebunden |
+
+---
+
 ## Anhang A — Geänderte Dateien
 
 | Prompt | Datei | Aktion |
@@ -997,6 +1252,8 @@ Vorläufige Kategorien (ohne Pass/Fail):
 | 3 | `frontend/README.md` | `operator/` ergänzt |
 | 3 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 25 Dokumentationsabgleich |
 | 3 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.829 |
+| 4 | `docs/audits/operator-app-production-readiness-2026-07.md` | Kap. 26 Datenfluss-Traceability + Findings DF-001–013 |
+| 4 | `frontend/src/master/components/ChangesView.tsx` | Changelog V4.9.830 |
 
 ---
 
