@@ -196,7 +196,7 @@ export function validateLlmVisibleText(
     if (overdue?.explanation && !text.includes(overdue.explanation.slice(0, 24))) {
       issues.push('overdue_explanation_not_grounded');
     }
-    if (markedOverdue === false && /(überfällig|überfällig|overdue)/i.test(text)) {
+    if (markedOverdue === false && /(überfällig|overdue)/i.test(text)) {
       issues.push('booking_status_invented_overdue');
     }
     if (

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-ai-security-audit-v49822-2026-07-25',
+    version: '4.9.822',
+    title: 'V4.9.822 — Fleet AI security & hallucination audit (Prompt 29)',
+    summary: [
+      'Security & hallucination audit with 20 automated cases (Prompt 29).',
+      'CRITICAL: block LLM when allowLlmInference false; keep grounded finalize responseType.',
+      'Extended DE/EN prompt-injection detection; extended validateLlmVisibleText guards.',
+      'docs/audits/ai-agent-security-hallucination-review-2026-07.md',
+    ],
+    reason: 'Production-ready security and hallucination audit for Fleet AI Assistant.',
+    previousBehavior: 'Partial injection/hallucination coverage; LLM could run on injection path.',
+    details:
+      'fleet-chat-orchestrator.service.ts, fleet-chat-security.detector.ts, fleet-chat-evidence-llm-input.builder.ts, fleet-chat-security-hallucination-audit.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-25T02:00:00.000Z',
+  },
+  {
     id: 'fleet-ai-flow-e2e-v49821-2026-07-25',
     version: '4.9.821',
     title: 'V4.9.821 — Fleet AI full data flow E2E (Prompt 28)',
