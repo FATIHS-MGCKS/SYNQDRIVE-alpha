@@ -97,6 +97,13 @@ describe('BillingSubscriptionAdminService', () => {
     execute: jest.fn(),
   };
 
+  const activationGuard = {
+    guardActivation: jest.fn(async () => ({
+      stripeSubscriptionId: 'sub_stripe',
+      stripeStatus: 'active',
+    })),
+  };
+
   let service: BillingSubscriptionAdminService;
 
   beforeEach(() => {
@@ -115,6 +122,7 @@ describe('BillingSubscriptionAdminService', () => {
       pricePreview as never,
       usageSnapshots as never,
       periodResolver as never,
+      activationGuard as never,
     );
   });
 

@@ -67,8 +67,10 @@ export interface StripeSubscriptionOrchestratorResult {
 export function buildStripeSubscriptionIdempotencyKey(
   subscriptionId: string,
   stripeMode: BillingStripeMode,
+  suffix?: string,
 ): string {
-  return `stripe-subscription-sync:${subscriptionId}:${stripeMode}:v${STRIPE_SUBSCRIPTION_ORCHESTRATOR_SCHEMA_VERSION}`;
+  const base = `stripe-subscription-sync:${subscriptionId}:${stripeMode}:v${STRIPE_SUBSCRIPTION_ORCHESTRATOR_SCHEMA_VERSION}`;
+  return suffix ? `${base}:${suffix}` : base;
 }
 
 export function buildStripeSubscriptionMetadata(input: {

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-billing-guards-2b7-2026-07-26',
+    version: '4.9.886',
+    title: 'V4.9.886 — Master Admin 2B.7: Billing activation guards',
+    summary: [
+      'Stripe sync-then-verify gate before local ACTIVE on activate/reactivate.',
+      'Guards: duplicate activation, race/idempotency, legacy direct create blocked.',
+      'Orchestrator: contractDomainStatusOverride + idempotency key suffix.',
+      'docs/remediation/billing-guards.md',
+    ],
+    reason:
+      'No endpoint may commit local subscription ACTIVE without Stripe confirmation when Stripe is configured.',
+    previousBehavior:
+      'activate() committed ACTIVE locally first; Stripe sync was async and best-effort. Legacy POST /billing/subscriptions created ACTIVE directly.',
+    details:
+      'billing-activation-guard.service.ts, billing-subscription-admin.service.ts, stripe-subscription-orchestrator.service.ts',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T12:30:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

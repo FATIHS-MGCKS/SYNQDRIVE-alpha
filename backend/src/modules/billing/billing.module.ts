@@ -46,6 +46,7 @@ import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
 import { MasterSubscriptionController } from './master-subscription.controller';
 import { BillingSubscriptionAdminService } from './billing-subscription-admin.service';
 import { BillingCommandService } from './billing-command.service';
+import { BillingActivationGuardService } from './billing-activation-guard.service';
 import { BillingCommandOrchestratorService } from './billing-command-orchestrator.service';
 import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
 import { BillingDomainEventOutboxRepository } from './billing-domain-event-outbox.repository';
@@ -118,6 +119,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     UsageSnapshotService,
     SubscriptionLifecycleService,
     BillingSubscriptionAdminService,
+    BillingActivationGuardService,
     BillingCommandService,
     BillingCommandOrchestratorService,
     BillingDomainEventOutboxService,
@@ -186,6 +188,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     UsageSnapshotService,
     SubscriptionLifecycleService,
     BillingSubscriptionAdminService,
+    BillingActivationGuardService,
     BillingCommandService,
     BillingCommandOrchestratorService,
     BillingDomainEventOutboxService,

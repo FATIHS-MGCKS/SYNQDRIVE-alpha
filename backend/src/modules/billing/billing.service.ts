@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import {
   BillingSubscription,
   BillingInvoice,
@@ -16,6 +16,7 @@ import { BillingUsageService } from './billing-usage.service';
 import { PricebookService } from './pricebook.service';
 import { BillingAuditService } from './billing-audit.service';
 import { mapPrismaInvoiceToDisplayStatus } from './domain';
+import { BillingActivationGuardErrorCode } from './domain/billing-activation-guard';
 
 const PLAN_RANK: Record<string, number> = {
   STARTER: 0,
@@ -380,23 +381,14 @@ export class BillingService {
     stripeSubscriptionId: string,
     actorUserId?: string,
   ): Promise<BillingSubscription> {
-    const sub = await this.prisma.billingSubscription.create({
-      data: {
-        organizationId: orgId,
-        stripeCustomerId,
-        stripeSubscriptionId,
-        status: 'ACTIVE' as BillingStatus,
-      },
-    });
-    await this.audit.log({
+    throw new ConflictException({
+      code: BillingActivationGuardErrorCode.LEGACY_DIRECT_ACTIVATION_BLOCKED,
+      message:
+        'Direct subscription creation with ACTIVE status is blocked. Use Master Admin subscription lifecycle with Stripe confirmation.',
       organizationId: orgId,
-      actorUserId,
-      action: 'SUBSCRIPTION_CREATED',
-      entityType: 'BillingSubscription',
-      entityId: sub.id,
-      after: sub,
+      stripeCustomerId,
+      stripeSubscriptionId,
     });
-    return sub;
   }
 
   async updateSubscriptionStatus(
