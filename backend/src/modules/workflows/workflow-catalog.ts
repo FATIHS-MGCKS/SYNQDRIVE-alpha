@@ -32,6 +32,20 @@ export const WORKFLOW_CONDITION_FIELDS = [
   },
   { key: 'overdue_days', path: 'payload.overdueDays', dataType: 'number' as const, min: 0, unit: 'days' },
   { key: 'damage_severity', path: 'payload.damageSeverity', dataType: 'string' as const },
+  { key: 'notification_severity', path: 'payload.severity', dataType: 'string' as const },
+  { key: 'notification_event_type', path: 'payload.eventType', dataType: 'string' as const },
+  {
+    key: 'notification_lifecycle_generation',
+    path: 'payload.lifecycleGeneration',
+    dataType: 'number' as const,
+    min: 1,
+  },
+  {
+    key: 'notification_reopen_count',
+    path: 'payload.reopenCount',
+    dataType: 'number' as const,
+    min: 0,
+  },
 ] as const;
 
 const OPERATORS_BY_TYPE: Record<string, readonly string[]> = {

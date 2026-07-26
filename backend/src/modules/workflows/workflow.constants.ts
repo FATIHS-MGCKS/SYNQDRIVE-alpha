@@ -1,5 +1,18 @@
 import { VehicleStatus } from '@prisma/client';
 
+/** Canonical notification lifecycle events consumed by workflow automation. */
+export const NOTIFICATION_LIFECYCLE_EVENT_TYPES = [
+  'notification.opened',
+  'notification.escalated',
+  'notification.reopened',
+  'notification.resolved',
+  'notification.acknowledged',
+  'notification.unacknowledged_for_duration',
+] as const;
+
+export type NotificationLifecycleEventType =
+  (typeof NOTIFICATION_LIFECYCLE_EVENT_TYPES)[number];
+
 /** Canonical MVP workflow event types. */
 export const WORKFLOW_EVENT_TYPES = [
   'task.automation.materialize',
@@ -10,6 +23,7 @@ export const WORKFLOW_EVENT_TYPES = [
   'vehicle.dtc.critical',
   'invoice.overdue',
   'customer.complaint.created',
+  ...NOTIFICATION_LIFECYCLE_EVENT_TYPES,
   'manual.test',
 ] as const;
 

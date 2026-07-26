@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import {
   Notification,
@@ -44,6 +45,12 @@ import { isManualResolutionAllowed } from './api/notification-manual-resolution.
 import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
 import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
 import { NotificationDeliverySchedulerService } from './delivery/notification-delivery-scheduler.service';
+import { NotificationLifecycleWorkflowEmitter } from './workflow/notification-lifecycle-workflow.emitter';
+import {
+  resolveWorkflowTriggerNotificationId,
+  shouldSuppressWorkflowNotificationLoop,
+} from './workflow/notification-workflow-loop.guard';
+import type { NotificationLifecycleEventType } from '@modules/workflows/workflow.constants';
 
 @Injectable()
 export class NotificationCoreService {
@@ -55,6 +62,7 @@ export class NotificationCoreService {
     private readonly deliveryEnqueue: NotificationDeliveryEnqueueService,
     private readonly deliveryPolicy: NotificationDeliveryPolicyService,
     private readonly deliveryScheduler: NotificationDeliverySchedulerService,
+    @Optional() private readonly lifecycleWorkflowEmitter?: NotificationLifecycleWorkflowEmitter,
   ) {}
 
   isEnabled(): boolean {
@@ -88,12 +96,37 @@ export class NotificationCoreService {
     const { canonical: fingerprint } = fingerprintFromCandidate(normalized);
     const referenceNow = options.referenceNow ?? new Date();
 
+    const loopTriggerId = resolveWorkflowTriggerNotificationId(normalized, options);
+    if (loopTriggerId) {
+      const triggerNotification = await this.repository.findById(
+        loopTriggerId,
+        normalized.organizationId,
+      );
+      if (
+        shouldSuppressWorkflowNotificationLoop(normalized, options, triggerNotification)
+      ) {
+        this.logOperation('ignored', normalized, {
+          notificationId: triggerNotification!.id,
+          fingerprint,
+          reason: 'WORKFLOW_LOOP_GUARD',
+          runId: options.runId,
+        });
+        recordNotificationIngestOperation('ignored');
+        return {
+          operation: 'ignored',
+          notification: triggerNotification!,
+          reason: 'WORKFLOW_LOOP_GUARD',
+        };
+      }
+    }
+
     if (isRecoverySeverity(normalized.severity as unknown as DomainSeverity)) {
       return this.handleRecoveryCandidate(normalized, fingerprint, referenceNow, options);
     }
 
     return withUniqueConflictRetry(async (): Promise<MaterializeResult> => {
       const pendingOutboxIds: string[] = [];
+      let severityBefore: NotificationSeverity | undefined;
       const result = await this.repository.runTransaction(async (tx) => {
         const active = await this.repository.findAnyActiveByFingerprint(
           normalized.organizationId,
@@ -102,7 +135,7 @@ export class NotificationCoreService {
         );
 
         if (active) {
-          const severityBefore = active.severity;
+          severityBefore = active.severity;
           const updated = await this.updateActiveFromCandidate(active, normalized, tx);
           const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation(
             'updated',
@@ -238,6 +271,7 @@ export class NotificationCoreService {
       });
 
       await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+      this.emitLifecycleForMaterialize(result, severityBefore, options);
       return result;
     });
   }
@@ -289,6 +323,7 @@ export class NotificationCoreService {
     organizationId: string,
     resolvedAt: Date = new Date(),
     context: { manual?: boolean; eventKind?: NotificationEventKind } = {},
+    options: IngestCandidateOptions = {},
   ) {
     const notification = await this.requireNotification(notificationId, organizationId);
 
@@ -332,6 +367,8 @@ export class NotificationCoreService {
 
     await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
 
+    this.emitLifecycleEvent('notification.resolved', updated, resolvedAt, options);
+
     this.logger.log({
       msg: 'notification.resolved',
       organizationId,
@@ -369,6 +406,7 @@ export class NotificationCoreService {
       return row;
     });
     await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+    this.emitLifecycleEvent('notification.reopened', reopened, normalized.occurredAt);
     return reopened;
   }
 
@@ -399,6 +437,7 @@ export class NotificationCoreService {
       return row;
     });
     await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+    this.emitLifecycleEvent('notification.acknowledged', updated, at);
     return updated;
   }
 
@@ -558,6 +597,8 @@ export class NotificationCoreService {
       operation: 'resolved',
       runId: options.runId,
     });
+
+    this.emitLifecycleEvent('notification.resolved', resolved, resolvedAt, options);
 
     return { operation: 'resolved', notification: resolved };
   }
@@ -747,6 +788,61 @@ export class NotificationCoreService {
       sourceRef: candidate.sourceRef,
       operation,
       ...extra,
+    });
+  }
+
+  private emitLifecycleForMaterialize(
+    result: MaterializeResult,
+    severityBefore: NotificationSeverity | undefined,
+    options: IngestCandidateOptions,
+  ) {
+    if (options.suppressWorkflowLifecycleEmit) return;
+
+    const { notification, operation } = result;
+    if (operation === 'created') {
+      this.emitLifecycleEvent('notification.opened', notification, notification.firstSeenAt, options);
+      return;
+    }
+    if (operation === 'reopened') {
+      this.emitLifecycleEvent('notification.reopened', notification, notification.lastSeenAt, options);
+      return;
+    }
+    if (operation === 'updated' && severityBefore) {
+      const escalated =
+        this.deliveryPolicy.shouldEnqueueForIngestOperation(
+          'updated',
+          notification,
+          severityBefore,
+        ) === 'SEVERITY_ESCALATED';
+      if (escalated) {
+        this.emitLifecycleEvent('notification.escalated', notification, notification.lastSeenAt, options);
+      }
+    }
+  }
+
+  private emitLifecycleEvent(
+    lifecycleEvent: NotificationLifecycleEventType,
+    notification: Notification,
+    occurredAt?: Date,
+    options: IngestCandidateOptions = {},
+  ) {
+    if (options.suppressWorkflowLifecycleEmit || !this.lifecycleWorkflowEmitter) return;
+
+    this.lifecycleWorkflowEmitter.emit({
+      lifecycleEvent,
+      notification: {
+        id: notification.id,
+        organizationId: notification.organizationId,
+        fingerprint: notification.fingerprint,
+        lifecycleGeneration: notification.lifecycleGeneration,
+        reopenCount: notification.reopenCount,
+        eventType: notification.eventType,
+        entityType: notification.entityType,
+        entityId: notification.entityId,
+        severity: notification.severity,
+      },
+      occurredAt,
+      correlationId: options.runId,
     });
   }
 }

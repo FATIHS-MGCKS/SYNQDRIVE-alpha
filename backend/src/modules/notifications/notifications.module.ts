@@ -5,6 +5,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
 import { ObservabilityModule } from '@modules/observability/observability.module';
+import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { DrivingAssessmentNotificationAdapter } from './adapters/driving-assessment-notification.adapter';
 import { NotificationProducerIngestService } from './adapters/notification-producer.ingest.service';
@@ -38,6 +39,7 @@ import { NotificationMigrationAnalysisService } from './migration/notification-m
 import { NotificationMigrationBackfillService } from './migration/notification-migration-backfill.service';
 import { NotificationMigrationAcceptanceService } from './migration/notification-migration-acceptance.service';
 import { NotificationArchitectureAuditService } from './migration/notification-architecture-audit.service';
+import { NotificationLifecycleWorkflowEmitter } from './workflow/notification-lifecycle-workflow.emitter';
 
 /**
  * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime, REST API, delivery outbox.
@@ -53,6 +55,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
       { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },
     ),
     forwardRef(() => BusinessInsightsModule),
+    WorkflowsModule,
   ],
   controllers: [NotificationsController],
   providers: [
@@ -76,6 +79,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     NotificationMigrationBackfillService,
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
+    NotificationLifecycleWorkflowEmitter,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
@@ -103,6 +107,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     NotificationMigrationBackfillService,
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
+    NotificationLifecycleWorkflowEmitter,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,

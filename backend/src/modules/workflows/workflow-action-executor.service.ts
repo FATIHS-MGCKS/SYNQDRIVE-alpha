@@ -109,6 +109,25 @@ export class WorkflowActionExecutorService {
     }
   }
 
+  private triggeringNotificationId(ctx: ActionExecutionContext): string | undefined {
+    const fromPayload = ctx.payload.notificationId;
+    return typeof fromPayload === 'string' && fromPayload.trim() ? fromPayload.trim() : undefined;
+  }
+
+  private workflowActionMetadata(
+    ctx: ActionExecutionContext,
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    const notificationId = this.triggeringNotificationId(ctx);
+    return {
+      ...extra,
+      workflowId: ctx.workflowId,
+      workflowRunId: ctx.workflowRunId,
+      eventType: ctx.eventType,
+      ...(notificationId ? { triggeringNotificationId: notificationId } : {}),
+    };
+  }
+
   private vehicleIdFromPayload(ctx: ActionExecutionContext): string | undefined {
     const fromPayload = ctx.payload.vehicleId;
     if (typeof fromPayload === 'string' && fromPayload) return fromPayload;
@@ -214,17 +233,22 @@ export class WorkflowActionExecutorService {
       activatesAt: typeof config.activatesAt === 'string' ? new Date(config.activatesAt) : new Date(),
       checklist,
       metadata: {
-        ...(typeof config.metadata === 'object' && config.metadata ? config.metadata : {}),
-        workflowId: ctx.workflowId,
-        workflowRunId: ctx.workflowRunId,
-        eventType: ctx.eventType,
-        automationRuleId: config.automationRuleId,
-        automationCatalogKey: config.automationCatalogKey,
-        dedupKey,
-        provenance: config.automationCatalogKey ? 'task_automation_workflow' : 'workflow',
+        ...this.workflowActionMetadata(ctx, {
+          ...(typeof config.metadata === 'object' && config.metadata ? config.metadata : {}),
+          automationRuleId: config.automationRuleId,
+          automationCatalogKey: config.automationCatalogKey,
+          dedupKey,
+          provenance: config.automationCatalogKey ? 'task_automation_workflow' : 'workflow',
+        }),
       } as Prisma.InputJsonValue,
     });
-    return { taskId: task.id, dedupKey };
+    return {
+      taskId: task.id,
+      dedupKey,
+      ...(this.triggeringNotificationId(ctx)
+        ? { triggeringNotificationId: this.triggeringNotificationId(ctx) }
+        : {}),
+    };
   }
 
   private async execAlertCreate(
@@ -254,11 +278,16 @@ export class WorkflowActionExecutorService {
       vehicleId: this.vehicleIdFromPayload(ctx) ?? null,
       bookingId: this.bookingIdFromPayload(ctx) ?? null,
       metadata: {
-        severity,
-        workflowRunId: ctx.workflowRunId,
+        ...this.workflowActionMetadata(ctx, { severity }),
       } as Prisma.InputJsonValue,
     });
-    return { alertTaskId: task.id, preparedOnly: true };
+    return {
+      alertTaskId: task.id,
+      preparedOnly: true,
+      ...(this.triggeringNotificationId(ctx)
+        ? { triggeringNotificationId: this.triggeringNotificationId(ctx) }
+        : {}),
+    };
   }
 
   private async execVehicleStatusUpdate(
@@ -284,7 +313,13 @@ export class WorkflowActionExecutorService {
       where: { id: vehicleId },
       data: { status },
     });
-    return { vehicleId, status };
+    return {
+      vehicleId,
+      status,
+      ...(this.triggeringNotificationId(ctx)
+        ? { triggeringNotificationId: this.triggeringNotificationId(ctx) }
+        : {}),
+    };
   }
 
   private async execNotificationPrepare(
@@ -307,11 +342,19 @@ export class WorkflowActionExecutorService {
       vehicleId: this.vehicleIdFromPayload(ctx) ?? null,
       bookingId: this.bookingIdFromPayload(ctx) ?? null,
       metadata: {
-        target: config.target ?? 'admin',
-        preparedOnly: true,
+        ...this.workflowActionMetadata(ctx, {
+          target: config.target ?? 'admin',
+          preparedOnly: true,
+        }),
       } as Prisma.InputJsonValue,
     });
-    return { preparedOnly: true, taskId: task.id };
+    return {
+      preparedOnly: true,
+      taskId: task.id,
+      ...(this.triggeringNotificationId(ctx)
+        ? { triggeringNotificationId: this.triggeringNotificationId(ctx) }
+        : {}),
+    };
   }
 
   private async execApprovalRequest(

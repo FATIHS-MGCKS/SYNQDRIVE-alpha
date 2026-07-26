@@ -35,6 +35,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-workflow-lifecycle-v49869-2026-07-26',
+    version: '4.9.869',
+    title: 'V4.9.869 — Notification Engine: Workflow-Lifecycle-Events',
+    summary: [
+      'Kanonische Workflow-Trigger: notification.opened, .escalated, .reopened, .resolved, .acknowledged (+ .unacknowledged_for_duration im Katalog).',
+      'NotificationLifecycleWorkflowEmitter emittiert vollständigen Payload (orgId, notificationId, fingerprint, generation, severity, correlationId).',
+      'Workflow-Aktionen referenzieren triggeringNotificationId; notification.prepare erzeugt weiterhin keine Notification-Rows.',
+      'Loop-Guard: workflowTriggerNotificationId blockiert Re-Ingest derselben Notification.',
+      'Integrationstests: Open, Escalation, Resolve, Reopen, Multi-Workflow, Disabled, Cross-Tenant.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 23: Workflow Automation reagiert nur auf kanonische Notification-Lifecycle-Events — ohne Trigger-Loops.',
+    previousBehavior:
+      'Keine notification.* Workflow-Events; NotificationCoreService emittierte keine Workflow-Signale; parallele Domain-Trigger ohne Lifecycle-Bezug.',
+    details:
+      'notification-lifecycle-workflow.emitter.ts, notification-workflow-loop.guard.ts, workflow.constants.ts, notification-core.service.ts, workflow-action-executor.service.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:35:00.000Z',
+  },
+  {
+    id: 'notification-entity-navigation-v49868-2026-07-26',
+    version: '4.9.868',
+    title: 'V4.9.868 — Notification Engine: sichere Entity-Navigation',
+    summary: [
+      'Zentrale `notification-entity-navigation.ts` — typisiertes Routing aus action.type/target + entityType/entityId.',
+      'Backend: entity.available + Label-Enrichment für Kunde/Rechnung; observationId im actionTarget.',
+      'Row-Click = Primary-CTA-Ziel; Chevron expandiert Details separat.',
+      'Gelöschte Entities: Toast-Hinweis, keine fehlerhafte Route, kein Cross-Tenant.',
+      'Tests: Fahrzeug, Buchung, Kunde, Rechnung, Observation, Task, deleted, fremde Org.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 22: jede Meldung muss zuverlässig zur richtigen SynqDrive-Entity navigieren — ohne freie Backend-Texte oder sichtbare UUIDs.',
+    previousBehavior:
+      'Navigation verteilt über v2-router, Panel-Fallbacks und Legacy-CTA; invoice handler fehlte im Panel; observation ohne Deep-Link; keine entity.available.',
+    details:
+      'notification-entity-navigation.ts, notification-entity-availability.enricher.ts, observationModuleTarget, NotificationPanel + NotificationSummaryRow, entity label enricher.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:30:00.000Z',
+  },
+  {
     id: 'notification-localized-templates-v49867-2026-07-26',
     version: '4.9.867',
     title: 'V4.9.867 — Notification Engine: zentralisierte lokalisierte Templates',

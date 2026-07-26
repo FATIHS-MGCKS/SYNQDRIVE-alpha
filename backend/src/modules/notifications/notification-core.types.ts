@@ -25,6 +25,10 @@ export interface MaterializeResult {
 export interface IngestCandidateOptions {
   referenceNow?: Date;
   runId?: string;
+  /** When set, ingest is blocked if it would duplicate this workflow-triggering notification. */
+  workflowTriggerNotificationId?: string;
+  /** Suppress workflow lifecycle emission (internal/test use). */
+  suppressWorkflowLifecycleEmit?: boolean;
 }
 
 export interface ResolveByFingerprintOptions {
