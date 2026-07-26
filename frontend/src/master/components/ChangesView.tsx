@@ -35,6 +35,86 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-backup-automation-2c7-2026-07-26',
+    version: '4.9.896',
+    title: 'V4.9.896 — Master Admin 2C.7: Backup automation',
+    summary: [
+      'Unified cron scheduler for PostgreSQL, ClickHouse, Redis, env, offsite tiers.',
+      'vps-run-backup-job.sh: retry (3×), per-job logs, state JSON, Resend alerts.',
+      'Health watchdog + Prometheus metrics; no failed backup unnoticed.',
+      'docs/remediation/backup-automation.md',
+    ],
+    reason:
+      'Fragmented cron jobs lacked retry, monitoring, and guaranteed failure notification.',
+    previousBehavior:
+      'Separate redis/offsite crons; no central health check or standardized exit codes.',
+    details:
+      'vps-install-backup-automation-cron.sh, backup-automation-lib.sh, PG/CH backup scripts',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T23:00:00.000Z',
+  },
+  {
+    id: 'master-admin-restore-validation-2c6-2026-07-26',
+    version: '4.9.895',
+    title: 'V4.9.895 — Master Admin 2C.6: Restore validation (isolated drills)',
+    summary: [
+      'Isolated restore-test framework for PostgreSQL, ClickHouse, Redis, env, uploads, documents.',
+      'vps-restore-validation.sh orchestrator with JSON reports (duration, success, integrity).',
+      'Production safety: isolated mode only; no live DB/Redis/env overwrite.',
+      'docs/remediation/restore-validation.md',
+    ],
+    reason:
+      'Backups must be proven recoverable in isolation without risking production data.',
+    previousBehavior:
+      'Redis had integrity-only drill; no unified multi-tier validation or quarterly report.',
+    details:
+      'restore-validation-lib.sh, per-tier vps-restore-test-*.sh, local Docker E2E, quarterly cron',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T22:00:00.000Z',
+  },
+  {
+    id: 'master-admin-offsite-backups-2c5-2026-07-26',
+    version: '4.9.894',
+    title: 'V4.9.894 — Master Admin 2C.5: Offsite backup orchestration',
+    summary: [
+      'Central encrypted offsite sync for PostgreSQL, ClickHouse, Redis, env snapshots.',
+      'Versioning via immutable filenames + manifest.jsonl; per-tier retention + min generations.',
+      'SHA-256 integrity + weekly remote verify; Resend alerts on failure.',
+      'docs/remediation/offsite-backups.md',
+    ],
+    reason:
+      'Production backups must not live only on the VPS — offsite copy with encryption, retention, and alerting required.',
+    previousBehavior:
+      'Tier backups local-only or ad-hoc rclone; no unified policy, verify, or failure notifications.',
+    details:
+      'vps-sync-offsite-backups.sh, offsite-backup-lib.sh, env snapshot, verify + cron installers',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T20:00:00.000Z',
+  },
+  {
+    id: 'master-admin-redis-backup-2c4-2026-07-26',
+    version: '4.9.893',
+    title: 'V4.9.893 — Master Admin 2C.4: Redis & BullMQ backup strategy',
+    summary: [
+      'Classify ephemeral vs operational buffer vs Postgres SoT; BullMQ inventory with recovery paths.',
+      'vps-configure-redis-persistence.sh (RDB+AOF), vps-backup-redis.sh snapshot, redis-check-rdb integrity.',
+      'vps-restore-test-redis.sh (safe), vps-restore-redis.sh (maintenance), vps-inspect-bullmq-redis.sh.',
+      'docs/remediation/redis-backup.md',
+    ],
+    reason:
+      'Redis had no persistence/backup policy; BullMQ state is buffer only but should survive restarts without full scheduler replay storms.',
+    previousBehavior:
+      'Native Redis 7 with noeviction and no documented backup; business recovery path unclear.',
+    details:
+      'Postgres-first recovery documented; Redis RDB is Tier-2 operational backup not business DR',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T18:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

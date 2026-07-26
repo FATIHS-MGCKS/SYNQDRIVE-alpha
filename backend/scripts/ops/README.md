@@ -6,6 +6,62 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 
 > Take a backup before any DB-mutating step: > `pg_dump "$DATABASE_URL" -Fc -f /var/backups/synqdrive-$(date +%F).dump`
 
+## Redis & BullMQ (Phase 2C.4)
+
+PostgreSQL is System of Record — Redis is BullMQ queue buffer only.
+
+```bash
+bash backend/scripts/ops/vps-configure-redis-persistence.sh   # RDB + AOF (one-time)
+cp backend/scripts/ops/redis-backup.env.example /opt/synqdrive/shared/redis-backup.env
+bash backend/scripts/ops/vps-install-redis-backup-cron.sh
+bash backend/scripts/ops/vps-backup-redis.sh
+bash backend/scripts/ops/vps-inspect-bullmq-redis.sh
+```
+
+Docs: [`docs/remediation/redis-backup.md`](../../docs/remediation/redis-backup.md)
+
+## Offsite backups (Phase 2C.5)
+
+**No production backup may exist only on the VPS.** Central sync after tier backups:
+
+```bash
+cp backend/scripts/ops/offsite-backup.env.example /opt/synqdrive/shared/offsite-backup.env
+# configure rclone/S3 + GPG + OFFSITE_NOTIFY_EMAIL
+bash backend/scripts/ops/vps-install-offsite-backup-cron.sh
+bash backend/scripts/ops/vps-sync-offsite-backups.sh
+bash backend/scripts/ops/vps-verify-offsite-backups.sh
+```
+
+Set `REDIS_BACKUP_SKIP_OFFSITE=true` (and equivalent on PG/CH) when `OFFSITE_CENTRAL_SYNC=true`.
+
+Docs: [`docs/remediation/offsite-backups.md`](../../docs/remediation/offsite-backups.md)
+
+## Restore validation (Phase 2C.6)
+
+**Isolated drills only** — production data is never modified.
+
+```bash
+cp backend/scripts/ops/restore-validation.env.example /opt/synqdrive/shared/restore-validation.env
+# configure drill Postgres/ClickHouse ports (non-production)
+bash backend/scripts/ops/vps-restore-validation.sh
+bash backend/scripts/ops/restore-validation.local.sh   # full Docker E2E on dev host
+bash backend/scripts/ops/vps-install-restore-validation-cron.sh
+```
+
+Docs: [`docs/remediation/restore-validation.md`](../../docs/remediation/restore-validation.md)
+
+## Backup automation (Phase 2C.7)
+
+**Unified scheduler** — all tiers via `vps-run-backup-job.sh` (retry, logs, alerts):
+
+```bash
+cp backend/scripts/ops/backup-automation.env.example /opt/synqdrive/shared/backup-automation.env
+bash backend/scripts/ops/vps-install-backup-automation-cron.sh
+bash backend/scripts/ops/vps-backup-automation-health.sh
+```
+
+Docs: [`docs/remediation/backup-automation.md`](../../docs/remediation/backup-automation.md)
+
 ## Recommended order
 
 1. **Stop the bleeding (app-side, already in code):**
@@ -57,6 +113,36 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-setup-grafana.sh` | Install/refresh Grafana Docker on VPS (localhost:3000, SynqDrive Ops dashboard) | safe — requires Prometheus |
 | `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
 | `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only |
+| `vps-configure-redis-persistence.sh` | Enable RDB + AOF for native Redis (BullMQ buffer) | requires redis restart |
+| `vps-backup-redis.sh` | Daily RDB snapshot archive + integrity check | safe — queue buffer only |
+| `vps-restore-test-redis.sh` | `redis-check-rdb` drill (non-destructive) | safe |
+| `vps-restore-redis.sh` | Maintenance-window RDB restore | **destructive** — requires `REDIS_RESTORE_CONFIRM` |
+| `vps-inspect-bullmq-redis.sh` | BullMQ queue depth / failed summary | read-only |
+| `vps-install-redis-backup-cron.sh` | Daily 04:00 UTC Redis backup cron | safe — run as root once |
+| `redis-backup.env.example` | Redis backup config template | copy to `/opt/synqdrive/shared/redis-backup.env` |
+| `vps-sync-offsite-backups.sh` | Central encrypted offsite sync (all tiers) | requires `offsite-backup.env` |
+| `vps-backup-env-snapshot.sh` | Encrypted backend.env + frontend.env snapshot | safe |
+| `vps-verify-offsite-backups.sh` | Local + remote integrity audit | read-only |
+| `vps-install-offsite-backup-cron.sh` | Daily 05:15 UTC offsite cron + weekly verify | run as root |
+| `offsite-backup.env.example` | Unified offsite config (rclone/S3, GPG, alerts) | copy to `/opt/synqdrive/shared/offsite-backup.env` |
+| `vps-restore-validation.sh` | Isolated restore drill orchestrator (all tiers) | safe — requires drill PG/CH |
+| `vps-restore-test-postgresql.sh` | PG restore into `synqdrive_restore_*` | safe — isolated DB only |
+| `vps-restore-test-clickhouse.sh` | CH restore on isolated instance | safe |
+| `vps-restore-test-env.sh` | Env snapshot decrypt + verify | safe — no overwrite |
+| `vps-restore-test-uploads.sh` | Uploads archive drill | safe — staging only |
+| `vps-restore-test-documents.sh` | Documents archive + PG cross-check | safe — staging only |
+| `restore-validation.local.sh` | Full Docker E2E drill with synthetic backups | dev/CI host with Docker |
+| `restore-validation.selftest.sh` | Fixture selftest (env/uploads/documents) | safe |
+| `vps-install-restore-validation-cron.sh` | Quarterly restore validation cron | run as root once |
+| `restore-validation.env.example` | Drill target config | copy to `/opt/synqdrive/shared/restore-validation.env` |
+| `vps-install-backup-automation-cron.sh` | Unified backup cron (all tiers + health) | run as root once |
+| `vps-run-backup-job.sh` | Retry wrapper with logs, state, alerts | used by cron |
+| `vps-backup-automation-health.sh` | SLA watchdog + Prometheus metrics | daily 06:45 UTC |
+| `vps-backup-database.sh` | PostgreSQL pg_dump -Fc + GPG | Tier 0 |
+| `vps-backup-clickhouse.sh` | ClickHouse BACKUP DATABASE + GPG | Tier 2 |
+| `lib/backup-automation-lib.sh` | Automation shared lib | sourced |
+| `backup-automation.env.example` | Retry, notify, schedule overrides | copy to shared |
+| `backup-automation.selftest.sh` | Retry/state/metrics unit test | safe |
 
 ### Partitioning (P2)
 
