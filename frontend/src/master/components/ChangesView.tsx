@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-tenant-production-readiness-2e7-2026-07-26',
+    version: '4.9.897',
+    title: 'V4.9.897 — Master Admin 2E.7: Tenant production readiness (final)',
+    summary: [
+      'Consolidates 2E.1–2E.6: tenant isolation, DIMO, DB, concurrency, cross-tenant tests, E2E.',
+      'Verdict: conditional go-live (8/10). DIMO tenant-safe after 2E.4 deploy + audit.',
+      '7 mandatory P1 pre-go-live items; 8 P2 + 5 P3 residual risks.',
+      'Sign-off template + release gate commands in tenant-production-readiness.md.',
+    ],
+    reason:
+      'Phase 2E.7 is the final Master Admin remediation acceptance for production decision.',
+    previousBehavior:
+      'No single document answered production readiness across all remediation pillars.',
+    details:
+      'docs/remediation/tenant-production-readiness.md · architecture/MASTER_ADMIN_TENANT_PRODUCTION_READINESS_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T00:00:00.000Z',
+  },
+  {
     id: 'master-admin-e2e-data-consistency-2e6-2026-07-26',
     version: '4.9.896',
     title: 'V4.9.896 — Master Admin 2E.6: End-to-end data consistency',

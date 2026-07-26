@@ -971,6 +971,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'REST API', detail: 'Vehicles, device status' },
       { label: 'Webhooks', detail: 'DTC codes, ignition events, OBD plug/unplug' },
       { label: 'Identity GraphQL', detail: 'privileged vehicles sync → dimo_vehicles mirror (24h + manual)' },
+      { label: 'Production readiness (2E.7)', detail: 'Final verdict: conditional go-live. 7× P1 blockers, DIMO safe after 2E.4. Doc: tenant-production-readiness.md' },
       { label: 'E2E consistency (2E.6)', detail: 'Pipeline audit DIMO→PG→CH→Dashboard→AI→Notifications→Workflows. PG canonical. P1: CH org_id snapshots. Doc: end-to-end-data-consistency.md' },
       { label: 'Cross-tenant (2E.5)', detail: '23 acceptance tests orgA/orgB: CT-AUTH..CT-WF. npm run test:cross-tenant:acceptance. Doc: cross-tenant-acceptance.md' },
       { label: 'Concurrency (2E.4)', detail: 'registerFromDimo: advisory lock + partial UNIQUE on vehicles.dimo_vehicle_id. createWithAdmin + subscription createDraft serialized. Doc: concurrency-protection.md' },
