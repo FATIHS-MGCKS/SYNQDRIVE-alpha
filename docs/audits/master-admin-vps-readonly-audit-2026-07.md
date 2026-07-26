@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 12: Stripe/Billing read-only **abgeschlossen** (2026-07-26T07:23–07:28 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:28:00Z` (Stripe & Billing) |
+| **Status** | **IN PROGRESS** — Schritt 13: IAM/Rollen/Tenant-Isolation read-only **abgeschlossen** (2026-07-26T07:29–07:34 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:34:00Z` (IAM & Tenant Isolation) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -240,6 +240,17 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:23–07:28 | Quellcode-Review (`stripe-webhook.service.ts`, `billing-reconciliation.*`, `master-subscription.controller.ts`, `MasterBillingGuard`) | Source of Truth, Idempotenz, Overrides, Berechtigungen |
 
 **Stripe-Modus:** **Keine** Zahlungen, Rechnungsversendung, Subscription-Mutationen, Webhook-Retrigger, Payment Links oder Connect-Onboarding-Änderungen. Stripe MCP ausschließlich GET/list.
+
+### 2.2m Ausgeführte sichere Befehle (Schritt 13 — IAM, Rollen, Tenant Isolation, Impersonation read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:29–07:34 | PostgreSQL `SELECT` (aggregiert) auf `users`, `organization_memberships`, `user_mfa_*`, `refresh_tokens`, `activity_logs`, `support_tickets` | Rollenverteilung, MFA, Sessions, Audit ohne PII |
+| 07:29–07:34 | `grep` Env-Key-Namen (`JWT_*`, `IAM_*`, `MFA_*`, `ENABLE_SEED_ADMIN`) — Werte **nicht** ausgelesen | Token-Lifetime, MFA-Flags, Seed-Admin |
+| 07:29–07:34 | `curl` unauth Probes (`/admin/users`, `/admin/organizations`, `/admin/activity-log`, Org-Route mit Fake-UUID) | Guard-Verhalten ohne Token |
+| 07:29–07:34 | Quellcode-Review: `RolesGuard`, `OrgScopingGuard`, `PermissionsGuard`, `StepUpGuard`, `MasterBillingGuard`, `auth.guard.ts`, `refresh-token.service.ts`, `iam-mfa.policy.ts`, Controller-Matrix | Berechtigungsmodell, Impersonation, Tenant-Scope |
+
+**IAM-Modus:** **Keine** Rollenänderungen, Sessions, Tokens, Impersonation, Sperren/Entsperren oder MFA-Enrollment.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -1983,41 +1994,181 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ## 20. Master-Admin-Autorisierung
 
-**Prüfzeitpunkt:** `2026-07-26T07:07–07:10Z` (Schritt 6)
+**Prüfzeitpunkt:** Schritt 6 (Code + unauth) **und** Schritt 13 (vertieft: Rollenmodell, Matrix, Runtime-Aggregate)
 
-| Prüfpunkt | Ergebnis (belegt) |
-|-----------|-------------------|
-| Rolle | `platformRole === 'MASTER_ADMIN'` via `RolesGuard` auf `/admin/*` |
-| Unauth-Verhalten | Getestete Master-GETs → **401** `Missing authentication token` |
-| `POST /auth/seed-admin` | **403** `Seed-admin endpoint is disabled` (Production) |
-| Org-Scoping Bypass | Master-Routen **ohne** `OrgScopingGuard` — plattformweiter Zugriff by design |
-| `organizationId` aus Request | Billing: `resolveOrgScope()` — Master darf `orgId` wählen; andere Rollen JWT-bound |
-| Org-Admin-Missbrauch | Org-Routen (`/organizations/:orgId/*`) separat mit `OrgScopingGuard` — **nicht** für Master-Funktionen wiederverwendet |
-| Pagination globale Listen | **Organisationen:** ja; **User:** **nein** (unbounded `findMany`) |
-| Step-up / MFA auf Master | Nur `change-password` (Master); breite Master-GETs **ohne** Step-up |
-| Rate Limits | Global **200/min/IP**; kein separates Master-Admin-Limit |
-| Impersonation-API | **Nicht vorhanden** (nur Kommentar in Billing-Scope) |
-| OpenAPI Security | Spec zeigt **0** secured Admin-Ops — Runtime-Guards dennoch aktiv |
+### 20.1 Rollenmodell (Repository — kanonisch)
 
-**Status:** Guard-Verhalten unauth + Code-Review **abgeschlossen**. Authentifizierte Cross-Tenant-Tests **ausstehend**.
+| Ebene | Enum / Konzept | Werte (belegt) | Anmerkung |
+|-------|----------------|----------------|-----------|
+| **Plattform** | `UserPlatformRole` | `MASTER_ADMIN`, `USER` | **Kein** separates `PLATFORM_ADMIN` oder `SUPPORT`-Platform-Role |
+| **Organisation** | `MembershipRole` | `ORG_ADMIN`, `SUB_ADMIN`, `WORKER`, `DRIVER` | Tenant-RBAC; feingranular via `permissions` JSON |
+| **Support (operativ)** | Kein IAM-Enum | Master: `MASTER_ADMIN` auf `/admin/support/*`; Tenant: Modul `support` | Support-Tickets org-scoped + Master-Inbox |
+| **Customer (Endkunde)** | `Customer`-Modell (Rental) | **Nicht** `MembershipRole` | Mietkunden ≠ Plattform-User |
+| **Service Accounts** | Kein dediziertes User-Modell | Webhooks (HMAC), Voice-MCP-Scoped-Bearer, `SEED_ADMIN` (disabled) | Prod: **0** `auth_provider_id`, **0** passwordless Users |
+
+**Rollenvererbung:** Keine klassische Vererbung — `PermissionsGuard` löst Modul-Rechte aus JSON; `ORG_ADMIN` → implizit **alle** Modul-Rechte innerhalb der Org; `MASTER_ADMIN` → Bypass auf Guards (außer explizite Step-up-Pfade).
+
+### 20.2 Guard- und Policy-Stack (Code)
+
+| Schicht | Komponente | Verhalten |
+|---------|------------|-----------|
+| 1 | `AuthGuard` (global) | JWT Bearer; Claims: `sub`, `platformRole`, `platformPermissions`, `membershipRole`, `organizationId`, `sessionVersion`, `membershipVersion` |
+| 2 | `RolesGuard` | `@Roles(...)` — match `platformRole` **oder** `membershipRole` |
+| 3 | `OrgScopingGuard` | `:orgId` Pflicht für Tenant-Routen; JWT-Org-Mismatch → **403**; `MASTER_ADMIN` Pass-through |
+| 4 | `PermissionsGuard` | `@RequirePermission(module, level)`; `MASTER_ADMIN` allow; `ORG_ADMIN` allow; sonst JSON |
+| 5 | `MasterBillingGuard` | `MASTER_ADMIN` **oder** `platformPermissions` enthält `master-billing` |
+| 6 | `StepUpGuard` | `@RequireStepUp(action)` + Header `x-iam-step-up-token`; TTL **10 min** (`STEP_UP_TTL_MS`) |
+| 7 | `TenantContextInterceptor` | Setzt `request.tenantId`; Master pass-through |
+| 8 | `AuditInterceptor` | POST/PUT/PATCH/DELETE → Activity-Log (Skip: health/metrics/webhooks) |
+
+**JWT Access Token:** Default `JWT_EXPIRES_IN` (Repo-Default `24h`, Env-Key auf VPS vorhanden — Wert nicht ausgelesen). **Refresh Token:** 30 Tage (`REFRESH_TOKEN_TTL_DAYS`), Rotation mit `sessionVersion`/`membershipVersion`-Binding.
+
+**MFA / Step-up (Code):** `iam-mfa.policy.ts` — privilegierte Konten (`MASTER_ADMIN`, `ORG_ADMIN`, `SUB_ADMIN`, `manage`-Permissions). Step-up-Aktionen u. a. `ADMIN_ROLE_ASSIGN`, `PRIVILEGED_PERMISSION_CHANGE`, `AUDIT_EXPORT`, `PRIVACY_DATA_EXPORT`, `PRIVACY_DATA_DELETION`. Env-Flags: `IAM_MFA_ENROLLMENT_ENABLED`, `IAM_MFA_STEP_UP_ENFORCED`, `IAM_MFA_PRIVILEGED_ENROLLMENT_REQUIRED`, `IAM_MFA_ORG_ALLOWLIST` (Namen auf VPS; Werte nicht ausgelesen).
+
+### 20.3 Production-Runtime (aggregiert, ohne PII)
+
+| Metrik | Wert |
+|--------|------|
+| Users gesamt | **2** (`1× MASTER_ADMIN`, `1× USER`, beide ACTIVE) |
+| Aktive Memberships | **1** (`ORG_ADMIN`) |
+| Master Admin mit Org-Membership | **0** |
+| MFA-Faktoren | **0** |
+| Step-up-Grants | **0** |
+| Aktive Refresh Tokens | **85** |
+| IAM Session Revocation Intents | **0** |
+| Cross-Tenant Multi-Memberships (aktiv) | **0** |
+| `ENABLE_SEED_ADMIN` Env-Key | vorhanden (Wert nicht ausgelesen; Live-Probe Schritt 6: **403** disabled) |
+
+### 20.4 Berechtigungsmatrix
+
+> **Legende:** ✅ erlaubt · ❌ verweigert · ⚠️ erlaubt mit Vorbehalt · **N/A** nicht implementiert  
+> **Support** = operatives Konzept: Master-Inbox via `MASTER_ADMIN` (kein eigener Platform-Role).  
+> **Service Account** = technische Pfade (Webhooks/HMAC), keine User-Session.
+
+| Aktion | Master Admin | Support | Org Admin | Service Account | Kontrollmechanismus |
+|--------|:------------:|:-------:|:---------:|:---------------:|---------------------|
+| Organisation erstellen | ✅ | ❌ | ❌ | ❌ | `POST /admin/organizations` — `@Roles('MASTER_ADMIN')` |
+| Organisation aktivieren | ✅ | ❌ | ❌ | ❌ | `PATCH /admin/organizations/:id` (Status-Feld) — Master only |
+| Organisation sperren | ✅ | ❌ | ❌ | ❌ | wie oben (`OrganizationStatus`) |
+| Organisation archivieren | ✅ | ❌ | ❌ | ❌ | Status `ARCHIVED` / Label „Churned“ — Master `PATCH` |
+| Benutzer erstellen | ✅ | ❌ | ✅ (eigene Org) | ❌ | Master: `POST /admin/users`; Org: `POST …/users` + `OrgScopingGuard` + `users-roles.write` |
+| Rolle vergeben | ✅ | ❌ | ✅ | ❌ | Org: `assignRole` + `StepUpGuard` (`ADMIN_ROLE_ASSIGN`); Master: `PATCH admin/users` **ohne** Step-up |
+| Subscription aktivieren | ✅ | ❌ | ❌ | ❌ | `POST …/subscription/activate` — `MasterBillingGuard` + `RequireMasterBilling` |
+| Subscription deaktivieren | ✅ | ❌ | ❌ | ❌ | `POST …/pause`, `schedule-cancel` — wie oben |
+| Rechnung senden | ✅ | ❌ | ⚠️ | ❌ | Billing-E-Mail: `POST admin/billing/email-deliveries/:id/resend` — Master only; Tenant read-only Invoice-APIs |
+| Fahrzeug importieren (DIMO) | ✅¹ | ❌ | ✅ | ❌ | Org: `POST …/vehicles/register-from-dimo` + `fleet.write`; Master: indirekt via globale Admin-Tools¹ |
+| Fahrzeug neu zuordnen | ❌ | ❌ | ⚠️ | ❌ | **Kein** Cross-Org-Transfer-API; Fahrzeuge org-gebunden (`organizationId` FK) |
+| DIMO-Verbindung trennen | ✅¹ | ❌ | ✅ | ❌ | Org: `DELETE …/integrations/:id` + `data-authorization.manage`; kein dedizierter „DIMO-only“-Endpoint |
+| Audit Logs ansehen | ✅ | ❌ | ✅ (eigene Org) | ❌ | Master: `GET /admin/activity-log`; Org: `GET …/activity-log` + `OrgScopingGuard` |
+| Personenbezogene Daten ansehen | ✅ | ❌ | ✅ (eigene Org) | ❌ | Master: globale User-Liste (**PII**); Org-scoped User-Detail mit Permissions |
+| Datenexport starten | ✅ | ❌ | ✅ | ❌ | `GET …/iam/data-retention/dsar/export/:userId` + `StepUpGuard` (`PRIVACY_DATA_EXPORT`) |
+| Löschung freigeben | ✅ | ❌ | ✅ | ❌ | `…/deletion-assessment` + Step-up (`PRIVACY_DATA_DELETION`) |
+| Workerstatus ansehen | ✅ | ❌ | ❌ | ❌ | `GET /admin/monitoring/workers` — Master only |
+| Queue-Jobs ansehen | ✅ | ❌ | ❌ | ❌ | `GET /admin/monitoring/queues` — read-only Aggregat |
+| Queue-Jobs verändern | ❌ | ❌ | ❌ | ❌ | **Kein** Master-API-Endpoint für BullMQ-Mutation; nur Worker-internal/Redis |
+| Secrets konfigurieren | ❌ | ❌ | ❌ | ❌ | Env/VPS-Ebene; **kein** Master-Admin Secrets-CRUD-API |
+| Impersonation starten | **N/A** | **N/A** | **N/A** | **N/A** | **Nicht implementiert** (s. 20.5) |
+| Impersonation beenden | **N/A** | **N/A** | **N/A** | **N/A** | **Nicht implementiert** |
+
+¹ Master kann plattformweite Admin-Mutationen ausführen, die indirekt Org/Fahrzeug/Integration betreffen (z. B. `hardware-backfill` per `vehicleId`-Liste) — **ohne** `OrgScopingGuard`; Risiko bei falscher ID-Liste (s. Kap. 21).
+
+### 20.5 Impersonation (konzeptionell — Repository)
+
+| Kriterium | Status (belegt) |
+|-----------|-----------------|
+| Dedizierter Start-Endpoint | **Nicht vorhanden** — Repo-/Frontend-Suche: 0 Treffer |
+| End-Endpoint / Abbruch | **N/A** |
+| Begründung / Ticket-Binding | **N/A** |
+| Ablaufzeit / separates Token | **N/A** |
+| UI-Banner | **N/A** |
+| Actor vs. Impersonated User getrennt | **N/A** — Master nutzt eigenes JWT mit vollem Plattformzugriff |
+| Audit Event für Impersonation | **N/A** |
+| Sensible Aktionen gesperrt unter Impersonation | **N/A** |
+| Keine Session-Vermischung | **Positiv by absence** — keine Impersonation-Session |
+| Kein Master-Token-Weitergabe via URL | **Positiv** — kein `?impersonate=` o. ä. |
+| Billing-Kommentar | `resolveOrgScope()` erwähnt „support / impersonation“ — **nur** Master-`orgId`-Override, kein User-Impersonate |
+
+**Bewertung:** Fehlende Impersonation reduziert Support-Risiko (keine verdeckte Tenant-Session), erhöht aber operatives Risiko (Master-Admin arbeitet mit **eigenem** Vollzugriff statt scoped Impersonate).
+
+### 20.6 Unauth-Probes (Schritt 13)
+
+| Endpoint | HTTP |
+|----------|------|
+| `GET /api/v1/admin/users` | **401** |
+| `GET /api/v1/admin/organizations` | **401** |
+| `GET /api/v1/admin/activity-log` | **401** |
+| `GET /api/v1/organizations/{fake-uuid}/vehicles` | **401** |
+
+### 20.7 Kritische Berechtigungslücken (Code + Runtime)
+
+| ID | Risiko | Beleg |
+|----|--------|-------|
+| Breite Master-GETs ohne Step-up | **Mittel-Hoch** | Dashboard, Users, DIMO, Billing — nur JWT |
+| `GET admin/users` unbounded | **Mittel-Hoch** | Alle User inkl. E-Mail |
+| Master `PATCH admin/users` ohne Step-up | **Mittel** | Rollenänderung ohne `ADMIN_ROLE_ASSIGN` Step-up (im Gegensatz zu Org-Pfad) |
+| `GET admin/billing/reconciliation/drifts` ohne `MasterBillingGuard` | **Niedrig-Mittel** | Nur `MASTER_ADMIN`, nicht `master-billing` Delegation |
+| `OrganizationsController` Mutationen ohne explizites Audit | **Mittel** | Globaler Interceptor nur; kein `audit.record` wie bei Prune |
+| `POST admin/vehicles/hardware-backfill` cross-org per ID-Liste | **Mittel** | `updateMany` ohne Org-Check auf IDs |
+| MFA nicht enrolled (Prod) | **Mittel** | 0 Faktoren trotz Step-up-Infrastruktur |
+| Kein Rate-Limit speziell Master | **Niedrig** | Global 200/min/IP |
+
+**Status:** Rollenmodell, Guards, Matrix und Impersonation-Konzept **abgeschlossen** (Schritt 13). Authentifizierte Cross-Tenant-API-Tests weiterhin **ausstehend**.
 
 ---
 
 ## 21. Tenant Isolation
 
-**Prüfzeitpunkt:** Schritt 7 (PostgreSQL read-only)
+**Prüfzeitpunkt:** Schritt 7 (PostgreSQL) **und** Schritt 13 (Code + Runtime-Aggregate)
+
+### 21.1 Architektur-Prinzipien (Code)
 
 | Prüfpunkt | Ergebnis (belegt) |
 |-----------|-------------------|
-| FK-Integrität Vehicles/Orgs | **0** Vehicles ohne Organization |
-| VIN pro Org unique | **0** Duplikate innerhalb Org |
-| Cross-Tenant Subscription/Invoice | **0** Orphans |
-| Aktive Orgs ohne Admin | **3** — Tenant-Admin-Lücke (**P2**) |
-| Master Admin mit Org-Binding | **0** aktive Memberships |
-| Große Tabellen ohne `organization_id`-Index | **3** Tabellen (s. Kap. 11.6) |
-| Live Cross-Tenant-API | **Nicht** geprüft (nur DB) |
+| Org-Queries mit Tenant Scope | Org-Routen `/organizations/:orgId/*` → `OrgScopingGuard` + `request.tenantId` |
+| Globale Master-Queries getrennt | `/admin/*` ohne Org-Scoping — **explizit** plattformweit |
+| `organizationId` serverseitig validiert | JWT-Claim vs. `:orgId` Mismatch → **403**; DB-Membership-Recheck |
+| IDOR-Schutz Tenant-User | `OrgScopingGuard` + `PermissionsGuard`; Regression-Spec `iam-tenant-isolation.security.regression.spec.ts` |
+| IDOR-Risiko Master-Admin | Master bypass — **by design**; Risiko bei kompromittiertem Master-Token |
+| Implizite „letzte Org“ | Feld `last_selected_organization_id` existiert; Prod: **0/2** User gesetzt — kein Live-Leak belegt |
+| Suche/Filter/Export | Master-Listen global; Org-Export DSAR org-scoped + Step-up |
+| Cross-Tenant-Cache | Notification-Eval: Redis-Lock **pro** `organizationId` |
+| Queue-Jobs Tenant-Kontext | Worker-Jobs tragen `organizationId` in Payload (z. B. DIMO-Snapshot, Notifications) |
+| WebSocket-Leaks | **Kein** `@WebSocketGateway` im Backend gefunden |
+| Notifications | `organizations/:orgId/notifications` + `OrgScopingGuard` |
+| Cross-Tenant-Dateizugriff | `StorageService` org-scoped in Modulen; nicht vollständig auditiert |
 
-**Status:** DB-Stichproben **abgeschlossen** (Schritt 7). Authentifizierte API-Cross-Tenant-Tests **ausstehend**.
+### 21.2 Production-Daten (aggregiert)
+
+| Prüfpunkt | Ergebnis |
+|-----------|----------|
+| FK Vehicles → Orgs | **0** Orphans |
+| VIN-Duplikate innerhalb Org | **0** |
+| Cross-Tenant Subscription/Invoice Orphans | **0** |
+| Aktive Orgs ohne `ORG_ADMIN` | **3** |
+| Master Admin mit aktiver Membership | **0** |
+| User mit 2+ aktiven Orgs | **0** |
+| Activity-Logs ohne `organization_id` (exkl. AUTH_FAIL/SYNC) | **249** |
+| Support-Tickets | **0** |
+
+### 21.3 Tenant-Isolation-Risiken
+
+| Risiko | Severity | Beleg |
+|--------|----------|-------|
+| Master-Token = globaler Zugriff | **Hoch** (bei Kompromittierung) | Kein Org-Scoping auf `/admin/*` |
+| Authentifizierte Cross-Tenant-API nicht getestet | **Mittel** | Nur Code + unauth |
+| Activity-Logs ohne Org-Kontext | **P3** | 249 Rows |
+| ClickHouse Kern-Tabellen ohne `org_id` | **P2** (Schritt 9) | Telemetrie-Cross-Tenant theoretisch |
+| 3 Orgs ohne Admin | **P2** | Tenant-IAM-Lücke |
+
+### 21.4 Impersonation-Risiken
+
+| Risiko | Bewertung |
+|--------|-----------|
+| Verdeckte Tenant-Session | **Nicht vorhanden** — kein Impersonate-Feature |
+| Master arbeitet mit Vollzugriff | **Vorhanden** — operatives Risiko, kein technisches Impersonate |
+| URL-Parameter-Impersonation | **Nicht vorhanden** |
+
+**Status:** Tenant-Isolation Code + DB-Aggregate **abgeschlossen** (Schritt 13). Live authentifizierte Cross-Tenant-Tests **ausstehend**.
 
 ---
 
@@ -2090,6 +2241,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 > **Schritt 10 (Prometheus/Grafana/Observability):** 1× P1 neu, 4× P2 neu, 2× P3 neu.
 > **Schritt 11 (DIMO/Fahrzeugimport):** 2× P2 neu, 4× P3 neu.
 > **Schritt 12 (Stripe/Billing):** 2× P1 neu, 4× P2 neu, 3× P3 neu.
+> **Schritt 13 (IAM/Rollen/Tenant):** 3× P2 neu, 4× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -2194,6 +2346,15 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **MA-BILL-P3-003** | **P3** | Connect | `organization_payment_accounts.livemode=false` trotz aktivem Connect-Account auf Prod-URL | Livemode-Flag bei Live-Cutover setzen |
 | **MA-BILL-OBS-001** | **Beobachtung** | Connect | **1** Org mit vollständig onboarded Connect (`acct_1TtCNf3ZTEq6a95J`, charges+payouts enabled) | Positiv für Endkunden-Zahlungen (Test-Modus) |
 | **MA-BILL-OBS-002** | **Beobachtung** | Reconciliation | **25** abgeschlossene Reconciliation-Runs (`stripe_mode=TEST`), **2** offene Drifts | Reconciliation-Job läuft; Drifts unaufgelöst |
+| **MA-IAM-P2-001** | **P2** | Master Admin | Breite Master-GETs (Users, DIMO, Billing) **ohne** MFA Step-up | Step-up für hochsensible Reads evaluieren |
+| **MA-IAM-P2-002** | **P2** | Master Admin | `PATCH /admin/users/:id` ohne `ADMIN_ROLE_ASSIGN` Step-up (Org-Pfad hat Step-up) | Step-up auf Master-User-Mutationen angleichen |
+| **MA-IAM-P2-003** | **P2** | Master Admin | `OrganizationsController` Mutationen ohne explizites `audit.record` | Kritische Org-Lifecycle-Aktionen auditieren |
+| **MA-IAM-P3-001** | **P3** | MFA | **0** MFA-Faktoren in Production trotz Step-up-Infrastruktur | MFA-Enrollment für privilegierte Accounts |
+| **MA-IAM-P3-002** | **P3** | Audit | **249** Activity-Logs ohne `organization_id` | Org-Kontext in Interceptor ergänzen |
+| **MA-IAM-P3-003** | **P3** | Master Admin | `hardware-backfill` `updateMany` per Vehicle-ID ohne Org-Validierung | Org-Scope auf Admin-Mutations mit Entity-IDs |
+| **MA-IAM-P3-004** | **P3** | Billing IAM | `GET admin/billing/reconciliation/drifts` ohne `MasterBillingGuard` | Delegierte Billing-Ops konsistent absichern |
+| **MA-IAM-OBS-001** | **Beobachtung** | Impersonation | **Kein** Impersonation-Endpoint — weder Start noch Banner/Audit | Positiv für verdeckte Sessions; Support-Workflow fehlt |
+| **MA-IAM-OBS-002** | **Beobachtung** | Rollen | Nur **2** Plattform-User in Prod; **1** Master, **1** Org-User | Geringe Angriffsfläche, aber Single-Admin-Risiko |
 
 ---
 
@@ -2212,6 +2373,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 - [x] **Prometheus/Grafana/Observability (read-only)** — Targets, Rules, firing Alerts, Dashboards, Master-Admin-Integration
 - [x] **DIMO-Integration & Fahrzeugimport (read-only)** — Env, PG-Mapping, Poll/Webhook-Logs, Import-Code-Review
 - [x] **Stripe/Billing (read-only)** — Env-Keys, PG-Ledger, Stripe MCP GET, Webhook-Probes, Reconciliation, Code-Review
+- [x] **IAM/Rollen/Tenant Isolation/Impersonation (read-only)** — Rollenmodell, Guard-Matrix, Berechtigungsmatrix, PG-Aggregate, Impersonation-Konzept
 
 ### Priorisierte Folgeschritte (alle read-only)
 
@@ -2222,11 +2384,12 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 5. ~~**Prometheus/Grafana**~~ — **erledigt** (Schritt 10)
 6. ~~**DIMO**~~ — **erledigt** (Schritt 11; DIMO MCP extern ausstehend)
 7. ~~**Stripe/Billing**~~ — **erledigt** (Schritt 12)
-8. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
-9. **Backup-Inventar** — `ls -lt shared/backups/`, Alter der Dumps
-10. **Tenant-Isolation-Stichproben** — SELECT counts per org (keine PII)
-11. **Audit-Logging** — `iam_audit_outbox`, AI audit tables (counts only)
-12. **Frontend Master-Bundle** — `grep` in `backend/public/assets/`
+8. ~~**IAM/Rollen/Tenant**~~ — **erledigt** (Schritt 13)
+9. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
+10. **Backup-Inventar** — `ls -lt shared/backups/`, Alter der Dumps
+11. **Authentifizierte Cross-Tenant-API-Smokes** — erfordert Credentials (kontrolliert)
+12. **Audit-Logging** — `iam_audit_outbox`, AI audit tables (counts only)
+13. **Frontend Master-Bundle** — `grep` in `backend/public/assets/`
 
 ---
 
@@ -2247,8 +2410,9 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **Prometheus/Grafana** | **WARN** — Scrape OK; **98** Alerts ohne Alertmanager; **4** firing; Evaluations-Dashboard fehlt auf VPS |
 | **DIMO/Fahrzeugimport** | **OK mit P2/P3** — Production-Env; Mapping konsistent; Import nicht transaktional; Webhook-Inbox leer |
 | **Stripe/Billing** | **KRITISCH** — Test-Key auf Prod; Platform-Webhook nicht betriebsbereit; 1 Trial ohne Stripe-Sub; 2 offene Reconciliation-Drifts |
+| **IAM/Rollen/Tenant** | **OK mit P2/P3** — Guards solide für Tenant-User; Master Vollzugriff; **kein** Impersonate; MFA 0 enrolled |
 | Audit vollständig | **NEIN** — Voice/Resend/Backups/authentifizierte Smokes ausstehend |
-| Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Route-Matrix (Code); keine authentifizierten Tests |
+| Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Berechtigungsmatrix (Code); keine authentifizierten Cross-Tenant-Tests |
 | Gesamturteil | **PENDING** — Kein **P0**; **6× P1** (Swagger, CH-Mounts, CH-Duplikate, Alertmanager, Stripe-Test-Key, fehlendes Webhook-Secret) + mehrere **P2** offen |
 
 ### Schritt 2 — VPS-Baseline-Kurzfazit
@@ -2296,6 +2460,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | 2026-07-26T07:17–07:19 | Schritt 10: Prometheus/Grafana (API GET, Config-Read, Exposure-Probes, keine Testalarme) | **NEIN** |
 | 2026-07-26T07:19–07:22 | Schritt 11: DIMO & Fahrzeugimport (PG SELECT, Env-Keys maskiert, Code-Review, keine Imports) | **NEIN** |
 | 2026-07-26T07:23–07:28 | Schritt 12: Stripe/Billing (PG SELECT, Stripe MCP GET-only, Webhook-Probes ohne Signatur, keine Zahlungen/Rechnungen) | **NEIN** |
+| 2026-07-26T07:29–07:34 | Schritt 13: IAM/Rollen/Tenant (PG SELECT aggregiert, Guard-Code-Review, Berechtigungsmatrix, keine Rollen/Session-Änderungen) | **NEIN** |
 
 ---
 
