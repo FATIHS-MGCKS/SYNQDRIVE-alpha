@@ -1720,6 +1720,7 @@ model Organization {
   notificationOccurrences                NotificationOccurrence[]
   notificationReceipts                   NotificationReceipt[]
   notificationDeliveryOutbox             NotificationDeliveryOutbox[]
+  notificationRetentionPurgeRuns         NotificationRetentionPurgeRun[]
   taskAutomationOutbox                   TaskAutomationOutbox[]
   taskAutomationRuleOverrides            OrgTaskAutomationRuleOverride[]
   batteryMeasurementSessions             BatteryMeasurementSession[]
@@ -13549,6 +13550,12 @@ model Notification {
   resolvedAt          DateTime?              @map("resolved_at")
   archivedAt          DateTime?              @map("archived_at")
   expiresAt           DateTime?              @map("expires_at")
+  retentionClass      String                 @default("ACTIVE_OPERATIONAL") @map("retention_class")
+  legalHold           Boolean                @default(false) @map("legal_hold")
+  legalHoldReason     String?                @map("legal_hold_reason")
+  legalHoldSetAt      DateTime?              @map("legal_hold_set_at")
+  deletionEligibleAt  DateTime?              @map("deletion_eligible_at")
+  anonymizedAt        DateTime?              @map("anonymized_at")
   version             Int                    @default(1)
   createdAt           DateTime               @default(now()) @map("created_at")
   updatedAt           DateTime               @updatedAt @map("updated_at")
@@ -13565,6 +13572,8 @@ model Notification {
   @@index([fingerprint])
   @@index([expiresAt])
   @@index([resolvedAt])
+  @@index([organizationId, retentionClass, deletionEligibleAt])
+  @@index([organizationId, legalHold])
   @@index([organizationId, fingerprint, lifecycleGeneration])
   @@map("notifications")
 }
@@ -13639,6 +13648,23 @@ model NotificationDeliveryOutbox {
   @@index([organizationId, status])
   @@index([notificationId])
   @@map("notification_delivery_outbox")
+}
+
+model NotificationRetentionPurgeRun {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  trigger        String
+  dryRun         Boolean   @default(true) @map("dry_run")
+  status         String
+  correlationId  String?   @map("correlation_id")
+  report         Json      @default("{}")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt])
+  @@map("notification_retention_purge_runs")
 }
 
 /// Durable retry queue for optional task automation side-effects (booking, invoice, document, insight).

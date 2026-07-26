@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-data-protection-v49873-2026-07-26',
+    version: '4.9.873',
+    title: 'V4.9.873 — Notification Engine: DSGVO-Minimierung & Retention',
+    summary: [
+      'Datenkategorien klassifiziert (Stammdaten, Fahrzeug, Standort, Buchung, Kunde, technisch, Kommunikation, Audit).',
+      'Write-time Minimierung: templateParams, occurrence payload, actionTarget, outbox errors.',
+      'Retention-Klassen abgeleitet aus VEHICLE_WARNING (180d), WORKFLOW_AUDIT (90/2555d).',
+      'Legal Hold, Dry-Run Purge, Purge-Run-Audit, Betroffenenrechte (Export/Erasure/Restriction).',
+      'Docs: docs/compliance/notification-engine-data-protection.md.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 28: Notification-Daten DSGVO-konform minimieren, klassifizieren und löschbar machen.',
+    previousBehavior:
+      'PII nur bei API/Delivery redacted; kein Retention-Modell; vehicle-warning delete ohne Legal Hold/org-scope.',
+    details:
+      'compliance/notification-data-minimization.ts, notification-retention.service.ts, migration 20260726140000.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T03:00:00.000Z',
+  },
+  {
     id: 'notification-delivery-preferences-v49872-2026-07-26',
     version: '4.9.872',
     title: 'V4.9.872 — Notification Engine: Delivery Preferences & Channel Policy',

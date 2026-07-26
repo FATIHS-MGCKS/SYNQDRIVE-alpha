@@ -51,6 +51,12 @@ import {
   shouldSuppressWorkflowNotificationLoop,
 } from './workflow/notification-workflow-loop.guard';
 import type { NotificationLifecycleEventType } from '@modules/workflows/workflow.constants';
+import {
+  minimizeActionTarget,
+  minimizeOccurrencePayload,
+  minimizeTemplateParams,
+} from './compliance/notification-data-minimization';
+import { NotificationRetentionService } from './compliance/notification-retention.service';
 
 @Injectable()
 export class NotificationCoreService {
@@ -63,6 +69,7 @@ export class NotificationCoreService {
     private readonly deliveryPolicy: NotificationDeliveryPolicyService,
     private readonly deliveryScheduler: NotificationDeliverySchedulerService,
     @Optional() private readonly lifecycleWorkflowEmitter?: NotificationLifecycleWorkflowEmitter,
+    @Optional() private readonly retentionService?: NotificationRetentionService,
   ) {}
 
   isEnabled(): boolean {
@@ -338,6 +345,12 @@ export class NotificationCoreService {
     this.assertTransition(notification.status, NotificationStatus.RESOLVED);
 
     const pendingOutboxIds: string[] = [];
+    const retentionMeta = this.retentionService?.applyRetentionMetadataOnResolve({
+      domain: notification.domain,
+      eventType: notification.eventType,
+      status: NotificationStatus.RESOLVED,
+      resolvedAt,
+    });
     const updated = await this.repository.runTransaction(async (tx) => {
       const row = await this.repository.updateNotification(
         notificationId,
@@ -346,6 +359,7 @@ export class NotificationCoreService {
           resolvedAt,
           snoozedUntil: null,
           acknowledgedAt: notification.acknowledgedAt,
+          ...(retentionMeta ?? {}),
         },
         notification.version,
         tx,
@@ -575,7 +589,10 @@ export class NotificationCoreService {
           sourceType: candidate.sourceType,
           sourceRef: candidate.sourceRef,
           severityAtOccurrence: candidate.severity,
-          payload: { recovery: true, ...(candidate.metadata ?? {}) } as Prisma.InputJsonValue,
+          payload: minimizeOccurrencePayload({
+          recovery: true,
+          ...(candidate.metadata ?? {}),
+        }) as Prisma.InputJsonValue,
         },
         tx,
       );
@@ -609,6 +626,12 @@ export class NotificationCoreService {
     lifecycleGeneration: number,
     tx: NotificationTx,
   ): Promise<Notification> {
+    const minimizedParams = minimizeTemplateParams(candidate.templateParams);
+    const minimizedTarget = minimizeActionTarget(
+      candidate.actionTarget as Record<string, unknown>,
+    );
+    const minimizedMetadata = minimizeOccurrencePayload(candidate.metadata);
+
     const notification = await this.repository.createNotification(
       {
         organizationId: candidate.organizationId,
@@ -623,9 +646,9 @@ export class NotificationCoreService {
         entityId: candidate.entityId,
         titleKey: candidate.titleKey,
         bodyKey: candidate.bodyKey,
-        templateParams: candidate.templateParams as Prisma.InputJsonValue,
+        templateParams: minimizedParams as Prisma.InputJsonValue,
         actionType: candidate.actionType,
-        actionTarget: candidate.actionTarget as unknown as Prisma.InputJsonValue,
+        actionTarget: minimizedTarget as Prisma.InputJsonValue,
         sourceType: candidate.sourceType,
         primarySourceRef: candidate.sourceRef,
         firstSeenAt: candidate.occurredAt,
@@ -643,7 +666,7 @@ export class NotificationCoreService {
         sourceType: candidate.sourceType,
         sourceRef: candidate.sourceRef,
         severityAtOccurrence: candidate.severity,
-        payload: candidate.metadata as Prisma.InputJsonValue,
+        payload: minimizedMetadata as Prisma.InputJsonValue,
       },
       tx,
     );
@@ -661,11 +684,14 @@ export class NotificationCoreService {
       candidate.severity,
     ) as NotificationSeverity;
     const templateParams = shouldRefreshTemplateParams(existing.lastSeenAt, candidate.occurredAt)
-      ? mergeTemplateParams(
-          (existing.templateParams ?? {}) as Record<string, string | number | boolean | null>,
-          candidate.templateParams,
+      ? minimizeTemplateParams(
+          mergeTemplateParams(
+            (existing.templateParams ?? {}) as Record<string, string | number | boolean | null>,
+            candidate.templateParams,
+          ),
         )
       : (existing.templateParams as Prisma.InputJsonValue);
+    const minimizedMetadata = minimizeOccurrencePayload(candidate.metadata);
 
     await this.repository.createOccurrence(
       {
@@ -675,7 +701,7 @@ export class NotificationCoreService {
         sourceType: candidate.sourceType,
         sourceRef: candidate.sourceRef,
         severityAtOccurrence: candidate.severity,
-        payload: candidate.metadata as Prisma.InputJsonValue,
+        payload: minimizedMetadata as Prisma.InputJsonValue,
       },
       tx,
     );
@@ -711,7 +737,7 @@ export class NotificationCoreService {
         sourceType: candidate.sourceType,
         sourceRef: candidate.sourceRef,
         severityAtOccurrence: candidate.severity,
-        payload: candidate.metadata as Prisma.InputJsonValue,
+        payload: minimizedMetadata as Prisma.InputJsonValue,
       },
       tx,
     );
@@ -728,7 +754,7 @@ export class NotificationCoreService {
         reopenCount,
         lastSeenAt: candidate.occurredAt,
         occurrenceCount: existing.occurrenceCount + 1,
-        templateParams: candidate.templateParams as Prisma.InputJsonValue,
+        templateParams: minimizeTemplateParams(candidate.templateParams) as Prisma.InputJsonValue,
         titleKey: candidate.titleKey,
         bodyKey: candidate.bodyKey,
         primarySourceRef: candidate.sourceRef,

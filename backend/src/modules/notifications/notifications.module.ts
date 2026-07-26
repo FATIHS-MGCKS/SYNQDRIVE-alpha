@@ -25,6 +25,7 @@ import { NotificationPreferenceService } from './access/notification-preference.
 import { NotificationReceiptService } from './access/notification-receipt.service';
 import { NotificationStationScopeService } from './access/notification-station-scope.service';
 import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
+import { NotificationChannelPolicyService } from './delivery/notification-channel-policy.service';
 import { NotificationDeliveryOutboxRepository } from './delivery/notification-delivery-outbox.repository';
 import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
 import { NotificationDeliveryObservabilityService } from './delivery/notification-delivery-observability.service';
@@ -41,6 +42,10 @@ import { NotificationMigrationAcceptanceService } from './migration/notification
 import { NotificationArchitectureAuditService } from './migration/notification-architecture-audit.service';
 import { NotificationLifecycleWorkflowEmitter } from './workflow/notification-lifecycle-workflow.emitter';
 import { NotificationTaskCompletionService } from './tasks/notification-task-completion.service';
+import { NotificationRetentionService } from './compliance/notification-retention.service';
+import { NotificationRetentionScheduler } from './compliance/notification-retention.scheduler';
+import { NotificationDataSubjectService } from './compliance/notification-data-subject.service';
+import notificationRetentionConfig from '@config/notification-retention.config';
 
 /**
  * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime, REST API, delivery outbox.
@@ -48,7 +53,7 @@ import { NotificationTaskCompletionService } from './tasks/notification-task-com
 @Module({
   imports: [
     PrismaModule,
-    ConfigModule,
+    ConfigModule.forFeature(notificationRetentionConfig),
     ObservabilityModule,
     forwardRef(() => OutboundEmailModule),
     BullModule.registerQueue(
@@ -83,6 +88,9 @@ import { NotificationTaskCompletionService } from './tasks/notification-task-com
     NotificationArchitectureAuditService,
     NotificationLifecycleWorkflowEmitter,
     NotificationTaskCompletionService,
+    NotificationRetentionService,
+    NotificationRetentionScheduler,
+    NotificationDataSubjectService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
@@ -112,6 +120,8 @@ import { NotificationTaskCompletionService } from './tasks/notification-task-com
     NotificationArchitectureAuditService,
     NotificationLifecycleWorkflowEmitter,
     NotificationTaskCompletionService,
+    NotificationRetentionService,
+    NotificationDataSubjectService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,

@@ -82,6 +82,12 @@ export interface UpdateNotificationInput {
   resolvedAt?: Date | null;
   archivedAt?: Date | null;
   expiresAt?: Date | null;
+  retentionClass?: string;
+  deletionEligibleAt?: Date | null;
+  legalHold?: boolean;
+  legalHoldReason?: string | null;
+  legalHoldSetAt?: Date | null;
+  anonymizedAt?: Date | null;
   primarySourceRef?: string;
   legacyInsightId?: string | null;
   firstSeenAt?: Date;

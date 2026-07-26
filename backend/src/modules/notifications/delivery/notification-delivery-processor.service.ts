@@ -5,7 +5,7 @@ import notificationDeliveryConfig from '@config/notification-delivery.config';
 import { NotificationDeliveryOutboxRepository } from './notification-delivery-outbox.repository';
 import { NotificationChannelDispatcher } from './notification-delivery-channels.service';
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
-import { getChannelDefinition } from './notification-channel-matrix';
+import { sanitizeDeliveryErrorMessage } from '../compliance/notification-data-minimization';
 
 @Injectable()
 export class NotificationDeliveryProcessorService {
@@ -78,7 +78,7 @@ export class NotificationDeliveryProcessorService {
     if (!result.retryable || claimed.attempts >= this.config.maxAttempts) {
       await this.outboxRepo.markDeadLetter(
         claimed.id,
-        result.errorMessage ?? errorCode,
+        sanitizeDeliveryErrorMessage(result.errorMessage ?? errorCode) ?? errorCode,
       );
       this.observability.recordFailed(claimed.channel, errorCode);
       this.observability.logWarn({
@@ -97,7 +97,11 @@ export class NotificationDeliveryProcessorService {
     const retryAt = new Date(
       Date.now() + this.config.backoffMs * Math.pow(2, Math.max(0, claimed.attempts - 1)),
     );
-    await this.outboxRepo.markRetry(claimed.id, result.errorMessage ?? errorCode, retryAt);
+    await this.outboxRepo.markRetry(
+      claimed.id,
+      sanitizeDeliveryErrorMessage(result.errorMessage ?? errorCode) ?? errorCode,
+      retryAt,
+    );
     this.observability.recordRetry(claimed.channel);
     this.observability.recordFailed(claimed.channel, errorCode);
     this.observability.logWarn({

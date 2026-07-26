@@ -76,6 +76,7 @@ export class VehicleWarningRetentionScheduler {
       where: {
         status: { in: ['RESOLVED', 'ARCHIVED'] },
         resolvedAt: { lt: cutoffDate(notificationDays) },
+        legalHold: false,
       },
     });
     deleted.notifications = resolvedNotif.count;
