@@ -43,7 +43,7 @@ export type NotificationNavigationOutcome =
   | 'no_handler'
   | 'unsupported';
 
-export interface NotificationNavigationHandlers extends RentalEntityNavigationValue {
+export type NotificationNavigationHandlers = Partial<RentalEntityNavigationValue> & {
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenSettingsTab?: (tab: string) => void;
   onStartHandoverPickup?: (bookingId: string) => void;
@@ -57,7 +57,7 @@ export interface NotificationNavigationHandlers extends RentalEntityNavigationVa
   onOpenInvoiceById?: RentalEntityNavigationValue['openInvoiceById'];
   /** @deprecated use openCustomerById */
   onOpenCustomerById?: RentalEntityNavigationValue['openCustomerById'];
-}
+};
 
 function resolveHandlers(handlers: NotificationNavigationHandlers) {
   return {
