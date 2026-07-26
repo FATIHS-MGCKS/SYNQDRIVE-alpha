@@ -4,6 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
 import { VoiceProviderWebhookProcessingStatus } from '@prisma/client';
 import { ClickHouseAnalyticsService } from '@modules/clickhouse/clickhouse-analytics.service';
+import { ApplicationHealthService } from '@modules/health/application-health.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VoiceMetricsService } from './voice-metrics.service';
 import { QUEUE_NAMES } from '../../workers/queues/queue-names';
@@ -54,6 +55,7 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly chAnalytics?: ClickHouseAnalyticsService,
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly voiceMetrics?: VoiceMetricsService,
+    @Optional() private readonly applicationHealth?: ApplicationHealthService,
   ) {}
 
   onModuleInit(): void {
@@ -79,6 +81,24 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await Promise.all(this.queues.map((q) => q.close().catch(() => undefined)));
     this.queues = [];
+  }
+
+  @Cron('*/30 * * * * *')
+  async refreshDependencyUpGauges(): Promise<void> {
+    if (!this.applicationHealth) return;
+
+    try {
+      const report = await this.applicationHealth.checkApplicationHealth();
+      for (const probe of Object.values(report.probes)) {
+        const value = this.applicationHealth.dependencyUpValue(probe);
+        if (value == null) continue;
+        this.metrics.dependencyUp.set({ dependency: probe.key }, value);
+      }
+    } catch (err: unknown) {
+      this.logger.debug(
+        `Dependency up gauge refresh skipped: ${(err as Error).message}`,
+      );
+    }
   }
 
   @Cron('*/60 * * * * *')

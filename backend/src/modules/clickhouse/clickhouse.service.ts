@@ -352,6 +352,52 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /**
+   * Live connectivity probe for health checks (not cached status).
+   * No-op when ClickHouse is not configured.
+   */
+  async probeConnectivity(timeoutMs = 2_500): Promise<{
+    ok: boolean;
+    responseMs: number;
+    error?: string;
+  }> {
+    const start = Date.now();
+    if (!this.configured || !this.client) {
+      return { ok: true, responseMs: Date.now() - start };
+    }
+
+    try {
+      const ping = await withQueryTimeout(
+        () => this.client!.ping(),
+        timeoutMs,
+      );
+      const ok = Boolean(ping.success);
+      if (ok) {
+        this.lastPingAt = new Date();
+        if (!this.available) {
+          this.setAvailable(true);
+        }
+      } else if (this.available) {
+        this.setAvailable(false, 'ClickHouse ping failed');
+      }
+      return {
+        ok,
+        responseMs: Date.now() - start,
+        ...(ok ? {} : { error: 'ClickHouse ping failed' }),
+      };
+    } catch (err: unknown) {
+      const message = (err as Error).message;
+      if (this.available) {
+        this.setAvailable(false, message);
+      }
+      return {
+        ok: false,
+        responseMs: Date.now() - start,
+        error: message,
+      };
+    }
+  }
+
   /** Returns the shared client scoped to CLICKHOUSE_DATABASE. */
   getClient(): ClickHouseClient {
     if (!this.client || !this.available) {

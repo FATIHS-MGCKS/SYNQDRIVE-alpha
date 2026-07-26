@@ -1,0 +1,105 @@
+# SynqDrive application dependency health alerts
+#
+# Requires synqdrive_dependency_up gauge from ApplicationHealthService (30s refresh).
+
+groups:
+  - name: synqdrive_application_health
+    rules:
+      - alert: SynqDrivePostgresDown
+        expr: synqdrive_dependency_up{dependency="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: PostgreSQL dependency probe failing
+          description: Application health probe cannot execute SELECT 1 against Postgres.
+
+      - alert: SynqDriveRedisDown
+        expr: synqdrive_dependency_up{dependency="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Redis dependency probe failing
+          description: Application health probe cannot PING Redis.
+
+      - alert: SynqDriveQueueBrokerDown
+        expr: synqdrive_dependency_up{dependency="queue"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: BullMQ queue broker unreachable
+          description: Workers are enabled but BullMQ getJobCounts probe failed.
+
+      - alert: SynqDriveWorkersDisabled
+        expr: synqdrive_dependency_up{dependency="workers"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Worker runtime unhealthy
+          description: WORKERS_ENABLED bootstrap flag is off or Redis version is incompatible.
+
+      - alert: SynqDriveClickHouseDown
+        expr: synqdrive_dependency_up{dependency="clickhouse"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: ClickHouse configured but probe failing
+          description: Live ClickHouse ping failed while CLICKHOUSE_URL is configured.
+
+      - alert: SynqDriveDimoUnhealthy
+        expr: synqdrive_dependency_up{dependency="dimo"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: DIMO integration unhealthy
+          description: DIMO is configured but developer JWT health is ERROR/EXPIRED.
+
+      - alert: SynqDriveStripeUnhealthy
+        expr: synqdrive_dependency_up{dependency="stripe"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Stripe API probe failing
+          description: STRIPE_SECRET_KEY is set but balance.retrieve health probe failed.
+
+      - alert: SynqDriveAiUnhealthy
+        expr: synqdrive_dependency_up{dependency="ai"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: AI provider probe failing
+          description: LLM is configured but Mistral models.list health probe failed.
+
+      - alert: SynqDriveNotificationEngineUnhealthy
+        expr: synqdrive_dependency_up{dependency="notification"} == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: Notification Engine V2 unhealthy
+          description: NOTIFICATIONS_V2 is enabled but evaluation/delivery queue probes failed.
+
+      - alert: SynqDriveStorageUnhealthy
+        expr: synqdrive_dependency_up{dependency="storage"} == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: Document storage unhealthy
+          description: Document storage checkHealth probe failed (local or S3).
+
+      - alert: SynqDriveDocumentExtractionUnhealthy
+        expr: synqdrive_dependency_up{dependency="documentExtraction"} == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: Document extraction pipeline unhealthy
+          description: Document extraction hard readiness dependency is failing.

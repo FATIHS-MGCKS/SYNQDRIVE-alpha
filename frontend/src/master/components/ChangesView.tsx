@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-application-health-2f5-2026-07-26',
+    version: '4.9.902',
+    title: 'V4.9.902 — Master Admin 2F.5: Application health probes',
+    summary: [
+      'Unified dependency health: /health/dependencies + improved /health/readiness (503 when not ready).',
+      'Real probes for Postgres, Redis, ClickHouse ping, BullMQ, DIMO JWT, Stripe balance, Mistral models.list, Notification V2 queues, document storage.',
+      'Prometheus synqdrive_dependency_up gauge (30s refresh) + alerts-app-health.yml (11 rules).',
+      'docs/remediation/application-health.md',
+    ],
+    reason:
+      'MASTER ADMIN REMEDIATION Phase 2F.5 — meaningful, deterministic, fast health checks without fake configured-only signals.',
+    previousBehavior:
+      'Readiness covered Postgres/Redis/workers/document-extraction only; DIMO/Stripe/AI/notification/storage absent; worker check used Redis version not queue broker.',
+    details:
+      'ApplicationHealthModule + ApplicationHealthService; ClickHouseService.probeConnectivity; StripeBillingService.probeApiConnectivity; MetricsRefreshService dependency_up refresh.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T00:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
