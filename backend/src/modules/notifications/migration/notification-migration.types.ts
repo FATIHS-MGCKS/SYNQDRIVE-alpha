@@ -31,6 +31,8 @@ export interface NotificationMigrationSkipReason {
 
 export interface NotificationMigrationFailure {
   insightId: string;
+  organizationId?: string;
+  insightType?: string;
   error: string;
 }
 
@@ -93,6 +95,8 @@ export interface NotificationMigrationAnalysisReport {
 }
 
 export interface NotificationMigrationBackfillResult {
+  schemaVersion: '1.0';
+  generatedAt: string;
   mode: NotificationMigrationMode;
   organizationId: string;
   stats: NotificationMigrationStats;
@@ -101,15 +105,23 @@ export interface NotificationMigrationBackfillResult {
   skipReasons: NotificationMigrationSkipReason[];
 }
 
-export interface NotificationMigrationAcceptanceReport {
-  generatedAt: string;
+export type NotificationMigrationAcceptanceSeverity = 'critical' | 'warning' | 'info';
+
+export interface NotificationMigrationAcceptanceCheck {
+  name: string;
+  severity: NotificationMigrationAcceptanceSeverity;
   passed: boolean;
-  checks: Array<{
-    name: string;
-    passed: boolean;
-    detail: string;
-    count?: number;
-  }>;
+  detail: string;
+  count?: number;
+  samples?: string[];
+}
+
+export interface NotificationMigrationAcceptanceReport {
+  schemaVersion: '1.0';
+  generatedAt: string;
+  organizationId: string | null;
+  passed: boolean;
+  checks: NotificationMigrationAcceptanceCheck[];
 }
 
 export interface NotificationArchitectureAuditFinding {

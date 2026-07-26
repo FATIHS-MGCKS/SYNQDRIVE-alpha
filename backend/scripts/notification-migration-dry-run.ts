@@ -12,6 +12,10 @@ import { NestFactory } from '@nestjs/core';
 import { NotificationMigrationCliModule } from '../src/modules/notifications/migration/notification-migration-cli.module';
 import { NotificationMigrationAnalysisService } from '../src/modules/notifications/migration/notification-migration-analysis.service';
 import { NotificationArchitectureAuditService } from '../src/modules/notifications/migration/notification-architecture-audit.service';
+import {
+  parseMigrationCliArgs,
+  writeMigrationJsonReport,
+} from '../src/modules/notifications/migration/notification-migration-cli.util';
 
 {
   const envPath = path.resolve(__dirname, '..', '.env');
@@ -23,14 +27,8 @@ import { NotificationArchitectureAuditService } from '../src/modules/notificatio
   }
 }
 
-function argValue(flag: string): string | undefined {
-  const idx = process.argv.indexOf(flag);
-  return idx >= 0 ? process.argv[idx + 1] : undefined;
-}
-
 async function main() {
-  const orgId = argValue('--org');
-  const outPath = argValue('--out');
+  const { orgId, outPath } = parseMigrationCliArgs();
 
   const app = await NestFactory.createApplicationContext(NotificationMigrationCliModule, {
     logger: ['error', 'warn', 'log'],
@@ -45,15 +43,15 @@ async function main() {
       Promise.resolve(architecture.audit(path.resolve(__dirname, '..', '..'))),
     ]);
 
-    const payload = { report, architectureAudit: audit };
-    const json = JSON.stringify(payload, null, 2);
+    const payload = {
+      schemaVersion: '1.0' as const,
+      generatedAt: new Date().toISOString(),
+      organizationId: orgId ?? null,
+      report,
+      architectureAudit: audit,
+    };
 
-    if (outPath) {
-      fs.writeFileSync(outPath, json, 'utf8');
-      console.log(`[dry-run] Wrote report to ${outPath}`);
-    } else {
-      console.log(json);
-    }
+    writeMigrationJsonReport(payload, outPath, 'dry-run');
 
     console.error(
       `[dry-run] Summary: analyzed=${report.projected.analyzed} migrated=${report.projected.migrated} merged=${report.projected.merged} skipped=${report.projected.skipped} unresolved=${report.projected.unresolved}`,

@@ -3,8 +3,10 @@
  *
  * Usage (from backend/):
  *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <uuid> --dry-run
+ *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <uuid> --dry-run --out /tmp/backfill.json
  *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <uuid> --apply
  *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <uuid> --apply --checkpoint /tmp/checkpoint.json
+ *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <uuid> --apply --batch-size 50 --checkpoint /tmp/checkpoint.json
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -12,6 +14,12 @@ import { NestFactory } from '@nestjs/core';
 import { NotificationMigrationCliModule } from '../src/modules/notifications/migration/notification-migration-cli.module';
 import { NotificationMigrationBackfillService } from '../src/modules/notifications/migration/notification-migration-backfill.service';
 import type { NotificationMigrationCheckpoint } from '../src/modules/notifications/migration/notification-migration.types';
+import {
+  loadCheckpoint,
+  parseMigrationCliArgs,
+  saveCheckpoint,
+  writeMigrationJsonReport,
+} from '../src/modules/notifications/migration/notification-migration-cli.util';
 
 {
   const envPath = path.resolve(__dirname, '..', '.env');
@@ -23,26 +31,33 @@ import type { NotificationMigrationCheckpoint } from '../src/modules/notificatio
   }
 }
 
-function argValue(flag: string): string | undefined {
-  const idx = process.argv.indexOf(flag);
-  return idx >= 0 ? process.argv[idx + 1] : undefined;
-}
-
 async function main() {
-  const orgId = argValue('--org');
+  const {
+    orgId,
+    outPath,
+    checkpointPath,
+    batchSize,
+    includeInactive,
+    apply,
+    dryRun,
+  } = parseMigrationCliArgs();
+
   if (!orgId) {
     console.error('Required: --org <organizationId>');
     process.exit(1);
   }
 
-  const apply = process.argv.includes('--apply');
-  const dryRun = process.argv.includes('--dry-run') || !apply;
-  const checkpointPath = argValue('--checkpoint');
-  const includeInactive = process.argv.includes('--include-inactive');
+  if (apply && dryRun) {
+    console.error('Use either --dry-run or --apply, not both');
+    process.exit(1);
+  }
 
   let checkpoint: NotificationMigrationCheckpoint | null = null;
-  if (checkpointPath && fs.existsSync(checkpointPath)) {
-    checkpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8')) as NotificationMigrationCheckpoint;
+  try {
+    checkpoint = loadCheckpoint<NotificationMigrationCheckpoint>(checkpointPath, orgId);
+  } catch (err) {
+    console.error(`[backfill] ${(err as Error).message}`);
+    process.exit(1);
   }
 
   const app = await NestFactory.createApplicationContext(NotificationMigrationCliModule, {
@@ -56,14 +71,19 @@ async function main() {
       mode: dryRun ? 'dry_run' : 'apply',
       checkpoint,
       includeInactive,
+      batchSize,
     });
 
-    console.log(JSON.stringify(result, null, 2));
+    writeMigrationJsonReport(result, outPath, 'backfill');
+    saveCheckpoint(checkpointPath, result.checkpoint, { apply });
 
-    if (checkpointPath) {
-      fs.writeFileSync(checkpointPath, JSON.stringify(result.checkpoint, null, 2), 'utf8');
-      console.error(`[backfill] Checkpoint saved to ${checkpointPath}`);
+    if (dryRun) {
+      console.error('[backfill] Dry-run complete — no database writes, checkpoint not saved');
     }
+
+    console.error(
+      `[backfill] Summary: analyzed=${result.stats.analyzed} migrated=${result.stats.migrated} merged=${result.stats.merged} skipped=${result.stats.skipped} unresolved=${result.stats.unresolved} failed=${result.stats.failed}`,
+    );
 
     process.exit(result.failures.length > 0 ? 1 : 0);
   } finally {

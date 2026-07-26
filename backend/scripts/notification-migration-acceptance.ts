@@ -4,12 +4,17 @@
  * Usage (from backend/):
  *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-acceptance.ts
  *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-acceptance.ts --org <uuid>
+ *   npx ts-node -r tsconfig-paths/register scripts/notification-migration-acceptance.ts --org <uuid> --out /tmp/acceptance.json
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { NotificationMigrationCliModule } from '../src/modules/notifications/migration/notification-migration-cli.module';
 import { NotificationMigrationAcceptanceService } from '../src/modules/notifications/migration/notification-migration-acceptance.service';
+import {
+  parseMigrationCliArgs,
+  writeMigrationJsonReport,
+} from '../src/modules/notifications/migration/notification-migration-cli.util';
 
 {
   const envPath = path.resolve(__dirname, '..', '.env');
@@ -21,13 +26,9 @@ import { NotificationMigrationAcceptanceService } from '../src/modules/notificat
   }
 }
 
-function argValue(flag: string): string | undefined {
-  const idx = process.argv.indexOf(flag);
-  return idx >= 0 ? process.argv[idx + 1] : undefined;
-}
-
 async function main() {
-  const orgId = argValue('--org');
+  const { orgId, outPath } = parseMigrationCliArgs();
+
   const app = await NestFactory.createApplicationContext(NotificationMigrationCliModule, {
     logger: ['error', 'warn', 'log'],
   });
@@ -35,7 +36,14 @@ async function main() {
   try {
     const acceptance = app.get(NotificationMigrationAcceptanceService);
     const report = await acceptance.run(orgId);
-    console.log(JSON.stringify(report, null, 2));
+
+    writeMigrationJsonReport(report, outPath, 'acceptance');
+
+    const failed = report.checks.filter((c) => !c.passed && c.severity !== 'info');
+    console.error(
+      `[acceptance] ${report.passed ? 'PASSED' : 'FAILED'} — ${failed.length} failing checks`,
+    );
+
     process.exit(report.passed ? 0 : 1);
   } finally {
     await app.close();

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-migration-hardening-v49877-2026-07-26',
+    version: '4.9.877',
+    title: 'V4.9.877 — Notification Engine: Migration Backfill & Acceptance Hardening',
+    summary: [
+      'Backfill: Org-Validierung, Cross-Tenant-Guard, Checkpoint-Resume, konfigurierbare Batch-Größe.',
+      'Dry-Run schreibt keine Daten und persistiert keinen Checkpoint.',
+      'Acceptance: Duplikate, Orphans, ungültige Entities, Count-Abweichungen, Mapping-Fehler, Outbox.',
+      'Maschinenlesbare JSON-Reports (schemaVersion 1.0) für alle drei Migration-Scripts.',
+      'Production-Runbook: docs/operations/notification-engine-migration-runbook.md',
+    ],
+    reason:
+      'Sichere, wiederholbare und kontrollierbare Migration von Legacy-Notifications nach V2.',
+    previousBehavior:
+      'Backfill ohne explizite Org-/Checkpoint-Validierung; Acceptance unvollständig; kein einheitlicher JSON-Report.',
+    details:
+      'notification-migration-backfill.service.ts, notification-migration-acceptance.service.ts, notification-migration-cli.util.ts, CLI-Scripts, Specs mit Testdaten.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T16:00:00.000Z',
+  },
+  {
     id: 'notification-observability-v49876-2026-07-26',
     version: '4.9.876',
     title: 'V4.9.876 — Notification Engine: Metrics, Alerts & Observability',

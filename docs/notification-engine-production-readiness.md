@@ -99,7 +99,10 @@ cd backend
 npx ts-node -r tsconfig-paths/register scripts/notification-migration-dry-run.ts --org <ORG_ID> --out /tmp/notification-dry-run.json
 ```
 
-Report fields: `duplicates`, `unmigratable`, `missingEntityIds`, `projected` (migrated/merged/skipped/unresolved).
+Report fields: `duplicates`, `unmigratable`, `missingEntityIds`, `projected` (migrated/merged/skipped/unresolved).  
+Machine-readable envelope: `schemaVersion: "1.0"`.
+
+**Runbook:** `docs/operations/notification-engine-migration-runbook.md`
 
 ---
 
@@ -107,13 +110,15 @@ Report fields: `duplicates`, `unmigratable`, `missingEntityIds`, `projected` (mi
 
 ### Properties
 
-- **Dry-run** (`--dry-run`): statistics only, no writes
+- **Dry-run** (`--dry-run`): statistics only, no writes, checkpoint not saved
 - **Apply** (`--apply`): transactional writes
-- **Org-scoped** (`--org` required)
-- **Batch** 100 rows per iteration
-- **Checkpoint** JSON (`--checkpoint path.json`)
-- **Idempotent**: `legacy_insight_id` + fingerprint active lookup
+- **Org-scoped** (`--org` required) with org-existence + checkpoint org validation
+- **Batch** configurable via `--batch-size` (default 100)
+- **Checkpoint** JSON (`--checkpoint path.json`) — resume on apply only
+- **JSON report** (`--out path.json`) — schemaVersion `1.0`
+- **Idempotent**: `legacy_insight_id` + fingerprint active lookup (org-scoped)
 - **Merge**: existing active V2 → add occurrence, extend timestamps, preserve sourceRefs
+- **Per-record errors**: logged + returned in `failures[]` without aborting batch
 
 ### Migratable insight types
 
@@ -125,10 +130,10 @@ Previously unmigratable types (now covered): `TIGHT_HANDOVER`, `RETURN_NEEDS_INS
 
 ```bash
 # Dry-run
-npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <ORG_ID> --dry-run
+npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <ORG_ID> --dry-run --out /tmp/backfill-dry.json
 
 # Apply (after dry-run review)
-npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <ORG_ID> --apply --checkpoint /tmp/backfill-checkpoint.json
+npx ts-node -r tsconfig-paths/register scripts/notification-migration-backfill.ts --org <ORG_ID> --apply --batch-size 100 --checkpoint /tmp/backfill-checkpoint.json --out /tmp/backfill-apply.json
 ```
 
 ### Protocol counters
@@ -151,10 +156,10 @@ HAVING COUNT(*) > 1;
 Automated:
 
 ```bash
-npx ts-node -r tsconfig-paths/register scripts/notification-migration-acceptance.ts --org <ORG_ID>
+npx ts-node -r tsconfig-paths/register scripts/notification-migration-acceptance.ts --org <ORG_ID> --out /tmp/acceptance.json
 ```
 
-Checks: duplicate fingerprints, entity IDs, orphan occurrences, delivery dead-letter, backlog.
+Checks: duplicate fingerprints, entity IDs, orphan occurrences/receipts/outbox, invalid entity FKs, migration count consistency, unresolved mapping errors, delivery dead-letter, backlog, outbox org mismatch.
 
 ---
 
@@ -173,7 +178,7 @@ Checks: duplicate fingerprints, entity IDs, orphan occurrences, delivery dead-le
 - Backend: `NOTIFICATIONS_V2`, `NOTIFICATIONS_DELIVERY_ENABLED`
 - Frontend: `VITE_NOTIFICATIONS_V2` (PR #146)
 
-**Rollback:** set flags false — V1 paths remain.
+**Rollback:** set flags false — V1 paths remain. Do not delete V2 rows. See `docs/operations/notification-engine-migration-runbook.md`.
 
 ---
 
@@ -280,5 +285,6 @@ Expected: all notification suites pass including `notification-migration.spec.ts
 
 - `docs/notification-engine-delivery-and-observability.md`
 - `docs/notification-engine-migration-plan.md`
+- `docs/operations/notification-engine-migration-runbook.md`
 - `docs/notification-engine-api.md`
 - `docs/notification-engine-permissions-and-preferences.md`

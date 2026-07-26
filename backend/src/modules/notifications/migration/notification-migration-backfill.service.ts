@@ -37,6 +37,9 @@ export class NotificationMigrationBackfillService {
   ) {}
 
   async run(options: BackfillOptions): Promise<NotificationMigrationBackfillResult> {
+    await this.assertOrganizationExists(options.organizationId);
+    this.assertCheckpointOrg(options);
+
     const batchSize = options.batchSize ?? 100;
     const stats: NotificationMigrationStats = {
       analyzed: 0,
@@ -80,13 +83,24 @@ export class NotificationMigrationBackfillService {
         processedInRun += 1;
 
         try {
+          this.assertInsightTenant(row.organizationId, options.organizationId, row.id);
           const outcome = await this.processInsight(row, options.mode, skipReasons);
           stats[outcome] += 1;
         } catch (err) {
           stats.failed += 1;
+          const error = (err as Error).message ?? String(err);
           failures.push({
             insightId: row.id,
-            error: (err as Error).message ?? String(err),
+            organizationId: row.organizationId,
+            insightType: row.type,
+            error,
+          });
+          this.logger.warn({
+            msg: 'notification.migration.backfill_record_failed',
+            organizationId: options.organizationId,
+            insightId: row.id,
+            insightType: row.type,
+            error,
           });
         }
 
@@ -114,6 +128,8 @@ export class NotificationMigrationBackfillService {
     });
 
     return {
+      schemaVersion: '1.0',
+      generatedAt: new Date().toISOString(),
       mode: options.mode,
       organizationId: options.organizationId,
       stats,
@@ -123,13 +139,46 @@ export class NotificationMigrationBackfillService {
     };
   }
 
+  private async assertOrganizationExists(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true },
+    });
+    if (!org) {
+      throw new Error(`Organization not found: ${organizationId}`);
+    }
+  }
+
+  private assertCheckpointOrg(options: BackfillOptions): void {
+    if (
+      options.checkpoint
+      && options.checkpoint.organizationId !== options.organizationId
+    ) {
+      throw new Error(
+        `Checkpoint organization mismatch: checkpoint=${options.checkpoint.organizationId} requested=${options.organizationId}`,
+      );
+    }
+  }
+
+  private assertInsightTenant(
+    rowOrgId: string,
+    expectedOrgId: string,
+    insightId: string,
+  ): void {
+    if (rowOrgId !== expectedOrgId) {
+      throw new Error(
+        `Cross-tenant insight blocked: insight=${insightId} rowOrg=${rowOrgId} expected=${expectedOrgId}`,
+      );
+    }
+  }
+
   private async processInsight(
     row: Prisma.DashboardInsightGetPayload<object>,
     mode: NotificationMigrationMode,
     skipReasons: NotificationMigrationSkipReason[],
   ): Promise<keyof Pick<NotificationMigrationStats, 'migrated' | 'merged' | 'skipped' | 'unresolved'>> {
     const existingByLegacy = await this.prisma.notification.findFirst({
-      where: { legacyInsightId: row.id },
+      where: { legacyInsightId: row.id, organizationId: row.organizationId },
     });
     if (existingByLegacy) {
       skipReasons.push({ insightId: row.id, reason: 'ALREADY_MIGRATED' });
