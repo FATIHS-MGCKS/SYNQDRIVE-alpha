@@ -93,6 +93,48 @@ export function resolveMfaAuditFields(req: PrivilegedRequest): {
   };
 }
 
+const SENSITIVE_BODY_KEY_FRAGMENTS = [
+  'password',
+  'token',
+  'secret',
+  'apikey',
+  'api_key',
+  'authorization',
+  'refresh',
+  'otp',
+  'pin',
+  'signature',
+  'creditcard',
+  'credit_card',
+  'cvv',
+];
+
+function isSensitiveBodyKey(key: string): boolean {
+  const k = key.toLowerCase();
+  return SENSITIVE_BODY_KEY_FRAGMENTS.some((f) => k.includes(f));
+}
+
+/** Redact secrets from privileged mutation payloads before persisting in audit diff. */
+export function sanitizePrivilegedAuditPayload(value: unknown): unknown {
+  if (value == null) return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizePrivilegedAuditPayload(item));
+  }
+  if (typeof value !== 'object') return value;
+
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (isSensitiveBodyKey(key)) {
+      out[key] = '[REDACTED]';
+    } else if (child && typeof child === 'object') {
+      out[key] = sanitizePrivilegedAuditPayload(child);
+    } else {
+      out[key] = child;
+    }
+  }
+  return out;
+}
+
 export function buildPrivilegedRouteLabel(req: PrivilegedRequest): string | undefined {
   const routePath = (req as { route?: { path?: string } }).route?.path;
   if (routePath) {

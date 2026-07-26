@@ -20,6 +20,7 @@ import {
   resolveMfaAuditFields,
   resolvePrivilegedReason,
   resolveTargetOrganizationId,
+  sanitizePrivilegedAuditPayload,
 } from '@modules/activity-log/master-admin-audit.util';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -80,6 +81,8 @@ export class MasterAdminPrivilegedAuditInterceptor implements NestInterceptor {
     const auditAction = deriveMasterAdminAuditAction(req.method, path);
     const mfa = resolveMfaAuditFields(req);
 
+    const afterPayload = sanitizePrivilegedAuditPayload(req.body);
+
     void this.masterAdminAudit.record({
       auditAction,
       actorUserId: req.user?.id,
@@ -101,6 +104,8 @@ export class MasterAdminPrivilegedAuditInterceptor implements NestInterceptor {
       mfaAssuranceLevel: mfa.mfaAssuranceLevel,
       mfaStepUpUsed: mfa.mfaStepUpUsed,
       permissionGranted: true,
+      before: null,
+      after: afterPayload,
     });
   }
 }

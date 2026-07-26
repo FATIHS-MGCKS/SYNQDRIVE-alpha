@@ -30,6 +30,8 @@ export const STEP_UP_ACTION = {
   MASTER_INTEGRATIONS: 'MASTER_INTEGRATIONS',
   /** Master admin platform user management */
   MASTER_USER_MANAGEMENT: 'MASTER_USER_MANAGEMENT',
+  /** Master admin audit log export (sensitive read) */
+  MASTER_AUDIT_EXPORT: 'MASTER_AUDIT_EXPORT',
 } as const;
 
 export type StepUpActionCode = (typeof STEP_UP_ACTION)[keyof typeof STEP_UP_ACTION];

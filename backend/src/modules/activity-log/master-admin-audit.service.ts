@@ -7,6 +7,7 @@ import {
   MasterAdminAuditActionCode,
   MasterAdminAuditRecordInput,
 } from './master-admin-audit.contract';
+import { buildAuditEnvelope } from './audit-envelope.util';
 
 @Injectable()
 export class MasterAdminAuditService {
@@ -29,25 +30,33 @@ export class MasterAdminAuditService {
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
       level,
-      metaJson: {
+      metaJson: buildAuditEnvelope({
         auditDomain: MASTER_ADMIN_AUDIT_DOMAIN,
         auditAction: input.auditAction,
+        actorUserId: input.actorUserId,
+        actorPlatformRole: input.actorPlatformRole,
+        actorPermissions: input.actorPermissions,
+        targetOrganizationId: input.targetOrganizationId,
+        targetEntityType: 'ADMIN_OPERATION',
+        targetEntityId: input.entityId,
         correlationId: input.correlationId,
         requestId: input.correlationId,
-        actorUserId: input.actorUserId ?? null,
-        actorPlatformRole: input.actorPlatformRole ?? null,
-        actorPermissions: input.actorPermissions ?? [],
-        targetOrganizationId: input.targetOrganizationId ?? null,
-        reasonCode: input.reasonCode ?? null,
-        mfaStepUpAction: input.mfaStepUpAction ?? null,
-        mfaAssuranceLevel: input.mfaAssuranceLevel ?? null,
-        mfaStepUpUsed: input.mfaStepUpUsed ?? false,
-        permissionGranted: input.permissionGranted ?? true,
-        httpMethod: input.httpMethod ?? null,
-        httpStatus: input.httpStatus ?? null,
-        recordedAt: new Date().toISOString(),
-        ...(input.metadata ?? {}),
-      },
+        ipAddress: input.ipAddress,
+        userAgent: input.userAgent,
+        before: input.before,
+        after: input.after,
+        changeSummary: input.changeSummary,
+        metadata: {
+          reasonCode: input.reasonCode ?? null,
+          mfaStepUpAction: input.mfaStepUpAction ?? null,
+          mfaAssuranceLevel: input.mfaAssuranceLevel ?? null,
+          mfaStepUpUsed: input.mfaStepUpUsed ?? false,
+          permissionGranted: input.permissionGranted ?? true,
+          httpMethod: input.httpMethod ?? null,
+          httpStatus: input.httpStatus ?? null,
+          ...(input.metadata ?? {}),
+        },
+      }),
     });
   }
 

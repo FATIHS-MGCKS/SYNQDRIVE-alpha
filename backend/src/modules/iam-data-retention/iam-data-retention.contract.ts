@@ -45,7 +45,8 @@ export const IAM_DATA_CATEGORY_DEFINITIONS: Record<IamDataCategory, IamDataCateg
   IP_USER_AGENT: {
     category: IamDataCategory.IP_USER_AGENT,
     label: 'IP / User-Agent',
-    description: 'Network metadata on sessions and audit rows',
+    description:
+      'Network metadata on refresh tokens (activity_logs are append-only and excluded)',
     defaultRetentionDays: 90,
     defaultStrategy: IamRetentionStrategy.PSEUDONYMIZE,
     requiresOrgApproval: true,
@@ -54,7 +55,8 @@ export const IAM_DATA_CATEGORY_DEFINITIONS: Record<IamDataCategory, IamDataCateg
   LOGIN_FAILURE: {
     category: IamDataCategory.LOGIN_FAILURE,
     label: 'Login failures',
-    description: 'AUTH_FAIL security events in activity log',
+    description:
+      'AUTH_FAIL rows in activity_logs (append-only — retention no longer deletes)',
     defaultRetentionDays: 90,
     defaultStrategy: IamRetentionStrategy.DELETE,
     requiresOrgApproval: true,
@@ -90,7 +92,7 @@ export const IAM_DATA_CATEGORY_DEFINITIONS: Record<IamDataCategory, IamDataCateg
   AUDIT_LOG: {
     category: IamDataCategory.AUDIT_LOG,
     label: 'Audit logs',
-    description: 'IAM activity log rows',
+    description: 'IAM activity log rows (append-only — no delete or pseudonymize)',
     defaultRetentionDays: 0,
     defaultStrategy: IamRetentionStrategy.NO_OP,
     requiresOrgApproval: true,

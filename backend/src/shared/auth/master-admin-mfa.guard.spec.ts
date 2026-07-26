@@ -22,11 +22,14 @@ describe('MasterAdminMfaGuard', () => {
 
   function buildContext(input: {
     method?: string;
+    action?: (typeof STEP_UP_ACTION)[keyof typeof STEP_UP_ACTION];
     user?: Record<string, unknown>;
     headers?: Record<string, string>;
   }) {
     const reflector = {
-      getAllAndOverride: jest.fn().mockReturnValue(STEP_UP_ACTION.MASTER_BILLING),
+      getAllAndOverride: jest
+        .fn()
+        .mockReturnValue(input.action ?? STEP_UP_ACTION.MASTER_BILLING),
     } as unknown as Reflector;
     const prisma = {
       userMfaFactor: {
@@ -62,7 +65,7 @@ describe('MasterAdminMfaGuard', () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
-  it('allows master admin GET without step-up', async () => {
+  it('allows master admin GET without step-up for non-sensitive reads', async () => {
     const { guard, context } = buildContext({
       method: 'GET',
       user: {
@@ -72,6 +75,19 @@ describe('MasterAdminMfaGuard', () => {
       },
     });
     await expect(guard.canActivate(context)).resolves.toBe(true);
+  });
+
+  it('blocks master admin audit export GET without MFA step-up', async () => {
+    const { guard, context } = buildContext({
+      method: 'GET',
+      action: STEP_UP_ACTION.MASTER_AUDIT_EXPORT,
+      user: {
+        id: 'u1',
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionClaims: buildPasswordOnlyClaims(),
+      },
+    });
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('blocks master admin POST without MFA step-up', async () => {

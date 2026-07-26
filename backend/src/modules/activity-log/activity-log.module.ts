@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ActivityLogController } from './activity-log.controller';
 import { ActivityLogService } from './activity-log.service';
+import { ActivityLogExportService } from './activity-log-export.service';
 import { AuditService } from './audit.service';
 import { MasterAdminAuditService } from './master-admin-audit.service';
 import { PrismaModule } from '@shared/database/prisma.module';
@@ -14,7 +15,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
 @Module({
   imports: [PrismaModule],
   controllers: [ActivityLogController],
-  providers: [ActivityLogService, AuditService, MasterAdminAuditService],
-  exports: [ActivityLogService, AuditService, MasterAdminAuditService],
+  providers: [ActivityLogService, ActivityLogExportService, AuditService, MasterAdminAuditService],
+  exports: [ActivityLogService, ActivityLogExportService, AuditService, MasterAdminAuditService],
 })
 export class ActivityLogModule {}

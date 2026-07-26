@@ -17,6 +17,7 @@ export const MasterAdminAuditAction = {
   MFA_STEP_UP_GRANTED: 'MFA_STEP_UP_GRANTED',
   MFA_STEP_UP_DENIED: 'MFA_STEP_UP_DENIED',
   PRIVILEGED_HTTP_MUTATION: 'PRIVILEGED_HTTP_MUTATION',
+  AUDIT_EXPORT: 'AUDIT_EXPORT',
 } as const;
 
 export type MasterAdminAuditActionCode =
@@ -42,6 +43,9 @@ export interface MasterAdminAuditRecordInput {
   mfaStepUpUsed?: boolean;
   permissionGranted?: boolean;
   metadata?: Record<string, unknown>;
+  before?: unknown;
+  after?: unknown;
+  changeSummary?: string | null;
   level?: 'INFO' | 'WARN' | 'CRITICAL';
 }
 

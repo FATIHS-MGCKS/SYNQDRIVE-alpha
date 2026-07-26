@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
+import { buildAuditEnvelope } from './audit-envelope.util';
 
 export interface AuditContext {
   actorUserId?: string;
@@ -55,7 +56,26 @@ export class AuditService {
           route: ctx.route ?? null,
           userAgent: ctx.userAgent ?? null,
           level: ctx.level ?? 'INFO',
-          metaJson: ctx.metaJson as any ?? undefined,
+          metaJson: buildAuditEnvelope({
+            actorUserId: ctx.actorUserId,
+            targetOrganizationId: ctx.actorOrganizationId,
+            targetEntityType: ctx.entity,
+            targetEntityId: ctx.entityId,
+            correlationId:
+              typeof ctx.metaJson?.correlationId === 'string'
+                ? ctx.metaJson.correlationId
+                : undefined,
+            requestId:
+              typeof ctx.metaJson?.requestId === 'string'
+                ? ctx.metaJson.requestId
+                : undefined,
+            ipAddress: ctx.ipAddress,
+            userAgent: ctx.userAgent,
+            changeSummary: ctx.changeSummary,
+            before: ctx.metaJson?.before,
+            after: ctx.metaJson?.after,
+            metadata: ctx.metaJson,
+          }) as any,
           ipAddress: ctx.ipAddress ?? null,
         },
       });

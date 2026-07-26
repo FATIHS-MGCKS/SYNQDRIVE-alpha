@@ -1,5 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { ActivityAction, IamDataCategory } from '@prisma/client';
+import { IamDataCategory } from '@prisma/client';
 import { IamDataRetentionWorkerService } from './iam-data-retention-worker.service';
 import { IamDsarExportService } from './iam-dsar-export.service';
 import { IamLegalHoldService } from './iam-legal-hold.service';
@@ -400,14 +400,14 @@ describe('IAM data retention (Prompt 20)', () => {
     );
   });
 
-  it('login failure retention targets AUTH_FAIL rows', async () => {
+  it('login failure retention is a no-op for append-only activity logs', async () => {
     const prisma = {
       refreshToken: { findMany: jest.fn().mockResolvedValue([]) },
       inviteEmailOutbox: { findMany: jest.fn().mockResolvedValue([]) },
       organizationUserInvite: { findMany: jest.fn().mockResolvedValue([]) },
       activityLog: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'log-1', userId: subjectUserId }]),
-        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findMany: jest.fn(),
+        deleteMany: jest.fn(),
       },
       iamAuditOutbox: { findMany: jest.fn().mockResolvedValue([]) },
       user: { findMany: jest.fn().mockResolvedValue([]) },
@@ -430,11 +430,7 @@ describe('IAM data retention (Prompt 20)', () => {
       categories: [IamDataCategory.LOGIN_FAILURE],
     });
 
-    expect(prisma.activityLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ action: ActivityAction.AUTH_FAIL }),
-      }),
-    );
-    expect(prisma.activityLog.deleteMany).toHaveBeenCalled();
+    expect(prisma.activityLog.findMany).not.toHaveBeenCalled();
+    expect(prisma.activityLog.deleteMany).not.toHaveBeenCalled();
   });
 });

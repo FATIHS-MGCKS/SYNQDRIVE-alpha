@@ -10,6 +10,7 @@ import { UserPlatformRole } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   MFA_ERROR,
+  STEP_UP_ACTION,
   StepUpActionCode,
   hasFreshMfaAssurance,
 } from '@modules/iam-mfa/iam-mfa.policy';
@@ -26,6 +27,9 @@ import {
 } from '@modules/activity-log/master-admin-audit.util';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const SENSITIVE_READ_ACTIONS = new Set<StepUpActionCode>([
+  STEP_UP_ACTION.MASTER_AUDIT_EXPORT,
+]);
 
 @Injectable()
 export class MasterAdminMfaGuard implements CanActivate {
@@ -67,7 +71,9 @@ export class MasterAdminMfaGuard implements CanActivate {
     }
 
     const method = String(request.method ?? 'GET').toUpperCase();
-    if (!MUTATING_METHODS.has(method)) {
+    const requiresMfa =
+      MUTATING_METHODS.has(method) || SENSITIVE_READ_ACTIONS.has(action);
+    if (!requiresMfa) {
       return true;
     }
 
