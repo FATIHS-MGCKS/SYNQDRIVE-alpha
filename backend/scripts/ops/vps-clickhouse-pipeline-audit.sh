@@ -21,10 +21,8 @@ if [[ -f /opt/synqdrive/shared/clickhouse-backup.env ]]; then
   set -a; source /opt/synqdrive/shared/clickhouse-backup.env; set +a
 fi
 
-ch_q() {
-  clickhouse-client --host "$CH_HOST" --port "$CH_PORT" \
-    --user "$CH_USER" ${CH_PASSWORD:+--password "$CH_PASSWORD"} "$@"
-}
+# shellcheck source=lib/clickhouse-query-lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/clickhouse-query-lib.sh"
 
 P1_ISSUES=0
 
@@ -35,10 +33,7 @@ section() {
   echo "================================================================================"
 }
 
-if ! ch_q --query "SELECT 1" >/dev/null 2>&1; then
-  echo "ERROR: cannot connect to ClickHouse" >&2
-  exit 2
-fi
+ch_query_require_connection
 
 section "Mirror freshness lag (seconds since newest event)"
 ch_q --format PrettyCompact <<SQL || true

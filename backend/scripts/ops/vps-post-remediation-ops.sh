@@ -10,6 +10,17 @@ CURRENT="${SYNQDRIVE_ROOT:-/opt/synqdrive/current}"
 echo "==> SynqDrive post-remediation ops ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
 echo "    current=${CURRENT}"
 
+# Sub-scripts read DATABASE_URL and the ClickHouse credentials from the
+# environment; on the VPS those live in the shared backend env.
+BACKEND_ENV="${SYNQDRIVE_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
+if [[ -r "$BACKEND_ENV" ]]; then
+  # shellcheck disable=SC1090
+  set -a; source "$BACKEND_ENV"; set +a
+  echo "    env=${BACKEND_ENV} (loaded)"
+else
+  echo "    WARN: ${BACKEND_ENV} not readable — steps needing DATABASE_URL/CLICKHOUSE_* will be skipped"
+fi
+
 run() {
   echo ""
   echo ">>> $*"

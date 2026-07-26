@@ -13,7 +13,7 @@ redis_backup_load_env_file
 redis_backup_load_backend_credentials
 redis_backup_defaults
 
-redis_backup_validate_config
+redis_backup_validate_connectivity
 
 echo "==> Redis DBSIZE: $(redis_backup_cli DBSIZE)"
 echo "==> Persistence:"

@@ -115,15 +115,21 @@ redis_backup_encryption_enabled() {
   [[ -n "${REDIS_BACKUP_GPG_RECIPIENT}" || -f "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" ]]
 }
 
-redis_backup_validate_config() {
+# Connectivity only — usable by read-only tooling that must not depend on the
+# backup encryption/offsite policy.
+redis_backup_validate_connectivity() {
   if ! command -v redis-cli >/dev/null 2>&1; then
     redis_backup_die "redis-cli not found"
   fi
-  if ! command -v redis-check-rdb >/dev/null 2>&1; then
-    redis_backup_die "redis-check-rdb not found (install redis-tools)"
-  fi
   if ! redis_backup_cli PING | grep -q PONG; then
     redis_backup_die "redis not reachable at ${REDIS_BACKUP_HOST}:${REDIS_BACKUP_PORT}"
+  fi
+}
+
+redis_backup_validate_config() {
+  redis_backup_validate_connectivity
+  if ! command -v redis-check-rdb >/dev/null 2>&1; then
+    redis_backup_die "redis-check-rdb not found (install redis-tools)"
   fi
   if ! redis_backup_encryption_enabled; then
     if [[ "${REDIS_BACKUP_ALLOW_UNENCRYPTED}" != "true" ]]; then
