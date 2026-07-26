@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -14,6 +15,7 @@ import {
 } from '@prisma/client';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isPrismaOptimisticLockFailure } from '../notification-prisma.util';
 import { NotificationCoreService } from '../notification-core.service';
 import { NotificationEngineConfig } from '../notification-engine.config';
 import { NotificationRepository } from '../notification.repository';
@@ -25,6 +27,7 @@ import {
   buildPreferenceWhereClause,
   buildUserSnoozeExclusionClause,
 } from '../access/notification-preference.query';
+import { buildUserHiddenExclusionClause } from '../access/notification-receipt.policy';
 import { NotificationReceiptService } from '../access/notification-receipt.service';
 import { NotificationStationScopeService } from '../access/notification-station-scope.service';
 import { deriveAvailableActions } from './notification-available-actions';
@@ -44,7 +47,14 @@ import {
   RESOLVED_RECENT_WINDOW_MS,
   type NotificationListFilters,
 } from './notification-query.util';
-import type { ListNotificationsQueryDto } from './dto/notification-api.dto';
+import {
+  buildNotificationListCursorWhere,
+  decodeNotificationListCursor,
+  encodeNotificationListCursorFromRow,
+  resolveNotificationListLimit,
+  type NotificationListPageResult,
+} from './notification-list-cursor.util';
+import type { ListNotificationsQueryDto, NotificationCountsQueryDto } from './dto/notification-api.dto';
 
 export interface NotificationRequestUser {
   id?: string;
@@ -86,58 +96,64 @@ export class NotificationApiService {
   ) {
     this.assertApiEnabled();
     const ctx = await this.resolveAccessContext(orgId, user);
-    const pagination = parseNotificationPagination(query);
     const referenceNow = new Date();
-
-    const resolvedOnly = !!query.resolvedOnly;
-
-    const listFilters: NotificationListFilters = {
-      organizationId: orgId,
-      userId: ctx.userId,
-      status: query.status,
-      severity: query.severity,
-      domain: query.domain,
-      entityType: query.entityType,
-      entityId: query.entityId,
-      vehicleId: query.vehicleId,
-      stationId: query.stationId,
-      bookingId: query.bookingId,
-      unreadOnly: query.unreadOnly,
-      activeOnly: query.activeOnly,
-      resolvedOnly,
-      from: query.from
-        ? new Date(query.from)
-        : resolvedOnly
-          ? new Date(Date.now() - RESOLVED_RECENT_WINDOW_MS)
-          : undefined,
-      to: query.to ? new Date(query.to) : undefined,
-      search: query.search,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-      scopedStationId: ctx.scopedStationId,
-      scopedVehicleIds: ctx.scopedVehicleIds,
-      scopedBookingIds: ctx.scopedBookingIds,
-    };
+    const sortBy = query.sortBy ?? 'lastSeenAt';
+    const sortOrder = query.sortOrder ?? 'desc';
+    const limit = resolveNotificationListLimit(query.limit);
 
     await this.validateEntityFilters(orgId, query);
 
-    const where = this.buildAccessWhere(listFilters, ctx, referenceNow, !resolvedOnly);
+    const listFilters = this.buildListFiltersFromQuery(orgId, ctx, query, referenceNow);
+    let where = this.buildAccessWhere(listFilters, ctx, referenceNow, !listFilters.resolvedOnly);
 
-    const [rows, total] = await Promise.all([
-      this.repository.listNotificationsWhere(where, {
-        skip: pagination.skip,
-        take: pagination.take,
-        orderBy: buildNotificationOrderBy(query.sortBy, query.sortOrder),
-      }),
-      this.repository.countNotificationsWhere(where),
-    ]);
+    if (query.cursor) {
+      const cursorPayload = decodeNotificationListCursor(query.cursor);
+      if (cursorPayload.sortBy !== sortBy || cursorPayload.sortOrder !== sortOrder) {
+        throw new BadRequestException('Cursor sort parameters do not match request');
+      }
+      where = {
+        AND: [where, buildNotificationListCursorWhere(cursorPayload)],
+      };
+    }
 
-    return buildNotificationPaginatedResult(
-      await this.mapRows(rows, ctx, referenceNow),
-      total,
-      pagination.page,
-      pagination.limit,
-    );
+    const orderBy = buildNotificationOrderBy(sortBy, sortOrder);
+
+    if (query.page != null && !query.cursor) {
+      const pagination = parseNotificationPagination(query);
+      const [rows, total] = await Promise.all([
+        this.repository.listNotificationsWhere(where, {
+          skip: pagination.skip,
+          take: pagination.take,
+          orderBy,
+        }),
+        this.repository.countNotificationsWhere(where),
+      ]);
+      return buildNotificationPaginatedResult(
+        await this.mapRows(rows, ctx, referenceNow),
+        total,
+        pagination.page,
+        pagination.limit,
+      );
+    }
+
+    const rows = await this.repository.listNotificationsWhere(where, {
+      take: limit + 1,
+      orderBy,
+    });
+
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const mapped = await this.mapRows(pageRows, ctx, referenceNow);
+
+    const nextCursor =
+      hasMore && pageRows.length > 0
+        ? encodeNotificationListCursorFromRow(pageRows[pageRows.length - 1], sortBy, sortOrder)
+        : null;
+    const result: NotificationListPageResult<NotificationResponseDto> = {
+      data: mapped,
+      meta: { limit, nextCursor },
+    };
+    return result;
   }
 
   async getById(orgId: string, user: NotificationRequestUser, id: string): Promise<NotificationResponseDto> {
@@ -152,46 +168,81 @@ export class NotificationApiService {
     return dto;
   }
 
-  async getCounts(orgId: string, user: NotificationRequestUser): Promise<NotificationCountsResponseDto> {
+  async getCounts(
+    orgId: string,
+    user: NotificationRequestUser,
+    query: NotificationCountsQueryDto = {},
+  ): Promise<NotificationCountsResponseDto> {
     this.assertApiEnabled();
     const ctx = await this.resolveAccessContext(orgId, user);
     const referenceNow = new Date();
 
-    const activeWhere = this.buildAccessWhere(
-      {
-        organizationId: orgId,
-        userId: ctx.userId,
-        activeOnly: true,
-        scopedStationId: ctx.scopedStationId,
-        scopedVehicleIds: ctx.scopedVehicleIds,
-        scopedBookingIds: ctx.scopedBookingIds,
-      },
+    await this.validateEntityFilters(orgId, query);
+
+    const hasExplicitScope =
+      !!query.status?.length
+      || query.activeOnly
+      || query.resolvedOnly
+      || query.domain
+      || !!query.severity?.length
+      || query.entityType
+      || query.entityId
+      || query.vehicleId
+      || query.bookingId
+      || query.stationId
+      || query.readState
+      || query.unreadOnly
+      || query.from
+      || query.to
+      || query.search;
+
+    const countsQuery: NotificationCountsQueryDto = {
+      ...query,
+      activeOnly: query.activeOnly ?? (hasExplicitScope ? undefined : true),
+    };
+
+    const listFilters = this.buildListFiltersFromQuery(orgId, ctx, countsQuery, referenceNow);
+    const baseWhere = this.buildAccessWhere(
+      listFilters,
       ctx,
       referenceNow,
-      true,
+      !listFilters.resolvedOnly,
     );
 
+    const hiddenClause = buildUserHiddenExclusionClause(ctx.userId);
+    const activeWhere =
+      countsQuery.activeOnly && !listFilters.resolvedOnly
+        ? { AND: [baseWhere, hiddenClause] }
+        : baseWhere;
+
     const unreadWhere: Prisma.NotificationWhereInput = {
-      ...activeWhere,
-      NOT: {
-        receipts: {
-          some: {
-            userId: ctx.userId,
-            readAt: { not: null },
+      AND: [
+        baseWhere,
+        {
+          NOT: {
+            receipts: {
+              some: {
+                userId: ctx.userId,
+                readAt: { not: null },
+              },
+            },
           },
         },
-      },
+        ...(countsQuery.activeOnly && !listFilters.resolvedOnly ? [hiddenClause] : []),
+      ],
     };
 
     const resolvedRecentWhere = this.buildAccessWhere(
       {
-        organizationId: orgId,
-        userId: ctx.userId,
+        ...listFilters,
         status: [NotificationStatus.RESOLVED],
-        from: new Date(Date.now() - RESOLVED_RECENT_WINDOW_MS),
-        scopedStationId: ctx.scopedStationId,
-        scopedVehicleIds: ctx.scopedVehicleIds,
-        scopedBookingIds: ctx.scopedBookingIds,
+        resolvedOnly: true,
+        activeOnly: false,
+        from: query.from
+          ? new Date(query.from)
+          : listFilters.resolvedOnly
+            ? listFilters.from
+            : new Date(referenceNow.getTime() - RESOLVED_RECENT_WINDOW_MS),
       },
       ctx,
       referenceNow,
@@ -203,7 +254,9 @@ export class NotificationApiService {
       this.repository.countNotificationsWhere(unreadWhere),
       this.repository.groupCountBySeverityWhere(activeWhere),
       this.repository.groupCountByDomainWhere(activeWhere),
-      this.repository.countNotificationsWhere(resolvedRecentWhere),
+      listFilters.resolvedOnly || query.resolvedOnly
+        ? this.repository.countNotificationsWhere(baseWhere)
+        : this.repository.countNotificationsWhere(resolvedRecentWhere),
     ]);
 
     const bySeverity: Record<string, number> = {};
@@ -227,18 +280,20 @@ export class NotificationApiService {
     };
   }
 
-  async markRead(orgId: string, user: NotificationRequestUser, id: string) {
+  async markRead(orgId: string, user: NotificationRequestUser, id: string, route?: string) {
     return this.withNotificationAction(orgId, user, id, async () => {
       await this.receiptService.markRead(id, orgId, user.id!);
+      void this.auditNotificationAction(user, orgId, id, 'read', route);
       return this.getById(orgId, user, id);
-    });
+    }, { skipActionCheck: true });
   }
 
-  async markUnread(orgId: string, user: NotificationRequestUser, id: string) {
+  async markUnread(orgId: string, user: NotificationRequestUser, id: string, route?: string) {
     return this.withNotificationAction(orgId, user, id, async () => {
       await this.receiptService.markUnread(id, orgId, user.id!);
+      void this.auditNotificationAction(user, orgId, id, 'unread', route);
       return this.getById(orgId, user, id);
-    });
+    }, { skipActionCheck: true });
   }
 
   async acknowledge(orgId: string, user: NotificationRequestUser, id: string, route?: string) {
@@ -295,12 +350,13 @@ export class NotificationApiService {
     });
   }
 
-  async unsnooze(orgId: string, user: NotificationRequestUser, id: string) {
+  async unsnooze(orgId: string, user: NotificationRequestUser, id: string, route?: string) {
     return this.withNotificationAction(orgId, user, id, async (dto) => {
       if (!dto.availableActions.includes('unsnooze')) {
         throw new BadRequestException('Unsnooze is not allowed for this notification');
       }
       await this.receiptService.unsnoozePersonal(id, orgId, user.id!);
+      void this.auditNotificationAction(user, orgId, id, 'unsnooze', route);
       return this.getById(orgId, user, id);
     });
   }
@@ -310,17 +366,15 @@ export class NotificationApiService {
       if (!dto.availableActions.includes('resolve')) {
         throw new BadRequestException('Manual resolution is not allowed for this notification');
       }
-      await this.core.resolveNotification(id, orgId, new Date(), { manual: true });
-      void this.audit.record({
-        actorUserId: user.id,
-        actorOrganizationId: orgId,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.ORGANIZATION,
-        entityId: orgId,
-        description: `Notification manually resolved: ${id}`,
-        route,
-        metaJson: { notificationId: id, action: 'resolve' },
-      });
+      try {
+        await this.core.resolveNotification(id, orgId, new Date(), { manual: true });
+      } catch (err: unknown) {
+        if (isPrismaOptimisticLockFailure(err)) {
+          throw new ConflictException('Notification was updated concurrently; refresh and retry');
+        }
+        throw err;
+      }
+      void this.auditNotificationAction(user, orgId, id, 'resolve', route);
       return this.getById(orgId, user, id);
     });
   }
@@ -330,17 +384,15 @@ export class NotificationApiService {
       if (!dto.availableActions.includes('archive')) {
         throw new BadRequestException('Archive is not allowed for this notification');
       }
-      await this.core.archiveNotification(id, orgId);
-      void this.audit.record({
-        actorUserId: user.id,
-        actorOrganizationId: orgId,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.ORGANIZATION,
-        entityId: orgId,
-        description: `Notification archived: ${id}`,
-        route,
-        metaJson: { notificationId: id, action: 'archive' },
-      });
+      try {
+        await this.core.archiveNotification(id, orgId);
+      } catch (err: unknown) {
+        if (isPrismaOptimisticLockFailure(err)) {
+          throw new ConflictException('Notification was updated concurrently; refresh and retry');
+        }
+        throw err;
+      }
+      void this.auditNotificationAction(user, orgId, id, 'archive', route);
       return this.getById(orgId, user, id);
     });
   }
@@ -352,10 +404,72 @@ export class NotificationApiService {
     user: NotificationRequestUser,
     id: string,
     fn: (current: NotificationResponseDto) => Promise<NotificationResponseDto>,
+    options: { skipActionCheck?: boolean } = {},
   ) {
     this.assertApiEnabled();
     const current = await this.getById(orgId, user, id);
+    if (!options.skipActionCheck) {
+      // availableActions validated inside fn for mutating lifecycle actions
+    }
     return fn(current);
+  }
+
+  private buildListFiltersFromQuery(
+    orgId: string,
+    ctx: NotificationAccessContext,
+    query: ListNotificationsQueryDto,
+    referenceNow: Date,
+  ): NotificationListFilters {
+    const resolvedOnly = !!query.resolvedOnly;
+    return {
+      organizationId: orgId,
+      userId: ctx.userId,
+      status: query.status,
+      severity: query.severity,
+      domain: query.domain,
+      entityType: query.entityType,
+      entityId: query.entityId,
+      vehicleId: query.vehicleId,
+      stationId: query.stationId,
+      bookingId: query.bookingId,
+      unreadOnly: query.unreadOnly,
+      readState: query.readState,
+      activeOnly: query.activeOnly,
+      resolvedOnly,
+      from: query.from
+        ? new Date(query.from)
+        : resolvedOnly
+          ? new Date(referenceNow.getTime() - RESOLVED_RECENT_WINDOW_MS)
+          : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+      timeField: query.timeField,
+      search: query.search,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+      scopedStationId: ctx.scopedStationId,
+      scopedStationIds: ctx.scopedStationIds,
+      scopedVehicleIds: ctx.scopedVehicleIds,
+      scopedBookingIds: ctx.scopedBookingIds,
+    };
+  }
+
+  private auditNotificationAction(
+    user: NotificationRequestUser,
+    orgId: string,
+    notificationId: string,
+    action: string,
+    route?: string,
+  ): void {
+    void this.audit.record({
+      actorUserId: user.id,
+      actorOrganizationId: orgId,
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ORGANIZATION,
+      entityId: orgId,
+      description: `Notification ${action}: ${notificationId}`,
+      route,
+      metaJson: { notificationId, action },
+    });
   }
 
   private async resolveAccessContext(
@@ -372,6 +486,13 @@ export class NotificationApiService {
     });
 
     if (!membership) {
+      const inactive = await this.prisma.organizationMembership.findFirst({
+        where: { userId: user.id, organizationId: orgId },
+        select: { status: true },
+      });
+      if (inactive) {
+        throw new ForbiddenException('User membership is not active');
+      }
       throw new ForbiddenException('You do not have access to this organization');
     }
 
@@ -408,26 +529,32 @@ export class NotificationApiService {
     filters: NotificationListFilters,
     ctx: NotificationAccessContext,
     referenceNow: Date,
-    excludeUserSnoozed: boolean,
+    excludeUserPersonalOverlays: boolean,
   ): Prisma.NotificationWhereInput {
-    let where = buildNotificationWhereInput(filters);
-    where = this.applyRoleVisibility(where, ctx.membershipRole, ctx.platformRole);
+    const clauses: Prisma.NotificationWhereInput[] = [
+      buildNotificationWhereInput(filters, referenceNow),
+    ];
+
+    const roleFiltered = this.applyRoleVisibility(
+      clauses[0],
+      ctx.membershipRole,
+      ctx.platformRole,
+    );
+    clauses[0] = roleFiltered;
 
     const prefClause = buildPreferenceWhereClause(ctx.preferences);
     if (prefClause) {
-      where = {
-        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), prefClause],
-      };
+      clauses.push(prefClause);
     }
 
-    if (excludeUserSnoozed) {
-      const snoozeClause = buildUserSnoozeExclusionClause(ctx.userId, referenceNow);
-      where = {
-        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), snoozeClause],
-      };
+    if (excludeUserPersonalOverlays) {
+      clauses.push(
+        buildUserSnoozeExclusionClause(ctx.userId, referenceNow),
+        buildUserHiddenExclusionClause(ctx.userId),
+      );
     }
 
-    return where;
+    return clauses.length === 1 ? clauses[0] : { AND: clauses };
   }
 
   private applyRoleVisibility(
@@ -479,17 +606,24 @@ export class NotificationApiService {
     }
 
     if (!this.stationScopeService.isNotificationInScope(row, ctx)) {
-      if (
-        row.entityType === 'VEHICLE'
-        && ctx.scopedStationId
-        && !ctx.bypassStationScope
-      ) {
+      if (row.entityType === 'VEHICLE' && !ctx.bypassStationScope) {
         const vehicleId = row.entityId;
-        const stillInScope = await this.stationScopeService.recheckVehicleStationScope(
-          ctx.organizationId,
-          vehicleId,
-          ctx.scopedStationId,
-        );
+        const stationIds = ctx.scopedStationIds?.length
+          ? ctx.scopedStationIds
+          : ctx.scopedStationId
+            ? [ctx.scopedStationId]
+            : [];
+        let stillInScope = ctx.scopedVehicleIds.includes(vehicleId);
+        if (!stillInScope && stationIds.length > 0) {
+          for (const stationId of stationIds) {
+            stillInScope = await this.stationScopeService.recheckVehicleStationScope(
+              ctx.organizationId,
+              vehicleId,
+              stationId,
+            );
+            if (stillInScope) break;
+          }
+        }
         if (!stillInScope) {
           throw new NotFoundException('Notification not found');
         }
@@ -574,6 +708,8 @@ export class NotificationApiService {
     if (query.bookingId) await this.assertEntityInOrg(orgId, 'booking', query.bookingId);
     if (query.entityId && query.entityType) {
       await this.assertEntityInOrg(orgId, query.entityType.toLowerCase(), query.entityId);
+    } else if (query.entityId && !query.entityType) {
+      throw new BadRequestException('entityType is required when filtering by entityId');
     }
   }
 
@@ -581,7 +717,9 @@ export class NotificationApiService {
     const kind = entityKind.toUpperCase();
     let found = false;
 
-    if (kind === 'VEHICLE' || entityKind === 'vehicle') {
+    if (kind === 'ORGANIZATION') {
+      found = entityId === orgId;
+    } else if (kind === 'VEHICLE' || entityKind === 'vehicle') {
       found = !!(await this.prisma.vehicle.findFirst({ where: { id: entityId, organizationId: orgId }, select: { id: true } }));
     } else if (kind === 'STATION' || entityKind === 'station') {
       found = !!(await this.prisma.station.findFirst({ where: { id: entityId, organizationId: orgId }, select: { id: true } }));

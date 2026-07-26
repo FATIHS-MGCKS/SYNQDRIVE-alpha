@@ -133,7 +133,24 @@ export class ListNotificationsQueryDto {
   @IsString()
   @MaxLength(120)
   search?: string;
+
+  @IsOptional()
+  @Transform(trimEmpty)
+  @IsString()
+  @MaxLength(512)
+  cursor?: string;
+
+  @IsOptional()
+  @IsIn(['unread', 'read', 'snoozed', 'hidden'])
+  readState?: 'unread' | 'read' | 'snoozed' | 'hidden';
+
+  @IsOptional()
+  @IsIn(['lastSeenAt', 'createdAt', 'resolvedAt'])
+  timeField?: 'lastSeenAt' | 'createdAt' | 'resolvedAt';
 }
+
+/** Shared list filters for GET /notifications and GET /notifications/counts */
+export class NotificationCountsQueryDto extends ListNotificationsQueryDto {}
 
 /**
  * Body for POST .../snooze — snooze until must be in the future.

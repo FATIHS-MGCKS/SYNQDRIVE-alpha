@@ -10,6 +10,8 @@ import { buildOrgWideScopeOrClause } from '../access/notification-org-wide.polic
 
 export type NotificationSortField = 'lastSeenAt' | 'createdAt' | 'severity';
 export type NotificationSortOrder = 'asc' | 'desc';
+export type NotificationTimeField = 'lastSeenAt' | 'createdAt' | 'resolvedAt';
+export type NotificationReadState = 'unread' | 'read' | 'snoozed' | 'hidden';
 
 export interface NotificationListFilters {
   organizationId: string;
@@ -23,19 +25,19 @@ export interface NotificationListFilters {
   stationId?: string;
   bookingId?: string;
   unreadOnly?: boolean;
+  readState?: NotificationReadState;
   activeOnly?: boolean;
   resolvedOnly?: boolean;
   from?: Date;
   to?: Date;
+  timeField?: NotificationTimeField;
   search?: string;
   sortBy?: NotificationSortField;
   sortOrder?: NotificationSortOrder;
-  /** When set, restrict to notifications tied to these vehicles (station scope). */
-  scopedVehicleIds?: string[];
-  /** When set, restrict to notifications tied to these bookings (station scope). */
-  scopedBookingIds?: string[];
-  /** When set, restrict to this station (station scope). */
   scopedStationId?: string;
+  scopedStationIds?: string[];
+  scopedVehicleIds?: string[];
+  scopedBookingIds?: string[];
 }
 
 export function parseNotificationPagination(query: {
@@ -90,14 +92,17 @@ function entityOrActionTargetFilter(
 }
 
 function stationScopeFilter(
-  scopedStationId: string,
+  stationIds: string[],
   scopedVehicleIds: string[],
   scopedBookingIds: string[],
 ): Prisma.NotificationWhereInput {
-  const orClauses: Prisma.NotificationWhereInput[] = [
-    { entityType: NotificationEntityType.STATION, entityId: scopedStationId },
-    { actionTarget: { path: ['stationId'], equals: scopedStationId } },
-  ];
+  const orClauses: Prisma.NotificationWhereInput[] = [];
+  for (const stationId of stationIds) {
+    orClauses.push(
+      { entityType: NotificationEntityType.STATION, entityId: stationId },
+      { actionTarget: { path: ['stationId'], equals: stationId } },
+    );
+  }
   if (scopedVehicleIds.length > 0) {
     orClauses.push({
       entityType: NotificationEntityType.VEHICLE,
@@ -123,8 +128,57 @@ function stationScopeFilter(
   return { OR: orClauses };
 }
 
+function buildReadStateFilter(
+  readState: NotificationReadState,
+  userId: string,
+  referenceNow: Date,
+): Prisma.NotificationWhereInput {
+  switch (readState) {
+    case 'read':
+      return {
+        receipts: {
+          some: {
+            userId,
+            readAt: { not: null },
+          },
+        },
+      };
+    case 'snoozed':
+      return {
+        receipts: {
+          some: {
+            userId,
+            snoozedUntil: { gt: referenceNow },
+          },
+        },
+      };
+    case 'hidden':
+      return {
+        receipts: {
+          some: {
+            userId,
+            hiddenAt: { not: null },
+          },
+        },
+      };
+    case 'unread':
+    default:
+      return {
+        NOT: {
+          receipts: {
+            some: {
+              userId,
+              readAt: { not: null },
+            },
+          },
+        },
+      };
+  }
+}
+
 export function buildNotificationWhereInput(
   filters: NotificationListFilters,
+  referenceNow: Date = new Date(),
 ): Prisma.NotificationWhereInput {
   const where: Prisma.NotificationWhereInput = {
     organizationId: filters.organizationId,
@@ -132,8 +186,7 @@ export function buildNotificationWhereInput(
 
   if (filters.status?.length) {
     where.status = { in: filters.status };
-  }
-  if (filters.activeOnly) {
+  } else if (filters.activeOnly) {
     where.status = { in: ACTIVE_NOTIFICATION_STATUSES };
   }
   if (filters.resolvedOnly) {
@@ -165,11 +218,16 @@ export function buildNotificationWhereInput(
     where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), ...entityFilters];
   }
   if (filters.from || filters.to) {
-    where.lastSeenAt = {};
-    if (filters.from) where.lastSeenAt.gte = filters.from;
-    if (filters.to) where.lastSeenAt.lte = filters.to;
+    const timeField = filters.timeField ?? 'lastSeenAt';
+    const range: Prisma.DateTimeFilter = {};
+    if (filters.from) range.gte = filters.from;
+    if (filters.to) range.lte = filters.to;
+    where[timeField] = range;
   }
-  if (filters.unreadOnly && filters.userId) {
+  if (filters.readState && filters.userId) {
+    const readClause = buildReadStateFilter(filters.readState, filters.userId, referenceNow);
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), readClause];
+  } else if (filters.unreadOnly && filters.userId) {
     where.NOT = {
       receipts: {
         some: {
@@ -179,9 +237,14 @@ export function buildNotificationWhereInput(
       },
     };
   }
-  if (filters.scopedStationId) {
+  const stationIds = filters.scopedStationIds?.length
+    ? filters.scopedStationIds
+    : filters.scopedStationId
+      ? [filters.scopedStationId]
+      : [];
+  if (stationIds.length > 0) {
     const stationClause = stationScopeFilter(
-      filters.scopedStationId,
+      stationIds,
       filters.scopedVehicleIds ?? [],
       filters.scopedBookingIds ?? [],
     );
@@ -216,12 +279,12 @@ export function buildNotificationOrderBy(
 ): Prisma.NotificationOrderByWithRelationInput[] {
   const dir = sortOrder;
   if (sortBy === 'severity') {
-    return [{ severity: dir }, { lastSeenAt: 'desc' }];
+    return [{ severity: dir }, { lastSeenAt: 'desc' }, { id: dir }];
   }
   if (sortBy === 'createdAt') {
-    return [{ createdAt: dir }, { lastSeenAt: 'desc' }];
+    return [{ createdAt: dir }, { lastSeenAt: 'desc' }, { id: dir }];
   }
-  return [{ lastSeenAt: dir }, { createdAt: 'desc' }];
+  return [{ lastSeenAt: dir }, { createdAt: dir }, { id: dir }];
 }
 
 export const RESOLVED_RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;

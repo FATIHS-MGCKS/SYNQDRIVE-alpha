@@ -16,6 +16,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import {
   ListNotificationsQueryDto,
+  NotificationCountsQueryDto,
   SnoozeNotificationDto,
 } from './dto/notification-api.dto';
 import { NotificationApiService } from './notification-api.service';
@@ -56,8 +57,12 @@ export class NotificationsController {
   }
 
   @Get('counts')
-  counts(@Param('orgId') orgId: string, @Req() req: NotificationAuthRequest) {
-    return this.api.getCounts(orgId, req.user ?? {});
+  counts(
+    @Param('orgId') orgId: string,
+    @Query() query: NotificationCountsQueryDto,
+    @Req() req: NotificationAuthRequest,
+  ) {
+    return this.api.getCounts(orgId, req.user ?? {}, query);
   }
 
   @Get(':id')
@@ -76,7 +81,7 @@ export class NotificationsController {
     @Param('id') id: string,
     @Req() req: NotificationAuthRequest,
   ) {
-    return this.api.markRead(orgId, req.user ?? {}, id);
+    return this.api.markRead(orgId, req.user ?? {}, id, req.originalUrl);
   }
 
   @Post(':id/unread')
@@ -86,7 +91,7 @@ export class NotificationsController {
     @Param('id') id: string,
     @Req() req: NotificationAuthRequest,
   ) {
-    return this.api.markUnread(orgId, req.user ?? {}, id);
+    return this.api.markUnread(orgId, req.user ?? {}, id, req.originalUrl);
   }
 
   @Post(':id/acknowledge')
@@ -117,7 +122,7 @@ export class NotificationsController {
     @Param('id') id: string,
     @Req() req: NotificationAuthRequest,
   ) {
-    return this.api.unsnooze(orgId, req.user ?? {}, id);
+    return this.api.unsnooze(orgId, req.user ?? {}, id, req.originalUrl);
   }
 
   @Post(':id/resolve')

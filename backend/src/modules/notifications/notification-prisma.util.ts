@@ -7,6 +7,13 @@ export function isPrismaUniqueViolation(error: unknown): boolean {
   );
 }
 
+export function isPrismaOptimisticLockFailure(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError
+    && error.code === 'P2025'
+  );
+}
+
 export async function withUniqueConflictRetry<T>(
   fn: () => Promise<T>,
   maxAttempts = 4,

@@ -10,6 +10,8 @@ export interface NotificationAccessContext {
   stationScope: string | null;
   /** When set, user is restricted to this station (SUB_ADMIN / WORKER). */
   scopedStationId?: string;
+  /** Multi-station effective access (Stations V2). */
+  scopedStationIds?: string[];
   scopedVehicleIds: string[];
   scopedBookingIds: string[];
   /** True when platform admin or org admin without station restriction. */

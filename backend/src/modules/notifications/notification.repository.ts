@@ -298,15 +298,15 @@ export class NotificationRepository {
   listNotificationsWhere(
     where: Prisma.NotificationWhereInput,
     options: {
-      skip: number;
+      skip?: number;
       take: number;
       orderBy?: Prisma.NotificationOrderByWithRelationInput[];
     },
   ) {
     return this.prisma.notification.findMany({
       where,
-      orderBy: options.orderBy ?? [{ lastSeenAt: 'desc' }, { createdAt: 'desc' }],
-      skip: options.skip,
+      orderBy: options.orderBy ?? [{ lastSeenAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      ...(options.skip != null ? { skip: options.skip } : {}),
       take: options.take,
     });
   }
