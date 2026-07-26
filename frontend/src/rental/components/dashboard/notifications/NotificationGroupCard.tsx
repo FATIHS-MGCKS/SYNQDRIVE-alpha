@@ -7,16 +7,7 @@ import { buildNotificationDetailViewModel } from './notification-task-bridge';
 import { buildNotificationSummaryFromGroup } from './notification-summary-view-model';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { useLanguage } from '../../../i18n/LanguageContext';
-
-function groupSeveritySurface(severity: ActionQueueGroupItem['severity']): string {
-  if (severity === 'critical' || severity === 'overdue') {
-    return 'border-[color:color-mix(in_srgb,var(--status-critical)_22%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),transparent)]';
-  }
-  if (severity === 'warning' || severity === 'attention') {
-    return 'border-[color:color-mix(in_srgb,var(--status-watch)_20%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_6%,transparent),transparent)]';
-  }
-  return 'border-border/30 bg-card/40';
-}
+import { severityEntrySurface } from './notification-severity-styles';
 
 export interface NotificationGroupCardProps {
   group: ActionQueueGroupItem;
@@ -26,6 +17,12 @@ export interface NotificationGroupCardProps {
   t: ReturnType<typeof useLanguage>['t'];
   onItemCta: (item: ActionQueueItem) => void;
   onCreateTask?: (item: ActionQueueItem) => void;
+  onSecondaryCta?: (item: ActionQueueItem) => void;
+  mutationHandlers?: (itemId: string) => {
+    onMarkRead?: () => void;
+    onAcknowledge?: () => void;
+    onSnooze?: () => void;
+  };
 }
 
 export const NotificationGroupCard = memo(function NotificationGroupCard({
@@ -36,6 +33,8 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
   t,
   onItemCta,
   onCreateTask,
+  onSecondaryCta,
+  mutationHandlers,
 }: NotificationGroupCardProps) {
   const [expanded, setExpanded] = useState(false);
   const contentId = `notification-group-${group.id}`;
@@ -46,7 +45,7 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
     <article
       className={cn(
         'overflow-hidden rounded-xl border transition-colors motion-reduce:transition-none',
-        groupSeveritySurface(group.severity),
+        severityEntrySurface(group.severity, summary.resolved),
         summary.unread && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_18%,transparent)]',
         expanded && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]',
       )}
@@ -76,14 +75,18 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
           {group.children.map((child) => {
             const item = itemsById.get(child.itemId);
             if (!item) return null;
-            const detail = buildNotificationDetailViewModel(item, locale);
+            const detail = buildNotificationDetailViewModel(item, locale, referenceNowMs);
+            const mutations = mutationHandlers?.(item.id);
             return (
               <li key={child.id} className="list-none">
                 <NotificationChildRow
                   detail={detail}
                   t={t}
+                  readStatus={item.queue?.readStatus}
                   onPrimaryCta={() => onItemCta(item)}
+                  onSecondaryCta={onSecondaryCta ? () => onSecondaryCta(item) : undefined}
                   onCreateTask={onCreateTask ? () => onCreateTask(item) : undefined}
+                  {...mutations}
                 />
               </li>
             );

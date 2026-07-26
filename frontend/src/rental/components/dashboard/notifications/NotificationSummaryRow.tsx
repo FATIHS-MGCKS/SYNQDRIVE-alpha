@@ -3,29 +3,9 @@ import { Icon } from '../../ui/Icon';
 import { cn } from '../../../../components/ui/utils';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { NotificationSummaryViewModel } from './notification-summary-view-model';
-import type { NotificationSeverity } from '../notificationQueueModel';
 import { createNotificationTranslator } from '../notificationQueueEnricher';
 import type { useLanguage } from '../../../i18n/LanguageContext';
-
-function severityBadgeTone(severity: NotificationSeverity, resolved: boolean): string {
-  if (resolved || severity === 'success') {
-    return 'bg-[color:color-mix(in_srgb,var(--status-success)_12%,transparent)] text-[color:var(--status-success)]';
-  }
-  if (severity === 'critical') {
-    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_12%,transparent)] text-[color:var(--status-critical)]';
-  }
-  if (severity === 'warning') {
-    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_12%,transparent)] text-[color:var(--status-watch)]';
-  }
-  return 'bg-muted/60 text-muted-foreground';
-}
-
-function iconTone(severity: NotificationSeverity, resolved: boolean): string {
-  if (resolved || severity === 'success') return 'sq-tone-success';
-  if (severity === 'critical') return 'sq-tone-critical';
-  if (severity === 'warning') return 'sq-tone-watch';
-  return 'bg-muted/50 text-muted-foreground';
-}
+import { severityBadgeTone, severityIconTone } from './notification-severity-styles';
 
 export interface NotificationSummaryRowProps {
   summary: NotificationSummaryViewModel;
@@ -50,6 +30,7 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
 }: NotificationSummaryRowProps) {
   const tr = createNotificationTranslator(locale);
   const severityLabel = tr(summary.severityLabelKey);
+  const statusLabel = summary.statusLabelKey ? tr(summary.statusLabelKey) : null;
   const Tag = as === 'button' ? 'button' : 'div';
 
   return (
@@ -64,7 +45,7 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
       onClick={as === 'button' ? onToggle : undefined}
     >
       <div className="relative shrink-0" aria-hidden>
-        <div className={cn(NOTIFICATION_PANEL_TYPO.iconWrap, iconTone(summary.severity, summary.resolved))}>
+        <div className={cn(NOTIFICATION_PANEL_TYPO.iconWrap, severityIconTone(summary.severity, summary.resolved))}>
           <Icon name={summary.iconName} className={NOTIFICATION_PANEL_TYPO.icon} />
         </div>
         {summary.showIconCount && summary.iconCount >= 1 ? (
@@ -90,6 +71,11 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
             >
               {severityLabel}
             </span>
+            {statusLabel ? (
+              <span className={cn(NOTIFICATION_PANEL_TYPO.metaBadge, 'bg-muted/50 text-muted-foreground')}>
+                {statusLabel}
+              </span>
+            ) : null}
             {summary.eyebrowLabel ? (
               <span className={cn(NOTIFICATION_PANEL_TYPO.eyebrow, 'truncate')}>
                 {summary.eyebrowLabel}
@@ -105,7 +91,7 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
         <p
           className={cn(
             NOTIFICATION_PANEL_TYPO.cardTitle,
-            'mt-0.5',
+            'mt-0.5 break-words [overflow-wrap:anywhere]',
             unread && 'text-foreground',
           )}
         >
@@ -121,7 +107,7 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
       {showChevron ? (
         <span
           className={cn(
-            'mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-transform',
+            'mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-transform',
             expanded && 'rotate-180',
           )}
           aria-hidden

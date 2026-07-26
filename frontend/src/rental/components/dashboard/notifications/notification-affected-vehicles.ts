@@ -1,7 +1,7 @@
-export interface NotificationAffectedVehicle {
-  id: string;
-  label: string;
-}
+import type { NotificationAffectedVehicle } from './notification-affected-vehicles';
+import { createNotificationTranslator } from '../notificationQueueEnricher';
+
+export type { NotificationAffectedVehicle };
 
 export function formatAffectedVehiclesPreview(
   vehicles: NotificationAffectedVehicle[],
@@ -9,20 +9,18 @@ export function formatAffectedVehiclesPreview(
   maxVisible = 3,
 ): string {
   if (vehicles.length === 0) return '';
-  const de = locale === 'de';
+  const t = createNotificationTranslator(locale);
   const shown = vehicles.slice(0, maxVisible).map((vehicle) => vehicle.label);
   const rest = vehicles.length - shown.length;
   const base = shown.join(' · ');
   if (rest > 0) {
-    return `${base} · ${de ? `+${rest} weitere` : `+${rest} more`}`;
+    return `${base} · ${t('notification.affected.more', { count: rest })}`;
   }
   return base;
 }
 
 export function affectedVehiclesSectionLabel(count: number, locale: string): string {
-  const de = locale === 'de';
-  if (de) {
-    return count === 1 ? 'Betroffenes Fahrzeug' : `Betroffene Fahrzeuge (${count})`;
-  }
-  return count === 1 ? 'Affected vehicle' : `Affected vehicles (${count})`;
+  const t = createNotificationTranslator(locale);
+  if (count === 1) return t('notification.affected.sectionOne');
+  return t('notification.affected.sectionMany', { count });
 }

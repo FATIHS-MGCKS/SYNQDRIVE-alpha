@@ -5,7 +5,7 @@ import {
   notificationDomainLabel,
   createNotificationTranslator,
 } from '../notificationQueueEnricher';
-import { formatNotificationLastSeenShort } from '../notificationTimeSemantics';
+import { formatNotificationLastSeenShort, lifecycleStatusLabelKey } from '../notificationTimeSemantics';
 import { notificationDomainIcon, notificationGroupIcon } from './notificationDomainIcon';
 import { formatAffectedVehiclesPreview } from './notification-affected-vehicles';
 import {
@@ -48,8 +48,6 @@ function severityLabelKey(
   if (lifecycle === 'resolved' || lifecycle === 'archived' || severity === 'success') {
     return 'notification.severity.success';
   }
-  if (lifecycle === 'acknowledged') return 'notification.status.acknowledged';
-  if (lifecycle === 'snoozed') return 'notification.status.snoozed';
   if (severity === 'critical') return 'notification.severity.critical';
   if (severity === 'warning') return 'notification.severity.warning';
   return 'notification.severity.info';
@@ -70,6 +68,7 @@ export interface NotificationSummaryViewModel {
   id: string;
   severity: NotificationSeverity;
   severityLabelKey: TranslationKey;
+  statusLabelKey: TranslationKey | null;
   eyebrowLabel: string;
   headlineTitle: string;
   subtitle?: string;
@@ -106,6 +105,7 @@ function summaryFromItem(
     id: overrides.id ?? item.id,
     severity,
     severityLabelKey: severityLabelKey(severity, queue.lifecycleStatus),
+    statusLabelKey: lifecycleStatusLabelKey(queue.lifecycleStatus),
     eyebrowLabel: isOverdueHandoverNotification(item)
       ? resolveOverdueHandoverEyebrow(item, locale)
       : notificationDomainLabel(queue.domain, t),
@@ -176,6 +176,7 @@ export function buildNotificationSummaryFromGroup(
     id: group.id,
     severity: worstSeverity,
     severityLabelKey: severityLabelKey(worstSeverity, worstLifecycle),
+    statusLabelKey: lifecycleStatusLabelKey(worstLifecycle),
     eyebrowLabel,
     headlineTitle,
     lastSeenLabel,

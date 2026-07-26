@@ -83,7 +83,7 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
           onClick={onPrimaryCta}
           className={cn(
             NOTIFICATION_PANEL_TYPO.cta,
-            'sq-press inline-flex min-h-9 items-center rounded-md border border-[color:color-mix(in_srgb,var(--brand)_20%,var(--border))] bg-[color:color-mix(in_srgb,var(--brand)_6%,transparent)] px-2.5 text-[color:var(--brand)] transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+            'sq-press inline-flex min-h-11 items-center rounded-md border border-[color:color-mix(in_srgb,var(--brand)_20%,var(--border))] bg-[color:color-mix(in_srgb,var(--brand)_6%,transparent)] px-2.5 text-[color:var(--brand)] transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
           )}
         >
           {detail.ctaPrimaryLabel}
@@ -95,7 +95,7 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
             onClick={onSecondaryCta}
             className={cn(
               NOTIFICATION_PANEL_TYPO.cta,
-              'sq-press inline-flex min-h-9 items-center rounded-md border border-border/50 bg-muted/20 px-2.5 text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+              'sq-press inline-flex min-h-11 items-center rounded-md border border-border/50 bg-muted/20 px-2.5 text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
             )}
           >
             {detail.ctaSecondaryLabel}
@@ -108,7 +108,7 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
             onClick={onCreateTask}
             className={cn(
               NOTIFICATION_PANEL_TYPO.cta,
-              'sq-press inline-flex min-h-9 items-center rounded-md border border-border/50 px-2.5 text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+              'sq-press inline-flex min-h-11 items-center rounded-md border border-border/50 px-2.5 text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
             )}
           >
             {detail.createTaskLabel}
