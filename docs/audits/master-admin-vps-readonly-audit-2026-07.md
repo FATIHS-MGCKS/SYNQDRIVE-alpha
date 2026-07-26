@@ -4,7 +4,7 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **ABGESCHLOSSEN** — Read-only VPS-Audit Schritte 1–15 + Abschlussbericht (2026-07-26T08:00 UTC) |
+| **Status** | **ABGESCHLOSSEN** — Read-only VPS-Audit Schritte 1–15 + Abschlussbericht; **kanonisiert Phase 1E** (2026-07-26) |
 | **Letzte Prüfung (UTC)** | `2026-07-26T08:00:00Z` (Abschlussbericht) |
 | **Abschlussurteil** | **Not Production Ready** — siehe Kap. 29.10 |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
@@ -2587,36 +2587,20 @@ flowchart TB
 
 ## 26. P0/P1/P2/P3 Findings
 
-> **Kanonische Abschluss-Klassifikation (aktiv):** **7× P0**, **7× P1**, **48× P2**, **38× P3** — **100** aktive Findings; **34** Beobachtungen (`MA-*-OBS-*`); **10** historische IDs (§26.1, nicht gezählt).  
-> P0-Detail mit Remediation/Tests: `docs/audits/master-admin-vps-readonly-findings-2026-07.md` · Kanonisierung: `docs/audits/master-admin-audit-canonical-severity-review.md`
+> **Kanonische Severity-Matrix (Phase 1E):** **7× P0**, **7× P1**, **48× P2**, **38× P3** — **100** aktiv; **34** OBS; **10** historische IDs nur in **Anhang D**.  
+> Remediation/Tests: `master-admin-vps-readonly-findings-2026-07.md` · Post-Kanonisierung: `master-admin-audit-post-canonicalization.md`
 
-### 26.0 P0 Findings (Abschluss — nur unmittelbare Production-Blocker)
+### 26.0 Kanonische Severity-Matrix (Übersicht)
 
-| ID | Titel | Kriterium |
-|----|-------|-----------|
-| **MA-CH-P0-001** | ClickHouse `telemetry_snapshots` ohne `org_id` | Tenant-Datenleck |
-| **MA-BILL-P0-001** | TRIALING ohne `stripe_subscription_id` | Falsche Subscription-Freischaltung |
-| **MA-BILL-P0-002** | Stripe TEST-Key auf Prod bei DB-LIVE-Mode | Zahlungs-/Rechnungsfehler |
-| **MA-BILL-P0-003** | `STRIPE_WEBHOOK_SECRET` fehlt | Zahlungs-/Subscription-Sync-Fehler |
-| **MA-BKP-P0-001** | CH ohne Backup + kein Offsite | Fehlende Wiederherstellbarkeit |
-| **MA-TOPO-P0-001** | ClickHouse Ghost-Mounts | Kritischer Production-Ausfall bei Recreate |
-| **MA-DIMO-P0-001** | Kein Unique auf `vehicles.dimo_vehicle_id` | Falsche Fahrzeugzuordnung |
+| Severity | Aktiv | OBS | Historisch (Anhang D) |
+|----------|-------|-----|------------------------|
+| **P0** | **7** | — | — |
+| **P1** | **7** | — | 5 |
+| **P2** | **48** | — | 5 |
+| **P3** | **38** | — | — |
+| **Summe** | **100** | **34** | **10** |
 
-### 26.1 Historische Finding-IDs (Dokumentation only — nicht in P0–P3-Zählung)
-
-| Historische ID | Kanonische ID | Ursprüngliche Severity |
-|----------------|---------------|------------------------|
-| MA-TOPO-P1-001 | MA-TOPO-P0-001 | P1 |
-| MA-BILL-P1-001 | MA-BILL-P0-002 | P1 |
-| MA-BILL-P1-002 | MA-BILL-P0-003 | P1 |
-| MA-BKP-P1-001 | MA-BKP-P0-001 | P1 (Merge) |
-| MA-BKP-P1-002 | MA-BKP-P0-001 | P1 (Merge) |
-| MA-CH-P2-001 | MA-CH-P0-001 | P2 |
-| MA-DIMO-P2-001 | MA-DIMO-P0-001 | P2 |
-| MA-BILL-P2-001 | MA-BILL-P0-002 | P2 |
-| MA-BILL-P2-002 | MA-BILL-P0-001 | P2 |
-| MA-BILL-P2-003 | MA-BILL-P0-003 | P2 |
-
+> **Eine Matrix:** Alle aktiven Findings in der Haupttabelle unten (P0–P3). Historische Severity-IDs ausschließlich in **Anhang D**. Kanonisierung Phase 1E: `docs/audits/master-admin-audit-post-canonicalization.md`.
 > **Schritt-Inkremente (pre-closure):** Die folgenden Zeilen zählen Findings **zum Zeitpunkt der jeweiligen Audit-Schritte** (vor Abschluss-Hochstufung). Maßgeblich für Gesamtzahlen ist §26.0 und die kanonische Klassifikation oben.
 > **Schritt 6 (Backend/API):** 3× P2 neu, 2× P3 neu.
 > **Schritt 7 (PostgreSQL):** 2× P2 neu, 4× P3 neu.
@@ -2631,9 +2615,16 @@ flowchart TB
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
+| **MA-CH-P0-001** | **P0** | ClickHouse / Tenant | `telemetry_snapshots` / `telemetry_state_changes` **ohne** `org_id` — **602.569** Rows, **100 %** mit GPS | Migration + Backfill; PG-Pre-Filter bis live |
+| **MA-BILL-P0-001** | **P0** | Billing | **1** `TRIALING`-Subscription **ohne** `stripe_subscription_id` | Stripe-Sub anlegen oder lokal deaktivieren |
+| **MA-BILL-P0-002** | **P0** | Billing | `STRIPE_SECRET_KEY` **TEST** bei PG `stripe_mode=LIVE` | Live-Key nur Prod; Env harmonisieren |
+| **MA-BILL-P0-003** | **P0** | Billing | `STRIPE_WEBHOOK_SECRET` **fehlend**; **0** `stripe_webhook_events` | Platform-Webhook + Secret |
+| **MA-BKP-P0-001** | **P0** | DR | CH **~2,8 GiB** ohne Backup; kein Offsite | `clickhouse:backup:docker` + Offsite-Sync |
+| **MA-TOPO-P0-001** | **P0** | ClickHouse | Ghost-Mounts auf gelöschtes Release (`//deleted`) | Container mit `current`/`shared`-Pfaden neu binden |
+| **MA-DIMO-P0-001** | **P0** | DIMO / Fahrzeug | `vehicles.dimo_vehicle_id` **ohne** Unique-Constraint | Unique + Duplikat-Scan vor Migration |
+
 | **MA-NET-P1-001** | **P1** | API Exposure | **Swagger UI** öffentlich unter `https://app.synqdrive.eu/docs` ohne Authentifizierung | Swagger in Production deaktivieren oder hinter Auth/IP-Allowlist |
 | **MA-NET-P1-002** | **P1** | API Exposure | **OpenAPI Spec** (`/docs-json`, ~339 KiB) öffentlich — vollständige API-Oberfläche enumerierbar | Wie oben; ggf. nur intern/staging |
-| **MA-TOPO-P1-001** | **Historisch** → MA-TOPO-P0-001 | ClickHouse | Container-Bind-Mounts auf **gelöschtes** Release (`//deleted`) — Recreate würde fehlschlagen | Siehe MA-TOPO-P0-001 |
 | **MA-VPS-P2-001** | **P2** | RAM/OOM | **Kein Swap** auf 16 GiB Production-Host | Swap/`systemd-oomd` evaluieren |
 | **MA-VPS-P2-002** | **P2** | Disk/Deploy | **29 Releases / 36 GiB** — kein Pruning | Release-Retention-Policy |
 | **MA-NET-P2-001** | **P2** | Network | Backend bindet auf **`*:3001`** (alle Interfaces) — Bypass-Risiko neben Nginx | Auf `127.0.0.1:3001` binden |
@@ -2692,7 +2683,6 @@ flowchart TB
 | **MA-REDIS-OBS-002** | **Beobachtung** | Queues | **Kein** `waiting`-Backlog auf allen 19 Queues | Positiv |
 | **MA-REDIS-OBS-003** | **Beobachtung** | Staging | 2 Keys mit `staging` in Job-ID unter `notification.evaluation` — **kein** Env-Mix | — |
 | **MA-CH-P1-001** | **P1** | ClickHouse Datenqualität | `telemetry_snapshots`: **570.783** Duplikat-Zeilen (~**94,7 %**) auf `(vehicle_id, recorded_at)` — nur **31.786** eindeutige Keys bei **602.569** Rows | Dedup-Strategie (ReplacingMergeTree oder Insert-Guard); historische Bereinigung evaluieren |
-| **MA-CH-P2-001** | **Historisch** → MA-CH-P0-001 | Tenant-Isolation | `telemetry_snapshots` / `telemetry_state_changes` **ohne** `org_id` — CH-only Queries nicht tenant-scoped | Siehe MA-CH-P0-001 |
 | **MA-CH-P2-002** | **P2** | Tenant-Isolation | **642/12.102** Waypoints mit leerem `org_id` (5,3 %) | Backfill `org_id` aus PG bei Waypoint-Write |
 | **MA-CH-P2-003** | **P2** | Datenhygiene | **1** verwaiste CH-`vehicle_id` (`be15ecb1…`, 38.259 Rows) — Fahrzeug nicht mehr in PG | TTL abwarten oder gezieltes Purge nach Fahrzeug-Löschung |
 | **MA-CH-P2-004** | **P2** | Ingestion-Freshness | Keine neuen CH-Snapshots seit **2026-07-25 21:27 UTC** (~10 h) trotz **19.438** erfolgreicher DIMO-Polls/24h | DIMO-Signal-Stagnation vs. Processor-Filter prüfen |
@@ -2713,7 +2703,6 @@ flowchart TB
 | **MA-OBS-OBS-001** | **Beobachtung** | Exposition | Öffentliche `/grafana/` und `/prometheus/` URLs liefern **SPA-HTML**, nicht echte Dienste | Positiv (kein Grafana/Prom-Leak) |
 | **MA-OBS-OBS-002** | **Beobachtung** | Cardinality | **515** Series, **222** Metriken — Low-Cardinality-Policy eingehalten | Positiv |
 | **MA-OBS-OBS-003** | **Beobachtung** | Master Admin | `PlatformHealthView` pollt live API (60s), kein iframe — Grafana nur per SSH-Tunnel | Design korrekt |
-| **MA-DIMO-P2-001** | **Historisch** → MA-DIMO-P0-001 | Import-Integrität | `vehicles.dimo_vehicle_id` **ohne** Unique-Constraint — Re-Registrierung desselben DIMO-Fahrzeugs in anderer Org theoretisch möglich | Siehe MA-DIMO-P0-001 |
 | **MA-DIMO-P2-002** | **P2** | Import-Transaktion | `registerFromDimo` **nicht** transaktional — Teilfehler (Brakes/Tires) lassen Vehicle bestehen | `$transaction` oder compensating rollback |
 | **MA-DIMO-P3-001** | **P3** | Discovery | **2** DISCONNECTED `dimo_vehicles` im Non-Registered-Pool (Signal ältestes **2026-03-18**) | Aufräumen oder Re-Sync |
 | **MA-DIMO-P3-002** | **P3** | Webhooks | `device_connection_webhook_inbox` **0** Rows — kein persistierter Webhook-Traffic | Trigger-Registrierung/DIMO-Konsole prüfen |
@@ -2721,11 +2710,6 @@ flowchart TB
 | **MA-DIMO-P3-004** | **P3** | Billing | Import ruft `onVehicleProvisioned` auf, aber **0** `billing_subscription_items` — Quantity-Hook no-op | Billing-Onboarding vor Import-Fleet |
 | **MA-DIMO-OBS-001** | **Beobachtung** | Umgebung | `DIMO_ENV=production`, API-Hosts `.dimo.zone` | Positiv |
 | **MA-DIMO-OBS-002** | **Beobachtung** | Poll-Historie | **176.980** SNAPSHOT-FAILURES mit `Custom Id cannot contain :` (gesamt); **24h: 1** Failure | Scheduler-JobId-Fix wirksam kurzfristig |
-| **MA-BILL-P1-001** | **Historisch** → MA-BILL-P0-002 | Stripe Config | Production-VPS `STRIPE_SECRET_KEY` = **TEST** (`sk_test_…`) — kein Live-Key in Env | Siehe MA-BILL-P0-002 |
-| **MA-BILL-P1-002** | **Historisch** → MA-BILL-P0-003 | Webhooks | `STRIPE_WEBHOOK_SECRET` **fehlend** — Platform-Billing-Webhooks können nicht verifiziert werden | Siehe MA-BILL-P0-003 |
-| **MA-BILL-P2-001** | **Historisch** → MA-BILL-P0-002 | Mode Drift | `billing_subscriptions.stripe_mode=LIVE` bei Runtime-Key **TEST** — Reconciliation-Drift `TEST_LIVE_MODE_CONFLICT` (CRITICAL) | Siehe MA-BILL-P0-002 |
-| **MA-BILL-P2-002** | **Historisch** → MA-BILL-P0-001 | Subscription Sync | **1** `TRIALING`-Subscription **ohne** `stripe_subscription_id`, `stripe_sync_status=PENDING` | Siehe MA-BILL-P0-001 |
-| **MA-BILL-P2-003** | **Historisch** → MA-BILL-P0-003 | Webhooks | **Kein** Stripe-Webhook-Endpoint für Platform-Billing; nur Connect-Webhook konfiguriert | Siehe MA-BILL-P0-003 |
 | **MA-BILL-P2-004** | **P2** | Webhook Health | `stripe_webhook_events` = **0** — kein jemals verarbeitetes Platform-Event | End-to-End-Webhook-Test nach Secret/Endpoint-Fix |
 | **MA-BILL-P3-001** | **P3** | Audit | `billing_audit_logs` = **0** — kein Trail für Master-Billing-Mutationen | Erwartet bis erste Admin-Aktionen; Monitoring aktivieren |
 | **MA-BILL-P3-002** | **P3** | Catalog | **0** `billing_price_books` / `billing_catalog_products` — Preiskatalog nicht befüllt | Pricebook-Seed vor Abrechnungsstart |
@@ -2752,8 +2736,6 @@ flowchart TB
 | **MA-AUD-P3-001** | **P3** | Audit | **249** Activity-Logs ohne `organization_id` | Org-Kontext im Interceptor verbessern |
 | **MA-AUD-P3-002** | **P3** | DSAR | **0** `iam_dsar_export_logs` — Pipeline ungetestet in Prod | Prozess-Test in Staging |
 | **MA-ISO-P3-001** | **P3** | Rezertifizierung | **0** Access-Review-Campaigns in Prod | IAM-Rezertifizierung operationalisieren |
-| **MA-BKP-P1-001** | **Historisch** → MA-BKP-P0-001 | DR | **Kein Offsite-Backup** — alle 2,1 GiB PG-Dumps + Live-Daten auf **einem** VPS | Siehe MA-BKP-P0-001 |
-| **MA-BKP-P1-002** | **Historisch** → MA-BKP-P0-001 | ClickHouse | **~2,8 GiB** CH-Daten **ohne** Backup — `clickhouse:backup:docker` nie auf Prod ausgeführt | Siehe MA-BKP-P0-001 |
 | **MA-BKP-P1-003** | **P1** | Alerting | **Keine** Backup-Monitoring/Alarmierung; kein Alertmanager | Backup-Success/Age-Alerts + Alertmanager |
 | **MA-BKP-P2-001** | **P2** | PostgreSQL | `pg_dump`-Dateien **`644`** world-readable in `shared/backups/` | `chmod 600` + root-only ACL |
 | **MA-BKP-P2-002** | **P2** | Retention | **39** Dumps ohne Pruning — unbegrenzte Akkumulation (2,1 GiB) | Retention-Policy (z. B. 30/90 Tage) im Deploy-Skript |
@@ -2851,7 +2833,7 @@ SynqDrive läuft stabil auf einem **Single-VPS** (`srv1374778`, Ubuntu 24.04, 4 
 | **P1** | **7** | Hoch priorisiert — Kap. 29.4 |
 | **P2** | **48** | Mittel — Kap. 29.5 |
 | **P3** | **38** | Niedrig — Kap. 29.5 |
-| **Summe** | **100** | +10 historische IDs (§26.1), +34 OBS |
+| **Summe** | **100** | +10 historische IDs (Anhang D), +34 OBS |
 | **Abschlussurteil** | **Not Production Ready** | 5× FAIL-Gates, 7× P0 |
 
 #### Production-Readiness-Gates
@@ -2966,14 +2948,16 @@ Details: Kap. 29.9.
 | MA-AUD-P1-001 | Audit-Logs löschbar (kein WORM) |
 | MA-BKP-P1-003 | Keine Backup-Alarmierung |
 
-**Anzahl P1 (aktiv): 7** — 5 historische P1-IDs in §26.1 (→ P0), nicht gezählt.
+**Anzahl P1 (aktiv): 7** — historische P1-IDs nur in **Anhang D**.
 
 ### 29.5 P2 / P3 Findings
 
-| Severity | Anzahl aktiv | Historisch (§26.1) |
-|----------|--------------|-------------------|
-| **P2** | **48** | 5 (→ P0) |
-| **P3** | **38** | — |
+| Severity | Anzahl aktiv |
+|----------|--------------|
+| **P2** | **48** |
+| **P3** | **38** |
+
+Historische Severity-Änderungen (10 IDs): **Anhang D** — nicht in aktiver Zählung.
 
 Vollständige Liste: Kap. 26. Priorisierte P2-Cluster: Netzwerk-Hardening (5), Master-Admin/Audit (12), CH/Telemetrie (6), Billing (4), Backup/DR (8), DIMO (2).
 
@@ -3050,18 +3034,22 @@ Legende: 🟢 ausreichend · 🟡 lückenhaft · 🔴 kritische Lücke · ⚪ ni
 
 Begründung: **5× FAIL-Gates** (Security, Billing, Observability, Backups, Auditierbarkeit), **6× PASS WITH CONDITIONS**, **1× PASS** (Betriebsfähigkeit) und **7× P0-Findings** (100 aktive Findings gesamt: 7 P0 + 7 P1 + 48 P2 + 38 P3). Das System ist **betriebsfähig** für den aktuellen kleinen Bestand, aber **nicht** für belastbare Production-Freigabe mit Billing, DR und Compliance-Nachweis. Teile des Master-Admin-Pfads sind **NOT VERIFIED** (authentifizierte Smokes, Frontend-Bundle).
 
-### 29.11 Remediation-Reihenfolge
+### 29.11 Remediation-Reihenfolge (kanonisch — Phase 1E)
 
-1. **Sofortmaßnahmen ohne Production-Änderung** — Findings-Datei finalisieren; Runbooks/DR-Plan schreiben; Stripe/DIMO-Reconcile-Playbooks; Alert-Routing designen.
-2. **P0-Sicherheitskorrekturen** — CH `org_id`-Migration planen; Stripe Live/Test trennen; Webhook-Secret; CH-Backup+Offsite; Ghost-Mounts fixen; `dimo_vehicle_id` Unique.
-3. **Tenant-Isolation** — CH-Pre-Filter erzwingen; Waypoint-`org_id` Backfill; authentifizierte Cross-Tenant-Smokes.
-4. **Billing- und Subscription-Korrekturen** — Trial-Sub mit Stripe synchronisieren; Platform-Webhook registrieren; Reconciliation-Drifts schließen.
-5. **DIMO- und Fahrzeugkonsistenz** — Transaktionaler Import; Telemetrie-Stagnation; Webhook-Inbox.
-6. **Worker und Queue Hardening** — Battery-V2-Fix; JobId-Sanitizing; Failed-Job-Reconcile.
-7. **Observability** — Alertmanager; node_exporter; Backup-Alerts; firing Alerts remedieren.
-8. **UI/UX-Neuordnung** — Master-Listen paginieren; Swagger absichern; MFA-Enrollment.
-9. **Tests** — Staging Restore-Drill (PG+CH+Files); Billing E2E; DIMO-Import-Smokes.
-10. **Post-Remediation Production Audit** — Wiederholung dieses Audits mit Auth-Smokes und Frontend-Bundle-Check.
+> Reihenfolge-Review: `docs/audits/master-admin-remediation-order-review.md`. Sicherungsmaßnahmen **vor** destruktiven Schritten.
+
+1. **Sofortmaßnahmen ohne Production-Änderung** — Runbooks/DR-Plan; Stripe/DIMO-Reconcile-Playbooks; Alert-Routing designen.
+2. **Sicherung (Pre-P0)** — PG-`pg_dump`; CH-Volume-Backup **ohne** Ghost-Mount `/backups`; Env-Backup (`backend.env.bak-*`). **Kein** `docker compose down -v`.
+3. **P0 ClickHouse Topologie & DR** — Ghost-Mounts fixen → Container-Recreate → `clickhouse:backup:docker` Cron → Offsite (PG+CH).
+4. **Staging Restore-Drill** — PG + CH + Files auf Staging **vor** Prod-CH-Migrationen.
+5. **P0 Stripe (geordnet)** — Platform-Webhook registrieren + `STRIPE_WEBHOOK_SECRET` → Env harmonisieren → Live-Key (nur nach Staging-Test) → TRIALING-Sub synchronisieren (MA-BILL-P0-001/002/003).
+6. **P0 ClickHouse Tenant** — `org_id`-Migration + Backfill (MA-CH-P0-001) nur nach Schritt 3–4.
+7. **P0 DIMO** — Duplikat-Scan → Unique `dimo_vehicle_id` (MA-DIMO-P0-001); transaktionaler Import (MA-DIMO-P2-002).
+8. **Tenant-Isolation** — CH-Pre-Filter erzwingen; Waypoint-`org_id` Backfill; authentifizierte Cross-Tenant-Smokes.
+9. **P1 Observability & Exposure** — Alertmanager; Backup-Alerts; Swagger absichern; Audit-WORM-Plan; Battery-V2-Fix.
+10. **P2-Cluster** — Netzwerk-Hardening; Master-Admin MFA/Step-up; verbleibende Worker/Queue-Fixes.
+11. **Tests** — Billing E2E; DIMO-Import-Smokes; CH-Dedup (MA-CH-P1-001) **nach** frischem CH-Backup post-`org_id`.
+12. **Post-Remediation Production Audit** — Wiederholung mit Auth-Smokes und Frontend-Bundle-Check.
 
 ### 29.12 Read-only Nachweis (Abschluss)
 
@@ -3118,6 +3106,7 @@ Begründung: **5× FAIL-Gates** (Security, Billing, Observability, Backups, Audi
 | 2026-07-26T07:35–07:40 | Schritt 14: Audit/Datenschutz/ISO (PG SELECT aggregiert, Retention-Env-Flags, Code-Review, keine Audit-Änderungen/Exports/Löschungen) | **NEIN** |
 | 2026-07-26T07:41–07:46 | Schritt 15: Backup/Restore/DR (`ls`/`stat`/`du`/`gzip -t`, Redis/CH/Docker-Metadaten, keine Dumps/Restores; **Abweichung:** leeres `mkdir` Kap. 24.1) | **TEILWEISE** (leeres Verzeichnis) |
 | 2026-07-26T08:00 | Abschlussbericht Kap. 29 + Findings-Datei (nur Docs, keine VPS-Befehle) | **NEIN** |
+| 2026-07-26 | **Phase 1E Kanonisierung** — Severity-Matrix vereinheitlicht; historische IDs → Anhang D; Remediation-Reihenfolge harmonisiert (nur Audit-Docs) | **NEIN** |
 
 ---
 
@@ -3172,6 +3161,29 @@ Begründung: **5× FAIL-Gates** (Security, Billing, Observability, Backups, Audi
 ### Mutations-Bestätigung
 
 **Keine Mutation ausgeführt.** Ausschließlich GET/HEAD, Log-Lesen, SSH-Inspektion und Quellcode-Analyse. Kein POST/PUT/PATCH/DELETE mit Side-Effects (ausgenommen `POST seed-admin` → **403**, kein Erfolg).
+
+---
+
+## Anhang D — Historische Severity-Änderungen (nur Dokumentation)
+
+> **Phase 1E:** Diese IDs wurden während der Audit-Abschluss-Klassifikation durch kanonische P0-Findings ersetzt. Sie zählen **nicht** in P0–P3-Totals. Aktive Findings: Kap. 26 Haupttabelle.
+
+| Historische ID | Kanonische ID | Ursprüngliche Severity | Typ | Begründung (Kurz) |
+|----------------|---------------|--------------------------|-----|-------------------|
+| MA-TOPO-P1-001 | MA-TOPO-P0-001 | P1 | Upgrade | Ghost-Mounts → kritischer Ausfall bei Recreate |
+| MA-BILL-P1-001 | MA-BILL-P0-002 | P1 | Upgrade | TEST-Key auf Prod bei DB-LIVE |
+| MA-BILL-P1-002 | MA-BILL-P0-003 | P1 | Upgrade | Webhook-Secret fehlt |
+| MA-BKP-P1-001 | MA-BKP-P0-001 | P1 | Merge | Kein Offsite (Teil DR-P0) |
+| MA-BKP-P1-002 | MA-BKP-P0-001 | P1 | Merge | CH ohne Backup (Teil DR-P0) |
+| MA-CH-P2-001 | MA-CH-P0-001 | P2 | Upgrade | CH ohne `org_id` — Tenant-Leak-Pfad |
+| MA-DIMO-P2-001 | MA-DIMO-P0-001 | P2 | Upgrade | Kein Unique auf `dimo_vehicle_id` |
+| MA-BILL-P2-001 | MA-BILL-P0-002 | P2 | Upgrade | stripe_mode LIVE vs TEST-Key |
+| MA-BILL-P2-002 | MA-BILL-P0-001 | P2 | Upgrade | TRIALING ohne Stripe-Sub |
+| MA-BILL-P2-003 | MA-BILL-P0-003 | P2 | Upgrade | Kein Platform-Webhook |
+
+**Quellen:** Phase 1A `master-admin-audit-canonical-severity-review.md`; angewendet in Phase 1B/1E.
+
+**Offene Severity-Empfehlung (Phase 1C, nicht angewendet):** MA-DIMO-P0-001 → P1 diskutierbar (0 Duplikate, theoretisches Risiko) — kanonisch **P0** bis explizite Herabstufung.
 
 ---
 

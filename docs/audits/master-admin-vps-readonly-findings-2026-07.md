@@ -6,23 +6,25 @@
 | **Vollbericht** | `docs/audits/master-admin-vps-readonly-audit-2026-07.md` |
 | **Abschlussurteil** | **Not Production Ready** |
 | **Erstellt (UTC)** | `2026-07-26T08:00:00Z` |
+| **Kanonisiert (UTC)** | `2026-07-26` — Phase 1E |
 
 ---
 
 ## Zusammenfassung
 
-### Aktive Findings (kanonisch — Phase 1B)
+### Aktive Findings (kanonisch — Phase 1E)
 
-| Severity | Anzahl aktiv | Registrierte historische IDs (nicht gezählt) |
-|----------|--------------|---------------------------------------------|
-| **P0** | **7** | — |
-| **P1** | **7** | 5 (→ P0, siehe unten) |
-| **P2** | **48** | 5 (→ P0, siehe unten) |
-| **P3** | **38** | — |
-| **Summe aktiv** | **100** | +10 historisch |
-| **Beobachtungen (OBS)** | **34** | (außerhalb P0–P3) |
+| Severity | Anzahl aktiv |
+|----------|--------------|
+| **P0** | **7** |
+| **P1** | **7** |
+| **P2** | **48** |
+| **P3** | **38** |
+| **Summe aktiv** | **100** |
+| **Beobachtungen (OBS)** | **34** (außerhalb P0–P3) |
 
-> Kanonisierung: `docs/audits/master-admin-audit-canonical-severity-review.md` · Validierung Phase 1B: `docs/audits/master-admin-audit-summary-validation.md`
+> **Eine Severity-Matrix:** Kap. 26 Haupttabelle im Vollaudit. Historische Severity-IDs (10): **Anhang D** im Vollaudit — nicht gezählt.  
+> Post-Kanonisierung: `docs/audits/master-admin-audit-post-canonicalization.md`
 
 ### Production-Readiness-Gates (Kap. 29.9)
 
@@ -230,23 +232,6 @@
 
 ---
 
-## Historische Finding-IDs (nicht in aktiver Zählung)
-
-| Historische ID | Ersetzt durch | Ursprüngliche Severity |
-|----------------|---------------|------------------------|
-| MA-TOPO-P1-001 | MA-TOPO-P0-001 | P1 |
-| MA-BILL-P1-001 | MA-BILL-P0-002 | P1 |
-| MA-BILL-P1-002 | MA-BILL-P0-003 | P1 |
-| MA-BKP-P1-001 | MA-BKP-P0-001 | P1 (Merge-Teil) |
-| MA-BKP-P1-002 | MA-BKP-P0-001 | P1 (Merge-Teil) |
-| MA-CH-P2-001 | MA-CH-P0-001 | P2 |
-| MA-DIMO-P2-001 | MA-DIMO-P0-001 | P2 |
-| MA-BILL-P2-001 | MA-BILL-P0-002 | P2 |
-| MA-BILL-P2-002 | MA-BILL-P0-001 | P2 |
-| MA-BILL-P2-003 | MA-BILL-P0-003 | P2 |
-
----
-
 ## Abhängigkeiten
 
 ```mermaid
@@ -269,47 +254,62 @@ flowchart TD
 
 ---
 
-## Empfohlene Umsetzungsreihenfolge
+## Empfohlene Umsetzungsreihenfolge (Phase 1E)
 
 1. Dokumentation/Runbooks (kein Prod-Touch)
-2. **P0:** Stripe Env/Webhook/Trial-Sub
-3. **P0:** CH Ghost-Mounts → CH Backup → Offsite
-4. **P0:** CH `org_id` + DIMO Unique
-5. **P1:** Alertmanager + Backup-Alerts
-6. **P1:** Swagger absichern + Audit-WORM-Plan
-7. **P1:** Battery-V2 + CH-Dedup
-8. P2-Cluster (Netzwerk, Master-Admin MFA, DIMO transaktional)
-9. Tests + Post-Remediation-Audit
+2. **Sicherung:** PG-Dump + CH-Volume-Backup (ohne Ghost-Mount); Env-Backup; **kein** `docker compose down -v`
+3. **P0:** CH Ghost-Mounts → Recreate → CH Backup-Cron → Offsite
+4. **Staging Restore-Drill** (PG + CH + Files) — **vor** Prod-CH-Migration
+5. **P0 Stripe (geordnet):** Webhook + Secret → Env harmonisieren → Live-Key → Trial-Sub
+6. **P0:** CH `org_id`-Migration (nur nach Schritt 3–4)
+7. **P0:** Duplikat-Scan → DIMO Unique + transaktionaler Import
+8. **P1:** Alertmanager + Backup-Alerts
+9. **P1:** Swagger absichern + Audit-WORM-Plan
+10. **P1:** Battery-V2 + CH-Dedup (nach frischem CH-Backup post-`org_id`)
+11. P2-Cluster (Netzwerk, Master-Admin MFA, verbleibende Fixes)
+12. Vollständiger Restore-Drill + Post-Remediation-Audit
 
 ---
 
 ## Benötigte Cursor-Remediation-Prompts
 
-### Prompt 1 — Stripe Production Cutover
+### Prompt 1 — Stripe Production Cutover (interne Reihenfolge)
 ```
-Behebe MA-BILL-P0-002 und MA-BILL-P0-003: Harmonisiere STRIPE_SECRET_KEY (Live nur Prod),
-setze STRIPE_WEBHOOK_SECRET, registriere Platform-Webhook /webhooks/stripe, synchronisiere
-die TRIALING-Subscription (MA-BILL-P0-001). Nur Staging testen bis Review; VPS-Deploy
-über vps-deploy-release.sh. Keine Test-Charges ohne Freigabe.
+Reihenfolge: (1) Env-Backup backend.env (2) Platform-Webhook /webhooks/stripe registrieren +
+STRIPE_WEBHOOK_SECRET setzen (MA-BILL-P0-003) (3) STRIPE_SECRET_KEY harmonisieren (MA-BILL-P0-002)
+(4) TRIALING-Subscription synchronisieren (MA-BILL-P0-001). Nur Staging testen bis Review;
+VPS-Deploy über vps-deploy-release.sh. Kein Live-Key vor funktionierendem Webhook.
 ```
 
-### Prompt 2 — ClickHouse DR & Mounts
+### Prompt 2a — ClickHouse Pre-Backup & Volume-Sicherung
 ```
-Behebe MA-TOPO-P0-001 und MA-BKP-P0-001: ClickHouse-Container mit current/shared-Pfaden
-neu binden, clickhouse:backup:docker als Cron, Offsite-S3-Sync für PG+CH Backups,
-Retention-Policy in vps-deploy-release.sh. Staging Restore-Drill dokumentieren.
+Vor Container-Änderungen: PG pg_dump; CH-Volume-Backup ohne Ghost-Mount /backups;
+verifiziere Backup-Integrität. Kein docker compose down -v. Deploy-Freeze während Fenster.
+```
+
+### Prompt 2b — ClickHouse Ghost-Mounts & Recreate
+```
+Behebe MA-TOPO-P0-001: ClickHouse-Container mit current/shared-Pfaden neu binden,
+Recreate nur nach Prompt 2a-Backup. Health + SELECT 1 verifizieren.
+```
+
+### Prompt 2c — ClickHouse DR (Cron + Offsite)
+```
+Behebe MA-BKP-P0-001: clickhouse:backup:docker als Cron, Offsite-S3-Sync für PG+CH,
+Retention in vps-deploy-release.sh. Staging Restore-Drill dokumentieren.
 ```
 
 ### Prompt 3 — ClickHouse Tenant Isolation
 ```
-Behebe MA-CH-P0-001: org_id auf telemetry_snapshots/state_changes (Migration + Backfill),
-Insert-Guard, API erzwingt PG vehicle→org Pre-Filter. Tests für Cross-Tenant-Leak.
+Behebe MA-CH-P0-001 nur nach verifiziertem CH-Backup (Prompt 2c) und Staging Restore-Drill:
+org_id auf telemetry_snapshots/state_changes (Migration + Backfill), Insert-Guard,
+API erzwingt PG vehicle→org Pre-Filter. Cross-Tenant-Leak-Tests.
 ```
 
 ### Prompt 4 — DIMO Vehicle Unique
 ```
-Behebe MA-DIMO-P0-001 und MA-DIMO-P2-002: Unique Constraint dimo_vehicle_id,
-registerFromDimo in $transaction mit compensating rollback.
+Behebe MA-DIMO-P0-001 und MA-DIMO-P2-002: Zuerst Duplikat-Scan auf dimo_vehicle_id,
+dann Unique Constraint, registerFromDimo in $transaction mit compensating rollback.
 ```
 
 ### Prompt 5 — Observability
@@ -339,7 +339,7 @@ Alert QueueFailedJobsHigh grün.
 | 1 | **Read-only Re-Audit** | Wiederholung Kap. 2.2-Befehle; P0 geschlossen |
 | 2 | **Authentifizierte Master-Smokes** | Cross-Tenant 403; Master-GETs mit MFA Step-up |
 | 3 | **Stripe E2E** | Webhook-Event in PG; Reconciliation 0 CRITICAL |
-| 4 | **CH Restore-Drill** | Staging RESTORE + SELECT count plausibel |
+| 4 | **CH Restore-Drill** | Staging RESTORE + SELECT count plausibel — **vor** Prod-`org_id`-Migration |
 | 5 | **PG Restore-Drill** | `pg_restore` Staging; migrate status OK |
 | 6 | **Backup-Alerts** | Simulierter Fail → Notification < 5 min |
 | 7 | **DIMO Import Smoke** | Transaktionaler Rollback bei Teilfehler |
