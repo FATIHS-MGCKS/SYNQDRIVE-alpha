@@ -301,14 +301,17 @@ export class MasterSubscriptionController {
   }
 
   private actor(
-    req: { user?: { id?: string } },
+    req: { user?: { id?: string }; requestId?: string },
     idempotencyKey?: string,
     lockVersion?: number,
+    reason?: string,
   ) {
     return {
       actorUserId: req.user?.id ?? null,
       idempotencyKey,
       lockVersion,
+      requestId: req.requestId ?? null,
+      reason: reason ?? null,
     };
   }
 }

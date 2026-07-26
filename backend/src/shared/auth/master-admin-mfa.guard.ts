@@ -18,6 +18,12 @@ import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
 import { MASTER_ADMIN_MFA_ACTION_KEY } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
+import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
+import {
+  buildPrivilegedRouteLabel,
+  resolveCorrelationId,
+  resolvePrivilegedReason,
+} from '@modules/activity-log/master-admin-audit.util';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -28,6 +34,7 @@ export class MasterAdminMfaGuard implements CanActivate {
     private readonly prisma: PrismaService,
     private readonly stepUp: IamMfaStepUpService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
+    @Optional() private readonly masterAdminAudit?: MasterAdminAuditService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -82,14 +89,40 @@ export class MasterAdminMfaGuard implements CanActivate {
 
     const claims = user.sessionClaims;
     if (claims && hasFreshMfaAssurance(claims)) {
+      request.masterAdminMfaStepUpUsed = true;
+      request.masterAdminMfaStepUpAction = action;
       return true;
     }
 
     const headerToken = this.extractStepUpToken(request);
     if (headerToken) {
       const valid = await this.stepUp.validateGrant(user.id, headerToken, action);
-      if (valid) return true;
+      if (valid) {
+        request.masterAdminMfaStepUpUsed = true;
+        request.masterAdminMfaStepUpAction = action;
+        void this.masterAdminAudit?.recordMfaStepUp({
+          granted: true,
+          actorUserId: user.id,
+          stepUpAction: action,
+          correlationId: resolveCorrelationId(request),
+          route: buildPrivilegedRouteLabel(request),
+          ipAddress: request.ip ?? request.connection?.remoteAddress,
+          userAgent: request.headers?.['user-agent'],
+          reasonCode: resolvePrivilegedReason(request),
+        });
+        return true;
+      }
       this.iamMetrics?.recordStepUpDenied('invalid');
+      void this.masterAdminAudit?.recordMfaStepUp({
+        granted: false,
+        actorUserId: user.id,
+        stepUpAction: action,
+        correlationId: resolveCorrelationId(request),
+        route: buildPrivilegedRouteLabel(request),
+        ipAddress: request.ip ?? request.connection?.remoteAddress,
+        userAgent: request.headers?.['user-agent'],
+        reasonCode: resolvePrivilegedReason(request),
+      });
       throw new ForbiddenException({
         code: MFA_ERROR.STEP_UP_EXPIRED,
         message: 'Step-up authentication expired or invalid',
@@ -98,6 +131,16 @@ export class MasterAdminMfaGuard implements CanActivate {
     }
 
     this.iamMetrics?.recordStepUpDenied('required');
+    void this.masterAdminAudit?.recordMfaStepUp({
+      granted: false,
+      actorUserId: user.id,
+      stepUpAction: action,
+      correlationId: resolveCorrelationId(request),
+      route: buildPrivilegedRouteLabel(request),
+      ipAddress: request.ip ?? request.connection?.remoteAddress,
+      userAgent: request.headers?.['user-agent'],
+      reasonCode: resolvePrivilegedReason(request),
+    });
     throw new ForbiddenException({
       code: MFA_ERROR.STEP_UP_REQUIRED,
       message: 'Fresh MFA step-up required for this master admin action',

@@ -80,13 +80,28 @@ export class AuditService {
   }
 
   /** Extract audit context from an HTTP request object. */
-  static contextFromRequest(req: any): Pick<AuditContext, 'actorUserId' | 'actorOrganizationId' | 'ipAddress' | 'userAgent' | 'route'> {
+  static contextFromRequest(
+    req: any,
+  ): Pick<
+    AuditContext,
+    'actorUserId' | 'actorOrganizationId' | 'ipAddress' | 'userAgent' | 'route' | 'metaJson'
+  > {
+    const correlationId =
+      req?.requestId ??
+      req?.headers?.['x-correlation-id'] ??
+      req?.headers?.['x-request-id'];
     return {
       actorUserId: req?.user?.id,
       actorOrganizationId: req?.user?.organizationId ?? req?.tenantId,
       ipAddress: req?.ip ?? req?.connection?.remoteAddress,
       userAgent: req?.headers?.['user-agent'],
       route: req?.route?.path ? `${req.method} ${req.route.path}` : undefined,
+      metaJson: correlationId
+        ? {
+            correlationId: String(correlationId),
+            requestId: String(correlationId),
+          }
+        : undefined,
     };
   }
 }
