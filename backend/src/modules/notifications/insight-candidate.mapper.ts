@@ -6,51 +6,17 @@ import { InsightEntityScope, InsightSeverity, InsightType } from '@prisma/client
 import type { InsightCandidate } from '../business-insights/insight.types';
 import {
   NotificationActionType,
-  NotificationDomain,
   NotificationEntityType,
-  NotificationEventKind,
   NotificationSeverity,
   NotificationSourceType,
 } from './notification.enums';
 import type { NotificationCandidate, NotificationResolutionPolicy } from './notification.types';
 import { DEFAULT_STATE_RESOLUTION_POLICY } from './notification-reopen.policy';
 import { fingerprintPartsFromInsightDedupeKey } from './notification-fingerprint.factory';
-
-const INSIGHT_DOMAIN: Partial<Record<InsightType, NotificationDomain>> = {
-  [InsightType.TIGHT_HANDOVER]: NotificationDomain.HANDOVERS,
-  [InsightType.RETURN_NEEDS_INSPECTION]: NotificationDomain.HANDOVERS,
-  [InsightType.STATION_SHORTAGE]: NotificationDomain.OPERATIONS,
-  [InsightType.LOW_UTILIZATION]: NotificationDomain.OPERATIONS,
-  [InsightType.SERVICE_WINDOW]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.SERVICE_BEFORE_BOOKING]: NotificationDomain.HANDOVERS,
-  [InsightType.BATTERY_CRITICAL]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.TIRE_CRITICAL]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.BRAKE_CRITICAL]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.SERVICE_OVERDUE]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.PICKUP_OVERDUE]: NotificationDomain.HANDOVERS,
-  [InsightType.TUV_OVERDUE]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.BOKRAFT_OVERDUE]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.HM_SERVICE_NO_TRACKING]: NotificationDomain.VEHICLE_HEALTH,
-  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: NotificationDomain.DRIVING_ANALYSIS,
-};
-
-const INSIGHT_CONDITION: Partial<Record<InsightType, string>> = {
-  [InsightType.TIGHT_HANDOVER]: 'tight_handover',
-  [InsightType.RETURN_NEEDS_INSPECTION]: 'return_inspection',
-  [InsightType.STATION_SHORTAGE]: 'shortage',
-  [InsightType.LOW_UTILIZATION]: 'low_utilization',
-  [InsightType.SERVICE_WINDOW]: 'service_window',
-  [InsightType.SERVICE_BEFORE_BOOKING]: 'service_before_booking',
-  [InsightType.BATTERY_CRITICAL]: 'battery_critical',
-  [InsightType.TIRE_CRITICAL]: 'tires_critical',
-  [InsightType.BRAKE_CRITICAL]: 'brakes_critical',
-  [InsightType.SERVICE_OVERDUE]: 'overdue',
-  [InsightType.PICKUP_OVERDUE]: 'pickup_overdue',
-  [InsightType.TUV_OVERDUE]: 'tuv_overdue',
-  [InsightType.BOKRAFT_OVERDUE]: 'bokraft_overdue',
-  [InsightType.HM_SERVICE_NO_TRACKING]: 'hm_no_tracking',
-  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: 'driving_assessment_device_quality',
-};
+import {
+  buildCandidateFromRegistry,
+  getEventTypeDefinition,
+} from './registry/notification-event-registry';
 
 /** All Prisma InsightType values supported by DashboardInsight backfill. */
 export const MIGRATABLE_INSIGHT_TYPES: readonly InsightType[] = Object.values(InsightType);
@@ -96,34 +62,6 @@ function mapActionType(actionType?: string): NotificationActionType {
     default:
       return NotificationActionType.OPEN_VEHICLE;
   }
-}
-
-function titleKeyForInsight(type: InsightType, recovering: boolean): string {
-  if (type === InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY) {
-    return recovering
-      ? 'notification.title.drivingAssessmentRecovering'
-      : 'notification.title.drivingAssessmentDegraded';
-  }
-  if (type === InsightType.SERVICE_OVERDUE) return 'notification.title.serviceOverdue';
-  if (type === InsightType.PICKUP_OVERDUE) return 'notification.title.pickupOverdue';
-  if (type === InsightType.STATION_SHORTAGE) return 'notification.title.stationShortage';
-  if (type === InsightType.BATTERY_CRITICAL) return 'notification.title.batteryCritical';
-  if (type === InsightType.TIRE_CRITICAL) return 'notification.title.tireCritical';
-  if (type === InsightType.BRAKE_CRITICAL) return 'notification.title.brakeCritical';
-  if (type === InsightType.LOW_UTILIZATION) return 'notification.title.lowUtilization';
-  if (type === InsightType.HM_SERVICE_NO_TRACKING) return 'notification.title.hmServiceNoTracking';
-  if (type === InsightType.RETURN_NEEDS_INSPECTION) return 'notification.title.returnInspection';
-  if (type === InsightType.TUV_OVERDUE || type === InsightType.BOKRAFT_OVERDUE) {
-    return 'notification.title.complianceExpired';
-  }
-  return 'notification.fallback';
-}
-
-function bodyKeyForInsight(type: InsightType): string {
-  if (type === InsightType.LOW_UTILIZATION) return 'notification.body.lowUtilization';
-  if (type === InsightType.HM_SERVICE_NO_TRACKING) return 'notification.body.hmServiceNoTracking';
-  if (type === InsightType.STATION_SHORTAGE) return 'notification.body.stationShortage';
-  return 'notification.body.insightDefault';
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -174,6 +112,8 @@ function buildInsightTemplateParams(
   if (typeof metrics.totalVehicles === 'number') params.totalVehicles = metrics.totalVehicles;
   if (typeof metrics.idleDays === 'number') params.idleDays = metrics.idleDays;
   if (typeof metrics.lostRevenueEur === 'number') params.lostRevenueEur = metrics.lostRevenueEur;
+  if (typeof metrics.complianceType === 'string') params.complianceType = metrics.complianceType;
+  if (typeof metrics.bookingRef === 'string') params.bookingRef = metrics.bookingRef;
 
   return params;
 }
@@ -190,9 +130,7 @@ export function notificationCandidateFromInsight(
   options: InsightToNotificationCandidateOptions,
 ): NotificationCandidate | null {
   const entityId = insight.entityIds[0];
-  const conditionCode = INSIGHT_CONDITION[insight.type];
-  const domain = INSIGHT_DOMAIN[insight.type];
-  if (!entityId || !conditionCode || !domain) {
+  if (!entityId || !getEventTypeDefinition(insight.type)) {
     return null;
   }
 
@@ -209,25 +147,17 @@ export function notificationCandidateFromInsight(
 
   fingerprintPartsFromInsightDedupeKey(options.organizationId, insight.dedupeKey, entityType);
 
-  return {
+  const candidate = buildCandidateFromRegistry({
     organizationId: options.organizationId,
     eventType: insight.type,
-    eventKind: NotificationEventKind.STATE,
-    domain,
-    severity,
-    entityType,
     entityId,
-    conditionCode,
-    scopeVersion: 1,
-    sourceType: NotificationSourceType.DASHBOARD_INSIGHT,
+    entityType,
     sourceRef: options.sourceRef,
     occurredAt: options.occurredAt,
-    titleKey: titleKeyForInsight(insight.type, recovering),
-    bodyKey: bodyKeyForInsight(insight.type),
+    severity,
     templateParams: buildInsightTemplateParams(insight, label, entityType, entityId),
-    actionType: mapActionType(insight.actionType),
-    actionTarget: {
-      type: mapActionType(insight.actionType),
+    sourceType: NotificationSourceType.DASHBOARD_INSIGHT,
+    actionTargetContext: {
       vehicleId: entityType === NotificationEntityType.VEHICLE ? entityId : undefined,
       bookingId:
         entityType === NotificationEntityType.BOOKING
@@ -235,12 +165,33 @@ export function notificationCandidateFromInsight(
           : metricsBookingId,
       stationId: entityType === NotificationEntityType.STATION ? entityId : undefined,
     },
-    expiresAt: insight.expiresAt,
-    resolutionPolicy: options.resolutionPolicy ?? DEFAULT_STATE_RESOLUTION_POLICY,
     metadata: {
       insightPriority: insight.priority,
       dedupeKey: insight.dedupeKey,
       groupKey: insight.groupKey,
     },
+  });
+
+  const actionType = mapActionType(insight.actionType);
+  candidate.actionType = actionType;
+  candidate.actionTarget = {
+    ...candidate.actionTarget,
+    type: actionType,
+    vehicleId:
+      entityType === NotificationEntityType.VEHICLE
+        ? entityId
+        : candidate.actionTarget.vehicleId,
+    bookingId:
+      entityType === NotificationEntityType.BOOKING
+        ? entityId
+        : metricsBookingId ?? candidate.actionTarget.bookingId,
+    stationId:
+      entityType === NotificationEntityType.STATION
+        ? entityId
+        : candidate.actionTarget.stationId,
   };
+  candidate.resolutionPolicy = options.resolutionPolicy ?? DEFAULT_STATE_RESOLUTION_POLICY;
+  candidate.expiresAt = insight.expiresAt;
+
+  return candidate;
 }

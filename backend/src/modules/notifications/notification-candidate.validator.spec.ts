@@ -29,7 +29,7 @@ function validCandidate() {
     sourceRef: 'run-abc',
     occurredAt: new Date('2026-07-08T08:00:00.000Z'),
     titleKey: 'notification.title.drivingAssessmentDegraded',
-    bodyKey: 'notification.body.insightDefault',
+    bodyKey: 'notification.body.drivingAssessmentDegraded',
     templateParams: { label: 'WOB L 7503', plate: 'WOB L 7503' },
     actionType: NotificationActionType.OPEN_VEHICLE,
     actionTarget: { type: NotificationActionType.OPEN_VEHICLE, vehicleId: 'veh-1' },
@@ -95,6 +95,7 @@ describe('insight-candidate.mapper', () => {
     });
     expect(candidate).not.toBeNull();
     expect(candidate!.titleKey).toBe('notification.title.drivingAssessmentDegraded');
+    expect(candidate!.bodyKey).toBe('notification.body.drivingAssessmentDegraded');
     expect(candidate!.titleKey).not.toContain('Fahrbewertung');
     expect(candidate!.severity).toBe(NotificationSeverity.WARNING);
   });
@@ -114,6 +115,7 @@ describe('insight-candidate.mapper', () => {
     );
     expect(recovering!.severity).toBe(NotificationSeverity.SUCCESS);
     expect(recovering!.titleKey).toBe('notification.title.drivingAssessmentRecovering');
+    expect(recovering!.bodyKey).toBe('notification.body.drivingAssessmentRecovering');
   });
 
   it('produces same fingerprint family as dedupeKey for same vehicle condition', () => {

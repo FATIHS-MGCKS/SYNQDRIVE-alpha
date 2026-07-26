@@ -1,3 +1,7 @@
+import {
+  assertAllowedTemplateParamKeys,
+  sanitizeTemplateParams,
+} from '../notification-template-params.validator';
 import type { NotificationCandidate } from '../notification.types';
 import { NotificationSeverity } from '../notification.enums';
 import {
@@ -118,8 +122,12 @@ export function validateRegistryCandidate(candidate: NotificationCandidate): Not
     throw new NotificationRegistryValidationError('titleKey', 'titleKey must start with notification.');
   }
 
+  const allowedTitleKeys = new Set([
+    def.titleKey,
+    def.recoveryTitleKey,
+  ].filter(Boolean));
   const titleMatchesRegistry =
-    candidate.titleKey === def.titleKey
+    allowedTitleKeys.has(candidate.titleKey)
     || candidate.severity === NotificationSeverity.SUCCESS;
   if (!titleMatchesRegistry) {
     throw new NotificationRegistryValidationError(
@@ -128,11 +136,40 @@ export function validateRegistryCandidate(candidate: NotificationCandidate): Not
     );
   }
 
-  assertRequiredTemplateParams(def, candidate.templateParams ?? {});
+  if (!candidate.bodyKey.startsWith('notification.')) {
+    throw new NotificationRegistryValidationError('bodyKey', 'bodyKey must start with notification.');
+  }
+
+  const allowedBodyKeys = new Set([
+    def.bodyKey,
+    def.recoveryBodyKey,
+  ].filter(Boolean));
+  const bodyMatchesRegistry =
+    allowedBodyKeys.has(candidate.bodyKey)
+    || candidate.severity === NotificationSeverity.SUCCESS;
+  if (!bodyMatchesRegistry) {
+    throw new NotificationRegistryValidationError(
+      'bodyKey',
+      `bodyKey must match registry for ${def.eventType}`,
+    );
+  }
+
+  const rawParams = candidate.templateParams ?? {};
+  if (def.allowedTemplateParams?.length) {
+    assertAllowedTemplateParamKeys(rawParams, def.allowedTemplateParams);
+  }
+  const sanitizedParams = sanitizeTemplateParams(
+    rawParams,
+    def.allowedTemplateParams,
+  );
+  assertRequiredTemplateParams(def, sanitizedParams);
   assertSeverityAllowed(def, candidate.severity);
   assertActionTargetComplete(def, candidate);
 
-  return candidate;
+  return {
+    ...candidate,
+    templateParams: sanitizedParams,
+  };
 }
 
 export function validateRegistryBuildInput(input: RegistryCandidateBuildInput): RegistryCandidateBuildInput {

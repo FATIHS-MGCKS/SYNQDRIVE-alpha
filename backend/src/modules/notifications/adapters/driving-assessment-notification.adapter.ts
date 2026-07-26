@@ -44,11 +44,6 @@ export class DrivingAssessmentNotificationAdapter
       metadata: { runId: context.runId, adapterId: this.adapterId },
     });
 
-    if (!source.degraded) {
-      candidate.titleKey = 'notification.title.drivingAssessmentRecovering';
-      candidate.bodyKey = 'notification.body.drivingAssessmentRecovering';
-    }
-
     return validateRegistryCandidate(candidate);
   }
 }
