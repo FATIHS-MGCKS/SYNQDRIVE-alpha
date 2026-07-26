@@ -73,7 +73,7 @@ describe('NotificationApiService', () => {
   let v2Enabled: boolean;
   let row: ReturnType<typeof buildRow>;
   const receipts = new Map<string, any>();
-  let membership: { role: MembershipRole; stationScope: string | null };
+  let membership: { role: MembershipRole; stationScope: string | null; status?: string };
   let preferences: any[];
 
   const engineConfig = { isV2Enabled: () => v2Enabled } as NotificationEngineConfig;
@@ -148,6 +148,16 @@ describe('NotificationApiService', () => {
       const existing = receipts.get(`${id}:${userId}`);
       receipts.set(`${id}:${userId}`, { ...existing, snoozedUntil: null });
     }),
+    hidePersonal: jest.fn(async (id: string, _orgId: string, userId: string) => {
+      receipts.set(`${id}:${userId}`, {
+        ...(receipts.get(`${id}:${userId}`) ?? { notificationId: id, userId }),
+        hiddenAt: new Date(),
+      });
+    }),
+    unhidePersonal: jest.fn(async (id: string, _orgId: string, userId: string) => {
+      const existing = receipts.get(`${id}:${userId}`);
+      receipts.set(`${id}:${userId}`, { ...existing, hiddenAt: null });
+    }),
   } as unknown as NotificationReceiptService;
 
   const stationScopeService = {
@@ -177,9 +187,18 @@ describe('NotificationApiService', () => {
 
   const prisma = {
     organizationMembership: {
-      findFirst: jest.fn(async () =>
-        membership ? { role: membership.role, stationScope: membership.stationScope } : null,
-      ),
+      findFirst: jest.fn(async ({ where }: any) => {
+        if (where.status === 'ACTIVE') {
+          if (!membership || (membership.status && membership.status !== 'ACTIVE')) {
+            return null;
+          }
+          return { role: membership.role, stationScope: membership.stationScope };
+        }
+        if (membership?.status) {
+          return { status: membership.status };
+        }
+        return null;
+      }),
     },
     userNotificationPreference: {
       findMany: jest.fn(async () => preferences),
@@ -251,6 +270,12 @@ describe('NotificationApiService', () => {
       expect(forA.userReceipt.readAt).not.toBeNull();
       expect(forB.userReceipt.readAt).toBeNull();
     });
+
+    it('mark read does not resolve org-wide notification', async () => {
+      await service.markRead(ORG, { id: USER }, NOTIF_ID);
+      expect(row.status).toBe(NotificationStatus.OPEN);
+      expect(core.resolveNotification).not.toHaveBeenCalled();
+    });
   });
 
   describe('station scope', () => {
@@ -301,6 +326,48 @@ describe('NotificationApiService', () => {
       await expect(
         service.snooze(ORG, { id: USER }, NOTIF_ID, '2020-01-01T00:00:00.000Z'),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('personal snooze does not change org lifecycle status', async () => {
+      const until = new Date(Date.now() + 3600_000).toISOString();
+      await service.snooze(ORG, { id: USER }, NOTIF_ID, until);
+      expect(row.status).toBe(NotificationStatus.OPEN);
+    });
+  });
+
+  describe('counts with personal overlays', () => {
+    it('excludes personally snoozed non-critical from active counts', async () => {
+      const until = new Date(Date.now() + 3600_000);
+      receipts.set(`${NOTIF_ID}:${USER}`, {
+        notificationId: NOTIF_ID,
+        userId: USER,
+        snoozedUntil: until,
+        readAt: null,
+        hiddenAt: null,
+      });
+      (repository.countNotificationsWhere as jest.Mock).mockImplementation(async (where: any) => {
+        const and = where?.AND ?? [];
+        const hasSnoozeExclusion = JSON.stringify(and).includes('snoozedUntil');
+        return hasSnoozeExclusion ? 0 : 1;
+      });
+      const counts = await service.getCounts(ORG, { id: USER });
+      expect(counts.totalActive).toBe(0);
+    });
+
+    it('still counts CRITICAL during personal snooze when escalation applies', async () => {
+      row = buildRow({ severity: NotificationSeverity.CRITICAL, eventType: 'INTEGRATION_DISCONNECTED' });
+      const until = new Date(Date.now() + 3600_000);
+      receipts.set(`${NOTIF_ID}:${USER}`, {
+        notificationId: NOTIF_ID,
+        userId: USER,
+        snoozedUntil: until,
+      });
+      (repository.groupCountBySeverityWhere as jest.Mock).mockResolvedValue([
+        { severity: NotificationSeverity.CRITICAL, _count: { _all: 1 } },
+      ]);
+      (repository.countNotificationsWhere as jest.Mock).mockResolvedValue(1);
+      const counts = await service.getCounts(ORG, { id: USER });
+      expect(counts.critical).toBe(1);
     });
   });
 
@@ -356,6 +423,11 @@ describe('NotificationApiService', () => {
   describe('roles', () => {
     it('rejects users without active membership', async () => {
       membership = null as any;
+      await expect(service.getById(ORG, { id: USER }, NOTIF_ID)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('rejects suspended users', async () => {
+      membership = { role: MembershipRole.WORKER, stationScope: 'ALL', status: 'SUSPENDED' };
       await expect(service.getById(ORG, { id: USER }, NOTIF_ID)).rejects.toBeInstanceOf(ForbiddenException);
     });
   });

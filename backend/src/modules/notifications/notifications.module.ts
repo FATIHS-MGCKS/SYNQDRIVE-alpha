@@ -11,6 +11,8 @@ import { NotificationProducerIngestService } from './adapters/notification-produ
 import { NotificationProducerRouter } from './adapters/notification-producer.router';
 import { StationShortageNotificationAdapter } from './adapters/station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './adapters/low-utilization-notification.adapter';
+import { ComplianceOperationalNotificationAdapter } from './adapters/compliance-operational-notification.adapter';
+import { BookingHandoverNotificationAdapter } from './adapters/booking-handover-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './adapters/vehicle-health-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './adapters/technical-observation-notification.adapter';
 import { NotificationCoreService } from './notification-core.service';
@@ -38,6 +40,8 @@ import { NotificationMigrationAnalysisService } from './migration/notification-m
 import { NotificationMigrationBackfillService } from './migration/notification-migration-backfill.service';
 import { NotificationMigrationAcceptanceService } from './migration/notification-migration-acceptance.service';
 import { NotificationArchitectureAuditService } from './migration/notification-architecture-audit.service';
+import { NotificationCandidateMetricsBinder } from './notification-candidate-metrics.binder';
+import { NotificationTaskLinkService } from './links/notification-task-link.service';
 
 /**
  * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime, REST API, delivery outbox.
@@ -76,10 +80,14 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     NotificationMigrationBackfillService,
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
+    NotificationCandidateMetricsBinder,
+    NotificationTaskLinkService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,
+    ComplianceOperationalNotificationAdapter,
+    BookingHandoverNotificationAdapter,
     VehicleHealthNotificationAdapter,
     NotificationProducerRouter,
     NotificationProducerIngestService,
@@ -90,6 +98,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     NotificationRepository,
     NotificationEngineConfig,
     NotificationCoreService,
+    NotificationTaskLinkService,
     NotificationApiService,
     NotificationReceiptService,
     NotificationStationScopeService,
@@ -107,6 +116,8 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,
+    ComplianceOperationalNotificationAdapter,
+    BookingHandoverNotificationAdapter,
     VehicleHealthNotificationAdapter,
   ],
 })

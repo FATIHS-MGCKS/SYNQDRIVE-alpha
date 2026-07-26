@@ -98,6 +98,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationDeliveryFailed: Counter<string>;
   readonly notificationDeliveryRetry: Counter<string>;
   readonly notificationDuplicateConstraintViolation: Counter<string>;
+  readonly notificationCandidateRejected: Counter<string>;
 
   /** Task automation outbox — low-cardinality labels only. */
   readonly taskAutomationOutboxEnqueued: Counter<string>;
@@ -766,6 +767,13 @@ export class TripMetricsService implements OnModuleInit {
     this.notificationDuplicateConstraintViolation = new Counter({
       name: 'synqdrive_notification_duplicate_constraint_violation_total',
       help: 'Outbox idempotency unique constraint prevented duplicate delivery',
+      registers: [this.registry],
+    });
+
+    this.notificationCandidateRejected = new Counter({
+      name: 'synqdrive_notification_candidate_rejected_total',
+      help: 'Notification candidates rejected at validation boundary',
+      labelNames: ['field'],
       registers: [this.registry],
     });
 

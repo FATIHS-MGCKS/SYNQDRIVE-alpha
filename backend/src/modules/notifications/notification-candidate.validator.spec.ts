@@ -14,22 +14,36 @@ import {
   validateNotificationCandidate,
 } from './notification-candidate.validator';
 import { notificationCandidateFromInsight } from './insight-candidate.mapper';
+import { buildCandidateFromRegistry } from './registry/notification-event-registry';
+import type { NotificationCandidate } from './notification.types';
+import {
+  NOTIFICATION_CANDIDATE_SCHEMA_VERSION,
+  NotificationCandidateRecoveryState,
+} from './notification-candidate.contract';
 
 function validCandidate() {
   return {
+    schemaVersion: NOTIFICATION_CANDIDATE_SCHEMA_VERSION,
     organizationId: 'org-1',
     eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
     eventKind: NotificationEventKind.STATE,
     domain: NotificationDomain.DRIVING_ANALYSIS,
     severity: NotificationSeverity.WARNING,
+    recoveryState: NotificationCandidateRecoveryState.ACTIVE,
     entityType: NotificationEntityType.VEHICLE,
     entityId: 'veh-1',
+    vehicleId: 'veh-1',
+    conditionKey: 'driving_assessment_device_quality',
     conditionCode: 'driving_assessment_device_quality',
+    sourceSystem: NotificationSourceType.DASHBOARD_INSIGHT,
     sourceType: NotificationSourceType.DASHBOARD_INSIGHT,
+    sourceEventId: 'run-abc',
     sourceRef: 'run-abc',
     occurredAt: new Date('2026-07-08T08:00:00.000Z'),
+    observedAt: new Date('2026-07-08T08:00:00.000Z'),
+    templateKey: 'notification.title.drivingAssessmentDegraded',
     titleKey: 'notification.title.drivingAssessmentDegraded',
-    bodyKey: 'notification.body.insightDefault',
+    bodyKey: 'notification.body.drivingAssessmentDegraded',
     templateParams: { label: 'WOB L 7503', plate: 'WOB L 7503' },
     actionType: NotificationActionType.OPEN_VEHICLE,
     actionTarget: { type: NotificationActionType.OPEN_VEHICLE, vehicleId: 'veh-1' },
@@ -53,9 +67,13 @@ describe('notification-candidate.validator', () => {
     ).toThrow(NotificationCandidateValidationError);
   });
 
-  it('rejects non-i18n titleKey', () => {
+  it('rejects non-i18n templateKey', () => {
     expect(() =>
-      validateNotificationCandidate({ ...validCandidate(), titleKey: 'Fahrbewertung eingeschränkt' }),
+      validateNotificationCandidate({
+        ...validCandidate(),
+        templateKey: 'Fahrbewertung eingeschränkt',
+        titleKey: 'Fahrbewertung eingeschränkt',
+      }),
     ).toThrow(NotificationCandidateValidationError);
   });
 
@@ -67,6 +85,111 @@ describe('notification-candidate.validator', () => {
       titleKey: 'notification.title.drivingAssessmentDegraded',
     });
     expect(de.canonical).toBe(en.canonical);
+  });
+
+  it('rejects unregistered event types', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        eventType: 'NOT_A_REAL_EVENT',
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('accepts alias event types after canonical resolution', () => {
+    const base = buildCandidateFromRegistry({
+      organizationId: 'org-1',
+      eventType: 'WEBHOOK_FAILURE',
+      entityId: 'org-1',
+      sourceEventId: 'webhook-1',
+      sourceRef: 'webhook-1',
+      occurredAt: new Date(),
+      templateParams: { webhookName: 'dimo' },
+    });
+    const aliased = validateNotificationCandidate({
+      ...base,
+      eventType: 'WEBHOOK_PROCESSING_FAILED',
+    });
+    expect(aliased.eventType).toBe('WEBHOOK_FAILURE');
+  });
+
+  it('rejects invalid entity reference mismatch', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: 'veh-1',
+        vehicleId: 'veh-other',
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('rejects missing event type', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        eventType: '',
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('rejects invalid severity', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        severity: 'HIGH' as NotificationSeverity,
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('rejects observedAt before occurredAt', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        observedAt: new Date('2026-07-08T07:00:00.000Z'),
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('rejects disallowed metadata', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        metadata: { customerName: 'Secret' } as unknown as NotificationCandidate['metadata'],
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('accepts recovery candidate with SUCCESS and RECOVERED state', () => {
+    const recovered = validateNotificationCandidate({
+      ...validCandidate(),
+      severity: NotificationSeverity.SUCCESS,
+      recoveryState: NotificationCandidateRecoveryState.RECOVERED,
+      templateKey: 'notification.title.drivingAssessmentRecovering',
+      titleKey: 'notification.title.drivingAssessmentRecovering',
+    });
+    expect(recovered.recoveryState).toBe(NotificationCandidateRecoveryState.RECOVERED);
+  });
+
+  it('rejects recovery candidate without SUCCESS severity', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        recoveryState: NotificationCandidateRecoveryState.RECOVERED,
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('requires sourceEventId for runtime producers', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        sourceSystem: NotificationSourceType.RUNTIME,
+        sourceType: NotificationSourceType.RUNTIME,
+        sourceEventId: '',
+        sourceRef: '',
+      }),
+    ).toThrow(NotificationCandidateValidationError);
   });
 });
 
@@ -125,5 +248,31 @@ describe('insight-candidate.mapper', () => {
     const fp = fingerprintFromCandidate(candidate);
     expect(fp.parts.conditionCode).toBe('driving_assessment_device_quality');
     expect(fp.parts.entityId).toBe('veh-wob-l-7503');
+  });
+
+  it('maps SERVICE_OVERDUE insight with registry conditionCode service_overdue', () => {
+    const candidate = notificationCandidateFromInsight(
+      {
+        type: InsightType.SERVICE_OVERDUE,
+        severity: InsightSeverity.WARNING,
+        priority: 50,
+        title: 'Service überfällig',
+        message: 'WOB L 7503 — Service überfällig',
+        actionType: 'OPEN_VEHICLE',
+        entityScope: InsightEntityScope.VEHICLE,
+        entityIds: ['veh-1'],
+        metrics: {},
+        reasons: [],
+        confidence: 0.9,
+        dedupeKey: 'service_overdue:veh-1',
+      },
+      {
+        organizationId: 'org-1',
+        sourceRef: 'insight-service',
+        occurredAt: new Date(),
+      },
+    );
+    expect(candidate?.conditionCode).toBe('service_overdue');
+    expect(() => validateNotificationCandidate(candidate!)).not.toThrow();
   });
 });

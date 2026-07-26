@@ -1,10 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   assertMembershipPermission,
   type PermissionActor,
 } from '@shared/auth/permission.util';
 import { BookingDocumentCompletenessService } from '@modules/documents/booking-document-completeness.service';
+import { LegalDocumentOperationalNotificationService } from '@modules/documents/notifications/legal-document-operational-notification.service';
+import { formatBookingRef } from '@modules/notifications/adapters/booking-handover-source.mapper';
 import {
   BUNDLE_COMPLETENESS_REASON_CODE,
   BUNDLE_COMPLETENESS_STATUS,
@@ -50,6 +52,8 @@ export class BookingPickupGateService {
     private readonly prisma: PrismaService,
     private readonly completeness: BookingDocumentCompletenessService,
     private readonly audit: BookingPickupGateAuditService,
+    @Optional()
+    private readonly legalNotifications?: LegalDocumentOperationalNotificationService,
   ) {}
 
   async assertPickupAllowed(input: AssertPickupGateInput): Promise<PickupGateEvaluation> {
@@ -77,6 +81,23 @@ export class BookingPickupGateService {
       .catch((err) => {
         this.logger.warn(
           `Failed to append pickup gate blocked audit booking=${input.bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+
+    const blockingCodes = [
+      ...evaluation.hardBlocks.map((r) => r.code),
+      ...evaluation.softBlocks.map((r) => r.code),
+    ];
+    await this.legalNotifications
+      ?.syncPickupGateBlock({
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        bookingRef: formatBookingRef(input.bookingId),
+        blockingCodes,
+      })
+      .catch((err) => {
+        this.logger.warn(
+          `Pickup gate notification sync failed booking=${input.bookingId}: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
 

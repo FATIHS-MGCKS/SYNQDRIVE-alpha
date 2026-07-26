@@ -24,6 +24,7 @@ import {
   NotificationSourceType as DomainSourceType,
 } from './notification.enums';
 import { DEFAULT_STATE_REOPEN_POLICY } from './notification-reopen.policy';
+import { buildCandidateFromRegistry } from './registry/notification-event-registry';
 import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
 import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
 import { NotificationDeliverySchedulerService } from './delivery/notification-delivery-scheduler.service';
@@ -46,24 +47,41 @@ const VEH = 'veh-wob-l-7503';
 
 function buildCandidate(overrides: Partial<NotificationCandidate> = {}): NotificationCandidate {
   const occurredAt = overrides.occurredAt ?? new Date('2026-07-11T10:00:00.000Z');
-  return {
+  const base = buildCandidateFromRegistry({
     organizationId: ORG,
     eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
-    eventKind: DomainEventKind.STATE,
-    domain: DomainDomain.VEHICLE_HEALTH,
-    severity: DomainSeverity.WARNING,
-    entityType: DomainEntityType.VEHICLE,
     entityId: VEH,
-    conditionCode: 'driving_assessment_device_quality',
-    scopeVersion: 1,
-    sourceType: DomainSourceType.DASHBOARD_INSIGHT,
     sourceRef: 'insight-run-1',
     occurredAt,
-    titleKey: 'notification.title.drivingAssessmentDegraded',
-    bodyKey: 'notification.body.insightDefault',
-    templateParams: { plate: 'WOB L 7503' },
-    actionType: DomainActionType.OPEN_VEHICLE_MODULE,
-    actionTarget: { type: DomainActionType.OPEN_VEHICLE_MODULE, vehicleId: VEH, module: 'health' },
+    templateParams: { label: 'WOB L 7503' },
+    actionTargetContext: { vehicleId: VEH, module: 'health' },
+    severity: overrides.severity,
+  });
+  return {
+    ...base,
+    resolutionPolicy: {
+      eventKind: DomainEventKind.STATE,
+      autoResolveWhenConditionClears: true,
+      reopenPolicy: { ...DEFAULT_STATE_REOPEN_POLICY, cooldownMs: 0 },
+    },
+    ...overrides,
+  };
+}
+
+function buildTelemetryCandidate(overrides: Partial<NotificationCandidate> = {}): NotificationCandidate {
+  const occurredAt = overrides.occurredAt ?? new Date('2026-07-11T10:00:00.000Z');
+  const base = buildCandidateFromRegistry({
+    organizationId: ORG,
+    eventType: 'TELEMETRY_OFFLINE',
+    entityId: VEH,
+    sourceRef: 'telemetry-run-1',
+    occurredAt,
+    templateParams: { label: 'WOB L 7503' },
+    actionTargetContext: { vehicleId: VEH, module: 'connectivity' },
+    severity: overrides.severity,
+  });
+  return {
+    ...base,
     resolutionPolicy: {
       eventKind: DomainEventKind.STATE,
       autoResolveWhenConditionClears: true,
@@ -96,9 +114,36 @@ describe('NotificationCoreService', () => {
     isV2Enabled: () => v2Enabled,
   } as NotificationEngineConfig;
 
-  const activeKey = (orgId: string, fp: string, gen: number) => `${orgId}::${fp}::${gen}`;
+  const activeKey = (orgId: string, fp: string) => `${orgId}::${fp}`;
+
+  let lockChain: Promise<void> = Promise.resolve();
+
+  const withIngestLock = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const run = lockChain.then(fn);
+    lockChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  };
+
+  const resolveLockedRow = (orgId: string, fingerprint: string, activeOnly: boolean) => {
+    const rows = [...notifications.values()].filter((r) => {
+      if (r.organizationId !== orgId || r.fingerprint !== fingerprint) return false;
+      if (activeOnly && !ACTIVE_NOTIFICATION_STATUSES.includes(r.status)) return false;
+      return true;
+    });
+    rows.sort((a, b) => b.lifecycleGeneration - a.lifecycleGeneration);
+    return rows[0] ?? null;
+  };
 
   const prisma: any = {
+    $queryRaw: jest.fn(async (query: TemplateStringsArray, orgId: string, fingerprint: string) => {
+      const sql = query.join(' ');
+      const activeOnly = sql.includes("status::text IN");
+      const row = resolveLockedRow(orgId, fingerprint, activeOnly);
+      return row ? [{ id: row.id }] : [];
+    }),
     notification: {
       findFirst: jest.fn(async ({ where, orderBy }: any) => {
         const rows = [...notifications.values()].filter((r) => {
@@ -115,8 +160,7 @@ describe('NotificationCoreService', () => {
         return rows[0] ?? null;
       }),
       create: jest.fn(async ({ data }: any) => {
-        const gen = data.lifecycleGeneration ?? 1;
-        const key = activeKey(data.organizationId, data.fingerprint, gen);
+        const key = activeKey(data.organizationId, data.fingerprint);
         if (
           ACTIVE_NOTIFICATION_STATUSES.includes(data.status ?? NotificationStatus.OPEN)
           && activeByFingerprint.has(key)
@@ -149,7 +193,7 @@ describe('NotificationCoreService', () => {
         if (where.version != null && existing.version !== where.version) {
           throw new Prisma.PrismaClientKnownRequestError('Version', { code: 'P2025', clientVersion: 'test' });
         }
-        const prevKey = activeKey(existing.organizationId, existing.fingerprint, existing.lifecycleGeneration);
+        const prevKey = activeKey(existing.organizationId, existing.fingerprint);
         const updated = { ...existing };
         for (const [k, v] of Object.entries(data)) {
           if (k === 'version' && v && typeof v === 'object' && 'increment' in (v as any)) {
@@ -181,10 +225,30 @@ describe('NotificationCoreService', () => {
     },
     notificationOccurrence: {
       create: jest.fn(async ({ data }: any) => {
+        const existing = occurrences.find(
+          (o) => o.notificationId === data.notificationId && o.sourceEventId === data.sourceEventId,
+        );
+        if (existing) {
+          throw new Prisma.PrismaClientKnownRequestError('Unique', {
+            code: 'P2002',
+            clientVersion: 'test',
+          });
+        }
         const row = { id: `o-${++idSeq}`, ...data };
         occurrences.push(row);
         return row;
       }),
+      findUnique: jest.fn(async ({ where }: any) => {
+        const key = where.notificationId_sourceEventId;
+        return (
+          occurrences.find(
+            (o) => o.notificationId === key.notificationId && o.sourceEventId === key.sourceEventId,
+          ) ?? null
+        );
+      }),
+      count: jest.fn(async ({ where }: any) =>
+        occurrences.filter((o) => o.notificationId === where.notificationId).length,
+      ),
     },
     notificationReceipt: {
       upsert: jest.fn(async ({ where, create, update }: any) => {
@@ -199,13 +263,15 @@ describe('NotificationCoreService', () => {
         return row;
       }),
     },
-    $transaction: jest.fn(async (fn: any) => {
-      if (Array.isArray(fn)) {
-        const results = [];
-        for (const op of fn) results.push(await op);
-        return results;
-      }
-      return fn(prisma);
+    $transaction: jest.fn(async (fn: any, _options?: unknown) => {
+      return withIngestLock(async () => {
+        if (Array.isArray(fn)) {
+          const results = [];
+          for (const op of fn) results.push(await op);
+          return results;
+        }
+        return fn(prisma);
+      });
     }),
   };
 
@@ -225,6 +291,7 @@ describe('NotificationCoreService', () => {
     receipts = new Map();
     activeByFingerprint = new Map();
     idSeq = 0;
+    lockChain = Promise.resolve();
     v2Enabled = true;
     jest.clearAllMocks();
   });
@@ -254,7 +321,7 @@ describe('NotificationCoreService', () => {
     const later = buildCandidate({
       occurredAt: new Date('2026-07-11T12:00:00.000Z'),
       sourceRef: 'ref-2',
-      templateParams: { plate: 'WOB L 7503', km: 120 },
+      templateParams: { label: 'WOB L 7503', plate: 'WOB L 7503', km: 120 },
     });
     await service.ingestCandidate(later);
     const row = [...notifications.values()][0];
@@ -264,8 +331,8 @@ describe('NotificationCoreService', () => {
   });
 
   it('escalates severity INFO → WARNING → CRITICAL without deescalation', async () => {
-    await service.ingestCandidate(buildCandidate({ severity: DomainSeverity.INFO }));
-    await service.ingestCandidate(buildCandidate({
+    await service.ingestCandidate(buildTelemetryCandidate({ severity: DomainSeverity.INFO }));
+    await service.ingestCandidate(buildTelemetryCandidate({
       severity: DomainSeverity.WARNING,
       sourceRef: 's2',
       occurredAt: new Date('2026-07-11T11:00:00.000Z'),
@@ -273,7 +340,7 @@ describe('NotificationCoreService', () => {
     let row = [...notifications.values()][0];
     expect(row.severity).toBe(NotificationSeverity.WARNING);
 
-    await service.ingestCandidate(buildCandidate({
+    await service.ingestCandidate(buildTelemetryCandidate({
       severity: DomainSeverity.INFO,
       sourceRef: 's3',
       occurredAt: new Date('2026-07-11T12:00:00.000Z'),
@@ -281,7 +348,7 @@ describe('NotificationCoreService', () => {
     row = [...notifications.values()][0];
     expect(row.severity).toBe(NotificationSeverity.WARNING);
 
-    await service.ingestCandidate(buildCandidate({
+    await service.ingestCandidate(buildTelemetryCandidate({
       severity: DomainSeverity.CRITICAL,
       sourceRef: 's4',
       occurredAt: new Date('2026-07-11T13:00:00.000Z'),
@@ -310,6 +377,7 @@ describe('NotificationCoreService', () => {
     await service.ingestCandidate(buildCandidate());
     await service.ingestCandidate(buildCandidate({
       severity: DomainSeverity.SUCCESS,
+      sourceRef: 'recovery-1',
       occurredAt: new Date('2026-07-11T11:00:00.000Z'),
       titleKey: 'notification.title.drivingAssessmentRecovering',
     }));
@@ -332,6 +400,7 @@ describe('NotificationCoreService', () => {
     await service.ingestCandidate(buildCandidate({ resolutionPolicy: strictPolicy }));
     await service.ingestCandidate(buildCandidate({
       severity: DomainSeverity.SUCCESS,
+      sourceRef: 'recovery-strict-1',
       occurredAt: new Date('2026-07-11T11:00:00.000Z'),
       titleKey: 'notification.title.drivingAssessmentRecovering',
       resolutionPolicy: strictPolicy,
@@ -343,6 +412,7 @@ describe('NotificationCoreService', () => {
     }));
     await service.ingestCandidate(buildCandidate({
       severity: DomainSeverity.SUCCESS,
+      sourceRef: 'recovery-strict-2',
       occurredAt: new Date('2026-07-11T13:00:00.000Z'),
       titleKey: 'notification.title.drivingAssessmentRecovering',
       resolutionPolicy: strictPolicy,
@@ -367,6 +437,139 @@ describe('NotificationCoreService', () => {
     expect(notifications.size).toBe(1);
     const row = [...notifications.values()][0];
     expect(row.occurrenceCount).toBe(2);
+  });
+
+  describe('concurrency safety', () => {
+    it('10 parallel identical candidates → one active row and 10 occurrences', async () => {
+      const candidate = buildCandidate();
+      await Promise.all(
+        Array.from({ length: 10 }, (_, i) =>
+          service.ingestCandidate({ ...candidate, sourceRef: `parallel-${i}` }),
+        ),
+      );
+      const active = [...notifications.values()].filter((n) =>
+        ACTIVE_NOTIFICATION_STATUSES.includes(n.status),
+      );
+      expect(active).toHaveLength(1);
+      expect(active[0].occurrenceCount).toBe(10);
+      expect(occurrences).toHaveLength(10);
+    });
+
+    it('parallel severity escalation keeps highest severity', async () => {
+      const base = buildTelemetryCandidate();
+      await Promise.all([
+        service.ingestCandidate({ ...base, severity: DomainSeverity.INFO, sourceRef: 'sev-info' }),
+        service.ingestCandidate({ ...base, severity: DomainSeverity.CRITICAL, sourceRef: 'sev-critical' }),
+        service.ingestCandidate({ ...base, severity: DomainSeverity.WARNING, sourceRef: 'sev-warning' }),
+      ]);
+      const row = [...notifications.values()][0];
+      expect(row.severity).toBe(NotificationSeverity.CRITICAL);
+      expect(row.occurrenceCount).toBe(3);
+    });
+
+    it('recovery racing escalation ends with a single consistent lifecycle row', async () => {
+      await service.ingestCandidate(buildCandidate());
+      const recovery = buildCandidate({
+        severity: DomainSeverity.SUCCESS,
+        occurredAt: new Date('2026-07-11T14:00:00.000Z'),
+        titleKey: 'notification.title.drivingAssessmentRecovering',
+      });
+      const escalation = buildCandidate({
+        severity: DomainSeverity.CRITICAL,
+        occurredAt: new Date('2026-07-11T14:00:00.000Z'),
+        sourceRef: 'escalate-parallel',
+      });
+      const results = await Promise.allSettled([
+        service.ingestCandidate(recovery),
+        service.ingestCandidate(escalation),
+      ]);
+      expect(results.every((r) => r.status === 'fulfilled')).toBe(true);
+      const active = [...notifications.values()].filter((n) =>
+        ACTIVE_NOTIFICATION_STATUSES.includes(n.status),
+      );
+      expect(active.length).toBeLessThanOrEqual(1);
+      expect(notifications.size).toBe(1);
+    });
+
+    it('dedupes identical sourceEventId without double-counting', async () => {
+      const candidate = buildCandidate({ sourceRef: 'evt-dup' });
+      await service.ingestCandidate(candidate);
+      await service.ingestCandidate({
+        ...candidate,
+        occurredAt: new Date('2026-07-11T11:00:00.000Z'),
+        observedAt: new Date('2026-07-11T11:00:00.000Z'),
+      });
+      const row = [...notifications.values()][0];
+      expect(row.occurrenceCount).toBe(1);
+      expect(occurrences).toHaveLength(1);
+    });
+
+    it('records distinct sourceEventId as separate occurrences', async () => {
+      const candidate = buildCandidate({ sourceRef: 'evt-dup' });
+      await service.ingestCandidate(candidate);
+      await service.ingestCandidate({
+        ...candidate,
+        sourceRef: 'evt-dup-2',
+        occurredAt: new Date('2026-07-11T11:00:00.000Z'),
+        observedAt: new Date('2026-07-11T11:00:00.000Z'),
+      });
+      const row = [...notifications.values()][0];
+      expect(row.occurrenceCount).toBe(2);
+      expect(occurrences).toHaveLength(2);
+    });
+
+    it('does not downgrade severity on stale WARNING after CRITICAL', async () => {
+      const base = buildTelemetryCandidate();
+      await service.ingestCandidate({
+        ...base,
+        severity: DomainSeverity.CRITICAL,
+        sourceRef: 'evt-critical',
+        occurredAt: new Date('2026-07-11T15:00:00.000Z'),
+        observedAt: new Date('2026-07-11T15:00:00.000Z'),
+      });
+      await service.ingestCandidate({
+        ...base,
+        severity: DomainSeverity.WARNING,
+        sourceRef: 'evt-stale-warning',
+        occurredAt: new Date('2026-07-11T10:00:00.000Z'),
+        observedAt: new Date('2026-07-11T16:00:00.000Z'),
+      });
+      const row = [...notifications.values()][0];
+      expect(row.severity).toBe(NotificationSeverity.CRITICAL);
+      expect(row.occurrenceCount).toBe(2);
+      expect(row.lastSeenAt).toEqual(new Date('2026-07-11T15:00:00.000Z'));
+    });
+
+    it('ignores stale recovery when a newer active signal exists', async () => {
+      await service.ingestCandidate(buildTelemetryCandidate({
+        sourceRef: 'evt-active',
+        occurredAt: new Date('2026-07-11T15:00:00.000Z'),
+      }));
+      const result = await service.ingestCandidate(buildTelemetryCandidate({
+        severity: DomainSeverity.SUCCESS,
+        sourceRef: 'evt-stale-recovery',
+        occurredAt: new Date('2026-07-11T10:00:00.000Z'),
+      }));
+      expect(result.operation).toBe('ignored');
+      expect(result.reason).toBe('STALE_RECOVERY');
+      const row = [...notifications.values()][0];
+      expect(row.status).toBe(NotificationStatus.OPEN);
+      expect(row.occurrenceCount).toBe(2);
+      expect(occurrences).toHaveLength(2);
+    });
+
+    it('same entity key in two organizations stays tenant-isolated', async () => {
+      const orgA = buildCandidate({ organizationId: 'org-a' });
+      const orgB = buildCandidate({ organizationId: 'org-b' });
+      await Promise.all([service.ingestCandidate(orgA), service.ingestCandidate(orgB)]);
+      const orgARows = [...notifications.values()].filter((n) => n.organizationId === 'org-a');
+      const orgBRows = [...notifications.values()].filter((n) => n.organizationId === 'org-b');
+      expect(orgARows).toHaveLength(1);
+      expect(orgBRows).toHaveLength(1);
+      expect(orgARows[0].id).not.toBe(orgBRows[0].id);
+      expect(occurrences.filter((o) => o.organizationId === 'org-a')).toHaveLength(1);
+      expect(occurrences.filter((o) => o.organizationId === 'org-b')).toHaveLength(1);
+    });
   });
 
   it('tracks receipt per user without changing org-wide status', async () => {
@@ -408,5 +611,19 @@ describe('NotificationCoreService', () => {
     expect(snoozed.status).toBe(NotificationStatus.SNOOZED);
     const open = await service.unsnoozeNotification(notification!.id, ORG);
     expect(open.status).toBe(NotificationStatus.OPEN);
+  });
+
+  it('wakes org SNOOZED to OPEN on CRITICAL escalation ingest', async () => {
+    const { notification } = await service.createOrUpdateNotification(buildTelemetryCandidate());
+    const until = new Date('2026-07-12T00:00:00.000Z');
+    await service.snoozeNotification(notification!.id, ORG, until);
+    await service.ingestCandidate(buildTelemetryCandidate({
+      severity: DomainSeverity.CRITICAL,
+      sourceRef: 'critical-while-snoozed',
+      occurredAt: new Date('2026-07-11T11:00:00.000Z'),
+    }));
+    const row = [...notifications.values()][0];
+    expect(row.status).toBe(NotificationStatus.OPEN);
+    expect(row.severity).toBe(NotificationSeverity.CRITICAL);
   });
 });

@@ -25,6 +25,7 @@ import {
   buildPreferenceWhereClause,
   buildUserSnoozeExclusionClause,
 } from '../access/notification-preference.query';
+import { buildUserHiddenExclusionClause } from '../access/notification-receipt.policy';
 import { NotificationReceiptService } from '../access/notification-receipt.service';
 import { NotificationStationScopeService } from '../access/notification-station-scope.service';
 import { deriveAvailableActions } from './notification-available-actions';
@@ -183,6 +184,8 @@ export class NotificationApiService {
       },
     };
 
+    const hiddenClause = buildUserHiddenExclusionClause(ctx.userId);
+
     const resolvedRecentWhere = this.buildAccessWhere(
       {
         organizationId: orgId,
@@ -199,10 +202,18 @@ export class NotificationApiService {
     );
 
     const [totalActive, unread, severityGroups, domainGroups, resolvedRecent] = await Promise.all([
-      this.repository.countNotificationsWhere(activeWhere),
-      this.repository.countNotificationsWhere(unreadWhere),
-      this.repository.groupCountBySeverityWhere(activeWhere),
-      this.repository.groupCountByDomainWhere(activeWhere),
+      this.repository.countNotificationsWhere({
+        AND: [activeWhere, hiddenClause],
+      }),
+      this.repository.countNotificationsWhere({
+        AND: [unreadWhere, hiddenClause],
+      }),
+      this.repository.groupCountBySeverityWhere({
+        AND: [activeWhere, hiddenClause],
+      }),
+      this.repository.groupCountByDomainWhere({
+        AND: [activeWhere, hiddenClause],
+      }),
       this.repository.countNotificationsWhere(resolvedRecentWhere),
     ]);
 
@@ -305,6 +316,36 @@ export class NotificationApiService {
     });
   }
 
+  async hide(orgId: string, user: NotificationRequestUser, id: string, route?: string) {
+    return this.withNotificationAction(orgId, user, id, async (dto) => {
+      if (!dto.availableActions.includes('hide')) {
+        throw new BadRequestException('Hide is not allowed for this notification');
+      }
+      await this.receiptService.hidePersonal(id, orgId, user.id!, dto.eventType, dto.severity);
+      void this.audit.record({
+        actorUserId: user.id,
+        actorOrganizationId: orgId,
+        action: ActivityAction.UPDATE,
+        entity: ActivityEntity.ORGANIZATION,
+        entityId: orgId,
+        description: `Notification personally hidden: ${id}`,
+        route,
+        metaJson: { notificationId: id, action: 'hide_personal' },
+      });
+      return this.getById(orgId, user, id);
+    });
+  }
+
+  async unhide(orgId: string, user: NotificationRequestUser, id: string) {
+    return this.withNotificationAction(orgId, user, id, async (dto) => {
+      if (!dto.availableActions.includes('unhide')) {
+        throw new BadRequestException('Unhide is not allowed for this notification');
+      }
+      await this.receiptService.unhidePersonal(id, orgId, user.id!);
+      return this.getById(orgId, user, id);
+    });
+  }
+
   async resolve(orgId: string, user: NotificationRequestUser, id: string, route?: string) {
     return this.withNotificationAction(orgId, user, id, async (dto) => {
       if (!dto.availableActions.includes('resolve')) {
@@ -372,6 +413,13 @@ export class NotificationApiService {
     });
 
     if (!membership) {
+      const inactive = await this.prisma.organizationMembership.findFirst({
+        where: { userId: user.id, organizationId: orgId },
+        select: { status: true },
+      });
+      if (inactive) {
+        throw new ForbiddenException('User membership is not active');
+      }
       throw new ForbiddenException('You do not have access to this organization');
     }
 
@@ -408,7 +456,7 @@ export class NotificationApiService {
     filters: NotificationListFilters,
     ctx: NotificationAccessContext,
     referenceNow: Date,
-    excludeUserSnoozed: boolean,
+    excludeUserPersonalOverlays: boolean,
   ): Prisma.NotificationWhereInput {
     let where = buildNotificationWhereInput(filters);
     where = this.applyRoleVisibility(where, ctx.membershipRole, ctx.platformRole);
@@ -420,10 +468,16 @@ export class NotificationApiService {
       };
     }
 
-    if (excludeUserSnoozed) {
-      const snoozeClause = buildUserSnoozeExclusionClause(ctx.userId, referenceNow);
+    if (excludeUserPersonalOverlays) {
+      const overlayClauses: Prisma.NotificationWhereInput[] = [
+        buildUserSnoozeExclusionClause(ctx.userId, referenceNow),
+        buildUserHiddenExclusionClause(ctx.userId),
+      ];
       where = {
-        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), snoozeClause],
+        AND: [
+          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+          ...overlayClauses,
+        ],
       };
     }
 
@@ -556,10 +610,12 @@ export class NotificationApiService {
         status: row.status,
         eventType: row.eventType,
         eventKind: row.eventKind,
+        severity: row.severity,
         membershipRole: ctx.membershipRole,
         isRead,
         isPersonallyAcknowledged: receipt?.acknowledgedAt != null,
         userSnoozedUntil: receipt?.snoozedUntil ?? null,
+        isPersonallyHidden: receipt?.hiddenAt != null,
         hasActionTarget: Object.keys((row.actionTarget as object) ?? {}).length > 0,
         referenceNow,
       });

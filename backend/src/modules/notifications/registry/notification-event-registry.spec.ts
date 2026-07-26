@@ -5,10 +5,18 @@ import {
   NOTIFICATION_EVENT_REGISTRY,
   NotificationEventRegistryError,
   resolveEventSlug,
+  resolveNotificationEventType,
 } from './notification-event-registry';
 import {
   NOTIFICATION_EVENT_TYPE_DEFINITIONS,
 } from './notification-event-registry.definitions';
+import { NOTIFICATION_EVENT_TYPE_ALIASES } from './notification-event-registry.aliases';
+import {
+  assertRegistryConsistency,
+  collectRegistryConsistencyIssues,
+  deriveRetentionClass,
+} from './notification-event-registry.consistency';
+import { NOTIFICATION_EVENT_TYPE_CODES } from './notification-event-type-codes';
 import {
   NotificationRegistryValidationError,
   validateRegistryBuildInput,
@@ -150,5 +158,43 @@ describe('NotificationEventRegistry', () => {
       templateParams: { bookingRef: 'B-1', label: 'Test' },
     });
     expect(() => validateRegistryCandidate(candidate)).toThrow(NotificationRegistryValidationError);
+  });
+
+  it('resolves producer event type aliases to canonical registry codes', () => {
+    expect(resolveNotificationEventType('WEBHOOK_PROCESSING_FAILED')).toBe('WEBHOOK_FAILURE');
+    expect(NOTIFICATION_EVENT_TYPE_ALIASES.WEBHOOK_PROCESSING_FAILED).toBe('WEBHOOK_FAILURE');
+  });
+
+  it('has unique eventType and slug keys', () => {
+    const eventTypes = NOTIFICATION_EVENT_TYPE_DEFINITIONS.map((d) => d.eventType);
+    const slugs = NOTIFICATION_EVENT_TYPE_DEFINITIONS.map((d) => d.slug);
+    expect(eventTypes.length).toBe(new Set(eventTypes).size);
+    expect(slugs.length).toBe(new Set(slugs).size);
+    expect(NOTIFICATION_EVENT_TYPE_CODES.length).toBe(NOTIFICATION_EVENT_REGISTRY.length);
+  });
+
+  it('passes static registry consistency checks', () => {
+    expect(collectRegistryConsistencyIssues()).toEqual([]);
+    expect(() => assertRegistryConsistency()).not.toThrow();
+  });
+
+  it('derives retention classes for STATE and EVENT kinds', () => {
+    const state = NOTIFICATION_EVENT_REGISTRY.find((d) => d.eventType === 'STATION_SHORTAGE');
+    const event = NOTIFICATION_EVENT_REGISTRY.find((d) => d.eventType === 'BOOKING_CREATED');
+    expect(state?.retentionClass ?? deriveRetentionClass(state!)).toBe('OPERATIONAL_STATE');
+    expect(event?.retentionClass ?? deriveRetentionClass(event!)).toBe('SHORT_LIVED_EVENT');
+  });
+
+  it('rejects unknown event types at build time', () => {
+    expect(() =>
+      buildCandidateFromRegistry({
+        organizationId: 'org-1',
+        eventType: 'UNKNOWN_EVENT_XYZ',
+        entityId: 'x',
+        sourceRef: 'r',
+        occurredAt: new Date(),
+        templateParams: { label: 'x' },
+      }),
+    ).toThrow(NotificationEventRegistryError);
   });
 });

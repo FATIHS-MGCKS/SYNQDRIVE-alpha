@@ -12,4 +12,13 @@ export class NotificationEngineConfig {
   isV2Enabled(): boolean {
     return this.config.get<string>('NOTIFICATIONS_V2', 'false') === 'true';
   }
+
+  /**
+   * When true: ActionQueue is not a notification truth source; task↔notification
+   * lifecycle is governed by NotificationTaskLinkService + registry.
+   * Rollback: set ACTION_QUEUE_DECOUPLED=false.
+   */
+  isActionQueueDecoupled(): boolean {
+    return this.config.get<string>('ACTION_QUEUE_DECOUPLED', 'false') === 'true';
+  }
 }

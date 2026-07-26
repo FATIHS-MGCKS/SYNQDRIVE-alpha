@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Integration, OrganizationIntegration, IntegrationStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { IntegrationOperationalNotificationService } from './integration-operational-notification.service';
 
 const INTEGRATION_TYPE_LABELS: Record<string, string> = {
   DIMO: 'DIMO',
@@ -36,7 +37,11 @@ function computeSyncStatus(
 
 @Injectable()
 export class IntegrationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly integrationNotifications?: IntegrationOperationalNotificationService,
+  ) {}
 
   async findAll() {
     const integrations = await this.prisma.integration.findMany({
@@ -115,7 +120,7 @@ export class IntegrationsService {
     await this.prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
     await this.prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
 
-    return this.prisma.organizationIntegration.upsert({
+    const row = await this.prisma.organizationIntegration.upsert({
       where: {
         organizationId_integrationId: { organizationId: orgId, integrationId },
       },
@@ -135,7 +140,10 @@ export class IntegrationsService {
         disconnectedAt: null,
         errorMessage: null,
       },
+      include: { integration: true },
     });
+    await this.syncIntegrationNotification(row, 'ACTIVE', `integration:connect:${row.id}`);
+    return row;
   }
 
   async disconnect(orgId: string, integrationId: string): Promise<OrganizationIntegration> {
@@ -147,13 +155,16 @@ export class IntegrationsService {
     if (!existing) {
       throw new NotFoundException('Organization integration not found');
     }
-    return this.prisma.organizationIntegration.update({
+    const row = await this.prisma.organizationIntegration.update({
       where: { id: existing.id },
       data: {
         status: 'INACTIVE' as IntegrationStatus,
         disconnectedAt: new Date(),
       },
+      include: { integration: true },
     });
+    await this.syncIntegrationNotification(row, 'INACTIVE', `integration:disconnect:${row.id}`);
+    return row;
   }
 
   async updateStatus(
@@ -161,13 +172,39 @@ export class IntegrationsService {
     status: IntegrationStatus,
     errorMessage?: string,
   ): Promise<OrganizationIntegration> {
-    return this.prisma.organizationIntegration.update({
+    const row = await this.prisma.organizationIntegration.update({
       where: { id: orgIntegrationId },
       data: {
         status,
         errorMessage: errorMessage ?? null,
         ...(status === 'INACTIVE' && { disconnectedAt: new Date() }),
       },
+      include: { integration: true },
+    });
+    if (status === 'ERROR' || status === 'INACTIVE') {
+      await this.syncIntegrationNotification(
+        row,
+        status,
+        `integration:status:${row.id}:${status}`,
+      );
+    } else if (status === 'ACTIVE') {
+      await this.syncIntegrationNotification(row, 'ACTIVE', `integration:status:${row.id}:active`);
+    }
+    return row;
+  }
+
+  private async syncIntegrationNotification(
+    row: OrganizationIntegration & { integration: Integration },
+    status: 'ACTIVE' | 'INACTIVE' | 'ERROR',
+    sourceEventId: string,
+  ): Promise<void> {
+    await this.integrationNotifications?.syncOrganizationIntegration({
+      organizationId: row.organizationId,
+      organizationIntegrationId: row.id,
+      integrationName: row.integration.name,
+      integrationType: row.integration.type,
+      status,
+      sourceEventId,
     });
   }
 }

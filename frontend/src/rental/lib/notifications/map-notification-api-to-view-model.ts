@@ -10,6 +10,7 @@ import type {
 } from '../../components/dashboard/notificationQueueModel';
 import type { ApiNotificationResponse } from './notification-api.types';
 import { sanitizeTemplateValue } from './template-placeholder';
+import { mapNotificationLifecycleFromApi } from './notification-lifecycle-display';
 import {
   isKnownApiActionType,
   mapApiActionTarget,
@@ -80,19 +81,11 @@ function mapActionQueueSeverity(severity: NotificationSeverity): ActionQueueSeve
   return 'info';
 }
 
-function mapLifecycle(status: ApiNotificationResponse['status']): NotificationLifecycleStatus {
-  switch (status) {
-    case 'ACKNOWLEDGED':
-      return 'acknowledged';
-    case 'SNOOZED':
-      return 'snoozed';
-    case 'RESOLVED':
-      return 'resolved';
-    case 'ARCHIVED':
-      return 'archived';
-    default:
-      return 'open';
-  }
+function mapLifecycle(
+  row: ApiNotificationResponse,
+  referenceNowMs: number = Date.now(),
+): NotificationLifecycleStatus {
+  return mapNotificationLifecycleFromApi(row, referenceNowMs);
 }
 
 function mapCategory(domain: NotificationDomain): ActionQueueCategory {
@@ -245,7 +238,7 @@ export function mapNotificationApiToActionQueueItem(
 
   const queue: NotificationQueueModel = {
     severity,
-    lifecycleStatus: mapLifecycle(row.status),
+    lifecycleStatus: mapLifecycle(row),
     readStatus: row.userReceipt?.readAt ? 'read' : 'unread',
     domain,
     source: 'runtime',

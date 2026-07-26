@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   InvoicePaymentMethod,
@@ -34,6 +35,7 @@ import {
 } from './invoice-line-items.util';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
+import { InvoiceOperationalNotificationService } from './invoice-operational-notification.service';
 import { invoiceBookingRef } from './utils/invoice-booking-ref.util';
 import { userDisplayName } from './invoice-documents.labels';
 import { presentInvoicePayment } from './invoice-payments.presentation';
@@ -68,6 +70,8 @@ export class InvoicesService {
     private readonly prisma: PrismaService,
     private readonly invoiceNumbers: InvoiceNumberService,
     private readonly invoicePaymentTasks: InvoicePaymentTaskService,
+    @Optional()
+    private readonly invoiceNotifications?: InvoiceOperationalNotificationService,
   ) {}
 
   private format(inv: Record<string, unknown>) {
@@ -740,6 +744,7 @@ export class InvoicesService {
 
     if (newOutstanding === 0) {
       await this.invoicePaymentTasks.resolveOnFullPayment(orgId, id);
+      await this.invoiceNotifications?.resolvePaidInvoice(orgId, id);
     } else {
       await this.invoicePaymentTasks.syncPaymentCheckTaskById(orgId, id);
     }

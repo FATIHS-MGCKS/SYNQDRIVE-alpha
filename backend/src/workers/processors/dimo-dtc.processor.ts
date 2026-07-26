@@ -209,6 +209,7 @@ export class DimoDtcProcessor extends WorkerHost {
       vehicleId;
 
     const activeDtcs = await this.dtcService.findActive(vehicleId);
+    const pollObservedAt = new Date();
     const sources: VehicleHealthAdapterSource[] = activeDtcs.map((dtc) => {
       const band = normalizeDtcSeverityBand(dtc.severity);
       return {
@@ -218,6 +219,8 @@ export class DimoDtcProcessor extends WorkerHost {
         code: dtc.dtcCode,
         reason: dtc.description ?? undefined,
         severity: band === 'critical' ? 'critical' : 'warning',
+        occurredAt: dtc.lastSeenAt ?? dtc.firstSeenAt ?? pollObservedAt,
+        sourceEventId: `dtc:${vehicleId}:${dtc.dtcCode}:${dtc.lastSeenAt?.toISOString() ?? 'active'}`,
       };
     });
 
@@ -229,6 +232,8 @@ export class DimoDtcProcessor extends WorkerHost {
           label,
           code,
           cleared: true,
+          occurredAt: pollObservedAt,
+          sourceEventId: `dtc-cleared:${vehicleId}:${code}:${pollObservedAt.toISOString()}`,
         });
       }
     }

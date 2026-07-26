@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { BillingController } from './billing.controller';
 import { StripeWebhookController } from './stripe-webhook.controller';
@@ -73,9 +74,11 @@ import { BillingManualPaymentService } from './billing-manual-payment.service';
 import { BillingReconciliationService } from './billing-reconciliation.service';
 import { BillingMonitoringService } from './billing-monitoring.service';
 import { StripeWebhookProcessorService } from './stripe-webhook.processor';
+import { BillingOperationalNotificationService } from './notifications/billing-operational-notification.service';
+import { BillingOperationalNotificationListenerService } from './notifications/billing-operational-notification.listener.service';
 
 @Module({
-  imports: [OutboundEmailModule],
+  imports: [OutboundEmailModule, NotificationsModule],
   controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController, BillingEmailDeliveryController],
   providers: [
     BillingService,
@@ -144,6 +147,8 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingMonitoringService,
     StripePaymentLedgerService,
     StripeWebhookProcessorService,
+    BillingOperationalNotificationService,
+    BillingOperationalNotificationListenerService,
   ],
   exports: [
     BillingService,

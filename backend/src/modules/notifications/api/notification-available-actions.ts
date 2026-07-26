@@ -1,9 +1,13 @@
-import { MembershipRole, NotificationEventKind, NotificationStatus } from '@prisma/client';
-import { canTransitionNotificationStatus } from '../notification-status.transitions';
+import { MembershipRole, NotificationEventKind, NotificationSeverity, NotificationStatus } from '@prisma/client';
+import {
+  canAdministrativeArchive,
+  canTransitionNotificationStatus,
+} from '../lifecycle/notification-lifecycle.state-machine';
 import { NotificationStatus as DomainStatus } from '../notification.enums';
 import { getEventTypeDefinition } from '../registry/notification-event-registry';
 import { isManualResolutionAllowed } from './notification-manual-resolution.policy';
 import { isUserSnoozeActive } from '../access/notification-receipt.policy';
+import { canPersonallyHideNotification } from '../access/notification-receipt.policy';
 
 export type NotificationAvailableAction =
   | 'read'
@@ -11,6 +15,8 @@ export type NotificationAvailableAction =
   | 'acknowledge'
   | 'snooze'
   | 'unsnooze'
+  | 'hide'
+  | 'unhide'
   | 'resolve'
   | 'archive'
   | 'open_entity';
@@ -36,10 +42,12 @@ export interface AvailableActionsInput {
   status: NotificationStatus;
   eventType: string;
   eventKind: NotificationEventKind;
+  severity: NotificationSeverity;
   membershipRole: MembershipRole;
   isRead: boolean;
   isPersonallyAcknowledged: boolean;
   userSnoozedUntil: Date | null;
+  isPersonallyHidden: boolean;
   hasActionTarget: boolean;
   referenceNow?: Date;
 }
@@ -73,6 +81,14 @@ export function deriveAvailableActions(input: AvailableActionsInput): Notificati
     actions.push('unsnooze');
   }
 
+  if (isActive && canPersonallyHideNotification(input.eventType, input.severity) && !input.isPersonallyHidden) {
+    actions.push('hide');
+  }
+
+  if (input.isPersonallyHidden && canPersonallyHideNotification(input.eventType, input.severity)) {
+    actions.push('unhide');
+  }
+
   if (
     MANUAL_RESOLVE_ROLES.includes(input.membershipRole)
     && isManualResolutionAllowed(input.eventType, input.eventKind)
@@ -83,6 +99,11 @@ export function deriveAvailableActions(input: AvailableActionsInput): Notificati
 
   if (
     ARCHIVE_ROLES.includes(input.membershipRole)
+    && canAdministrativeArchive({
+      status: input.status,
+      eventKind: input.eventKind,
+      eventType: input.eventType,
+    })
     && (
       (input.status === NotificationStatus.OPEN
         && canTransitionNotificationStatus(domainStatus, DomainStatus.ARCHIVED, { administrativeArchive: true }))

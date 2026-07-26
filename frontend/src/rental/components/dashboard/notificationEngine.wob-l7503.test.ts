@@ -24,12 +24,16 @@ import { NOTIFICATION_TEST_NOW_MS } from './notificationEngine.test-utils';
  * WOB L 7503 regression — Volkswagen Tiguan 2026, LTE_R1 driving-assessment device quality.
  */
 describe('WOB L 7503 — notification regression', () => {
+  const env = import.meta.env;
+
   beforeEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'off';
     vi.useFakeTimers();
     vi.setSystemTime(NOTIFICATION_TEST_NOW_MS);
   });
 
   afterEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
     vi.useRealTimers();
   });
 
