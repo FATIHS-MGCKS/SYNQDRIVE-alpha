@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-trial-model-2b6-2026-07-26',
+    version: '4.9.885',
+    title: 'V4.9.885 — Master Admin 2B.6: Trial model documentation',
+    summary: [
+      'Canonical definitions: internal contract trial vs manual (Master Admin) vs Stripe projection.',
+      'Lifecycle matrix: activation, expiry, extension, upgrade, downgrade, cancellation per type.',
+      'Documented gaps: no expiry worker, entitlements ignore elapsed trialEndAt, cancel blocked in TRIALING.',
+      'docs/remediation/trial-model.md',
+    ],
+    reason:
+      'Trial behavior was spread across lifecycle, Stripe orchestrator, legacy licenses, and Master UI — needed a single remediation reference.',
+    previousBehavior:
+      'Trial semantics implicit in code only; Stripe vs local vs manual paths not formally distinguished.',
+    details:
+      'docs/remediation/trial-model.md, architecture/MASTER_ADMIN_TRIAL_MODEL_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T12:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
