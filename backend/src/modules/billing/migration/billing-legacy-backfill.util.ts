@@ -2,6 +2,10 @@ import { BillingStripeMode, BillingStatus, BusinessType, ProductSlug } from '@pr
 import { BILLING_ADDON_KEYS } from '../domain/billing-domain.types';
 import { BillingLegacyBackfillConflictCode } from './billing-legacy-backfill.types';
 
+import { resolveStripeModeFromSecretKey } from '@shared/stripe/stripe-environment.util';
+
+export { resolveStripeModeFromSecretKey };
+
 export const BASE_BILLING_PRODUCT_KEYS = ['RENTAL', 'FLEET'] as const;
 export type BaseBillingProductKey = (typeof BASE_BILLING_PRODUCT_KEYS)[number];
 
@@ -124,15 +128,6 @@ export function inferBaseBillingProductKey(
 
   conflicts.push('AMBIGUOUS_BASE_PRODUCT');
   return { productKey: null, source: null, conflicts, warnings };
-}
-
-export function resolveStripeModeFromSecretKey(
-  secretKey: string | undefined | null,
-): BillingStripeMode | null {
-  const key = secretKey?.trim() ?? '';
-  if (key.startsWith('sk_test_')) return BillingStripeMode.TEST;
-  if (key.startsWith('sk_live_')) return BillingStripeMode.LIVE;
-  return null;
 }
 
 export function classifyStripePriceIdMode(

@@ -12,8 +12,8 @@ import type { StripeConnectWebhookEvent } from '@prisma/client';
 import { OrganizationPaymentAccountRepository } from './repositories/organization-payment-account.repository';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
-import { getStripeConnectClient, inferStripeLiveMode } from './stripe/stripe-connect-client.util';
-import { StripeModeMismatchError } from './stripe/stripe-connect.errors';
+import { StripeEnvironmentService } from '@shared/stripe/stripe-environment.service';
+import { getStripeConnectClient } from './stripe/stripe-connect-client.util';
 import { PaymentMetricsService } from './observability/payment-metrics.service';
 import { formatPaymentLogPayload } from './utils/payment-log.util';
 import {
@@ -46,6 +46,7 @@ export class StripeConnectWebhookService {
     private readonly organizationPaymentAccountRepository: OrganizationPaymentAccountRepository,
     private readonly processorService: StripeConnectWebhookProcessorService,
     private readonly paymentMetrics: PaymentMetricsService,
+    private readonly stripeEnvironment: StripeEnvironmentService,
   ) {}
 
   constructEvent(rawBody: Buffer, signature: string | undefined): Stripe.Event {
@@ -78,11 +79,7 @@ export class StripeConnectWebhookService {
   }
 
   private assertLiveModeAllowed(event: Stripe.Event): void {
-    const secretKey = this.configService.get<string>('stripe.secretKey') ?? '';
-    const platformLiveMode = inferStripeLiveMode(secretKey);
-    if (event.livemode !== platformLiveMode) {
-      throw new StripeModeMismatchError();
-    }
+    this.stripeEnvironment.assertWebhookLivemode(event.livemode);
   }
 
   private resolveInitialProcessingStatus(params: {
