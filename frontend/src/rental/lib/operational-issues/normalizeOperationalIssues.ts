@@ -24,6 +24,7 @@ import {
   isHmOemServiceTrackingMissingText,
 } from './operationalIssueTaxonomy';
 import { mapTireOperationalIssue } from './operationalIssueTireTaxonomy';
+import { shouldSuppressCanonicalInsightAsOperationalNotification } from '../notifications/operational-notification-suppression';
 import type {
   DashboardInsightLike,
   OperationalIssue,
@@ -75,6 +76,7 @@ export function normalizeOperationalIssues(
   }
 
   for (const insight of input.dashboardInsights ?? []) {
+    if (shouldSuppressCanonicalInsightAsOperationalNotification(insight.type)) continue;
     drafts.push(...dashboardInsightToIssueDrafts(insight, vehiclesById));
   }
 

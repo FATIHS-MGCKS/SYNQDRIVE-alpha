@@ -9,8 +9,7 @@ import type {
 } from './notification-adapter.types';
 
 /**
- * Shadow-mode test adapter — maps driving assessment runtime state to registry candidate.
- * Does not duplicate detector logic; expects pre-classified degraded/recovered input.
+ * Live adapter — maps driving assessment runtime state to registry candidate.
  */
 @Injectable()
 export class DrivingAssessmentNotificationAdapter
@@ -18,7 +17,7 @@ export class DrivingAssessmentNotificationAdapter
 {
   readonly adapterId = 'driving-assessment';
   readonly supportedEventTypes = ['DRIVING_ASSESSMENT_DEVICE_QUALITY'] as const;
-  readonly shadowModeOnly = true;
+  readonly shadowModeOnly = false;
 
   canHandle(source: DrivingAssessmentAdapterSource): boolean {
     return Boolean(source.vehicleId);
@@ -36,8 +35,10 @@ export class DrivingAssessmentNotificationAdapter
       organizationId: context.organizationId,
       eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
       entityId: source.vehicleId,
-      sourceRef: source.sourceRef ?? context.sourceRef,
+      sourceEventId: source.sourceRef ?? context.sourceEventId ?? context.sourceRef,
+      sourceRef: source.sourceRef ?? context.sourceEventId ?? context.sourceRef,
       occurredAt: context.occurredAt,
+      observedAt: context.observedAt ?? context.occurredAt,
       severity,
       templateParams: { label: source.label },
       actionTargetContext: { vehicleId: source.vehicleId, module: 'health' },

@@ -142,7 +142,6 @@ describe('dashboardAttentionBuilder', () => {
       ],
       pickupItems: [],
       returnItems: [],
-      notifications: [],
       derivedInsights: [],
       predictiveInsights: [],
       dashboardRuntime: runtimeModel([runtimeState()]),
@@ -164,7 +163,6 @@ describe('dashboardAttentionBuilder', () => {
       vehicleHealthAlerts: [],
       pickupItems: [],
       returnItems: [],
-      notifications: [],
       derivedInsights: [],
       predictiveInsights: [],
       dashboardRuntime: runtimeModel([runtimeState()]),
@@ -193,7 +191,6 @@ describe('dashboardAttentionBuilder', () => {
       vehicleHealthAlerts: [],
       pickupItems: [],
       returnItems: [],
-      notifications: [],
       derivedInsights: [],
       predictiveInsights: [],
       dashboardRuntime: runtimeModel([

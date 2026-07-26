@@ -13,6 +13,17 @@ export function isDeviceQualitySystemObservation(input: {
   return notes.includes(DEVICE_QUALITY_OBSERVATION_MARKER);
 }
 
+/**
+ * Observations that mirror an existing canonical health notification must not
+ * open a second TECHNICAL_OBSERVATION_ACTIVE inbox row.
+ */
+export function shouldIngestTechnicalObservationNotification(input: {
+  createdByWorkerId?: string | null;
+  notes?: string | null;
+}): boolean {
+  return !isDeviceQualitySystemObservation(input);
+}
+
 export function buildTechnicalObservationConditionCode(observationId: string): string {
   return `technical_observation_active:${observationId}`;
 }

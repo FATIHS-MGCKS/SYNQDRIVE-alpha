@@ -8,14 +8,10 @@ import {
   prepareActionQueueRenderModel,
   visibleSemanticKeys,
 } from './actionQueueGrouping';
-import { buildDashboardNotificationsFromInsights } from './dashboardNotificationAdapter';
 import type { BuildActionQueueInput } from './actionQueueBuilder';
 import type { ActionQueueFilterTab, ActionQueueItem } from './dashboardTypes';
-import type { DashboardInsight } from '../../DashboardInsightsContext';
-import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import {
   DRIVING_ASSESSMENT_SEMANTIC_KEY,
-  NOTIFICATION_TEST_INSIGHTS_GENERATED_AT,
   NOTIFICATION_TEST_NOW_MS,
   WOB_VEHICLE_ID,
   type DrivingAssessmentPath,
@@ -34,20 +30,9 @@ export interface ActionQueueAnalysis {
 
 export function buildQueueWithNotifications(
   input: BuildActionQueueInput,
-  options?: { generatedAt?: string | null; intlLocale?: string; includeSyntheticNotifications?: boolean },
 ): ActionQueueItem[] {
-  const generatedAt = options?.generatedAt ?? NOTIFICATION_TEST_INSIGHTS_GENERATED_AT;
-  const intlLocale = options?.intlLocale ?? (input.locale === 'de' ? 'de-DE' : 'en-US');
-  const includeSynthetic = options?.includeSyntheticNotifications ?? false;
-  const synth = includeSynthetic
-    ? buildDashboardNotificationsFromInsights(input.insights, {
-        generatedAt,
-        intlLocale,
-      })
-    : [];
   return buildUnifiedActionQueue({
     ...input,
-    notifications: input.notifications?.length ? input.notifications : synth,
     referenceNowMs: input.referenceNowMs ?? NOTIFICATION_TEST_NOW_MS,
   });
 }
@@ -55,7 +40,6 @@ export function buildQueueWithNotifications(
 export function classifyDrivingAssessmentPath(item: ActionQueueItem): DrivingAssessmentPath | null {
   if (item.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY) return 'normalized-issue';
   if (item.id.startsWith('insight-') && item.title.includes('Fahrbewertung')) return 'legacy-insight';
-  if (item.id.startsWith('notif-') && item.title.includes('Fahrbewertung')) return 'synthetic-notification';
   if (item.semanticKey?.includes('technical_observation_active') && /technische Beobachtung/i.test(item.title)) {
     return 'health-alert-complaints';
   }
@@ -72,9 +56,8 @@ export function classifyDrivingAssessmentPath(item: ActionQueueItem): DrivingAss
 
 export function analyzeActionQueue(
   input: BuildActionQueueInput,
-  options?: { generatedAt?: string | null; intlLocale?: string },
 ): ActionQueueAnalysis {
-  const items = buildQueueWithNotifications(input, options);
+  const items = buildQueueWithNotifications(input);
   const deduped = dedupeActionQueueItems(items);
   const model = prepareActionQueueRenderModel({
     items,
@@ -119,17 +102,6 @@ export function findItemsByTitleFragment(items: ActionQueueItem[], fragment: str
 /** Items whose timeSortMs equals render-time now (within 1s slack) — indicates render-based timestamps. */
 export function itemsWithRenderBasedTimeSort(items: ActionQueueItem[], renderNowMs: number): ActionQueueItem[] {
   return items.filter((i) => Math.abs(i.timeSortMs - renderNowMs) < 1000);
-}
-
-export function syntheticNotificationFromInsight(
-  insight: DashboardInsight,
-  intlLocale = 'de-DE',
-): DashboardNotificationItem {
-  const [first] = buildDashboardNotificationsFromInsights([insight], {
-    generatedAt: NOTIFICATION_TEST_INSIGHTS_GENERATED_AT,
-    intlLocale,
-  });
-  return first!;
 }
 
 export { NOTIFICATION_TEST_NOW_MS };

@@ -120,6 +120,26 @@ export class NotificationsController {
     return this.api.unsnooze(orgId, req.user ?? {}, id);
   }
 
+  @Post(':id/hide')
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  hide(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: NotificationAuthRequest,
+  ) {
+    return this.api.hide(orgId, req.user ?? {}, id, req.originalUrl);
+  }
+
+  @Post(':id/unhide')
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  unhide(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: NotificationAuthRequest,
+  ) {
+    return this.api.unhide(orgId, req.user ?? {}, id);
+  }
+
   @Post(':id/resolve')
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   resolve(

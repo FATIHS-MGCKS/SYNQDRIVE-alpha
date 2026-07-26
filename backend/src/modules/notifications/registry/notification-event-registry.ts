@@ -1,9 +1,15 @@
 import { buildNotificationFingerprint } from '../notification-fingerprint.factory';
 import type { NotificationCandidate } from '../notification.types';
 import {
+  deriveRecoveryState,
+  NOTIFICATION_CANDIDATE_SCHEMA_VERSION,
+} from '../notification-candidate.contract';
+import {
   NOTIFICATION_EVENT_SLUG_ALIASES,
   NOTIFICATION_EVENT_TYPE_DEFINITIONS,
 } from './notification-event-registry.definitions';
+import { NOTIFICATION_EVENT_TYPE_ALIASES } from './notification-event-registry.aliases';
+import { deriveRetentionClass } from './notification-event-registry.consistency';
 import type {
   NotificationActionTargetContext,
   NotificationEventTypeDefinition,
@@ -17,13 +23,23 @@ export class NotificationEventRegistryError extends Error {
   }
 }
 
+function withRetentionClass(
+  def: NotificationEventTypeDefinition,
+): NotificationEventTypeDefinition {
+  return {
+    ...def,
+    retentionClass: def.retentionClass ?? deriveRetentionClass(def),
+  };
+}
+
 function bootstrapRegistry(
   definitions: readonly NotificationEventTypeDefinition[],
 ): Map<string, NotificationEventTypeDefinition> {
   const byEventType = new Map<string, NotificationEventTypeDefinition>();
   const bySlug = new Map<string, string>();
 
-  for (const def of definitions) {
+  for (const raw of definitions) {
+    const def = withRetentionClass(raw);
     if (byEventType.has(def.eventType)) {
       throw new NotificationEventRegistryError(
         `Duplicate notification eventType registration: ${def.eventType}`,
@@ -63,14 +79,26 @@ export function resolveEventSlug(slug: string): string {
   return def.eventType;
 }
 
+export function resolveNotificationEventType(eventType: string): string | undefined {
+  const trimmed = eventType?.trim();
+  if (!trimmed) return undefined;
+  const canonical = NOTIFICATION_EVENT_TYPE_ALIASES[trimmed] ?? trimmed;
+  return REGISTRY_MAP.has(canonical) ? canonical : undefined;
+}
+
 export function getEventTypeDefinition(
   eventType: string,
 ): NotificationEventTypeDefinition | undefined {
-  return REGISTRY_MAP.get(eventType);
+  const canonical = resolveNotificationEventType(eventType);
+  return canonical ? REGISTRY_MAP.get(canonical) : undefined;
 }
 
 export function requireEventTypeDefinition(eventType: string): NotificationEventTypeDefinition {
-  const def = getEventTypeDefinition(eventType);
+  const canonical = resolveNotificationEventType(eventType);
+  if (!canonical) {
+    throw new NotificationEventRegistryError(`Unregistered notification eventType: ${eventType}`);
+  }
+  const def = REGISTRY_MAP.get(canonical);
   if (!def) {
     throw new NotificationEventRegistryError(`Unregistered notification eventType: ${eventType}`);
   }
@@ -101,7 +129,11 @@ export function buildRegistryFingerprint(
 export function buildCandidateFromRegistry(
   input: RegistryCandidateBuildInput,
 ): NotificationCandidate {
-  const def = requireEventTypeDefinition(input.eventType);
+  const canonicalEventType = resolveNotificationEventType(input.eventType);
+  if (!canonicalEventType) {
+    throw new NotificationEventRegistryError(`Unregistered notification eventType: ${input.eventType}`);
+  }
+  const def = requireEventTypeDefinition(canonicalEventType);
   const entityType = input.entityType ?? def.defaultEntityType;
   const actionCtx: NotificationActionTargetContext = {
     entityType,
@@ -114,19 +146,37 @@ export function buildCandidateFromRegistry(
     ? `${def.conditionCode}:${input.conditionCodeVariant.trim()}`
     : def.conditionCode;
 
+  const sourceSystem = input.sourceSystem ?? input.sourceType ?? def.sourceType;
+  const sourceEventId = input.sourceEventId ?? input.sourceRef;
+  const entityRefs = {
+    vehicleId: actionCtx.vehicleId,
+    bookingId: actionCtx.bookingId,
+    stationId: actionCtx.stationId,
+    customerId: actionCtx.customerId,
+    userId: input.userId,
+  };
+  const severity = input.severity ?? def.defaultSeverity;
+
   return {
+    schemaVersion: input.schemaVersion ?? NOTIFICATION_CANDIDATE_SCHEMA_VERSION,
     organizationId: input.organizationId,
     eventType: def.eventType,
     eventKind: def.eventKind,
     domain: def.domain,
-    severity: input.severity ?? def.defaultSeverity,
+    severity,
+    recoveryState: deriveRecoveryState(severity),
     entityType,
     entityId: input.entityId,
+    conditionKey: conditionCode,
     conditionCode,
     scopeVersion: def.fingerprintVersion,
-    sourceType: input.sourceType ?? def.sourceType,
-    sourceRef: input.sourceRef,
+    sourceSystem,
+    sourceType: sourceSystem,
+    sourceEventId,
+    sourceRef: sourceEventId,
     occurredAt: input.occurredAt,
+    observedAt: input.observedAt ?? input.occurredAt,
+    templateKey: def.titleKey,
     titleKey: def.titleKey,
     bodyKey: def.bodyKey,
     templateParams: input.templateParams,
@@ -135,6 +185,9 @@ export function buildCandidateFromRegistry(
     resolutionPolicy: def.resolutionPolicy,
     deliveryPolicy: def.deliveryPolicy,
     expiresAt: input.expiresAt,
+    correlationId: input.correlationId,
+    causationId: input.causationId,
     metadata: input.metadata,
+    ...entityRefs,
   };
 }

@@ -5,6 +5,7 @@ import {
   NotificationDomain,
   NotificationEntityType,
   NotificationEventKind,
+  NotificationOccurrenceRecoveryState,
   NotificationSeverity,
   NotificationSourceType,
   NotificationStatus,
@@ -51,10 +52,14 @@ export interface CreateOccurrenceInput {
   notificationId: string;
   organizationId: string;
   occurredAt: Date;
-  detectedAt?: Date;
+  observedAt?: Date;
   sourceType: NotificationSourceType;
   sourceRef: string;
+  sourceEventId: string;
   severityAtOccurrence: NotificationSeverity;
+  recoveryState?: NotificationOccurrenceRecoveryState;
+  correlationId?: string | null;
+  causationId?: string | null;
   payload?: Prisma.InputJsonValue;
 }
 
@@ -66,6 +71,7 @@ export interface UpsertReceiptInput {
   acknowledgedAt?: Date | null;
   snoozedUntil?: Date | null;
   hiddenAt?: Date | null;
+  lastSeenAt?: Date | null;
 }
 
 export interface UpdateNotificationInput {
@@ -75,7 +81,7 @@ export interface UpdateNotificationInput {
   bodyKey?: string;
   templateParams?: Prisma.InputJsonValue;
   lastSeenAt?: Date;
-  occurrenceCount?: number;
+  occurrenceCount?: number | { increment: number };
   reopenCount?: number;
   acknowledgedAt?: Date | null;
   snoozedUntil?: Date | null;
@@ -117,7 +123,56 @@ export class NotificationRepository {
   }
 
   runTransaction<T>(fn: (tx: NotificationTx) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(fn);
+    return this.prisma.$transaction(fn, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+    });
+  }
+
+  /**
+   * Row lock for ingest serialization — must run inside an open transaction.
+   * Returns the locked active notification id, if any.
+   */
+  async lockAnyActiveByFingerprintForUpdate(
+    organizationId: string,
+    fingerprint: string,
+    tx: NotificationTx,
+  ): Promise<string | null> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM notifications
+      WHERE organization_id = ${organizationId}
+        AND fingerprint = ${fingerprint}
+        AND status::text IN ('OPEN', 'ACKNOWLEDGED', 'SNOOZED')
+      ORDER BY lifecycle_generation DESC
+      LIMIT 1
+      FOR UPDATE
+    `;
+    return rows[0]?.id ?? null;
+  }
+
+  /**
+   * Locks the latest notification row for a fingerprint (any status) to serialize
+   * generation/reopen decisions when no active row exists yet.
+   */
+  async lockLatestByFingerprintForUpdate(
+    organizationId: string,
+    fingerprint: string,
+    tx: NotificationTx,
+  ): Promise<string | null> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM notifications
+      WHERE organization_id = ${organizationId}
+        AND fingerprint = ${fingerprint}
+      ORDER BY lifecycle_generation DESC
+      LIMIT 1
+      FOR UPDATE
+    `;
+    return rows[0]?.id ?? null;
+  }
+
+  findByIdForUpdate(id: string, organizationId: string, tx: NotificationTx) {
+    return this.findById(id, organizationId, tx);
   }
 
   findById(id: string, organizationId: string, tx?: NotificationTx) {
@@ -209,12 +264,37 @@ export class NotificationRepository {
         notificationId: data.notificationId,
         organizationId: data.organizationId,
         occurredAt: data.occurredAt,
-        detectedAt: data.detectedAt ?? new Date(),
+        observedAt: data.observedAt ?? new Date(),
         sourceType: data.sourceType,
         sourceRef: data.sourceRef,
+        sourceEventId: data.sourceEventId,
         severityAtOccurrence: data.severityAtOccurrence,
+        recoveryState: data.recoveryState ?? NotificationOccurrenceRecoveryState.ACTIVE,
+        correlationId: data.correlationId ?? undefined,
+        causationId: data.causationId ?? undefined,
         payload: data.payload ?? undefined,
       },
+    });
+  }
+
+  findOccurrenceBySourceEventId(
+    notificationId: string,
+    sourceEventId: string,
+    tx?: NotificationTx,
+  ) {
+    return this.client(tx).notificationOccurrence.findUnique({
+      where: {
+        notificationId_sourceEventId: {
+          notificationId,
+          sourceEventId,
+        },
+      },
+    });
+  }
+
+  countOccurrences(notificationId: string, tx?: NotificationTx) {
+    return this.client(tx).notificationOccurrence.count({
+      where: { notificationId },
     });
   }
 
@@ -257,12 +337,14 @@ export class NotificationRepository {
       ...(data.acknowledgedAt !== undefined ? { acknowledgedAt: data.acknowledgedAt } : {}),
       ...(data.snoozedUntil !== undefined ? { snoozedUntil: data.snoozedUntil } : {}),
       ...(data.hiddenAt !== undefined ? { hiddenAt: data.hiddenAt } : {}),
+      ...(data.lastSeenAt !== undefined ? { lastSeenAt: data.lastSeenAt } : {}),
     };
     const updateData = {
       ...(data.readAt !== undefined ? { readAt: data.readAt } : {}),
       ...(data.acknowledgedAt !== undefined ? { acknowledgedAt: data.acknowledgedAt } : {}),
       ...(data.snoozedUntil !== undefined ? { snoozedUntil: data.snoozedUntil } : {}),
       ...(data.hiddenAt !== undefined ? { hiddenAt: data.hiddenAt } : {}),
+      ...(data.lastSeenAt !== undefined ? { lastSeenAt: data.lastSeenAt } : {}),
     };
 
     return this.client(tx).notificationReceipt.upsert({
@@ -346,6 +428,12 @@ export class NotificationRepository {
     });
   }
 
+  findReceiptForUserInOrg(notificationId: string, userId: string, organizationId: string) {
+    return this.prisma.notificationReceipt.findFirst({
+      where: { notificationId, userId, organizationId },
+    });
+  }
+
   countNotifications(organizationId: string, status?: NotificationStatus[]) {
     return this.prisma.notification.count({
       where: {
@@ -366,17 +454,36 @@ export class NotificationRepository {
     });
   }
 
-  countUnreadForUser(organizationId: string, userId: string) {
+  countUnreadForUser(organizationId: string, userId: string, referenceNow = new Date()) {
     return this.prisma.notification.count({
       where: {
         organizationId,
         status: { in: ACTIVE_NOTIFICATION_STATUSES },
-        receipts: {
-          none: {
-            userId,
-            readAt: { not: null },
+        NOT: {
+          receipts: {
+            some: {
+              userId,
+              readAt: { not: null },
+            },
           },
         },
+        AND: [
+          {
+            NOT: {
+              AND: [
+                { severity: { not: NotificationSeverity.CRITICAL } },
+                {
+                  receipts: {
+                    some: {
+                      userId,
+                      snoozedUntil: { gt: referenceNow },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
       },
     });
   }

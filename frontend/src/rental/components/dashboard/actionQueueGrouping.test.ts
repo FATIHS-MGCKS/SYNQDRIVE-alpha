@@ -234,7 +234,6 @@ function buildQueue(overrides: Partial<BuildActionQueueInput> = {}): ActionQueue
     vehicleHealthAlerts: overrides.vehicleHealthAlerts ?? [],
     pickupItems: overrides.pickupItems ?? [],
     returnItems: overrides.returnItems ?? [],
-    notifications: overrides.notifications ?? [],
     derivedInsights: overrides.derivedInsights ?? [],
     predictiveInsights: overrides.predictiveInsights ?? [],
     dashboardRuntime: overrides.dashboardRuntime,

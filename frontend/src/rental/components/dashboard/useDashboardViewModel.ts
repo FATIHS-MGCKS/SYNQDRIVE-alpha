@@ -16,8 +16,6 @@ import {
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
-import { buildDashboardNotificationsFromInsights } from './dashboardNotificationAdapter';
-import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import {
   dashboardStationIdToFilter,
   stationFilterToDashboardId,
@@ -91,6 +89,8 @@ import {
   getNotificationsV2Mode,
   isNotificationsV2Shadow,
   shouldFetchV2NotificationsInBackground,
+  shouldUseV2NotificationApiOnly,
+  shouldUseV2NotificationBridges,
   shouldUseV2NotificationSource,
 } from '../../lib/notifications/notifications-v2-flag';
 import {
@@ -665,15 +665,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     });
   }, [intlLocale]);
 
-  const dashboardNotifications = useMemo<DashboardNotificationItem[]>(
-    () =>
-      buildDashboardNotificationsFromInsights(insights, {
-        generatedAt: insightsResponse?.generatedAt ?? null,
-        intlLocale,
-      }),
-    [insights, insightsResponse?.generatedAt, intlLocale],
-  );
-
   const dataFreshness = useMemo(
     () => ({
       fleetLoading,
@@ -933,7 +924,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         vehicleHealthAlerts,
         pickupItems,
         returnItems,
-        notifications: [],
         derivedInsights: derivedOperationalInsights,
         predictiveInsights: predictiveOperationsInsights,
         dashboardRuntime,
@@ -980,8 +970,12 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const actionQueue = useMemo(() => {
     if (!shouldUseV2NotificationSource()) return v1ActionQueue;
+    const sortedV2 = [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
     if (notificationsV2.listMode === 'resolved') {
-      return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+      return sortedV2;
+    }
+    if (shouldUseV2NotificationApiOnly()) {
+      return sortedV2;
     }
     const withDerived = mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems);
     const withHandovers = mergeV2WithSupplemental(withDerived, overdueHandoverQueueItems);
@@ -1018,6 +1012,10 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         warning: 0,
         resolved: notificationsV2.primaryTabCounts.resolved,
       };
+    }
+
+    if (shouldUseV2NotificationApiOnly()) {
+      return notificationsV2.primaryTabCounts;
     }
 
     const derivedExtra = supplementalQueueItems(notificationsV2.items, derivedQueueItems);
@@ -1209,7 +1207,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     returnAlerts,
     handleConfirmPickup,
     handleConfirmReturn,
-    dashboardNotifications,
     actionQueue,
     actionQueueLoading: resolvedActionQueueLoading,
     actionQueueError: resolvedActionQueueError,

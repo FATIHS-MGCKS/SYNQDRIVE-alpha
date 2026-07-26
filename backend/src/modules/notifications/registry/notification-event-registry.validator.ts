@@ -4,6 +4,7 @@ import {
   getEventTypeDefinition,
   NotificationEventRegistryError,
   requireEventTypeDefinition,
+  resolveNotificationEventType,
 } from './notification-event-registry';
 import type { RegistryCandidateBuildInput } from './notification-event-registry.types';
 
@@ -85,21 +86,35 @@ function assertSeverityAllowed(
 }
 
 export function validateRegistryCandidate(candidate: NotificationCandidate): NotificationCandidate {
-  const def = requireEventTypeDefinition(candidate.eventType);
+  const canonicalEventType = resolveNotificationEventType(candidate.eventType);
+  if (!canonicalEventType) {
+    throw new NotificationRegistryValidationError(
+      'eventType',
+      `Unregistered notification eventType: ${candidate.eventType}`,
+    );
+  }
 
-  if (candidate.domain !== def.domain) {
+  const normalizedCandidate =
+    canonicalEventType === candidate.eventType
+      ? candidate
+      : { ...candidate, eventType: canonicalEventType };
+
+  const def = requireEventTypeDefinition(normalizedCandidate.eventType);
+
+  if (normalizedCandidate.domain !== def.domain) {
     throw new NotificationRegistryValidationError(
       'domain',
-      `domain mismatch for ${def.eventType}: expected ${def.domain}, got ${candidate.domain}`,
+      `domain mismatch for ${def.eventType}: expected ${def.domain}, got ${normalizedCandidate.domain}`,
     );
   }
 
   const conditionMatches =
-    candidate.conditionCode === def.conditionCode
+    normalizedCandidate.conditionCode === def.conditionCode
     || (def.eventType === 'TECHNICAL_OBSERVATION_ACTIVE'
-      && candidate.conditionCode.startsWith(`${def.conditionCode}:`))
+      && normalizedCandidate.conditionCode.startsWith(`${def.conditionCode}:`))
     || (def.eventType === 'ACTIVE_DTC'
-      && candidate.conditionCode.startsWith(`${def.conditionCode}:`));
+      && normalizedCandidate.conditionCode.startsWith(`${def.conditionCode}:`))
+    || (normalizedCandidate.conditionCode.startsWith(`${def.conditionCode}:`));
   if (!conditionMatches) {
     throw new NotificationRegistryValidationError(
       'conditionCode',
@@ -107,20 +122,20 @@ export function validateRegistryCandidate(candidate: NotificationCandidate): Not
     );
   }
 
-  if (candidate.eventKind !== def.eventKind) {
+  if (normalizedCandidate.eventKind !== def.eventKind) {
     throw new NotificationRegistryValidationError(
       'eventKind',
       `eventKind mismatch for ${def.eventType}: expected ${def.eventKind}`,
     );
   }
 
-  if (!candidate.titleKey.startsWith('notification.')) {
+  if (!normalizedCandidate.titleKey.startsWith('notification.')) {
     throw new NotificationRegistryValidationError('titleKey', 'titleKey must start with notification.');
   }
 
   const titleMatchesRegistry =
-    candidate.titleKey === def.titleKey
-    || candidate.severity === NotificationSeverity.SUCCESS;
+    normalizedCandidate.titleKey === def.titleKey
+    || normalizedCandidate.severity === NotificationSeverity.SUCCESS;
   if (!titleMatchesRegistry) {
     throw new NotificationRegistryValidationError(
       'titleKey',
@@ -128,15 +143,15 @@ export function validateRegistryCandidate(candidate: NotificationCandidate): Not
     );
   }
 
-  assertRequiredTemplateParams(def, candidate.templateParams ?? {});
-  assertSeverityAllowed(def, candidate.severity);
-  assertActionTargetComplete(def, candidate);
+  assertRequiredTemplateParams(def, normalizedCandidate.templateParams ?? {});
+  assertSeverityAllowed(def, normalizedCandidate.severity);
+  assertActionTargetComplete(def, normalizedCandidate);
 
-  return candidate;
+  return normalizedCandidate;
 }
 
 export function validateRegistryBuildInput(input: RegistryCandidateBuildInput): RegistryCandidateBuildInput {
-  if (!getEventTypeDefinition(input.eventType)) {
+  if (!resolveNotificationEventType(input.eventType)) {
     throw new NotificationRegistryValidationError('eventType', `Unregistered eventType: ${input.eventType}`);
   }
   const def = requireEventTypeDefinition(input.eventType);
@@ -148,7 +163,7 @@ export function validateRegistryBuildInput(input: RegistryCandidateBuildInput): 
 }
 
 export function isRegisteredEventType(eventType: string): boolean {
-  return getEventTypeDefinition(eventType) != null;
+  return resolveNotificationEventType(eventType) != null;
 }
 
 export { NotificationEventRegistryError };

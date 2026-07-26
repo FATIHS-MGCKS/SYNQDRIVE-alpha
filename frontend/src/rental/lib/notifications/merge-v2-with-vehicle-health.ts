@@ -37,6 +37,29 @@ function v2HealthVehicleIds(v2Items: ActionQueueItem[]): Set<string> {
   return ids;
 }
 
+function v2TechnicalObservationVehicleIds(v2Items: ActionQueueItem[]): Set<string> {
+  const ids = new Set<string>();
+  for (const item of v2Items) {
+    const issueType = item.issueType ?? item.queue?.issueType;
+    const conditionCode = item.queue?.conditionCode;
+    const isTechnicalObservation =
+      issueType === 'TECHNICAL_OBSERVATION_ACTIVE'
+      || issueType === 'technical_observation_active'
+      || conditionCode === 'technical_observation_active'
+      || item.semanticKey?.includes('technical_observation_active');
+    if (isTechnicalObservation && item.vehicleId) {
+      ids.add(item.vehicleId);
+    }
+  }
+  return ids;
+}
+
+function isAggregateTechnicalObservationHealthItem(item: ActionQueueItem): boolean {
+  const issueType = item.issueType ?? item.queue?.issueType;
+  if (issueType === 'technical_observation_active') return true;
+  return Boolean(item.semanticKey?.endsWith(':technical_observation_active'));
+}
+
 function coveredHealthSemanticKeys(v2Items: ActionQueueItem[]): Set<string> {
   const keys = new Set<string>();
   for (const item of v2Items) {
@@ -50,9 +73,17 @@ function coveredHealthSemanticKeys(v2Items: ActionQueueItem[]): Set<string> {
 function shouldSkipSupplementalHealthItem(
   item: ActionQueueItem,
   coveredSemanticKeys: Set<string>,
-  _coveredVehicleIds: Set<string>,
+  coveredVehicleIds: Set<string>,
+  technicalObservationVehicleIds: Set<string>,
 ): boolean {
   if (item.semanticKey && coveredSemanticKeys.has(item.semanticKey)) return true;
+  if (
+    isAggregateTechnicalObservationHealthItem(item)
+    && item.vehicleId
+    && technicalObservationVehicleIds.has(item.vehicleId)
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -143,8 +174,15 @@ export function mergeV2NotificationsWithVehicleHealth(
 ): ActionQueueItem[] {
   const coveredSemanticKeys = coveredHealthSemanticKeys(v2Items);
   const coveredVehicleIds = v2HealthVehicleIds(v2Items);
+  const technicalObservationVehicleIds = v2TechnicalObservationVehicleIds(v2Items);
   const supplemental = healthItems.filter(
-    (item) => !shouldSkipSupplementalHealthItem(item, coveredSemanticKeys, coveredVehicleIds),
+    (item) =>
+      !shouldSkipSupplementalHealthItem(
+        item,
+        coveredSemanticKeys,
+        coveredVehicleIds,
+        technicalObservationVehicleIds,
+      ),
   );
   if (!supplemental.length) {
     return [...v2Items].sort((a, b) => b.timeSortMs - a.timeSortMs);
@@ -158,8 +196,15 @@ export function supplementalHealthItems(
 ): ActionQueueItem[] {
   const coveredSemanticKeys = coveredHealthSemanticKeys(v2Items);
   const coveredVehicleIds = v2HealthVehicleIds(v2Items);
+  const technicalObservationVehicleIds = v2TechnicalObservationVehicleIds(v2Items);
   return healthItems.filter(
-    (item) => !shouldSkipSupplementalHealthItem(item, coveredSemanticKeys, coveredVehicleIds),
+    (item) =>
+      !shouldSkipSupplementalHealthItem(
+        item,
+        coveredSemanticKeys,
+        coveredVehicleIds,
+        technicalObservationVehicleIds,
+      ),
   );
 }
 

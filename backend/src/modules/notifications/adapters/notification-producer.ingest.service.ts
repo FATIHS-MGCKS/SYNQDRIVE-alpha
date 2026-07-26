@@ -1,14 +1,25 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InsightType } from '@modules/business-insights/insight.types';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InsightType, InsightSeverity } from '@modules/business-insights/insight.types';
 import type { InsightCandidate } from '@modules/business-insights/insight.types';
 import type { DrivingAssessmentQualityStatus } from '@modules/vehicle-intelligence/trips/driving-assessment-device-quality.detector';
+import { BOOKING_RETURN_OVERDUE_GRACE_PERIOD_MINUTES } from '@modules/bookings/overdue-return/overdue-return-explanation.constants';
+import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationEntityType } from '@prisma/client';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
+import { ComplianceOperationalNotificationAdapter } from './compliance-operational-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
+import { BookingHandoverNotificationAdapter } from './booking-handover-notification.adapter';
+import {
+  bookingHandoverFingerprint as buildBookingHandoverFingerprint,
+  bookingHandoverSourceFromInsight,
+  BOOKING_HANDOVER_EVENT_TYPES,
+  returnOverdueSourceFromBooking,
+} from './booking-handover-source.mapper';
+import type { BookingHandoverAdapterSource } from './notification-adapter.types';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
   vehicleHealthSourceFingerprint,
@@ -16,7 +27,7 @@ import {
 import type { VehicleHealthAdapterSource } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
-  isDeviceQualitySystemObservation,
+  shouldIngestTechnicalObservationNotification,
 } from './technical-observation.filters';
 import { ACTIVE_NOTIFICATION_STATUSES, NotificationRepository } from '../notification.repository';
 import { buildRegistryFingerprint } from '../registry/notification-event-registry';
@@ -26,19 +37,31 @@ import { NotificationSeverity } from '../notification.enums';
 import { NotificationCoreService } from '../notification-core.service';
 
 /** VW-F-026: defer notification clear when evidence may be temporarily stale. */
-const VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS = Math.max(
-  0,
-  Number.parseInt(
+function vehicleHealthNotificationClearGraceMs(): number {
+  const raw =
     process.env.VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS ??
-      String(6 * 60 * 60_000),
-    10,
-  ) || 6 * 60 * 60_000,
-);
+    String(6 * 60 * 60_000);
+  const parsed = Number.parseInt(raw, 10);
+  if (Number.isNaN(parsed)) {
+    return 6 * 60 * 60_000;
+  }
+  return Math.max(0, parsed);
+}
 
 const DEFERRABLE_HEALTH_SEVERITIES = new Set<NotificationSeverity>([
   NotificationSeverity.WARNING,
   NotificationSeverity.CRITICAL,
 ]);
+
+const BOOKING_HANDOVER_SWEEP_LIMIT = Math.min(
+  Math.max(
+    Number.parseInt(process.env.BOOKING_HANDOVER_NOTIFICATION_SWEEP_LIMIT ?? '2000', 10) || 2000,
+    500,
+  ),
+  5000,
+);
+
+const RETURN_OVERDUE_LOOKBACK_DAYS = 7;
 
 const VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT = Math.min(
   Math.max(
@@ -54,6 +77,7 @@ export interface DrivingAssessmentQualityIngestInput {
   label: string;
   status: DrivingAssessmentQualityStatus;
   sourceRef: string;
+  occurredAt?: Date;
   runId?: string;
 }
 
@@ -65,7 +89,12 @@ export interface TechnicalObservationIngestInput {
   createdByWorkerId?: string | null;
   notes?: string | null;
   sourceRef?: string;
+  occurredAt?: Date;
   runId?: string;
+  severity?: import('@modules/business-insights/insight.types').InsightSeverity;
+  correlationId?: string;
+  causationId?: string;
+  sourceEventId?: string;
 }
 
 /**
@@ -83,8 +112,11 @@ export class NotificationProducerIngestService {
     private readonly technicalObservationAdapter: TechnicalObservationNotificationAdapter,
     private readonly stationShortageAdapter: StationShortageNotificationAdapter,
     private readonly lowUtilizationAdapter: LowUtilizationNotificationAdapter,
+    private readonly complianceAdapter: ComplianceOperationalNotificationAdapter,
     private readonly vehicleHealthAdapter: VehicleHealthNotificationAdapter,
+    private readonly bookingHandoverAdapter: BookingHandoverNotificationAdapter,
     private readonly core: NotificationCoreService,
+    @Optional() private readonly prisma?: PrismaService,
   ) {}
 
   async syncDrivingAssessmentQuality(input: DrivingAssessmentQualityIngestInput): Promise<void> {
@@ -102,7 +134,12 @@ export class NotificationProducerIngestService {
           degraded,
           sourceRef: input.sourceRef,
         },
-        this.adapterContext(input.organizationId, input.sourceRef, input.runId),
+        this.adapterContext(
+          input.organizationId,
+          input.sourceRef,
+          input.runId,
+          input.occurredAt,
+        ),
       );
     } catch (err) {
       if (normalized && this.isRecoveryNotFound(err)) return;
@@ -118,12 +155,16 @@ export class NotificationProducerIngestService {
     try {
       await this.router.ingestFromAdapter(
         this.technicalObservationAdapter,
-        {
-          vehicleId: input.vehicleId,
-          label: input.label,
-          complaintId: input.observationId,
-        },
-        this.adapterContext(input.organizationId, input.sourceRef ?? input.observationId, input.runId),
+        this.technicalObservationSource(input, false),
+        this.adapterContext(
+          input.organizationId,
+          input.sourceEventId ?? input.sourceRef ?? input.observationId,
+          input.runId,
+          input.occurredAt,
+          undefined,
+          input.correlationId,
+          input.causationId,
+        ),
       );
     } catch (err) {
       this.logger.warn(
@@ -138,13 +179,16 @@ export class NotificationProducerIngestService {
     try {
       await this.router.ingestFromAdapter(
         this.technicalObservationAdapter,
-        {
-          vehicleId: input.vehicleId,
-          label: input.label,
-          complaintId: input.observationId,
-          resolved: true,
-        },
-        this.adapterContext(input.organizationId, input.sourceRef ?? input.observationId, input.runId),
+        this.technicalObservationSource(input, true),
+        this.adapterContext(
+          input.organizationId,
+          input.sourceEventId ?? `${input.sourceRef ?? input.observationId}:resolved`,
+          input.runId,
+          input.occurredAt,
+          undefined,
+          input.correlationId,
+          input.causationId,
+        ),
       );
     } catch (err) {
       if (this.isRecoveryNotFound(err)) return;
@@ -361,7 +405,198 @@ export class NotificationProducerIngestService {
   }
 
   /**
-   * Materialize Rental Health warnings (DTC, battery, tires, brakes) as V2 notifications.
+   * Sync service/TÜV/BOKraft compliance insights into V2 notifications.
+   */
+  async syncComplianceFromInsights(
+    organizationId: string,
+    runId: string,
+    candidates: InsightCandidate[],
+  ): Promise<void> {
+    const complianceTypes = new Set<InsightType>([
+      InsightType.SERVICE_OVERDUE,
+      InsightType.TUV_OVERDUE,
+      InsightType.BOKRAFT_OVERDUE,
+    ]);
+    const compliance = candidates.filter((c) => complianceTypes.has(c.type));
+    const activeFingerprints = new Set<string>();
+
+    for (const insight of compliance) {
+      const vehicleId = insight.entityIds[0];
+      if (!vehicleId) continue;
+      const eventType = this.complianceEventType(insight.type);
+      if (!eventType) continue;
+
+      const metrics = insight.metrics ?? {};
+      const remainingDays =
+        typeof metrics.remainingDays === 'number' ? metrics.remainingDays : null;
+      const remainingKm =
+        typeof metrics.remainingKm === 'number' ? metrics.remainingKm : null;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.complianceAdapter,
+          {
+            eventType,
+            vehicleId,
+            label: this.labelFromInsight(insight, vehicleId),
+            insightSeverity: insight.severity,
+            dedupeKey: insight.dedupeKey,
+            sourceEventId: insight.dedupeKey,
+            remainingDays,
+            remainingKm,
+            complianceKind: eventType,
+          },
+          this.adapterContext(organizationId, insight.dedupeKey, runId),
+        );
+        activeFingerprints.add(
+          buildRegistryFingerprint(organizationId, eventType, vehicleId).canonical,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Compliance V2 ingest failed for ${vehicleId}/${eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    const activeNotifications = await this.repository.listNotifications({
+      organizationId,
+      status: ACTIVE_NOTIFICATION_STATUSES,
+      entityType: NotificationEntityType.VEHICLE,
+      limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT,
+    });
+
+    const complianceEvents = new Set(['SERVICE_OVERDUE', 'TUV_OVERDUE', 'BOKRAFT_OVERDUE']);
+
+    for (const notification of activeNotifications) {
+      if (!complianceEvents.has(notification.eventType)) continue;
+      if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.complianceAdapter,
+          {
+            eventType: notification.eventType as 'SERVICE_OVERDUE' | 'TUV_OVERDUE' | 'BOKRAFT_OVERDUE',
+            vehicleId: notification.entityId,
+            label,
+            insightSeverity: InsightSeverity.WARNING,
+            dedupeKey: notification.fingerprint,
+            cleared: true,
+          },
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Compliance V2 resolve failed for ${notification.entityId}/${notification.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Sync pickup/tight-handover/return-inspection BI insights into V2 notifications.
+   * Booking-scoped entity with stable per-booking fingerprints.
+   */
+  async syncBookingHandoverFromInsights(
+    organizationId: string,
+    runId: string,
+    candidates: InsightCandidate[],
+  ): Promise<void> {
+    const handoverTypes = new Set<InsightType>([
+      InsightType.PICKUP_OVERDUE,
+      InsightType.TIGHT_HANDOVER,
+      InsightType.RETURN_NEEDS_INSPECTION,
+    ]);
+    const handover = candidates.filter((c) => handoverTypes.has(c.type));
+    const activeFingerprints = new Set<string>();
+
+    for (const insight of handover) {
+      const source = bookingHandoverSourceFromInsight(insight);
+      if (!source) continue;
+
+      try {
+        await this.ingestBookingHandoverSource(organizationId, runId, source);
+        activeFingerprints.add(
+          buildBookingHandoverFingerprint(organizationId, source),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Booking handover V2 ingest failed for ${source.bookingId}/${source.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    await this.resolveStaleBookingHandoverNotifications(
+      organizationId,
+      runId,
+      activeFingerprints,
+      new Set(BOOKING_HANDOVER_EVENT_TYPES),
+    );
+  }
+
+  /**
+   * Materialize RETURN_OVERDUE from ACTIVE bookings past endDate (0 min grace).
+   * Separate from BI because RETURN_OVERDUE is not an InsightType.
+   */
+  async syncReturnOverdueNotifications(
+    organizationId: string,
+    runId: string,
+    referenceNow: Date = new Date(),
+  ): Promise<void> {
+    if (!this.prisma) return;
+
+    const graceMs = BOOKING_RETURN_OVERDUE_GRACE_PERIOD_MINUTES * 60_000;
+    const overdueCutoff = new Date(referenceNow.getTime() - graceMs);
+    const lookbackStart = new Date(
+      referenceNow.getTime() - RETURN_OVERDUE_LOOKBACK_DAYS * 24 * 60 * 60_000,
+    );
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        organizationId,
+        status: 'ACTIVE',
+        endDate: { gte: lookbackStart, lt: overdueCutoff },
+        handoverProtocols: { none: { kind: 'RETURN' } },
+      },
+      select: {
+        id: true,
+        endDate: true,
+        vehicleId: true,
+        customerId: true,
+        vehicle: { select: { licensePlate: true, make: true, model: true } },
+        customer: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    const activeFingerprints = new Set<string>();
+
+    for (const booking of bookings) {
+      const source = returnOverdueSourceFromBooking(booking, referenceNow);
+      try {
+        await this.ingestBookingHandoverSource(organizationId, runId, source);
+        activeFingerprints.add(
+          buildBookingHandoverFingerprint(organizationId, source),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Return overdue V2 ingest failed for ${booking.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    await this.resolveStaleBookingHandoverNotifications(
+      organizationId,
+      runId,
+      activeFingerprints,
+      new Set(['RETURN_OVERDUE']),
+    );
+  }
+
+  /**
    * Active sources are ingested; stale active rows are resolved via SUCCESS ingest.
    */
   async syncVehicleHealthWarnings(
@@ -370,14 +605,18 @@ export class NotificationProducerIngestService {
     sources: VehicleHealthAdapterSource[],
   ): Promise<void> {
     const activeFingerprints = new Set<string>();
+    const clearedFingerprints = new Set<string>();
 
     for (const source of sources) {
-      if (!source.cleared) {
-        activeFingerprints.add(vehicleHealthSourceFingerprint(organizationId, source));
+      const fp = vehicleHealthSourceFingerprint(organizationId, source);
+      if (source.cleared) {
+        clearedFingerprints.add(fp);
+      } else {
+        activeFingerprints.add(fp);
       }
     }
 
-    await this.ingestVehicleHealthSources(organizationId, runId, sources);
+    await this.ingestVehicleHealthSources(organizationId, runId, sources, 'batch');
 
     const activeNotifications = await this.repository.listNotifications({
       organizationId,
@@ -396,13 +635,15 @@ export class NotificationProducerIngestService {
       }
       if (activeFingerprints.has(notification.fingerprint)) continue;
 
+      const explicitlyCleared = clearedFingerprints.has(notification.fingerprint);
       const withinClearGrace =
-        VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS > 0 &&
+        !explicitlyCleared &&
+        vehicleHealthNotificationClearGraceMs() > 0 &&
         DEFERRABLE_HEALTH_SEVERITIES.has(
           notification.severity as NotificationSeverity,
         ) &&
         Date.now() - notification.lastSeenAt.getTime() <
-          VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS;
+          vehicleHealthNotificationClearGraceMs();
       if (withinClearGrace) continue;
 
       const params = (notification.templateParams ?? {}) as Record<string, unknown>;
@@ -439,13 +680,23 @@ export class NotificationProducerIngestService {
     organizationId: string,
     runId: string,
     sources: VehicleHealthAdapterSource[],
+    ingestPath: 'batch' | 'realtime' = 'realtime',
   ): Promise<void> {
     for (const source of sources) {
+      const sourceEventId =
+        source.sourceEventId ??
+        (source.code ? `${runId}:${source.code}` : runId);
       try {
         await this.router.ingestFromAdapter(
           this.vehicleHealthAdapter,
           source,
-          this.adapterContext(organizationId, runId, runId),
+          this.adapterContext(
+            organizationId,
+            sourceEventId,
+            runId,
+            source.occurredAt,
+            ingestPath,
+          ),
         );
       } catch (err) {
         this.logger.warn(
@@ -486,17 +737,147 @@ export class NotificationProducerIngestService {
     return buildRegistryFingerprint(organizationId, 'STATION_SHORTAGE', stationId).canonical;
   }
 
-  private adapterContext(organizationId: string, sourceRef: string, runId?: string) {
+  bookingHandoverFingerprint(
+    organizationId: string,
+    source: Pick<
+      BookingHandoverAdapterSource,
+      'eventType' | 'bookingId' | 'conditionCodeVariant'
+    >,
+  ): string {
+    return buildBookingHandoverFingerprint(organizationId, source);
+  }
+
+  private async ingestBookingHandoverSource(
+    organizationId: string,
+    runId: string,
+    source: BookingHandoverAdapterSource,
+  ): Promise<void> {
+    await this.router.ingestFromAdapter(
+      this.bookingHandoverAdapter,
+      source,
+      this.adapterContext(
+        organizationId,
+        source.sourceEventId ?? source.dedupeKey,
+        runId,
+        source.occurredAt,
+      ),
+    );
+  }
+
+  private async resolveStaleBookingHandoverNotifications(
+    organizationId: string,
+    runId: string,
+    activeFingerprints: Set<string>,
+    eventTypes: Set<string>,
+  ): Promise<void> {
+    const activeNotifications = await this.repository.listNotifications({
+      organizationId,
+      status: ACTIVE_NOTIFICATION_STATUSES,
+      entityType: NotificationEntityType.BOOKING,
+      limit: BOOKING_HANDOVER_SWEEP_LIMIT,
+    });
+
+    for (const notification of activeNotifications) {
+      if (!eventTypes.has(notification.eventType)) continue;
+      if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+      const bookingRef =
+        typeof params.bookingRef === 'string' ? params.bookingRef : notification.entityId;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.bookingHandoverAdapter,
+          {
+            eventType: notification.eventType as BookingHandoverAdapterSource['eventType'],
+            bookingId: notification.entityId,
+            label,
+            bookingRef,
+            insightSeverity: InsightSeverity.WARNING,
+            dedupeKey: notification.fingerprint,
+            cleared: true,
+          },
+          this.adapterContext(
+            organizationId,
+            `${runId}:clear:${notification.id}`,
+            runId,
+            new Date(notification.lastSeenAt.getTime()),
+          ),
+        );
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Booking handover V2 resolve failed for ${notification.entityId}/${notification.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  private adapterContext(
+    organizationId: string,
+    sourceRef: string,
+    runId?: string,
+    occurredAt?: Date,
+    ingestPath?: 'batch' | 'realtime',
+    correlationId?: string,
+    causationId?: string,
+  ) {
+    const at = occurredAt ?? new Date();
     return {
       organizationId,
+      sourceEventId: sourceRef,
       sourceRef,
-      occurredAt: new Date(),
+      occurredAt: at,
+      observedAt: at,
       runId,
+      ingestPath,
+      correlationId,
+      causationId,
     };
   }
 
+  private technicalObservationSource(
+    input: TechnicalObservationIngestInput,
+    resolved: boolean,
+  ) {
+    return {
+      vehicleId: input.vehicleId,
+      label: input.label,
+      complaintId: input.observationId,
+      observationId: input.observationId,
+      resolved,
+      severity: input.severity,
+      correlationId: input.correlationId,
+      causationId: input.causationId,
+      sourceEventId: input.sourceEventId,
+    };
+  }
+
+  private complianceEventType(
+    type: InsightType,
+  ): 'SERVICE_OVERDUE' | 'TUV_OVERDUE' | 'BOKRAFT_OVERDUE' | null {
+    switch (type) {
+      case InsightType.SERVICE_OVERDUE:
+        return 'SERVICE_OVERDUE';
+      case InsightType.TUV_OVERDUE:
+        return 'TUV_OVERDUE';
+      case InsightType.BOKRAFT_OVERDUE:
+        return 'BOKRAFT_OVERDUE';
+      default:
+        return null;
+    }
+  }
+
+  private labelFromInsight(insight: InsightCandidate, vehicleId: string): string {
+    const colon = insight.message.indexOf(':');
+    if (colon > 0) return insight.message.slice(0, colon).trim();
+    return vehicleId;
+  }
+
   private skipDeviceQualityObservation(input: TechnicalObservationIngestInput): boolean {
-    return isDeviceQualitySystemObservation({
+    return !shouldIngestTechnicalObservationNotification({
       createdByWorkerId: input.createdByWorkerId,
       notes: input.notes,
     });
