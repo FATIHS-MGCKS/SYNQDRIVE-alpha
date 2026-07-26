@@ -12,6 +12,7 @@ import {
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 /** Threshold: a POSSIBLE_END state older than this triggers event-based repair */
 const STUCK_POSSIBLE_END_THRESHOLD_MS = 30 * 60_000; // 30 minutes
@@ -40,6 +41,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
     @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
     private readonly trackingQueue: Queue,
     private readonly prisma: PrismaService,
+    private readonly schedulerObs: SchedulerObservabilityService,
     @Optional() private readonly reconciliation?: TripReconciliationService,
   ) {}
 
@@ -56,6 +58,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
    */
   @Interval(120_000)
   async recoverStaleTripStates(): Promise<void> {
+    await this.schedulerObs.run('trip.tracking.recovery', async () => {
     if (!canEnqueueQueue(this.logger, 'trip-tracking-recovery')) return;
     const now = new Date();
 
@@ -120,6 +123,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
 
     // ── Event-triggered reconciliation for anomalous states ─────────────────
     await this.triggerEventBasedReconciliation(now, staleStates);
+    });
   }
 
   /**

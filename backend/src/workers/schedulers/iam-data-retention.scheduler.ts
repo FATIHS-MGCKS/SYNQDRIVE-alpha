@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { IamDataRetentionWorkerService } from '../../modules/iam-data-retention/iam-data-retention-worker.service';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 @Injectable()
 export class IamDataRetentionScheduler {
@@ -10,10 +11,12 @@ export class IamDataRetentionScheduler {
   constructor(
     private readonly worker: IamDataRetentionWorkerService,
     private readonly config: ConfigService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   @Cron('0 4 * * *')
   async handleCron(): Promise<void> {
+    await this.schedulerObs.run('iam.data.retention', async () => {
     const enabled = this.config.get<boolean>('iamDataRetention.enabled');
     if (!enabled) {
       return;
@@ -30,5 +33,6 @@ export class IamDataRetentionScheduler {
     } catch (error) {
       this.logger.error('IAM data retention cron failed', error);
     }
+    });
   }
 }

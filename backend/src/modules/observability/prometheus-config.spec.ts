@@ -102,7 +102,66 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_evaluations_data_source_total');
     expect(text).toContain('synqdrive_evaluations_db_query_duration_seconds');
     expect(text).toContain('synqdrive_evaluations_forecast_total');
-    expect(text).toContain('synqdrive_evaluations_kpi_jump_total');
+    expect(text).toContain('synqdrive_dependency_up');
+  });
+});
+
+describe('Worker observability alert rules', () => {
+  const root = join(__dirname, '../../../monitoring/prometheus');
+
+  it('alerts-workers.yml defines BullMQ and scheduler alerts', () => {
+    const yaml = readFileSync(join(root, 'alerts-workers.yml'), 'utf8');
+    expect(yaml).toContain('WorkerQueueWaitingBacklogHigh');
+    expect(yaml).toContain('WorkerJobStalledRateHigh');
+    expect(yaml).toContain('SchedulerStale');
+    expect(yaml).toContain('synqdrive_queue_waiting_jobs');
+  });
+});
+
+describe('Prometheus infra alert rules', () => {
+  const root = join(__dirname, '../../../monitoring/prometheus');
+
+  it('alerts-infra.yml defines platform and host alerts', () => {
+    const yaml = readFileSync(join(root, 'alerts-infra.yml'), 'utf8');
+    expect(yaml).toContain('PostgreSQLUnavailable');
+    expect(yaml).toContain('PostgresExporterDown');
+    expect(yaml).toContain('RedisExporterDown');
+    expect(yaml).toContain('NginxStubStatusUnreachable');
+    expect(yaml).toContain('RedisUnavailable');
+    expect(yaml).toContain('HostDiskSpaceLow');
+    expect(yaml).toContain('TlsCertificateExpiringSoon');
+    expect(yaml).toContain('DatabaseBackupStale');
+    expect(yaml).toContain('BullMQQueueBacklogCritical');
+    expect(yaml).toContain('StripeConnectWebhookBacklogCritical');
+    expect(yaml).toContain('component:');
+  });
+
+  it('prometheus.vps.yml wires Alertmanager and infra scrape targets', () => {
+    const yaml = readFileSync(join(root, 'prometheus.vps.yml'), 'utf8');
+    expect(yaml).toContain('alertmanagers');
+    expect(yaml).toContain('127.0.0.1:9093');
+    expect(yaml).toContain('alerts-infra.yml');
+    expect(yaml).toContain('alerts-workers.yml');
+    expect(yaml).toContain('job_name: node');
+    expect(yaml).toContain('job_name: cadvisor');
+    expect(yaml).toContain('job_name: postgres');
+    expect(yaml).toContain('job_name: redis');
+    expect(yaml).toContain('job_name: clickhouse');
+    expect(yaml).toContain('job_name: nginx');
+    expect(yaml).toContain('blackbox-ssl');
+  });
+});
+
+describe('Alertmanager config', () => {
+  const root = join(__dirname, '../../../monitoring/alertmanager');
+
+  it('production template defines severity routing and escalation', () => {
+    const yaml = readFileSync(join(root, 'alertmanager.yml.example'), 'utf8');
+    expect(yaml).toContain('synqdrive-critical');
+    expect(yaml).toContain('synqdrive-escalation');
+    expect(yaml).toContain('synqdrive-maintenance');
+    expect(yaml).toContain('inhibit_rules');
+    expect(yaml).toContain('group_by');
   });
 });
 
@@ -118,7 +177,7 @@ describe('Prometheus config files', () => {
 
   it('alert rules reference operational SynqDrive metrics', () => {
     const yaml = readFileSync(join(root, 'alerts.yml'), 'utf8');
-    expect(yaml).toContain('SynqDriveMetricsScrapeDown');
+    expect(yaml).toContain('SynqDriveBackendDown');
     expect(yaml).toContain('synqdrive_clickhouse_configured');
     expect(yaml).toContain('synqdrive_enrichment_pending');
     expect(yaml).toContain('synqdrive_dimo_snapshot_poll_total');

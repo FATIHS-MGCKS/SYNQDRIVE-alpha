@@ -8,6 +8,7 @@ import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 @Injectable()
 export class TireRecalculationScheduler {
@@ -16,10 +17,12 @@ export class TireRecalculationScheduler {
   constructor(
     @InjectQueue(QUEUE_NAMES.TIRE_RECALCULATION) private readonly queue: Queue,
     private readonly prisma: PrismaService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   @Interval(3600000)
   async enqueueTireRecalculationJobs(): Promise<void> {
+    await this.schedulerObs.run('tire.recalculation', async () => {
     if (!canEnqueueQueue(this.logger, 'tire-recalculation')) return;
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
@@ -62,5 +65,6 @@ export class TireRecalculationScheduler {
         `Enqueued ${setups.length} tire recalculation jobs (hourBucket=${hourBucket})`,
       );
     }
+    });
   }
 }

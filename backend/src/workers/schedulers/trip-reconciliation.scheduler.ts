@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, Interval } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 /**
  * TripReconciliationScheduler
@@ -21,12 +22,14 @@ export class TripReconciliationScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   // ─── FAST REPAIR (every 15 minutes) ───────────────────────────────────────
 
   @Interval(15 * 60_000)
   async fastRepair(): Promise<void> {
+    await this.schedulerObs.run('trip.reconciliation.daily', async () => {
     const to = new Date();
     const from = new Date(to.getTime() - 45 * 60_000);
 
@@ -63,12 +66,14 @@ export class TripReconciliationScheduler {
         this.logger.warn(`Fast repair failed for ${vehicleId}: ${(err as Error).message}`);
       }
     }
+    });
   }
 
   // ─── WARM REPAIR (every 4 hours) ──────────────────────────────────────────
 
   @Interval(4 * 3600_000)
   async warmRepair(): Promise<void> {
+    await this.schedulerObs.run('trip.reconciliation.warm', async () => {
     this.logger.log('Warm reconciliation starting…');
     const to = new Date();
     const from = new Date(to.getTime() - 12 * 3600_000);
@@ -92,12 +97,14 @@ export class TripReconciliationScheduler {
     }
 
     this.logger.log(`Warm reconciliation complete — ${repaired} trip(s) repaired across ${vehicles.length} vehicles.`);
+    });
   }
 
   // ─── COLD REPAIR (daily at 03:00) ─────────────────────────────────────────
 
   @Cron('0 3 * * *')
   async coldRepair(): Promise<void> {
+    await this.schedulerObs.run('trip.reconciliation.cold', async () => {
     this.logger.log('Cold reconciliation starting…');
     const to = new Date();
     const from = new Date(to.getTime() - 7 * 24 * 3600_000);
@@ -121,6 +128,7 @@ export class TripReconciliationScheduler {
     }
 
     this.logger.log(`Cold reconciliation complete — ${repaired} trip(s) repaired across ${vehicles.length} vehicles.`);
+    });
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────────────

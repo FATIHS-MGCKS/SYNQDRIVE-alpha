@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUE_NAMES } from '../queues/queue-names';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 /**
  * Producer for the dimo.vehicle.sync queue.
@@ -26,14 +27,17 @@ export class DimoVehicleSyncScheduler implements OnModuleInit {
   constructor(
     @InjectQueue(QUEUE_NAMES.DIMO_VEHICLE_SYNC)
     private readonly queue: Queue,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   async onModuleInit() {
+    await this.schedulerObs.run('dimo.vehicle.sync', async () => {
     await this.queue.upsertJobScheduler(
       'dimo-vehicle-sync-repeat',
       { every: 24 * 60 * 60 * 1000 },
       { name: 'dimo-vehicle-sync', data: {} },
     );
     this.logger.log('DIMO vehicle sync scheduled every 24 hours');
+    });
   }
 }

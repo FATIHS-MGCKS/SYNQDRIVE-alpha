@@ -40,6 +40,8 @@ printf '%s' "$TOKEN" > "$PROM_DIR/secrets/metrics_bearer_token"
 chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
 
 cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
+cp "$SRC_PROM/alerts-infra.yml" "$PROM_DIR/alerts-infra.yml"
+cp "$SRC_PROM/alerts-workers.yml" "$PROM_DIR/alerts-workers.yml"
 cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"
 
 # Allow custom backend port without editing the checked-in template.
@@ -61,6 +63,8 @@ docker run -d \
   --network host \
   -v "$PROM_DIR/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
   -v "$PROM_DIR/alerts.yml:/etc/prometheus/alerts.yml:ro" \
+  -v "$PROM_DIR/alerts-infra.yml:/etc/prometheus/alerts-infra.yml:ro" \
+  -v "$PROM_DIR/alerts-workers.yml:/etc/prometheus/alerts-workers.yml:ro" \
   -v "$PROM_DIR/secrets:/etc/prometheus/secrets:ro" \
   "$PROM_IMAGE" \
   --config.file=/etc/prometheus/prometheus.yml \

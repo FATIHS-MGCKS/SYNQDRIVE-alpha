@@ -46,6 +46,7 @@ services:
       # Bind to localhost only — never expose ClickHouse publicly.
       - '127.0.0.1:8123:8123'
       - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9363:9363'
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-synqdrive}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-synqdrive}
@@ -62,6 +63,7 @@ services:
       - ./docker/clickhouse/config.d/backup_disk.xml:/etc/clickhouse-server/config.d/backup_disk.xml:ro
       - ./docker/clickhouse/config.d/01_logger.xml:/etc/clickhouse-server/config.d/01_logger.xml:ro
       - ./docker/clickhouse/config.d/z_system_logs.xml:/etc/clickhouse-server/config.d/z_system_logs.xml:ro
+      - ./docker/clickhouse/config.d/prometheus.xml:/etc/clickhouse-server/config.d/prometheus.xml:ro
       - ./docker/clickhouse/users.d/z_log_profiles.xml:/etc/clickhouse-server/users.d/z_log_profiles.xml:ro
     healthcheck:
       test:
@@ -73,10 +75,8 @@ services:
       start_period: 20s
 
   # Optional monitoring profile — NOT started by `npm run infra:up`.
-  #   docker compose --profile monitoring up -d prometheus
-  # Create bearer token file first:
-  #   mkdir -p monitoring/prometheus/secrets
-  #   echo -n "$METRICS_BEARER_TOKEN" > monitoring/prometheus/secrets/metrics_bearer_token
+  #   mkdir -p monitoring/prometheus/secrets && echo -n "$METRICS_BEARER_TOKEN" > monitoring/prometheus/secrets/metrics_bearer_token
+  #   docker compose --profile monitoring up -d
   prometheus:
     profiles: [monitoring]
     image: prom/prometheus:v2.54.1
@@ -85,14 +85,94 @@ services:
     ports:
       - '127.0.0.1:9090:9090'
     volumes:
-      - ./monitoring/prometheus/prometheus.yml.example:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./monitoring/prometheus/alerts-infra.yml:/etc/prometheus/alerts-infra.yml:ro
+      - ./monitoring/prometheus/alerts-workers.yml:/etc/prometheus/alerts-workers.yml:ro
       - ./monitoring/prometheus/secrets:/etc/prometheus/secrets:ro
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.enable-lifecycle'
     extra_hosts:
       - 'backend:host-gateway'
+    depends_on:
+      - alertmanager
+
+  alertmanager:
+    profiles: [monitoring]
+    image: prom/alertmanager:v0.27.0
+    container_name: synqdrive-alertmanager
+    logging: *docker_log_limits
+    ports:
+      - '127.0.0.1:9093:9093'
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.dev.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager/templates:/etc/alertmanager/templates:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--web.external-url=http://127.0.0.1:9093/'
+
+  node-exporter:
+    profiles: [monitoring]
+    image: prom/node-exporter:v1.8.2
+    container_name: synqdrive-node-exporter
+    logging: *docker_log_limits
+    ports:
+      - '127.0.0.1:9100:9100'
+    volumes:
+      - ./monitoring/node-exporter-textfile:/textfile:ro
+    command:
+      - '--collector.textfile.directory=/textfile'
+
+  blackbox-exporter:
+    profiles: [monitoring]
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: synqdrive-blackbox-exporter
+    logging: *docker_log_limits
+    ports:
+      - '127.0.0.1:9115:9115'
+    volumes:
+      - ./monitoring/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+
+  cadvisor:
+    profiles: [monitoring]
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: synqdrive-cadvisor
+    logging: *docker_log_limits
+    ports:
+      - '127.0.0.1:9323:8080'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+
+  postgres-exporter:
+    profiles: [monitoring]
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.1
+    container_name: synqdrive-postgres-exporter
+    logging: *docker_log_limits
+    ports:
+      - '127.0.0.1:9187:9187'
+    environment:
+      DATA_SOURCE_NAME: postgresql://synqdrive:synqdrive@postgres:5432/synqdrive?sslmode=disable
+    depends_on:
+      - postgres
+
+  redis-exporter:
+    profiles: [monitoring]
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: synqdrive-redis-exporter
+    logging: *docker_log_limits
+    ports:
+      - '127.0.0.1:9121:9121'
+    command:
+      - '--redis.addr=redis:6379'
+    depends_on:
+      - redis
+
 
 volumes:
   postgres_data:
