@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 11: DIMO-Integration & Fahrzeugimport read-only **abgeschlossen** (2026-07-26T07:19–07:22 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:22:00Z` (DIMO & Fahrzeugimport) |
+| **Status** | **IN PROGRESS** — Schritt 12: Stripe/Billing read-only **abgeschlossen** (2026-07-26T07:23–07:28 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:28:00Z` (Stripe & Billing) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -227,6 +227,19 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:19–07:22 | Quellcode-Review Import-Pipeline (`registerFromDimo`, `DimoController`, Master UI) | Master-Admin-Importlogik |
 
 **DIMO-Modus:** **Kein** Import, Sync-Trigger, Token-Refresh, Webhook-Trigger, Verbindungstrennung oder Berechtigungsänderung. DIMO MCP war in dieser Session **nicht verfügbar** (Tool-Discovery-Fehler) — Abgleich erfolgte über Env/DB/Code.
+
+### 2.2l Ausgeführte sichere Befehle (Schritt 12 — Stripe/Billing read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:23–07:28 | `grep` Env-Key-Namen (`STRIPE_*`) — Werte maskiert (Prefix/Länge/Modus) | Production vs. Test, Webhook-Secrets vorhanden/fehlend |
+| 07:23–07:28 | PostgreSQL `SELECT` auf `billing_*`, `stripe_*`, `organization_payment_accounts` | Subscriptions, Invoices, Webhooks, Reconciliation, Connect-Mapping |
+| 07:23–07:28 | Stripe MCP **read-only** (`get_stripe_account_info`, `GetWebhookEndpoints`, `GetCustomers`, `GetSubscriptions`, `GetInvoices`, `GetAccounts`) | Plattformkonto, Connect, Webhook-Endpoints, Live-Abgleich |
+| 07:23–07:28 | `curl -I` / `curl -X POST` (ohne Signatur) Webhook-Routen | Erreichbarkeit ohne Event-Replay |
+| 07:23–07:28 | `curl` unauth Admin-Billing-Probes (`/admin/billing/*`) | Guard-Verhalten |
+| 07:23–07:28 | Quellcode-Review (`stripe-webhook.service.ts`, `billing-reconciliation.*`, `master-subscription.controller.ts`, `MasterBillingGuard`) | Source of Truth, Idempotenz, Overrides, Berechtigungen |
+
+**Stripe-Modus:** **Keine** Zahlungen, Rechnungsversendung, Subscription-Mutationen, Webhook-Retrigger, Payment Links oder Connect-Onboarding-Änderungen. Stripe MCP ausschließlich GET/list.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -1793,13 +1806,164 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ## 18. Stripe und Billing
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| Env-Keys | Nicht im ersten Key-Auszug (weitere Keys in vollem Inventar ausstehend) |
-| Master-Admin Billing UI | Repo: `frontend/src/master/components/billing/`, `/admin/*` Billing-Routen |
-| Live Stripe-Mode | **Nicht** geprüft |
+**Prüfzeitpunkt:** `2026-07-26T07:23–07:28Z` (Schritt 12)
 
-**Status:** Ausstehend — Env-Key-Vollinventar, Webhook-Endpoint-Erreichbarkeit (HEAD), Master-Billing-Guards.
+### 18.1 Stripe-Modus und konfigurierte Accounts
+
+| Prüfpunkt | Ergebnis (belegt) |
+|-----------|-------------------|
+| **Runtime Secret Key** | `STRIPE_SECRET_KEY` **vorhanden**, Prefix `sk_test_…` → **TEST-Modus** auf Production-VPS |
+| **Publishable Key** | `STRIPE_PUBLISHABLE_KEY` **fehlend** |
+| **Plattform-Webhook-Secret** | `STRIPE_WEBHOOK_SECRET` **fehlend** |
+| **Connect-Webhook-Secret** | `STRIPE_CONNECT_WEBHOOK_SECRET` **vorhanden** (Länge 38, Prefix `whsec_Y7…`, Wert maskiert) |
+| **Weitere Stripe-Env-Keys** | `STRIPE_CHECKOUT_SUCCESS_URL`, `STRIPE_CHECKOUT_CANCEL_URL`, `STRIPE_CUSTOMER_PORTAL_RETURN_URL`, `STRIPE_CONNECT_RETURN_URL`, `STRIPE_CONNECT_REFRESH_URL`, `STRIPE_CONNECT_ACCOUNT_GENERATION` — alle **vorhanden** (Werte nicht ausgewertet) |
+| **Stripe MCP Account** | `acct_1Tnz17KTcW1K1ahf` — Display Name **„SynqDrive Sandbox“** (Test-Plattformkonto) |
+| **Live Stripe Production Account** | **Nicht** in Env oder MCP erreichbar — Production-Host nutzt **Test-Credentials** |
+
+**Bewertung:** Kritischer **Modus-Drift** — öffentliche Production-URL (`app.synqdrive.eu`) mit **Test-API-Key** betrieben; lokale Subscription trägt `stripe_mode=LIVE` (s. 18.5).
+
+### 18.2 Stripe Connect und Plattformkonto
+
+| Prüfpunkt | Ergebnis (belegt) |
+|-----------|-------------------|
+| **Plattformkonto (SaaS Billing)** | Test-Account `acct_1Tnz17KTcW1K1ahf` — **0** Platform-Subscriptions, **9** Platform-Customers (alle `livemode=false`) |
+| **Connect-Accounts (Stripe API)** | **10** Connected Accounts; **1** vollständig aktiv (`acct_1TtCNf3ZTEq6a95J`, „F.S Mobility Service“, `charges_enabled=true`, `payouts_enabled=true`); **9** mit `requirements.past_due` / `charges_enabled=false` |
+| **Lokales Connect-Mapping** | `organization_payment_accounts`: **1** Zeile — Org `faa710c9…` → `acct_1TtCNf3ZTEq6a95J`, Status **ACTIVE**, `charges_enabled=true`, `payouts_enabled=true`, `livemode=false` |
+| **Connect Webhook (Stripe Dashboard)** | **1** Endpoint aktiv: `https://app.synqdrive.eu/api/v1/webhooks/stripe-connect`, Events: `account.updated`, `checkout.session.*`, `payment_intent.*`, `charge.refunded`, `charge.dispute.created`, `livemode=false` |
+| **Platform Billing Webhook (Stripe Dashboard)** | **Kein** Endpoint für `/api/v1/webhooks/stripe` konfiguriert |
+| **Connect-Webhook-Events (DB)** | `stripe_connect_webhook_events`: **0** Zeilen |
+| **Booking Payments** | `booking_payment_requests`: **2** Zeilen (Endkunden-Zahlungen, nicht SaaS) |
+
+### 18.3 Webhook-Endpoints und -Gesundheit
+
+| Route | Methode | HTTP (ohne Auth/Signatur) | Secret | DB-Events |
+|-------|---------|---------------------------|--------|-----------|
+| `/api/v1/webhooks/stripe` | POST only | **400** (fehlende Signatur — Route erreichbar) | **fehlend** | **0** |
+| `/api/v1/webhooks/stripe-connect` | POST only | **400** (fehlende Signatur — Route erreichbar) | **vorhanden** (maskiert) | **0** |
+| HEAD auf Webhook-Routen | HEAD | **404** (NestJS — nur POST registriert) | — | — |
+
+| Webhook-Metrik | Wert |
+|----------------|------|
+| `stripe_webhook_events` gesamt | **0** |
+| Erfolgreiche Events | **0** |
+| Fehlgeschlagene Events | **0** |
+| Wiederholt fehlgeschlagene Eventtypen | **keine** (keine Historie) |
+| Idempotenz-Tabelle genutzt | **nein** — keine Events persistiert |
+
+**Code (Idempotenz):** `StripeWebhookService.ingestRawWebhook()` — `stripe_event_id` @unique; bereits `PROCESSED` → `skipped_processed` (kein Doppel-Processing). **Livemode-Guard:** Event-`livemode` muss zum Runtime-Key passen (`assertWebhookLivemodeMatchesRuntime`).
+
+**Retry-Verhalten:** Bei Processing-Fehler → Status `FAILED`, `retry_count++`, Exception wirft HTTP-Fehler → Stripe retry. Out-of-order: kein Live-Nachweis (0 Events). Stuck-Webhook-Erkennung in Reconciliation: `BILLING_RECONCILIATION_STUCK_WEBHOOK_MIN_AGE_MS` = 15 min (Code).
+
+### 18.4 Billing-Datenbestand (PostgreSQL)
+
+| Tabelle | Zeilen | Anmerkung |
+|---------|--------|-----------|
+| `billing_subscriptions` | **1** | Status `TRIALING`, `stripe_mode=LIVE`, `stripe_customer_id=cus_UsXKh8lxDP3UAv`, **kein** `stripe_subscription_id` |
+| `billing_subscription_items` | **0** | Keine Base/Add-on-Items |
+| `billing_invoices` / `billing_payments` | **0** / **0** | Kein SaaS-Rechnungs-/Zahlungs-Ledger |
+| `billing_usage_snapshots` | **0** | Keine Fahrzeug-Abrechnungs-Snapshots |
+| `billing_discounts` / `billing_credit_notes` | **0** / **0** | Keine Rabatte/Credits |
+| `billing_catalog_products` / `billing_price_books` | **0** / **0** | Kein lokaler Preiskatalog |
+| `billing_stripe_catalog_mappings` | **0** | Kein Stripe-Produkt-Mapping |
+| `billing_audit_logs` | **0** | Keine Billing-Audit-Events |
+| `billing_commands` | **0** | Keine Master-Command-Inbox-Einträge |
+| `billing_reconciliation_runs` | **25** | Alle `COMPLETED`, `stripe_mode=TEST`, je 1 gescannt, **2** Drifts/Run kumuliert |
+| `billing_reconciliation_drifts` (offen) | **2** | s. 18.5 |
+| `billing_organization_price_overrides` | **0** | Keine manuellen Preis-Overrides |
+
+### 18.5 Reconciliation-Matrix
+
+| Reconciliation-Prüfung | Treffer | Risiko |
+|--------------------------|---------|--------|
+| Aktive SynqDrive-Subscription, aber keine aktive Stripe-Subscription | **1** | **HOCH** — `TRIALING` lokal, Stripe Subscriptions API: **0** |
+| Aktive Stripe-Subscription, aber SynqDrive inaktiv | **0** | — |
+| Mehrere aktive Subscriptions je Organisation | **0** | — |
+| Stripe Customer mehreren Organisationen zugeordnet | **0** | — |
+| Organisation ohne Stripe Customer trotz aktivem Billing | **0** | Customer vorhanden (`cus_UsXKh8lxDP3UAv`) |
+| Aktive Organisation ohne Billing-Subscription | **3** | **MITTEL** — Test-/Staging-Orgs + Voice-E2E |
+| Rechnung bezahlt bei Stripe, lokal offen | **0** | — (keine lokalen SaaS-Rechnungen) |
+| Rechnung offen bei Stripe, lokal bezahlt | **0** | — |
+| Falsche Currency | **0** | Alle relevanten Records EUR |
+| Abweichende Fahrzeuganzahl (Usage vs. Fleet) | **0** | Keine Subscription-Items/Usage-Snapshots |
+| Abweichender Preis | **0** | Kein Preisbuch aktiv |
+| Add-on lokal aktiv, aber nicht berechnet | **0** | Keine Items |
+| Add-on berechnet, aber lokal nicht aktiv | **0** | — |
+| Connected Account fehlt oder eingeschränkt | **9** Connect-Accounts eingeschränkt (Stripe API); **1** lokal gemappt und aktiv | **MITTEL** — Test-Connect-Umgebung |
+| Subscription gekündigt, Zugriff weiterhin aktiv | **0** | — |
+| Zahlung fehlgeschlagen, Organisation vollständig aktiv | **0** | Kein `PAST_DUE` |
+| Manuelle Statusänderung ohne Audit-Event | **0** nachweisbar | **NIEDRIG** — `billing_audit_logs` leer (kein Trail, aber auch keine Events) |
+| **TEST/LIVE-Modus-Konflikt** (Reconciliation-Drift) | **1** | **KRITISCH** — lokal `LIVE`, Runtime-Key `TEST` |
+
+**Persistierte Drifts (`billing_reconciliation_drifts`, unresolved):**
+
+| drift_type | severity | local_value | stripe_value |
+|------------|----------|-------------|--------------|
+| `TEST_LIVE_MODE_CONFLICT` | **CRITICAL** | `LIVE` | `TEST` |
+| `LOCAL_SUBSCRIPTION_WITHOUT_STRIPE` | **WARNING** | Subscription-UUID (maskiert) | *(leer)* |
+
+### 18.6 Organisations-Matrix (maskiert)
+
+| Organisation maskiert | SynqDrive | Stripe | Rechnung | Bewertung |
+|-----------------------|-----------|--------|----------|-----------|
+| `faa710c9…` (F.S Mobility Service) | `TRIALING`, `stripe_mode=LIVE`, 6 Fahrzeuge, `payments_enabled=true`, VAT 19 %, Prefix `RE-` | Customer `cus_UsXKh8lxDP3UAv` (Test), **0** Subscriptions; Connect `acct_1TtCNf3ZTEq6a95J` aktiv | **0** SaaS-Rechnungen lokal; **1** Connect-Test-Rechnung in Stripe (`open`, nicht gespiegelt) | **KRITISCH** — Modus-Mismatch, Trial ohne Stripe-Sub, Billing-Sync `PENDING` |
+| `e01e75e7…` (Data Auth PG Org A) | `ACTIVE`, kein Subscription | — | — | **MITTEL** — Billing-Lücke (Test-Org) |
+| `3c22a716…` (Data Auth PG Org B) | `ACTIVE`, kein Subscription | — | — | **MITTEL** — Billing-Lücke (Test-Org) |
+| `org-voic…` (Voice Staging E2E) | `ACTIVE`, kein Subscription | — | — | **NIEDRIG** — erwartbar (Internal Staging) |
+
+### 18.7 Statusmodelle, Tax, Fahrzeugzählung
+
+| Bereich | Ist-Zustand |
+|---------|-------------|
+| **Subscription-Status (Prisma)** | `ACTIVE`, `PAST_DUE`, `CANCELLED`, `TRIALING` — kein `UNPAID`/`PAUSED` auf Subscription-Ebene; `PAUSED` über `BillingSubscriptionItemStatus` |
+| **Domain-Zustandsmaschine** | `subscription-lifecycle.ts` — erlaubte Übergänge DRAFT→TRIALING→ACTIVE→PAST_DUE/PAUSED/CANCEL_SCHEDULED→CANCELLED |
+| **Invoice-Status** | `DRAFT`, `OPEN`, `PAID`, `VOID`, `UNCOLLECTIBLE` — lokal **0** Invoices |
+| **Past Due / Unpaid** | **0** Subscriptions `PAST_DUE`; Stripe Customer `cus_UsXKh8lxDP3UAv` **nicht** delinquent |
+| **Trial** | **1** `TRIALING` ohne `trial_end_at` gesetzt |
+| **Credits / Rabatte** | **0** lokal |
+| **Add-ons** | **0** `billing_subscription_items` |
+| **Fahrzeugzählung** | 6 Fahrzeuge Org `faa710c9…`; **0** `billing_billable_vehicle_assignments`, **0** Usage-Snapshots |
+| **Preisstaffeln** | **0** `billing_price_tiers` |
+| **Manuelle Overrides** | **0** `billing_organization_price_overrides` |
+| **Tax** | Org `faa710c9…`: `default_vat_rate=19`; Stripe SaaS-Invoices: **keine** lokal; Connect-Test-Invoice: `automatic_tax.enabled=false` |
+
+### 18.8 Source of Truth, Architektur und Berechtigungen (Code)
+
+| Thema | Kanonische Wahrheit (Code) | Production-Ist |
+|-------|---------------------------|----------------|
+| **SaaS Subscription** | Stripe Subscription + Webhook-Sync → `billing_subscriptions`; Master-Commands über `billing_commands` (idempotent) | Lokal TRIALING **ohne** Stripe-Sub; Webhooks **nicht** konfiguriert |
+| **SaaS Rechnungen** | Stripe Invoice Mirror (`stripe-invoice-mirror.service.ts`) | **0** gespiegelt |
+| **Fahrzeugmenge** | `BillableVehiclesService` + `BillingUsageSnapshot` | Nicht aktiv (0 Snapshots) |
+| **Connect-Zahlungen** | Separater Pfad (`organization_payment_accounts`, `booking_payment_requests`) | 1 Org onboarded, 2 Payment Requests |
+| **Webhook-Idempotenz** | `stripe_event_id` unique + Status `PROCESSED` skip | Nie ausgelöst (0 Events) |
+| **Reconciliation** | `BillingReconciliationService.runBatch()` vergleicht lokal vs. Stripe API | 25 Runs, 2 offene Drifts |
+| **Master-Admin Overrides** | `MasterSubscriptionController` + `BillingAuditService` | **0** Audit-Logs |
+| **Rechnungsversand** | `billing-email-delivery.controller.ts` / Resend-Pipeline (separat von Stripe `send_invoice`) | Nicht live geprüft (0 Outbound) |
+| **Subscription-Änderungen** | `@RequireMasterBilling()` + `MasterBillingGuard` auf `master-subscription.controller.ts` | Unauth **401** auf Admin-Billing |
+| **Reconciliation-API** | `POST …/reconciliation/run` mit `MasterBillingGuard`; `GET …/drifts` nur `MASTER_ADMIN` (ohne `MasterBillingGuard`) | Unauth **401** |
+| **Doppelter Rechnungsversand** | Idempotency auf Commands/Email-Outbox (Code) | Nicht verifizierbar (0 Sends) |
+| **Race Conditions** | Optimistic Lock `lock_version` auf Subscription; Command-Inbox `idempotency_key` | Keine Live-Evidenz |
+
+**Admin-Billing unauth (2026-07-26T07:28Z):**
+
+| Endpoint | HTTP |
+|----------|------|
+| `GET /api/v1/admin/billing/overview` | **401** |
+| `GET /api/v1/admin/billing/reconciliation/drifts` | **401** |
+| `GET /api/v1/admin/billing/audit-log` | **401** |
+
+### 18.9 Billing-Konsistenz — Gesamtbewertung
+
+| Dimension | Urteil |
+|-----------|--------|
+| **Billing-Konsistenz** | **INKONSISTENT** — Test-Key auf Prod, lokaler `LIVE`-Mode, Trial ohne Stripe-Sub |
+| **Webhook-Gesundheit** | **NICHT BETRIEBSBEREIT** für Platform-Billing — Secret fehlt, kein Endpoint, 0 Events |
+| **Connect-Webhooks** | Secret vorhanden, Route erreichbar, aber **0** Events in DB |
+| **Subscription-Abweichungen** | **1** kritische + **1** warning Drift persistiert |
+| **Rechnungsabweichungen** | **N/A** SaaS — kein lokaler Ledger; Connect-Rechnung nicht gespiegelt (erwartet für Rental-Pfad) |
+| **Manuelle Overrides** | Kein Audit-Trail — Risiko bei künftigen Master-Änderungen |
+| **Keine Mutation durch Audit** | **Bestätigt** — ausschließlich GET/SELECT und Stripe-API-Reads |
+
+**Status:** Stripe/Billing read-only **abgeschlossen** (Schritt 12).
 
 ---
 
@@ -1868,9 +2032,10 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | `GET /admin/activity-log` | **401** unauth; paginiert (`PaginationParams`) |
 | Org-Audit | `GET /organizations/:orgId/activity-log` mit `OrgScopingGuard` |
 | Billing-Audit | `GET /admin/billing/audit-log` + `BillingAuditService` (Code) |
+| Billing-Audit DB-Count | **0** Zeilen in `billing_audit_logs` (Schritt 12) |
 | IAM Audit Outbox | **Nicht** live geprüft (Counts ausstehend) |
 
-**Status:** Architektur belegt; DB-Counts und Outbox-Backlog **ausstehend**.
+**Status:** Architektur belegt; Billing-Audit leer; IAM-Outbox **ausstehend**.
 
 ---
 
@@ -1878,11 +2043,11 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 | Prüfpunkt | Status |
 |-----------|--------|
-| Cross-Subsystem-Konsistenz | **Nicht** geprüft |
+| Cross-Subsystem-Konsistenz | Teilweise (Schritt 12: Billing vs. Stripe) |
 | Outbox/Queue vs. DB | **Nicht** geprüft |
-| Billing-Ledger vs. Stripe | **Nicht** geprüft |
+| Billing-Ledger vs. Stripe | **INKONSISTENT** — 1 Trial-Sub lokal, 0 Stripe-Subs, 0 Invoices, TEST-Key auf Prod (**Schritt 12**) |
 
-**Status:** Ausstehend.
+**Status:** Billing-Stripe-Abgleich **abgeschlossen** (Schritt 12). Weitere Subsysteme ausstehend.
 
 ---
 
@@ -1924,6 +2089,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 > **Schritt 9 (ClickHouse/Telemetrie):** 1× P1 neu, 5× P2 neu, 1× P3 neu.
 > **Schritt 10 (Prometheus/Grafana/Observability):** 1× P1 neu, 4× P2 neu, 2× P3 neu.
 > **Schritt 11 (DIMO/Fahrzeugimport):** 2× P2 neu, 4× P3 neu.
+> **Schritt 12 (Stripe/Billing):** 2× P1 neu, 4× P2 neu, 3× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -2017,6 +2183,17 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **MA-DIMO-P3-004** | **P3** | Billing | Import ruft `onVehicleProvisioned` auf, aber **0** `billing_subscription_items` — Quantity-Hook no-op | Billing-Onboarding vor Import-Fleet |
 | **MA-DIMO-OBS-001** | **Beobachtung** | Umgebung | `DIMO_ENV=production`, API-Hosts `.dimo.zone` | Positiv |
 | **MA-DIMO-OBS-002** | **Beobachtung** | Poll-Historie | **176.980** SNAPSHOT-FAILURES mit `Custom Id cannot contain :` (gesamt); **24h: 1** Failure | Scheduler-JobId-Fix wirksam kurzfristig |
+| **MA-BILL-P1-001** | **P1** | Stripe Config | Production-VPS `STRIPE_SECRET_KEY` = **TEST** (`sk_test_…`) — kein Live-Key in Env | Live-Credentials nur auf Prod; Test-Key auf Staging isolieren |
+| **MA-BILL-P1-002** | **P1** | Webhooks | `STRIPE_WEBHOOK_SECRET` **fehlend** — Platform-Billing-Webhooks können nicht verifiziert werden | Secret setzen + Stripe-Endpoint `/webhooks/stripe` registrieren |
+| **MA-BILL-P2-001** | **P2** | Mode Drift | `billing_subscriptions.stripe_mode=LIVE` bei Runtime-Key **TEST** — Reconciliation-Drift `TEST_LIVE_MODE_CONFLICT` (CRITICAL) | Mode-Feld und Env harmonisieren vor Go-Live |
+| **MA-BILL-P2-002** | **P2** | Subscription Sync | **1** `TRIALING`-Subscription **ohne** `stripe_subscription_id`, `stripe_sync_status=PENDING` | Stripe-Sub anlegen oder lokalen Status korrigieren |
+| **MA-BILL-P2-003** | **P2** | Webhooks | **Kein** Stripe-Webhook-Endpoint für Platform-Billing; nur Connect-Webhook konfiguriert | Platform-Events (`customer.subscription.*`, `invoice.*`) registrieren |
+| **MA-BILL-P2-004** | **P2** | Webhook Health | `stripe_webhook_events` = **0** — kein jemals verarbeitetes Platform-Event | End-to-End-Webhook-Test nach Secret/Endpoint-Fix |
+| **MA-BILL-P3-001** | **P3** | Audit | `billing_audit_logs` = **0** — kein Trail für Master-Billing-Mutationen | Erwartet bis erste Admin-Aktionen; Monitoring aktivieren |
+| **MA-BILL-P3-002** | **P3** | Catalog | **0** `billing_price_books` / `billing_catalog_products` — Preiskatalog nicht befüllt | Pricebook-Seed vor Abrechnungsstart |
+| **MA-BILL-P3-003** | **P3** | Connect | `organization_payment_accounts.livemode=false` trotz aktivem Connect-Account auf Prod-URL | Livemode-Flag bei Live-Cutover setzen |
+| **MA-BILL-OBS-001** | **Beobachtung** | Connect | **1** Org mit vollständig onboarded Connect (`acct_1TtCNf3ZTEq6a95J`, charges+payouts enabled) | Positiv für Endkunden-Zahlungen (Test-Modus) |
+| **MA-BILL-OBS-002** | **Beobachtung** | Reconciliation | **25** abgeschlossene Reconciliation-Runs (`stripe_mode=TEST`), **2** offene Drifts | Reconciliation-Job läuft; Drifts unaufgelöst |
 
 ---
 
@@ -2034,6 +2211,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 - [x] **ClickHouse & Telemetrie-Pipeline (read-only)** — Schema/TTL/Parts, Ingestion-Freshness, PG↔CH-Cross-Check, Pipeline-Stufen
 - [x] **Prometheus/Grafana/Observability (read-only)** — Targets, Rules, firing Alerts, Dashboards, Master-Admin-Integration
 - [x] **DIMO-Integration & Fahrzeugimport (read-only)** — Env, PG-Mapping, Poll/Webhook-Logs, Import-Code-Review
+- [x] **Stripe/Billing (read-only)** — Env-Keys, PG-Ledger, Stripe MCP GET, Webhook-Probes, Reconciliation, Code-Review
 
 ### Priorisierte Folgeschritte (alle read-only)
 
@@ -2043,12 +2221,12 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 4. ~~**ClickHouse**~~ — **erledigt** (Schritt 9)
 5. ~~**Prometheus/Grafana**~~ — **erledigt** (Schritt 10)
 6. ~~**DIMO**~~ — **erledigt** (Schritt 11; DIMO MCP extern ausstehend)
-7. **Stripe/Billing** — Env-Keys, Webhook-Route HEAD, Master-Billing-API unauth
-7. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
-8. **Backup-Inventar** — `ls -lt shared/backups/`, Alter der Dumps
-9. **Tenant-Isolation-Stichproben** — SELECT counts per org (keine PII)
-10. **Audit-Logging** — `iam_audit_outbox`, AI audit tables (counts only)
-11. **Frontend Master-Bundle** — `grep` in `backend/public/assets/`
+7. ~~**Stripe/Billing**~~ — **erledigt** (Schritt 12)
+8. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
+9. **Backup-Inventar** — `ls -lt shared/backups/`, Alter der Dumps
+10. **Tenant-Isolation-Stichproben** — SELECT counts per org (keine PII)
+11. **Audit-Logging** — `iam_audit_outbox`, AI audit tables (counts only)
+12. **Frontend Master-Bundle** — `grep` in `backend/public/assets/`
 
 ---
 
@@ -2068,9 +2246,10 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **ClickHouse/Telemetrie** | **WARN** — gesund & klein; **94,7 %** Snapshot-Duplikate; keine `org_id` auf Kern-Spiegel; Signal-Stagnation ~10 h |
 | **Prometheus/Grafana** | **WARN** — Scrape OK; **98** Alerts ohne Alertmanager; **4** firing; Evaluations-Dashboard fehlt auf VPS |
 | **DIMO/Fahrzeugimport** | **OK mit P2/P3** — Production-Env; Mapping konsistent; Import nicht transaktional; Webhook-Inbox leer |
-| Audit vollständig | **NEIN** — Billing/Backups/authentifizierte Smokes ausstehend |
+| **Stripe/Billing** | **KRITISCH** — Test-Key auf Prod; Platform-Webhook nicht betriebsbereit; 1 Trial ohne Stripe-Sub; 2 offene Reconciliation-Drifts |
+| Audit vollständig | **NEIN** — Voice/Resend/Backups/authentifizierte Smokes ausstehend |
 | Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Route-Matrix (Code); keine authentifizierten Tests |
-| Gesamturteil | **PENDING** — Kein **P0**; **4× P1** (Swagger, CH-Mounts, CH-Duplikate, kein Alertmanager) + mehrere **P2** offen |
+| Gesamturteil | **PENDING** — Kein **P0**; **6× P1** (Swagger, CH-Mounts, CH-Duplikate, Alertmanager, Stripe-Test-Key, fehlendes Webhook-Secret) + mehrere **P2** offen |
 
 ### Schritt 2 — VPS-Baseline-Kurzfazit
 
@@ -2116,6 +2295,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | 2026-07-26T07:15–07:18 | Schritt 9: ClickHouse (`clickhouse-client` SELECT only, PG↔CH Cross-Check, Pipeline-Queues) | **NEIN** |
 | 2026-07-26T07:17–07:19 | Schritt 10: Prometheus/Grafana (API GET, Config-Read, Exposure-Probes, keine Testalarme) | **NEIN** |
 | 2026-07-26T07:19–07:22 | Schritt 11: DIMO & Fahrzeugimport (PG SELECT, Env-Keys maskiert, Code-Review, keine Imports) | **NEIN** |
+| 2026-07-26T07:23–07:28 | Schritt 12: Stripe/Billing (PG SELECT, Stripe MCP GET-only, Webhook-Probes ohne Signatur, keine Zahlungen/Rechnungen) | **NEIN** |
 
 ---
 
