@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-center-ux-normalization-2026-07-26',
+    version: '4.9.887',
+    title: 'Notification Engine Remediation — normalize notification center UX (Prompt 20)',
+    summary: [
+      'Unified severity/status styling via `notification-severity-styles.ts` across entry, group, and summary rows.',
+      'Separated severity badges from lifecycle status (acknowledged/snoozed chip).',
+      'Time labels moved to i18n keys — last seen vs resolved no longer mixed inline DE/EN.',
+      'Actions menu respects `availableActions`; mark-read hidden when acknowledge is available.',
+      'Mobile: min-h-11 touch targets, wrap long plates, load-more button, group child actions.',
+    ],
+    reason:
+      'Notification center must be consistent, understandable, and mobile-ready without inventing new features.',
+    previousBehavior:
+      'Duplicated severity CSS, inline bilingual strings, 36px CTAs, supplemental-only group child actions, no load-more UI.',
+    details:
+      'NotificationPanel, NotificationSummaryRow, NotificationActionsMenu, notificationTimeSemantics, handover/affected copy i18n, dashboard-notifications-v2 E2E.',
+    affectsArchitecture: false,
+    module: 'Notifications',
+    createdAt: '2026-07-26T17:00:00.000Z',
+  },
+  {
     id: 'notification-frontend-canonical-source-2026-07-26',
     version: '4.9.886',
     title: 'Notification Engine Remediation — canonical frontend notification data source (Prompt 19)',

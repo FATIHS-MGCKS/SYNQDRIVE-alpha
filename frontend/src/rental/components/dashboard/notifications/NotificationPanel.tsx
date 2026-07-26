@@ -119,7 +119,6 @@ export function NotificationPanel({
 }) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
-  const de = locale === 'de';
   const [primaryTab, setPrimaryTab] = useState<NotificationPrimaryTab>('all');
   const [domainFilter, setDomainFilter] = useState<NotificationDomainFilter | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -223,21 +222,11 @@ export function NotificationPanel({
   const errorBanner = useMemo(() => {
     if (!vm.actionQueueError) return null;
     const code = vm.notificationsV2ErrorCode;
-    if (code === 'api_disabled') {
-      return de
-        ? 'Benachrichtigungs-API ist deaktiviert.'
-        : 'Notification API is disabled.';
-    }
-    if (code === 'permission_denied') {
-      return de ? 'Keine Berechtigung für Benachrichtigungen.' : 'Permission denied.';
-    }
-    if (code === 'network') {
-      return de
-        ? 'Verbindung fehlgeschlagen. Bitte erneut versuchen.'
-        : 'Connection failed. Please try again.';
-    }
+    if (code === 'api_disabled') return t('notification.error.apiDisabled');
+    if (code === 'permission_denied') return t('notification.error.permissionDenied');
+    if (code === 'network') return t('notification.error.network');
     return t('notification.empty.apiError');
-  }, [vm.actionQueueError, vm.notificationsV2ErrorCode, de, t]);
+  }, [vm.actionQueueError, vm.notificationsV2ErrorCode, t]);
 
   const emptyVariant: NotificationEmptyVariant | null = useMemo(() => {
     if (vm.actionQueueError) return 'api-error';
@@ -264,7 +253,7 @@ export function NotificationPanel({
 
   const openCreateTask = useCallback(
     (item: ActionQueueItem) => {
-      const prefill = buildNotificationTaskPrefill(item, vendors);
+      const prefill = buildNotificationTaskPrefill(item, vendors, locale);
       if (!prefill || !item.vehicleId) return;
       setTaskPrefill(prefill);
       setTaskVehicleId(item.vehicleId);
@@ -357,6 +346,8 @@ export function NotificationPanel({
                         t={t}
                         onItemCta={runCta}
                         onCreateTask={openCreateTask}
+                        onSecondaryCta={runContactCustomer}
+                        mutationHandlers={mutationHandlers}
                       />
                     </li>
                   );
@@ -388,6 +379,21 @@ export function NotificationPanel({
             <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'border-t border-border/35 px-4 py-2.5 text-center')}>
               {t('notification.more.expanded', { count: hiddenAtomicCount })}
             </p>
+          ) : null}
+
+          {vm.notificationMutations?.hasMore && !panelLoading ? (
+            <div className="border-t border-border/35 px-4 py-2.5 text-center">
+              <button
+                type="button"
+                onClick={() => void vm.notificationMutations?.loadMore?.()}
+                className={cn(
+                  NOTIFICATION_PANEL_TYPO.cta,
+                  'sq-press inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border/40 px-3 text-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+                )}
+              >
+                {t('notification.loadMore')}
+              </button>
+            </div>
           ) : null}
         </div>
       </div>

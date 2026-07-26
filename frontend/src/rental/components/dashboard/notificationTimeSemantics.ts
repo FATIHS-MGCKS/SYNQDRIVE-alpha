@@ -1,4 +1,6 @@
 import type { Locale } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { createNotificationTranslator } from './notificationQueueEnricher';
 import type { NotificationLifecycleStatus, NotificationQueueModel } from './notificationQueueModel';
 
 export interface NotificationTimeContext {
@@ -50,18 +52,29 @@ function formatShortDate(iso: string, locale: string): string {
   });
 }
 
-function formatRelativePast(ms: number, referenceNowMs: number, de: boolean): string {
+function formatRelativePast(
+  ms: number,
+  referenceNowMs: number,
+  t: ReturnType<typeof createNotificationTranslator>,
+): string {
   const diffMs = referenceNowMs - ms;
-  if (diffMs < 0) return de ? 'jetzt' : 'now';
+  if (diffMs < 0) return t('notification.time.now');
   const absMin = Math.round(diffMs / 60_000);
-  if (absMin < 1) return de ? 'jetzt' : 'now';
-  if (absMin < 60) return de ? `vor ${absMin} Min.` : `${absMin}m ago`;
+  if (absMin < 1) return t('notification.time.now');
+  if (absMin < 60) return t('notification.time.minutesAgo', { count: absMin });
   const hours = Math.floor(absMin / 60);
-  if (hours < 24) return de ? `vor ${hours} Std.` : `${hours}h ago`;
+  if (hours < 24) return t('notification.time.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  return de ? `vor ${days} T.` : `${days}d ago`;
+  return t('notification.time.daysAgo', { count: days });
 }
 
+function translatorFor(context: NotificationTimeContext) {
+  return createNotificationTranslator(context.locale);
+}
+
+/**
+ * Long-form time label for detail surfaces — distinguishes last seen vs resolved.
+ */
 export function formatNotificationTimeLabel(
   model: Pick<
     NotificationQueueModel,
@@ -69,15 +82,14 @@ export function formatNotificationTimeLabel(
   >,
   context: NotificationTimeContext,
 ): string {
-  const de = context.locale === 'de';
-  const intlLocale = de ? 'de-DE' : 'en-US';
+  const t = translatorFor(context);
 
   if (model.lifecycleStatus === 'resolved' || model.lifecycleStatus === 'archived') {
     const resolvedMs = parseIsoMs(model.resolvedAt) ?? parseIsoMs(model.lastSeenAt);
     if (resolvedMs != null) {
-      return de
-        ? `behoben um ${formatClockTime(new Date(resolvedMs).toISOString(), context.locale)}`
-        : `resolved at ${formatClockTime(new Date(resolvedMs).toISOString(), context.locale)}`;
+      return t('notification.time.resolvedAt', {
+        time: formatClockTime(new Date(resolvedMs).toISOString(), context.locale),
+      });
     }
   }
 
@@ -85,16 +97,18 @@ export function formatNotificationTimeLabel(
   if (lastSeenMs != null) {
     const diffMs = context.referenceNowMs - lastSeenMs;
     if (diffMs >= 0 && diffMs < 24 * 60 * 60_000) {
-      return de
-        ? `zuletzt erkannt ${formatRelativePast(lastSeenMs, context.referenceNowMs, true)}`
-        : `last seen ${formatRelativePast(lastSeenMs, context.referenceNowMs, false)}`;
+      return t('notification.time.lastSeenRelative', {
+        relative: formatRelativePast(lastSeenMs, context.referenceNowMs, t),
+      });
     }
-    return de ? `seit ${formatShortDate(new Date(lastSeenMs).toISOString(), context.locale)}` : `since ${formatShortDate(new Date(lastSeenMs).toISOString(), context.locale)}`;
+    return t('notification.time.sinceDate', {
+      date: formatShortDate(new Date(lastSeenMs).toISOString(), context.locale),
+    });
   }
 
   const occurredMs = parseIsoMs(model.occurredAt) ?? parseIsoMs(model.createdAt);
   if (occurredMs != null) {
-    return formatRelativePast(occurredMs, context.referenceNowMs, de);
+    return formatRelativePast(occurredMs, context.referenceNowMs, t);
   }
 
   return '';
@@ -108,29 +122,37 @@ export function formatNotificationLastSeenShort(
   >,
   context: NotificationTimeContext,
 ): string {
-  const de = context.locale === 'de';
+  const t = translatorFor(context);
 
   if (model.lifecycleStatus === 'resolved' || model.lifecycleStatus === 'archived') {
     const resolvedMs = parseIsoMs(model.resolvedAt) ?? parseIsoMs(model.lastSeenAt);
     if (resolvedMs != null) {
-      const rel = formatRelativePast(resolvedMs, context.referenceNowMs, de);
-      return de ? `behoben ${rel}` : `resolved ${rel}`;
+      const rel = formatRelativePast(resolvedMs, context.referenceNowMs, t);
+      return t('notification.time.resolvedShort', { relative: rel });
     }
   }
 
   const lastSeenMs = parseIsoMs(model.lastSeenAt) ?? parseIsoMs(model.occurredAt);
   if (lastSeenMs != null) {
-    const rel = formatRelativePast(lastSeenMs, context.referenceNowMs, de);
-    return de ? `zuletzt ${rel}` : `last ${rel}`;
+    const rel = formatRelativePast(lastSeenMs, context.referenceNowMs, t);
+    return t('notification.time.lastShort', { relative: rel });
   }
 
   const occurredMs = parseIsoMs(model.occurredAt) ?? parseIsoMs(model.createdAt);
   if (occurredMs != null) {
-    const rel = formatRelativePast(occurredMs, context.referenceNowMs, de);
-    return de ? `zuletzt ${rel}` : `last ${rel}`;
+    const rel = formatRelativePast(occurredMs, context.referenceNowMs, t);
+    return t('notification.time.lastShort', { relative: rel });
   }
 
   return '';
+}
+
+export function lifecycleStatusLabelKey(
+  status: NotificationLifecycleStatus,
+): TranslationKey | null {
+  if (status === 'acknowledged') return 'notification.status.acknowledged';
+  if (status === 'snoozed') return 'notification.status.snoozed';
+  return null;
 }
 
 export function isResolvedLifecycle(status: NotificationLifecycleStatus): boolean {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 const ORG_ID = 'org-notif-e2e';
 
@@ -14,10 +14,39 @@ const mockUser = {
   permissions: {},
 };
 
+const mockNotification = {
+  id: 'notif-e2e-1',
+  eventType: 'STATION_SHORTAGE',
+  domain: 'OPERATIONS',
+  severity: 'WARNING',
+  status: 'OPEN',
+  entity: { type: 'STATION', id: 'st-1', displayLabel: 'Hannover Mitte' },
+  titleKey: 'notification.title.stationShortage',
+  bodyKey: 'notification.body.stationShortage',
+  templateParams: { label: 'Hannover Mitte', stationName: 'Hannover Mitte' },
+  action: { type: 'OPEN_STATION', target: { stationId: 'st-1' } },
+  source: { type: 'runtime', ref: 'insights' },
+  firstSeenAt: '2026-07-10T08:00:00.000Z',
+  lastSeenAt: '2026-07-10T10:00:00.000Z',
+  occurrenceCount: 1,
+  resolvedAt: null,
+  expiresAt: null,
+  createdAt: '2026-07-10T08:00:00.000Z',
+  updatedAt: '2026-07-10T10:00:00.000Z',
+  userReceipt: {
+    readAt: null,
+    acknowledgedAt: null,
+    snoozedUntil: null,
+    hiddenAt: null,
+  },
+  availableActions: ['read', 'acknowledge', 'snooze', 'open_entity'],
+};
+
 async function installDashboardMocks(page: import('@playwright/test').Page) {
   await page.addInitScript((user) => {
     localStorage.setItem('synqdrive_token', 'e2e-test-token');
     localStorage.setItem('synqdrive_user', JSON.stringify(user));
+    (window as unknown as { __VITE_NOTIFICATIONS_V2?: string }).__VITE_NOTIFICATIONS_V2 = 'on';
   }, mockUser);
 
   await page.route('**/api/**', async (route) => {
@@ -40,24 +69,10 @@ async function installDashboardMocks(page: import('@playwright/test').Page) {
           generatedAt: '2026-07-10T11:00:00.000Z',
           hasRun: true,
           stale: false,
-          activeInsightCount: 1,
+          activeInsightCount: 0,
           error: null,
-          summary: { total: 1, critical: 0, warning: 1, opportunity: 0, info: 0 },
-          insights: [
-            {
-              id: 'insight-1',
-              type: 'STATION_SHORTAGE',
-              severity: 'WARNING',
-              priority: 50,
-              title: 'Station shortage Hannover',
-              message: 'Vehicle gap at Hannover Mitte',
-              entityScope: 'STATION',
-              entityIds: ['st-1'],
-              isGrouped: false,
-              groupCount: 1,
-              createdAt: '2026-07-10T10:00:00.000Z',
-            },
-          ],
+          summary: { total: 0, critical: 0, warning: 0, opportunity: 0, info: 0 },
+          insights: [],
         }),
       });
     }
@@ -101,15 +116,15 @@ async function installDashboardMocks(page: import('@playwright/test').Page) {
         body: JSON.stringify(
           url.includes('/counts')
             ? {
-                totalActive: 0,
-                unread: 0,
+                totalActive: 1,
+                unread: 1,
                 critical: 0,
-                warning: 0,
+                warning: 1,
                 info: 0,
                 resolvedRecent: 0,
-                byDomain: {},
+                byDomain: { OPERATIONS: 1 },
               }
-            : { data: [], meta: { total: 0, page: 1, limit: 50, totalPages: 0 } },
+            : { data: [mockNotification], meta: { limit: 50, nextCursor: null } },
         ),
       });
     }
@@ -119,11 +134,13 @@ async function installDashboardMocks(page: import('@playwright/test').Page) {
 }
 
 test.describe('Dashboard notification panel E2E (mocked API)', () => {
-  test('renders attention queue with insight-driven item (V1 path)', async ({ page }) => {
+  test('renders V2 notification panel with severity tabs and entity headline', async ({ page }) => {
     await installDashboardMocks(page);
     await page.goto('/');
 
-    const panel = page.getByRole('region').filter({ hasText: /Station shortage|Stationsengpass|Meldungen|Notifications/i });
-    await expect(panel.first()).toBeVisible({ timeout: 25_000 });
+    const panel = page.getByRole('region', { name: /Meldungen|Notifications/i });
+    await expect(panel).toBeVisible({ timeout: 25_000 });
+    await expect(panel.getByRole('tab', { name: /Warnungen|Warnings/i })).toBeVisible();
+    await expect(panel.getByText('Hannover Mitte')).toBeVisible();
   });
 });

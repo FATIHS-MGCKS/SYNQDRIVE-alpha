@@ -31,7 +31,12 @@ export function NotificationActionsMenu({
   const hasMenu = Boolean(onMarkRead || onAcknowledge || onSnooze);
   if (!hasMenu) return null;
 
-  const showMarkRead = Boolean(onMarkRead && readStatus === 'unread');
+  const showMarkRead = Boolean(
+    onMarkRead
+      && readStatus === 'unread'
+      && availableActions.includes('read')
+      && !availableActions.includes('acknowledge'),
+  );
   const showAcknowledge = Boolean(
     onAcknowledge && availableActions.includes('acknowledge' as ApiNotificationAvailableAction),
   );
@@ -53,7 +58,7 @@ export function NotificationActionsMenu({
           type="button"
           className={cn(
             NOTIFICATION_PANEL_TYPO.cta,
-            'sq-press inline-flex min-h-9 cursor-pointer items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+            'sq-press inline-flex min-h-11 cursor-pointer items-center rounded-md px-2 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
             triggerClassName,
           )}
           aria-label={t('notification.action.more')}
@@ -101,7 +106,7 @@ function MenuAction({
     <button
       type="button"
       className={cn(
-        'flex w-full min-h-9 items-center rounded-md px-2.5 text-left text-xs leading-4 hover:bg-muted/50',
+        'flex w-full min-h-11 items-center rounded-md px-2.5 text-left text-xs leading-4 hover:bg-muted/50',
         className,
       )}
       onClick={onClick}

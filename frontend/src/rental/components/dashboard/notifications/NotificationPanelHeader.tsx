@@ -42,12 +42,7 @@ export function NotificationPanelHeader({
   t: ReturnType<typeof useLanguage>['t'];
 }) {
   const { locale, operatorFocusMode } = vm;
-  const de = locale === 'de';
-  const title = operatorFocusMode
-    ? de
-      ? 'Kritische Aktionen'
-      : 'Critical actions'
-    : t('notification.panelTitle');
+  const title = operatorFocusMode ? t('notification.panelTitleFocus') : t('notification.panelTitle');
 
   return (
     <div className="flex items-center justify-between gap-2 border-b border-border/35 px-3.5 py-2.5">

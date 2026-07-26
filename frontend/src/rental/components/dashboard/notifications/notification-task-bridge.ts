@@ -64,8 +64,11 @@ export function canCreateTaskFromNotification(item: ActionQueueItem): boolean {
 export function buildNotificationTaskPrefill(
   item: ActionQueueItem,
   vendors: Vendor[] = [],
+  locale = 'de',
 ): HealthTaskPrefill | null {
   if (!item.vehicleId || !canCreateTaskFromNotification(item)) return null;
+
+  const t = createNotificationTranslator(locale);
 
   const module = healthModuleFromItem(item) ?? 'error_codes';
   const severity = item.queue?.severity ?? item.severity;
@@ -86,7 +89,7 @@ export function buildNotificationTaskPrefill(
     contextLines: [
       item.title,
       item.reason,
-      `Quelle: Meldungen (${item.issueType ?? 'notification'})`,
+      t('notification.task.sourceLine', { eventType: item.issueType ?? 'notification' }),
     ].filter(Boolean),
     vendors,
     blocksRental: severity === 'critical',
@@ -109,7 +112,6 @@ export function resolveNotificationPrimaryCtaLabel(
   item: ActionQueueItem,
   locale: string,
 ): string {
-  const de = locale === 'de';
   const t = createNotificationTranslator(locale);
   const eventType = item.issueType ?? item.queue?.conditionCode;
   const domain = item.queue?.domain;
@@ -139,7 +141,7 @@ export function resolveNotificationPrimaryCtaLabel(
     return t(key);
   }
   if (item.vehicleId || item.cta === 'open-vehicle') {
-    return de ? 'Zum Fahrzeug' : 'Open vehicle';
+    return t('notification.cta.openVehicle');
   }
   if (item.cta === 'open-booking') return t('notification.cta.openBooking');
   return t('notification.cta.openRental');
