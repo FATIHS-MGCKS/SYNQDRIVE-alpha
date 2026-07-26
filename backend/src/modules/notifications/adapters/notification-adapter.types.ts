@@ -65,6 +65,22 @@ export interface BookingAdapterSource {
   label: string;
 }
 
+export interface BookingHandoverAdapterSource {
+  eventType: 'PICKUP_OVERDUE' | 'RETURN_OVERDUE' | 'TIGHT_HANDOVER' | 'RETURN_NEEDS_INSPECTION';
+  bookingId: string;
+  vehicleId?: string;
+  customerId?: string;
+  label: string;
+  bookingRef: string;
+  insightSeverity: InsightSeverity | 'WARNING' | 'CRITICAL';
+  dedupeKey: string;
+  sourceEventId?: string;
+  cleared?: boolean;
+  occurredAt?: Date;
+  conditionCodeVariant?: string;
+  minutesOverdue?: number;
+}
+
 export interface TechnicalObservationAdapterSource {
   vehicleId: string;
   label: string;

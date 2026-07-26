@@ -11,6 +11,7 @@ import { TechnicalObservationNotificationAdapter } from './technical-observation
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { ComplianceOperationalNotificationAdapter } from './compliance-operational-notification.adapter';
+import { BookingHandoverNotificationAdapter } from './booking-handover-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
@@ -87,6 +88,7 @@ describe('Vehicle health & telemetry producer migration', () => {
       new LowUtilizationNotificationAdapter(),
       new ComplianceOperationalNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),
+      new BookingHandoverNotificationAdapter(),
       core,
     );
   });

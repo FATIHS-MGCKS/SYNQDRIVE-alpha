@@ -259,6 +259,30 @@ export class BusinessInsightsService {
       }
 
       try {
+        await this.notificationIngest?.syncBookingHandoverFromInsights(
+          organizationId,
+          run.id,
+          gatedCandidates,
+        );
+      } catch (bookingHandoverErr: any) {
+        this.logger.warn(
+          `Notification V2 booking handover sync failed for org ${organizationId}: ${bookingHandoverErr?.message ?? bookingHandoverErr}`,
+        );
+      }
+
+      try {
+        await this.notificationIngest?.syncReturnOverdueNotifications(
+          organizationId,
+          run.id,
+          ctx.now,
+        );
+      } catch (returnOverdueErr: any) {
+        this.logger.warn(
+          `Notification V2 return overdue sync failed for org ${organizationId}: ${returnOverdueErr?.message ?? returnOverdueErr}`,
+        );
+      }
+
+      try {
         await this.syncVehicleHealthNotifications(organizationId, run.id);
       } catch (healthIngestErr: any) {
         this.logger.warn(

@@ -12,4 +12,7 @@ export const V2_CANONICAL_INSIGHT_TYPES = new Set<InsightType>([
   InsightType.TUV_OVERDUE,
   InsightType.BOKRAFT_OVERDUE,
   InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY,
+  InsightType.PICKUP_OVERDUE,
+  InsightType.TIGHT_HANDOVER,
+  InsightType.RETURN_NEEDS_INSPECTION,
 ]);

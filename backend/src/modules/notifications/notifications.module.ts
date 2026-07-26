@@ -12,6 +12,7 @@ import { NotificationProducerRouter } from './adapters/notification-producer.rou
 import { StationShortageNotificationAdapter } from './adapters/station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './adapters/low-utilization-notification.adapter';
 import { ComplianceOperationalNotificationAdapter } from './adapters/compliance-operational-notification.adapter';
+import { BookingHandoverNotificationAdapter } from './adapters/booking-handover-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './adapters/vehicle-health-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './adapters/technical-observation-notification.adapter';
 import { NotificationCoreService } from './notification-core.service';
@@ -84,6 +85,7 @@ import { NotificationCandidateMetricsBinder } from './notification-candidate-met
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,
     ComplianceOperationalNotificationAdapter,
+    BookingHandoverNotificationAdapter,
     VehicleHealthNotificationAdapter,
     NotificationProducerRouter,
     NotificationProducerIngestService,
@@ -112,6 +114,7 @@ import { NotificationCandidateMetricsBinder } from './notification-candidate-met
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,
     ComplianceOperationalNotificationAdapter,
+    BookingHandoverNotificationAdapter,
     VehicleHealthNotificationAdapter,
   ],
 })

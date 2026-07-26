@@ -20,6 +20,8 @@ export const MIGRATABLE_INSIGHT_TYPES: readonly InsightType[] = Object.values(In
 
 const BOOKING_INSIGHT_TYPES = new Set<InsightType>([
   InsightType.PICKUP_OVERDUE,
+  InsightType.TIGHT_HANDOVER,
+  InsightType.RETURN_NEEDS_INSPECTION,
 ]);
 
 function mapInsightSeverity(severity: InsightSeverity): NotificationSeverity {

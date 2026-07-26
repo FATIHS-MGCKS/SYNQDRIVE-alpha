@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-booking-handover-producers-2026-07-26',
+    version: '4.9.880',
+    title: 'Notification Engine Remediation — booking pickup & return producers (Prompt 13)',
+    summary: [
+      'W2 booking/handover producers migrate to canonical NotificationCandidate ingest (PICKUP_OVERDUE, RETURN_OVERDUE, TIGHT_HANDOVER, RETURN_NEEDS_INSPECTION).',
+      'Booking-scoped entity (bookingId primary, vehicleId in action target); stable per-booking fingerprints and dedupeKey sourceEventId.',
+      'RETURN_OVERDUE synced from ACTIVE booking query (0 min grace); cron re-runs update same row.',
+      'Docs: docs/architecture/notification-booking-handover-producers.md',
+    ],
+    reason:
+      'Pickup, return, and handover alerts must use one inbox path with booking-centric identity and proper recovery.',
+    previousBehavior:
+      'V1 dashboard_insights + frontend actionQueue synthetic overdue tiles; RETURN_OVERDUE had no backend producer.',
+    details:
+      'BookingHandoverNotificationAdapter, booking-handover-source.mapper, syncBookingHandoverFromInsights, syncReturnOverdueNotifications.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T10:00:00.000Z',
+  },
+  {
     id: 'notification-vehicle-health-telemetry-producers-2026-07-26',
     version: '4.9.879',
     title: 'Notification Engine Remediation — vehicle health & telemetry producers (Prompt 12)',
