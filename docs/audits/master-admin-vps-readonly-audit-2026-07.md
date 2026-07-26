@@ -4,8 +4,9 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 15: Backup/Restore/DR Readiness read-only **abgeschlossen** (2026-07-26T07:41–07:46 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:46:00Z` (Backup/Restore/DR) |
+| **Status** | **ABGESCHLOSSEN** — Read-only VPS-Audit Schritte 1–15 + Abschlussbericht (2026-07-26T08:00 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T08:00:00Z` (Abschlussbericht) |
+| **Abschlussurteil** | **Not Production Ready** — siehe Kap. 29.10 |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -368,7 +369,7 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 |------|-------|-----------|
 | `/opt/synqdrive` gesamt | **38 GiB** | Hauptverbraucher auf `/` |
 | `/opt/synqdrive/releases` | **36 GiB** | 29 Releases à ~1.3 GiB |
-| `/opt/synqdrive/shared` | **2.0 GiB** | Backups 2.0 GiB, Storage 6.1 MiB, Uploads 2.4 MiB |
+| `/opt/synqdrive/shared` | **2.0 GiB** | Backups **2,1 GiB** (39 Dumps), Storage 6,1 MiB, Uploads 2,4 MiB |
 | `/var/lib/docker` | **4.7 GiB** | Images 2.1 GiB + Volumes 3.1 GiB |
 | `/var/log` | **112 MiB** | Journal 75 MiB |
 | `/root/.pm2/logs` | **201 MiB** | Rotierte synqdrive-Logs (pm2-logrotate aktiv) |
@@ -1059,14 +1060,15 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 
 ## 10. Frontend
 
-| Prüfpunkt | Baseline |
+| Prüfpunkt | Ergebnis |
 |-----------|----------|
 | SPA erreichbar | `GET https://app.synqdrive.eu/` → **200** |
-| Master-Admin-Bundle | **Nicht** geprüft (String-Suche in `dist/`) |
-| Build-Zeitstempel | **Nicht** geprüft |
+| Build-Artefakt | `index-CXuX1Er0.js` (Schritt 3, Release `20260725233142_v4994`) |
+| Master-Admin-Bundle | **NICHT VERIFIZIERT** — keine String-Suche in `dist/` |
 | `frontend.env` Keys (Namen) | `VITE_ENABLE_LIQUID_GLASS_LENS`, `VITE_MAPBOX_*`, `VITE_NOTIFICATIONS_V2` |
+| Master-Routen im Bundle | **NICHT VERIFIZIERT** |
 
-**Status:** Ausstehend — Asset-Hashes, Master-Route-Bundle, Env-Alignment.
+**Status:** **TEILWEISE** — Erreichbarkeit und Build-ID belegt; Bundle-Inhalt und Master-UI-Alignment **NOT VERIFIED** (Kap. 29.2).
 
 ---
 
@@ -2007,15 +2009,16 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ## 19. E-Mail, WhatsApp und Voice AI
 
-| Prüfpunkt | Baseline |
+| Prüfpunkt | Ergebnis |
 |-----------|----------|
-| Resend / E-Mail | Env-Backups deuten auf Resend-Cutover (`backend.env.bak-resend-*`) — Keys **nicht** ausgewertet |
-| Twilio / Voice | Env-Backups `backend.env.bak-twilio-*` vorhanden |
-| Didit | Keys: `DIDIT_API_KEY`, `DIDIT_ENABLED`, `DIDIT_WEBHOOK_*` |
-| Master Voice Control Plane | Repo: `VoiceAssistantAdminView.tsx`, `/admin/voice-assistant/*` |
-| Live Voice-Webhooks | **Nicht** geprüft |
+| Resend / E-Mail | Env-Backups `backend.env.bak-resend-*`; Keys **nicht** ausgewertet |
+| Twilio / Voice | Env-Backups `backend.env.bak-twilio-*`; Keys **nicht** ausgewertet |
+| Didit | Keys: `DIDIT_API_KEY`, `DIDIT_ENABLED`, `DIDIT_WEBHOOK_*` (Namen only) |
+| Master Voice Control Plane | Repo: `VoiceAssistantAdminView.tsx`, `/admin/voice-assistant/*` (Code-Review) |
+| Live Voice-Webhooks | **NICHT VERIFIZIERT** |
+| WhatsApp | Env-Key-Namen vorhanden; Prod-Daten **0** Consent-Records (Schritt 14) |
 
-**Status:** Ausstehend.
+**Status:** **NOT VERIFIED** — nur Env-Inventar und Code-Referenz; keine Live-Webhook-/PSTN-Probes (Kap. 29.2).
 
 ---
 
@@ -2291,13 +2294,24 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ## 23. Datenkonsistenz
 
-| Prüfpunkt | Status |
-|-----------|--------|
-| Cross-Subsystem-Konsistenz | Teilweise (Schritt 12: Billing vs. Stripe) |
-| Outbox/Queue vs. DB | **Nicht** geprüft |
-| Billing-Ledger vs. Stripe | **INKONSISTENT** — 1 Trial-Sub lokal, 0 Stripe-Subs, 0 Invoices, TEST-Key auf Prod (**Schritt 12**) |
+**Prüfzeitpunkt:** Schritte 7–15 (aggregiert); Abschluss Kap. 29.7
 
-**Status:** Billing-Stripe-Abgleich **abgeschlossen** (Schritt 12). Weitere Subsysteme ausstehend.
+| Domäne | Inkonsistenz | Schwere | Finding |
+|--------|--------------|---------|---------|
+| **Billing ↔ Stripe** | `STRIPE_SECRET_KEY`=TEST auf Prod; DB `stripe_mode=LIVE`; **0** Platform-Webhooks; **1** TRIALING ohne `stripe_subscription_id` | **KRITISCH** | MA-BILL-P0-001/002/003 |
+| **Billing ↔ Fleet** | **1** Org: Billable-Vehicle-Count ≠ Fleet | Niedrig | MA-DB-P3-004 |
+| **Org ↔ IAM** | **3** aktive Orgs ohne `ORG_ADMIN` | Mittel | MA-DB-P2-001 |
+| **Org ↔ Subscription** | **3** aktive Orgs ohne ACTIVE/TRIALING Sub | Mittel | MA-DB-P2-002 |
+| **PG ↔ ClickHouse** | **3** Fahrzeuge ohne CH-Daten; **1** verwaiste CH-`vehicle_id` (38k Rows); **94,7 %** Snapshot-Duplikate | Hoch | MA-CH-P1-001, MA-CH-P2-003 |
+| **CH Tenant-Scope** | `telemetry_snapshots` ohne `org_id`; **5,3 %** Waypoints leer | **KRITISCH** (Leak-Pfad) | MA-CH-P0-001 |
+| **DIMO ↔ Vehicle** | **2** `dimo_vehicles` ohne Vehicle; kein Unique auf `dimo_vehicle_id` | Hoch | MA-DIMO-P0-001 |
+| **Telemetrie-Freshness** | CH-Snapshots stagnieren ~10 h trotz aktiver Polls | Mittel | MA-CH-P2-004, MA-DIMO-P3-003 |
+| **Queue ↔ DB** | **28** `battery.v2` failed; **2** `dimo.trip-tracking` failed (FK) | Mittel | MA-REDIS-P1-001 |
+| **Audit-Vollständigkeit** | **160** Logs ohne `user_id`; **249** ohne `org_id`; `entity_id` 19,7 % | Mittel | MA-AUD-P2-* |
+| **Backup ↔ Live** | PG-Dumps enthalten gelöschte IAM-Daten; CH/Files nicht im Backup-Set | Hoch | MA-DR-P2-001, MA-PRIV-P2-001 |
+| **Outbox/Queue vs. DB** | **NICHT VERIFIZIERT** | — | — |
+
+**Status:** Aggregiert im Abschlussbericht (Kap. 29.7). Billing- und CH-Inkonsistenzen dominieren.
 
 ---
 
@@ -2571,7 +2585,22 @@ flowchart TB
 
 ---
 
-## 26. P0/P1/P2 Findings
+## 26. P0/P1/P2/P3 Findings
+
+> **Abschluss-Klassifikation:** **7× P0** (Kap. 29.3), **12× P1**, **53× P2**, **38× P3** (unique IDs).  
+> P0-Detail mit Remediation/Tests: `docs/audits/master-admin-vps-readonly-findings-2026-07.md`
+
+### 26.0 P0 Findings (Abschluss — nur unmittelbare Production-Blocker)
+
+| ID | Titel | Kriterium |
+|----|-------|-----------|
+| **MA-CH-P0-001** | ClickHouse `telemetry_snapshots` ohne `org_id` | Tenant-Datenleck |
+| **MA-BILL-P0-001** | TRIALING ohne `stripe_subscription_id` | Falsche Subscription-Freischaltung |
+| **MA-BILL-P0-002** | Stripe TEST-Key auf Prod bei DB-LIVE-Mode | Zahlungs-/Rechnungsfehler |
+| **MA-BILL-P0-003** | `STRIPE_WEBHOOK_SECRET` fehlt | Zahlungs-/Subscription-Sync-Fehler |
+| **MA-BKP-P0-001** | CH ohne Backup + kein Offsite | Fehlende Wiederherstellbarkeit |
+| **MA-TOPO-P0-001** | ClickHouse Ghost-Mounts | Kritischer Production-Ausfall bei Recreate |
+| **MA-DIMO-P0-001** | Kein Unique auf `vehicles.dimo_vehicle_id` | Falsche Fahrzeugzuordnung |
 
 > **Schritt 5 (Netzwerk/TLS):** 2× P1 neu, 4× P2 neu/verstärkt.
 > **Schritt 6 (Backend/API):** 3× P2 neu, 2× P3 neu.
@@ -2729,7 +2758,7 @@ flowchart TB
 
 ## 27. Offene Prüfungen
 
-### Abgeschlossen
+### Abgeschlossen (Schritte 1–15)
 
 - [x] **VPS-Host-Baseline** — OS, Kernel, CPU/RAM/Swap, Disk/Inodes, NTP, Prozesse, OOM, Docker-DF, Log-Größen
 - [x] **Deployment & Repo-Abgleich** — Git, Builds, PM2, Compose, Images, Env-Inventar, Prisma migrate status
@@ -2741,61 +2770,265 @@ flowchart TB
 - [x] **ClickHouse & Telemetrie-Pipeline (read-only)** — Schema/TTL/Parts, Ingestion-Freshness, PG↔CH-Cross-Check, Pipeline-Stufen
 - [x] **Prometheus/Grafana/Observability (read-only)** — Targets, Rules, firing Alerts, Dashboards, Master-Admin-Integration
 - [x] **DIMO-Integration & Fahrzeugimport (read-only)** — Env, PG-Mapping, Poll/Webhook-Logs, Import-Code-Review
-- [x] **Stripe/Billing (read-only)** — Env-Keys, PG-Ledger, Stripe MCP GET, Webhook-Probes, Reconciliation, Code-Review
-- [x] **IAM/Rollen/Tenant Isolation/Impersonation (read-only)** — Rollenmodell, Guard-Matrix, Berechtigungsmatrix, PG-Aggregate, Impersonation-Konzept
+- [x] **Stripe/Billing/Subscriptions/Rechnungen (read-only)** — Env-Keys, PG-Ledger, Stripe MCP GET, Webhook-Probes, Reconciliation
+- [x] **IAM/RBAC/Tenant/Impersonation (read-only)** — Rollenmodell, Guard-Matrix, Berechtigungsmatrix, PG-Aggregate
 - [x] **Audit Logging, Datenschutz & ISO-Kontrollen (read-only)** — Feldabdeckung, kritische Aktionen, Kontrollmatrix, Retention-Flags
-- [x] **Backup/Restore/DR Readiness (read-only)** — PG/CH/Redis/Files, Env-Backups, Observability-Config, RPO/RTO-Lücken, SPOF
+- [x] **Backup/Restore/DR Readiness (read-only)** — PG/CH/Redis/Files, Env-Backups, RPO/RTO-Lücken, SPOF
+- [x] **Abschlussbericht** — Executive Summary, P0–P3, Gates, Urteil (Kap. 29)
 
-### Priorisierte Folgeschritte (alle read-only)
+### Bewusst nicht verifiziert (Insufficient Evidence)
 
-1. ~~**Master-Admin-Surface (unauth)**~~ — **erledigt** (Schritt 6)
-2. ~~**PostgreSQL SELECT-Counts / Tenant-Stichproben**~~ — **erledigt** (Schritt 7)
-3. ~~**BullMQ Queue Health**~~ — **erledigt** (Schritt 8)
-4. ~~**ClickHouse**~~ — **erledigt** (Schritt 9)
-5. ~~**Prometheus/Grafana**~~ — **erledigt** (Schritt 10)
-6. ~~**DIMO**~~ — **erledigt** (Schritt 11)
-7. ~~**Stripe/Billing**~~ — **erledigt** (Schritt 12)
-8. ~~**IAM/Rollen/Tenant**~~ — **erledigt** (Schritt 13)
-9. ~~**Audit/Datenschutz/ISO**~~ — **erledigt** (Schritt 14)
-10. ~~**Backup-Inventar**~~ — **erledigt** (Schritt 15)
-11. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
-12. **Authentifizierte Cross-Tenant-API-Smokes** — erfordert Credentials (kontrolliert)
-13. **Frontend Master-Bundle** — `grep` in `backend/public/assets/`
+| Bereich | Grund | Auswirkung auf Urteil |
+|---------|-------|----------------------|
+| **Frontend Master-Bundle** | Keine `grep`/Asset-Analyse in `dist/` | Master-UI-Exposure **NOT VERIFIED** |
+| **Authentifizierte Cross-Tenant-Smokes** | Keine Credentials im Audit | Runtime-Tenant-Isolation **NOT VERIFIED** |
+| **Voice AI / Twilio / Resend Live** | Keine Webhook-/PSTN-Probes | Voice/E-Mail-Pfad **NOT VERIFIED** |
+| **Port 3001 extern erreichbar** | Kein Scan von außerhalb VPS | Bypass-Risiko **teilweise** belegt (Bind `*:3001`) |
+| **Outbox vs. DB Konsistenz** | Nicht geprüft | Eventual-Consistency **NOT VERIFIED** |
 
 ---
 
-## 28. Production-Readiness-Urteil
+## 28. Production-Readiness-Urteil (Kurzfassung)
+
+> Vollständiger Abschluss: **Kap. 29**. Findings-Extrakt: `docs/audits/master-admin-vps-readonly-findings-2026-07.md`
 
 | Aspekt | Urteil |
 |--------|--------|
-| Infrastruktur erreichbar | **JA** — SSH OK, Health 200, Kernkomponenten laufen |
-| **VPS-Host-Baseline** | **GESUND mit Vorbehalten** — RAM/CPU/zeitlich stabil; P2: kein Swap, Release-Disk-Wachstum |
-| **Deployment-Konsistenz** | **KONSISTENT** — FE/BE/Worker/Prisma aus einem Release; 2 Docs-Commits hinter main |
-| **Service-Topologie** | **FUNKTIONAL STABIL** — 1× P1 ClickHouse Ghost-Mounts |
-| **Netzwerk/TLS** | **GRUNDLEGEND OK** — 2× **P1** Swagger/OpenAPI öffentlich; Host-Firewall fehlt |
-| **Backend/API-Runtime** | **OK** — Readiness grün; wiederkehrende Scheduler/BatteryV2-Fehler (**P2**) |
-| **Master-Admin (unauth)** | **OK** — 401 ohne Token; Seed-Admin disabled (**403**) |
-| **PostgreSQL** | **OK mit P2/P3** — Schema aktuell; 3 Orgs ohne Admin/Subscription |
-| **Redis/BullMQ** | **WARN** — kein Backlog; **28** battery.v2 fails; Scheduler JobId-Fehler |
-| **ClickHouse/Telemetrie** | **WARN** — gesund & klein; **94,7 %** Snapshot-Duplikate; keine `org_id` auf Kern-Spiegel; Signal-Stagnation ~10 h |
-| **Prometheus/Grafana** | **WARN** — Scrape OK; **98** Alerts ohne Alertmanager; **4** firing; Evaluations-Dashboard fehlt auf VPS |
-| **DIMO/Fahrzeugimport** | **OK mit P2/P3** — Production-Env; Mapping konsistent; Import nicht transaktional; Webhook-Inbox leer |
-| **Stripe/Billing** | **KRITISCH** — Test-Key auf Prod; Platform-Webhook nicht betriebsbereit; 1 Trial ohne Stripe-Sub; 2 offene Reconciliation-Drifts |
-| **IAM/Rollen/Tenant** | **OK mit P2/P3** — Guards solide für Tenant-User; Master Vollzugriff; **kein** Impersonate; MFA 0 enrolled |
-| **Audit/Datenschutz/ISO** | **TEILWEISE** — 853 Activity-Logs; löschbar (kein WORM); Billing-Audit leer; Retention aktiv; kein Compliance-Urteil |
-| **Backup/Restore/DR** | **UNZUREICHEND** — PG deploy-only (2,1 GiB, kein Offsite); CH **ohne** Backup; Files/Redis nicht im DR-Set; **kein** Prod-Restore-Nachweis |
-| Audit vollständig | **NEIN** — Voice/Resend/authentifizierte Smokes ausstehend |
-| Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Matrizen (Code); keine authentifizierten Cross-Tenant-Tests |
-| Gesamturteil | **PENDING** — Kein **P0**; **10× P1** (Swagger, CH-Mounts, CH-Duplikate, Alertmanager, Stripe-Test-Key, Webhook-Secret, Audit-WORM, **Offsite-Backup**, **CH-ohne-Backup**, **Backup-Alerting**) + mehrere **P2** offen |
+| Infrastruktur erreichbar | **JA** |
+| Betriebsfähigkeit (aktuell) | **JA** — Health 200, Queues ohne Backlog |
+| Master-Admin-Control-Plane | **TEILWEISE** — Code/Guards belegt; keine Auth-Smokes |
+| Billing/Subscriptions | **FAIL** |
+| Backups/DR | **FAIL** |
+| **Gesamturteil** | **Not Production Ready** |
 
-### Schritt 2 — VPS-Baseline-Kurzfazit
+---
 
-| Kategorie | Ergebnis |
-|-----------|----------|
-| Host-Stabilität | **Stabil** — 9d Uptime, 0 Kernel-Errors/7d, 0 OOM |
-| Kapazität kurzfristig | **Ausreichend** — Disk 28 %, RAM ~83 % frei |
-| Kapazität langfristig | **Beobachten** — Release-Retention 36 GiB ohne Prune |
-| Sicherheits-Hygiene Host | **P3** — Desktop-Snaps auf Prod-VM |
+## 29. Abschlussbericht
+
+**Prüfzeitpunkt:** `2026-07-26T06:54–08:00 UTC`  
+**Referenz-Findings:** `docs/audits/master-admin-vps-readonly-findings-2026-07.md`
+
+### 29.1 Executive Summary
+
+#### Tatsächlicher Production-Zustand
+
+SynqDrive läuft stabil auf einem **Single-VPS** (`srv1374778`, Ubuntu 24.04, 4 vCPU, 16 GiB RAM). Release `20260725233142_v4994` (Commit `4a479c1e`) ist konsistent deployed: NestJS-Monolith via PM2, PostgreSQL/Redis host-native, ClickHouse/Prometheus/Grafana in Docker. Öffentliche Health-Checks sind **grün**. Das System bedient aktuell **4** Organisationen, **9** Fahrzeuge, **2** Plattform-User (1× Master Admin).
+
+#### Größte Risiken
+
+1. **Billing nicht produktionsreif** — Stripe-Test-Key auf Prod, fehlendes Platform-Webhook-Secret, lokale TRIALING-Subscription ohne Stripe-Objekt.
+2. **Keine belastbare Disaster Recovery** — ClickHouse (**~2,8 GiB**) ohne Backup; kein Offsite; kein Prod-Restore-Test.
+3. **Tenant-Risiko in ClickHouse** — Telemetrie-Spiegel ohne `org_id` (GPS-Daten); theoretischer Cross-Tenant-Leak bei CH-only-Pfaden.
+4. **Blindes Alerting** — 98 Alert Rules, 4 firing, **kein** Alertmanager.
+5. **API-Oberfläche öffentlich enumerierbar** — Swagger/OpenAPI ohne Auth.
+
+#### Wichtigste Inkonsistenzen
+
+| Inkonsistenz | Beleg |
+|--------------|-------|
+| Stripe TEST-Key ↔ DB `stripe_mode=LIVE` | Env + `billing_subscriptions` |
+| TRIALING lokal ↔ 0 Stripe-Subscriptions | PG + Stripe MCP |
+| CH-Daten stagnieren ↔ aktive DIMO-Polls | CH `max(recorded_at)` vs. `dimo_poll_logs` |
+| 3 Orgs aktiv ↔ 0 Org-Admin + 0 Subscription | PG-Integritäts-SELECTs |
+
+#### Kritischste Master-Admin-Risiken
+
+- **Vollzugriff ohne MFA** (0 enrolled) und ohne Step-up auf breite GETs.
+- **Keine Impersonation** (positiv für Kontrolle; negativ für Support-Prozess).
+- **`GET /admin/users`** unpaginiert mit E-Mail (Datenschutz + Enumeration).
+- **Audit-Logs löschbar** — kein manipulationssicherer Nachweis privilegierter Aktionen.
+- **`hardware-backfill`** ohne Org-Validierung bei Vehicle-IDs.
+
+#### Aktueller Reifegrad
+
+| Dimension | Reifegrad |
+|-----------|-----------|
+| Betriebsstabilität | **Mittel-Hoch** (läuft, aber Scheduler-/Battery-Fehler) |
+| Security | **Niedrig-Mittel** (Guards OK; Exposure/Hardening-Lücken) |
+| Tenant Isolation | **Mittel** (PG solide; CH-Lücke) |
+| Billing | **Niedrig** |
+| Observability | **Mittel** (Metriken da; Alerting blind) |
+| DR/Backup | **Niedrig** |
+| Compliance-Nachweis | **Niedrig-Mittel** (Controls teilweise; WORM/Restore fehlt) |
+| **Gesamt** | **Früh-Production / Not Production Ready** |
+
+### 29.2 Vollständigkeit der Auditbereiche
+
+| Bereich | Status | Kapitel | Anmerkung |
+|---------|--------|---------|-----------|
+| VPS-Baseline | ✅ Vollständig | 3 | — |
+| Deployment | ✅ Vollständig | 4–5 | 2 Docs-Commits Drift |
+| Git und Build | ✅ Vollständig | 4–5 | FE-Bundle-Inhalt nicht verifiziert |
+| Container und Prozesse | ✅ Vollständig | 6, 14 | — |
+| Netzwerk | ✅ Vollständig | 7 | Externer Port-3001-Scan fehlt |
+| TLS | ✅ Vollständig | 8 | LE bis 2026-09-20 |
+| Reverse Proxy | ✅ Vollständig | 7, 8 | — |
+| Backend | ✅ Vollständig | 9 | Nur unauth-Probes |
+| Frontend | ⚠️ Teilweise | 10 | **NOT VERIFIED** (Bundle) |
+| PostgreSQL | ✅ Vollständig | 11 | — |
+| Redis | ✅ Vollständig | 12 | — |
+| BullMQ | ✅ Vollständig | 12 | — |
+| Worker | ✅ Vollständig | 12, 14 | — |
+| ClickHouse | ✅ Vollständig | 13 | — |
+| Telemetrie | ✅ Vollständig | 13, 17 | — |
+| Prometheus | ✅ Vollständig | 15 | — |
+| Grafana | ✅ Vollständig | 16 | Evaluations-Dashboard fehlt auf VPS |
+| DIMO | ✅ Vollständig | 17 | DIMO MCP nicht verfügbar |
+| Stripe | ✅ Vollständig | 18 | — |
+| Subscriptions | ✅ Vollständig | 18 | — |
+| Rechnungen | ✅ Vollständig | 18 | 0 SaaS-Invoices in Prod |
+| RBAC | ✅ Vollständig | 20 | — |
+| Tenant Isolation | ⚠️ Teilweise | 21 | Keine Auth-Smokes |
+| Impersonation | ✅ Vollständig | 20.5, 21.4 | Nicht implementiert (belegt) |
+| Audit Logs | ✅ Vollständig | 22 | — |
+| Datenschutz | ✅ Vollständig | 25 | Kein Compliance-Urteil |
+| ISO-Kontrollen | ✅ Vollständig | 25 | — |
+| Backups | ✅ Vollständig | 24 | — |
+| Restore Readiness | ✅ Vollständig | 24 | Kein Prod-Restore-Nachweis |
+| Voice/Resend/Twilio | ❌ Not Verified | 19 | Env only |
+
+### 29.3 P0 Findings
+
+> Nur Risiken mit unmittelbarem Bezug zu Tenant-Leak, Billing-Fehler, Fahrzeugzuordnung, DR-Ausfall, Production-Ausfall. Details: Findings-Datei.
+
+| ID | Titel | Komponente |
+|----|-------|------------|
+| **MA-CH-P0-001** | ClickHouse-Telemetrie ohne `org_id` | ClickHouse / Tenant |
+| **MA-BILL-P0-001** | TRIALING-Subscription ohne Stripe-Objekt | Billing / Subscription |
+| **MA-BILL-P0-002** | Stripe TEST-Key bei DB-LIVE-Mode | Billing / Zahlung |
+| **MA-BILL-P0-003** | Platform-Webhook-Secret fehlt | Billing / Webhooks |
+| **MA-BKP-P0-001** | ClickHouse ohne Backup + kein Offsite | DR |
+| **MA-TOPO-P0-001** | ClickHouse Ghost-Mounts | Container / Ausfall |
+| **MA-DIMO-P0-001** | `dimo_vehicle_id` ohne Unique-Constraint | Fahrzeug / DIMO |
+
+**Anzahl P0: 7**
+
+### 29.4 P1 Findings (Zusammenfassung)
+
+| ID | Titel |
+|----|-------|
+| MA-NET-P1-001 | Swagger UI öffentlich |
+| MA-NET-P1-002 | OpenAPI Spec öffentlich |
+| MA-TOPO-P1-001 | *(hochgestuft zu P0 als MA-TOPO-P0-001)* — in Kap. 26 als P1 belassen für Historie |
+| MA-REDIS-P1-001 | 28 failed `battery.v2` Jobs |
+| MA-CH-P1-001 | 94,7 % CH-Snapshot-Duplikate |
+| MA-OBS-P1-001 | Kein Alertmanager |
+| MA-BILL-P1-001 | *(P0 MA-BILL-P0-002)* |
+| MA-BILL-P1-002 | *(P0 MA-BILL-P0-003)* |
+| MA-AUD-P1-001 | Audit-Logs löschbar (kein WORM) |
+| MA-BKP-P1-001 | Kein Offsite-Backup |
+| MA-BKP-P1-002 | CH ohne Backup |
+| MA-BKP-P1-003 | Keine Backup-Alarmierung |
+
+**Anzahl P1 (Kap. 26, unverändert): 12** — davon 3 inhaltlich P0-duplikat; P0-Matrix in Findings-Datei ist maßgeblich.
+
+### 29.5 P2 / P3 Findings
+
+| Severity | Anzahl (unique IDs in Kap. 26) |
+|----------|-------------------------------|
+| **P2** | **53** |
+| **P3** | **38** |
+
+Vollständige Liste: Kap. 26. Priorisierte P2-Cluster: Netzwerk-Hardening (5), Master-Admin/Audit (12), CH/Telemetrie (6), Billing (4), Backup/DR (8), DIMO (2).
+
+### 29.6 Architekturabweichungen
+
+| Bereich | Erwarteter Zustand | Tatsächlicher Zustand | Abweichung | Priorität |
+|---------|-------------------|----------------------|------------|-----------|
+| Billing | Live-Stripe auf Prod mit verifizierten Webhooks | TEST-Key, kein Platform-Webhook-Secret, 0 Events | Go-Live-Blocker | **P0** |
+| ClickHouse Tenant-Scope | Org-scoped Analytics (`org_id` auf Spiegeln) | `telemetry_snapshots` ohne `org_id` | Cross-Tenant-Risiko | **P0** |
+| DIMO Trip Boundaries | Segments als kanonische Trip-Grenzen | Architektur eingehalten; Import nicht transaktional | Teilimport-Risiko | **P2** |
+| DR | Offsite + getesteter Restore | PG-only deploy-dump, same VPS; CH ungesichert | Totalverlust-Risiko | **P0** |
+| Observability | Alertmanager + Zustellung | 98 Rules, 0 Empfänger | Blind bei Incidents | **P1** |
+| API Exposure | Swagger nur Staging/intern | `/docs` öffentlich | Angriffsfläche | **P1** |
+| Audit | Manipulationssicher / WORM | `deleteMany` + Retention löschbar | Compliance-Lücke | **P1** |
+| MFA | Privilegierte Konten enrolled | 0 MFA-Faktoren Prod | Schwache Master-Admin-Kontrolle | **P2** |
+| Impersonation | Support-Workflow mit Audit | Nicht implementiert | Prozesslücke (kein Leak) | **P3** |
+| Voice Control Plane | ADR-umgesetzt + Live-Verifikation | Code vorhanden; Live **NOT VERIFIED** | Unbekannter Prod-Status | **NOT VERIFIED** |
+| Document Storage | S3 mit Objekt-Backup | Local provider-Keys; kein Objekt-Backup | DR-Lücke Files | **P2** |
+| Single VPS | Bekanntes Hosting-Modell | Kein HA/Failover | SPOF | Akzeptiert / **P2** |
+
+### 29.7 Datenkonsistenz (aggregiert)
+
+Siehe **Kap. 23**. Kritische Pfade:
+
+- **Billing:** Lokaler Ledger und Stripe-Runtime widersprechen sich (TEST vs. LIVE).
+- **Telemetrie:** CH-Duplikate und Freshness-Lücken vs. aktive Poll-Pipeline.
+- **Fahrzeuge:** DIMO-Import kann Teilzustände hinterlassen; Unique-Lücke auf `dimo_vehicle_id`.
+- **Audit:** Hohe Vollständigkeit für Mutations-Interceptor, schwache `entity_id`-Verknüpfung.
+- **Backup vs. Retention:** Löschungen in Live-DB nicht in alten Dumps bereinigt.
+
+### 29.8 Observability Coverage
+
+| Komponente | Status | Begründung |
+|------------|--------|------------|
+| NestJS App (`/api/v1/metrics`) | 🟢 | Scrape OK; Auth 401 ohne Token |
+| PostgreSQL | 🟡 | Readiness ok; kein `pg_stat_statements`, kein DB-Exporter |
+| Redis | 🟡 | INFO lokal; keine Redis-Exporter-Metriken |
+| BullMQ Queues | 🟢 | Queue-Metriken in Prometheus; Failed-Jobs alertbar (aber kein Empfänger) |
+| ClickHouse | 🟡 | Readiness-Metadaten; `query_log` praktisch leer |
+| DIMO Pipeline | 🟡 | Poll-Logs in PG; CH-Freshness-Stagnation |
+| Host (CPU/RAM/Disk) | 🔴 | Kein `node_exporter` |
+| TLS/Zertifikate | 🟡 | Certbot-Timer; keine Ablauf-Metrik in Prom |
+| Backup-Jobs | 🔴 | Keine Metriken/Alerts |
+| Grafana Dashboards | 🟢 | 5 Dashboards provisioniert; Evaluations fehlt |
+| Alertmanager | 🔴 | Nicht deployt |
+| Master Admin Health UI | 🟢 | `PlatformHealthView` pollt API |
+| Voice/Twilio/Resend | ⚪ | Nicht nachweisbar |
+| Frontend Errors | ⚪ | Nicht nachweisbar (kein RUM) |
+
+Legende: 🟢 ausreichend · 🟡 lückenhaft · 🔴 kritische Lücke · ⚪ nicht nachweisbar
+
+### 29.9 Production-Readiness-Gates
+
+| # | Gate | Status | Bedingungen / Blocker |
+|---|------|--------|----------------------|
+| 1 | **Security** | **FAIL** | Öffentliche OpenAPI; `backend.env` 644; keine Host-Firewall |
+| 2 | **Tenant Isolation** | **PASS WITH CONDITIONS** | PG solide; CH ohne `org_id`; **keine** Auth-Smokes |
+| 3 | **Billing** | **FAIL** | TEST-Key, Webhook nicht betriebsbereit, Trial-Drift |
+| 4 | **DIMO** | **PASS WITH CONDITIONS** | Prod-Env OK; Import nicht transaktional; Telemetrie-Stagnation |
+| 5 | **Worker und Queues** | **PASS WITH CONDITIONS** | Kein Backlog; 28 battery.v2 fails; Scheduler-Fehler |
+| 6 | **Datenbanken** | **PASS WITH CONDITIONS** | PG migrations OK; CH-Duplikate; kein WAL/PITR |
+| 7 | **Observability** | **FAIL** | Kein Alertmanager; 4 firing ohne Zustellung |
+| 8 | **Backups** | **FAIL** | CH ungesichert; kein Offsite; kein Restore-Test |
+| 9 | **Datenschutz** | **PASS WITH CONDITIONS** | Retention aktiv; Master-PII-Listen; Backup-Löschkonzept fehlt |
+| 10 | **Master-Admin UI/API** | **PASS WITH CONDITIONS** | Guards 401 ohne Token; MFA/Step-up-Lücken; Bundle **NOT VERIFIED** |
+| 11 | **Auditierbarkeit** | **FAIL** | Logs löschbar; schwache Korrelation; Billing-Audit leer |
+| 12 | **Betriebsfähigkeit** | **PASS** | Health 200; 9d Uptime; Disk/RAM ausreichend |
+
+### 29.10 Abschlussurteil
+
+## **Not Production Ready**
+
+Begründung: **4× FAIL-Gates** (Security, Billing, Observability, Backups) und **7× P0-Findings**. Das System ist **betriebsfähig** für den aktuellen kleinen Bestand, aber **nicht** für belastbare Production-Freigabe mit Billing, DR und Compliance-Nachweis. Teile des Master-Admin-Pfads sind **NOT VERIFIED** (authentifizierte Smokes, Frontend-Bundle).
+
+### 29.11 Remediation-Reihenfolge
+
+1. **Sofortmaßnahmen ohne Production-Änderung** — Findings-Datei finalisieren; Runbooks/DR-Plan schreiben; Stripe/DIMO-Reconcile-Playbooks; Alert-Routing designen.
+2. **P0-Sicherheitskorrekturen** — CH `org_id`-Migration planen; Stripe Live/Test trennen; Webhook-Secret; CH-Backup+Offsite; Ghost-Mounts fixen; `dimo_vehicle_id` Unique.
+3. **Tenant-Isolation** — CH-Pre-Filter erzwingen; Waypoint-`org_id` Backfill; authentifizierte Cross-Tenant-Smokes.
+4. **Billing- und Subscription-Korrekturen** — Trial-Sub mit Stripe synchronisieren; Platform-Webhook registrieren; Reconciliation-Drifts schließen.
+5. **DIMO- und Fahrzeugkonsistenz** — Transaktionaler Import; Telemetrie-Stagnation; Webhook-Inbox.
+6. **Worker und Queue Hardening** — Battery-V2-Fix; JobId-Sanitizing; Failed-Job-Reconcile.
+7. **Observability** — Alertmanager; node_exporter; Backup-Alerts; firing Alerts remedieren.
+8. **UI/UX-Neuordnung** — Master-Listen paginieren; Swagger absichern; MFA-Enrollment.
+9. **Tests** — Staging Restore-Drill (PG+CH+Files); Billing E2E; DIMO-Import-Smokes.
+10. **Post-Remediation Production Audit** — Wiederholung dieses Audits mit Auth-Smokes und Frontend-Bundle-Check.
+
+### 29.12 Read-only Nachweis (Abschluss)
+
+| Kategorie | Status |
+|-----------|--------|
+| Ausgeführte Read-only-Befehle | SSH-Inspektion, `curl` GET/HEAD, `psql`/`clickhouse-client` SELECT, `redis-cli` read-only, `gzip -t`, Code-Review — Kap. 2.2 |
+| Nicht ausgeführte riskante Prüfungen | Auth-Smokes, Webhook-Replay, Restore, DIMO-Mutationen, Voice-PSTN, Log-PII-Export |
+| Services verändert | **NEIN** |
+| Daten verändert | **NEIN** (SQL nur SELECT) |
+| Konfiguration verändert | **NEIN**† |
+| Jobs ausgelöst | **NEIN** |
+| Rechnungen/Nachrichten versendet | **NEIN** |
+| Migrationen ausgeführt | **NEIN** |
+
+† **Einzige Abweichung:** versehentliches leeres `mkdir` für `clickhouse/backups` (Kap. 24.1, 07:30:49 UTC). Kein Backup/Restore.
 
 ---
 
@@ -2836,6 +3069,7 @@ flowchart TB
 | 2026-07-26T07:29–07:34 | Schritt 13: IAM/Rollen/Tenant (PG SELECT aggregiert, Guard-Code-Review, Berechtigungsmatrix, keine Rollen/Session-Änderungen) | **NEIN** |
 | 2026-07-26T07:35–07:40 | Schritt 14: Audit/Datenschutz/ISO (PG SELECT aggregiert, Retention-Env-Flags, Code-Review, keine Audit-Änderungen/Exports/Löschungen) | **NEIN** |
 | 2026-07-26T07:41–07:46 | Schritt 15: Backup/Restore/DR (`ls`/`stat`/`du`/`gzip -t`, Redis/CH/Docker-Metadaten, keine Dumps/Restores; **Abweichung:** leeres `mkdir` Kap. 24.1) | **TEILWEISE** (leeres Verzeichnis) |
+| 2026-07-26T08:00 | Abschlussbericht Kap. 29 + Findings-Datei (nur Docs, keine VPS-Befehle) | **NEIN** |
 
 ---
 
