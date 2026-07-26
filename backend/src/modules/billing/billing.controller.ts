@@ -76,6 +76,9 @@ import { RequireMasterBilling } from '@shared/decorators/require-master-billing.
 import { PaginationParams } from '@shared/utils/pagination';
 
 import { resolveOrgScope } from './billing-scope.util';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 import {
 
@@ -126,7 +129,9 @@ import { TenantBillableVehicleListQueryDto } from './dto/tenant-billing-tariff.d
 
 @Controller()
 
-@UseGuards(RolesGuard, PermissionsGuard)
+@UseGuards(RolesGuard, PermissionsGuard, MasterAdminMfaGuard)
+
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_BILLING)
 
 export class BillingController {
 

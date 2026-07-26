@@ -12,9 +12,13 @@ import {
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { VoiceControlPlaneAdminService } from './voice-control-plane-admin.service';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller('admin/voice-assistant/control-plane')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class VoiceControlPlaneAdminController {
   constructor(private readonly controlPlane: VoiceControlPlaneAdminService) {}

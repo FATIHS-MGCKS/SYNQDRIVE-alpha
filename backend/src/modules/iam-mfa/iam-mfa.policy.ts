@@ -16,6 +16,20 @@ export const STEP_UP_ACTION = {
   MANUAL_INVITE_LINK: 'MANUAL_INVITE_LINK',
   PRIVACY_DATA_EXPORT: 'PRIVACY_DATA_EXPORT',
   PRIVACY_DATA_DELETION: 'PRIVACY_DATA_DELETION',
+  /** Master admin control plane — billing mutations */
+  MASTER_BILLING: 'MASTER_BILLING',
+  /** Master admin subscription lifecycle */
+  MASTER_SUBSCRIPTION: 'MASTER_SUBSCRIPTION',
+  /** Master admin organization CRUD */
+  MASTER_ORGANIZATION: 'MASTER_ORGANIZATION',
+  /** Master admin platform settings (email, prune, changelogs) */
+  MASTER_PLATFORM_SETTINGS: 'MASTER_PLATFORM_SETTINGS',
+  /** Master admin API key / credential management */
+  MASTER_API_KEYS: 'MASTER_API_KEYS',
+  /** Master admin integration connectors (DIMO, HM, voice) */
+  MASTER_INTEGRATIONS: 'MASTER_INTEGRATIONS',
+  /** Master admin platform user management */
+  MASTER_USER_MANAGEMENT: 'MASTER_USER_MANAGEMENT',
 } as const;
 
 export type StepUpActionCode = (typeof STEP_UP_ACTION)[keyof typeof STEP_UP_ACTION];

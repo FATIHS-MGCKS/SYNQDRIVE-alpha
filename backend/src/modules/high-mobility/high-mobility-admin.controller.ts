@@ -34,9 +34,13 @@ import type {
   HmEligibilityStatus,
   RegisterHmOnlyVehicleDto,
 } from './dto/high-mobility.dto';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller('admin/high-mobility')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class HighMobilityAdminController {
   constructor(

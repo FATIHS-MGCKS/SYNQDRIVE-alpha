@@ -27,8 +27,8 @@ import { resolveLoginMembership } from '@modules/users/policies/refresh-session-
 import { mapMembershipsToOrganizationOptions } from '@modules/users/policies/organization-switch.policy';
 import { AuthSessionContextService } from './auth-session-context.service';
 import { OrganizationSwitchService } from './organization-switch.service';
+import { AuthMfaLoginService } from './auth-mfa-login.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
-import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 
 @Controller('auth')
@@ -45,6 +45,7 @@ export class AuthController {
     private readonly sessionContext: AuthSessionContextService,
     private readonly organizationSwitch: OrganizationSwitchService,
     private readonly iamMetrics: IamMetricsService,
+    private readonly authMfaLogin: AuthMfaLoginService,
   ) {
     // JWT_SECRET is validated at startup by app.config.ts; reading it here is safe
     this.jwtSecret = this.configService.get<string>('app.jwtSecret')!;
@@ -185,6 +186,26 @@ export class AuthController {
       });
     }
 
+    const mfaGate = await this.authMfaLogin.evaluateMasterAdminLoginGate({
+      id: user.id,
+      platformRole: user.platformRole,
+    });
+    if (mfaGate.kind === 'mfa_required') {
+      void this.audit.record({
+        ...auditBase,
+        actorUserId: user.id,
+        action: ActivityAction.LOGIN,
+        entity: ActivityEntity.AUTH_EVENT,
+        entityId: user.id,
+        description: `Login credentials verified — MFA required: ${email}`,
+      });
+      return {
+        requiresMfa: true,
+        mfaPendingToken: mfaGate.mfaPendingToken,
+        user: this.sessionContext.buildUserResponse(user, membership),
+      };
+    }
+
     const { accessToken, refreshToken, expiresIn } = await this.refreshTokenService.issueTokenPair(
       {
         id: user.id,
@@ -230,6 +251,50 @@ export class AuthController {
       mustChangePassword: user.mustChangePassword,
       user: this.sessionContext.buildUserResponse(user, membership),
       organizations: mapMembershipsToOrganizationOptions(membershipCandidates),
+    };
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('login/mfa')
+  @HttpCode(HttpStatus.OK)
+  async loginMfa(
+    @Body()
+    body: { mfaPendingToken: string; code?: string; recoveryCode?: string },
+    @Req() req: any,
+  ) {
+    if (!body.mfaPendingToken) {
+      throw new UnauthorizedException('mfaPendingToken is required');
+    }
+    if (!body.code && !body.recoveryCode) {
+      throw new UnauthorizedException('code or recoveryCode is required');
+    }
+
+    const result = await this.authMfaLogin.completeLoginMfa({
+      mfaPendingToken: body.mfaPendingToken,
+      code: body.code,
+      recoveryCode: body.recoveryCode,
+      userAgent: req?.headers?.['user-agent'],
+      ipAddress: req?.ip,
+    });
+
+    this.iamMetrics.recordLoginSuccess();
+    void this.audit.record({
+      actorUserId: result.user.id,
+      action: ActivityAction.LOGIN,
+      entity: ActivityEntity.AUTH_EVENT,
+      entityId: result.user.id,
+      description: `Master admin MFA login success: ${result.user.email}`,
+      ipAddress: req?.ip,
+      userAgent: req?.headers?.['user-agent'],
+      route: 'POST /auth/login/mfa',
+    });
+
+    return {
+      token: result.accessToken,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+      user: result.user,
     };
   }
 

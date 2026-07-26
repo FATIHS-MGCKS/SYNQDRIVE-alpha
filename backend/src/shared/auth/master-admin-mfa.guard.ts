@@ -6,52 +6,76 @@ import {
   Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { STEP_UP_METADATA_KEY } from '@shared/decorators/require-step-up.decorator';
+import { UserPlatformRole } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import {
   MFA_ERROR,
   StepUpActionCode,
   hasFreshMfaAssurance,
-  requiresStepUpForAction,
 } from '@modules/iam-mfa/iam-mfa.policy';
 import { resolveIamMfaFeatureFlagsForPrincipal } from '@modules/iam-mfa/iam-mfa-feature-flags.resolver';
 import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
+import { MASTER_ADMIN_MFA_ACTION_KEY } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 @Injectable()
-export class StepUpGuard implements CanActivate {
+export class MasterAdminMfaGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
     private readonly stepUp: IamMfaStepUpService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const action = this.reflector.getAllAndOverride<StepUpActionCode | undefined>(
-      STEP_UP_METADATA_KEY,
+      MASTER_ADMIN_MFA_ACTION_KEY,
       [context.getHandler(), context.getClass()],
     );
-    if (!action || !requiresStepUpForAction(action)) {
-      return true;
-    }
+    if (!action) return true;
 
     const request = context.switchToHttp().getRequest();
     const user = request.user as
       | {
           id?: string;
-          organizationId?: string | null;
           platformRole?: string;
+          organizationId?: string | null;
           sessionClaims?: AuthSessionClaims;
         }
       | undefined;
-    if (!user?.id) {
-      throw new ForbiddenException('Authentication required');
+
+    if (!user?.id || user.platformRole !== UserPlatformRole.MASTER_ADMIN) {
+      return true;
     }
 
     const flags = resolveIamMfaFeatureFlagsForPrincipal({
       organizationId: user.organizationId ?? null,
       platformRole: user.platformRole,
     });
+    if (!flags.masterAdminMfaEnabled) {
+      return true;
+    }
+
+    const method = String(request.method ?? 'GET').toUpperCase();
+    if (!MUTATING_METHODS.has(method)) {
+      return true;
+    }
+
+    const enrolled = await this.prisma.userMfaFactor.findFirst({
+      where: { userId: user.id, enabledAt: { not: null } },
+      select: { id: true },
+    });
+    if (flags.mfaPrivilegedEnrollmentRequired && !enrolled) {
+      throw new ForbiddenException({
+        code: MFA_ERROR.ENROLLMENT_REQUIRED,
+        message: 'Master admin MFA enrollment is required before performing this action',
+        action,
+      });
+    }
+
     if (!flags.mfaStepUpEnforced) {
       return true;
     }
@@ -76,7 +100,7 @@ export class StepUpGuard implements CanActivate {
     this.iamMetrics?.recordStepUpDenied('required');
     throw new ForbiddenException({
       code: MFA_ERROR.STEP_UP_REQUIRED,
-      message: 'Fresh MFA step-up required for this action',
+      message: 'Fresh MFA step-up required for this master admin action',
       action,
     });
   }

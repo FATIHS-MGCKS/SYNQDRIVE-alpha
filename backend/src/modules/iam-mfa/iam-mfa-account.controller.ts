@@ -55,6 +55,7 @@ export class IamMfaAccountController {
       this.userId(req),
       req.user?.email ?? '',
       req.user?.organizationId ?? null,
+      req.user?.platformRole,
     );
   }
 

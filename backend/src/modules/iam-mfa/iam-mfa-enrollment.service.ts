@@ -17,7 +17,7 @@ import {
   MFA_ERROR,
   RECOVERY_CODE_COUNT,
 } from './iam-mfa.policy';
-import { resolveIamMfaEffectiveFeatureFlags } from './iam-mfa-feature-flags.resolver';
+import { resolveIamMfaFeatureFlagsForPrincipal } from './iam-mfa-feature-flags.resolver';
 import type { TotpEnrollmentConfirmResult, TotpEnrollmentStartResult } from './iam-mfa.types';
 
 const BCRYPT_ROUNDS = 10;
@@ -27,12 +27,15 @@ const ISSUER = 'SynqDrive';
 export class IamMfaEnrollmentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  assertEnrollmentEnabled(organizationId: string | null) {
-    const flags = resolveIamMfaEffectiveFeatureFlags(organizationId);
+  assertEnrollmentEnabled(organizationId: string | null, platformRole?: string | null) {
+    const flags = resolveIamMfaFeatureFlagsForPrincipal({
+      organizationId,
+      platformRole,
+    });
     if (!flags.mfaEnrollmentEnabled) {
       throw new BadRequestException({
         code: MFA_ERROR.FEATURE_DISABLED,
-        message: 'MFA enrollment is not enabled for this organization',
+        message: 'MFA enrollment is not enabled for this account',
       });
     }
   }
@@ -41,8 +44,9 @@ export class IamMfaEnrollmentService {
     userId: string,
     email: string,
     organizationId: string | null,
+    platformRole?: string | null,
   ): Promise<TotpEnrollmentStartResult> {
-    this.assertEnrollmentEnabled(organizationId);
+    this.assertEnrollmentEnabled(organizationId, platformRole);
 
     const existing = await this.prisma.userMfaFactor.findUnique({
       where: { userId_factorType: { userId, factorType: MfaFactorType.TOTP } },

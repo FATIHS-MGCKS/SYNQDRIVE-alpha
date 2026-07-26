@@ -6,9 +6,13 @@ import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { PlatformEmailSettingsService } from './platform-email-settings.service';
 import { UpdatePlatformEmailSettingsDto } from './dto/update-platform-email-settings.dto';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller('admin/email')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
 @Roles('MASTER_ADMIN')
 export class PlatformEmailController {
   constructor(
