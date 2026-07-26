@@ -4,8 +4,8 @@
 |------|------|
 | **Dokument-ID** | `master-admin-go-live-certification` |
 | **Datum (UTC)** | 2026-07-26 (Post-Deploy Update) |
-| **Code-Stand** | `main` @ `d339477` |
-| **Prod-Stand** | Release `20260726211156_v4994` — Remediation **live** |
+| **Code-Stand** | `main` @ `d8461e2` |
+| **Prod-Stand** | Release `20260726212924_v4994` — Remediation **live** (seit `20260726211156_v4994`) |
 | **Vorherige Version** | Phase 2G.7 Initial — Not Production Ready |
 
 ---
