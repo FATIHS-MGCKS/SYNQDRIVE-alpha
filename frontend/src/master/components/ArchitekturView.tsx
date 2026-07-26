@@ -987,6 +987,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     icon: Zap,
     color: 'text-[color:var(--status-ai)]',
     apis: [
+      { label: 'Trial model (2B.6)', detail: 'Internal contract TRIALING (SoT) vs Master Admin configureTrial vs Stripe trialing projection — docs/remediation/trial-model.md' },
       { label: 'Billing (live)', detail: 'modules/billing — SynqDrive-Abo; POST /api/v1/webhooks/stripe + STRIPE_WEBHOOK_SECRET' },
       { label: 'Connect schema (V4.9.435)', detail: 'Prisma: OrganizationPaymentAccount, BookingPaymentRequest, PaymentTransaction (append-only), StripeConnectWebhookEvent — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_SCHEMA_2026-07-14.md' },
       { label: 'Domain logic (V4.9.436)', detail: 'PaymentStatusService + status machine — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_LOGIC_2026-07-14.md' },
