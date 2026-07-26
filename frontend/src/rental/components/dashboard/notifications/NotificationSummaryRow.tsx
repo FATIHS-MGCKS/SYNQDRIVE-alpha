@@ -35,6 +35,8 @@ export interface NotificationSummaryRowProps {
   showChevron?: boolean;
   unread?: boolean;
   onToggle?: () => void;
+  /** Row body click — same destination as primary CTA when set. */
+  onNavigate?: () => void;
   as?: 'button' | 'div';
 }
 
@@ -46,23 +48,15 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
   showChevron = false,
   unread = false,
   onToggle,
+  onNavigate,
   as = 'div',
 }: NotificationSummaryRowProps) {
   const tr = createNotificationTranslator(locale);
   const severityLabel = tr(summary.severityLabelKey);
-  const Tag = as === 'button' ? 'button' : 'div';
+  const splitInteraction = Boolean(onNavigate && onToggle);
 
-  return (
-    <Tag
-      type={as === 'button' ? 'button' : undefined}
-      className={cn(
-        'flex w-full items-start gap-2.5 text-left',
-        as === 'button' &&
-          'transition-colors hover:bg-muted/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-      )}
-      aria-expanded={as === 'button' ? expanded : undefined}
-      onClick={as === 'button' ? onToggle : undefined}
-    >
+  const body = (
+    <>
       <div className="relative shrink-0" aria-hidden>
         <div className={cn(NOTIFICATION_PANEL_TYPO.iconWrap, iconTone(summary.severity, summary.resolved))}>
           <Icon name={summary.iconName} className={NOTIFICATION_PANEL_TYPO.icon} />
@@ -117,7 +111,51 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
           </p>
         ) : null}
       </div>
+    </>
+  );
 
+  if (splitInteraction) {
+    return (
+      <div className="flex w-full items-start gap-2.5 text-left">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-start gap-2.5 rounded-md p-1 text-left transition-colors hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+          onClick={onNavigate}
+        >
+          {body}
+        </button>
+        {showChevron ? (
+          <button
+            type="button"
+            className={cn(
+              'mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-transform hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+              expanded && 'rotate-180',
+            )}
+            aria-expanded={expanded}
+            aria-label={expanded ? t('notification.collapseDetails') : t('notification.expandDetails')}
+            onClick={onToggle}
+          >
+            <Icon name="chevron-down" className="h-4 w-4" />
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  const Tag = as === 'button' ? 'button' : 'div';
+
+  return (
+    <Tag
+      type={as === 'button' ? 'button' : undefined}
+      className={cn(
+        'flex w-full items-start gap-2.5 text-left',
+        as === 'button' &&
+          'transition-colors hover:bg-muted/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+      )}
+      aria-expanded={as === 'button' ? expanded : undefined}
+      onClick={as === 'button' ? (onNavigate ?? onToggle) : undefined}
+    >
+      {body}
       {showChevron ? (
         <span
           className={cn(

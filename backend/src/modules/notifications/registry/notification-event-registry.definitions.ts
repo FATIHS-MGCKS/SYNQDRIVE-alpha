@@ -18,6 +18,7 @@ import {
   stationTarget,
   tripTarget,
   vehicleModuleTarget,
+  observationModuleTarget,
   vehicleTarget,
 } from './notification-event-target.builders';
 import { LEGAL_DOCUMENT_NOTIFICATION_EVENT_DEFINITIONS } from './legal-document-notification-event.definitions';
@@ -539,7 +540,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     bodyKey: 'notification.body.technicalObservation',
     requiredTemplateParams: ['label'],
     actionType: NotificationActionType.OPEN_VEHICLE_MODULE,
-    actionTargetBuilder: vehicleModuleTarget('complaints'),
+    actionTargetBuilder: observationModuleTarget,
     sourceType: NotificationSourceType.OPERATIONAL_ISSUE,
     resolutionPolicy: STATE_RESOLUTION,
     deliveryPolicy: DEFAULT_IN_APP_DELIVERY,

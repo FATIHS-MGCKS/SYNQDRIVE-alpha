@@ -69,7 +69,8 @@ export const NotificationEntryCard = memo(function NotificationEntryCard({
           expanded={expanded}
           showChevron
           unread={summary.unread}
-          as="button"
+          as="div"
+          onNavigate={onPrimaryCta}
           onToggle={() => setExpanded((value) => !value)}
         />
       </div>

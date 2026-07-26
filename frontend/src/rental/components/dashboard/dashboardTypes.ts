@@ -306,6 +306,9 @@ export interface ActionQueueItem {
   ctaLabel?: string;
   stationId?: string;
   customerId?: string;
+  invoiceId?: string;
+  /** V2 API — false when backend entity lookup failed (deleted / out of scope). */
+  entityAvailable?: boolean;
 
   /** V2 API — occurrence count for meta row. */
   occurrenceCount?: number;

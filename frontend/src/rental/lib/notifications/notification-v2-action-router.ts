@@ -4,6 +4,11 @@ import type {
   ApiNotificationActionType,
 } from './notification-api.types';
 import type { NotificationActionTarget, NotificationActionType } from '../../components/dashboard/notificationQueueModel';
+import type { ActionQueueItem } from '../../components/dashboard/dashboardTypes';
+import {
+  navigateNotificationEntity,
+  type NotificationNavigationHandlers,
+} from './notification-entity-navigation';
 
 const API_TO_QUEUE_ACTION: Record<ApiNotificationActionType, NotificationActionType> = {
   OPEN_VEHICLE: 'open-vehicle',
@@ -48,6 +53,8 @@ export function mapApiActionTarget(
     customerId: target.customerId,
     invoiceId: target.invoiceId,
     tripId: target.tripId,
+    observationId: target.observationId,
+    taskId: target.taskId,
     module: target.module,
   };
 }
@@ -56,83 +63,14 @@ export function isKnownApiActionType(type: string): type is ApiNotificationActio
   return type in API_TO_QUEUE_ACTION;
 }
 
-export interface NotificationV2NavigationHandlers {
-  onOpenVehicleById?: (
-    vehicleId: string,
-    options?: { module?: string },
-  ) => void;
-  onOpenBookingById?: (bookingId: string) => void;
-  onOpenInvoiceById?: (invoiceId: string) => void;
-  onOpenRentalView?: (view: 'bookings' | 'stations') => void;
-  onOpenSettingsTab?: (tab: string) => void;
-  onStartHandoverPickup?: (bookingId: string) => void;
-  onStartHandoverReturn?: (bookingId: string) => void;
-}
+export type NotificationV2NavigationHandlers = NotificationNavigationHandlers;
 
-/**
- * Navigate using backend `action.type` + `action.target` only.
- * Returns true when V2 routing handled the click.
- */
+/** Navigate using backend `action.type` + `action.target` only. */
 export function navigateNotificationV2Action(
-  item: import('../../components/dashboard/dashboardTypes').ActionQueueItem,
+  item: ActionQueueItem,
   handlers: NotificationV2NavigationHandlers,
+  organizationId = '',
 ): boolean {
-  if (item.source !== 'notifications-v2' || !item.queue?.actionTarget) return false;
-
-  const target = item.queue.actionTarget;
-  const actionType = item.queue.actionType;
-
-  switch (actionType) {
-    case 'open-vehicle-module':
-      if (target.vehicleId) {
-        handlers.onOpenVehicleById?.(target.vehicleId, {
-          module: target.module,
-        });
-        return true;
-      }
-      break;
-    case 'open-vehicle':
-      if (target.vehicleId) {
-        handlers.onOpenVehicleById?.(target.vehicleId);
-        return true;
-      }
-      break;
-    case 'open-booking':
-      if (target.bookingId) {
-        handlers.onOpenBookingById?.(target.bookingId);
-        return true;
-      }
-      handlers.onOpenRentalView?.('bookings');
-      return true;
-    case 'open-handover-pickup':
-      if (target.bookingId) handlers.onStartHandoverPickup?.(target.bookingId);
-      return true;
-    case 'open-handover-return':
-      if (target.bookingId) handlers.onStartHandoverReturn?.(target.bookingId);
-      return true;
-    case 'open-station':
-      handlers.onOpenRentalView?.('stations');
-      return true;
-    case 'open-billing':
-      if (target.invoiceId && handlers.onOpenInvoiceById) {
-        handlers.onOpenInvoiceById(target.invoiceId);
-        return true;
-      }
-      handlers.onOpenRentalView?.('bookings');
-      return true;
-    case 'open-rental':
-    default:
-      if (target.module?.startsWith('settings:')) {
-        const tab = target.module.slice('settings:'.length);
-        if (tab) {
-          handlers.onOpenSettingsTab?.(tab);
-          return true;
-        }
-      }
-      handlers.onOpenRentalView?.('bookings');
-      return true;
-  }
-
-  handlers.onOpenRentalView?.('bookings');
-  return true;
+  if (!item.queue?.actionTarget) return false;
+  return navigateNotificationEntity(item, organizationId, handlers);
 }

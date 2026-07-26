@@ -51,6 +51,8 @@ export interface ApiNotificationActionTarget {
   customerId?: string;
   invoiceId?: string;
   tripId?: string;
+  observationId?: string;
+  taskId?: string;
   module?: string;
 }
 
@@ -64,6 +66,7 @@ export interface ApiNotificationResponse {
     type: ApiNotificationEntityType;
     id: string;
     displayLabel?: string;
+    available?: boolean;
   };
   titleKey: string;
   bodyKey: string;

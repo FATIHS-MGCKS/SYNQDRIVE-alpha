@@ -19,6 +19,8 @@ export interface NotificationEntityDto {
   type: NotificationEntityType;
   id: string;
   displayLabel?: string;
+  /** False when the entity was deleted or is outside the tenant scope. */
+  available?: boolean;
 }
 
 export interface NotificationActionDto {
@@ -98,6 +100,7 @@ export function mapNotificationToDto(
   availableActions: NotificationAvailableAction[],
   membershipRole?: MembershipRole,
   templateParamsOverride?: Record<string, string | number | boolean | null>,
+  entityAvailable = true,
 ): NotificationResponseDto {
   const templateParamsRaw = templateParamsOverride
     ?? ((row.templateParams ?? {}) as Record<string, string | number | boolean | null>);
@@ -123,6 +126,7 @@ export function mapNotificationToDto(
       type: row.entityType,
       id: row.entityId,
       displayLabel: displayLabelFromParams(templateParams),
+      available: entityAvailable,
     },
     titleKey: row.titleKey,
     bodyKey: row.bodyKey,

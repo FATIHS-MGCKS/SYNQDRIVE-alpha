@@ -61,6 +61,8 @@ export interface NotificationActionTarget {
   customerId?: string;
   invoiceId?: string;
   tripId?: string;
+  observationId?: string;
+  taskId?: string;
   module?: string;
 }
 

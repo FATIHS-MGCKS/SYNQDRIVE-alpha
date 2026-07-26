@@ -40,8 +40,14 @@ export async function resolveEntityLabelContexts(
   const bookingIds = [
     ...new Set(rows.filter((r) => r.entityType === 'BOOKING').map((r) => r.entityId)),
   ];
+  const customerIds = [
+    ...new Set(rows.filter((r) => r.entityType === 'CUSTOMER').map((r) => r.entityId)),
+  ];
+  const invoiceIds = [
+    ...new Set(rows.filter((r) => r.entityType === 'INVOICE').map((r) => r.entityId)),
+  ];
 
-  const [vehicles, stations, bookings] = await Promise.all([
+  const [vehicles, stations, bookings, customers, invoices] = await Promise.all([
     vehicleIds.length
       ? prisma.vehicle.findMany({
           where: { organizationId, id: { in: vehicleIds } },
@@ -63,11 +69,25 @@ export async function resolveEntityLabelContexts(
           },
         })
       : [],
+    customerIds.length
+      ? prisma.customer.findMany({
+          where: { organizationId, id: { in: customerIds } },
+          select: { id: true, firstName: true, lastName: true, company: true },
+        })
+      : [],
+    invoiceIds.length
+      ? prisma.orgInvoice.findMany({
+          where: { organizationId, id: { in: invoiceIds } },
+          select: { id: true, invoiceNumberDisplay: true, title: true },
+        })
+      : [],
   ]);
 
   const vehicleById = new Map(vehicles.map((v) => [v.id, v]));
   const stationById = new Map(stations.map((s) => [s.id, s]));
   const bookingById = new Map(bookings.map((b) => [b.id, b]));
+  const customerById = new Map(customers.map((c) => [c.id, c]));
+  const invoiceById = new Map(invoices.map((i) => [i.id, i]));
 
   for (const row of rows) {
     const params = (row.templateParams ?? {}) as Record<string, unknown>;
@@ -107,6 +127,25 @@ export async function resolveEntityLabelContexts(
         const plate = booking.vehicle.licensePlate?.trim();
         const label = plate || `${booking.vehicle.make ?? ''} ${booking.vehicle.model ?? ''}`.trim() || booking.id;
         result.set(row.id, { label, plate: plate || undefined });
+      }
+      continue;
+    }
+
+    if (row.entityType === 'CUSTOMER') {
+      const customer = customerById.get(row.entityId);
+      if (customer) {
+        const name = `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim();
+        const label = customer.company?.trim() || name || row.entityId;
+        result.set(row.id, { label });
+      }
+      continue;
+    }
+
+    if (row.entityType === 'INVOICE') {
+      const invoice = invoiceById.get(row.entityId);
+      if (invoice) {
+        const label = invoice.invoiceNumberDisplay?.trim() || invoice.title?.trim() || row.entityId;
+        result.set(row.id, { label });
       }
       continue;
     }

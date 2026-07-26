@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-localized-templates-v49867-2026-07-26',
+    version: '4.9.867',
+    title: 'V4.9.867 — Notification Engine: zentralisierte lokalisierte Templates',
+    summary: [
+      'Registry: titleKey/bodyKey/shortLabelKey + recoveryTitleKey/recoveryBodyKey + allowedTemplateParams pro Event-Typ.',
+      'Ingest: validateRegistryCandidate + sanitizeTemplateParams im NotificationCoreService (keine freien Backend-Texte).',
+      'Insight-Mapper nutzt buildCandidateFromRegistry statt duplizierter Key-Maps.',
+      '42 fehlende DE/EN notification.title/body Keys ergänzt; notification.keyMissing Fallback.',
+      'Tests: Template-Param-Sanitization, Registry↔i18n-Parität, bodyKey-Validierung.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 21: konsistente, übersetzbare, datensparse Template-Texte unabhängig von der Fingerprint-Identität.',
+    previousBehavior:
+      'bodyKey nicht registry-validiert; fehlende i18n-Keys; Insight-Mapper duplizierte titleKey/bodyKey-Maps; Recovery-Keys manuell im Adapter gesetzt.',
+    details:
+      'notification-template-params.validator.ts, notification-event-registry.params/templates.ts, insight-candidate.mapper.ts, notification-core.service.ts, frontend en/de notification.* i18n.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:30:00.000Z',
+  },
+  {
     id: 'operator-app-prod-deploy-v49840-2026-07-25',
     version: '4.9.840',
     title: 'V4.9.840 — Operator App production deploy + Gate 12 closure',

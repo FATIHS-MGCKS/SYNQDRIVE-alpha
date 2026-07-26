@@ -35,6 +35,7 @@ import {
   mergeEnrichedTemplateParams,
   resolveEntityLabelContexts,
 } from './notification-entity-label.enricher';
+import { resolveEntityAvailability } from './notification-entity-availability.enricher';
 import type { NotificationCountsResponseDto, NotificationResponseDto } from './notification-api.mapper';
 import {
   buildNotificationOrderBy,
@@ -543,6 +544,7 @@ export class NotificationApiService {
     const receiptByNotification = new Map(receipts.map((r) => [r.notificationId, r]));
 
     const labelContexts = await resolveEntityLabelContexts(this.prisma, ctx.organizationId, rows);
+    const availability = await resolveEntityAvailability(this.prisma, ctx.organizationId, rows);
     const enrichedParamsById = new Map(
       rows.map((row) => [row.id, mergeEnrichedTemplateParams(row, labelContexts)]),
     );
@@ -564,7 +566,14 @@ export class NotificationApiService {
         referenceNow,
       });
       const enrichedParams = enrichedParamsById.get(row.id) ?? mergeEnrichedTemplateParams(row, labelContexts);
-      return mapNotificationToDto(row as any, receipt, actions, ctx.membershipRole, enrichedParams);
+      return mapNotificationToDto(
+        row as any,
+        receipt,
+        actions,
+        ctx.membershipRole,
+        enrichedParams,
+        availability.get(row.id) ?? true,
+      );
     });
   }
 

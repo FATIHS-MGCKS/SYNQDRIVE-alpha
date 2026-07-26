@@ -34,7 +34,11 @@ export class TechnicalObservationNotificationAdapter
       occurredAt: context.occurredAt,
       severity: source.resolved ? NotificationSeverity.SUCCESS : undefined,
       templateParams: { label: source.label },
-      actionTargetContext: { vehicleId: source.vehicleId, module: 'complaints' },
+      actionTargetContext: {
+        vehicleId: source.vehicleId,
+        module: 'complaints',
+        observationId: source.complaintId,
+      },
       metadata: {
         runId: context.runId,
         adapterId: this.adapterId,

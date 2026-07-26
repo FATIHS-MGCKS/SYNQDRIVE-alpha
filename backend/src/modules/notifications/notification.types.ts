@@ -92,6 +92,10 @@ export interface NotificationActionTarget {
   customerId?: string;
   invoiceId?: string;
   tripId?: string;
+  /** Technical observation / complaint deep link. */
+  observationId?: string;
+  /** Service task deep link (when supported by producer). */
+  taskId?: string;
   module?: string;
 }
 

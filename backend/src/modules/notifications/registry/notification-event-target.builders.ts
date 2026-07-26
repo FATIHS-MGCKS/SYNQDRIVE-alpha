@@ -2,6 +2,17 @@ import { NotificationActionType, NotificationEntityType } from '../notification.
 import type { NotificationActionTarget } from '../notification.types';
 import type { NotificationActionTargetContext } from './notification-event-registry.types';
 
+export function observationModuleTarget(
+  ctx: NotificationActionTargetContext,
+): NotificationActionTarget {
+  return {
+    type: NotificationActionType.OPEN_VEHICLE_MODULE,
+    vehicleId: ctx.vehicleId ?? ctx.entityId,
+    module: 'complaints',
+    observationId: ctx.observationId,
+  };
+}
+
 export function fleetConnectivityTarget(
   ctx: NotificationActionTargetContext,
 ): NotificationActionTarget {

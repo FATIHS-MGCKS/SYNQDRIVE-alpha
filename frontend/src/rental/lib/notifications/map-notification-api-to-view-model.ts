@@ -285,10 +285,12 @@ export function mapNotificationApiToActionQueueItem(
     occurrenceCount: row.occurrenceCount,
     availableActions: row.availableActions,
     entityContextParams,
+    entityAvailable: row.entity.available !== false,
     vehicleId: row.action?.target?.vehicleId ?? (row.entity.type === 'VEHICLE' ? row.entity.id : undefined),
     bookingId: row.action?.target?.bookingId ?? (row.entity.type === 'BOOKING' ? row.entity.id : undefined),
     stationId: row.action?.target?.stationId ?? (row.entity.type === 'STATION' ? row.entity.id : undefined),
     customerId: row.action?.target?.customerId ?? (row.entity.type === 'CUSTOMER' ? row.entity.id : undefined),
+    invoiceId: row.action?.target?.invoiceId ?? (row.entity.type === 'INVOICE' ? row.entity.id : undefined),
     isOverdue: row.eventType.includes('OVERDUE'),
     pinned: row.severity === 'CRITICAL' && row.status === 'OPEN',
   };

@@ -1074,6 +1074,9 @@ export const de: Record<TranslationKey, string> = {
 
   // ─── Dashboard notification queue (ActionQueue) ───
   'notification.panelTitle': 'Meldungen',
+  'notification.entityUnavailable': 'Der verknüpfte Datensatz ist nicht mehr verfügbar. Details bleiben hier sichtbar.',
+  'notification.expandDetails': 'Details anzeigen',
+  'notification.collapseDetails': 'Details ausblenden',
   'notification.tab.all': 'Alle',
   'notification.tab.critical': 'Kritisch',
   'notification.tab.warning': 'Warnungen',

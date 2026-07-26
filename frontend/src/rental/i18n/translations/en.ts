@@ -974,6 +974,9 @@ export const en = {
 
   // ─── Dashboard notification queue (ActionQueue) ───
   'notification.panelTitle': 'Notifications',
+  'notification.entityUnavailable': 'The linked record is no longer available. Details remain visible here.',
+  'notification.expandDetails': 'Show details',
+  'notification.collapseDetails': 'Hide details',
   'notification.tab.all': 'All',
   'notification.tab.critical': 'Critical',
   'notification.tab.warning': 'Warnings',

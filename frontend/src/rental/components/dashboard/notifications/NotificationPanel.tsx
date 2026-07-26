@@ -7,7 +7,9 @@ import {
   countAtomicActions,
   groupActionQueueEntries,
 } from '../actionQueueGrouping';
-import { navigateNotificationV2Action } from '../../../lib/notifications/notification-v2-action-router';
+import { navigateNotificationEntity } from '../../../lib/notifications/notification-entity-navigation';
+import { useRentalEntityNavigation } from '../../../context/RentalEntityNavigationContext';
+import { toast } from 'sonner';
 import { enrichNotificationGroupingList } from '../../../lib/notifications/enrich-notification-grouping';
 import { ensureNotificationPanelQueueItems } from '../notificationQueueEnricher';
 import { useLanguage } from '../../../i18n/LanguageContext';
@@ -55,11 +57,17 @@ function emptyVariantForTab(tab: NotificationPrimaryTab, hasDomainFilter: boolea
   return 'none-active';
 }
 
-function runItemCta(item: ActionQueueItem, vm: DashboardViewModel, handlers: NotificationPanelHandlers) {
+function runItemCta(
+  item: ActionQueueItem,
+  vm: DashboardViewModel,
+  handlers: NotificationPanelHandlers,
+  orgId: string,
+  rentalNav: ReturnType<typeof useRentalEntityNavigation>,
+  unavailableMessage: string,
+) {
   if (
-    navigateNotificationV2Action(item, {
-      onOpenVehicleById: handlers.onOpenVehicleById,
-      onOpenBookingById: handlers.onOpenBookingById,
+    navigateNotificationEntity(item, orgId, {
+      ...rentalNav,
       onOpenRentalView: handlers.onOpenRentalView,
       onOpenSettingsTab: handlers.onOpenSettingsTab,
       onStartHandoverPickup: (bookingId) => {
@@ -69,6 +77,9 @@ function runItemCta(item: ActionQueueItem, vm: DashboardViewModel, handlers: Not
       onStartHandoverReturn: (bookingId) => {
         const ret = vm.returnItems.find((r) => r.bookingId === bookingId);
         if (ret) vm.handleConfirmReturn(ret);
+      },
+      onEntityUnavailable: () => {
+        toast.info(unavailableMessage);
       },
     })
   ) {
@@ -119,6 +130,7 @@ export function NotificationPanel({
 }) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
+  const rentalNav = useRentalEntityNavigation();
   const de = locale === 'de';
   const [primaryTab, setPrimaryTab] = useState<NotificationPrimaryTab>('all');
   const [domainFilter, setDomainFilter] = useState<NotificationDomainFilter | null>(null);
@@ -250,8 +262,15 @@ export function NotificationPanel({
   const snoozeDefaultUntil = () => new Date(Date.now() + 60 * 60_000).toISOString();
 
   const runCta = useCallback(
-    (item: ActionQueueItem) => runItemCta(item, vm, handlers),
-    [vm, handlers],
+    (item: ActionQueueItem) => runItemCta(
+      item,
+      vm,
+      handlers,
+      orgId ?? '',
+      rentalNav,
+      t('notification.entityUnavailable'),
+    ),
+    [vm, handlers, orgId, rentalNav, t],
   );
 
   const runContactCustomer = useCallback(
