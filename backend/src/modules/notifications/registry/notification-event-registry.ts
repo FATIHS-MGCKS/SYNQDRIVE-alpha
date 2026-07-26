@@ -4,6 +4,8 @@ import {
   NOTIFICATION_EVENT_SLUG_ALIASES,
   NOTIFICATION_EVENT_TYPE_DEFINITIONS,
 } from './notification-event-registry.definitions';
+import { enrichEventTypeDefinition } from './notification-event-registry.params';
+import { resolveRegistryTemplateKeys } from './notification-event-registry.templates';
 import type {
   NotificationActionTargetContext,
   NotificationEventTypeDefinition,
@@ -23,7 +25,8 @@ function bootstrapRegistry(
   const byEventType = new Map<string, NotificationEventTypeDefinition>();
   const bySlug = new Map<string, string>();
 
-  for (const def of definitions) {
+  for (const raw of definitions) {
+    const def = enrichEventTypeDefinition(raw);
     if (byEventType.has(def.eventType)) {
       throw new NotificationEventRegistryError(
         `Duplicate notification eventType registration: ${def.eventType}`,
@@ -114,12 +117,15 @@ export function buildCandidateFromRegistry(
     ? `${def.conditionCode}:${input.conditionCodeVariant.trim()}`
     : def.conditionCode;
 
+  const severity = input.severity ?? def.defaultSeverity;
+  const templateKeys = resolveRegistryTemplateKeys(def, severity);
+
   return {
     organizationId: input.organizationId,
     eventType: def.eventType,
     eventKind: def.eventKind,
     domain: def.domain,
-    severity: input.severity ?? def.defaultSeverity,
+    severity,
     entityType,
     entityId: input.entityId,
     conditionCode,
@@ -127,8 +133,8 @@ export function buildCandidateFromRegistry(
     sourceType: input.sourceType ?? def.sourceType,
     sourceRef: input.sourceRef,
     occurredAt: input.occurredAt,
-    titleKey: def.titleKey,
-    bodyKey: def.bodyKey,
+    titleKey: templateKeys.titleKey,
+    bodyKey: templateKeys.bodyKey,
     templateParams: input.templateParams,
     actionType: def.actionType,
     actionTarget,

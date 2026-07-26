@@ -18,6 +18,12 @@ import {
   NotificationTx,
 } from './notification.repository';
 import { fingerprintFromCandidate, validateNotificationCandidate } from './notification-candidate.validator';
+import {
+  isRegisteredEventType,
+  validateRegistryCandidate,
+} from './registry/notification-event-registry.validator';
+import { getEventTypeDefinition } from './registry/notification-event-registry';
+import { sanitizeTemplateParams } from './notification-template-params.validator';
 import { evaluateReopenDecision } from './notification-reopen.policy';
 import {
   assertNotificationStatusTransition,
@@ -84,7 +90,18 @@ export class NotificationCoreService {
     candidate: NotificationCandidate,
     options: IngestCandidateOptions = {},
   ): Promise<MaterializeResult> {
-    const normalized = validateNotificationCandidate(candidate);
+    let normalized = validateNotificationCandidate(candidate);
+    if (isRegisteredEventType(normalized.eventType)) {
+      const def = getEventTypeDefinition(normalized.eventType)!;
+      normalized = {
+        ...normalized,
+        templateParams: sanitizeTemplateParams(
+          normalized.templateParams,
+          def.allowedTemplateParams,
+        ),
+      };
+      normalized = validateRegistryCandidate(normalized);
+    }
     const { canonical: fingerprint } = fingerprintFromCandidate(normalized);
     const referenceNow = options.referenceNow ?? new Date();
 
