@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-e2e-data-consistency-2e6-2026-07-26',
+    version: '4.9.896',
+    title: 'V4.9.896 — Master Admin 2E.6: End-to-end data consistency',
+    summary: [
+      'Full pipeline audit: DIMO → Backend → PG → Worker → CH → Dashboard → AI → Notifications → Workflows.',
+      'Per-station checks: IDs, org, timestamps, duplicate truth, lost events, deterministic sync.',
+      'PG canonical; CH best-effort mirror. P1: CH org_id on snapshots, replay design.',
+      'Risk registers + operator SQL probes; links to 2E.1–2E.5 remediation docs.',
+    ],
+    reason:
+      'Phase 2E.6 documents end-to-end data consistency before production remediation.',
+    previousBehavior:
+      'Data flow documented per-module; no consolidated pipeline consistency audit.',
+    details:
+      'docs/remediation/end-to-end-data-consistency.md · architecture/MASTER_ADMIN_END_TO_END_DATA_CONSISTENCY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T23:00:00.000Z',
+  },
+  {
     id: 'master-admin-cross-tenant-acceptance-2e5-2026-07-26',
     version: '4.9.895',
     title: 'V4.9.895 — Master Admin 2E.5: Cross-tenant acceptance testing',
