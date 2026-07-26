@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 8: Redis/BullMQ read-only **abgeschlossen** (2026-07-26T07:12–07:14 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:14:00Z` (Redis & BullMQ) |
+| **Status** | **IN PROGRESS** — Schritt 9: ClickHouse & Telemetrie-Pipeline read-only **abgeschlossen** (2026-07-26T07:15–07:18 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:18:00Z` (ClickHouse & Telemetrie-Pipeline) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -74,7 +74,7 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | Keine Webhooks / Test-E-Mails / Rechnungen | **Eingehalten** |
 | Secrets nur als **Key-Namen**, nie als Werte | **Eingehalten** |
 | HTTP nur GET/HEAD | **Eingehalten** |
-| SQL nur SELECT / EXPLAIN / Metadaten | **Noch nicht ausgeführt** (geplant) |
+| SQL nur SELECT / EXPLAIN / Metadaten | **Eingehalten** (PostgreSQL Schritt 7; ClickHouse Schritt 9) |
 
 ### 2.2 Ausgeführte sichere Befehle (Baseline, Schritt 1)
 
@@ -190,6 +190,20 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 
 **Redis-Modus:** Ausschließlich read-only (`INFO`, `SCAN`, `LLEN`, `ZCARD`, `HGET`, `GET`, `CONFIG GET`). **Kein** `DEL`, `FLUSH`, `EXPIRE`, `MIGRATE`, Queue-Manipulation.
 
+### 2.2i Ausgeführte sichere Befehle (Schritt 9 — ClickHouse & Telemetrie-Pipeline read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:15:04 | `docker exec synqdrive-clickhouse clickhouse-client` `SELECT version()`, `uptime()` | CH-Version & Laufzeit |
+| 07:15:04 | `system.tables`, `system.parts`, `system.disks`, `system.merges`, `system.replicas`, `system.mutations` | Schema, Engines, Partitionen, TTL, Parts, Disk, Replikation |
+| 07:15:04 | `system.query_log` (aggregiert 24h/7d) | Query-/Insert-Raten, Exceptions |
+| 07:15–07:18 | Aggregierte `SELECT` auf `telemetry_*`, `trip_*` (Counts, Freshness, Duplikate, Lags) | Ingestion-Freshness, Datenlücken, Duplikatrate |
+| 07:15–07:18 | PostgreSQL `SELECT` (vehicle/dimo_poll_logs Cross-Check, maskierte UUID-Prefixe) | PG↔CH-Abgleich, Pipeline-Aktivität |
+| 07:15–07:18 | `redis-cli LLEN/ZCARD` auf `bull:dimo.snapshot.poll:*` | Queue-Stufe der Pipeline |
+| 07:15–07:18 | `curl -sf` `GET /api/v1/health/readiness` | CH-Ingestion-Metadaten aus Readiness |
+
+**ClickHouse-Modus:** Ausschließlich `SELECT` über `clickhouse-client` im Container. **Kein** `INSERT`, `ALTER`, `OPTIMIZE`, `SYSTEM`, `TRUNCATE`, `KILL`, Mutationen oder Reparaturen. Unauthentifizierter `curl` auf `127.0.0.1:8123` schlug fehl (Exit 22) — Zugriff nur via `docker exec` (localhost-only Bind).
+
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
 | Bereich | Grund |
@@ -199,7 +213,7 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | Authentifizierte Master-Admin-UI/API-Smokes | Erfordert Credentials; separates, kontrolliertes Vorgehen |
 | PostgreSQL-Dateninhalte (Counts, Tenant-Queries) | Geplant in späteren Schritten (nur SELECT) |
 | BullMQ-Queue-Inspektion (Redis KEYS/LLEN) | Geplant — nur read-only Redis-Befehle |
-| ClickHouse-Queries | Geplant — nur SELECT/SHOW |
+| ~~ClickHouse-Queries~~ | **Erledigt** (Schritt 9) — nur SELECT |
 | Stripe/Twilio/Resend/DIMO Live-API-Calls | Externe Seiteneffekte — nur Konfigurationsabgleich |
 | Log-Tailing mit PII | Geplant mit Redaction-Policy |
 
@@ -1326,16 +1340,134 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 
 ---
 
-## 13. ClickHouse
+## 13. ClickHouse & Telemetrie-Pipeline
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| Container | `synqdrive-clickhouse` — **healthy**, 8d uptime |
-| Ports | `127.0.0.1:8123` (HTTP), `127.0.0.1:9000` (native) |
-| Env-Keys (Namen) | `CLICKHOUSE_URL`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE`, `CLICKHOUSE_TRIP_ASSIST_ENABLED` |
-| Daten/Schema | **Nicht** geprüft |
+**Prüfzeitpunkt:** `2026-07-26T07:15–07:18Z` (Schritt 9, strikt read-only)
 
-**Status:** Ausstehend — `SHOW DATABASES`, Table-Counts (SELECT), Trip-Assist-Flag-Alignment.
+### 13.1 ClickHouse-Gesundheit
+
+| Prüfpunkt | Ist-Wert (belegt) |
+|-----------|-------------------|
+| Container | `synqdrive-clickhouse` — **healthy**, Uptime **~8,8 Tage** (`uptime()` 759380 s) |
+| Version | **25.8.24.21** |
+| Zugriff | `127.0.0.1:8123/9000` — unauthentifizierter HTTP-`curl` **fehlgeschlagen**; `docker exec clickhouse-client` **OK** |
+| Datenbank | `synqdrive` — **3,53 MiB** on disk, **807.442** Rows (aktive Parts), **9** Tabellen + `schema_migrations` |
+| Disk (Host-Vol.) | **27,41 %** belegt (139,88 GiB frei / 192,69 GiB) |
+| Replikation | **Keine** (`system.replicas` leer) — Single-Node VPS |
+| Materialized Views | **0** |
+| Dictionaries | **0** |
+| Merge-Backlog | **0** aktive Merges (`system.merges` leer) |
+| Parts (gesamt) | **20** aktive Parts — höchste: `telemetry_snapshots` **9** Parts (kein Fragmentierungsalarm bei aktuellem Volumen) |
+| Kleine Parts (<1 MiB) | Alle Tabellen — erwartbar bei geringem Volumen |
+| Mutationen | **5** historische `(MATERIALIZE TTL)` vom **2026-06-23** — alle `is_done=1`; **keine** Audit-Mutationen |
+| Query-Log | Nur **1** Eintrag (2026-07-25) — CH-Query-Logging praktisch nicht auswertbar |
+| Exceptions (7d) | **0** in `system.query_log` |
+| Schema-Migrationen | **6/6** applied (`001`–`006`, letzte **2026-07-10**) |
+
+**Bewertung:** ClickHouse-Instanz **gesund** bei sehr kleinem Footprint. **P1** Ghost-Mounts (MA-TOPO-P1-001) weiterhin relevant für Container-Recreate, nicht für laufenden Betrieb.
+
+### 13.2 Tabellen, Engines, Partitionierung, Keys, TTL
+
+| Tabelle | Engine | Partition | ORDER BY / PK | Rows | TTL (live) | Dokumentiert |
+|---------|--------|-----------|---------------|------|------------|--------------|
+| `telemetry_snapshots` | MergeTree | `toYYYYMM(recorded_at)` | `(vehicle_id, recorded_at)` | 602.569 | **180d** `recorded_at` | **180d** ✓ |
+| `telemetry_state_changes` | MergeTree | `toYYYYMM(changed_at)` | `(vehicle_id, signal_name, changed_at)` | 4.178 | **365d** | **365d** ✓ |
+| `telemetry_waypoints` | MergeTree | `toYYYYMM(recorded_at)` | `(vehicle_id, recorded_at)` | 12.102 | **365d** | **365d** ✓ |
+| `trip_activity_windows` | ReplacingMergeTree | `toYYYYMM(window_start)` | `(vehicle_id, window_start, window_end)` | 1.298 | **365d** | **365d** ✓ |
+| `trip_segment_candidates` | ReplacingMergeTree | `toYYYYMM(segment_start)` | `(vehicle_id, segment_start)` | 0 | **180d** | **180d** ✓ |
+| `telemetry_hf_points` | MergeTree | `toYYYYMM(recorded_at)` | `(org_id, vehicle_id, signal_name, recorded_at)` | 174.107 | **90d** | **90d** ✓ |
+| `telemetry_hf_windows` | ReplacingMergeTree | `toYYYYMM(window_start)` | `(org_id, vehicle_id, window_start, signal_group)` | 13.151 | **180d** | **180d** ✓ |
+| `telemetry_hf_events` | ReplacingMergeTree | `toYYYYMM(event_start)` | `(org_id, vehicle_id, event_type, event_start)` | 31 | **365d** | **365d** ✓ |
+| `schema_migrations` | ReplacingMergeTree | — | `version` | 6 | — | — |
+
+**Retention-Abweichung:** **Keine** — alle TTLs entsprechen `002`/`003` und `backend/docs/clickhouse-local-selfhosted.md`.
+
+**Tenant-Spalten:**
+
+| Tabelle | `org_id` | Risiko |
+|---------|----------|--------|
+| `telemetry_snapshots` | **fehlt** | Tenant-Isolation nur über `vehicle_id` → PG-Join |
+| `telemetry_state_changes` | **fehlt** | wie oben |
+| `telemetry_waypoints` | **vorhanden** (Migration 004) | **642/12.102** (5,3 %) mit leerem `org_id` |
+| HF-Tabellen | **vorhanden** | **0** leere `org_id` (174.107 Rows) |
+
+### 13.3 Ingestion-Freshness & Datenlücken
+
+| Prüfung | Anzahl | Zeitraum | Risiko |
+|---------|--------|----------|--------|
+| Gesamt-Snapshots CH | 602.569 | 2026-05-06 → 2026-07-25 | — |
+| Distinct Vehicles CH | **7** | gesamt | **P2** — 1 verwaist (s. unten) |
+| Stunden seit letztem Snapshot (`recorded_at`) | **~10 h** | Stand 07:15 UTC | **P2** — kein neues Event-Timestamp seit 2026-07-25 21:27 |
+| Tages-Ingestion heute (UTC) | **0** Snapshots | 2026-07-26 | **P2** — DIMO-Polls laufen, aber keine neuen `recorded_at` |
+| DIMO-Polls (PG) heute | **5.815** SUCCESS | 2026-07-26 | Pipeline aktiv; Signal-Stagnation upstream |
+| DIMO-Polls (24h) | **19.438** SUCCESS / **1** FAILURE | 24h | **OK** |
+| Einzigartige Snapshot-Keys `(vehicle_id, recorded_at)` | **31.786** | gesamt | — |
+| Duplikat-Zeilen (gleicher Key) | **570.783** (~**94,7 %**) | gesamt | **P1** — Append ohne Dedup |
+| Duplikat-Gruppen | **6.196** | gesamt | **P1** |
+| HF-Punkte | 174.107 | 2026-07-08 → 2026-07-25 | **OK** |
+| HF Ingestion-Lag (p50/p95/max) | **4.208 s / 46,8 h / 3,5 d** | 7d | **P2** — Batch/Backfill-Muster |
+| GPS in Snapshots | **100 %** (602.581/602.581) | gesamt | **P2** Datenschutz — präzise Standortdaten |
+| Verwaiste CH-`vehicle_id` (nicht in PG) | **1** (`be15ecb1…`, 38.259 Rows) | bis TTL | **P2** — gelöschtes Fahrzeug, Daten bis TTL |
+| PG-Fahrzeuge ohne CH-Telemetrie | **3** (kein DIMO) | gesamt | **P3** — erwartbar |
+| DIMO-Token → mehrere Orgs | **0** | gesamt | **OK** |
+| HF mit leerer `org_id` | **0** | gesamt | **OK** |
+| Waypoints leere `org_id` | **642** | gesamt | **P2** |
+| CH-Write-Fehler in PM2-Logs | **0** Treffer | 24h-Stichprobe | **OK** (best-effort, silent skip) |
+
+**Letzte Telemetrie pro Fahrzeug (maskiert, CH `recorded_at`):**
+
+| vehicle_prefix | last_recorded (UTC) | rows | days_stale |
+|----------------|---------------------|------|------------|
+| `a60c0749` | 2026-07-25 21:27 | 108.418 | 1 |
+| `8c850ff1` | 2026-07-25 20:09 | 87.464 | 1 |
+| `c10351f8` | 2026-07-25 09:28 | 108.440 | 1 |
+| `19fedd4b` | 2026-07-23 14:43 | 70.120 | 3 |
+| `68868291` | 2026-07-22 14:05 | 108.412 | 4 |
+| `c43c3b45` | 2026-07-18 13:42 | 81.456 | 8 |
+| `be15ecb1` | 2026-07-06 13:17 | 38.259 | 20 (orphan) |
+
+**PG `vehicle_latest_states.last_seen_at`** stimmt mit CH-`recorded_at` für aktive DIMO-Fahrzeuge überein (gleiche Stagnation seit 2026-07-25 Abend) — Problem liegt **upstream** (keine neuen DIMO-Signal-Timestamps), nicht an CH-Schreibfehlern.
+
+**Sprunghafte Ingestion (letzte 30 Tage):** Keine vollständigen Null-Tage; auffällige Spitzen 2026-07-17/18/19 (43k–73k/Tag) und Tief 2026-07-16 (3.511) — wahrscheinlich Fahrzeug-/Fleet-Aktivität, kein CH-Ausfall.
+
+### 13.4 End-to-End-Pipeline
+
+| Pipeline-Stufe | Letzte Aktivität | Fehlerindikator | Bewertung |
+|----------------|------------------|-----------------|-----------|
+| **DIMO API** | Polls bis **07:15 UTC** (`dimo_poll_logs`) | **1** FAILURE / 24h | **OK** — 99,99 % Success |
+| **Webhook** | Nicht separat geprüft | — | Ausstehend (DIMO-Schritt) |
+| **Backend Scheduler** | `DimoSnapshotScheduler` embedded in PM2 | `Custom Id cannot contain :` (**865×**) | **P2** — siehe MA-REDIS-P2-002 |
+| **Redis/BullMQ** | `dimo.snapshot.poll`: wait=0, active=0, failed=0 | Kein Backlog | **OK** |
+| **Worker** | `DimoSnapshotProcessor` (embedded) | Keine CH-Fehler in Logs | **OK** |
+| **PostgreSQL** | `vehicle_latest_states.updated_at` **07:15 UTC** | `dimo_poll_logs` 318 MB | **OK** mit P3 Storage |
+| **ClickHouse** | Letzter `recorded_at` **2026-07-25 21:27** | 94,7 % Duplikate | **WARN** |
+| **API** | Readiness: CH `ok`, 807k rows | Öffentliche Storage-Metadaten | **OK** / **P2** Disclosure |
+| **Master/Org Admin** | `DataAnalyseService` liest CH (Code) | Keine Live-Smokes | **TEILWEISE** |
+
+**Architektur-Pfad (Code):** DIMO Polling → `DimoSnapshotProcessor` → PG `vehicle_latest_states` + fire-and-forget `ClickHouseTelemetryService.insertSnapshot` → `telemetry_snapshots`. HF-Pfad separat über `ClickHouseHfService` → `telemetry_hf_*`.
+
+### 13.5 Tenant-Risiken & Datenschutz
+
+| Risiko | Befund | Severity |
+|--------|--------|----------|
+| Fehlende `org_id` auf Kern-Spiegel | `telemetry_snapshots` / `telemetry_state_changes` nur `vehicle_id` | **P2** — CH-Queries ohne PG-Join können tenant-übergreifend lesen |
+| Leere `org_id` Waypoints | 5,3 % historischer Waypoints | **P2** |
+| Präzise Standortdaten | 100 % GPS in Snapshots; Waypoints/HF mit Lat/Lng | **P2** — Retention/TTL greift (180d/365d/90d), aber keine Pseudonymisierung in CH |
+| Verwaiste Vehicle-Daten | 38k Rows für gelöschtes Fahrzeug | **P2** — TTL-begrenzt |
+| Abfragen ohne Tenant-Filter | Code: `signal-quality-read.service` filtert via PG `organizationId`; Legacy-Snapshots nicht org-scoped | **P2** Design-Schuld |
+
+**Schutz Standort-/Bewegungsdaten:** TTL-Retention aktiv und dokumentiert; kein Row-Level-Security in ClickHouse; Zugriff nur localhost + Backend-Service-Credentials. Öffentliche Readiness exponiert aggregierte CH-Metriken (MA-NET-P2-003).
+
+### 13.6 Bestätigung Read-Only
+
+| Aktion | Ausgeführt? |
+|--------|-------------|
+| `SELECT` / System-Katalog-Reads | **JA** |
+| `INSERT` / `ALTER` / `OPTIMIZE` / `SYSTEM` / `TRUNCATE` | **NEIN** |
+| Tabellen verändert | **NEIN** |
+| Mutationen angestoßen | **NEIN** |
+
+**Status:** ClickHouse & Telemetrie-Pipeline **abgeschlossen** (Schritt 9).
 
 ---
 
@@ -1520,6 +1652,7 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 > **Schritt 6 (Backend/API):** 3× P2 neu, 2× P3 neu.
 > **Schritt 7 (PostgreSQL):** 2× P2 neu, 4× P3 neu.
 > **Schritt 8 (Redis/BullMQ):** 1× P1 neu, 3× P2 neu, 2× P3 neu.
+> **Schritt 9 (ClickHouse/Telemetrie):** 1× P1 neu, 5× P2 neu, 1× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -1583,6 +1716,18 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 | **MA-REDIS-OBS-001** | **Beobachtung** | Clients | **108** connected, **19** blocked (`bzpopmin`) — BullMQ-Worker normal | — |
 | **MA-REDIS-OBS-002** | **Beobachtung** | Queues | **Kein** `waiting`-Backlog auf allen 19 Queues | Positiv |
 | **MA-REDIS-OBS-003** | **Beobachtung** | Staging | 2 Keys mit `staging` in Job-ID unter `notification.evaluation` — **kein** Env-Mix | — |
+| **MA-CH-P1-001** | **P1** | ClickHouse Datenqualität | `telemetry_snapshots`: **570.783** Duplikat-Zeilen (~**94,7 %**) auf `(vehicle_id, recorded_at)` — nur **31.786** eindeutige Keys bei **602.569** Rows | Dedup-Strategie (ReplacingMergeTree oder Insert-Guard); historische Bereinigung evaluieren |
+| **MA-CH-P2-001** | **P2** | Tenant-Isolation | `telemetry_snapshots` / `telemetry_state_changes` **ohne** `org_id` — CH-only Queries nicht tenant-scoped | Org-Spalte + Sort-Key-Migration (wie HF) oder erzwingender PG-Pre-Filter |
+| **MA-CH-P2-002** | **P2** | Tenant-Isolation | **642/12.102** Waypoints mit leerem `org_id` (5,3 %) | Backfill `org_id` aus PG bei Waypoint-Write |
+| **MA-CH-P2-003** | **P2** | Datenhygiene | **1** verwaiste CH-`vehicle_id` (`be15ecb1…`, 38.259 Rows) — Fahrzeug nicht mehr in PG | TTL abwarten oder gezieltes Purge nach Fahrzeug-Löschung |
+| **MA-CH-P2-004** | **P2** | Ingestion-Freshness | Keine neuen CH-Snapshots seit **2026-07-25 21:27 UTC** (~10 h) trotz **19.438** erfolgreicher DIMO-Polls/24h | DIMO-Signal-Stagnation vs. Processor-Filter prüfen |
+| **MA-CH-P2-005** | **P2** | HF Ingestion | HF `ingested_at`−`recorded_at` p95 **~47 h**, max **~3,5 d** | Batch-Backfill dokumentieren oder Near-Real-Time-Pfad verbessern |
+| **MA-CH-P2-006** | **P2** | Datenschutz | **100 %** der `telemetry_snapshots` enthalten GPS (lat/lng) | Retention/Datenschutz-Folgenabschätzung; Zugriffskontrolle auf CH-Reads |
+| **MA-CH-P3-001** | **P3** | PG↔CH Abdeckung | **3** PG-Fahrzeuge ohne CH-Daten — **kein** DIMO-Token (Staging/Test-Orgs) | Erwartbar — dokumentieren |
+| **MA-CH-OBS-001** | **Beobachtung** | Observability | `system.query_log` praktisch leer (1 Eintrag) — keine CH-Query-/Insert-Metriken | Query-Log-Retention/Logging aktivieren |
+| **MA-CH-OBS-002** | **Beobachtung** | Topologie | Single-Node, keine Replikation — SPOF für Analytics | Erwartet auf Single-VPS |
+| **MA-CH-OBS-003** | **Beobachtung** | Retention | Alle TTLs **konform** mit Migrationen 002/003 | Positiv |
+| **MA-CH-OBS-004** | **Beobachtung** | Pipeline | `dimo.snapshot.poll` completed=0 — BullMQ-Trimming; Queue dennoch ohne Backlog | Positiv |
 
 ---
 
@@ -1597,14 +1742,15 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 - [x] **Backend/API-Runtime & Master-Admin (unauth)** — Health/Readiness, Admin-Route-Probes, Guard-Code-Review, Route-Matrix, Log-Stichprobe
 - [x] **PostgreSQL (read-only)** — Metadaten, Migrationen, Integrität, Tenant/Billing-Stichproben
 - [x] **Redis & BullMQ (read-only)** — INFO/SCAN, Queue-Counts, Failed-Jobs, Worker-Host
+- [x] **ClickHouse & Telemetrie-Pipeline (read-only)** — Schema/TTL/Parts, Ingestion-Freshness, PG↔CH-Cross-Check, Pipeline-Stufen
 
 ### Priorisierte Folgeschritte (alle read-only)
 
 1. ~~**Master-Admin-Surface (unauth)**~~ — **erledigt** (Schritt 6)
 2. ~~**PostgreSQL SELECT-Counts / Tenant-Stichproben**~~ — **erledigt** (Schritt 7)
 3. ~~**BullMQ Queue Health**~~ — **erledigt** (Schritt 8)
-4. **ClickHouse** — `SHOW TABLES`, Row-Counts (SELECT)
-4. **Prometheus/Grafana** — Scrape-Targets, Dashboard-Versionen (read-only)
+4. ~~**ClickHouse**~~ — **erledigt** (Schritt 9)
+5. **Prometheus/Grafana** — Scrape-Targets, Dashboard-Versionen (read-only)
 5. **DIMO** — Env + Queue + MCP-Abgleich
 6. **Stripe/Billing** — Env-Keys, Webhook-Route HEAD, Master-Billing-API unauth
 7. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
@@ -1628,9 +1774,10 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 | **Master-Admin (unauth)** | **OK** — 401 ohne Token; Seed-Admin disabled (**403**) |
 | **PostgreSQL** | **OK mit P2/P3** — Schema aktuell; 3 Orgs ohne Admin/Subscription |
 | **Redis/BullMQ** | **WARN** — kein Backlog; **28** battery.v2 fails; Scheduler JobId-Fehler |
-| Audit vollständig | **NEIN** — ClickHouse/Integrationen/authentifizierte Smokes ausstehend |
+| **ClickHouse/Telemetrie** | **WARN** — gesund & klein; **94,7 %** Snapshot-Duplikate; keine `org_id` auf Kern-Spiegel; Signal-Stagnation ~10 h |
+| Audit vollständig | **NEIN** — Integrationen/authentifizierte Smokes/Prom-Graf ausstehend |
 | Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Route-Matrix (Code); keine authentifizierten Tests |
-| Gesamturteil | **PENDING** — Kein **P0**; **2× P1** (Swagger, CH-Mounts) + mehrere **P2** offen |
+| Gesamturteil | **PENDING** — Kein **P0**; **3× P1** (Swagger, CH-Mounts, CH-Duplikate) + mehrere **P2** offen |
 
 ### Schritt 2 — VPS-Baseline-Kurzfazit
 
@@ -1673,6 +1820,7 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 | 2026-07-26T07:07–07:10 | Schritt 6: Backend/API (`curl` Health/Readiness/Admin-Probes, PM2-Logs, OpenAPI-Count, Code-Route-Matrix) | **NEIN** |
 | 2026-07-26T07:10–07:12 | Schritt 7: PostgreSQL (`psql` read-only, `_prisma_migrations`, Integritäts-SELECTs) | **NEIN** |
 | 2026-07-26T07:12–07:14 | Schritt 8: Redis/BullMQ (`redis-cli` INFO/SCAN/LLEN/ZCARD, Failed-Job-Stichproben) | **NEIN** |
+| 2026-07-26T07:15–07:18 | Schritt 9: ClickHouse (`clickhouse-client` SELECT only, PG↔CH Cross-Check, Pipeline-Queues) | **NEIN** |
 
 ---
 
