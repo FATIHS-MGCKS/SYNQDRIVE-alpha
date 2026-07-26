@@ -6,6 +6,20 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 
 > Take a backup before any DB-mutating step: > `pg_dump "$DATABASE_URL" -Fc -f /var/backups/synqdrive-$(date +%F).dump`
 
+## Redis & BullMQ (Phase 2C.4)
+
+PostgreSQL is System of Record — Redis is BullMQ queue buffer only.
+
+```bash
+bash backend/scripts/ops/vps-configure-redis-persistence.sh   # RDB + AOF (one-time)
+cp backend/scripts/ops/redis-backup.env.example /opt/synqdrive/shared/redis-backup.env
+bash backend/scripts/ops/vps-install-redis-backup-cron.sh
+bash backend/scripts/ops/vps-backup-redis.sh
+bash backend/scripts/ops/vps-inspect-bullmq-redis.sh
+```
+
+Docs: [`docs/remediation/redis-backup.md`](../../docs/remediation/redis-backup.md)
+
 ## Recommended order
 
 1. **Stop the bleeding (app-side, already in code):**
@@ -57,6 +71,13 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-setup-grafana.sh` | Install/refresh Grafana Docker on VPS (localhost:3000, SynqDrive Ops dashboard) | safe — requires Prometheus |
 | `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
 | `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only |
+| `vps-configure-redis-persistence.sh` | Enable RDB + AOF for native Redis (BullMQ buffer) | requires redis restart |
+| `vps-backup-redis.sh` | Daily RDB snapshot archive + integrity check | safe — queue buffer only |
+| `vps-restore-test-redis.sh` | `redis-check-rdb` drill (non-destructive) | safe |
+| `vps-restore-redis.sh` | Maintenance-window RDB restore | **destructive** — requires `REDIS_RESTORE_CONFIRM` |
+| `vps-inspect-bullmq-redis.sh` | BullMQ queue depth / failed summary | read-only |
+| `vps-install-redis-backup-cron.sh` | Daily 04:00 UTC Redis backup cron | safe — run as root once |
+| `redis-backup.env.example` | Redis backup config template | copy to `/opt/synqdrive/shared/redis-backup.env` |
 
 ### Partitioning (P2)
 

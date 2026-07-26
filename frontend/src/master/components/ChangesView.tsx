@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-redis-backup-2c4-2026-07-26',
+    version: '4.9.893',
+    title: 'V4.9.893 — Master Admin 2C.4: Redis & BullMQ backup strategy',
+    summary: [
+      'Classify ephemeral vs operational buffer vs Postgres SoT; BullMQ inventory with recovery paths.',
+      'vps-configure-redis-persistence.sh (RDB+AOF), vps-backup-redis.sh snapshot, redis-check-rdb integrity.',
+      'vps-restore-test-redis.sh (safe), vps-restore-redis.sh (maintenance), vps-inspect-bullmq-redis.sh.',
+      'docs/remediation/redis-backup.md',
+    ],
+    reason:
+      'Redis had no persistence/backup policy; BullMQ state is buffer only but should survive restarts without full scheduler replay storms.',
+    previousBehavior:
+      'Native Redis 7 with noeviction and no documented backup; business recovery path unclear.',
+    details:
+      'Postgres-first recovery documented; Redis RDB is Tier-2 operational backup not business DR',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T18:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
