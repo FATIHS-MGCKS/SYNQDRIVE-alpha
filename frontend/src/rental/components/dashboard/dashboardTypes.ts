@@ -743,7 +743,6 @@ export interface DashboardViewModel {
   handleConfirmPickup: (item: PickupTileItem) => void;
   handleConfirmReturn: (item: ReturnTileItem) => void;
 
-  dashboardNotifications: DashboardNotificationItem[];
   actionQueue: ActionQueueItem[];
   actionQueueLoading: boolean;
   actionQueueError: boolean;

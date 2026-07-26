@@ -14,6 +14,8 @@ import {
   isNotificationsV2Active,
   isNotificationsV2Shadow,
   shouldFetchV2NotificationsInBackground,
+  shouldUseV2NotificationApiOnly,
+  shouldUseV2NotificationBridges,
   shouldUseV2NotificationSource,
 } from './notifications-v2-flag';
 import {
@@ -22,7 +24,8 @@ import {
   navigateNotificationV2Action,
 } from './notification-v2-action-router';
 import { buildUnifiedActionQueue } from '../../components/dashboard/actionQueueBuilder';
-import { baseQueueInput } from '../../components/dashboard/notificationEngine.fixtures';
+import { baseQueueInput, drivingAssessmentInsight } from '../../components/dashboard/notificationEngine.fixtures';
+import { normalizeOperationalIssues } from '../operational-issues/normalizeOperationalIssues';
 import { WOB_PLATE, WOB_VEHICLE_ID } from '../../components/dashboard/notificationEngine.fixtures';
 import type { ActionQueueItem } from '../../components/dashboard/dashboardTypes';
 
@@ -65,6 +68,7 @@ describe('notifications-v2 flag', () => {
 
   afterEach(() => {
     import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
+    import.meta.env.VITE_NOTIFICATIONS_V2_BRIDGES = env.VITE_NOTIFICATIONS_V2_BRIDGES;
   });
 
   it('defaults to off', () => {
@@ -86,6 +90,15 @@ describe('notifications-v2 flag', () => {
     import.meta.env.VITE_NOTIFICATIONS_V2 = 'on';
     expect(isNotificationsV2Active()).toBe(true);
     expect(shouldUseV2NotificationSource()).toBe(true);
+    expect(shouldUseV2NotificationApiOnly()).toBe(true);
+    expect(shouldUseV2NotificationBridges()).toBe(false);
+  });
+
+  it('supports transitional bridges when explicitly enabled', () => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'on';
+    import.meta.env.VITE_NOTIFICATIONS_V2_BRIDGES = 'on';
+    expect(shouldUseV2NotificationApiOnly()).toBe(false);
+    expect(shouldUseV2NotificationBridges()).toBe(true);
   });
 });
 
@@ -151,12 +164,19 @@ describe('mapNotificationApiToActionQueueItem', () => {
 });
 
 describe('V2 single source path', () => {
+  const env = import.meta.env;
+
+  afterEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
+  });
+
   it('V2 list has only notifications-v2 source', () => {
     const items = mapNotificationApiList([apiRow(), apiRow({ id: 'notif-002', eventType: 'STATION_SHORTAGE', domain: 'OPERATIONS' })], 'de');
     expect(items.every((i) => i.source === 'notifications-v2')).toBe(true);
   });
 
   it('V1 path still merges insights — V2 path does not', () => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'off';
     const v1 = buildUnifiedActionQueue(
       baseQueueInput({
         insights: [
@@ -184,8 +204,50 @@ describe('V2 single source path', () => {
   });
 });
 
-describe('mapApiCountsToTabCounts', () => {
-  it('uses counts endpoint fields not page estimates', () => {
+describe('canonical insight suppression (V2 on)', () => {
+  const env = import.meta.env;
+
+  afterEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
+  });
+
+  it('does not normalize canonical insights into operational issues when V2 is on', () => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'on';
+    const issues = normalizeOperationalIssues({
+      dashboardInsights: [
+        {
+          id: 'ins-1',
+          type: 'STATION_SHORTAGE',
+          severity: 'WARNING',
+          priority: 50,
+          title: 'Station shortage',
+          message: 'Low availability',
+          entityScope: 'STATION',
+          entityIds: ['st-1'],
+          isGrouped: false,
+          groupCount: 1,
+          createdAt: '2026-07-10T10:00:00.000Z',
+        },
+      ],
+      vehiclesById: new Map(),
+    });
+    expect(issues).toHaveLength(0);
+  });
+
+  it('does not add canonical insights to V1 action queue when V2 is on', () => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'on';
+    const items = buildUnifiedActionQueue(
+      baseQueueInput({
+        insights: [drivingAssessmentInsight('DEGRADED')],
+      }),
+    );
+    expect(items.filter((i) => i.source === 'dashboard-insights')).toHaveLength(0);
+    expect(items.filter((i) => i.title.includes('Fahrbewertung'))).toHaveLength(0);
+  });
+});
+
+describe('single-source counts', () => {
+  it('mapApiCountsToTabCounts does not mix page estimates with supplemental rows', () => {
     const tabs = mapApiCountsToTabCounts({
       totalActive: 12,
       unread: 5,

@@ -4,6 +4,7 @@ import type {
   InsightType,
   VehicleHealthAlert,
 } from '../../DashboardInsightsContext';
+import { shouldSuppressCanonicalInsightAsOperationalNotification } from '../../lib/notifications/operational-notification-suppression';
 import type { VehicleData } from '../../data/vehicles';
 import {
   createBookingIssueKey,
@@ -16,7 +17,6 @@ import {
   type OperationalIssueSeverity,
 } from '../../lib/operational-issues';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
-import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import type {
   ActionQueueCategory,
   ActionQueueChildSeverity,
@@ -284,7 +284,6 @@ export interface BuildActionQueueInput {
   vehicleHealthAlerts: VehicleHealthAlert[];
   pickupItems: PickupTileItem[];
   returnItems: ReturnTileItem[];
-  notifications: DashboardNotificationItem[];
   derivedInsights: DerivedOperationalInsight[];
   predictiveInsights: PredictiveOperationsInsight[];
   dashboardRuntime?: DashboardRuntimeModel;
@@ -475,6 +474,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   const de = input.locale === 'de';
 
   for (const insight of input.insights) {
+    if (shouldSuppressCanonicalInsightAsOperationalNotification(insight.type)) continue;
     if (runtimeBacked && RUNTIME_INSIGHT_TYPES.has(insight.type)) continue;
     if (NORMALIZED_INSIGHT_TYPES.has(insight.type)) continue;
     if (!matchesStation(input.stationFilter, input.fleetById, insight.entityIds)) continue;
@@ -648,32 +648,6 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
         isOverdue,
       ),
     );
-  }
-
-  for (const n of input.notifications) {
-    if (n.semanticKey?.includes('driving_assessment_device_quality')) continue;
-    if (!n.unread && n.type !== 'alert') continue;
-    const severity: ActionQueueSeverity = n.type === 'alert' ? 'warning' : 'info';
-    const vehicleId = n.vehicleId;
-    const semanticKey = n.semanticKey;
-    items.push({
-      id: semanticKey ? `notif-${semanticKey}` : `notif-${n.title}-${n.time}`,
-      semanticKey,
-      source: 'booking',
-      severity,
-      category: 'notification',
-      title: sanitizeUserFacingIssueText(n.title),
-      reason: sanitizeUserFacingIssueText(n.desc),
-      timeLabel: n.time,
-      timeSortMs: Date.now(),
-      priority: computePriority(severity, false, Date.now()) - 100,
-      tone: severityToTone(severity),
-      cta: vehicleId ? 'open-vehicle' : 'open-rental',
-      vehicleId,
-      isOverdue: false,
-      groupKey: semanticKey ? `notification-thread:${semanticKey}` : `notification-thread:${n.title}`,
-      groupType: 'notification-thread',
-    });
   }
 
   const existingIds = new Set(items.map((i) => i.id));

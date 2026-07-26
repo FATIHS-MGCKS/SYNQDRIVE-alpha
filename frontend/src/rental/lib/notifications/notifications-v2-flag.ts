@@ -31,3 +31,18 @@ export function shouldFetchV2NotificationsInBackground(): boolean {
   const mode = getNotificationsV2Mode();
   return mode === 'on' || mode === 'shadow';
 }
+
+/**
+ * Transitional supplemental merges (derived ops, rental-health bridge, overdue handover).
+ * Default off when V2 is on — enable with `VITE_NOTIFICATIONS_V2_BRIDGES=on` during cutover.
+ */
+export function shouldUseV2NotificationBridges(): boolean {
+  if (!shouldFetchV2NotificationsInBackground()) return false;
+  const raw = (import.meta.env.VITE_NOTIFICATIONS_V2_BRIDGES ?? 'off').toString().trim().toLowerCase();
+  return raw === 'true' || raw === 'on' || raw === '1';
+}
+
+/** V2 on without transitional bridges — API is the sole operational notification source. */
+export function shouldUseV2NotificationApiOnly(): boolean {
+  return shouldUseV2NotificationSource() && !shouldUseV2NotificationBridges();
+}

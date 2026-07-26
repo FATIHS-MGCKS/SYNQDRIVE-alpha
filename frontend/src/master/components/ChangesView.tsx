@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-synthetic-dashboard-removal-2026-07-26',
+    version: '4.9.882',
+    title: 'Notification Engine Remediation — remove synthetic dashboard notification truth (Prompt 15)',
+    summary: [
+      'Removed buildDashboardNotificationsFromInsights and title/time synthetic notification IDs from ActionQueue.',
+      'V2 on: operational inbox from GET /notifications only; supplemental bridges opt-in via VITE_NOTIFICATIONS_V2_BRIDGES.',
+      'Canonical dashboard insights suppressed from client operational normalization when V2 active.',
+      'Backend: STATION_SHORTAGE + LOW_UTILIZATION added to V2_CANONICAL_INSIGHT_TYPES.',
+      'Docs: docs/architecture/notification-synthetic-dashboard-removal.md',
+    ],
+    reason:
+      'DashboardInsight and synthetic dashboardNotifications must not compete with the Notification Engine inbox.',
+    previousBehavior:
+      'Parallel paths: synthetic adapter feed, client insight→queue merge, FE-augmented tab counts, transitional bridges default-on.',
+    details:
+      'notifications-v2-flag bridges, operational-notification-suppression, actionQueueBuilder cleanup, useDashboardViewModel API-only path.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T12:00:00.000Z',
+  },
+  {
     id: 'notification-technical-observations-2026-07-26',
     version: '4.9.881',
     title: 'Notification Engine Remediation — technical observations canonical lifecycle (Prompt 14)',
