@@ -199,12 +199,13 @@ describe('NotificationRepository (mocked Prisma)', () => {
       occurredAt,
       sourceType: NotificationSourceType.RUNTIME,
       sourceRef: 'runtime-1',
+      sourceEventId: 'runtime-1',
       severityAtOccurrence: NotificationSeverity.WARNING,
-      payload: { evidence: 'hf_mirror' },
+      payload: { runId: 'hf_mirror' },
     });
 
     expect(occurrences).toHaveLength(1);
-    expect(occurrences[0].payload).toEqual({ evidence: 'hf_mirror' });
+    expect(occurrences[0].payload).toEqual({ runId: 'hf_mirror' });
     const updated = notifications.get(notif.id);
     expect(updated.occurrenceCount).toBe(1);
   });

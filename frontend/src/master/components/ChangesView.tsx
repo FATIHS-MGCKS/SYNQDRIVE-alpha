@@ -35,6 +35,289 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-action-queue-decouple-2026-07-26',
+    version: '4.9.883',
+    title: 'Notification Engine Remediation — decouple ActionQueue from notification truth (Prompt 16)',
+    summary: [
+      'ActionQueue decoupled from notification inbox when VITE_ACTION_QUEUE_DECOUPLED=on: notificationInbox from API, operationalWorkQueue for handovers only.',
+      'Personal acknowledge/snooze no longer patches org notification status in useNotifications optimistic updates.',
+      'NotificationTaskLinkService + registry: task completion resolves notification only when allowed; health events stay open.',
+      'Tasks dedupe by notification:task:{notificationId}; optional notificationId in task metadata.',
+      'Feature flags: VITE_ACTION_QUEUE_DECOUPLED (FE), ACTION_QUEUE_DECOUPLED (BE).',
+    ],
+    reason:
+      'ActionQueue must not be a second Notification Engine; tasks and notifications have independent lifecycles.',
+    previousBehavior:
+      'ActionQueueItem carried both notifications and operative work; acknowledge mutated org status client-side; task complete had no registry-gated notification resolve.',
+    details:
+      'notification-lifecycle-display.ts, NotificationPanel notificationInbox, buildOperationalHandoverWorkQueue, notification-task-link.service.ts, tasks.service onTaskCompleted hook.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T13:00:00.000Z',
+  },
+  {
+    id: 'notification-synthetic-dashboard-removal-2026-07-26',
+    version: '4.9.882',
+    title: 'Notification Engine Remediation — remove synthetic dashboard notification truth (Prompt 15)',
+    summary: [
+      'Removed buildDashboardNotificationsFromInsights and title/time synthetic notification IDs from ActionQueue.',
+      'V2 on: operational inbox from GET /notifications only; supplemental bridges opt-in via VITE_NOTIFICATIONS_V2_BRIDGES.',
+      'Canonical dashboard insights suppressed from client operational normalization when V2 active.',
+      'Backend: STATION_SHORTAGE + LOW_UTILIZATION added to V2_CANONICAL_INSIGHT_TYPES.',
+      'Docs: docs/architecture/notification-synthetic-dashboard-removal.md',
+    ],
+    reason:
+      'DashboardInsight and synthetic dashboardNotifications must not compete with the Notification Engine inbox.',
+    previousBehavior:
+      'Parallel paths: synthetic adapter feed, client insight→queue merge, FE-augmented tab counts, transitional bridges default-on.',
+    details:
+      'notifications-v2-flag bridges, operational-notification-suppression, actionQueueBuilder cleanup, useDashboardViewModel API-only path.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T12:00:00.000Z',
+  },
+  {
+    id: 'notification-technical-observations-2026-07-26',
+    version: '4.9.881',
+    title: 'Notification Engine Remediation — technical observations canonical lifecycle (Prompt 14)',
+    summary: [
+      'Technical Observations remain domain objects (vehicle_complaints); canonical inbox is TECHNICAL_OBSERVATION_ACTIVE only.',
+      'Lifecycle sync on create/update/resolve/dismiss/convert/linkService with correlationId/causationId and observationId metadata.',
+      'Device-quality auto-observations excluded; frontend suppresses aggregate complaints health bridge when V2 has per-observation rows.',
+      'Docs: docs/architecture/notification-technical-observations.md',
+    ],
+    reason:
+      'Observations must not form a second notification truth alongside the Notification Engine.',
+    previousBehavior:
+      'V1 rental-health aggregate technical_observation_active ActionQueue row; update/linkService did not sync V2 notifications.',
+    details:
+      'technical-observation-lifecycle.util, TechnicalObservationsService lifecycle hooks, merge-v2-with-vehicle-health suppression, notification-technical-observation-producers.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T11:00:00.000Z',
+  },
+  {
+    id: 'notification-booking-handover-producers-2026-07-26',
+    version: '4.9.880',
+    title: 'Notification Engine Remediation — booking pickup & return producers (Prompt 13)',
+    summary: [
+      'W2 booking/handover producers migrate to canonical NotificationCandidate ingest (PICKUP_OVERDUE, RETURN_OVERDUE, TIGHT_HANDOVER, RETURN_NEEDS_INSPECTION).',
+      'Booking-scoped entity (bookingId primary, vehicleId in action target); stable per-booking fingerprints and dedupeKey sourceEventId.',
+      'RETURN_OVERDUE synced from ACTIVE booking query (0 min grace); cron re-runs update same row.',
+      'Docs: docs/architecture/notification-booking-handover-producers.md',
+    ],
+    reason:
+      'Pickup, return, and handover alerts must use one inbox path with booking-centric identity and proper recovery.',
+    previousBehavior:
+      'V1 dashboard_insights + frontend actionQueue synthetic overdue tiles; RETURN_OVERDUE had no backend producer.',
+    details:
+      'BookingHandoverNotificationAdapter, booking-handover-source.mapper, syncBookingHandoverFromInsights, syncReturnOverdueNotifications.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T10:00:00.000Z',
+  },
+  {
+    id: 'notification-vehicle-health-telemetry-producers-2026-07-26',
+    version: '4.9.879',
+    title: 'Notification Engine Remediation — vehicle health & telemetry producers (Prompt 12)',
+    summary: [
+      'W1 producers migrate to canonical NotificationCandidate ingest (DTC, battery, tires, brakes, service/TÜV/BOKraft, connectivity, driving assessment, technical observations).',
+      'V1 dashboard_insights publish filtered for canonical types when NOTIFICATIONS_V2 is on; BI detectors still run.',
+      'Health source merge dedupes module aggregates vs alert rows; DTC explicit clear bypasses grace.',
+      'Docs: docs/architecture/notification-vehicle-health-telemetry-producers.md',
+    ],
+    reason:
+      'Vehicle health and telemetry must use one inbox path with stable fingerprints, occurredAt, and recovery semantics.',
+    previousBehavior:
+      'Hybrid V1 insights + partial V2 shadow ingest; duplicate tiles from BI publish and FE bridges.',
+    details:
+      'ComplianceOperationalNotificationAdapter, vehicle-health-source.merge, v2-canonical-insight-types, notification-vehicle-health-telemetry-producers.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T09:00:00.000Z',
+  },
+  {
+    id: 'notification-producer-migration-matrix-2026-07-26',
+    version: '4.9.878',
+    title: 'Notification Engine Remediation — producer migration matrix (Prompt 11)',
+    summary: [
+      'Binding migration matrix for all 58 notification producer paths (P-01…P-49).',
+      'Per producer: category, target event type, fingerprint, recovery, severity, flags, tests, rollback.',
+      '14 legacy removal paths and prioritized migration waves (Health → Booking → … → Connectivity).',
+      'Docs: docs/audits/notification-producer-migration-matrix-2026-07.md',
+    ],
+    reason:
+      'Cutover requires a single authoritative producer→registry mapping before code migrations.',
+    previousBehavior:
+      'Producer inventory existed in the data-flow map without per-producer migration contracts.',
+    details:
+      'Audit-only; no producer code changed. Based on notification-engine-data-flow-map-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T08:00:00.000Z',
+  },
+  {
+    id: 'notification-user-receipts-2026-07-26',
+    version: '4.9.877',
+    title: 'Notification Engine Remediation — separate user receipts from domain lifecycle (Prompt 10)',
+    summary: [
+      'Personal inbox state on notification_receipts: readAt, acknowledgedAt, snoozedUntil, hiddenAt, lastSeenAt.',
+      'API read/ack/snooze/hide touch receipts only; resolve/archive remain org-wide lifecycle.',
+      'Counts exclude personal snooze/hidden; CRITICAL still surfaces during personal snooze.',
+      'Docs: docs/architecture/notification-user-receipts.md',
+    ],
+    reason:
+      'Domain notification state and per-user inbox overlays must not be conflated.',
+    previousBehavior:
+      'Partial separation existed; hide/lastSeenAt missing; counts ignored personal overlays consistently.',
+    details:
+      'notification-receipt.service.ts, notification-receipt.policy.ts, notification-api.service.ts, migration 20260726140000.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T07:00:00.000Z',
+  },
+  {
+    id: 'notification-occurrence-history-2026-07-26',
+    version: '4.9.876',
+    title: 'Notification Engine Remediation — canonical occurrence history (Prompt 9)',
+    summary: [
+      'notification_occurrences extended: sourceEventId, observedAt, recoveryState, correlationId, causationId, controlled payload.',
+      'Atomic occurrenceCount increment; unique (notification_id, source_event_id) dedupe.',
+      'Out-of-order rules: stale WARNING cannot downgrade CRITICAL; stale recovery cannot resolve newer active generation.',
+      'Docs: docs/architecture/notification-occurrence-history.md',
+    ],
+    reason:
+      'Every accepted repetition must be traceable with data-sparse history and correct ordering semantics.',
+    previousBehavior:
+      'Occurrences stored source_ref/detected_at only; no dedupe; lastSeenAt could move backwards; stale recovery could resolve.',
+    details:
+      'occurrence/*, migration 20260726130000, notification-core.service.ts, notification.repository.ts, occurrence + core specs.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T06:00:00.000Z',
+  },
+  {
+    id: 'notification-lifecycle-state-machine-2026-07-26',
+    version: '4.9.875',
+    title: 'Notification Engine Remediation — centralized lifecycle state machine (Prompt 8)',
+    summary: [
+      'Canonical lifecycle catalog for OPEN/ACKNOWLEDGED/SNOOZED/RESOLVED/ARCHIVED with triggers, roles, audit events, timestamps.',
+      'Ingest rules: ACK does not clear cause; SNOOZED wakes on expiry/CRITICAL escalation; recovery never creates active SUCCESS.',
+      'Archive guardrails for auto-resolve STATE; matrix + snooze expiry tests.',
+      'Docs: docs/architecture/notification-lifecycle-state-machine.md',
+    ],
+    reason:
+      'Distributed status transitions must be replaced by one formal, tested state machine.',
+    previousBehavior:
+      'Transitions lived in notification-status.transitions.ts only; ingest ignored SNOOZED escalation wake.',
+    details:
+      'lifecycle/notification-lifecycle.state-machine.ts, notification-core.service.ts, notification-available-actions.ts, notification-lifecycle.state-machine.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T05:00:00.000Z',
+  },
+  {
+    id: 'notification-ingest-concurrency-2026-07-26',
+    version: '4.9.874',
+    title: 'Notification Engine Remediation — concurrency-safe ingestion (Prompt 7)',
+    summary: [
+      'Atomic ingest transaction: row lock (FOR UPDATE), fingerprint match, occurrence, severity/lifecycle, optional outbox.',
+      'withUniqueConflictRetry on P2002 + P2025 (max 4); recovery path fully transactional.',
+      'Post-commit ingest audit event notification.ingest.audit.',
+      'Docs: docs/architecture/notification-ingest-concurrency.md',
+    ],
+    reason:
+      'Parallel producers and retries must not create duplicate active notifications or lose occurrences.',
+    previousBehavior:
+      'Recovery read active outside transaction; retry only on create unique conflicts; no row locks.',
+    details:
+      'notification-core.service.ts, notification.repository.ts, notification-prisma.util.ts, notification-ingest-audit.ts, notification-core.service.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T04:00:00.000Z',
+  },
+  {
+    id: 'notification-db-integrity-2026-07-26',
+    version: '4.9.873',
+    title: 'Notification Engine Remediation — database integrity and active uniqueness (Prompt 6)',
+    summary: [
+      'Additive migration 20260726120000_notification_db_integrity: repair log, duplicate active fingerprint resolution, tenant org alignment, orphan cleanup.',
+      'Stricter partial unique (organization_id, fingerprint) for OPEN/ACKNOWLEDGED/SNOOZED; CHECK constraints for status timestamps, counters, JSON size.',
+      'Dashboard/count/outbox/retention indexes; audit SQL for duplicates, orphans, invalid orgs/entities.',
+      'Docs: docs/architecture/notification-db-integrity.md',
+    ],
+    reason:
+      'Notification persistence must be race-safe, tenant-isolated, and free of duplicate active identities at the database layer.',
+    previousBehavior:
+      'Partial unique included lifecycle_generation; no DB-level status/JSON guards; limited retention/outbox indexes.',
+    details:
+      'prisma/migrations/20260726120000_notification_db_integrity, notification-db-integrity.constants.ts, notification-integrity-audit.sql, notification-db-integrity.schema.spec.ts, schema.prisma.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T03:00:00.000Z',
+  },
+  {
+    id: 'notification-fingerprint-hardening-2026-07-26',
+    version: '4.9.872',
+    title: 'Notification Engine Remediation — canonical fingerprint hardening (Prompt 5)',
+    summary: [
+      'Deterministic fingerprint from stable identity only: organizationId, eventType, entityType, entityId, conditionKey, schemaVersion.',
+      'NFC normalization, fixed field order, explicit null rejection, forbidden pattern guard, SHA-256 digest.',
+      'Excluded from identity: title/body/i18n, severity, temporal fields, routes, occurrenceCount, ephemeral UUIDs.',
+      'Docs: docs/architecture/notification-fingerprint.md',
+    ],
+    reason:
+      'Notification dedupe and lifecycle matching require a tenant-safe, locale-independent fingerprint that cannot drift with UI text or severity.',
+    previousBehavior:
+      'Fingerprint was a pipe string with basic trim/forbidden checks; no dedicated normalizer, digest, or exhaustive identity exclusion tests.',
+    details:
+      'notification-fingerprint.normalizer.ts, notification-fingerprint.factory.ts, notification-fingerprint.*.spec.ts, notification.types.ts, docs/architecture/notification-fingerprint.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:00:00.000Z',
+  },
+  {
+    id: 'notification-candidate-contract-2026-07-26',
+    version: '4.9.871',
+    title: 'Notification Engine Remediation — standardized NotificationCandidate contract (Prompt 4)',
+    summary: [
+      'Canonical ingest contract schemaVersion=1: sourceSystem, sourceEventId, conditionKey, observedAt, recoveryState, entity refs, correlation/causation.',
+      'normalizeNotificationCandidate() syncs legacy aliases; metadata allowlist + PII denylist.',
+      'validateNotificationCandidate() enforces temporal, recovery, entity, registry rules — reject before persist.',
+      'Prometheus synqdrive_notification_candidate_rejected_total{field}; structured prod logs.',
+      'Docs: docs/architecture/notification-candidate-contract.md',
+    ],
+    reason:
+      'All producers must share one strict typed candidate contract; invalid payloads must never partially persist.',
+    previousBehavior:
+      'Candidate validation was structural + registry only; no schemaVersion, observedAt, recoveryState, or metadata policy.',
+    details:
+      'notification-candidate.contract.ts, notification-candidate.observability.ts, notification-candidate-metrics.binder.ts, notification-candidate.validator.ts, notification.types.ts, notification-event-registry.ts, notification-adapter.types.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T01:00:00.000Z',
+  },
+  {
+    id: 'notification-event-registry-enforcement-2026-07-26',
+    version: '4.9.870',
+    title: 'Notification Engine Remediation — canonical event registry enforcement (Prompt 3)',
+    summary: [
+      'Registry enforced at ingest: validateNotificationCandidate → validateRegistryCandidate; unknown eventType rejected (prod structured log).',
+      'Producer alias WEBHOOK_PROCESSING_FAILED → WEBHOOK_FAILURE; insight mapper uses buildCandidateFromRegistry; SERVICE_OVERDUE conditionCode fixed to service_overdue.',
+      'Static consistency checks (unique keys, severity rules, EVENT expiry) + NotificationEventTypeCode union.',
+      'Architecture doc: docs/architecture/notification-event-registry.md (66 registered types).',
+    ],
+    reason:
+      'Notification Engine production-readiness remediation — registry must be the single source of truth; no silent generic fallback types.',
+    previousBehavior:
+      'Core ingest validated structure only; adapters called validateRegistryCandidate separately; insight mapper could drift from registry (e.g. SERVICE_OVERDUE conditionCode overdue).',
+    details:
+      'notification-event-registry.aliases.ts, notification-event-registry.consistency.ts, notification-event-type-codes.ts, notification-candidate.validator.ts, insight-candidate.mapper.ts, notification-event-registry.spec.ts, notification-candidate.validator.spec.ts, docs/architecture/notification-event-registry.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T00:45:00.000Z',
+  },
+  {
     id: 'operator-app-prod-deploy-v49840-2026-07-25',
     version: '4.9.840',
     title: 'V4.9.840 — Operator App production deploy + Gate 12 closure',

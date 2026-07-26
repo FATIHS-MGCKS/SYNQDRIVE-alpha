@@ -1,14 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildUnifiedActionQueue } from './actionQueueBuilder';
 import { dedupeActionQueueItems } from './actionQueueGrouping';
-import { buildDashboardNotificationsFromInsights } from './dashboardNotificationAdapter';
 import {
   analyzeActionQueue,
   buildQueueWithNotifications,
   countItemsMatching,
   findItemsByTitleFragment,
   NOTIFICATION_TEST_NOW_MS,
-  syntheticNotificationFromInsight,
 } from './notificationEngine.test-utils';
 import {
   baseQueueInput,
@@ -28,12 +26,16 @@ import {
 import type { ActionQueueItem } from './dashboardTypes';
 
 describe('notification engine — P0 stabilization (post-fix behavior)', () => {
+  const env = import.meta.env;
+
   beforeEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'off';
     vi.useFakeTimers();
     vi.setSystemTime(NOTIFICATION_TEST_NOW_MS);
   });
 
   afterEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
     vi.useRealTimers();
   });
 
@@ -47,10 +49,9 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
       expect(items.filter((i) => i.title.includes('Fahrbewertung'))).toHaveLength(1);
     });
 
-    it('suppresses synthetic driving-assessment feed when normalized issue exists', () => {
+    it('does not create title-time synthetic notification ids', () => {
       const items = buildQueueWithNotifications(
         baseQueueInput({ insights: [drivingAssessmentInsight('DEGRADED')] }),
-        { includeSyntheticNotifications: true },
       );
       expect(items.find((i) => i.id.startsWith('notif-'))).toBeUndefined();
     });
@@ -83,16 +84,6 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
       expect(recovering?.severity).not.toBe('warning');
     });
 
-    it('adapter exposes recovering as system type for BusinessInsightsBox', () => {
-      const synth = buildDashboardNotificationsFromInsights([drivingAssessmentInsight('RECOVERING')], {
-        generatedAt: NOTIFICATION_TEST_INSIGHTS_GENERATED_AT,
-        intlLocale: 'de-DE',
-      });
-      expect(synth).toHaveLength(1);
-      expect(synth[0]?.type).toBe('system');
-      expect(synth[0]?.unread).toBe(false);
-      expect(synth[0]?.semanticKey).toBe(DRIVING_ASSESSMENT_SEMANTIC_KEY);
-    });
   });
 
   describe('CTA and time semantics', () => {
@@ -185,7 +176,6 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
     it('dedupeActionQueueItems merges items with the same semanticKey', () => {
       const items = buildQueueWithNotifications(
         baseQueueInput({ insights: [drivingAssessmentInsight('DEGRADED')] }),
-        { includeSyntheticNotifications: true },
       );
       const beforeDedupe = items.length;
       const deduped = dedupeActionQueueItems(items);
@@ -196,12 +186,16 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
 });
 
 describe('notification engine — target invariants (P0)', () => {
+  const env = import.meta.env;
+
   beforeEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'off';
     vi.useFakeTimers();
     vi.setSystemTime(NOTIFICATION_TEST_NOW_MS);
   });
 
   afterEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
     vi.useRealTimers();
   });
 
@@ -273,12 +267,6 @@ describe('notification engine — target invariants (P0)', () => {
     expect(recovering?.queue?.severity).toBe('success');
   });
 
-  it('case 10: adapter synthetic notification carries vehicle CTA metadata (BusinessInsightsBox only)', () => {
-    const synth = syntheticNotificationFromInsight(drivingAssessmentInsight('DEGRADED'));
-    expect(synth.vehicleId).toBe(WOB_VEHICLE_ID);
-    expect(synth.semanticKey).toBe(DRIVING_ASSESSMENT_SEMANTIC_KEY);
-  });
-
   it('case 11: normalized issue occurredAt uses degradedSince; sort uses lastSeenAt', () => {
     const degradedSince = '2026-07-08T08:00:00.000Z';
     const items = buildQueueWithNotifications(
@@ -304,10 +292,9 @@ describe('notification engine — target invariants (P0)', () => {
     expect(germanTitles).toHaveLength(0);
   });
 
-  it('case 13: recovering synthetic notification is not fed into ActionQueue', () => {
+  it('case 13: no synthetic notification rows are built from insights', () => {
     const items = buildQueueWithNotifications(
       baseQueueInput({ insights: [drivingAssessmentInsight('RECOVERING')] }),
-      { includeSyntheticNotifications: true },
     );
     expect(items.find((i) => i.id.startsWith('notif-'))).toBeUndefined();
   });
@@ -323,22 +310,18 @@ describe('notification engine — target invariants (P0)', () => {
   });
 });
 
-describe('notification engine — adapter unit tests', () => {
+describe('notification engine — action queue builder', () => {
+  const env = import.meta.env;
+
   beforeEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'off';
     vi.useFakeTimers();
     vi.setSystemTime(NOTIFICATION_TEST_NOW_MS);
   });
 
   afterEach(() => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
     vi.useRealTimers();
-  });
-
-  it('buildDashboardNotificationsFromInsights returns empty for non-device-quality insights', () => {
-    const result = buildDashboardNotificationsFromInsights([pickupOverdueInsight()], {
-      generatedAt: NOTIFICATION_TEST_INSIGHTS_GENERATED_AT,
-      intlLocale: 'de-DE',
-    });
-    expect(result).toHaveLength(0);
   });
 
   it('buildUnifiedActionQueue without insights returns empty queue', () => {

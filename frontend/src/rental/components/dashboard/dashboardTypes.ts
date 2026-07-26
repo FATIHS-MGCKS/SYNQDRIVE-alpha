@@ -743,8 +743,11 @@ export interface DashboardViewModel {
   handleConfirmPickup: (item: PickupTileItem) => void;
   handleConfirmReturn: (item: ReturnTileItem) => void;
 
-  dashboardNotifications: DashboardNotificationItem[];
   actionQueue: ActionQueueItem[];
+  /** Canonical notification inbox (V2 API). When set, NotificationPanel reads this instead of actionQueue. */
+  notificationInbox?: ActionQueueItem[] | null;
+  /** Operative handover work items when decoupled from notification inbox. */
+  operationalWorkQueue?: ActionQueueItem[] | null;
   actionQueueLoading: boolean;
   actionQueueError: boolean;
   /** When set (V2 path), tab badges use API counts instead of loaded-page estimates. */

@@ -144,7 +144,9 @@ export function NotificationPanel({
     };
   }, [orgId]);
 
-  const referenceNowMs = useMemo(() => Date.now(), [vm.actionQueue, vm.isRefreshing]);
+  const inboxItems = vm.notificationInbox ?? vm.actionQueue;
+
+  const referenceNowMs = useMemo(() => Date.now(), [inboxItems, vm.isRefreshing]);
 
   const primaryTabCounts = useMemo(() => {
     const base = vm.notificationPrimaryTabCounts ?? {
@@ -160,8 +162,8 @@ export function NotificationPanel({
   }, [vm.notificationPrimaryTabCounts, primaryTab]);
 
   const filteredItems = useMemo(
-    () => filterNotificationPanelItems(vm.actionQueue, primaryTab, domainFilter),
-    [vm.actionQueue, primaryTab, domainFilter],
+    () => filterNotificationPanelItems(inboxItems, primaryTab, domainFilter),
+    [inboxItems, primaryTab, domainFilter],
   );
 
   const enrichedItems = useMemo(
@@ -200,7 +202,7 @@ export function NotificationPanel({
     return countAtomicActions(hidden);
   }, [entries, visibleEntries.length, isSidebar]);
 
-  const statusTone = headerStatusTone(vm.actionQueue, primaryTabCounts);
+  const statusTone = headerStatusTone(inboxItems, primaryTabCounts);
 
   const handlePrimaryTab = useCallback(
     (tab: NotificationPrimaryTab) => {

@@ -1,11 +1,19 @@
 import type { NotificationCandidate } from '../notification.types';
+import type { InsightSeverity } from '@modules/business-insights/insight.types';
 
 /** Shared context for all producer adapters. */
 export interface NotificationAdapterContext {
   organizationId: string;
+  /** Canonical opaque producer event reference. */
+  sourceEventId?: string;
+  /** @deprecated use sourceEventId */
   sourceRef: string;
   occurredAt: Date;
+  observedAt?: Date;
+  correlationId?: string;
+  causationId?: string;
   runId?: string;
+  ingestPath?: 'batch' | 'realtime';
 }
 
 /**
@@ -46,6 +54,8 @@ export interface VehicleHealthAdapterSource {
   reason?: string;
   cleared?: boolean;
   severity?: 'warning' | 'critical';
+  occurredAt?: Date;
+  sourceEventId?: string;
 }
 
 export interface BookingAdapterSource {
@@ -55,11 +65,32 @@ export interface BookingAdapterSource {
   label: string;
 }
 
+export interface BookingHandoverAdapterSource {
+  eventType: 'PICKUP_OVERDUE' | 'RETURN_OVERDUE' | 'TIGHT_HANDOVER' | 'RETURN_NEEDS_INSPECTION';
+  bookingId: string;
+  vehicleId?: string;
+  customerId?: string;
+  label: string;
+  bookingRef: string;
+  insightSeverity: InsightSeverity | 'WARNING' | 'CRITICAL';
+  dedupeKey: string;
+  sourceEventId?: string;
+  cleared?: boolean;
+  occurredAt?: Date;
+  conditionCodeVariant?: string;
+  minutesOverdue?: number;
+}
+
 export interface TechnicalObservationAdapterSource {
   vehicleId: string;
   label: string;
   complaintId: string;
+  observationId?: string;
   resolved?: boolean;
+  severity?: import('@modules/business-insights/insight.types').InsightSeverity;
+  correlationId?: string;
+  causationId?: string;
+  sourceEventId?: string;
 }
 
 export interface DrivingAssessmentAdapterSource {
@@ -86,4 +117,17 @@ export interface LowUtilizationAdapterSource {
   idleDays: number;
   lostRevenueEur: number;
   cleared?: boolean;
+}
+
+export interface ComplianceOperationalAdapterSource {
+  eventType: 'SERVICE_OVERDUE' | 'TUV_OVERDUE' | 'BOKRAFT_OVERDUE';
+  vehicleId: string;
+  label: string;
+  insightSeverity: InsightSeverity;
+  dedupeKey: string;
+  sourceEventId?: string;
+  cleared?: boolean;
+  remainingDays?: number | null;
+  remainingKm?: number | null;
+  complianceKind?: string;
 }

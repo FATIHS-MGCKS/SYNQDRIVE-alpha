@@ -4,6 +4,7 @@ import type {
   InsightType,
   VehicleHealthAlert,
 } from '../../DashboardInsightsContext';
+import { shouldSuppressCanonicalInsightAsOperationalNotification } from '../../lib/notifications/operational-notification-suppression';
 import type { VehicleData } from '../../data/vehicles';
 import {
   createBookingIssueKey,
@@ -16,7 +17,6 @@ import {
   type OperationalIssueSeverity,
 } from '../../lib/operational-issues';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
-import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import type {
   ActionQueueCategory,
   ActionQueueChildSeverity,
@@ -284,7 +284,6 @@ export interface BuildActionQueueInput {
   vehicleHealthAlerts: VehicleHealthAlert[];
   pickupItems: PickupTileItem[];
   returnItems: ReturnTileItem[];
-  notifications: DashboardNotificationItem[];
   derivedInsights: DerivedOperationalInsight[];
   predictiveInsights: PredictiveOperationsInsight[];
   dashboardRuntime?: DashboardRuntimeModel;
@@ -475,6 +474,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   const de = input.locale === 'de';
 
   for (const insight of input.insights) {
+    if (shouldSuppressCanonicalInsightAsOperationalNotification(insight.type)) continue;
     if (runtimeBacked && RUNTIME_INSIGHT_TYPES.has(insight.type)) continue;
     if (NORMALIZED_INSIGHT_TYPES.has(insight.type)) continue;
     if (!matchesStation(input.stationFilter, input.fleetById, insight.entityIds)) continue;
@@ -650,32 +650,6 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     );
   }
 
-  for (const n of input.notifications) {
-    if (n.semanticKey?.includes('driving_assessment_device_quality')) continue;
-    if (!n.unread && n.type !== 'alert') continue;
-    const severity: ActionQueueSeverity = n.type === 'alert' ? 'warning' : 'info';
-    const vehicleId = n.vehicleId;
-    const semanticKey = n.semanticKey;
-    items.push({
-      id: semanticKey ? `notif-${semanticKey}` : `notif-${n.title}-${n.time}`,
-      semanticKey,
-      source: 'booking',
-      severity,
-      category: 'notification',
-      title: sanitizeUserFacingIssueText(n.title),
-      reason: sanitizeUserFacingIssueText(n.desc),
-      timeLabel: n.time,
-      timeSortMs: Date.now(),
-      priority: computePriority(severity, false, Date.now()) - 100,
-      tone: severityToTone(severity),
-      cta: vehicleId ? 'open-vehicle' : 'open-rental',
-      vehicleId,
-      isOverdue: false,
-      groupKey: semanticKey ? `notification-thread:${semanticKey}` : `notification-thread:${n.title}`,
-      groupType: 'notification-thread',
-    });
-  }
-
   const existingIds = new Set(items.map((i) => i.id));
   for (const d of input.derivedInsights) {
     if (seenDerived.has(d.id) || existingIds.has(d.id)) continue;
@@ -783,6 +757,135 @@ export function filterActionQueue(
     return items.filter((i) => i.category === 'vehicle' || i.category === 'health');
   }
   return items.filter((i) => i.category === 'notification');
+}
+
+export type OperationalHandoverWorkQueueInput = Pick<
+  BuildActionQueueInput,
+  'locale' | 'pickupItems' | 'returnItems' | 'fleetById'
+>;
+
+/** Operative handover work list — not the notification inbox. */
+export function buildOperationalHandoverWorkQueue(
+  input: OperationalHandoverWorkQueueInput,
+): ActionQueueItem[] {
+  const de = input.locale === 'de';
+  const items: ActionQueueItem[] = [];
+  const seenBooking = new Set<string>();
+
+  for (const p of input.pickupItems) {
+    if (!p.bookingId || p.done) continue;
+    if (seenBooking.has(p.bookingId)) continue;
+    const startMs = parseTimeMs(p.startDate);
+    const isOverdue = !!p.isOverdue;
+    const severity: ActionQueueSeverity = isOverdue ? 'critical' : 'attention';
+    if (!isOverdue && startMs != null) {
+      const until = startMs - Date.now();
+      if (until > 60 * 60_000) continue;
+    }
+    seenBooking.add(p.bookingId);
+    items.push(
+      attachHandoverQueueMetadata(
+        {
+          id: `pickup-${p.bookingId}`,
+          semanticKey: semanticKeyForPickupItem(p),
+          source: 'booking',
+          severity,
+          category: 'handover',
+          title: isOverdue
+            ? de
+              ? `Abholung überfällig · ${p.plate || p.vehicle}`
+              : `Overdue pickup · ${p.plate || p.vehicle}`
+            : de
+              ? `Abholung · ${p.plate || p.vehicle}`
+              : `Pickup · ${p.plate || p.vehicle}`,
+          reason: p.customer
+            ? `${p.customer}${p.station ? ` · ${p.station}` : ''}`
+            : p.station || 'Scheduled pickup today',
+          entityLabel: p.plate || p.vehicle,
+          timeLabel: isOverdue
+            ? input.locale === 'de'
+              ? `${p.minutesOverdue ?? 0} Min. überfällig`
+              : `${p.minutesOverdue ?? 0}m overdue`
+            : formatActionTimeLabel(startMs, input.locale, p.time || ''),
+          timeSortMs: startMs ?? Date.now(),
+          priority: computePriority(severity, isOverdue, startMs ?? Date.now()) + 50,
+          tone: severityToTone(severity),
+          cta: 'start-handover-pickup',
+          vehicleId: p.vehicleId || undefined,
+          bookingId: p.bookingId,
+          pickupItem: p,
+          isOverdue,
+          groupKey: `booking:${p.bookingId}`,
+          groupType: 'booking',
+        },
+        p,
+        input.fleetById,
+        'pickup',
+        isOverdue,
+      ),
+    );
+  }
+
+  for (const r of input.returnItems) {
+    if (!r.bookingId || r.done) continue;
+    if (seenBooking.has(`return-${r.bookingId}`)) continue;
+    const endMs = parseTimeMs(r.endDate);
+    const isOverdue = !!r.isOverdue;
+    const hasError = !!r.hasError;
+    let severity: ActionQueueSeverity = 'attention';
+    if (isOverdue || hasError) severity = 'critical';
+    else if (r.kmExceeded) severity = 'warning';
+
+    if (!isOverdue && !hasError && endMs != null) {
+      const until = endMs - Date.now();
+      if (until > 60 * 60_000) continue;
+    }
+
+    seenBooking.add(`return-${r.bookingId}`);
+    items.push(
+      attachHandoverQueueMetadata(
+        {
+          id: `return-${r.bookingId}`,
+          semanticKey: semanticKeyForReturnItem(r),
+          source: 'booking',
+          severity,
+          category: 'handover',
+          title: isOverdue
+            ? de
+              ? `Rückgabe überfällig · ${r.plate || r.vehicle}`
+              : `Overdue return · ${r.plate || r.vehicle}`
+            : hasError
+              ? de
+                ? `Rückgabe prüfen · ${r.plate || r.vehicle}`
+                : `Return issue · ${r.plate || r.vehicle}`
+              : de
+                ? `Rückgabe · ${r.plate || r.vehicle}`
+                : `Return · ${r.plate || r.vehicle}`,
+          reason: r.customer
+            ? `${r.customer}${r.station ? ` · ${r.station}` : ''}`
+            : r.station || 'Scheduled return today',
+          entityLabel: r.plate || r.vehicle,
+          timeLabel: formatActionTimeLabel(endMs, input.locale, r.time || ''),
+          timeSortMs: endMs ?? Date.now(),
+          priority: computePriority(severity, isOverdue, endMs ?? Date.now()) + 40,
+          tone: severityToTone(severity),
+          cta: 'start-handover-return',
+          vehicleId: r.vehicleId || undefined,
+          bookingId: r.bookingId,
+          returnItem: r,
+          isOverdue,
+          groupKey: `booking:${r.bookingId}`,
+          groupType: 'booking',
+        },
+        r,
+        input.fleetById,
+        'return',
+        isOverdue,
+      ),
+    );
+  }
+
+  return items.sort((a, b) => b.timeSortMs - a.timeSortMs);
 }
 
 export function buildActionQueueEmptySummary(input: {

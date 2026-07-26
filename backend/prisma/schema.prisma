@@ -13492,8 +13492,9 @@ model DashboardInsight {
 }
 
 // ── Notification Engine (V4.9.351) — persistent lifecycle notifications ──
-// Partial unique index on (organization_id, fingerprint, lifecycle_generation)
-// for active statuses is defined in migration SQL — Prisma does not support partial indexes.
+// Partial unique index on (organization_id, fingerprint) for active statuses
+// is defined in migration SQL — Prisma does not support partial indexes.
+// See migration 20260726120000_notification_db_integrity.
 
 model Notification {
   id                  String                 @id @default(uuid())
@@ -13538,6 +13539,10 @@ model Notification {
   @@index([organizationId, status, lastSeenAt])
   @@index([organizationId, severity, status])
   @@index([organizationId, domain, status])
+  @@index([organizationId, createdAt], map: "notifications_org_created_at_idx")
+  @@index([organizationId, eventType, status], map: "notifications_org_event_type_status_idx")
+  @@index([organizationId, status, createdAt], map: "notifications_org_status_created_at_idx")
+  @@index([organizationId, entityType, entityId, status], map: "notifications_org_entity_status_idx")
   @@index([entityType, entityId])
   @@index([fingerprint])
   @@index([expiresAt])
@@ -13546,23 +13551,37 @@ model Notification {
   @@map("notifications")
 }
 
+enum NotificationOccurrenceRecoveryState {
+  ACTIVE
+  RECOVERED
+}
+
 model NotificationOccurrence {
-  id                   String                 @id @default(uuid())
-  notificationId       String                 @map("notification_id")
-  organizationId       String                 @map("organization_id")
-  occurredAt           DateTime               @map("occurred_at")
-  detectedAt           DateTime               @default(now()) @map("detected_at")
-  sourceType           NotificationSourceType @map("source_type")
-  sourceRef            String                 @map("source_ref")
-  severityAtOccurrence NotificationSeverity   @map("severity_at_occurrence")
-  payload              Json?                  @map("payload")
-  createdAt            DateTime               @default(now()) @map("created_at")
+  id                   String                              @id @default(uuid())
+  notificationId       String                              @map("notification_id")
+  organizationId       String                              @map("organization_id")
+  occurredAt           DateTime                            @map("occurred_at")
+  observedAt           DateTime                            @default(now()) @map("observed_at")
+  sourceType           NotificationSourceType              @map("source_type")
+  sourceRef            String                              @map("source_ref")
+  sourceEventId        String                              @map("source_event_id")
+  severityAtOccurrence NotificationSeverity                @map("severity_at_occurrence")
+  recoveryState        NotificationOccurrenceRecoveryState @default(ACTIVE) @map("recovery_state")
+  correlationId        String?                             @map("correlation_id")
+  causationId          String?                             @map("causation_id")
+  payload              Json?                               @map("payload")
+  createdAt            DateTime                            @default(now()) @map("created_at")
 
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([notificationId, sourceEventId])
   @@index([notificationId, occurredAt])
   @@index([organizationId])
+  @@index([organizationId, occurredAt], map: "notification_occurrences_org_occurred_at_idx")
+  @@index([organizationId, notificationId], map: "notification_occurrences_org_notification_id_idx")
+  @@index([organizationId, observedAt], map: "notification_occurrences_org_observed_at_idx")
+  @@index([createdAt], map: "notification_occurrences_created_at_idx")
   @@map("notification_occurrences")
 }
 
@@ -13575,6 +13594,7 @@ model NotificationReceipt {
   acknowledgedAt DateTime? @map("acknowledged_at")
   snoozedUntil   DateTime? @map("snoozed_until")
   hiddenAt       DateTime? @map("hidden_at")
+  lastSeenAt     DateTime? @map("last_seen_at")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
@@ -13585,6 +13605,9 @@ model NotificationReceipt {
   @@unique([notificationId, userId])
   @@index([userId, readAt])
   @@index([organizationId])
+  @@index([organizationId, userId], map: "notification_receipts_org_user_id_idx")
+  @@index([organizationId, notificationId], map: "notification_receipts_org_notification_id_idx")
+  @@index([organizationId, userId, lastSeenAt], map: "notification_receipts_org_user_last_seen_idx")
   @@map("notification_receipts")
 }
 
@@ -13615,6 +13638,7 @@ model NotificationDeliveryOutbox {
   @@index([status, availableAt])
   @@index([organizationId, status])
   @@index([notificationId])
+  @@index([organizationId, createdAt], map: "notification_delivery_outbox_org_created_at_idx")
   @@map("notification_delivery_outbox")
 }
 

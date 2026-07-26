@@ -17,6 +17,13 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
+import { shouldIngestTechnicalObservationNotification } from '@modules/notifications/adapters/technical-observation.filters';
+import {
+  isActiveObservationStatus,
+  mapObservationUrgencyToInsightSeverity,
+  observationNotificationCausationId,
+  observationNotificationCorrelationId,
+} from '@modules/notifications/adapters/technical-observation-lifecycle.util';
 import { TasksService } from '../tasks/tasks.service';
 import { ServiceCasesService } from '../service-cases/service-cases.service';
 import { DamagesService } from '../vehicle-intelligence/damages/damages.service';
@@ -198,7 +205,7 @@ export class TechnicalObservationsService {
       dedupeKey,
       source,
     });
-    void this.syncV2ObservationActive(orgId, vehicleId, row, dto);
+    await this.syncV2ObservationActive(orgId, vehicleId, row, dto);
     if (row.dedupeKey) {
       void this.findingBridge?.syncComplaintActive({
         organizationId: orgId,
@@ -247,7 +254,9 @@ export class TechnicalObservationsService {
     void this.recordObservationAudit('UPDATE', orgId, vehicleId, row.id, undefined, {
       status: row.status,
     });
-    return mapObservationRow(row);
+    const dto = mapObservationRow(row);
+    await this.syncV2ObservationNotificationLifecycle(orgId, vehicleId, row, dto);
+    return dto;
   }
 
   async resolve(
@@ -270,7 +279,7 @@ export class TechnicalObservationsService {
     void this.recordObservationAudit('UPDATE', orgId, vehicleId, row.id, resolvedByUserId, {
       action: 'resolve',
     });
-    void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    await this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
     return dto;
   }
 
@@ -294,7 +303,7 @@ export class TechnicalObservationsService {
     void this.recordObservationAudit('UPDATE', orgId, vehicleId, row.id, dismissedByUserId, {
       action: 'dismiss',
     });
-    void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    await this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
     return dto;
   }
 
@@ -358,7 +367,7 @@ export class TechnicalObservationsService {
     void this.recordObservationAudit('CONVERT', orgId, vehicleId, row.id, actorUserId, {
       taskId: task.id,
     });
-    void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    await this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
     return { observation: dto, taskId: task.id };
   }
 
@@ -474,7 +483,9 @@ export class TechnicalObservationsService {
       where: { id: observationId },
       data,
     });
-    return mapObservationRow(row);
+    const dto = mapObservationRow(row);
+    await this.syncV2ObservationNotificationLifecycle(orgId, vehicleId, row, dto);
+    return dto;
   }
 
   private async getScopedRow(
@@ -597,15 +608,22 @@ export class TechnicalObservationsService {
     return [vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || 'Fahrzeug';
   }
 
-  private async syncV2ObservationActive(
+  private async buildObservationIngestInput(
     orgId: string,
     vehicleId: string,
     row: VehicleComplaint,
     dto: TechnicalObservationDto,
-  ): Promise<void> {
-    if (!this.notificationIngest) return;
+  ) {
+    if (
+      !shouldIngestTechnicalObservationNotification({
+        createdByWorkerId: row.createdByWorkerId,
+        notes: row.notes,
+      })
+    ) {
+      return null;
+    }
     const label = await this.observationLabel(vehicleId, row);
-    await this.notificationIngest.syncTechnicalObservationActive({
+    return {
       organizationId: orgId,
       vehicleId,
       observationId: dto.id,
@@ -613,6 +631,45 @@ export class TechnicalObservationsService {
       createdByWorkerId: row.createdByWorkerId,
       notes: row.notes,
       sourceRef: dto.id,
+      sourceEventId: dto.id,
+      severity: mapObservationUrgencyToInsightSeverity(row.urgency),
+      correlationId: observationNotificationCorrelationId(row),
+      causationId: observationNotificationCausationId(row),
+      occurredAt: row.updatedAt ?? row.createdAt,
+    };
+  }
+
+  private async syncV2ObservationNotificationLifecycle(
+    orgId: string,
+    vehicleId: string,
+    row: VehicleComplaint,
+    dto: TechnicalObservationDto,
+  ): Promise<void> {
+    if (!this.notificationIngest) return;
+    const input = await this.buildObservationIngestInput(orgId, vehicleId, row, dto);
+    if (!input) return;
+    if (isActiveObservationStatus(row.status)) {
+      await this.notificationIngest.syncTechnicalObservationActive(input);
+      return;
+    }
+    await this.notificationIngest.syncTechnicalObservationResolved({
+      ...input,
+      occurredAt: row.resolvedAt ?? row.dismissedAt ?? row.updatedAt ?? new Date(),
+    });
+  }
+
+  private async syncV2ObservationActive(
+    orgId: string,
+    vehicleId: string,
+    row: VehicleComplaint,
+    dto: TechnicalObservationDto,
+  ): Promise<void> {
+    if (!this.notificationIngest) return;
+    const input = await this.buildObservationIngestInput(orgId, vehicleId, row, dto);
+    if (!input) return;
+    await this.notificationIngest.syncTechnicalObservationActive({
+      ...input,
+      occurredAt: row.createdAt,
     });
   }
 
@@ -629,15 +686,11 @@ export class TechnicalObservationsService {
       });
     }
     if (!this.notificationIngest) return;
-    const label = await this.observationLabel(vehicleId, row);
+    const input = await this.buildObservationIngestInput(orgId, vehicleId, row, dto);
+    if (!input) return;
     await this.notificationIngest.syncTechnicalObservationResolved({
-      organizationId: orgId,
-      vehicleId,
-      observationId: dto.id,
-      label,
-      createdByWorkerId: row.createdByWorkerId,
-      notes: row.notes,
-      sourceRef: dto.id,
+      ...input,
+      occurredAt: row.resolvedAt ?? row.dismissedAt ?? row.updatedAt ?? new Date(),
     });
   }
 }

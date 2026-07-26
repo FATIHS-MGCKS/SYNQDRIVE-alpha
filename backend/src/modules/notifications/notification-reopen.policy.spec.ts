@@ -9,8 +9,12 @@ import {
   DEFAULT_STATE_REOPEN_POLICY,
   evaluateReopenDecision,
 } from './notification-reopen.policy';
+import { hashFingerprintCanonical } from './notification-fingerprint.factory';
 
 describe('notification-reopen.policy', () => {
+  const canonical =
+    'org-1|DRIVING_ASSESSMENT_DEVICE_QUALITY|VEHICLE|veh-1|driving_assessment_device_quality|v1';
+
   const baseRecord = {
     id: 'notif-1',
     status: NotificationStatus.RESOLVED,
@@ -30,7 +34,8 @@ describe('notification-reopen.policy', () => {
         conditionCode: 'driving_assessment_device_quality',
         scopeVersion: 1,
       },
-      canonical: 'org-1|DRIVING_ASSESSMENT_DEVICE_QUALITY|VEHICLE|veh-1|driving_assessment_device_quality|v1',
+      canonical,
+      digest: hashFingerprintCanonical(canonical),
     },
     occurredAt: new Date('2026-07-10T12:20:00.000Z'),
     severity: NotificationSeverity.WARNING,

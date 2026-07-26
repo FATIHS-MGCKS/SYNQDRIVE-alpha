@@ -85,6 +85,30 @@ describe('mergeV2NotificationsWithVehicleHealth', () => {
     const merged = mergeV2NotificationsWithVehicleHealth(v2, health);
     expect(merged).toHaveLength(2);
   });
+
+  it('skips aggregate complaints health when V2 already has technical observation notifications', () => {
+    const v2 = [
+      item('veh-1', {
+        id: 'n-obs',
+        semanticKey: 'VEHICLE:veh-1:VEHICLE_HEALTH:technical_observation_active:obs-1',
+        issueType: 'TECHNICAL_OBSERVATION_ACTIVE',
+        queue: {
+          ...item('veh-1').queue!,
+          conditionCode: 'technical_observation_active',
+          issueType: 'TECHNICAL_OBSERVATION_ACTIVE',
+        },
+      }),
+    ];
+    const health = [
+      item('veh-1', {
+        semanticKey: 'vehicle:veh-1:vehicle_health:technical_observation_active',
+        issueType: 'technical_observation_active',
+      }),
+    ];
+    const merged = mergeV2NotificationsWithVehicleHealth(v2, health);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].id).toBe('n-obs');
+  });
 });
 
 describe('mergeV2WithSupplemental', () => {

@@ -16,8 +16,6 @@ import {
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
-import { buildDashboardNotificationsFromInsights } from './dashboardNotificationAdapter';
-import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import {
   dashboardStationIdToFilter,
   stationFilterToDashboardId,
@@ -34,6 +32,7 @@ import {
 import {
   buildActionQueueEmptySummary,
   buildDerivedOperationalQueueItems,
+  buildOperationalHandoverWorkQueue,
   buildUnifiedActionQueue,
 } from './actionQueueBuilder';
 import {
@@ -90,7 +89,10 @@ import { useNotifications } from '../../hooks/useNotifications';
 import {
   getNotificationsV2Mode,
   isNotificationsV2Shadow,
+  shouldDecoupleActionQueueFromNotifications,
   shouldFetchV2NotificationsInBackground,
+  shouldUseV2NotificationApiOnly,
+  shouldUseV2NotificationBridges,
   shouldUseV2NotificationSource,
 } from '../../lib/notifications/notifications-v2-flag';
 import {
@@ -665,15 +667,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     });
   }, [intlLocale]);
 
-  const dashboardNotifications = useMemo<DashboardNotificationItem[]>(
-    () =>
-      buildDashboardNotificationsFromInsights(insights, {
-        generatedAt: insightsResponse?.generatedAt ?? null,
-        intlLocale,
-      }),
-    [insights, insightsResponse?.generatedAt, intlLocale],
-  );
-
   const dataFreshness = useMemo(
     () => ({
       fleetLoading,
@@ -933,7 +926,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         vehicleHealthAlerts,
         pickupItems,
         returnItems,
-        notifications: [],
         derivedInsights: derivedOperationalInsights,
         predictiveInsights: predictiveOperationsInsights,
         dashboardRuntime,
@@ -978,10 +970,45 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [v1ActionQueue],
   );
 
+  const notificationInbox = useMemo(() => {
+    if (!shouldUseV2NotificationSource()) return null;
+    const sorted = [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+    if (notificationsV2.listMode === 'resolved') return sorted;
+    if (shouldUseV2NotificationApiOnly() || shouldDecoupleActionQueueFromNotifications()) {
+      return sorted;
+    }
+    const withDerived = mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems);
+    const withHandovers = mergeV2WithSupplemental(withDerived, overdueHandoverQueueItems);
+    return mergeV2NotificationsWithVehicleHealth(withHandovers, vehicleHealthQueueItems);
+  }, [
+    notificationsV2.items,
+    notificationsV2.listMode,
+    derivedQueueItems,
+    overdueHandoverQueueItems,
+    vehicleHealthQueueItems,
+  ]);
+
+  const operationalWorkQueue = useMemo(() => {
+    if (!shouldDecoupleActionQueueFromNotifications()) return null;
+    return buildOperationalHandoverWorkQueue({
+      locale,
+      pickupItems,
+      returnItems,
+      fleetById,
+    });
+  }, [locale, pickupItems, returnItems, fleetById]);
+
   const actionQueue = useMemo(() => {
+    if (shouldDecoupleActionQueueFromNotifications() && shouldUseV2NotificationSource()) {
+      return operationalWorkQueue ?? [];
+    }
     if (!shouldUseV2NotificationSource()) return v1ActionQueue;
+    const sortedV2 = [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
     if (notificationsV2.listMode === 'resolved') {
-      return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+      return sortedV2;
+    }
+    if (shouldUseV2NotificationApiOnly()) {
+      return sortedV2;
     }
     const withDerived = mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems);
     const withHandovers = mergeV2WithSupplemental(withDerived, overdueHandoverQueueItems);
@@ -993,6 +1020,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     derivedQueueItems,
     overdueHandoverQueueItems,
     vehicleHealthQueueItems,
+    operationalWorkQueue,
   ]);
 
   const actionQueueTabCounts = useMemo(
@@ -1018,6 +1046,10 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         warning: 0,
         resolved: notificationsV2.primaryTabCounts.resolved,
       };
+    }
+
+    if (shouldUseV2NotificationApiOnly()) {
+      return notificationsV2.primaryTabCounts;
     }
 
     const derivedExtra = supplementalQueueItems(notificationsV2.items, derivedQueueItems);
@@ -1209,8 +1241,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     returnAlerts,
     handleConfirmPickup,
     handleConfirmReturn,
-    dashboardNotifications,
     actionQueue,
+    notificationInbox,
+    operationalWorkQueue,
     actionQueueLoading: resolvedActionQueueLoading,
     actionQueueError: resolvedActionQueueError,
     actionQueueTabCounts,

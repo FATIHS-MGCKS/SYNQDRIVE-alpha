@@ -36,6 +36,7 @@ export interface NotificationUserReceiptDto {
   acknowledgedAt: string | null;
   snoozedUntil: string | null;
   hiddenAt: string | null;
+  lastSeenAt: string | null;
 }
 
 export interface NotificationResponseDto {
@@ -147,6 +148,7 @@ export function mapNotificationToDto(
       acknowledgedAt: iso(receipt?.acknowledgedAt ?? null),
       snoozedUntil: iso(receipt?.snoozedUntil ?? null),
       hiddenAt: iso(receipt?.hiddenAt ?? null),
+      lastSeenAt: iso(receipt?.lastSeenAt ?? null),
     },
     availableActions,
   };

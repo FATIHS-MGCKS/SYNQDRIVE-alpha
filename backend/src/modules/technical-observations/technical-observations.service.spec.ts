@@ -7,7 +7,7 @@ describe('TechnicalObservationsService', () => {
   const vehicleId = 'veh-1';
 
   const prisma = {
-    vehicle: { findFirst: jest.fn() },
+    vehicle: { findFirst: jest.fn(), findUnique: jest.fn() },
     vehicleComplaint: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
@@ -177,6 +177,86 @@ describe('TechnicalObservationsService', () => {
     await expect(
       svc.linkDamage(orgA, vehicleId, 'obs-1', { damageId: 'dmg-1' }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  describe('notification lifecycle', () => {
+    const notificationIngest = {
+      syncTechnicalObservationActive: jest.fn().mockResolvedValue(undefined),
+      syncTechnicalObservationResolved: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const svcWithNotifications = new TechnicalObservationsService(
+      prisma as any,
+      tasks as any,
+      serviceCases as any,
+      damages as any,
+      notificationIngest as any,
+    );
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      prisma.vehicle.findFirst.mockResolvedValue({ id: vehicleId, licensePlate: 'B-XY 1' });
+      prisma.vehicle.findUnique.mockResolvedValue({ licensePlate: 'B-XY 1', make: 'VW', model: 'Golf' });
+    });
+
+    it('create syncs canonical notification with correlation from booking context', async () => {
+      prisma.booking.findFirst.mockResolvedValue({ id: 'booking-1' });
+      prisma.vehicleComplaint.findFirst.mockResolvedValue(null);
+      prisma.vehicleComplaint.create.mockResolvedValue(
+        baseRow({ bookingId: 'booking-1', handoverProtocolId: 'proto-1' }),
+      );
+      await svcWithNotifications.create(orgA, vehicleId, {
+        description: 'Scratch on door',
+        bookingId: 'booking-1',
+      });
+      expect(notificationIngest.syncTechnicalObservationActive).toHaveBeenCalledWith(
+        expect.objectContaining({
+          observationId: 'obs-1',
+          correlationId: 'booking-1',
+          causationId: 'proto-1',
+        }),
+      );
+    });
+
+    it('update severity re-ingests active notification', async () => {
+      prisma.vehicleComplaint.findFirst.mockResolvedValue(baseRow());
+      prisma.vehicleComplaint.update.mockResolvedValue(baseRow({ urgency: 'CRITICAL' }));
+      await svcWithNotifications.update(orgA, vehicleId, 'obs-1', { severity: 'critical' });
+      expect(notificationIngest.syncTechnicalObservationActive).toHaveBeenCalledWith(
+        expect.objectContaining({
+          observationId: 'obs-1',
+          severity: expect.anything(),
+        }),
+      );
+    });
+
+    it('update to resolved syncs notification resolve', async () => {
+      prisma.vehicleComplaint.findFirst.mockResolvedValue(baseRow());
+      prisma.vehicleComplaint.update.mockResolvedValue(
+        baseRow({ status: 'RESOLVED', resolvedAt: new Date('2026-07-20T12:00:00.000Z') }),
+      );
+      await svcWithNotifications.update(orgA, vehicleId, 'obs-1', { status: 'resolved' });
+      expect(notificationIngest.syncTechnicalObservationResolved).toHaveBeenCalledWith(
+        expect.objectContaining({ observationId: 'obs-1' }),
+      );
+    });
+
+    it('linkService re-ingests with service-case correlation', async () => {
+      prisma.vehicleComplaint.findFirst.mockResolvedValue(baseRow());
+      serviceCases.create.mockResolvedValue({ id: 'sc-1' });
+      prisma.vehicleComplaint.update.mockResolvedValue(
+        baseRow({ linkedServiceCaseId: 'sc-1' }),
+      );
+      await svcWithNotifications.linkService(orgA, vehicleId, 'obs-1', {
+        createServiceCase: true,
+      });
+      expect(notificationIngest.syncTechnicalObservationActive).toHaveBeenCalledWith(
+        expect.objectContaining({
+          observationId: 'obs-1',
+          correlationId: 'sc-1',
+        }),
+      );
+    });
   });
 });
 

@@ -15,6 +15,7 @@ import type {
   NotificationResolutionPolicy,
   NotificationTemplateParams,
 } from '../notification.types';
+import type { NotificationRetentionClass } from './notification-event-registry.consistency';
 
 /** Context passed to actionTargetBuilder — adapters supply entity ids only. */
 export interface NotificationActionTargetContext {
@@ -77,6 +78,10 @@ export interface NotificationEventTypeDefinition {
   shadowModeEnabled: boolean;
   /** Owning SynqDrive module (detector stays there). */
   producerModule: string;
+  /**
+   * Derived retention bucket — populated at registry bootstrap when omitted in definitions.
+   */
+  retentionClass?: NotificationRetentionClass;
 }
 
 export interface RegistryCandidateBuildInput {
@@ -86,12 +91,20 @@ export interface RegistryCandidateBuildInput {
   entityType?: NotificationEntityType;
   /** Appended to registry conditionCode as `{base}:{variant}` for per-entity sub-states. */
   conditionCodeVariant?: string;
+  /** Canonical producer event id (alias sourceRef). */
+  sourceEventId?: string;
   sourceRef: string;
   occurredAt: Date;
+  observedAt?: Date;
   severity?: NotificationSeverity;
   templateParams: NotificationTemplateParams;
   actionTargetContext?: Partial<NotificationActionTargetContext>;
   sourceType?: NotificationSourceType;
+  sourceSystem?: NotificationSourceType;
   expiresAt?: Date;
   metadata?: Record<string, unknown>;
+  correlationId?: string;
+  causationId?: string;
+  userId?: string;
+  schemaVersion?: number;
 }

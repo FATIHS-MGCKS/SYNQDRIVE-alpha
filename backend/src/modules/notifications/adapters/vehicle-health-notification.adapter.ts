@@ -45,8 +45,10 @@ export class VehicleHealthNotificationAdapter
       eventType: source.eventType,
       entityId: source.vehicleId,
       conditionCodeVariant: source.code,
+      sourceEventId: source.sourceEventId ?? context.sourceEventId ?? context.sourceRef,
       sourceRef: context.sourceRef,
       occurredAt: context.occurredAt,
+      observedAt: context.observedAt ?? context.occurredAt,
       severity,
       templateParams,
       actionTargetContext: {
@@ -58,6 +60,7 @@ export class VehicleHealthNotificationAdapter
         adapterId: this.adapterId,
         reason: source.reason,
         cleared: source.cleared ?? false,
+        ingestPath: context.ingestPath,
       },
     });
 
