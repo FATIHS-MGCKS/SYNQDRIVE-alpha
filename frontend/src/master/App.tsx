@@ -31,6 +31,8 @@ import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser, RegisteredVehicle, DimoVehicle } from './data/platform-data';
 import { api } from '../lib/api';
 import { AppShell } from '../components/shell';
+import { MasterMfaGate } from './components/MasterMfaGate';
+import { MfaStepUpDialog } from '../components/mfa/MfaStepUpDialog';
 
 function mapApiOrg(o: any): Organization {
   return {
@@ -199,6 +201,21 @@ export default function App() {
   const [registeredVehicles, setRegisteredVehicles] = useState<RegisteredVehicle[]>([]);
   const [dimoVehicles, setDimoVehicles] = useState<DimoVehicle[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUpAction, setStepUpAction] = useState<string | undefined>();
+
+  useEffect(() => {
+    const onStepUp = (event: Event) => {
+      const detail = (event as CustomEvent<{ action?: string }>).detail;
+      setStepUpAction(detail?.action);
+      setStepUpOpen(true);
+      toast.message('2FA-Bestätigung erforderlich', {
+        description: 'Bitte bestätigen Sie die Aktion mit Ihrem Authenticator-Code.',
+      });
+    };
+    window.addEventListener('synqdrive:step-up-required', onStepUp);
+    return () => window.removeEventListener('synqdrive:step-up-required', onStepUp);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -595,7 +612,14 @@ export default function App() {
       )}
     >
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
+      <MfaStepUpDialog
+        open={stepUpOpen}
+        action={stepUpAction}
+        onClose={() => setStepUpOpen(false)}
+        onSuccess={() => toast.success('2FA bestätigt — Aktion erneut ausführen.')}
+      />
 
+      <MasterMfaGate>
             <TopBar />
 
             {/* DASHBOARD */}
@@ -772,6 +796,8 @@ export default function App() {
             {currentView === 'hm-compatibility' && (
               <HighMobilityCompatibilityView isDarkMode={isDarkMode} />
             )}
+
+      </MasterMfaGate>
 
     </AppShell>
   );

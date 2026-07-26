@@ -12,9 +12,13 @@ import { BatteryCapabilityRefreshService } from '../vehicle-intelligence/battery
 import { BatteryCapabilityPreflightRepository } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-preflight.repository';
 import { BatteryCapabilityRefreshTrigger } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 import { BatteryShadowValidationService } from '../vehicle-intelligence/battery-health/shadow-validation/battery-shadow-validation.service';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller('admin')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
 @Roles('MASTER_ADMIN')
 export class PlatformAdminController {
   constructor(

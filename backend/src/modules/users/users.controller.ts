@@ -18,6 +18,8 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { StepUpGuard } from '@shared/auth/step-up.guard';
 import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { USERS_ROLES_MODULE } from '@shared/auth/permission.constants';
 import {
@@ -74,23 +76,26 @@ export class UsersController {
   }
 
   @Post('admin/users')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
   async adminCreate(@Body() body: AdminCreateUserDto) {
     return this.usersService.create(body);
   }
 
   @Patch('admin/users/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
   async adminUpdate(@Param('id') id: string, @Body() body: AdminUpdateUserDto) {
     return this.usersService.update(id, body);
   }
 
   @Post('admin/users/:id/change-password')
-  @UseGuards(RolesGuard, StepUpGuard)
+  @UseGuards(RolesGuard, StepUpGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
   @RequireStepUp(STEP_UP_ACTION.PRIVILEGED_PERMISSION_CHANGE)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
   async adminChangePassword(
     @Param('id') id: string,
     @Body() body: AdminChangePasswordDto,
@@ -99,8 +104,9 @@ export class UsersController {
   }
 
   @Delete('admin/users/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
   async adminDelete(@Param('id') id: string) {
     return this.usersService.delete(id);
   }

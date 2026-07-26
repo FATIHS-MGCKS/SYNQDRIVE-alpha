@@ -60,6 +60,10 @@ export default function LoginPage() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [organizationChoices, setOrganizationChoices] = useState<OrganizationChoice[] | null>(null);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
+  const [mfaPendingToken, setMfaPendingToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaRecoveryCode, setMfaRecoveryCode] = useState('');
+  const [useMfaRecovery, setUseMfaRecovery] = useState(false);
 
   const t = (key: keyof typeof loginCopy) => loginCopy[key]?.[locale] ?? loginCopy[key]?.en ?? '';
 
@@ -87,6 +91,10 @@ export default function LoginPage() {
       if (res.requiresOrganizationSelection) {
         setOrganizationChoices(res.organizations ?? []);
         setSelectedOrganizationId(res.suggestedOrganizationId ?? res.organizations?.[0]?.organizationId ?? null);
+        return;
+      }
+      if (res.requiresMfa && res.mfaPendingToken) {
+        setMfaPendingToken(res.mfaPendingToken);
         return;
       }
       if (!res.user) {
@@ -128,6 +136,25 @@ export default function LoginPage() {
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaPendingToken) return;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.auth.loginMfa({
+        mfaPendingToken,
+        code: useMfaRecovery ? undefined : mfaCode,
+        recoveryCode: useMfaRecovery ? mfaRecoveryCode : undefined,
+      });
+      completeLogin(res);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'MFA verification failed');
     } finally {
       setLoading(false);
     }
@@ -237,7 +264,7 @@ export default function LoginPage() {
                 <SynqDriveBrandLogo className="h-5 w-auto object-contain" />
               </div>
 
-              {!organizationChoices ? (
+              {!organizationChoices && !mfaPendingToken ? (
                 <>
                   <div className="mb-4 text-center">
                     <h1 className="text-sm font-bold tracking-tight text-foreground">{t('welcomeBack')}</h1>
@@ -267,6 +294,70 @@ export default function LoginPage() {
                     </button>
                   </form>
                 </>
+              ) : mfaPendingToken ? (
+                <>
+                  <div className="mb-4 text-center">
+                    <h1 className="text-sm font-bold tracking-tight text-foreground">2FA bestätigen</h1>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Geben Sie den Code aus Ihrer Authenticator-App ein.
+                    </p>
+                  </div>
+                  <form onSubmit={handleMfaSubmit} className="space-y-2.5">
+                    {error && (
+                      <div className="px-3 py-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] text-xs text-[color:var(--status-critical)]">
+                        {error}
+                      </div>
+                    )}
+                    {!useMfaRecovery ? (
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\s+/g, ''))}
+                        placeholder="000000"
+                        className={inputClass}
+                        maxLength={6}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={mfaRecoveryCode}
+                        onChange={(e) => setMfaRecoveryCode(e.target.value)}
+                        placeholder="XXXX-XXXX"
+                        className={inputClass}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="text-[10px] text-[color:var(--brand)]"
+                      onClick={() => setUseMfaRecovery((v) => !v)}
+                    >
+                      {useMfaRecovery ? 'Authenticator-Code verwenden' : 'Wiederherstellungscode verwenden'}
+                    </button>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMfaPendingToken(null);
+                          setMfaCode('');
+                          setMfaRecoveryCode('');
+                          setError('');
+                        }}
+                        className="flex-1 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors"
+                      >
+                        {t('back')}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading || (!useMfaRecovery ? mfaCode.length < 6 : !mfaRecoveryCode.trim())}
+                        className="flex-1 py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors disabled:opacity-70"
+                      >
+                        {loading ? <div className="mx-auto w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('continue')}
+                      </button>
+                    </div>
+                  </form>
+                </>
               ) : (
                 <>
                   <div className="mb-4 text-center">
@@ -279,7 +370,7 @@ export default function LoginPage() {
                     </div>
                   )}
                   <div className="space-y-2 mb-3">
-                    {organizationChoices.map((org) => {
+                    {(organizationChoices ?? []).map((org) => {
                       const active = selectedOrganizationId === org.organizationId;
                       return (
                         <button

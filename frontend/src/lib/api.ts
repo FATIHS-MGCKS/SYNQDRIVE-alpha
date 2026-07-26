@@ -1,4 +1,5 @@
 import { getToken, clearAuth } from './auth';
+import { getStepUpToken } from './mfa';
 import {
   buildFleetRentalHealthQueryString,
   fetchAllFleetRentalHealth as collectFleetRentalHealthPages,
@@ -717,6 +718,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+  const stepUpToken = getStepUpToken();
+  if (stepUpToken) {
+    headers['x-step-up-token'] = stepUpToken;
+  }
 
   const res = await fetch(`${BASE_URL}${path}`, {
     cache: 'no-store',
@@ -732,6 +737,18 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    if (
+      res.status === 403 &&
+      body &&
+      typeof body === 'object' &&
+      (body as { code?: string }).code === 'STEP_UP_REQUIRED'
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('synqdrive:step-up-required', {
+          detail: body as { code?: string; action?: string },
+        }),
+      );
+    }
     throw new Error(formatHttpErrorMessage(body, res.status, path));
   }
 
@@ -3227,6 +3244,8 @@ export const api = {
     login: (email: string, password: string, organizationId?: string) =>
       post<{
         requiresOrganizationSelection?: boolean;
+        requiresMfa?: boolean;
+        mfaPendingToken?: string;
         organizations?: Array<{
           organizationId: string;
           organizationName: string | null;
@@ -3241,6 +3260,14 @@ export const api = {
         expiresIn?: string;
         user?: any;
       }>('/auth/login', { email, password, ...(organizationId ? { organizationId } : {}) }),
+    loginMfa: (payload: { mfaPendingToken: string; code?: string; recoveryCode?: string }) =>
+      post<{
+        token: string;
+        accessToken: string;
+        refreshToken: string;
+        expiresIn: string;
+        user: any;
+      }>('/auth/login/mfa', payload),
     me: () => get<any>('/auth/me'),
     memberships: () =>
       get<{
@@ -3341,6 +3368,37 @@ export const api = {
       ),
     revokeSession: (sessionId: string) =>
       post<{ revoked: boolean }>(`/account/me/sessions/${sessionId}/revoke`, {}),
+    mfa: {
+      status: () =>
+        get<{
+          enrolled: boolean;
+          factorTypes: string[];
+          recoveryCodesRemaining: number;
+          privilegedAccount: boolean;
+          enrollmentRequired: boolean;
+          stepUpEnforced: boolean;
+        }>('/account/mfa/status'),
+      enrollStart: () =>
+        post<{ factorId: string; otpauthUrl: string; secretPreview: string }>(
+          '/account/mfa/totp/enroll/start',
+          {},
+        ),
+      enrollConfirm: (code: string, idempotencyKey: string) =>
+        post<{ enrolled: true; recoveryCodes: string[] }>('/account/mfa/totp/enroll/confirm', {
+          code,
+          idempotencyKey,
+        }),
+      challenge: (payload: { code?: string; recoveryCode?: string; idempotencyKey?: string }) =>
+        post<{
+          accessToken: string;
+          expiresIn: string;
+          stepUpToken: string;
+          stepUpExpiresAt: string;
+          assuranceLevel: number;
+          authMethods: string[];
+          mfaAuthenticatedAt: string;
+        }>('/account/mfa/challenge', payload),
+    },
   },
   admin: {
     dashboard: () => get<any>('/admin/dashboard'),

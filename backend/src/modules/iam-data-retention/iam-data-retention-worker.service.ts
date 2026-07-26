@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
-  ActivityAction,
   IamAuditOutboxStatus,
   IamDataCategory,
   InviteEmailOutboxStatus,
@@ -439,34 +438,6 @@ export class IamDataRetentionWorkerService implements OnModuleInit {
       affected++;
     }
 
-    const logs = await this.prisma.activityLog.findMany({
-      where: {
-        createdAt: { lt: cutoff },
-        ...(organizationId ? { organizationId } : {}),
-        OR: [{ ipAddress: { not: null } }, { userAgent: { not: null } }],
-      },
-      select: { id: true, ipAddress: true, userAgent: true, userId: true },
-      take: this.config.batchSize,
-    });
-    candidates += logs.length;
-
-    for (const row of logs) {
-      if (row.userId && (await this.legalHold.isBlocked({ userId: row.userId, organizationId }))) {
-        skipped++;
-        continue;
-      }
-      if (!dryRun) {
-        await this.prisma.activityLog.update({
-          where: { id: row.id },
-          data: {
-            ipAddress: pseudonymizeValue(row.ipAddress, salt),
-            userAgent: row.userAgent ? '[redacted]' : null,
-          },
-        });
-      }
-      affected++;
-    }
-
     return { category: policy.category, candidates, affected, skipped, dryRun };
   }
 
@@ -475,40 +446,14 @@ export class IamDataRetentionWorkerService implements OnModuleInit {
     dryRun: boolean,
     organizationId: string | null,
   ): Promise<IamRetentionPhaseResult> {
-    const cutoff = retentionCutoff(policy.retentionDays);
-    if (!cutoff) {
-      return { category: policy.category, candidates: 0, affected: 0, skipped: 0, dryRun };
-    }
-
-    const rows = await this.prisma.activityLog.findMany({
-      where: {
-        createdAt: { lt: cutoff },
-        action: ActivityAction.AUTH_FAIL,
-        ...(organizationId ? { organizationId } : {}),
-      },
-      select: { id: true, userId: true },
-      take: this.config.batchSize,
-    });
-
-    let skipped = 0;
-    const deletable: string[] = [];
-    for (const row of rows) {
-      if (row.userId && (await this.legalHold.isBlocked({ userId: row.userId, organizationId }))) {
-        skipped++;
-        continue;
-      }
-      deletable.push(row.id);
-    }
-
-    if (!dryRun && deletable.length > 0) {
-      await this.prisma.activityLog.deleteMany({ where: { id: { in: deletable } } });
-    }
-
+    // activity_logs are append-only (Phase 2A.7) — AUTH_FAIL rows are retained indefinitely.
+    void dryRun;
+    void organizationId;
     return {
       category: policy.category,
-      candidates: rows.length,
-      affected: deletable.length,
-      skipped,
+      candidates: 0,
+      affected: 0,
+      skipped: 0,
       dryRun,
     };
   }

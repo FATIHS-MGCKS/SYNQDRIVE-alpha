@@ -16,4 +16,9 @@ export const IAM_MFA_FEATURE_FLAG_ENV_KEYS = {
   mfaStepUpEnforced: 'IAM_MFA_STEP_UP_ENFORCED',
   mfaPrivilegedEnrollmentRequired: 'IAM_MFA_PRIVILEGED_ENROLLMENT_REQUIRED',
   orgAllowlist: 'IAM_MFA_ORG_ALLOWLIST',
+  masterAdminEnabled: 'IAM_MFA_MASTER_ADMIN_ENABLED',
 } as const;
+
+export type IamMfaPrincipalFeatureFlags = IamMfaEffectiveFeatureFlags & {
+  masterAdminMfaEnabled: boolean;
+};

@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from '@shared/interceptors/audit.interceptor';
+import { MasterAdminPrivilegedAuditInterceptor } from '@shared/interceptors/master-admin-privileged-audit.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
@@ -138,6 +139,10 @@ export class AppModule {
         {
           provide: APP_INTERCEPTOR,
           useClass: AuditInterceptor,
+        },
+        {
+          provide: APP_INTERCEPTOR,
+          useClass: MasterAdminPrivilegedAuditInterceptor,
         },
         {
           provide: APP_INTERCEPTOR,

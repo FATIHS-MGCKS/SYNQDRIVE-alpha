@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
+import { sessionClaimsFromJwt } from '@shared/auth/auth-session-claims.types';
 
 /**
  * Exact paths (not prefixes) that require no authentication.
@@ -8,6 +9,7 @@ import * as jwt from 'jsonwebtoken';
  */
 const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/auth/login',
+  '/api/v1/auth/login/mfa',
   '/api/v1/auth/refresh',
   '/api/v1/auth/logout',
   '/api/v1/auth/password-reset/request',
@@ -102,6 +104,7 @@ export class AuthGuard implements CanActivate {
         membershipId: decoded.membershipId ?? null,
         sessionVersion: decoded.sessionVersion ?? 0,
         membershipVersion: decoded.membershipVersion ?? null,
+        sessionClaims: sessionClaimsFromJwt(decoded as Record<string, unknown>),
       };
       return true;
     } catch {

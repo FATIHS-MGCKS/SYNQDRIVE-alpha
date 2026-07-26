@@ -18,6 +18,9 @@ import type { DimoVehicleInput } from './dimo-vehicle-sync.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoConnectionStatus } from '@prisma/client';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 const CONNECTION_STATUS_MAP: Record<DimoConnectionStatus, string> = {
   CONNECTED: 'Connected',
@@ -27,7 +30,8 @@ const CONNECTION_STATUS_MAP: Record<DimoConnectionStatus, string> = {
 };
 
 @Controller('admin/dimo')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class DimoController {
   constructor(

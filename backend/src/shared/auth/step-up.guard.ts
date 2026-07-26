@@ -13,7 +13,7 @@ import {
   hasFreshMfaAssurance,
   requiresStepUpForAction,
 } from '@modules/iam-mfa/iam-mfa.policy';
-import { resolveIamMfaEffectiveFeatureFlags } from '@modules/iam-mfa/iam-mfa-feature-flags.resolver';
+import { resolveIamMfaFeatureFlagsForPrincipal } from '@modules/iam-mfa/iam-mfa-feature-flags.resolver';
 import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
 import { AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
@@ -40,6 +40,7 @@ export class StepUpGuard implements CanActivate {
       | {
           id?: string;
           organizationId?: string | null;
+          platformRole?: string;
           sessionClaims?: AuthSessionClaims;
         }
       | undefined;
@@ -47,7 +48,10 @@ export class StepUpGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    const flags = resolveIamMfaEffectiveFeatureFlags(user.organizationId ?? null);
+    const flags = resolveIamMfaFeatureFlagsForPrincipal({
+      organizationId: user.organizationId ?? null,
+      platformRole: user.platformRole,
+    });
     if (!flags.mfaStepUpEnforced) {
       return true;
     }

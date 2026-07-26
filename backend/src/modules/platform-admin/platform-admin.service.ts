@@ -181,11 +181,11 @@ export class PlatformAdminService {
     await this.prisma.billingUsageSnapshot.deleteMany({});
     await this.prisma.billingOrganizationPriceOverride.deleteMany({});
     await this.prisma.billingPaymentMethod.deleteMany({});
-    await this.prisma.billingAuditLog.deleteMany({});
+    // Audit logs are append-only (Phase 2A.7) — retained for full history.
     await this.prisma.billingInvoice.deleteMany({});
     await this.prisma.billingSubscription.deleteMany({});
     await this.prisma.organizationMembership.deleteMany({});
-    await this.prisma.activityLog.deleteMany({});
+    // activity_logs are append-only — prune does not delete audit history.
     await this.prisma.supportTicket.deleteMany({});
     await this.prisma.organization.deleteMany({});
     await this.prisma.user.deleteMany({

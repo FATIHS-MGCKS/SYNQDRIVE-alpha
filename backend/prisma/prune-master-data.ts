@@ -53,15 +53,15 @@ async function main() {
   await prisma.billingUsageSnapshot.deleteMany({});
   await prisma.billingOrganizationPriceOverride.deleteMany({});
   await prisma.billingPaymentMethod.deleteMany({});
-  await prisma.billingAuditLog.deleteMany({});
+  // Audit logs are append-only (Phase 2A.7) — retained for full history.
   await prisma.billingInvoice.deleteMany({});
   await prisma.billingSubscription.deleteMany({});
   await prisma.organizationMembership.deleteMany({});
   console.log('  Organization integrations/products/memberships deleted');
 
-  await prisma.activityLog.deleteMany({});
+  // activity_logs are append-only — prune does not delete audit history.
   await prisma.supportTicket.deleteMany({});
-  console.log('  Activity logs + support tickets deleted');
+  console.log('  Support tickets deleted (audit logs retained)');
 
   await prisma.organization.deleteMany({});
   console.log('  Organizations deleted');

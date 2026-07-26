@@ -9,7 +9,7 @@ import {
   sessionClaimsFromJwt,
 } from '@shared/auth/auth-session-claims.types';
 import { isPrivilegedAccount } from './iam-mfa.policy';
-import { resolveIamMfaEffectiveFeatureFlags } from './iam-mfa-feature-flags.resolver';
+import { resolveIamMfaFeatureFlagsForPrincipal } from './iam-mfa-feature-flags.resolver';
 import { IamMfaEnrollmentService } from './iam-mfa-enrollment.service';
 import { IamMfaChallengeService } from './iam-mfa-challenge.service';
 import { IamMfaResetService } from './iam-mfa-reset.service';
@@ -40,7 +40,10 @@ export class IamMfaService {
     permissions?: unknown;
     organizationId?: string | null;
   }): Promise<MfaStatusResult> {
-    const flags = resolveIamMfaEffectiveFeatureFlags(input.organizationId ?? null);
+    const flags = resolveIamMfaFeatureFlagsForPrincipal({
+      organizationId: input.organizationId ?? null,
+      platformRole: input.platformRole,
+    });
     const enrolled = await this.enrollment.isMfaEnrolled(input.userId);
     const factors = await this.prisma.userMfaFactor.findMany({
       where: { userId: input.userId, enabledAt: { not: null } },
@@ -70,8 +73,9 @@ export class IamMfaService {
     userId: string,
     email: string,
     organizationId: string | null,
+    platformRole?: string | null,
   ): Promise<TotpEnrollmentStartResult> {
-    return this.enrollment.startTotpEnrollment(userId, email, organizationId);
+    return this.enrollment.startTotpEnrollment(userId, email, organizationId, platformRole);
   }
 
   confirmTotpEnrollment(

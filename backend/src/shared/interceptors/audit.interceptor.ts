@@ -19,6 +19,7 @@ const SKIP_PREFIXES = [
   '/api/v1/metrics',
   '/api/v1/webhooks/',        // webhook ingestion — high volume, audited internally
   '/api/v1/integrations/high-mobility/webhook',
+  '/api/v1/admin/',           // structured MasterAdminPrivilegedAuditInterceptor
 ];
 
 function deriveEntity(url: string): ActivityEntity {
