@@ -117,7 +117,56 @@ export class NotificationRepository {
   }
 
   runTransaction<T>(fn: (tx: NotificationTx) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(fn);
+    return this.prisma.$transaction(fn, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+    });
+  }
+
+  /**
+   * Row lock for ingest serialization — must run inside an open transaction.
+   * Returns the locked active notification id, if any.
+   */
+  async lockAnyActiveByFingerprintForUpdate(
+    organizationId: string,
+    fingerprint: string,
+    tx: NotificationTx,
+  ): Promise<string | null> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM notifications
+      WHERE organization_id = ${organizationId}
+        AND fingerprint = ${fingerprint}
+        AND status::text IN ('OPEN', 'ACKNOWLEDGED', 'SNOOZED')
+      ORDER BY lifecycle_generation DESC
+      LIMIT 1
+      FOR UPDATE
+    `;
+    return rows[0]?.id ?? null;
+  }
+
+  /**
+   * Locks the latest notification row for a fingerprint (any status) to serialize
+   * generation/reopen decisions when no active row exists yet.
+   */
+  async lockLatestByFingerprintForUpdate(
+    organizationId: string,
+    fingerprint: string,
+    tx: NotificationTx,
+  ): Promise<string | null> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM notifications
+      WHERE organization_id = ${organizationId}
+        AND fingerprint = ${fingerprint}
+      ORDER BY lifecycle_generation DESC
+      LIMIT 1
+      FOR UPDATE
+    `;
+    return rows[0]?.id ?? null;
+  }
+
+  findByIdForUpdate(id: string, organizationId: string, tx: NotificationTx) {
+    return this.findById(id, organizationId, tx);
   }
 
   findById(id: string, organizationId: string, tx?: NotificationTx) {

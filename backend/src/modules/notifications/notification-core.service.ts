@@ -44,6 +44,10 @@ import { isManualResolutionAllowed } from './api/notification-manual-resolution.
 import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
 import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
 import { NotificationDeliverySchedulerService } from './delivery/notification-delivery-scheduler.service';
+import {
+  auditFromMaterializeResult,
+  emitNotificationIngestAudit,
+} from './notification-ingest-audit';
 
 @Injectable()
 export class NotificationCoreService {
@@ -90,17 +94,41 @@ export class NotificationCoreService {
     const referenceNow = options.referenceNow ?? new Date();
 
     if (isRecoverySeverity(normalized.severity as unknown as DomainSeverity)) {
-      return this.handleRecoveryCandidate(normalized, fingerprint, referenceNow, options);
+      return this.handleRecoveryCandidate(
+        normalized,
+        fingerprint,
+        referenceNow,
+        options,
+      );
     }
 
+    return this.runIngestWithRetry(normalized, fingerprint, fingerprintPayload, referenceNow, options);
+  }
+
+  private async runIngestWithRetry(
+    normalized: NotificationCandidate,
+    fingerprint: string,
+    fingerprintPayload: ReturnType<typeof fingerprintFromCandidate>,
+    referenceNow: Date,
+    options: IngestCandidateOptions,
+  ): Promise<MaterializeResult> {
     return withUniqueConflictRetry(async (): Promise<MaterializeResult> => {
       const pendingOutboxIds: string[] = [];
       const result = await this.repository.runTransaction(async (tx) => {
-        const active = await this.repository.findAnyActiveByFingerprint(
+        await this.repository.lockLatestByFingerprintForUpdate(
           normalized.organizationId,
           fingerprint,
           tx,
         );
+
+        const activeId = await this.repository.lockAnyActiveByFingerprintForUpdate(
+          normalized.organizationId,
+          fingerprint,
+          tx,
+        );
+        const active = activeId
+          ? await this.repository.findByIdForUpdate(activeId, normalized.organizationId, tx)
+          : null;
 
         if (active) {
           const severityBefore = active.severity;
@@ -117,29 +145,24 @@ export class NotificationCoreService {
             );
             pendingOutboxIds.push(...ids);
           }
-          this.logOperation('updated', normalized, {
-            notificationId: updated.id,
-            fingerprint,
-            occurrenceCount: updated.occurrenceCount,
-            runId: options.runId,
-          });
           return { operation: 'updated' as const, notification: updated };
         }
 
-        const latest = await this.repository.findLatestByFingerprint(
+        const latestId = await this.repository.lockLatestByFingerprintForUpdate(
           normalized.organizationId,
           fingerprint,
           tx,
         );
+        const latest = latestId
+          ? await this.repository.findByIdForUpdate(latestId, normalized.organizationId, tx)
+          : null;
 
         if (latest?.status === NotificationStatus.ARCHIVED) {
-          this.logOperation('ignored', normalized, {
-            notificationId: latest.id,
-            fingerprint,
+          return {
+            operation: 'ignored' as const,
+            notification: latest,
             reason: 'ARCHIVED',
-            runId: options.runId,
-          });
-          return { operation: 'ignored' as const, notification: latest, reason: 'ARCHIVED' };
+          };
         }
 
         if (latest?.status === NotificationStatus.RESOLVED) {
@@ -165,13 +188,11 @@ export class NotificationCoreService {
           });
 
           if (reopen.action === 'IGNORE') {
-            this.logOperation('ignored', normalized, {
-              notificationId: latest.id,
-              fingerprint,
+            return {
+              operation: 'ignored' as const,
+              notification: latest,
               reason: reopen.reason,
-              runId: options.runId,
-            });
-            return { operation: 'ignored' as const, notification: latest, reason: reopen.reason };
+            };
           }
 
           if (reopen.action === 'REOPEN') {
@@ -186,12 +207,6 @@ export class NotificationCoreService {
               tx,
             );
             pendingOutboxIds.push(...ids);
-            this.logOperation('reopened', normalized, {
-              notificationId: reopened.id,
-              fingerprint,
-              occurrenceCount: reopened.occurrenceCount,
-              runId: options.runId,
-            });
             return { operation: 'reopened' as const, notification: reopened };
           }
 
@@ -207,12 +222,6 @@ export class NotificationCoreService {
               tx,
             );
             pendingOutboxIds.push(...ids);
-            this.logOperation('created', normalized, {
-              notificationId: created.id,
-              fingerprint,
-              occurrenceCount: created.occurrenceCount,
-              runId: options.runId,
-            });
             return { operation: 'created' as const, notification: created };
           }
         }
@@ -229,18 +238,52 @@ export class NotificationCoreService {
           tx,
         );
         pendingOutboxIds.push(...ids);
-        this.logOperation('created', normalized, {
-          notificationId: created.id,
-          fingerprint,
-          occurrenceCount: created.occurrenceCount,
-          runId: options.runId,
-        });
         return { operation: 'created' as const, notification: created };
       });
 
       await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+      this.finalizeIngest(normalized, fingerprint, result, options);
       return result;
     });
+  }
+
+  private finalizeIngest(
+    normalized: NotificationCandidate,
+    fingerprint: string,
+    result: MaterializeResult,
+    options: IngestCandidateOptions,
+  ): void {
+    const operation = result.operation;
+    const notification = result.notification;
+    const reason = 'reason' in result ? result.reason : undefined;
+
+    this.logOperation(operation, normalized, {
+      notificationId: notification?.id,
+      fingerprint,
+      occurrenceCount: notification?.occurrenceCount,
+      reason,
+      runId: options.runId,
+    });
+
+    if (notification) {
+      emitNotificationIngestAudit(
+        this.logger,
+        auditFromMaterializeResult(
+          notification,
+          operation,
+          {
+            organizationId: normalized.organizationId,
+            eventType: normalized.eventType,
+            fingerprint,
+            sourceType: normalized.sourceType,
+            sourceRef: normalized.sourceRef,
+            sourceEventId: normalized.sourceEventId,
+            runId: options.runId,
+          },
+          reason,
+        ),
+      );
+    }
   }
 
   async appendOccurrence(notificationId: string, candidate: NotificationCandidate) {
@@ -496,71 +539,83 @@ export class NotificationCoreService {
     resolvedAt: Date,
     options: IngestCandidateOptions,
   ): Promise<MaterializeResult> {
-    const active = await this.repository.findAnyActiveByFingerprint(
-      candidate.organizationId,
-      fingerprint,
-    );
-
-    if (!active) {
-      const latest = await this.repository.findLatestByFingerprint(candidate.organizationId, fingerprint);
-      if (latest?.status === NotificationStatus.RESOLVED) {
-        this.logOperation('ignored', candidate, {
-          notificationId: latest.id,
+    return withUniqueConflictRetry(async (): Promise<MaterializeResult> => {
+      const pendingOutboxIds: string[] = [];
+      const result = await this.repository.runTransaction(async (tx) => {
+        await this.repository.lockLatestByFingerprintForUpdate(
+          candidate.organizationId,
           fingerprint,
-          reason: 'ALREADY_RESOLVED',
-          runId: options.runId,
-        });
-        return { operation: 'ignored', notification: latest, reason: 'ALREADY_RESOLVED' };
-      }
-      this.logOperation('ignored', candidate, { fingerprint, reason: 'NO_ACTIVE_FOR_RECOVERY', runId: options.runId });
-      throw new NotFoundException('No active notification to resolve for recovery');
-    }
-
-    const pendingOutboxIds: string[] = [];
-    const resolved = await this.repository.runTransaction(async (tx) => {
-      const row = await this.repository.updateNotification(
-        active.id,
-        {
-          status: NotificationStatus.RESOLVED,
-          resolvedAt,
-          snoozedUntil: null,
-          acknowledgedAt: active.acknowledgedAt,
-        },
-        active.version,
-        tx,
-      );
-      await this.repository.createOccurrence(
-        {
-          notificationId: row.id,
-          organizationId: candidate.organizationId,
-          occurredAt: candidate.occurredAt,
-          sourceType: candidate.sourceType,
-          sourceRef: candidate.sourceRef,
-          severityAtOccurrence: candidate.severity,
-          payload: { recovery: true, ...(candidate.metadata ?? {}) } as Prisma.InputJsonValue,
-        },
-        tx,
-      );
-      const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation('resolved', row);
-      if (transition) {
-        const ids = await this.deliveryEnqueue.enqueueInTransaction(
-          { notification: row, transition },
           tx,
         );
-        pendingOutboxIds.push(...ids);
-      }
-      return row;
-    });
-    await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
 
-    this.logOperation('resolved', candidate, {
-      notificationId: resolved.id,
-      fingerprint,
-      operation: 'resolved',
-      runId: options.runId,
-    });
+        const activeId = await this.repository.lockAnyActiveByFingerprintForUpdate(
+          candidate.organizationId,
+          fingerprint,
+          tx,
+        );
+        const active = activeId
+          ? await this.repository.findByIdForUpdate(activeId, candidate.organizationId, tx)
+          : null;
 
-    return { operation: 'resolved', notification: resolved };
+        if (!active) {
+          const latestId = await this.repository.lockLatestByFingerprintForUpdate(
+            candidate.organizationId,
+            fingerprint,
+            tx,
+          );
+          const latest = latestId
+            ? await this.repository.findByIdForUpdate(latestId, candidate.organizationId, tx)
+            : null;
+
+          if (latest?.status === NotificationStatus.RESOLVED) {
+            return {
+              operation: 'ignored' as const,
+              notification: latest,
+              reason: 'ALREADY_RESOLVED',
+            };
+          }
+
+          throw new NotFoundException('No active notification to resolve for recovery');
+        }
+
+        const row = await this.repository.updateNotification(
+          active.id,
+          {
+            status: NotificationStatus.RESOLVED,
+            resolvedAt,
+            snoozedUntil: null,
+            acknowledgedAt: active.acknowledgedAt,
+          },
+          active.version,
+          tx,
+        );
+        await this.repository.createOccurrence(
+          {
+            notificationId: row.id,
+            organizationId: candidate.organizationId,
+            occurredAt: candidate.occurredAt,
+            sourceType: candidate.sourceType,
+            sourceRef: candidate.sourceRef,
+            severityAtOccurrence: candidate.severity,
+            payload: { recovery: true, ...(candidate.metadata ?? {}) } as Prisma.InputJsonValue,
+          },
+          tx,
+        );
+        const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation('resolved', row);
+        if (transition) {
+          const ids = await this.deliveryEnqueue.enqueueInTransaction(
+            { notification: row, transition },
+            tx,
+          );
+          pendingOutboxIds.push(...ids);
+        }
+        return { operation: 'resolved' as const, notification: row };
+      });
+
+      await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+      this.finalizeIngest(candidate, fingerprint, result, options);
+      return result;
+    });
   }
 
   private async createNotificationWithOccurrence(

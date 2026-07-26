@@ -79,6 +79,21 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       const row = notifications.get(id);
       return row?.organizationId === orgId ? row : null;
     }),
+    lockAnyActiveByFingerprintForUpdate: jest.fn(async (orgId: string, fp: string) => {
+      const id = activeByFingerprint.get(`${orgId}:${fp}`);
+      return id ?? null;
+    }),
+    lockLatestByFingerprintForUpdate: jest.fn(async (orgId: string, fp: string) => {
+      const matches = [...notifications.values()].filter(
+        (n) => n.organizationId === orgId && n.fingerprint === fp,
+      );
+      const latest = matches.sort((a, b) => b.lifecycleGeneration - a.lifecycleGeneration)[0];
+      return latest?.id ?? null;
+    }),
+    findByIdForUpdate: jest.fn(async (id: string, orgId: string) => {
+      const row = notifications.get(id);
+      return row?.organizationId === orgId ? row : null;
+    }),
     listNotifications: jest.fn(async (filter: {
       organizationId: string;
       status?: NotificationStatus[];

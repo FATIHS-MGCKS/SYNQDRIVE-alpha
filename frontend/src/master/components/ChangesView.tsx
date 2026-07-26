@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-ingest-concurrency-2026-07-26',
+    version: '4.9.874',
+    title: 'Notification Engine Remediation — concurrency-safe ingestion (Prompt 7)',
+    summary: [
+      'Atomic ingest transaction: row lock (FOR UPDATE), fingerprint match, occurrence, severity/lifecycle, optional outbox.',
+      'withUniqueConflictRetry on P2002 + P2025 (max 4); recovery path fully transactional.',
+      'Post-commit ingest audit event notification.ingest.audit.',
+      'Docs: docs/architecture/notification-ingest-concurrency.md',
+    ],
+    reason:
+      'Parallel producers and retries must not create duplicate active notifications or lose occurrences.',
+    previousBehavior:
+      'Recovery read active outside transaction; retry only on create unique conflicts; no row locks.',
+    details:
+      'notification-core.service.ts, notification.repository.ts, notification-prisma.util.ts, notification-ingest-audit.ts, notification-core.service.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T04:00:00.000Z',
+  },
+  {
     id: 'notification-db-integrity-2026-07-26',
     version: '4.9.873',
     title: 'Notification Engine Remediation — database integrity and active uniqueness (Prompt 6)',
