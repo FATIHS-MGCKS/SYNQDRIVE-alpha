@@ -46,10 +46,22 @@ fi
 
 if [[ -n "${CLOUD_AGENT_SSH_PRIVATE_KEY:-}" ]]; then
   cloud_agent_materialize_ssh_key "${HOME}/.ssh/id_ed25519" || true
-  if timeout 10 ssh -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=5 \
-    "${SSH_USER}@${VPS_HOST}" 'echo ok' >/dev/null 2>&1; then
+  ssh_ok=0
+  for _ in 1 2 3 4 5; do
+    if timeout 15 ssh -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=8 \
+      "${SSH_USER}@${VPS_HOST}" 'echo ok' >/dev/null 2>&1; then
+      ssh_ok=1
+      break
+    fi
+    sleep 2
+  done
+  if [[ "$ssh_ok" -eq 1 ]]; then
     echo "[cloud-agent] SSH auth OK for ${SSH_USER}@${VPS_HOST}."
+    # Self-heal UFW SSH allowlist for dynamic Cloud Agent egress IPs
+    fw_allow="/opt/synqdrive/current/backend/scripts/ops/vps-firewall-allow-ssh.sh"
+    timeout 20 ssh -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=8 \
+      "${SSH_USER}@${VPS_HOST}" "test -x ${fw_allow} && sudo ${fw_allow} || true" 2>/dev/null || true
   else
-    echo "[cloud-agent] WARN: SSH auth failed for ${SSH_USER}@${VPS_HOST}." >&2
+    echo "[cloud-agent] WARN: SSH auth failed for ${SSH_USER}@${VPS_HOST} (check firewall allowlist)." >&2
   fi
 fi

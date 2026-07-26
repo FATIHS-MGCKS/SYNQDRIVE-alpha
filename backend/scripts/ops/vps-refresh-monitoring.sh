@@ -50,8 +50,11 @@ refresh_prometheus() {
   fi
 
   mkdir -p "$PROM_DIR/secrets"
+  chown root:nogroup "$PROM_DIR/secrets"
+  chmod 750 "$PROM_DIR/secrets"
   printf '%s' "$token" > "$PROM_DIR/secrets/metrics_bearer_token"
-  chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
+  chown root:nogroup "$PROM_DIR/secrets/metrics_bearer_token"
+  chmod 640 "$PROM_DIR/secrets/metrics_bearer_token"
 
   cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
   cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"
