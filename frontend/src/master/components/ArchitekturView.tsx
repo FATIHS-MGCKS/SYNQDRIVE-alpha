@@ -969,7 +969,9 @@ const INTEGRATIONS: IntegrationEntry[] = [
     apis: [
       { label: 'Telemetry GraphQL', detail: 'signalsLatest, signals history, segments' },
       { label: 'REST API', detail: 'Vehicles, device status' },
-      { label: 'Webhooks', detail: 'DTC codes, ignition events' },
+      { label: 'Webhooks', detail: 'DTC codes, ignition events, OBD plug/unplug' },
+      { label: 'Identity GraphQL', detail: 'privileged vehicles sync → dimo_vehicles mirror (24h + manual)' },
+      { label: 'Vehicle binding (2E.2 audit)', detail: 'vehicles.dimo_vehicle_id → dimo_vehicles; registerFromDimo; snapshot 30s. Gap: no UNIQUE on binding — cross-org duplicate possible. Doc: dimo-vehicle-integrity.md' },
     ],
   },
   {
