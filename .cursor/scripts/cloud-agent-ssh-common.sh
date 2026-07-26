@@ -12,8 +12,8 @@ cloud_agent_trim() {
 
 cloud_agent_ssh_user() {
   local user
-  user="$(cloud_agent_trim "${CLOUD_AGENT_SSH_USER:-root}")"
-  printf '%s' "${user:-root}"
+  user="$(cloud_agent_trim "${CLOUD_AGENT_SSH_USER:-synqdrive-admin}")"
+  printf '%s' "${user:-synqdrive-admin}"
 }
 
 # Extract base64 body from any OPENSSH PEM variant (single-line or multi-line).

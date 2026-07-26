@@ -62,8 +62,12 @@ preflight_git() {
 
 run_remote_deploy() {
   echo "[cloud-agent] Deploying via SSH ${SSH_USER}@${VPS_HOST}:${SSH_PORT} ..."
+  local remote_cmd="bash ${DEPLOY_SCRIPT}"
+  if [[ "${SSH_USER}" != "root" ]]; then
+    remote_cmd="sudo bash ${DEPLOY_SCRIPT}"
+  fi
   ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 \
-    "${SSH_USER}@${VPS_HOST}" "bash ${DEPLOY_SCRIPT}"
+    "${SSH_USER}@${VPS_HOST}" "${remote_cmd}"
 }
 
 verify_health() {
