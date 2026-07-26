@@ -40,19 +40,21 @@ async function main() {
 
   try {
     const prisma = app.get(PrismaService);
-    const orgFilter = orgId ? `AND n."organizationId" = '${orgId.replace(/'/g, "''")}'` : '';
+    const orgFilter = orgId
+      ? `AND n.organization_id = '${orgId.replace(/'/g, "''")}'`
+      : '';
 
     const rows = await prisma.$queryRawUnsafe<DriftRow[]>(`
       SELECT
         n.id AS "notificationId",
-        n."occurrenceCount"::int AS "storedCount",
+        n.occurrence_count::int AS "storedCount",
         COUNT(o.id)::int AS "actualCount"
       FROM notifications n
-      LEFT JOIN notification_occurrences o ON o."notificationId" = n.id
+      LEFT JOIN notification_occurrences o ON o.notification_id = n.id
       WHERE 1=1 ${orgFilter}
-      GROUP BY n.id, n."occurrenceCount"
-      HAVING n."occurrenceCount" <> COUNT(o.id)
-      ORDER BY ABS(n."occurrenceCount" - COUNT(o.id)) DESC
+      GROUP BY n.id, n.occurrence_count
+      HAVING n.occurrence_count <> COUNT(o.id)
+      ORDER BY ABS(n.occurrence_count - COUNT(o.id)) DESC
     `);
 
     console.log(
