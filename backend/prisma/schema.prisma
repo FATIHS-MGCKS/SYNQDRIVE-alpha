@@ -13492,8 +13492,9 @@ model DashboardInsight {
 }
 
 // ── Notification Engine (V4.9.351) — persistent lifecycle notifications ──
-// Partial unique index on (organization_id, fingerprint, lifecycle_generation)
-// for active statuses is defined in migration SQL — Prisma does not support partial indexes.
+// Partial unique index on (organization_id, fingerprint) for active statuses
+// is defined in migration SQL — Prisma does not support partial indexes.
+// See migration 20260726120000_notification_db_integrity.
 
 model Notification {
   id                  String                 @id @default(uuid())
@@ -13538,6 +13539,10 @@ model Notification {
   @@index([organizationId, status, lastSeenAt])
   @@index([organizationId, severity, status])
   @@index([organizationId, domain, status])
+  @@index([organizationId, createdAt], map: "notifications_org_created_at_idx")
+  @@index([organizationId, eventType, status], map: "notifications_org_event_type_status_idx")
+  @@index([organizationId, status, createdAt], map: "notifications_org_status_created_at_idx")
+  @@index([organizationId, entityType, entityId, status], map: "notifications_org_entity_status_idx")
   @@index([entityType, entityId])
   @@index([fingerprint])
   @@index([expiresAt])
@@ -13563,6 +13568,8 @@ model NotificationOccurrence {
 
   @@index([notificationId, occurredAt])
   @@index([organizationId])
+  @@index([organizationId, occurredAt], map: "notification_occurrences_org_occurred_at_idx")
+  @@index([organizationId, notificationId], map: "notification_occurrences_org_notification_id_idx")
   @@map("notification_occurrences")
 }
 
@@ -13585,6 +13592,8 @@ model NotificationReceipt {
   @@unique([notificationId, userId])
   @@index([userId, readAt])
   @@index([organizationId])
+  @@index([organizationId, userId], map: "notification_receipts_org_user_id_idx")
+  @@index([organizationId, notificationId], map: "notification_receipts_org_notification_id_idx")
   @@map("notification_receipts")
 }
 
@@ -13615,6 +13624,7 @@ model NotificationDeliveryOutbox {
   @@index([status, availableAt])
   @@index([organizationId, status])
   @@index([notificationId])
+  @@index([organizationId, createdAt], map: "notification_delivery_outbox_org_created_at_idx")
   @@map("notification_delivery_outbox")
 }
 

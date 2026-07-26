@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-db-integrity-2026-07-26',
+    version: '4.9.873',
+    title: 'Notification Engine Remediation — database integrity and active uniqueness (Prompt 6)',
+    summary: [
+      'Additive migration 20260726120000_notification_db_integrity: repair log, duplicate active fingerprint resolution, tenant org alignment, orphan cleanup.',
+      'Stricter partial unique (organization_id, fingerprint) for OPEN/ACKNOWLEDGED/SNOOZED; CHECK constraints for status timestamps, counters, JSON size.',
+      'Dashboard/count/outbox/retention indexes; audit SQL for duplicates, orphans, invalid orgs/entities.',
+      'Docs: docs/architecture/notification-db-integrity.md',
+    ],
+    reason:
+      'Notification persistence must be race-safe, tenant-isolated, and free of duplicate active identities at the database layer.',
+    previousBehavior:
+      'Partial unique included lifecycle_generation; no DB-level status/JSON guards; limited retention/outbox indexes.',
+    details:
+      'prisma/migrations/20260726120000_notification_db_integrity, notification-db-integrity.constants.ts, notification-integrity-audit.sql, notification-db-integrity.schema.spec.ts, schema.prisma.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T03:00:00.000Z',
+  },
+  {
     id: 'notification-fingerprint-hardening-2026-07-26',
     version: '4.9.872',
     title: 'Notification Engine Remediation — canonical fingerprint hardening (Prompt 5)',
