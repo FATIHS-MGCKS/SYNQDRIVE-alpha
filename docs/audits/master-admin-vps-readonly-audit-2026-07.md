@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 14: Audit Logging, Datenschutz & ISO-Kontrollen read-only **abgeschlossen** (2026-07-26T07:35–07:40 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:40:00Z` (Audit & Datenschutz) |
+| **Status** | **IN PROGRESS** — Schritt 15: Backup/Restore/DR Readiness read-only **abgeschlossen** (2026-07-26T07:41–07:46 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:46:00Z` (Backup/Restore/DR) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -262,6 +262,22 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:35–07:40 | Backup-Count (`ls` nur Anzahl `.sql.gz`) | Backup-Monitoring (ohne Restore) |
 
 **Audit-Modus:** **Keine** Audit-Logs geändert oder gelöscht, **keine** DSAR-Exports oder Löschungen ausgelöst, **keine** vollständige PII-Dokumentation.
+
+### 2.2o Ausgeführte sichere Befehle (Schritt 15 — Backup/Restore/DR read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:28–07:31 | `ls`/`stat`/`du`/`gzip -t` auf `/opt/synqdrive/shared/backups/*.sql.gz` (Metadaten + Integritätsprüfung, **kein** Dump-Inhalt) | PG-Backup-Inventar, Alter, Größe, Permissions |
+| 07:28–07:31 | `redis-cli INFO persistence`, `stat /var/lib/redis/dump.rdb` | Redis-RDB-Persistenz |
+| 07:28–07:31 | `docker inspect synqdrive-clickhouse`, `docker volume inspect`, `du` CH-Volume | ClickHouse-Speicherort, Mounts, Größe |
+| 07:28–07:31 | `ls`/`stat`/`du` auf `shared/uploads`, `shared/storage`, `shared/grafana`, `shared/prometheus` | Dateispeicher & Observability-Config |
+| 07:28–07:31 | `grep` Env-Key-Namen (`DOCUMENT_STORAGE_*`, `S3_*`, `AWS_*`) — **keine** Werte | Dokumentenspeicher-Provider |
+| 07:28–07:31 | `crontab -l`, `systemctl list-timers`, `grep pg_dump /var/log/auth.log`, `journalctl` (Backup-Fail-Grep) | Zeitplan, letzte Ausführung, Fehler-Logs |
+| 07:28–07:31 | `which rclone/aws/s3cmd`, `mount`, Nginx-`grep backup`, `curl -sI` `/backups/` `/uploads/` (öffentlich) | Offsite, Web-Exposition |
+| 07:28–07:31 | Quellcode-Review: `vps-deploy-release.sh`, `clickhouse-backup-local.sh`, `docker-compose.yml`, Runbooks, `alerts.yml` | Backup-Methode, Retention, Restore-Doku |
+| 07:30:49 | **Abweichung:** versehentlich `mkdir -p …/clickhouse/backups` (leeres Verzeichnis) während Pfad-Prüfung — **kein** Backup/Restore | Siehe Kap. 24.1 |
+
+**Backup/DR-Modus:** **Kein** `pg_dump`, **kein** ClickHouse-`BACKUP`, **kein** Restore, **keine** Snapshot-Erstellung/-Löschung, **keine** Backup-Datei verändert. `gzip -t` und `stat`/`ls` nur auf Metadaten.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -2287,15 +2303,192 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ## 24. Backups und Restore Readiness
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| `shared/backups/` | **2.0 GiB** (29+ Pre-Deploy-Dumps geschätzt) |
-| Pre-Deploy-Dumps | Deploy-Skript: `pg_dump` vor jedem Release |
-| Restore-Test | **Nicht** geprüft (und bewusst nicht ausgeführt) |
-| Disk für Backups | `/` **28 %** — ausreichend Spielraum |
-| Release-Retention | **29** Releases / **36 GiB** — kein automatisches Pruning im Deploy-Skript sichtbar |
+**Prüfzeitpunkt:** Schritt 15 — `2026-07-26T07:41–07:46 UTC` (read-only)
 
-**Status:** Backup-Größe erfasst. Vertiefung — Backup-Alter, Retention-Policy, letzter Dump (Dateilisting only) — **ausstehend**.
+### 24.1 Audit-Bestätigung und Abweichung
+
+| Regel | Status |
+|-------|--------|
+| Kein Backup gestartet | **Eingehalten** |
+| Kein Restore durchgeführt | **Eingehalten** |
+| Keine Backup-Dateien verändert | **Eingehalten** |
+| Keine Snapshots erstellt/gelöscht | **Eingehalten** |
+| Nur Metadaten/Logs geprüft | **Eingehalten** (Ausnahme: siehe unten) |
+
+**Abweichung (07:30:49 UTC):** Während der Pfad-Prüfung wurde versehentlich ein **leeres** Verzeichnis `…/current/backend/storage/clickhouse/backups` (und entsprechend im aktuellen Release) per `mkdir -p` angelegt. **Kein** Backup-Inhalt, **kein** Restore. Inhalt: leer (`drwxr-xr-x`, root:root). Für DR-Bewertung ohne Bedeutung, aber gegen strikt read-only.
+
+### 24.2 PostgreSQL
+
+| Attribut | Ist-Wert |
+|----------|----------|
+| **Methode** | `pg_dump synqdrive \| gzip` in `vps-deploy-release.sh` (Zeile 21) |
+| **Zeitplan** | **Nur bei Deploy** — kein root-Cron, kein dedizierter Backup-Timer |
+| **Letzte erfolgreiche Ausführung** | `2026-07-26T07:24:28Z` (`db-pre-deploy-20260726072428.sql.gz`) — auth.log + Dateizeitstempel |
+| **Letzte fehlgeschlagene Ausführung** | **Nicht nachweisbar** in auth.log/journalctl (30 Tage) |
+| **Alter letztes Backup** | **~22 min** vor Audit-Ende (07:46 UTC) |
+| **Anzahl / Größe** | **39** `.sql.gz`, **2,1 GiB** gesamt |
+| **Speicherort** | `/opt/synqdrive/shared/backups/` — **dieselbe VPS** |
+| **Offsite-Kopie** | **Nein** — kein `rclone`/`aws`/`s3cmd`, kein NFS/S3-Mount |
+| **Verschlüsselung** | **Nein** — nur gzip; kein GPG/at-rest |
+| **Zugriffsrechte** | Verzeichnis `755 root:root`; Dumps **`644 root:root`** (world-readable) |
+| **Retention** | **Keine** — Deploy-Skript prüft nur Disk ≥85/90 %, **kein** Pruning |
+| **Plausibilität** | `gzip -t` auf neuestem + vorherigem Dump **OK**; Größe ~52–55 MiB konsistent mit DB-Wachstum |
+| **WAL / PITR** | `archive_mode=off`, `wal_level=replica` — **kein** Point-in-Time-Recovery |
+| **Monitoring** | **Nein** — keine Prometheus-Alert-Rule für Backup-Alter/-Fehler |
+| **Alarmierung** | **Nein** — kein Alertmanager (MA-OBS-P1-001); Deploy bricht bei Disk ≥90 % ab |
+| **Restore-Prozess dokumentiert** | Runbooks (`vehicle-operational-status-repair.md`, `task-data-repair.md`, …) beschreiben `pg_restore` auf Staging-DB — **nicht** VPS-weites DR |
+| **Letzter Restore-Test** | Dateiname `pre-local-db-restore-20260622100709.sql.gz` (60 KiB, 2026-06-22) deutet auf frühere Restore-Aktivität — **kein** dokumentierter Prod-Restore-Test |
+
+### 24.3 ClickHouse
+
+| Attribut | Ist-Wert |
+|----------|----------|
+| **Methode (vorgesehen)** | `npm run clickhouse:backup:docker` → `BACKUP DATABASE … TO Disk('backups', …)`; 7-Tage-Retention im Skript |
+| **Methode (Prod)** | **Nicht betrieben** — kein `synqdrive_*.zip` in Backup-Pfaden |
+| **Zeitplan** | **Keiner** (kein Cron/Timer) |
+| **Letzte erfolgreiche Ausführung** | **Nicht nachweisbar** auf VPS |
+| **Daten-Volumen** | Docker-Volume `backend_clickhouse_data`: **~2,8 GiB** |
+| **Speicherort** | `/var/lib/docker/volumes/backend_clickhouse_data/_data` — **dieselbe VPS** |
+| **Backup-Mount** | Container bindet `backup_disk.xml` + `/backups` auf **Ghost-Release** `20260717111944_v4994` (gelöscht) — MA-TOPO-P1-001 |
+| **Offsite / Verschlüsselung** | **Nein / Nein** |
+| **Monitoring / Alarmierung** | **Nein** |
+| **Restore-Prozess** | `clickhouse-restore-local.sh` im Repo — **nicht** auf Prod verifiziert |
+| **Zeitkonsistenz mit PG** | **Nein** — CH nicht gesichert; PG nur bei Deploy |
+
+### 24.4 Redis
+
+| Attribut | Ist-Wert |
+|----------|----------|
+| **Methode** | RDB-Snapshots (`save`-Policy), **kein** AOF |
+| **Letzter Save** | `rdb_last_bgsave_status=ok`, `dump.rdb` **~2,7 MiB**, `2026-07-26 07:25 UTC` |
+| **Speicherort** | `/var/lib/redis/dump.rdb` (`660 redis:redis`) — **dieselbe VPS** |
+| **In pg_dump enthalten** | **Nein** — BullMQ-Queues, Sessions, Cache verloren bei Full-Restore nur aus PG |
+| **Offsite / Backup-Job** | **Nein** |
+| **Restore-Test** | **Nicht nachweisbar** |
+
+### 24.5 Uploads, Dokumente, Objektspeicher
+
+| Pfad | Größe | Backup-Strategie |
+|------|-------|------------------|
+| `/opt/synqdrive/shared/uploads` | **2,4 MiB** | Symlink in Releases — **kein** separater Backup-Job |
+| `/opt/synqdrive/shared/storage` (inkl. `documents/`) | **6,1 MiB** | Lokal auf VPS; Env: `DOCUMENT_STORAGE_PROVIDER` + `DOCUMENT_STORAGE_ALLOW_LOCAL_IN_PRODUCTION` (Werte nicht ausgelesen) |
+| `public_backup_202606241346_dashboard_truth` | **8,5 MiB** | Manueller Dashboard-Snapshot; **`777 root:root`** (world-writable) |
+
+**S3/Objekt-Backup:** Laut `legal-documents-private-storage-2026-07.md` sind Objekt-Bytes **nicht** in DB-Backups; `DOCUMENT_STORAGE_BACKUP_INCLUDES_OBJECTS` nicht verifiziert. **Kein** Provider-Backup nachgewiesen.
+
+**Web-Exposition:** `curl -sI https://app.synqdrive.eu/backups/` und `/uploads/` → **SPA-HTML (200)** — kein direkter Dateizugriff über Nginx.
+
+### 24.6 Environment- und Secret-Backups
+
+| Artefakt | Anzahl / Ort | Permissions | Verschlüsselung |
+|----------|--------------|-------------|-----------------|
+| `shared/backend.env.bak-*` | **19** Dateien | **`600`** root:root | **Nein** (Klartext-Secrets) |
+| `shared/backups/backend.env.*` | **2** Dateien | gemischt (`600`/`644`) | **Nein** |
+| `synqdrive-env-and-release-meta-*.tar.gz` | 1 in `shared/backups/` | **`600`** | **Nein** — enthält `backend.env` laut Name/Zweck |
+
+Live `shared/backend.env` bleibt **644** (MA-DEP-P2-001). Secrets werden **unverschlüsselt** in Env-Backups gesichert — Zugriff nur root, aber **gleicher VPS**, kein Offsite.
+
+### 24.7 Grafana, Prometheus, Nginx, Docker Compose
+
+| Komponente | Backup-Status |
+|------------|---------------|
+| **Grafana** | Provisioning unter `/opt/synqdrive/shared/grafana/` (**88 KiB**, 5 Dashboards) — **nicht** in pg_dump; manuell gepflegt |
+| **Prometheus** | Config `/opt/synqdrive/shared/prometheus/` (**68 KiB**) — **nicht** in pg_dump; TSDB-Daten im Container, **nicht** gesichert |
+| **Prometheus Alerts** | **98** Rules in `alerts.yml` — **0** Backup-bezogene Alerts |
+| **Nginx** | Site-Config in `/etc/nginx/` — **kein** automatisierter Backup-Job; `apply-nginx-synqdrive-hardening.sh` legt manuelle `.bak` an |
+| **Docker Compose** | `backend/docker-compose.yml` definiert CH-Volume + `./storage/clickhouse/backups:/backups` — Backup-Pfad release-lokal, nicht unter `shared/` |
+
+### 24.8 Deployment-Skripte und externe Provider
+
+| Skript / Provider | Backup-Verhalten |
+|-------------------|------------------|
+| `vps-deploy-release.sh` | Pre-Deploy `pg_dump`; Disk-Warnung 85 %, Abbruch 90 % |
+| `vps-deploy-connectivity-staging.sh` | Eigene `db-pre-connectivity-rc-*.sql.gz` Dumps |
+| `staging-brake-health-rollout.sh` | Staging-DB-Kopie + Dump (nicht Prod-Schedule) |
+| **Hostinger VPS** | Kein Managed-DB-Backup sichtbar; `/var/backups` nur **dpkg** (~2,1 MiB) |
+| **Stripe** | Zustand extern rekonstruierbar via API nach PG-Restore — aktuell **TEST-Key** auf Prod (MA-BILL-P1-001) erschwert Live-Reconciliation |
+| **DIMO** | Segments/Telemetrie extern; nach Restore Re-Sync über Poll/Webhook möglich — **nicht** automatisiert dokumentiert |
+| **Resend/Twilio** | Kein lokaler Zustand in Backups relevant; Webhook-Inbox leer |
+
+### 24.9 Komponenten-Matrix
+
+| Komponente | Letztes Backup | Alter | Offsite | Verschlüsselt | Restore-Test | Risiko |
+|------------|----------------|-------|---------|---------------|--------------|--------|
+| **PostgreSQL** | `2026-07-26 07:24 UTC` | **~22 min** | **Nein** | **Nein** (gzip) | **Nicht nachweisbar** (Prod) | **HOCH** — Single-VPS, world-readable, kein PITR |
+| **ClickHouse** | **Keines** | n/a | **Nein** | n/a | **Nicht nachweisbar** | **KRITISCH** — 2,8 GiB Analytics ohne Backup |
+| **Redis (RDB)** | `2026-07-26 07:25 UTC` | **~21 min** | **Nein** | **Nein** | **Nicht nachweisbar** | **MITTEL** — Queue-State verloren bei Disaster |
+| **Uploads (shared)** | **Keines** | n/a | **Nein** | n/a | **Nicht nachweisbar** | **MITTEL** (aktuell klein) |
+| **Dokumente (local storage)** | **Keines** | n/a | **Nein** | n/a | **Nicht nachweisbar** | **MITTEL–HOCH** — nicht in DB-Dump |
+| **Env/Secrets** | `backend.env.bak-*` (laufend bei Ops) | variabel | **Nein** | **Nein** | **Nicht nachweisbar** | **HOCH** — Klartext, gleicher Host |
+| **Grafana/Prometheus** | Manuell / Release-Git | n/a | **Nein** | n/a | **Nicht nachweisbar** | **MITTEL** — Rebuild aus Repo möglich, TSDB verloren |
+| **Nginx/TLS** | Certbot + manuelle `.bak` | LE bis 2026-09-20 | **Nein** | n/a | **Nicht nachweisbar** | **NIEDRIG–MITTEL** |
+| **Audit-Logs (`activity_logs`)** | In PG-Dump enthalten | wie PG | **Nein** | **Nein** | **Nicht nachweisbar** | **MITTEL** — löschbar in Live-DB; Backup ≠ WORM |
+| **PM2/Docker-Runtime** | `pm2 save` / Container-Volumes | n/a | **Nein** | n/a | **Nicht nachweisbar** | **MITTEL** |
+
+> **Kein Restore-Erfolgsversprechen:** Es liegt **kein** nachweisbarer Production-Restore-Test vor. Runbooks beschreiben Staging-`pg_restore`, wurden in diesem Audit **nicht** ausgeführt.
+
+### 24.10 RPO / RTO (abgeleitet, nicht formal dokumentiert)
+
+| Metrik | PostgreSQL | ClickHouse | Uploads/Docs | Gesamt-DR |
+|--------|------------|------------|--------------|-----------|
+| **RPO (Recovery Point Objective)** | **Seit letztem Deploy** (hier ~22 min; ohne Deploy ggf. **Tage**) | **Unbegrenzt** (kein Backup) | **Unbegrenzt** | **Schlechtester Komponentenwert** |
+| **RTO (Recovery Time Objective)** | **Nicht dokumentiert** — manueller `pg_restore` + Deploy | **Nicht dokumentiert** — Rebuild + Re-Ingestion | Manuell | **Kein** formaler DR-Runbook für Full-VPS-Ausfall |
+
+**Lücken:** Kein dokumentiertes RPO/RTO-SLA; kein gemeinsamer zeitlicher Recovery-Point über PG + CH + Dateien.
+
+### 24.11 Single Points of Failure und Abhängigkeiten
+
+```mermaid
+flowchart TB
+  subgraph vps [Single VPS srv1374778]
+    PG[(PostgreSQL)]
+  CH[(ClickHouse Volume 2.8G)]
+  RD[(Redis RDB)]
+  FS[shared/uploads + storage]
+  BK[shared/backups 2.1G]
+  end
+  PG --> BK
+  CH -.->|kein Backup| X[Verlust bei Volume-Löschung]
+  RD -.->|nicht in BK| X
+  FS -.->|nicht in BK| X
+  BK -->|gleicher Disk| vps
+```
+
+| SPOF | Beschreibung |
+|------|--------------|
+| **Einzel-VPS** | App, PG, Redis, Backups, Uploads, CH-Volume auf einem Host |
+| **Backup = Produktion** | `shared/backups` auf derselben Disk wie Live-DB |
+| **Kein Offsite** | Totalverlust VPS = Totalverlust aller Backups |
+| **CH Ghost-Mounts** | Container-Recreate ohne Volume-Backup riskant |
+| **Kein Alertmanager** | Fehlgeschlagene Backups würden nicht alarmieren |
+
+### 24.12 Restore-Nachweise und Reconciliation
+
+| Frage | Bewertung |
+|-------|-----------|
+| **Dokumentierter Full-Stack-Restore?** | **Nein** — nur Feature-Runbooks mit Staging-`pg_restore` |
+| **PG + CH zeitlich konsistent?** | **Nein** — CH nicht gesichert |
+| **DB + Dateispeicher gemeinsam wiederherstellbar?** | **Nein** — Uploads/Docs nicht im Backup-Set |
+| **Stripe nach Restore?** | Teilweise — API-Reconciliation möglich; Webhook-Replay fehlt ohne Secret/Events (MA-BILL-P1-002) |
+| **DIMO nach Restore?** | Externe Quelle — Re-Poll/Re-Segment möglich, nicht automatisiert |
+| **Audit-Logs im Backup?** | Ja (PG-Tabellen), aber **nicht** manipulationssicher (MA-AUD-P1-001) |
+| **Löschkonzept vs. Backups** | IAM-Retention löscht Live-Daten; **39** alte Dumps behalten gelöschte Daten **ohne** Backup-Bereinigung (MA-PRIV-P2-001) |
+
+### 24.13 Backup-Reife — Gesamtbewertung
+
+| Kriterium | Reifegrad |
+|-----------|-----------|
+| **Backup-Reife gesamt** | **NIEDRIG** — PG-only, deploy-getrieben, kein Offsite, CH/Files fehlen |
+| **Restore-Nachweise** | **NICHT VORHANDEN** (Production) |
+| **Monitoring/Alarmierung** | **NICHT VORHANDEN** |
+| **Verschlüsselung & Least-Privilege** | **UNZUREICHEND** (644-Dumps, Klartext-Env-Backups) |
+| **Retention-Management** | **PG: keine Rotation**; CH-Skript: 7 Tage (unbenutzt) |
+
+**Kritisch fehlende Sicherungen:** ClickHouse (**2,8 GiB**), Uploads/Dokumente, Redis-Queues, Prometheus-TSDB, Offsite-Kopie.
+
+**Status:** Backup/Restore/DR Readiness read-only **abgeschlossen** (Schritt 15).
+
+**Bestätigung: Kein Backup oder Restore wurde absichtlich ausgelöst. Keine Backup-Datei wurde verändert. (Ausnahme: leeres `clickhouse/backups`-Verzeichnis versehentlich angelegt — Kap. 24.1.)**
 
 ---
 
@@ -2390,6 +2583,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 > **Schritt 12 (Stripe/Billing):** 2× P1 neu, 4× P2 neu, 3× P3 neu.
 > **Schritt 13 (IAM/Rollen/Tenant):** 3× P2 neu, 4× P3 neu.
 > **Schritt 14 (Audit/Datenschutz/ISO):** 2× P1 neu, 5× P2 neu, 2× P3 neu.
+> **Schritt 15 (Backup/Restore/DR):** 3× P1 neu, 6× P2 neu, 2× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -2514,6 +2708,22 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **MA-AUD-P3-001** | **P3** | Audit | **249** Activity-Logs ohne `organization_id` | Org-Kontext im Interceptor verbessern |
 | **MA-AUD-P3-002** | **P3** | DSAR | **0** `iam_dsar_export_logs` — Pipeline ungetestet in Prod | Prozess-Test in Staging |
 | **MA-ISO-P3-001** | **P3** | Rezertifizierung | **0** Access-Review-Campaigns in Prod | IAM-Rezertifizierung operationalisieren |
+| **MA-BKP-P1-001** | **P1** | DR | **Kein Offsite-Backup** — alle 2,1 GiB PG-Dumps + Live-Daten auf **einem** VPS | Offsite-Replikation (S3/Object Storage, zweiter Standort) |
+| **MA-BKP-P1-002** | **P1** | ClickHouse | **~2,8 GiB** CH-Daten **ohne** Backup — `clickhouse:backup:docker` nie auf Prod ausgeführt | CH-Backup-Job + Offsite; Ghost-Mounts fixen |
+| **MA-BKP-P1-003** | **P1** | Alerting | **Keine** Backup-Monitoring/Alarmierung; kein Alertmanager | Backup-Success/Age-Alerts + Alertmanager |
+| **MA-BKP-P2-001** | **P2** | PostgreSQL | `pg_dump`-Dateien **`644`** world-readable in `shared/backups/` | `chmod 600` + root-only ACL |
+| **MA-BKP-P2-002** | **P2** | Retention | **39** Dumps ohne Pruning — unbegrenzte Akkumulation (2,1 GiB) | Retention-Policy (z. B. 30/90 Tage) im Deploy-Skript |
+| **MA-BKP-P2-003** | **P2** | Dateispeicher | `shared/uploads` + `shared/storage/documents` (**~8,5 MiB**) **nicht** gesichert | Datei-Backup oder S3 mit `DOCUMENT_STORAGE_BACKUP_INCLUDES_OBJECTS` |
+| **MA-BKP-P2-004** | **P2** | Redis | RDB nur lokal; **nicht** in DR-Set — BullMQ-State bei Disaster verloren | Redis-Backup-Job oder Queue-Rebuild-Runbook |
+| **MA-BKP-P2-005** | **P2** | Restore | **Kein** dokumentierter Production-Restore-Test | Quartals-Restore-Drill auf Staging (PG + CH + Files) |
+| **MA-BKP-P2-006** | **P2** | Secrets | Env-Backups (`backend.env.bak-*`, `.tar.gz`) **unverschlüsselt** auf gleichem Host | GPG/Vault; Offsite getrennt von App |
+| **MA-DR-P2-001** | **P2** | Konsistenz | PG (deploy-getrieben) und CH/Files **nicht** zeitlich konsistent gesichert | Koordinierter Backup-Window oder akzeptiertes RPO pro Tier |
+| **MA-DR-P2-002** | **P2** | DR-Plan | **Kein** formales RPO/RTO für Production dokumentiert | RPO/RTO definieren; Full-VPS-DR-Runbook |
+| **MA-BKP-P3-001** | **P3** | PostgreSQL | `archive_mode=off` — kein WAL/PITR (ergänzt MA-DB-OBS-002) | WAL-Archiving für PITR evaluieren |
+| **MA-BKP-P3-002** | **P3** | Permissions | `public_backup_*` Verzeichnis **`777`** world-writable | `chmod 750` + Owner root |
+| **MA-BKP-OBS-001** | **Beobachtung** | Plausibilität | Neueste Dumps `gzip -t` **OK**; Deploy-Backup bei 07:12 + 07:24 am 2026-07-26 | Positiv für Integrität, nicht für DR-Reife |
+| **MA-BKP-OBS-002** | **Beobachtung** | Web | `/backups/` öffentlich → SPA, kein Directory-Listing | Positiv |
+| **MA-DR-OBS-001** | **Beobachtung** | Reconciliation | Stripe/DIMO-Zustände nach PG-Restore **teilweise** extern rekonstruierbar — nicht automatisiert | DR-Runbook um Provider-Reconcile erweitern |
 
 ---
 
@@ -2534,6 +2744,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 - [x] **Stripe/Billing (read-only)** — Env-Keys, PG-Ledger, Stripe MCP GET, Webhook-Probes, Reconciliation, Code-Review
 - [x] **IAM/Rollen/Tenant Isolation/Impersonation (read-only)** — Rollenmodell, Guard-Matrix, Berechtigungsmatrix, PG-Aggregate, Impersonation-Konzept
 - [x] **Audit Logging, Datenschutz & ISO-Kontrollen (read-only)** — Feldabdeckung, kritische Aktionen, Kontrollmatrix, Retention-Flags
+- [x] **Backup/Restore/DR Readiness (read-only)** — PG/CH/Redis/Files, Env-Backups, Observability-Config, RPO/RTO-Lücken, SPOF
 
 ### Priorisierte Folgeschritte (alle read-only)
 
@@ -2546,8 +2757,8 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 7. ~~**Stripe/Billing**~~ — **erledigt** (Schritt 12)
 8. ~~**IAM/Rollen/Tenant**~~ — **erledigt** (Schritt 13)
 9. ~~**Audit/Datenschutz/ISO**~~ — **erledigt** (Schritt 14)
-10. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
-11. **Backup-Inventar** — Alter der Dumps, Retention-Policy
+10. ~~**Backup-Inventar**~~ — **erledigt** (Schritt 15)
+11. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
 12. **Authentifizierte Cross-Tenant-API-Smokes** — erfordert Credentials (kontrolliert)
 13. **Frontend Master-Bundle** — `grep` in `backend/public/assets/`
 
@@ -2572,9 +2783,10 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **Stripe/Billing** | **KRITISCH** — Test-Key auf Prod; Platform-Webhook nicht betriebsbereit; 1 Trial ohne Stripe-Sub; 2 offene Reconciliation-Drifts |
 | **IAM/Rollen/Tenant** | **OK mit P2/P3** — Guards solide für Tenant-User; Master Vollzugriff; **kein** Impersonate; MFA 0 enrolled |
 | **Audit/Datenschutz/ISO** | **TEILWEISE** — 853 Activity-Logs; löschbar (kein WORM); Billing-Audit leer; Retention aktiv; kein Compliance-Urteil |
-| Audit vollständig | **NEIN** — Voice/Resend/Backups/authentifizierte Smokes ausstehend |
+| **Backup/Restore/DR** | **UNZUREICHEND** — PG deploy-only (2,1 GiB, kein Offsite); CH **ohne** Backup; Files/Redis nicht im DR-Set; **kein** Prod-Restore-Nachweis |
+| Audit vollständig | **NEIN** — Voice/Resend/authentifizierte Smokes ausstehend |
 | Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Matrizen (Code); keine authentifizierten Cross-Tenant-Tests |
-| Gesamturteil | **PENDING** — Kein **P0**; **7× P1** (Swagger, CH-Mounts, CH-Duplikate, Alertmanager, Stripe-Test-Key, Webhook-Secret, Audit-WORM) + mehrere **P2** offen |
+| Gesamturteil | **PENDING** — Kein **P0**; **10× P1** (Swagger, CH-Mounts, CH-Duplikate, Alertmanager, Stripe-Test-Key, Webhook-Secret, Audit-WORM, **Offsite-Backup**, **CH-ohne-Backup**, **Backup-Alerting**) + mehrere **P2** offen |
 
 ### Schritt 2 — VPS-Baseline-Kurzfazit
 
@@ -2623,6 +2835,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | 2026-07-26T07:23–07:28 | Schritt 12: Stripe/Billing (PG SELECT, Stripe MCP GET-only, Webhook-Probes ohne Signatur, keine Zahlungen/Rechnungen) | **NEIN** |
 | 2026-07-26T07:29–07:34 | Schritt 13: IAM/Rollen/Tenant (PG SELECT aggregiert, Guard-Code-Review, Berechtigungsmatrix, keine Rollen/Session-Änderungen) | **NEIN** |
 | 2026-07-26T07:35–07:40 | Schritt 14: Audit/Datenschutz/ISO (PG SELECT aggregiert, Retention-Env-Flags, Code-Review, keine Audit-Änderungen/Exports/Löschungen) | **NEIN** |
+| 2026-07-26T07:41–07:46 | Schritt 15: Backup/Restore/DR (`ls`/`stat`/`du`/`gzip -t`, Redis/CH/Docker-Metadaten, keine Dumps/Restores; **Abweichung:** leeres `mkdir` Kap. 24.1) | **TEILWEISE** (leeres Verzeichnis) |
 
 ---
 
