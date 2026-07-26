@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import {
   IamSessionRevocationScope,
   IamSessionRevocationStatus,
@@ -54,6 +54,9 @@ export class IamSessionPolicyService {
 
   constructor(
     private readonly prisma: PrismaService,
+    // RefreshTokenService and this service import each other, so whichever file
+    // loads second sees an undefined class reference at decorator time.
+    @Inject(forwardRef(() => RefreshTokenService))
     private readonly refreshTokens: RefreshTokenService,
     private readonly userAudit: UserAccessAuditService,
     private readonly notifications: IamSessionNotificationService,
