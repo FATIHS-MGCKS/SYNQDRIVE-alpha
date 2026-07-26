@@ -23,12 +23,21 @@ export interface NotificationFingerprintParts {
   eventType: string;
   entityType: NotificationEntityType;
   entityId: string;
-  /** Stable condition within the entity scope (e.g. driving_assessment_device_quality). */
+  /** Stable condition within the entity scope (canonical name). */
+  conditionKey?: string;
+  /** Legacy alias — at least one of conditionKey or conditionCode is required at input. */
   conditionCode: string;
-  /**
-   * Breaking schema/version boundary for the same logical condition.
-   * Bump only when identity semantics change — not on severity escalation.
-   */
+  /** Fingerprint schema version — defaults to 1; bump only on identity semantic breaks. */
+  schemaVersion?: number;
+  /** @deprecated use schemaVersion */
+  scopeVersion?: number;
+}
+
+/** Fully normalized fingerprint parts returned from buildNotificationFingerprint. */
+export interface NormalizedNotificationFingerprintParts extends NotificationFingerprintParts {
+  conditionKey: string;
+  conditionCode: string;
+  schemaVersion: number;
   scopeVersion: number;
 }
 
@@ -36,6 +45,8 @@ export interface NotificationFingerprint {
   parts: NotificationFingerprintParts;
   /** Locale-independent canonical serialization used for DB unique constraints. */
   canonical: string;
+  /** SHA-256 hex digest of canonical identity — collision-safe verification. */
+  digest: string;
 }
 
 // ─── Templates ─────────────────────────────────────────────────────

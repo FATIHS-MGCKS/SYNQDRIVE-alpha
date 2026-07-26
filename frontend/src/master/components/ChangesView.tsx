@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-fingerprint-hardening-2026-07-26',
+    version: '4.9.872',
+    title: 'Notification Engine Remediation — canonical fingerprint hardening (Prompt 5)',
+    summary: [
+      'Deterministic fingerprint from stable identity only: organizationId, eventType, entityType, entityId, conditionKey, schemaVersion.',
+      'NFC normalization, fixed field order, explicit null rejection, forbidden pattern guard, SHA-256 digest.',
+      'Excluded from identity: title/body/i18n, severity, temporal fields, routes, occurrenceCount, ephemeral UUIDs.',
+      'Docs: docs/architecture/notification-fingerprint.md',
+    ],
+    reason:
+      'Notification dedupe and lifecycle matching require a tenant-safe, locale-independent fingerprint that cannot drift with UI text or severity.',
+    previousBehavior:
+      'Fingerprint was a pipe string with basic trim/forbidden checks; no dedicated normalizer, digest, or exhaustive identity exclusion tests.',
+    details:
+      'notification-fingerprint.normalizer.ts, notification-fingerprint.factory.ts, notification-fingerprint.*.spec.ts, notification.types.ts, docs/architecture/notification-fingerprint.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:00:00.000Z',
+  },
+  {
     id: 'notification-candidate-contract-2026-07-26',
     version: '4.9.871',
     title: 'Notification Engine Remediation — standardized NotificationCandidate contract (Prompt 4)',

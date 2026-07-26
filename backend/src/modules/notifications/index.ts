@@ -1,6 +1,7 @@
 export * from './notification.enums';
 export * from './notification.types';
 export * from './notification-fingerprint.factory';
+export * from './notification-fingerprint.normalizer';
 export * from './notification-fingerprint.registry';
 export * from './notification-status.transitions';
 export * from './notification-reopen.policy';

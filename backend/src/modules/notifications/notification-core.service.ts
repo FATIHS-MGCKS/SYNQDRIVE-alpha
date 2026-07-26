@@ -85,7 +85,8 @@ export class NotificationCoreService {
     options: IngestCandidateOptions = {},
   ): Promise<MaterializeResult> {
     const normalized = validateNotificationCandidate(candidate);
-    const { canonical: fingerprint } = fingerprintFromCandidate(normalized);
+    const fingerprintPayload = fingerprintFromCandidate(normalized);
+    const fingerprint = fingerprintPayload.canonical;
     const referenceNow = options.referenceNow ?? new Date();
 
     if (isRecoverySeverity(normalized.severity as unknown as DomainSeverity)) {
@@ -152,7 +153,7 @@ export class NotificationCoreService {
             },
             occurrence: {
               organizationId: normalized.organizationId,
-              fingerprint: { parts: fingerprintFromCandidate(normalized).parts, canonical: fingerprint },
+              fingerprint: fingerprintPayload,
               occurredAt: normalized.occurredAt,
               severity: normalized.severity as unknown as DomainSeverity,
               sourceType: normalized.sourceType as unknown as import('./notification.enums').NotificationSourceType,
