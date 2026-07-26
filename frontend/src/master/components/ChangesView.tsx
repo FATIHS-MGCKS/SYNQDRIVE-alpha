@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-producer-migration-matrix-2026-07-26',
+    version: '4.9.878',
+    title: 'Notification Engine Remediation — producer migration matrix (Prompt 11)',
+    summary: [
+      'Binding migration matrix for all 58 notification producer paths (P-01…P-49).',
+      'Per producer: category, target event type, fingerprint, recovery, severity, flags, tests, rollback.',
+      '14 legacy removal paths and prioritized migration waves (Health → Booking → … → Connectivity).',
+      'Docs: docs/audits/notification-producer-migration-matrix-2026-07.md',
+    ],
+    reason:
+      'Cutover requires a single authoritative producer→registry mapping before code migrations.',
+    previousBehavior:
+      'Producer inventory existed in the data-flow map without per-producer migration contracts.',
+    details:
+      'Audit-only; no producer code changed. Based on notification-engine-data-flow-map-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T08:00:00.000Z',
+  },
+  {
     id: 'notification-user-receipts-2026-07-26',
     version: '4.9.877',
     title: 'Notification Engine Remediation — separate user receipts from domain lifecycle (Prompt 10)',
