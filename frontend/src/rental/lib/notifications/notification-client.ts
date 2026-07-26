@@ -1,5 +1,6 @@
 import { api } from '../../../lib/api';
 import type {
+  ApiNotificationCountsParams,
   ApiNotificationCountsResponse,
   ApiNotificationListParams,
   ApiNotificationListResponse,
@@ -62,8 +63,8 @@ export const notificationClient = {
     return wrap(() => api.notifications.list(orgId, params));
   },
 
-  counts(orgId: string): Promise<ApiNotificationCountsResponse> {
-    return wrap(() => api.notifications.counts(orgId));
+  counts(orgId: string, params?: ApiNotificationCountsParams): Promise<ApiNotificationCountsResponse> {
+    return wrap(() => api.notifications.counts(orgId, params));
   },
 
   get(orgId: string, id: string): Promise<ApiNotificationResponse> {

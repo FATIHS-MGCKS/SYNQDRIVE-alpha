@@ -21,6 +21,14 @@ import type {
   VehicleDataQualityState,
   VehicleBookingReference,
 } from '../rental/lib/vehicle-operational-state';
+import { buildNotificationQuerySuffix } from '../rental/lib/notifications/notification-api-query';
+import type {
+  ApiNotificationCountsParams,
+  ApiNotificationCountsResponse,
+  ApiNotificationListParams,
+  ApiNotificationListResponse,
+  ApiNotificationResponse,
+} from '../rental/lib/notifications/notification-api.types';
 
 export type {
   AddDamageImageInput,
@@ -4401,78 +4409,30 @@ export const api = {
     }>(`/organizations/${orgId}/dashboard-insights`),
   },
   notifications: {
-    list: (
-      orgId: string,
-      params?: {
-        page?: number;
-        limit?: number;
-        activeOnly?: boolean;
-        unreadOnly?: boolean;
-        resolvedOnly?: boolean;
-        from?: string;
-        to?: string;
-        sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
-        sortOrder?: 'asc' | 'desc';
-      },
-    ) => {
-      const q = new URLSearchParams();
-      if (params?.page != null) q.set('page', String(params.page));
-      if (params?.limit != null) q.set('limit', String(params.limit));
-      if (params?.activeOnly != null) q.set('activeOnly', String(params.activeOnly));
-      if (params?.unreadOnly != null) q.set('unreadOnly', String(params.unreadOnly));
-      if (params?.resolvedOnly != null) q.set('resolvedOnly', String(params.resolvedOnly));
-      if (params?.from) q.set('from', params.from);
-      if (params?.to) q.set('to', params.to);
-      if (params?.sortBy) q.set('sortBy', params.sortBy);
-      if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
-      const suffix = q.toString() ? `?${q.toString()}` : '';
-      return get<import('../rental/lib/notifications/notification-api.types').ApiNotificationListResponse>(
-        `/organizations/${orgId}/notifications${suffix}`,
-      );
-    },
-    counts: (orgId: string) =>
-      get<import('../rental/lib/notifications/notification-api.types').ApiNotificationCountsResponse>(
-        `/organizations/${orgId}/notifications/counts`,
+    list: (orgId: string, params?: ApiNotificationListParams) =>
+      get<ApiNotificationListResponse>(
+        `/organizations/${orgId}/notifications${buildNotificationQuerySuffix(params)}`,
+      ),
+    counts: (orgId: string, params?: ApiNotificationCountsParams) =>
+      get<ApiNotificationCountsResponse>(
+        `/organizations/${orgId}/notifications/counts${buildNotificationQuerySuffix(params)}`,
       ),
     get: (orgId: string, id: string) =>
-      get<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}`,
-      ),
+      get<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}`),
     markRead: (orgId: string, id: string) =>
-      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}/read`,
-        {},
-      ),
+      post<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}/read`, {}),
     markUnread: (orgId: string, id: string) =>
-      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}/unread`,
-        {},
-      ),
+      post<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}/unread`, {}),
     acknowledge: (orgId: string, id: string) =>
-      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}/acknowledge`,
-        {},
-      ),
+      post<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}/acknowledge`, {}),
     snooze: (orgId: string, id: string, until: string) =>
-      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}/snooze`,
-        { until },
-      ),
+      post<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}/snooze`, { until }),
     unsnooze: (orgId: string, id: string) =>
-      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}/unsnooze`,
-        {},
-      ),
+      post<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}/unsnooze`, {}),
     resolve: (orgId: string, id: string) =>
-      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}/resolve`,
-        {},
-      ),
+      post<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}/resolve`, {}),
     archive: (orgId: string, id: string) =>
-      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
-        `/organizations/${orgId}/notifications/${id}/archive`,
-        {},
-      ),
+      post<ApiNotificationResponse>(`/organizations/${orgId}/notifications/${id}/archive`, {}),
   },
   rentalDrivingAnalyses: {
     // V4.6.95 — `bookingId` filter added so the booking detail card in

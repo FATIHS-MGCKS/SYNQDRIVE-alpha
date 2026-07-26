@@ -92,14 +92,21 @@ export interface ApiNotificationResponse {
   availableActions: ApiNotificationAvailableAction[];
 }
 
+export type ApiNotificationListMeta =
+  | {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }
+  | {
+      limit: number;
+      nextCursor: string | null;
+    };
+
 export interface ApiNotificationListResponse {
   data: ApiNotificationResponse[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+  meta: ApiNotificationListMeta;
 }
 
 export interface ApiNotificationCountsResponse {
@@ -115,6 +122,7 @@ export interface ApiNotificationCountsResponse {
 export interface ApiNotificationListParams {
   page?: number;
   limit?: number;
+  cursor?: string;
   activeOnly?: boolean;
   unreadOnly?: boolean;
   resolvedOnly?: boolean;
@@ -122,4 +130,17 @@ export interface ApiNotificationListParams {
   to?: string;
   sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
   sortOrder?: 'asc' | 'desc';
+  status?: ApiNotificationStatus | ApiNotificationStatus[];
+  severity?: ApiNotificationSeverity | ApiNotificationSeverity[];
+  domain?: ApiNotificationDomain;
+  entityType?: ApiNotificationEntityType;
+  entityId?: string;
+  vehicleId?: string;
+  stationId?: string;
+  bookingId?: string;
+  search?: string;
+  readState?: 'unread' | 'read' | 'snoozed' | 'hidden';
+  timeField?: 'lastSeenAt' | 'createdAt' | 'resolvedAt';
 }
+
+export type ApiNotificationCountsParams = ApiNotificationListParams;
