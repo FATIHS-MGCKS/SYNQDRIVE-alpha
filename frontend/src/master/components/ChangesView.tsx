@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-runtime-analysis-2d1-2026-07-26',
+    version: '4.9.882',
+    title: 'V4.9.882 — Master Admin 2D.1: ClickHouse runtime analysis (baseline)',
+    summary: [
+      'Pre-remediation baseline: Docker compose, image 25.8, volumes, bind mounts, backup disk, TTL schema.',
+      'Tables/partitions/merge/TTL/replication inventory from migrations 001–006 — no live VPS snapshot yet.',
+      'Read-only VPS inspection bundle in docs/remediation/clickhouse-runtime-analysis.md §22.',
+      'No ClickHouse or runtime changes performed.',
+    ],
+    reason:
+      'Phase 2D requires full runtime documentation before any ClickHouse remediation.',
+    previousBehavior:
+      'ClickHouse ops documented across architecture docs and backup phases without consolidated runtime snapshot.',
+    details:
+      'docs/remediation/clickhouse-runtime-analysis.md · architecture/MASTER_ADMIN_CLICKHOUSE_RUNTIME_ANALYSIS_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T12:30:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
