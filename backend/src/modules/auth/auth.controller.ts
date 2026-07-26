@@ -30,6 +30,7 @@ import { OrganizationSwitchService } from './organization-switch.service';
 import { AuthMfaLoginService } from './auth-mfa-login.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import * as jwt from 'jsonwebtoken';
+import * as bcrypt from 'bcrypt';
 
 @Controller('auth')
 export class AuthController {
