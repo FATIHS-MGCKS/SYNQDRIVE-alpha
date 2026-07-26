@@ -9,8 +9,11 @@ import {
   InvoiceStatus,
   StripeWebhookEventStatus,
 } from '@prisma/client';
+import { stripeLivemodeToBillingMode } from '@shared/stripe/stripe-environment.util';
 import { mapStripeSubscriptionStatus } from './mappers/stripe-subscription-status.mapper';
 import { isSyncableSubscriptionItem } from './stripe-subscription-orchestrator';
+
+export { stripeLivemodeToBillingMode };
 
 export const BILLING_RECONCILIATION_SCHEMA_VERSION = '1' as const;
 
@@ -159,10 +162,6 @@ export function buildBillingReconciliationDriftIdempotencyKey(input: {
   const detail = input.detailKey ?? 'default';
   const subscription = input.subscriptionId ?? 'none';
   return `billing-reconciliation:${input.organizationId}:${subscription}:${input.driftType}:${detail}:v${BILLING_RECONCILIATION_SCHEMA_VERSION}`;
-}
-
-export function stripeLivemodeToBillingMode(livemode: boolean): BillingStripeMode {
-  return livemode ? BillingStripeMode.LIVE : BillingStripeMode.TEST;
 }
 
 export function extractStripeBillingAnchorDay(anchorUnix: number | null | undefined): number | null {

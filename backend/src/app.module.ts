@@ -13,6 +13,7 @@ import Redis from 'ioredis';
 import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, taskAutomationWorkflowRuntimeConfig, workflowShadowConfig, workflowRuntimeRolloutConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
+import { StripeEnvironmentModule } from '@shared/stripe/stripe-environment.module';
 import { RedisModule } from '@shared/redis/redis.module';
 import { StorageModule } from '@shared/storage/storage.module';
 import { AuthModule } from '@shared/auth/auth.module';
@@ -196,6 +197,7 @@ export class AppModule {
         ScheduleModule.forRoot(),
 
         PrismaModule,
+        StripeEnvironmentModule,
         RedisModule,
         StorageModule,
         AuthModule,

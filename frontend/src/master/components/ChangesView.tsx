@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-stripe-env-separation-2b2-2026-07-26',
+    version: '4.9.882',
+    title: 'V4.9.882 — Master Admin 2B.2: Stripe test/live environment separation',
+    summary: [
+      'Shared `StripeEnvironmentModule`: fail-fast when NODE_ENV=production uses sk_test_* (unless STRIPE_ALLOW_TEST_IN_PRODUCTION).',
+      'STRIPE_ENVIRONMENT optional guard must match secret key prefix; webhook livemode checks unified for billing + Connect.',
+      'stripe.config + getStripeClient validate on startup; billing reconciliation uses shared livemode helper.',
+      'docs/remediation/stripe-environment-separation.md',
+    ],
+    reason:
+      'Production must never accidentally process Stripe test data — centralized mode detection and startup guards.',
+    previousBehavior:
+      'Mode inferred in multiple places; no production fail-fast on sk_test_*; Connect/billing webhook checks duplicated.',
+    details:
+      'backend/src/shared/stripe/*, stripe.config.ts, stripe-webhook.service.ts, stripe-connect-webhook.service.ts, stripe-client.util.ts, .env.example',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T11:00:00.000Z',
+  },
+  {
     id: 'master-admin-offsite-backups-2c5-2026-07-26',
     version: '4.9.894',
     title: 'V4.9.894 — Master Admin 2C.5: Offsite backup orchestration',

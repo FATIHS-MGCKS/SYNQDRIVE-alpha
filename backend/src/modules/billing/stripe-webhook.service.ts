@@ -8,6 +8,7 @@ import { Prisma, StripeWebhookEventStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { createHash } from 'crypto';
 import { PrismaService } from '@shared/database/prisma.service';
+import { StripeEnvironmentService } from '@shared/stripe/stripe-environment.service';
 import { getStripeClient } from './stripe-client.util';
 import { StripeWebhookDispatcherService } from './stripe-webhook-dispatcher.service';
 import {
@@ -18,9 +19,6 @@ import {
   extractStripeObjectId,
   sanitizeSafePayload,
 } from './stripe-webhook.util';
-import { stripeLivemodeToBillingMode } from './domain/billing-reconciliation';
-import { resolveStripeModeFromSecretKey } from './migration/billing-legacy-backfill.util';
-
 export interface StripeWebhookIngestResult {
   received: boolean;
   duplicate: boolean;
@@ -43,6 +41,7 @@ export class StripeWebhookService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly dispatcher: StripeWebhookDispatcherService,
+    private readonly stripeEnvironment: StripeEnvironmentService,
   ) {}
 
   constructEvent(rawBody: Buffer, signature: string | undefined): Stripe.Event {
@@ -98,18 +97,7 @@ export class StripeWebhookService {
   }
 
   private assertWebhookLivemodeMatchesRuntime(event: Stripe.Event): void {
-    const runtimeMode = resolveStripeModeFromSecretKey(
-      this.configService.get<string>('stripe.secretKey'),
-    );
-    if (!runtimeMode) {
-      return;
-    }
-    const eventMode = stripeLivemodeToBillingMode(event.livemode);
-    if (eventMode !== runtimeMode) {
-      throw new BadRequestException(
-        `Stripe webhook livemode mismatch: event=${eventMode}, runtime=${runtimeMode}`,
-      );
-    }
+    this.stripeEnvironment.assertWebhookLivemode(event.livemode);
   }
 
   async ingestRawWebhook(

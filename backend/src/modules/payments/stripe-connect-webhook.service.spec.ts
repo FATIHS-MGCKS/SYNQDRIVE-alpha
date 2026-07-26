@@ -1,12 +1,13 @@
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, StripeConnectWebhookProcessingStatus } from '@prisma/client';
+import { StripeEnvironmentViolationError } from '@shared/stripe/stripe-environment.util';
 import { StripeConnectWebhookService } from './stripe-connect-webhook.service';
 import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { OrganizationPaymentAccountRepository } from './repositories/organization-payment-account.repository';
-import { StripeModeMismatchError } from './stripe/stripe-connect.errors';
 import { PaymentMetricsService } from './observability/payment-metrics.service';
+import { StripeEnvironmentService } from '@shared/stripe/stripe-environment.service';
 import * as clientUtil from './stripe/stripe-connect-client.util';
 
 describe('StripeConnectWebhookService', () => {
@@ -26,6 +27,17 @@ describe('StripeConnectWebhookService', () => {
   const paymentMetrics = {
     unknownConnectedAccount: { inc: jest.fn() },
   };
+
+  const stripeEnvironment = {
+    assertWebhookLivemode: jest.fn((livemode: boolean) => {
+      if (livemode) {
+        throw new StripeEnvironmentViolationError(
+          'STRIPE_WEBHOOK_LIVEMODE_MISMATCH',
+          'Stripe webhook livemode mismatch',
+        );
+      }
+    }),
+  } as unknown as StripeEnvironmentService;
 
   const configService = {
     get: jest.fn((key: string) => {
@@ -67,6 +79,7 @@ describe('StripeConnectWebhookService', () => {
       organizationPaymentAccountRepository as unknown as OrganizationPaymentAccountRepository,
       processorService as unknown as StripeConnectWebhookProcessorService,
       paymentMetrics as unknown as PaymentMetricsService,
+      stripeEnvironment,
     );
     jest.spyOn(clientUtil, 'getStripeConnectClient').mockReturnValue(stripeMock as never);
     stripeMock.webhooks.constructEvent.mockReturnValue(baseEvent);
@@ -158,7 +171,7 @@ describe('StripeConnectWebhookService', () => {
       livemode: true,
     });
     await expect(service.ingestRawWebhook(Buffer.from('{}'), 'sig')).rejects.toBeInstanceOf(
-      StripeModeMismatchError,
+      StripeEnvironmentViolationError,
     );
   });
 

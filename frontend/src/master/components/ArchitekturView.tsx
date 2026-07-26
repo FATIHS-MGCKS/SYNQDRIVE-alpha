@@ -990,6 +990,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     icon: Zap,
     color: 'text-[color:var(--status-ai)]',
     apis: [
+      { label: 'Environment separation (2B.2)', detail: 'shared/stripe StripeEnvironmentModule — sk_test blocked in NODE_ENV=production; STRIPE_ENVIRONMENT + webhook livemode guards — docs/remediation/stripe-environment-separation.md' },
       { label: 'Billing (live)', detail: 'modules/billing — SynqDrive-Abo; POST /api/v1/webhooks/stripe + STRIPE_WEBHOOK_SECRET' },
       { label: 'Connect schema (V4.9.435)', detail: 'Prisma: OrganizationPaymentAccount, BookingPaymentRequest, PaymentTransaction (append-only), StripeConnectWebhookEvent — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_SCHEMA_2026-07-14.md' },
       { label: 'Domain logic (V4.9.436)', detail: 'PaymentStatusService + status machine — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_LOGIC_2026-07-14.md' },

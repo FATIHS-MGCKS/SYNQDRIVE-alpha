@@ -1,4 +1,6 @@
+import { BillingStripeMode } from '@prisma/client';
 import Stripe from 'stripe';
+import { resolveStripeModeFromSecretKey } from '@shared/stripe/stripe-environment.util';
 import { StripeModeMismatchError } from './stripe-connect.errors';
 
 let connectStripeSingleton: Stripe | null = null;
@@ -17,7 +19,7 @@ export function resetStripeConnectClientForTests(): void {
 }
 
 export function inferStripeLiveMode(secretKey: string): boolean {
-  return secretKey.trim().startsWith('sk_live_');
+  return resolveStripeModeFromSecretKey(secretKey) === BillingStripeMode.LIVE;
 }
 
 export function assertConnectTestModeOnly(secretKey: string): void {
