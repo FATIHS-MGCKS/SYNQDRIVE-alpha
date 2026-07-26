@@ -180,10 +180,15 @@ redis_backup_verify_checksum_sidecar() {
   local artifact="$1"
   local sidecar="${artifact}.sha256"
   [[ -f "${sidecar}" ]] || return 1
+  # The sidecar records only the basename, so -c has to resolve it from the
+  # artifact's own directory rather than the caller's working directory.
+  local dir base
+  dir="$(dirname "${artifact}")"
+  base="$(basename "${sidecar}")"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum -c "${sidecar}" >/dev/null 2>&1
+    (cd "${dir}" && sha256sum -c "${base}") >/dev/null 2>&1
   else
-    shasum -a 256 -c "${sidecar}" >/dev/null 2>&1
+    (cd "${dir}" && shasum -a 256 -c "${base}") >/dev/null 2>&1
   fi
 }
 
@@ -233,7 +238,10 @@ redis_backup_list_valid_archives() {
   local f
   for f in "${dir}"/redis-*.rdb "${dir}"/redis-*.rdb.gpg; do
     [[ -f "${f}" ]] || continue
-    if redis_backup_verify_artifact "${f}"; then
+    # Send verify's own logging to stderr: this function's stdout is parsed as
+    # a list of paths, and a "verify fail" line sorts after them, so callers
+    # using `tail -1` picked up the log line instead of an artifact.
+    if redis_backup_verify_artifact "${f}" >&2; then
       printf '%s\n' "${f}"
     fi
   done | sort
@@ -267,6 +275,12 @@ redis_backup_promote_artifact() {
     return 1
   fi
   mv "${staging_final}" "${archive_path}"
+  # The checksum sidecar is written next to the staged artifact, so it has to
+  # travel with it — otherwise the post-promote verification finds no sidecar
+  # and reports a false integrity failure.
+  if [[ -f "${staging_final}.sha256" ]]; then
+    mv "${staging_final}.sha256" "${archive_path}.sha256"
+  fi
   printf '%s' "${archive_path}"
 }
 

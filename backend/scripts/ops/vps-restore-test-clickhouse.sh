@@ -84,8 +84,12 @@ TEST_DB="${CH_BACKUP_RESTORE_TEST_DB}"
 ch_backup_log "preparing test database ${TEST_DB}"
 ch_backup_client_query "DROP DATABASE IF EXISTS ${TEST_DB}"
 
-ch_backup_log "RESTORE DATABASE ${TEST_DB} FROM Disk('${CH_BACKUP_DISK_NAME}', '${RESTORE_ZIP_NAME}')"
-ch_backup_client_query "RESTORE DATABASE ${TEST_DB} FROM Disk('${CH_BACKUP_DISK_NAME}', '${RESTORE_ZIP_NAME}')"
+# The archive holds the production database under its own name, so the restore
+# has to rename it into the scratch database. Without `AS`, ClickHouse looks for
+# an entry named after the target and fails with BACKUP_ENTRY_NOT_FOUND.
+RESTORE_SQL="RESTORE DATABASE ${CH_BACKUP_DATABASE} AS ${TEST_DB} FROM Disk('${CH_BACKUP_DISK_NAME}', '${RESTORE_ZIP_NAME}')"
+ch_backup_log "${RESTORE_SQL}"
+ch_backup_client_query "${RESTORE_SQL}"
 
 TABLE_COUNT="$(ch_backup_client_query "SELECT count() FROM system.tables WHERE database = '${TEST_DB}'")"
 ch_backup_log "smoke: tables in ${TEST_DB} = ${TABLE_COUNT}"
