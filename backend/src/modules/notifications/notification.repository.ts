@@ -71,6 +71,7 @@ export interface UpsertReceiptInput {
   acknowledgedAt?: Date | null;
   snoozedUntil?: Date | null;
   hiddenAt?: Date | null;
+  lastSeenAt?: Date | null;
 }
 
 export interface UpdateNotificationInput {
@@ -336,12 +337,14 @@ export class NotificationRepository {
       ...(data.acknowledgedAt !== undefined ? { acknowledgedAt: data.acknowledgedAt } : {}),
       ...(data.snoozedUntil !== undefined ? { snoozedUntil: data.snoozedUntil } : {}),
       ...(data.hiddenAt !== undefined ? { hiddenAt: data.hiddenAt } : {}),
+      ...(data.lastSeenAt !== undefined ? { lastSeenAt: data.lastSeenAt } : {}),
     };
     const updateData = {
       ...(data.readAt !== undefined ? { readAt: data.readAt } : {}),
       ...(data.acknowledgedAt !== undefined ? { acknowledgedAt: data.acknowledgedAt } : {}),
       ...(data.snoozedUntil !== undefined ? { snoozedUntil: data.snoozedUntil } : {}),
       ...(data.hiddenAt !== undefined ? { hiddenAt: data.hiddenAt } : {}),
+      ...(data.lastSeenAt !== undefined ? { lastSeenAt: data.lastSeenAt } : {}),
     };
 
     return this.client(tx).notificationReceipt.upsert({
@@ -425,6 +428,12 @@ export class NotificationRepository {
     });
   }
 
+  findReceiptForUserInOrg(notificationId: string, userId: string, organizationId: string) {
+    return this.prisma.notificationReceipt.findFirst({
+      where: { notificationId, userId, organizationId },
+    });
+  }
+
   countNotifications(organizationId: string, status?: NotificationStatus[]) {
     return this.prisma.notification.count({
       where: {
@@ -445,17 +454,36 @@ export class NotificationRepository {
     });
   }
 
-  countUnreadForUser(organizationId: string, userId: string) {
+  countUnreadForUser(organizationId: string, userId: string, referenceNow = new Date()) {
     return this.prisma.notification.count({
       where: {
         organizationId,
         status: { in: ACTIVE_NOTIFICATION_STATUSES },
-        receipts: {
-          none: {
-            userId,
-            readAt: { not: null },
+        NOT: {
+          receipts: {
+            some: {
+              userId,
+              readAt: { not: null },
+            },
           },
         },
+        AND: [
+          {
+            NOT: {
+              AND: [
+                { severity: { not: NotificationSeverity.CRITICAL } },
+                {
+                  receipts: {
+                    some: {
+                      userId,
+                      snoozedUntil: { gt: referenceNow },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
       },
     });
   }

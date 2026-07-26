@@ -1,6 +1,7 @@
 import {
   MembershipRole,
   NotificationEventKind,
+  NotificationSeverity,
   NotificationStatus,
 } from '@prisma/client';
 import { deriveAvailableActions } from './notification-available-actions';
@@ -9,10 +10,12 @@ describe('deriveAvailableActions', () => {
   const base = {
     eventType: 'TECHNICAL_OBSERVATION_ACTIVE',
     eventKind: NotificationEventKind.STATE,
+    severity: NotificationSeverity.WARNING,
     membershipRole: MembershipRole.ORG_ADMIN,
     isRead: false,
     isPersonallyAcknowledged: false,
     userSnoozedUntil: null,
+    isPersonallyHidden: false,
     hasActionTarget: true,
   };
 
@@ -29,10 +32,12 @@ describe('deriveAvailableActions', () => {
       status: NotificationStatus.OPEN,
       eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
       eventKind: NotificationEventKind.STATE,
+      severity: NotificationSeverity.WARNING,
       membershipRole: MembershipRole.WORKER,
       isRead: false,
       isPersonallyAcknowledged: false,
       userSnoozedUntil: null,
+      isPersonallyHidden: false,
       hasActionTarget: true,
     });
     expect(actions).not.toContain('resolve');
@@ -54,10 +59,12 @@ describe('deriveAvailableActions', () => {
       status: NotificationStatus.OPEN,
       eventType: 'STATION_SHORTAGE',
       eventKind: NotificationEventKind.STATE,
+      severity: NotificationSeverity.WARNING,
       membershipRole: MembershipRole.DRIVER,
       isRead: false,
       isPersonallyAcknowledged: false,
       userSnoozedUntil: null,
+      isPersonallyHidden: false,
       hasActionTarget: true,
     });
     expect(actions).toEqual([]);

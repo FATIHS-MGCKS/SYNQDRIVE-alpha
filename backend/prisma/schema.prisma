@@ -13594,6 +13594,7 @@ model NotificationReceipt {
   acknowledgedAt DateTime? @map("acknowledged_at")
   snoozedUntil   DateTime? @map("snoozed_until")
   hiddenAt       DateTime? @map("hidden_at")
+  lastSeenAt     DateTime? @map("last_seen_at")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
@@ -13606,6 +13607,7 @@ model NotificationReceipt {
   @@index([organizationId])
   @@index([organizationId, userId], map: "notification_receipts_org_user_id_idx")
   @@index([organizationId, notificationId], map: "notification_receipts_org_notification_id_idx")
+  @@index([organizationId, userId, lastSeenAt], map: "notification_receipts_org_user_last_seen_idx")
   @@map("notification_receipts")
 }
 

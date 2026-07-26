@@ -435,6 +435,7 @@ export class NotificationCoreService {
     return reopened;
   }
 
+  /** Org-wide lifecycle acknowledge — use NotificationReceiptService for per-user ack. */
   async acknowledgeNotification(notificationId: string, organizationId: string, at: Date = new Date()) {
     const notification = await this.requireNotification(notificationId, organizationId);
     this.assertTransition(notification.status, NotificationStatus.ACKNOWLEDGED);
@@ -468,6 +469,7 @@ export class NotificationCoreService {
     return updated;
   }
 
+  /** Org-wide lifecycle snooze — use NotificationReceiptService for per-user snooze. */
   async snoozeNotification(notificationId: string, organizationId: string, until: Date) {
     const notification = await this.requireNotification(notificationId, organizationId);
     this.assertTransition(notification.status, NotificationStatus.SNOOZED);
@@ -520,6 +522,7 @@ export class NotificationCoreService {
       userId,
       organizationId,
       readAt: at,
+      lastSeenAt: at,
     });
   }
 

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-user-receipts-2026-07-26',
+    version: '4.9.877',
+    title: 'Notification Engine Remediation — separate user receipts from domain lifecycle (Prompt 10)',
+    summary: [
+      'Personal inbox state on notification_receipts: readAt, acknowledgedAt, snoozedUntil, hiddenAt, lastSeenAt.',
+      'API read/ack/snooze/hide touch receipts only; resolve/archive remain org-wide lifecycle.',
+      'Counts exclude personal snooze/hidden; CRITICAL still surfaces during personal snooze.',
+      'Docs: docs/architecture/notification-user-receipts.md',
+    ],
+    reason:
+      'Domain notification state and per-user inbox overlays must not be conflated.',
+    previousBehavior:
+      'Partial separation existed; hide/lastSeenAt missing; counts ignored personal overlays consistently.',
+    details:
+      'notification-receipt.service.ts, notification-receipt.policy.ts, notification-api.service.ts, migration 20260726140000.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T07:00:00.000Z',
+  },
+  {
     id: 'notification-occurrence-history-2026-07-26',
     version: '4.9.876',
     title: 'Notification Engine Remediation — canonical occurrence history (Prompt 9)',
