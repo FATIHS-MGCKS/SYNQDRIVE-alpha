@@ -105,6 +105,7 @@ describe('SubscriptionLifecycleService', () => {
     billingAuditLog: {
       findMany: jest.fn(async () => auditLogs),
     },
+    $executeRaw: jest.fn(async () => undefined),
     $transaction: jest.fn(async (fn: any) => fn(prisma)),
   };
 

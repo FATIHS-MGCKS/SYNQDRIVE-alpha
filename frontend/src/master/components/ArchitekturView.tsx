@@ -971,6 +971,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'REST API', detail: 'Vehicles, device status' },
       { label: 'Webhooks', detail: 'DTC codes, ignition events, OBD plug/unplug' },
       { label: 'Identity GraphQL', detail: 'privileged vehicles sync → dimo_vehicles mirror (24h + manual)' },
+      { label: 'Concurrency (2E.4)', detail: 'registerFromDimo: advisory lock + partial UNIQUE on vehicles.dimo_vehicle_id. createWithAdmin + subscription createDraft serialized. Doc: concurrency-protection.md' },
       { label: 'DB integrity (2E.3)', detail: 'vehicles.dimo_vehicle_id: FK only — no INDEX/UNIQUE (P1). Safe: CREATE INDEX CONCURRENTLY + partial UNIQUE after duplicate audit. Doc: database-integrity-review.md' },
     ],
   },

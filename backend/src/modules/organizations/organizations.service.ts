@@ -12,6 +12,10 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  acquirePgAdvisoryXactLock,
+  userEmailRegistrationLockKey,
+} from '@shared/database/pg-advisory-lock.util';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { OrganizationRoleService } from '@modules/users/organization-role.service';
 import {
@@ -136,9 +140,21 @@ export class OrganizationsService {
   }
 
   async create(data: Record<string, unknown>) {
-    const payload: Prisma.OrganizationCreateInput = {
+    const org = await this.prisma.organization.create({
+      data: this.buildOrganizationCreateInput(data),
+    });
+    void this.organizationRoles.ensureDefaultRoles(org.id);
+    return org;
+  }
+
+  private buildOrganizationCreateInput(
+    data: Record<string, unknown>,
+  ): Prisma.OrganizationCreateInput {
+    return {
       companyName: String(data.companyName ?? ''),
-      shortCode: data.shortCode ? String(data.shortCode).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) : undefined,
+      shortCode: data.shortCode
+        ? String(data.shortCode).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
+        : undefined,
       businessType: this.toBusinessTypeEnum(String(data.businessType ?? 'OTHER')),
       status: this.toOrgStatusEnum(String(data.status ?? 'PENDING')),
       email: String(data.email ?? data.contactEmail ?? ''),
@@ -148,42 +164,50 @@ export class OrganizationsService {
       country: data.country ? String(data.country) : undefined,
       website: data.website ? String(data.website) : undefined,
     };
-    const org = await this.prisma.organization.create({ data: payload });
-    void this.organizationRoles.ensureDefaultRoles(org.id);
-    return org;
   }
 
   async createWithAdmin(
     orgData: Record<string, unknown>,
     adminData: { name: string; email: string; password: string },
   ) {
-    const existing = await this.prisma.user.findUnique({ where: { email: adminData.email } });
-    if (existing) throw new ConflictException(`User with email ${adminData.email} already exists`);
-
-    const org = await this.create(orgData);
-
     const passwordHash = await bcrypt.hash(adminData.password, 10);
-    const user = await this.prisma.user.create({
-      data: {
-        name: adminData.name,
-        email: adminData.email,
-        passwordHash,
-        status: 'ACTIVE',
-      },
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await acquirePgAdvisoryXactLock(tx, userEmailRegistrationLockKey(adminData.email));
+
+      const existing = await tx.user.findUnique({ where: { email: adminData.email } });
+      if (existing) {
+        throw new ConflictException(`User with email ${adminData.email} already exists`);
+      }
+
+      const org = await tx.organization.create({
+        data: this.buildOrganizationCreateInput(orgData),
+      });
+
+      const user = await tx.user.create({
+        data: {
+          name: adminData.name,
+          email: adminData.email,
+          passwordHash,
+          status: 'ACTIVE',
+        },
+      });
+
+      await tx.organizationMembership.create({
+        data: {
+          userId: user.id,
+          organizationId: org.id,
+          role: 'ORG_ADMIN',
+          status: MembershipStatus.ACTIVE,
+        },
+      });
+
+      return { organization: org, admin: { id: user.id, email: user.email, name: user.name } };
     });
 
-    await this.prisma.organizationMembership.create({
-      data: {
-        userId: user.id,
-        organizationId: org.id,
-        role: 'ORG_ADMIN',
-        status: MembershipStatus.ACTIVE,
-      },
-    });
+    void this.organizationRoles.ensureDefaultRoles(result.organization.id, result.admin.id);
 
-    void this.organizationRoles.ensureDefaultRoles(org.id, user.id);
-
-    return { organization: org, admin: { id: user.id, email: user.email, name: user.name } };
+    return result;
   }
 
   async findAll(

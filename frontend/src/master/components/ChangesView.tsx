@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-concurrency-protection-2e4-2026-07-26',
+    version: '4.9.894',
+    title: 'V4.9.894 — Master Admin 2E.4: Concurrency protection',
+    summary: [
+      'Critical write-path audit: bookings (OK), DIMO upsert (OK), registerFromDimo (P1 fixed).',
+      'Advisory locks: vehicle-dimo-binding, subscription-draft, user-email-registration.',
+      'registerFromDimo: transaction + duplicate check + partial UNIQUE on dimo_vehicle_id.',
+      'createWithAdmin atomic; createDraft locked; vehicles.create P2002 → ConflictException.',
+    ],
+    reason:
+      'Phase 2E.4 prevents race conditions and duplicate inserts on fleet-critical writes.',
+    previousBehavior:
+      'registerFromDimo and createWithAdmin had TOCTOU gaps; dimo_vehicle_id had no DB unique.',
+    details:
+      'docs/remediation/concurrency-protection.md · architecture/MASTER_ADMIN_CONCURRENCY_PROTECTION_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T20:00:00.000Z',
+  },
+  {
     id: 'master-admin-database-integrity-2e3-2026-07-26',
     version: '4.9.893',
     title: 'V4.9.893 — Master Admin 2E.3: Database integrity review',
