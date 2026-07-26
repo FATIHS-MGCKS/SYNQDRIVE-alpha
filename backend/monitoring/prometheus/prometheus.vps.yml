@@ -21,6 +21,7 @@ alerting:
 rule_files:
   - /etc/prometheus/alerts.yml
   - /etc/prometheus/alerts-infra.yml
+  - /etc/prometheus/alerts-workers.yml
 
 scrape_configs:
   - job_name: synqdrive-backend

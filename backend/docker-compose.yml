@@ -88,6 +88,7 @@ services:
       - ./monitoring/prometheus/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - ./monitoring/prometheus/alerts-infra.yml:/etc/prometheus/alerts-infra.yml:ro
+      - ./monitoring/prometheus/alerts-workers.yml:/etc/prometheus/alerts-workers.yml:ro
       - ./monitoring/prometheus/secrets:/etc/prometheus/secrets:ro
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'

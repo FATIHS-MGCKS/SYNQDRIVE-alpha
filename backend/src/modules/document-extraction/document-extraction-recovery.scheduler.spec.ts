@@ -29,12 +29,16 @@ describe('DocumentExtractionRecoveryScheduler', () => {
       retryConfirmedApply: jest.fn().mockResolvedValue(false),
       ...(overrides.extractionService as object),
     };
+    const schedulerObs = {
+      run: jest.fn((_name: string, fn: () => Promise<void>) => fn()),
+    };
     const scheduler = new DocumentExtractionRecoveryScheduler(
       { getJob: jest.fn() } as any,
       prisma as any,
       extractionService as any,
       docConfig as any,
       { recordRecovery: jest.fn() } as any,
+      schedulerObs as any,
     );
     return { scheduler, prisma, extractionService };
   }

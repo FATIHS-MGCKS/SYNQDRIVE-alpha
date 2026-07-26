@@ -15,6 +15,7 @@ import {
   withIncrementedRecoveryCount,
 } from '@modules/document-extraction/document-extraction-recovery.util';
 import { DocumentExtractionObservabilityService } from '@modules/document-extraction/document-extraction-observability.service';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 /**
  * Conservative recovery scheduler for document.extraction jobs.
@@ -32,6 +33,7 @@ export class DocumentExtractionRecoveryScheduler implements OnModuleInit, OnModu
     @Inject(documentExtractionConfig.KEY)
     private readonly config: ConfigType<typeof documentExtractionConfig>,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   onModuleInit(): void {
@@ -50,6 +52,7 @@ export class DocumentExtractionRecoveryScheduler implements OnModuleInit, OnModu
   }
 
   async recoverStaleExtractions(): Promise<void> {
+    await this.schedulerObs.run('document.extraction.recovery', async () => {
     if (!this.config.queueEnabled) return;
     if (!canEnqueueQueue(this.logger, 'document-extraction-recovery')) return;
     if (this.recoveryInProgress) return;
@@ -65,6 +68,7 @@ export class DocumentExtractionRecoveryScheduler implements OnModuleInit, OnModu
     } finally {
       this.recoveryInProgress = false;
     }
+    });
   }
 
   private async recoverStaleQueued(olderThan: Date): Promise<void> {

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-worker-observability-2f4-2026-07-26',
+    version: '4.9.901',
+    title: 'V4.9.901 — Master Admin 2F.4: Worker observability',
+    summary: [
+      '18 BullMQ queues: QueueEvents for duration, failures, retries, stalls, dedup.',
+      'Queue depth gauges: waiting/active/delayed for all queues (was failed-only subset).',
+      '24 scheduler ticks instrumented via SchedulerObservabilityService.',
+      'alerts-workers.yml: 11 rules for backlog, stalls, failures, scheduler stale.',
+    ],
+    reason:
+      'Phase 2F.4 implements comprehensive worker/queue/scheduler observability.',
+    previousBehavior:
+      'Partial queue metrics (14 queues, failed count only); no job duration or scheduler health.',
+    details:
+      'docs/remediation/worker-observability.md · architecture/MASTER_ADMIN_WORKER_OBSERVABILITY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T04:00:00.000Z',
+  },
+  {
     id: 'master-admin-infrastructure-monitoring-2f3-2026-07-26',
     version: '4.9.900',
     title: 'V4.9.900 — Master Admin 2F.3: Infrastructure monitoring exporters',

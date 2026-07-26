@@ -364,10 +364,14 @@ describe('battery-v2 enqueue path audit', () => {
       const reconciliation = { reconcileAll: jest.fn().mockResolvedValue({}) };
       const observability = { setDeadLetterBacklog: jest.fn() };
       const deadLetters = { countBacklog: jest.fn().mockResolvedValue(0) };
+      const schedulerObs = {
+        run: jest.fn((_name: string, fn: () => Promise<void>) => fn()),
+      };
       const scheduler = new BatteryV2ReconciliationScheduler(
         reconciliation as never,
         observability as never,
         deadLetters as never,
+        schedulerObs as never,
       );
 
       const config = await import('@config/battery-health-v2.config');

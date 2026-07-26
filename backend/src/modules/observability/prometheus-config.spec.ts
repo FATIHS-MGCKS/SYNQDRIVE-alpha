@@ -106,6 +106,18 @@ describe('TripMetricsService label cardinality', () => {
   });
 });
 
+describe('Worker observability alert rules', () => {
+  const root = join(__dirname, '../../../monitoring/prometheus');
+
+  it('alerts-workers.yml defines BullMQ and scheduler alerts', () => {
+    const yaml = readFileSync(join(root, 'alerts-workers.yml'), 'utf8');
+    expect(yaml).toContain('WorkerQueueWaitingBacklogHigh');
+    expect(yaml).toContain('WorkerJobStalledRateHigh');
+    expect(yaml).toContain('SchedulerStale');
+    expect(yaml).toContain('synqdrive_queue_waiting_jobs');
+  });
+});
+
 describe('Prometheus infra alert rules', () => {
   const root = join(__dirname, '../../../monitoring/prometheus');
 
@@ -129,6 +141,7 @@ describe('Prometheus infra alert rules', () => {
     expect(yaml).toContain('alertmanagers');
     expect(yaml).toContain('127.0.0.1:9093');
     expect(yaml).toContain('alerts-infra.yml');
+    expect(yaml).toContain('alerts-workers.yml');
     expect(yaml).toContain('job_name: node');
     expect(yaml).toContain('job_name: cadvisor');
     expect(yaml).toContain('job_name: postgres');

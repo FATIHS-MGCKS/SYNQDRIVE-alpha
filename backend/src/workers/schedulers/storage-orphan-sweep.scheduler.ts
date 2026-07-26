@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { join, basename } from 'path';
 import { readdir, stat, unlink } from 'fs/promises';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 /**
  * StorageOrphanSweepScheduler
@@ -28,11 +29,13 @@ export class StorageOrphanSweepScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   // Weekly, Sunday 04:00 — well after nightly retention/reclamation windows.
   @Cron('0 4 * * 0')
   async sweep(): Promise<void> {
+    await this.schedulerObs.run('storage.orphan.sweep', async () => {
     const enabled = this.config.get<boolean>('storage.orphanSweep.enabled', false);
     if (!enabled) return;
 
@@ -94,5 +97,6 @@ export class StorageOrphanSweepScheduler {
         `Orphan sweep [org-logos]: ${candidates} candidate(s)${doDelete ? `, ${deleted} deleted` : ' (dry-run, nothing deleted)'}.`,
       );
     }
+    });
   }
 }

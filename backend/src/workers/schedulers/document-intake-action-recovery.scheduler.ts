@@ -6,6 +6,7 @@ import documentExtractionConfig from '@config/document-extraction.config';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { DocumentIntakeActionRecoveryService } from '@modules/document-extraction/diagnostic/document-intake-action-recovery.service';
 import { DocumentExtractionObservabilityService } from '@modules/document-extraction/document-extraction-observability.service';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 /**
  * Recovers stale document action-plan apply lifecycles (APPLYING) and retries
@@ -21,10 +22,12 @@ export class DocumentIntakeActionRecoveryScheduler {
     @Inject(documentExtractionConfig.KEY)
     private readonly config: ConfigType<typeof documentExtractionConfig>,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   @Interval(120_000)
   async recoverStaleActionApplies(): Promise<void> {
+    await this.schedulerObs.run('document.intake.action.recovery', async () => {
     if (!this.config.actionRecoveryEnabled) return;
     if (!this.config.queueEnabled) return;
     if (!canEnqueueQueue(this.logger, 'document-intake-action-recovery')) return;
@@ -53,5 +56,6 @@ export class DocumentIntakeActionRecoveryScheduler {
     } finally {
       this.recoveryInProgress = false;
     }
+    });
   }
 }

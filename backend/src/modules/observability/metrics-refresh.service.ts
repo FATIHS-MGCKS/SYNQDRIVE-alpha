@@ -12,23 +12,8 @@ import { QUEUE_NAMES } from '../../workers/queues/queue-names';
 import { RuntimeStatusRegistry } from './runtime-status.registry';
 import { TripMetricsService } from './trip-metrics.service';
 import { setBatteryV2VehiclesWithoutPublication } from '../vehicle-intelligence/battery-health/observability/battery-v2-prometheus.metrics';
-
-const MONITORED_QUEUES = [
-  QUEUE_NAMES.DIMO_SNAPSHOT,
-  QUEUE_NAMES.TRIP_TRACKING,
-  QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT,
-  QUEUE_NAMES.DRIVING_INTELLIGENCE,
-  QUEUE_NAMES.DOCUMENT_EXTRACTION,
-  QUEUE_NAMES.NOTIFICATION_EVALUATION,
-  QUEUE_NAMES.NOTIFICATION_DELIVERY,
-  QUEUE_NAMES.PAYMENT_EMAIL,
-  QUEUE_NAMES.TASK_AUTOMATION,
-  QUEUE_NAMES.TIRE_RECALCULATION,
-  QUEUE_NAMES.BATTERY_V2,
-  QUEUE_NAMES.BRAKE_RECALCULATION,
-  QUEUE_NAMES.VOICE_WEBHOOK_PROCESS,
-  QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS,
-] as const;
+import { ALL_WORKER_QUEUES } from '@modules/worker-observability/worker-queue-catalog';
+import { WorkerObservabilityMetrics } from '@modules/worker-observability/worker-observability.metrics';
 
 const BATTERY_POSTGRES_TABLES = [
   'battery_measurement',
@@ -58,6 +43,7 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly voiceMetrics?: VoiceMetricsService,
+    @Optional() private readonly workerMetrics?: WorkerObservabilityMetrics,
   ) {}
 
   onModuleInit(): void {
@@ -72,7 +58,7 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
       db: this.config.get<number>('redis.db') ?? 0,
     };
 
-    this.queues = MONITORED_QUEUES.map(
+    this.queues = ALL_WORKER_QUEUES.map(
       (name) =>
         new Queue(name, {
           connection,
@@ -118,11 +104,23 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
     await Promise.all(
       this.queues.map(async (queue) => {
         try {
-          const counts = await queue.getJobCounts('failed', 'active', 'waiting');
+          const counts = await queue.getJobCounts(
+            'failed',
+            'active',
+            'waiting',
+            'delayed',
+          );
           this.metrics.queueFailedJobs.set(
             { queue: queue.name },
             counts.failed ?? 0,
           );
+
+          if (this.workerMetrics) {
+            const h = this.workerMetrics.handles;
+            h.queueWaitingJobs.set({ queue: queue.name }, counts.waiting ?? 0);
+            h.queueActiveJobs.set({ queue: queue.name }, counts.active ?? 0);
+            h.queueDelayedJobs.set({ queue: queue.name }, counts.delayed ?? 0);
+          }
 
           if (queue.name === QUEUE_NAMES.DOCUMENT_EXTRACTION) {
             this.metrics.documentExtractionActiveJobs.set(counts.active ?? 0);

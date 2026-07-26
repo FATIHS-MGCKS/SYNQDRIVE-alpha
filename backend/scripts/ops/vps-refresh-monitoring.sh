@@ -60,6 +60,7 @@ refresh_prometheus() {
 
   cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
   cp "$SRC_PROM/alerts-infra.yml" "$PROM_DIR/alerts-infra.yml"
+  cp "$SRC_PROM/alerts-workers.yml" "$PROM_DIR/alerts-workers.yml"
   cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"
   if [[ "$BACKEND_PORT" != "3001" ]]; then
     sed -i "s/127.0.0.1:3001/127.0.0.1:${BACKEND_PORT}/" "$PROM_DIR/prometheus.yml"

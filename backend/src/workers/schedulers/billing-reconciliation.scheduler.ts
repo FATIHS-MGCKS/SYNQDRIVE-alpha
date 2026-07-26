@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { BillingReconciliationService } from '@modules/billing/billing-reconciliation.service';
 import { BillingMonitoringService } from '@modules/billing/billing-monitoring.service';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 const DEFAULT_BILLING_RECONCILIATION_INTERVAL_MS = 6 * 60 * 60_000;
 
@@ -16,10 +17,12 @@ export class BillingReconciliationScheduler {
     private readonly reconciliation: BillingReconciliationService,
     private readonly monitoring: BillingMonitoringService,
     private readonly configService: ConfigService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   @Interval(DEFAULT_BILLING_RECONCILIATION_INTERVAL_MS)
   async runScheduledReconciliation(): Promise<void> {
+    await this.schedulerObs.run('billing.reconciliation', async () => {
     if (!this.isEnabled()) {
       return;
     }
@@ -53,6 +56,7 @@ export class BillingReconciliationScheduler {
     } finally {
       this.running = false;
     }
+    });
   }
 
   private isEnabled(): boolean {

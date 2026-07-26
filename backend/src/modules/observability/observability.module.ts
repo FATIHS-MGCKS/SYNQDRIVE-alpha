@@ -7,6 +7,7 @@ import { MetricsAuthGuard } from './metrics-auth.guard';
 import { MetricsRefreshService } from './metrics-refresh.service';
 import { QueueMonitoringService } from './queue-monitoring.service';
 import { VoiceMetricsService } from './voice-metrics.service';
+import { WorkerObservabilityModule } from '@modules/worker-observability/worker-observability.module';
 
 /**
  * ObservabilityModule
@@ -16,7 +17,7 @@ import { VoiceMetricsService } from './voice-metrics.service';
  */
 @Global()
 @Module({
-  imports: [PrismaModule, RedisModule],
+  imports: [PrismaModule, RedisModule, WorkerObservabilityModule],
   controllers: [MetricsController],
   providers: [TripMetricsService, MetricsAuthGuard, MetricsRefreshService, QueueMonitoringService, VoiceMetricsService],
   exports: [TripMetricsService, QueueMonitoringService, VoiceMetricsService],
