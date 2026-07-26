@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-database-integrity-2e3-2026-07-26',
+    version: '4.9.893',
+    title: 'V4.9.893 — Master Admin 2E.3: Database integrity review',
+    summary: [
+      'Production constraint audit: 312 models, 134 uniques, 1001 indexes, 281 migrations.',
+      'organization_id/vehicle_id/booking_id/customer_id: strong; dimo_vehicle_id: FK only, no UNIQUE/INDEX.',
+      'Safe migrations only: CONCURRENTLY partial unique + index on vehicles.dimo_vehicle_id.',
+      'Risk register DB1–DB8; operator SQL audit queries; no destructive DDL.',
+    ],
+    reason:
+      'Phase 2E.3 validates DB constraints before safe remediation migrations — analysis only.',
+    previousBehavior:
+      'Constraint gaps documented ad hoc; no consolidated integrity review.',
+    details:
+      'docs/remediation/database-integrity-review.md · architecture/MASTER_ADMIN_DATABASE_INTEGRITY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T18:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

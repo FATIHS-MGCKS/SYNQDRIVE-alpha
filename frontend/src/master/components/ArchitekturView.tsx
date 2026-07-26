@@ -969,7 +969,9 @@ const INTEGRATIONS: IntegrationEntry[] = [
     apis: [
       { label: 'Telemetry GraphQL', detail: 'signalsLatest, signals history, segments' },
       { label: 'REST API', detail: 'Vehicles, device status' },
-      { label: 'Webhooks', detail: 'DTC codes, ignition events' },
+      { label: 'Webhooks', detail: 'DTC codes, ignition events, OBD plug/unplug' },
+      { label: 'Identity GraphQL', detail: 'privileged vehicles sync → dimo_vehicles mirror (24h + manual)' },
+      { label: 'DB integrity (2E.3)', detail: 'vehicles.dimo_vehicle_id: FK only — no INDEX/UNIQUE (P1). Safe: CREATE INDEX CONCURRENTLY + partial UNIQUE after duplicate audit. Doc: database-integrity-review.md' },
     ],
   },
   {
