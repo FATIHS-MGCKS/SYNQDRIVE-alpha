@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-performance-2d5-2026-07-26',
+    version: '4.9.886',
+    title: 'V4.9.886 — Master Admin 2D.5: ClickHouse performance analysis',
+    summary: [
+      'Runtime perf audit: CPU/RAM, merges, inserts, query times, compression, partitions.',
+      'Bottleneck register B1–B10: single-row inserts, Data Analyse scans, FINAL reads.',
+      'Optimization roadmap (async_insert, resource limits, OPTIMIZE schedule) — suggestions only.',
+      'vps-clickhouse-performance-audit.sh for VPS baseline capture.',
+    ],
+    reason:
+      'Phase 2D requires performance baseline and prioritized optimizations before VPS tuning.',
+    previousBehavior:
+      'Query timeouts and Prometheus histograms only; no consolidated perf audit doc.',
+    details:
+      'docs/remediation/clickhouse-performance.md · architecture/MASTER_ADMIN_CLICKHOUSE_PERFORMANCE_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:30:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-tenant-isolation-2d4-2026-07-26',
     version: '4.9.885',
     title: 'V4.9.885 — Master Admin 2D.4: ClickHouse tenant isolation analysis',
