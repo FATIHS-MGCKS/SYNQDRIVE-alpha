@@ -154,10 +154,11 @@ describe('NotificationApiService', () => {
     buildScopeContext: jest.fn(async (_orgId: string, role: MembershipRole, stationScope: string | null) => {
       const scope = stationScope?.trim();
       if (!scope || scope === 'ALL' || role === MembershipRole.ORG_ADMIN) {
-        return { scopedVehicleIds: [], scopedBookingIds: [], bypassStationScope: true };
+        return { scopedStationIds: [], scopedVehicleIds: [], scopedBookingIds: [], bypassStationScope: true };
       }
       return {
         scopedStationId: scope,
+        scopedStationIds: [scope],
         scopedVehicleIds: scope === STATION ? [VEH] : [],
         scopedBookingIds: [],
         bypassStationScope: false,
@@ -165,10 +166,15 @@ describe('NotificationApiService', () => {
     }),
     isNotificationInScope: jest.fn((notificationRow: any, ctx: any) => {
       if (ctx.bypassStationScope) return true;
-      if (notificationRow.entityType === 'STATION' && notificationRow.entityId === ctx.scopedStationId) {
+      const stationIds = ctx.scopedStationIds ?? (ctx.scopedStationId ? [ctx.scopedStationId] : []);
+      if (notificationRow.entityType === 'STATION' && stationIds.includes(notificationRow.entityId)) {
         return true;
       }
       if (notificationRow.entityId === VEH && ctx.scopedVehicleIds?.includes(VEH)) return true;
+      return false;
+    }),
+    isEntityInCallerScope: jest.fn((_ctx: any, entity: any) => {
+      if (entity.kind === 'vehicle') return entity.id === VEH;
       return false;
     }),
     recheckVehicleStationScope: jest.fn(async () => true),
@@ -176,6 +182,9 @@ describe('NotificationApiService', () => {
   } as unknown as NotificationStationScopeService;
 
   const prisma = {
+    user: {
+      findUnique: jest.fn(async () => ({ status: 'ACTIVE' })),
+    },
     organizationMembership: {
       findFirst: jest.fn(async () =>
         membership ? { role: membership.role, stationScope: membership.stationScope } : null,

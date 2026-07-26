@@ -116,11 +116,13 @@ export class NotificationApiService {
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
       scopedStationId: ctx.scopedStationId,
+      scopedStationIds: ctx.scopedStationIds,
       scopedVehicleIds: ctx.scopedVehicleIds,
       scopedBookingIds: ctx.scopedBookingIds,
+      bypassStationScope: ctx.bypassStationScope,
     };
 
-    await this.validateEntityFilters(orgId, query);
+    await this.validateEntityFilters(orgId, query, ctx);
 
     const where = this.buildAccessWhere(listFilters, ctx, referenceNow, !resolvedOnly);
 
@@ -164,8 +166,10 @@ export class NotificationApiService {
         userId: ctx.userId,
         activeOnly: true,
         scopedStationId: ctx.scopedStationId,
+        scopedStationIds: ctx.scopedStationIds,
         scopedVehicleIds: ctx.scopedVehicleIds,
         scopedBookingIds: ctx.scopedBookingIds,
+        bypassStationScope: ctx.bypassStationScope,
       },
       ctx,
       referenceNow,
@@ -191,8 +195,10 @@ export class NotificationApiService {
         status: [NotificationStatus.RESOLVED],
         from: new Date(Date.now() - RESOLVED_RECENT_WINDOW_MS),
         scopedStationId: ctx.scopedStationId,
+        scopedStationIds: ctx.scopedStationIds,
         scopedVehicleIds: ctx.scopedVehicleIds,
         scopedBookingIds: ctx.scopedBookingIds,
+        bypassStationScope: ctx.bypassStationScope,
       },
       ctx,
       referenceNow,
@@ -367,6 +373,55 @@ export class NotificationApiService {
       throw new ForbiddenException('User context required');
     }
 
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { status: true },
+    });
+    if (!dbUser || dbUser.status !== 'ACTIVE') {
+      throw new ForbiddenException('Account is not active');
+    }
+
+    if (user.platformRole === 'MASTER_ADMIN') {
+      const preferences = await this.prisma.userNotificationPreference.findMany({
+        where: { userId: user.id, organizationId: orgId },
+      });
+      const membership = await this.prisma.organizationMembership.findFirst({
+        where: { userId: user.id, organizationId: orgId, status: 'ACTIVE' },
+        select: { role: true, stationScope: true },
+      });
+
+      if (membership) {
+        const scopeFields = await this.stationScopeService.buildScopeContext(
+          orgId,
+          membership.role,
+          membership.stationScope,
+          user.id,
+        );
+        return {
+          userId: user.id,
+          organizationId: orgId,
+          membershipRole: membership.role,
+          platformRole: user.platformRole,
+          stationScope: membership.stationScope,
+          preferences,
+          ...scopeFields,
+        };
+      }
+
+      return {
+        userId: user.id,
+        organizationId: orgId,
+        membershipRole: MembershipRole.ORG_ADMIN,
+        platformRole: user.platformRole,
+        stationScope: null,
+        scopedStationIds: [],
+        scopedVehicleIds: [],
+        scopedBookingIds: [],
+        bypassStationScope: true,
+        preferences,
+      };
+    }
+
     const membership = await this.prisma.organizationMembership.findFirst({
       where: { userId: user.id, organizationId: orgId, status: 'ACTIVE' },
       select: { role: true, stationScope: true },
@@ -377,18 +432,16 @@ export class NotificationApiService {
     }
 
     const membershipRole = membership.role;
-    if (!STAFF_ROLES.includes(membershipRole) && user.platformRole !== 'MASTER_ADMIN') {
+    if (!STAFF_ROLES.includes(membershipRole)) {
       throw new ForbiddenException('Insufficient role permissions');
     }
 
-    const scopeFields = user.platformRole === 'MASTER_ADMIN'
-      ? { scopedVehicleIds: [], scopedBookingIds: [], bypassStationScope: true }
-      : await this.stationScopeService.buildScopeContext(
-          orgId,
-          membershipRole,
-          membership.stationScope,
-          user.id,
-        );
+    const scopeFields = await this.stationScopeService.buildScopeContext(
+      orgId,
+      membershipRole,
+      membership.stationScope,
+      user.id,
+    );
 
     const preferences = await this.prisma.userNotificationPreference.findMany({
       where: { userId: user.id, organizationId: orgId },
@@ -482,14 +535,14 @@ export class NotificationApiService {
     if (!this.stationScopeService.isNotificationInScope(row, ctx)) {
       if (
         row.entityType === 'VEHICLE'
-        && ctx.scopedStationId
+        && ctx.scopedStationIds.length === 1
         && !ctx.bypassStationScope
       ) {
         const vehicleId = row.entityId;
         const stillInScope = await this.stationScopeService.recheckVehicleStationScope(
           ctx.organizationId,
           vehicleId,
-          ctx.scopedStationId,
+          ctx.scopedStationIds[0],
         );
         if (!stillInScope) {
           throw new NotFoundException('Notification not found');
@@ -577,10 +630,29 @@ export class NotificationApiService {
     });
   }
 
-  private async validateEntityFilters(orgId: string, query: ListNotificationsQueryDto) {
-    if (query.vehicleId) await this.assertEntityInOrg(orgId, 'vehicle', query.vehicleId);
-    if (query.stationId) await this.assertEntityInOrg(orgId, 'station', query.stationId);
-    if (query.bookingId) await this.assertEntityInOrg(orgId, 'booking', query.bookingId);
+  private async validateEntityFilters(
+    orgId: string,
+    query: ListNotificationsQueryDto,
+    ctx: NotificationAccessContext,
+  ) {
+    if (query.vehicleId) {
+      await this.assertEntityInOrg(orgId, 'vehicle', query.vehicleId);
+      if (!this.stationScopeService.isEntityInCallerScope(ctx, { kind: 'vehicle', id: query.vehicleId })) {
+        throw new NotFoundException('Entity not found');
+      }
+    }
+    if (query.stationId) {
+      await this.assertEntityInOrg(orgId, 'station', query.stationId);
+      if (!this.stationScopeService.isEntityInCallerScope(ctx, { kind: 'station', id: query.stationId })) {
+        throw new NotFoundException('Entity not found');
+      }
+    }
+    if (query.bookingId) {
+      await this.assertEntityInOrg(orgId, 'booking', query.bookingId);
+      if (!this.stationScopeService.isEntityInCallerScope(ctx, { kind: 'booking', id: query.bookingId })) {
+        throw new NotFoundException('Entity not found');
+      }
+    }
     if (query.entityId && query.entityType) {
       await this.assertEntityInOrg(orgId, query.entityType.toLowerCase(), query.entityId);
     }

@@ -27,13 +27,14 @@ export class NotificationStationScopeService {
     role: MembershipRole,
     stationScope: string | null,
     userId?: string,
-  ): Promise<Pick<NotificationAccessContext, 'scopedStationId' | 'scopedVehicleIds' | 'scopedBookingIds' | 'bypassStationScope'>> {
+  ): Promise<Pick<NotificationAccessContext, 'scopedStationIds' | 'scopedStationId' | 'scopedVehicleIds' | 'scopedBookingIds' | 'bypassStationScope'>> {
     if (userId) {
       const access = await this.stationAccess.resolve(userId, orgId);
       if (!access.bypassScope && access.allowedStationIds !== null) {
         const stationIds = access.allowedStationIds;
         if (stationIds.length === 0) {
           return {
+            scopedStationIds: [],
             scopedVehicleIds: [],
             scopedBookingIds: [],
             bypassStationScope: false,
@@ -64,6 +65,7 @@ export class NotificationStationScopeService {
           }),
         ]);
         return {
+          scopedStationIds: stationIds,
           scopedStationId: stationIds.length === 1 ? stationIds[0] : undefined,
           scopedVehicleIds: vehicles.map((v) => v.id),
           scopedBookingIds: bookings.map((b) => b.id),
@@ -72,6 +74,7 @@ export class NotificationStationScopeService {
       }
       if (access.bypassScope) {
         return {
+          scopedStationIds: [],
           scopedVehicleIds: [],
           scopedBookingIds: [],
           bypassStationScope: true,
@@ -81,6 +84,7 @@ export class NotificationStationScopeService {
 
     if (!this.shouldApplyStationScope(role, stationScope)) {
       return {
+        scopedStationIds: [],
         scopedVehicleIds: [],
         scopedBookingIds: [],
         bypassStationScope: true,
@@ -114,6 +118,7 @@ export class NotificationStationScopeService {
     ]);
 
     return {
+      scopedStationIds: [scopedStationId],
       scopedStationId,
       scopedVehicleIds: vehicles.map((v) => v.id),
       scopedBookingIds: bookings.map((b) => b.id),
@@ -130,7 +135,8 @@ export class NotificationStationScopeService {
       return true;
     }
 
-    if (!ctx.scopedStationId && ctx.scopedVehicleIds.length === 0) {
+    const stationIds = ctx.scopedStationIds ?? (ctx.scopedStationId ? [ctx.scopedStationId] : []);
+    if (stationIds.length === 0) {
       return false;
     }
 
@@ -142,12 +148,37 @@ export class NotificationStationScopeService {
     const bookingId =
       row.entityType === 'BOOKING' ? row.entityId : target.bookingId;
 
-    if (stationId && ctx.scopedStationId && stationId === ctx.scopedStationId) {
+    if (stationId && stationIds.includes(stationId)) {
       return true;
     }
     if (vehicleId && ctx.scopedVehicleIds.includes(vehicleId)) return true;
     if (bookingId && ctx.scopedBookingIds.includes(bookingId)) return true;
 
+    return false;
+  }
+
+  isEntityInCallerScope(
+    ctx: NotificationAccessContext,
+    entity: { kind: 'vehicle' | 'station' | 'booking'; id: string },
+  ): boolean {
+    if (ctx.bypassStationScope || ctx.platformRole === 'MASTER_ADMIN') {
+      return true;
+    }
+
+    const stationIds = ctx.scopedStationIds ?? (ctx.scopedStationId ? [ctx.scopedStationId] : []);
+    if (stationIds.length === 0) {
+      return false;
+    }
+
+    if (entity.kind === 'station') {
+      return stationIds.includes(entity.id);
+    }
+    if (entity.kind === 'vehicle') {
+      return ctx.scopedVehicleIds.includes(entity.id);
+    }
+    if (entity.kind === 'booking') {
+      return ctx.scopedBookingIds.includes(entity.id);
+    }
     return false;
   }
 

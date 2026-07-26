@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-access-isolation-v49874-2026-07-26',
+    version: '4.9.874',
+    title: 'V4.9.874 — Notification Engine: Tenant- & Station-Isolation',
+    summary: [
+      'Konkrete API-Berechtigungsmatrix (list/counts/detail/read/ack/snooze/resolve/archive).',
+      'Multi-Station-Scope: scopedStationIds in SQL + isNotificationInScope; zero stations → zero rows.',
+      'Entity-Filter validieren Org + Caller-Scope; deactivated User → 403; MASTER_ADMIN ohne Membership → bypass.',
+      'Negative Security-Tests: Cross-Org, Cross-Station, IDOR vehicle/booking, Driver resolve, Customer.',
+      'Docs: docs/security/notification-engine-access-control.md.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 29: Notification-Zugriffe gegen Cross-Tenant- und Cross-Station-Leaks absichern.',
+    previousBehavior:
+      'Station-Scope-SQL nur bei single scopedStationId; Multi-Station-Listen leckten Org-Inbox; MASTER_ADMIN ohne Membership → 403; kein User.status-Check.',
+    details:
+      'notification-station-scope.service.ts, notification-query.util.ts, notification-api.service.ts, notification-access-permissions.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T03:10:00.000Z',
+  },
+  {
     id: 'notification-data-protection-v49873-2026-07-26',
     version: '4.9.873',
     title: 'V4.9.873 — Notification Engine: DSGVO-Minimierung & Retention',

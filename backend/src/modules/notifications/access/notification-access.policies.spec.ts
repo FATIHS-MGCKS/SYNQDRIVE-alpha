@@ -116,6 +116,7 @@ describe('Notification access policies', () => {
     it('loads vehicles and bookings for station scope', async () => {
       const ctx = await svc.buildScopeContext('org-1', MembershipRole.WORKER, 'station-a');
       expect(ctx.scopedStationId).toBe('station-a');
+      expect(ctx.scopedStationIds).toEqual(['station-a']);
       expect(ctx.scopedVehicleIds).toEqual(['veh-a']);
       expect(ctx.scopedBookingIds).toEqual(['book-a']);
     });
@@ -138,6 +139,7 @@ describe('Notification access policies', () => {
           membershipRole: MembershipRole.WORKER,
           stationScope: 'station-a',
           scopedStationId: 'station-a',
+          scopedStationIds: ['station-a'],
           scopedVehicleIds: [],
           scopedBookingIds: ['book-a'],
           bypassStationScope: false,

@@ -8,7 +8,9 @@ export interface NotificationAccessContext {
   membershipRole: MembershipRole;
   platformRole?: PlatformRole;
   stationScope: string | null;
-  /** When set, user is restricted to this station (SUB_ADMIN / WORKER). */
+  /** Stations V2 / legacy — all allowed station IDs for scoped roles. */
+  scopedStationIds: string[];
+  /** Legacy single-station shortcut (first of scopedStationIds when length === 1). */
   scopedStationId?: string;
   scopedVehicleIds: string[];
   scopedBookingIds: string[];

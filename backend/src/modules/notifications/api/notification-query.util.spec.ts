@@ -56,7 +56,8 @@ describe('buildNotificationWhereInput', () => {
   it('applies station scope filter', () => {
     const where = buildNotificationWhereInput({
       ...base,
-      scopedStationId: 'st-1',
+      bypassStationScope: false,
+      scopedStationIds: ['st-1'],
       scopedVehicleIds: ['veh-1'],
     });
     expect(where.AND).toEqual(
@@ -69,5 +70,14 @@ describe('buildNotificationWhereInput', () => {
         }),
       ]),
     );
+  });
+
+  it('denies all rows when scoped user has zero stations', () => {
+    const where = buildNotificationWhereInput({
+      ...base,
+      bypassStationScope: false,
+      scopedStationIds: [],
+    });
+    expect(where.id).toBe('__none__');
   });
 });

@@ -628,7 +628,7 @@ export class NotificationCoreService {
   ): Promise<Notification> {
     const minimizedParams = minimizeTemplateParams(candidate.templateParams);
     const minimizedTarget = minimizeActionTarget(
-      candidate.actionTarget as Record<string, unknown>,
+      candidate.actionTarget as unknown as Record<string, unknown>,
     );
     const minimizedMetadata = minimizeOccurrencePayload(candidate.metadata);
 
@@ -729,6 +729,8 @@ export class NotificationCoreService {
     reopenCount: number,
     tx: NotificationTx,
   ): Promise<Notification> {
+    const minimizedMetadata = minimizeOccurrencePayload(candidate.metadata);
+
     await this.repository.createOccurrence(
       {
         notificationId: existing.id,

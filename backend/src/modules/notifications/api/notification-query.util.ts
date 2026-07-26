@@ -34,8 +34,12 @@ export interface NotificationListFilters {
   scopedVehicleIds?: string[];
   /** When set, restrict to notifications tied to these bookings (station scope). */
   scopedBookingIds?: string[];
-  /** When set, restrict to this station (station scope). */
+  /** When set, restrict to these stations (station scope). */
+  scopedStationIds?: string[];
+  /** When set, restrict to this station (legacy single-station). */
   scopedStationId?: string;
+  /** When false, apply station scope constraints (including zero-station deny). */
+  bypassStationScope?: boolean;
 }
 
 export function parseNotificationPagination(query: {
@@ -90,14 +94,17 @@ function entityOrActionTargetFilter(
 }
 
 function stationScopeFilter(
-  scopedStationId: string,
+  scopedStationIds: string[],
   scopedVehicleIds: string[],
   scopedBookingIds: string[],
 ): Prisma.NotificationWhereInput {
-  const orClauses: Prisma.NotificationWhereInput[] = [
-    { entityType: NotificationEntityType.STATION, entityId: scopedStationId },
-    { actionTarget: { path: ['stationId'], equals: scopedStationId } },
-  ];
+  const orClauses: Prisma.NotificationWhereInput[] = [];
+  for (const scopedStationId of scopedStationIds) {
+    orClauses.push(
+      { entityType: NotificationEntityType.STATION, entityId: scopedStationId },
+      { actionTarget: { path: ['stationId'], equals: scopedStationId } },
+    );
+  }
   if (scopedVehicleIds.length > 0) {
     orClauses.push({
       entityType: NotificationEntityType.VEHICLE,
@@ -121,6 +128,16 @@ function stationScopeFilter(
     }
   }
   return { OR: orClauses };
+}
+
+function appendAnd(
+  where: Prisma.NotificationWhereInput,
+  clause: Prisma.NotificationWhereInput,
+): Prisma.NotificationWhereInput {
+  return {
+    ...where,
+    AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), clause],
+  };
 }
 
 export function buildNotificationWhereInput(
@@ -179,20 +196,32 @@ export function buildNotificationWhereInput(
       },
     };
   }
-  if (filters.scopedStationId) {
-    const stationClause = stationScopeFilter(
-      filters.scopedStationId,
-      filters.scopedVehicleIds ?? [],
-      filters.scopedBookingIds ?? [],
-    );
-    const orgWide = buildOrgWideScopeOrClause();
-    const scopeClause: Prisma.NotificationWhereInput = {
-      OR: [
-        ...(stationClause.OR as Prisma.NotificationWhereInput[]),
-        ...(orgWide.OR as Prisma.NotificationWhereInput[]),
-      ],
-    };
-    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), scopeClause];
+  if (filters.bypassStationScope === false) {
+    const stationIds =
+      filters.scopedStationIds?.length
+        ? filters.scopedStationIds
+        : filters.scopedStationId
+          ? [filters.scopedStationId]
+          : [];
+
+    if (stationIds.length === 0) {
+      where.id = '__none__';
+    } else {
+      const stationClause = stationScopeFilter(
+        stationIds,
+        filters.scopedVehicleIds ?? [],
+        filters.scopedBookingIds ?? [],
+      );
+      const orgWide = buildOrgWideScopeOrClause();
+      const scopeClause: Prisma.NotificationWhereInput = {
+        OR: [
+          ...(stationClause.OR as Prisma.NotificationWhereInput[]),
+          ...(orgWide.OR as Prisma.NotificationWhereInput[]),
+        ],
+      };
+      const merged = appendAnd(where, scopeClause);
+      Object.assign(where, merged);
+    }
   }
   if (filters.search && filters.search.trim().length >= 2) {
     const term = filters.search.trim();
