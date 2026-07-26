@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 6: Backend/API-Runtime & Master-Admin-Control-Plane **abgeschlossen** (2026-07-26T07:07–07:10 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:10:00Z` (Backend/API & Master-Admin) |
+| **Status** | **IN PROGRESS** — Schritt 7: PostgreSQL read-only **abgeschlossen** (2026-07-26T07:10–07:12 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:12:00Z` (PostgreSQL) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -163,6 +163,19 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:08–07:09 | Lokal: Controller-Source-Parsing (`admin/*`-Routen, Guards) | Route-Matrix aus Code |
 | 07:09:xx | `curl -sf /docs-json` + Python-Pfadzählung | Live-OpenAPI: 255 Admin-Routen |
 | 07:09:xx | `curl -w %{http_code}` `POST /api/v1/auth/seed-admin`, `GET /api/v1/admin/activity-log` | Seed-Admin-Policy, Audit-Route |
+
+### 2.2g Ausgeführte sichere Befehle (Schritt 7 — PostgreSQL read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:10:35 | `PGOPTIONS='-c default_transaction_read_only=on'` + `psql` Metadaten | Version, Größe, Schema, Constraints, Connections |
+| 07:10:35 | `pg_stat_user_tables`, `pg_stat_user_indexes` | Tabellengrößen, Autovacuum, Index-Nutzung |
+| 07:10:35 | `SELECT` auf `_prisma_migrations` | Migrationshistorie, Rollbacks |
+| 07:10:35 | `npx prisma migrate status` (read-only) | Prisma-Abgleich |
+| 07:11–07:12 | `BEGIN READ ONLY` + aggregierte Integritäts-`SELECT`s | Konsistenzprüfungen (Counts only) |
+| 07:12:xx | Exakte `COUNT(*)` auf Kern-Tabellen (≤851 Zeilen max) | Validierung pg_stat-Schätzungen |
+
+**SQL-Modus:** Ausschließlich `SELECT`, `EXPLAIN`-fähige Metadatenabfragen und `BEGIN READ ONLY` — **kein** DML/DDL.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -957,15 +970,175 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 
 ## 11. PostgreSQL
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| Version | PostgreSQL **16.14** (Ubuntu) |
-| Erreichbarkeit | `psql` als `postgres` — **OK** |
-| DB-Name (erwartet) | `synqdrive` (Deploy-Skript) |
-| Schema/Migrationen | **Nicht** geprüft |
-| Master-Admin-Tabellen | **Nicht** geprüft |
+**Prüfzeitpunkt:** `2026-07-26T07:10–07:12Z` (Schritt 7, strikt read-only)
 
-**Status:** Ausstehend — `prisma migrate status`, `_prisma_migrations`, SELECT-Counts, Tenant-Scoping-Stichproben.
+### 11.1 Instanz & Kapazität
+
+| Prüfpunkt | Ergebnis (belegt) |
+|-----------|-------------------|
+| **Version** | PostgreSQL **16.14** (Ubuntu 16.14-0ubuntu0.24.04.1), x86_64 |
+| **Datenbank** | `synqdrive` |
+| **Datenbankgröße** | **691 MB** (`pg_database_size`) |
+| **Schemas** | **2** (public + pg internals ausgeschlossen) |
+| **Tabellen (public)** | **368** |
+| **Indizes (public)** | **1759** |
+| **Constraints** | **368** PK, **710** FK, **23** CHECK |
+| **Replikation** | `pg_is_in_recovery()` = **false** — **kein** Standby/Replica |
+| **WAL/Backup** | `archive_mode=off`, `archive_command=(disabled)`, `wal_level=replica`, `full_page_writes=on` |
+| **Datenverzeichnis** | `/var/lib/postgresql/16/main` |
+
+### 11.2 Connections & Laufzeit
+
+| Metrik | Wert |
+|--------|------|
+| `max_connections` | **100** |
+| Aktive Connections (`synqdrive`) | **1** active, **9** idle (Snapshot) |
+| Long-running Queries (>5s, non-idle) | **0** |
+| `idle in transaction` | **0** |
+| Nicht gewährte Locks | **0** |
+| Deadlocks (kumulativ, `pg_stat_database`) | **0** |
+| Connection Pool (App) | **Nicht** direkt messbar — Prisma-Pool via App; DB-seitig niedrige Auslastung |
+
+**Hinweis:** `pg_stat_statements` **nicht** installiert — keine DB-seitige Slow-Query-Rangliste.
+
+### 11.3 Autovacuum & Bloat (Schätzung)
+
+| Setting | Wert |
+|---------|------|
+| `autovacuum` | **on** |
+| `autovacuum_max_workers` | **3** |
+| `autovacuum_naptime` | **60** s |
+
+| Tabelle | Live Rows (est.) | Dead Rows | Dead % | Letztes Autovacuum |
+|---------|------------------|-----------|--------|-------------------|
+| `dimo_poll_logs` | ~730k | 40 079 | 5.2% | 2026-07-24 |
+| `vehicle_trip_waypoints` | ~144k | 12 146 | 7.8% | 2026-07-21 |
+| `data_authorization_audit_outbox` | ~24.5k | 4 574 | 15.7% | 2026-07-25 |
+| `driving_intelligence_jobs` | ~7.5k | 1 442 | 16.1% | 2026-07-25 |
+
+**Größte Tabelle:** `dimo_poll_logs` **318 MB** (~46% der DB). Kein akuter Bloat-Alarm; Autovacuum läuft.
+
+### 11.4 Migrationsstand & Schema-Drift
+
+| Prüfpunkt | Ergebnis |
+|-----------|----------|
+| Prisma `migrate status` (Release `4a479c1e`) | **„Database schema is up to date!“** — **276** Migrationen im Repo |
+| `_prisma_migrations` erfolgreich applied | **293** Zeilen (`finished_at` gesetzt, `rolled_back_at` NULL) |
+| Offene/fehlgeschlagene Migrationen | **0** (`finished_at IS NULL AND rolled_back_at IS NULL`) |
+| Historische Rollback-Einträge | **15** (fehlgeschlagene Versuche, später recovered) |
+| Letzte erfolgreiche Migration | `20260725230000_booking_handover_drafts` @ **2026-07-25T23:32:34Z** |
+| Letzte Repo-Migration | `20260725230000_booking_handover_drafts` — **identisch** |
+| Schema-Drift Prisma ↔ Production | **Keine** — letzte Migration und `migrate status` konsistent |
+
+**Beobachtung:** 293 applied vs. 276 Repo-Dirs — Differenz durch **wiederholte Apply-Versuche** nach Rollback (15 historische Fehlversuche in `_prisma_migrations.logs`, alle mit `rolled_back_at`).
+
+Historische Fehlertypen (nicht aktiv): UUID/text FK-Mismatches, Enum-Commit-Timing, Duplicate-Index — **alle recovered**.
+
+### 11.5 Kern-Entitäten (exakte Counts, kleine Tabellen)
+
+| Tabelle | Count |
+|---------|------:|
+| `organizations` | **4** |
+| `users` | **2** |
+| `organization_memberships` | **1** |
+| `vehicles` | **9** |
+| `dimo_vehicles` | **8** |
+| `billing_subscriptions` | **1** |
+| `billing_invoices` | **0** |
+| `activity_logs` | **851** |
+
+**Org-Status:** ACTIVE=**3**, ARCHIVED=**1**  
+**Billing-Subscriptions:** ACTIVE=**1**
+
+### 11.6 Index-Nutzung & Tenant-Indizes
+
+**Ungenutzte Indizes >1 MB (idx_scan=0):**
+
+| Tabelle | Index | Größe |
+|---------|-------|-------|
+| `data_authorization_audit_outbox` | `…_idempotency_key_key` | 12 MB |
+| `vehicle_trip_waypoints` | PK | 12 MB |
+| `dimo_poll_logs` | `…_job_type_idx` | 7.8 MB |
+| `authorization_decision_events` | PK | 1.9 MB |
+
+**Große Tabellen mit `organization_id` ohne Index (est. >1000 rows):**
+
+| Tabelle | Est. Rows | Risiko |
+|---------|----------:|--------|
+| `vehicle_trip_tracking_runs` | ~93k | Tenant-Filter evtl. seq. scan |
+| `tire_events` | ~2.9k | Gering |
+| `tire_health_snapshots` | ~2.6k | Gering |
+
+### 11.7 Integritäts- & Konsistenzmatrix (aggregiert)
+
+| Prüfung | Treffer | Beispiel (maskiert) | Risiko |
+|---------|--------:|---------------------|--------|
+| Organisationen mit ungültigem Status | **0** | — | OK |
+| Aktive Orgs ohne ORG_ADMIN | **3** | `3c22a716…` | **P2** — Admin-Lücke |
+| User ohne Org (non-Master) | **0** | — | OK |
+| User mit ungültiger Platform-Rolle | **0** | — | OK |
+| Membership mit ungültiger Rolle | **0** | — | OK |
+| Doppelte aktive Membership (gleiche Org) | **0** | — | OK (Unique-Constraint wirksam) |
+| Master-Admins mit aktiver Org-Membership | **0** | — | OK |
+| Aktive Orgs ohne ACTIVE/TRIALING Subscription | **3** | `3c22a716…` | **P2** — Billing-Lücke (kleine Prod) |
+| Subscription ohne Organisation | **0** | — | OK |
+| Mehrere aktive Subscriptions pro Org | **0** | — | OK |
+| Rechnung ohne Subscription | **0** | — | OK (keine Billing-Invoices) |
+| Rechnung ohne Organisation | **0** | — | OK |
+| PAID-Rechnung mit Restbetrag >0 | **0** | — | OK |
+| PAID-Rechnung amount_paid < amount_due | **0** | — | OK |
+| Fahrzeuge ohne Organisation | **0** | — | OK |
+| Doppelte VIN innerhalb Org | **0** | — | OK |
+| Doppelte `dimo_vehicle_id` auf Vehicles | **0** | — | OK |
+| DIMO-Fahrzeuge ohne registriertes Vehicle | **2** | `48c4063b…` | **P3** — erwartbar (Non-Registered-Pool) |
+| Vehicles mit fehlendem DIMO-Row | **0** | — | OK |
+| Telemetrie (`vehicle_latest_states`) ohne Vehicle | **0** | — | OK |
+| Position-Updates (90d) ohne Vehicle | **0** | — | OK |
+| Audit-Events ohne Actor (exkl. AUTH_FAIL/SYNC) | **160** | `006f0722…` | **P3** — System/Interceptor-Events |
+| Org-Entity-Audit ohne `organization_id` | **61** | `0249a040…` | **P3** — v. a. Master/Platform-Ops |
+| Doppelte Stripe Customer IDs | **0** | — | OK |
+| Doppelte Stripe Subscription IDs | **0** | — | OK |
+| Billable-Vehicle-Count ≠ Fleet (non-excluded) | **1** | `faa710c9…` | **P3** — Billing-Abgleich prüfen |
+| Soft-deleted Generated Doc + verlinkte Org-Invoice | **0** | — | OK |
+| Soft-deleted Legal Doc noch ACTIVE | **0** | — | OK |
+
+**Vermutung:** Die **3** Orgs ohne ORG_ADMIN und ohne Subscription sind **dieselben** Demo/Test-Orgs (gleiches maskiertes Sample-Prefix) — **nicht** per Query verifiziert, nur Sample-Kollision.
+
+### 11.8 Tenant-Isolation & Constraints
+
+| Aspekt | Befund |
+|--------|--------|
+| FK-Abdeckung | **710** FK-Constraints — starke referenzielle Integrität auf Kernpfaden |
+| VIN-Unique | `@@unique([vin, organizationId])` — **0** Verletzungen |
+| Org-Scoping in DB | `organization_id` auf den meisten Tenant-Tabellen; wenige große Tabellen ohne Index (s. 11.6) |
+| Cross-Tenant-Leaks (Stichprobe) | **Keine** orphan Vehicles/Subscriptions/Invoices festgestellt |
+| Verwaiste FKs ohne Constraint | **Nicht** vollständig enumeriert — Stichproben auf Kernpfade **0** Treffer |
+
+### 11.9 Performance-Indikatoren (DB-Ebene)
+
+| Indikator | Befund |
+|-----------|--------|
+| DB-Größe | 691 MB — moderat |
+| Größter Footprint | `dimo_poll_logs` 318 MB — Retention/Archivierung beobachten |
+| Connection Pressure | Sehr niedrig (10 Connections gesamt) |
+| Slow Queries | **Nicht messbar** (`pg_stat_statements` fehlt) |
+| Deadlocks | **0** kumulativ |
+| Index Bloat / unused | Mehrere **ungenuetzte** große Indizes — Speicher-Overhead, kein Funktionsrisiko |
+
+### 11.10 Schritt-7-Kurzfazit PostgreSQL
+
+| Kategorie | Ergebnis |
+|-----------|----------|
+| **Erreichbarkeit & Health** | **OK** — PG 16.14, Readiness ok |
+| **Migrationsstand** | **OK** — Schema up-to-date, 0 offene Fehler |
+| **Integrität (Kern)** | **OK** — keine FK-/VIN-/Stripe-Duplikat-Verletzungen |
+| **Tenant/Billing-Lücken** | **P2** — 3 aktive Orgs ohne Admin + ohne Subscription |
+| **Audit-Datenqualität** | **P3** — 160 Actor-los, 61 ohne Org-Kontext |
+| **Performance** | **Beobachtung** — `dimo_poll_logs`-Wachstum; fehlende `pg_stat_statements` |
+
+**Bestätigung:** Ausschließlich read-only SQL (`SELECT`, Metadaten, `BEGIN READ ONLY`). **Kein** INSERT/UPDATE/DELETE/DDL.
+
+**Status:** PostgreSQL-Audit **abgeschlossen** (Schritt 7).
 
 ---
 
@@ -1096,13 +1269,19 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 
 ## 21. Tenant Isolation
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| Erwartung | Strikte `orgId`-Scoping; Master Admin bypass nur bewusst |
-| Live DB-Stichproben | **Nicht** geprüft |
-| Cross-Tenant-API | **Nicht** geprüft |
+**Prüfzeitpunkt:** Schritt 7 (PostgreSQL read-only)
 
-**Status:** Ausstehend — SELECT-basierte Stichproben, Guard-Verhalten aus Logs/Config.
+| Prüfpunkt | Ergebnis (belegt) |
+|-----------|-------------------|
+| FK-Integrität Vehicles/Orgs | **0** Vehicles ohne Organization |
+| VIN pro Org unique | **0** Duplikate innerhalb Org |
+| Cross-Tenant Subscription/Invoice | **0** Orphans |
+| Aktive Orgs ohne Admin | **3** — Tenant-Admin-Lücke (**P2**) |
+| Master Admin mit Org-Binding | **0** aktive Memberships |
+| Große Tabellen ohne `organization_id`-Index | **3** Tabellen (s. Kap. 11.6) |
+| Live Cross-Tenant-API | **Nicht** geprüft (nur DB) |
+
+**Status:** DB-Stichproben **abgeschlossen** (Schritt 7). Authentifizierte API-Cross-Tenant-Tests **ausstehend**.
 
 ---
 
@@ -1168,6 +1347,7 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 
 > **Schritt 5 (Netzwerk/TLS):** 2× P1 neu, 4× P2 neu/verstärkt.
 > **Schritt 6 (Backend/API):** 3× P2 neu, 2× P3 neu.
+> **Schritt 7 (PostgreSQL):** 2× P2 neu, 4× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -1211,6 +1391,17 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 | **MA-API-P3-002** | **P3** | Master Admin | Kein Step-up auf breiten Master-GETs (nur Passwort-Change) | Step-up für hochsensible Reads evaluieren |
 | **MA-API-OBS-001** | **Beobachtung** | Auth | `POST /auth/seed-admin` → **403** (disabled) in Production | Positiv |
 | **MA-API-OBS-002** | **Beobachtung** | OpenAPI | Live Spec: **255** Admin-Routen, **0** mit `security` in Spec | Spec ≠ Runtime-Auth |
+| **MA-DB-P2-001** | **P2** | Tenant/IAM | **3** aktive Organisationen **ohne** aktiven `ORG_ADMIN` | Org-Admin zuweisen oder Org archivieren |
+| **MA-DB-P2-002** | **P2** | Billing | **3** aktive Organisationen **ohne** ACTIVE/TRIALING Subscription | Billing-Onboarding oder Org-Status korrigieren |
+| **MA-DB-P3-001** | **P3** | Audit | **160** `activity_logs` ohne `user_id` (exkl. AUTH_FAIL/SYNC) | Actor-Pflicht für kritische Events |
+| **MA-DB-P3-002** | **P3** | Audit | **61** org-bezogene Activity-Logs ohne `organization_id` | Org-Kontext in AuditInterceptor ergänzen |
+| **MA-DB-P3-003** | **P3** | DIMO | **2** `dimo_vehicles` ohne registriertes Vehicle | Erwartbar (Non-Registered-Pool) — dokumentieren |
+| **MA-DB-P3-004** | **P3** | Billing | **1** Org: Billable-Vehicle-Assignments ≠ Fleet (non-excluded) | Billing-Reconciliation |
+| **MA-DB-P3-005** | **P3** | Performance | `vehicle_trip_tracking_runs` (~93k rows) ohne `organization_id`-Index | Index evaluieren |
+| **MA-DB-P3-006** | **P3** | Observability | `pg_stat_statements` **nicht** aktiv — keine DB-Slow-Query-Metriken | Extension aktivieren |
+| **MA-DB-P3-007** | **P3** | Storage | `dimo_poll_logs` **318 MB** / **~730k** rows — dominanter DB-Footprint | Retention/Archiv-Policy |
+| **MA-DB-OBS-001** | **Beobachtung** | Migrations | **15** historische Rollback-Einträge in `_prisma_migrations` — **0** offen | Recovery erfolgreich |
+| **MA-DB-OBS-002** | **Beobachtung** | Backup | `archive_mode=off` — kein WAL-Archiving auf Host-PG | Abhängig von `pg_dump` Pre-Deploy-Backups |
 
 ---
 
@@ -1223,11 +1414,13 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 - [x] **Production-Service-Topologie** — Docker/systemd/PM2, Architekturmatrix, Duplikate, Health, SPOF
 - [x] **Netzwerk & TLS-Exposition** — Ports, Firewall, Nginx, Zertifikate, öffentliche Endpoints
 - [x] **Backend/API-Runtime & Master-Admin (unauth)** — Health/Readiness, Admin-Route-Probes, Guard-Code-Review, Route-Matrix, Log-Stichprobe
+- [x] **PostgreSQL (read-only)** — Metadaten, Migrationen, Integrität, Tenant/Billing-Stichproben
 
 ### Priorisierte Folgeschritte (alle read-only)
 
-1. ~~**Master-Admin-Surface (unauth)**~~ — **erledigt** (Schritt 6); authentifizierte Smokes weiterhin ausstehend
-2. **BullMQ Queue Health** — wait/active/failed per Queue (Redis read-only)
+1. ~~**Master-Admin-Surface (unauth)**~~ — **erledigt** (Schritt 6)
+2. ~~**PostgreSQL SELECT-Counts / Tenant-Stichproben**~~ — **erledigt** (Schritt 7)
+3. **BullMQ Queue Health** — wait/active/failed per Queue (Redis read-only)
 3. **ClickHouse** — `SHOW TABLES`, Row-Counts (SELECT)
 4. **Prometheus/Grafana** — Scrape-Targets, Dashboard-Versionen (read-only)
 5. **DIMO** — Env + Queue + MCP-Abgleich
@@ -1251,7 +1444,8 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 | **Netzwerk/TLS** | **GRUNDLEGEND OK** — 2× **P1** Swagger/OpenAPI öffentlich; Host-Firewall fehlt |
 | **Backend/API-Runtime** | **OK** — Readiness grün; wiederkehrende Scheduler/BatteryV2-Fehler (**P2**) |
 | **Master-Admin (unauth)** | **OK** — 401 ohne Token; Seed-Admin disabled (**403**) |
-| Audit vollständig | **NEIN** — DB/Queues/Integrationen/authentifizierte Smokes ausstehend |
+| **PostgreSQL** | **OK mit P2/P3** — Schema aktuell; 3 Orgs ohne Admin/Subscription |
+| Audit vollständig | **NEIN** — Redis/Queues/Integrationen/authentifizierte Smokes ausstehend |
 | Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Route-Matrix (Code); keine authentifizierten Tests |
 | Gesamturteil | **PENDING** — Kein **P0**; **2× P1** (Swagger, CH-Mounts) + mehrere **P2** offen |
 
@@ -1294,6 +1488,7 @@ ClickHouse-Ingestion (letzte 15 min): `recentSnapshotCount: 0`, `recentStateChan
 | 2026-07-26T07:02–07:04 | Schritt 4: Service-Topologie (`docker ps/inspect/stats`, `pm2 describe`, `systemctl show`, `curl` Health/Readiness) | **NEIN** |
 | 2026-07-26T07:04–07:06 | Schritt 5: Netzwerk/TLS (`ss`, `ufw`/`nft`/`iptables`, Nginx/TLS, öffentliche GET/HEAD) | **NEIN** |
 | 2026-07-26T07:07–07:10 | Schritt 6: Backend/API (`curl` Health/Readiness/Admin-Probes, PM2-Logs, OpenAPI-Count, Code-Route-Matrix) | **NEIN** |
+| 2026-07-26T07:10–07:12 | Schritt 7: PostgreSQL (`psql` read-only, `_prisma_migrations`, Integritäts-SELECTs) | **NEIN** |
 
 ---
 
