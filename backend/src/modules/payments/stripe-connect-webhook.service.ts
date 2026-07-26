@@ -7,8 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Prisma, StripeConnectWebhookProcessingStatus } from '@prisma/client';
 import Stripe from 'stripe';
-import { createHash } from 'crypto';
 import type { StripeConnectWebhookEvent } from '@prisma/client';
+import {
+  constructVerifiedStripeEvent,
+  formatStripeWebhookLog,
+  hashStripeWebhookPayload,
+  resolveConnectWebhookIngestAction,
+  STRIPE_WEBHOOK_SECURITY_ERROR,
+} from '@shared/stripe/stripe-webhook-security.util';
 import { OrganizationPaymentAccountRepository } from './repositories/organization-payment-account.repository';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
@@ -31,8 +37,10 @@ export interface ConnectWebhookIngestResult {
   status:
     | 'stored'
     | 'skipped_duplicate'
+    | 'skipped_terminal'
     | 'unresolved_account'
-    | 'ignored_event_type';
+    | 'ignored_event_type'
+    | 'processed';
   organizationId: string | null;
 }
 
@@ -64,18 +72,22 @@ export class StripeConnectWebhookService {
       throw new BadRequestException('Stripe is not configured');
     }
 
+    const toleranceSeconds = this.configService.get<number>('stripe.webhookToleranceSeconds');
+
     try {
-      return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      return constructVerifiedStripeEvent(
+        stripe,
+        rawBody,
+        signature,
+        webhookSecret,
+        toleranceSeconds,
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid signature';
       throw new BadRequestException(
         `Stripe Connect webhook signature verification failed: ${message}`,
       );
     }
-  }
-
-  private hashPayload(rawBody: Buffer): string {
-    return createHash('sha256').update(rawBody).digest('hex');
   }
 
   private assertLiveModeAllowed(event: Stripe.Event): void {
@@ -102,18 +114,45 @@ export class StripeConnectWebhookService {
     const event = this.constructEvent(rawBody, signature);
     this.assertLiveModeAllowed(event);
 
+    const payloadHash = hashStripeWebhookPayload(rawBody);
     const existing = await this.webhookEventRepository.findByStripeEventId(event.id);
-    if (existing) {
+    const ingestAction = resolveConnectWebhookIngestAction({
+      existing,
+      payloadHash,
+    });
+
+    if (ingestAction === 'payload_conflict') {
+      this.logger.error(
+        formatStripeWebhookLog('CONNECT_PAYLOAD_HASH_MISMATCH', {
+          stripeEventId: event.id,
+          type: event.type,
+        }),
+      );
+      throw new BadRequestException(STRIPE_WEBHOOK_SECURITY_ERROR.PAYLOAD_HASH_MISMATCH);
+    }
+
+    if (ingestAction === 'skip_terminal') {
+      this.logger.log(
+        formatStripeWebhookLog('CONNECT_SKIP_TERMINAL', {
+          stripeEventId: event.id,
+          type: event.type,
+          status: existing!.processingStatus,
+        }),
+      );
       return {
         received: true,
         duplicate: true,
         eventId: event.id,
         type: event.type,
-        status: 'skipped_duplicate',
-        organizationId: existing.organizationId,
+        status:
+          existing!.processingStatus === StripeConnectWebhookProcessingStatus.PROCESSED
+            ? 'skipped_duplicate'
+            : 'skipped_terminal',
+        organizationId: existing!.organizationId,
       };
     }
 
+    const isRetry = ingestAction === 'retry';
     const stripeConnectedAccountId = extractConnectedAccountId(event);
     const paymentAccount = stripeConnectedAccountId
       ? await this.organizationPaymentAccountRepository.findByStripeConnectedAccountId(
@@ -127,44 +166,72 @@ export class StripeConnectWebhookService {
       eventType: event.type,
     });
 
-    const payloadHash = this.hashPayload(rawBody);
     const safeEventData = buildSafeConnectWebhookEventData(event);
 
     let stored: StripeConnectWebhookEvent;
-    try {
-      stored = await this.webhookEventRepository.create({
-        stripeEventId: event.id,
-        eventType: event.type,
-        livemode: event.livemode,
-        stripeConnectedAccountId,
+    if (isRetry && existing) {
+      stored = await this.webhookEventRepository.update(existing.id, {
+        processingStatus:
+          processingStatus === StripeConnectWebhookProcessingStatus.IGNORED
+            ? StripeConnectWebhookProcessingStatus.IGNORED
+            : StripeConnectWebhookProcessingStatus.RECEIVED,
+        attempts: existing.attempts + 1,
+        errorMessage: null,
         organizationId,
-        objectId: extractProviderObjectId(event),
         payloadHash,
         safeEventData,
-        processingStatus,
+        stripeConnectedAccountId,
+        objectId: extractProviderObjectId(event),
+        eventType: event.type,
+        livemode: event.livemode,
       });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError
-        && error.code === 'P2002'
-      ) {
-        const raced = await this.webhookEventRepository.findByStripeEventId(event.id);
-        if (raced) {
-          return {
-            received: true,
-            duplicate: true,
-            eventId: event.id,
-            type: event.type,
-            status: 'skipped_duplicate',
-            organizationId: raced.organizationId,
-          };
+    } else {
+      try {
+        stored = await this.webhookEventRepository.create({
+          stripeEventId: event.id,
+          eventType: event.type,
+          livemode: event.livemode,
+          stripeConnectedAccountId,
+          organizationId,
+          objectId: extractProviderObjectId(event),
+          payloadHash,
+          safeEventData,
+          processingStatus,
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError
+          && error.code === 'P2002'
+        ) {
+          const raced = await this.webhookEventRepository.findByStripeEventId(event.id);
+          if (raced) {
+            const racedAction = resolveConnectWebhookIngestAction({
+              existing: raced,
+              payloadHash,
+            });
+            if (racedAction === 'skip_terminal') {
+              return {
+                received: true,
+                duplicate: true,
+                eventId: event.id,
+                type: event.type,
+                status: 'skipped_duplicate',
+                organizationId: raced.organizationId,
+              };
+            }
+            return this.ingestRawWebhook(rawBody, signature);
+          }
         }
-      }
 
-      this.logger.error(
-        `Failed to persist Connect webhook ${event.id}: ${error instanceof Error ? error.message : 'unknown error'}`,
-      );
-      throw new ServiceUnavailableException('Temporary failure storing Connect webhook event');
+        this.logger.error(
+          formatStripeWebhookLog('CONNECT_STORE_FAILED', {
+            stripeEventId: event.id,
+            type: event.type,
+            error: error instanceof Error ? error.message : 'unknown',
+          }),
+        );
+        throw new ServiceUnavailableException('Temporary failure storing Connect webhook event');
+      }
     }
 
     if (processingStatus === StripeConnectWebhookProcessingStatus.UNRESOLVED_ACCOUNT) {
@@ -177,7 +244,7 @@ export class StripeConnectWebhookService {
       );
       return {
         received: true,
-        duplicate: false,
+        duplicate: isRetry,
         eventId: event.id,
         type: event.type,
         status: 'unresolved_account',
@@ -188,7 +255,7 @@ export class StripeConnectWebhookService {
     if (processingStatus === StripeConnectWebhookProcessingStatus.IGNORED) {
       return {
         received: true,
-        duplicate: false,
+        duplicate: isRetry,
         eventId: event.id,
         type: event.type,
         status: 'ignored_event_type',
@@ -200,10 +267,10 @@ export class StripeConnectWebhookService {
 
     return {
       received: true,
-      duplicate: false,
+      duplicate: isRetry,
       eventId: event.id,
       type: event.type,
-      status: 'stored',
+      status: 'processed',
       organizationId,
     };
   }

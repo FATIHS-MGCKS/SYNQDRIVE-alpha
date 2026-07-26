@@ -3,6 +3,7 @@ import {
   resolveStripeEnvironment,
   validateStripeEnvironmentOrThrow,
 } from '@shared/stripe/stripe-environment.util';
+import { DEFAULT_STRIPE_WEBHOOK_TOLERANCE_SECONDS } from '@shared/stripe/stripe-webhook-security.util';
 
 export default registerAs('stripe', () => {
   const nodeEnv = process.env.NODE_ENV || 'development';
@@ -15,6 +16,10 @@ export default registerAs('stripe', () => {
     process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL?.trim() ||
     process.env.APP_URL?.trim() ||
     '';
+  const webhookToleranceSeconds = Number.parseInt(
+    process.env.STRIPE_WEBHOOK_TOLERANCE_SECONDS?.trim() ?? '',
+    10,
+  );
 
   const environment = resolveStripeEnvironment({
     nodeEnv,
@@ -35,6 +40,9 @@ export default registerAs('stripe', () => {
     currency,
     defaultPriceId,
     portalReturnUrl,
+    webhookToleranceSeconds: Number.isFinite(webhookToleranceSeconds)
+      ? webhookToleranceSeconds
+      : DEFAULT_STRIPE_WEBHOOK_TOLERANCE_SECONDS,
     configured: Boolean(secretKey),
     webhookConfigured: Boolean(webhookSecret),
     connectWebhookConfigured: Boolean(connectWebhookSecret),

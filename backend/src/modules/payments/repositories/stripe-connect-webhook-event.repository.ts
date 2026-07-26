@@ -24,6 +24,12 @@ export interface UpdateStripeConnectWebhookEventInput {
   processedAt?: Date | null;
   errorMessage?: string | null;
   organizationId?: string | null;
+  payloadHash?: string | null;
+  safeEventData?: Prisma.InputJsonValue;
+  stripeConnectedAccountId?: string | null;
+  objectId?: string | null;
+  eventType?: string;
+  livemode?: boolean;
 }
 
 @Injectable()

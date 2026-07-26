@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { StripeConnectWebhookEvent } from '@prisma/client';
 import { StripeConnectWebhookProcessingStatus } from '@prisma/client';
+import { formatStripeWebhookLog } from '@shared/stripe/stripe-webhook-security.util';
 import { PaymentReconciliationService } from './payment-reconciliation.service';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { PaymentMetricsService } from './observability/payment-metrics.service';
@@ -51,17 +52,14 @@ export class StripeConnectWebhookProcessorService {
         outcome: 'failed',
       });
       this.logger.error(
-        formatPaymentLogPayload(
-          'CONNECT_WEBHOOK_RECONCILE_FAILED',
-          {
-            organizationId: event.organizationId ?? undefined,
-            stripeEventId: event.stripeEventId,
-            connectedAccountId: event.stripeConnectedAccountId ?? undefined,
-            eventType: event.eventType,
-          },
-          { error: message },
-        ),
+        formatStripeWebhookLog('CONNECT_PROCESS_FAILED', {
+          stripeEventId: event.stripeEventId,
+          type: event.eventType,
+          organizationId: event.organizationId ?? undefined,
+          error: message,
+        }),
       );
+      throw error;
     }
   }
 }

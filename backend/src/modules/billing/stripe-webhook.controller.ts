@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Headers,
   HttpCode,
@@ -7,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { RawBodyRequest } from '@nestjs/common/interfaces';
 import { Request } from 'express';
+import { STRIPE_WEBHOOK_SECURITY_ERROR } from '@shared/stripe/stripe-webhook-security.util';
 import { StripeWebhookService } from './stripe-webhook.service';
 
 /** Public Stripe webhook — signature verified in service; no JWT auth */
@@ -22,7 +24,7 @@ export class StripeWebhookController {
   ) {
     const rawBody = req.rawBody;
     if (!rawBody || !Buffer.isBuffer(rawBody)) {
-      throw new Error('Stripe webhook requires raw request body');
+      throw new BadRequestException(STRIPE_WEBHOOK_SECURITY_ERROR.MISSING_RAW_BODY);
     }
     return this.webhookService.ingestRawWebhook(rawBody, signature);
   }

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-stripe-webhook-hardening-2b3-2026-07-26',
+    version: '4.9.883',
+    title: 'V4.9.883 — Master Admin 2B.3: Stripe webhook hardening',
+    summary: [
+      'Shared stripe-webhook-security.util: signature tolerance, payload hash, terminal idempotency.',
+      'Billing skips IGNORED/UNRESOLVED_MAPPING on redelivery; Connect retries FAILED events.',
+      'Connect processor rethrows on reconcile failure so Stripe can retry; structured STRIPE_WEBHOOK logs.',
+      'docs/remediation/stripe-webhook-hardening.md',
+    ],
+    reason:
+      'All Stripe webhooks must be verified, idempotent, and deterministically processed.',
+    previousBehavior:
+      'Connect skipped all duplicates including FAILED; billing re-dispatched IGNORED events; no hash conflict detection.',
+    details:
+      'backend/src/shared/stripe/stripe-webhook-security.util.ts, stripe-webhook.service.ts, stripe-connect-webhook.service.ts, stripe.config.ts',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T11:05:00.000Z',
+  },
+  {
     id: 'master-admin-stripe-env-separation-2b2-2026-07-26',
     version: '4.9.882',
     title: 'V4.9.882 — Master Admin 2B.2: Stripe test/live environment separation',
