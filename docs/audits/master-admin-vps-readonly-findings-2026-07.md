@@ -11,12 +11,29 @@
 
 ## Zusammenfassung
 
-| Severity | Anzahl |
-|----------|--------|
-| **P0** | **7** |
-| **P1** | **12** |
-| **P2** | **53** |
-| **P3** | **38** |
+### Aktive Findings (kanonisch — Phase 1B)
+
+| Severity | Anzahl aktiv | Registrierte historische IDs (nicht gezählt) |
+|----------|--------------|---------------------------------------------|
+| **P0** | **7** | — |
+| **P1** | **7** | 5 (→ P0, siehe unten) |
+| **P2** | **48** | 5 (→ P0, siehe unten) |
+| **P3** | **38** | — |
+| **Summe aktiv** | **100** | +10 historisch |
+| **Beobachtungen (OBS)** | **34** | (außerhalb P0–P3) |
+
+> Kanonisierung: `docs/audits/master-admin-audit-canonical-severity-review.md` · Validierung Phase 1B: `docs/audits/master-admin-audit-summary-validation.md`
+
+### Production-Readiness-Gates (Kap. 29.9)
+
+| Status | Anzahl | Gates |
+|--------|--------|-------|
+| **FAIL** | **5** | Security, Billing, Observability, Backups, Auditierbarkeit |
+| **PASS WITH CONDITIONS** | **6** | Tenant Isolation, DIMO, Worker/Queues, Datenbanken, Datenschutz, Master-Admin UI/API |
+| **PASS** | **1** | Betriebsfähigkeit |
+| **Gesamt** | **12** | — |
+
+**Abschlussurteil:** **Not Production Ready** (5× FAIL, 7× P0)
 
 ---
 
@@ -120,7 +137,7 @@
 
 ---
 
-## P1 Findings
+## P1 Findings (7 aktiv)
 
 ### MA-NET-P1-001 — Swagger UI öffentlich
 
@@ -145,12 +162,6 @@
 | **Remediation** | Wie P1-001 |
 | **Tests** | `curl /docs-json` von extern → blockiert |
 | **Rollback** | Env-Flag |
-
----
-
-### MA-TOPO-P1-001 — ClickHouse Ghost-Mounts (P1-Historie)
-
-> **Hinweis:** In Abschluss als **MA-TOPO-P0-001** klassifiziert. Beleg und Remediation identisch.
 
 ---
 
@@ -193,18 +204,6 @@
 
 ---
 
-### MA-BILL-P1-001 — Stripe TEST-Key (P1-Historie)
-
-> **Hinweis:** Abschluss **MA-BILL-P0-002**. Siehe P0-Abschnitt.
-
----
-
-### MA-BILL-P1-002 — Webhook-Secret fehlt (P1-Historie)
-
-> **Hinweis:** Abschluss **MA-BILL-P0-003**. Siehe P0-Abschnitt.
-
----
-
 ### MA-AUD-P1-001 — Audit-Logs löschbar (kein WORM)
 
 | Feld | Inhalt |
@@ -218,18 +217,6 @@
 
 ---
 
-### MA-BKP-P1-001 — Kein Offsite-Backup (P1-Historie)
-
-> **Hinweis:** Teil von **MA-BKP-P0-001**.
-
----
-
-### MA-BKP-P1-002 — ClickHouse ohne Backup (P1-Historie)
-
-> **Hinweis:** Teil von **MA-BKP-P0-001**.
-
----
-
 ### MA-BKP-P1-003 — Keine Backup-Alarmierung
 
 | Feld | Inhalt |
@@ -240,6 +227,23 @@
 | **Remediation** | `BackupAgeHigh` Alert + Alertmanager; Deploy-Fail-Metric |
 | **Tests** | Simulierter Backup-Fail → Alert empfangen |
 | **Rollback** | Alert-Rule deaktivierbar |
+
+---
+
+## Historische Finding-IDs (nicht in aktiver Zählung)
+
+| Historische ID | Ersetzt durch | Ursprüngliche Severity |
+|----------------|---------------|------------------------|
+| MA-TOPO-P1-001 | MA-TOPO-P0-001 | P1 |
+| MA-BILL-P1-001 | MA-BILL-P0-002 | P1 |
+| MA-BILL-P1-002 | MA-BILL-P0-003 | P1 |
+| MA-BKP-P1-001 | MA-BKP-P0-001 | P1 (Merge-Teil) |
+| MA-BKP-P1-002 | MA-BKP-P0-001 | P1 (Merge-Teil) |
+| MA-CH-P2-001 | MA-CH-P0-001 | P2 |
+| MA-DIMO-P2-001 | MA-DIMO-P0-001 | P2 |
+| MA-BILL-P2-001 | MA-BILL-P0-002 | P2 |
+| MA-BILL-P2-002 | MA-BILL-P0-001 | P2 |
+| MA-BILL-P2-003 | MA-BILL-P0-003 | P2 |
 
 ---
 

@@ -614,7 +614,7 @@ Fehlende Commits auf VPS:
 | **NestJS Scheduler** | Scheduler | Embedded (`ScheduleModule`) | Commit `4a479c1e` | — | — | — | PostgreSQL, Redis | **OK** — kein OS-Cron für SynqDrive |
 | **PostgreSQL** | PostgreSQL | systemd `postgresql@16-main` | **16.14** | **127.0.0.1:5432** | `SELECT 1` **ok** | systemd **0** | — | **SPOF** — Single Instance |
 | **Redis** | Redis | systemd `redis-server` | **7.0.15** | **127.0.0.1:6379** | **PONG** | systemd **0** | — | **SPOF** — Single Instance |
-| **ClickHouse** | ClickHouse | Docker Compose (`backend` project) | **25.8** `sha256:0fa33…` | **127.0.0.1:8123/9000** | Docker **healthy**; ping **200** | Docker **0** | — | **P1** — Bind-Mounts auf **gelöschtes** Release |
+| **ClickHouse** | ClickHouse | Docker Compose (`backend` project) | **25.8** `sha256:0fa33…` | **127.0.0.1:8123/9000** | Docker **healthy**; ping **200** | Docker **0** | — | **P0** — Bind-Mounts auf **gelöschtes** Release (MA-TOPO-P0-001) |
 | **Prometheus** | Prometheus | Docker **host network** (manuell) | **v2.54.1** `sha256:f663…` | **127.0.0.1:9090** | `/-/healthy` **200** | Docker **0** | Backend metrics | **P2** — kein Compose-Label, kein Healthcheck |
 | **Grafana** | Grafana | Docker **host network** (manuell) | **11.2.0** `sha256:408a…` | **127.0.0.1:3000** | `/api/health` **200** | Docker **0** | Prometheus | **P2** — kein Compose-Label, kein Healthcheck |
 | **Nginx** | Reverse Proxy | systemd `nginx.service` | **1.24.0** | **80/443** (public) | active **running** | systemd **0** | Backend :3001 | **SPOF** — einziger Ingress |
@@ -666,7 +666,7 @@ Fehlende Commits auf VPS:
 
 **Fehlende Resource Limits:** Alle 3 Container (kein CPU/Memory cap).
 
-#### ClickHouse — kritische Mount-Abweichung (MA-TOPO-P1-001)
+#### ClickHouse — kritische Mount-Abweichung (MA-TOPO-P0-001)
 
 Bind-Mounts zeigen noch auf **gelöschtes** Release `20260717111944_v4994` (Verzeichnis **existiert nicht mehr**):
 
@@ -1441,7 +1441,7 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 | Exceptions (7d) | **0** in `system.query_log` |
 | Schema-Migrationen | **6/6** applied (`001`–`006`, letzte **2026-07-10**) |
 
-**Bewertung:** ClickHouse-Instanz **gesund** bei sehr kleinem Footprint. **P1** Ghost-Mounts (MA-TOPO-P1-001) weiterhin relevant für Container-Recreate, nicht für laufenden Betrieb.
+**Bewertung:** ClickHouse-Instanz **gesund** bei sehr kleinem Footprint. **P0** Ghost-Mounts (MA-TOPO-P0-001) weiterhin relevant für Container-Recreate, nicht für laufenden Betrieb.
 
 ### 13.2 Tabellen, Engines, Partitionierung, Keys, TTL
 
@@ -1527,7 +1527,7 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 
 | Risiko | Befund | Severity |
 |--------|--------|----------|
-| Fehlende `org_id` auf Kern-Spiegel | `telemetry_snapshots` / `telemetry_state_changes` nur `vehicle_id` | **P2** — CH-Queries ohne PG-Join können tenant-übergreifend lesen |
+| Fehlende `org_id` auf Kern-Spiegel | `telemetry_snapshots` / `telemetry_state_changes` nur `vehicle_id` | **P0** (MA-CH-P0-001) — CH-Queries ohne PG-Join können tenant-übergreifend lesen |
 | Leere `org_id` Waypoints | 5,3 % historischer Waypoints | **P2** |
 | Präzise Standortdaten | 100 % GPS in Snapshots; Waypoints/HF mit Lat/Lng | **P2** — Retention/TTL greift (180d/365d/90d), aber keine Pseudonymisierung in CH |
 | Verwaiste Vehicle-Daten | 38k Rows für gelöschtes Fahrzeug | **P2** — TTL-begrenzt |
@@ -1782,7 +1782,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 **Org-Mapping (maskiert):** Alle **6** DIMO-registrierten Fahrzeuge → Org-Prefix `faa710c9`. Übrige **3** Vehicles in anderen Orgs **ohne** DIMO.
 
-**VIN/DIMO-ID:** Import nutzt `dimoVehicle.vin` oder Fallback `DIMO-{externalId}`; VIN+Org ist **unique** (`@@unique([vin, organizationId])`), aber **`dimo_vehicle_id` hat keinen DB-Unique-Index** — Duplikat-Registrierung desselben DIMO-Fahrzeugs in zwei Orgs ist **code-seitig nicht explizit blockiert** (**P2**).
+**VIN/DIMO-ID:** Import nutzt `dimoVehicle.vin` oder Fallback `DIMO-{externalId}`; VIN+Org ist **unique** (`@@unique([vin, organizationId])`), aber **`dimo_vehicle_id` hat keinen DB-Unique-Index** — Duplikat-Registrierung desselben DIMO-Fahrzeugs in zwei Orgs ist **code-seitig nicht explizit blockiert** (**P0**, MA-DIMO-P0-001).
 
 ### 17.3 Integrations-Pipeline (Runtime)
 
@@ -1824,7 +1824,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 | Risiko | Befund | Severity |
 |--------|--------|----------|
-| Cross-Tenant DIMO-Re-Import | Gleiches `dimoVehicleId` theoretisch in 2. Org registrierbar (kein Unique auf FK) | **P2** |
+| Cross-Tenant DIMO-Re-Import | Gleiches `dimoVehicleId` theoretisch in 2. Org registrierbar (kein Unique auf FK) | **P0** (MA-DIMO-P0-001) |
 | Master Admin Org-Wahl | By design — `OrgScopingGuard` MASTER_ADMIN bypass | **Beobachtung** |
 | Billing ohne Subscription-Items | Import erzeugt Vehicle, aber Quantity-Hook no-op ohne Base-Plan | **P3** |
 | Webhook-Inbox leer | Keine DIMO Device-Connection-Webhooks persistiert | **P3** |
@@ -2187,7 +2187,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | Master-Token = globaler Zugriff | **Hoch** (bei Kompromittierung) | Kein Org-Scoping auf `/admin/*` |
 | Authentifizierte Cross-Tenant-API nicht getestet | **Mittel** | Nur Code + unauth |
 | Activity-Logs ohne Org-Kontext | **P3** | 249 Rows |
-| ClickHouse Kern-Tabellen ohne `org_id` | **P2** (Schritt 9) | Telemetrie-Cross-Tenant theoretisch |
+| ClickHouse Kern-Tabellen ohne `org_id` | **P0** (MA-CH-P0-001, Schritt 9) | Telemetrie-Cross-Tenant theoretisch |
 | 3 Orgs ohne Admin | **P2** | Tenant-IAM-Lücke |
 
 ### 21.4 Impersonation-Risiken
@@ -2363,7 +2363,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **Letzte erfolgreiche Ausführung** | **Nicht nachweisbar** auf VPS |
 | **Daten-Volumen** | Docker-Volume `backend_clickhouse_data`: **~2,8 GiB** |
 | **Speicherort** | `/var/lib/docker/volumes/backend_clickhouse_data/_data` — **dieselbe VPS** |
-| **Backup-Mount** | Container bindet `backup_disk.xml` + `/backups` auf **Ghost-Release** `20260717111944_v4994` (gelöscht) — MA-TOPO-P1-001 |
+| **Backup-Mount** | Container bindet `backup_disk.xml` + `/backups` auf **Ghost-Release** `20260717111944_v4994` (gelöscht) — MA-TOPO-P0-001 |
 | **Offsite / Verschlüsselung** | **Nein / Nein** |
 | **Monitoring / Alarmierung** | **Nein** |
 | **Restore-Prozess** | `clickhouse-restore-local.sh` im Repo — **nicht** auf Prod verifiziert |
@@ -2420,7 +2420,7 @@ Live `shared/backend.env` bleibt **644** (MA-DEP-P2-001). Secrets werden **unver
 | `vps-deploy-connectivity-staging.sh` | Eigene `db-pre-connectivity-rc-*.sql.gz` Dumps |
 | `staging-brake-health-rollout.sh` | Staging-DB-Kopie + Dump (nicht Prod-Schedule) |
 | **Hostinger VPS** | Kein Managed-DB-Backup sichtbar; `/var/backups` nur **dpkg** (~2,1 MiB) |
-| **Stripe** | Zustand extern rekonstruierbar via API nach PG-Restore — aktuell **TEST-Key** auf Prod (MA-BILL-P1-001) erschwert Live-Reconciliation |
+| **Stripe** | Zustand extern rekonstruierbar via API nach PG-Restore — aktuell **TEST-Key** auf Prod (MA-BILL-P0-002) erschwert Live-Reconciliation |
 | **DIMO** | Segments/Telemetrie extern; nach Restore Re-Sync über Poll/Webhook möglich — **nicht** automatisiert dokumentiert |
 | **Resend/Twilio** | Kein lokaler Zustand in Backups relevant; Webhook-Inbox leer |
 
@@ -2483,7 +2483,7 @@ flowchart TB
 | **Dokumentierter Full-Stack-Restore?** | **Nein** — nur Feature-Runbooks mit Staging-`pg_restore` |
 | **PG + CH zeitlich konsistent?** | **Nein** — CH nicht gesichert |
 | **DB + Dateispeicher gemeinsam wiederherstellbar?** | **Nein** — Uploads/Docs nicht im Backup-Set |
-| **Stripe nach Restore?** | Teilweise — API-Reconciliation möglich; Webhook-Replay fehlt ohne Secret/Events (MA-BILL-P1-002) |
+| **Stripe nach Restore?** | Teilweise — API-Reconciliation möglich; Webhook-Replay fehlt ohne Secret/Events (MA-BILL-P0-003) |
 | **DIMO nach Restore?** | Externe Quelle — Re-Poll/Re-Segment möglich, nicht automatisiert |
 | **Audit-Logs im Backup?** | Ja (PG-Tabellen), aber **nicht** manipulationssicher (MA-AUD-P1-001) |
 | **Löschkonzept vs. Backups** | IAM-Retention löscht Live-Daten; **39** alte Dumps behalten gelöschte Daten **ohne** Backup-Bereinigung (MA-PRIV-P2-001) |
@@ -2567,7 +2567,7 @@ flowchart TB
 | Access Review / Rezertifizierung | ✅ (Code) | Metrics | 0 Campaigns Prod | **P3** |
 | Backup & Restore | ⚠️ | 39 Dumps | Kein Restore-Nachweis | **P2** |
 | Security Alerting | ⚠️ | 4 firing alerts | Kein Alertmanager | **P1** |
-| Telemetrie-Tenant-Scope | ❌ | ClickHouse ohne `org_id` | Cross-Tenant-Risiko | **P1** |
+| Telemetrie-Tenant-Scope | ❌ | ClickHouse ohne `org_id` | Cross-Tenant-Risiko | **P0** (MA-CH-P0-001) |
 | Manipulationssicherer Audit-Speicher | ❌ | deleteMany-Pfade | WORM fehlt | **P1** |
 
 ### 25.4 Gesamteinordnung (ohne Compliance-Urteil)
@@ -2587,8 +2587,8 @@ flowchart TB
 
 ## 26. P0/P1/P2/P3 Findings
 
-> **Abschluss-Klassifikation:** **7× P0** (Kap. 29.3), **12× P1**, **53× P2**, **38× P3** (unique IDs).  
-> P0-Detail mit Remediation/Tests: `docs/audits/master-admin-vps-readonly-findings-2026-07.md`
+> **Kanonische Abschluss-Klassifikation (aktiv):** **7× P0**, **7× P1**, **48× P2**, **38× P3** — **100** aktive Findings; **34** Beobachtungen (`MA-*-OBS-*`); **10** historische IDs (§26.1, nicht gezählt).  
+> P0-Detail mit Remediation/Tests: `docs/audits/master-admin-vps-readonly-findings-2026-07.md` · Kanonisierung: `docs/audits/master-admin-audit-canonical-severity-review.md`
 
 ### 26.0 P0 Findings (Abschluss — nur unmittelbare Production-Blocker)
 
@@ -2602,7 +2602,22 @@ flowchart TB
 | **MA-TOPO-P0-001** | ClickHouse Ghost-Mounts | Kritischer Production-Ausfall bei Recreate |
 | **MA-DIMO-P0-001** | Kein Unique auf `vehicles.dimo_vehicle_id` | Falsche Fahrzeugzuordnung |
 
-> **Schritt 5 (Netzwerk/TLS):** 2× P1 neu, 4× P2 neu/verstärkt.
+### 26.1 Historische Finding-IDs (Dokumentation only — nicht in P0–P3-Zählung)
+
+| Historische ID | Kanonische ID | Ursprüngliche Severity |
+|----------------|---------------|------------------------|
+| MA-TOPO-P1-001 | MA-TOPO-P0-001 | P1 |
+| MA-BILL-P1-001 | MA-BILL-P0-002 | P1 |
+| MA-BILL-P1-002 | MA-BILL-P0-003 | P1 |
+| MA-BKP-P1-001 | MA-BKP-P0-001 | P1 (Merge) |
+| MA-BKP-P1-002 | MA-BKP-P0-001 | P1 (Merge) |
+| MA-CH-P2-001 | MA-CH-P0-001 | P2 |
+| MA-DIMO-P2-001 | MA-DIMO-P0-001 | P2 |
+| MA-BILL-P2-001 | MA-BILL-P0-002 | P2 |
+| MA-BILL-P2-002 | MA-BILL-P0-001 | P2 |
+| MA-BILL-P2-003 | MA-BILL-P0-003 | P2 |
+
+> **Schritt-Inkremente (pre-closure):** Die folgenden Zeilen zählen Findings **zum Zeitpunkt der jeweiligen Audit-Schritte** (vor Abschluss-Hochstufung). Maßgeblich für Gesamtzahlen ist §26.0 und die kanonische Klassifikation oben.
 > **Schritt 6 (Backend/API):** 3× P2 neu, 2× P3 neu.
 > **Schritt 7 (PostgreSQL):** 2× P2 neu, 4× P3 neu.
 > **Schritt 8 (Redis/BullMQ):** 1× P1 neu, 3× P2 neu, 2× P3 neu.
@@ -2618,7 +2633,7 @@ flowchart TB
 |----|----------|---------|---------|----------------------------------------|
 | **MA-NET-P1-001** | **P1** | API Exposure | **Swagger UI** öffentlich unter `https://app.synqdrive.eu/docs` ohne Authentifizierung | Swagger in Production deaktivieren oder hinter Auth/IP-Allowlist |
 | **MA-NET-P1-002** | **P1** | API Exposure | **OpenAPI Spec** (`/docs-json`, ~339 KiB) öffentlich — vollständige API-Oberfläche enumerierbar | Wie oben; ggf. nur intern/staging |
-| **MA-TOPO-P1-001** | **P1** | ClickHouse | Container-Bind-Mounts auf **gelöschtes** Release (`//deleted`) — Recreate würde fehlschlagen | ClickHouse mit `current`-Pfaden neu erstellen |
+| **MA-TOPO-P1-001** | **Historisch** → MA-TOPO-P0-001 | ClickHouse | Container-Bind-Mounts auf **gelöschtes** Release (`//deleted`) — Recreate würde fehlschlagen | Siehe MA-TOPO-P0-001 |
 | **MA-VPS-P2-001** | **P2** | RAM/OOM | **Kein Swap** auf 16 GiB Production-Host | Swap/`systemd-oomd` evaluieren |
 | **MA-VPS-P2-002** | **P2** | Disk/Deploy | **29 Releases / 36 GiB** — kein Pruning | Release-Retention-Policy |
 | **MA-NET-P2-001** | **P2** | Network | Backend bindet auf **`*:3001`** (alle Interfaces) — Bypass-Risiko neben Nginx | Auf `127.0.0.1:3001` binden |
@@ -2677,7 +2692,7 @@ flowchart TB
 | **MA-REDIS-OBS-002** | **Beobachtung** | Queues | **Kein** `waiting`-Backlog auf allen 19 Queues | Positiv |
 | **MA-REDIS-OBS-003** | **Beobachtung** | Staging | 2 Keys mit `staging` in Job-ID unter `notification.evaluation` — **kein** Env-Mix | — |
 | **MA-CH-P1-001** | **P1** | ClickHouse Datenqualität | `telemetry_snapshots`: **570.783** Duplikat-Zeilen (~**94,7 %**) auf `(vehicle_id, recorded_at)` — nur **31.786** eindeutige Keys bei **602.569** Rows | Dedup-Strategie (ReplacingMergeTree oder Insert-Guard); historische Bereinigung evaluieren |
-| **MA-CH-P2-001** | **P2** | Tenant-Isolation | `telemetry_snapshots` / `telemetry_state_changes` **ohne** `org_id` — CH-only Queries nicht tenant-scoped | Org-Spalte + Sort-Key-Migration (wie HF) oder erzwingender PG-Pre-Filter |
+| **MA-CH-P2-001** | **Historisch** → MA-CH-P0-001 | Tenant-Isolation | `telemetry_snapshots` / `telemetry_state_changes` **ohne** `org_id` — CH-only Queries nicht tenant-scoped | Siehe MA-CH-P0-001 |
 | **MA-CH-P2-002** | **P2** | Tenant-Isolation | **642/12.102** Waypoints mit leerem `org_id` (5,3 %) | Backfill `org_id` aus PG bei Waypoint-Write |
 | **MA-CH-P2-003** | **P2** | Datenhygiene | **1** verwaiste CH-`vehicle_id` (`be15ecb1…`, 38.259 Rows) — Fahrzeug nicht mehr in PG | TTL abwarten oder gezieltes Purge nach Fahrzeug-Löschung |
 | **MA-CH-P2-004** | **P2** | Ingestion-Freshness | Keine neuen CH-Snapshots seit **2026-07-25 21:27 UTC** (~10 h) trotz **19.438** erfolgreicher DIMO-Polls/24h | DIMO-Signal-Stagnation vs. Processor-Filter prüfen |
@@ -2698,7 +2713,7 @@ flowchart TB
 | **MA-OBS-OBS-001** | **Beobachtung** | Exposition | Öffentliche `/grafana/` und `/prometheus/` URLs liefern **SPA-HTML**, nicht echte Dienste | Positiv (kein Grafana/Prom-Leak) |
 | **MA-OBS-OBS-002** | **Beobachtung** | Cardinality | **515** Series, **222** Metriken — Low-Cardinality-Policy eingehalten | Positiv |
 | **MA-OBS-OBS-003** | **Beobachtung** | Master Admin | `PlatformHealthView` pollt live API (60s), kein iframe — Grafana nur per SSH-Tunnel | Design korrekt |
-| **MA-DIMO-P2-001** | **P2** | Import-Integrität | `vehicles.dimo_vehicle_id` **ohne** Unique-Constraint — Re-Registrierung desselben DIMO-Fahrzeugs in anderer Org theoretisch möglich | Pre-Import-Check + DB-Unique auf `dimo_vehicle_id` |
+| **MA-DIMO-P2-001** | **Historisch** → MA-DIMO-P0-001 | Import-Integrität | `vehicles.dimo_vehicle_id` **ohne** Unique-Constraint — Re-Registrierung desselben DIMO-Fahrzeugs in anderer Org theoretisch möglich | Siehe MA-DIMO-P0-001 |
 | **MA-DIMO-P2-002** | **P2** | Import-Transaktion | `registerFromDimo` **nicht** transaktional — Teilfehler (Brakes/Tires) lassen Vehicle bestehen | `$transaction` oder compensating rollback |
 | **MA-DIMO-P3-001** | **P3** | Discovery | **2** DISCONNECTED `dimo_vehicles` im Non-Registered-Pool (Signal ältestes **2026-03-18**) | Aufräumen oder Re-Sync |
 | **MA-DIMO-P3-002** | **P3** | Webhooks | `device_connection_webhook_inbox` **0** Rows — kein persistierter Webhook-Traffic | Trigger-Registrierung/DIMO-Konsole prüfen |
@@ -2706,11 +2721,11 @@ flowchart TB
 | **MA-DIMO-P3-004** | **P3** | Billing | Import ruft `onVehicleProvisioned` auf, aber **0** `billing_subscription_items` — Quantity-Hook no-op | Billing-Onboarding vor Import-Fleet |
 | **MA-DIMO-OBS-001** | **Beobachtung** | Umgebung | `DIMO_ENV=production`, API-Hosts `.dimo.zone` | Positiv |
 | **MA-DIMO-OBS-002** | **Beobachtung** | Poll-Historie | **176.980** SNAPSHOT-FAILURES mit `Custom Id cannot contain :` (gesamt); **24h: 1** Failure | Scheduler-JobId-Fix wirksam kurzfristig |
-| **MA-BILL-P1-001** | **P1** | Stripe Config | Production-VPS `STRIPE_SECRET_KEY` = **TEST** (`sk_test_…`) — kein Live-Key in Env | Live-Credentials nur auf Prod; Test-Key auf Staging isolieren |
-| **MA-BILL-P1-002** | **P1** | Webhooks | `STRIPE_WEBHOOK_SECRET` **fehlend** — Platform-Billing-Webhooks können nicht verifiziert werden | Secret setzen + Stripe-Endpoint `/webhooks/stripe` registrieren |
-| **MA-BILL-P2-001** | **P2** | Mode Drift | `billing_subscriptions.stripe_mode=LIVE` bei Runtime-Key **TEST** — Reconciliation-Drift `TEST_LIVE_MODE_CONFLICT` (CRITICAL) | Mode-Feld und Env harmonisieren vor Go-Live |
-| **MA-BILL-P2-002** | **P2** | Subscription Sync | **1** `TRIALING`-Subscription **ohne** `stripe_subscription_id`, `stripe_sync_status=PENDING` | Stripe-Sub anlegen oder lokalen Status korrigieren |
-| **MA-BILL-P2-003** | **P2** | Webhooks | **Kein** Stripe-Webhook-Endpoint für Platform-Billing; nur Connect-Webhook konfiguriert | Platform-Events (`customer.subscription.*`, `invoice.*`) registrieren |
+| **MA-BILL-P1-001** | **Historisch** → MA-BILL-P0-002 | Stripe Config | Production-VPS `STRIPE_SECRET_KEY` = **TEST** (`sk_test_…`) — kein Live-Key in Env | Siehe MA-BILL-P0-002 |
+| **MA-BILL-P1-002** | **Historisch** → MA-BILL-P0-003 | Webhooks | `STRIPE_WEBHOOK_SECRET` **fehlend** — Platform-Billing-Webhooks können nicht verifiziert werden | Siehe MA-BILL-P0-003 |
+| **MA-BILL-P2-001** | **Historisch** → MA-BILL-P0-002 | Mode Drift | `billing_subscriptions.stripe_mode=LIVE` bei Runtime-Key **TEST** — Reconciliation-Drift `TEST_LIVE_MODE_CONFLICT` (CRITICAL) | Siehe MA-BILL-P0-002 |
+| **MA-BILL-P2-002** | **Historisch** → MA-BILL-P0-001 | Subscription Sync | **1** `TRIALING`-Subscription **ohne** `stripe_subscription_id`, `stripe_sync_status=PENDING` | Siehe MA-BILL-P0-001 |
+| **MA-BILL-P2-003** | **Historisch** → MA-BILL-P0-003 | Webhooks | **Kein** Stripe-Webhook-Endpoint für Platform-Billing; nur Connect-Webhook konfiguriert | Siehe MA-BILL-P0-003 |
 | **MA-BILL-P2-004** | **P2** | Webhook Health | `stripe_webhook_events` = **0** — kein jemals verarbeitetes Platform-Event | End-to-End-Webhook-Test nach Secret/Endpoint-Fix |
 | **MA-BILL-P3-001** | **P3** | Audit | `billing_audit_logs` = **0** — kein Trail für Master-Billing-Mutationen | Erwartet bis erste Admin-Aktionen; Monitoring aktivieren |
 | **MA-BILL-P3-002** | **P3** | Catalog | **0** `billing_price_books` / `billing_catalog_products` — Preiskatalog nicht befüllt | Pricebook-Seed vor Abrechnungsstart |
@@ -2737,8 +2752,8 @@ flowchart TB
 | **MA-AUD-P3-001** | **P3** | Audit | **249** Activity-Logs ohne `organization_id` | Org-Kontext im Interceptor verbessern |
 | **MA-AUD-P3-002** | **P3** | DSAR | **0** `iam_dsar_export_logs` — Pipeline ungetestet in Prod | Prozess-Test in Staging |
 | **MA-ISO-P3-001** | **P3** | Rezertifizierung | **0** Access-Review-Campaigns in Prod | IAM-Rezertifizierung operationalisieren |
-| **MA-BKP-P1-001** | **P1** | DR | **Kein Offsite-Backup** — alle 2,1 GiB PG-Dumps + Live-Daten auf **einem** VPS | Offsite-Replikation (S3/Object Storage, zweiter Standort) |
-| **MA-BKP-P1-002** | **P1** | ClickHouse | **~2,8 GiB** CH-Daten **ohne** Backup — `clickhouse:backup:docker` nie auf Prod ausgeführt | CH-Backup-Job + Offsite; Ghost-Mounts fixen |
+| **MA-BKP-P1-001** | **Historisch** → MA-BKP-P0-001 | DR | **Kein Offsite-Backup** — alle 2,1 GiB PG-Dumps + Live-Daten auf **einem** VPS | Siehe MA-BKP-P0-001 |
+| **MA-BKP-P1-002** | **Historisch** → MA-BKP-P0-001 | ClickHouse | **~2,8 GiB** CH-Daten **ohne** Backup — `clickhouse:backup:docker` nie auf Prod ausgeführt | Siehe MA-BKP-P0-001 |
 | **MA-BKP-P1-003** | **P1** | Alerting | **Keine** Backup-Monitoring/Alarmierung; kein Alertmanager | Backup-Success/Age-Alerts + Alertmanager |
 | **MA-BKP-P2-001** | **P2** | PostgreSQL | `pg_dump`-Dateien **`644`** world-readable in `shared/backups/` | `chmod 600` + root-only ACL |
 | **MA-BKP-P2-002** | **P2** | Retention | **39** Dumps ohne Pruning — unbegrenzte Akkumulation (2,1 GiB) | Retention-Policy (z. B. 30/90 Tage) im Deploy-Skript |
@@ -2801,6 +2816,20 @@ flowchart TB
 | Backups/DR | **FAIL** |
 | **Gesamturteil** | **Not Production Ready** |
 
+### Production-Readiness-Gates (12)
+
+| Status | Anzahl | Gates |
+|--------|--------|-------|
+| **FAIL** | **5** | Security (#1), Billing (#3), Observability (#7), Backups (#8), Auditierbarkeit (#11) |
+| **PASS WITH CONDITIONS** | **6** | Tenant Isolation (#2), DIMO (#4), Worker/Queues (#5), Datenbanken (#6), Datenschutz (#9), Master-Admin UI/API (#10) |
+| **PASS** | **1** | Betriebsfähigkeit (#12) |
+
+### Aktive Findings (kanonisch)
+
+| P0 | P1 | P2 | P3 | Summe aktiv | OBS |
+|----|----|----|-----|-------------|-----|
+| **7** | **7** | **48** | **38** | **100** | **34** |
+
 ---
 
 ## 29. Abschlussbericht
@@ -2813,6 +2842,28 @@ flowchart TB
 #### Tatsächlicher Production-Zustand
 
 SynqDrive läuft stabil auf einem **Single-VPS** (`srv1374778`, Ubuntu 24.04, 4 vCPU, 16 GiB RAM). Release `20260725233142_v4994` (Commit `4a479c1e`) ist konsistent deployed: NestJS-Monolith via PM2, PostgreSQL/Redis host-native, ClickHouse/Prometheus/Grafana in Docker. Öffentliche Health-Checks sind **grün**. Das System bedient aktuell **4** Organisationen, **9** Fahrzeuge, **2** Plattform-User (1× Master Admin).
+
+#### Aktive Findings (kanonisch)
+
+| Severity | Anzahl aktiv | Hinweis |
+|----------|--------------|---------|
+| **P0** | **7** | Production-Blocker — Kap. 29.3 |
+| **P1** | **7** | Hoch priorisiert — Kap. 29.4 |
+| **P2** | **48** | Mittel — Kap. 29.5 |
+| **P3** | **38** | Niedrig — Kap. 29.5 |
+| **Summe** | **100** | +10 historische IDs (§26.1), +34 OBS |
+| **Abschlussurteil** | **Not Production Ready** | 5× FAIL-Gates, 7× P0 |
+
+#### Production-Readiness-Gates
+
+| Status | Anzahl |
+|--------|--------|
+| **FAIL** | **5** |
+| **PASS WITH CONDITIONS** | **6** |
+| **PASS** | **1** |
+| **Gesamt** | **12** |
+
+Details: Kap. 29.9.
 
 #### Größte Risiken
 
@@ -2903,31 +2954,26 @@ SynqDrive läuft stabil auf einem **Single-VPS** (`srv1374778`, Ubuntu 24.04, 4 
 
 **Anzahl P0: 7**
 
-### 29.4 P1 Findings (Zusammenfassung)
+### 29.4 P1 Findings (Zusammenfassung — 7 aktiv)
 
 | ID | Titel |
 |----|-------|
 | MA-NET-P1-001 | Swagger UI öffentlich |
 | MA-NET-P1-002 | OpenAPI Spec öffentlich |
-| MA-TOPO-P1-001 | *(hochgestuft zu P0 als MA-TOPO-P0-001)* — in Kap. 26 als P1 belassen für Historie |
 | MA-REDIS-P1-001 | 28 failed `battery.v2` Jobs |
 | MA-CH-P1-001 | 94,7 % CH-Snapshot-Duplikate |
 | MA-OBS-P1-001 | Kein Alertmanager |
-| MA-BILL-P1-001 | *(P0 MA-BILL-P0-002)* |
-| MA-BILL-P1-002 | *(P0 MA-BILL-P0-003)* |
 | MA-AUD-P1-001 | Audit-Logs löschbar (kein WORM) |
-| MA-BKP-P1-001 | Kein Offsite-Backup |
-| MA-BKP-P1-002 | CH ohne Backup |
 | MA-BKP-P1-003 | Keine Backup-Alarmierung |
 
-**Anzahl P1 (Kap. 26, unverändert): 12** — davon 3 inhaltlich P0-duplikat; P0-Matrix in Findings-Datei ist maßgeblich.
+**Anzahl P1 (aktiv): 7** — 5 historische P1-IDs in §26.1 (→ P0), nicht gezählt.
 
 ### 29.5 P2 / P3 Findings
 
-| Severity | Anzahl (unique IDs in Kap. 26) |
-|----------|-------------------------------|
-| **P2** | **53** |
-| **P3** | **38** |
+| Severity | Anzahl aktiv | Historisch (§26.1) |
+|----------|--------------|-------------------|
+| **P2** | **48** | 5 (→ P0) |
+| **P3** | **38** | — |
 
 Vollständige Liste: Kap. 26. Priorisierte P2-Cluster: Netzwerk-Hardening (5), Master-Admin/Audit (12), CH/Telemetrie (6), Billing (4), Backup/DR (8), DIMO (2).
 
@@ -2996,11 +3042,13 @@ Legende: 🟢 ausreichend · 🟡 lückenhaft · 🔴 kritische Lücke · ⚪ ni
 | 11 | **Auditierbarkeit** | **FAIL** | Logs löschbar; schwache Korrelation; Billing-Audit leer |
 | 12 | **Betriebsfähigkeit** | **PASS** | Health 200; 9d Uptime; Disk/RAM ausreichend |
 
+**Gate-Zusammenfassung:** **5× FAIL** · **6× PASS WITH CONDITIONS** · **1× PASS** (von 12 Gates)
+
 ### 29.10 Abschlussurteil
 
 ## **Not Production Ready**
 
-Begründung: **4× FAIL-Gates** (Security, Billing, Observability, Backups) und **7× P0-Findings**. Das System ist **betriebsfähig** für den aktuellen kleinen Bestand, aber **nicht** für belastbare Production-Freigabe mit Billing, DR und Compliance-Nachweis. Teile des Master-Admin-Pfads sind **NOT VERIFIED** (authentifizierte Smokes, Frontend-Bundle).
+Begründung: **5× FAIL-Gates** (Security, Billing, Observability, Backups, Auditierbarkeit), **6× PASS WITH CONDITIONS**, **1× PASS** (Betriebsfähigkeit) und **7× P0-Findings** (100 aktive Findings gesamt: 7 P0 + 7 P1 + 48 P2 + 38 P3). Das System ist **betriebsfähig** für den aktuellen kleinen Bestand, aber **nicht** für belastbare Production-Freigabe mit Billing, DR und Compliance-Nachweis. Teile des Master-Admin-Pfads sind **NOT VERIFIED** (authentifizierte Smokes, Frontend-Bundle).
 
 ### 29.11 Remediation-Reihenfolge
 
