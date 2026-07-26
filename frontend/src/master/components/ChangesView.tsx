@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-observability-architecture-2f1-2026-07-26',
+    version: '4.9.898',
+    title: 'V4.9.898 — Master Admin 2F.1: Observability architecture audit',
+    summary: [
+      'Full stack audit: Prometheus (~302 metrics), 100 alert rules, 7 Grafana dashboards.',
+      'Gaps: Alertmanager missing, SaaS billing/fleet chat/AI/workflows under-instrumented.',
+      'VPS Grafana deploy omits 2 dashboards; no frontend RUM; no infra exporters.',
+      'Remediation phases 2F.2–2F.9 proposed. Analysis only — no implementation.',
+    ],
+    reason:
+      'Phase 2F.1 documents observability architecture before remediation implementation.',
+    previousBehavior:
+      'Observability existed per-module but lacked consolidated stack audit and gap matrix.',
+    details:
+      'docs/remediation/observability-architecture.md · architecture/MASTER_ADMIN_OBSERVABILITY_ARCHITECTURE_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T01:00:00.000Z',
+  },
+  {
     id: 'master-admin-tenant-production-readiness-2e7-2026-07-26',
     version: '4.9.897',
     title: 'V4.9.897 — Master Admin 2E.7: Tenant production readiness (final)',
