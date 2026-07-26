@@ -67,6 +67,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-clickhouse-backfill-org-id.sh` | Backfill `org_id` on legacy tables after migration 007 | requires `DATABASE_URL`; run post-deploy |
 | `vps-clickhouse-health-check.sh` | Post-step container + CH + API readiness check | read-only |
 | `vps-clickhouse-compose-env.sh` | Sets `COMPOSE_FILE` for VPS override | sourced by other ops scripts |
+| `vps-clickhouse-acceptance-audit.sh` | Full 2D.8 acceptance bundle (all audits + GO/NO-GO) | read-only — exit 0 = conditional GO; run after 2D.7 remediation |
 
 ### Partitioning (P2)
 

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-production-readiness-2d8-2026-07-26',
+    version: '4.9.889',
+    title: 'V4.9.889 — Master Admin 2D.8: ClickHouse production readiness acceptance',
+    summary: [
+      'Consolidated before/after verdict across Runtime, Storage, Integrity, Tenant, Performance, Pipeline, Dashboard, Worker, Health.',
+      'Verdict: CONDITIONAL GO — platform OK (CH optional); formal VPS acceptance pending.',
+      'P0: 3/3 repo storage fixes; live verification open. P1: 5/9 addressed.',
+      'vps-clickhouse-acceptance-audit.sh bundles all audits + GO/NO-GO summary.',
+    ],
+    reason:
+      'Phase 2D closes with explicit production readiness decision and operator sign-off checklist.',
+    previousBehavior:
+      'Phases 2D.1–2D.7 documented analysis and remediation without consolidated acceptance verdict.',
+    details:
+      'docs/remediation/clickhouse-production-readiness.md · vps-clickhouse-acceptance-audit.sh',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T16:00:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-remediation-2d7-2026-07-26',
     version: '4.9.888',
     title: 'V4.9.888 — Master Admin 2D.7: ClickHouse controlled remediation',
