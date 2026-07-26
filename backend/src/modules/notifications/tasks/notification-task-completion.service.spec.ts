@@ -85,6 +85,7 @@ describe('NotificationTaskCompletionService', () => {
       ORG,
       expect.any(Date),
       expect.objectContaining({ manual: true }),
+      expect.objectContaining({ auditActorType: 'AUTOMATION', runId: 'task:task-1' }),
     );
   });
 
@@ -120,6 +121,7 @@ describe('NotificationTaskCompletionService', () => {
       ORG,
       expect.any(Date),
       expect.objectContaining({ manual: false }),
+      expect.objectContaining({ auditActorType: 'AUTOMATION', runId: 'task:task-1' }),
     );
   });
 });

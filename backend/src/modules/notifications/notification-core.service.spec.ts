@@ -94,7 +94,8 @@ describe('NotificationCoreService', () => {
 
   const engineConfig = {
     isV2Enabled: () => v2Enabled,
-  } as NotificationEngineConfig;
+    isV2EnabledForOrg: () => v2Enabled,
+  } as unknown as NotificationEngineConfig;
 
   const activeKey = (orgId: string, fp: string, gen: number) => `${orgId}::${fp}::${gen}`;
 

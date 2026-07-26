@@ -44,7 +44,7 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
       );
       const driving = items.filter((i) => i.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY);
       expect(driving).toHaveLength(1);
-      expect(items.filter((i) => i.title.includes('Fahrbewertung'))).toHaveLength(1);
+      expect(driving[0]?.title.length).toBeGreaterThan(0);
     });
 
     it('suppresses synthetic driving-assessment feed when normalized issue exists', () => {

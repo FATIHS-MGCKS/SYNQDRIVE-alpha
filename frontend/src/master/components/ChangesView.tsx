@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-org-allowlist-v49881-2026-07-26',
+    version: '4.9.881',
+    title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
+    summary: [
+      'NOTIFICATIONS_V2_ORG_ALLOWLIST + VITE_NOTIFICATIONS_V2_ORG_ALLOWLIST für Pilot-Rollout.',
+      'occurrence_count-Reconcile-Script; Vehicle-Health-Clear-Grace dynamisch.',
+      'Test-Fixes: Task-Completion-Audit-Args, WOB-Titel-i18n, Health-Clear.',
+      'Notification-Tests: 298 BE pass / 83 FE pass.',
+    ],
+    reason:
+      'Go-Live-Gates G6/G8 aus Post-Remediation-Audit umsetzen — org-scoped V2 ohne globale Deaktivierung.',
+    previousBehavior:
+      'NOTIFICATIONS_V2 nur global; occurrence_count-Drift manuell; 7 Test-Failures.',
+    details:
+      'notification-rollout.util.ts, notifications-v2-flag.ts, notification-occurrence-count-reconcile.ts.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T05:00:00.000Z',
+  },
+  {
     id: 'notification-post-remediation-readiness-v49880-2026-07-26',
     version: '4.9.880',
     title: 'V4.9.880 — Notification Engine: Post-Remediation Readiness (Final)',

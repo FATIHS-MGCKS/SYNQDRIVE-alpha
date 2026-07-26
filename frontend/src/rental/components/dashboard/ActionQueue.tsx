@@ -722,7 +722,7 @@ export function ActionQueue({
   const hasItems = atomicCount > 0;
   const showEmpty = !actionQueueLoading && !hasItems;
 
-  if (shouldUseV2NotificationSource()) {
+  if (shouldUseV2NotificationSource(orgId)) {
     return (
       <NotificationPanel
         vm={vm}

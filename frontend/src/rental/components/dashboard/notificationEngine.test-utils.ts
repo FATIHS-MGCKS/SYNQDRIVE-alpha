@@ -90,8 +90,13 @@ export function analyzeActionQueue(
     if (path) paths.add(path);
   }
 
-  const drivingTitles = items.filter((i) => i.title.includes('Fahrbewertung'));
-  const drivingAssessmentDuplicateCount = drivingTitles.length;
+  const drivingAssessmentItems = items.filter(
+    (i) =>
+      i.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY ||
+      i.semanticKey?.includes('driving_assessment_device_quality') ||
+      classifyDrivingAssessmentPath(i) === 'normalized-issue',
+  );
+  const drivingAssessmentDuplicateCount = drivingAssessmentItems.length;
 
   return {
     items,

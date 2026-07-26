@@ -73,9 +73,9 @@ export class NotificationApiService {
     private readonly stationScopeService: NotificationStationScopeService,
   ) {}
 
-  assertApiEnabled(): void {
-    if (!this.engineConfig.isV2Enabled()) {
-      throw new ServiceUnavailableException('Notification API V2 is not enabled');
+  assertApiEnabled(orgId: string): void {
+    if (!this.engineConfig.isV2EnabledForOrg(orgId)) {
+      throw new ServiceUnavailableException('Notification API V2 is not enabled for this organization');
     }
   }
 
@@ -85,7 +85,7 @@ export class NotificationApiService {
     query: ListNotificationsQueryDto,
   ) {
     return this.withApiObservability('list', 'GET', async () => {
-      this.assertApiEnabled();
+      this.assertApiEnabled(orgId);
       const ctx = await this.resolveAccessContext(orgId, user);
       const pagination = parseNotificationPagination(query);
       const referenceNow = new Date();
@@ -145,7 +145,7 @@ export class NotificationApiService {
   }
 
   async getById(orgId: string, user: NotificationRequestUser, id: string): Promise<NotificationResponseDto> {
-    this.assertApiEnabled();
+    this.assertApiEnabled(orgId);
     const ctx = await this.resolveAccessContext(orgId, user);
     const row = await this.repository.findById(id, orgId);
     if (!row) throw new NotFoundException('Notification not found');
@@ -157,7 +157,7 @@ export class NotificationApiService {
   }
 
   async getCounts(orgId: string, user: NotificationRequestUser): Promise<NotificationCountsResponseDto> {
-    this.assertApiEnabled();
+    this.assertApiEnabled(orgId);
     const ctx = await this.resolveAccessContext(orgId, user);
     const referenceNow = new Date();
 
@@ -374,7 +374,7 @@ export class NotificationApiService {
     user: NotificationRequestUser,
     query: { notificationId?: string; eventType?: string; limit?: number; cursor?: string },
   ) {
-    this.assertApiEnabled();
+    this.assertApiEnabled(orgId);
     const ctx = await this.resolveAccessContext(orgId, user);
     if (
       !isOperationAllowedForRole('admin_audit', ctx.membershipRole)
@@ -405,7 +405,7 @@ export class NotificationApiService {
     id: string,
     fn: (current: NotificationResponseDto) => Promise<NotificationResponseDto>,
   ) {
-    this.assertApiEnabled();
+    this.assertApiEnabled(orgId);
     const current = await this.getById(orgId, user, id);
     return fn(current);
   }

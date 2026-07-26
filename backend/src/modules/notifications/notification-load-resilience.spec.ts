@@ -464,7 +464,7 @@ describe('Notification Engine — load, concurrency & resilience (isolated harne
       const api = new NotificationApiService(
         {} as NotificationCoreService,
         repository,
-        { isV2Enabled: () => true } as NotificationEngineConfig,
+        { isV2Enabled: () => true, isV2EnabledForOrg: () => true } as unknown as NotificationEngineConfig,
         prisma as any,
         { recordFireAndForget: jest.fn(), listEvents: jest.fn() } as any,
         { recordApiRequest: jest.fn(), recordFireAndForget: jest.fn() } as any,

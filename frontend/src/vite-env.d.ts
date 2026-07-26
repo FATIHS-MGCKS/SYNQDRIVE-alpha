@@ -13,6 +13,7 @@ interface ImportMetaEnv {
    * `off` | `false` → V1 only; `shadow` → V1 UI + background V2 compare; `true` | `on` → V2 sole source.
    */
   readonly VITE_NOTIFICATIONS_V2?: string;
+  readonly VITE_NOTIFICATIONS_V2_ORG_ALLOWLIST?: string;
 }
 
 interface ImportMeta {

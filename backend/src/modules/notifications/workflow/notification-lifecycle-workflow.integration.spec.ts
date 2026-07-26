@@ -177,7 +177,7 @@ function createCoreWithWorkflowCapture() {
   const repository = createInMemoryRepository();
   const service = new NotificationCoreService(
     repository,
-    { isV2Enabled: () => true } as NotificationEngineConfig,
+    { isV2Enabled: () => true, isV2EnabledForOrg: () => true } as unknown as NotificationEngineConfig,
     deliveryEnqueue,
     new NotificationDeliveryPolicyService(),
     deliveryScheduler,

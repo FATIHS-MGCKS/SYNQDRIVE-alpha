@@ -41,10 +41,12 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
   const notifications = new Map<string, any>();
   const activeByFingerprint = new Map<string, string>();
   let idSeq = 0;
+  const previousClearGrace = process.env.VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS;
 
   const engineConfig = {
     isV2Enabled: () => v2Enabled,
-  } as NotificationEngineConfig;
+    isV2EnabledForOrg: () => v2Enabled,
+  } as unknown as NotificationEngineConfig;
 
   function fingerprintFrom(candidate: {
     organizationId: string;
@@ -138,6 +140,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
   let ingest: NotificationProducerIngestService;
 
   beforeEach(() => {
+    process.env.VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS = '0';
     v2Enabled = true;
     notifications.clear();
     activeByFingerprint.clear();
@@ -176,6 +179,15 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       core,
     );
   });
+
+  afterEach(() => {
+    if (previousClearGrace === undefined) {
+      delete process.env.VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS;
+    } else {
+      process.env.VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS = previousClearGrace;
+    }
+  });
+
   describe('WOB L 7503 regression', () => {
     it('degraded driving assessment + real technical observation — two distinct open notifications', async () => {
       await ingest.syncDrivingAssessmentQuality({
@@ -368,7 +380,21 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
         }),
       );
 
-      await ingest.syncVehicleHealthWarnings(ORG, 'run-health-2', []);
+      await ingest.syncVehicleHealthWarnings(ORG, 'run-health-2', [
+        {
+          eventType: 'ACTIVE_DTC',
+          vehicleId: KS_VEHICLE_ID,
+          label: KS_PLATE,
+          code: 'P0675',
+          cleared: true,
+        },
+        {
+          eventType: 'TIRE_CRITICAL',
+          vehicleId: KS_VEHICLE_ID,
+          label: KS_PLATE,
+          cleared: true,
+        },
+      ]);
 
       const dtcRow = notifications.get(dtc!.id);
       expect(dtcRow?.status).toBe(NotificationStatus.RESOLVED);

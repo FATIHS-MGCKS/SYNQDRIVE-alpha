@@ -78,15 +78,15 @@ export class NotificationCoreService {
     @Optional() private readonly ingestObservability?: NotificationIngestObservabilityService,
   ) {}
 
-  isEnabled(): boolean {
-    return this.engineConfig.isV2Enabled();
+  isEnabled(organizationId?: string | null): boolean {
+    return this.engineConfig.isV2EnabledForOrg(organizationId);
   }
 
   async ingestCandidate(
     candidate: NotificationCandidate,
     options: IngestCandidateOptions = {},
   ): Promise<IngestCandidateResult> {
-    if (!this.isEnabled()) {
+    if (!this.isEnabled(candidate.organizationId)) {
       this.logOperation('skipped_flag_off', candidate, { runId: options.runId });
       recordNotificationIngestOperation('skipped_flag_off');
       return { enabled: false, operation: 'skipped_flag_off' };

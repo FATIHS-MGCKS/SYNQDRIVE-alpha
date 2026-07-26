@@ -27,7 +27,7 @@ export class NotificationTaskCompletionService {
     resolutionNote?: string | null;
     completionMode?: string | null;
   }): Promise<{ resolved: boolean; reason?: string }> {
-    if (!this.core?.isEnabled()) {
+    if (!this.core?.isEnabled(task.organizationId)) {
       return { resolved: false, reason: 'NOTIFICATIONS_V2_DISABLED' };
     }
 

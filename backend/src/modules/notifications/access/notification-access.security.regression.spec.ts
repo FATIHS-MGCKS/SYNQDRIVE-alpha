@@ -155,7 +155,10 @@ describe('notification access security regressions', () => {
   });
 
   describe('NotificationApiService negative paths', () => {
-    const engineConfig = { isV2Enabled: () => true } as NotificationEngineConfig;
+    const engineConfig = {
+      isV2Enabled: () => true,
+      isV2EnabledForOrg: () => true,
+    } as unknown as NotificationEngineConfig;
     const core = {} as NotificationCoreService;
     const row = {
       id: 'notif-1',

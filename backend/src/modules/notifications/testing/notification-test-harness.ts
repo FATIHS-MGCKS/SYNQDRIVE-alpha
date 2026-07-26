@@ -274,7 +274,8 @@ export function createNotificationTestHarness(): NotificationTestHarness {
 
   const engineConfig = {
     isV2Enabled: () => v2Enabled,
-  } as NotificationEngineConfig;
+    isV2EnabledForOrg: () => v2Enabled,
+  } as unknown as NotificationEngineConfig;
 
   const createDeliveryMocks = () => {
     const deliveryEnqueue = {

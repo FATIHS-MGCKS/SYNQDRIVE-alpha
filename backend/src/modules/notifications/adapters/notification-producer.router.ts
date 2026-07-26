@@ -70,7 +70,7 @@ export class NotificationProducerRouter {
       return { skipped: true, reason: 'NOT_SHADOW_ENABLED' as const };
     }
 
-    if (!this.engineConfig.isV2Enabled()) {
+    if (!this.engineConfig.isV2EnabledForOrg(context.organizationId)) {
       this.ingestObservability.recordCandidateRejected({
         organizationId: context.organizationId,
         reason: 'FLAG_OFF',

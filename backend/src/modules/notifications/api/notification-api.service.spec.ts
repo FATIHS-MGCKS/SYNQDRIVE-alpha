@@ -76,7 +76,10 @@ describe('NotificationApiService', () => {
   let membership: { role: MembershipRole; stationScope: string | null };
   let preferences: any[];
 
-  const engineConfig = { isV2Enabled: () => v2Enabled } as NotificationEngineConfig;
+  const engineConfig = {
+    isV2Enabled: () => v2Enabled,
+    isV2EnabledForOrg: (_orgId?: string | null) => v2Enabled,
+  } as unknown as NotificationEngineConfig;
 
   const core = {
     resolveNotification: jest.fn(async () => ({})),

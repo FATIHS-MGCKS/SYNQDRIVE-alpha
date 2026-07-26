@@ -13,6 +13,7 @@ import {
   getNotificationsV2Mode,
   isNotificationsV2Active,
   isNotificationsV2Shadow,
+  resetNotificationsV2OrgAllowlistCache,
   shouldFetchV2NotificationsInBackground,
   shouldUseV2NotificationSource,
 } from './notifications-v2-flag';
@@ -65,6 +66,8 @@ describe('notifications-v2 flag', () => {
 
   afterEach(() => {
     import.meta.env.VITE_NOTIFICATIONS_V2 = env.VITE_NOTIFICATIONS_V2;
+    import.meta.env.VITE_NOTIFICATIONS_V2_ORG_ALLOWLIST = env.VITE_NOTIFICATIONS_V2_ORG_ALLOWLIST;
+    resetNotificationsV2OrgAllowlistCache();
   });
 
   it('defaults to off', () => {
@@ -86,6 +89,16 @@ describe('notifications-v2 flag', () => {
     import.meta.env.VITE_NOTIFICATIONS_V2 = 'on';
     expect(isNotificationsV2Active()).toBe(true);
     expect(shouldUseV2NotificationSource()).toBe(true);
+  });
+
+  it('scopes on mode to org allowlist when configured', () => {
+    import.meta.env.VITE_NOTIFICATIONS_V2 = 'on';
+    import.meta.env.VITE_NOTIFICATIONS_V2_ORG_ALLOWLIST = 'pilot-org';
+    resetNotificationsV2OrgAllowlistCache();
+    expect(shouldUseV2NotificationSource('pilot-org')).toBe(true);
+    expect(shouldUseV2NotificationSource('other-org')).toBe(false);
+    expect(shouldFetchV2NotificationsInBackground('pilot-org')).toBe(true);
+    expect(shouldFetchV2NotificationsInBackground('other-org')).toBe(false);
   });
 });
 

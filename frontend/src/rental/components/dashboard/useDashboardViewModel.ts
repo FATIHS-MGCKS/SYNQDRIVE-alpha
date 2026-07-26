@@ -295,7 +295,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const notificationsV2 = useNotifications({
     orgId,
     locale,
-    enabled: shouldFetchV2NotificationsInBackground(),
+    enabled: shouldFetchV2NotificationsInBackground(orgId),
   });
 
   const refreshAll = useCallback(async () => {
@@ -306,7 +306,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         refreshInsights(),
         loadTodayBookings(),
         loadInvoices(),
-        shouldFetchV2NotificationsInBackground() ? notificationsV2.refresh() : Promise.resolve(),
+        shouldFetchV2NotificationsInBackground(orgId) ? notificationsV2.refresh() : Promise.resolve(),
       ]);
       const syncedAt = new Date();
       setDashboardNow(syncedAt);
@@ -314,7 +314,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, notificationsV2.refresh]);
+  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, notificationsV2.refresh, orgId]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -957,11 +957,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   );
 
   useEffect(() => {
-    if (!isNotificationsV2Shadow()) return;
+    if (!isNotificationsV2Shadow(orgId)) return;
     if (notificationsV2.loading) return;
     const result = compareNotificationQueuesShadow(v1ActionQueue, notificationsV2.items);
     logShadowCompareDiagnostics(result);
-  }, [v1ActionQueue, notificationsV2.items, notificationsV2.loading]);
+  }, [v1ActionQueue, notificationsV2.items, notificationsV2.loading, orgId]);
 
   const derivedQueueItems = useMemo(
     () => buildDerivedOperationalQueueItems(derivedOperationalInsights),
@@ -979,7 +979,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   );
 
   const actionQueue = useMemo(() => {
-    if (!shouldUseV2NotificationSource()) return v1ActionQueue;
+    if (!shouldUseV2NotificationSource(orgId)) return v1ActionQueue;
     if (notificationsV2.listMode === 'resolved') {
       return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
     }
@@ -996,20 +996,20 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   ]);
 
   const actionQueueTabCounts = useMemo(
-    () => (shouldUseV2NotificationSource() ? notificationsV2.tabCounts : null),
+    () => (shouldUseV2NotificationSource(orgId) ? notificationsV2.tabCounts : null),
     [notificationsV2.tabCounts],
   );
 
-  const resolvedActionQueueLoading = shouldUseV2NotificationSource()
+  const resolvedActionQueueLoading = shouldUseV2NotificationSource(orgId)
     ? notificationsV2.loading || vehicleHealthLoading
     : insightsLoading || vehicleHealthLoading || !todayBookingsLoaded;
 
-  const resolvedActionQueueError = shouldUseV2NotificationSource()
+  const resolvedActionQueueError = shouldUseV2NotificationSource(orgId)
     ? !!notificationsV2.error
     : insightsError;
 
   const notificationPrimaryTabCounts = useMemo(() => {
-    if (!shouldUseV2NotificationSource()) return null;
+    if (!shouldUseV2NotificationSource(orgId)) return null;
 
     if (notificationsV2.listMode === 'resolved') {
       return {
@@ -1215,11 +1215,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     actionQueueError: resolvedActionQueueError,
     actionQueueTabCounts,
     notificationPrimaryTabCounts,
-    setNotificationListMode: shouldUseV2NotificationSource() ? setNotificationListMode : undefined,
-    notificationListMode: shouldUseV2NotificationSource() ? notificationsV2.listMode : undefined,
+    setNotificationListMode: shouldUseV2NotificationSource(orgId) ? setNotificationListMode : undefined,
+    notificationListMode: shouldUseV2NotificationSource(orgId) ? notificationsV2.listMode : undefined,
     notificationsV2Mode,
     notificationsV2ErrorCode,
-    notificationMutations: shouldUseV2NotificationSource()
+    notificationMutations: shouldUseV2NotificationSource(orgId)
       ? {
           markRead: notificationsV2.markRead,
           markUnread: notificationsV2.markUnread,
