@@ -88,6 +88,7 @@ export class HealthService {
       lastPingAt: ch.lastPingAt,
       lastSchemaInitAt: ch.lastSchemaInitAt,
       lastSchemaError: ch.lastSchemaError,
+      schemaDrift: ch.schemaDrift,
       appliedMigrationCount: ch.appliedMigrationCount,
       pendingMigrationCount: ch.pendingMigrationCount,
     };

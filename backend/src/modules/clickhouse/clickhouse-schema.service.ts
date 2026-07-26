@@ -164,7 +164,11 @@ export class ClickHouseSchemaService implements OnApplicationBootstrap {
       const totalApplied = applied.length + appliedNow;
       this.ch.reportSchemaStatus({
         lastSchemaInitAt: new Date(),
-        lastSchemaError: driftError,
+        // Drift is advisory: those migrations are applied and the schema is
+        // serving. Reporting it as a schema error would keep readiness red for
+        // a historical mismatch and hide an actual migration failure.
+        lastSchemaError: null,
+        schemaDrift: driftError,
         appliedMigrationCount: totalApplied,
         pendingMigrationCount: 0,
       });

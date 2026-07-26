@@ -38,6 +38,13 @@ export interface ClickHouseStatus {
   lastPingAt: string | null;
   lastSchemaInitAt: string | null;
   lastSchemaError: string | null;
+  /**
+   * Recorded checksum differs from the migration file for an already-applied
+   * version. Advisory: the schema is intact and serving, but the file no longer
+   * describes what was applied. Kept out of `status` so it cannot mask a real
+   * migration failure or keep readiness red indefinitely.
+   */
+  schemaDrift: string | null;
   appliedMigrationCount: number | null;
   pendingMigrationCount: number | null;
   /** Backwards-compatible last connection error (ping/init), if any. */
@@ -50,6 +57,7 @@ export interface ClickHouseStatus {
 export interface ClickHouseSchemaStatusUpdate {
   lastSchemaInitAt?: Date | null;
   lastSchemaError?: string | null;
+  schemaDrift?: string | null;
   appliedMigrationCount?: number | null;
   pendingMigrationCount?: number | null;
 }
@@ -68,6 +76,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   // consistent status without re-deriving it.
   private lastSchemaInitAt: Date | null = null;
   private lastSchemaError: string | null = null;
+  private schemaDrift: string | null = null;
   private appliedMigrationCount: number | null = null;
   private pendingMigrationCount: number | null = null;
   private healthPingTimer: ReturnType<typeof setInterval> | null = null;
@@ -308,6 +317,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     if (update.lastSchemaError !== undefined) {
       this.lastSchemaError = update.lastSchemaError;
     }
+    if (update.schemaDrift !== undefined) {
+      this.schemaDrift = update.schemaDrift;
+    }
     if (update.appliedMigrationCount !== undefined) {
       this.appliedMigrationCount = update.appliedMigrationCount;
     }
@@ -343,6 +355,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       lastPingAt: this.lastPingAt?.toISOString() ?? null,
       lastSchemaInitAt: this.lastSchemaInitAt?.toISOString() ?? null,
       lastSchemaError: this.lastSchemaError,
+      schemaDrift: this.schemaDrift,
       appliedMigrationCount: this.appliedMigrationCount,
       pendingMigrationCount: this.pendingMigrationCount,
       lastError: this.lastError,
