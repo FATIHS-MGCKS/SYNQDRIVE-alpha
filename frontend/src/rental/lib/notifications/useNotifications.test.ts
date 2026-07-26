@@ -48,4 +48,21 @@ describe('notificationClient', () => {
       '2026-07-11T10:00:00.000Z',
     );
   });
+
+  it('passes scope params to counts endpoint', async () => {
+    vi.mocked(api.notifications.counts).mockResolvedValue({
+      totalActive: 0,
+      unread: 0,
+      critical: 0,
+      warning: 0,
+      info: 0,
+      resolvedRecent: 0,
+      byDomain: {},
+    });
+    await notificationClient.counts('org-1', { activeOnly: true, domain: 'BILLING' });
+    expect(api.notifications.counts).toHaveBeenCalledWith('org-1', {
+      activeOnly: true,
+      domain: 'BILLING',
+    });
+  });
 });

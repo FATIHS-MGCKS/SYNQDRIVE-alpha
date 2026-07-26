@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-frontend-canonical-source-2026-07-26',
+    version: '4.9.886',
+    title: 'Notification Engine Remediation — canonical frontend notification data source (Prompt 19)',
+    summary: [
+      'Central `useNotificationInbox` data layer — sole V2 source for list, counts, and mutations.',
+      'Removed V2 supplemental merges: derived insights, vehicle health alerts, overdue handovers.',
+      'Counts and tab badges from `GET /notifications/counts` only (same scope params as list).',
+      'Cursor pagination + offset fallback; safe optimistic UI for userReceipt-only mutations.',
+      'Frontend tests: list/count parity, no duplicate ids, read state, resolve, error retry.',
+    ],
+    reason:
+      'Frontend must not aggregate, dedupe, or compute notification severity/status outside the canonical V2 API.',
+    previousBehavior:
+      'V2-on path merged dashboard insights, rental health, and overdue handover rows client-side; augmented badge counts.',
+    details:
+      'useNotificationInbox.ts, notification-inbox-query.ts, notification-api-query.ts, useDashboardViewModel.ts, api.ts notifications.counts filters.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T16:00:00.000Z',
+  },
+  {
     id: 'notification-api-hardening-2026-07-26',
     version: '4.9.885',
     title: 'Notification Engine Remediation — harden canonical notification API (Prompt 18)',

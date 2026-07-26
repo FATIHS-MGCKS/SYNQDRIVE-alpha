@@ -33,7 +33,6 @@ import {
 } from './dashboardTypes';
 import {
   buildActionQueueEmptySummary,
-  buildDerivedOperationalQueueItems,
   buildUnifiedActionQueue,
 } from './actionQueueBuilder';
 import {
@@ -86,7 +85,7 @@ import {
   type DashboardSliceId,
 } from './runtime';
 import { buildRentalBlockingServiceCaseMap } from '../fleet-health-service/fleet-health-service-vehicle-overview';
-import { useNotifications } from '../../hooks/useNotifications';
+import { useNotificationInbox } from '../../hooks/useNotificationInbox';
 import {
   getNotificationsV2Mode,
   isNotificationsV2Shadow,
@@ -97,16 +96,6 @@ import {
   compareNotificationQueuesShadow,
   logShadowCompareDiagnostics,
 } from '../../lib/notifications/notification-shadow-compare';
-import {
-  augmentPrimaryTabCountsWithHealthItems,
-  buildVehicleHealthQueueItems,
-  extractOverdueHandoverQueueItems,
-  mergeV2NotificationsWithVehicleHealth,
-  mergeV2WithSupplemental,
-  supplementalHealthItems,
-  supplementalQueueItems,
-} from '../../lib/notifications/merge-v2-with-vehicle-health';
-import { mergeNotificationPrimaryTabCounts } from './notifications/notification-panel-counts';
 import {
   selectIsCurrentlyAvailable,
   selectIsCurrentlyRented,
@@ -292,7 +281,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   }, [loadTodayBookings]);
 
   const notificationsV2Mode = getNotificationsV2Mode();
-  const notificationsV2 = useNotifications({
+  const notificationsV2 = useNotificationInbox({
     orgId,
     locale,
     enabled: shouldFetchV2NotificationsInBackground(),
@@ -963,37 +952,10 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     logShadowCompareDiagnostics(result);
   }, [v1ActionQueue, notificationsV2.items, notificationsV2.loading]);
 
-  const derivedQueueItems = useMemo(
-    () => buildDerivedOperationalQueueItems(derivedOperationalInsights),
-    [derivedOperationalInsights],
-  );
-
-  const vehicleHealthQueueItems = useMemo(
-    () => buildVehicleHealthQueueItems(vehicleHealthAlerts, locale, fleetById),
-    [vehicleHealthAlerts, locale, fleetById],
-  );
-
-  const overdueHandoverQueueItems = useMemo(
-    () => extractOverdueHandoverQueueItems(v1ActionQueue),
-    [v1ActionQueue],
-  );
-
   const actionQueue = useMemo(() => {
     if (!shouldUseV2NotificationSource()) return v1ActionQueue;
-    if (notificationsV2.listMode === 'resolved') {
-      return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
-    }
-    const withDerived = mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems);
-    const withHandovers = mergeV2WithSupplemental(withDerived, overdueHandoverQueueItems);
-    return mergeV2NotificationsWithVehicleHealth(withHandovers, vehicleHealthQueueItems);
-  }, [
-    notificationsV2.items,
-    notificationsV2.listMode,
-    v1ActionQueue,
-    derivedQueueItems,
-    overdueHandoverQueueItems,
-    vehicleHealthQueueItems,
-  ]);
+    return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+  }, [notificationsV2.items, v1ActionQueue]);
 
   const actionQueueTabCounts = useMemo(
     () => (shouldUseV2NotificationSource() ? notificationsV2.tabCounts : null),
@@ -1001,7 +963,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   );
 
   const resolvedActionQueueLoading = shouldUseV2NotificationSource()
-    ? notificationsV2.loading || vehicleHealthLoading
+    ? notificationsV2.loading
     : insightsLoading || vehicleHealthLoading || !todayBookingsLoaded;
 
   const resolvedActionQueueError = shouldUseV2NotificationSource()
@@ -1020,39 +982,8 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       };
     }
 
-    const derivedExtra = supplementalQueueItems(notificationsV2.items, derivedQueueItems);
-    const handoverExtra = supplementalQueueItems(
-      [...notificationsV2.items, ...derivedExtra],
-      overdueHandoverQueueItems,
-    );
-    const withDerived = [...notificationsV2.items, ...derivedExtra];
-    const healthExtra = supplementalHealthItems(
-      [...withDerived, ...handoverExtra],
-      vehicleHealthQueueItems,
-    );
-    const mergedActiveQueue = mergeV2NotificationsWithVehicleHealth(
-      mergeV2WithSupplemental(
-        mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems),
-        overdueHandoverQueueItems,
-      ),
-      vehicleHealthQueueItems,
-    );
-
-    const withDerivedCounts = augmentPrimaryTabCountsWithHealthItems(
-      notificationsV2.primaryTabCounts,
-      derivedExtra,
-    );
-    const withHandoverCounts = augmentPrimaryTabCountsWithHealthItems(withDerivedCounts, handoverExtra);
-    const withHealthCounts = augmentPrimaryTabCountsWithHealthItems(withHandoverCounts, healthExtra);
-    return mergeNotificationPrimaryTabCounts(withHealthCounts, mergedActiveQueue);
-  }, [
-    notificationsV2.items,
-    notificationsV2.listMode,
-    notificationsV2.primaryTabCounts,
-    derivedQueueItems,
-    overdueHandoverQueueItems,
-    vehicleHealthQueueItems,
-  ]);
+    return notificationsV2.primaryTabCounts;
+  }, [notificationsV2.listMode, notificationsV2.primaryTabCounts]);
 
   const setNotificationListMode = useCallback(
     (mode: 'active' | 'resolved') => {
