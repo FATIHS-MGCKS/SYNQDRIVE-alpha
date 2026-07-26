@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -41,6 +42,7 @@ import type { ListNotificationsQueryDto } from './dto/notification-api.dto';
 import { NotificationAuditService } from '../audit/notification-audit.service';
 import { isOperationAllowedForRole } from '../access/notification-access-permissions';
 import type { NotificationAuditClientMeta } from '../audit/notification-audit.types';
+import { NotificationIngestObservabilityService } from '../observability/notification-ingest-observability.service';
 import { MembershipRole, NotificationStatus, Prisma } from '@prisma/client';
 
 export interface NotificationRequestUser {
@@ -66,6 +68,7 @@ export class NotificationApiService {
     private readonly engineConfig: NotificationEngineConfig,
     private readonly prisma: PrismaService,
     private readonly notificationAudit: NotificationAuditService,
+    private readonly ingestObservability: NotificationIngestObservabilityService,
     private readonly receiptService: NotificationReceiptService,
     private readonly stationScopeService: NotificationStationScopeService,
   ) {}
@@ -81,62 +84,64 @@ export class NotificationApiService {
     user: NotificationRequestUser,
     query: ListNotificationsQueryDto,
   ) {
-    this.assertApiEnabled();
-    const ctx = await this.resolveAccessContext(orgId, user);
-    const pagination = parseNotificationPagination(query);
-    const referenceNow = new Date();
+    return this.withApiObservability('list', 'GET', async () => {
+      this.assertApiEnabled();
+      const ctx = await this.resolveAccessContext(orgId, user);
+      const pagination = parseNotificationPagination(query);
+      const referenceNow = new Date();
 
-    const resolvedOnly = !!query.resolvedOnly;
+      const resolvedOnly = !!query.resolvedOnly;
 
-    const listFilters: NotificationListFilters = {
-      organizationId: orgId,
-      userId: ctx.userId,
-      status: query.status,
-      severity: query.severity,
-      domain: query.domain,
-      entityType: query.entityType,
-      entityId: query.entityId,
-      vehicleId: query.vehicleId,
-      stationId: query.stationId,
-      bookingId: query.bookingId,
-      unreadOnly: query.unreadOnly,
-      activeOnly: query.activeOnly,
-      resolvedOnly,
-      from: query.from
-        ? new Date(query.from)
-        : resolvedOnly
-          ? new Date(Date.now() - RESOLVED_RECENT_WINDOW_MS)
-          : undefined,
-      to: query.to ? new Date(query.to) : undefined,
-      search: query.search,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-      scopedStationId: ctx.scopedStationId,
-      scopedStationIds: ctx.scopedStationIds,
-      scopedVehicleIds: ctx.scopedVehicleIds,
-      scopedBookingIds: ctx.scopedBookingIds,
-      bypassStationScope: ctx.bypassStationScope,
-    };
+      const listFilters: NotificationListFilters = {
+        organizationId: orgId,
+        userId: ctx.userId,
+        status: query.status,
+        severity: query.severity,
+        domain: query.domain,
+        entityType: query.entityType,
+        entityId: query.entityId,
+        vehicleId: query.vehicleId,
+        stationId: query.stationId,
+        bookingId: query.bookingId,
+        unreadOnly: query.unreadOnly,
+        activeOnly: query.activeOnly,
+        resolvedOnly,
+        from: query.from
+          ? new Date(query.from)
+          : resolvedOnly
+            ? new Date(Date.now() - RESOLVED_RECENT_WINDOW_MS)
+            : undefined,
+        to: query.to ? new Date(query.to) : undefined,
+        search: query.search,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+        scopedStationId: ctx.scopedStationId,
+        scopedStationIds: ctx.scopedStationIds,
+        scopedVehicleIds: ctx.scopedVehicleIds,
+        scopedBookingIds: ctx.scopedBookingIds,
+        bypassStationScope: ctx.bypassStationScope,
+      };
 
-    await this.validateEntityFilters(orgId, query, ctx);
+      await this.validateEntityFilters(orgId, query, ctx);
 
-    const where = this.buildAccessWhere(listFilters, ctx, referenceNow, !resolvedOnly);
+      const where = this.buildAccessWhere(listFilters, ctx, referenceNow, !resolvedOnly);
 
-    const [rows, total] = await Promise.all([
-      this.repository.listNotificationsWhere(where, {
-        skip: pagination.skip,
-        take: pagination.take,
-        orderBy: buildNotificationOrderBy(query.sortBy, query.sortOrder),
-      }),
-      this.repository.countNotificationsWhere(where),
-    ]);
+      const [rows, total] = await Promise.all([
+        this.repository.listNotificationsWhere(where, {
+          skip: pagination.skip,
+          take: pagination.take,
+          orderBy: buildNotificationOrderBy(query.sortBy, query.sortOrder),
+        }),
+        this.repository.countNotificationsWhere(where),
+      ]);
 
-    return buildNotificationPaginatedResult(
-      await this.mapRows(rows, ctx, referenceNow),
-      total,
-      pagination.page,
-      pagination.limit,
-    );
+      return buildNotificationPaginatedResult(
+        await this.mapRows(rows, ctx, referenceNow),
+        total,
+        pagination.page,
+        pagination.limit,
+      );
+    });
   }
 
   async getById(orgId: string, user: NotificationRequestUser, id: string): Promise<NotificationResponseDto> {
@@ -721,6 +726,33 @@ export class NotificationApiService {
 
     if (!found) {
       throw new NotFoundException('Entity not found');
+    }
+  }
+
+  private async withApiObservability<T>(
+    route: string,
+    method: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const started = Date.now();
+    try {
+      const result = await fn();
+      this.ingestObservability.recordApiRequest({
+        route,
+        method,
+        statusCode: 200,
+        durationMs: Date.now() - started,
+      });
+      return result;
+    } catch (err) {
+      const statusCode = err instanceof HttpException ? err.getStatus() : 500;
+      this.ingestObservability.recordApiRequest({
+        route,
+        method,
+        statusCode,
+        durationMs: Date.now() - started,
+      });
+      throw err;
     }
   }
 }

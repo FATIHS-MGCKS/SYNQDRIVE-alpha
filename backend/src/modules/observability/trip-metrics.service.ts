@@ -98,6 +98,17 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationDeliveryFailed: Counter<string>;
   readonly notificationDeliveryRetry: Counter<string>;
   readonly notificationDuplicateConstraintViolation: Counter<string>;
+  readonly notificationCandidatesTotal: Counter<string>;
+  readonly notificationCandidatesRejectedTotal: Counter<string>;
+  readonly notificationDuplicateConflictsTotal: Counter<string>;
+  readonly notificationIngestDuration: Histogram<string>;
+  readonly notificationIngestFailuresTotal: Counter<string>;
+  readonly notificationDeliveryAttemptsTotal: Counter<string>;
+  readonly notificationDeadLettersTotal: Counter<string>;
+  readonly notificationWorkflowRunsTotal: Counter<string>;
+  readonly notificationWorkflowDuplicatesSuppressedTotal: Counter<string>;
+  readonly notificationApiRequestsTotal: Counter<string>;
+  readonly notificationApiRequestDuration: Histogram<string>;
 
   /** Task automation outbox — low-cardinality labels only. */
   readonly taskAutomationOutboxEnqueued: Counter<string>;
@@ -194,6 +205,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly clickHouseTableRows: Gauge<string>;
   readonly queueFailedJobs: Gauge<string>;
   readonly notificationQueueBacklog: Gauge<string>;
+  readonly notificationOutboxPending: Gauge<string>;
   readonly taskAutomationOutboxBacklog: Gauge<string>;
   readonly batteryV2DeadLetterBacklog: Gauge<string>;
   readonly batteryV2VehiclesWithoutPublication: Gauge<string>;
@@ -769,6 +781,84 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.notificationDuplicateConflictsTotal = new Counter({
+      name: 'synqdrive_notification_duplicate_conflicts_total',
+      help: 'Notification idempotency or fingerprint duplicate conflicts',
+      registers: [this.registry],
+    });
+
+    this.notificationCandidatesTotal = new Counter({
+      name: 'synqdrive_notification_candidates_total',
+      help: 'Notification candidates submitted for ingest',
+      labelNames: ['source_type', 'event_type'],
+      registers: [this.registry],
+    });
+
+    this.notificationCandidatesRejectedTotal = new Counter({
+      name: 'synqdrive_notification_candidates_rejected_total',
+      help: 'Notification candidates rejected before ingest',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.notificationIngestDuration = new Histogram({
+      name: 'synqdrive_notification_ingest_duration_seconds',
+      help: 'Single notification ingest/materialize duration',
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
+    this.notificationIngestFailuresTotal = new Counter({
+      name: 'synqdrive_notification_ingest_failures_total',
+      help: 'Notification ingest failures',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.notificationDeliveryAttemptsTotal = new Counter({
+      name: 'synqdrive_notification_delivery_attempts_total',
+      help: 'Notification delivery channel dispatch attempts',
+      labelNames: ['channel'],
+      registers: [this.registry],
+    });
+
+    this.notificationDeadLettersTotal = new Counter({
+      name: 'synqdrive_notification_dead_letters_total',
+      help: 'Notification delivery rows moved to dead letter',
+      labelNames: ['channel', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.notificationWorkflowRunsTotal = new Counter({
+      name: 'synqdrive_notification_workflow_runs_total',
+      help: 'Notification lifecycle workflow triggers',
+      labelNames: ['lifecycle_event', 'result'],
+      registers: [this.registry],
+    });
+
+    this.notificationWorkflowDuplicatesSuppressedTotal = new Counter({
+      name: 'synqdrive_notification_workflow_duplicates_suppressed_total',
+      help: 'Duplicate notification workflow runs suppressed by idempotency',
+      labelNames: ['lifecycle_event'],
+      registers: [this.registry],
+    });
+
+    this.notificationApiRequestsTotal = new Counter({
+      name: 'synqdrive_notification_api_requests_total',
+      help: 'Notification REST API requests',
+      labelNames: ['route', 'method', 'status_class', 'result'],
+      registers: [this.registry],
+    });
+
+    this.notificationApiRequestDuration = new Histogram({
+      name: 'synqdrive_notification_api_request_duration_seconds',
+      help: 'Notification REST API request duration',
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      labelNames: ['route', 'method', 'result'],
+      registers: [this.registry],
+    });
+
     this.notificationProcessingDuration = new Histogram({
       name: 'synqdrive_notification_processing_duration_seconds',
       help: 'Single outbox delivery processing duration',
@@ -780,6 +870,7 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_notification_run_duration_seconds',
       help: 'Notification evaluation run duration',
       buckets: [0.5, 1, 2, 5, 15, 30, 60, 120, 300],
+      labelNames: ['trigger_class'],
       registers: [this.registry],
     });
 
@@ -794,6 +885,12 @@ export class TripMetricsService implements OnModuleInit {
     this.notificationQueueBacklog = new Gauge({
       name: 'synqdrive_notification_queue_backlog',
       help: 'Pending or retryable notification delivery outbox rows',
+      registers: [this.registry],
+    });
+
+    this.notificationOutboxPending = new Gauge({
+      name: 'synqdrive_notification_outbox_pending',
+      help: 'Pending notification delivery outbox rows (alias for queue backlog)',
       registers: [this.registry],
     });
 

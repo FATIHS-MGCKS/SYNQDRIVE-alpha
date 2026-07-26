@@ -135,7 +135,7 @@ export class NotificationEvaluationService {
         await this.scheduleFollowUpRun(job.organizationId);
       }
 
-      this.observability.observeRunDuration(result.durationMs ?? 0);
+      this.observability.observeRunDuration(result.durationMs ?? 0, job.triggerClass);
       this.observability.logRunCompleted(result);
       this.evaluationsObservability?.observeEvaluationJob(
         evalCtx,

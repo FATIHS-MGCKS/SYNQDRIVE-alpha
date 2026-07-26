@@ -123,8 +123,12 @@ Unique index on `idempotency_key` — duplicate enqueue in same transaction or r
 
 ## Metrics (Prometheus)
 
-Exposed on `GET /api/v1/metrics` via `TripMetricsService`:
+Exposed on `GET /api/v1/metrics` via `TripMetricsService`. Full catalog and runbook:
 
+- `docs/operations/notification-engine-observability-runbook.md`
+- Dashboard: `backend/monitoring/grafana/dashboards/notification-engine-ops.json`
+
+Key series:
 - `synqdrive_notifications_created_total{domain}`
 - `synqdrive_notifications_updated_total{domain}`
 - `synqdrive_notifications_resolved_total{domain}`
@@ -140,30 +144,23 @@ Exposed on `GET /api/v1/metrics` via `TripMetricsService`:
 - `synqdrive_notification_delivery_retry_total{channel}`
 - `synqdrive_notification_open_age_seconds{severity}`
 - `synqdrive_notification_queue_backlog`
-- `synqdrive_notification_duplicate_constraint_violation_total`
+- `synqdrive_notification_dead_letters_total{channel,error_code}`
+- `synqdrive_notification_workflow_runs_total{lifecycle_event,result}`
+- `synqdrive_notification_api_requests_total{route,method,status_class,result}`
+- `synqdrive_notification_outbox_pending` (alias of queue backlog)
 
-No vehicle/user IDs as label values.
+No vehicle/user/org IDs as label values.
 
 ## Grafana
 
-Extended `backend/monitoring/grafana/dashboards/synqdrive-ops.json`:
-
-- Created / updated / resolved rates
-- Outbox backlog
-- Delivery success rate & failures
-- Processing duration p95
-- Dedupe violations & lock contention
+- `backend/monitoring/grafana/dashboards/synqdrive-ops.json` — platform overview
+- `backend/monitoring/grafana/dashboards/notification-engine-ops.json` — notification engine dedicated
 
 ## Alerts
 
-`backend/monitoring/prometheus/alerts.yml` group `synqdrive_notifications`:
+`backend/monitoring/prometheus/alerts.yml` group `synqdrive_notifications` — see runbook for response steps:
 
-- `NotificationDeliveryBacklogHigh`
-- `NotificationDeliveryFailureRateHigh`
-- `NotificationDeliveryWorkerStalled`
-- `NotificationOpenAgeHigh`
-- `NotificationDuplicateConstraintViolations`
-- `NotificationEvaluationRunsMissing`
+`docs/operations/notification-engine-observability-runbook.md`
 
 ## Structured logging
 

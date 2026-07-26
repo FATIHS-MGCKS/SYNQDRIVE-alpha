@@ -230,6 +230,7 @@ describe('notification access security regressions', () => {
       engineConfig,
       prisma as any,
       { recordFireAndForget: jest.fn(), listEvents: jest.fn() } as any,
+      { recordApiRequest: jest.fn(), recordFireAndForget: jest.fn() } as any,
       receiptService,
       stationScopeService,
     );

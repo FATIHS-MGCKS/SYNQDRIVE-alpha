@@ -221,6 +221,10 @@ describe('NotificationApiService', () => {
     recordFireAndForget: jest.fn(),
     listEvents: jest.fn(async () => ({ items: [], nextCursor: null })),
   };
+  const ingestObservability = {
+    recordApiRequest: jest.fn(),
+    recordFireAndForget: jest.fn(),
+  };
 
   let service: NotificationApiService;
 
@@ -237,6 +241,7 @@ describe('NotificationApiService', () => {
       engineConfig,
       prisma as any,
       notificationAudit as any,
+      ingestObservability as any,
       receiptService,
       stationScopeService,
     );

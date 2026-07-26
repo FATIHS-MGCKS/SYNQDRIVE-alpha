@@ -1,0 +1,121 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Runbook",
+      "url": "docs/operations/notification-engine-observability-runbook.md",
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "title": "Candidates / Created / Resolved (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(synqdrive_notification_candidates_total[5m]))", "legendFormat": "candidates", "refId": "A" },
+        { "expr": "sum(rate(synqdrive_notifications_created_total[5m]))", "legendFormat": "created", "refId": "B" },
+        { "expr": "sum(rate(synqdrive_notifications_resolved_total[5m]))", "legendFormat": "resolved", "refId": "C" }
+      ]
+    },
+    {
+      "title": "Ingest duration p95",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(synqdrive_notification_ingest_duration_seconds_bucket[10m])))",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Outbox pending",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "synqdrive_notification_outbox_pending", "refId": "A" }
+      ]
+    },
+    {
+      "title": "Dead letters (1h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        { "expr": "sum(increase(synqdrive_notification_dead_letters_total[1h]))", "refId": "A" }
+      ]
+    },
+    {
+      "title": "Delivery attempts vs failures",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sum(rate(synqdrive_notification_delivery_attempts_total[5m]))", "legendFormat": "attempts", "refId": "A" },
+        { "expr": "sum(rate(synqdrive_notification_delivery_failed_total[5m]))", "legendFormat": "failures", "refId": "B" }
+      ]
+    },
+    {
+      "title": "Open age p95 by severity",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, severity) (rate(synqdrive_notification_open_age_seconds_bucket[1h])))",
+          "legendFormat": "{{severity}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Workflow triggers / duplicates suppressed",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        { "expr": "sum(rate(synqdrive_notification_workflow_runs_total[5m]))", "legendFormat": "triggered", "refId": "A" },
+        { "expr": "sum(rate(synqdrive_notification_workflow_duplicates_suppressed_total[5m]))", "legendFormat": "suppressed", "refId": "B" }
+      ]
+    },
+    {
+      "title": "API error rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(synqdrive_notification_api_requests_total{result=\"error\"}[5m])) / clamp_min(sum(rate(synqdrive_notification_api_requests_total[5m])), 0.001)",
+          "legendFormat": "error rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Duplicate conflicts (1h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 20 },
+      "targets": [
+        { "expr": "sum(increase(synqdrive_notification_duplicate_conflicts_total[1h]))", "refId": "A" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "notifications"],
+  "time": { "from": "now-24h", "to": "now" },
+  "title": "SynqDrive — Notification Engine Ops",
+  "uid": "synqdrive-notification-engine-ops",
+  "version": 1
+}

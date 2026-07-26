@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-observability-v49876-2026-07-26',
+    version: '4.9.876',
+    title: 'V4.9.876 — Notification Engine: Metrics, Alerts & Observability',
+    summary: [
+      'Prometheus-Metriken für Ingest, Delivery, Workflow und API vollständig verdrahtet.',
+      'Strukturierte Logs: correlationId, organizationRef, action, result, latencyMs, errorCode.',
+      'Grafana-Dashboard notification-engine-ops.json + erweiterte Prometheus-Alerts.',
+      'Label-Cardinality-Policy: kein organizationId als Metric-Label.',
+      'Runbook: docs/operations/notification-engine-observability-runbook.md.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 31: Notification Engine vollständig operational beobachtbar machen.',
+    previousBehavior:
+      'Viele synqdrive_notification_* Metriken definiert aber nicht inkrementiert; Evaluation-Observability nur in-memory.',
+    details:
+      'observability/*.ts, trip-metrics.service.ts, notification-metrics-refresh.service.ts, alerts.yml, notification-engine-ops.json.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T03:45:00.000Z',
+  },
+  {
     id: 'notification-audit-lifecycle-v49875-2026-07-26',
     version: '4.9.875',
     title: 'V4.9.875 — Notification Engine: Auditierbare Lifecycle-Events',

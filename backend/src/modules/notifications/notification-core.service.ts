@@ -59,6 +59,8 @@ import {
 import { NotificationRetentionService } from './compliance/notification-retention.service';
 import { NotificationAuditService } from './audit/notification-audit.service';
 import { snapshotFromNotification } from './audit/notification-audit-sanitize.util';
+import { NotificationIngestObservabilityService } from './observability/notification-ingest-observability.service';
+import type { NotificationIngestOperation } from './observability/notification-prometheus.metrics';
 
 @Injectable()
 export class NotificationCoreService {
@@ -73,6 +75,7 @@ export class NotificationCoreService {
     @Optional() private readonly lifecycleWorkflowEmitter?: NotificationLifecycleWorkflowEmitter,
     @Optional() private readonly retentionService?: NotificationRetentionService,
     @Optional() private readonly notificationAudit?: NotificationAuditService,
+    @Optional() private readonly ingestObservability?: NotificationIngestObservabilityService,
   ) {}
 
   isEnabled(): boolean {
@@ -94,6 +97,12 @@ export class NotificationCoreService {
       return { enabled: true, ...result };
     } catch (err) {
       recordNotificationFailure();
+      this.ingestObservability?.recordIngestFailure({
+        organizationId: candidate.organizationId,
+        eventType: candidate.eventType,
+        errorCode: err instanceof Error ? err.name : 'INGEST_ERROR',
+        correlationId: options.runId,
+      });
       throw err;
     }
   }
@@ -906,15 +915,37 @@ export class NotificationCoreService {
     else if (operation === 'resolved') recordNotificationIngestOperation('resolved');
     else if (operation === 'ignored') recordNotificationIngestOperation('ignored');
 
+    const ingestOp = this.mapIngestOperation(operation);
+    if (ingestOp) {
+      this.ingestObservability?.recordIngestOperation({
+        organizationId: candidate.organizationId,
+        operation: ingestOp,
+        domain: String(candidate.domain),
+        eventType: candidate.eventType,
+        notificationId: typeof extra.notificationId === 'string' ? extra.notificationId : undefined,
+        correlationId: typeof extra.runId === 'string' ? extra.runId : undefined,
+        latencyMs: typeof extra.latencyMs === 'number' ? extra.latencyMs : undefined,
+      });
+    }
+
     this.logger.log({
       msg: `notification.${operation}`,
-      organizationId: candidate.organizationId,
+      organizationRef: candidate.organizationId.slice(0, 8),
       eventType: candidate.eventType,
       sourceType: candidate.sourceType,
-      sourceRef: candidate.sourceRef,
       operation,
+      correlationId: extra.runId,
       ...extra,
     });
+  }
+
+  private mapIngestOperation(operation: string): NotificationIngestOperation | null {
+    if (operation === 'created') return 'created';
+    if (operation === 'updated') return 'updated';
+    if (operation === 'reopened') return 'reopened';
+    if (operation === 'resolved') return 'resolved';
+    if (operation === 'ignored') return 'ignored';
+    return null;
   }
 
   private emitLifecycleForMaterialize(

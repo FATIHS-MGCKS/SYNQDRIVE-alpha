@@ -152,9 +152,14 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       deliveryPolicy,
       deliveryScheduler,
     );
+    const ingestObservability = {
+      recordCandidate: jest.fn(),
+      recordCandidateRejected: jest.fn(),
+    };
     const router = new NotificationProducerRouter(
       core,
       engineConfig,
+      ingestObservability as any,
       new DrivingAssessmentNotificationAdapter(),
       new TechnicalObservationNotificationAdapter(),
       new StationShortageNotificationAdapter(),

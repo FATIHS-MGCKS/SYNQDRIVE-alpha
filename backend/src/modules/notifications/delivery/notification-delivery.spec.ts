@@ -166,6 +166,8 @@ describe('NotificationDeliveryProcessorService', () => {
       recordSent: jest.fn(),
       recordFailed: jest.fn(),
       recordRetry: jest.fn(),
+      recordAttempt: jest.fn(),
+      recordDeadLetter: jest.fn(),
       observeProcessingDuration: jest.fn(),
     };
     const processor = new NotificationDeliveryProcessorService(
@@ -206,6 +208,8 @@ describe('NotificationDeliveryProcessorService', () => {
       recordSent: jest.fn(),
       recordFailed: jest.fn(),
       recordRetry: jest.fn(),
+      recordAttempt: jest.fn(),
+      recordDeadLetter: jest.fn(),
       observeProcessingDuration: jest.fn(),
     };
     const processor = new NotificationDeliveryProcessorService(

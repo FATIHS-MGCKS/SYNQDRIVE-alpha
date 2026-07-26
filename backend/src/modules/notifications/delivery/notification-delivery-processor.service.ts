@@ -7,6 +7,7 @@ import { NotificationChannelDispatcher } from './notification-delivery-channels.
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
 import { sanitizeDeliveryErrorMessage } from '../compliance/notification-data-minimization';
 import { NotificationAuditService } from '../audit/notification-audit.service';
+import { getChannelDefinition } from './notification-channel-matrix';
 
 @Injectable()
 export class NotificationDeliveryProcessorService {
@@ -24,6 +25,7 @@ export class NotificationDeliveryProcessorService {
     const claimed = await this.outboxRepo.claimForProcessing(outboxId);
     if (!claimed) return 'skipped';
 
+    this.observability.recordAttempt(claimed.channel);
     this.observability.log({
       notificationId: claimed.notificationId,
       organizationId: claimed.organizationId,
@@ -72,6 +74,8 @@ export class NotificationDeliveryProcessorService {
         deliveryId: claimed.id,
         channel: claimed.channel,
         attempts: claimed.attempts,
+        result: 'success',
+        latencyMs: Date.now() - started,
       });
       return 'completed';
     }
@@ -83,6 +87,7 @@ export class NotificationDeliveryProcessorService {
         sanitizeDeliveryErrorMessage(result.errorMessage ?? errorCode) ?? errorCode,
       );
       this.observability.recordFailed(claimed.channel, errorCode);
+      this.observability.recordDeadLetter(claimed.channel, errorCode);
       this.observability.logWarn({
         notificationId: claimed.notificationId,
         organizationId: claimed.organizationId,
@@ -92,6 +97,8 @@ export class NotificationDeliveryProcessorService {
         channel: claimed.channel,
         attempts: claimed.attempts,
         errorCode,
+        result: 'error',
+        latencyMs: Date.now() - started,
       });
       this.notificationAudit?.recordFireAndForget({
         organizationId: claimed.organizationId,
@@ -127,6 +134,8 @@ export class NotificationDeliveryProcessorService {
       channel: claimed.channel,
       attempts: claimed.attempts,
       errorCode,
+      result: 'error',
+      latencyMs: Date.now() - started,
     });
     this.notificationAudit?.recordFireAndForget({
       organizationId: claimed.organizationId,

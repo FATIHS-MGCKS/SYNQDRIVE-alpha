@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   OrgWorkflow,
   OrgWorkflowActionRun,
@@ -33,6 +33,8 @@ import {
   resolveWorkflowRunIdempotencyKey,
   type NotificationWorkflowContext,
 } from './workflow-notification-idempotency.util';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordNotificationWorkflowDuplicateSuppressed } from '@modules/notifications/observability/notification-prometheus.metrics';
 
 export interface ExecuteWorkflowOptions {
   executionMode: WorkflowExecutionMode;
@@ -70,6 +72,7 @@ export class WorkflowEngineService {
     private readonly shadowService: WorkflowShadowService,
     private readonly rollout: WorkflowRuntimeRolloutService,
     private readonly config: ConfigService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
   async processEvent(event: WorkflowDomainEvent): Promise<string[]> {
@@ -193,6 +196,9 @@ export class WorkflowEngineService {
         this.logger.debug(
           `Reusing terminal workflow run ${idempotencyKey} for org ${event.organizationId}`,
         );
+        if (event.type.startsWith('notification.') && this.tripMetrics) {
+          recordNotificationWorkflowDuplicateSuppressed(this.tripMetrics, event.type);
+        }
         return existing.id;
       }
       return this.resumeWorkflowRun(workflow, event, existing, notificationCtx, options);

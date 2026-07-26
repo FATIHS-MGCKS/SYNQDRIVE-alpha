@@ -46,6 +46,8 @@ import { NotificationRetentionService } from './compliance/notification-retentio
 import { NotificationRetentionScheduler } from './compliance/notification-retention.scheduler';
 import { NotificationDataSubjectService } from './compliance/notification-data-subject.service';
 import { NotificationAuditService } from './audit/notification-audit.service';
+import { NotificationIngestObservabilityService } from './observability/notification-ingest-observability.service';
+import { NotificationMetricsRefreshService } from './observability/notification-metrics-refresh.service';
 import notificationRetentionConfig from '@config/notification-retention.config';
 
 /**
@@ -93,6 +95,8 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     NotificationRetentionScheduler,
     NotificationDataSubjectService,
     NotificationAuditService,
+    NotificationIngestObservabilityService,
+    NotificationMetricsRefreshService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
@@ -125,6 +129,8 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     NotificationRetentionService,
     NotificationDataSubjectService,
     NotificationAuditService,
+    NotificationIngestObservabilityService,
+    NotificationMetricsRefreshService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,

@@ -4,6 +4,13 @@ import {
   NotificationDeliveryTransition,
 } from '@prisma/client';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import {
+  recordNotificationDeadLetter,
+  recordNotificationDeliveryAttempt,
+  recordNotificationDuplicateConflict,
+  setNotificationOutboxPending,
+} from '../observability/notification-prometheus.metrics';
+import { buildNotificationLogFields } from '../observability/notification-observability.util';
 
 export interface NotificationDeliveryLogEvent {
   notificationId: string;
@@ -12,11 +19,13 @@ export interface NotificationDeliveryLogEvent {
   operation: string;
   statusBefore?: string;
   statusAfter?: string;
-  runId?: string;
+  correlationId?: string;
   deliveryId?: string;
   channel?: NotificationDeliveryChannel;
   attempts?: number;
   errorCode?: string;
+  latencyMs?: number;
+  result?: 'success' | 'error' | 'ignored' | 'skipped';
 }
 
 @Injectable()
@@ -26,17 +35,39 @@ export class NotificationDeliveryObservabilityService {
   constructor(private readonly metrics: TripMetricsService) {}
 
   log(event: NotificationDeliveryLogEvent): void {
-    this.logger.log({
-      msg: `notification.delivery.${event.operation}`,
-      ...event,
-    });
+    this.logger.log(
+      buildNotificationLogFields({
+        msg: `notification.delivery.${event.operation}`,
+        organizationId: event.organizationId,
+        action: event.operation,
+        result: event.result ?? 'success',
+        correlationId: event.correlationId,
+        eventType: event.eventType,
+        notificationId: event.notificationId,
+        channel: event.channel,
+        deliveryId: event.deliveryId,
+        latencyMs: event.latencyMs,
+        errorCode: event.errorCode,
+      }),
+    );
   }
 
   logWarn(event: NotificationDeliveryLogEvent): void {
-    this.logger.warn({
-      msg: `notification.delivery.${event.operation}`,
-      ...event,
-    });
+    this.logger.warn(
+      buildNotificationLogFields({
+        msg: `notification.delivery.${event.operation}`,
+        organizationId: event.organizationId,
+        action: event.operation,
+        result: event.result ?? 'error',
+        correlationId: event.correlationId,
+        eventType: event.eventType,
+        notificationId: event.notificationId,
+        channel: event.channel,
+        deliveryId: event.deliveryId,
+        latencyMs: event.latencyMs,
+        errorCode: event.errorCode,
+      }),
+    );
   }
 
   recordEnqueued(
@@ -58,12 +89,20 @@ export class NotificationDeliveryObservabilityService {
     this.metrics.notificationDeliveryRetry.inc({ channel });
   }
 
+  recordAttempt(channel: NotificationDeliveryChannel): void {
+    recordNotificationDeliveryAttempt(this.metrics, channel);
+  }
+
+  recordDeadLetter(channel: NotificationDeliveryChannel, errorCode: string): void {
+    recordNotificationDeadLetter(this.metrics, channel, errorCode);
+  }
+
   recordDuplicateConstraint(): void {
-    this.metrics.notificationDuplicateConstraintViolation.inc();
+    recordNotificationDuplicateConflict(this.metrics);
   }
 
   setQueueBacklog(count: number): void {
-    this.metrics.notificationQueueBacklog.set(count);
+    setNotificationOutboxPending(this.metrics, count);
   }
 
   observeProcessingDuration(seconds: number): void {

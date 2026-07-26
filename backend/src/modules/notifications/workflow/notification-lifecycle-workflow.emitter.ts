@@ -7,6 +7,8 @@ import type {
   NotificationLifecycleWorkflowPayload,
 } from './notification-lifecycle-workflow.types';
 import { NotificationAuditService } from '../audit/notification-audit.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordNotificationWorkflowTriggered } from '../observability/notification-prometheus.metrics';
 
 @Injectable()
 export class NotificationLifecycleWorkflowEmitter {
@@ -15,6 +17,7 @@ export class NotificationLifecycleWorkflowEmitter {
   constructor(
     @Optional() private readonly workflowEvents?: WorkflowEventService,
     @Optional() private readonly notificationAudit?: NotificationAuditService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   emit(input: NotificationLifecycleEmitInput): void {
@@ -50,6 +53,10 @@ export class NotificationLifecycleWorkflowEmitter {
       occurredAt,
       payload: payload as unknown as Record<string, unknown>,
     });
+
+    if (this.metrics) {
+      recordNotificationWorkflowTriggered(this.metrics, lifecycleEvent);
+    }
 
     this.notificationAudit?.recordFireAndForget({
       organizationId: notification.organizationId,

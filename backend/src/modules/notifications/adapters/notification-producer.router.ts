@@ -10,6 +10,7 @@ import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notif
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
+import { NotificationIngestObservabilityService } from '../observability/notification-ingest-observability.service';
 
 /**
  * Routes adapter output to core engine — only shadow-enabled event types when V2 is on.
@@ -21,6 +22,7 @@ export class NotificationProducerRouter {
   constructor(
     private readonly core: NotificationCoreService,
     private readonly engineConfig: NotificationEngineConfig,
+    private readonly ingestObservability: NotificationIngestObservabilityService,
     drivingAssessment: DrivingAssessmentNotificationAdapter,
     technicalObservation: TechnicalObservationNotificationAdapter,
     stationShortage: StationShortageNotificationAdapter,
@@ -39,22 +41,51 @@ export class NotificationProducerRouter {
     context: NotificationAdapterContext,
   ) {
     if (!adapter.canHandle(source)) {
+      this.ingestObservability.recordCandidateRejected({
+        organizationId: context.organizationId,
+        reason: 'ADAPTER_CANNOT_HANDLE',
+        correlationId: context.runId,
+      });
       return { skipped: true, reason: 'ADAPTER_CANNOT_HANDLE' as const };
     }
 
     const candidate = adapter.toCandidate(source, context);
     if (!candidate) {
+      this.ingestObservability.recordCandidateRejected({
+        organizationId: context.organizationId,
+        reason: 'NO_CANDIDATE',
+        correlationId: context.runId,
+      });
       return { skipped: true, reason: 'NO_CANDIDATE' as const };
     }
 
     const shadowTypes = new Set(listShadowModeEventTypes());
     if (adapter.shadowModeOnly && !shadowTypes.has(candidate.eventType)) {
+      this.ingestObservability.recordCandidateRejected({
+        organizationId: context.organizationId,
+        reason: 'NOT_SHADOW_ENABLED',
+        eventType: candidate.eventType,
+        correlationId: context.runId,
+      });
       return { skipped: true, reason: 'NOT_SHADOW_ENABLED' as const };
     }
 
     if (!this.engineConfig.isV2Enabled()) {
+      this.ingestObservability.recordCandidateRejected({
+        organizationId: context.organizationId,
+        reason: 'FLAG_OFF',
+        eventType: candidate.eventType,
+        correlationId: context.runId,
+      });
       return { skipped: true, reason: 'FLAG_OFF' as const };
     }
+
+    this.ingestObservability.recordCandidate({
+      organizationId: context.organizationId,
+      sourceType: candidate.sourceType,
+      eventType: candidate.eventType,
+      correlationId: context.runId,
+    });
 
     return this.core.ingestCandidate(candidate, { runId: context.runId });
   }
