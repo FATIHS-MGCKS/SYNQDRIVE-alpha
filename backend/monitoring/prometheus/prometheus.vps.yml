@@ -1,15 +1,26 @@
 # SynqDrive Prometheus — VPS (PM2 backend on host port 3001)
 #
 # Used by backend/scripts/ops/vps-setup-prometheus.sh
-# Scrapes localhost only — never expose /metrics publicly.
+# All scrape targets bind to localhost — never expose publicly.
 
 global:
   scrape_interval: 30s
   scrape_timeout: 10s
   evaluation_interval: 30s
+  external_labels:
+    cluster: synqdrive-prod
+    environment: production
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 127.0.0.1:9093
+      timeout: 10s
 
 rule_files:
   - /etc/prometheus/alerts.yml
+  - /etc/prometheus/alerts-infra.yml
 
 scrape_configs:
   - job_name: synqdrive-backend
@@ -20,3 +31,56 @@ scrape_configs:
       - targets:
           - '127.0.0.1:3001'
     bearer_token_file: /etc/prometheus/secrets/metrics_bearer_token
+
+  - job_name: node
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9100'
+
+  - job_name: cadvisor
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9323'
+
+  - job_name: postgres
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9187'
+
+  - job_name: redis
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9121'
+
+  - job_name: clickhouse
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - '127.0.0.1:9363'
+
+  - job_name: nginx
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9113'
+
+  - job_name: blackbox-ssl
+    scrape_interval: 5m
+    metrics_path: /probe
+    params:
+      module: [tls_connect]
+    static_configs:
+      - targets:
+          - 'https://app.synqdrive.eu'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115

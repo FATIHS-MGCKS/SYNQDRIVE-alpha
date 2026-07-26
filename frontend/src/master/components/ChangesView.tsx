@@ -35,6 +35,166 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-infrastructure-monitoring-2f3-2026-07-26',
+    version: '4.9.900',
+    title: 'V4.9.900 — Master Admin 2F.3: Infrastructure monitoring exporters',
+    summary: [
+      'Full infra stack: node_exporter, cAdvisor, postgres_exporter, redis_exporter, ClickHouse native :9363, nginx_exporter.',
+      'VPS scripts + prometheus scrape jobs; alerts-infra exporter alert group.',
+      'nginx stub_status snippet (localhost); ClickHouse prometheus.xml.',
+      'All exporters localhost-only; dual-layer with synqdrive_dependency_up.',
+    ],
+    reason:
+      'Phase 2F.3 closes infrastructure monitoring gaps from 2F.1 observability audit.',
+    previousBehavior:
+      'Only node_exporter (2F.2); no Docker/PG/Redis/CH/Nginx dedicated exporters.',
+    details:
+      'docs/remediation/infrastructure-monitoring.md · architecture/MASTER_ADMIN_INFRASTRUCTURE_MONITORING_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T03:00:00.000Z',
+  },
+  {
+    id: 'master-admin-alertmanager-2f2-2026-07-26',
+    version: '4.9.899',
+    title: 'V4.9.899 — Master Admin 2F.2: Alertmanager production deployment',
+    summary: [
+      'Alertmanager: severity routing, grouping, deduplication, maintenance windows, retry, escalation.',
+      'alerts-infra.yml: PG, Redis, CH, BullMQ, DIMO, Stripe, backup, disk, RAM, CPU, SSL, queue alerts.',
+      'VPS scripts: setup-alertmanager, node-exporter, blackbox-exporter, backup textfile.',
+      'synqdrive_dependency_up gauge; Prometheus → Alertmanager on :9093.',
+    ],
+    reason:
+      'Phase 2F.2 implements Alertmanager — critical gap from 2F.1 observability audit.',
+    previousBehavior:
+      '100 Prometheus alert rules fired with no routing, paging, or escalation.',
+    details:
+      'docs/remediation/alertmanager.md · architecture/MASTER_ADMIN_ALERTMANAGER_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T02:00:00.000Z',
+  },
+  {
+    id: 'master-admin-observability-architecture-2f1-2026-07-26',
+    version: '4.9.898',
+    title: 'V4.9.898 — Master Admin 2F.1: Observability architecture audit',
+    summary: [
+      'Full stack audit: Prometheus (~302 metrics), 100 alert rules, 7 Grafana dashboards.',
+      'Gaps: Alertmanager missing, SaaS billing/fleet chat/AI/workflows under-instrumented.',
+      'VPS Grafana deploy omits 2 dashboards; no frontend RUM; no infra exporters.',
+      'Remediation phases 2F.2–2F.9 proposed. Analysis only — no implementation.',
+    ],
+    reason:
+      'Phase 2F.1 documents observability architecture before remediation implementation.',
+    previousBehavior:
+      'Observability existed per-module but lacked consolidated stack audit and gap matrix.',
+    details:
+      'docs/remediation/observability-architecture.md · architecture/MASTER_ADMIN_OBSERVABILITY_ARCHITECTURE_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T01:00:00.000Z',
+  },
+  {
+    id: 'master-admin-tenant-production-readiness-2e7-2026-07-26',
+    version: '4.9.897',
+    title: 'V4.9.897 — Master Admin 2E.7: Tenant production readiness (final)',
+    summary: [
+      'Consolidates 2E.1–2E.6: tenant isolation, DIMO, DB, concurrency, cross-tenant tests, E2E.',
+      'Verdict: conditional go-live (8/10). DIMO tenant-safe after 2E.4 deploy + audit.',
+      '7 mandatory P1 pre-go-live items; 8 P2 + 5 P3 residual risks.',
+      'Sign-off template + release gate commands in tenant-production-readiness.md.',
+    ],
+    reason:
+      'Phase 2E.7 is the final Master Admin remediation acceptance for production decision.',
+    previousBehavior:
+      'No single document answered production readiness across all remediation pillars.',
+    details:
+      'docs/remediation/tenant-production-readiness.md · architecture/MASTER_ADMIN_TENANT_PRODUCTION_READINESS_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T00:00:00.000Z',
+  },
+  {
+    id: 'master-admin-e2e-data-consistency-2e6-2026-07-26',
+    version: '4.9.896',
+    title: 'V4.9.896 — Master Admin 2E.6: End-to-end data consistency',
+    summary: [
+      'Full pipeline audit: DIMO → Backend → PG → Worker → CH → Dashboard → AI → Notifications → Workflows.',
+      'Per-station checks: IDs, org, timestamps, duplicate truth, lost events, deterministic sync.',
+      'PG canonical; CH best-effort mirror. P1: CH org_id on snapshots, replay design.',
+      'Risk registers + operator SQL probes; links to 2E.1–2E.5 remediation docs.',
+    ],
+    reason:
+      'Phase 2E.6 documents end-to-end data consistency before production remediation.',
+    previousBehavior:
+      'Data flow documented per-module; no consolidated pipeline consistency audit.',
+    details:
+      'docs/remediation/end-to-end-data-consistency.md · architecture/MASTER_ADMIN_END_TO_END_DATA_CONSISTENCY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T23:00:00.000Z',
+  },
+  {
+    id: 'master-admin-cross-tenant-acceptance-2e5-2026-07-26',
+    version: '4.9.895',
+    title: 'V4.9.895 — Master Admin 2E.5: Cross-tenant acceptance testing',
+    summary: [
+      '23 authenticated acceptance tests across 10 domains (orgA + orgB fixtures).',
+      'CT-AUTH through CT-WF: vehicles, bookings, customers, documents, invoices, analytics, DIMO, notifications, AI, workflows.',
+      'Attack patterns: IDOR, UUID direct access, JWT org mismatch, foreign entity mutation.',
+      'npm run test:cross-tenant:acceptance — consolidated acceptance net.',
+    ],
+    reason:
+      'Phase 2E.5 validates tenant isolation with documented, runnable acceptance tests.',
+    previousBehavior:
+      'Cross-tenant coverage existed per-module but lacked consolidated acceptance catalog.',
+    details:
+      'docs/remediation/cross-tenant-acceptance.md · architecture/MASTER_ADMIN_CROSS_TENANT_ACCEPTANCE_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T22:00:00.000Z',
+  },
+  {
+    id: 'master-admin-concurrency-protection-2e4-2026-07-26',
+    version: '4.9.894',
+    title: 'V4.9.894 — Master Admin 2E.4: Concurrency protection',
+    summary: [
+      'Critical write-path audit: bookings (OK), DIMO upsert (OK), registerFromDimo (P1 fixed).',
+      'Advisory locks: vehicle-dimo-binding, subscription-draft, user-email-registration.',
+      'registerFromDimo: transaction + duplicate check + partial UNIQUE on dimo_vehicle_id.',
+      'createWithAdmin atomic; createDraft locked; vehicles.create P2002 → ConflictException.',
+    ],
+    reason:
+      'Phase 2E.4 prevents race conditions and duplicate inserts on fleet-critical writes.',
+    previousBehavior:
+      'registerFromDimo and createWithAdmin had TOCTOU gaps; dimo_vehicle_id had no DB unique.',
+    details:
+      'docs/remediation/concurrency-protection.md · architecture/MASTER_ADMIN_CONCURRENCY_PROTECTION_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T20:00:00.000Z',
+  },
+  {
+    id: 'master-admin-database-integrity-2e3-2026-07-26',
+    version: '4.9.893',
+    title: 'V4.9.893 — Master Admin 2E.3: Database integrity review',
+    summary: [
+      'Production constraint audit: 312 models, 134 uniques, 1001 indexes, 281 migrations.',
+      'organization_id/vehicle_id/booking_id/customer_id: strong; dimo_vehicle_id: FK only, no UNIQUE/INDEX.',
+      'Safe migrations only: CONCURRENTLY partial unique + index on vehicles.dimo_vehicle_id.',
+      'Risk register DB1–DB8; operator SQL audit queries; no destructive DDL.',
+    ],
+    reason:
+      'Phase 2E.3 validates DB constraints before safe remediation migrations — analysis only.',
+    previousBehavior:
+      'Constraint gaps documented ad hoc; no consolidated integrity review.',
+    details:
+      'docs/remediation/database-integrity-review.md · architecture/MASTER_ADMIN_DATABASE_INTEGRITY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T18:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

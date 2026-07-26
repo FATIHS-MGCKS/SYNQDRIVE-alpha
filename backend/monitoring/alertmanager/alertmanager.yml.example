@@ -1,0 +1,138 @@
+# SynqDrive Alertmanager — production template
+#
+# Render on VPS via vps-setup-alertmanager.sh (envsubst from alertmanager.env).
+# Secrets: /opt/synqdrive/shared/alertmanager/alertmanager.env (gitignored on host)
+#
+# Features: severity routing, grouping, deduplication, maintenance windows,
+# retry (repeat_interval), escalation (critical → primary then secondary).
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: '${ALERTMANAGER_SMTP_HOST}:${ALERTMANAGER_SMTP_PORT}'
+  smtp_from: '${ALERTMANAGER_SMTP_FROM}'
+  smtp_auth_username: '${ALERTMANAGER_SMTP_USER}'
+  smtp_auth_password: '${ALERTMANAGER_SMTP_PASSWORD}'
+  smtp_require_tls: true
+  slack_api_url: '${ALERTMANAGER_SLACK_WEBHOOK_URL}'
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Maintenance windows — warning/info alerts are muted; critical still pages.
+time_intervals:
+  - name: synqdrive-maintenance
+    time_intervals:
+      - weekdays: ['sunday']
+        times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        location: 'Europe/Berlin'
+      - weekdays: ['monday:friday']
+        times:
+          - start_time: '01:00'
+            end_time: '01:30'
+        location: 'Europe/Berlin'
+
+route:
+  receiver: synqdrive-warning
+  group_by: ['alertname', 'severity', 'component', 'cluster']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # Drop info-level noise from paging channels
+    - receiver: synqdrive-null
+      matchers:
+        - severity = info
+      continue: false
+
+    # Maintenance: mute non-critical during scheduled windows
+    - receiver: synqdrive-null
+      matchers:
+        - severity =~ "warning|info"
+      mute_time_intervals:
+        - synqdrive-maintenance
+      continue: false
+
+    # Critical — primary on-call (fast repeat, grouping)
+    - receiver: synqdrive-critical
+      matchers:
+        - severity = critical
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 30m
+      continue: true
+
+    # Critical — escalation to secondary contacts (slower repeat)
+    - receiver: synqdrive-escalation
+      matchers:
+        - severity = critical
+      group_wait: 10s
+      repeat_interval: 2h
+      continue: false
+
+    # Warning — Slack/email digest channel
+    - receiver: synqdrive-warning
+      matchers:
+        - severity = warning
+      group_wait: 1m
+      repeat_interval: 6h
+      continue: false
+
+# Deduplication / suppression: backend down inhibits dependent warnings
+inhibit_rules:
+  - source_matchers:
+      - alertname = SynqDriveBackendDown
+    target_matchers:
+      - severity =~ "warning|info"
+    equal: ['cluster']
+
+  - source_matchers:
+      - alertname = PostgreSQLUnavailable
+    target_matchers:
+      - component =~ "bullmq|clickhouse"
+    equal: ['cluster']
+
+  - source_matchers:
+      - alertname = RedisUnavailable
+    target_matchers:
+      - component = bullmq
+    equal: ['cluster']
+
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ['alertname', 'component', 'cluster']
+
+receivers:
+  - name: synqdrive-null
+
+  - name: synqdrive-warning
+    slack_configs:
+      - channel: '${ALERTMANAGER_SLACK_CHANNEL_WARNING}'
+        send_resolved: true
+        title: '{{ template "synqdrive.title" . }}'
+        text: '{{ template "synqdrive.slack.text" . }}'
+    email_configs:
+      - to: '${ALERTMANAGER_EMAIL_WARNING}'
+        send_resolved: true
+        html: '{{ template "synqdrive.email.html" . }}'
+
+  - name: synqdrive-critical
+    slack_configs:
+      - channel: '${ALERTMANAGER_SLACK_CHANNEL_CRITICAL}'
+        send_resolved: true
+        title: '{{ template "synqdrive.title" . }}'
+        text: '{{ template "synqdrive.slack.text" . }}'
+    email_configs:
+      - to: '${ALERTMANAGER_EMAIL_CRITICAL}'
+        send_resolved: true
+        html: '{{ template "synqdrive.email.html" . }}'
+
+  - name: synqdrive-escalation
+    email_configs:
+      - to: '${ALERTMANAGER_EMAIL_ESCALATION}'
+        send_resolved: true
+        html: '{{ template "synqdrive.email.html" . }}'
