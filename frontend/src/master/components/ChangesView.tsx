@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-p1-blockers-2026-07-26',
+    version: '4.9.890',
+    title: 'V4.9.890 — Master Admin: ClickHouse P1 blocker fixes',
+    summary: [
+      'P1-PL1: BullMQ clickhouse.mirror.retry queue for failed snapshot/state-change writes.',
+      'P1-T1: org_id backfill service (CLICKHOUSE_ORG_BACKFILL_ENABLED) after migration 007.',
+      'P1-T9: org_id SQL predicates on ClickHouseAnalyticsService reads + detector context.',
+      'Snapshot dedup before insert; disaster-recovery-production-readiness.md for P1-DR.',
+    ],
+    reason:
+      'Phase 2D.8 left four P1 blockers open — mirror loss, backfill, read guards, and DR documentation.',
+    previousBehavior:
+      'CH mirror failures were logged only; analytics queries filtered vehicle_id without org_id.',
+    details:
+      'clickhouse-mirror-retry.producer.ts · clickhouse-org-id-backfill.service.ts · clickhouse-org-filter.util.ts',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T16:30:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-production-readiness-2d8-2026-07-26',
     version: '4.9.889',
     title: 'V4.9.889 — Master Admin 2D.8: ClickHouse production readiness acceptance',

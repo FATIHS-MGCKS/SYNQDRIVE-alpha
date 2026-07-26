@@ -50,6 +50,7 @@ export class ActivityWindowDetector implements TripDetector {
         vehicleId,
         timeWindow.from,
         timeWindow.to,
+        ctx.organizationId,
       );
 
       const hasActivity =

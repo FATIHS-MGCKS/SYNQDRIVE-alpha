@@ -56,6 +56,7 @@ export interface AnomalyContext {
 
 export interface DetectorContext {
   vehicleId: string;
+  organizationId?: string;
   dimoTokenId: number;
   profile: VehicleDetectionProfile;
   phase: DetectionPhase;

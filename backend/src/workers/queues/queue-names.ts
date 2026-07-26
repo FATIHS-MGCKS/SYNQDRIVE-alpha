@@ -28,4 +28,6 @@ export const QUEUE_NAMES = {
   VOICE_WEBHOOK_PROCESS: 'voice.webhook.process',
   /** Device connection webhook inbox async processing — connectivity retry/DLQ. */
   CONNECTIVITY_WEBHOOK_PROCESS: 'connectivity.webhook.process',
+  /** ClickHouse telemetry mirror write retries (P1-PL1). */
+  CLICKHOUSE_MIRROR_RETRY: 'clickhouse.mirror.retry',
 } as const;

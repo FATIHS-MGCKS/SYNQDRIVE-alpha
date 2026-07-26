@@ -270,16 +270,16 @@ bash /opt/synqdrive/current/backend/scripts/ops/vps-clickhouse-acceptance-audit.
 
 | ID | Description | Vorher | Nachher | Status |
 |----|-------------|--------|---------|--------|
-| **P1-T1** | Legacy `org_id` missing | ❌ | 007 + writes | ✅ Writes · ⚠️ backfill |
+| **P1-T1** | Legacy `org_id` missing | ❌ | 007 + writes + backfill | ✅ Writes + backfill service/script |
 | **P1-IN1** | Single-row insert pressure | ❌ | async_insert | ✅ Repo |
 | **P1-B2** | No resource limits | ❌ | Compose limits | ✅ VPS override |
 | **P1-DEP** | Deploy no CH sync | ❌ | M4 deploy sync | ✅ |
-| **P1-PL1** | CH mirror silent loss | ❌ | Documented | ❌ **Deferred** |
+| **P1-PL1** | CH mirror silent loss | ❌ | Documented | ✅ **BullMQ retry queue** |
 | **P1-T8** | Direct CH client access | ⚠️ | Localhost only | ✅ Design |
-| **P1-T9** | Read API org guard | ⚠️ | Partial | ⚠️ **Deferred** |
-| **P1-DR** | DR acceptance NO-GO | ❌ | Out of 2D scope | ❌ **Separate track** |
+| **P1-T9** | Read API org guard | ⚠️ | Partial | ✅ **org_id predicates on analytics reads** |
+| **P1-DR** | DR acceptance NO-GO | ❌ | Out of 2D scope | ✅ **CH DR doc + G1 backup path** |
 
-**P1 Summary:** **5/9 addressed** · **4/9 open or partial**
+**P1 Summary:** **8/9 addressed** · **1 partial** (DR drill execution operator-side)
 
 ---
 
@@ -329,7 +329,7 @@ bash /opt/synqdrive/current/backend/scripts/ops/vps-clickhouse-acceptance-audit.
 | Severity | Behoben | Offen / Pending |
 |----------|---------|-----------------|
 | **P0** | 3 repo-fixes (storage, backup, recreate plan) | Live verification + CHECK TABLE |
-| **P1** | 5 (org writes, async_insert, limits, deploy, localhost) | Pipeline DLQ, read hardening, backfill, DR |
+| **P1** | 8 (org backfill path, mirror retry, read org guard, DR doc, + prior 5) | DR restore drill execution on VPS |
 
 #### Welche Restrisiken verbleiben?
 

@@ -148,6 +148,7 @@ fi
 
 # ── Optional org_id backfill ──────────────────────────────────────────────────
 if [[ "$BACKFILL_ORG" -eq 1 ]]; then
+  export CLICKHOUSE_ORG_BACKFILL_ENABLED=true
   run_step "org_id backfill" bash "${SCRIPT_DIR}/vps-clickhouse-backfill-org-id.sh"
   if [[ "$EXECUTE" -eq 1 ]]; then
     run_step "post-backfill tenant audit" bash "${SCRIPT_DIR}/vps-clickhouse-tenant-isolation-audit.sh"

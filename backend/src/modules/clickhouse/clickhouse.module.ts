@@ -1,4 +1,7 @@
 import { Global, Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
+import { QUEUE_NAMES } from '../../workers/queues/queue-names';
+import { PrismaModule } from '@shared/database/prisma.module';
 import { ClickHouseService } from './clickhouse.service';
 import { ClickHouseTelemetryService } from './clickhouse-telemetry.service';
 import { ClickHouseAnalyticsService } from './clickhouse-analytics.service';
@@ -10,6 +13,8 @@ import { ClickHouseWaypointsService } from './clickhouse-waypoints.service';
 import { ClickHouseActivityWindowsService } from './clickhouse-activity-windows.service';
 import { ClickHouseDiagnosticsService } from './clickhouse-diagnostics.service';
 import { ClickHouseAnalysisHealthService } from './clickhouse-analysis-health.service';
+import { ClickHouseMirrorRetryProducer } from './clickhouse-mirror-retry.producer';
+import { ClickHouseOrgIdBackfillService } from './clickhouse-org-id-backfill.service';
 
 /**
  * ClickHouseModule
@@ -22,6 +27,10 @@ import { ClickHouseAnalysisHealthService } from './clickhouse-analysis-health.se
  */
 @Global()
 @Module({
+  imports: [
+    PrismaModule,
+    BullModule.registerQueue({ name: QUEUE_NAMES.CLICKHOUSE_MIRROR_RETRY }),
+  ],
   providers: [
     ClickHouseService,
     ClickHouseTelemetryService,
@@ -34,6 +43,8 @@ import { ClickHouseAnalysisHealthService } from './clickhouse-analysis-health.se
     ClickHouseActivityWindowsService,
     ClickHouseDiagnosticsService,
     ClickHouseAnalysisHealthService,
+    ClickHouseMirrorRetryProducer,
+    ClickHouseOrgIdBackfillService,
   ],
   exports: [
     ClickHouseService,

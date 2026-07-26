@@ -33,6 +33,7 @@ import { BatteryV2Processor } from './processors/battery-v2.processor';
 import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
 import { DeviceConnectionWebhookProcessor } from './processors/device-connection-webhook.processor';
 import { BookingDocumentGenerationProcessor } from './processors/booking-document-generation.processor';
+import { ClickHouseMirrorRetryProcessor } from './processors/clickhouse-mirror-retry.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -76,6 +77,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
       { name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS },
       { name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS },
       { name: QUEUE_NAMES.BOOKING_DOCUMENT_GENERATION },
+      { name: QUEUE_NAMES.CLICKHOUSE_MIRROR_RETRY },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -112,6 +114,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     VoiceWebhookProcessor,
     DeviceConnectionWebhookProcessor,
     BookingDocumentGenerationProcessor,
+    ClickHouseMirrorRetryProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

@@ -71,6 +71,7 @@ export class ActivityWindowProducerService {
               params.vehicleId,
               params.windowStart,
               params.windowEnd,
+              params.orgId ?? undefined,
             )
             .catch(() => []),
           this.chAnalytics
@@ -78,6 +79,7 @@ export class ActivityWindowProducerService {
               params.vehicleId,
               params.windowStart,
               params.windowEnd,
+              params.orgId ?? undefined,
             )
             .catch(() => []),
           this.chAnalytics
@@ -85,12 +87,14 @@ export class ActivityWindowProducerService {
               params.vehicleId,
               params.windowStart,
               params.windowEnd,
+              params.orgId ?? undefined,
             )
             .catch(() => null),
           this.chAnalytics.fetchSnapshotsInWindow(
             params.vehicleId,
             params.windowStart,
             params.windowEnd,
+            params.orgId ?? undefined,
           ),
         ]);
 
