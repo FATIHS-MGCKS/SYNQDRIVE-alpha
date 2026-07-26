@@ -4,6 +4,8 @@ import { Prisma, StripeWebhookEventStatus } from '@prisma/client';
 import { StripeWebhookService } from './stripe-webhook.service';
 import * as stripeClientUtil from './stripe-client.util';
 
+const EMPTY_BODY_HASH = '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a';
+
 describe('StripeWebhookService ingest', () => {
   const dispatcher = {
     resolveOrganizationId: jest.fn(),
@@ -22,6 +24,7 @@ describe('StripeWebhookService ingest', () => {
     get: jest.fn((key: string) => {
       if (key === 'stripe.webhookSecret') return 'whsec_test';
       if (key === 'stripe.secretKey') return 'sk_test_123';
+      if (key === 'stripe.webhookToleranceSeconds') return 300;
       return undefined;
     }),
   } as unknown as ConfigService;
@@ -95,6 +98,49 @@ describe('StripeWebhookService ingest', () => {
     expect(result.status).toBe('processed');
   });
 
+  it('skips terminal ignored webhook events', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_ignored',
+      type: 'account.updated',
+      created: 1,
+      livemode: false,
+      data: { object: {} },
+    });
+    prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
+      stripeEventId: 'evt_ignored',
+      status: StripeWebhookEventStatus.IGNORED,
+      organizationId: 'org-1',
+      payloadHash: EMPTY_BODY_HASH,
+    });
+
+    const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
+
+    expect(result.duplicate).toBe(true);
+    expect(result.status).toBe('skipped_terminal');
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('rejects payload hash conflicts for the same stripe event id', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_conflict',
+      type: 'invoice.paid',
+      created: 1,
+      livemode: false,
+      data: { object: { id: 'in_conflict' } },
+    });
+    prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
+      stripeEventId: 'evt_conflict',
+      status: StripeWebhookEventStatus.FAILED,
+      payloadHash: 'different-hash',
+      retryCount: 1,
+    });
+
+    await expect(service.ingestRawWebhook(Buffer.from('{}'), 'sig')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
   it('skips duplicate processed webhook events', async () => {
     stripeMock.webhooks.constructEvent.mockReturnValue({
       id: 'evt_dup',
@@ -107,6 +153,7 @@ describe('StripeWebhookService ingest', () => {
       stripeEventId: 'evt_dup',
       status: StripeWebhookEventStatus.PROCESSED,
       organizationId: 'org-1',
+      payloadHash: EMPTY_BODY_HASH,
     });
 
     const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
@@ -128,6 +175,7 @@ describe('StripeWebhookService ingest', () => {
       stripeEventId: 'evt_retry',
       status: StripeWebhookEventStatus.FAILED,
       retryCount: 1,
+      payloadHash: EMPTY_BODY_HASH,
     });
     prisma.stripeWebhookEvent.update.mockResolvedValue({ retryCount: 2 });
 

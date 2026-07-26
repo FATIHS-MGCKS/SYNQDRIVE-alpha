@@ -9,10 +9,13 @@ import { StripeModeMismatchError } from './stripe/stripe-connect.errors';
 import { PaymentMetricsService } from './observability/payment-metrics.service';
 import * as clientUtil from './stripe/stripe-connect-client.util';
 
+const EMPTY_BODY_HASH = '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a';
+
 describe('StripeConnectWebhookService', () => {
   const webhookEventRepository = {
     findByStripeEventId: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
   };
 
   const organizationPaymentAccountRepository = {
@@ -20,7 +23,7 @@ describe('StripeConnectWebhookService', () => {
   };
 
   const processorService = {
-    enqueueForProcessing: jest.fn(),
+    enqueueForProcessing: jest.fn().mockResolvedValue(undefined),
   };
 
   const paymentMetrics = {
@@ -31,6 +34,7 @@ describe('StripeConnectWebhookService', () => {
     get: jest.fn((key: string) => {
       if (key === 'stripe.connectWebhookSecret') return 'whsec_connect_test';
       if (key === 'stripe.secretKey') return 'sk_test_connect';
+      if (key === 'stripe.webhookToleranceSeconds') return 300;
       return undefined;
     }),
   } as unknown as ConfigService;
@@ -81,7 +85,9 @@ describe('StripeConnectWebhookService', () => {
       eventType: 'checkout.session.completed',
       organizationId: 'org-1',
       processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      attempts: 0,
     });
+    processorService.enqueueForProcessing.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -97,20 +103,23 @@ describe('StripeConnectWebhookService', () => {
     ).toThrow(BadRequestException);
   });
 
-  it('verifies signature against connect webhook secret', async () => {
+  it('verifies signature against connect webhook secret with tolerance', async () => {
     const rawBody = Buffer.from('{"id":"evt_connect_1"}');
     await service.ingestRawWebhook(rawBody, 'sig_test');
     expect(stripeMock.webhooks.constructEvent).toHaveBeenCalledWith(
       rawBody,
       'sig_test',
       'whsec_connect_test',
+      300,
     );
   });
 
-  it('skips duplicate events with 2xx semantics', async () => {
+  it('skips terminal processed events with 2xx semantics', async () => {
     webhookEventRepository.findByStripeEventId.mockResolvedValue({
       stripeEventId: 'evt_connect_1',
       organizationId: 'org-1',
+      processingStatus: StripeConnectWebhookProcessingStatus.PROCESSED,
+      payloadHash: EMPTY_BODY_HASH,
     });
     const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
     expect(result.duplicate).toBe(true);
@@ -118,15 +127,41 @@ describe('StripeConnectWebhookService', () => {
     expect(webhookEventRepository.create).not.toHaveBeenCalled();
   });
 
-  it('stores resolved account events durably', async () => {
+  it('retries failed events instead of skipping them', async () => {
+    webhookEventRepository.findByStripeEventId.mockResolvedValue({
+      id: 'row-failed',
+      stripeEventId: 'evt_connect_1',
+      organizationId: 'org-1',
+      processingStatus: StripeConnectWebhookProcessingStatus.FAILED,
+      payloadHash: EMPTY_BODY_HASH,
+      attempts: 1,
+    });
+    webhookEventRepository.update.mockResolvedValue({
+      id: 'row-failed',
+      stripeEventId: 'evt_connect_1',
+      organizationId: 'org-1',
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      attempts: 2,
+    });
+
     const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
-    expect(result.status).toBe('stored');
+
+    expect(webhookEventRepository.update).toHaveBeenCalled();
+    expect(processorService.enqueueForProcessing).toHaveBeenCalled();
+    expect(result.duplicate).toBe(true);
+    expect(result.status).toBe('processed');
+  });
+
+  it('stores resolved account events durably and processes inline', async () => {
+    const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
+    expect(result.status).toBe('processed');
     expect(webhookEventRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         stripeEventId: 'evt_connect_1',
         organizationId: 'org-1',
         stripeConnectedAccountId: 'acct_known',
         processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+        payloadHash: EMPTY_BODY_HASH,
       }),
     );
     expect(processorService.enqueueForProcessing).toHaveBeenCalled();
@@ -191,6 +226,13 @@ describe('StripeConnectWebhookService', () => {
     expect(processorService.enqueueForProcessing).not.toHaveBeenCalled();
   });
 
+  it('propagates processor failures so Stripe can retry', async () => {
+    processorService.enqueueForProcessing.mockRejectedValue(new Error('reconcile failed'));
+    await expect(service.ingestRawWebhook(Buffer.from('{}'), 'sig')).rejects.toThrow(
+      'reconcile failed',
+    );
+  });
+
   it('handles create race via unique stripeEventId', async () => {
     webhookEventRepository.create.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError('duplicate', {
@@ -203,9 +245,12 @@ describe('StripeConnectWebhookService', () => {
       .mockResolvedValueOnce({
         stripeEventId: 'evt_connect_1',
         organizationId: 'org-1',
+        processingStatus: StripeConnectWebhookProcessingStatus.PROCESSED,
+        payloadHash: EMPTY_BODY_HASH,
       });
 
     const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
     expect(result.duplicate).toBe(true);
+    expect(result.status).toBe('skipped_duplicate');
   });
 });

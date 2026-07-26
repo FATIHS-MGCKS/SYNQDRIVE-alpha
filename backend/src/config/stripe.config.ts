@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { DEFAULT_STRIPE_WEBHOOK_TOLERANCE_SECONDS } from '@shared/stripe/stripe-webhook-security.util';
 
 export default registerAs('stripe', () => {
   const secretKey = process.env.STRIPE_SECRET_KEY?.trim() || '';
@@ -10,6 +11,10 @@ export default registerAs('stripe', () => {
     process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL?.trim() ||
     process.env.APP_URL?.trim() ||
     '';
+  const webhookToleranceSeconds = Number.parseInt(
+    process.env.STRIPE_WEBHOOK_TOLERANCE_SECONDS?.trim() ?? '',
+    10,
+  );
 
   return {
     secretKey,
@@ -18,6 +23,9 @@ export default registerAs('stripe', () => {
     currency,
     defaultPriceId,
     portalReturnUrl,
+    webhookToleranceSeconds: Number.isFinite(webhookToleranceSeconds)
+      ? webhookToleranceSeconds
+      : DEFAULT_STRIPE_WEBHOOK_TOLERANCE_SECONDS,
     configured: Boolean(secretKey),
     webhookConfigured: Boolean(webhookSecret),
     connectWebhookConfigured: Boolean(connectWebhookSecret),
