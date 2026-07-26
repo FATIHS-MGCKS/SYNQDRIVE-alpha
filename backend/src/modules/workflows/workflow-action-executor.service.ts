@@ -22,6 +22,11 @@ import {
 } from './workflow-execution-mode';
 import { WorkflowRuntimeRolloutService } from './rollout/workflow-runtime-rollout.service';
 import type { NotificationWorkflowContext } from './workflow-notification-idempotency.util';
+import {
+  buildNotificationTaskLink,
+  mergeNotificationTaskMetadata,
+  toNotificationTaskUpsertFields,
+} from '@modules/notifications/tasks/notification-task-materializer';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -220,6 +225,8 @@ export class WorkflowActionExecutorService {
           }>
         : undefined;
 
+    const taskLink = buildNotificationTaskLink(ctx, dedupKey);
+
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title,
       description:
@@ -235,15 +242,25 @@ export class WorkflowActionExecutorService {
       dueDate: typeof config.dueDate === 'string' ? new Date(config.dueDate) : null,
       activatesAt: typeof config.activatesAt === 'string' ? new Date(config.activatesAt) : new Date(),
       checklist,
-      metadata: {
-        ...this.workflowActionMetadata(ctx, {
-          ...(typeof config.metadata === 'object' && config.metadata ? config.metadata : {}),
-          automationRuleId: config.automationRuleId,
-          automationCatalogKey: config.automationCatalogKey,
-          dedupKey,
-          provenance: config.automationCatalogKey ? 'task_automation_workflow' : 'workflow',
-        }),
-      } as Prisma.InputJsonValue,
+      ...(taskLink ? toNotificationTaskUpsertFields(taskLink) : {}),
+      metadata: (taskLink
+        ? mergeNotificationTaskMetadata(
+            taskLink,
+            this.workflowActionMetadata(ctx, {
+              ...(typeof config.metadata === 'object' && config.metadata ? config.metadata : {}),
+              automationRuleId: config.automationRuleId,
+              automationCatalogKey: config.automationCatalogKey,
+              dedupKey,
+              provenance: config.automationCatalogKey ? 'task_automation_workflow' : 'workflow',
+            }),
+          )
+        : this.workflowActionMetadata(ctx, {
+            ...(typeof config.metadata === 'object' && config.metadata ? config.metadata : {}),
+            automationRuleId: config.automationRuleId,
+            automationCatalogKey: config.automationCatalogKey,
+            dedupKey,
+            provenance: config.automationCatalogKey ? 'task_automation_workflow' : 'workflow',
+          })) as Prisma.InputJsonValue,
     });
     return {
       taskId: task.id,

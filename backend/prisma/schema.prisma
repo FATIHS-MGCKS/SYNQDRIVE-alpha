@@ -6409,6 +6409,10 @@ model OrgTask {
   documentId                String?             @map("document_id")
   fineId                    String?             @map("fine_id")
   invoiceId                 String?             @map("invoice_id")
+  /// Notification workflow provenance (V4.9.871) — task work item linked to alert state.
+  notificationId            String?             @map("notification_id")
+  workflowRunId             String?             @map("workflow_run_id")
+  sourceEventType           String?             @map("source_event_type")
   assignedUserId            String?             @map("assigned_to")
   dueDate                   DateTime?           @map("due_date")
   startedAt                 DateTime?           @map("started_at")
@@ -6482,6 +6486,8 @@ model OrgTask {
   @@index([organizationId, status, activatesAt])
   @@index([completionMode])
   @@index([supersededByTaskId])
+  @@index([organizationId, notificationId])
+  @@index([organizationId, workflowRunId])
   @@map("org_tasks")
 }
 

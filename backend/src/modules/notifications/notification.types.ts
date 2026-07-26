@@ -64,6 +64,11 @@ export interface NotificationResolutionPolicy {
   /** STATE notifications auto-resolve when the underlying condition clears. */
   autoResolveWhenConditionClears: boolean;
   reopenPolicy?: NotificationReopenPolicy;
+  /**
+   * When true, completing a workflow-linked task may resolve the notification
+   * (subject to manual authorization / condition-cleared checks).
+   */
+  allowTaskCompletionResolve?: boolean;
 }
 
 export interface NotificationDeliveryPolicy {

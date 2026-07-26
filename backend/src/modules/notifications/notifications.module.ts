@@ -40,6 +40,7 @@ import { NotificationMigrationBackfillService } from './migration/notification-m
 import { NotificationMigrationAcceptanceService } from './migration/notification-migration-acceptance.service';
 import { NotificationArchitectureAuditService } from './migration/notification-architecture-audit.service';
 import { NotificationLifecycleWorkflowEmitter } from './workflow/notification-lifecycle-workflow.emitter';
+import { NotificationTaskCompletionService } from './tasks/notification-task-completion.service';
 
 /**
  * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime, REST API, delivery outbox.
@@ -55,7 +56,7 @@ import { NotificationLifecycleWorkflowEmitter } from './workflow/notification-li
       { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },
     ),
     forwardRef(() => BusinessInsightsModule),
-    WorkflowsModule,
+    forwardRef(() => WorkflowsModule),
   ],
   controllers: [NotificationsController],
   providers: [
@@ -80,6 +81,7 @@ import { NotificationLifecycleWorkflowEmitter } from './workflow/notification-li
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
     NotificationLifecycleWorkflowEmitter,
+    NotificationTaskCompletionService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
@@ -108,6 +110,7 @@ import { NotificationLifecycleWorkflowEmitter } from './workflow/notification-li
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
     NotificationLifecycleWorkflowEmitter,
+    NotificationTaskCompletionService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,

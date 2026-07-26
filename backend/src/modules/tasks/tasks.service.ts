@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional, forwardRef } from '@nestjs/common';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
@@ -28,6 +28,8 @@ import type { TaskDetailResponse, TaskUserRef } from './task-detail-view.types';
 import { canOverrideTaskChecklistCompletion } from './task-checklist-override.policy';
 import { RESOLUTION_REQUIRED_TYPES } from './task-resolution.constants';
 import { assertValidManualResolutionCode } from './task-resolution-policy.util';
+import type { NotificationTaskCompletionService } from '@modules/notifications/tasks/notification-task-completion.service';
+import { NotificationTaskCompletionService as NotificationTaskCompletionServiceRef } from '@modules/notifications/tasks/notification-task-completion.service';
 import {
   supportTicketFollowupDedupKey,
   voiceConversationTaskDedupKey,
@@ -204,6 +206,9 @@ export class TasksService {
     private readonly activityLog: ActivityLogService,
     private readonly linkedObjectResolver: TaskLinkedObjectResolverService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
+    @Optional()
+    @Inject(forwardRef(() => NotificationTaskCompletionServiceRef))
+    private readonly notificationTaskCompletion?: NotificationTaskCompletionService,
   ) {}
 
   // ─── Serialization ─────────────────────────────────────────────────────
@@ -1515,8 +1520,26 @@ export class TasksService {
     }
 
     const result = await this.getTaskById(id, orgId);
-    if (to === 'DONE') this.notify('completed', result);
-    if (to === 'CANCELLED') this.notify('cancelled', result);
+    if (to === 'DONE') {
+      this.notify('completed', result);
+      await this.notificationTaskCompletion?.handleTaskCompleted({
+        id: result.id,
+        organizationId: orgId,
+        metadata: result.metadata,
+        resolutionNote: result.resolutionNote,
+        completionMode: result.completionMode,
+      }).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Notification task completion hook failed for task ${id}: ${message}`);
+      });
+    }
+    if (to === 'CANCELLED') {
+      this.notify('cancelled', result);
+      await this.notificationTaskCompletion?.handleTaskCancelled({
+        id: result.id,
+        metadata: result.metadata,
+      });
+    }
     return result;
   }
 
@@ -1937,6 +1960,9 @@ export class TasksService {
       documentId?: string | null;
       fineId?: string | null;
       invoiceId?: string | null;
+      notificationId?: string | null;
+      workflowRunId?: string | null;
+      sourceEventType?: string | null;
       source: string;
       dueDate?: Date | null;
       activatesAt?: Date | null;
@@ -1973,6 +1999,9 @@ export class TasksService {
           documentId: payload.documentId ?? existing!.documentId,
           fineId: payload.fineId ?? existing!.fineId,
           invoiceId: payload.invoiceId ?? existing!.invoiceId,
+          notificationId: payload.notificationId ?? existing!.notificationId,
+          workflowRunId: payload.workflowRunId ?? existing!.workflowRunId,
+          sourceEventType: payload.sourceEventType ?? existing!.sourceEventType,
           dueDate: payload.dueDate !== undefined ? payload.dueDate : existing!.dueDate,
           activatesAt:
             payload.activatesAt != null ? payload.activatesAt : existing!.activatesAt,
@@ -2012,6 +2041,9 @@ export class TasksService {
           documentId: payload.documentId ?? undefined,
           fineId: payload.fineId ?? undefined,
           invoiceId: payload.invoiceId ?? undefined,
+          notificationId: payload.notificationId ?? undefined,
+          workflowRunId: payload.workflowRunId ?? undefined,
+          sourceEventType: payload.sourceEventType ?? undefined,
           dueDate: payload.dueDate ?? null,
           activatesAt: payload.activatesAt ?? new Date(),
           source: payload.source,
