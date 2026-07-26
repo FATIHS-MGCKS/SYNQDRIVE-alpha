@@ -12,11 +12,34 @@ echo "    current=${CURRENT}"
 
 # Sub-scripts read DATABASE_URL and the ClickHouse credentials from the
 # environment; on the VPS those live in the shared backend env.
+#
+# Read the keys literally instead of sourcing the file: values are not shell
+# quoted, and at least one (the MQTT `$share/...` topic) would be expanded as a
+# variable. Sourcing a secrets file also executes whatever it contains.
+export_env_keys() {
+  local file="$1"; shift
+  local key line value
+  for key in "$@"; do
+    line="$(grep -m1 -E "^${key}=" "$file" || true)"
+    [[ -z "$line" ]] && continue
+    value="${line#*=}"
+    if [[ ${#value} -ge 2 ]] &&
+      { [[ "$value" == \"*\" ]] || [[ "$value" == \'*\' ]]; }; then
+      value="${value:1:${#value}-2}"
+    fi
+    [[ -z "$value" ]] && continue
+    export "${key}=${value}"
+  done
+}
+
 BACKEND_ENV="${SYNQDRIVE_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 if [[ -r "$BACKEND_ENV" ]]; then
-  # shellcheck disable=SC1090
-  set -a; source "$BACKEND_ENV"; set +a
-  echo "    env=${BACKEND_ENV} (loaded)"
+  export_env_keys "$BACKEND_ENV" \
+    DATABASE_URL \
+    CLICKHOUSE_URL CLICKHOUSE_HOST CLICKHOUSE_PORT \
+    CLICKHOUSE_USER CLICKHOUSE_PASSWORD CLICKHOUSE_DATABASE \
+    REDIS_HOST REDIS_PORT REDIS_PASSWORD
+  echo "    env=${BACKEND_ENV} (loaded: DATABASE_URL=${DATABASE_URL:+set} CLICKHOUSE_USER=${CLICKHOUSE_USER:-unset})"
 else
   echo "    WARN: ${BACKEND_ENV} not readable — steps needing DATABASE_URL/CLICKHOUSE_* will be skipped"
 fi

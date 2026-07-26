@@ -43,7 +43,26 @@ interface AppliedMigration {
   checksum: string;
 }
 
-const MIGRATIONS_DIR = join(__dirname, 'migrations');
+/**
+ * The compiled service sits at `dist/src/modules/clickhouse`, but nest-cli
+ * copies assets relative to `sourceRoot`, which historically landed the .sql
+ * files at `dist/modules/clickhouse/migrations`. That mismatch silently
+ * disabled every migration in production. nest-cli.json now targets the right
+ * directory; the fallbacks keep older build layouts and ts-node working.
+ */
+const MIGRATIONS_DIR_CANDIDATES = [
+  join(__dirname, 'migrations'),
+  join(process.cwd(), 'dist', 'src', 'modules', 'clickhouse', 'migrations'),
+  join(process.cwd(), 'dist', 'modules', 'clickhouse', 'migrations'),
+  join(process.cwd(), 'src', 'modules', 'clickhouse', 'migrations'),
+];
+
+export function resolveMigrationsDir(
+  candidates: string[] = MIGRATIONS_DIR_CANDIDATES,
+  exists: (p: string) => boolean = existsSync,
+): string | null {
+  return candidates.find((dir) => exists(dir)) ?? null;
+}
 
 /**
  * Splits a migration file into individual statements.
@@ -180,19 +199,22 @@ export class ClickHouseSchemaService implements OnApplicationBootstrap {
   }
 
   private loadMigrationFiles(): MigrationFile[] {
-    if (!existsSync(MIGRATIONS_DIR)) {
-      this.logger.warn(
-        `Migrations directory not found at ${MIGRATIONS_DIR} — no migrations to apply.`,
+    const migrationsDir = resolveMigrationsDir();
+    if (!migrationsDir) {
+      // A missing directory means the build dropped the .sql assets, so the
+      // schema silently stops advancing. Throw so it surfaces in readiness
+      // (lastSchemaError) instead of looking like "nothing to apply".
+      throw new Error(
+        `ClickHouse migrations directory not found. Looked in: ${MIGRATIONS_DIR_CANDIDATES.join(', ')}`,
       );
-      return [];
     }
 
-    const fileNames = readdirSync(MIGRATIONS_DIR)
+    const fileNames = readdirSync(migrationsDir)
       .filter((f) => f.toLowerCase().endsWith('.sql'))
       .sort((a, b) => a.localeCompare(b));
 
     return fileNames.map((fileName) => {
-      const raw = readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8');
+      const raw = readFileSync(join(migrationsDir, fileName), 'utf8');
       const version = fileName.split('_')[0];
       const name = fileName.replace(/\.sql$/i, '');
       const checksum = createHash('sha256').update(raw).digest('hex');
