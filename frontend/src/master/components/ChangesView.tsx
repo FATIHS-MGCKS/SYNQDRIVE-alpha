@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-dimo-vehicle-integrity-2e2-2026-07-26',
+    version: '4.9.892',
+    title: 'V4.9.892 — Master Admin 2E.2: DIMO vehicle integrity audit',
+    summary: [
+      'Full DIMO integration audit: dimo_vehicle_id, token_id, org binding, import, sync, disconnect, reconnect.',
+      'Verdict: dimo_vehicles identity strong; vehicles.dimo_vehicle_id has no UNIQUE — cross-org duplicate binding possible.',
+      'registerFromDimo lacks already-registered guard; webhooks use findFirst by tokenId.',
+      'Risk register D1–D12 with operator SQL audit queries; remediation roadmap for 2E.3.',
+    ],
+    reason:
+      'Phase 2E.2 validates DIMO vehicle integrity before remediation — analysis only, no code changes.',
+    previousBehavior:
+      'DIMO binding assumed 1:1 but never enforced at DB or registration layer.',
+    details:
+      'docs/remediation/dimo-vehicle-integrity.md · architecture/MASTER_ADMIN_DIMO_VEHICLE_INTEGRITY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T17:30:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
