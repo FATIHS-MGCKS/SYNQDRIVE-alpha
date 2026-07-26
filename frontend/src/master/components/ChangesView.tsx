@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-backup-2c3-2026-07-26',
+    version: '4.9.892',
+    title: 'V4.9.892 — Master Admin 2C.3: ClickHouse logical backup',
+    summary: [
+      'vps-backup-clickhouse.sh: BACKUP DATABASE via existing Disk(backups) — no container/mount/volume changes.',
+      'Integrity: unzip -t + SHA-256 + shared archive; GPG + offsite rclone/S3.',
+      'Restore drill: vps-restore-test-clickhouse.sh; cron 03:30 UTC.',
+      'docs/remediation/clickhouse-backup.md — topology change gated on backup+restore test.',
+    ],
+    reason:
+      'ClickHouse prod had dev-only local backup script; infra changes must wait until logical backup + offsite are proven.',
+    previousBehavior:
+      'clickhouse-backup-local.sh for Docker Compose dev only; no VPS schedule, integrity, or offsite.',
+    details:
+      'backend/scripts/ops/vps-backup-clickhouse.sh — configure clickhouse-backup.env on VPS',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T17:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

@@ -56,7 +56,11 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-setup-prometheus.sh` | Install/refresh Prometheus Docker on VPS (localhost:9090, scrapes :3001) | safe — requires `METRICS_BEARER_TOKEN` |
 | `vps-setup-grafana.sh` | Install/refresh Grafana Docker on VPS (localhost:3000, SynqDrive Ops dashboard) | safe — requires Prometheus |
 | `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
-| `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only |
+| `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only; **run 2C.3 backup+restore test first** |
+| `vps-backup-clickhouse.sh` | Production CH logical backup (existing Disk('backups'), no topology change) | safe — requires `clickhouse-backup.env` |
+| `vps-restore-test-clickhouse.sh` | Restore drill to `synqdrive_restore_test` | safe — separate test DB |
+| `vps-install-clickhouse-backup-cron.sh` | Install daily 03:30 UTC ClickHouse backup cron | safe — run as root once |
+| `clickhouse-backup.env.example` | ClickHouse backup encryption/offsite template | copy to `/opt/synqdrive/shared/clickhouse-backup.env` |
 
 ### Partitioning (P2)
 
@@ -77,3 +81,19 @@ window. The `DataRetentionScheduler` keeps working on partitioned tables.
   the table). `pg_repack` has the same transient requirement but stays online.
 - After reclaiming, autovacuum tuning (P1 migration `*_autovacuum_tuning`) keeps
   bloat from re-accumulating on the high-churn tables.
+
+## ClickHouse backup (production — Phase 2C.3)
+
+Logical backup via **existing** `Disk('backups')` mount — no container/mount/volume changes.
+
+```bash
+cp backend/scripts/ops/clickhouse-backup.env.example /opt/synqdrive/shared/clickhouse-backup.env
+chmod 600 /opt/synqdrive/shared/clickhouse-backup.env
+bash /opt/synqdrive/current/backend/scripts/ops/vps-install-clickhouse-backup-cron.sh
+bash backend/scripts/ops/vps-backup-clickhouse.sh
+bash backend/scripts/ops/vps-restore-test-clickhouse.sh --drop-after
+```
+
+Docs: [`docs/remediation/clickhouse-backup.md`](../../docs/remediation/clickhouse-backup.md)
+
+**Do not** run ClickHouse container rebuild or mount changes until backup + restore test succeed.

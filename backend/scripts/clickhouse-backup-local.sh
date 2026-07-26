@@ -9,6 +9,9 @@
 # Phase 1: local-only backups, retained for a maximum of 7 days.
 # No S3 / cloud logic on purpose.
 #
+# Production VPS: use backend/scripts/ops/vps-backup-clickhouse.sh instead
+# (see docs/remediation/clickhouse-backup.md) — no container/mount changes.
+#
 # Run from the backend/ directory:
 #   ./scripts/clickhouse-backup-local.sh
 #   npm run clickhouse:backup:local
