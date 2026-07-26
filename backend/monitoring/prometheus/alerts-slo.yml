@@ -1,0 +1,411 @@
+# SynqDrive Service Level Objectives — recording rules & burn alerts
+#
+# Companion doc: docs/remediation/service-level-objectives.md
+# Dashboards: synqdrive-platform-overview, domain boards (2F.6)
+
+groups:
+  - name: synqdrive_slo_recording
+    interval: 30s
+    rules:
+      # ── API availability ─────────────────────────────────────────────
+      - record: synqdrive:slo:api_scrape_up:ratio5m
+        expr: avg(up{job="synqdrive-backend"})
+
+      - record: synqdrive:slo:api_blackbox_up:ratio5m
+        expr: |
+          avg(probe_success{job="blackbox"})
+          or vector(1)
+
+      - record: synqdrive:slo:api_availability:error_budget_remaining:30d
+        expr: |
+          clamp_min(
+            1 - (
+              (1 - avg_over_time(up{job="synqdrive-backend"}[30d]))
+              / (1 - 0.999)
+            ),
+            0
+          )
+
+      # ── API latency (synthetic + representative surfaces) ───────────
+      - record: synqdrive:slo:api_blackbox_latency_p95:5m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(probe_duration_seconds_bucket{job="blackbox"}[5m]))
+          )
+          or vector(0)
+
+      - record: synqdrive:slo:api_surface_latency_p95:10m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(synqdrive_evaluations_api_request_duration_seconds_bucket[10m])
+              or rate(synqdrive_notification_api_request_duration_seconds_bucket[10m])
+              or rate(synqdrive_fleet_health_rental_health_request_duration_seconds_bucket{route="fleet_page"}[10m])
+            )
+          )
+
+      # ── Queue processing ─────────────────────────────────────────────
+      - record: synqdrive:slo:queue_lag_p95:10m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, queue) (rate(synqdrive_queue_lag_seconds_bucket[10m]))
+          )
+
+      - record: synqdrive:slo:queue_failed_jobs:sum
+        expr: sum(synqdrive_queue_failed_jobs)
+
+      - record: synqdrive:slo:queue_job_failure_ratio:30m
+        expr: |
+          (
+            sum(rate(synqdrive_dimo_snapshot_poll_total{result="failure"}[30m]))
+            + sum(rate(synqdrive_notification_delivery_failed_total[30m]))
+            + sum(rate(synqdrive_document_extraction_failures_total[30m]))
+          )
+          / clamp_min(
+            sum(rate(synqdrive_dimo_snapshot_poll_total[30m]))
+            + sum(rate(synqdrive_notification_delivery_attempts_total[30m]))
+            + sum(rate(synqdrive_document_extraction_jobs_total[30m])),
+            0.001
+          )
+
+      # ── Stripe / payments ────────────────────────────────────────────
+      - record: synqdrive:slo:stripe_webhook_success_ratio:30m
+        expr: |
+          sum(rate(synqdrive_payment_webhook_processing_total{outcome="success"}[30m]))
+          / clamp_min(sum(rate(synqdrive_payment_webhook_processing_total[30m])), 0.001)
+
+      - record: synqdrive:slo:stripe_checkout_success_ratio:30m
+        expr: |
+          sum(rate(synqdrive_payment_checkout_creation_total{result="success"}[30m]))
+          / clamp_min(sum(rate(synqdrive_payment_checkout_creation_total[30m])), 0.001)
+
+      - record: synqdrive:slo:stripe_reconciliation_mismatch:1h
+        expr: sum(increase(synqdrive_payment_reconciliation_mismatch_total[1h]))
+
+      # ── DIMO ─────────────────────────────────────────────────────────
+      - record: synqdrive:slo:dimo_snapshot_success_ratio:30m
+        expr: |
+          sum(rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m]))
+          / clamp_min(
+            sum(rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m]))
+            + sum(rate(synqdrive_dimo_snapshot_poll_total{result="failure"}[30m])),
+            0.001
+          )
+
+      - record: synqdrive:slo:dimo_stale_snapshots:1h
+        expr: sum(increase(synqdrive_stale_snapshots_total[1h]))
+
+      # ── Notifications ────────────────────────────────────────────────
+      - record: synqdrive:slo:notification_delivery_success_ratio:30m
+        expr: |
+          sum(rate(synqdrive_notification_delivery_sent_total[30m]))
+          / clamp_min(sum(rate(synqdrive_notification_delivery_attempts_total[30m])), 0.001)
+
+      - record: synqdrive:slo:notification_api_error_ratio:15m
+        expr: |
+          sum(rate(synqdrive_notification_api_requests_total{result="error"}[15m]))
+          / clamp_min(sum(rate(synqdrive_notification_api_requests_total[15m])), 0.001)
+
+      - record: synqdrive:slo:notification_open_age_p95:1h
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, severity) (rate(synqdrive_notification_open_age_seconds_bucket[1h]))
+          )
+
+      # ── AI platform ──────────────────────────────────────────────────
+      - record: synqdrive:slo:ai_doc_extraction_success_ratio:30m
+        expr: |
+          sum(rate(synqdrive_document_extraction_jobs_total{status=~"READY_FOR_REVIEW|APPLIED"}[30m]))
+          / clamp_min(sum(rate(synqdrive_document_extraction_jobs_total[30m])), 0.001)
+
+      - record: synqdrive:slo:ai_ocr_success_ratio:30m
+        expr: |
+          sum(rate(synqdrive_document_ocr_total{result="success"}[30m]))
+          / clamp_min(sum(rate(synqdrive_document_ocr_total[30m])), 0.001)
+
+      - record: synqdrive:slo:ai_extraction_latency_p95:10m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, stage) (rate(synqdrive_document_extraction_duration_seconds_bucket[10m]))
+          )
+
+      - record: synqdrive:slo:ai_voice_webhook_success_ratio:30m
+        expr: |
+          sum(rate(synqdrive_voice_webhook_processing_total{outcome="success"}[30m]))
+          / clamp_min(sum(rate(synqdrive_voice_webhook_processing_total[30m])), 0.001)
+
+      # ── Dashboard (rental operator surfaces) ───────────────────────────
+      - record: synqdrive:slo:dashboard_fleet_ready_share
+        expr: synqdrive:fleet_health:ready_share
+
+      - record: synqdrive:slo:dashboard_fleet_page_latency_p99:10m
+        expr: |
+          synqdrive:fleet_health:rental_health_request_p99_seconds{route="fleet_page"}
+
+      - record: synqdrive:slo:dashboard_eval_api_error_ratio:15m
+        expr: job:synqdrive_evaluations_api_error_ratio:rate15m
+
+  - name: synqdrive_slo_alerts
+    rules:
+      # ── API availability (SLO 99.9% / 30d) ─────────────────────────
+      - alert: SloApiAvailabilityFastBurn
+        expr: |
+          (1 - synqdrive:slo:api_scrape_up:ratio5m) > (14.4 * 0.001)
+          and (1 - avg_over_time(up{job="synqdrive-backend"}[1h])) > (6 * 0.001)
+        for: 5m
+        labels:
+          severity: critical
+          owner: platform
+          slo: api_availability
+        annotations:
+          summary: API availability fast error-budget burn
+          description: Backend scrape availability burn rate threatens the 99.9% monthly SLO (14.4× budget burn over 5m/1h windows).
+          runbook_url: docs/remediation/service-level-objectives.md#api-availability
+          clear_condition: scrape availability ratio ≥ 0.999 for 15m.
+
+      - alert: SloApiAvailabilityBudgetExhausted
+        expr: synqdrive:slo:api_availability:error_budget_remaining:30d < 0
+        for: 15m
+        labels:
+          severity: critical
+          owner: platform
+          slo: api_availability
+        annotations:
+          summary: API availability 30-day error budget exhausted
+          description: Rolling 30-day availability has fallen below 99.9% target.
+          runbook_url: docs/remediation/service-level-objectives.md#api-availability
+
+      # ── API latency (SLO p95 < 800ms synthetic) ─────────────────────
+      - alert: SloApiLatencyP95High
+        expr: |
+          synqdrive:slo:api_blackbox_latency_p95:5m > 0.8
+          and synqdrive:slo:api_blackbox_latency_p95:5m > 0
+        for: 15m
+        labels:
+          severity: warning
+          owner: platform
+          slo: api_latency
+        annotations:
+          summary: Synthetic API latency p95 above 800ms
+          description: Blackbox probe p95 exceeds latency SLO — check nginx, backend load, and Postgres.
+          runbook_url: docs/remediation/service-level-objectives.md#api-latency
+          clear_condition: p95 below 600ms for 15m.
+
+      - alert: SloApiSurfaceLatencyP95Critical
+        expr: |
+          synqdrive:slo:api_surface_latency_p95:10m > 5
+          and sum(rate(synqdrive_evaluations_api_requests_total[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          owner: platform
+          slo: api_latency
+        annotations:
+          summary: Authenticated API surface p95 above 5s
+          description: Evaluations/notification/fleet_page aggregate p95 critical — user-facing latency SLO breach.
+          runbook_url: docs/remediation/service-level-objectives.md#api-latency
+
+      # ── Queue processing (SLO lag p95 < 120s) ───────────────────────
+      - alert: SloQueueLagP95High
+        expr: |
+          synqdrive:slo:queue_lag_p95:10m > 120
+          and sum(rate(synqdrive_queue_lag_seconds_count[10m])) > 0
+        for: 15m
+        labels:
+          severity: warning
+          owner: workers
+          slo: queue_processing
+        annotations:
+          summary: Queue lag p95 above 120s
+          description: BullMQ job lag exceeds processing SLO — inspect workers, Redis, and failed jobs.
+          runbook_url: docs/remediation/service-level-objectives.md#queue-processing
+          clear_condition: lag p95 below 90s for 15m.
+
+      - alert: SloQueueFailedJobsBudgetBurn
+        expr: |
+          synqdrive:slo:queue_failed_jobs:sum > 25
+          and deriv(synqdrive:slo:queue_failed_jobs:sum[30m]) > 0
+        for: 20m
+        labels:
+          severity: critical
+          owner: workers
+          slo: queue_processing
+        annotations:
+          summary: Queue failed-job backlog growing past SLO budget
+          description: More than 25 failed jobs with sustained growth — error budget for queue reliability consumed.
+          runbook_url: docs/remediation/service-level-objectives.md#queue-processing
+
+      # ── Stripe (SLO 99.5% webhook success / 30d) ─────────────────────
+      - alert: SloStripeWebhookSuccessLow
+        expr: |
+          synqdrive:slo:stripe_webhook_success_ratio:30m < 0.995
+          and sum(rate(synqdrive_payment_webhook_processing_total[30m])) > 0.01
+        for: 20m
+        labels:
+          severity: warning
+          owner: billing
+          slo: stripe
+        annotations:
+          summary: Stripe webhook success below 99.5%
+          description: Connect webhook processing success ratio breached SLO — check Stripe status and reconciliation workers.
+          runbook_url: docs/remediation/service-level-objectives.md#stripe
+          clear_condition: success ratio ≥ 99.7% for 30m.
+
+      - alert: SloStripeReconciliationMismatch
+        expr: synqdrive:slo:stripe_reconciliation_mismatch:1h > 0
+        for: 10m
+        labels:
+          severity: critical
+          owner: billing
+          slo: stripe
+        annotations:
+          summary: Stripe reconciliation mismatch detected
+          description: Payment ledger integrity mismatch — immediate billing ops review required.
+          runbook_url: docs/remediation/service-level-objectives.md#stripe
+
+      # ── DIMO (SLO 95% snapshot success / 7d) ─────────────────────────
+      - alert: SloDimoSnapshotSuccessLow
+        expr: |
+          synqdrive:slo:dimo_snapshot_success_ratio:30m < 0.95
+          and (
+            sum(rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m]))
+            + sum(rate(synqdrive_dimo_snapshot_poll_total{result="failure"}[30m]))
+          ) > 0.05
+        for: 30m
+        labels:
+          severity: warning
+          owner: dimo
+          slo: dimo
+        annotations:
+          summary: DIMO snapshot success below 95%
+          description: Telematics snapshot worker success ratio below SLO — check DIMO auth, API, and dimo.snapshot.poll queue.
+          runbook_url: docs/remediation/service-level-objectives.md#dimo
+          clear_condition: success ratio ≥ 97% for 30m.
+
+      - alert: SloDimoStaleSnapshotsHigh
+        expr: synqdrive:slo:dimo_stale_snapshots:1h > 10
+        for: 30m
+        labels:
+          severity: warning
+          owner: dimo
+          slo: dimo
+        annotations:
+          summary: Elevated stale DIMO snapshots
+          description: More than 10 stale snapshot events in 1h — fleet data freshness SLO at risk.
+
+      # ── Notifications (SLO 99% delivery / 30d) ───────────────────────
+      - alert: SloNotificationDeliverySuccessLow
+        expr: |
+          synqdrive:slo:notification_delivery_success_ratio:30m < 0.99
+          and sum(rate(synqdrive_notification_delivery_attempts_total[30m])) > 0.05
+        for: 20m
+        labels:
+          severity: warning
+          owner: notifications
+          slo: notifications
+        annotations:
+          summary: Notification delivery success below 99%
+          description: Outbox delivery success ratio breached — inspect notification.delivery queue and email provider.
+          runbook_url: docs/remediation/service-level-objectives.md#notifications
+          clear_condition: success ratio ≥ 99.5% for 30m.
+
+      - alert: SloNotificationApiErrorRateHigh
+        expr: synqdrive:slo:notification_api_error_ratio:15m > 0.05
+        for: 15m
+        labels:
+          severity: critical
+          owner: notifications
+          slo: notifications
+        annotations:
+          summary: Notification API error rate above 5%
+          description: Notification API SLO breach — check DB, auth, and evaluation workers.
+          runbook_url: docs/remediation/service-level-objectives.md#notifications
+
+      # ── AI (SLO 95% doc extraction success / 7d) ─────────────────────
+      - alert: SloAiDocExtractionSuccessLow
+        expr: |
+          synqdrive:slo:ai_doc_extraction_success_ratio:30m < 0.95
+          and sum(rate(synqdrive_document_extraction_jobs_total[30m])) > 0.01
+        for: 30m
+        labels:
+          severity: warning
+          owner: ai
+          slo: ai
+        annotations:
+          summary: AI document extraction success below 95%
+          description: Document extraction pipeline success ratio below SLO — check OCR quota, storage, and workers.
+          runbook_url: docs/remediation/service-level-objectives.md#ai
+          clear_condition: success ratio ≥ 97% for 30m.
+
+      - alert: SloAiOcrSuccessLow
+        expr: |
+          synqdrive:slo:ai_ocr_success_ratio:30m < 0.90
+          and sum(rate(synqdrive_document_ocr_total[30m])) > 0.01
+        for: 20m
+        labels:
+          severity: warning
+          owner: ai
+          slo: ai
+        annotations:
+          summary: Mistral OCR success below 90%
+          description: OCR stage success ratio critical for AI SLO — check MISTRAL_API_KEY and rate limits.
+
+      - alert: SloAiExtractionLatencyP95High
+        expr: |
+          synqdrive:slo:ai_extraction_latency_p95:10m > 120
+          and sum(rate(synqdrive_document_extraction_duration_seconds_count[10m])) > 0.01
+        for: 15m
+        labels:
+          severity: warning
+          owner: ai
+          slo: ai
+        annotations:
+          summary: Document extraction stage p95 above 120s
+          description: AI pipeline latency SLO breach — inspect queue depth and OCR throughput.
+
+      # ── Dashboard (SLO 80% fleet ready / fleet_page p99 < 8s) ────────
+      - alert: SloDashboardFleetReadyShareLow
+        expr: |
+          synqdrive:slo:dashboard_fleet_ready_share < 0.80
+          and synqdrive:fleet_health:fleet_row_total >= 10
+        for: 20m
+        labels:
+          severity: warning
+          owner: fleet-health-service
+          slo: dashboard
+        annotations:
+          summary: Rental dashboard fleet ready share below 80%
+          description: Fleet Health dashboard readiness SLO breached for fleets ≥ 10 vehicles.
+          runbook_url: docs/remediation/service-level-objectives.md#dashboard
+          clear_condition: ready share ≥ 85% for 15m.
+
+      - alert: SloDashboardFleetPageLatencyHigh
+        expr: |
+          synqdrive:slo:dashboard_fleet_page_latency_p99:10m > 8
+          and sum(rate(synqdrive_fleet_health_rental_health_request_duration_seconds_count{route="fleet_page"}[10m])) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          owner: fleet-health-service
+          slo: dashboard
+        annotations:
+          summary: Fleet dashboard page p99 latency above 8s
+          description: Rental fleet_page latency SLO breach — aligns with FleetHealthRentalRequestLatencyP99High.
+          runbook_url: docs/remediation/service-level-objectives.md#dashboard
+
+      - alert: SloDashboardEvalApiErrorsHigh
+        expr: synqdrive:slo:dashboard_eval_api_error_ratio:15m > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          owner: evaluations
+          slo: dashboard
+        annotations:
+          summary: Auswertungen API errors impacting dashboard widgets
+          description: Evaluations API error ratio above 5% — dashboard insights SLO at risk.
+          runbook_url: docs/remediation/service-level-objectives.md#dashboard

@@ -54,6 +54,7 @@ refresh_prometheus() {
   chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
 
   cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
+  cp "$SRC_PROM/alerts-slo.yml" "$PROM_DIR/alerts-slo.yml"
   cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"
   if [[ "$BACKEND_PORT" != "3001" ]]; then
     sed -i "s/127.0.0.1:3001/127.0.0.1:${BACKEND_PORT}/" "$PROM_DIR/prometheus.yml"
