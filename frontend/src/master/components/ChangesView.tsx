@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-task-linking-v49871-2026-07-26',
+    version: '4.9.871',
+    title: 'V4.9.871 — Notification Engine: Task-Verknüpfung ohne Duplikate',
+    summary: [
+      'OrgTask: notificationId, workflowRunId, sourceEventType + dedupKey (idempotencyKey).',
+      'NotificationTaskMaterializer verknüpft Workflow task.create mit vollständiger Provenance.',
+      'Notification bleibt Zustand, Task bleibt Arbeit — getrennte Objekte.',
+      'Task-Abschluss löst Notification nur per Registry-Regel + Bedingung/Manual-Note.',
+      'Tests: einmalig, Retry, Bedingung aktiv, Bedingung behoben, Cancel, Reopen-Generation.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 25: Tasks aus Notifications eindeutig verknüpfen und duplikatfrei halten.',
+    previousBehavior:
+      'Workflow-Tasks speicherten nur triggeringNotificationId in Metadata; kein DB-Link; Task-Abschluss löste Notification nicht kontrolliert.',
+    details:
+      'notification-task-materializer.ts, notification-task-completion.service.ts, OrgTask-Migration 20260726130000, workflow-action-executor.service.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:43:00.000Z',
+  },
+  {
     id: 'workflow-notification-idempotency-v49870-2026-07-26',
     version: '4.9.870',
     title: 'V4.9.870 — Notification Engine: Workflow-Idempotenz pro Generation',
