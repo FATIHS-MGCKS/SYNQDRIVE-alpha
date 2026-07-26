@@ -50,6 +50,8 @@ import {
   auditFromMaterializeResult,
   emitNotificationIngestAudit,
 } from './notification-ingest-audit';
+import { buildOccurrenceCreateInput } from './occurrence/notification-occurrence.factory';
+import { evaluateOccurrenceIngest } from './occurrence/notification-occurrence.policy';
 
 @Injectable()
 export class NotificationCoreService {
@@ -135,19 +137,27 @@ export class NotificationCoreService {
         if (active) {
           const severityBefore = active.severity;
           const updated = await this.updateActiveFromCandidate(active, normalized, tx);
+          if ('ignored' in updated && updated.ignored) {
+            return {
+              operation: 'ignored' as const,
+              notification: updated.notification,
+              reason: updated.reason,
+            };
+          }
+          const notification = updated.notification;
           const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation(
             'updated',
-            updated,
+            notification,
             severityBefore,
           );
           if (transition) {
             const ids = await this.deliveryEnqueue.enqueueInTransaction(
-              { notification: updated, transition, severityBefore },
+              { notification, transition, severityBefore },
               tx,
             );
             pendingOutboxIds.push(...ids);
           }
-          return { operation: 'updated' as const, notification: updated };
+          return { operation: 'updated' as const, notification };
         }
 
         const latestId = await this.repository.lockLatestByFingerprintForUpdate(
@@ -293,23 +303,31 @@ export class NotificationCoreService {
     const notification = await this.requireNotification(notificationId, normalized.organizationId);
 
     return this.repository.runTransaction(async (tx) => {
+      const duplicate = await this.repository.findOccurrenceBySourceEventId(
+        notificationId,
+        normalized.sourceEventId ?? normalized.sourceRef,
+        tx,
+      );
+      const evaluation = evaluateOccurrenceIngest({
+        candidate: normalized,
+        notificationLastSeenAt: notification.lastSeenAt,
+        isRecovery: isRecoverySeverity(normalized.severity as unknown as DomainSeverity),
+        duplicateSourceEvent: !!duplicate,
+      });
+
+      if (!evaluation.recordOccurrence) {
+        return notification;
+      }
+
       await this.repository.createOccurrence(
-        {
-          notificationId,
-          organizationId: normalized.organizationId,
-          occurredAt: normalized.occurredAt,
-          sourceType: normalized.sourceType,
-          sourceRef: normalized.sourceRef,
-          severityAtOccurrence: normalized.severity,
-          payload: normalized.metadata as Prisma.InputJsonValue,
-        },
+        buildOccurrenceCreateInput(notificationId, normalized),
         tx,
       );
       return this.repository.updateNotification(
         notificationId,
         {
-          lastSeenAt: normalized.occurredAt,
-          occurrenceCount: notification.occurrenceCount + 1,
+          lastSeenAt: evaluation.lastSeenAt,
+          occurrenceCount: { increment: 1 },
         },
         notification.version,
         tx,
@@ -591,37 +609,71 @@ export class NotificationCoreService {
           throw new NotFoundException('No active notification to resolve for recovery');
         }
 
-        const row = await this.repository.updateNotification(
+        const duplicate = await this.repository.findOccurrenceBySourceEventId(
+          active.id,
+          candidate.sourceEventId ?? candidate.sourceRef,
+          tx,
+        );
+        const evaluation = evaluateOccurrenceIngest({
+          candidate,
+          notificationLastSeenAt: active.lastSeenAt,
+          isRecovery: true,
+          duplicateSourceEvent: !!duplicate,
+        });
+
+        if (!evaluation.applyRecovery) {
+          if (evaluation.recordOccurrence) {
+            await this.repository.createOccurrence(
+              buildOccurrenceCreateInput(active.id, candidate, { recovery: true }),
+              tx,
+            );
+            const row = await this.repository.updateNotification(
+              active.id,
+              { occurrenceCount: { increment: 1 } },
+              active.version,
+              tx,
+            );
+            return {
+              operation: 'ignored' as const,
+              notification: row,
+              reason:
+                evaluation.action === 'DUPLICATE_SOURCE_EVENT'
+                  ? 'DUPLICATE_SOURCE_EVENT'
+                  : 'STALE_RECOVERY',
+            };
+          }
+
+          return {
+            operation: 'ignored' as const,
+            notification: active,
+            reason: 'DUPLICATE_SOURCE_EVENT',
+          };
+        }
+
+        await this.repository.createOccurrence(
+          buildOccurrenceCreateInput(active.id, candidate, { recovery: true }),
+          tx,
+        );
+        const finalRow = await this.repository.updateNotification(
           active.id,
           {
             status: NotificationStatus.RESOLVED,
             ...lifecycleTimestampPatchForTransition(active.status, NotificationStatus.RESOLVED, resolvedAt),
             acknowledgedAt: active.acknowledgedAt,
+            occurrenceCount: { increment: 1 },
           },
           active.version,
           tx,
         );
-        await this.repository.createOccurrence(
-          {
-            notificationId: row.id,
-            organizationId: candidate.organizationId,
-            occurredAt: candidate.occurredAt,
-            sourceType: candidate.sourceType,
-            sourceRef: candidate.sourceRef,
-            severityAtOccurrence: candidate.severity,
-            payload: { recovery: true, ...(candidate.metadata ?? {}) } as Prisma.InputJsonValue,
-          },
-          tx,
-        );
-        const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation('resolved', row);
+        const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation('resolved', finalRow);
         if (transition) {
           const ids = await this.deliveryEnqueue.enqueueInTransaction(
-            { notification: row, transition },
+            { notification: finalRow, transition },
             tx,
           );
           pendingOutboxIds.push(...ids);
         }
-        return { operation: 'resolved' as const, notification: row };
+        return { operation: 'resolved' as const, notification: finalRow };
       });
 
       await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
@@ -663,15 +715,7 @@ export class NotificationCoreService {
     );
 
     await this.repository.createOccurrence(
-      {
-        notificationId: notification.id,
-        organizationId: candidate.organizationId,
-        occurredAt: candidate.occurredAt,
-        sourceType: candidate.sourceType,
-        sourceRef: candidate.sourceRef,
-        severityAtOccurrence: candidate.severity,
-        payload: candidate.metadata as Prisma.InputJsonValue,
-      },
+      buildOccurrenceCreateInput(notification.id, candidate),
       tx,
     );
 
@@ -682,18 +726,53 @@ export class NotificationCoreService {
     existing: Notification,
     candidate: NotificationCandidate,
     tx: NotificationTx,
-  ): Promise<Notification> {
-    const lifecycle = applyIngestOccurrenceToLifecycle({
-      status: existing.status,
-      severity: existing.severity,
-      snoozedUntil: existing.snoozedUntil,
-      incomingSeverity: candidate.severity,
-      referenceNow: candidate.occurredAt,
+  ): Promise<
+    | { ignored: true; reason: string; notification: Notification }
+    | { ignored?: false; notification: Notification }
+  > {
+    const duplicate = await this.repository.findOccurrenceBySourceEventId(
+      existing.id,
+      candidate.sourceEventId ?? candidate.sourceRef,
+      tx,
+    );
+    const evaluation = evaluateOccurrenceIngest({
+      candidate,
+      notificationLastSeenAt: existing.lastSeenAt,
+      isRecovery: false,
+      duplicateSourceEvent: !!duplicate,
     });
-    const newSeverity = escalateSeverity(
-      existing.severity as unknown as DomainSeverity,
-      candidate.severity,
-    ) as NotificationSeverity;
+
+    if (evaluation.action === 'DUPLICATE_SOURCE_EVENT') {
+      return { ignored: true, reason: 'DUPLICATE_SOURCE_EVENT', notification: existing };
+    }
+
+    if (evaluation.recordOccurrence) {
+      await this.repository.createOccurrence(
+        buildOccurrenceCreateInput(existing.id, candidate),
+        tx,
+      );
+    }
+
+    const lifecycle = evaluation.applyLifecycle
+      ? applyIngestOccurrenceToLifecycle({
+          status: existing.status,
+          severity: existing.severity,
+          snoozedUntil: existing.snoozedUntil,
+          incomingSeverity: candidate.severity,
+          referenceNow: candidate.occurredAt,
+        })
+      : {
+          status: existing.status,
+          snoozedUntil: existing.snoozedUntil,
+        };
+
+    const newSeverity = evaluation.applySeverity
+      ? (escalateSeverity(
+          existing.severity as unknown as DomainSeverity,
+          candidate.severity,
+        ) as NotificationSeverity)
+      : existing.severity;
+
     const templateParams = shouldRefreshTemplateParams(existing.lastSeenAt, candidate.occurredAt)
       ? mergeTemplateParams(
           (existing.templateParams ?? {}) as Record<string, string | number | boolean | null>,
@@ -701,27 +780,14 @@ export class NotificationCoreService {
         )
       : (existing.templateParams as Prisma.InputJsonValue);
 
-    await this.repository.createOccurrence(
-      {
-        notificationId: existing.id,
-        organizationId: candidate.organizationId,
-        occurredAt: candidate.occurredAt,
-        sourceType: candidate.sourceType,
-        sourceRef: candidate.sourceRef,
-        severityAtOccurrence: candidate.severity,
-        payload: candidate.metadata as Prisma.InputJsonValue,
-      },
-      tx,
-    );
-
-    return this.repository.updateNotification(
+    const notification = await this.repository.updateNotification(
       existing.id,
       {
         status: lifecycle.status,
         severity: newSeverity,
         snoozedUntil: lifecycle.snoozedUntil,
-        lastSeenAt: candidate.occurredAt,
-        occurrenceCount: existing.occurrenceCount + 1,
+        lastSeenAt: evaluation.lastSeenAt,
+        ...(evaluation.recordOccurrence ? { occurrenceCount: { increment: 1 } } : {}),
         templateParams: templateParams as Prisma.InputJsonValue,
         titleKey: candidate.titleKey,
         bodyKey: candidate.bodyKey,
@@ -731,6 +797,8 @@ export class NotificationCoreService {
       existing.version,
       tx,
     );
+
+    return { notification };
   }
 
   private async reopenNotificationInternal(
@@ -739,18 +807,17 @@ export class NotificationCoreService {
     reopenCount: number,
     tx: NotificationTx,
   ): Promise<Notification> {
-    await this.repository.createOccurrence(
-      {
-        notificationId: existing.id,
-        organizationId: candidate.organizationId,
-        occurredAt: candidate.occurredAt,
-        sourceType: candidate.sourceType,
-        sourceRef: candidate.sourceRef,
-        severityAtOccurrence: candidate.severity,
-        payload: candidate.metadata as Prisma.InputJsonValue,
-      },
+    const duplicate = await this.repository.findOccurrenceBySourceEventId(
+      existing.id,
+      candidate.sourceEventId ?? candidate.sourceRef,
       tx,
     );
+    if (!duplicate) {
+      await this.repository.createOccurrence(
+        buildOccurrenceCreateInput(existing.id, candidate),
+        tx,
+      );
+    }
 
     this.assertTransition(existing.status, NotificationStatus.OPEN, { reopenAuthorized: true });
 
@@ -764,8 +831,15 @@ export class NotificationCoreService {
           candidate.severity,
         ) as NotificationSeverity,
         reopenCount,
-        lastSeenAt: candidate.occurredAt,
-        occurrenceCount: existing.occurrenceCount + 1,
+        lastSeenAt: duplicate
+          ? existing.lastSeenAt
+          : evaluateOccurrenceIngest({
+              candidate,
+              notificationLastSeenAt: existing.lastSeenAt,
+              isRecovery: false,
+              duplicateSourceEvent: false,
+            }).lastSeenAt,
+        ...(!duplicate ? { occurrenceCount: { increment: 1 } } : {}),
         templateParams: candidate.templateParams as Prisma.InputJsonValue,
         titleKey: candidate.titleKey,
         bodyKey: candidate.bodyKey,

@@ -177,7 +177,8 @@ export function normalizeNotificationCandidate(
   candidate: NotificationCandidate,
 ): NotificationCandidate {
   const sourceSystem = candidate.sourceSystem ?? candidate.sourceType;
-  const sourceEventId = (candidate.sourceEventId ?? candidate.sourceRef)?.trim();
+  // Legacy producers override `sourceRef`; keep aliases aligned when only one is set.
+  const sourceEventId = (candidate.sourceRef?.trim() || candidate.sourceEventId?.trim() || '');
   const conditionKey = (candidate.conditionKey ?? candidate.conditionCode)?.trim();
   const templateKey = (candidate.templateKey ?? candidate.titleKey)?.trim();
   const bodyKey = candidate.bodyKey?.trim();

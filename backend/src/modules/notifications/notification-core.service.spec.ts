@@ -225,10 +225,30 @@ describe('NotificationCoreService', () => {
     },
     notificationOccurrence: {
       create: jest.fn(async ({ data }: any) => {
+        const existing = occurrences.find(
+          (o) => o.notificationId === data.notificationId && o.sourceEventId === data.sourceEventId,
+        );
+        if (existing) {
+          throw new Prisma.PrismaClientKnownRequestError('Unique', {
+            code: 'P2002',
+            clientVersion: 'test',
+          });
+        }
         const row = { id: `o-${++idSeq}`, ...data };
         occurrences.push(row);
         return row;
       }),
+      findUnique: jest.fn(async ({ where }: any) => {
+        const key = where.notificationId_sourceEventId;
+        return (
+          occurrences.find(
+            (o) => o.notificationId === key.notificationId && o.sourceEventId === key.sourceEventId,
+          ) ?? null
+        );
+      }),
+      count: jest.fn(async ({ where }: any) =>
+        occurrences.filter((o) => o.notificationId === where.notificationId).length,
+      ),
     },
     notificationReceipt: {
       upsert: jest.fn(async ({ where, create, update }: any) => {
@@ -357,6 +377,7 @@ describe('NotificationCoreService', () => {
     await service.ingestCandidate(buildCandidate());
     await service.ingestCandidate(buildCandidate({
       severity: DomainSeverity.SUCCESS,
+      sourceRef: 'recovery-1',
       occurredAt: new Date('2026-07-11T11:00:00.000Z'),
       titleKey: 'notification.title.drivingAssessmentRecovering',
     }));
@@ -379,6 +400,7 @@ describe('NotificationCoreService', () => {
     await service.ingestCandidate(buildCandidate({ resolutionPolicy: strictPolicy }));
     await service.ingestCandidate(buildCandidate({
       severity: DomainSeverity.SUCCESS,
+      sourceRef: 'recovery-strict-1',
       occurredAt: new Date('2026-07-11T11:00:00.000Z'),
       titleKey: 'notification.title.drivingAssessmentRecovering',
       resolutionPolicy: strictPolicy,
@@ -390,6 +412,7 @@ describe('NotificationCoreService', () => {
     }));
     await service.ingestCandidate(buildCandidate({
       severity: DomainSeverity.SUCCESS,
+      sourceRef: 'recovery-strict-2',
       occurredAt: new Date('2026-07-11T13:00:00.000Z'),
       titleKey: 'notification.title.drivingAssessmentRecovering',
       resolutionPolicy: strictPolicy,
@@ -468,7 +491,20 @@ describe('NotificationCoreService', () => {
       expect(notifications.size).toBe(1);
     });
 
-    it('repeated sourceEventId still records distinct occurrences', async () => {
+    it('dedupes identical sourceEventId without double-counting', async () => {
+      const candidate = buildCandidate({ sourceRef: 'evt-dup' });
+      await service.ingestCandidate(candidate);
+      await service.ingestCandidate({
+        ...candidate,
+        occurredAt: new Date('2026-07-11T11:00:00.000Z'),
+        observedAt: new Date('2026-07-11T11:00:00.000Z'),
+      });
+      const row = [...notifications.values()][0];
+      expect(row.occurrenceCount).toBe(1);
+      expect(occurrences).toHaveLength(1);
+    });
+
+    it('records distinct sourceEventId as separate occurrences', async () => {
       const candidate = buildCandidate({ sourceRef: 'evt-dup' });
       await service.ingestCandidate(candidate);
       await service.ingestCandidate({
@@ -478,6 +514,46 @@ describe('NotificationCoreService', () => {
         observedAt: new Date('2026-07-11T11:00:00.000Z'),
       });
       const row = [...notifications.values()][0];
+      expect(row.occurrenceCount).toBe(2);
+      expect(occurrences).toHaveLength(2);
+    });
+
+    it('does not downgrade severity on stale WARNING after CRITICAL', async () => {
+      const base = buildTelemetryCandidate();
+      await service.ingestCandidate({
+        ...base,
+        severity: DomainSeverity.CRITICAL,
+        sourceRef: 'evt-critical',
+        occurredAt: new Date('2026-07-11T15:00:00.000Z'),
+        observedAt: new Date('2026-07-11T15:00:00.000Z'),
+      });
+      await service.ingestCandidate({
+        ...base,
+        severity: DomainSeverity.WARNING,
+        sourceRef: 'evt-stale-warning',
+        occurredAt: new Date('2026-07-11T10:00:00.000Z'),
+        observedAt: new Date('2026-07-11T16:00:00.000Z'),
+      });
+      const row = [...notifications.values()][0];
+      expect(row.severity).toBe(NotificationSeverity.CRITICAL);
+      expect(row.occurrenceCount).toBe(2);
+      expect(row.lastSeenAt).toEqual(new Date('2026-07-11T15:00:00.000Z'));
+    });
+
+    it('ignores stale recovery when a newer active signal exists', async () => {
+      await service.ingestCandidate(buildTelemetryCandidate({
+        sourceRef: 'evt-active',
+        occurredAt: new Date('2026-07-11T15:00:00.000Z'),
+      }));
+      const result = await service.ingestCandidate(buildTelemetryCandidate({
+        severity: DomainSeverity.SUCCESS,
+        sourceRef: 'evt-stale-recovery',
+        occurredAt: new Date('2026-07-11T10:00:00.000Z'),
+      }));
+      expect(result.operation).toBe('ignored');
+      expect(result.reason).toBe('STALE_RECOVERY');
+      const row = [...notifications.values()][0];
+      expect(row.status).toBe(NotificationStatus.OPEN);
       expect(row.occurrenceCount).toBe(2);
       expect(occurrences).toHaveLength(2);
     });

@@ -5,6 +5,7 @@ import {
   NotificationDomain,
   NotificationEntityType,
   NotificationEventKind,
+  NotificationOccurrenceRecoveryState,
   NotificationSeverity,
   NotificationSourceType,
   NotificationStatus,
@@ -51,10 +52,14 @@ export interface CreateOccurrenceInput {
   notificationId: string;
   organizationId: string;
   occurredAt: Date;
-  detectedAt?: Date;
+  observedAt?: Date;
   sourceType: NotificationSourceType;
   sourceRef: string;
+  sourceEventId: string;
   severityAtOccurrence: NotificationSeverity;
+  recoveryState?: NotificationOccurrenceRecoveryState;
+  correlationId?: string | null;
+  causationId?: string | null;
   payload?: Prisma.InputJsonValue;
 }
 
@@ -75,7 +80,7 @@ export interface UpdateNotificationInput {
   bodyKey?: string;
   templateParams?: Prisma.InputJsonValue;
   lastSeenAt?: Date;
-  occurrenceCount?: number;
+  occurrenceCount?: number | { increment: number };
   reopenCount?: number;
   acknowledgedAt?: Date | null;
   snoozedUntil?: Date | null;
@@ -258,12 +263,37 @@ export class NotificationRepository {
         notificationId: data.notificationId,
         organizationId: data.organizationId,
         occurredAt: data.occurredAt,
-        detectedAt: data.detectedAt ?? new Date(),
+        observedAt: data.observedAt ?? new Date(),
         sourceType: data.sourceType,
         sourceRef: data.sourceRef,
+        sourceEventId: data.sourceEventId,
         severityAtOccurrence: data.severityAtOccurrence,
+        recoveryState: data.recoveryState ?? NotificationOccurrenceRecoveryState.ACTIVE,
+        correlationId: data.correlationId ?? undefined,
+        causationId: data.causationId ?? undefined,
         payload: data.payload ?? undefined,
       },
+    });
+  }
+
+  findOccurrenceBySourceEventId(
+    notificationId: string,
+    sourceEventId: string,
+    tx?: NotificationTx,
+  ) {
+    return this.client(tx).notificationOccurrence.findUnique({
+      where: {
+        notificationId_sourceEventId: {
+          notificationId,
+          sourceEventId,
+        },
+      },
+    });
+  }
+
+  countOccurrences(notificationId: string, tx?: NotificationTx) {
+    return this.client(tx).notificationOccurrence.count({
+      where: { notificationId },
     });
   }
 

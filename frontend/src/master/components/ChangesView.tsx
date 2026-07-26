@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-occurrence-history-2026-07-26',
+    version: '4.9.876',
+    title: 'Notification Engine Remediation — canonical occurrence history (Prompt 9)',
+    summary: [
+      'notification_occurrences extended: sourceEventId, observedAt, recoveryState, correlationId, causationId, controlled payload.',
+      'Atomic occurrenceCount increment; unique (notification_id, source_event_id) dedupe.',
+      'Out-of-order rules: stale WARNING cannot downgrade CRITICAL; stale recovery cannot resolve newer active generation.',
+      'Docs: docs/architecture/notification-occurrence-history.md',
+    ],
+    reason:
+      'Every accepted repetition must be traceable with data-sparse history and correct ordering semantics.',
+    previousBehavior:
+      'Occurrences stored source_ref/detected_at only; no dedupe; lastSeenAt could move backwards; stale recovery could resolve.',
+    details:
+      'occurrence/*, migration 20260726130000, notification-core.service.ts, notification.repository.ts, occurrence + core specs.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T06:00:00.000Z',
+  },
+  {
     id: 'notification-lifecycle-state-machine-2026-07-26',
     version: '4.9.875',
     title: 'Notification Engine Remediation — centralized lifecycle state machine (Prompt 8)',

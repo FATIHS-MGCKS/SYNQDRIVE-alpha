@@ -13551,25 +13551,37 @@ model Notification {
   @@map("notifications")
 }
 
+enum NotificationOccurrenceRecoveryState {
+  ACTIVE
+  RECOVERED
+}
+
 model NotificationOccurrence {
-  id                   String                 @id @default(uuid())
-  notificationId       String                 @map("notification_id")
-  organizationId       String                 @map("organization_id")
-  occurredAt           DateTime               @map("occurred_at")
-  detectedAt           DateTime               @default(now()) @map("detected_at")
-  sourceType           NotificationSourceType @map("source_type")
-  sourceRef            String                 @map("source_ref")
-  severityAtOccurrence NotificationSeverity   @map("severity_at_occurrence")
-  payload              Json?                  @map("payload")
-  createdAt            DateTime               @default(now()) @map("created_at")
+  id                   String                              @id @default(uuid())
+  notificationId       String                              @map("notification_id")
+  organizationId       String                              @map("organization_id")
+  occurredAt           DateTime                            @map("occurred_at")
+  observedAt           DateTime                            @default(now()) @map("observed_at")
+  sourceType           NotificationSourceType              @map("source_type")
+  sourceRef            String                              @map("source_ref")
+  sourceEventId        String                              @map("source_event_id")
+  severityAtOccurrence NotificationSeverity                @map("severity_at_occurrence")
+  recoveryState        NotificationOccurrenceRecoveryState @default(ACTIVE) @map("recovery_state")
+  correlationId        String?                             @map("correlation_id")
+  causationId          String?                             @map("causation_id")
+  payload              Json?                               @map("payload")
+  createdAt            DateTime                            @default(now()) @map("created_at")
 
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([notificationId, sourceEventId])
   @@index([notificationId, occurredAt])
   @@index([organizationId])
   @@index([organizationId, occurredAt], map: "notification_occurrences_org_occurred_at_idx")
   @@index([organizationId, notificationId], map: "notification_occurrences_org_notification_id_idx")
+  @@index([organizationId, observedAt], map: "notification_occurrences_org_observed_at_idx")
+  @@index([createdAt], map: "notification_occurrences_created_at_idx")
   @@map("notification_occurrences")
 }
 
