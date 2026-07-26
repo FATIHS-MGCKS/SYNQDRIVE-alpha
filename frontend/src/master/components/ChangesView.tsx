@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-offsite-backups-2c5-2026-07-26',
+    version: '4.9.894',
+    title: 'V4.9.894 — Master Admin 2C.5: Offsite backup orchestration',
+    summary: [
+      'Central encrypted offsite sync for PostgreSQL, ClickHouse, Redis, env snapshots.',
+      'Versioning via immutable filenames + manifest.jsonl; per-tier retention + min generations.',
+      'SHA-256 integrity + weekly remote verify; Resend alerts on failure.',
+      'docs/remediation/offsite-backups.md',
+    ],
+    reason:
+      'Production backups must not live only on the VPS — offsite copy with encryption, retention, and alerting required.',
+    previousBehavior:
+      'Tier backups local-only or ad-hoc rclone; no unified policy, verify, or failure notifications.',
+    details:
+      'vps-sync-offsite-backups.sh, offsite-backup-lib.sh, env snapshot, verify + cron installers',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T20:00:00.000Z',
+  },
+  {
+    id: 'master-admin-redis-backup-2c4-2026-07-26',
+    version: '4.9.893',
+    title: 'V4.9.893 — Master Admin 2C.4: Redis & BullMQ backup strategy',
+    summary: [
+      'Classify ephemeral vs operational buffer vs Postgres SoT; BullMQ inventory with recovery paths.',
+      'vps-configure-redis-persistence.sh (RDB+AOF), vps-backup-redis.sh snapshot, redis-check-rdb integrity.',
+      'vps-restore-test-redis.sh (safe), vps-restore-redis.sh (maintenance), vps-inspect-bullmq-redis.sh.',
+      'docs/remediation/redis-backup.md',
+    ],
+    reason:
+      'Redis had no persistence/backup policy; BullMQ state is buffer only but should survive restarts without full scheduler replay storms.',
+    previousBehavior:
+      'Native Redis 7 with noeviction and no documented backup; business recovery path unclear.',
+    details:
+      'Postgres-first recovery documented; Redis RDB is Tier-2 operational backup not business DR',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T18:00:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-backup-2c3-2026-07-26',
     version: '4.9.892',
     title: 'V4.9.892 — Master Admin 2C.3: ClickHouse logical backup',

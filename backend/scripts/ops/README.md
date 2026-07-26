@@ -6,6 +6,36 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 
 > Take a backup before any DB-mutating step: > `pg_dump "$DATABASE_URL" -Fc -f /var/backups/synqdrive-$(date +%F).dump`
 
+## Redis & BullMQ (Phase 2C.4)
+
+PostgreSQL is System of Record — Redis is BullMQ queue buffer only.
+
+```bash
+bash backend/scripts/ops/vps-configure-redis-persistence.sh   # RDB + AOF (one-time)
+cp backend/scripts/ops/redis-backup.env.example /opt/synqdrive/shared/redis-backup.env
+bash backend/scripts/ops/vps-install-redis-backup-cron.sh
+bash backend/scripts/ops/vps-backup-redis.sh
+bash backend/scripts/ops/vps-inspect-bullmq-redis.sh
+```
+
+Docs: [`docs/remediation/redis-backup.md`](../../docs/remediation/redis-backup.md)
+
+## Offsite backups (Phase 2C.5)
+
+**No production backup may exist only on the VPS.** Central sync after tier backups:
+
+```bash
+cp backend/scripts/ops/offsite-backup.env.example /opt/synqdrive/shared/offsite-backup.env
+# configure rclone/S3 + GPG + OFFSITE_NOTIFY_EMAIL
+bash backend/scripts/ops/vps-install-offsite-backup-cron.sh
+bash backend/scripts/ops/vps-sync-offsite-backups.sh
+bash backend/scripts/ops/vps-verify-offsite-backups.sh
+```
+
+Set `REDIS_BACKUP_SKIP_OFFSITE=true` (and equivalent on PG/CH) when `OFFSITE_CENTRAL_SYNC=true`.
+
+Docs: [`docs/remediation/offsite-backups.md`](../../docs/remediation/offsite-backups.md)
+
 ## Recommended order
 
 1. **Stop the bleeding (app-side, already in code):**
@@ -61,6 +91,18 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-restore-test-clickhouse.sh` | Restore drill to `synqdrive_restore_test` | safe — separate test DB |
 | `vps-install-clickhouse-backup-cron.sh` | Install daily 03:30 UTC ClickHouse backup cron | safe — run as root once |
 | `clickhouse-backup.env.example` | ClickHouse backup encryption/offsite template | copy to `/opt/synqdrive/shared/clickhouse-backup.env` |
+| `vps-configure-redis-persistence.sh` | Enable RDB + AOF for native Redis (BullMQ buffer) | requires redis restart |
+| `vps-backup-redis.sh` | Daily RDB snapshot archive + integrity check | safe — queue buffer only |
+| `vps-restore-test-redis.sh` | `redis-check-rdb` drill (non-destructive) | safe |
+| `vps-restore-redis.sh` | Maintenance-window RDB restore | **destructive** — requires `REDIS_RESTORE_CONFIRM` |
+| `vps-inspect-bullmq-redis.sh` | BullMQ queue depth / failed summary | read-only |
+| `vps-install-redis-backup-cron.sh` | Daily 04:00 UTC Redis backup cron | safe — run as root once |
+| `redis-backup.env.example` | Redis backup config template | copy to `/opt/synqdrive/shared/redis-backup.env` |
+| `vps-sync-offsite-backups.sh` | Central encrypted offsite sync (all tiers) | requires `offsite-backup.env` |
+| `vps-backup-env-snapshot.sh` | Encrypted backend.env + frontend.env snapshot | safe |
+| `vps-verify-offsite-backups.sh` | Local + remote integrity audit | read-only |
+| `vps-install-offsite-backup-cron.sh` | Daily 05:15 UTC offsite cron + weekly verify | run as root |
+| `offsite-backup.env.example` | Unified offsite config (rclone/S3, GPG, alerts) | copy to `/opt/synqdrive/shared/offsite-backup.env` |
 
 ### Partitioning (P2)
 
