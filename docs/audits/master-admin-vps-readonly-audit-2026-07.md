@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 13: IAM/Rollen/Tenant-Isolation read-only **abgeschlossen** (2026-07-26T07:29–07:34 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:34:00Z` (IAM & Tenant Isolation) |
+| **Status** | **IN PROGRESS** — Schritt 14: Audit Logging, Datenschutz & ISO-Kontrollen read-only **abgeschlossen** (2026-07-26T07:35–07:40 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:40:00Z` (Audit & Datenschutz) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -251,6 +251,17 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:29–07:34 | Quellcode-Review: `RolesGuard`, `OrgScopingGuard`, `PermissionsGuard`, `StepUpGuard`, `MasterBillingGuard`, `auth.guard.ts`, `refresh-token.service.ts`, `iam-mfa.policy.ts`, Controller-Matrix | Berechtigungsmodell, Impersonation, Tenant-Scope |
 
 **IAM-Modus:** **Keine** Rollenänderungen, Sessions, Tokens, Impersonation, Sperren/Entsperren oder MFA-Enrollment.
+
+### 2.2n Ausgeführte sichere Befehle (Schritt 14 — Audit Logging, Datenschutz, ISO read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:35–07:40 | PostgreSQL `SELECT` aggregiert auf `activity_logs`, `*_audit_*`, Outbox-Tabellen, DSAR/Legal-Hold | Feldabdeckung, kritische Aktionen, Retention-Nachweise |
+| 07:35–07:40 | `grep` Env-Key-Namen/Boolean-Flags (`DATA_RETENTION_*`, `IAM_DATA_RETENTION_*`, `AI_AUDIT_*`, `HTTP_LOG_SUCCESS`) — **keine** Secrets | Retention-/Privacy-Konfiguration |
+| 07:35–07:40 | Quellcode-Review: `AuditInterceptor`, `AuditService`, `ActivityLogService`, `BillingAuditService`, `IamDsarExportService`, Retention-Worker, PII-Scrubbing | Architektur, Lücken, Löschbarkeit |
+| 07:35–07:40 | Backup-Count (`ls` nur Anzahl `.sql.gz`) | Backup-Monitoring (ohne Restore) |
+
+**Audit-Modus:** **Keine** Audit-Logs geändert oder gelöscht, **keine** DSAR-Exports oder Löschungen ausgelöst, **keine** vollständige PII-Dokumentation.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -2174,19 +2185,91 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ## 22. Audit Logging
 
-**Prüfzeitpunkt:** Schritt 6 (Code + unauth-Probe)
+**Prüfzeitpunkt:** Schritt 6 (Code) + Schritt 14 (vertieft: Schema, Production-Aggregate, kritische Aktionen)
 
-| Prüfpunkt | Ergebnis (belegt) |
-|-----------|-------------------|
-| Globaler HTTP-Audit | `AuditInterceptor` — POST/PUT/PATCH/DELETE, Skip: health/metrics/webhooks |
-| Master explizit | `PlatformAdminController`: `audit.critical` bei Prune, Hardware-Backfill; `audit.record` bei Logbook/Backfill |
-| `GET /admin/activity-log` | **401** unauth; paginiert (`PaginationParams`) |
-| Org-Audit | `GET /organizations/:orgId/activity-log` mit `OrgScopingGuard` |
-| Billing-Audit | `GET /admin/billing/audit-log` + `BillingAuditService` (Code) |
-| Billing-Audit DB-Count | **0** Zeilen in `billing_audit_logs` (Schritt 12) |
-| IAM Audit Outbox | **Nicht** live geprüft (Counts ausstehend) |
+### 22.1 Audit-Architektur (Repository)
 
-**Status:** Architektur belegt; Billing-Audit leer; IAM-Outbox **ausstehend**.
+| System | Tabelle / Pfad | Zweck |
+|--------|----------------|-------|
+| **HTTP Auto-Audit** | `activity_logs` via `AuditInterceptor` | Alle mutierenden HTTP-Requests (POST/PUT/PATCH/DELETE), Skip: health/metrics/webhooks |
+| **Explizites App-Audit** | `AuditService.record/critical/warn` | Domänenspezifisch (PlatformAdmin, Tenant-Profile, WhatsApp, DIMO-Replay, …) |
+| **Billing-Audit** | `billing_audit_logs` via `BillingAuditService` | before/after JSON, `requestId`, `idempotencyKey`, `reason` |
+| **IAM-Audit-Outbox** | `iam_audit_outbox` | Hash-basierte before/after-Summaries, Retry/Dead-Letter |
+| **Business-Audit-Outbox** | `business_audit_outbox` | Rental-Rules/Eligibility-Events |
+| **Spezial-Audits** | `ai_request_audit_logs`, `voice_protection_audit_events`, `data_authorization_audit_outbox`, … | Domänenspezifisch |
+| **HTTP-Request-Log** | PM2 stdout (`RequestLoggingInterceptor`) | `requestId`, `userId`, `organizationId`, `ip` — **getrennt** von `activity_logs` |
+
+**Zugriff APIs:** `GET /admin/activity-log` (Master, paginiert), `GET /organizations/:orgId/activity-log` (Org + Permission). **Kein** dedizierter Bulk-Export-Endpoint für Activity-Logs (außer DSAR/User-Security-Activity mit Step-up).
+
+### 22.2 Feldabdeckung `activity_logs` (Schema vs. Production)
+
+| Feld | Schema | Production (853 Rows) | Bewertung |
+|------|--------|----------------------|-----------|
+| Actor ID (`user_id`) | ✅ | **687** (80,5 %) | technisch teilweise erfüllt |
+| Actor Rolle | ❌ nicht im Schema | — | **kritisch fehlend** für RBAC-Nachweis |
+| Zielorganisation (`organization_id`) | ✅ | **595** (69,8 %) | technisch teilweise erfüllt |
+| Aktion (`action`) | ✅ Enum | 100 % | technisch erfüllt |
+| Ressourcentyp (`entity`) | ✅ Enum | 100 % | technisch erfüllt |
+| Ressourcen-ID (`entity_id`) | ✅ optional | **168** (19,7 %) | technisch unzureichend |
+| Zeitpunkt (`created_at`) | ✅ UTC `timestamptz` | 100 %; Host `Etc/UTC`, NTP sync (Schritt 2) | technisch erfüllt |
+| Request-ID | ❌ nicht in `activity_logs` | — (nur HTTP-Log / Billing-Audit) | Lücke |
+| Session-ID | ❌ nicht im Schema | — | nicht nachweisbar |
+| IP / Security Context | `ip_address`, `user_agent` | **836** (98 %) | technisch erfüllt |
+| Route | `route` | **836** (98 %) | technisch erfüllt |
+| Vorheriger Zustand | ❌ (nur `change_summary` / `meta_json`) | **17** change_summary, **21** meta_json | technisch unzureichend |
+| Neuer Zustand | ❌ | wie oben | technisch unzureichend |
+| Begründung | ❌ | — | nicht nachweisbar |
+| Ergebnis / Fehlerstatus | indirekt (`level`, `AUTH_FAIL`) | 11 WARN, 1 CRITICAL, 9 AUTH_FAIL | technisch teilweise erfüllt |
+| Impersonation Context | ❌ | — | N/A (kein Impersonate) |
+| Manipulationsschutz | ❌ `deleteMany` in Prune + Retention | Löschbar | **kritisch fehlend** für WORM/Append-only |
+| Retention | IAM-Retention-Worker kann löschen | Env: `DATA_RETENTION_ENABLED=true`, `IAM_DATA_RETENTION_ENABLED=true`, `IAM_DATA_RETENTION_DRY_RUN=false` | technisch vorhanden, organisatorisch zu ergänzen (Policy) |
+| Zugriffsschutz | JWT + `MASTER_ADMIN` / Org-Permissions | Unauth **401** | technisch erfüllt |
+| Suchbarkeit | Filter `entity`, `action`, Pagination | ✅ | technisch erfüllt |
+| Exportierbarkeit | Pagination only; DSAR separat | Kein Activity-Log-CSV-Export | technisch teilweise erfüllt |
+| Zeitzonenkonsistenz | DB UTC; VPS `Etc/UTC` | min `2026-04-12`, max `2026-07-26` | technisch erfüllt |
+
+**PII-Schutz in Audit-Text:** `ActivityLogService` scrubbt E-Mails/Ziffernfolgen in `description` und sensitive Keys in `metaJson` — technisch unterstützend.
+
+### 22.3 Kritische Aktionen — Protokollierung
+
+| Kritische Aktion | Explizites Audit (Code) | Production-Spur (`activity_logs` / andere) | Bewertung |
+|------------------|-------------------------|---------------------------------------------|-----------|
+| Organisation erstellt | ❌ nur `AuditInterceptor` generisch | **266** `ORGANIZATION` (inkl. Profile-Updates) | technisch teilweise erfüllt |
+| Organisation gesperrt/archiviert | ❌ nur Interceptor `UPDATE` | in `ORGANIZATION` enthalten | technisch teilweise erfüllt |
+| Subscription geändert | ✅ `BillingAuditService` | `billing_audit_logs`: **0** | technisch vorhanden, **Nachweis fehlt** |
+| Rechnung gesendet | Billing-Email-Pipeline | **5** `SEND` / **5** `OUTBOUND_EMAIL` | technisch teilweise erfüllt |
+| Rabatt gesetzt | ✅ Billing-Audit (Code) | **0** Billing-Audit | Nachweis fehlt |
+| Fahrzeug importiert (DIMO) | ❌ kein explizites Audit in `registerFromDimo` | **123** `VEHICLE` `CREATE` (Interceptor) | technisch teilweise erfüllt |
+| Fahrzeug neu zugeordnet | N/A (kein API) | — | nicht nachweisbar |
+| DIMO/Integration geändert | ❌ kein explizites Audit in `integrations.service` | **25** `INTEGRATION` | technisch teilweise erfüllt |
+| Benutzerrolle geändert | Step-up + Interceptor | **2** `USER` `UPDATE` | technisch teilweise erfüllt |
+| Benutzer gesperrt | Interceptor | in `USER`/`AUTH_EVENT` möglich | nicht eindeutig nachweisbar |
+| Impersonation start/beendet | N/A | — | N/A |
+| Datenexport ausgelöst | DSAR + Step-up | `iam_dsar_export_logs`: **0** | technisch vorhanden, Nachweis fehlt |
+| Löschung freigegeben | Step-up + `IamUserDeletionService` | keine Prod-Spur | technisch vorhanden, Nachweis fehlt |
+| Worker/Queue administriert | ✅ `PlatformAdminController` explizit | **2** `ADMIN_OVERRIDE`, **6** `ADMIN_OPERATION` | technisch erfüllt |
+| Systemkonfiguration geändert | Teilweise (Prune = `audit.critical`) | **0** `PRUNE` in Prod | technisch teilweise erfüllt |
+
+**Zusatz-Outboxen (Prod):** `iam_audit_outbox` **0**, `business_audit_outbox` **0**, `ai_request_audit_logs` **0**, `data_authorization_audit_outbox` **0**.
+
+### 22.4 Kontrollmatrix — Audit & Nachvollziehbarkeit
+
+| Kontrolle | Technisch vorhanden | Nachweis | Lücke | Priorität |
+|-----------|---------------------|----------|-------|-----------|
+| Zentrales Audit (`AuditService`) | ✅ | Code + 853 Prod-Rows | Kein Actor-Role-Feld | **P2** |
+| HTTP-Mutations-Logging | ✅ | `AuditInterceptor` | Generisch, wenig `entity_id` | **P3** |
+| Billing-Audit mit before/after | ✅ | `BillingAuditService` | **0** Prod-Einträge | **P2** |
+| IAM-Outbox (tamper hints) | ✅ | Schema | **0** Events | **P3** |
+| Request-ID-Korrelation | ⚠️ | HTTP-Log nur | Nicht in `activity_logs` | **P2** |
+| Append-only / WORM | ❌ | `pruneMasterData`, Retention `deleteMany` | Manipulation möglich | **P1** |
+| Audit-Zugriff geschützt | ✅ | 401 unauth | — | — |
+| PII-Scrubbing in Audit-Text | ✅ | `scrubPiiString/Json` | Nicht alle Caller | **P3** |
+| Kritische Master-Aktionen explizit | ⚠️ | Prune/Backfill ja; Org-Create nein | Inkonsistent | **P2** |
+| Audit-Export | ⚠️ | Pagination; DSAR separat | Kein Compliance-Export | **P3** |
+
+**Gesamtbewertung Audit:** **technisch teilweise erfüllt** — Basis vorhanden, aber keine manipulationsgeschützte Speicherung, unvollständige Felder, Billing-Audit in Prod leer.
+
+**Status:** Audit Logging read-only **abgeschlossen** (Schritt 14). **Bestätigung: Keine Audit-Daten verändert.**
 
 ---
 
@@ -2218,16 +2301,80 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ## 25. Datenschutz und ISO-Kontrollen
 
-| Prüfpunkt | Status (Schritt 6) |
-|-----------|-------------------|
-| Data Retention Flags | Env: `DATA_RETENTION_ENABLED` (Key erkannt) |
-| PII in Logs | Error-Log: **0** E-Mail-Treffer; Processor-Logs: UUIDs (`organizationId`, `vehicleId`) |
-| Secrets in Logs | Pattern-Grep: **0** Treffer für gängige Secret-Muster |
-| Query-String-Redaction | `RequestLoggingInterceptor.redactUrl()` — token/password/secret-Fragmente |
-| Zugriffskontrollen Master Admin | Unauth **401**; authentifizierte Minimierung **nicht** geprüft |
-| ISO-Mapping | **Nicht** geprüft |
+**Prüfzeitpunkt:** Schritt 6 (Log-Redaction) + Schritt 14 (DSGVO-/ISO-orientierte technische Kontrollen)
 
-**Status:** Log-Redaction-Code belegt; Live-PII-Audit über längere Log-Fenster **ausstehend**.
+> **Hinweis:** Dieses Kapitel bewertet **technische** Unterstützung und Nachweislücken. Es wird **keine** pauschale „DSGVO-konform“- oder „ISO-konform“-Aussage getroffen.
+
+### 25.1 DSGVO-orientierte technische Kontrollen
+
+| Kontrolle | Bewertung | Nachweis (read-only) |
+|-----------|-----------|----------------------|
+| **Datenminimierung Master-Listen** | technisch unzureichend | `GET /admin/users` liefert E-Mail/Name unbounded (Schritt 13) |
+| **Maskierung sensible Daten** | technisch unterstützend | Audit `scrubPii*`; HTTP `redactUrl()`; `AI_AUDIT_STORE_PLAIN_USER_ID=false` auf VPS |
+| **Zugriff Ausweis/Führerschein** | technisch unterstützend | Didit-Workflow-Integration; Eligibility-Gatekeeper (`idDocument`-Status); kein Rohbild-Export in Audit geprüft |
+| **Zugriff Zahlungsdaten** | technisch unterstützend | Stripe/Connect; Modul-Permissions `payments*`; Billing-Master-Guard |
+| **Zugriff Standort/Bewegungsdaten** | technisch teilweise erfüllt | Org-scoped Fahrzeug/Trip-APIs; ClickHouse ohne `org_id` (**P1** Schritt 9) |
+| **Zweckbindung** | organisatorisch zu ergänzen | Code: Data-Authorizations, Booking-Eligibility; keine zentrale Purpose-Registry in Prod-Daten |
+| **Supportzugriff** | technisch unterstützend | Master-Support-Routen + Tickets org-scoped; kein Impersonate |
+| **Exportanfragen (DSAR)** | technisch vorhanden | `IamDsarExportService` + Step-up; Prod: **0** `iam_dsar_export_logs` |
+| **Löschanfragen** | technisch vorhanden | `IamUserDeletionService` + Legal-Hold-Checks; Prod: **0** Holds, **0** DSAR |
+| **Berichtigungsanfragen** | technisch teilweise erfüllt | User/Org-Update-APIs; kein dedizierter „Rectification“-Workflow |
+| **Aufbewahrungsfristen** | technisch vorhanden | `DATA_RETENTION_ENABLED=true`, `IAM_DATA_RETENTION_ENABLED=true`, diverse `RETENTION_*_DAYS` Keys; `RETENTION_DELETION_SCHEDULER_DRY_RUN=true` |
+| **Soft Delete** | technisch teilweise erfüllt | Einzelne Modelle `deletedAt` (z. B. Legal Docs); nicht flächendeckend |
+| **Tatsächliche Löschung** | technisch vorhanden | IAM-Retention-Worker `deleteMany`; `IAM_DATA_RETENTION_DRY_RUN=false` auf VPS |
+| **Backups vs. Löschung** | organisatorisch zu ergänzen | **39** `pg_dump`-Backups; Restore-Test **nicht** durchgeführt; Löschung in DB ≠ Löschung in Backups |
+| **Log-Retention** | technisch teilweise erfüllt | PM2-Rotation; `HTTP_LOG_SUCCESS=false`; keine zentrale Log-SIEM-Retention nachgewiesen |
+| **Einwilligungen** | technisch teilweise erfüllt | WhatsApp-Consent-Service; Prod: **0** Consent-Records |
+| **Verarbeitungsgrundlage** | organisatorisch erforderlich | `data_processing_agreements`: **0** in Prod; Schema vorhanden |
+| **AV-Verträge / Subprocessor** | organisatorisch erforderlich | Technisch: Env-Integrationen (Stripe, DIMO, Resend, Twilio) — keine DPA-Verwaltung in App nachgewiesen |
+
+### 25.2 ISO-orientierte technische Kontrollen
+
+| Kontrolle | Bewertung | Nachweis |
+|-----------|-----------|----------|
+| **Least Privilege** | technisch unterstützend | RBAC + Permissions JSON; Master-Bypass by design |
+| **Separation of Duties** | technisch teilweise erfüllt | Workflow Maker-Checker; Legal-Doc dual-approve; nicht überall |
+| **Privilegierte Accounts** | technisch teilweise erfüllt | 1 Master Admin Prod; MFA **0** enrolled |
+| **MFA** | technisch vorhanden, Nachweis fehlt | TOTP/WebAuthn-Schema; `IAM_MFA_*` Env-Keys; **0** Faktoren Prod |
+| **Rezertifizierung** | technisch vorhanden | Access-Review-Campaigns-Schema + Metrics; **0** Campaigns Prod |
+| **Change Logging** | technisch teilweise erfüllt | Activity-Log + spezialisierte Audits; löschbar |
+| **Incident Logging** | technisch teilweise erfüllt | Prometheus Alerts (4 firing); kein Alertmanager |
+| **Asset-Inventar** | technisch teilweise erfüllt | Deploy/PM2/Docker-Inventar (Schritt 3–4); kein CMDB |
+| **Supplier Monitoring** | technisch teilweise erfüllt | DIMO/HM/Stripe Health-Endpoints; kein zentrales SLA-Dashboard |
+| **Backup Monitoring** | technisch unterstützend | Pre-Deploy `pg_dump` (**39** Dumps); kein automatischer Restore-Test |
+| **Restore-Nachweise** | nicht nachweisbar | Bewusst nicht ausgeführt (read-only Audit) |
+| **Konfigurationskontrolle** | technisch teilweise erfüllt | Git-Deploy + Env-Datei; `backend.env` Mode 644 (**P2**) |
+| **Security Alerts** | technisch teilweise erfüllt | 98 Prometheus Rules, 4 firing; **kein** Alertmanager |
+| **Zeitstempel / NTP** | technisch erfüllt | VPS UTC, NTP sync (Schritt 2) |
+| **Nachvollziehbarkeit Admin-Änderungen** | technisch teilweise erfüllt | Siehe Kap. 22.3; Lücken bei Org-Create, Billing |
+
+### 25.3 Kontrollmatrix — Datenschutz & ISO (Zusammenfassung)
+
+| Kontrolle | Technisch vorhanden | Nachweis | Lücke | Priorität |
+|-----------|---------------------|----------|-------|-----------|
+| Audit-Trail operativer Aktionen | ✅ | 853 Activity-Logs | Löschbar, lückenhafte Felder | **P2** |
+| PII-Minimierung in Logs | ⚠️ | Scrubbing-Code | Master-PII-Listen | **P2** |
+| DSAR-Export-Pipeline | ✅ | `IamDsarExportService` | 0 Prod-Läufe | **P3** |
+| Löschung / Retention | ✅ | Retention-Worker + Env | Backups nicht bereinigt | **P2** |
+| MFA für Privilegierte | ✅ (Code) | Schema | 0 Enrollment Prod | **P2** |
+| Access Review / Rezertifizierung | ✅ (Code) | Metrics | 0 Campaigns Prod | **P3** |
+| Backup & Restore | ⚠️ | 39 Dumps | Kein Restore-Nachweis | **P2** |
+| Security Alerting | ⚠️ | 4 firing alerts | Kein Alertmanager | **P1** |
+| Telemetrie-Tenant-Scope | ❌ | ClickHouse ohne `org_id` | Cross-Tenant-Risiko | **P1** |
+| Manipulationssicherer Audit-Speicher | ❌ | deleteMany-Pfade | WORM fehlt | **P1** |
+
+### 25.4 Gesamteinordnung (ohne Compliance-Urteil)
+
+| Kategorie | Einordnung |
+|-----------|------------|
+| Audit-Nachvollziehbarkeit | **technisch teilweise erfüllt** |
+| Datenschutz durch Technik | **technisch unterstützend** mit **organisatorisch zu ergänzenden** Prozessen (DPA, Zweckbindung, Backup-Löschkonzept) |
+| ISO-ähnliche technische Controls | **technisch teilweise erfüllt**; **Nachweis fehlt** bei MFA-Nutzung, Restore, Rezertifizierung |
+| Kritisch fehlend | Manipulationsschutz Audit-Speicher; Alertmanager; CH-Tenant-Scope |
+
+**Status:** Datenschutz- und ISO-orientierte technische Kontrollen read-only **abgeschlossen** (Schritt 14).
+
+**Bestätigung: Keinerlei Audit-Daten, Exporte oder Löschungen wurden durch diesen Audit-Schritt verändert oder ausgelöst.**
 
 ---
 
@@ -2242,6 +2389,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 > **Schritt 11 (DIMO/Fahrzeugimport):** 2× P2 neu, 4× P3 neu.
 > **Schritt 12 (Stripe/Billing):** 2× P1 neu, 4× P2 neu, 3× P3 neu.
 > **Schritt 13 (IAM/Rollen/Tenant):** 3× P2 neu, 4× P3 neu.
+> **Schritt 14 (Audit/Datenschutz/ISO):** 2× P1 neu, 5× P2 neu, 2× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -2355,6 +2503,17 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **MA-IAM-P3-004** | **P3** | Billing IAM | `GET admin/billing/reconciliation/drifts` ohne `MasterBillingGuard` | Delegierte Billing-Ops konsistent absichern |
 | **MA-IAM-OBS-001** | **Beobachtung** | Impersonation | **Kein** Impersonation-Endpoint — weder Start noch Banner/Audit | Positiv für verdeckte Sessions; Support-Workflow fehlt |
 | **MA-IAM-OBS-002** | **Beobachtung** | Rollen | Nur **2** Plattform-User in Prod; **1** Master, **1** Org-User | Geringe Angriffsfläche, aber Single-Admin-Risiko |
+| **MA-AUD-P1-001** | **P1** | Audit | `activity_logs` **löschbar** (`pruneMasterData`, IAM-Retention `deleteMany`) — kein WORM/Append-only | Tamper-evident Storage oder externes SIEM |
+| **MA-AUD-P2-001** | **P2** | Audit | Keine `request_id` / Session-Korrelation in `activity_logs` | Request-ID aus HTTP-Interceptor persistieren |
+| **MA-AUD-P2-002** | **P2** | Audit | Actor-**Rolle** nicht im Audit-Schema | `membershipRole`/`platformRole` Snapshot pro Event |
+| **MA-AUD-P2-003** | **P2** | Audit | `billing_audit_logs` **0** trotz Billing-Modul | Billing-Mutationen in Prod noch nicht gelaufen oder Audit-Pfad prüfen |
+| **MA-AUD-P2-004** | **P2** | Audit | `entity_id` nur **19,7 %** befüllt — schwache Ressourcen-Verknüpfung | Explizites Audit bei Create/Update mit `entityId` |
+| **MA-AUD-P2-005** | **P2** | Audit | `OrganizationsController.create` ohne explizites `audit.record` | Org-Lifecycle explizit auditieren |
+| **MA-PRIV-P2-001** | **P2** | Retention | `IAM_DATA_RETENTION_DRY_RUN=false` auf Prod — tatsächliche IAM-Löschungen möglich | Policy + Backup-Bereinigung nach Löschung |
+| **MA-PRIV-P2-002** | **P2** | Datenschutz | Master-User-Liste ohne Feldminimierung (E-Mail) | Pagination + Feld-Redaction für Master-Reads |
+| **MA-AUD-P3-001** | **P3** | Audit | **249** Activity-Logs ohne `organization_id` | Org-Kontext im Interceptor verbessern |
+| **MA-AUD-P3-002** | **P3** | DSAR | **0** `iam_dsar_export_logs` — Pipeline ungetestet in Prod | Prozess-Test in Staging |
+| **MA-ISO-P3-001** | **P3** | Rezertifizierung | **0** Access-Review-Campaigns in Prod | IAM-Rezertifizierung operationalisieren |
 
 ---
 
@@ -2374,6 +2533,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 - [x] **DIMO-Integration & Fahrzeugimport (read-only)** — Env, PG-Mapping, Poll/Webhook-Logs, Import-Code-Review
 - [x] **Stripe/Billing (read-only)** — Env-Keys, PG-Ledger, Stripe MCP GET, Webhook-Probes, Reconciliation, Code-Review
 - [x] **IAM/Rollen/Tenant Isolation/Impersonation (read-only)** — Rollenmodell, Guard-Matrix, Berechtigungsmatrix, PG-Aggregate, Impersonation-Konzept
+- [x] **Audit Logging, Datenschutz & ISO-Kontrollen (read-only)** — Feldabdeckung, kritische Aktionen, Kontrollmatrix, Retention-Flags
 
 ### Priorisierte Folgeschritte (alle read-only)
 
@@ -2382,13 +2542,13 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 3. ~~**BullMQ Queue Health**~~ — **erledigt** (Schritt 8)
 4. ~~**ClickHouse**~~ — **erledigt** (Schritt 9)
 5. ~~**Prometheus/Grafana**~~ — **erledigt** (Schritt 10)
-6. ~~**DIMO**~~ — **erledigt** (Schritt 11; DIMO MCP extern ausstehend)
+6. ~~**DIMO**~~ — **erledigt** (Schritt 11)
 7. ~~**Stripe/Billing**~~ — **erledigt** (Schritt 12)
 8. ~~**IAM/Rollen/Tenant**~~ — **erledigt** (Schritt 13)
-9. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
-10. **Backup-Inventar** — `ls -lt shared/backups/`, Alter der Dumps
-11. **Authentifizierte Cross-Tenant-API-Smokes** — erfordert Credentials (kontrolliert)
-12. **Audit-Logging** — `iam_audit_outbox`, AI audit tables (counts only)
+9. ~~**Audit/Datenschutz/ISO**~~ — **erledigt** (Schritt 14)
+10. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
+11. **Backup-Inventar** — Alter der Dumps, Retention-Policy
+12. **Authentifizierte Cross-Tenant-API-Smokes** — erfordert Credentials (kontrolliert)
 13. **Frontend Master-Bundle** — `grep` in `backend/public/assets/`
 
 ---
@@ -2411,9 +2571,10 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **DIMO/Fahrzeugimport** | **OK mit P2/P3** — Production-Env; Mapping konsistent; Import nicht transaktional; Webhook-Inbox leer |
 | **Stripe/Billing** | **KRITISCH** — Test-Key auf Prod; Platform-Webhook nicht betriebsbereit; 1 Trial ohne Stripe-Sub; 2 offene Reconciliation-Drifts |
 | **IAM/Rollen/Tenant** | **OK mit P2/P3** — Guards solide für Tenant-User; Master Vollzugriff; **kein** Impersonate; MFA 0 enrolled |
+| **Audit/Datenschutz/ISO** | **TEILWEISE** — 853 Activity-Logs; löschbar (kein WORM); Billing-Audit leer; Retention aktiv; kein Compliance-Urteil |
 | Audit vollständig | **NEIN** — Voice/Resend/Backups/authentifizierte Smokes ausstehend |
-| Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Berechtigungsmatrix (Code); keine authentifizierten Cross-Tenant-Tests |
-| Gesamturteil | **PENDING** — Kein **P0**; **6× P1** (Swagger, CH-Mounts, CH-Duplikate, Alertmanager, Stripe-Test-Key, fehlendes Webhook-Secret) + mehrere **P2** offen |
+| Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Matrizen (Code); keine authentifizierten Cross-Tenant-Tests |
+| Gesamturteil | **PENDING** — Kein **P0**; **7× P1** (Swagger, CH-Mounts, CH-Duplikate, Alertmanager, Stripe-Test-Key, Webhook-Secret, Audit-WORM) + mehrere **P2** offen |
 
 ### Schritt 2 — VPS-Baseline-Kurzfazit
 
@@ -2461,6 +2622,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | 2026-07-26T07:19–07:22 | Schritt 11: DIMO & Fahrzeugimport (PG SELECT, Env-Keys maskiert, Code-Review, keine Imports) | **NEIN** |
 | 2026-07-26T07:23–07:28 | Schritt 12: Stripe/Billing (PG SELECT, Stripe MCP GET-only, Webhook-Probes ohne Signatur, keine Zahlungen/Rechnungen) | **NEIN** |
 | 2026-07-26T07:29–07:34 | Schritt 13: IAM/Rollen/Tenant (PG SELECT aggregiert, Guard-Code-Review, Berechtigungsmatrix, keine Rollen/Session-Änderungen) | **NEIN** |
+| 2026-07-26T07:35–07:40 | Schritt 14: Audit/Datenschutz/ISO (PG SELECT aggregiert, Retention-Env-Flags, Code-Review, keine Audit-Änderungen/Exports/Löschungen) | **NEIN** |
 
 ---
 
