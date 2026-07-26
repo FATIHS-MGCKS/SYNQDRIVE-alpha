@@ -46,3 +46,13 @@ export function shouldUseV2NotificationBridges(): boolean {
 export function shouldUseV2NotificationApiOnly(): boolean {
   return shouldUseV2NotificationSource() && !shouldUseV2NotificationBridges();
 }
+
+/**
+ * When on (with V2): ActionQueue is an operative work list only; notifications
+ * render from the canonical inbox (`notificationInbox`). Rollback: `off`.
+ */
+export function shouldDecoupleActionQueueFromNotifications(): boolean {
+  if (!shouldFetchV2NotificationsInBackground()) return false;
+  const raw = (import.meta.env.VITE_ACTION_QUEUE_DECOUPLED ?? 'off').toString().trim().toLowerCase();
+  return raw === 'true' || raw === 'on' || raw === '1';
+}

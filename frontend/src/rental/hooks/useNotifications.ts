@@ -270,7 +270,6 @@ export function useNotifications({
         'acknowledge',
         (rows) =>
           patchRow(rows, id, {
-            status: 'ACKNOWLEDGED',
             userReceipt: {
               ...(rows.find((r) => r.id === id)?.userReceipt ?? {
                 readAt: null,
@@ -294,7 +293,6 @@ export function useNotifications({
         'snooze',
         (rows) =>
           patchRow(rows, id, {
-            status: 'SNOOZED',
             userReceipt: {
               ...(rows.find((r) => r.id === id)?.userReceipt ?? {
                 readAt: null,
@@ -317,7 +315,6 @@ export function useNotifications({
         'unsnooze',
         (rows) =>
           patchRow(rows, id, {
-            status: 'OPEN',
             userReceipt: {
               ...(rows.find((r) => r.id === id)?.userReceipt ?? {
                 readAt: null,

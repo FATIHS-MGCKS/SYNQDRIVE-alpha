@@ -32,6 +32,8 @@ import {
   supportTicketFollowupDedupKey,
   voiceConversationTaskDedupKey,
 } from './automation/task-automation-rule.util';
+import { notificationTaskDedupKey } from '@modules/notifications/links/notification-task-link.util';
+import { NotificationTaskLinkService } from '@modules/notifications/links/notification-task-link.service';
 import {
   ACTIVE_TASK_STATUSES,
   assertTaskTransition,
@@ -204,6 +206,7 @@ export class TasksService {
     private readonly activityLog: ActivityLogService,
     private readonly linkedObjectResolver: TaskLinkedObjectResolverService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
+    @Optional() private readonly notificationTaskLink?: NotificationTaskLinkService,
   ) {}
 
   // ─── Serialization ─────────────────────────────────────────────────────
@@ -1260,6 +1263,12 @@ export class TasksService {
     if (typeof meta.supportTicketId === 'string' && meta.supportTicketId.trim()) {
       return supportTicketFollowupDedupKey(meta.supportTicketId.trim());
     }
+    if (typeof meta.notificationId === 'string' && meta.notificationId.trim()) {
+      return notificationTaskDedupKey(meta.notificationId.trim());
+    }
+    if (typeof meta.notificationTaskDedupKey === 'string' && meta.notificationTaskDedupKey.trim()) {
+      return meta.notificationTaskDedupKey.trim();
+    }
     return undefined;
   }
 
@@ -1515,7 +1524,20 @@ export class TasksService {
     }
 
     const result = await this.getTaskById(id, orgId);
-    if (to === 'DONE') this.notify('completed', result);
+    if (to === 'DONE') {
+      this.notify('completed', result);
+      void this.notificationTaskLink
+        ?.onTaskCompleted({
+          id: result.id,
+          organizationId: orgId,
+          metadata: result.metadata,
+        })
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `Notification task link on complete failed for task ${id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
+    }
     if (to === 'CANCELLED') this.notify('cancelled', result);
     return result;
   }

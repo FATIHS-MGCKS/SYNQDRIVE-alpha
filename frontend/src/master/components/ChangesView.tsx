@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-action-queue-decouple-2026-07-26',
+    version: '4.9.883',
+    title: 'Notification Engine Remediation — decouple ActionQueue from notification truth (Prompt 16)',
+    summary: [
+      'ActionQueue decoupled from notification inbox when VITE_ACTION_QUEUE_DECOUPLED=on: notificationInbox from API, operationalWorkQueue for handovers only.',
+      'Personal acknowledge/snooze no longer patches org notification status in useNotifications optimistic updates.',
+      'NotificationTaskLinkService + registry: task completion resolves notification only when allowed; health events stay open.',
+      'Tasks dedupe by notification:task:{notificationId}; optional notificationId in task metadata.',
+      'Feature flags: VITE_ACTION_QUEUE_DECOUPLED (FE), ACTION_QUEUE_DECOUPLED (BE).',
+    ],
+    reason:
+      'ActionQueue must not be a second Notification Engine; tasks and notifications have independent lifecycles.',
+    previousBehavior:
+      'ActionQueueItem carried both notifications and operative work; acknowledge mutated org status client-side; task complete had no registry-gated notification resolve.',
+    details:
+      'notification-lifecycle-display.ts, NotificationPanel notificationInbox, buildOperationalHandoverWorkQueue, notification-task-link.service.ts, tasks.service onTaskCompleted hook.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T13:00:00.000Z',
+  },
+  {
     id: 'notification-synthetic-dashboard-removal-2026-07-26',
     version: '4.9.882',
     title: 'Notification Engine Remediation — remove synthetic dashboard notification truth (Prompt 15)',

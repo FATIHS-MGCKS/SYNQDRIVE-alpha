@@ -32,6 +32,7 @@ import {
 import {
   buildActionQueueEmptySummary,
   buildDerivedOperationalQueueItems,
+  buildOperationalHandoverWorkQueue,
   buildUnifiedActionQueue,
 } from './actionQueueBuilder';
 import {
@@ -88,6 +89,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 import {
   getNotificationsV2Mode,
   isNotificationsV2Shadow,
+  shouldDecoupleActionQueueFromNotifications,
   shouldFetchV2NotificationsInBackground,
   shouldUseV2NotificationApiOnly,
   shouldUseV2NotificationBridges,
@@ -968,7 +970,38 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [v1ActionQueue],
   );
 
+  const notificationInbox = useMemo(() => {
+    if (!shouldUseV2NotificationSource()) return null;
+    const sorted = [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+    if (notificationsV2.listMode === 'resolved') return sorted;
+    if (shouldUseV2NotificationApiOnly() || shouldDecoupleActionQueueFromNotifications()) {
+      return sorted;
+    }
+    const withDerived = mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems);
+    const withHandovers = mergeV2WithSupplemental(withDerived, overdueHandoverQueueItems);
+    return mergeV2NotificationsWithVehicleHealth(withHandovers, vehicleHealthQueueItems);
+  }, [
+    notificationsV2.items,
+    notificationsV2.listMode,
+    derivedQueueItems,
+    overdueHandoverQueueItems,
+    vehicleHealthQueueItems,
+  ]);
+
+  const operationalWorkQueue = useMemo(() => {
+    if (!shouldDecoupleActionQueueFromNotifications()) return null;
+    return buildOperationalHandoverWorkQueue({
+      locale,
+      pickupItems,
+      returnItems,
+      fleetById,
+    });
+  }, [locale, pickupItems, returnItems, fleetById]);
+
   const actionQueue = useMemo(() => {
+    if (shouldDecoupleActionQueueFromNotifications() && shouldUseV2NotificationSource()) {
+      return operationalWorkQueue ?? [];
+    }
     if (!shouldUseV2NotificationSource()) return v1ActionQueue;
     const sortedV2 = [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
     if (notificationsV2.listMode === 'resolved') {
@@ -987,6 +1020,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     derivedQueueItems,
     overdueHandoverQueueItems,
     vehicleHealthQueueItems,
+    operationalWorkQueue,
   ]);
 
   const actionQueueTabCounts = useMemo(
@@ -1208,6 +1242,8 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     handleConfirmPickup,
     handleConfirmReturn,
     actionQueue,
+    notificationInbox,
+    operationalWorkQueue,
     actionQueueLoading: resolvedActionQueueLoading,
     actionQueueError: resolvedActionQueueError,
     actionQueueTabCounts,

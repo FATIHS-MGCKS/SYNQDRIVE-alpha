@@ -15,6 +15,7 @@ import {
   isOverdueHandoverNotification,
   resolveHandoverCustomerId,
 } from './notification-handover-copy';
+import { notificationTaskDedupKey } from '../../../lib/notifications/notification-task-dedup';
 
 const MODULE_MAP: Partial<Record<ActionQueueModuleTarget, HealthActionModule>> = {
   battery: 'battery',
@@ -100,6 +101,7 @@ export function buildNotificationTaskPrefill(
       ...prefill.metadata,
       notificationId: item.id,
       notificationEventType: item.issueType,
+      notificationTaskDedupKey: notificationTaskDedupKey(item.id),
       origin: 'NOTIFICATION_PANEL',
     },
   };
