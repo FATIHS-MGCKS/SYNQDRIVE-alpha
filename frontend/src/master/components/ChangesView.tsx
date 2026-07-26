@@ -35,6 +35,206 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-tenant-boundary-validation-2e1-2026-07-26',
+    version: '4.9.891',
+    title: 'V4.9.891 — Master Admin 2E.1: Tenant boundary validation',
+    summary: [
+      'Full-platform tenant isolation audit: guards, Prisma, APIs, workers, BullMQ, analytics, ClickHouse.',
+      'Verdict: no P0; 3 P1 API gaps (insurances live-sharing, HM register); CH read hardening partial.',
+      'Defense model: AuthGuard → OrgScopingGuard/VehicleOwnershipGuard → assert helpers → Prisma orgId.',
+      'Risk register R1–R15 with remediation roadmap for Phase 2E.2.',
+    ],
+    reason:
+      'Phase 2E validates tenant boundaries platform-wide before remediation — analysis only, no code changes.',
+    previousBehavior:
+      'Tenant isolation documented for ClickHouse (2D.4) but not consolidated across all backend layers.',
+    details:
+      'docs/remediation/tenant-boundary-validation.md · architecture/MASTER_ADMIN_TENANT_BOUNDARY_VALIDATION_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T17:00:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-p1-blockers-2026-07-26',
+    version: '4.9.890',
+    title: 'V4.9.890 — Master Admin: ClickHouse P1 blocker fixes',
+    summary: [
+      'P1-PL1: BullMQ clickhouse.mirror.retry queue for failed snapshot/state-change writes.',
+      'P1-T1: org_id backfill service (CLICKHOUSE_ORG_BACKFILL_ENABLED) after migration 007.',
+      'P1-T9: org_id SQL predicates on ClickHouseAnalyticsService reads + detector context.',
+      'Snapshot dedup before insert; disaster-recovery-production-readiness.md for P1-DR.',
+    ],
+    reason:
+      'Phase 2D.8 left four P1 blockers open — mirror loss, backfill, read guards, and DR documentation.',
+    previousBehavior:
+      'CH mirror failures were logged only; analytics queries filtered vehicle_id without org_id.',
+    details:
+      'clickhouse-mirror-retry.producer.ts · clickhouse-org-id-backfill.service.ts · clickhouse-org-filter.util.ts',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T16:30:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-production-readiness-2d8-2026-07-26',
+    version: '4.9.889',
+    title: 'V4.9.889 — Master Admin 2D.8: ClickHouse production readiness acceptance',
+    summary: [
+      'Consolidated before/after verdict across Runtime, Storage, Integrity, Tenant, Performance, Pipeline, Dashboard, Worker, Health.',
+      'Verdict: CONDITIONAL GO — platform OK (CH optional); formal VPS acceptance pending.',
+      'P0: 3/3 repo storage fixes; live verification open. P1: 5/9 addressed.',
+      'vps-clickhouse-acceptance-audit.sh bundles all audits + GO/NO-GO summary.',
+    ],
+    reason:
+      'Phase 2D closes with explicit production readiness decision and operator sign-off checklist.',
+    previousBehavior:
+      'Phases 2D.1–2D.7 documented analysis and remediation without consolidated acceptance verdict.',
+    details:
+      'docs/remediation/clickhouse-production-readiness.md · vps-clickhouse-acceptance-audit.sh',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T16:00:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-remediation-2d7-2026-07-26',
+    version: '4.9.888',
+    title: 'V4.9.888 — Master Admin 2D.7: ClickHouse controlled remediation',
+    summary: [
+      'Gated remediation: G1 backup, M1 shared mounts, M2 VPS compose override, optional M3 recreate.',
+      'Migration 007 org_id columns + application mirror writes with organizationId.',
+      'async_insert server profile + Docker CPU/RAM limits on VPS override.',
+      'vps-clickhouse-remediation.sh orchestrator with integrity/health checks per step.',
+    ],
+    reason:
+      'Phase 2D analyses identified storage drift, tenant gaps, and insert pressure — 2D.7 executes approved fixes safely.',
+    previousBehavior:
+      'Analysis-only phases 2D.1–2D.6; release-relative CH mounts; legacy tables without org_id on write.',
+    details:
+      'docs/remediation/clickhouse-remediation.md · docker-compose.vps-clickhouse.yml · vps-clickhouse-remediation.sh',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T15:00:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-pipeline-analysis-2d6-2026-07-26',
+    version: '4.9.887',
+    title: 'V4.9.887 — Master Admin 2D.6: ClickHouse analytics pipeline analysis',
+    summary: [
+      'End-to-end flow: DIMO → BullMQ → Worker → PostgreSQL → ClickHouse → Analytics → Dashboard.',
+      'Quality audit: completeness, latency, duplicates, lost events, ordering, retry, idempotency.',
+      'Risk register P1–P8: async CH mirror loss, snapshot dupes, default-off mirrors, no DLQ.',
+      'vps-clickhouse-pipeline-audit.sh for VPS mirror lag + PG cross-check.',
+    ],
+    reason:
+      'Phase 2D requires full pipeline documentation before remediation of mirror durability and idempotency.',
+    previousBehavior:
+      'Table-level audits (2D.1–2D.5) without consolidated hop-by-hop pipeline analysis.',
+    details:
+      'docs/remediation/clickhouse-pipeline-analysis.md · architecture/MASTER_ADMIN_CLICKHOUSE_PIPELINE_ANALYSIS_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T14:30:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-performance-2d5-2026-07-26',
+    version: '4.9.886',
+    title: 'V4.9.886 — Master Admin 2D.5: ClickHouse performance analysis',
+    summary: [
+      'Runtime perf audit: CPU/RAM, merges, inserts, query times, compression, partitions.',
+      'Bottleneck register B1–B10: single-row inserts, Data Analyse scans, FINAL reads.',
+      'Optimization roadmap (async_insert, resource limits, OPTIMIZE schedule) — suggestions only.',
+      'vps-clickhouse-performance-audit.sh for VPS baseline capture.',
+    ],
+    reason:
+      'Phase 2D requires performance baseline and prioritized optimizations before VPS tuning.',
+    previousBehavior:
+      'Query timeouts and Prometheus histograms only; no consolidated perf audit doc.',
+    details:
+      'docs/remediation/clickhouse-performance.md · architecture/MASTER_ADMIN_CLICKHOUSE_PERFORMANCE_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:30:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-tenant-isolation-2d4-2026-07-26',
+    version: '4.9.885',
+    title: 'V4.9.885 — Master Admin 2D.4: ClickHouse tenant isolation analysis',
+    summary: [
+      'Schema + query audit: org_id gaps on legacy mirror tables; HF tables org-leading ORDER BY.',
+      'Cross-tenant risks T1–T9 documented; mitigated by UUID vehicle_id + PG org guards.',
+      'Additive migration 007 designed (org_id on snapshots/state_changes); not applied.',
+      'vps-clickhouse-tenant-isolation-audit.sh for VPS org_id empty-row checks.',
+    ],
+    reason:
+      'Multi-tenant SaaS requires explicit CH tenant isolation assessment before remediation.',
+    previousBehavior:
+      'Partial org_id on HF/extended tables; legacy mirrors vehicle_id-only; no CH RLS.',
+    details:
+      'docs/remediation/clickhouse-tenant-isolation.md · migrations/007_legacy_mirror_org_id_columns.sql',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:15:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-data-integrity-2d3-2026-07-26',
+    version: '4.9.884',
+    title: 'V4.9.884 — Master Admin 2D.3: ClickHouse data integrity',
+    summary: [
+      'Per-table integrity register for 8 synqdrive analytics tables (parts, TTL, duplicates, partitions).',
+      'Read-only audit script: CHECK TABLE, detached parts, TTL drift, ReplacingMergeTree dupes.',
+      'Severity model P0–P3; remediation deferred until backup validation + stable mounts.',
+      'Live production metrics pending VPS audit output.',
+    ],
+    reason:
+      'Phase 2D requires documented data integrity baseline before any CH repair or OPTIMIZE.',
+    previousBehavior:
+      'Storage stats via readiness only; no consolidated integrity audit per table.',
+    details:
+      'docs/remediation/clickhouse-data-integrity.md · architecture/MASTER_ADMIN_CLICKHOUSE_DATA_INTEGRITY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:00:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-storage-topology-2d2-2026-07-26',
+    version: '4.9.883',
+    title: 'V4.9.883 — Master Admin 2D.2: ClickHouse storage topology + migration plan',
+    summary: [
+      'Full volume/bind-mount inventory: release-relative config + backup paths flagged P0.',
+      'Gated migration plan (G1 backup validation → M1–M5) to /opt/synqdrive/shared/clickhouse/.',
+      'Read-only audit script vps-clickhouse-storage-topology-audit.sh for VPS drift detection.',
+      'No cleanup or mount changes executed — blocked until backup validation.',
+    ],
+    reason:
+      'Phase 2D requires stable storage topology before remediation; P78 stale-mount incident must not recur.',
+    previousBehavior:
+      'Compose bind mounts followed release tree; deploy did not link ClickHouse shared paths.',
+    details:
+      'docs/remediation/clickhouse-storage-topology.md · architecture/MASTER_ADMIN_CLICKHOUSE_STORAGE_TOPOLOGY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T12:45:00.000Z',
+  },
+  {
+    id: 'master-admin-clickhouse-runtime-analysis-2d1-2026-07-26',
+    version: '4.9.882',
+    title: 'V4.9.882 — Master Admin 2D.1: ClickHouse runtime analysis (baseline)',
+    summary: [
+      'Pre-remediation baseline: Docker compose, image 25.8, volumes, bind mounts, backup disk, TTL schema.',
+      'Tables/partitions/merge/TTL/replication inventory from migrations 001–006 — no live VPS snapshot yet.',
+      'Read-only VPS inspection bundle in docs/remediation/clickhouse-runtime-analysis.md §22.',
+      'No ClickHouse or runtime changes performed.',
+    ],
+    reason:
+      'Phase 2D requires full runtime documentation before any ClickHouse remediation.',
+    previousBehavior:
+      'ClickHouse ops documented across architecture docs and backup phases without consolidated runtime snapshot.',
+    details:
+      'docs/remediation/clickhouse-runtime-analysis.md · architecture/MASTER_ADMIN_CLICKHOUSE_RUNTIME_ANALYSIS_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T12:30:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

@@ -61,6 +61,7 @@ export class IgnitionSegmentDetector implements TripDetector {
         vehicleId,
         timeWindow.from,
         timeWindow.to,
+        ctx.organizationId,
       );
 
       if (segments.length === 0) {

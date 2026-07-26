@@ -435,6 +435,7 @@ export class TripReconciliationService {
     const dimoTokenId = vehicle.dimoVehicle?.tokenId ?? 0;
     const repairCandidates = await this.collectRepairCandidates(
       vehicleId,
+      vehicle.organizationId ?? undefined,
       from,
       to,
       profile,
@@ -546,6 +547,7 @@ export class TripReconciliationService {
 
   private async collectRepairCandidates(
     vehicleId: string,
+    organizationId: string | undefined,
     from: Date,
     to: Date,
     profile: VehicleDetectionProfile,
@@ -582,6 +584,7 @@ export class TripReconciliationService {
     if (chAssistEnabled && this.ignitionDetector) {
       const ignFinding = await this.ignitionDetector.evaluate({
         vehicleId,
+        organizationId,
         dimoTokenId,
         profile,
         phase: DETECTION_PHASES.REPAIR_MISSING_TRIP,
@@ -615,6 +618,7 @@ export class TripReconciliationService {
     if (useMotionFallback) {
       const motionFinding = await this.motionDetector!.evaluate({
         vehicleId,
+        organizationId,
         dimoTokenId,
         profile,
         phase: DETECTION_PHASES.REPAIR_MISSING_TRIP,

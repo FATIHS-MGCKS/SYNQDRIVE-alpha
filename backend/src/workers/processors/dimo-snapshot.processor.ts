@@ -234,11 +234,12 @@ export class DimoSnapshotProcessor extends WorkerHost {
           tractionKw: normalized.tractionBatteryPowerKw,
           recordedAt: normalized.lastSeenAt ?? new Date(),
         };
-        this.chTelemetry.insertSnapshot(vehicleId, dimoTokenId, chSnap).catch((err) =>
+        this.chTelemetry.insertSnapshot(vehicle.organizationId, vehicleId, dimoTokenId, chSnap).catch((err) =>
           this.logger.warn(`CH mirror failed: ${err.message}`),
         );
         this.chTelemetry
           .detectAndInsertStateChanges(
+            vehicle.organizationId,
             vehicleId,
             previousState
               ? {

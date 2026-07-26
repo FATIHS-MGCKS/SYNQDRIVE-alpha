@@ -3,6 +3,10 @@ import { ClickHouseService } from './clickhouse.service';
 import type { IgnitionSegmentFinding } from '../vehicle-intelligence/trips/detectors/ignition-segment.detector';
 import type { MotionSegmentFinding } from '../vehicle-intelligence/trips/detectors/motion-segment.detector';
 import { TripMetricsService } from '../observability/trip-metrics.service';
+import {
+  buildOrgIdSqlPredicate,
+  orgIdQueryParams,
+} from './clickhouse-org-filter.util';
 
 // Minimum segment duration per signal type.
 // Ignition segments: 60s — short ICE on/off cycles (e.g. starting for pickup) are real trips.
@@ -76,6 +80,7 @@ export class ClickHouseAnalyticsService {
     vehicleId: string,
     from: Date,
     to: Date,
+    orgId?: string,
   ): Promise<IgnitionSegmentFinding[]> {
     if (!this.ch.isAvailable) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
@@ -103,7 +108,7 @@ export class ClickHouseAnalyticsService {
         WHERE vehicle_id = {vehicleId: String}
           AND signal_name = 'ignition'
           AND changed_at >= parseDateTime64BestEffort({from: String})
-          AND changed_at <= parseDateTime64BestEffort({to: String})
+          AND changed_at <= parseDateTime64BestEffort({to: String})${buildOrgIdSqlPredicate('org_id', orgId)}
       )
       WHERE new_value = 1
         AND off_time IS NOT NULL
@@ -119,6 +124,7 @@ export class ClickHouseAnalyticsService {
           from: toClickHouseDateTime64Param(from),
           to: toClickHouseDateTime64Param(to),
           minDurationMs: MIN_IGNITION_SEGMENT_DURATION_MS,
+          ...orgIdQueryParams(orgId),
         },
         format: 'JSONEachRow',
       });
@@ -166,6 +172,7 @@ export class ClickHouseAnalyticsService {
     vehicleId: string,
     from: Date,
     to: Date,
+    orgId?: string,
   ): Promise<MotionSegmentFinding[]> {
     if (!this.ch.isAvailable) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
@@ -193,7 +200,7 @@ export class ClickHouseAnalyticsService {
         WHERE vehicle_id = {vehicleId: String}
           AND signal_name = 'motion'
           AND changed_at >= parseDateTime64BestEffort({from: String})
-          AND changed_at <= parseDateTime64BestEffort({to: String})
+          AND changed_at <= parseDateTime64BestEffort({to: String})${buildOrgIdSqlPredicate('org_id', orgId)}
       )
       WHERE new_value = 1
         AND off_time IS NOT NULL
@@ -209,6 +216,7 @@ export class ClickHouseAnalyticsService {
           from: toClickHouseDateTime64Param(from),
           to: toClickHouseDateTime64Param(to),
           minDurationMs: MIN_MOTION_SEGMENT_DURATION_MS,
+          ...orgIdQueryParams(orgId),
         },
         format: 'JSONEachRow',
       });
@@ -254,6 +262,7 @@ export class ClickHouseAnalyticsService {
     vehicleId: string,
     from: Date,
     to: Date,
+    orgId?: string,
   ): Promise<
     Array<{
       recordedAt: Date;
@@ -280,7 +289,7 @@ export class ClickHouseAnalyticsService {
       FROM telemetry_snapshots
       WHERE vehicle_id = {vehicleId: String}
         AND recorded_at >= parseDateTime64BestEffort({from: String})
-        AND recorded_at <= parseDateTime64BestEffort({to: String})
+        AND recorded_at <= parseDateTime64BestEffort({to: String})${buildOrgIdSqlPredicate('org_id', orgId)}
       ORDER BY recorded_at
     `;
 
@@ -291,6 +300,7 @@ export class ClickHouseAnalyticsService {
           vehicleId,
           from: toClickHouseDateTime64Param(from),
           to: toClickHouseDateTime64Param(to),
+          ...orgIdQueryParams(orgId),
         },
         format: 'JSONEachRow',
         clickhouse_settings: { max_execution_time: 15 },
@@ -334,6 +344,7 @@ export class ClickHouseAnalyticsService {
     vehicleId: string,
     from: Date,
     to: Date,
+    orgId?: string,
   ): Promise<{ pointCount: number; maxSpeedKmh: number; odometerDeltaKm: number }> {
     if (!this.ch.isAvailable) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
@@ -352,7 +363,7 @@ export class ClickHouseAnalyticsService {
       FROM telemetry_snapshots
       WHERE vehicle_id = {vehicleId: String}
         AND recorded_at >= parseDateTime64BestEffort({from: String})
-        AND recorded_at <= parseDateTime64BestEffort({to: String})
+        AND recorded_at <= parseDateTime64BestEffort({to: String})${buildOrgIdSqlPredicate('org_id', orgId)}
     `;
 
     try {
@@ -362,6 +373,7 @@ export class ClickHouseAnalyticsService {
           vehicleId,
           from: toClickHouseDateTime64Param(from),
           to: toClickHouseDateTime64Param(to),
+          ...orgIdQueryParams(orgId),
         },
         format: 'JSONEachRow',
       });

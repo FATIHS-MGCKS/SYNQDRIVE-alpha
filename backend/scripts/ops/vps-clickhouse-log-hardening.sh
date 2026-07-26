@@ -31,6 +31,12 @@ done < <(find "$CONTAINER_ID_FILE" -name '*-json.log' 2>/dev/null || true)
 
 cd "$BACKEND_DIR"
 
+# Prefer VPS compose override when deployed (Phase 2D.7)
+if [[ -f "${BACKEND_DIR}/scripts/ops/vps-clickhouse-compose-env.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "${BACKEND_DIR}/scripts/ops/vps-clickhouse-compose-env.sh"
+fi
+
 echo "==> Recreate ClickHouse with hardened logging config"
 if docker compose version >/dev/null 2>&1; then
   docker compose up -d --force-recreate clickhouse
