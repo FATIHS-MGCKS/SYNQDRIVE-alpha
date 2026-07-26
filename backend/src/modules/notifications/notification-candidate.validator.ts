@@ -8,6 +8,11 @@ import {
 } from './notification.enums';
 import type { NotificationCandidate } from './notification.types';
 import { buildNotificationFingerprint } from './notification-fingerprint.factory';
+import {
+  NotificationRegistryValidationError,
+  validateRegistryCandidate,
+} from './registry/notification-event-registry.validator';
+import { resolveNotificationEventType } from './registry/notification-event-registry';
 
 export class NotificationCandidateValidationError extends Error {
   constructor(
@@ -27,6 +32,20 @@ const VALID_ENUM_VALUES = {
   actionType: new Set(Object.values(NotificationActionType)),
   eventKind: new Set(Object.values(NotificationEventKind)),
 };
+
+function logRegistryRejection(eventType: string, field: string, message: string): void {
+  const payload = {
+    level: 'error',
+    component: 'notification-registry',
+    eventType,
+    field,
+    message,
+    nodeEnv: process.env.NODE_ENV ?? 'unknown',
+  };
+  if (process.env.NODE_ENV === 'production') {
+    console.error(JSON.stringify(payload));
+  }
+}
 
 function assertNonEmpty(field: string, value: string | undefined | null): string {
   const trimmed = value?.trim();
@@ -59,6 +78,25 @@ function assertTemplateKey(field: string, value: string): void {
       field,
       `${field} must be an i18n key starting with "notification."`,
     );
+  }
+}
+
+function enforceRegistryCandidate(candidate: NotificationCandidate): NotificationCandidate {
+  const canonicalEventType = resolveNotificationEventType(candidate.eventType);
+  if (!canonicalEventType) {
+    const message = `Unregistered notification eventType: ${candidate.eventType}`;
+    logRegistryRejection(candidate.eventType, 'eventType', message);
+    throw new NotificationCandidateValidationError('eventType', message);
+  }
+
+  try {
+    return validateRegistryCandidate(candidate);
+  } catch (err) {
+    if (err instanceof NotificationRegistryValidationError) {
+      logRegistryRejection(candidate.eventType, err.field, err.message);
+      throw new NotificationCandidateValidationError(err.field, err.message);
+    }
+    throw err;
   }
 }
 
@@ -99,17 +137,7 @@ export function validateNotificationCandidate(candidate: NotificationCandidate):
     throw new NotificationCandidateValidationError('actionTarget', 'actionTarget.type is required');
   }
 
-  // Fingerprint must be buildable without localized text
-  buildNotificationFingerprint({
-    organizationId,
-    eventType,
-    entityType: candidate.entityType,
-    entityId,
-    conditionCode,
-    scopeVersion: candidate.scopeVersion ?? 1,
-  });
-
-  return {
+  const structurallyValid: NotificationCandidate = {
     ...candidate,
     organizationId,
     eventType,
@@ -118,6 +146,17 @@ export function validateNotificationCandidate(candidate: NotificationCandidate):
     sourceRef,
     scopeVersion: candidate.scopeVersion ?? 1,
   };
+
+  buildNotificationFingerprint({
+    organizationId,
+    eventType: resolveNotificationEventType(eventType) ?? eventType,
+    entityType: structurallyValid.entityType,
+    entityId,
+    conditionCode,
+    scopeVersion: structurallyValid.scopeVersion ?? 1,
+  });
+
+  return enforceRegistryCandidate(structurallyValid);
 }
 
 export function fingerprintFromCandidate(

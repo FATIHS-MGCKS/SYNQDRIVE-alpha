@@ -14,6 +14,7 @@ import {
   validateNotificationCandidate,
 } from './notification-candidate.validator';
 import { notificationCandidateFromInsight } from './insight-candidate.mapper';
+import { buildCandidateFromRegistry } from './registry/notification-event-registry';
 
 function validCandidate() {
   return {
@@ -29,7 +30,7 @@ function validCandidate() {
     sourceRef: 'run-abc',
     occurredAt: new Date('2026-07-08T08:00:00.000Z'),
     titleKey: 'notification.title.drivingAssessmentDegraded',
-    bodyKey: 'notification.body.insightDefault',
+    bodyKey: 'notification.body.drivingAssessmentDegraded',
     templateParams: { label: 'WOB L 7503', plate: 'WOB L 7503' },
     actionType: NotificationActionType.OPEN_VEHICLE,
     actionTarget: { type: NotificationActionType.OPEN_VEHICLE, vehicleId: 'veh-1' },
@@ -67,6 +68,31 @@ describe('notification-candidate.validator', () => {
       titleKey: 'notification.title.drivingAssessmentDegraded',
     });
     expect(de.canonical).toBe(en.canonical);
+  });
+
+  it('rejects unregistered event types', () => {
+    expect(() =>
+      validateNotificationCandidate({
+        ...validCandidate(),
+        eventType: 'NOT_A_REAL_EVENT',
+      }),
+    ).toThrow(NotificationCandidateValidationError);
+  });
+
+  it('accepts alias event types after canonical resolution', () => {
+    const base = buildCandidateFromRegistry({
+      organizationId: 'org-1',
+      eventType: 'WEBHOOK_FAILURE',
+      entityId: 'org-1',
+      sourceRef: 'webhook-1',
+      occurredAt: new Date(),
+      templateParams: { webhookName: 'dimo' },
+    });
+    const aliased = validateNotificationCandidate({
+      ...base,
+      eventType: 'WEBHOOK_PROCESSING_FAILED',
+    });
+    expect(aliased.eventType).toBe('WEBHOOK_FAILURE');
   });
 });
 
@@ -125,5 +151,31 @@ describe('insight-candidate.mapper', () => {
     const fp = fingerprintFromCandidate(candidate);
     expect(fp.parts.conditionCode).toBe('driving_assessment_device_quality');
     expect(fp.parts.entityId).toBe('veh-wob-l-7503');
+  });
+
+  it('maps SERVICE_OVERDUE insight with registry conditionCode service_overdue', () => {
+    const candidate = notificationCandidateFromInsight(
+      {
+        type: InsightType.SERVICE_OVERDUE,
+        severity: InsightSeverity.WARNING,
+        priority: 50,
+        title: 'Service überfällig',
+        message: 'WOB L 7503 — Service überfällig',
+        actionType: 'OPEN_VEHICLE',
+        entityScope: InsightEntityScope.VEHICLE,
+        entityIds: ['veh-1'],
+        metrics: {},
+        reasons: [],
+        confidence: 0.9,
+        dedupeKey: 'service_overdue:veh-1',
+      },
+      {
+        organizationId: 'org-1',
+        sourceRef: 'insight-service',
+        occurredAt: new Date(),
+      },
+    );
+    expect(candidate?.conditionCode).toBe('service_overdue');
+    expect(() => validateNotificationCandidate(candidate!)).not.toThrow();
   });
 });

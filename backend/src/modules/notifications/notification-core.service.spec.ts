@@ -24,6 +24,7 @@ import {
   NotificationSourceType as DomainSourceType,
 } from './notification.enums';
 import { DEFAULT_STATE_REOPEN_POLICY } from './notification-reopen.policy';
+import { buildCandidateFromRegistry } from './registry/notification-event-registry';
 import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
 import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
 import { NotificationDeliverySchedulerService } from './delivery/notification-delivery-scheduler.service';
@@ -46,24 +47,41 @@ const VEH = 'veh-wob-l-7503';
 
 function buildCandidate(overrides: Partial<NotificationCandidate> = {}): NotificationCandidate {
   const occurredAt = overrides.occurredAt ?? new Date('2026-07-11T10:00:00.000Z');
-  return {
+  const base = buildCandidateFromRegistry({
     organizationId: ORG,
     eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
-    eventKind: DomainEventKind.STATE,
-    domain: DomainDomain.VEHICLE_HEALTH,
-    severity: DomainSeverity.WARNING,
-    entityType: DomainEntityType.VEHICLE,
     entityId: VEH,
-    conditionCode: 'driving_assessment_device_quality',
-    scopeVersion: 1,
-    sourceType: DomainSourceType.DASHBOARD_INSIGHT,
     sourceRef: 'insight-run-1',
     occurredAt,
-    titleKey: 'notification.title.drivingAssessmentDegraded',
-    bodyKey: 'notification.body.insightDefault',
-    templateParams: { plate: 'WOB L 7503' },
-    actionType: DomainActionType.OPEN_VEHICLE_MODULE,
-    actionTarget: { type: DomainActionType.OPEN_VEHICLE_MODULE, vehicleId: VEH, module: 'health' },
+    templateParams: { label: 'WOB L 7503' },
+    actionTargetContext: { vehicleId: VEH, module: 'health' },
+    severity: overrides.severity,
+  });
+  return {
+    ...base,
+    resolutionPolicy: {
+      eventKind: DomainEventKind.STATE,
+      autoResolveWhenConditionClears: true,
+      reopenPolicy: { ...DEFAULT_STATE_REOPEN_POLICY, cooldownMs: 0 },
+    },
+    ...overrides,
+  };
+}
+
+function buildTelemetryCandidate(overrides: Partial<NotificationCandidate> = {}): NotificationCandidate {
+  const occurredAt = overrides.occurredAt ?? new Date('2026-07-11T10:00:00.000Z');
+  const base = buildCandidateFromRegistry({
+    organizationId: ORG,
+    eventType: 'TELEMETRY_OFFLINE',
+    entityId: VEH,
+    sourceRef: 'telemetry-run-1',
+    occurredAt,
+    templateParams: { label: 'WOB L 7503' },
+    actionTargetContext: { vehicleId: VEH, module: 'connectivity' },
+    severity: overrides.severity,
+  });
+  return {
+    ...base,
     resolutionPolicy: {
       eventKind: DomainEventKind.STATE,
       autoResolveWhenConditionClears: true,
@@ -254,7 +272,7 @@ describe('NotificationCoreService', () => {
     const later = buildCandidate({
       occurredAt: new Date('2026-07-11T12:00:00.000Z'),
       sourceRef: 'ref-2',
-      templateParams: { plate: 'WOB L 7503', km: 120 },
+      templateParams: { label: 'WOB L 7503', plate: 'WOB L 7503', km: 120 },
     });
     await service.ingestCandidate(later);
     const row = [...notifications.values()][0];
@@ -264,8 +282,8 @@ describe('NotificationCoreService', () => {
   });
 
   it('escalates severity INFO → WARNING → CRITICAL without deescalation', async () => {
-    await service.ingestCandidate(buildCandidate({ severity: DomainSeverity.INFO }));
-    await service.ingestCandidate(buildCandidate({
+    await service.ingestCandidate(buildTelemetryCandidate({ severity: DomainSeverity.INFO }));
+    await service.ingestCandidate(buildTelemetryCandidate({
       severity: DomainSeverity.WARNING,
       sourceRef: 's2',
       occurredAt: new Date('2026-07-11T11:00:00.000Z'),
@@ -273,7 +291,7 @@ describe('NotificationCoreService', () => {
     let row = [...notifications.values()][0];
     expect(row.severity).toBe(NotificationSeverity.WARNING);
 
-    await service.ingestCandidate(buildCandidate({
+    await service.ingestCandidate(buildTelemetryCandidate({
       severity: DomainSeverity.INFO,
       sourceRef: 's3',
       occurredAt: new Date('2026-07-11T12:00:00.000Z'),
@@ -281,7 +299,7 @@ describe('NotificationCoreService', () => {
     row = [...notifications.values()][0];
     expect(row.severity).toBe(NotificationSeverity.WARNING);
 
-    await service.ingestCandidate(buildCandidate({
+    await service.ingestCandidate(buildTelemetryCandidate({
       severity: DomainSeverity.CRITICAL,
       sourceRef: 's4',
       occurredAt: new Date('2026-07-11T13:00:00.000Z'),

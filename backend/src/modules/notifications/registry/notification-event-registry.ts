@@ -4,6 +4,8 @@ import {
   NOTIFICATION_EVENT_SLUG_ALIASES,
   NOTIFICATION_EVENT_TYPE_DEFINITIONS,
 } from './notification-event-registry.definitions';
+import { NOTIFICATION_EVENT_TYPE_ALIASES } from './notification-event-registry.aliases';
+import { deriveRetentionClass } from './notification-event-registry.consistency';
 import type {
   NotificationActionTargetContext,
   NotificationEventTypeDefinition,
@@ -17,13 +19,23 @@ export class NotificationEventRegistryError extends Error {
   }
 }
 
+function withRetentionClass(
+  def: NotificationEventTypeDefinition,
+): NotificationEventTypeDefinition {
+  return {
+    ...def,
+    retentionClass: def.retentionClass ?? deriveRetentionClass(def),
+  };
+}
+
 function bootstrapRegistry(
   definitions: readonly NotificationEventTypeDefinition[],
 ): Map<string, NotificationEventTypeDefinition> {
   const byEventType = new Map<string, NotificationEventTypeDefinition>();
   const bySlug = new Map<string, string>();
 
-  for (const def of definitions) {
+  for (const raw of definitions) {
+    const def = withRetentionClass(raw);
     if (byEventType.has(def.eventType)) {
       throw new NotificationEventRegistryError(
         `Duplicate notification eventType registration: ${def.eventType}`,
@@ -63,14 +75,26 @@ export function resolveEventSlug(slug: string): string {
   return def.eventType;
 }
 
+export function resolveNotificationEventType(eventType: string): string | undefined {
+  const trimmed = eventType?.trim();
+  if (!trimmed) return undefined;
+  const canonical = NOTIFICATION_EVENT_TYPE_ALIASES[trimmed] ?? trimmed;
+  return REGISTRY_MAP.has(canonical) ? canonical : undefined;
+}
+
 export function getEventTypeDefinition(
   eventType: string,
 ): NotificationEventTypeDefinition | undefined {
-  return REGISTRY_MAP.get(eventType);
+  const canonical = resolveNotificationEventType(eventType);
+  return canonical ? REGISTRY_MAP.get(canonical) : undefined;
 }
 
 export function requireEventTypeDefinition(eventType: string): NotificationEventTypeDefinition {
-  const def = getEventTypeDefinition(eventType);
+  const canonical = resolveNotificationEventType(eventType);
+  if (!canonical) {
+    throw new NotificationEventRegistryError(`Unregistered notification eventType: ${eventType}`);
+  }
+  const def = REGISTRY_MAP.get(canonical);
   if (!def) {
     throw new NotificationEventRegistryError(`Unregistered notification eventType: ${eventType}`);
   }
@@ -101,7 +125,11 @@ export function buildRegistryFingerprint(
 export function buildCandidateFromRegistry(
   input: RegistryCandidateBuildInput,
 ): NotificationCandidate {
-  const def = requireEventTypeDefinition(input.eventType);
+  const canonicalEventType = resolveNotificationEventType(input.eventType);
+  if (!canonicalEventType) {
+    throw new NotificationEventRegistryError(`Unregistered notification eventType: ${input.eventType}`);
+  }
+  const def = requireEventTypeDefinition(canonicalEventType);
   const entityType = input.entityType ?? def.defaultEntityType;
   const actionCtx: NotificationActionTargetContext = {
     entityType,

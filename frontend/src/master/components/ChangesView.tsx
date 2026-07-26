@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-event-registry-enforcement-2026-07-26',
+    version: '4.9.870',
+    title: 'Notification Engine Remediation — canonical event registry enforcement (Prompt 3)',
+    summary: [
+      'Registry enforced at ingest: validateNotificationCandidate → validateRegistryCandidate; unknown eventType rejected (prod structured log).',
+      'Producer alias WEBHOOK_PROCESSING_FAILED → WEBHOOK_FAILURE; insight mapper uses buildCandidateFromRegistry; SERVICE_OVERDUE conditionCode fixed to service_overdue.',
+      'Static consistency checks (unique keys, severity rules, EVENT expiry) + NotificationEventTypeCode union.',
+      'Architecture doc: docs/architecture/notification-event-registry.md (66 registered types).',
+    ],
+    reason:
+      'Notification Engine production-readiness remediation — registry must be the single source of truth; no silent generic fallback types.',
+    previousBehavior:
+      'Core ingest validated structure only; adapters called validateRegistryCandidate separately; insight mapper could drift from registry (e.g. SERVICE_OVERDUE conditionCode overdue).',
+    details:
+      'notification-event-registry.aliases.ts, notification-event-registry.consistency.ts, notification-event-type-codes.ts, notification-candidate.validator.ts, insight-candidate.mapper.ts, notification-event-registry.spec.ts, notification-candidate.validator.spec.ts, docs/architecture/notification-event-registry.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T00:45:00.000Z',
+  },
+  {
     id: 'operator-app-prod-deploy-v49840-2026-07-25',
     version: '4.9.840',
     title: 'V4.9.840 — Operator App production deploy + Gate 12 closure',
