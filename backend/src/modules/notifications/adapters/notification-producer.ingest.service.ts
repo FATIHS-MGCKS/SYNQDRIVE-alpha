@@ -27,7 +27,7 @@ import {
 import type { VehicleHealthAdapterSource } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
-  isDeviceQualitySystemObservation,
+  shouldIngestTechnicalObservationNotification,
 } from './technical-observation.filters';
 import { ACTIVE_NOTIFICATION_STATUSES, NotificationRepository } from '../notification.repository';
 import { buildRegistryFingerprint } from '../registry/notification-event-registry';
@@ -91,6 +91,10 @@ export interface TechnicalObservationIngestInput {
   sourceRef?: string;
   occurredAt?: Date;
   runId?: string;
+  severity?: import('@modules/business-insights/insight.types').InsightSeverity;
+  correlationId?: string;
+  causationId?: string;
+  sourceEventId?: string;
 }
 
 /**
@@ -151,16 +155,15 @@ export class NotificationProducerIngestService {
     try {
       await this.router.ingestFromAdapter(
         this.technicalObservationAdapter,
-        {
-          vehicleId: input.vehicleId,
-          label: input.label,
-          complaintId: input.observationId,
-        },
+        this.technicalObservationSource(input, false),
         this.adapterContext(
           input.organizationId,
-          input.sourceRef ?? input.observationId,
+          input.sourceEventId ?? input.sourceRef ?? input.observationId,
           input.runId,
           input.occurredAt,
+          undefined,
+          input.correlationId,
+          input.causationId,
         ),
       );
     } catch (err) {
@@ -176,17 +179,15 @@ export class NotificationProducerIngestService {
     try {
       await this.router.ingestFromAdapter(
         this.technicalObservationAdapter,
-        {
-          vehicleId: input.vehicleId,
-          label: input.label,
-          complaintId: input.observationId,
-          resolved: true,
-        },
+        this.technicalObservationSource(input, true),
         this.adapterContext(
           input.organizationId,
-          input.sourceRef ?? input.observationId,
+          input.sourceEventId ?? `${input.sourceRef ?? input.observationId}:resolved`,
           input.runId,
           input.occurredAt,
+          undefined,
+          input.correlationId,
+          input.causationId,
         ),
       );
     } catch (err) {
@@ -820,6 +821,8 @@ export class NotificationProducerIngestService {
     runId?: string,
     occurredAt?: Date,
     ingestPath?: 'batch' | 'realtime',
+    correlationId?: string,
+    causationId?: string,
   ) {
     const at = occurredAt ?? new Date();
     return {
@@ -830,6 +833,25 @@ export class NotificationProducerIngestService {
       observedAt: at,
       runId,
       ingestPath,
+      correlationId,
+      causationId,
+    };
+  }
+
+  private technicalObservationSource(
+    input: TechnicalObservationIngestInput,
+    resolved: boolean,
+  ) {
+    return {
+      vehicleId: input.vehicleId,
+      label: input.label,
+      complaintId: input.observationId,
+      observationId: input.observationId,
+      resolved,
+      severity: input.severity,
+      correlationId: input.correlationId,
+      causationId: input.causationId,
+      sourceEventId: input.sourceEventId,
     };
   }
 
@@ -855,7 +877,7 @@ export class NotificationProducerIngestService {
   }
 
   private skipDeviceQualityObservation(input: TechnicalObservationIngestInput): boolean {
-    return isDeviceQualitySystemObservation({
+    return !shouldIngestTechnicalObservationNotification({
       createdByWorkerId: input.createdByWorkerId,
       notes: input.notes,
     });

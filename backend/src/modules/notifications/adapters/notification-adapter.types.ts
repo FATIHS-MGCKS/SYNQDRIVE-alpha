@@ -85,7 +85,12 @@ export interface TechnicalObservationAdapterSource {
   vehicleId: string;
   label: string;
   complaintId: string;
+  observationId?: string;
   resolved?: boolean;
+  severity?: import('@modules/business-insights/insight.types').InsightSeverity;
+  correlationId?: string;
+  causationId?: string;
+  sourceEventId?: string;
 }
 
 export interface DrivingAssessmentAdapterSource {

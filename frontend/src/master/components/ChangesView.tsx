@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-technical-observations-2026-07-26',
+    version: '4.9.881',
+    title: 'Notification Engine Remediation — technical observations canonical lifecycle (Prompt 14)',
+    summary: [
+      'Technical Observations remain domain objects (vehicle_complaints); canonical inbox is TECHNICAL_OBSERVATION_ACTIVE only.',
+      'Lifecycle sync on create/update/resolve/dismiss/convert/linkService with correlationId/causationId and observationId metadata.',
+      'Device-quality auto-observations excluded; frontend suppresses aggregate complaints health bridge when V2 has per-observation rows.',
+      'Docs: docs/architecture/notification-technical-observations.md',
+    ],
+    reason:
+      'Observations must not form a second notification truth alongside the Notification Engine.',
+    previousBehavior:
+      'V1 rental-health aggregate technical_observation_active ActionQueue row; update/linkService did not sync V2 notifications.',
+    details:
+      'technical-observation-lifecycle.util, TechnicalObservationsService lifecycle hooks, merge-v2-with-vehicle-health suppression, notification-technical-observation-producers.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T11:00:00.000Z',
+  },
+  {
     id: 'notification-booking-handover-producers-2026-07-26',
     version: '4.9.880',
     title: 'Notification Engine Remediation — booking pickup & return producers (Prompt 13)',
