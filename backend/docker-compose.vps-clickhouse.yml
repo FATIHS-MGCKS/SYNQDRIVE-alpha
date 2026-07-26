@@ -1,0 +1,29 @@
+# VPS production override — stable ClickHouse bind mounts (Phase 2D.7).
+#
+# Usage on VPS:
+#   export COMPOSE_FILE=docker-compose.yml:docker-compose.vps-clickhouse.yml
+#   docker compose up -d clickhouse
+#
+# Local dev: omit this file — keep release-relative paths in docker-compose.yml.
+#
+# Named volumes clickhouse_data / clickhouse_logs are unchanged (no data loss on recreate).
+
+services:
+  clickhouse:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+      - /opt/synqdrive/shared/clickhouse/backups:/backups
+      - /opt/synqdrive/shared/clickhouse/config/config.d/backup_disk.xml:/etc/clickhouse-server/config.d/backup_disk.xml:ro
+      - /opt/synqdrive/shared/clickhouse/config/config.d/01_logger.xml:/etc/clickhouse-server/config.d/01_logger.xml:ro
+      - /opt/synqdrive/shared/clickhouse/config/config.d/z_system_logs.xml:/etc/clickhouse-server/config.d/z_system_logs.xml:ro
+      - /opt/synqdrive/shared/clickhouse/config/config.d/z_async_insert.xml:/etc/clickhouse-server/config.d/z_async_insert.xml:ro
+      - /opt/synqdrive/shared/clickhouse/config/users.d/z_log_profiles.xml:/etc/clickhouse-server/users.d/z_log_profiles.xml:ro

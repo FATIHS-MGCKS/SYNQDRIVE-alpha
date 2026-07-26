@@ -103,6 +103,17 @@ Docs: [`docs/remediation/offsite-backups.md`](../../docs/remediation/offsite-bac
 | `vps-verify-offsite-backups.sh` | Local + remote integrity audit | read-only |
 | `vps-install-offsite-backup-cron.sh` | Daily 05:15 UTC offsite cron + weekly verify | run as root |
 | `offsite-backup.env.example` | Unified offsite config (rclone/S3, GPG, alerts) | copy to `/opt/synqdrive/shared/offsite-backup.env` |
+| `vps-clickhouse-storage-topology-audit.sh` | Read-only audit of ClickHouse Docker volumes/bind mounts (stale paths, orphans, backup consistency) | read-only — exit 1 on P0 drift; run before 2D.3 mount migration |
+| `vps-clickhouse-data-integrity-audit.sh` | Read-only per-table integrity audit (CHECK TABLE, parts, TTL drift, ReplacingMergeTree dupes) | read-only — exit 1 on P0; quarterly or pre-remediation |
+| `vps-clickhouse-tenant-isolation-audit.sh` | Read-only tenant audit (org_id columns, empty org rows, ORDER BY leading key, MVs) | read-only — run before migration 007 / 2D.5 hardening |
+| `vps-clickhouse-performance-audit.sh` | Read-only performance snapshot (CPU/RAM, merges, compression, slow queries, partitions) | read-only — weekly baseline; before optimization work |
+| `vps-clickhouse-pipeline-audit.sh` | Read-only pipeline health (mirror lag, ingest rates, duplicate samples, PG cross-check) | read-only — exit 1 on P1 lag/completeness; run with 2D.3–2D.5 audits |
+| `vps-clickhouse-backup.sh` | Gate G1 `BACKUP DATABASE` + sha256 manifest | safe — run before any remediation step |
+| `vps-clickhouse-remediation.sh` | Gated orchestrator (G1 → M1 → M2 → optional M3 recreate) with integrity/health checks | **execute** only after dry-run; `--recreate` causes brief CH outage |
+| `vps-clickhouse-backfill-org-id.sh` | Backfill `org_id` on legacy tables after migration 007 | requires `DATABASE_URL`; run post-deploy |
+| `vps-clickhouse-health-check.sh` | Post-step container + CH + API readiness check | read-only |
+| `vps-clickhouse-compose-env.sh` | Sets `COMPOSE_FILE` for VPS override | sourced by other ops scripts |
+| `vps-clickhouse-acceptance-audit.sh` | Full 2D.8 acceptance bundle (all audits + GO/NO-GO) | read-only — exit 0 = conditional GO; run after 2D.7 remediation |
 
 ### Partitioning (P2)
 

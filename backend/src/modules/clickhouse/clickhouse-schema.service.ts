@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClickHouseClient } from '@clickhouse/client';
 import { ClickHouseService } from './clickhouse.service';
+import { ClickHouseOrgIdBackfillService } from './clickhouse-org-id-backfill.service';
 
 /**
  * ClickHouseSchemaService
@@ -71,7 +72,10 @@ export function splitSqlStatements(sql: string): string[] {
 export class ClickHouseSchemaService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ClickHouseSchemaService.name);
 
-  constructor(private readonly ch: ClickHouseService) {}
+  constructor(
+    private readonly ch: ClickHouseService,
+    private readonly orgBackfill: ClickHouseOrgIdBackfillService,
+  ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     if (!this.ch.isAvailable) {
@@ -125,9 +129,17 @@ export class ClickHouseSchemaService implements OnApplicationBootstrap {
       this.ch.reportSchemaStatus({ pendingMigrationCount: pending.length });
 
       let appliedNow = 0;
+      let applied007 = false;
       for (const migration of pending) {
         await this.applyMigration(adminClient, db, migration);
         appliedNow++;
+        if (migration.version === '007') {
+          applied007 = true;
+        }
+      }
+
+      if (applied007) {
+        await this.orgBackfill.runAfterMigration007();
       }
 
       const totalApplied = applied.length + appliedNow;
