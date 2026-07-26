@@ -107,4 +107,109 @@ export class QueueMonitoringService implements OnModuleInit, OnModuleDestroy {
       }),
     );
   }
+
+  /**
+   * Fast BullMQ broker probe — verifies Redis-backed queue metadata is readable.
+   */
+  async probeBrokerReachable(timeoutMs = 2_500): Promise<{
+    ok: boolean;
+    responseMs: number;
+    error?: string;
+    queue?: string;
+  }> {
+    const start = Date.now();
+    if (!RuntimeStatusRegistry.getWorkersEnabled()) {
+      return {
+        ok: false,
+        responseMs: Date.now() - start,
+        error: 'workers_disabled_at_bootstrap',
+      };
+    }
+
+    const probeQueue =
+      this.queues.find((q) => q.name === QUEUE_NAMES.NOTIFICATION_EVALUATION) ??
+      this.queues[0];
+    if (!probeQueue) {
+      return {
+        ok: false,
+        responseMs: Date.now() - start,
+        error: 'no_queue_clients_initialized',
+      };
+    }
+
+    try {
+      await Promise.race([
+        probeQueue.getJobCounts('waiting', 'active', 'delayed', 'failed'),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('queue_probe_timeout')), timeoutMs),
+        ),
+      ]);
+      return {
+        ok: true,
+        responseMs: Date.now() - start,
+        queue: probeQueue.name,
+      };
+    } catch (err: unknown) {
+      return {
+        ok: false,
+        responseMs: Date.now() - start,
+        error: (err as Error).message,
+        queue: probeQueue.name,
+      };
+    }
+  }
+
+  async probeNamedQueues(
+    queueNames: string[],
+    timeoutMs = 2_500,
+  ): Promise<{
+    ok: boolean;
+    responseMs: number;
+    error?: string;
+    counts: Record<string, Record<string, number>>;
+  }> {
+    const start = Date.now();
+    const targets = this.queues.filter((q) => queueNames.includes(q.name));
+    if (targets.length !== queueNames.length) {
+      return {
+        ok: false,
+        responseMs: Date.now() - start,
+        error: 'queue_clients_missing',
+        counts: {},
+      };
+    }
+
+    try {
+      const entries = await Promise.race([
+        Promise.all(
+          targets.map(async (queue) => {
+            const counts = await queue.getJobCounts(
+              'waiting',
+              'active',
+              'failed',
+              'delayed',
+            );
+            return [queue.name, counts] as const;
+          }),
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('queue_probe_timeout')), timeoutMs),
+        ),
+      ]);
+
+      const counts = Object.fromEntries(entries);
+      return {
+        ok: true,
+        responseMs: Date.now() - start,
+        counts,
+      };
+    } catch (err: unknown) {
+      return {
+        ok: false,
+        responseMs: Date.now() - start,
+        error: (err as Error).message,
+        counts: {},
+      };
+    }
+  }
 }

@@ -34,6 +34,12 @@ export class StripeBillingService {
     return Boolean(this.configService.get<string>('stripe.secretKey'));
   }
 
+  /** Lightweight Stripe API connectivity probe for health checks. */
+  async probeApiConnectivity(): Promise<Stripe.Balance> {
+    const stripe = this.requireStripe();
+    return stripe.balance.retrieve();
+  }
+
   private requireStripe(): Stripe {
     const client = getStripeClient(this.configService.get<string>('stripe.secretKey'));
     if (!client) {

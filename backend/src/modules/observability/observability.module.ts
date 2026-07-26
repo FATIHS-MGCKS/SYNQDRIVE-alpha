@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ApplicationHealthModule } from '@modules/health/application-health.module';
 import { TripMetricsService } from './trip-metrics.service';
 import { MetricsController } from './metrics.controller';
 import { MetricsAuthGuard } from './metrics-auth.guard';
@@ -14,6 +15,7 @@ import { VoiceMetricsService } from './voice-metrics.service';
  */
 @Global()
 @Module({
+  imports: [ApplicationHealthModule],
   controllers: [MetricsController],
   providers: [TripMetricsService, MetricsAuthGuard, MetricsRefreshService, QueueMonitoringService, VoiceMetricsService],
   exports: [TripMetricsService, QueueMonitoringService, VoiceMetricsService],
