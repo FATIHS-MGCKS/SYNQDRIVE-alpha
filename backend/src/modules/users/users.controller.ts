@@ -9,8 +9,11 @@ import {
   Req,
   UseGuards,
   GoneException,
+  BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { PrismaService } from '@shared/database/prisma.service';
+import { IamUserDeletionService } from '@modules/iam-data-retention/iam-user-deletion.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -57,6 +60,8 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly roleService: OrganizationRoleService,
     private readonly inviteService: OrganizationInviteService,
+    private readonly prisma: PrismaService,
+    private readonly userDeletion: IamUserDeletionService,
   ) {}
 
   // ─── Master Admin routes ─────────────────────────────
@@ -104,11 +109,47 @@ export class UsersController {
   }
 
   @Delete('admin/users/:id')
-  @UseGuards(RolesGuard, MasterAdminMfaGuard)
+  @UseGuards(RolesGuard, StepUpGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireStepUp(STEP_UP_ACTION.PRIVACY_DATA_DELETION)
   @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
-  async adminDelete(@Param('id') id: string) {
-    return this.usersService.delete(id);
+  async adminDelete(
+    @Param('id') id: string,
+    @Req() req: AuthedRequest,
+    @Body() body?: { reason?: string },
+  ) {
+    const assessment = await this.userDeletion.assessGlobalDeletion(id);
+    if (assessment.recommendedAction === 'BLOCKED') {
+      throw new BadRequestException({
+        code: 'USER_DELETION_BLOCKED',
+        blockers: assessment.blockers,
+      });
+    }
+
+    const actorId = req.user?.id;
+    if (!actorId) {
+      throw new BadRequestException('Authentication required');
+    }
+
+    if (assessment.recommendedAction === 'HARD_DELETE') {
+      return this.usersService.delete(id);
+    }
+
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: {
+        userId: id,
+        status: { in: ['ACTIVE', 'INVITED', 'SUSPENDED'] },
+      },
+      select: { organizationId: true },
+    });
+
+    return this.userDeletion.pseudonymizeGlobalUser({
+      userId: id,
+      actorUserId: actorId,
+      organizationId: membership?.organizationId ?? actorId,
+      idempotencyKey: `master-admin-delete:${id}:${Date.now()}`,
+      reason: body?.reason ?? 'Master admin user deletion',
+    });
   }
 
   // ─── Org-scoped routes ───────────────────────────────

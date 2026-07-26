@@ -1,10 +1,23 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Query, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+  Query,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
 import { PlatformAdminService } from './platform-admin.service';
 import { VehicleLogbookService } from './vehicle-logbook.service';
 import { DimoAuthService } from '../dimo/dimo-auth.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { StepUpGuard } from '@shared/auth/step-up.guard';
+import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
 import { TripEnrichmentOrchestratorService } from '../vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
@@ -51,7 +64,17 @@ export class PlatformAdminController {
   }
 
   @Post('prune')
-  async pruneMasterData(@Req() req: any) {
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.BREAK_GLASS)
+  async pruneMasterData(
+    @Req() req: any,
+    @Body() body: { confirm?: string },
+  ) {
+    if (body?.confirm !== 'PRUNE_ALL_MASTER_DATA') {
+      throw new BadRequestException(
+        'Destructive prune requires body.confirm = PRUNE_ALL_MASTER_DATA',
+      );
+    }
     void this.audit.critical({
       ...AuditService.contextFromRequest(req),
       action: ActivityAction.PRUNE,

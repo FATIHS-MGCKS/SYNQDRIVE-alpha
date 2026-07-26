@@ -96,7 +96,9 @@ export class InsurancesController {
 
   @Patch('live-sharing/:id')
   async updateLiveSharing(@Param('id') id: string, @Req() req: any, @Body() body: any) {
-    return this.service.updateLiveSharing(id, {
+    const orgId = req.user?.organizationId;
+    if (!orgId) throw new BadRequestException('Organization context required');
+    return this.service.updateLiveSharing(id, orgId, {
       status: body.status,
       revokedBy: req.user?.id,
       revokeReason: body.revokeReason,

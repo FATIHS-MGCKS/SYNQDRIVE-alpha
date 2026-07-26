@@ -519,8 +519,14 @@ export class InsurancesService {
     });
   }
 
-  async updateLiveSharing(id: string, data: { status?: string; revokedBy?: string; revokeReason?: string }) {
-    const perm = await this.prisma.insuranceLiveSharingPermission.findUnique({ where: { id } });
+  async updateLiveSharing(
+    id: string,
+    organizationId: string,
+    data: { status?: string; revokedBy?: string; revokeReason?: string },
+  ) {
+    const perm = await this.prisma.insuranceLiveSharingPermission.findFirst({
+      where: { id, organizationId },
+    });
     if (!perm) throw new NotFoundException('Live sharing permission not found');
 
     const updateData: any = {};
