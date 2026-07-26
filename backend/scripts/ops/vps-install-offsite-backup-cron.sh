@@ -33,3 +33,4 @@ systemctl reload cron 2>/dev/null || true
 echo "Installed ${CRON_FILE}"
 echo "Daily: env snapshot + offsite sync (${CRON_SCHEDULE} UTC)"
 echo "Weekly verify: ${VERIFY_SCHEDULE} UTC"
+echo "NOTE: Prefer unified scheduler: vps-install-backup-automation-cron.sh (Phase 2C.7)"

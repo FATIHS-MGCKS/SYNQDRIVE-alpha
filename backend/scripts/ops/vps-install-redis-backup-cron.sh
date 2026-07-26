@@ -33,4 +33,5 @@ systemctl reload cron 2>/dev/null || systemctl reload crond 2>/dev/null || true
 
 echo "Installed: ${CRON_FILE} (${CRON_SCHEDULE} UTC)"
 echo "Log: ${LOG_FILE}"
+echo "NOTE: Prefer unified scheduler: vps-install-backup-automation-cron.sh (Phase 2C.7)"
 echo "Run persistence setup first: vps-configure-redis-persistence.sh"

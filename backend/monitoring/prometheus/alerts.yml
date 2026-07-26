@@ -1290,3 +1290,34 @@ groups:
           runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsforecastdriftcritical
           clear_condition: no critical drift for 12h.
 
+  - name: synqdrive_backups
+    rules:
+      - alert: BackupJobUnhealthy
+        expr: synqdrive_backup_job_healthy == 0
+        for: 30m
+        labels:
+          severity: critical
+          owner: platform
+        annotations:
+          summary: SynqDrive backup job unhealthy
+          description: Backup job {{ $labels.job }} failed SLA or last run failed. Check /var/log/synqdrive-backup/ and automation state.
+
+      - alert: BackupJobConsecutiveFailures
+        expr: synqdrive_backup_job_consecutive_failures >= 2
+        for: 15m
+        labels:
+          severity: critical
+          owner: platform
+        annotations:
+          summary: SynqDrive backup consecutive failures
+          description: Job {{ $labels.job }} has {{ $value }} consecutive failures — investigate immediately.
+
+      - alert: BackupJobStale
+        expr: (time() - synqdrive_backup_job_last_success_timestamp) > 26 * 3600
+        for: 1h
+        labels:
+          severity: warning
+          owner: platform
+        annotations:
+          summary: SynqDrive backup job stale
+          description: Job {{ $labels.job }} has no successful run in >26h.

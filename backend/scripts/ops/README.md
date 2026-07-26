@@ -50,6 +50,18 @@ bash backend/scripts/ops/vps-install-restore-validation-cron.sh
 
 Docs: [`docs/remediation/restore-validation.md`](../../docs/remediation/restore-validation.md)
 
+## Backup automation (Phase 2C.7)
+
+**Unified scheduler** — all tiers via `vps-run-backup-job.sh` (retry, logs, alerts):
+
+```bash
+cp backend/scripts/ops/backup-automation.env.example /opt/synqdrive/shared/backup-automation.env
+bash backend/scripts/ops/vps-install-backup-automation-cron.sh
+bash backend/scripts/ops/vps-backup-automation-health.sh
+```
+
+Docs: [`docs/remediation/backup-automation.md`](../../docs/remediation/backup-automation.md)
+
 ## Recommended order
 
 1. **Stop the bleeding (app-side, already in code):**
@@ -123,6 +135,14 @@ Docs: [`docs/remediation/restore-validation.md`](../../docs/remediation/restore-
 | `restore-validation.selftest.sh` | Fixture selftest (env/uploads/documents) | safe |
 | `vps-install-restore-validation-cron.sh` | Quarterly restore validation cron | run as root once |
 | `restore-validation.env.example` | Drill target config | copy to `/opt/synqdrive/shared/restore-validation.env` |
+| `vps-install-backup-automation-cron.sh` | Unified backup cron (all tiers + health) | run as root once |
+| `vps-run-backup-job.sh` | Retry wrapper with logs, state, alerts | used by cron |
+| `vps-backup-automation-health.sh` | SLA watchdog + Prometheus metrics | daily 06:45 UTC |
+| `vps-backup-database.sh` | PostgreSQL pg_dump -Fc + GPG | Tier 0 |
+| `vps-backup-clickhouse.sh` | ClickHouse BACKUP DATABASE + GPG | Tier 2 |
+| `lib/backup-automation-lib.sh` | Automation shared lib | sourced |
+| `backup-automation.env.example` | Retry, notify, schedule overrides | copy to shared |
+| `backup-automation.selftest.sh` | Retry/state/metrics unit test | safe |
 
 ### Partitioning (P2)
 

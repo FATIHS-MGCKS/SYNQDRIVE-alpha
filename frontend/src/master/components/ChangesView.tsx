@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-backup-automation-2c7-2026-07-26',
+    version: '4.9.896',
+    title: 'V4.9.896 — Master Admin 2C.7: Backup automation',
+    summary: [
+      'Unified cron scheduler for PostgreSQL, ClickHouse, Redis, env, offsite tiers.',
+      'vps-run-backup-job.sh: retry (3×), per-job logs, state JSON, Resend alerts.',
+      'Health watchdog + Prometheus metrics; no failed backup unnoticed.',
+      'docs/remediation/backup-automation.md',
+    ],
+    reason:
+      'Fragmented cron jobs lacked retry, monitoring, and guaranteed failure notification.',
+    previousBehavior:
+      'Separate redis/offsite crons; no central health check or standardized exit codes.',
+    details:
+      'vps-install-backup-automation-cron.sh, backup-automation-lib.sh, PG/CH backup scripts',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T23:00:00.000Z',
+  },
+  {
     id: 'master-admin-restore-validation-2c6-2026-07-26',
     version: '4.9.895',
     title: 'V4.9.895 — Master Admin 2C.6: Restore validation (isolated drills)',
