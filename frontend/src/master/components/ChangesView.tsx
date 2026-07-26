@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-dr-production-readiness-2c9-2026-07-26',
+    version: '4.9.897',
+    title: 'V4.9.897 — Master Admin 2C.9: DR production readiness (NO-GO)',
+    summary: [
+      'Full backup/DR acceptance assessment across backup, restore, offsite, rotation, monitoring.',
+      'Verdict: NO-GO — framework complete; VPS deploy + uploads/documents gaps remain.',
+      'vps-backup-acceptance.sh + prioritized risk register (P0–P3).',
+      'docs/remediation/disaster-recovery-production-readiness.md',
+    ],
+    reason:
+      'Phase 2C closure requires explicit production-ready verdict and prioritized remaining risks.',
+    previousBehavior:
+      'Per-phase docs without consolidated acceptance verdict or VPS validation script.',
+    details:
+      'disaster-recovery-production-readiness.md, vps-backup-acceptance.sh, all selftests green',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T00:00:00.000Z',
+  },
+  {
     id: 'master-admin-backup-automation-2c7-2026-07-26',
     version: '4.9.896',
     title: 'V4.9.896 — Master Admin 2C.7: Backup automation',

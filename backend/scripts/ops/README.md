@@ -62,6 +62,17 @@ bash backend/scripts/ops/vps-backup-automation-health.sh
 
 Docs: [`docs/remediation/backup-automation.md`](../../docs/remediation/backup-automation.md)
 
+## Backup acceptance (Phase 2C.9)
+
+DR production readiness assessment:
+
+```bash
+bash backend/scripts/ops/vps-backup-acceptance.sh --repo-only   # CI
+bash backend/scripts/ops/vps-backup-acceptance.sh --vps         # after deploy
+```
+
+Docs: [`docs/remediation/disaster-recovery-production-readiness.md`](../../docs/remediation/disaster-recovery-production-readiness.md)
+
 ## Recommended order
 
 1. **Stop the bleeding (app-side, already in code):**
@@ -143,6 +154,7 @@ Docs: [`docs/remediation/backup-automation.md`](../../docs/remediation/backup-au
 | `lib/backup-automation-lib.sh` | Automation shared lib | sourced |
 | `backup-automation.env.example` | Retry, notify, schedule overrides | copy to shared |
 | `backup-automation.selftest.sh` | Retry/state/metrics unit test | safe |
+| `vps-backup-acceptance.sh` | DR acceptance validation (--repo-only / --vps) | read-only audit |
 
 ### Partitioning (P2)
 
