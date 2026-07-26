@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-deploy-boot-gate-2g7-2026-07-26',
+    version: '4.9.884',
+    title: 'V4.9.884 — Master Admin 2G.7: deploy boot gate + P0/P1 merge repairs',
+    summary: [
+      'vps-deploy-release.sh runs SYNQDRIVE_BOOT_CHECK=1 before switching current; unbootable releases are never promoted.',
+      'Post-restart health check polls up to 60s instead of a single 3s sleep.',
+      'Master admin user deletion moved to MasterAdminUserDeletionController — removes the UsersModule/IamDataRetentionModule cycle (route unchanged).',
+      'IamMfaModule is @Global() and exports enrollment/challenge services; IamSessionPolicyService uses forwardRef symmetrically.',
+      'Prisma migration 20260726140000 no longer uses CREATE INDEX CONCURRENTLY; restored missing bcrypt import in auth.controller.',
+      'Cloud agent deploy connects as synqdrive-admin and escalates via sudo -n -H; UFW SSH allowlist covers all 8 agent egress IPs.',
+      'docs/final/master-admin-deploy-attempt-2026-07-26.md',
+    ],
+    reason:
+      'The P0/P1 remediation merge could not boot in production; the module cycle took the API to 502 until rollback.',
+    previousBehavior:
+      'Releases were promoted before anything verified they could start, and the health check timed out before the app was up.',
+    details:
+      'backend/scripts/ops/vps-deploy-release.sh, backend/src/main.ts, backend/src/modules/iam-data-retention/master-admin-user-deletion.controller.ts, backend/src/modules/iam-mfa/iam-mfa.module.ts, backend/src/modules/auth/iam-session-policy.service.ts, .cursor/scripts/cloud-agent-deploy.sh',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T19:50:00.000Z',
+  },
+  {
     id: 'master-admin-stripe-webhook-hardening-2b3-2026-07-26',
     version: '4.9.883',
     title: 'V4.9.883 — Master Admin 2B.3: Stripe webhook hardening',

@@ -54,7 +54,7 @@
 | MA-BILL-P0-003 | Platform webhook secret registrieren |
 | MA-TOPO-P0-001 | CH ghost mounts — `vps-clickhouse-storage-topology-audit.sh` |
 | MA-REDIS-P1-001 | Battery.v2 failed jobs drain |
-| Deploy | `bash .cursor/scripts/cloud-agent-deploy.sh` (SSH fix erforderlich) |
+| Deploy | `bash .cursor/scripts/cloud-agent-deploy.sh` — SSH gefixt; **blockiert am Stripe-Test-Key in Prod** |
 
 ---
 
@@ -76,13 +76,17 @@ Nicht gewählt — VPS-Ops (Backup-Cron, Alertmanager, Stripe env) und erfolgrei
 
 ## Nächste Schritte
 
-1. SSH-Credentials für Cloud Agent / manueller Deploy fixen
-2. `bash .cursor/scripts/cloud-agent-deploy.sh`
-3. VPS-Ops: CH backfill, backup cron, alertmanager, offsite
-4. Stripe LIVE + webhook secret
+1. ~~SSH-Credentials für Cloud Agent fixen~~ — erledigt (UFW-Allowlist für alle 8 Egress-IPs, `synqdrive-admin` + `sudo`)
+2. **Stripe-Environment entscheiden** — einziger verbleibender Deploy-Blocker:
+   - Option A: `STRIPE_SECRET_KEY=sk_live_*` + Live-`STRIPE_WEBHOOK_SECRET` in `/opt/synqdrive/shared/backend.env`
+   - Option B: `STRIPE_ALLOW_TEST_IN_PRODUCTION=true` (setzt eine 2B.2-Kontrolle außer Kraft, braucht explizite Freigabe)
+3. `bash .cursor/scripts/cloud-agent-deploy.sh` — bricht jetzt automatisch ab, wenn ein Release nicht bootet
+4. `bash backend/scripts/ops/vps-post-remediation-ops.sh` — CH backfill, backup cron, alertmanager, offsite
 5. Live Re-Audit → Zertifikat auf **Production Ready with Conditions** (live) hochstufen
 
-Siehe: `docs/final/master-admin-re-audit-2026-07-26.md`
+Der Deploy-Durchlauf hat vier release-blockierende Defekte im gemergten Stack aufgedeckt (Prisma-`CONCURRENTLY`, fehlender `bcrypt`-Import, Modul-Zyklus aus COMP-3, MFA-Wiring aus 2A.5). Alle sind in `main` behoben; der Modul-Zyklus hatte Production kurzzeitig auf 502 gebracht. Ein Boot-Check-Gate verhindert diese Klasse von Ausfällen jetzt vor dem Umschalten von `current`.
+
+Siehe: `docs/final/master-admin-deploy-attempt-2026-07-26.md`, `docs/final/master-admin-re-audit-2026-07-26.md`
 
 ---
 
