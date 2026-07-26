@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-pipeline-analysis-2d6-2026-07-26',
+    version: '4.9.887',
+    title: 'V4.9.887 — Master Admin 2D.6: ClickHouse analytics pipeline analysis',
+    summary: [
+      'End-to-end flow: DIMO → BullMQ → Worker → PostgreSQL → ClickHouse → Analytics → Dashboard.',
+      'Quality audit: completeness, latency, duplicates, lost events, ordering, retry, idempotency.',
+      'Risk register P1–P8: async CH mirror loss, snapshot dupes, default-off mirrors, no DLQ.',
+      'vps-clickhouse-pipeline-audit.sh for VPS mirror lag + PG cross-check.',
+    ],
+    reason:
+      'Phase 2D requires full pipeline documentation before remediation of mirror durability and idempotency.',
+    previousBehavior:
+      'Table-level audits (2D.1–2D.5) without consolidated hop-by-hop pipeline analysis.',
+    details:
+      'docs/remediation/clickhouse-pipeline-analysis.md · architecture/MASTER_ADMIN_CLICKHOUSE_PIPELINE_ANALYSIS_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T14:30:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-performance-2d5-2026-07-26',
     version: '4.9.886',
     title: 'V4.9.886 — Master Admin 2D.5: ClickHouse performance analysis',
