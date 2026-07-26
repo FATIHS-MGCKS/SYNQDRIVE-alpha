@@ -1,4 +1,5 @@
 import type { NotificationCandidate } from '../notification.types';
+import type { InsightSeverity } from '@modules/business-insights/insight.types';
 
 /** Shared context for all producer adapters. */
 export interface NotificationAdapterContext {
@@ -12,6 +13,7 @@ export interface NotificationAdapterContext {
   correlationId?: string;
   causationId?: string;
   runId?: string;
+  ingestPath?: 'batch' | 'realtime';
 }
 
 /**
@@ -52,6 +54,8 @@ export interface VehicleHealthAdapterSource {
   reason?: string;
   cleared?: boolean;
   severity?: 'warning' | 'critical';
+  occurredAt?: Date;
+  sourceEventId?: string;
 }
 
 export interface BookingAdapterSource {
@@ -92,4 +96,17 @@ export interface LowUtilizationAdapterSource {
   idleDays: number;
   lostRevenueEur: number;
   cleared?: boolean;
+}
+
+export interface ComplianceOperationalAdapterSource {
+  eventType: 'SERVICE_OVERDUE' | 'TUV_OVERDUE' | 'BOKRAFT_OVERDUE';
+  vehicleId: string;
+  label: string;
+  insightSeverity: InsightSeverity;
+  dedupeKey: string;
+  sourceEventId?: string;
+  cleared?: boolean;
+  remainingDays?: number | null;
+  remainingKm?: number | null;
+  complianceKind?: string;
 }

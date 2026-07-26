@@ -1,7 +1,10 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
+import { mergeVehicleHealthNotificationSources } from '@modules/notifications/adapters/vehicle-health-source.merge';
 import { projectVehicleHealthWarnings } from '@modules/notifications/adapters/rental-health-notification.projector';
+import { NotificationEngineConfig } from '@modules/notifications/notification-engine.config';
+import { V2_CANONICAL_INSIGHT_TYPES } from '@modules/notifications/v2-canonical-insight-types';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { DtcService } from '@modules/vehicle-intelligence/dtc/dtc.service';
 import { TireHealthAlertService } from '@modules/vehicle-intelligence/tires/tire-health-alert.service';
@@ -77,6 +80,7 @@ export class BusinessInsightsService {
     @Optional() private readonly tireHealthAlerts?: TireHealthAlertService,
     @Optional() private readonly brakeHealthAlerts?: BrakeHealthAlertService,
     @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
+    @Optional() private readonly notificationEngineConfig?: NotificationEngineConfig,
   ) {
     this.detectors = [
       tightHandover,
@@ -166,8 +170,9 @@ export class BusinessInsightsService {
       const ranked = this.ranking.rank(grouped);
       const formatted = this.formatter.format(ranked.slice(0, policy.maxVisibleInsights), policy.useLlmFormatting);
       const publishedWithProvenance = attachInsightCalculationProvenance(formatted, ctx, ctx.now);
+      const insightsForPublish = this.filterInsightsForDashboardPublish(publishedWithProvenance);
 
-      await this.repo.publishInsights(organizationId, run.id, publishedWithProvenance);
+      await this.repo.publishInsights(organizationId, run.id, insightsForPublish);
 
       const runProvenance = buildInsightRunProvenance({
         organizationId,
@@ -187,7 +192,7 @@ export class BusinessInsightsService {
       await this.repo.completeRun(
         run.id,
         gatedCandidates.length,
-        publishedWithProvenance.length,
+        insightsForPublish.length,
         undefined,
         runProvenance,
       );
@@ -242,6 +247,18 @@ export class BusinessInsightsService {
       }
 
       try {
+        await this.notificationIngest?.syncComplianceFromInsights(
+          organizationId,
+          run.id,
+          gatedCandidates,
+        );
+      } catch (complianceErr: any) {
+        this.logger.warn(
+          `Notification V2 compliance sync failed for org ${organizationId}: ${complianceErr?.message ?? complianceErr}`,
+        );
+      }
+
+      try {
         await this.syncVehicleHealthNotifications(organizationId, run.id);
       } catch (healthIngestErr: any) {
         this.logger.warn(
@@ -254,19 +271,19 @@ export class BusinessInsightsService {
         triggerClass,
         'success',
         Date.now() - runStarted,
-        formatted.length,
+        insightsForPublish.length,
         detectorFailureCount,
       );
       this.evaluationsObservability?.recordInsightCountJump(
         previousPublished,
-        formatted.length,
+        insightsForPublish.length,
         evalCtx,
       );
 
       this.logger.log(
-        `Insights run [${trigger}] for org ${organizationId}: ${gatedCandidates.length} candidates → ${grouped.length} grouped → ${publishedWithProvenance.length} published`,
+        `Insights run [${trigger}] for org ${organizationId}: ${gatedCandidates.length} candidates → ${grouped.length} grouped → ${insightsForPublish.length} published`,
       );
-      return { runId: run.id, published: publishedWithProvenance.length };
+      return { runId: run.id, published: insightsForPublish.length };
     } catch (err: any) {
       await this.repo.completeRun(run.id, 0, 0, err.message);
       this.evaluationsObservability?.observeInsightsRun(
@@ -476,7 +493,11 @@ export class BusinessInsightsService {
                   label,
                 })
               : [];
-            return [...rentalSources, ...tireSources, ...brakeSources];
+            return mergeVehicleHealthNotificationSources(
+              rentalSources,
+              tireSources,
+              brakeSources,
+            );
           } catch (err) {
             this.logger.warn(
               `Vehicle health notification projection failed for ${vehicle.id}: ${(err as Error).message}`,
@@ -489,5 +510,18 @@ export class BusinessInsightsService {
     }
 
     await this.notificationIngest.syncVehicleHealthWarnings(organizationId, runId, allSources);
+  }
+
+  /**
+   * When V2 is enabled, health/compliance/driving-assessment insights are
+   * materialized as notifications — skip duplicate dashboard_insights rows.
+   */
+  private filterInsightsForDashboardPublish(
+    candidates: InsightCandidate[],
+  ): InsightCandidate[] {
+    if (!this.notificationEngineConfig?.isV2Enabled()) {
+      return candidates;
+    }
+    return candidates.filter((c) => !V2_CANONICAL_INSIGHT_TYPES.has(c.type));
   }
 }

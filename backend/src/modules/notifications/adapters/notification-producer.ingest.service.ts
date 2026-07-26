@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InsightType } from '@modules/business-insights/insight.types';
+import { InsightType, InsightSeverity } from '@modules/business-insights/insight.types';
 import type { InsightCandidate } from '@modules/business-insights/insight.types';
 import type { DrivingAssessmentQualityStatus } from '@modules/vehicle-intelligence/trips/driving-assessment-device-quality.detector';
 import { NotificationEntityType } from '@prisma/client';
@@ -8,6 +8,7 @@ import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notif
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
+import { ComplianceOperationalNotificationAdapter } from './compliance-operational-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
@@ -26,14 +27,16 @@ import { NotificationSeverity } from '../notification.enums';
 import { NotificationCoreService } from '../notification-core.service';
 
 /** VW-F-026: defer notification clear when evidence may be temporarily stale. */
-const VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS = Math.max(
-  0,
-  Number.parseInt(
+function vehicleHealthNotificationClearGraceMs(): number {
+  const raw =
     process.env.VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS ??
-      String(6 * 60 * 60_000),
-    10,
-  ) || 6 * 60 * 60_000,
-);
+    String(6 * 60 * 60_000);
+  const parsed = Number.parseInt(raw, 10);
+  if (Number.isNaN(parsed)) {
+    return 6 * 60 * 60_000;
+  }
+  return Math.max(0, parsed);
+}
 
 const DEFERRABLE_HEALTH_SEVERITIES = new Set<NotificationSeverity>([
   NotificationSeverity.WARNING,
@@ -54,6 +57,7 @@ export interface DrivingAssessmentQualityIngestInput {
   label: string;
   status: DrivingAssessmentQualityStatus;
   sourceRef: string;
+  occurredAt?: Date;
   runId?: string;
 }
 
@@ -65,6 +69,7 @@ export interface TechnicalObservationIngestInput {
   createdByWorkerId?: string | null;
   notes?: string | null;
   sourceRef?: string;
+  occurredAt?: Date;
   runId?: string;
 }
 
@@ -83,6 +88,7 @@ export class NotificationProducerIngestService {
     private readonly technicalObservationAdapter: TechnicalObservationNotificationAdapter,
     private readonly stationShortageAdapter: StationShortageNotificationAdapter,
     private readonly lowUtilizationAdapter: LowUtilizationNotificationAdapter,
+    private readonly complianceAdapter: ComplianceOperationalNotificationAdapter,
     private readonly vehicleHealthAdapter: VehicleHealthNotificationAdapter,
     private readonly core: NotificationCoreService,
   ) {}
@@ -102,7 +108,12 @@ export class NotificationProducerIngestService {
           degraded,
           sourceRef: input.sourceRef,
         },
-        this.adapterContext(input.organizationId, input.sourceRef, input.runId),
+        this.adapterContext(
+          input.organizationId,
+          input.sourceRef,
+          input.runId,
+          input.occurredAt,
+        ),
       );
     } catch (err) {
       if (normalized && this.isRecoveryNotFound(err)) return;
@@ -123,7 +134,12 @@ export class NotificationProducerIngestService {
           label: input.label,
           complaintId: input.observationId,
         },
-        this.adapterContext(input.organizationId, input.sourceRef ?? input.observationId, input.runId),
+        this.adapterContext(
+          input.organizationId,
+          input.sourceRef ?? input.observationId,
+          input.runId,
+          input.occurredAt,
+        ),
       );
     } catch (err) {
       this.logger.warn(
@@ -144,7 +160,12 @@ export class NotificationProducerIngestService {
           complaintId: input.observationId,
           resolved: true,
         },
-        this.adapterContext(input.organizationId, input.sourceRef ?? input.observationId, input.runId),
+        this.adapterContext(
+          input.organizationId,
+          input.sourceRef ?? input.observationId,
+          input.runId,
+          input.occurredAt,
+        ),
       );
     } catch (err) {
       if (this.isRecoveryNotFound(err)) return;
@@ -361,7 +382,99 @@ export class NotificationProducerIngestService {
   }
 
   /**
-   * Materialize Rental Health warnings (DTC, battery, tires, brakes) as V2 notifications.
+   * Sync service/TÜV/BOKraft compliance insights into V2 notifications.
+   */
+  async syncComplianceFromInsights(
+    organizationId: string,
+    runId: string,
+    candidates: InsightCandidate[],
+  ): Promise<void> {
+    const complianceTypes = new Set<InsightType>([
+      InsightType.SERVICE_OVERDUE,
+      InsightType.TUV_OVERDUE,
+      InsightType.BOKRAFT_OVERDUE,
+    ]);
+    const compliance = candidates.filter((c) => complianceTypes.has(c.type));
+    const activeFingerprints = new Set<string>();
+
+    for (const insight of compliance) {
+      const vehicleId = insight.entityIds[0];
+      if (!vehicleId) continue;
+      const eventType = this.complianceEventType(insight.type);
+      if (!eventType) continue;
+
+      const metrics = insight.metrics ?? {};
+      const remainingDays =
+        typeof metrics.remainingDays === 'number' ? metrics.remainingDays : null;
+      const remainingKm =
+        typeof metrics.remainingKm === 'number' ? metrics.remainingKm : null;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.complianceAdapter,
+          {
+            eventType,
+            vehicleId,
+            label: this.labelFromInsight(insight, vehicleId),
+            insightSeverity: insight.severity,
+            dedupeKey: insight.dedupeKey,
+            sourceEventId: insight.dedupeKey,
+            remainingDays,
+            remainingKm,
+            complianceKind: eventType,
+          },
+          this.adapterContext(organizationId, insight.dedupeKey, runId),
+        );
+        activeFingerprints.add(
+          buildRegistryFingerprint(organizationId, eventType, vehicleId).canonical,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Compliance V2 ingest failed for ${vehicleId}/${eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    const activeNotifications = await this.repository.listNotifications({
+      organizationId,
+      status: ACTIVE_NOTIFICATION_STATUSES,
+      entityType: NotificationEntityType.VEHICLE,
+      limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT,
+    });
+
+    const complianceEvents = new Set(['SERVICE_OVERDUE', 'TUV_OVERDUE', 'BOKRAFT_OVERDUE']);
+
+    for (const notification of activeNotifications) {
+      if (!complianceEvents.has(notification.eventType)) continue;
+      if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.complianceAdapter,
+          {
+            eventType: notification.eventType as 'SERVICE_OVERDUE' | 'TUV_OVERDUE' | 'BOKRAFT_OVERDUE',
+            vehicleId: notification.entityId,
+            label,
+            insightSeverity: InsightSeverity.WARNING,
+            dedupeKey: notification.fingerprint,
+            cleared: true,
+          },
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Compliance V2 resolve failed for ${notification.entityId}/${notification.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /**
    * Active sources are ingested; stale active rows are resolved via SUCCESS ingest.
    */
   async syncVehicleHealthWarnings(
@@ -370,14 +483,18 @@ export class NotificationProducerIngestService {
     sources: VehicleHealthAdapterSource[],
   ): Promise<void> {
     const activeFingerprints = new Set<string>();
+    const clearedFingerprints = new Set<string>();
 
     for (const source of sources) {
-      if (!source.cleared) {
-        activeFingerprints.add(vehicleHealthSourceFingerprint(organizationId, source));
+      const fp = vehicleHealthSourceFingerprint(organizationId, source);
+      if (source.cleared) {
+        clearedFingerprints.add(fp);
+      } else {
+        activeFingerprints.add(fp);
       }
     }
 
-    await this.ingestVehicleHealthSources(organizationId, runId, sources);
+    await this.ingestVehicleHealthSources(organizationId, runId, sources, 'batch');
 
     const activeNotifications = await this.repository.listNotifications({
       organizationId,
@@ -396,13 +513,15 @@ export class NotificationProducerIngestService {
       }
       if (activeFingerprints.has(notification.fingerprint)) continue;
 
+      const explicitlyCleared = clearedFingerprints.has(notification.fingerprint);
       const withinClearGrace =
-        VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS > 0 &&
+        !explicitlyCleared &&
+        vehicleHealthNotificationClearGraceMs() > 0 &&
         DEFERRABLE_HEALTH_SEVERITIES.has(
           notification.severity as NotificationSeverity,
         ) &&
         Date.now() - notification.lastSeenAt.getTime() <
-          VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS;
+          vehicleHealthNotificationClearGraceMs();
       if (withinClearGrace) continue;
 
       const params = (notification.templateParams ?? {}) as Record<string, unknown>;
@@ -439,13 +558,23 @@ export class NotificationProducerIngestService {
     organizationId: string,
     runId: string,
     sources: VehicleHealthAdapterSource[],
+    ingestPath: 'batch' | 'realtime' = 'realtime',
   ): Promise<void> {
     for (const source of sources) {
+      const sourceEventId =
+        source.sourceEventId ??
+        (source.code ? `${runId}:${source.code}` : runId);
       try {
         await this.router.ingestFromAdapter(
           this.vehicleHealthAdapter,
           source,
-          this.adapterContext(organizationId, runId, runId),
+          this.adapterContext(
+            organizationId,
+            sourceEventId,
+            runId,
+            source.occurredAt,
+            ingestPath,
+          ),
         );
       } catch (err) {
         this.logger.warn(
@@ -486,15 +615,44 @@ export class NotificationProducerIngestService {
     return buildRegistryFingerprint(organizationId, 'STATION_SHORTAGE', stationId).canonical;
   }
 
-  private adapterContext(organizationId: string, sourceRef: string, runId?: string) {
+  private adapterContext(
+    organizationId: string,
+    sourceRef: string,
+    runId?: string,
+    occurredAt?: Date,
+    ingestPath?: 'batch' | 'realtime',
+  ) {
+    const at = occurredAt ?? new Date();
     return {
       organizationId,
       sourceEventId: sourceRef,
       sourceRef,
-      occurredAt: new Date(),
-      observedAt: new Date(),
+      occurredAt: at,
+      observedAt: at,
       runId,
+      ingestPath,
     };
+  }
+
+  private complianceEventType(
+    type: InsightType,
+  ): 'SERVICE_OVERDUE' | 'TUV_OVERDUE' | 'BOKRAFT_OVERDUE' | null {
+    switch (type) {
+      case InsightType.SERVICE_OVERDUE:
+        return 'SERVICE_OVERDUE';
+      case InsightType.TUV_OVERDUE:
+        return 'TUV_OVERDUE';
+      case InsightType.BOKRAFT_OVERDUE:
+        return 'BOKRAFT_OVERDUE';
+      default:
+        return null;
+    }
+  }
+
+  private labelFromInsight(insight: InsightCandidate, vehicleId: string): string {
+    const colon = insight.message.indexOf(':');
+    if (colon > 0) return insight.message.slice(0, colon).trim();
+    return vehicleId;
   }
 
   private skipDeviceQualityObservation(input: TechnicalObservationIngestInput): boolean {

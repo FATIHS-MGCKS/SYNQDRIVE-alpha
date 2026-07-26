@@ -218,6 +218,8 @@ export class DrivingAssessmentDeviceQualityService {
       vehicleId: input.vehicleId,
       status: transition.nextStatus,
       sourceRef: input.tripId,
+      occurredAt:
+        events.length > 0 ? events[events.length - 1]!.recordedAt : new Date(),
     });
 
     return merged;
@@ -376,6 +378,7 @@ export class DrivingAssessmentDeviceQualityService {
     vehicleId: string;
     status: DrivingAssessmentQualityStatus;
     sourceRef: string;
+    occurredAt?: Date;
   }): Promise<void> {
     if (!this.notificationIngest) return;
     const label = (await this.resolveLicensePlate(input.vehicleId))?.trim() || 'Fahrzeug';

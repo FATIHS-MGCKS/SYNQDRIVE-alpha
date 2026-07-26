@@ -546,7 +546,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     preferenceCategory: NotificationCategory.DAMAGE_MISUSE,
     supportedRoles: OPS_ROLES,
     requiresNavigation: true,
-    shadowModeEnabled: true,
+    shadowModeEnabled: false,
     producerModule: 'vehicle-complaints',
   },
   {
@@ -570,7 +570,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     preferenceCategory: NotificationCategory.VEHICLE_HEALTH,
     supportedRoles: OPS_ROLES,
     requiresNavigation: true,
-    shadowModeEnabled: true,
+    shadowModeEnabled: false,
     producerModule: 'vehicle-intelligence',
   },
   {

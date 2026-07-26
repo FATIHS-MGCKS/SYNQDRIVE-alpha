@@ -35,6 +35,7 @@ export const NOTIFICATION_CANDIDATE_METADATA_ALLOWLIST = new Set([
   'episodeId',
   'gateCode',
   'groupKey',
+  'ingestPath',
   'insightPriority',
   'integrationName',
   'legalDocumentId',

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-vehicle-health-telemetry-producers-2026-07-26',
+    version: '4.9.879',
+    title: 'Notification Engine Remediation — vehicle health & telemetry producers (Prompt 12)',
+    summary: [
+      'W1 producers migrate to canonical NotificationCandidate ingest (DTC, battery, tires, brakes, service/TÜV/BOKraft, connectivity, driving assessment, technical observations).',
+      'V1 dashboard_insights publish filtered for canonical types when NOTIFICATIONS_V2 is on; BI detectors still run.',
+      'Health source merge dedupes module aggregates vs alert rows; DTC explicit clear bypasses grace.',
+      'Docs: docs/architecture/notification-vehicle-health-telemetry-producers.md',
+    ],
+    reason:
+      'Vehicle health and telemetry must use one inbox path with stable fingerprints, occurredAt, and recovery semantics.',
+    previousBehavior:
+      'Hybrid V1 insights + partial V2 shadow ingest; duplicate tiles from BI publish and FE bridges.',
+    details:
+      'ComplianceOperationalNotificationAdapter, vehicle-health-source.merge, v2-canonical-insight-types, notification-vehicle-health-telemetry-producers.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T09:00:00.000Z',
+  },
+  {
     id: 'notification-producer-migration-matrix-2026-07-26',
     version: '4.9.878',
     title: 'Notification Engine Remediation — producer migration matrix (Prompt 11)',

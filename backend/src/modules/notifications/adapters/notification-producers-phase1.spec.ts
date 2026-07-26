@@ -10,9 +10,11 @@ import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notif
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
+import { ComplianceOperationalNotificationAdapter } from './compliance-operational-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
+import { createProducerIngestRepositoryMock } from './notification-producer-ingest.mock-repository';
 import { DEVICE_QUALITY_OBSERVATION_MARKER, DEVICE_QUALITY_WORKER_ID } from '@modules/vehicle-intelligence/trips/driving-assessment-device-quality.detector';
 
 function createDeliveryMocks() {
@@ -40,114 +42,13 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
   let v2Enabled: boolean;
   const notifications = new Map<string, any>();
   const activeByFingerprint = new Map<string, string>();
-  let idSeq = 0;
+  const idSeq = { value: 0 };
 
   const engineConfig = {
     isV2Enabled: () => v2Enabled,
   } as NotificationEngineConfig;
 
-  function fingerprintFrom(candidate: {
-    organizationId: string;
-    eventType: string;
-    entityType: string;
-    entityId: string;
-    conditionCode: string;
-    scopeVersion?: number;
-  }) {
-    return [
-      candidate.organizationId,
-      candidate.eventType,
-      candidate.entityType,
-      candidate.entityId,
-      candidate.conditionCode,
-      `v${candidate.scopeVersion ?? 1}`,
-    ].join('|');
-  }
-
-  const repository = {
-    findAnyActiveByFingerprint: jest.fn(async (orgId: string, fp: string) => {
-      const id = activeByFingerprint.get(`${orgId}:${fp}`);
-      return id ? notifications.get(id) : null;
-    }),
-    findLatestByFingerprint: jest.fn(async (orgId: string, fp: string) => {
-      const matches = [...notifications.values()].filter(
-        (n) => n.organizationId === orgId && n.fingerprint === fp,
-      );
-      return matches.sort((a, b) => b.lifecycleGeneration - a.lifecycleGeneration)[0] ?? null;
-    }),
-    findById: jest.fn(async (id: string, orgId: string) => {
-      const row = notifications.get(id);
-      return row?.organizationId === orgId ? row : null;
-    }),
-    lockAnyActiveByFingerprintForUpdate: jest.fn(async (orgId: string, fp: string) => {
-      const id = activeByFingerprint.get(`${orgId}:${fp}`);
-      return id ?? null;
-    }),
-    lockLatestByFingerprintForUpdate: jest.fn(async (orgId: string, fp: string) => {
-      const matches = [...notifications.values()].filter(
-        (n) => n.organizationId === orgId && n.fingerprint === fp,
-      );
-      const latest = matches.sort((a, b) => b.lifecycleGeneration - a.lifecycleGeneration)[0];
-      return latest?.id ?? null;
-    }),
-    findByIdForUpdate: jest.fn(async (id: string, orgId: string) => {
-      const row = notifications.get(id);
-      return row?.organizationId === orgId ? row : null;
-    }),
-    listNotifications: jest.fn(async (filter: {
-      organizationId: string;
-      status?: NotificationStatus[];
-      entityType?: string;
-    }) => {
-      return [...notifications.values()].filter((n) => {
-        if (n.organizationId !== filter.organizationId) return false;
-        if (filter.status?.length && !filter.status.includes(n.status)) return false;
-        if (filter.entityType && n.entityType !== filter.entityType) return false;
-        return true;
-      });
-    }),
-    runTransaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
-    createNotification: jest.fn(async (data: any) => {
-      const id = `ntf-${++idSeq}`;
-      const row = {
-        id,
-        ...data,
-        status: NotificationStatus.OPEN,
-        occurrenceCount: 1,
-        lifecycleGeneration: data.lifecycleGeneration ?? 1,
-        version: 1,
-        templateParams: data.templateParams ?? {},
-        actionTarget: data.actionTarget ?? {},
-        lastSeenAt: data.lastSeenAt ?? data.firstSeenAt,
-      };
-      notifications.set(id, row);
-      activeByFingerprint.set(`${data.organizationId}:${data.fingerprint}`, id);
-      return row;
-    }),
-    updateNotification: jest.fn(async (id: string, data: any, version?: number) => {
-      const existing = notifications.get(id);
-      if (!existing) throw new Error('not found');
-      if (version != null && existing.version !== version) throw new Error('version conflict');
-      const updated = { ...existing };
-      for (const [k, v] of Object.entries(data)) {
-        if (k === 'occurrenceCount' && typeof v === 'number') {
-          updated.occurrenceCount = v;
-        } else {
-          (updated as any)[k] = v;
-        }
-      }
-      if (data.occurrenceCount === undefined && existing.occurrenceCount) {
-        // increment path handled by caller passing explicit value
-      }
-      updated.version = (existing.version ?? 1) + 1;
-      notifications.set(id, updated);
-      if (![NotificationStatus.OPEN, NotificationStatus.ACKNOWLEDGED, NotificationStatus.SNOOZED].includes(updated.status)) {
-        activeByFingerprint.delete(`${existing.organizationId}:${existing.fingerprint}`);
-      }
-      return updated;
-    }),
-    createOccurrence: jest.fn(async () => ({ id: `occ-${++idSeq}` })),
-  } as unknown as NotificationRepository;
+  let repository: NotificationRepository;
 
   let core: NotificationCoreService;
   let ingest: NotificationProducerIngestService;
@@ -156,8 +57,10 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
     v2Enabled = true;
     notifications.clear();
     activeByFingerprint.clear();
-    idSeq = 0;
+    idSeq.value = 0;
+    process.env.VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS = '0';
     jest.clearAllMocks();
+    repository = createProducerIngestRepositoryMock({ notifications, activeByFingerprint, idSeq });
 
     const { deliveryEnqueue, deliveryPolicy, deliveryScheduler } = createDeliveryMocks();
     core = new NotificationCoreService(
@@ -182,6 +85,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new TechnicalObservationNotificationAdapter(),
       new StationShortageNotificationAdapter(),
       new LowUtilizationNotificationAdapter(),
+      new ComplianceOperationalNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),
       core,
     );

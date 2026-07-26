@@ -613,6 +613,7 @@ export class TechnicalObservationsService {
       createdByWorkerId: row.createdByWorkerId,
       notes: row.notes,
       sourceRef: dto.id,
+      occurredAt: row.createdAt,
     });
   }
 
@@ -638,6 +639,7 @@ export class TechnicalObservationsService {
       createdByWorkerId: row.createdByWorkerId,
       notes: row.notes,
       sourceRef: dto.id,
+      occurredAt: row.resolvedAt ?? row.updatedAt ?? new Date(),
     });
   }
 }
