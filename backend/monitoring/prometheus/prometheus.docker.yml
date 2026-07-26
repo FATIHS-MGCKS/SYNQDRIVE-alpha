@@ -1,21 +1,23 @@
-# SynqDrive Prometheus — VPS (PM2 backend on host port 3001)
+# SynqDrive Prometheus — local docker-compose (monitoring profile)
 #
-# Used by backend/scripts/ops/vps-setup-prometheus.sh
-# Scrapes localhost only — never expose /metrics publicly.
+# Targets:
+#   - backend via host-gateway (PM2 or npm run start:dev on host)
+#   - node_exporter, blackbox_exporter (compose services)
+#   - alertmanager on 127.0.0.1:9093
 
 global:
   scrape_interval: 30s
   scrape_timeout: 10s
   evaluation_interval: 30s
   external_labels:
-    cluster: synqdrive-prod
-    environment: production
+    cluster: synqdrive-local
+    environment: development
 
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-            - 127.0.0.1:9093
+            - alertmanager:9093
       timeout: 10s
 
 rule_files:
@@ -29,14 +31,14 @@ scrape_configs:
     scrape_interval: 30s
     static_configs:
       - targets:
-          - '127.0.0.1:3001'
+          - 'backend:3000'
     bearer_token_file: /etc/prometheus/secrets/metrics_bearer_token
 
   - job_name: node
     scrape_interval: 30s
     static_configs:
       - targets:
-          - '127.0.0.1:9100'
+          - 'node-exporter:9100'
 
   - job_name: blackbox-ssl
     scrape_interval: 5m
@@ -52,4 +54,4 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: 127.0.0.1:9115
+        replacement: blackbox-exporter:9115

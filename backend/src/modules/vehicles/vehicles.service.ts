@@ -1,4 +1,12 @@
-import { Injectable, NotFoundException, Inject, Logger, forwardRef, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Inject,
+  Logger,
+  forwardRef,
+  Optional,
+} from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   Vehicle,
@@ -13,6 +21,11 @@ import {
   BookingStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  acquirePgAdvisoryXactLock,
+  vehicleDimoBindingLockKey,
+} from '@shared/database/pg-advisory-lock.util';
+import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import { RedisService } from '@shared/redis/redis.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
@@ -1282,13 +1295,24 @@ export class VehiclesService {
     data: Omit<Prisma.VehicleCreateInput, 'organization'>,
     createdByUserId?: string,
   ): Promise<Vehicle> {
-    const vehicle = await this.prisma.vehicle.create({
-      data: {
-        ...data,
-        organization: { connect: { id: organizationId } },
-        createdByUserId: createdByUserId ?? null,
-      },
-    });
+    let vehicle: Vehicle;
+    try {
+      vehicle = await this.prisma.vehicle.create({
+        data: {
+          ...data,
+          organization: { connect: { id: organizationId } },
+          createdByUserId: createdByUserId ?? null,
+        },
+      });
+    } catch (error) {
+      if (isPrismaUniqueViolation(error, ['vin', 'organizationId'])) {
+        throw new ConflictException({
+          code: 'VEHICLE_VIN_ALREADY_EXISTS',
+          message: 'A vehicle with this VIN already exists in the organization',
+        });
+      }
+      throw error;
+    }
 
     void this.billingQuantity
       ?.onVehicleProvisioned({
@@ -2139,12 +2163,56 @@ export class VehiclesService {
       ...restExtra,
     };
 
-    const vehicle = await this.prisma.vehicle.create({
-      data: {
-        ...createData,
-        ...(createdByUserId ? { createdByUserId } : {}),
-      },
-    });
+    let vehicle: Vehicle;
+    try {
+      vehicle = await this.prisma.$transaction(async (tx) => {
+        await acquirePgAdvisoryXactLock(tx, vehicleDimoBindingLockKey(dimoVehicleId));
+
+        const existingBinding = await tx.vehicle.findFirst({
+          where: { dimoVehicleId },
+          select: { id: true, organizationId: true },
+        });
+        if (existingBinding) {
+          throw new ConflictException({
+            code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
+            message: 'This DIMO vehicle is already linked to a fleet vehicle',
+            vehicleId: existingBinding.id,
+            organizationId: existingBinding.organizationId,
+          });
+        }
+
+        try {
+          return await tx.vehicle.create({
+            data: {
+              ...createData,
+              ...(createdByUserId ? { createdByUserId } : {}),
+            },
+          });
+        } catch (error) {
+          if (
+            isPrismaUniqueViolation(error, ['dimo_vehicle_id'])
+            || isPrismaUniqueViolation(error, ['vin', 'organizationId'])
+          ) {
+            throw new ConflictException({
+              code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
+              message: 'This DIMO vehicle is already linked to a fleet vehicle',
+            });
+          }
+          throw error;
+        }
+      });
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      if (isPrismaUniqueViolation(error, ['dimo_vehicle_id'])) {
+        throw new ConflictException({
+          code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
+          message: 'This DIMO vehicle is already linked to a fleet vehicle',
+        });
+      }
+      throw error;
+    }
 
     // Record DIMO provider consent grant (fire-and-forget — never blocks vehicle creation)
     void this.providerConsent.recordDimoConsent({

@@ -19,6 +19,9 @@ if [[ "$DISK_USE_PCT" -ge 85 ]]; then
 fi
 
 sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+if [[ -x /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh ]]; then
+  bash /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh "$(date +%s)" || true
+fi
 
 echo "==> Clone release ${RELEASE_ID}"
 git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$RELEASE_DIR"

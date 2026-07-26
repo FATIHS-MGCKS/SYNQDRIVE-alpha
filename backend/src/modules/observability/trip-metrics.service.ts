@@ -201,6 +201,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly clickHouseSchemaStatus: Gauge<string>;
   readonly hfMirrorEnabled: Gauge<string>;
   readonly workerRuntimeEnabled: Gauge<string>;
+  readonly dependencyUp: Gauge<string>;
   readonly clickHouseLastMirrorUnixSeconds: Gauge<string>;
   readonly clickHouseTableRows: Gauge<string>;
   readonly queueFailedJobs: Gauge<string>;
@@ -610,6 +611,13 @@ export class TripMetricsService implements OnModuleInit {
     this.workerRuntimeEnabled = new Gauge({
       name: 'synqdrive_worker_runtime_enabled',
       help: 'Whether BullMQ workers were enabled at backend bootstrap time',
+      registers: [this.registry],
+    });
+
+    this.dependencyUp = new Gauge({
+      name: 'synqdrive_dependency_up',
+      help: 'Readiness probe result for critical dependencies (1=ok, 0=error)',
+      labelNames: ['dependency'],
       registers: [this.registry],
     });
 
