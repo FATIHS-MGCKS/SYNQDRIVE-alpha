@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-billing-acceptance-2b9-2026-07-26',
+    version: '4.9.888',
+    title: 'V4.9.888 — Master Admin 2B.9: Billing acceptance test report',
+    summary: [
+      'E2E acceptance matrix: new org, trial, upgrade, downgrade, cancel, webhook, payment, invoice, renewal.',
+      'Stripe ↔ DB parity rules per scenario; CI results: 782/784 billing, 98/98 core parity suites.',
+      'CONDITIONAL GO — live sandbox sign-off required for full activate/renewal path.',
+      'docs/remediation/billing-acceptance.md',
+    ],
+    reason:
+      'Master Admin remediation requires documented E2E acceptance with Stripe and local DB identity.',
+    previousBehavior:
+      'Sandbox scenarios existed but no unified acceptance report with parity checklist and verdict.',
+    details:
+      'docs/remediation/billing-acceptance.md, billing-stripe-sandbox.matrix.ts, reconciliation + webhook specs',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:30:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
