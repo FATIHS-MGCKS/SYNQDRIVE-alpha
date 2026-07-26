@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-observability-acceptance-2f9-v49906-2026-07-26',
+    version: '4.9.906',
+    title: 'V4.9.906 — Master Admin: Observability Acceptance (Phase 2F.9)',
+    summary: [
+      'Vollständige Observability-Plattform validiert (Prometheus, AM, Grafana, Health, Exporter, Worker, SLO).',
+      'verify-observability-acceptance.sh — Repo-/Live-Checks + optionaler Testalarm.',
+      'docs/remediation/observability-production-readiness.md — klare Go/No-Go-Antworten.',
+      '14 Unit-Tests passed; Prod Health/Readiness OK; 2F.5–2F.7 Merge ausstehend.',
+    ],
+    reason:
+      'Phase 2F.9 — abschließende Acceptance der Observability-Remediation mit dokumentierten Restrisiken und Go-Live-Checkliste.',
+    previousBehavior:
+      'Keine zentrale Production-Readiness-Bewertung; keine automatisierte Observability-Acceptance.',
+    details:
+      'docs/remediation/observability-production-readiness.md, verify-observability-acceptance.sh, architecture/MASTER_ADMIN_OBSERVABILITY_ACCEPTANCE_2026-07-26.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T14:10:00.000Z',
+  },
+  {
     id: 'master-admin-worker-observability-2f4-2026-07-26',
     version: '4.9.901',
     title: 'V4.9.901 — Master Admin 2F.4: Worker observability',
