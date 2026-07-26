@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-tenant-boundary-validation-2e1-2026-07-26',
+    version: '4.9.891',
+    title: 'V4.9.891 — Master Admin 2E.1: Tenant boundary validation',
+    summary: [
+      'Full-platform tenant isolation audit: guards, Prisma, APIs, workers, BullMQ, analytics, ClickHouse.',
+      'Verdict: no P0; 3 P1 API gaps (insurances live-sharing, HM register); CH read hardening partial.',
+      'Defense model: AuthGuard → OrgScopingGuard/VehicleOwnershipGuard → assert helpers → Prisma orgId.',
+      'Risk register R1–R15 with remediation roadmap for Phase 2E.2.',
+    ],
+    reason:
+      'Phase 2E validates tenant boundaries platform-wide before remediation — analysis only, no code changes.',
+    previousBehavior:
+      'Tenant isolation documented for ClickHouse (2D.4) but not consolidated across all backend layers.',
+    details:
+      'docs/remediation/tenant-boundary-validation.md · architecture/MASTER_ADMIN_TENANT_BOUNDARY_VALIDATION_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T17:00:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-p1-blockers-2026-07-26',
     version: '4.9.890',
     title: 'V4.9.890 — Master Admin: ClickHouse P1 blocker fixes',
