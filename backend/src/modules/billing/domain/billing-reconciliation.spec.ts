@@ -28,6 +28,8 @@ describe('billing-reconciliation domain', () => {
       stripeCustomerId: 'cus_1',
       stripeMode: BillingStripeMode.TEST,
       billingAnchorDay: 15,
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
     },
     items: [
       {
@@ -39,6 +41,7 @@ describe('billing-reconciliation domain', () => {
         stripeMode: BillingStripeMode.TEST,
         validTo: null,
         expectedStripePriceId: 'price_expected',
+        expectedStripeProductId: 'prod_expected',
       },
     ],
     discounts: [],
@@ -50,10 +53,14 @@ describe('billing-reconciliation domain', () => {
       status: 'active',
       livemode: false,
       billingCycleAnchorDay: 15,
+      cancelAtPeriodEnd: false,
+      currentPeriodEndUnix: Math.floor(new Date('2026-08-01T00:00:00.000Z').getTime() / 1000),
+      customerId: 'cus_1',
       items: [
         {
           id: 'si_1',
           priceId: 'price_expected',
+          productId: 'prod_expected',
           quantity: 3,
           localItemId: 'item-1',
         },
@@ -147,6 +154,9 @@ describe('billing-reconciliation domain', () => {
           status: 'active',
           livemode: false,
           billingCycleAnchorDay: 1,
+          cancelAtPeriodEnd: false,
+          currentPeriodEndUnix: null,
+          customerId: 'cus_1',
           items: [],
           couponIds: [],
           metadataOrganizationId: organizationId,
@@ -204,6 +214,84 @@ describe('billing-reconciliation domain', () => {
         expect.objectContaining({
           driftType: BillingReconciliationDriftType.STUCK_WEBHOOK,
           stripeValue: 'evt_stuck',
+        }),
+      ]),
+    );
+  });
+
+  it('detects cancellation schedule drift', () => {
+    const findings = detectBillingReconciliationDrift({
+      ...baseInput,
+      subscription: {
+        ...baseInput.subscription,
+        cancelAtPeriodEnd: false,
+      },
+      stripeSubscription: {
+        ...baseInput.stripeSubscription!,
+        cancelAtPeriodEnd: true,
+      },
+    });
+
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          driftType: BillingReconciliationDriftType.CANCELLATION_MISMATCH,
+          autoFixable: false,
+        }),
+      ]),
+    );
+  });
+
+  it('detects renewal period drift', () => {
+    const findings = detectBillingReconciliationDrift({
+      ...baseInput,
+      subscription: {
+        ...baseInput.subscription,
+        currentPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
+      },
+      stripeSubscription: {
+        ...baseInput.stripeSubscription!,
+        currentPeriodEndUnix: Math.floor(new Date('2026-09-01T00:00:00.000Z').getTime() / 1000),
+      },
+    });
+
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          driftType: BillingReconciliationDriftType.RENEWAL_PERIOD_MISMATCH,
+        }),
+      ]),
+    );
+  });
+
+  it('detects invoice status drift', () => {
+    const findings = detectBillingReconciliationDrift({
+      ...baseInput,
+      invoices: [
+        {
+          id: 'inv-local-1',
+          stripeInvoiceId: 'in_1',
+          stripeMode: BillingStripeMode.TEST,
+          status: InvoiceStatus.OPEN,
+          amountPaidCents: 0,
+        },
+      ],
+      stripeInvoices: [
+        {
+          id: 'in_1',
+          status: 'paid',
+          amountPaid: 2500,
+          paymentIntentId: 'pi_1',
+        },
+      ],
+    });
+
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          driftType: BillingReconciliationDriftType.INVOICE_STATUS_MISMATCH,
+          localValue: InvoiceStatus.OPEN,
+          stripeValue: 'paid',
         }),
       ]),
     );

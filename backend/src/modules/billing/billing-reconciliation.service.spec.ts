@@ -6,6 +6,7 @@ import {
   BillingSubscriptionItemStatus,
 } from '@prisma/client';
 import { BillingReconciliationService } from './billing-reconciliation.service';
+import { BadRequestException } from '@nestjs/common';
 import * as stripeClientUtil from './stripe-client.util';
 
 describe('BillingReconciliationService', () => {
@@ -103,6 +104,7 @@ describe('BillingReconciliationService', () => {
     getRuntimeStripeMode: jest.fn(() => BillingStripeMode.TEST),
     getMappingForVersion: jest.fn(async () => ({
       stripePriceId: 'price_expected',
+      stripeProductId: 'prod_expected',
     })),
   };
   const paymentMethodService = {
@@ -122,6 +124,9 @@ describe('BillingReconciliationService', () => {
     id: 'sub_stripe_1',
     status: 'active',
     livemode: false,
+    cancel_at_period_end: false,
+    current_period_end: Math.floor(new Date('2026-08-01T00:00:00.000Z').getTime() / 1000),
+    customer: 'cus_1',
     billing_cycle_anchor: Math.floor(new Date('2026-07-15T12:00:00.000Z').getTime() / 1000),
     metadata: {
       organizationId: orgId,
@@ -133,7 +138,7 @@ describe('BillingReconciliationService', () => {
           id: 'si_1',
           quantity: 3,
           metadata: { synqdriveSubscriptionItemId: 'item-1' },
-          price: { id: 'price_expected' },
+          price: { id: 'price_expected', product: 'prod_expected' },
         },
       ],
     },
@@ -155,6 +160,8 @@ describe('BillingReconciliationService', () => {
         stripeCustomerId: 'cus_1',
         stripeMode: BillingStripeMode.TEST,
         billingAnchorDay: 15,
+        cancelAtPeriodEnd: false,
+        currentPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
         items: [
           {
             id: 'item-1',
@@ -335,5 +342,35 @@ describe('BillingReconciliationService', () => {
     await service.runBatch({ organizationId: orgId, batchSize: 10 });
 
     expect(drifts).toHaveLength(1);
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'BILLING_RECONCILIATION_DRIFT_DETECTED' }),
+    );
+  });
+
+  it('requires acknowledgment before resolving a drift', async () => {
+    drifts.push({
+      id: 'drift-1',
+      organizationId: orgId,
+      driftType: BillingReconciliationDriftType.QUANTITY_MISMATCH,
+      resolvedAt: null,
+      acknowledgedAt: null,
+    });
+
+    await expect(service.resolveDrift('drift-1', 'user-1')).rejects.toThrow(BadRequestException);
+  });
+
+  it('resolves drift after manual acknowledgment', async () => {
+    drifts.push({
+      id: 'drift-1',
+      organizationId: orgId,
+      driftType: BillingReconciliationDriftType.QUANTITY_MISMATCH,
+      severity: 'WARNING',
+      resolvedAt: null,
+      acknowledgedAt: new Date(),
+      acknowledgedByUserId: 'user-1',
+    });
+
+    const resolved = await service.resolveDrift('drift-1', 'user-1');
+    expect(resolved.resolvedAt).toBeTruthy();
   });
 });
