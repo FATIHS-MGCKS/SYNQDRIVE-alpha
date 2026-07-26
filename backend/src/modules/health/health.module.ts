@@ -1,14 +1,12 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
-import { PrismaModule } from '@shared/database/prisma.module';
-import { RedisModule } from '@shared/redis/redis.module';
-import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
+import { ApplicationHealthModule } from './application-health.module';
 
 @Module({
-  imports: [PrismaModule, RedisModule, forwardRef(() => DocumentExtractionModule)],
+  imports: [ApplicationHealthModule],
   controllers: [HealthController],
   providers: [HealthService],
-  exports: [HealthService],
+  exports: [HealthService, ApplicationHealthModule],
 })
 export class HealthModule {}
