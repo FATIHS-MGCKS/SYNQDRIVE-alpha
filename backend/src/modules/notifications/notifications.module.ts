@@ -68,6 +68,7 @@ import { NotificationTaskCompletionService } from './tasks/notification-task-com
     NotificationReceiptService,
     NotificationStationScopeService,
     NotificationDeliveryPolicyService,
+    NotificationChannelPolicyService,
     NotificationDeliveryOutboxRepository,
     NotificationDeliveryEnqueueService,
     NotificationDeliveryObservabilityService,

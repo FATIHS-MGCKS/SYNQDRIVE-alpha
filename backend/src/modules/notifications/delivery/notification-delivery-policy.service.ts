@@ -8,6 +8,7 @@ import {
 import { getEventTypeDefinition } from '../registry/notification-event-registry';
 import type { NotificationDeliveryPolicy } from '../notification.types';
 import { DEFAULT_IN_APP_DELIVERY } from '../registry/notification-event-registry.policies';
+import { filterRoutableOutboundChannels } from './notification-channel-policy.service';
 
 export type DeliveryEnqueueTransition =
   | 'OPEN_CREATED'
@@ -67,7 +68,7 @@ export class NotificationDeliveryPolicyService {
 
   resolveChannels(eventType: string): Array<'EMAIL' | 'PUSH'> {
     const policy = this.resolveDeliveryPolicy(eventType);
-    return policy.channels.filter(
+    return filterRoutableOutboundChannels(policy.channels).filter(
       (channel): channel is 'EMAIL' | 'PUSH' => channel === 'EMAIL' || channel === 'PUSH',
     );
   }

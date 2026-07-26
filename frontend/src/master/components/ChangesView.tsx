@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-delivery-preferences-v49872-2026-07-26',
+    version: '4.9.872',
+    title: 'V4.9.872 — Notification Engine: Delivery Preferences & Channel Policy',
+    summary: [
+      'Zentrale Channel-Matrix: In-App aktiv, E-Mail aktiv, Push stub, SMS/WhatsApp/Voice disabled.',
+      'NotificationChannelPolicyService prüft Prefs, Rollen, Severity, Quiet Hours, Pflichtmeldungen.',
+      'Org-Defaults (account-notification.defaults) vs User-Overrides klar getrennt.',
+      'Externe Kanäle: keine sensiblen Params in E-Mail (redactTemplateParamsForExternalChannel).',
+      'Tests: Opt-out, Pflicht, Quiet Hours, CRITICAL-Ausnahme, Stub, fehlende E-Mail, unverified Push.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 27: externe Kanäle müssen Präferenzen, Rollen, Severity und Datenschutz berücksichtigen.',
+    previousBehavior:
+      'Delivery-Enqueue prüfte Prefs inline; Push wurde enqueued und suppressed; keine dokumentierte Channel-Matrix; E-Mail ohne Privacy-Redaction.',
+    details:
+      'notification-channel-matrix.ts, notification-channel-policy.service.ts, notification-delivery-enqueue.service.ts, docs/notification-engine-channel-matrix.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:50:00.000Z',
+  },
+  {
     id: 'notification-task-linking-v49871-2026-07-26',
     version: '4.9.871',
     title: 'V4.9.871 — Notification Engine: Task-Verknüpfung ohne Duplikate',

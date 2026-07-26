@@ -14,11 +14,8 @@ import type { NotificationTx } from '../notification.repository';
 import { NotificationDeliveryOutboxRepository } from './notification-delivery-outbox.repository';
 import { NotificationDeliveryPolicyService } from './notification-delivery-policy.service';
 import { buildDeliveryIdempotencyKey } from './notification-delivery-idempotency.util';
-import {
-  criticalOverridesQuietHours,
-  isWithinQuietHours,
-  nextDigestAvailableAt,
-} from './notification-delivery-quiet-hours.util';
+import { NotificationChannelPolicyService } from './notification-channel-policy.service';
+import { nextDigestAvailableAt } from './notification-delivery-quiet-hours.util';
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
 
 export interface EnqueueDeliveryInput {
@@ -35,6 +32,7 @@ export class NotificationDeliveryEnqueueService {
     @Inject(notificationDeliveryConfig.KEY)
     private readonly config: ConfigType<typeof notificationDeliveryConfig>,
     private readonly policyService: NotificationDeliveryPolicyService,
+    private readonly channelPolicy: NotificationChannelPolicyService,
     private readonly preferenceService: NotificationPreferenceService,
     private readonly stationScope: NotificationStationScopeService,
     private readonly outboxRepo: NotificationDeliveryOutboxRepository,
@@ -57,6 +55,8 @@ export class NotificationDeliveryEnqueueService {
     const def = getEventTypeDefinition(input.notification.eventType);
     if (!def) return [];
 
+    const deliveryPolicy = def.deliveryPolicy;
+
     const memberships = await this.outboxRepo.listEligibleMemberships(
       input.notification.organizationId,
       def.supportedRoles,
@@ -75,6 +75,11 @@ export class NotificationDeliveryEnqueueService {
       severity: input.notification.severity,
       status: input.notification.status,
       transition: input.transition,
+    };
+
+    const quietConfig = {
+      startLocal: this.config.quietHoursStart,
+      endLocal: this.config.quietHoursEnd,
     };
 
     for (const membership of memberships) {
@@ -113,30 +118,37 @@ export class NotificationDeliveryEnqueueService {
         prefs,
       );
 
+      const userTz = membership.user.timezone ?? orgTz;
+
       for (const channel of channels) {
-        if (channel === NotificationDeliveryChannel.EMAIL && !decision.email) {
-          if (!decision.mandatory) continue;
-        }
-        if (channel === NotificationDeliveryChannel.PUSH && !decision.push) {
-          if (!decision.mandatory) continue;
+        const channelDecision = this.channelPolicy.evaluateExternalChannel({
+          channel,
+          eventType: input.notification.eventType,
+          severity: input.notification.severity,
+          deliveryPolicy,
+          preferenceDecision: decision,
+          membershipRole: membership.role,
+          supportedRoles: def.supportedRoles,
+          recipientEmail: membership.user.email,
+          recipientChannelVerified: false,
+          referenceNow,
+          userTimezone: userTz,
+          quietHours: quietConfig,
+        });
+
+        if (!channelDecision.allowed) {
+          this.observability.log({
+            notificationId: input.notification.id,
+            organizationId: input.notification.organizationId,
+            eventType: input.notification.eventType,
+            operation: 'channel_skipped',
+            channel,
+            errorCode: channelDecision.reason,
+          });
+          continue;
         }
 
-        let availableAt = referenceNow;
-        const userTz = membership.user.timezone ?? orgTz;
-        const quietConfig = {
-          startLocal: this.config.quietHoursStart,
-          endLocal: this.config.quietHoursEnd,
-        };
-        if (
-          isWithinQuietHours(referenceNow, userTz, quietConfig) &&
-          !criticalOverridesQuietHours(input.notification.severity) &&
-          !decision.mandatory
-        ) {
-          const [endH, endM] = this.config.quietHoursEnd.split(':').map(Number);
-          const defer = new Date(referenceNow);
-          defer.setHours(endH, endM, 0, 0);
-          availableAt = defer > referenceNow ? defer : referenceNow;
-        }
+        let availableAt = channelDecision.deferredUntil ?? referenceNow;
 
         if (
           def.preferenceCategory &&

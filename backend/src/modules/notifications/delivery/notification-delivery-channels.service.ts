@@ -10,6 +10,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { OutboundEmailPolicyService } from '@modules/outbound-email/outbound-email-policy.service';
 import { OutboundEmailService } from '@modules/outbound-email/outbound-email.service';
 import { EmailProviderRegistry } from '@modules/outbound-email/providers/email-provider.registry';
+import { redactTemplateParamsForExternalChannel } from '../access/notification-privacy.policy';
 
 export interface ChannelDeliveryResult {
   success: boolean;
@@ -167,9 +168,11 @@ export class NotificationEmailChannelService {
   }
 
   private renderBody(titleKey: string, bodyKey: string, templateParams: unknown): string {
-    const params = (templateParams ?? {}) as Record<string, string | number | boolean | null>;
+    const raw = (templateParams ?? {}) as Record<string, string | number | boolean | null>;
+    const params = redactTemplateParamsForExternalChannel(raw);
     const paramSummary = Object.entries(params)
-      .slice(0, 8)
+      .filter(([, v]) => v != null)
+      .slice(0, 6)
       .map(([k, v]) => `${k}=${String(v)}`)
       .join(', ');
     return `${titleKey} — ${bodyKey}${paramSummary ? ` (${paramSummary})` : ''}`;

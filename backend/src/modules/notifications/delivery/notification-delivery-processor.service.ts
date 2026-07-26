@@ -5,6 +5,7 @@ import notificationDeliveryConfig from '@config/notification-delivery.config';
 import { NotificationDeliveryOutboxRepository } from './notification-delivery-outbox.repository';
 import { NotificationChannelDispatcher } from './notification-delivery-channels.service';
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
+import { getChannelDefinition } from './notification-channel-matrix';
 
 @Injectable()
 export class NotificationDeliveryProcessorService {
@@ -31,16 +32,25 @@ export class NotificationDeliveryProcessorService {
       attempts: claimed.attempts,
     });
 
-    if (claimed.channel === NotificationDeliveryChannel.PUSH) {
-      await this.outboxRepo.markSuppressed(claimed.id, 'PUSH_NOT_IMPLEMENTED');
+    const channelDef = getChannelDefinition(claimed.channel);
+    if (
+      claimed.channel === NotificationDeliveryChannel.PUSH
+      || channelDef?.implementationStatus === 'stub'
+      || channelDef?.implementationStatus === 'disabled'
+    ) {
+      const errorCode =
+        channelDef?.implementationStatus === 'stub'
+          ? `${claimed.channel}_NOT_IMPLEMENTED`
+          : 'CHANNEL_DISABLED';
+      await this.outboxRepo.markSuppressed(claimed.id, errorCode);
       this.observability.logWarn({
         notificationId: claimed.notificationId,
         organizationId: claimed.organizationId,
         eventType: claimed.eventType,
-        operation: 'push_deferred',
+        operation: 'channel_suppressed',
         deliveryId: claimed.id,
         channel: claimed.channel,
-        errorCode: 'PUSH_NOT_IMPLEMENTED',
+        errorCode,
       });
       return 'skipped';
     }

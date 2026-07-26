@@ -82,3 +82,33 @@ export function redactActionTargetForRole(
 
   return copy;
 }
+
+const EXTERNAL_CHANNEL_BLOCKED_PARAM_KEYS = new Set([
+  ...BILLING_PARAM_KEYS,
+  ...INTERNAL_ORG_PARAM_KEYS,
+  'customerName',
+  'customerEmail',
+  'customerPhone',
+  'vin',
+  'licensePlate',
+  'apiKeyHint',
+  'webhookSecret',
+]);
+
+/**
+ * Redact template params for external (email/push/sms) delivery.
+ * External channels never receive full billing/org secrets regardless of role.
+ */
+export function redactTemplateParamsForExternalChannel(
+  params: Record<string, string | number | boolean | null>,
+): Record<string, string | number | boolean | null> {
+  const redacted: Record<string, string | number | boolean | null> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (EXTERNAL_CHANNEL_BLOCKED_PARAM_KEYS.has(key)) {
+      redacted[key] = null;
+      continue;
+    }
+    redacted[key] = value;
+  }
+  return redacted;
+}
