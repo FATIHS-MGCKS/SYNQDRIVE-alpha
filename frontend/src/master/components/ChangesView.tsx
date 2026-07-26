@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-tenant-isolation-2d4-2026-07-26',
+    version: '4.9.885',
+    title: 'V4.9.885 — Master Admin 2D.4: ClickHouse tenant isolation analysis',
+    summary: [
+      'Schema + query audit: org_id gaps on legacy mirror tables; HF tables org-leading ORDER BY.',
+      'Cross-tenant risks T1–T9 documented; mitigated by UUID vehicle_id + PG org guards.',
+      'Additive migration 007 designed (org_id on snapshots/state_changes); not applied.',
+      'vps-clickhouse-tenant-isolation-audit.sh for VPS org_id empty-row checks.',
+    ],
+    reason:
+      'Multi-tenant SaaS requires explicit CH tenant isolation assessment before remediation.',
+    previousBehavior:
+      'Partial org_id on HF/extended tables; legacy mirrors vehicle_id-only; no CH RLS.',
+    details:
+      'docs/remediation/clickhouse-tenant-isolation.md · migrations/007_legacy_mirror_org_id_columns.sql',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:15:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-data-integrity-2d3-2026-07-26',
     version: '4.9.884',
     title: 'V4.9.884 — Master Admin 2D.3: ClickHouse data integrity',

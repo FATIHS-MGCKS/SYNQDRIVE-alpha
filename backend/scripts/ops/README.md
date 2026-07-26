@@ -59,6 +59,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only |
 | `vps-clickhouse-storage-topology-audit.sh` | Read-only audit of ClickHouse Docker volumes/bind mounts (stale paths, orphans, backup consistency) | read-only — exit 1 on P0 drift; run before 2D.3 mount migration |
 | `vps-clickhouse-data-integrity-audit.sh` | Read-only per-table integrity audit (CHECK TABLE, parts, TTL drift, ReplacingMergeTree dupes) | read-only — exit 1 on P0; quarterly or pre-remediation |
+| `vps-clickhouse-tenant-isolation-audit.sh` | Read-only tenant audit (org_id columns, empty org rows, ORDER BY leading key, MVs) | read-only — run before migration 007 / 2D.5 hardening |
 
 ### Partitioning (P2)
 
