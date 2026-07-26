@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-cross-tenant-acceptance-2e5-2026-07-26',
+    version: '4.9.895',
+    title: 'V4.9.895 — Master Admin 2E.5: Cross-tenant acceptance testing',
+    summary: [
+      '23 authenticated acceptance tests across 10 domains (orgA + orgB fixtures).',
+      'CT-AUTH through CT-WF: vehicles, bookings, customers, documents, invoices, analytics, DIMO, notifications, AI, workflows.',
+      'Attack patterns: IDOR, UUID direct access, JWT org mismatch, foreign entity mutation.',
+      'npm run test:cross-tenant:acceptance — consolidated acceptance net.',
+    ],
+    reason:
+      'Phase 2E.5 validates tenant isolation with documented, runnable acceptance tests.',
+    previousBehavior:
+      'Cross-tenant coverage existed per-module but lacked consolidated acceptance catalog.',
+    details:
+      'docs/remediation/cross-tenant-acceptance.md · architecture/MASTER_ADMIN_CROSS_TENANT_ACCEPTANCE_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T22:00:00.000Z',
+  },
+  {
     id: 'master-admin-concurrency-protection-2e4-2026-07-26',
     version: '4.9.894',
     title: 'V4.9.894 — Master Admin 2E.4: Concurrency protection',

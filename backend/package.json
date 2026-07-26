@@ -60,6 +60,7 @@
     "test:workflow-automation:verify": "bash scripts/test/workflow-automation-backend-verify.sh all",
     "test:workflow-automation:verify:unit": "bash scripts/test/workflow-automation-backend-verify.sh unit",
     "test:vehicles:security": "jest vehicles-security-negative vehicles.controller.security.characterization vehicles.service.detail-integration vehicles-rental-requirements.security vehicles.controller.status-patch vehicles.controller.fleet-connectivity",
+    "test:cross-tenant:acceptance": "jest --testPathPattern=cross-tenant-acceptance",
     "test:vehicles:detail:verify": "bash scripts/test/vehicle-detail-backend-verify.sh all",
     "test:vehicles:detail:verify:security": "bash scripts/test/vehicle-detail-backend-verify.sh security",
     "test:vehicle-detail": "jest --testPathPattern='vehicle-detail|vehicles\\.controller\\.status-patch|overview-map-position|vehicle-operational-state-v2' --testPathIgnorePatterns='integration|postgres\\.invariants'",
