@@ -35,7 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'notification-migration-hardening-v49877-2026-07-26',
+    id: 'notification-load-resilience-v49878-2026-07-26',
+    version: '4.9.878',
+    title: 'V4.9.878 — Notification Engine: Load, Concurrency & Resilience Tests',
+    summary: [
+      '16-Szenarien-Suite: 10k Ingest, Parallel-Dedup, Multi-Instance, Lifecycle, Out-of-Order, Retry.',
+      'Fix: firstSeenAt/lastSeenAt bei out-of-order Events (min/max bounds).',
+      'Test-Harness mit Latenz-Metriken (p50/p95/p99) und JSON-Report.',
+      'Audit: docs/audits/notification-engine-load-resilience-test-2026-07.md',
+    ],
+    reason:
+      'Notification Engine unter realistischen Last-, Parallelitäts- und Fehlerbedingungen validieren.',
+    previousBehavior:
+      'Keine dedizierte Load/Resilience-Suite; out-of-order Events konnten firstSeenAt verfälschen.',
+    details:
+      'notification-load-resilience.spec.ts, testing/notification-test-harness.ts, notification-core.service.ts.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T03:30:00.000Z',
+  },
+  {
+    id: 'notification-vps-control-audit-v49877b-2026-07-26',
     version: '4.9.877',
     title: 'V4.9.877 — Notification Engine: Migration Backfill & Acceptance Hardening',
     summary: [

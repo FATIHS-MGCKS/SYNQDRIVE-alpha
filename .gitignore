@@ -100,3 +100,4 @@ uploads/
 # Local analysis / debug script output
 backend/*-output.txt
 backend/analyze-*.txt
+tmp/

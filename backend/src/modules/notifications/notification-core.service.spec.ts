@@ -263,6 +263,21 @@ describe('NotificationCoreService', () => {
     expect(row.templateParams).toMatchObject({ km: 120 });
   });
 
+  it('adjusts bounds when out-of-order events arrive', async () => {
+    await service.ingestCandidate(buildCandidate({
+      occurredAt: new Date('2026-07-11T12:00:00.000Z'),
+      sourceRef: 'newer',
+    }));
+    await service.ingestCandidate(buildCandidate({
+      occurredAt: new Date('2026-07-11T08:00:00.000Z'),
+      sourceRef: 'older',
+    }));
+    const row = [...notifications.values()][0];
+    expect(row.firstSeenAt).toEqual(new Date('2026-07-11T08:00:00.000Z'));
+    expect(row.lastSeenAt).toEqual(new Date('2026-07-11T12:00:00.000Z'));
+    expect(occurrences).toHaveLength(2);
+  });
+
   it('escalates severity INFO → WARNING → CRITICAL without deescalation', async () => {
     await service.ingestCandidate(buildCandidate({ severity: DomainSeverity.INFO }));
     await service.ingestCandidate(buildCandidate({

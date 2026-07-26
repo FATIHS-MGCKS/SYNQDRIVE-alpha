@@ -813,11 +813,18 @@ export class NotificationCoreService {
       tx,
     );
 
+    const occurredAt = candidate.occurredAt;
+    const firstSeenAt =
+      occurredAt < existing.firstSeenAt ? occurredAt : existing.firstSeenAt;
+    const lastSeenAt =
+      occurredAt > existing.lastSeenAt ? occurredAt : existing.lastSeenAt;
+
     return this.repository.updateNotification(
       existing.id,
       {
         severity: newSeverity,
-        lastSeenAt: candidate.occurredAt,
+        firstSeenAt,
+        lastSeenAt,
         occurrenceCount: existing.occurrenceCount + 1,
         templateParams: templateParams as Prisma.InputJsonValue,
         titleKey: candidate.titleKey,
@@ -851,6 +858,12 @@ export class NotificationCoreService {
       tx,
     );
 
+    const occurredAt = candidate.occurredAt;
+    const firstSeenAt =
+      occurredAt < existing.firstSeenAt ? occurredAt : existing.firstSeenAt;
+    const lastSeenAt =
+      occurredAt > existing.lastSeenAt ? occurredAt : existing.lastSeenAt;
+
     return this.repository.updateNotification(
       existing.id,
       {
@@ -861,7 +874,8 @@ export class NotificationCoreService {
         ) as NotificationSeverity,
         resolvedAt: null,
         reopenCount,
-        lastSeenAt: candidate.occurredAt,
+        firstSeenAt,
+        lastSeenAt,
         occurrenceCount: existing.occurrenceCount + 1,
         templateParams: minimizeTemplateParams(candidate.templateParams) as Prisma.InputJsonValue,
         titleKey: candidate.titleKey,
