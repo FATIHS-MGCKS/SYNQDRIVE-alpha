@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 10: Prometheus/Grafana/Observability read-only **abgeschlossen** (2026-07-26T07:17–07:19 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:19:00Z` (Prometheus, Grafana, Observability) |
+| **Status** | **IN PROGRESS** — Schritt 11: DIMO-Integration & Fahrzeugimport read-only **abgeschlossen** (2026-07-26T07:19–07:22 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:22:00Z` (DIMO & Fahrzeugimport) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -215,6 +215,18 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:17–07:19 | `grep` Env-Key-Namen (`ENABLE_SEED_ADMIN`, `GRAFANA_ADMIN_PASSWORD`, `METRICS_BEARER_TOKEN`) | Risiko-Indikatoren ohne Werte |
 
 **Observability-Modus:** Ausschließlich GET/HEAD. **Keine** Alert-/Dashboard-/Datasource-/User-/Token-Änderungen. **Keine** Testalarme.
+
+### 2.2k Ausgeführte sichere Befehle (Schritt 11 — DIMO & Fahrzeugimport read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:19–07:22 | `grep` Env-Key-Namen (`DIMO_*`) — Werte maskiert | Konfiguration Production vs. Sandbox |
+| 07:19–07:22 | PostgreSQL `SELECT` (aggregiert, maskierte UUID/VIN-Prefixe) | Fahrzeug-/DIMO-Mapping, Duplikate, Poll-/Webhook-Logs |
+| 07:19–07:22 | ClickHouse `SELECT` letzte Snapshot-Zeiten (maskiert) | Telemetrie-Insert-Freshness |
+| 07:19–07:22 | `curl -sf` unauth Admin-Probes (`token-health`, readiness) | API-Guards |
+| 07:19–07:22 | Quellcode-Review Import-Pipeline (`registerFromDimo`, `DimoController`, Master UI) | Master-Admin-Importlogik |
+
+**DIMO-Modus:** **Kein** Import, Sync-Trigger, Token-Refresh, Webhook-Trigger, Verbindungstrennung oder Berechtigungsänderung. DIMO MCP war in dieser Session **nicht verfügbar** (Tool-Discovery-Fehler) — Abgleich erfolgte über Env/DB/Code.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -1677,15 +1689,105 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 
 ---
 
-## 17. DIMO
+## 17. DIMO-Integration & Master-Admin-Fahrzeugimport
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| Env-Keys (Namen, Auszug) | `DIMO_API_KEY`, `DIMO_API_URL`, `DIMO_CLIENT_ID`, `DIMO_AGENT_USER_WALLET`, `DIMO_DOCUMENT_AGENT_ENABLED`, … |
-| Webhook-Secret-Datei | `shared/dimo-webhook-secret.txt` — **existiert, nicht gelesen** |
-| Segments/Polling/Triggers | **Nicht** geprüft |
+**Prüfzeitpunkt:** `2026-07-26T07:19–07:22Z` (Schritt 11, strikt read-only)
 
-**Status:** Ausstehend — Konfigurationsabgleich mit DIMO MCP, Queue `dimo.snapshot.poll`, Webhook-Registrierung (read-only).
+### 17.1 Konfigurierte DIMO-Umgebung
+
+| Prüfpunkt | Ist-Wert (belegt) |
+|-----------|-------------------|
+| `DIMO_ENV` | **`production`** (Key-Wert-Klasse, nicht Sandbox) |
+| `DIMO_API_URL` | `https://identity-api.dimo.zone` |
+| `DIMO_TELEMETRY_API_URL` | `https://telemetry-api.dimo.zone/query` |
+| `DIMO_WEBHOOK_BASE_URL` | `https://app.synqdrive.eu` |
+| Auth/Token-URLs (Code-Default) | `https://auth.dimo.zone`, `https://token-exchange-api.dimo.zone` |
+| NFT-Contract (production) | `0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF` (aus `dimo.config.ts`) |
+| Env-Keys vorhanden (Namen) | `DIMO_CLIENT_ID`, `DIMO_PRIVATE_KEY`, `DIMO_API_KEY`, `DIMO_WEBHOOK_SECRET`, `DIMO_WEBHOOK_VERIFICATION_TOKEN`, `DIMO_REDIRECT_URI`, `DIMO_DOMAIN`, JWT-TTL-Keys, … |
+| Webhook-Secret-Datei | `/opt/synqdrive/shared/dimo-webhook-secret.txt` — **64 Bytes**, Mode **600** |
+| Sandbox-Indikatoren | **Keine** in `DIMO_ENV` oder API-Hosts (`.dimo.zone` Production-Pfade) |
+
+**Credential-Ablauf:** Vehicle-JWT-TTL **300s**, Refresh-Margin **60s** (Env-Keys `DIMO_VEHICLE_JWT_*`). Konkrete Token-Ablaufzeiten **nicht** ausgelesen (kein Token-Refresh ausgelöst). Developer/Vehicle-JWTs in Redis (`dimo:developer:jwt`, `dimo:vehicle:jwt:*`).
+
+### 17.2 Fahrzeug-Discovery & Mapping
+
+| Fahrzeugzustand | Anzahl | Risiko |
+|-----------------|--------|--------|
+| `dimo_vehicles` gesamt | **8** | — |
+| CONNECTED | **6** | OK |
+| DISCONNECTED | **2** | **P3** — nicht registriert, stale Signal |
+| Registriert mit DIMO-Link | **6** | OK |
+| Nicht registriert (DIMO ohne Vehicle) | **2** | **P3** — Discovery-Pool |
+| Vehicles ohne DIMO | **3** | **P3** — Staging/Test-Orgs erwartbar |
+| CONNECTED aber unregistriert | **0** | OK |
+| Doppelte `token_id` | **0** | OK |
+| Doppelte `external_id` | **0** | OK |
+| Doppelte VIN (`dimo_vehicles` / `vehicles`) | **0** | OK |
+| DIMO-ID → mehrere Orgs | **0** | OK |
+| Vehicles ohne `organization_id` | **0** | OK |
+| Verwaist in CH (`be15ecb1…`) | **1** (Step 9) | **P2** — gelöschtes PG-Fahrzeug |
+
+**Org-Mapping (maskiert):** Alle **6** DIMO-registrierten Fahrzeuge → Org-Prefix `faa710c9`. Übrige **3** Vehicles in anderen Orgs **ohne** DIMO.
+
+**VIN/DIMO-ID:** Import nutzt `dimoVehicle.vin` oder Fallback `DIMO-{externalId}`; VIN+Org ist **unique** (`@@unique([vin, organizationId])`), aber **`dimo_vehicle_id` hat keinen DB-Unique-Index** — Duplikat-Registrierung desselben DIMO-Fahrzeugs in zwei Orgs ist **code-seitig nicht explizit blockiert** (**P2**).
+
+### 17.3 Integrations-Pipeline (Runtime)
+
+| Integrationsstufe | Letzter Erfolg | Letzter Fehler | Bewertung |
+|-------------------|----------------|----------------|-----------|
+| DIMO API Vehicle Sync (`VEHICLE_SYNC`) | **2026-07-25 09:46 UTC** | — (7d: 0 FAIL) | **OK** |
+| Snapshot Poll (`SNAPSHOT`) | **2026-07-26 07:19 UTC** | 1 FAIL / 24h; hist. **176.980×** `Custom Id cannot contain :` | **WARN** (hist.), **OK** (24h) |
+| Trip Tracking Poll | **2026-07-26 07:19 UTC** | — | **OK** |
+| PG `vehicle_latest_states` | **2026-07-25 21:27 UTC** (neuester) | — | **P2** Signal-Stagnation |
+| ClickHouse `telemetry_snapshots` | **2026-07-25 21:27 UTC** | — | **P2** (Step 9) |
+| Device-Connection Webhook Inbox | **keine Einträge** | — | **P3** — kein Webhook-Traffic in DB |
+| `dimo_device_connection_events` | **2026-07-20 11:05 UTC** (3× UNPLUG) | — | **P3** — wenig/veraltet |
+| Token/API-Fehler (30d Poll-Log) | — | 502×400, 53×timeout, 20×401, 2×JWT-Lock | **P3** — sporadisch |
+| Rate Limits | — | Keine expliziten 429-Spitzen in Stichprobe | **OK** |
+
+**Webhook-URL (erwartet):** `POST https://app.synqdrive.eu/api/v1/webhooks/dimo` (aus Architektur; nicht getriggert).
+
+### 17.4 Master-Admin-Importlogik (Code + Runtime)
+
+| Aspekt | Befund |
+|--------|--------|
+| **Discovery/Sync** | `POST /api/v1/admin/dimo/sync` — `@Roles('MASTER_ADMIN')` → `DimoApiSyncService.fetchAndSyncFromDimoApi()` (GraphQL `vehicles(privileged: clientId)`) |
+| **Nicht registriert listen** | `GET /api/v1/admin/dimo/non-registered` — MASTER_ADMIN |
+| **Import/Registrierung** | `POST /api/v1/organizations/:orgId/vehicles/register-from-dimo` — `OrgScopingGuard` + `fleet:write`; **MASTER_ADMIN** darf jede Org wählen |
+| **Deregister** | `POST /api/v1/admin/vehicles/:vehicleId/deregister` — löscht `Vehicle`, erhält `DimoVehicle` (`onDelete: SetNull`) |
+| **Frontend** | `PlatformVehiclesView` → `api.vehicles.registerFromDimo(orgId, { dimoVehicleId, … })` |
+| **orgId-Validierung** | `OrgScopingGuard`: MASTER_ADMIN Pass-through; andere Rollen JWT-bound |
+| **Duplikat-Block vor Import** | **Kein** expliziter Check auf bereits registriertes `dimoVehicleId`; nur DB-Constraint `vin+organizationId` |
+| **VIN + DIMO-ID gemeinsam** | DIMO-ID wird per `findUniqueOrThrow` geladen; VIN aus DIMO übernommen — **keine** Cross-Check DIMO-ID↔VIN gegen externes DIMO |
+| **Transaktional** | **Nein** — `vehicle.create` dann sequentielle Sub-Steps (Battery/Brakes/Tires/Enrichment); **Teilfehler möglich** |
+| **Rollback bei Fehler** | **Nein** — Brake-Init-Fehler nur `logger.warn`; Vehicle bleibt |
+| **Worker/Webhook-Init nach Import** | `capabilityLifecycle.refreshOnNewIntegration`, `batteryCapabilityRefresh.enqueue`, `vehicleEnrichmentJob` (BATTERY), `dataAuthorizations.ensureDimoTelemetryAuthorization` — **async/fire-and-forget** |
+| **Billing sofort** | `billingQuantity.onVehicleProvisioned` — **nur** wenn Base-Subscription-Item existiert **und** Fahrzeug „billable connected“; aktuell **1 TRIALING** Sub, **0** Subscription-Items → Hook **skipped** in Praxis |
+| **Billing bei Deregister** | `onVehicleRemoved` vor `vehicle.delete` — gleiche Billable-Gates |
+| **Audit-Event** | Global `AuditInterceptor` → `CREATE`/`VEHICLE` auf erfolgreichen POST; **123** historische `CREATE VEHICLE` Logs |
+| **Nutzer-Feedback** | API wirft Nest-Exceptions (`NotFound`, `BadRequest`); Frontend `handleRegisterVehicle` mit try/catch + Toast |
+
+### 17.5 Tenant-, Billing- & Webhook-Risiken
+
+| Risiko | Befund | Severity |
+|--------|--------|----------|
+| Cross-Tenant DIMO-Re-Import | Gleiches `dimoVehicleId` theoretisch in 2. Org registrierbar (kein Unique auf FK) | **P2** |
+| Master Admin Org-Wahl | By design — `OrgScopingGuard` MASTER_ADMIN bypass | **Beobachtung** |
+| Billing ohne Subscription-Items | Import erzeugt Vehicle, aber Quantity-Hook no-op ohne Base-Plan | **P3** |
+| Webhook-Inbox leer | Keine DIMO Device-Connection-Webhooks persistiert | **P3** |
+| Historische Poll-Fehler | **176.980×** JobId-`:`-Fehler (BullMQ) — korreliert mit MA-REDIS-P2-002 | **P2** |
+| Production DIMO | Bestätigt — kein Sandbox-Leak in Env-Klassifikation | **OK** |
+
+### 17.6 Read-Only-Bestätigung
+
+| Aktion | Ausgeführt? |
+|--------|-------------|
+| Fahrzeuge importiert/registriert | **NEIN** |
+| DIMO Sync/Webhook/Token-Refresh ausgelöst | **NEIN** |
+| Verbindungen getrennt / Berechtigungen geändert | **NEIN** |
+| Nur SELECT + Code-Review + unauth GET-Probes | **JA** |
+
+**Status:** DIMO-Integration & Fahrzeugimport **abgeschlossen** (Schritt 11). **DIMO MCP:** nicht verfügbar — externe API-Verifikation ausstehend.
 
 ---
 
@@ -1821,6 +1923,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 > **Schritt 8 (Redis/BullMQ):** 1× P1 neu, 3× P2 neu, 2× P3 neu.
 > **Schritt 9 (ClickHouse/Telemetrie):** 1× P1 neu, 5× P2 neu, 1× P3 neu.
 > **Schritt 10 (Prometheus/Grafana/Observability):** 1× P1 neu, 4× P2 neu, 2× P3 neu.
+> **Schritt 11 (DIMO/Fahrzeugimport):** 2× P2 neu, 4× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -1906,6 +2009,14 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **MA-OBS-OBS-001** | **Beobachtung** | Exposition | Öffentliche `/grafana/` und `/prometheus/` URLs liefern **SPA-HTML**, nicht echte Dienste | Positiv (kein Grafana/Prom-Leak) |
 | **MA-OBS-OBS-002** | **Beobachtung** | Cardinality | **515** Series, **222** Metriken — Low-Cardinality-Policy eingehalten | Positiv |
 | **MA-OBS-OBS-003** | **Beobachtung** | Master Admin | `PlatformHealthView` pollt live API (60s), kein iframe — Grafana nur per SSH-Tunnel | Design korrekt |
+| **MA-DIMO-P2-001** | **P2** | Import-Integrität | `vehicles.dimo_vehicle_id` **ohne** Unique-Constraint — Re-Registrierung desselben DIMO-Fahrzeugs in anderer Org theoretisch möglich | Pre-Import-Check + DB-Unique auf `dimo_vehicle_id` |
+| **MA-DIMO-P2-002** | **P2** | Import-Transaktion | `registerFromDimo` **nicht** transaktional — Teilfehler (Brakes/Tires) lassen Vehicle bestehen | `$transaction` oder compensating rollback |
+| **MA-DIMO-P3-001** | **P3** | Discovery | **2** DISCONNECTED `dimo_vehicles` im Non-Registered-Pool (Signal ältestes **2026-03-18**) | Aufräumen oder Re-Sync |
+| **MA-DIMO-P3-002** | **P3** | Webhooks | `device_connection_webhook_inbox` **0** Rows — kein persistierter Webhook-Traffic | Trigger-Registrierung/DIMO-Konsole prüfen |
+| **MA-DIMO-P3-003** | **P3** | Telemetrie | `vehicle_latest_states` / CH `recorded_at` stagnieren seit **2026-07-25 Abend** trotz aktiver Polls | Upstream DIMO-Signal vs. Processor-Filter |
+| **MA-DIMO-P3-004** | **P3** | Billing | Import ruft `onVehicleProvisioned` auf, aber **0** `billing_subscription_items` — Quantity-Hook no-op | Billing-Onboarding vor Import-Fleet |
+| **MA-DIMO-OBS-001** | **Beobachtung** | Umgebung | `DIMO_ENV=production`, API-Hosts `.dimo.zone` | Positiv |
+| **MA-DIMO-OBS-002** | **Beobachtung** | Poll-Historie | **176.980** SNAPSHOT-FAILURES mit `Custom Id cannot contain :` (gesamt); **24h: 1** Failure | Scheduler-JobId-Fix wirksam kurzfristig |
 
 ---
 
@@ -1922,6 +2033,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 - [x] **Redis & BullMQ (read-only)** — INFO/SCAN, Queue-Counts, Failed-Jobs, Worker-Host
 - [x] **ClickHouse & Telemetrie-Pipeline (read-only)** — Schema/TTL/Parts, Ingestion-Freshness, PG↔CH-Cross-Check, Pipeline-Stufen
 - [x] **Prometheus/Grafana/Observability (read-only)** — Targets, Rules, firing Alerts, Dashboards, Master-Admin-Integration
+- [x] **DIMO-Integration & Fahrzeugimport (read-only)** — Env, PG-Mapping, Poll/Webhook-Logs, Import-Code-Review
 
 ### Priorisierte Folgeschritte (alle read-only)
 
@@ -1930,8 +2042,8 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 3. ~~**BullMQ Queue Health**~~ — **erledigt** (Schritt 8)
 4. ~~**ClickHouse**~~ — **erledigt** (Schritt 9)
 5. ~~**Prometheus/Grafana**~~ — **erledigt** (Schritt 10)
-6. **DIMO** — Env + Queue + MCP-Abgleich
-6. **Stripe/Billing** — Env-Keys, Webhook-Route HEAD, Master-Billing-API unauth
+6. ~~**DIMO**~~ — **erledigt** (Schritt 11; DIMO MCP extern ausstehend)
+7. **Stripe/Billing** — Env-Keys, Webhook-Route HEAD, Master-Billing-API unauth
 7. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
 8. **Backup-Inventar** — `ls -lt shared/backups/`, Alter der Dumps
 9. **Tenant-Isolation-Stichproben** — SELECT counts per org (keine PII)
@@ -1955,7 +2067,8 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | **Redis/BullMQ** | **WARN** — kein Backlog; **28** battery.v2 fails; Scheduler JobId-Fehler |
 | **ClickHouse/Telemetrie** | **WARN** — gesund & klein; **94,7 %** Snapshot-Duplikate; keine `org_id` auf Kern-Spiegel; Signal-Stagnation ~10 h |
 | **Prometheus/Grafana** | **WARN** — Scrape OK; **98** Alerts ohne Alertmanager; **4** firing; Evaluations-Dashboard fehlt auf VPS |
-| Audit vollständig | **NEIN** — DIMO/Integrationen/authentifizierte Smokes/Backups ausstehend |
+| **DIMO/Fahrzeugimport** | **OK mit P2/P3** — Production-Env; Mapping konsistent; Import nicht transaktional; Webhook-Inbox leer |
+| Audit vollständig | **NEIN** — Billing/Backups/authentifizierte Smokes ausstehend |
 | Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Route-Matrix (Code); keine authentifizierten Tests |
 | Gesamturteil | **PENDING** — Kein **P0**; **4× P1** (Swagger, CH-Mounts, CH-Duplikate, kein Alertmanager) + mehrere **P2** offen |
 
@@ -2002,6 +2115,7 @@ Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Pan
 | 2026-07-26T07:12–07:14 | Schritt 8: Redis/BullMQ (`redis-cli` INFO/SCAN/LLEN/ZCARD, Failed-Job-Stichproben) | **NEIN** |
 | 2026-07-26T07:15–07:18 | Schritt 9: ClickHouse (`clickhouse-client` SELECT only, PG↔CH Cross-Check, Pipeline-Queues) | **NEIN** |
 | 2026-07-26T07:17–07:19 | Schritt 10: Prometheus/Grafana (API GET, Config-Read, Exposure-Probes, keine Testalarme) | **NEIN** |
+| 2026-07-26T07:19–07:22 | Schritt 11: DIMO & Fahrzeugimport (PG SELECT, Env-Keys maskiert, Code-Review, keine Imports) | **NEIN** |
 
 ---
 
