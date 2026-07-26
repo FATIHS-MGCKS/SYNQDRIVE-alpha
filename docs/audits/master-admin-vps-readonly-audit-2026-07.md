@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 9: ClickHouse & Telemetrie-Pipeline read-only **abgeschlossen** (2026-07-26T07:15–07:18 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:18:00Z` (ClickHouse & Telemetrie-Pipeline) |
+| **Status** | **IN PROGRESS** — Schritt 10: Prometheus/Grafana/Observability read-only **abgeschlossen** (2026-07-26T07:17–07:19 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:19:00Z` (Prometheus, Grafana, Observability) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -203,6 +203,18 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:15–07:18 | `curl -sf` `GET /api/v1/health/readiness` | CH-Ingestion-Metadaten aus Readiness |
 
 **ClickHouse-Modus:** Ausschließlich `SELECT` über `clickhouse-client` im Container. **Kein** `INSERT`, `ALTER`, `OPTIMIZE`, `SYSTEM`, `TRUNCATE`, `KILL`, Mutationen oder Reparaturen. Unauthentifizierter `curl` auf `127.0.0.1:8123` schlug fehl (Exit 22) — Zugriff nur via `docker exec` (localhost-only Bind).
+
+### 2.2j Ausgeführte sichere Befehle (Schritt 10 — Prometheus/Grafana/Observability read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:17–07:19 | `curl -sf` Prometheus API (`/api/v1/status/*`, `/targets`, `/rules`, `/alerts`, `/query`) | Version, Targets, Rules, firing Alerts, Metrik-Abdeckung |
+| 07:17–07:19 | `curl -sf` Grafana `/api/health`; unauth-Probes `/api/org`, `/api/datasources` | Version, Auth-Gates |
+| 07:17–07:19 | `curl -sI` / `curl -s -o /dev/null -w` öffentliche URLs (`/grafana/`, `/prometheus/`, `/api/v1/metrics`) | Exposition vs. SPA-Fallback |
+| 07:17–07:19 | `ss -tlnp`, `docker stats`, Config-Dateien (`prometheus.yml`, `alerts.yml`, Grafana provisioning) | Bind, Ressourcen, Datasources (redacted) |
+| 07:17–07:19 | `grep` Env-Key-Namen (`ENABLE_SEED_ADMIN`, `GRAFANA_ADMIN_PASSWORD`, `METRICS_BEARER_TOKEN`) | Risiko-Indikatoren ohne Werte |
+
+**Observability-Modus:** Ausschließlich GET/HEAD. **Keine** Alert-/Dashboard-/Datasource-/User-/Token-Änderungen. **Keine** Testalarme.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -1484,29 +1496,184 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 
 ---
 
-## 15. Prometheus
+## 15. Prometheus & Observability (Prometheus-Teil)
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| Container/Prozess | `synqdrive-prometheus` (Docker) + Host-Listener **9090** |
-| Config | `/opt/synqdrive/shared/prometheus/prometheus.yml`, `alerts.yml` |
-| Health | **Nicht** geprüft (`/-/healthy`) |
-| Scrape-Targets | **Nicht** geprüft |
+**Prüfzeitpunkt:** `2026-07-26T07:17–07:19Z` (Schritt 10, strikt read-only)
 
-**Status:** Ausstehend.
+### 15.1 Prometheus-Gesundheit
+
+| Prüfpunkt | Ist-Wert (belegt) |
+|-----------|-------------------|
+| Version | **2.54.1** (build 2024-08-27) |
+| Container | `synqdrive-prometheus`, **host network**, Uptime seit **2026-07-16T15:14Z** (~9,7 Tage) |
+| Health | `/-/healthy` → **200** (localhost) |
+| Listen | **127.0.0.1:9090** only |
+| Retention | **15d** (`storageRetention` runtime) |
+| TSDB-Pfad | `data/` im Container — **42,8 MiB** |
+| Memory | **~60 MiB** RSS (docker stats) |
+| Config reload | `reloadConfigSuccess=true`, last **2026-07-25T08:36Z** |
+| TSDB Head | **515** Series, **339** Label-Pairs, **222** Metrik-Namen |
+| Corruption | `corruptionCount=1` (historisch, kein aktiver Fehler sichtbar) |
+| Scrape global | **30s** interval, **10s** timeout, **30s** evaluation |
+
+### 15.2 Targets & Scraping
+
+| Target | Health | Scrape URL | Interval | Duration | Errors |
+|--------|--------|------------|----------|----------|--------|
+| `synqdrive-backend` / `127.0.0.1:3001` | **UP** | `/api/v1/metrics` (Bearer-Token-Datei) | **30s** | **~8,3 ms** | **keine** |
+
+| Prüfung | Anzahl | Risiko |
+|---------|--------|--------|
+| Aktive Targets | **1** | **P2** — nur Backend; kein `node_exporter`, kein Postgres/Redis/CH-Exporter |
+| Down Targets | **0** | OK |
+| Doppelte Targets | **0** | OK |
+| Veraltete/ghost Targets | **0** | OK |
+| `external_labels` | **keine** | **P3** — keine Umgebungs-/Cluster-Kennzeichnung |
+| Environment/Tenant Labels (Scrape) | **keine** | by design (Low-Cardinality-Policy) |
+
+Öffentlich: `https://app.synqdrive.eu/prometheus/*` liefert **SPA-HTML** (Nginx → Backend), **nicht** den echten Prometheus — kein direkter Prom-API-Leak.
+
+### 15.3 Rules & Alerting
+
+| Prüfpunkt | Wert |
+|-----------|------|
+| Rule Groups | **15** |
+| Alert Rules | **98** |
+| Recording Rules | **7** |
+| Alertmanager | **Keiner** konfiguriert (`activeAlertmanagers: []`) |
+| Aktuell **firing** (4) | `QueueFailedJobsHigh`, `IamSeedAdminEnabledInProduction`, `IamOrganizationWithoutAdmin`, `HfMirrorEnabledNoRecentWrites` |
+| Silenced | **Nicht prüfbar** ohne Alertmanager — keine Silence-API |
+
+**Owner/Runbook-Abdeckung:** Nur **Fleet-Health** (13 Alerts), **IAM** (10), **Evaluations** (12) und **Data-Auth** haben `owner` + `runbook_url`. Übrige ~63 Alerts: Annotations only.
+
+### 15.4 Kardinalität & Datenschutz (Metrics)
+
+| Prüfung | Ergebnis |
+|---------|----------|
+| Series gesamt | **515** — niedrig |
+| Hochkardinale Labels (`vehicle_id`, `org_id`, `email`, `vin`) | **0** Werte |
+| Verdächtige Label-Namen | `queue` (14), `signal` (16), `table` (16) — bounded |
+| PII in Labels | **Keine** erkannt |
+| Secrets in Labels | **Keine** erkannt |
+| Policy (alerts.yml Header) | „no vehicle/trip/org/customer labels“ — **eingehalten** |
 
 ---
 
-## 16. Grafana
+## 16. Grafana & Observability (Grafana-/Master-Admin-Teil)
 
-| Prüfpunkt | Baseline |
+**Prüfzeitpunkt:** `2026-07-26T07:17–07:19Z` (Schritt 10)
+
+### 16.1 Grafana-Gesundheit
+
+| Prüfpunkt | Ist-Wert |
 |-----------|----------|
-| Container | `synqdrive-grafana` (Up ~22h) |
-| Host-Port | `127.0.0.1:3000` |
-| Provisioning | `/opt/synqdrive/shared/grafana/provisioning/`, Dashboards |
-| Health | **Nicht** geprüft (`/api/health`) |
+| Version | **11.2.0** |
+| Container | `synqdrive-grafana`, **host network**, Uptime ~23h (letzter Recreate) |
+| Health | `/api/health` → database **ok** |
+| Listen | **127.0.0.1:3000** only (`GF_SERVER_HTTP_ADDR=127.0.0.1`) |
+| Memory | **~75 MiB** RSS |
+| Sign-up | `GF_USERS_ALLOW_SIGN_UP=false` |
+| Anonymous Auth | `auth.anonymous.enabled=false` (Default) |
+| Admin-Credentials | `GF_SECURITY_ADMIN_USER/PASSWORD` aus Env (**Werte nicht gelesen**) |
+| iframe | `X-Frame-Options: deny` auf Login-Response |
 
-**Status:** Ausstehend.
+### 16.2 Datasources & Dashboards
+
+| Prüfpunkt | Wert |
+|-----------|------|
+| Datasource (provisioned) | **Prometheus** → `http://127.0.0.1:9090`, `editable: false`, uid `prometheus` |
+| Dashboard-Ordner | **SynqDrive** (file provisioning) |
+| Provisionierte Dashboards (VPS) | **5** JSON-Dateien |
+
+| Dashboard | UID | Auf VPS |
+|-----------|-----|---------|
+| SynqDrive Ops | `synqdrive-ops` | **ja** |
+| SynqDrive Battery V2 | `synqdrive-battery-v2` | **ja** |
+| SynqDrive Document Intake V2 | `synqdrive-document-intake-v2` | **ja** |
+| SynqDrive Driving Intelligence V2 | `synqdrive-driving-intelligence-v2` | **ja** |
+| SynqDrive Fleet Health Service | `synqdrive-fleet-health-service` | **ja** |
+| SynqDrive — Auswertungen & Forecast | `synqdrive-evaluations` | **nein** (im Repo, **nicht** in `vps-setup-grafana.sh`) |
+
+Grafana Alerting/Contact Points: Image-Default-Ordner (`alerting/`, `notifiers/`) vorhanden, aber **keine** SynqDrive-Provisioning-Dateien unter `/opt/synqdrive/shared/grafana/provisioning/`.
+
+### 16.3 Authentifizierung & Exposition
+
+| Endpoint | localhost | Öffentlich (`app.synqdrive.eu`) |
+|----------|-----------|----------------------------------|
+| Grafana UI | **200** login | `/grafana/` → **200 SPA** (kein Grafana-Proxy) |
+| Grafana API `/api/org` | **401** ohne Auth | — |
+| Grafana API `/api/datasources` | **401** | — |
+| Prometheus UI/API | localhost **200** | `/prometheus/*` → **SPA** |
+| `/api/v1/metrics` | **401** ohne Bearer | **401** |
+| Nginx `/metrics` | — | **404** (blockiert) |
+
+**Default-Credentials-Risiko:** Setup-Skript generiert Passwort wenn fehlend — Production nutzt `GRAFANA_ADMIN_PASSWORD` in `backend.env` (Key vorhanden, Wert nicht geprüft). Kein anonymer Zugriff.
+
+### 16.4 Master Admin & Observability-Integration
+
+| Prüfpunkt | Ergebnis |
+|-----------|----------|
+| `GET /api/v1/admin/platform-health` | **401** unauth — live aggregiert (Readiness, Queues, DIMO, Alerts) |
+| `PlatformHealthView` | Pollt API **alle 60s** — **kein** statischer Cache |
+| Grafana-Einbindung | **Kein iframe** — nur Text-Links + SSH-Tunnel-Hinweis (`127.0.0.1:3000/9090`) |
+| Grafana als einzige Ops-Quelle? | **Nein** — Master Admin hat eigene Queue/Poll/Readiness-Aggregation; Grafana für Verlauf/Deep-Dive |
+| Alerting erreicht Empfänger? | **Nein** — kein Alertmanager, keine Grafana-Contact-Points provisioniert |
+
+---
+
+## 16.5 Observability-Abdeckungsmatrix
+
+Bewertung: **Signal** = Prometheus-Metrik vorhanden; **Dashboard** = Grafana-Panel; **Alert** = Prometheus-Rule; **Runbook** = dokumentiert; **Lücke** = fehlend oder unvollständig.
+
+| Risiko/Service | Metric | Dashboard | Alert | Runbook | Lücke |
+|----------------|--------|-----------|-------|---------|-------|
+| API Availability | **ja** (`up`) | Ops stat | **ja** | teilw. | — |
+| API Error Rate | **teilw.** (nur Evaluations-API) | Evaluations† | **ja** (Evaluations) | **ja** | **Global HTTP fehlt** |
+| API Latency | **teilw.** (Evaluations, Fleet-Health) | Evaluations/FHS† | **ja** (Evaluations/FHS) | **ja** | **Global HTTP fehlt** |
+| PostgreSQL | **indirekt** (App-Gauges) | Battery (row count) | **teilw.** (slow DB eval) | teilw. | **Kein postgres_exporter** |
+| Redis | **indirekt** (Evaluations errors) | — | **ja** (Evaluations) | **ja** | **Kein redis_exporter** |
+| BullMQ / Queue Lag | **ja** | Ops, FHS, Battery | **ja** | teilw. | Owner fehlt auf Worker-Alerts |
+| Worker Heartbeats | **ja** (`synqdrive_worker_runtime_enabled`) | — | **nein** | **nein** | **Kein Alert** |
+| Failed Jobs | **ja** | Ops, FHS | **ja** (firing) | teilw. | **28 battery.v2 fails** |
+| ClickHouse | **ja** | Ops, DI, Battery | **ja** (4 Rules) | teilw. | HF-mirror info firing |
+| DIMO Polling | **ja** | Ops, Battery | **ja** | teilw. | Webhook-spezifisch limitiert |
+| DIMO Webhooks | **teilw.** (Connectivity) | — | **ja** (Connectivity) | teilw. | Kein dediziertes Dashboard |
+| Stripe/Payments | **teilw.** (Connect) | — | **ja** (5 Rules) | teilw. | Keine `stripe_*` Metriken |
+| E-Mail-Versand | **teilw.** (`payment_email_dead_letter`) | — | **ja** | teilw. | Kein Resend-Delivery-Metric |
+| Notification Engine | **ja** | Ops | **ja** (6 Rules) | teilw. | — |
+| Voice AI | **ja** | Ops | **ja** (6 Rules) | teilw. | — |
+| WhatsApp | **nein** | **nein** | **nein** | **nein** | **Blinder Fleck** |
+| Host Disk Usage | **nein** | — | **nein** | **nein** | **Kein node_exporter** |
+| Host Memory/CPU | **teilw.** (`process_*` Node.js) | Evaluations† | **nein** | **nein** | **Nur Prozess, nicht Host** |
+| TLS Expiry | **nein** | **nein** | **nein** | **nein** | **Blinder Fleck** |
+| Backup Age | **nein** | **nein** | **nein** | **nein** | **Blinder Fleck** |
+| Prisma Migration State | **nein** | **nein** | **nein** | **nein** | Nur CH-Migration-Metric |
+| IAM / Tenant | **ja** | — | **ja** (firing) | **ja** | `ENABLE_SEED_ADMIN` Flag gesetzt |
+| Alert Delivery | N/A | N/A | 98 Rules | teilw. | **Kein Alertmanager** |
+
+† Evaluations-Dashboard **nicht** auf VPS provisioniert.
+
+### 16.6 Monitoring-Zusammenfassung
+
+| Kategorie | Bewertung |
+|-----------|-----------|
+| **Prometheus-Ingest** | **OK** — 1/1 Target UP, niedrige Kardinalität |
+| **Alert-Regeln** | **Umfangreich** (98) aber **nicht zustellbar** ohne Alertmanager |
+| **Grafana-Dashboards** | **Gut** für Kern-Domänen; **1 Dashboard fehlt** auf VPS |
+| **Master Admin** | **Live-Aggregation** via API — ergänzt, ersetzt nicht Grafana |
+| **Blinde Flecken** | Host-Infra, TLS, Backups, WhatsApp, globale HTTP-SLOs |
+| **Datenschutz Metrics** | **OK** — keine PII/High-Cardinality-Labels |
+| **Kritische Findings** | Kein Alertmanager; `ENABLE_SEED_ADMIN=true` in Prod-Env; 4 dauerhaft firing |
+
+### 16.7 Read-Only-Bestätigung
+
+| Aktion | Ausgeführt? |
+|--------|-------------|
+| Prometheus/Grafana GET-APIs | **JA** |
+| Alerts/Dashboards/Datasources/Users geändert | **NEIN** |
+| Testalarme gesendet | **NEIN** |
+
+**Status:** Prometheus, Grafana & Observability **abgeschlossen** (Schritt 10).
 
 ---
 
@@ -1653,6 +1820,7 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 > **Schritt 7 (PostgreSQL):** 2× P2 neu, 4× P3 neu.
 > **Schritt 8 (Redis/BullMQ):** 1× P1 neu, 3× P2 neu, 2× P3 neu.
 > **Schritt 9 (ClickHouse/Telemetrie):** 1× P1 neu, 5× P2 neu, 1× P3 neu.
+> **Schritt 10 (Prometheus/Grafana/Observability):** 1× P1 neu, 4× P2 neu, 2× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -1728,6 +1896,16 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 | **MA-CH-OBS-002** | **Beobachtung** | Topologie | Single-Node, keine Replikation — SPOF für Analytics | Erwartet auf Single-VPS |
 | **MA-CH-OBS-003** | **Beobachtung** | Retention | Alle TTLs **konform** mit Migrationen 002/003 | Positiv |
 | **MA-CH-OBS-004** | **Beobachtung** | Pipeline | `dimo.snapshot.poll` completed=0 — BullMQ-Trimming; Queue dennoch ohne Backlog | Positiv |
+| **MA-OBS-P1-001** | **P1** | Alerting | **Kein Alertmanager** — **98** Alert Rules + **4** firing, aber **0** `activeAlertmanagers`; Alerts erreichen **keinen** Empfänger | Alertmanager deployen + Routing (PagerDuty/Slack/E-Mail) |
+| **MA-OBS-P2-001** | **P2** | Host Monitoring | **Kein** `node_exporter` / Host-Disk/Mem/CPU/TLS-Metriken — nur Node.js `process_*` | node_exporter oder Host-Agent + Scrape-Config |
+| **MA-OBS-P2-002** | **P2** | Grafana | `synqdrive-evaluations.json` im Repo, aber **nicht** auf VPS provisioniert (`vps-setup-grafana.sh` kopiert nur 5 Dashboards) | Setup-Skript erweitern + Refresh |
+| **MA-OBS-P2-003** | **P2** | Alerts | **4** Alerts dauerhaft **firing** ohne Zustellung (`QueueFailedJobsHigh`, `IamSeedAdminEnabledInProduction`, `IamOrganizationWithoutAdmin`, `HfMirrorEnabledNoRecentWrites`) | Alertmanager + Remediation der Root Causes |
+| **MA-OBS-P2-004** | **P2** | IAM/Config | `ENABLE_SEED_ADMIN` in Production-Env gesetzt (`iam_seed_admin_enabled=1`) — Endpoint laut Schritt 6 dennoch **403** ohne Token | Flag in Prod auf `false` setzen |
+| **MA-OBS-P3-001** | **P3** | Prometheus | TSDB `corruptionCount=1` (historisch) | WAL/TSDB-Health beobachten |
+| **MA-OBS-P3-002** | **P3** | Prometheus | Keine `external_labels` / Environment-Labels auf Scrape-Config | Optional für Multi-Env |
+| **MA-OBS-OBS-001** | **Beobachtung** | Exposition | Öffentliche `/grafana/` und `/prometheus/` URLs liefern **SPA-HTML**, nicht echte Dienste | Positiv (kein Grafana/Prom-Leak) |
+| **MA-OBS-OBS-002** | **Beobachtung** | Cardinality | **515** Series, **222** Metriken — Low-Cardinality-Policy eingehalten | Positiv |
+| **MA-OBS-OBS-003** | **Beobachtung** | Master Admin | `PlatformHealthView` pollt live API (60s), kein iframe — Grafana nur per SSH-Tunnel | Design korrekt |
 
 ---
 
@@ -1743,6 +1921,7 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 - [x] **PostgreSQL (read-only)** — Metadaten, Migrationen, Integrität, Tenant/Billing-Stichproben
 - [x] **Redis & BullMQ (read-only)** — INFO/SCAN, Queue-Counts, Failed-Jobs, Worker-Host
 - [x] **ClickHouse & Telemetrie-Pipeline (read-only)** — Schema/TTL/Parts, Ingestion-Freshness, PG↔CH-Cross-Check, Pipeline-Stufen
+- [x] **Prometheus/Grafana/Observability (read-only)** — Targets, Rules, firing Alerts, Dashboards, Master-Admin-Integration
 
 ### Priorisierte Folgeschritte (alle read-only)
 
@@ -1750,8 +1929,8 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 2. ~~**PostgreSQL SELECT-Counts / Tenant-Stichproben**~~ — **erledigt** (Schritt 7)
 3. ~~**BullMQ Queue Health**~~ — **erledigt** (Schritt 8)
 4. ~~**ClickHouse**~~ — **erledigt** (Schritt 9)
-5. **Prometheus/Grafana** — Scrape-Targets, Dashboard-Versionen (read-only)
-5. **DIMO** — Env + Queue + MCP-Abgleich
+5. ~~**Prometheus/Grafana**~~ — **erledigt** (Schritt 10)
+6. **DIMO** — Env + Queue + MCP-Abgleich
 6. **Stripe/Billing** — Env-Keys, Webhook-Route HEAD, Master-Billing-API unauth
 7. **Voice AI / Twilio / Resend** — Config vs. Architektur-ADR
 8. **Backup-Inventar** — `ls -lt shared/backups/`, Alter der Dumps
@@ -1775,9 +1954,10 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 | **PostgreSQL** | **OK mit P2/P3** — Schema aktuell; 3 Orgs ohne Admin/Subscription |
 | **Redis/BullMQ** | **WARN** — kein Backlog; **28** battery.v2 fails; Scheduler JobId-Fehler |
 | **ClickHouse/Telemetrie** | **WARN** — gesund & klein; **94,7 %** Snapshot-Duplikate; keine `org_id` auf Kern-Spiegel; Signal-Stagnation ~10 h |
-| Audit vollständig | **NEIN** — Integrationen/authentifizierte Smokes/Prom-Graf ausstehend |
+| **Prometheus/Grafana** | **WARN** — Scrape OK; **98** Alerts ohne Alertmanager; **4** firing; Evaluations-Dashboard fehlt auf VPS |
+| Audit vollständig | **NEIN** — DIMO/Integrationen/authentifizierte Smokes/Backups ausstehend |
 | Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Route-Matrix (Code); keine authentifizierten Tests |
-| Gesamturteil | **PENDING** — Kein **P0**; **3× P1** (Swagger, CH-Mounts, CH-Duplikate) + mehrere **P2** offen |
+| Gesamturteil | **PENDING** — Kein **P0**; **4× P1** (Swagger, CH-Mounts, CH-Duplikate, kein Alertmanager) + mehrere **P2** offen |
 
 ### Schritt 2 — VPS-Baseline-Kurzfazit
 
@@ -1821,6 +2001,7 @@ Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = 
 | 2026-07-26T07:10–07:12 | Schritt 7: PostgreSQL (`psql` read-only, `_prisma_migrations`, Integritäts-SELECTs) | **NEIN** |
 | 2026-07-26T07:12–07:14 | Schritt 8: Redis/BullMQ (`redis-cli` INFO/SCAN/LLEN/ZCARD, Failed-Job-Stichproben) | **NEIN** |
 | 2026-07-26T07:15–07:18 | Schritt 9: ClickHouse (`clickhouse-client` SELECT only, PG↔CH Cross-Check, Pipeline-Queues) | **NEIN** |
+| 2026-07-26T07:17–07:19 | Schritt 10: Prometheus/Grafana (API GET, Config-Read, Exposure-Probes, keine Testalarme) | **NEIN** |
 
 ---
 
