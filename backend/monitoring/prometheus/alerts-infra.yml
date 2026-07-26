@@ -1,0 +1,217 @@
+# SynqDrive infrastructure & platform alert rules (Phase 2F.2)
+#
+# Requires scrape targets:
+#   - synqdrive-backend (app metrics incl. synqdrive_dependency_up)
+#   - node (node_exporter host metrics + textfile backup gauge)
+#   - blackbox-ssl (TLS probe via blackbox_exporter)
+#
+# Low-cardinality labels only. `component` is used by Alertmanager routing.
+
+groups:
+  - name: synqdrive_platform_critical
+    rules:
+      - alert: PostgreSQLUnavailable
+        expr: synqdrive_dependency_up{dependency="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: postgresql
+        annotations:
+          summary: PostgreSQL dependency check failed
+          description: Backend readiness probe cannot execute SELECT 1 against PostgreSQL.
+          runbook_url: docs/remediation/alertmanager.md#postgresql
+
+      - alert: RedisUnavailable
+        expr: synqdrive_dependency_up{dependency="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: Redis dependency check failed
+          description: Backend cannot PING Redis — BullMQ and sessions may be impaired.
+          runbook_url: docs/remediation/alertmanager.md#redis
+
+      - alert: ClickHouseUnavailable
+        expr: |
+          synqdrive_clickhouse_configured == 1
+          and synqdrive_dependency_up{dependency="clickhouse"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: clickhouse
+        annotations:
+          summary: ClickHouse configured but unavailable
+          description: Analytics mirror degraded — operational PG path remains canonical.
+          runbook_url: docs/remediation/alertmanager.md#clickhouse
+
+      - alert: BullMQWorkersDisabled
+        expr: synqdrive_worker_runtime_enabled == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: bullmq
+        annotations:
+          summary: BullMQ workers disabled at bootstrap
+          description: WORKERS_ENABLED=false — queues will not drain.
+          runbook_url: docs/remediation/alertmanager.md#bullmq
+
+      - alert: BullMQQueueBacklogCritical
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, queue) (rate(synqdrive_queue_lag_seconds_bucket[10m]))
+          ) > 900
+        for: 15m
+        labels:
+          severity: critical
+          component: bullmq
+        annotations:
+          summary: BullMQ queue backlog critical (P95 lag > 15m)
+          description: At least one monitored queue has P95 lag exceeding 15 minutes.
+          runbook_url: docs/remediation/alertmanager.md#queue-stau
+
+      - alert: BullMQFailedJobsCritical
+        expr: sum(synqdrive_queue_failed_jobs) > 25
+        for: 15m
+        labels:
+          severity: critical
+          component: bullmq
+        annotations:
+          summary: BullMQ failed jobs exceed critical threshold
+          description: Aggregate failed jobs across monitored queues is above 25.
+          runbook_url: docs/remediation/alertmanager.md#bullmq
+
+      - alert: DimoIntegrationDegraded
+        expr: |
+          (
+            rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m])
+            /
+            clamp_min(
+              rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m])
+              + rate(synqdrive_dimo_snapshot_poll_total{result="failure"}[30m]),
+              0.001
+            )
+          ) < 0.8
+        for: 20m
+        labels:
+          severity: warning
+          component: dimo
+        annotations:
+          summary: DIMO snapshot poll success rate below 80%
+          description: Check DIMO API connectivity, auth tokens, and snapshot worker health.
+          runbook_url: docs/remediation/alertmanager.md#dimo
+
+      - alert: StripeConnectWebhookBacklogCritical
+        expr: sum(synqdrive_payment_connect_webhook_backlog{status=~"RECEIVED|FAILED"}) > 50
+        for: 15m
+        labels:
+          severity: critical
+          component: stripe
+        annotations:
+          summary: Stripe Connect webhook backlog critical
+          description: More than 50 Connect webhook events are pending processing.
+          runbook_url: docs/remediation/alertmanager.md#stripe-webhooks
+
+  - name: synqdrive_host
+    rules:
+      - alert: HostDiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|overlay",mountpoint="/"}
+            /
+            node_filesystem_size_bytes{job="node",fstype!~"tmpfs|overlay",mountpoint="/"}
+          ) < 0.15
+        for: 10m
+        labels:
+          severity: critical
+          component: host
+        annotations:
+          summary: VPS root filesystem below 15% free
+          description: Disk usage critical on {{ $labels.instance }} mount {{ $labels.mountpoint }}.
+          runbook_url: docs/remediation/alertmanager.md#disk-space
+
+      - alert: HostDiskSpaceWarning
+        expr: |
+          (
+            node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|overlay",mountpoint="/"}
+            /
+            node_filesystem_size_bytes{job="node",fstype!~"tmpfs|overlay",mountpoint="/"}
+          ) < 0.25
+        for: 15m
+        labels:
+          severity: warning
+          component: host
+        annotations:
+          summary: VPS root filesystem below 25% free
+          description: Plan cleanup or volume expansion before deploy abort threshold (10%).
+
+      - alert: HostMemoryPressure
+        expr: |
+          (
+            1 - (node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"})
+          ) > 0.90
+        for: 10m
+        labels:
+          severity: critical
+          component: host
+        annotations:
+          summary: Host memory usage above 90%
+          description: Available memory is critically low on {{ $labels.instance }}.
+
+      - alert: HostCpuHigh
+        expr: |
+          100 - (
+            avg by (instance) (rate(node_cpu_seconds_total{job="node",mode="idle"}[5m])) * 100
+          ) > 90
+        for: 15m
+        labels:
+          severity: warning
+          component: host
+        annotations:
+          summary: Host CPU usage above 90%
+          description: Sustained high CPU on {{ $labels.instance }} — check PM2, workers, ClickHouse.
+
+      - alert: TlsCertificateExpiringSoon
+        expr: |
+          (probe_ssl_earliest_cert_expiry{job="blackbox-ssl"} - time()) < 86400 * 14
+        for: 1h
+        labels:
+          severity: warning
+          component: ssl
+        annotations:
+          summary: TLS certificate expires within 14 days
+          description: Certificate for {{ $labels.instance }} expires at {{ $value | humanizeTimestamp }}.
+
+      - alert: TlsCertificateExpiringCritical
+        expr: |
+          (probe_ssl_earliest_cert_expiry{job="blackbox-ssl"} - time()) < 86400 * 3
+        for: 30m
+        labels:
+          severity: critical
+          component: ssl
+        annotations:
+          summary: TLS certificate expires within 3 days
+          description: Renew certificate immediately for {{ $labels.instance }}.
+
+      - alert: DatabaseBackupStale
+        expr: |
+          (time() - synqdrive_backup_last_success_timestamp{job="node"}) > 86400 * 2
+        for: 1h
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: Database backup older than 48 hours
+          description: Last successful pg_dump not recorded within 48h — check backup cron and deploy script.
+          runbook_url: docs/remediation/alertmanager.md#backup
+
+      - alert: DatabaseBackupMissing
+        expr: absent(synqdrive_backup_last_success_timestamp{job="node"})
+        for: 6h
+        labels:
+          severity: warning
+          component: backup
+        annotations:
+          summary: Database backup metric not present
+          description: node_exporter textfile collector has no backup timestamp — run vps-backup-status-textfile.sh after pg_dump.

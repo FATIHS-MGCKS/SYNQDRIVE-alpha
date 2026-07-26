@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Refresh SynqDrive Prometheus + Grafana configs on the production VPS without full container recreate.
+# Refresh SynqDrive Prometheus + Grafana + Alertmanager configs on the production VPS.
 #
-# - Copies prometheus.yml + alerts.yml from the current release tree
+# - Copies prometheus.yml + alerts.yml + alerts-infra.yml from the current release tree
 # - POST /-/reload when Prometheus is already running (--web.enable-lifecycle)
-# - Copies Grafana provisioning + dashboards (incl. fleet-health-service)
-# - Restarts Grafana when the container exists (dashboard file mounts are read-only)
+# - Copies Grafana provisioning + dashboards
+# - Syncs Alertmanager template + re-renders config when alertmanager.env exists
+# - Restarts Grafana / Alertmanager when containers exist
 #
 # Bootstrap (first install) when containers are missing:
 #   MONITORING_AUTO_BOOTSTRAP=1 bash vps-refresh-monitoring.sh
@@ -18,13 +19,17 @@ SYNQDRIVE_ROOT="${SYNQDRIVE_ROOT:-/opt/synqdrive/current}"
 BACKEND_ENV="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 PROM_DIR="${PROM_DIR:-/opt/synqdrive/shared/prometheus}"
 GRAFANA_DIR="${GRAFANA_DIR:-/opt/synqdrive/shared/grafana}"
+AM_DIR="${AM_DIR:-/opt/synqdrive/shared/alertmanager}"
 PROM_CONTAINER="${PROM_CONTAINER:-synqdrive-prometheus}"
 GRAFANA_CONTAINER="${GRAFANA_CONTAINER:-synqdrive-grafana}"
+AM_CONTAINER="${AM_CONTAINER:-synqdrive-alertmanager}"
 BACKEND_PORT="${BACKEND_PORT:-3001}"
 AUTO_BOOTSTRAP="${MONITORING_AUTO_BOOTSTRAP:-0}"
 
 SRC_PROM="${SYNQDRIVE_ROOT}/backend/monitoring/prometheus"
 SRC_GRAFANA="${SYNQDRIVE_ROOT}/backend/monitoring/grafana"
+SRC_AM="${SYNQDRIVE_ROOT}/backend/monitoring/alertmanager"
+SRC_BB="${SYNQDRIVE_ROOT}/backend/monitoring/blackbox"
 
 docker_container_running() {
   local name="$1"
@@ -54,6 +59,7 @@ refresh_prometheus() {
   chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
 
   cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
+  cp "$SRC_PROM/alerts-infra.yml" "$PROM_DIR/alerts-infra.yml"
   cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"
   if [[ "$BACKEND_PORT" != "3001" ]]; then
     sed -i "s/127.0.0.1:3001/127.0.0.1:${BACKEND_PORT}/" "$PROM_DIR/prometheus.yml"
@@ -79,12 +85,77 @@ refresh_prometheus() {
   echo "Prometheus: config synced to $PROM_DIR (container not running; set MONITORING_AUTO_BOOTSTRAP=1 to install)"
 }
 
+refresh_alertmanager() {
+  if [[ ! -f "$SRC_AM/alertmanager.yml.example" ]]; then
+    echo "WARN: Alertmanager template missing — skip" >&2
+    return 0
+  fi
+
+  mkdir -p "$AM_DIR/templates"
+  cp "$SRC_AM/alertmanager.yml.example" "$AM_DIR/alertmanager.yml.template"
+  cp "$SRC_AM/templates/"*.tmpl "$AM_DIR/templates/" 2>/dev/null || true
+
+  if [[ -f "$AM_DIR/alertmanager.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$AM_DIR/alertmanager.env"
+    set +a
+    export ALERTMANAGER_SLACK_WEBHOOK_URL="${ALERTMANAGER_SLACK_WEBHOOK_URL:-}"
+    export ALERTMANAGER_SLACK_CHANNEL_WARNING="${ALERTMANAGER_SLACK_CHANNEL_WARNING:-#synqdrive-alerts}"
+    export ALERTMANAGER_SLACK_CHANNEL_CRITICAL="${ALERTMANAGER_SLACK_CHANNEL_CRITICAL:-#synqdrive-critical}"
+    export ALERTMANAGER_SMTP_HOST="${ALERTMANAGER_SMTP_HOST:-localhost}"
+    export ALERTMANAGER_SMTP_PORT="${ALERTMANAGER_SMTP_PORT:-587}"
+    export ALERTMANAGER_SMTP_FROM="${ALERTMANAGER_SMTP_FROM:-alerts@synqdrive.eu}"
+    export ALERTMANAGER_SMTP_USER="${ALERTMANAGER_SMTP_USER:-}"
+    export ALERTMANAGER_SMTP_PASSWORD="${ALERTMANAGER_SMTP_PASSWORD:-}"
+    export ALERTMANAGER_EMAIL_WARNING="${ALERTMANAGER_EMAIL_WARNING:-}"
+    export ALERTMANAGER_EMAIL_CRITICAL="${ALERTMANAGER_EMAIL_CRITICAL:-}"
+    export ALERTMANAGER_EMAIL_ESCALATION="${ALERTMANAGER_EMAIL_ESCALATION:-}"
+    envsubst < "$AM_DIR/alertmanager.yml.template" > "$AM_DIR/alertmanager.yml"
+    chmod 600 "$AM_DIR/alertmanager.yml"
+  fi
+
+  if docker_container_running "$AM_CONTAINER"; then
+    echo "==> Alertmanager: config synced, restarting $AM_CONTAINER"
+    docker restart "$AM_CONTAINER" >/dev/null
+    sleep 3
+    if curl -sf "http://127.0.0.1:9093/-/healthy" >/dev/null; then
+      echo "Alertmanager health: OK"
+    else
+      echo "WARN: Alertmanager health check failed after restart" >&2
+    fi
+    return 0
+  fi
+
+  if [[ "$AUTO_BOOTSTRAP" == "1" && -f "$AM_DIR/alertmanager.env" ]]; then
+    echo "==> Alertmanager: container missing — bootstrap via vps-setup-alertmanager.sh"
+    bash "$SCRIPT_DIR/vps-setup-alertmanager.sh"
+    return 0
+  fi
+
+  echo "Alertmanager: templates synced to $AM_DIR (container not running or alertmanager.env missing)"
+}
+
+refresh_exporters() {
+  if [[ "$AUTO_BOOTSTRAP" != "1" ]]; then
+    return 0
+  fi
+  if [[ -f "$SCRIPT_DIR/vps-setup-node-exporter.sh" ]]; then
+    bash "$SCRIPT_DIR/vps-setup-node-exporter.sh" || true
+  fi
+  if [[ -f "$SCRIPT_DIR/vps-setup-blackbox-exporter.sh" && -f "$SRC_BB/blackbox.yml" ]]; then
+    bash "$SCRIPT_DIR/vps-setup-blackbox-exporter.sh" || true
+  fi
+}
+
 copy_grafana_dashboards() {
   cp "$SRC_GRAFANA/dashboards/synqdrive-ops.json" "$GRAFANA_DIR/dashboards/"
   cp "$SRC_GRAFANA/dashboards/synqdrive-battery-v2.json" "$GRAFANA_DIR/dashboards/"
   cp "$SRC_GRAFANA/dashboards/synqdrive-driving-intelligence-v2.json" "$GRAFANA_DIR/dashboards/"
   cp "$SRC_GRAFANA/dashboards/synqdrive-document-intake-v2.json" "$GRAFANA_DIR/dashboards/"
   cp "$SRC_GRAFANA/dashboards/synqdrive-fleet-health-service.json" "$GRAFANA_DIR/dashboards/"
+  cp "$SRC_GRAFANA/dashboards/synqdrive-evaluations.json" "$GRAFANA_DIR/dashboards/"
+  cp "$SRC_GRAFANA/dashboards/notification-engine-ops.json" "$GRAFANA_DIR/dashboards/"
 }
 
 refresh_grafana() {
@@ -121,5 +192,7 @@ refresh_grafana() {
 
 echo "==> SynqDrive monitoring refresh (release: $SYNQDRIVE_ROOT)"
 refresh_prometheus
+refresh_alertmanager
+refresh_exporters
 refresh_grafana
 echo "==> Monitoring refresh complete"

@@ -1,0 +1,41 @@
+{{ define "synqdrive.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+{{- end }}
+
+{{ define "synqdrive.slack.text" -}}
+{{ range .Alerts }}
+*{{ .Labels.alertname }}* ({{ .Labels.severity }})
+{{ if .Labels.component }}Component: `{{ .Labels.component }}`{{ end }}
+{{ .Annotations.summary }}
+{{ .Annotations.description }}
+{{ if .Annotations.runbook_url }}Runbook: {{ .Annotations.runbook_url }}{{ end }}
+---
+{{ end }}
+{{- end }}
+
+{{ define "synqdrive.email.html" -}}
+<!DOCTYPE html>
+<html>
+<body>
+  <h2>{{ template "synqdrive.title" . }}</h2>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <tr>
+      <th>Alert</th>
+      <th>Severity</th>
+      <th>Component</th>
+      <th>Summary</th>
+      <th>Started</th>
+    </tr>
+    {{ range .Alerts }}
+    <tr>
+      <td>{{ .Labels.alertname }}</td>
+      <td>{{ .Labels.severity }}</td>
+      <td>{{ .Labels.component }}</td>
+      <td>{{ .Annotations.summary }}<br/><small>{{ .Annotations.description }}</small></td>
+      <td>{{ .StartsAt }}</td>
+    </tr>
+    {{ end }}
+  </table>
+</body>
+</html>
+{{- end }}

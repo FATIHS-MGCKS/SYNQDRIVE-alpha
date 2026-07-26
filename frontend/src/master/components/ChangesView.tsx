@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-alertmanager-2f2-2026-07-26',
+    version: '4.9.899',
+    title: 'V4.9.899 — Master Admin 2F.2: Alertmanager production deployment',
+    summary: [
+      'Alertmanager: severity routing, grouping, deduplication, maintenance windows, retry, escalation.',
+      'alerts-infra.yml: PG, Redis, CH, BullMQ, DIMO, Stripe, backup, disk, RAM, CPU, SSL, queue alerts.',
+      'VPS scripts: setup-alertmanager, node-exporter, blackbox-exporter, backup textfile.',
+      'synqdrive_dependency_up gauge; Prometheus → Alertmanager on :9093.',
+    ],
+    reason:
+      'Phase 2F.2 implements Alertmanager — critical gap from 2F.1 observability audit.',
+    previousBehavior:
+      '100 Prometheus alert rules fired with no routing, paging, or escalation.',
+    details:
+      'docs/remediation/alertmanager.md · architecture/MASTER_ADMIN_ALERTMANAGER_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T02:00:00.000Z',
+  },
+  {
     id: 'master-admin-observability-architecture-2f1-2026-07-26',
     version: '4.9.898',
     title: 'V4.9.898 — Master Admin 2F.1: Observability architecture audit',

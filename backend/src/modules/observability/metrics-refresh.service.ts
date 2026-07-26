@@ -4,7 +4,9 @@ import { Cron } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
 import { VoiceProviderWebhookProcessingStatus } from '@prisma/client';
 import { ClickHouseAnalyticsService } from '@modules/clickhouse/clickhouse-analytics.service';
+import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { RedisService } from '@shared/redis/redis.service';
 import { VoiceMetricsService } from './voice-metrics.service';
 import { QUEUE_NAMES } from '../../workers/queues/queue-names';
 import { RuntimeStatusRegistry } from './runtime-status.registry';
@@ -51,7 +53,9 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly metrics: TripMetricsService,
     private readonly config: ConfigService,
+    private readonly redis: RedisService,
     @Optional() private readonly chAnalytics?: ClickHouseAnalyticsService,
+    @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
@@ -79,6 +83,32 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await Promise.all(this.queues.map((q) => q.close().catch(() => undefined)));
     this.queues = [];
+  }
+
+  @Cron('*/30 * * * * *')
+  async refreshDependencyUpGauges(): Promise<void> {
+    if (this.prisma) {
+      try {
+        await this.prisma.$queryRaw`SELECT 1`;
+        this.metrics.dependencyUp.set({ dependency: 'postgres' }, 1);
+      } catch {
+        this.metrics.dependencyUp.set({ dependency: 'postgres' }, 0);
+      }
+    }
+
+    try {
+      const pong = await this.redis.ping();
+      this.metrics.dependencyUp.set({ dependency: 'redis' }, pong === 'PONG' ? 1 : 0);
+    } catch {
+      this.metrics.dependencyUp.set({ dependency: 'redis' }, 0);
+    }
+
+    if (this.clickHouse) {
+      const status = this.clickHouse.getStatus();
+      const depOk =
+        status.status === 'available' || status.status === 'disabled' ? 1 : 0;
+      this.metrics.dependencyUp.set({ dependency: 'clickhouse' }, depOk);
+    }
   }
 
   @Cron('*/60 * * * * *')

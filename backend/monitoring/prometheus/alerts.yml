@@ -6,14 +6,16 @@
 groups:
   - name: synqdrive_availability
     rules:
-      - alert: SynqDriveMetricsScrapeDown
+      - alert: SynqDriveBackendDown
         expr: up{job="synqdrive-backend"} == 0
         for: 2m
         labels:
           severity: critical
+          component: backend
         annotations:
-          summary: SynqDrive backend metrics scrape is down
+          summary: SynqDrive backend is down
           description: Prometheus cannot scrape GET /api/v1/metrics for job synqdrive-backend.
+          runbook_url: docs/remediation/alertmanager.md#backend-down
 
   - name: synqdrive_clickhouse
     rules:
