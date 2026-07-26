@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-offsite-backups-2c5-2026-07-26',
+    version: '4.9.894',
+    title: 'V4.9.894 — Master Admin 2C.5: Offsite backup orchestration',
+    summary: [
+      'Central encrypted offsite sync for PostgreSQL, ClickHouse, Redis, env snapshots.',
+      'Versioning via immutable filenames + manifest.jsonl; per-tier retention + min generations.',
+      'SHA-256 integrity + weekly remote verify; Resend alerts on failure.',
+      'docs/remediation/offsite-backups.md',
+    ],
+    reason:
+      'Production backups must not live only on the VPS — offsite copy with encryption, retention, and alerting required.',
+    previousBehavior:
+      'Tier backups local-only or ad-hoc rclone; no unified policy, verify, or failure notifications.',
+    details:
+      'vps-sync-offsite-backups.sh, offsite-backup-lib.sh, env snapshot, verify + cron installers',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T20:00:00.000Z',
+  },
+  {
     id: 'master-admin-redis-backup-2c4-2026-07-26',
     version: '4.9.893',
     title: 'V4.9.893 — Master Admin 2C.4: Redis & BullMQ backup strategy',

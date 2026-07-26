@@ -106,7 +106,18 @@ redis_backup_write_meta_json "${ARCHIVE_PATH}" "${CHECKSUM}"
 redis_backup_append_manifest "${ARCHIVE_PATH}"
 redis_backup_write_last_success "${ARCHIVE_PATH}" "${CHECKSUM}"
 
-redis_backup_copy_offsite "${ARCHIVE_PATH}"
+# Offsite: prefer central orchestrator (Phase 2C.5)
+if [[ -f /opt/synqdrive/shared/offsite-backup.env ]]; then
+  # shellcheck disable=SC1090
+  source /opt/synqdrive/shared/offsite-backup.env
+  if [[ "${OFFSITE_CENTRAL_SYNC:-true}" == "true" ]]; then
+    redis_backup_log "offsite copy deferred to vps-sync-offsite-backups.sh"
+  else
+    redis_backup_copy_offsite "${ARCHIVE_PATH}"
+  fi
+else
+  redis_backup_copy_offsite "${ARCHIVE_PATH}"
+fi
 redis_backup_rotate_local
 
 redis_backup_log "backup SUCCESS: ${ARCHIVE_PATH}"
