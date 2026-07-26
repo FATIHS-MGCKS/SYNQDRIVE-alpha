@@ -58,6 +58,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
 | `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only |
 | `vps-clickhouse-storage-topology-audit.sh` | Read-only audit of ClickHouse Docker volumes/bind mounts (stale paths, orphans, backup consistency) | read-only — exit 1 on P0 drift; run before 2D.3 mount migration |
+| `vps-clickhouse-data-integrity-audit.sh` | Read-only per-table integrity audit (CHECK TABLE, parts, TTL drift, ReplacingMergeTree dupes) | read-only — exit 1 on P0; quarterly or pre-remediation |
 
 ### Partitioning (P2)
 

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-data-integrity-2d3-2026-07-26',
+    version: '4.9.884',
+    title: 'V4.9.884 — Master Admin 2D.3: ClickHouse data integrity',
+    summary: [
+      'Per-table integrity register for 8 synqdrive analytics tables (parts, TTL, duplicates, partitions).',
+      'Read-only audit script: CHECK TABLE, detached parts, TTL drift, ReplacingMergeTree dupes.',
+      'Severity model P0–P3; remediation deferred until backup validation + stable mounts.',
+      'Live production metrics pending VPS audit output.',
+    ],
+    reason:
+      'Phase 2D requires documented data integrity baseline before any CH repair or OPTIMIZE.',
+    previousBehavior:
+      'Storage stats via readiness only; no consolidated integrity audit per table.',
+    details:
+      'docs/remediation/clickhouse-data-integrity.md · architecture/MASTER_ADMIN_CLICKHOUSE_DATA_INTEGRITY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:00:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-storage-topology-2d2-2026-07-26',
     version: '4.9.883',
     title: 'V4.9.883 — Master Admin 2D.2: ClickHouse storage topology + migration plan',
