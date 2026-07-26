@@ -35,9 +35,12 @@ if [[ ! -f "$SRC_PROM/prometheus.vps.yml" ]]; then
 fi
 
 mkdir -p "$PROM_DIR/secrets"
+chown root:nogroup "$PROM_DIR/secrets"
+chmod 750 "$PROM_DIR/secrets"
 printf '%s' "$TOKEN" > "$PROM_DIR/secrets/metrics_bearer_token"
-# Prometheus container runs as non-root (nobody) — readable only on localhost VPS.
-chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
+# Prometheus container runs as nobody (gid 65534 / nogroup) — group-readable, not world-readable.
+chown root:nogroup "$PROM_DIR/secrets/metrics_bearer_token"
+chmod 640 "$PROM_DIR/secrets/metrics_bearer_token"
 
 cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
 cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"

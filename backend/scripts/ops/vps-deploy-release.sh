@@ -19,6 +19,7 @@ if [[ "$DISK_USE_PCT" -ge 85 ]]; then
 fi
 
 sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+chmod 600 "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
 
 echo "==> Clone release ${RELEASE_ID}"
 git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$RELEASE_DIR"
@@ -26,6 +27,8 @@ git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alph
 echo "==> Link shared env/uploads"
 ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
 ln -sfn /opt/synqdrive/shared/frontend.env "$RELEASE_DIR/frontend/.env"
+chmod 600 /opt/synqdrive/shared/backend.env /opt/synqdrive/shared/frontend.env
+chown root:root /opt/synqdrive/shared/backend.env /opt/synqdrive/shared/frontend.env
 ln -sfn /opt/synqdrive/shared/uploads "$RELEASE_DIR/backend/uploads"
 
 echo "==> Link shared document storage"
