@@ -35,6 +35,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-production-deploy-2g7-2026-07-26',
+    version: '4.9.885',
+    title: 'V4.9.885 — Master Admin 2G.7: production deploy + post-deploy ops',
+    summary: [
+      'Release 20260726211156_v4994 live: Swagger closed, backend port private, audit append-only, MFA step-up, ClickHouse org_id enforced.',
+      'Stripe stays in sandbox by decision — STRIPE_ENVIRONMENT=test + STRIPE_ALLOW_TEST_IN_PRODUCTION=true; guard logs runtime=TEST nodeEnv=production. Remove both at go-live.',
+      'ClickHouse migrations had been silently skipped: nest-cli.json now pins assets to dist/src, resolveMigrationsDir() walks candidates, missing dir throws. Migration 007 applied (7 total).',
+      'org_id backfill extended to telemetry_waypoints + trip_activity_windows (column since 004–006, missing from both table lists).',
+      'Checksum drift on applied migrations reported as ClickHouseStatus.schemaDrift, not lastSchemaError — readiness no longer red for a historical mismatch.',
+      'vps-clickhouse-migrate-storage-topology.sh moves container binds off a pruned release (/backups pointed at a deleted path); 818 871 rows unchanged.',
+      'Backup chain repaired: .sha256 sidecar promoted with the archive, checksum verified from the artifact dir, archive listing off stdout, RESTORE ... AS <target>. First successful restore drill.',
+      'ClickHouse audits: hasColumn(), detached_parts.disk_name, processes.type/status and ORDER BY alias on a bare UNION do not exist in CH 25.8; inactive-parts rule was inverted. 5 P0 → 1 P0. P1-only sub-audits exit 3.',
+      'docs/final/master-admin-production-deploy-2026-07-26.md',
+    ],
+    reason:
+      'The remediation stack had to reach production, and the post-deploy ops surfaced defects that were invisible because the affected tooling was not running.',
+    previousBehavior:
+      'ClickHouse migration 007 never applied while readiness reported 0 pending; backups wrote into a deleted directory and could not be verified or restored; the acceptance audit failed on its own broken queries.',
+    details:
+      'backend/nest-cli.json, backend/src/modules/clickhouse/clickhouse-schema.service.ts, clickhouse.service.ts, clickhouse-org-id-backfill.service.ts, backend/scripts/ops/vps-clickhouse-migrate-storage-topology.sh, scripts/ops/lib/{clickhouse,redis}-backup-lib.sh, scripts/ops/lib/clickhouse-query-lib.sh, vps-clickhouse-{data-integrity,tenant-isolation,performance,pipeline,acceptance}-audit.sh',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T21:30:00.000Z',
+  },
+  {
     id: 'master-admin-deploy-boot-gate-2g7-2026-07-26',
     version: '4.9.884',
     title: 'V4.9.884 — Master Admin 2G.7: deploy boot gate + P0/P1 merge repairs',
