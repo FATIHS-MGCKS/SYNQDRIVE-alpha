@@ -4,8 +4,8 @@
 |------|------|
 | **Audit ID** | `master-admin-vps-readonly-audit-2026-07` |
 | **Projekt** | `SYNQDRIVE-alpha` (`FATIHS-MGCKS/SYNQDRIVE-alpha`) |
-| **Status** | **IN PROGRESS** — Schritt 7: PostgreSQL read-only **abgeschlossen** (2026-07-26T07:10–07:12 UTC) |
-| **Letzte Prüfung (UTC)** | `2026-07-26T07:12:00Z` (PostgreSQL) |
+| **Status** | **IN PROGRESS** — Schritt 8: Redis/BullMQ read-only **abgeschlossen** (2026-07-26T07:12–07:14 UTC) |
+| **Letzte Prüfung (UTC)** | `2026-07-26T07:14:00Z` (Redis & BullMQ) |
 | **Audit-Modus** | **Strikt read-only** — keine Schreib-, Restart-, Deploy- oder Migrationsaktionen |
 | **Ziel-Host** | `srv1374778.hstgr.cloud` (Hostinger VPS) |
 | **Öffentliche URL** | `https://app.synqdrive.eu` |
@@ -176,6 +176,19 @@ Vollständige Erfassung des **tatsächlichen Production-Zustands** der SynqDrive
 | 07:12:xx | Exakte `COUNT(*)` auf Kern-Tabellen (≤851 Zeilen max) | Validierung pg_stat-Schätzungen |
 
 **SQL-Modus:** Ausschließlich `SELECT`, `EXPLAIN`-fähige Metadatenabfragen und `BEGIN READ ONLY` — **kein** DML/DDL.
+
+### 2.2h Ausgeführte sichere Befehle (Schritt 8 — Redis/BullMQ read-only)
+
+| Zeit (UTC) | Befehl / Aktion | Zweck |
+|------------|-----------------|-------|
+| 07:12:46 | `redis-cli INFO` (server/memory/stats/persistence/clients/keyspace) | Redis-Runtime-Metriken |
+| 07:12:46 | `redis-cli CONFIG GET` (maxmemory, AOF, save, requirepass, tls) | Persistenz & Security-Config |
+| 07:12:46 | `ss -tlnp` Port 6379, `redis-cli DBSIZE`, `SCAN` Prefix-Zählung | Exposition & Keyspaces |
+| 07:12–07:14 | `LLEN`/`ZCARD`/`LINDEX`/`ZRANGE`/`HGET` auf `bull:{queue}:*` | BullMQ Queue-Counts, älteste Jobs, Fehlergründe (ohne Payloads) |
+| 07:12–07:14 | `CLIENT LIST` (flags=b), PM2 `describe synqdrive` | Worker-Blocking / Host-Prozess |
+| 07:12–07:14 | PM2 Error-Log Grep `Custom Id cannot contain` | Scheduler/BullMQ-JobId-Fehler |
+
+**Redis-Modus:** Ausschließlich read-only (`INFO`, `SCAN`, `LLEN`, `ZCARD`, `HGET`, `GET`, `CONFIG GET`). **Kein** `DEL`, `FLUSH`, `EXPIRE`, `MIGRATE`, Queue-Manipulation.
 
 ### 2.3 Bewusst nicht geprüft (Schritt 1)
 
@@ -1144,14 +1157,172 @@ Historische Fehlertypen (nicht aktiv): UUID/text FK-Mismatches, Enum-Commit-Timi
 
 ## 12. Redis und BullMQ
 
-| Prüfpunkt | Baseline |
-|-----------|----------|
-| Erreichbarkeit | `redis-cli ping` → **PONG** |
-| Bindung | `127.0.0.1:6379` |
-| Queue-Inventar | **Nicht** geprüft |
-| Failed Jobs | **Nicht** geprüft |
+**Prüfzeitpunkt:** `2026-07-26T07:12–07:14Z` (Schritt 8, strikt read-only)
 
-**Status:** Ausstehend — `KEYS bull:*` / `LLEN` / `ZCARD` (read-only), Queue-Health vs. Operator-Audit-Muster.
+### 12.1 Redis — Instanz & Sicherheit
+
+| Prüfpunkt | Ergebnis (belegt) |
+|-----------|-------------------|
+| **Version** | **7.0.15** (standalone) |
+| **Uptime** | **835 104 s** (~**9,7 Tage**) |
+| **Bindung** | **127.0.0.1:6379** + `[::1]:6379` — **nicht** öffentlich |
+| **Authentifizierung** | `requirepass` **leer** — **kein** Redis-Passwort |
+| **TLS** | `tls-port=0` — **nicht** aktiv |
+| **DB-Nummer** | **db0** (einzige genutzte DB in Keyspace) |
+| **Replikation** | `role=master`, `connected_slaves=0` — **kein** Replica |
+| **Memory used** | **12,09 MiB** (RSS **23,12 MiB**) |
+| **maxmemory** | **0** (= unbegrenzt) |
+| **Eviction Policy** | **noeviction** |
+| **Fragmentation Ratio** | **1,92** |
+| **Connected Clients** | **108** |
+| **Blocked Clients** | **19** (alle `flags=b`, `cmd=bzpopmin` — BullMQ-Worker-Blocking, **erwartet**) |
+| **Rejected Connections** | **0** |
+| **Keyspace** | **1250** Keys, **23** mit TTL, avg TTL ~8h |
+| **Expired Keys (kumulativ)** | **364 344** |
+| **Evicted Keys** | **0** |
+| **Keyspace Hits/Misses** | 9 795 923 / 11 162 992 |
+
+### 12.2 Redis — Persistenz
+
+| Prüfpunkt | Ergebnis |
+|-----------|----------|
+| **RDB** | Aktiv (`save`-Policy: `3600 1 300 100 60 10000`) |
+| **Letzter RDB-Save** | **2026-07-26T07:10:49Z** (`rdb_last_bgsave_status=ok`) |
+| **Änderungen seit Save** | **1606** |
+| **AOF** | **deaktiviert** (`appendonly=no`) |
+| **Letzter AOF-Rewrite** | `ok` (historisch; AOF aktuell aus) |
+| **Persistenzrisiko** | **P3** — nur RDB, kein AOF; bei hartem Kill bis ~1h Datenverlust möglich (je nach `save`-Policy) |
+
+### 12.3 Redis — Namespaces & Staging/Prod-Trennung
+
+| Prefix | Keys (SCAN) | Zweck |
+|--------|------------:|-------|
+| `bull:` | **1238** | BullMQ Jobs/Meta/Completed/Failed |
+| `dimo:` | **6** | DIMO-Cache/Integration |
+| `rental-health-summary:` | **6** | Aggregierte Health-Caches |
+
+| Prüfpunkt | Ergebnis |
+|-----------|----------|
+| Keys mit `*staging*` im Namen | **2** — beide unter `bull:notification.evaluation:…` (Job-IDs mit Substring „staging“, **kein** separater Staging-Redis) |
+| Keys mit `*prod*` | **0** |
+| Separate Redis-DB/Instanz für Staging | **Nein** — ein Host-Redis `db0` |
+
+**Vermutung:** Keine Production/Staging-Vermischung auf Redis-Ebene; die 2 „staging“-Treffer sind Job-ID-Fragmente, nicht Umgebungs-Namespaces.
+
+### 12.4 BullMQ — Architektur
+
+| Aspekt | Befund |
+|--------|--------|
+| Worker-Host | **Ein** PM2-Prozess `synqdrive` (embedded `WorkersModule`) — **keine** separaten Worker-PM2-Apps |
+| Release/Version | `20260725233142_v4994` / Commit **`4a479c1e`** |
+| PM2 Restarts | **3169** kumulativ, `unstable_restarts=0` |
+| Registrierte Queues (Code) | **19** (`QUEUE_NAMES` in `queue-names.ts`) |
+| Default Job Options | `attempts=3`, exponential backoff **5s**; `removeOnComplete` max **1000**/24h; `removeOnFail` max **5000**/7d |
+| Dead-Letter | Failed-Jobs in Redis **ZSET** `bull:{q}:failed` (retention-limited, kein separates DLQ-Topic) |
+| Repeatable Jobs | **2** Queues mit Repeat-Scheduler: `dimo.vehicle.sync`, `dimo.dtc.poll` (je **1** Eintrag) |
+| Paused Queues | **0** (`meta.paused` nirgends gesetzt) |
+| Stalled Active Jobs (>10 min) | **0** in Stichprobe (`battery.v2`, `dimo.snapshot.poll`, …) |
+
+**Nicht als BullMQ-Queue vorhanden (Code-Review):** Stripe-Webhooks (HTTP-Ingress), WhatsApp (Service/DB-Outbox), Billing-Reconciliation (NestJS-`@Interval`/`@Cron`-Scheduler ohne eigene Queue), Analytics-Reports (über `driving.intelligence.jobs` / DB).
+
+### 12.5 Queue-Matrix (read-only, 2026-07-26T07:13Z)
+
+Schwellen für Risiko (aus `QueueMonitoringService`): `failed>10` oder `delayed>50` → **critical**; `failed>0` / `delayed>10` / `waiting>100` → **warning**; sonst **idle/ok**.
+
+| Queue | Waiting | Active | Failed | Delayed | Ältester Job (wait/fail) | Risiko |
+|-------|--------:|-------:|-------:|--------:|--------------------------|--------|
+| **DIMO Ingestion** | | | | | | |
+| `dimo.snapshot.poll` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `dimo.vehicle.sync` | 0 | 0 | 1 | 1 | Fail **2026-06-22** | **WARN** |
+| `dimo.dtc.poll` | 0 | 0 | 0 | 1 | — | **OK** |
+| `connectivity.webhook.process` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| **Telemetrie / Trips** | | | | | | |
+| `dimo.trip-tracking` | 0 | 0 | 2 | 0 | Fail **2026-06-23** | **WARN** |
+| `trip.behavior.enrichment` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `trip.driving-impact.compute` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `driving.intelligence.jobs` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| **Health Recalc** | | | | | | |
+| `dimo.tire.recalculation` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `dimo.brake.recalculation` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `battery.v2` | 0 | 0 | **28** | 0 | Fail **2026-07-21** | **CRITICAL** |
+| `dtc.knowledge.enrichment` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| **Notifications / E-Mail** | | | | | | |
+| `notification.evaluation` | 0 | 0 | 0 | 0 | completed=8 | **IDLE** |
+| `notification.delivery` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `payment.email` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| **Dokumente / AI-OCR** | | | | | | |
+| `document.extraction` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `booking.document.generation` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| **Voice / Tasks / Automation** | | | | | | |
+| `voice.webhook.process` | 0 | 0 | 0 | 0 | — | **IDLE** |
+| `task.automation` | 0 | 0 | 0 | 0 | — | **IDLE** |
+
+**Queue-Lag:** Kein `waiting`-Backlog auf keiner Queue. **Delayed:** max **1** Job (`dimo.vehicle.sync`, `dimo.dtc.poll` — Repeat-Scheduler).
+
+### 12.6 Fehlgeschlagene Jobs — Fehlerarten (ohne Payloads)
+
+| Queue | Failed | Häufigster Fehler (aggregiert) | Letzter Fail (UTC) |
+|-------|-------:|--------------------------------|--------------------|
+| `battery.v2` | **28** | **28×** `BATTERY_REST_TARGET_EVALUATE` — „REST target job missing restWindowId“ | **2026-07-21T07:06:36Z** |
+| `dimo.trip-tracking` | **2** | FK `dimo_poll_logs_vehicle_id_fkey` (Fahrzeug nicht mehr vorhanden) | **2026-06-23T00:23:13Z** |
+| `dimo.vehicle.sync` | **1** | „DIMO_CLIENT_ID and DIMO_PRIVATE_KEY must be set“ (historisch) | **2026-06-22T09:46:23Z** |
+
+**Retry:** Stichprobe `battery.v2` — `attempts=3`, backoff exponential ab **5s** (global default).
+
+**Tenant-Kontext in Failed-Jobs:** Stichprobe erste 5 Failed-Jobs pro Queue — `organizationId` in Payload **nicht** vollständig ausgewertet (PII-Schutz); Battery-Fehler sind fachlich vehicle-scoped.
+
+### 12.7 Worker-Matrix (embedded Monolith)
+
+Alle Processors laufen im selben Node-Prozess; BullMQ-„Worker“-Heartbeats = **19** blockierte `bzpopmin`-Clients auf Queue-Listener.
+
+| Worker / Processor-Gruppe | Version | Heartbeat | Restart Count | Letzter Erfolg | Letzter Fehler | Risiko |
+|-------------------------|---------|-----------|---------------|----------------|----------------|--------|
+| **PM2 `synqdrive` (Gesamt)** | `4a479c1e` | 19× `bzpopmin` aktiv | **3169** | — | Scheduler `Custom Id cannot contain :` (**865×** Log) | **P2** |
+| DIMO Snapshot/ Sync/DTC | `4a479c1e` | Listener aktiv | (shared) | `dimo.dtc.poll` completed=**56** | `dimo.vehicle.sync` Fail Jun-22 | **WARN** |
+| Trip Tracking / Enrichment | `4a479c1e` | Listener aktiv | (shared) | — | `dimo.trip-tracking` Fail Jun-23 | **WARN** |
+| Battery V2 | `4a479c1e` | Listener aktiv | (shared) | completed retained=**1000** | **28** fails Jul-21 | **CRITICAL** |
+| Document Extraction / OCR | `4a479c1e` | Listener aktiv | (shared) | — | — | **IDLE** |
+| Notifications / Payment Email | `4a479c1e` | Listener aktiv | (shared) | `notification.evaluation` completed=**8** | — | **IDLE** |
+| Voice Webhook | `4a479c1e` | Listener aktiv | (shared) | — | — | **IDLE** |
+| Task Automation | `4a479c1e` | Listener aktiv | (shared) | — | — | **IDLE** |
+
+**Mehrfach laufende Scheduler:** NestJS-`@Interval`/`@Cron` nur im **einen** PM2-Prozess — **kein** zweiter Worker-Stack. Repeatable-BullMQ-Jobs: **je 1** pro Queue (keine Duplikate).
+
+**Vermutung:** Log-Fehler `Custom Id cannot contain :` hängt mit Job-IDs mit `:` zusammen (z. B. `dtc-poll:{vehicleId}:{bucket}` in `dimo-dtc.processor.ts`) — BullMQ-kompatibler Sanitizer existiert im Repo, Scheduler-Pfad evtl. nicht vollständig abgedeckt.
+
+### 12.8 Domänen-Checkliste (spezifisch)
+
+| Domäne | BullMQ-Queue | Backlog | Failed | Status |
+|--------|--------------|--------:|-------:|--------|
+| DIMO Ingestion | `dimo.snapshot.poll`, `dimo.vehicle.sync`, `connectivity.webhook.process` | 0 | 1 (sync) | **WARN** (historisch) |
+| Telemetrie/Trips | `dimo.trip-tracking`, enrichment queues | 0 | 2 | **WARN** (alt) |
+| Notifications | `notification.evaluation`, `notification.delivery` | 0 | 0 | **OK** |
+| E-Mail | `payment.email` | 0 | 0 | **OK** |
+| Billing | — (Scheduler, keine Queue) | — | — | **N/A** |
+| Stripe Webhooks | — (HTTP) | — | — | **N/A** |
+| Dokumente/OCR | `document.extraction`, `booking.document.generation` | 0 | 0 | **OK** |
+| AI/OCR | `document.extraction`, `dtc.knowledge.enrichment` | 0 | 0 | **OK** |
+| Voice AI | `voice.webhook.process` | 0 | 0 | **OK** |
+| WhatsApp | — (keine BullMQ-Queue) | — | — | **N/A** |
+| Analytics | `driving.intelligence.jobs` | 0 | 0 | **IDLE** |
+| Reports | `notification.evaluation` (BI) | 0 | 0 | **IDLE** |
+| Cleanup/Retention | NestJS-Cron (`data-retention`, `voice-retention`, …) | — | — | **Nicht** über BullMQ gemessen |
+
+### 12.9 Schritt-8-Kurzfazit Redis/BullMQ
+
+| Kategorie | Ergebnis |
+|-----------|----------|
+| **Redis-Erreichbarkeit** | **OK** — localhost-only, PONG |
+| **Sicherheit** | **P2** — kein Passwort/TLS (akzeptabel nur wegen localhost-Bindung) |
+| **Persistenz** | **P3** — RDB ok, kein AOF |
+| **Queue-Backlogs** | **OK** — kein Waiting-Backlog |
+| **Failed Jobs** | **P1/P2** — `battery.v2` **28** fails; alte DIMO-Fails |
+| **Scheduler** | **P2** — wiederkehrender JobId-`:`-Fehler (**865×**) |
+| **Staging-Mix** | **Kein** Hinweis auf getrennte Umgebungen |
+
+**Bestätigung:** **Keine** Redis-/BullMQ-Mutation. Kein `DEL`/`FLUSH`/`EXPIRE`/Retry/Promote/Clean.
+
+**Status:** Redis & BullMQ **abgeschlossen** (Schritt 8).
 
 ---
 
@@ -1348,6 +1519,7 @@ Historische Fehlertypen (nicht aktiv): UUID/text FK-Mismatches, Enum-Commit-Timi
 > **Schritt 5 (Netzwerk/TLS):** 2× P1 neu, 4× P2 neu/verstärkt.
 > **Schritt 6 (Backend/API):** 3× P2 neu, 2× P3 neu.
 > **Schritt 7 (PostgreSQL):** 2× P2 neu, 4× P3 neu.
+> **Schritt 8 (Redis/BullMQ):** 1× P1 neu, 3× P2 neu, 2× P3 neu.
 
 | ID | Severity | Bereich | Finding | Empfehlung (nicht im Audit ausgeführt) |
 |----|----------|---------|---------|----------------------------------------|
@@ -1402,6 +1574,15 @@ Historische Fehlertypen (nicht aktiv): UUID/text FK-Mismatches, Enum-Commit-Timi
 | **MA-DB-P3-007** | **P3** | Storage | `dimo_poll_logs` **318 MB** / **~730k** rows — dominanter DB-Footprint | Retention/Archiv-Policy |
 | **MA-DB-OBS-001** | **Beobachtung** | Migrations | **15** historische Rollback-Einträge in `_prisma_migrations` — **0** offen | Recovery erfolgreich |
 | **MA-DB-OBS-002** | **Beobachtung** | Backup | `archive_mode=off` — kein WAL-Archiving auf Host-PG | Abhängig von `pg_dump` Pre-Deploy-Backups |
+| **MA-REDIS-P1-001** | **P1** | BullMQ | `battery.v2` Queue: **28** failed Jobs (`REST target job missing restWindowId`) | Battery-V2-Handler/Reconcile fixen; Failed-Set prüfen |
+| **MA-REDIS-P2-001** | **P2** | Redis Security | **Kein** `requirepass`, **kein** TLS — nur durch localhost-Bindung geschützt | Passwort + Firewall-Defense-in-Depth |
+| **MA-REDIS-P2-002** | **P2** | Scheduler | `Custom Id cannot contain :` — **865×** in PM2-Error-Log (~30s) | Job-IDs mit `:` sanitizen (z. B. DTC-Poll-Pfad) |
+| **MA-REDIS-P2-003** | **P2** | BullMQ | `dimo.trip-tracking` **2** failed (FK `dimo_poll_logs_vehicle_id`) — alt (Jun-23) | Orphan-Poll-Logs bereinigen (außerhalb Audit) |
+| **MA-REDIS-P3-001** | **P3** | Persistenz | Nur **RDB**, **kein** AOF — potenzieller Datenverlust bei Crash | AOF oder häufigeres RDB evaluieren |
+| **MA-REDIS-P3-002** | **P3** | Redis | `maxmemory=0` (unbegrenzt) + `noeviction` — Memory-Wachstum ungebremst | maxmemory + Policy setzen |
+| **MA-REDIS-OBS-001** | **Beobachtung** | Clients | **108** connected, **19** blocked (`bzpopmin`) — BullMQ-Worker normal | — |
+| **MA-REDIS-OBS-002** | **Beobachtung** | Queues | **Kein** `waiting`-Backlog auf allen 19 Queues | Positiv |
+| **MA-REDIS-OBS-003** | **Beobachtung** | Staging | 2 Keys mit `staging` in Job-ID unter `notification.evaluation` — **kein** Env-Mix | — |
 
 ---
 
@@ -1415,13 +1596,14 @@ Historische Fehlertypen (nicht aktiv): UUID/text FK-Mismatches, Enum-Commit-Timi
 - [x] **Netzwerk & TLS-Exposition** — Ports, Firewall, Nginx, Zertifikate, öffentliche Endpoints
 - [x] **Backend/API-Runtime & Master-Admin (unauth)** — Health/Readiness, Admin-Route-Probes, Guard-Code-Review, Route-Matrix, Log-Stichprobe
 - [x] **PostgreSQL (read-only)** — Metadaten, Migrationen, Integrität, Tenant/Billing-Stichproben
+- [x] **Redis & BullMQ (read-only)** — INFO/SCAN, Queue-Counts, Failed-Jobs, Worker-Host
 
 ### Priorisierte Folgeschritte (alle read-only)
 
 1. ~~**Master-Admin-Surface (unauth)**~~ — **erledigt** (Schritt 6)
 2. ~~**PostgreSQL SELECT-Counts / Tenant-Stichproben**~~ — **erledigt** (Schritt 7)
-3. **BullMQ Queue Health** — wait/active/failed per Queue (Redis read-only)
-3. **ClickHouse** — `SHOW TABLES`, Row-Counts (SELECT)
+3. ~~**BullMQ Queue Health**~~ — **erledigt** (Schritt 8)
+4. **ClickHouse** — `SHOW TABLES`, Row-Counts (SELECT)
 4. **Prometheus/Grafana** — Scrape-Targets, Dashboard-Versionen (read-only)
 5. **DIMO** — Env + Queue + MCP-Abgleich
 6. **Stripe/Billing** — Env-Keys, Webhook-Route HEAD, Master-Billing-API unauth
@@ -1445,7 +1627,8 @@ Historische Fehlertypen (nicht aktiv): UUID/text FK-Mismatches, Enum-Commit-Timi
 | **Backend/API-Runtime** | **OK** — Readiness grün; wiederkehrende Scheduler/BatteryV2-Fehler (**P2**) |
 | **Master-Admin (unauth)** | **OK** — 401 ohne Token; Seed-Admin disabled (**403**) |
 | **PostgreSQL** | **OK mit P2/P3** — Schema aktuell; 3 Orgs ohne Admin/Subscription |
-| Audit vollständig | **NEIN** — Redis/Queues/Integrationen/authentifizierte Smokes ausstehend |
+| **Redis/BullMQ** | **WARN** — kein Backlog; **28** battery.v2 fails; Scheduler JobId-Fehler |
+| Audit vollständig | **NEIN** — ClickHouse/Integrationen/authentifizierte Smokes ausstehend |
 | Master-Admin-Control-Plane verifiziert | **TEILWEISE** — Guards + Route-Matrix (Code); keine authentifizierten Tests |
 | Gesamturteil | **PENDING** — Kein **P0**; **2× P1** (Swagger, CH-Mounts) + mehrere **P2** offen |
 
@@ -1489,6 +1672,7 @@ Historische Fehlertypen (nicht aktiv): UUID/text FK-Mismatches, Enum-Commit-Timi
 | 2026-07-26T07:04–07:06 | Schritt 5: Netzwerk/TLS (`ss`, `ufw`/`nft`/`iptables`, Nginx/TLS, öffentliche GET/HEAD) | **NEIN** |
 | 2026-07-26T07:07–07:10 | Schritt 6: Backend/API (`curl` Health/Readiness/Admin-Probes, PM2-Logs, OpenAPI-Count, Code-Route-Matrix) | **NEIN** |
 | 2026-07-26T07:10–07:12 | Schritt 7: PostgreSQL (`psql` read-only, `_prisma_migrations`, Integritäts-SELECTs) | **NEIN** |
+| 2026-07-26T07:12–07:14 | Schritt 8: Redis/BullMQ (`redis-cli` INFO/SCAN/LLEN/ZCARD, Failed-Job-Stichproben) | **NEIN** |
 
 ---
 
