@@ -5,6 +5,8 @@ export * from './notification-fingerprint.registry';
 export * from './notification-status.transitions';
 export * from './notification-reopen.policy';
 export * from './notification-candidate.validator';
+export * from './notification-candidate.contract';
+export * from './notification-candidate.observability';
 export * from './insight-candidate.mapper';
 export * from './registry/notification-event-registry';
 export * from './registry/notification-event-registry.types';

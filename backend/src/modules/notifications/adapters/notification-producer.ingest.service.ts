@@ -489,8 +489,10 @@ export class NotificationProducerIngestService {
   private adapterContext(organizationId: string, sourceRef: string, runId?: string) {
     return {
       organizationId,
+      sourceEventId: sourceRef,
       sourceRef,
       occurredAt: new Date(),
+      observedAt: new Date(),
       runId,
     };
   }

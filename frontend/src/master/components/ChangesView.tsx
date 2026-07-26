@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-candidate-contract-2026-07-26',
+    version: '4.9.871',
+    title: 'Notification Engine Remediation — standardized NotificationCandidate contract (Prompt 4)',
+    summary: [
+      'Canonical ingest contract schemaVersion=1: sourceSystem, sourceEventId, conditionKey, observedAt, recoveryState, entity refs, correlation/causation.',
+      'normalizeNotificationCandidate() syncs legacy aliases; metadata allowlist + PII denylist.',
+      'validateNotificationCandidate() enforces temporal, recovery, entity, registry rules — reject before persist.',
+      'Prometheus synqdrive_notification_candidate_rejected_total{field}; structured prod logs.',
+      'Docs: docs/architecture/notification-candidate-contract.md',
+    ],
+    reason:
+      'All producers must share one strict typed candidate contract; invalid payloads must never partially persist.',
+    previousBehavior:
+      'Candidate validation was structural + registry only; no schemaVersion, observedAt, recoveryState, or metadata policy.',
+    details:
+      'notification-candidate.contract.ts, notification-candidate.observability.ts, notification-candidate-metrics.binder.ts, notification-candidate.validator.ts, notification.types.ts, notification-event-registry.ts, notification-adapter.types.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T01:00:00.000Z',
+  },
+  {
     id: 'notification-event-registry-enforcement-2026-07-26',
     version: '4.9.870',
     title: 'Notification Engine Remediation — canonical event registry enforcement (Prompt 3)',

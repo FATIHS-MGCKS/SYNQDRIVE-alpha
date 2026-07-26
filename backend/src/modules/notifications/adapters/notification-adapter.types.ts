@@ -3,8 +3,14 @@ import type { NotificationCandidate } from '../notification.types';
 /** Shared context for all producer adapters. */
 export interface NotificationAdapterContext {
   organizationId: string;
+  /** Canonical opaque producer event reference. */
+  sourceEventId?: string;
+  /** @deprecated use sourceEventId */
   sourceRef: string;
   occurredAt: Date;
+  observedAt?: Date;
+  correlationId?: string;
+  causationId?: string;
   runId?: string;
 }
 

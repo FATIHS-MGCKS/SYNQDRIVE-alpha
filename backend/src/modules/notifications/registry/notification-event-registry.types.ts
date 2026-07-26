@@ -91,12 +91,20 @@ export interface RegistryCandidateBuildInput {
   entityType?: NotificationEntityType;
   /** Appended to registry conditionCode as `{base}:{variant}` for per-entity sub-states. */
   conditionCodeVariant?: string;
+  /** Canonical producer event id (alias sourceRef). */
+  sourceEventId?: string;
   sourceRef: string;
   occurredAt: Date;
+  observedAt?: Date;
   severity?: NotificationSeverity;
   templateParams: NotificationTemplateParams;
   actionTargetContext?: Partial<NotificationActionTargetContext>;
   sourceType?: NotificationSourceType;
+  sourceSystem?: NotificationSourceType;
   expiresAt?: Date;
   metadata?: Record<string, unknown>;
+  correlationId?: string;
+  causationId?: string;
+  userId?: string;
+  schemaVersion?: number;
 }

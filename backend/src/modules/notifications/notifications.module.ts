@@ -38,6 +38,7 @@ import { NotificationMigrationAnalysisService } from './migration/notification-m
 import { NotificationMigrationBackfillService } from './migration/notification-migration-backfill.service';
 import { NotificationMigrationAcceptanceService } from './migration/notification-migration-acceptance.service';
 import { NotificationArchitectureAuditService } from './migration/notification-architecture-audit.service';
+import { NotificationCandidateMetricsBinder } from './notification-candidate-metrics.binder';
 
 /**
  * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime, REST API, delivery outbox.
@@ -76,6 +77,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     NotificationMigrationBackfillService,
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
+    NotificationCandidateMetricsBinder,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,

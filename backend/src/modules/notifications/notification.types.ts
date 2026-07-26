@@ -9,6 +9,10 @@ import type {
   NotificationSourceType,
   NotificationStatus,
 } from './notification.enums';
+import type {
+  NotificationCandidateMetadata,
+  NotificationCandidateRecoveryState,
+} from './notification-candidate.contract';
 
 // ─── Fingerprint ───────────────────────────────────────────────────
 
@@ -100,32 +104,57 @@ export interface NotificationActionTarget {
 /**
  * Ephemeral ingest payload from producers (detectors, workflows, booking hooks).
  * Persisted notifications are materialized from validated candidates + fingerprint match.
+ *
+ * Canonical contract fields (Prompt 4) are authoritative; legacy aliases remain synced
+ * by `normalizeNotificationCandidate()` for backward-compatible producers.
  */
 export interface NotificationCandidate {
+  /** Explicit ingest contract version — required after normalization. */
+  schemaVersion?: number;
   organizationId: string;
-  /** Producer event type — aligns with InsightType or domain event codes. */
+  /** Producer event type — must be registered in the event registry. */
   eventType: string;
-  eventKind: NotificationEventKind;
-  domain: NotificationDomain;
-  severity: NotificationSeverity;
+  /** Canonical producer system (alias: sourceType). */
+  sourceSystem?: NotificationSourceType;
+  /** Opaque producer event id — required for runtime/webhook/external producers (alias: sourceRef). */
+  sourceEventId?: string;
   entityType: NotificationEntityType;
   entityId: string;
-  conditionCode: string;
-  scopeVersion?: number;
-  sourceType: NotificationSourceType;
-  /** Opaque producer reference (insight run id, detector row id, booking id, …). */
-  sourceRef: string;
+  /** Stable condition within entity scope (alias: conditionCode). */
+  conditionKey?: string;
   /** When the underlying fact or state change occurred (producer clock). */
   occurredAt: Date;
-  titleKey: string;
+  /** When SynqDrive observed/ingested the fact — defaults to occurredAt. */
+  observedAt?: Date;
+  severity: NotificationSeverity;
+  /** ACTIVE = open condition; RECOVERED = SUCCESS recovery ingest. */
+  recoveryState?: NotificationCandidateRecoveryState;
+  vehicleId?: string;
+  bookingId?: string;
+  stationId?: string;
+  customerId?: string;
+  userId?: string;
+  /** Primary i18n template key (alias: titleKey). */
+  templateKey?: string;
   bodyKey: string;
   templateParams: NotificationTemplateParams;
+  correlationId?: string;
+  causationId?: string;
+  metadata?: NotificationCandidateMetadata;
+  eventKind: NotificationEventKind;
+  domain: NotificationDomain;
+  conditionCode: string;
+  scopeVersion?: number;
+  /** @deprecated use sourceSystem */
+  sourceType: NotificationSourceType;
+  /** @deprecated use sourceEventId */
+  sourceRef: string;
+  titleKey: string;
   actionType: NotificationActionType;
   actionTarget: NotificationActionTarget;
   resolutionPolicy: NotificationResolutionPolicy;
   deliveryPolicy?: NotificationDeliveryPolicy;
   expiresAt?: Date;
-  metadata?: Record<string, unknown>;
 }
 
 // ─── Occurrence (state observation / event log input) ────────────────

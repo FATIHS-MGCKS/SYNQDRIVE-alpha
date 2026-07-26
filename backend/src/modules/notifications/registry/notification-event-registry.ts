@@ -1,6 +1,10 @@
 import { buildNotificationFingerprint } from '../notification-fingerprint.factory';
 import type { NotificationCandidate } from '../notification.types';
 import {
+  deriveRecoveryState,
+  NOTIFICATION_CANDIDATE_SCHEMA_VERSION,
+} from '../notification-candidate.contract';
+import {
   NOTIFICATION_EVENT_SLUG_ALIASES,
   NOTIFICATION_EVENT_TYPE_DEFINITIONS,
 } from './notification-event-registry.definitions';
@@ -142,19 +146,37 @@ export function buildCandidateFromRegistry(
     ? `${def.conditionCode}:${input.conditionCodeVariant.trim()}`
     : def.conditionCode;
 
+  const sourceSystem = input.sourceSystem ?? input.sourceType ?? def.sourceType;
+  const sourceEventId = input.sourceEventId ?? input.sourceRef;
+  const entityRefs = {
+    vehicleId: actionCtx.vehicleId,
+    bookingId: actionCtx.bookingId,
+    stationId: actionCtx.stationId,
+    customerId: actionCtx.customerId,
+    userId: input.userId,
+  };
+  const severity = input.severity ?? def.defaultSeverity;
+
   return {
+    schemaVersion: input.schemaVersion ?? NOTIFICATION_CANDIDATE_SCHEMA_VERSION,
     organizationId: input.organizationId,
     eventType: def.eventType,
     eventKind: def.eventKind,
     domain: def.domain,
-    severity: input.severity ?? def.defaultSeverity,
+    severity,
+    recoveryState: deriveRecoveryState(severity),
     entityType,
     entityId: input.entityId,
+    conditionKey: conditionCode,
     conditionCode,
     scopeVersion: def.fingerprintVersion,
-    sourceType: input.sourceType ?? def.sourceType,
-    sourceRef: input.sourceRef,
+    sourceSystem,
+    sourceType: sourceSystem,
+    sourceEventId,
+    sourceRef: sourceEventId,
     occurredAt: input.occurredAt,
+    observedAt: input.observedAt ?? input.occurredAt,
+    templateKey: def.titleKey,
     titleKey: def.titleKey,
     bodyKey: def.bodyKey,
     templateParams: input.templateParams,
@@ -163,6 +185,9 @@ export function buildCandidateFromRegistry(
     resolutionPolicy: def.resolutionPolicy,
     deliveryPolicy: def.deliveryPolicy,
     expiresAt: input.expiresAt,
+    correlationId: input.correlationId,
+    causationId: input.causationId,
     metadata: input.metadata,
+    ...entityRefs,
   };
 }
