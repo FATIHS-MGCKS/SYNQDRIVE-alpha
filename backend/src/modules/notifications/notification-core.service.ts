@@ -57,6 +57,8 @@ import {
   minimizeTemplateParams,
 } from './compliance/notification-data-minimization';
 import { NotificationRetentionService } from './compliance/notification-retention.service';
+import { NotificationAuditService } from './audit/notification-audit.service';
+import { snapshotFromNotification } from './audit/notification-audit-sanitize.util';
 
 @Injectable()
 export class NotificationCoreService {
@@ -70,6 +72,7 @@ export class NotificationCoreService {
     private readonly deliveryScheduler: NotificationDeliverySchedulerService,
     @Optional() private readonly lifecycleWorkflowEmitter?: NotificationLifecycleWorkflowEmitter,
     @Optional() private readonly retentionService?: NotificationRetentionService,
+    @Optional() private readonly notificationAudit?: NotificationAuditService,
   ) {}
 
   isEnabled(): boolean {
@@ -117,6 +120,17 @@ export class NotificationCoreService {
           fingerprint,
           reason: 'WORKFLOW_LOOP_GUARD',
           runId: options.runId,
+        });
+        this.recordAuditEvent({
+          organizationId: normalized.organizationId,
+          notificationId: triggerNotification!.id,
+          eventType: 'INGEST_IGNORED',
+          actorType: options.auditActorType ?? 'SYSTEM',
+          actorUserId: options.auditActorUserId,
+          reasonCode: 'WORKFLOW_LOOP_GUARD',
+          correlationId: options.runId,
+          clientMeta: options.auditClientMeta,
+          nextState: snapshotFromNotification(triggerNotification!),
         });
         recordNotificationIngestOperation('ignored');
         return {
@@ -279,6 +293,7 @@ export class NotificationCoreService {
 
       await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
       this.emitLifecycleForMaterialize(result, severityBefore, options);
+      this.recordMaterializeAudit(result, severityBefore, options);
       return result;
     });
   }
@@ -383,6 +398,21 @@ export class NotificationCoreService {
 
     this.emitLifecycleEvent('notification.resolved', updated, resolvedAt, options);
 
+    this.recordAuditEvent({
+      organizationId,
+      notificationId: updated.id,
+      eventType: 'RESOLVED',
+      actorType: context.manual
+        ? (options.auditActorType ?? 'USER')
+        : (options.auditActorType ?? 'SYSTEM'),
+      actorUserId: options.auditActorUserId,
+      previousState: snapshotFromNotification(notification),
+      nextState: snapshotFromNotification(updated),
+      reasonCode: context.manual ? 'MANUAL_RESOLVE' : 'AUTO_RESOLVE',
+      correlationId: options.runId,
+      clientMeta: options.auditClientMeta,
+    });
+
     this.logger.log({
       msg: 'notification.resolved',
       organizationId,
@@ -421,6 +451,15 @@ export class NotificationCoreService {
     });
     await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
     this.emitLifecycleEvent('notification.reopened', reopened, normalized.occurredAt);
+    this.recordAuditEvent({
+      organizationId,
+      notificationId: reopened.id,
+      eventType: 'REOPENED',
+      actorType: 'SYSTEM',
+      previousState: snapshotFromNotification(notification),
+      nextState: snapshotFromNotification(reopened),
+      reasonCode: 'INGEST_REOPEN',
+    });
     return reopened;
   }
 
@@ -452,6 +491,15 @@ export class NotificationCoreService {
     });
     await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
     this.emitLifecycleEvent('notification.acknowledged', updated, at);
+    this.recordAuditEvent({
+      organizationId,
+      notificationId: updated.id,
+      eventType: 'ACKNOWLEDGED',
+      actorType: 'USER',
+      previousState: snapshotFromNotification(notification),
+      nextState: snapshotFromNotification(updated),
+      reasonCode: 'ORG_WIDE_ACK',
+    });
     return updated;
   }
 
@@ -459,11 +507,21 @@ export class NotificationCoreService {
     const notification = await this.requireNotification(notificationId, organizationId);
     this.assertTransition(notification.status, NotificationStatus.SNOOZED);
 
-    return this.repository.updateNotification(
+    const updated = await this.repository.updateNotification(
       notificationId,
       { status: NotificationStatus.SNOOZED, snoozedUntil: until },
       notification.version,
     );
+    this.recordAuditEvent({
+      organizationId,
+      notificationId: updated.id,
+      eventType: 'SNOOZED',
+      actorType: 'USER',
+      previousState: snapshotFromNotification(notification),
+      nextState: { ...snapshotFromNotification(updated), scope: 'org_wide' },
+      reasonCode: 'ORG_WIDE_SNOOZE',
+    });
+    return updated;
   }
 
   async unsnoozeNotification(notificationId: string, organizationId: string) {
@@ -473,22 +531,50 @@ export class NotificationCoreService {
     }
     this.assertTransition(notification.status, NotificationStatus.OPEN);
 
-    return this.repository.updateNotification(
+    const updated = await this.repository.updateNotification(
       notificationId,
       { status: NotificationStatus.OPEN, snoozedUntil: null },
       notification.version,
     );
+    this.recordAuditEvent({
+      organizationId,
+      notificationId: updated.id,
+      eventType: 'UNSNOOZED',
+      actorType: 'USER',
+      previousState: snapshotFromNotification(notification),
+      nextState: snapshotFromNotification(updated),
+      reasonCode: 'ORG_WIDE_UNSNOOZE',
+    });
+    return updated;
   }
 
-  async archiveNotification(notificationId: string, organizationId: string, at: Date = new Date()) {
+  async archiveNotification(
+    notificationId: string,
+    organizationId: string,
+    at: Date = new Date(),
+    options: IngestCandidateOptions = {},
+  ) {
     const notification = await this.requireNotification(notificationId, organizationId);
     this.assertTransition(notification.status, NotificationStatus.ARCHIVED, { administrativeArchive: true });
 
-    return this.repository.updateNotification(
+    const updated = await this.repository.updateNotification(
       notificationId,
       { status: NotificationStatus.ARCHIVED, archivedAt: at },
       notification.version,
     );
+    this.recordAuditEvent({
+      organizationId,
+      notificationId: updated.id,
+      eventType: 'ARCHIVED',
+      actorType: options.auditActorType ?? 'USER',
+      actorUserId: options.auditActorUserId,
+      previousState: snapshotFromNotification(notification),
+      nextState: snapshotFromNotification(updated),
+      reasonCode: 'ADMIN_ARCHIVE',
+      correlationId: options.runId,
+      clientMeta: options.auditClientMeta,
+    });
+    return updated;
   }
 
   async markRead(notificationId: string, organizationId: string, userId: string, at: Date = new Date()) {
@@ -616,6 +702,18 @@ export class NotificationCoreService {
     });
 
     this.emitLifecycleEvent('notification.resolved', resolved, resolvedAt, options);
+
+    this.recordAuditEvent({
+      organizationId: candidate.organizationId,
+      notificationId: resolved.id,
+      eventType: 'RESOLVED',
+      actorType: options.auditActorType ?? 'SYSTEM',
+      actorUserId: options.auditActorUserId,
+      previousState: snapshotFromNotification(active),
+      nextState: snapshotFromNotification(resolved),
+      reasonCode: 'RECOVERY_RESOLVE',
+      correlationId: options.runId,
+    });
 
     return { operation: 'resolved', notification: resolved };
   }
@@ -871,6 +969,106 @@ export class NotificationCoreService {
       },
       occurredAt,
       correlationId: options.runId,
+    });
+  }
+
+  private recordMaterializeAudit(
+    result: MaterializeResult,
+    severityBefore: NotificationSeverity | undefined,
+    options: IngestCandidateOptions,
+  ) {
+    const { notification, operation, reason } = result;
+    const orgId = notification.organizationId;
+
+    if (operation === 'ignored') {
+      this.recordAuditEvent({
+        organizationId: orgId,
+        notificationId: notification.id,
+        eventType: 'INGEST_IGNORED',
+        actorType: options.auditActorType ?? 'SYSTEM',
+        actorUserId: options.auditActorUserId,
+        reasonCode: reason ?? 'IGNORED',
+        correlationId: options.runId,
+        nextState: snapshotFromNotification(notification),
+      });
+      return;
+    }
+
+    if (operation === 'created') {
+      this.recordAuditEvent({
+        organizationId: orgId,
+        notificationId: notification.id,
+        eventType: 'NOTIFICATION_CREATED',
+        actorType: options.auditActorType ?? 'SYSTEM',
+        actorUserId: options.auditActorUserId,
+        correlationId: options.runId,
+        nextState: snapshotFromNotification(notification),
+        reasonCode: 'INGEST_CREATE',
+      });
+      return;
+    }
+
+    if (operation === 'reopened') {
+      this.recordAuditEvent({
+        organizationId: orgId,
+        notificationId: notification.id,
+        eventType: 'REOPENED',
+        actorType: options.auditActorType ?? 'SYSTEM',
+        actorUserId: options.auditActorUserId,
+        correlationId: options.runId,
+        nextState: snapshotFromNotification(notification),
+        reasonCode: 'INGEST_REOPEN',
+      });
+      return;
+    }
+
+    if (operation === 'updated' && severityBefore) {
+      const escalated =
+        this.deliveryPolicy.shouldEnqueueForIngestOperation(
+          'updated',
+          notification,
+          severityBefore,
+        ) === 'SEVERITY_ESCALATED';
+      if (escalated) {
+        this.recordAuditEvent({
+          organizationId: orgId,
+          notificationId: notification.id,
+          eventType: 'SEVERITY_ESCALATED',
+          actorType: options.auditActorType ?? 'SYSTEM',
+          actorUserId: options.auditActorUserId,
+          correlationId: options.runId,
+          previousState: { severity: severityBefore, status: notification.status },
+          nextState: snapshotFromNotification(notification),
+          reasonCode: 'SEVERITY_ESCALATED',
+        });
+      }
+    }
+  }
+
+  private recordAuditEvent(input: {
+    organizationId: string;
+    notificationId?: string;
+    eventType: import('@prisma/client').NotificationAuditEventType;
+    actorType: import('@prisma/client').NotificationAuditActorType;
+    actorUserId?: string;
+    previousState?: ReturnType<typeof snapshotFromNotification>;
+    nextState?: ReturnType<typeof snapshotFromNotification>;
+    reasonCode?: string;
+    correlationId?: string;
+    clientMeta?: import('./audit/notification-audit.types').NotificationAuditClientMeta;
+  }) {
+    if (!this.notificationAudit) return;
+    this.notificationAudit.recordFireAndForget({
+      organizationId: input.organizationId,
+      notificationId: input.notificationId,
+      eventType: input.eventType,
+      actorType: input.actorType,
+      actorUserId: input.actorUserId,
+      previousState: input.previousState,
+      nextState: input.nextState,
+      reasonCode: input.reasonCode,
+      correlationId: input.correlationId,
+      clientMeta: input.clientMeta,
     });
   }
 }

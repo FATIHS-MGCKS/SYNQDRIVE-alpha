@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { NotificationDeliveryChannel } from '@prisma/client';
 import notificationDeliveryConfig from '@config/notification-delivery.config';
@@ -6,6 +6,7 @@ import { NotificationDeliveryOutboxRepository } from './notification-delivery-ou
 import { NotificationChannelDispatcher } from './notification-delivery-channels.service';
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
 import { sanitizeDeliveryErrorMessage } from '../compliance/notification-data-minimization';
+import { NotificationAuditService } from '../audit/notification-audit.service';
 
 @Injectable()
 export class NotificationDeliveryProcessorService {
@@ -15,6 +16,7 @@ export class NotificationDeliveryProcessorService {
     private readonly outboxRepo: NotificationDeliveryOutboxRepository,
     private readonly dispatcher: NotificationChannelDispatcher,
     private readonly observability: NotificationDeliveryObservabilityService,
+    @Optional() private readonly notificationAudit?: NotificationAuditService,
   ) {}
 
   async processOutboxId(outboxId: string): Promise<'completed' | 'retry' | 'dead_letter' | 'skipped'> {
@@ -91,6 +93,18 @@ export class NotificationDeliveryProcessorService {
         attempts: claimed.attempts,
         errorCode,
       });
+      this.notificationAudit?.recordFireAndForget({
+        organizationId: claimed.organizationId,
+        notificationId: claimed.notificationId,
+        eventType: 'DELIVERY_DEAD_LETTER',
+        actorType: 'SYSTEM',
+        reasonCode: errorCode,
+        nextState: {
+          channel: claimed.channel,
+          deliveryId: claimed.id,
+          eventType: claimed.eventType,
+        },
+      });
       return 'dead_letter';
     }
 
@@ -113,6 +127,18 @@ export class NotificationDeliveryProcessorService {
       channel: claimed.channel,
       attempts: claimed.attempts,
       errorCode,
+    });
+    this.notificationAudit?.recordFireAndForget({
+      organizationId: claimed.organizationId,
+      notificationId: claimed.notificationId,
+      eventType: 'DELIVERY_FAILED',
+      actorType: 'SYSTEM',
+      reasonCode: errorCode,
+      nextState: {
+        channel: claimed.channel,
+        deliveryId: claimed.id,
+        eventType: claimed.eventType,
+      },
     });
     return 'retry';
   }

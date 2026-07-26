@@ -4,6 +4,7 @@ import { NotificationCoreService } from '../notification-core.service';
 import { NotificationRepository } from '../notification.repository';
 import { extractNotificationTaskLink } from './notification-task-materializer';
 import { evaluateNotificationResolveOnTaskCompletion } from './notification-task-completion.policy';
+import { NotificationAuditService } from '../audit/notification-audit.service';
 
 @Injectable()
 export class NotificationTaskCompletionService {
@@ -12,6 +13,7 @@ export class NotificationTaskCompletionService {
   constructor(
     private readonly repository: NotificationRepository,
     @Optional() private readonly core?: NotificationCoreService,
+    @Optional() private readonly notificationAudit?: NotificationAuditService,
   ) {}
 
   /**
@@ -77,6 +79,10 @@ export class NotificationTaskCompletionService {
       {
         manual: decision.mode === 'manual',
         eventKind: notification.eventKind,
+      },
+      {
+        auditActorType: 'AUTOMATION',
+        runId: `task:${task.id}`,
       },
     );
 

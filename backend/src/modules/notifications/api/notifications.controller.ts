@@ -60,6 +60,19 @@ export class NotificationsController {
     return this.api.getCounts(orgId, req.user ?? {});
   }
 
+  @Get('audit-events')
+  @Roles('ORG_ADMIN', 'SUB_ADMIN', 'MASTER_ADMIN')
+  listAuditEvents(
+    @Param('orgId') orgId: string,
+    @Query() query: { notificationId?: string; eventType?: string; limit?: string; cursor?: string },
+    @Req() req: NotificationAuthRequest,
+  ) {
+    return this.api.listAuditEvents(orgId, req.user ?? {}, {
+      ...query,
+      limit: query.limit ? Number(query.limit) : undefined,
+    });
+  }
+
   @Get(':id')
   getOne(
     @Param('orgId') orgId: string,

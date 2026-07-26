@@ -1,5 +1,7 @@
 import type { Notification } from '@prisma/client';
 import type { NotificationCandidate } from './notification.types';
+import type { NotificationAuditClientMeta } from './audit/notification-audit.types';
+import type { NotificationAuditActorType } from '@prisma/client';
 
 export type NotificationCoreOperation =
   | 'created'
@@ -29,6 +31,9 @@ export interface IngestCandidateOptions {
   workflowTriggerNotificationId?: string;
   /** Suppress workflow lifecycle emission (internal/test use). */
   suppressWorkflowLifecycleEmit?: boolean;
+  auditActorType?: NotificationAuditActorType;
+  auditActorUserId?: string;
+  auditClientMeta?: NotificationAuditClientMeta;
 }
 
 export interface ResolveByFingerprintOptions {

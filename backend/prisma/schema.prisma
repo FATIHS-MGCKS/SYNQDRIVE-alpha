@@ -1721,6 +1721,7 @@ model Organization {
   notificationReceipts                   NotificationReceipt[]
   notificationDeliveryOutbox             NotificationDeliveryOutbox[]
   notificationRetentionPurgeRuns         NotificationRetentionPurgeRun[]
+  notificationAuditEvents              NotificationAuditEvent[]
   taskAutomationOutbox                   TaskAutomationOutbox[]
   taskAutomationRuleOverrides            OrgTaskAutomationRuleOverride[]
   batteryMeasurementSessions             BatteryMeasurementSession[]
@@ -13564,6 +13565,7 @@ model Notification {
   occurrences    NotificationOccurrence[]
   receipts       NotificationReceipt[]
   deliveryOutbox NotificationDeliveryOutbox[]
+  auditEvents    NotificationAuditEvent[]
 
   @@index([organizationId, status, lastSeenAt])
   @@index([organizationId, severity, status])
@@ -13648,6 +13650,65 @@ model NotificationDeliveryOutbox {
   @@index([organizationId, status])
   @@index([notificationId])
   @@map("notification_delivery_outbox")
+}
+
+enum NotificationAuditActorType {
+  USER
+  SYSTEM
+  AUTOMATION
+  WORKFLOW
+}
+
+enum NotificationAuditEventType {
+  NOTIFICATION_CREATED
+  SEVERITY_ESCALATED
+  ACKNOWLEDGED
+  SNOOZED
+  UNSNOOZED
+  RESOLVED
+  REOPENED
+  ARCHIVED
+  DELIVERY_FAILED
+  DELIVERY_DEAD_LETTER
+  WORKFLOW_TRIGGERED
+  MANUAL_INTERVENTION
+  POLICY_REJECTED
+  INGEST_IGNORED
+}
+
+enum NotificationAuditRetentionClass {
+  TECHNICAL_LOG
+  REVISION_AUDIT
+  GOVERNANCE_AUDIT
+}
+
+/// Append-only governance audit for notification lifecycle and delivery (ISO-oriented).
+model NotificationAuditEvent {
+  id             String                          @id @default(uuid())
+  organizationId String                          @map("organization_id")
+  notificationId String?                         @map("notification_id")
+  eventType      NotificationAuditEventType      @map("event_type")
+  retentionClass NotificationAuditRetentionClass @map("retention_class")
+  actorType      NotificationAuditActorType      @map("actor_type")
+  actorUserId    String?                         @map("actor_user_id")
+  previousState  Json?                           @map("previous_state")
+  nextState      Json?                           @map("next_state")
+  reasonCode     String?                         @map("reason_code")
+  correlationId  String?                         @map("correlation_id")
+  clientMeta     Json?                           @map("client_meta")
+  payloadHash    String?                         @map("payload_hash")
+  legalHold      Boolean                         @default(false) @map("legal_hold")
+  createdAt      DateTime                        @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  notification Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, notificationId])
+  @@index([organizationId, eventType])
+  @@index([correlationId])
+  @@index([retentionClass, createdAt])
+  @@map("notification_audit_events")
 }
 
 model NotificationRetentionPurgeRun {

@@ -6,6 +6,7 @@ import type {
   NotificationLifecycleEmitInput,
   NotificationLifecycleWorkflowPayload,
 } from './notification-lifecycle-workflow.types';
+import { NotificationAuditService } from '../audit/notification-audit.service';
 
 @Injectable()
 export class NotificationLifecycleWorkflowEmitter {
@@ -13,6 +14,7 @@ export class NotificationLifecycleWorkflowEmitter {
 
   constructor(
     @Optional() private readonly workflowEvents?: WorkflowEventService,
+    @Optional() private readonly notificationAudit?: NotificationAuditService,
   ) {}
 
   emit(input: NotificationLifecycleEmitInput): void {
@@ -47,6 +49,20 @@ export class NotificationLifecycleWorkflowEmitter {
       idempotencyKey,
       occurredAt,
       payload: payload as unknown as Record<string, unknown>,
+    });
+
+    this.notificationAudit?.recordFireAndForget({
+      organizationId: notification.organizationId,
+      notificationId: notification.id,
+      eventType: 'WORKFLOW_TRIGGERED',
+      actorType: 'WORKFLOW',
+      correlationId,
+      reasonCode: lifecycleEvent,
+      nextState: {
+        eventType: notification.eventType,
+        severity: notification.severity,
+        lifecycleGeneration: notification.lifecycleGeneration,
+      },
     });
 
     this.logger.debug(

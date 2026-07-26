@@ -5,14 +5,6 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import {
-  ActivityAction,
-  ActivityEntity,
-  MembershipRole,
-  NotificationStatus,
-  Prisma,
-} from '@prisma/client';
-import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationCoreService } from '../notification-core.service';
 import { NotificationEngineConfig } from '../notification-engine.config';
@@ -46,6 +38,10 @@ import {
   type NotificationListFilters,
 } from './notification-query.util';
 import type { ListNotificationsQueryDto } from './dto/notification-api.dto';
+import { NotificationAuditService } from '../audit/notification-audit.service';
+import { isOperationAllowedForRole } from '../access/notification-access-permissions';
+import type { NotificationAuditClientMeta } from '../audit/notification-audit.types';
+import { MembershipRole, NotificationStatus, Prisma } from '@prisma/client';
 
 export interface NotificationRequestUser {
   id?: string;
@@ -69,7 +65,7 @@ export class NotificationApiService {
     private readonly repository: NotificationRepository,
     private readonly engineConfig: NotificationEngineConfig,
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
+    private readonly notificationAudit: NotificationAuditService,
     private readonly receiptService: NotificationReceiptService,
     private readonly stationScopeService: NotificationStationScopeService,
   ) {}
@@ -254,15 +250,16 @@ export class NotificationApiService {
         throw new BadRequestException('Acknowledge is not allowed for this notification');
       }
       await this.receiptService.acknowledgePersonal(id, orgId, user.id!);
-      void this.audit.record({
+      this.notificationAudit.recordFireAndForget({
+        organizationId: orgId,
+        notificationId: id,
+        eventType: 'ACKNOWLEDGED',
+        actorType: 'USER',
         actorUserId: user.id,
-        actorOrganizationId: orgId,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.ORGANIZATION,
-        entityId: orgId,
-        description: `Notification personally acknowledged: ${id}`,
-        route,
-        metaJson: { notificationId: id, action: 'acknowledge_personal' },
+        previousState: { status: dto.status, severity: dto.severity },
+        nextState: { status: dto.status, severity: dto.severity, scope: 'personal' },
+        reasonCode: 'PERSONAL_ACK',
+        clientMeta: this.clientMetaFromRoute(route),
       });
       return this.getById(orgId, user, id);
     });
@@ -288,15 +285,16 @@ export class NotificationApiService {
         throw new BadRequestException('Snooze is not allowed for this notification');
       }
       await this.receiptService.snoozePersonal(id, orgId, user.id!, until);
-      void this.audit.record({
+      this.notificationAudit.recordFireAndForget({
+        organizationId: orgId,
+        notificationId: id,
+        eventType: 'SNOOZED',
+        actorType: 'USER',
         actorUserId: user.id,
-        actorOrganizationId: orgId,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.ORGANIZATION,
-        entityId: orgId,
-        description: `Notification personally snoozed until ${until.toISOString()}`,
-        route,
-        metaJson: { notificationId: id, action: 'snooze_personal', until: until.toISOString() },
+        previousState: { status: dto.status, severity: dto.severity },
+        nextState: { status: dto.status, severity: dto.severity, scope: 'personal' },
+        reasonCode: 'PERSONAL_SNOOZE',
+        clientMeta: this.clientMetaFromRoute(route),
       });
       return this.getById(orgId, user, id);
     });
@@ -308,6 +306,16 @@ export class NotificationApiService {
         throw new BadRequestException('Unsnooze is not allowed for this notification');
       }
       await this.receiptService.unsnoozePersonal(id, orgId, user.id!);
+      this.notificationAudit.recordFireAndForget({
+        organizationId: orgId,
+        notificationId: id,
+        eventType: 'UNSNOOZED',
+        actorType: 'USER',
+        actorUserId: user.id,
+        previousState: { status: dto.status, severity: dto.severity, scope: 'personal' },
+        nextState: { status: dto.status, severity: dto.severity },
+        reasonCode: 'PERSONAL_UNSNOOZE',
+      });
       return this.getById(orgId, user, id);
     });
   }
@@ -315,19 +323,29 @@ export class NotificationApiService {
   async resolve(orgId: string, user: NotificationRequestUser, id: string, route?: string) {
     return this.withNotificationAction(orgId, user, id, async (dto) => {
       if (!dto.availableActions.includes('resolve')) {
+        this.notificationAudit.recordFireAndForget({
+          organizationId: orgId,
+          notificationId: id,
+          eventType: 'MANUAL_INTERVENTION',
+          actorType: 'USER',
+          actorUserId: user.id,
+          previousState: { status: dto.status, severity: dto.severity, eventType: dto.eventType },
+          reasonCode: 'RESOLVE_DENIED',
+          clientMeta: this.clientMetaFromRoute(route),
+        });
         throw new BadRequestException('Manual resolution is not allowed for this notification');
       }
-      await this.core.resolveNotification(id, orgId, new Date(), { manual: true });
-      void this.audit.record({
-        actorUserId: user.id,
-        actorOrganizationId: orgId,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.ORGANIZATION,
-        entityId: orgId,
-        description: `Notification manually resolved: ${id}`,
-        route,
-        metaJson: { notificationId: id, action: 'resolve' },
-      });
+      await this.core.resolveNotification(
+        id,
+        orgId,
+        new Date(),
+        { manual: true },
+        {
+          auditActorType: 'USER',
+          auditActorUserId: user.id,
+          auditClientMeta: this.clientMetaFromRoute(route),
+        },
+      );
       return this.getById(orgId, user, id);
     });
   }
@@ -337,19 +355,41 @@ export class NotificationApiService {
       if (!dto.availableActions.includes('archive')) {
         throw new BadRequestException('Archive is not allowed for this notification');
       }
-      await this.core.archiveNotification(id, orgId);
-      void this.audit.record({
-        actorUserId: user.id,
-        actorOrganizationId: orgId,
-        action: ActivityAction.UPDATE,
-        entity: ActivityEntity.ORGANIZATION,
-        entityId: orgId,
-        description: `Notification archived: ${id}`,
-        route,
-        metaJson: { notificationId: id, action: 'archive' },
+      await this.core.archiveNotification(id, orgId, new Date(), {
+        auditActorType: 'USER',
+        auditActorUserId: user.id,
+        auditClientMeta: this.clientMetaFromRoute(route),
       });
       return this.getById(orgId, user, id);
     });
+  }
+
+  async listAuditEvents(
+    orgId: string,
+    user: NotificationRequestUser,
+    query: { notificationId?: string; eventType?: string; limit?: number; cursor?: string },
+  ) {
+    this.assertApiEnabled();
+    const ctx = await this.resolveAccessContext(orgId, user);
+    if (
+      !isOperationAllowedForRole('admin_audit', ctx.membershipRole)
+      && user.platformRole !== 'MASTER_ADMIN'
+    ) {
+      throw new ForbiddenException('Notification audit access denied');
+    }
+
+    return this.notificationAudit.listEvents({
+      organizationId: orgId,
+      notificationId: query.notificationId,
+      eventType: query.eventType as import('@prisma/client').NotificationAuditEventType | undefined,
+      limit: query.limit,
+      cursor: query.cursor,
+    });
+  }
+
+  private clientMetaFromRoute(route?: string): NotificationAuditClientMeta | undefined {
+    if (!route) return undefined;
+    return { route };
   }
 
   // ─── Private ─────────────────────────────────────────────────────

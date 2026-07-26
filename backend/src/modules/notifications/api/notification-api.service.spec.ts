@@ -217,7 +217,10 @@ describe('NotificationApiService', () => {
     vehicleTrip: { findFirst: jest.fn(async () => null) },
   };
 
-  const audit = { record: jest.fn(async () => 'audit-1') };
+  const notificationAudit = {
+    recordFireAndForget: jest.fn(),
+    listEvents: jest.fn(async () => ({ items: [], nextCursor: null })),
+  };
 
   let service: NotificationApiService;
 
@@ -233,7 +236,7 @@ describe('NotificationApiService', () => {
       repository,
       engineConfig,
       prisma as any,
-      audit as any,
+      notificationAudit as any,
       receiptService,
       stationScopeService,
     );

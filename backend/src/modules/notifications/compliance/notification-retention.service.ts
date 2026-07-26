@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { NotificationStatus, Prisma } from '@prisma/client';
 import notificationRetentionConfig from '@config/notification-retention.config';
@@ -21,6 +21,7 @@ import type {
   NotificationRetentionReport,
   NotificationRetentionRunOptions,
 } from './notification-retention.types';
+import { NotificationAuditService } from '../audit/notification-audit.service';
 
 @Injectable()
 export class NotificationRetentionService {
@@ -31,6 +32,7 @@ export class NotificationRetentionService {
     private readonly prisma: PrismaService,
     @Inject(notificationRetentionConfig.KEY)
     private readonly config: ConfigType<typeof notificationRetentionConfig>,
+    @Optional() private readonly notificationAudit?: NotificationAuditService,
   ) {}
 
   async runOnce(options: NotificationRetentionRunOptions = {}): Promise<NotificationRetentionReport> {
@@ -66,6 +68,7 @@ export class NotificationRetentionService {
       phases.push(await this.phasePurgeResolvedNotifications(dryRun, options.organizationId));
       phases.push(await this.phasePurgeDeliveryOutbox(dryRun, options.organizationId));
       phases.push(await this.phaseRedactTerminalOutboxErrors(dryRun, options.organizationId));
+      phases.push(await this.phasePurgeAuditEvents(dryRun, options.organizationId));
 
       const totals = phases.reduce(
         (acc, phase) => ({
@@ -287,6 +290,27 @@ export class NotificationRetentionService {
       candidates: rows.length,
       affected,
       skipped: dryRun ? affected : 0,
+      failed: 0,
+    };
+  }
+
+  private async phasePurgeAuditEvents(
+    dryRun: boolean,
+    organizationId?: string,
+  ): Promise<NotificationRetentionPhaseResult> {
+    const phase = 'purge_notification_audit_events';
+    if (!this.notificationAudit) {
+      return { phase, candidates: 0, affected: 0, skipped: 0, failed: 0 };
+    }
+    const result = await this.notificationAudit.purgeExpiredEvents({
+      organizationId,
+      dryRun,
+    });
+    return {
+      phase,
+      candidates: result.deleted,
+      affected: dryRun ? 0 : result.deleted,
+      skipped: result.skippedLegalHold,
       failed: 0,
     };
   }

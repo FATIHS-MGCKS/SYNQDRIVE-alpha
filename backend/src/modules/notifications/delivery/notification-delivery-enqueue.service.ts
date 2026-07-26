@@ -17,6 +17,7 @@ import { buildDeliveryIdempotencyKey } from './notification-delivery-idempotency
 import { NotificationChannelPolicyService } from './notification-channel-policy.service';
 import { nextDigestAvailableAt } from './notification-delivery-quiet-hours.util';
 import { NotificationDeliveryObservabilityService } from './notification-delivery-observability.service';
+import { NotificationAuditService } from '../audit/notification-audit.service';
 
 export interface EnqueueDeliveryInput {
   notification: Notification;
@@ -37,6 +38,7 @@ export class NotificationDeliveryEnqueueService {
     private readonly stationScope: NotificationStationScopeService,
     private readonly outboxRepo: NotificationDeliveryOutboxRepository,
     private readonly observability: NotificationDeliveryObservabilityService,
+    private readonly notificationAudit: NotificationAuditService,
   ) {}
 
   isDeliveryEnabled(): boolean {
@@ -144,6 +146,18 @@ export class NotificationDeliveryEnqueueService {
             operation: 'channel_skipped',
             channel,
             errorCode: channelDecision.reason,
+          });
+          this.notificationAudit.recordFireAndForget({
+            organizationId: input.notification.organizationId,
+            notificationId: input.notification.id,
+            eventType: 'POLICY_REJECTED',
+            actorType: 'SYSTEM',
+            reasonCode: channelDecision.reason,
+            nextState: {
+              channel,
+              eventType: input.notification.eventType,
+              severity: input.notification.severity,
+            },
           });
           continue;
         }

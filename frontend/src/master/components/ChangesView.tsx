@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-audit-lifecycle-v49875-2026-07-26',
+    version: '4.9.875',
+    title: 'V4.9.875 — Notification Engine: Auditierbare Lifecycle-Events',
+    summary: [
+      'Append-only `notification_audit_events` mit actorType, correlationId, payloadHash, Retention-Klassen.',
+      'Lifecycle-Audit: created, escalated, ack/snooze/resolve/reopen/archive, delivery fail/dead letter, workflow, policy rejection.',
+      'Datensparsam: keine Notification-Texte; geschützte Felder + Secret-Scan.',
+      'Admin-Read: GET /notifications/audit-events (ORG_ADMIN/SUB_ADMIN).',
+      'ISO-27001-orientierte Kontrollzuordnung (ohne Zertifizierungsbehauptung).',
+    ],
+    reason:
+      'Notification-Remediation Prompt 30: Sicherheits- und Lifecycle-Aktionen revisionsfähig und datensparsam protokollieren.',
+    previousBehavior:
+      'Nur partielle ActivityLog-Einträge für acknowledge/snooze/resolve/archive; kein dediziertes Notification-Audit.',
+    details:
+      'audit/notification-audit.service.ts, migration 20260726150000, docs/compliance/notification-engine-audit-iso27001.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T03:30:00.000Z',
+  },
+  {
     id: 'notification-access-isolation-v49874-2026-07-26',
     version: '4.9.874',
     title: 'V4.9.874 — Notification Engine: Tenant- & Station-Isolation',
