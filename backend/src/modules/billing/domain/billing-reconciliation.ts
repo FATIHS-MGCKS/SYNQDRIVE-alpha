@@ -12,20 +12,44 @@ import {
 import { mapStripeSubscriptionStatus } from './mappers/stripe-subscription-status.mapper';
 import { isSyncableSubscriptionItem } from './stripe-subscription-orchestrator';
 
-export const BILLING_RECONCILIATION_SCHEMA_VERSION = '1' as const;
+export const BILLING_RECONCILIATION_SCHEMA_VERSION = '2' as const;
 
 export const BillingReconciliationErrorCode = {
   NOT_CONFIGURED: 'BILLING_RECONCILIATION_NOT_CONFIGURED',
   RUN_NOT_FOUND: 'BILLING_RECONCILIATION_RUN_NOT_FOUND',
   DRIFT_NOT_FOUND: 'BILLING_RECONCILIATION_DRIFT_NOT_FOUND',
   NOT_AUTO_FIXABLE: 'BILLING_RECONCILIATION_NOT_AUTO_FIXABLE',
+  NOT_ACKNOWLEDGED: 'BILLING_RECONCILIATION_NOT_ACKNOWLEDGED',
   ALREADY_RESOLVED: 'BILLING_RECONCILIATION_ALREADY_RESOLVED',
+  ALREADY_ACKNOWLEDGED: 'BILLING_RECONCILIATION_ALREADY_ACKNOWLEDGED',
   STRIPE_MODE_MISMATCH: 'BILLING_RECONCILIATION_STRIPE_MODE_MISMATCH',
 } as const;
 
 export type BillingReconciliationErrorCode =
   (typeof BillingReconciliationErrorCode)[keyof typeof BillingReconciliationErrorCode];
 
+export const BILLING_RECONCILIATION_RENEWAL_TOLERANCE_MS = 60_000;
+
+/** Drift types that must never be auto-applied by scheduler — admin-only technical fixes. */
+export const BILLING_RECONCILIATION_CONTRACT_DRIFT_TYPES = new Set<BillingReconciliationDriftType>([
+  BillingReconciliationDriftType.LOCAL_SUBSCRIPTION_WITHOUT_STRIPE,
+  BillingReconciliationDriftType.STRIPE_SUBSCRIPTION_WITHOUT_LOCAL,
+  BillingReconciliationDriftType.STATUS_MISMATCH,
+  BillingReconciliationDriftType.WRONG_PRICE_ID,
+  BillingReconciliationDriftType.MISSING_ITEM,
+  BillingReconciliationDriftType.EXTRA_ITEM,
+  BillingReconciliationDriftType.QUANTITY_MISMATCH,
+  BillingReconciliationDriftType.BILLING_ANCHOR_MISMATCH,
+  BillingReconciliationDriftType.MISSING_DISCOUNT,
+  BillingReconciliationDriftType.MISSING_LOCAL_INVOICE,
+  BillingReconciliationDriftType.MISSING_LOCAL_PAYMENT,
+  BillingReconciliationDriftType.TEST_LIVE_MODE_CONFLICT,
+  BillingReconciliationDriftType.CUSTOMER_ID_MISMATCH,
+  BillingReconciliationDriftType.CANCELLATION_MISMATCH,
+  BillingReconciliationDriftType.RENEWAL_PERIOD_MISMATCH,
+  BillingReconciliationDriftType.INVOICE_STATUS_MISMATCH,
+  BillingReconciliationDriftType.PRODUCT_MISMATCH,
+]);
 export const BILLING_RECONCILIATION_RATE_LIMIT_DELAY_MS = 150;
 export const BILLING_RECONCILIATION_DEFAULT_BATCH_SIZE = 25;
 export const BILLING_RECONCILIATION_STUCK_WEBHOOK_MIN_AGE_MS = 15 * 60 * 1000;
@@ -39,6 +63,8 @@ export interface BillingReconciliationLocalSubscription {
   stripeCustomerId: string | null;
   stripeMode: BillingStripeMode | null;
   billingAnchorDay: number | null;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: Date | null;
 }
 
 export interface BillingReconciliationLocalItem {
@@ -50,6 +76,7 @@ export interface BillingReconciliationLocalItem {
   stripeMode: BillingStripeMode | null;
   validTo: Date | null;
   expectedStripePriceId: string | null;
+  expectedStripeProductId: string | null;
 }
 
 export interface BillingReconciliationLocalDiscount {
@@ -84,6 +111,7 @@ export interface BillingReconciliationLocalPaymentMethod {
 export interface BillingReconciliationStripeSubscriptionItem {
   id: string;
   priceId: string;
+  productId: string | null;
   quantity: number;
   localItemId: string | null;
 }
@@ -93,6 +121,9 @@ export interface BillingReconciliationStripeSubscription {
   status: string;
   livemode: boolean;
   billingCycleAnchorDay: number | null;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEndUnix: number | null;
+  customerId: string | null;
   items: BillingReconciliationStripeSubscriptionItem[];
   couponIds: string[];
   metadataOrganizationId: string | null;
@@ -264,8 +295,72 @@ export function detectBillingReconciliationDrift(
 
   const stripeSub = input.stripeSubscription;
   const mappedStatus = mapStripeSubscriptionStatus(stripeSub.status, {
-    cancelAtPeriodEnd: false,
+    cancelAtPeriodEnd: stripeSub.cancelAtPeriodEnd,
   });
+
+  if (
+    subscription.stripeCustomerId &&
+    stripeSub.customerId &&
+    subscription.stripeCustomerId !== stripeSub.customerId
+  ) {
+    findings.push(
+      buildFinding({
+        organizationId: subscription.organizationId,
+        subscriptionId: subscription.id,
+        driftType: BillingReconciliationDriftType.CUSTOMER_ID_MISMATCH,
+        severity: BillingReconciliationDriftSeverity.CRITICAL,
+        localValue: subscription.stripeCustomerId,
+        stripeValue: stripeSub.customerId,
+        suggestedAction:
+          'Verify Stripe customer linkage manually. Customer IDs are contract anchors and are never auto-overwritten.',
+        autoFixable: false,
+        stripeMode: runtimeStripeMode,
+      }),
+    );
+  }
+
+  if (subscription.cancelAtPeriodEnd !== stripeSub.cancelAtPeriodEnd) {
+    findings.push(
+      buildFinding({
+        organizationId: subscription.organizationId,
+        subscriptionId: subscription.id,
+        driftType: BillingReconciliationDriftType.CANCELLATION_MISMATCH,
+        severity: BillingReconciliationDriftSeverity.WARNING,
+        localValue: String(subscription.cancelAtPeriodEnd),
+        stripeValue: String(stripeSub.cancelAtPeriodEnd),
+        suggestedAction:
+          'Compare cancellation schedule between contract and Stripe. Resolve via approved admin workflow only.',
+        autoFixable: false,
+        stripeMode: runtimeStripeMode,
+      }),
+    );
+  }
+
+  if (
+    subscription.currentPeriodEnd &&
+    stripeSub.currentPeriodEndUnix != null
+  ) {
+    const stripePeriodEnd = new Date(stripeSub.currentPeriodEndUnix * 1000);
+    const deltaMs = Math.abs(
+      subscription.currentPeriodEnd.getTime() - stripePeriodEnd.getTime(),
+    );
+    if (deltaMs > BILLING_RECONCILIATION_RENEWAL_TOLERANCE_MS) {
+      findings.push(
+        buildFinding({
+          organizationId: subscription.organizationId,
+          subscriptionId: subscription.id,
+          driftType: BillingReconciliationDriftType.RENEWAL_PERIOD_MISMATCH,
+          severity: BillingReconciliationDriftSeverity.WARNING,
+          localValue: subscription.currentPeriodEnd.toISOString(),
+          stripeValue: stripePeriodEnd.toISOString(),
+          suggestedAction:
+            'Renewal period end differs between local contract and Stripe. Confirm before any subscription sync.',
+          autoFixable: false,
+          stripeMode: runtimeStripeMode,
+        }),
+      );
+    }
+  }
 
   if (mappedStatus.billingStatus !== subscription.status) {
     findings.push(
@@ -359,6 +454,28 @@ export function detectBillingReconciliationDrift(
           autoFixable: false,
           stripeMode: runtimeStripeMode,
           detailKey: `${localItem.id}:${stripeItem.id}`,
+        }),
+      );
+    }
+
+    if (
+      localItem.expectedStripeProductId &&
+      stripeItem.productId &&
+      stripeItem.productId !== localItem.expectedStripeProductId
+    ) {
+      findings.push(
+        buildFinding({
+          organizationId: subscription.organizationId,
+          subscriptionId: subscription.id,
+          driftType: BillingReconciliationDriftType.PRODUCT_MISMATCH,
+          severity: BillingReconciliationDriftSeverity.WARNING,
+          localValue: localItem.expectedStripeProductId,
+          stripeValue: stripeItem.productId,
+          suggestedAction:
+            'Verify catalog product mapping. Product drift affects commercial packaging and is not auto-corrected.',
+          autoFixable: false,
+          stripeMode: runtimeStripeMode,
+          detailKey: `${localItem.id}:${stripeItem.id}:product`,
         }),
       );
     }
@@ -476,16 +593,17 @@ export function detectBillingReconciliationDrift(
     );
   }
 
-  const localInvoiceIds = new Set(
+  const localInvoiceByStripeId = new Map(
     input.invoices
       .filter((invoice) => invoice.stripeInvoiceId)
-      .map((invoice) => invoice.stripeInvoiceId!),
+      .map((invoice) => [invoice.stripeInvoiceId!, invoice]),
   );
   for (const stripeInvoice of input.stripeInvoices) {
     if (['draft', 'void'].includes(stripeInvoice.status)) {
       continue;
     }
-    if (!localInvoiceIds.has(stripeInvoice.id)) {
+    const localInvoice = localInvoiceByStripeId.get(stripeInvoice.id);
+    if (!localInvoice) {
       findings.push(
         buildFinding({
           organizationId: subscription.organizationId,
@@ -496,6 +614,26 @@ export function detectBillingReconciliationDrift(
           stripeValue: stripeInvoice.id,
           suggestedAction:
             'Mirror invoice projection from Stripe webhook or controlled resync. Safe for technical projection only.',
+          autoFixable: false,
+          stripeMode: runtimeStripeMode,
+          detailKey: stripeInvoice.id,
+        }),
+      );
+      continue;
+    }
+
+    const mappedStripeStatus = mapStripeInvoiceStatusForReconciliation(stripeInvoice.status);
+    if (mappedStripeStatus && localInvoice.status !== mappedStripeStatus) {
+      findings.push(
+        buildFinding({
+          organizationId: subscription.organizationId,
+          subscriptionId: subscription.id,
+          driftType: BillingReconciliationDriftType.INVOICE_STATUS_MISMATCH,
+          severity: BillingReconciliationDriftSeverity.WARNING,
+          localValue: localInvoice.status,
+          stripeValue: stripeInvoice.status,
+          suggestedAction:
+            'Invoice status differs between local mirror and Stripe. Confirm before updating local projection.',
           autoFixable: false,
           stripeMode: runtimeStripeMode,
           detailKey: stripeInvoice.id,
@@ -568,4 +706,21 @@ function buildFinding(input: {
 
 export function sleepForBillingReconciliation(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function mapStripeInvoiceStatusForReconciliation(
+  stripeStatus: string,
+): InvoiceStatus | null {
+  switch (stripeStatus) {
+    case 'paid':
+      return InvoiceStatus.PAID;
+    case 'open':
+      return InvoiceStatus.OPEN;
+    case 'uncollectible':
+      return InvoiceStatus.UNCOLLECTIBLE;
+    case 'void':
+      return InvoiceStatus.VOID;
+    default:
+      return null;
+  }
 }

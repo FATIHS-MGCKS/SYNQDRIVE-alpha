@@ -867,6 +867,11 @@ enum BillingReconciliationDriftType {
   MISSING_LOCAL_PAYMENT
   STUCK_WEBHOOK
   TEST_LIVE_MODE_CONFLICT
+  CUSTOMER_ID_MISMATCH
+  CANCELLATION_MISMATCH
+  RENEWAL_PERIOD_MISMATCH
+  INVOICE_STATUS_MISMATCH
+  PRODUCT_MISMATCH
 }
 
 enum BillingReconciliationDriftSeverity {
@@ -1807,6 +1812,7 @@ model User {
   billingQuantityEventsActed          BillingQuantityEvent[]                  @relation("BillingQuantityEventsActed")
   billingPaymentsRecorded             BillingPayment[]                        @relation("BillingPaymentsRecorded")
   billingReconciliationDriftsResolved BillingReconciliationDrift[]            @relation("BillingReconciliationDriftsResolved")
+  billingReconciliationDriftsAcknowledged BillingReconciliationDrift[]    @relation("BillingReconciliationDriftsAcknowledged")
   billingUsageSnapshotsCreated        BillingUsageSnapshot[]                  @relation("BillingUsageSnapshotsCreated")
   billingVehicleAssignmentsApproved   BillingBillableVehicleAssignment[]      @relation("BillingVehicleAssignmentsApproved")
   outboundEmailsSent                  OutboundEmail[]                         @relation("OutboundEmailSentBy")
@@ -5018,6 +5024,8 @@ model BillingReconciliationDrift {
   suggestedAction  String                             @map("suggested_action")
   autoFixable      Boolean                            @default(false) @map("auto_fixable")
   detectedAt       DateTime                           @default(now()) @map("detected_at")
+  acknowledgedAt   DateTime?                          @map("acknowledged_at")
+  acknowledgedByUserId String?                        @map("acknowledged_by_user_id")
   resolvedAt       DateTime?                          @map("resolved_at")
   resolvedByUserId String?                            @map("resolved_by_user_id")
   stripeMode       BillingStripeMode?                 @map("stripe_mode")
@@ -5029,6 +5037,7 @@ model BillingReconciliationDrift {
   organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   subscription BillingSubscription?      @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   resolvedBy   User?                     @relation("BillingReconciliationDriftsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  acknowledgedBy User?                   @relation("BillingReconciliationDriftsAcknowledged", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, resolvedAt, detectedAt])
   @@index([subscriptionId, resolvedAt])

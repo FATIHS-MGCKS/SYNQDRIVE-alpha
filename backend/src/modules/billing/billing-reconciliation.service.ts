@@ -319,6 +319,7 @@ export class BillingReconciliationService {
     organizationId?: string;
     subscriptionId?: string;
     severity?: BillingReconciliationDriftSeverity;
+    acknowledged?: boolean;
   }) {
     return this.prisma.billingReconciliationDrift.findMany({
       where: {
@@ -326,9 +327,65 @@ export class BillingReconciliationService {
         subscriptionId: filters?.subscriptionId,
         severity: filters?.severity,
         resolvedAt: null,
+        ...(filters?.acknowledged === true
+          ? { acknowledgedAt: { not: null } }
+          : filters?.acknowledged === false
+            ? { acknowledgedAt: null }
+            : {}),
       },
       orderBy: [{ severity: 'desc' }, { detectedAt: 'desc' }],
     });
+  }
+
+  async listRuns(limit = 50) {
+    return this.prisma.billingReconciliationRun.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async acknowledgeDrift(driftId: string, actorUserId: string) {
+    const drift = await this.prisma.billingReconciliationDrift.findUnique({
+      where: { id: driftId },
+    });
+    if (!drift) {
+      throw new NotFoundException({
+        code: BillingReconciliationErrorCode.DRIFT_NOT_FOUND,
+        message: BillingReconciliationErrorCode.DRIFT_NOT_FOUND,
+      });
+    }
+    if (drift.resolvedAt) {
+      throw new BadRequestException({
+        code: BillingReconciliationErrorCode.ALREADY_RESOLVED,
+        message: BillingReconciliationErrorCode.ALREADY_RESOLVED,
+      });
+    }
+    if (drift.acknowledgedAt) {
+      throw new BadRequestException({
+        code: BillingReconciliationErrorCode.ALREADY_ACKNOWLEDGED,
+        message: BillingReconciliationErrorCode.ALREADY_ACKNOWLEDGED,
+      });
+    }
+
+    const acknowledged = await this.prisma.billingReconciliationDrift.update({
+      where: { id: driftId },
+      data: {
+        acknowledgedAt: new Date(),
+        acknowledgedByUserId: actorUserId,
+      },
+    });
+
+    await this.audit.log({
+      organizationId: drift.organizationId,
+      actorUserId,
+      action: 'BILLING_RECONCILIATION_DRIFT_ACKNOWLEDGED',
+      entityType: 'BillingReconciliationDrift',
+      entityId: drift.id,
+      before: { driftType: drift.driftType, severity: drift.severity },
+      after: { acknowledgedAt: acknowledged.acknowledgedAt?.toISOString() ?? null },
+    });
+
+    return acknowledged;
   }
 
   async resolveDrift(driftId: string, actorUserId: string) {
@@ -347,6 +404,7 @@ export class BillingReconciliationService {
         message: BillingReconciliationErrorCode.ALREADY_RESOLVED,
       });
     }
+    this.requireDriftAcknowledged(drift);
 
     const resolved = await this.prisma.billingReconciliationDrift.update({
       where: { id: driftId },
@@ -385,6 +443,7 @@ export class BillingReconciliationService {
         message: BillingReconciliationErrorCode.NOT_AUTO_FIXABLE,
       });
     }
+    this.requireDriftAcknowledged(drift);
 
     if (
       drift.driftType === BillingReconciliationDriftType.MISSING_DEFAULT_PAYMENT_METHOD
@@ -461,10 +520,15 @@ export class BillingReconciliationService {
           const mapping = item.priceVersionId
             ? await this.catalogMappings.getMappingForVersion(item.priceVersionId, stripeMode)
             : null;
-          return { itemId: item.id, stripePriceId: mapping?.stripePriceId ?? null };
+          return {
+            itemId: item.id,
+            stripePriceId: mapping?.stripePriceId ?? null,
+            stripeProductId: mapping?.stripeProductId ?? null,
+          };
         }),
     );
     const priceByItemId = new Map(priceMappings.map((row) => [row.itemId, row.stripePriceId]));
+    const productByItemId = new Map(priceMappings.map((row) => [row.itemId, row.stripeProductId]));
 
     const paymentMethods = await this.prisma.billingPaymentMethod.findMany({
       where: { organizationId: subscription.organizationId },
@@ -485,7 +549,7 @@ export class BillingReconciliationService {
       if (subscription.stripeSubscriptionId) {
         const retrieved = await this.withRetries(() =>
           stripe.subscriptions.retrieve(subscription.stripeSubscriptionId!, {
-            expand: ['items.data.price', 'discounts'],
+            expand: ['items.data.price.product', 'discounts'],
           }),
         );
         stripeSubscription = this.mapStripeSubscription(retrieved);
@@ -495,7 +559,7 @@ export class BillingReconciliationService {
             customer: subscription.stripeCustomerId!,
             status: 'all',
             limit: 20,
-            expand: ['data.items.data.price', 'data.discounts'],
+            expand: ['data.items.data.price.product', 'data.discounts'],
           }),
         );
         const metadataMatches = listed.data.filter((row) => {
@@ -559,6 +623,8 @@ export class BillingReconciliationService {
         stripeCustomerId: subscription.stripeCustomerId,
         stripeMode: subscription.stripeMode,
         billingAnchorDay: subscription.billingAnchorDay,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        currentPeriodEnd: subscription.currentPeriodEnd,
       },
       items: subscription.items.map((item) => ({
         id: item.id,
@@ -569,6 +635,7 @@ export class BillingReconciliationService {
         stripeMode: item.stripeMode,
         validTo: item.validTo,
         expectedStripePriceId: priceByItemId.get(item.id) ?? null,
+        expectedStripeProductId: productByItemId.get(item.id) ?? null,
       })),
       discounts: subscription.discounts.map((discount) => ({
         id: discount.id,
@@ -637,6 +704,21 @@ export class BillingReconciliationService {
         },
       });
 
+      await this.audit.log({
+        organizationId: finding.organizationId,
+        actorUserId: null,
+        action: 'BILLING_RECONCILIATION_DRIFT_DETECTED',
+        entityType: 'BillingReconciliationDrift',
+        entityId: created.id,
+        after: {
+          driftType: created.driftType,
+          severity: created.severity,
+          localValue: created.localValue,
+          stripeValue: created.stripeValue,
+          runId,
+        },
+      });
+
       rows.push({
         id: created.id,
         driftType: created.driftType,
@@ -658,6 +740,12 @@ export class BillingReconciliationService {
       (item) => ({
         id: item.id,
         priceId: typeof item.price === 'string' ? item.price : item.price?.id ?? '',
+        productId:
+          typeof item.price === 'object' && item.price?.product
+            ? typeof item.price.product === 'string'
+              ? item.price.product
+              : item.price.product?.id ?? null
+            : null,
         quantity: item.quantity ?? 0,
         localItemId: item.metadata?.synqdriveSubscriptionItemId ?? null,
       }),
@@ -678,11 +766,29 @@ export class BillingReconciliationService {
       status: subscription.status,
       livemode: subscription.livemode,
       billingCycleAnchorDay: extractStripeBillingAnchorDay(subscription.billing_cycle_anchor),
+      cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+      currentPeriodEndUnix: subscription.current_period_end ?? null,
+      customerId:
+        typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer?.id ?? null,
       items,
       couponIds,
       metadataOrganizationId: subscription.metadata?.organizationId ?? null,
       metadataSubscriptionId: subscription.metadata?.synqdriveSubscriptionId ?? null,
     };
+  }
+
+  private requireDriftAcknowledged(drift: {
+    acknowledgedAt: Date | null;
+  }): void {
+    if (!drift.acknowledgedAt) {
+      throw new BadRequestException({
+        code: BillingReconciliationErrorCode.NOT_ACKNOWLEDGED,
+        message:
+          'Drift must be manually acknowledged before resolve or auto-fix can be applied.',
+      });
+    }
   }
 
   private readStripeId(value: string | { id: string } | null | undefined): string | null {

@@ -1116,6 +1116,24 @@ export class BillingController {
 
 
 
+  @Get('admin/billing/reconciliation/runs')
+
+  @Roles('MASTER_ADMIN')
+
+  async listBillingReconciliationRuns(
+
+    @Query('limit') limit?: string,
+
+  ) {
+
+    const parsed = limit ? Number.parseInt(limit, 10) : 50;
+
+    return this.reconciliationService.listRuns(Number.isFinite(parsed) ? parsed : 50);
+
+  }
+
+
+
   @Get('admin/billing/reconciliation/drifts')
 
   @Roles('MASTER_ADMIN')
@@ -1135,6 +1153,28 @@ export class BillingController {
       subscriptionId,
 
     });
+
+  }
+
+
+
+  @Post('admin/billing/reconciliation/drifts/:driftId/acknowledge')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async acknowledgeBillingReconciliationDrift(
+
+    @Param('driftId') driftId: string,
+
+    @Req() req: any,
+
+  ) {
+
+    return this.reconciliationService.acknowledgeDrift(driftId, req?.user?.id);
 
   }
 

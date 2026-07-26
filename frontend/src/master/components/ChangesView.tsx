@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-billing-reconciliation-2b5-2026-07-26',
+    version: '4.9.884',
+    title: 'V4.9.884 — Master Admin 2B.5: Billing reconciliation engine hardening',
+    summary: [
+      'Extended drift detection: customer, product, cancellation, renewal period, invoice status.',
+      'Manual acknowledgment required before resolve/auto-fix; audit log on drift detection.',
+      'New drift types + acknowledged_at columns; GET reconciliation runs endpoint.',
+      'docs/remediation/billing-reconciliation.md',
+    ],
+    reason:
+      'Stripe vs local DB deviations must be detected, classified, logged, and manually confirmed — never auto-overwritten.',
+    previousBehavior:
+      'Reconciliation existed but lacked customer/product/cancel/renewal/invoice-status checks and acknowledgment gate.',
+    details:
+      'billing-reconciliation.service.ts, domain/billing-reconciliation.ts, billing.controller.ts, migration 20260726190000',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T11:12:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
