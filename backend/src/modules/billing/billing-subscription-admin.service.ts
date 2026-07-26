@@ -18,6 +18,7 @@ import { UsageSnapshotService } from './usage-snapshot.service';
 import { BillingCommandType } from './domain/billing-command';
 import { SubscriptionLifecycleErrorCode } from './domain/subscription-lifecycle';
 import { calculateProration } from './domain/proration-calculator';
+import { BillingActivationGuardService } from './billing-activation-guard.service';
 
 export const MasterSubscriptionAdminErrorCode = {
   ORGANIZATION_NOT_FOUND: 'ORGANIZATION_NOT_FOUND',
@@ -42,6 +43,7 @@ export class BillingSubscriptionAdminService {
     private readonly pricePreview: SubscriptionPricePreviewService,
     private readonly usageSnapshots: UsageSnapshotService,
     private readonly periodResolver: BillingPeriodResolverService,
+    private readonly activationGuard: BillingActivationGuardService,
   ) {}
 
   async getContract(organizationId: string) {
@@ -358,6 +360,21 @@ export class BillingSubscriptionAdminService {
       },
       handler: async () => {
         const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const idempotencyKey = actor.idempotencyKey?.trim();
+        if (!idempotencyKey) {
+          throw new ConflictException({
+            code: MasterSubscriptionAdminErrorCode.IDEMPOTENCY_KEY_REQUIRED,
+            message: MasterSubscriptionAdminErrorCode.IDEMPOTENCY_KEY_REQUIRED,
+          });
+        }
+
+        await this.activationGuard.guardActivation({
+          organizationId,
+          subscriptionId: subscription.id,
+          actorUserId: actor.actorUserId,
+          commandIdempotencyKey: idempotencyKey,
+        });
+
         const contract = await this.lifecycle.activate({
           subscriptionId: subscription.id,
           priceVersionId: input.priceVersionId,
@@ -392,18 +409,48 @@ export class BillingSubscriptionAdminService {
   }
 
   async reactivate(organizationId: string, actor: MasterSubscriptionActor) {
-    return this.mutateLifecycle(
+    const payload = { lockVersion: actor.lockVersion ?? null };
+    return this.commands.execute({
       organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_REACTIVATE,
       actor,
-      BillingCommandType.MASTER_SUBSCRIPTION_REACTIVATE,
-      'MASTER_SUBSCRIPTION_REACTIVATED',
-      (subscription) =>
-        this.lifecycle.reactivate({
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_REACTIVATED',
+        entityType: 'BillingSubscription',
+        changedFields: ['status'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const idempotencyKey = actor.idempotencyKey?.trim();
+        if (!idempotencyKey) {
+          throw new ConflictException({
+            code: MasterSubscriptionAdminErrorCode.IDEMPOTENCY_KEY_REQUIRED,
+            message: MasterSubscriptionAdminErrorCode.IDEMPOTENCY_KEY_REQUIRED,
+          });
+        }
+
+        await this.activationGuard.guardActivation({
+          organizationId,
+          subscriptionId: subscription.id,
+          actorUserId: actor.actorUserId,
+          commandIdempotencyKey: idempotencyKey,
+        });
+
+        const contract = await this.lifecycle.reactivate({
           subscriptionId: subscription.id,
           actorUserId: actor.actorUserId,
           lockVersion: actor.lockVersion ?? subscription.lockVersion,
-        }),
-    );
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
+    });
   }
 
   async scheduleCancel(organizationId: string, actor: MasterSubscriptionActor, cancelAt?: Date) {

@@ -44,6 +44,10 @@ export interface SyncStripeSubscriptionInput {
   organizationId: string;
   subscriptionId?: string;
   actorUserId?: string | null;
+  /** When set, Stripe trial_end / billing params use this instead of current contract domain status. */
+  contractDomainStatusOverride?: SubscriptionStatus;
+  /** Suffix for Stripe idempotency key (e.g. command idempotency key) to avoid duplicate provider calls on replay. */
+  idempotencyKeySuffix?: string;
 }
 
 @Injectable()
@@ -64,6 +68,8 @@ export class StripeSubscriptionOrchestratorService {
     const stripeMode = this.requireRuntimeStripeMode();
     const subscription = await this.resolveSubscription(input);
     const contract = await this.lifecycle.getContractState(subscription.id);
+    const contractDomainStatus =
+      input.contractDomainStatusOverride ?? contract.domainStatus;
     const now = new Date();
 
     const syncableItems = contract.items.filter((item) =>
@@ -119,7 +125,7 @@ export class StripeSubscriptionOrchestratorService {
           discounts,
           prorationBehavior,
           subscription,
-          contractDomainStatus: contract.domainStatus,
+          contractDomainStatus,
         });
       } else {
         stripeSub = await this.createStripeSubscription({
@@ -129,8 +135,9 @@ export class StripeSubscriptionOrchestratorService {
           linePlans,
           metadata,
           discounts,
-          contractDomainStatus: contract.domainStatus,
+          contractDomainStatus,
           stripeMode,
+          idempotencyKeySuffix: input.idempotencyKeySuffix,
         });
         created = true;
       }
@@ -370,6 +377,7 @@ export class StripeSubscriptionOrchestratorService {
     discounts: Array<{ couponId: string }>;
     contractDomainStatus: SubscriptionStatus;
     stripeMode: BillingStripeMode;
+    idempotencyKeySuffix?: string;
   }) {
     const trialEnd = resolveTrialEndUnix(
       input.contractDomainStatus === SubscriptionStatus.TRIALING
@@ -410,6 +418,7 @@ export class StripeSubscriptionOrchestratorService {
         idempotencyKey: buildStripeSubscriptionIdempotencyKey(
           input.subscription.id,
           input.stripeMode,
+          input.idempotencyKeySuffix,
         ),
       }),
     );
@@ -502,7 +511,12 @@ export class StripeSubscriptionOrchestratorService {
       params.items = updateItems;
     }
 
-    if (trialEnd) {
+    if (
+      input.contractDomainStatus === SubscriptionStatus.ACTIVE &&
+      input.existingStripeSub.status === 'trialing'
+    ) {
+      params.trial_end = 'now';
+    } else if (trialEnd) {
       params.trial_end = trialEnd;
     }
 
