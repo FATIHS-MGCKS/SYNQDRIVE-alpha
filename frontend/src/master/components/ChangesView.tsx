@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-remediation-2d7-2026-07-26',
+    version: '4.9.888',
+    title: 'V4.9.888 — Master Admin 2D.7: ClickHouse controlled remediation',
+    summary: [
+      'Gated remediation: G1 backup, M1 shared mounts, M2 VPS compose override, optional M3 recreate.',
+      'Migration 007 org_id columns + application mirror writes with organizationId.',
+      'async_insert server profile + Docker CPU/RAM limits on VPS override.',
+      'vps-clickhouse-remediation.sh orchestrator with integrity/health checks per step.',
+    ],
+    reason:
+      'Phase 2D analyses identified storage drift, tenant gaps, and insert pressure — 2D.7 executes approved fixes safely.',
+    previousBehavior:
+      'Analysis-only phases 2D.1–2D.6; release-relative CH mounts; legacy tables without org_id on write.',
+    details:
+      'docs/remediation/clickhouse-remediation.md · docker-compose.vps-clickhouse.yml · vps-clickhouse-remediation.sh',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T15:00:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-pipeline-analysis-2d6-2026-07-26',
     version: '4.9.887',
     title: 'V4.9.887 — Master Admin 2D.6: ClickHouse analytics pipeline analysis',

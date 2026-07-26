@@ -37,6 +37,7 @@ export class ClickHouseTelemetryService {
    * Mirrors a normalized snapshot into telemetry_snapshots.
    */
   async insertSnapshot(
+    orgId: string,
     vehicleId: string,
     tokenId: number,
     snap: NormalizedSnapshot,
@@ -54,6 +55,7 @@ export class ClickHouseTelemetryService {
         table: 'telemetry_snapshots',
         values: [
           {
+            org_id: orgId,
             vehicle_id: vehicleId,
             token_id: tokenId,
             recorded_at: snap.recordedAt.getTime(),
@@ -93,6 +95,7 @@ export class ClickHouseTelemetryService {
    * them into telemetry_state_changes for use by analytical detectors.
    */
   async detectAndInsertStateChanges(
+    orgId: string,
     vehicleId: string,
     previousSnap: {
       isIgnitionOn: boolean | null;
@@ -110,6 +113,7 @@ export class ClickHouseTelemetryService {
     if (!previousSnap) return;
 
     const changes: Array<{
+      org_id: string;
       vehicle_id: string;
       changed_at: number;
       signal_name: string;
@@ -121,6 +125,7 @@ export class ClickHouseTelemetryService {
     if (previousSnap.isIgnitionOn !== current.isIgnitionOn &&
         previousSnap.isIgnitionOn != null && current.isIgnitionOn != null) {
       changes.push({
+        org_id: orgId,
         vehicle_id: vehicleId,
         changed_at: current.recordedAt.getTime(),
         signal_name: 'ignition',
@@ -134,6 +139,7 @@ export class ClickHouseTelemetryService {
     const currMoving = (current.speedKmh ?? 0) > 2;
     if (prevMoving !== currMoving) {
       changes.push({
+        org_id: orgId,
         vehicle_id: vehicleId,
         changed_at: current.recordedAt.getTime(),
         signal_name: 'motion',

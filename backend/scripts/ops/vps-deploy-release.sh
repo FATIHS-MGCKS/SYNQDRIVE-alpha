@@ -41,6 +41,23 @@ for legacy_docs in /opt/synqdrive/releases/*/backend/storage/documents; do
 done
 ln -sfn "$SHARED_DOCS" "$RELEASE_DIR/backend/storage/documents"
 
+echo "==> Sync ClickHouse shared config (Phase 2D.7 M4)"
+SHARED_CH="/opt/synqdrive/shared/clickhouse"
+mkdir -p "$SHARED_CH/backups" "$SHARED_CH/config/config.d" "$SHARED_CH/config/users.d"
+chmod 700 "$SHARED_CH" "$SHARED_CH/backups" 2>/dev/null || true
+if [[ -d "$RELEASE_DIR/backend/docker/clickhouse/config.d" ]]; then
+  install -m 644 "$RELEASE_DIR/backend/docker/clickhouse/config.d/"*.xml "$SHARED_CH/config/config.d/"
+fi
+if [[ -d "$RELEASE_DIR/backend/docker/clickhouse/users.d" ]]; then
+  install -m 644 "$RELEASE_DIR/backend/docker/clickhouse/users.d/"*.xml "$SHARED_CH/config/users.d/"
+fi
+if [[ -f "$RELEASE_DIR/backend/docker-compose.vps-clickhouse.yml" ]]; then
+  if ! grep -q 'COMPOSE_FILE=.*vps-clickhouse' /opt/synqdrive/shared/backend.env 2>/dev/null; then
+    echo "# ClickHouse VPS override (Phase 2D.7) — uncomment after first remediation run:"
+    echo "# COMPOSE_FILE=/opt/synqdrive/current/backend/docker-compose.yml:/opt/synqdrive/current/backend/docker-compose.vps-clickhouse.yml"
+  fi
+fi
+
 echo "==> Backend install/build/migrate"
 cd "$RELEASE_DIR/backend"
 npm ci
