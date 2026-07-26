@@ -43,6 +43,41 @@ if ! command -v psql >/dev/null 2>&1; then
   exit 2
 fi
 
+# DATABASE_URL is a Prisma connection string; libpq rejects Prisma-only query
+# parameters ("invalid URI query parameter: schema"). Keep the params libpq
+# understands and translate a non-default schema into a search_path option.
+pg_url_for_psql() {
+  local url="$1" base="${1%%\?*}" query="" kept=() schema=""
+  [[ "$url" == *\?* ]] && query="${url#*\?}"
+  [[ -z "$query" ]] && { printf '%s' "$base"; return; }
+
+  local pair key value
+  local IFS='&'
+  for pair in $query; do
+    key="${pair%%=*}"
+    value="${pair#*=}"
+    case "$key" in
+      schema) schema="$value" ;;
+      connection_limit | pool_timeout | pgbouncer | socket_timeout | \
+        statement_cache_size | connect_timeout_ms) ;;
+      '') ;;
+      *) kept+=("$pair") ;;
+    esac
+  done
+
+  if [[ -n "$schema" && "$schema" != "public" ]]; then
+    kept+=("options=-c%20search_path%3D${schema}")
+  fi
+
+  if [[ ${#kept[@]} -eq 0 ]]; then
+    printf '%s' "$base"
+  else
+    printf '%s?%s' "$base" "$(IFS='&'; printf '%s' "${kept[*]}")"
+  fi
+}
+
+PG_URL="$(pg_url_for_psql "$PG_URL")"
+
 # Verify migration 007 column exists
 HAS_COL="$(ch_exec --query "
   SELECT count()
