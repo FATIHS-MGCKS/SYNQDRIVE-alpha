@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-clickhouse-storage-topology-2d2-2026-07-26',
+    version: '4.9.883',
+    title: 'V4.9.883 — Master Admin 2D.2: ClickHouse storage topology + migration plan',
+    summary: [
+      'Full volume/bind-mount inventory: release-relative config + backup paths flagged P0.',
+      'Gated migration plan (G1 backup validation → M1–M5) to /opt/synqdrive/shared/clickhouse/.',
+      'Read-only audit script vps-clickhouse-storage-topology-audit.sh for VPS drift detection.',
+      'No cleanup or mount changes executed — blocked until backup validation.',
+    ],
+    reason:
+      'Phase 2D requires stable storage topology before remediation; P78 stale-mount incident must not recur.',
+    previousBehavior:
+      'Compose bind mounts followed release tree; deploy did not link ClickHouse shared paths.',
+    details:
+      'docs/remediation/clickhouse-storage-topology.md · architecture/MASTER_ADMIN_CLICKHOUSE_STORAGE_TOPOLOGY_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T12:45:00.000Z',
+  },
+  {
     id: 'master-admin-clickhouse-runtime-analysis-2d1-2026-07-26',
     version: '4.9.882',
     title: 'V4.9.882 — Master Admin 2D.1: ClickHouse runtime analysis (baseline)',

@@ -57,6 +57,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-setup-grafana.sh` | Install/refresh Grafana Docker on VPS (localhost:3000, SynqDrive Ops dashboard) | safe — requires Prometheus |
 | `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
 | `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only |
+| `vps-clickhouse-storage-topology-audit.sh` | Read-only audit of ClickHouse Docker volumes/bind mounts (stale paths, orphans, backup consistency) | read-only — exit 1 on P0 drift; run before 2D.3 mount migration |
 
 ### Partitioning (P2)
 
