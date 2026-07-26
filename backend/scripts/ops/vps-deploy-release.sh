@@ -5,6 +5,8 @@ RELEASE_ID="$(date -u +%Y%m%d%H%M%S)_v4994"
 RELEASE_DIR="/opt/synqdrive/releases/${RELEASE_ID}"
 BACKUP_DIR="/opt/synqdrive/shared/backups"
 TS="$(date -u +%Y%m%d%H%M%S)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CURRENT_BACKUP_SCRIPT="/opt/synqdrive/current/backend/scripts/ops/vps-backup-database.sh"
 
 echo "==> Pre-deploy DB backup"
 mkdir -p "$BACKUP_DIR"
@@ -18,7 +20,18 @@ if [[ "$DISK_USE_PCT" -ge 85 ]]; then
   echo "!! WARN: root filesystem ${DISK_USE_PCT}% full"
 fi
 
-sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+if [[ -f "${CURRENT_BACKUP_SCRIPT}" ]]; then
+  echo "    using production backup pipeline (vps-backup-database.sh)"
+  PG_BACKUP_LABEL=pre-deploy PG_BACKUP_SKIP_ROTATION=true \
+    bash "${CURRENT_BACKUP_SCRIPT}"
+elif [[ -f "${SCRIPT_DIR}/vps-backup-database.sh" ]]; then
+  echo "    using release-tree backup pipeline (first deploy with 2C.2)"
+  PG_BACKUP_LABEL=pre-deploy PG_BACKUP_SKIP_ROTATION=true \
+    bash "${SCRIPT_DIR}/vps-backup-database.sh"
+else
+  echo "    legacy pg_dump fallback (upgrade to vps-backup-database.sh)"
+  sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+fi
 
 echo "==> Clone release ${RELEASE_ID}"
 git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$RELEASE_DIR"
