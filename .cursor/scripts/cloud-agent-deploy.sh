@@ -66,6 +66,10 @@ run_remote_deploy() {
   if [[ "${SSH_USER}" != "root" ]]; then
     remote_cmd="sudo bash ${DEPLOY_SCRIPT}"
   fi
+  # Ensure current egress IP is on the VPS SSH allowlist when firewall is active
+  local fw_allow="${CLOUD_AGENT_VPS_FIREWALL_ALLOW_SCRIPT:-/opt/synqdrive/current/backend/scripts/ops/vps-firewall-allow-ssh.sh}"
+  ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 \
+    "${SSH_USER}@${VPS_HOST}" "test -x ${fw_allow} && sudo ${fw_allow} || true" 2>/dev/null || true
   ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 \
     "${SSH_USER}@${VPS_HOST}" "${remote_cmd}"
 }
