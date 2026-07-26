@@ -124,33 +124,53 @@ section "Detached parts (orphaned on disk)"
 detached_count="$(ch_q --query "SELECT count() FROM system.detached_parts WHERE database='${DATABASE}'" 2>/dev/null || echo 0)"
 log "detached_parts_count=${detached_count}"
 if [[ "${detached_count}" -gt 0 ]]; then
-  warn "detached parts exist — review before ATTACH/DROP"
   ch_q --format PrettyCompact <<SQL || true
-SELECT database, table, partition_id, name, bytes_on_disk, disk_name
+SELECT database, table, partition_id, name, reason, bytes_on_disk, disk
 FROM system.detached_parts
 WHERE database = '${DATABASE}'
 ORDER BY bytes_on_disk DESC
 LIMIT 20
 SQL
+  # A part detached because ClickHouse could not load it is real data loss;
+  # anything else detached is an operator action awaiting ATTACH/DROP.
+  corrupt="$(ch_q --query "
+    SELECT count() FROM system.detached_parts
+    WHERE database='${DATABASE}'
+      AND (reason LIKE 'broken%' OR reason LIKE 'unexpected%')
+  " 2>/dev/null || echo 0)"
+  if [[ "${corrupt}" -gt 0 ]]; then
+    p0_fail "${corrupt} detached part(s) are broken/unexpected — data loss on those ranges"
+  else
+    warn "detached parts exist — review before ATTACH/DROP"
+  fi
 fi
 
-section "Broken / inactive parts"
-broken="$(ch_q --query "
+section "Stale inactive parts"
+# Inactive parts are the normal result of a merge or mutation; ClickHouse drops
+# them after old_parts_lifetime. Only parts that outlive that window by a wide
+# margin indicate a stuck cleanup thread, so age is the signal, not the count.
+inactive_total="$(ch_q --query "
   SELECT count() FROM system.parts
-  WHERE database='${DATABASE}' AND (NOT active OR level < 0)
+  WHERE database='${DATABASE}' AND NOT active
 " 2>/dev/null || echo 0)"
-log "broken_or_inactive_parts=${broken}"
-if [[ "${broken}" -gt 0 ]]; then
-  p0_fail "inactive or suspicious parts detected"
+inactive_stale="$(ch_q --query "
+  SELECT count() FROM system.parts
+  WHERE database='${DATABASE}' AND NOT active
+    AND modification_time < now() - INTERVAL 24 HOUR
+" 2>/dev/null || echo 0)"
+log "inactive_parts=${inactive_total} stale_over_24h=${inactive_stale}"
+if [[ "${inactive_stale}" -gt 0 ]]; then
+  warn "${inactive_stale} inactive part(s) older than 24h — part cleanup may be stuck"
   ch_q --format PrettyCompact <<SQL || true
-SELECT database, table, partition, name, active, level, bytes_on_disk
+SELECT database, table, partition, name, modification_time, bytes_on_disk
 FROM system.parts
-WHERE database='${DATABASE}' AND (NOT active OR level < 0)
-ORDER BY table, partition
+WHERE database='${DATABASE}' AND NOT active
+  AND modification_time < now() - INTERVAL 24 HOUR
+ORDER BY modification_time
 LIMIT 50
 SQL
 else
-  pass "no broken/inactive parts"
+  pass "no stale inactive parts"
 fi
 
 section "Pending mutations (TTL / ALTER)"
@@ -196,7 +216,11 @@ fi
 
 section "TTL drift (rows older than expected retention + 7 day grace)"
 # Grace window: TTL deletes during merges, not instantly
+# The UNION branches are wrapped so ORDER BY can reference the result column
+# names; the analyzer does not expose the first branch's aliases to an ORDER BY
+# applied directly to a UNION.
 ch_q --format PrettyCompact <<'SQL' || warn "TTL drift query failed"
+SELECT * FROM (
 SELECT 'telemetry_snapshots' AS table,
        count() AS rows_beyond_ttl
 FROM synqdrive.telemetry_snapshots
@@ -229,6 +253,7 @@ UNION ALL
 SELECT 'telemetry_hf_events', count()
 FROM synqdrive.telemetry_hf_events
 WHERE event_start < now() - INTERVAL 372 DAY
+)
 ORDER BY rows_beyond_ttl DESC
 SQL
 

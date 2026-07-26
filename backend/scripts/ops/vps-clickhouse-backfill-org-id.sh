@@ -106,6 +106,11 @@ TABLES=(
   telemetry_snapshots
   telemetry_state_changes
   trip_segment_candidates
+  # These gained org_id in migrations 004-006, but rows written before their
+  # producers populated it stay unattributed and therefore invisible to
+  # org-scoped analytics reads.
+  telemetry_waypoints
+  trip_activity_windows
 )
 
 for table in "${TABLES[@]}"; do

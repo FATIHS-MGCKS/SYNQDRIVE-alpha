@@ -44,7 +44,10 @@ log "=== Schema: org_id column presence ==="
 ch_q --format PrettyCompact <<SQL
 SELECT
   name AS table,
-  hasColumn('${DATABASE}', name, 'org_id') AS has_org_id,
+  name IN (
+    SELECT table FROM system.columns
+    WHERE database = '${DATABASE}' AND name = 'org_id'
+  ) AS has_org_id,
   engine,
   sorting_key,
   partition_key
@@ -79,7 +82,10 @@ fi
 echo ""
 log "=== Empty org_id row counts (tables with org_id column) ==="
 for tbl in "${TABLES[@]}"; do
-  has="$(ch_q --query "SELECT hasColumn('${DATABASE}', '${tbl}', 'org_id')" 2>/dev/null || echo 0)"
+  has="$(ch_q --query "
+    SELECT count() FROM system.columns
+    WHERE database = '${DATABASE}' AND table = '${tbl}' AND name = 'org_id'
+  " 2>/dev/null || echo 0)"
   if [[ "$has" == "1" ]]; then
     empty="$(ch_q --query "SELECT count() FROM ${DATABASE}.${tbl} WHERE org_id = ''" 2>/dev/null || echo na)"
     total="$(ch_q --query "SELECT count() FROM ${DATABASE}.${tbl}" 2>/dev/null || echo na)"

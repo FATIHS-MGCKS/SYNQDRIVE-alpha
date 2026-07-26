@@ -100,11 +100,11 @@ SQL
 
 section "Background pool"
 ch_q --format PrettyCompact <<'SQL'
-SELECT type, status, count() AS cnt
-FROM system.processes
-WHERE is_cancelled = 0
-GROUP BY type, status
-ORDER BY cnt DESC
+SELECT metric, value
+FROM system.metrics
+WHERE metric LIKE 'Background%'
+  AND value > 0
+ORDER BY value DESC, metric
 LIMIT 20
 SQL
 

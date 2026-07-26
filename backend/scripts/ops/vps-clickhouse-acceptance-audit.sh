@@ -47,6 +47,12 @@ run_audit() {
       RESULTS+=("FAIL|${name}")
       log "RESULT ${name}: FAIL (P0)"
       P0_FAIL=$((P0_FAIL + 1))
+    elif [[ "$ec" -eq 3 ]]; then
+      # Sub-audit reported P1-only findings; they belong in the report but must
+      # not block the release.
+      RESULTS+=("WARN|${name}")
+      log "RESULT ${name}: WARN (P1 only)"
+      P1_WARN=$((P1_WARN + 1))
     else
       RESULTS+=("FAIL|${name}")
       log "RESULT ${name}: FAIL (exit ${ec})"

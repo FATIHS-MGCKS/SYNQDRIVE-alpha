@@ -25,6 +25,11 @@ fi
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/clickhouse-query-lib.sh"
 
 P1_ISSUES=0
+# Freshness only means "the mirror is alive" when vehicles are actually
+# reporting. DIMO stops sending for parked vehicles, so on a small fleet the
+# newest snapshot is routinely hours old without anything being wrong. Override
+# per deployment rather than treating the default as an SLO.
+MAX_SNAPSHOT_LAG_SECONDS="${CH_PIPELINE_MAX_SNAPSHOT_LAG_SECONDS:-600}"
 
 section() {
   echo ""
@@ -36,7 +41,11 @@ section() {
 ch_query_require_connection
 
 section "Mirror freshness lag (seconds since newest event)"
+# The UNION branches are wrapped so ORDER BY can reference the result column
+# names; the analyzer does not expose the first branch's aliases to an ORDER BY
+# applied directly to a UNION.
 ch_q --format PrettyCompact <<SQL || true
+SELECT * FROM (
 SELECT
   'telemetry_snapshots' AS table,
   max(recorded_at) AS newest,
@@ -68,6 +77,7 @@ SELECT
   count()
 FROM ${DATABASE}.telemetry_waypoints
 WHERE recorded_at >= now64(3) - INTERVAL 24 HOUR
+)
 ORDER BY table
 SQL
 
@@ -76,8 +86,8 @@ SNAPSHOT_LAG="$(ch_q --query "
   SELECT dateDiff('second', max(recorded_at), now64(3))
   FROM ${DATABASE}.telemetry_snapshots
 " 2>/dev/null || echo "999999")"
-if [[ "${SNAPSHOT_LAG}" =~ ^[0-9]+$ ]] && [[ "${SNAPSHOT_LAG}" -gt 600 ]]; then
-  log "P1: telemetry_snapshots lag ${SNAPSHOT_LAG}s (>600s) — mirror may be stalled"
+if [[ "${SNAPSHOT_LAG}" =~ ^[0-9]+$ ]] && [[ "${SNAPSHOT_LAG}" -gt "${MAX_SNAPSHOT_LAG_SECONDS}" ]]; then
+  log "P1: telemetry_snapshots lag ${SNAPSHOT_LAG}s (>${MAX_SNAPSHOT_LAG_SECONDS}s) — mirror may be stalled"
   P1_ISSUES=$((P1_ISSUES + 1))
 fi
 
@@ -192,7 +202,9 @@ echo "curl -s -H \"Authorization: Bearer \$METRICS_BEARER_TOKEN\" http://127.0.0
 section "Summary"
 if [[ "${P1_ISSUES}" -gt 0 ]]; then
   log "P1 issues detected: ${P1_ISSUES}"
-  exit 1
+  # Exit 3 = P1 only. Exit 1 is reserved for P0 so the acceptance runner does
+  # not turn a P1 threshold breach into a release-blocking NO-GO.
+  exit 3
 fi
 log "Pipeline audit complete — no P1 thresholds breached"
 exit 0
