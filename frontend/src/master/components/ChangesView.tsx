@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-postgresql-backup-2c2-2026-07-26',
+    version: '4.9.891',
+    title: 'V4.9.891 — Master Admin 2C.2: Production PostgreSQL backup',
+    summary: [
+      'vps-backup-database.sh: pg_dump -Fc, GPG encryption, integrity verify, immutable generations, rotation (min 2), offsite rclone/S3.',
+      'vps-restore-test-database.sh restore drill; vps-install-postgresql-backup-cron.sh daily 02:00 UTC.',
+      'vps-deploy-release.sh uses backup pipeline for pre-deploy dumps.',
+      'docs/remediation/postgresql-backup.md',
+    ],
+    reason:
+      'Disaster recovery 2C.1 identified deploy-only pg_dump as P0 gap — production backup automation required.',
+    previousBehavior:
+      'Pre-deploy plain SQL gzip only; no encryption, schedule, integrity checks, or offsite copy.',
+    details:
+      'backend/scripts/ops/vps-backup-database.sh + lib/postgresql-backup-lib.sh — configure postgresql-backup.env on VPS',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T16:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

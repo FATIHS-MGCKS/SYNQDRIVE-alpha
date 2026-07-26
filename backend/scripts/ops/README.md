@@ -4,7 +4,27 @@ One-time / occasional operations to run **on the production VPS** to stop and re
 storage growth. These are deliberately **not** wired into the app (no automatic
 `VACUUM FULL`, no destructive ops at runtime). Run them manually in a maintenance window.
 
-> Take a backup before any DB-mutating step: > `pg_dump "$DATABASE_URL" -Fc -f /var/backups/synqdrive-$(date +%F).dump`
+> Take a backup before any DB-mutating step:
+> `bash backend/scripts/ops/vps-backup-database.sh`
+> (legacy: `pg_dump "$DATABASE_URL" -Fc -f /var/backups/synqdrive-$(date +%F).dump`)
+
+## PostgreSQL backup (production — Phase 2C.2)
+
+Daily encrypted backups with integrity verification, rotation, and offsite copy.
+
+```bash
+# One-time VPS setup
+cp backend/scripts/ops/postgresql-backup.env.example /opt/synqdrive/shared/postgresql-backup.env
+chmod 600 /opt/synqdrive/shared/postgresql-backup.env
+# configure GPG + offsite, then:
+bash /opt/synqdrive/current/backend/scripts/ops/vps-install-postgresql-backup-cron.sh
+
+# Manual backup / restore test
+bash backend/scripts/ops/vps-backup-database.sh
+bash backend/scripts/ops/vps-restore-test-database.sh --drop-after
+```
+
+Docs: [`docs/remediation/postgresql-backup.md`](../../docs/remediation/postgresql-backup.md)
 
 ## Recommended order
 
@@ -57,6 +77,10 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `vps-setup-grafana.sh` | Install/refresh Grafana Docker on VPS (localhost:3000, SynqDrive Ops dashboard) | safe — requires Prometheus |
 | `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
 | `vps-clickhouse-log-hardening.sh` | Truncate oversized Docker logs + recreate ClickHouse with hardened config mounts | safe — CH analytics brief outage only |
+| `vps-backup-database.sh` | Production PostgreSQL backup (pg_dump -Fc, GPG, integrity, offsite, rotation) | safe — requires `postgresql-backup.env` |
+| `vps-restore-test-database.sh` | Restore drill to `synqdrive_restore_test` | safe — uses separate test DB |
+| `vps-install-postgresql-backup-cron.sh` | Install daily 02:00 UTC backup cron | safe — run as root once |
+| `postgresql-backup.env.example` | Backup encryption/offsite configuration template | copy to `/opt/synqdrive/shared/postgresql-backup.env` |
 
 ### Partitioning (P2)
 
