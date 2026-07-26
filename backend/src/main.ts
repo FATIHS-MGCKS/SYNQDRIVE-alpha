@@ -124,19 +124,24 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalInterceptors(new RequestLoggingInterceptor());
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('SynqDrive API')
-    .setDescription('Multi-tenant SaaS platform for mobility and vehicle operations')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  const swaggerEnabled = configService.get<boolean>('app.swaggerEnabled', false);
+  if (swaggerEnabled) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('SynqDrive API')
+      .setDescription('Multi-tenant SaaS platform for mobility and vehicle operations')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document);
+    logger.log('Swagger docs available at /docs');
+  } else {
+    logger.log('Swagger docs disabled (production default; set SWAGGER_ENABLED=true to enable)');
+  }
 
   await app.listen(port);
   logger.log(`SynqDrive backend running on port ${port}`);
   logger.log(`API prefix: ${apiPrefix}/${apiVersion}`);
-  logger.log(`Swagger docs available at /docs`);
   logger.log(`Active log levels: [${logLevels.join(', ')}]`);
 }
 

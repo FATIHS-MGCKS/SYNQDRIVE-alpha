@@ -32,6 +32,8 @@ export default registerAs('app', () => {
     });
   }
 
+  const swaggerEnabled = resolveSwaggerEnabled(nodeEnv);
+
   return {
     nodeEnv,
     port: parseInt(process.env.PORT || '3001', 10),
@@ -42,5 +44,20 @@ export default registerAs('app', () => {
     enableSeedAdmin,
     seedAdminToken,
     corsOrigins,
+    swaggerEnabled,
   };
 });
+
+/**
+ * Swagger/OpenAPI UI exposure.
+ *
+ * Precedence:
+ *   1. `SWAGGER_ENABLED=true|false` — explicit override (any NODE_ENV).
+ *   2. Unset — enabled in non-production, disabled when NODE_ENV=production.
+ */
+export function resolveSwaggerEnabled(nodeEnv: string): boolean {
+  const raw = (process.env.SWAGGER_ENABLED || '').trim().toLowerCase();
+  if (raw === 'true' || raw === '1' || raw === 'yes') return true;
+  if (raw === 'false' || raw === '0' || raw === 'no') return false;
+  return nodeEnv !== 'production';
+}
