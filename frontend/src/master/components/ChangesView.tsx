@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-sli-slo-2f7-v49904-2026-07-26',
+    version: '4.9.904',
+    title: 'V4.9.904 — Master Admin: SLI/SLO (Phase 2F.7)',
+    summary: [
+      'Produktionsreife SLIs/SLOs für API, Queue, Stripe, DIMO, Notifications, AI, Dashboard.',
+      'alerts-slo.yml: 25 Recording Rules (synqdrive:slo:*) + 18 Slo*-Alerts mit Error-Budgets.',
+      'Zielwerte, Messmethoden, Eskalationsgrenzen in docs/remediation/service-level-objectives.md.',
+      'Prometheus VPS/local wiring + prometheus-config.spec.ts SLO-Tests.',
+    ],
+    reason:
+      'Phase 2F.7 — verbindliche Service Level Objectives mit Prometheus-Recording-Rules und burn-rate Alerts für produktionsreife Ops.',
+    previousBehavior:
+      'Domain-Alerts ohne einheitliche SLO-Zielwerte, Error-Budgets oder synqdrive:slo:* Recording Rules.',
+    details:
+      'backend/monitoring/prometheus/alerts-slo.yml, docs/remediation/service-level-objectives.md, architecture/MASTER_ADMIN_SLI_SLO_2026-07-26.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T14:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',

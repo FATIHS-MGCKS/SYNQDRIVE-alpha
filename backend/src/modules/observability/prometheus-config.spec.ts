@@ -151,4 +151,19 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('runbook_url:');
     expect(yaml).toContain('clear_condition:');
   });
+
+  it('loads alerts-slo.yml and defines platform SLO recording rules', () => {
+    const example = readFileSync(join(root, 'prometheus.yml.example'), 'utf8');
+    const slo = readFileSync(join(root, 'alerts-slo.yml'), 'utf8');
+    expect(example).toContain('alerts-slo.yml');
+    expect(slo).toContain('synqdrive:slo:api_scrape_up:ratio5m');
+    expect(slo).toContain('synqdrive:slo:dimo_snapshot_success_ratio:30m');
+    expect(slo).toContain('synqdrive:slo:notification_delivery_success_ratio:30m');
+    expect(slo).toContain('synqdrive:slo:ai_doc_extraction_success_ratio:30m');
+    expect(slo).toContain('synqdrive:slo:dashboard_fleet_ready_share');
+    expect(slo).toContain('SloApiAvailabilityFastBurn');
+    expect(slo).toContain('slo: api_availability');
+    expect(slo).not.toContain('vehicle_id');
+    expect(slo).not.toContain('org_id');
+  });
 });

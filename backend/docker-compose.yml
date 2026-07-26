@@ -87,6 +87,7 @@ services:
     volumes:
       - ./monitoring/prometheus/prometheus.yml.example:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./monitoring/prometheus/alerts-slo.yml:/etc/prometheus/alerts-slo.yml:ro
       - ./monitoring/prometheus/secrets:/etc/prometheus/secrets:ro
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
