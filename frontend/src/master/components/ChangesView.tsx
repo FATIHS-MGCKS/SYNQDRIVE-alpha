@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-production-pilot-v49879-2026-07-26',
+    version: '4.9.879',
+    title: 'V4.9.879 — Notification Engine: Production Pilot Acceptance',
+    summary: [
+      'Read-only Production-Pilot-Audit für pilot-org-alpha (höchstes V2-Volumen).',
+      'Pre-Deploy-Backup verifiziert; kein neues Deployment (Remediation nicht auf main).',
+      'Pass: 0 Duplikat-Fingerprints, 0 Orphans, Delivery disabled, Queues healthy.',
+      'Fail: occurrence_count-Drift (9/22), kein org-scoped V2-Allowlist, Live-API-E2E offen.',
+      'Audit: docs/audits/notification-engine-production-pilot-acceptance-2026-07.md',
+    ],
+    reason:
+      'Kontrollierter Production-Pilot mit dokumentierter Go/No-Go-Entscheidung vor Fleet-Cutover.',
+    previousBehavior:
+      'Kein formaler Production-Pilot-Acceptance-Nachweis; globales V2 ohne Org-Allowlist.',
+    details:
+      'VPS read-only SQL, acceptance script, health/queue observation — kein Flag-/Deploy-Change.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T04:00:00.000Z',
+  },
+  {
     id: 'notification-load-resilience-v49878-2026-07-26',
     version: '4.9.878',
     title: 'V4.9.878 — Notification Engine: Load, Concurrency & Resilience Tests',
