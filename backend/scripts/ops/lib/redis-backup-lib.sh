@@ -174,10 +174,13 @@ redis_backup_verify_checksum_sidecar() {
   local artifact="$1"
   local sidecar="${artifact}.sha256"
   [[ -f "${sidecar}" ]] || return 1
+  local dir base
+  dir="$(dirname "${artifact}")"
+  base="$(basename "${artifact}")"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum -c "${sidecar}" >/dev/null 2>&1
+    (cd "${dir}" && sha256sum -c "${base}.sha256" >/dev/null 2>&1)
   else
-    shasum -a 256 -c "${sidecar}" >/dev/null 2>&1
+    (cd "${dir}" && shasum -a 256 -c "${base}.sha256" >/dev/null 2>&1)
   fi
 }
 

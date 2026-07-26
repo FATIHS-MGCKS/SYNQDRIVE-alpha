@@ -36,6 +36,20 @@ Set `REDIS_BACKUP_SKIP_OFFSITE=true` (and equivalent on PG/CH) when `OFFSITE_CEN
 
 Docs: [`docs/remediation/offsite-backups.md`](../../docs/remediation/offsite-backups.md)
 
+## Restore validation (Phase 2C.6)
+
+**Isolated drills only** — production data is never modified.
+
+```bash
+cp backend/scripts/ops/restore-validation.env.example /opt/synqdrive/shared/restore-validation.env
+# configure drill Postgres/ClickHouse ports (non-production)
+bash backend/scripts/ops/vps-restore-validation.sh
+bash backend/scripts/ops/restore-validation.local.sh   # full Docker E2E on dev host
+bash backend/scripts/ops/vps-install-restore-validation-cron.sh
+```
+
+Docs: [`docs/remediation/restore-validation.md`](../../docs/remediation/restore-validation.md)
+
 ## Recommended order
 
 1. **Stop the bleeding (app-side, already in code):**
@@ -99,6 +113,16 @@ Docs: [`docs/remediation/offsite-backups.md`](../../docs/remediation/offsite-bac
 | `vps-verify-offsite-backups.sh` | Local + remote integrity audit | read-only |
 | `vps-install-offsite-backup-cron.sh` | Daily 05:15 UTC offsite cron + weekly verify | run as root |
 | `offsite-backup.env.example` | Unified offsite config (rclone/S3, GPG, alerts) | copy to `/opt/synqdrive/shared/offsite-backup.env` |
+| `vps-restore-validation.sh` | Isolated restore drill orchestrator (all tiers) | safe — requires drill PG/CH |
+| `vps-restore-test-postgresql.sh` | PG restore into `synqdrive_restore_*` | safe — isolated DB only |
+| `vps-restore-test-clickhouse.sh` | CH restore on isolated instance | safe |
+| `vps-restore-test-env.sh` | Env snapshot decrypt + verify | safe — no overwrite |
+| `vps-restore-test-uploads.sh` | Uploads archive drill | safe — staging only |
+| `vps-restore-test-documents.sh` | Documents archive + PG cross-check | safe — staging only |
+| `restore-validation.local.sh` | Full Docker E2E drill with synthetic backups | dev/CI host with Docker |
+| `restore-validation.selftest.sh` | Fixture selftest (env/uploads/documents) | safe |
+| `vps-install-restore-validation-cron.sh` | Quarterly restore validation cron | run as root once |
+| `restore-validation.env.example` | Drill target config | copy to `/opt/synqdrive/shared/restore-validation.env` |
 
 ### Partitioning (P2)
 

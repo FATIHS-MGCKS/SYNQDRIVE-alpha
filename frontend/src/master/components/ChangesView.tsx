@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-restore-validation-2c6-2026-07-26',
+    version: '4.9.895',
+    title: 'V4.9.895 — Master Admin 2C.6: Restore validation (isolated drills)',
+    summary: [
+      'Isolated restore-test framework for PostgreSQL, ClickHouse, Redis, env, uploads, documents.',
+      'vps-restore-validation.sh orchestrator with JSON reports (duration, success, integrity).',
+      'Production safety: isolated mode only; no live DB/Redis/env overwrite.',
+      'docs/remediation/restore-validation.md',
+    ],
+    reason:
+      'Backups must be proven recoverable in isolation without risking production data.',
+    previousBehavior:
+      'Redis had integrity-only drill; no unified multi-tier validation or quarterly report.',
+    details:
+      'restore-validation-lib.sh, per-tier vps-restore-test-*.sh, local Docker E2E, quarterly cron',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T22:00:00.000Z',
+  },
+  {
     id: 'master-admin-offsite-backups-2c5-2026-07-26',
     version: '4.9.894',
     title: 'V4.9.894 — Master Admin 2C.5: Offsite backup orchestration',
