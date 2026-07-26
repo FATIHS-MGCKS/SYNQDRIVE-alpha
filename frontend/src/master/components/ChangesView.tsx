@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-grafana-production-2f6-2026-07-26',
+    version: '4.9.903',
+    title: 'V4.9.903 — Master Admin 2F.6: Grafana production dashboards',
+    summary: [
+      '8 new Master Admin dashboards: Platform, Infrastructure, Databases, Queues, Billing, DIMO, AI, Tenant.',
+      'KPI rows, Prometheus ALERTS stats/annotations, cross-board drilldown links.',
+      'generate-dashboards.mjs + copy-grafana-dashboards.sh — VPS now syncs all 15 dashboard JSON files.',
+      'docs/remediation/grafana-production.md',
+    ],
+    reason:
+      'MASTER ADMIN REMEDIATION Phase 2F.6 — professional Grafana coverage for platform operations with completeness, readability, and alert visibility.',
+    previousBehavior:
+      'Only synqdrive-ops + 4 domain boards deployed; evaluations and notification-engine-ops omitted; no infra/DB/queue/billing/DIMO/AI/tenant overview boards.',
+    details:
+      'backend/monitoring/grafana/dashboards/synqdrive-*.json (8 new); vps-setup-grafana.sh + vps-refresh-monitoring.sh use copy-grafana-dashboards.sh; grafana-dashboards.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T00:00:00.000Z',
+  },
+  {
     id: 'master-admin-application-health-2f5-2026-07-26',
     version: '4.9.902',
     title: 'V4.9.902 — Master Admin 2F.5: Application health probes',

@@ -80,11 +80,7 @@ refresh_prometheus() {
 }
 
 copy_grafana_dashboards() {
-  cp "$SRC_GRAFANA/dashboards/synqdrive-ops.json" "$GRAFANA_DIR/dashboards/"
-  cp "$SRC_GRAFANA/dashboards/synqdrive-battery-v2.json" "$GRAFANA_DIR/dashboards/"
-  cp "$SRC_GRAFANA/dashboards/synqdrive-driving-intelligence-v2.json" "$GRAFANA_DIR/dashboards/"
-  cp "$SRC_GRAFANA/dashboards/synqdrive-document-intake-v2.json" "$GRAFANA_DIR/dashboards/"
-  cp "$SRC_GRAFANA/dashboards/synqdrive-fleet-health-service.json" "$GRAFANA_DIR/dashboards/"
+  bash "$SCRIPT_DIR/copy-grafana-dashboards.sh" "$SRC_GRAFANA/dashboards" "$GRAFANA_DIR/dashboards"
 }
 
 refresh_grafana() {
