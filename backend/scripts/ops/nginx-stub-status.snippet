@@ -1,0 +1,22 @@
+# SynqDrive nginx stub_status — localhost only (Phase 2F.3)
+#
+# Required for nginx-prometheus-exporter on the VPS.
+# Apply as a separate server block (e.g. /etc/nginx/conf.d/synqdrive-stub-status.conf):
+#
+#   include snippets/synqdrive-stub-status.conf;   # or paste contents below
+#
+# Then: nginx -t && systemctl reload nginx
+# Verify: curl -s http://127.0.0.1:8081/nginx_status
+
+server {
+    listen 127.0.0.1:8081;
+    server_name localhost;
+
+    access_log off;
+
+    location /nginx_status {
+        stub_status;
+        allow 127.0.0.1;
+        deny all;
+    }
+}

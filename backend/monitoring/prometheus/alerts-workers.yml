@@ -1,0 +1,135 @@
+# SynqDrive worker & BullMQ alert rules (Phase 2F.4)
+#
+# Requires worker observability metrics from WorkerQueueEventsService +
+# MetricsRefreshService queue depth gauges.
+
+groups:
+  - name: synqdrive_workers
+    rules:
+      - alert: WorkerQueueWaitingBacklogHigh
+        expr: sum(synqdrive_queue_waiting_jobs) > 200
+        for: 15m
+        labels:
+          severity: warning
+          component: bullmq
+        annotations:
+          summary: Aggregate BullMQ waiting jobs above 200
+          description: Total waiting jobs across all queues exceeds 200 for 15 minutes.
+          runbook_url: docs/remediation/worker-observability.md#queue-backlog
+
+      - alert: WorkerQueueWaitingBacklogCritical
+        expr: sum(synqdrive_queue_waiting_jobs) > 500
+        for: 10m
+        labels:
+          severity: critical
+          component: bullmq
+        annotations:
+          summary: Aggregate BullMQ waiting jobs above 500
+          description: Severe queue backlog — workers may not be draining.
+          runbook_url: docs/remediation/worker-observability.md#queue-backlog
+
+      - alert: WorkerQueueDelayedJobsHigh
+        expr: sum(synqdrive_queue_delayed_jobs) > 100
+        for: 15m
+        labels:
+          severity: warning
+          component: bullmq
+        annotations:
+          summary: Many delayed BullMQ jobs
+          description: Delayed job count exceeds 100 — check retry/backoff configuration.
+
+      - alert: WorkerJobStalledRateHigh
+        expr: sum(rate(synqdrive_queue_jobs_stalled_total[15m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          component: bullmq
+        annotations:
+          summary: BullMQ stalled jobs detected
+          description: Jobs are stalling — inspect lockDuration, worker concurrency, and long-running processors.
+          runbook_url: docs/remediation/worker-observability.md#stalled-jobs
+
+      - alert: WorkerJobFailureRateHigh
+        expr: |
+          sum(rate(synqdrive_queue_jobs_processed_total{result="failure"}[15m]))
+          /
+          clamp_min(
+            sum(rate(synqdrive_queue_jobs_processed_total[15m])),
+            0.001
+          ) > 0.15
+        for: 15m
+        labels:
+          severity: warning
+          component: bullmq
+        annotations:
+          summary: BullMQ terminal failure rate above 15%
+          description: More than 15% of processed jobs are failing without retry.
+          runbook_url: docs/remediation/worker-observability.md#failures
+
+      - alert: WorkerJobRetryStorm
+        expr: sum(rate(synqdrive_queue_job_retries_total[10m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: bullmq
+        annotations:
+          summary: Elevated BullMQ retry rate
+          description: More than 1 retry per second aggregate — investigate failing jobs.
+
+      - alert: WorkerEnqueueDuplicateSpike
+        expr: sum(rate(synqdrive_queue_enqueue_duplicate_total[30m])) > 0.5
+        for: 20m
+        labels:
+          severity: info
+          component: bullmq
+        annotations:
+          summary: High enqueue deduplication rate
+          description: Many enqueue attempts are deduplicated — may indicate scheduler overlap or healthy jobId guards.
+
+      - alert: WorkerJobDurationP99High
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le, queue) (rate(synqdrive_queue_job_duration_seconds_bucket[15m]))
+          ) > 300
+        for: 15m
+        labels:
+          severity: warning
+          component: bullmq
+        annotations:
+          summary: BullMQ job P99 duration exceeds 5 minutes
+          description: Queue {{ $labels.queue }} has P99 processing time above 300s.
+          runbook_url: docs/remediation/worker-observability.md#job-duration
+
+      - alert: SchedulerStale
+        expr: |
+          (time() - synqdrive_scheduler_last_success_timestamp) > 7200
+          and on(scheduler) synqdrive_scheduler_last_success_timestamp > 0
+        for: 30m
+        labels:
+          severity: warning
+          component: scheduler
+        annotations:
+          summary: Scheduler has not succeeded in 2 hours
+          description: Scheduler {{ $labels.scheduler }} last success is stale — check WORKERS_ENABLED and cron/interval ticks.
+          runbook_url: docs/remediation/worker-observability.md#schedulers
+
+      - alert: SchedulerFailuresElevated
+        expr: increase(synqdrive_scheduler_failures_total[1h]) > 3
+        for: 15m
+        labels:
+          severity: warning
+          component: scheduler
+        annotations:
+          summary: Scheduler failures in the last hour
+          description: Scheduler {{ $labels.scheduler }} failed more than 3 times in 1h.
+
+      - alert: WorkerQueuePerQueueWaitingCritical
+        expr: synqdrive_queue_waiting_jobs > 100
+        for: 15m
+        labels:
+          severity: critical
+          component: bullmq
+        annotations:
+          summary: Single queue waiting backlog critical
+          description: Queue {{ $labels.queue }} has more than 100 waiting jobs.

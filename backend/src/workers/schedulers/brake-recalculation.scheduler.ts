@@ -3,6 +3,7 @@ import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { BrakeRecalculationOrchestratorService } from '../../modules/vehicle-intelligence/brakes/brake-recalculation-orchestrator.service';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
 
 @Injectable()
 export class BrakeRecalculationScheduler {
@@ -11,10 +12,12 @@ export class BrakeRecalculationScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orchestrator: BrakeRecalculationOrchestratorService,
+    private readonly schedulerObs: SchedulerObservabilityService,
   ) {}
 
   @Interval(3600000)
   async enqueueBrakeRecalculationJobs(): Promise<void> {
+    await this.schedulerObs.run('brake.recalculation', async () => {
     if (!canEnqueueQueue(this.logger, 'brake-recalculation')) return;
 
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -41,5 +44,6 @@ export class BrakeRecalculationScheduler {
         `Enqueued ${vehicles.length} brake recalculation jobs (hourBucket=${hourBucket})`,
       );
     }
+    });
   }
 }

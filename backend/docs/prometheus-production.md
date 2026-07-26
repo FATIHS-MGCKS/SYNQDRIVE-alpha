@@ -85,7 +85,19 @@ Existing trip/queue/CH mirror metrics remain unchanged.
 
 ## Alerting
 
-See `monitoring/prometheus/alerts.yml`. Wire Alertmanager in your platform — this repo ships rule definitions only.
+| File | Purpose |
+|------|---------|
+| `monitoring/prometheus/alerts.yml` | Application alert rules (~100) |
+| `monitoring/prometheus/alerts-infra.yml` | Platform + host alerts (Phase 2F.2) |
+| `monitoring/alertmanager/alertmanager.yml.example` | Production Alertmanager routing template |
+
+**VPS Alertmanager one-liner** (after `alertmanager.env` is configured):
+
+```bash
+bash /opt/synqdrive/current/backend/scripts/ops/vps-setup-alertmanager.sh
+```
+
+Full guide: `docs/remediation/alertmanager.md`
 
 ## Validation
 
@@ -93,6 +105,8 @@ See `monitoring/prometheus/alerts.yml`. Wire Alertmanager in your platform — t
 cd backend
 npm test -- --testPathPattern="metrics-auth|trip-metrics.labels|prometheus-config"
 # Optional if promtool is installed:
-promtool check config monitoring/prometheus/prometheus.yml.example
+promtool check config monitoring/prometheus/prometheus.vps.yml
 promtool check rules monitoring/prometheus/alerts.yml
+promtool check rules monitoring/prometheus/alerts-infra.yml
+promtool check config monitoring/alertmanager/alertmanager.dev.yml
 ```

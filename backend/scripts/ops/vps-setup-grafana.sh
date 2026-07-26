@@ -49,6 +49,8 @@ cp "$SRC/dashboards/synqdrive-battery-v2.json" "$GRAFANA_DIR/dashboards/"
 cp "$SRC/dashboards/synqdrive-driving-intelligence-v2.json" "$GRAFANA_DIR/dashboards/"
 cp "$SRC/dashboards/synqdrive-document-intake-v2.json" "$GRAFANA_DIR/dashboards/"
 cp "$SRC/dashboards/synqdrive-fleet-health-service.json" "$GRAFANA_DIR/dashboards/"
+cp "$SRC/dashboards/synqdrive-evaluations.json" "$GRAFANA_DIR/dashboards/"
+cp "$SRC/dashboards/notification-engine-ops.json" "$GRAFANA_DIR/dashboards/"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker not installed" >&2

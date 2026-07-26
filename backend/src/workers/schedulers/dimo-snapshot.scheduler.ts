@@ -8,6 +8,8 @@ import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '@modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { SchedulerObservabilityService } from '@modules/worker-observability/scheduler-observability.service';
+import { WorkerObservabilityMetrics } from '@modules/worker-observability/worker-observability.metrics';
 
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
@@ -71,10 +73,18 @@ export class DimoSnapshotScheduler {
     @InjectQueue(QUEUE_NAMES.DIMO_SNAPSHOT) private readonly queue: Queue,
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
+    private readonly schedulerObs: SchedulerObservabilityService,
+    private readonly workerMetrics: WorkerObservabilityMetrics,
   ) {}
 
   @Interval(30000)
   async enqueueSnapshotJobs(): Promise<void> {
+    await this.schedulerObs.run('dimo.snapshot.enqueue', async () => {
+      await this.enqueueSnapshotJobsBody();
+    });
+  }
+
+  private async enqueueSnapshotJobsBody(): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'dimo-snapshot')) return;
     const tickStartedAt = new Date();
 
@@ -153,6 +163,10 @@ export class DimoSnapshotScheduler {
         if (msg.toLowerCase().includes('duplicate')) {
           // An in-flight job still exists — this is healthy, not a problem.
           skipped += 1;
+          this.workerMetrics.recordEnqueueDuplicate(
+            QUEUE_NAMES.DIMO_SNAPSHOT,
+            'inflight',
+          );
         } else {
           this.logger.warn(`Failed to enqueue snapshot for ${v.id}: ${msg}`);
         }
@@ -187,6 +201,12 @@ export class DimoSnapshotScheduler {
    */
   @Interval(60 * 60 * 1000)
   async sweepFailedJobs(): Promise<void> {
+    await this.schedulerObs.run('dimo.snapshot.sweep_failed', async () => {
+      await this.sweepFailedJobsBody();
+    });
+  }
+
+  private async sweepFailedJobsBody(): Promise<void> {
     try {
       const removed = await this.queue.clean(
         10 * 60 * 1000,

@@ -13,6 +13,10 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  acquirePgAdvisoryXactLock,
+  subscriptionDraftLockKey,
+} from '@shared/database/pg-advisory-lock.util';
 import { BillingAuditService } from './billing-audit.service';
 import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
 import { BillingQuantityService } from './billing-quantity.service';
@@ -98,19 +102,21 @@ export class SubscriptionLifecycleService {
       });
     }
 
-    const existing = await this.prisma.billingSubscription.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        status: { not: BillingStatus.CANCELLED },
-        endedAt: null,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (existing) {
-      return this.loadContract(existing.id);
-    }
+    const draftResult = await this.prisma.$transaction(async (tx) => {
+      await acquirePgAdvisoryXactLock(tx, subscriptionDraftLockKey(input.organizationId));
 
-    const subscription = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.billingSubscription.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          status: { not: BillingStatus.CANCELLED },
+          endedAt: null,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existing) {
+        return { kind: 'existing' as const, subscriptionId: existing.id };
+      }
+
       const row = await tx.billingSubscription.create({
         data: {
           organizationId: input.organizationId,
@@ -137,19 +143,23 @@ export class SubscriptionLifecycleService {
         },
       });
 
-      return row;
+      return { kind: 'created' as const, subscriptionId: row.id, subscription: row };
     });
+
+    if (draftResult.kind === 'existing') {
+      return this.loadContract(draftResult.subscriptionId);
+    }
 
     await this.audit.log({
       organizationId: input.organizationId,
       actorUserId: input.actorUserId,
       action: 'SUBSCRIPTION_DRAFT_CREATED',
       entityType: 'BillingSubscription',
-      entityId: subscription.id,
-      after: subscription,
+      entityId: draftResult.subscriptionId,
+      after: draftResult.subscription,
     });
 
-    return this.loadContract(subscription.id);
+    return this.loadContract(draftResult.subscriptionId);
   }
 
   async assignRental(input: AssignBasePlanInput) {

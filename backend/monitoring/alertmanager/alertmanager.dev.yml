@@ -1,0 +1,46 @@
+# SynqDrive Alertmanager — local development (no external notifications)
+#
+# Used by docker compose --profile monitoring.
+# Alerts appear in Alertmanager UI only (http://127.0.0.1:9093).
+
+global:
+  resolve_timeout: 5m
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+time_intervals:
+  - name: synqdrive-maintenance
+    time_intervals:
+      - weekdays: ['sunday']
+        times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        location: 'Europe/Berlin'
+
+route:
+  receiver: synqdrive-dev-null
+  group_by: ['alertname', 'severity', 'component']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+  routes:
+    - receiver: synqdrive-dev-null
+      matchers:
+        - severity = info
+    - receiver: synqdrive-dev-null
+      matchers:
+        - severity =~ "warning|critical|info"
+      mute_time_intervals:
+        - synqdrive-maintenance
+
+inhibit_rules:
+  - source_matchers:
+      - alertname = SynqDriveBackendDown
+    target_matchers:
+      - severity =~ "warning|info"
+    equal: ['cluster']
+
+receivers:
+  - name: synqdrive-dev-null
