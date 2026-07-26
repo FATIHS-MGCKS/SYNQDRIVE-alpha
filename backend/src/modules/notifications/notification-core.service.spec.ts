@@ -536,4 +536,18 @@ describe('NotificationCoreService', () => {
     const open = await service.unsnoozeNotification(notification!.id, ORG);
     expect(open.status).toBe(NotificationStatus.OPEN);
   });
+
+  it('wakes org SNOOZED to OPEN on CRITICAL escalation ingest', async () => {
+    const { notification } = await service.createOrUpdateNotification(buildTelemetryCandidate());
+    const until = new Date('2026-07-12T00:00:00.000Z');
+    await service.snoozeNotification(notification!.id, ORG, until);
+    await service.ingestCandidate(buildTelemetryCandidate({
+      severity: DomainSeverity.CRITICAL,
+      sourceRef: 'critical-while-snoozed',
+      occurredAt: new Date('2026-07-11T11:00:00.000Z'),
+    }));
+    const row = [...notifications.values()][0];
+    expect(row.status).toBe(NotificationStatus.OPEN);
+    expect(row.severity).toBe(NotificationSeverity.CRITICAL);
+  });
 });

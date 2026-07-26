@@ -21,8 +21,10 @@ import { fingerprintFromCandidate, validateNotificationCandidate } from './notif
 import { evaluateReopenDecision } from './notification-reopen.policy';
 import {
   assertNotificationStatusTransition,
-  NotificationStatusTransitionError,
-} from './notification-status.transitions';
+  applyIngestOccurrenceToLifecycle,
+  lifecycleTimestampPatchForTransition,
+  NotificationLifecycleTransitionError,
+} from './lifecycle/notification-lifecycle.state-machine';
 import { escalateSeverity, isRecoverySeverity } from './notification-severity.policy';
 import {
   mergeTemplateParams,
@@ -352,8 +354,7 @@ export class NotificationCoreService {
         notificationId,
         {
           status: NotificationStatus.RESOLVED,
-          resolvedAt,
-          snoozedUntil: null,
+          ...lifecycleTimestampPatchForTransition(notification.status, NotificationStatus.RESOLVED, resolvedAt),
           acknowledgedAt: notification.acknowledgedAt,
         },
         notification.version,
@@ -424,7 +425,10 @@ export class NotificationCoreService {
     const updated = await this.repository.runTransaction(async (tx) => {
       const row = await this.repository.updateNotification(
         notificationId,
-        { status: NotificationStatus.ACKNOWLEDGED, acknowledgedAt: at },
+        {
+          status: NotificationStatus.ACKNOWLEDGED,
+          ...lifecycleTimestampPatchForTransition(notification.status, NotificationStatus.ACKNOWLEDGED, at),
+        },
         notification.version,
         tx,
       );
@@ -452,7 +456,10 @@ export class NotificationCoreService {
 
     return this.repository.updateNotification(
       notificationId,
-      { status: NotificationStatus.SNOOZED, snoozedUntil: until },
+      {
+        status: NotificationStatus.SNOOZED,
+        ...lifecycleTimestampPatchForTransition(notification.status, NotificationStatus.SNOOZED, until, until),
+      },
       notification.version,
     );
   }
@@ -466,7 +473,10 @@ export class NotificationCoreService {
 
     return this.repository.updateNotification(
       notificationId,
-      { status: NotificationStatus.OPEN, snoozedUntil: null },
+      {
+        status: NotificationStatus.OPEN,
+        ...lifecycleTimestampPatchForTransition(notification.status, NotificationStatus.OPEN, new Date()),
+      },
       notification.version,
     );
   }
@@ -477,7 +487,10 @@ export class NotificationCoreService {
 
     return this.repository.updateNotification(
       notificationId,
-      { status: NotificationStatus.ARCHIVED, archivedAt: at },
+      {
+        status: NotificationStatus.ARCHIVED,
+        ...lifecycleTimestampPatchForTransition(notification.status, NotificationStatus.ARCHIVED, at),
+      },
       notification.version,
     );
   }
@@ -582,8 +595,7 @@ export class NotificationCoreService {
           active.id,
           {
             status: NotificationStatus.RESOLVED,
-            resolvedAt,
-            snoozedUntil: null,
+            ...lifecycleTimestampPatchForTransition(active.status, NotificationStatus.RESOLVED, resolvedAt),
             acknowledgedAt: active.acknowledgedAt,
           },
           active.version,
@@ -671,6 +683,13 @@ export class NotificationCoreService {
     candidate: NotificationCandidate,
     tx: NotificationTx,
   ): Promise<Notification> {
+    const lifecycle = applyIngestOccurrenceToLifecycle({
+      status: existing.status,
+      severity: existing.severity,
+      snoozedUntil: existing.snoozedUntil,
+      incomingSeverity: candidate.severity,
+      referenceNow: candidate.occurredAt,
+    });
     const newSeverity = escalateSeverity(
       existing.severity as unknown as DomainSeverity,
       candidate.severity,
@@ -698,7 +717,9 @@ export class NotificationCoreService {
     return this.repository.updateNotification(
       existing.id,
       {
+        status: lifecycle.status,
         severity: newSeverity,
+        snoozedUntil: lifecycle.snoozedUntil,
         lastSeenAt: candidate.occurredAt,
         occurrenceCount: existing.occurrenceCount + 1,
         templateParams: templateParams as Prisma.InputJsonValue,
@@ -731,15 +752,17 @@ export class NotificationCoreService {
       tx,
     );
 
+    this.assertTransition(existing.status, NotificationStatus.OPEN, { reopenAuthorized: true });
+
     return this.repository.updateNotification(
       existing.id,
       {
         status: NotificationStatus.OPEN,
+        ...lifecycleTimestampPatchForTransition(existing.status, NotificationStatus.OPEN, candidate.occurredAt),
         severity: escalateSeverity(
           existing.severity as unknown as DomainSeverity,
           candidate.severity,
         ) as NotificationSeverity,
-        resolvedAt: null,
         reopenCount,
         lastSeenAt: candidate.occurredAt,
         occurrenceCount: existing.occurrenceCount + 1,
@@ -771,7 +794,7 @@ export class NotificationCoreService {
         context,
       );
     } catch (error) {
-      if (error instanceof NotificationStatusTransitionError) {
+      if (error instanceof NotificationLifecycleTransitionError) {
         throw new BadRequestException(error.message);
       }
       throw error;

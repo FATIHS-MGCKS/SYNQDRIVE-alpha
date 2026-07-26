@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-lifecycle-state-machine-2026-07-26',
+    version: '4.9.875',
+    title: 'Notification Engine Remediation — centralized lifecycle state machine (Prompt 8)',
+    summary: [
+      'Canonical lifecycle catalog for OPEN/ACKNOWLEDGED/SNOOZED/RESOLVED/ARCHIVED with triggers, roles, audit events, timestamps.',
+      'Ingest rules: ACK does not clear cause; SNOOZED wakes on expiry/CRITICAL escalation; recovery never creates active SUCCESS.',
+      'Archive guardrails for auto-resolve STATE; matrix + snooze expiry tests.',
+      'Docs: docs/architecture/notification-lifecycle-state-machine.md',
+    ],
+    reason:
+      'Distributed status transitions must be replaced by one formal, tested state machine.',
+    previousBehavior:
+      'Transitions lived in notification-status.transitions.ts only; ingest ignored SNOOZED escalation wake.',
+    details:
+      'lifecycle/notification-lifecycle.state-machine.ts, notification-core.service.ts, notification-available-actions.ts, notification-lifecycle.state-machine.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T05:00:00.000Z',
+  },
+  {
     id: 'notification-ingest-concurrency-2026-07-26',
     version: '4.9.874',
     title: 'Notification Engine Remediation — concurrency-safe ingestion (Prompt 7)',

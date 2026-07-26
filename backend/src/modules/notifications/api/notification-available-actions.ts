@@ -1,5 +1,8 @@
 import { MembershipRole, NotificationEventKind, NotificationStatus } from '@prisma/client';
-import { canTransitionNotificationStatus } from '../notification-status.transitions';
+import {
+  canAdministrativeArchive,
+  canTransitionNotificationStatus,
+} from '../lifecycle/notification-lifecycle.state-machine';
 import { NotificationStatus as DomainStatus } from '../notification.enums';
 import { getEventTypeDefinition } from '../registry/notification-event-registry';
 import { isManualResolutionAllowed } from './notification-manual-resolution.policy';
@@ -83,6 +86,11 @@ export function deriveAvailableActions(input: AvailableActionsInput): Notificati
 
   if (
     ARCHIVE_ROLES.includes(input.membershipRole)
+    && canAdministrativeArchive({
+      status: input.status,
+      eventKind: input.eventKind,
+      eventType: input.eventType,
+    })
     && (
       (input.status === NotificationStatus.OPEN
         && canTransitionNotificationStatus(domainStatus, DomainStatus.ARCHIVED, { administrativeArchive: true }))

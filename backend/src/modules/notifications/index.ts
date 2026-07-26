@@ -4,6 +4,8 @@ export * from './notification-fingerprint.factory';
 export * from './notification-fingerprint.normalizer';
 export * from './notification-fingerprint.registry';
 export * from './notification-status.transitions';
+export * from './lifecycle/notification-lifecycle.state-machine';
+export * from './lifecycle/notification-lifecycle.types';
 export * from './notification-reopen.policy';
 export * from './notification-candidate.validator';
 export * from './notification-candidate.contract';
