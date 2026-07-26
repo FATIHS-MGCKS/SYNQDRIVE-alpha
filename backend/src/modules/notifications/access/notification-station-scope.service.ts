@@ -27,7 +27,7 @@ export class NotificationStationScopeService {
     role: MembershipRole,
     stationScope: string | null,
     userId?: string,
-  ): Promise<Pick<NotificationAccessContext, 'scopedStationId' | 'scopedVehicleIds' | 'scopedBookingIds' | 'bypassStationScope'>> {
+  ): Promise<Pick<NotificationAccessContext, 'scopedStationId' | 'scopedStationIds' | 'scopedVehicleIds' | 'scopedBookingIds' | 'bypassStationScope'>> {
     if (userId) {
       const access = await this.stationAccess.resolve(userId, orgId);
       if (!access.bypassScope && access.allowedStationIds !== null) {
@@ -38,6 +38,7 @@ export class NotificationStationScopeService {
             scopedBookingIds: [],
             bypassStationScope: false,
             scopedStationId: undefined,
+            scopedStationIds: [],
           };
         }
         const [vehicles, bookings] = await Promise.all([
@@ -65,6 +66,7 @@ export class NotificationStationScopeService {
         ]);
         return {
           scopedStationId: stationIds.length === 1 ? stationIds[0] : undefined,
+          scopedStationIds: stationIds,
           scopedVehicleIds: vehicles.map((v) => v.id),
           scopedBookingIds: bookings.map((b) => b.id),
           bypassStationScope: false,
@@ -115,6 +117,7 @@ export class NotificationStationScopeService {
 
     return {
       scopedStationId,
+      scopedStationIds: [scopedStationId],
       scopedVehicleIds: vehicles.map((v) => v.id),
       scopedBookingIds: bookings.map((b) => b.id),
       bypassStationScope: false,
@@ -130,7 +133,18 @@ export class NotificationStationScopeService {
       return true;
     }
 
-    if (!ctx.scopedStationId && ctx.scopedVehicleIds.length === 0) {
+    const stationIds = ctx.scopedStationIds?.length
+      ? ctx.scopedStationIds
+      : ctx.scopedStationId
+        ? [ctx.scopedStationId]
+        : [];
+
+    const hasScope =
+      stationIds.length > 0
+      || ctx.scopedVehicleIds.length > 0
+      || ctx.scopedBookingIds.length > 0;
+
+    if (!hasScope) {
       return false;
     }
 
@@ -142,7 +156,7 @@ export class NotificationStationScopeService {
     const bookingId =
       row.entityType === 'BOOKING' ? row.entityId : target.bookingId;
 
-    if (stationId && ctx.scopedStationId && stationId === ctx.scopedStationId) {
+    if (stationId && stationIds.includes(stationId)) {
       return true;
     }
     if (vehicleId && ctx.scopedVehicleIds.includes(vehicleId)) return true;

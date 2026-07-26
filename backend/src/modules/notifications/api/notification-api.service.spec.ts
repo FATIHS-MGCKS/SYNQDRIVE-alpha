@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
   ServiceUnavailableException,
@@ -13,6 +14,7 @@ import {
   NotificationSeverity,
   NotificationSourceType,
   NotificationStatus,
+  Prisma,
 } from '@prisma/client';
 import { NotificationApiService } from './notification-api.service';
 import { NotificationCoreService } from '../notification-core.service';
@@ -357,6 +359,47 @@ describe('NotificationApiService', () => {
     it('rejects users without active membership', async () => {
       membership = null as any;
       await expect(service.getById(ORG, { id: USER }, NOTIF_ID)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('list filters and pagination', () => {
+    it('returns cursor pagination by default', async () => {
+      const rows = [buildRow({ id: 'n-1' }), buildRow({ id: 'n-2' })];
+      (repository.listNotificationsWhere as jest.Mock).mockResolvedValueOnce(rows);
+      const result = await service.list(ORG, { id: USER }, { limit: 1 });
+      expect('nextCursor' in result.meta && result.meta.nextCursor).toBeTruthy();
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('rejects entityId filter without entityType', async () => {
+      await expect(
+        service.list(ORG, { id: USER }, { entityId: 'veh-1' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('returns 404 for foreign vehicle filter', async () => {
+      (prisma.vehicle.findFirst as jest.Mock).mockResolvedValueOnce(null);
+      await expect(
+        service.list(ORG, { id: USER }, { vehicleId: 'foreign-veh' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('counts parity', () => {
+    it('applies domain filter to counts', async () => {
+      await service.getCounts(ORG, { id: USER }, { domain: NotificationDomain.VEHICLE_HEALTH });
+      const whereArg = (repository.countNotificationsWhere as jest.Mock).mock.calls[0][0];
+      expect(JSON.stringify(whereArg)).toContain('VEHICLE_HEALTH');
+    });
+  });
+
+  describe('write action concurrency', () => {
+    it('maps optimistic lock failure to conflict on resolve', async () => {
+      row = buildRow({ eventType: 'TECHNICAL_OBSERVATION_ACTIVE', eventKind: NotificationEventKind.STATE });
+      (core.resolveNotification as jest.Mock).mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('stale', { code: 'P2025', clientVersion: 'test' }),
+      );
+      await expect(service.resolve(ORG, { id: USER }, NOTIF_ID)).rejects.toBeInstanceOf(ConflictException);
     });
   });
 });

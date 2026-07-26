@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-api-hardening-2026-07-26',
+    version: '4.9.885',
+    title: 'Notification Engine Remediation — harden canonical notification API (Prompt 18)',
+    summary: [
+      'Cursor pagination with stable sort (lastSeenAt/createdAt/severity + id tie-breaker); offset page mode retained.',
+      'readState filter (unread/read/snoozed/hidden), timeField for range queries, counts accept same filters as list.',
+      'Multi-station scope fix for list queries; entityId requires entityType; foreign entities return 404.',
+      'Write actions audit read/unread/unsnooze; resolve/archive map optimistic lock to 409 Conflict.',
+    ],
+    reason:
+      'V2 notification API must be production-ready, tenant-safe, and filter/count consistent for inbox badges.',
+    previousBehavior:
+      'Offset-only pagination; counts ignored list filters; multi-station users could over-fetch; partial audit coverage.',
+    details:
+      'notification-list-cursor.util.ts, notification-query.util.ts, notification-api.service.ts, notifications.controller.ts, notification-station-scope.service.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T15:00:00.000Z',
+  },
+  {
     id: 'operator-app-prod-deploy-v49840-2026-07-25',
     version: '4.9.840',
     title: 'V4.9.840 — Operator App production deploy + Gate 12 closure',

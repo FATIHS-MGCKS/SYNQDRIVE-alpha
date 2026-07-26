@@ -56,7 +56,7 @@ describe('buildNotificationWhereInput', () => {
   it('applies station scope filter', () => {
     const where = buildNotificationWhereInput({
       ...base,
-      scopedStationId: 'st-1',
+      scopedStationIds: ['st-1'],
       scopedVehicleIds: ['veh-1'],
     });
     expect(where.AND).toEqual(
@@ -69,5 +69,43 @@ describe('buildNotificationWhereInput', () => {
         }),
       ]),
     );
+  });
+
+  it('filters readState=snoozed for user', () => {
+    const where = buildNotificationWhereInput(
+      { ...base, readState: 'snoozed' },
+      new Date('2026-07-26T12:00:00.000Z'),
+    );
+    expect(where.AND).toEqual(
+      expect.arrayContaining([
+        {
+          receipts: {
+            some: {
+              userId: 'user-1',
+              snoozedUntil: { gt: new Date('2026-07-26T12:00:00.000Z') },
+            },
+          },
+        },
+      ]),
+    );
+  });
+
+  it('prefers explicit status over activeOnly', () => {
+    const where = buildNotificationWhereInput({
+      ...base,
+      status: [NotificationStatus.RESOLVED],
+      activeOnly: true,
+    });
+    expect(where.status).toEqual({ in: [NotificationStatus.RESOLVED] });
+  });
+
+  it('filters time range on createdAt when timeField set', () => {
+    const from = new Date('2026-07-01T00:00:00.000Z');
+    const where = buildNotificationWhereInput({
+      ...base,
+      from,
+      timeField: 'createdAt',
+    });
+    expect(where.createdAt).toEqual({ gte: from });
   });
 });
