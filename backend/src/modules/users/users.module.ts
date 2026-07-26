@@ -29,14 +29,9 @@ import { IamAccessReviewController } from './iam-access-review.controller';
 import { IamTeamController } from './iam-team.controller';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
-import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
 
 @Module({
-  imports: [
-    forwardRef(() => IamMfaModule),
-    forwardRef(() => AuthApiModule),
-    forwardRef(() => IamDataRetentionModule),
-  ],
+  imports: [forwardRef(() => IamMfaModule), forwardRef(() => AuthApiModule)],
   controllers: [
     UsersController,
     OrganizationInvitesController,

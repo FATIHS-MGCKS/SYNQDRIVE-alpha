@@ -75,6 +75,13 @@ cd "$RELEASE_DIR/frontend"
 npm ci
 npm run build
 
+echo "==> Boot check (resolve module graph before promoting the release)"
+cd "$RELEASE_DIR/backend"
+if ! SYNQDRIVE_BOOT_CHECK=1 timeout 120 node dist/src/main.js; then
+  echo "!! ABORT: release ${RELEASE_ID} failed to bootstrap — current release left untouched" >&2
+  exit 1
+fi
+
 echo "==> Switch current + restart pm2"
 ln -sfn "$RELEASE_DIR" /opt/synqdrive/current
 cd /opt/synqdrive/current/backend
@@ -82,9 +89,19 @@ pm2 restart synqdrive --update-env
 pm2 save
 
 echo "==> Health check"
-sleep 3
-curl -sf http://127.0.0.1:3001/api/v1/health
-echo
+HEALTH_OK=0
+for _ in $(seq 1 30); do
+  if curl -sf http://127.0.0.1:3001/api/v1/health; then
+    echo
+    HEALTH_OK=1
+    break
+  fi
+  sleep 2
+done
+if [[ "$HEALTH_OK" -ne 1 ]]; then
+  echo "!! ABORT: ${RELEASE_ID} is not serving /health after restart" >&2
+  exit 1
+fi
 pm2 list
 echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
 

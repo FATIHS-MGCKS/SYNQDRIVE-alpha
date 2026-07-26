@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import iamDataRetentionConfig from '@config/iam-data-retention.config';
 import { IamDataRetentionController } from './iam-data-retention.controller';
+import { MasterAdminUserDeletionController } from './master-admin-user-deletion.controller';
 import { IamDataRetentionWorkerService } from './iam-data-retention-worker.service';
 import { IamDsarExportService } from './iam-dsar-export.service';
 import { IamLegalHoldService } from './iam-legal-hold.service';
@@ -16,7 +17,7 @@ import { UsersModule } from '../users/users.module';
     forwardRef(() => IamMfaModule),
     UsersModule,
   ],
-  controllers: [IamDataRetentionController],
+  controllers: [IamDataRetentionController, MasterAdminUserDeletionController],
   providers: [
     IamDataRetentionWorkerService,
     IamDsarExportService,

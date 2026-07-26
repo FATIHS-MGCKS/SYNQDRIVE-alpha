@@ -69,6 +69,15 @@ async function bootstrap() {
     rawBody: true,
     logger: logLevels,
   });
+  // Deploy gate: prove the module graph and every provider resolve before a
+  // release is promoted. Exits without binding a port so it can run alongside
+  // the live instance.
+  if (process.env.SYNQDRIVE_BOOT_CHECK === '1') {
+    logger.log('Boot check OK — module graph and providers resolved');
+    await app.close();
+    return;
+  }
+
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });
 
   const configService = app.get(ConfigService);
