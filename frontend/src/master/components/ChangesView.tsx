@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-billing-data-migration-2b8-2026-07-26',
+    version: '4.9.887',
+    title: 'V4.9.887 — Master Admin 2B.8: Billing data migration plan',
+    summary: [
+      'Anomaly taxonomy: orphaned customers, missing Stripe IDs, trial without cause, duplicates.',
+      'Inconsistent subscriptions, missing products, invalid prices — detection SQL per type.',
+      'Phased safe migration plan: audit → classify → approve → idempotent execute → validate.',
+      'docs/remediation/billing-data-migration.md',
+    ],
+    reason:
+      'Billing data spans legacy licenses, modern contract, and Stripe projection — needs a read-only inventory and controlled migration path.',
+    previousBehavior:
+      'Detection scattered across backfill dry-run, reconciliation drifts, and runbook SQL without unified migration plan.',
+    details:
+      'docs/remediation/billing-data-migration.md, architecture/MASTER_ADMIN_BILLING_DATA_MIGRATION_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-26T13:00:00.000Z',
+  },
+  {
     id: 'notification-org-allowlist-v49881-2026-07-26',
     version: '4.9.881',
     title: 'V4.9.881 — Notification Engine: Org-Allowlist & Go-Live Gates',
