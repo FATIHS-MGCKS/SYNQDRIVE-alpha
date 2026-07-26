@@ -5,6 +5,11 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
 import { ROLES_KEY } from '@shared/decorators/roles.decorator';
 import { USERS_ROLES_MODULE } from '@shared/auth/permission.constants';
+import { StepUpGuard } from '@shared/auth/step-up.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { STEP_UP_METADATA_KEY } from '@shared/decorators/require-step-up.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { MasterAdminUserDeletionController } from '@modules/iam-data-retention/master-admin-user-deletion.controller';
 import { UsersController } from './users.controller';
 
 function permissionOf(target: object, method: string) {
@@ -78,11 +83,34 @@ describe('UsersController security characterization', () => {
       'adminCreate',
       'adminUpdate',
       'adminChangePassword',
-      'adminDelete',
     ] as const;
     for (const method of adminHandlers) {
       expect(rolesOf(UsersController.prototype, method)).toEqual(['MASTER_ADMIN']);
       expect(guardsOf(UsersController.prototype, method)).toContain(RolesGuard);
     }
+  });
+
+  it('admin user deletion no longer lives here', () => {
+    expect(
+      (UsersController.prototype as unknown as Record<string, unknown>).adminDelete,
+    ).toBeUndefined();
+  });
+});
+
+describe('MasterAdminUserDeletionController security characterization', () => {
+  it('adminDelete requires MASTER_ADMIN, step-up and master admin MFA', () => {
+    expect(rolesOf(MasterAdminUserDeletionController.prototype, 'adminDelete')).toEqual([
+      'MASTER_ADMIN',
+    ]);
+    expect(guardsOf(MasterAdminUserDeletionController.prototype, 'adminDelete')).toEqual(
+      expect.arrayContaining([RolesGuard, StepUpGuard, MasterAdminMfaGuard]),
+    );
+  });
+
+  it('adminDelete requires the privacy data deletion step-up action', () => {
+    const handler = MasterAdminUserDeletionController.prototype.adminDelete;
+    expect(Reflect.getMetadata(STEP_UP_METADATA_KEY, handler)).toBe(
+      STEP_UP_ACTION.PRIVACY_DATA_DELETION,
+    );
   });
 });
