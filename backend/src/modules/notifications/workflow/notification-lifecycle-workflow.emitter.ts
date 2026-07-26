@@ -22,6 +22,8 @@ export class NotificationLifecycleWorkflowEmitter {
     const correlationId = input.correlationId ?? randomUUID();
     const { notification, lifecycleEvent } = input;
 
+    const idempotencyKey = this.buildIdempotencyKey(lifecycleEvent, notification);
+
     const payload: NotificationLifecycleWorkflowPayload = {
       organizationId: notification.organizationId,
       notificationId: notification.id,
@@ -34,9 +36,8 @@ export class NotificationLifecycleWorkflowEmitter {
       severity: notification.severity,
       occurredAt: occurredAt.toISOString(),
       correlationId,
+      triggerEventId: idempotencyKey,
     };
-
-    const idempotencyKey = this.buildIdempotencyKey(lifecycleEvent, notification);
 
     this.workflowEvents.scheduleEmit({
       organizationId: notification.organizationId,

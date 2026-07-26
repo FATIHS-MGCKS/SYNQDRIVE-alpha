@@ -218,6 +218,7 @@ function makeWorkflow(overrides: Partial<OrgWorkflow> = {}): OrgWorkflow {
 
 function makeWorkflowPrisma(workflows: OrgWorkflow[]) {
   const runs = new Map<string, unknown>();
+  const actionRuns = new Map<string, unknown>();
   return {
     orgWorkflow: {
       findMany: jest.fn(async ({ where }: { where: { organizationId: string } }) =>
@@ -237,20 +238,31 @@ function makeWorkflowPrisma(workflows: OrgWorkflow[]) {
         where: { organizationId_idempotencyKey: { organizationId: string; idempotencyKey: string } };
       }) => {
         const key = `${where.organizationId_idempotencyKey.organizationId}:${where.organizationId_idempotencyKey.idempotencyKey}`;
-        return runs.get(key) ?? null;
+        const row = runs.get(key) ?? null;
+        if (!row) return null;
+        return { ...(row as object), actionRuns: [] };
       }),
       create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
-        const row = { id: `run-${runs.size + 1}`, ...data };
+        const row = { id: `run-${runs.size + 1}`, actionRuns: [], ...data };
         runs.set(`${data.organizationId}:${data.idempotencyKey}`, row);
         return row;
       }),
       update: jest.fn().mockResolvedValue({}),
     },
     orgWorkflowActionRun: {
-      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
-        id: `ar-${data.actionIndex}`,
-        ...data,
-      })),
+      findUnique: jest.fn(async ({
+        where,
+      }: {
+        where: { organizationId_idempotencyKey: { organizationId: string; idempotencyKey: string } };
+      }) => {
+        const key = `${where.organizationId_idempotencyKey.organizationId}:${where.organizationId_idempotencyKey.idempotencyKey}`;
+        return actionRuns.get(key) ?? null;
+      }),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row = { id: `ar-${actionRuns.size + 1}`, ...data };
+        actionRuns.set(`${data.organizationId}:${data.idempotencyKey}`, row);
+        return row;
+      }),
       update: jest.fn().mockResolvedValue({}),
     },
     orgWorkflowApproval: { create: jest.fn() },
@@ -262,6 +274,7 @@ function makeWorkflowPrisma(workflows: OrgWorkflow[]) {
 
 function makeWorkflowEngine(prisma: ReturnType<typeof makeWorkflowPrisma>) {
   const upsertByDedup = jest.fn().mockResolvedValue({ id: 'task-1' });
+  const findActiveByDedup = jest.fn().mockResolvedValue(null);
   const rollout = makeRolloutServiceMock();
   const config = { get: jest.fn().mockReturnValue(20) } as unknown as ConfigService;
   const shadowGate = {
@@ -279,7 +292,7 @@ function makeWorkflowEngine(prisma: ReturnType<typeof makeWorkflowPrisma>) {
     prisma,
     new WorkflowActionExecutorService(
       prisma,
-      { upsertByDedup } as unknown as TasksService,
+      { upsertByDedup, findActiveByDedup } as unknown as TasksService,
       rollout as never,
     ),
     shadowGate as never,
@@ -313,6 +326,7 @@ describe('Notification lifecycle workflow integration', () => {
           severity: NotificationSeverity.WARNING,
           correlationId: expect.any(String),
           occurredAt: expect.any(String),
+          triggerEventId: expect.any(String),
         }),
       );
     });
@@ -504,10 +518,11 @@ describe('Notification lifecycle workflow integration', () => {
     it('workflow action output references triggering notificationId', async () => {
       const prisma = makeWorkflowPrisma([makeWorkflow()]);
       const upsertByDedup = jest.fn().mockResolvedValue({ id: 'task-1' });
+      const findActiveByDedup = jest.fn().mockResolvedValue(null);
       const rollout = makeRolloutServiceMock();
       const executor = new WorkflowActionExecutorService(
         prisma,
-        { upsertByDedup } as unknown as TasksService,
+        { upsertByDedup, findActiveByDedup } as unknown as TasksService,
         rollout as never,
       );
 
@@ -519,6 +534,7 @@ describe('Notification lifecycle workflow integration', () => {
           workflowRunId: 'run-1',
           actionRunId: 'ar-0',
           actionIndex: 0,
+          actionDefinitionId: 'notification.prepare:0',
           eventType: 'notification.opened',
           entityType: 'vehicle',
           entityId: VEH,
@@ -532,8 +548,11 @@ describe('Notification lifecycle workflow integration', () => {
             severity: 'WARNING',
             occurredAt: new Date().toISOString(),
             correlationId: 'corr-1',
+            triggerEventId: 'notification.opened:notif-trigger:gen:1',
           },
-          idempotencyKey: 'key-1',
+          idempotencyKey: 'notification-run:org-a:wf-1:notification.opened:notif-trigger:gen:1',
+          actionIdempotencyKey:
+            'notification-action:org-a:wf-1:notif-trigger:gen:1:action:notification.prepare:0',
           executionMode: WorkflowExecutionMode.LIVE,
         },
       );

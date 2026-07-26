@@ -39,6 +39,7 @@ function makeWorkflow(overrides: Partial<OrgWorkflow> = {}): OrgWorkflow {
 
 function makePrisma() {
   const runs = new Map<string, unknown>();
+  const actionRuns = new Map<string, unknown>();
   return {
     orgWorkflow: {
       findMany: jest.fn(),
@@ -52,23 +53,57 @@ function makePrisma() {
         where: { organizationId_idempotencyKey: { organizationId: string; idempotencyKey: string } };
       }) => {
         const key = `${where.organizationId_idempotencyKey.organizationId}:${where.organizationId_idempotencyKey.idempotencyKey}`;
-        return runs.get(key) ?? null;
+        const row = runs.get(key) ?? null;
+        if (!row) return null;
+        const relatedActions = [...actionRuns.values()].filter(
+          (ar) => (ar as { workflowRunId?: string }).workflowRunId === (row as { id?: string }).id,
+        );
+        return { ...(row as object), actionRuns: relatedActions };
       }),
       create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
         const idempotencyKey = data.idempotencyKey as string;
         const orgId = data.organizationId as string;
-        const row = { id: `run-${runs.size + 1}`, ...data };
+        const row = { id: `run-${runs.size + 1}`, actionRuns: [], ...data };
         runs.set(`${orgId}:${idempotencyKey}`, row);
         return row;
       }),
-      update: jest.fn(),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        for (const [key, row] of runs.entries()) {
+          if ((row as { id?: string }).id === where.id) {
+            const updated = { ...(row as object), ...data };
+            runs.set(key, updated);
+            return updated;
+          }
+        }
+        return data;
+      }),
     },
     orgWorkflowActionRun: {
-      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
-        id: `ar-${data.actionIndex}`,
-        ...data,
-      })),
-      update: jest.fn(),
+      findUnique: jest.fn(async ({
+        where,
+      }: {
+        where: { organizationId_idempotencyKey: { organizationId: string; idempotencyKey: string } };
+      }) => {
+        const key = `${where.organizationId_idempotencyKey.organizationId}:${where.organizationId_idempotencyKey.idempotencyKey}`;
+        return actionRuns.get(key) ?? null;
+      }),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const orgId = data.organizationId as string;
+        const idempotencyKey = data.idempotencyKey as string;
+        const row = { id: `ar-${actionRuns.size + 1}`, ...data };
+        actionRuns.set(`${orgId}:${idempotencyKey}`, row);
+        return row;
+      }),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        for (const [key, row] of actionRuns.entries()) {
+          if ((row as { id?: string }).id === where.id) {
+            const updated = { ...(row as object), ...data };
+            actionRuns.set(key, updated);
+            return updated;
+          }
+        }
+        return data;
+      }),
     },
     orgWorkflowApproval: {
       create: jest.fn(),
@@ -105,9 +140,14 @@ function makeEngine(
   const shadow = makeShadowDeps();
   const rollout = makeRolloutServiceMock();
   const config = { get: jest.fn().mockReturnValue(20) } as unknown as ConfigService;
+  const findActiveByDedup = jest.fn().mockResolvedValue(null);
   const engine = new WorkflowEngineService(
     prisma,
-    new WorkflowActionExecutorService(prisma, { upsertByDedup } as unknown as TasksService, rollout as never),
+    new WorkflowActionExecutorService(
+      prisma,
+      { upsertByDedup, findActiveByDedup } as unknown as TasksService,
+      rollout as never,
+    ),
     shadow.shadowGate as never,
     shadow.shadowService as never,
     rollout as never,
@@ -160,9 +200,6 @@ describe('WorkflowEngineService production scenarios', () => {
       const upsertByDedup = jest.fn().mockResolvedValue({ id: 'task-1' });
       const { engine } = makeEngine(prisma, upsertByDedup);
       const wf = makeWorkflow();
-      prisma.orgWorkflowActionRun.create.mockResolvedValue({ id: 'ar-0' });
-      prisma.orgWorkflowActionRun.update.mockResolvedValue({});
-      prisma.orgWorkflowRun.update.mockResolvedValue({});
       prisma.orgWorkflow.update.mockResolvedValue(wf);
 
       const event = {

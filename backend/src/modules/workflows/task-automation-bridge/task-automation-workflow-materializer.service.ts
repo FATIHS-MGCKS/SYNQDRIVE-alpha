@@ -186,6 +186,7 @@ export class TaskAutomationWorkflowMaterializerService {
       actionRunId,
       workflowId,
       actionIndex: 0,
+      actionDefinitionId: 'task.create:0',
       eventType: payload.eventType ?? 'task.automation.materialize',
       entityType: payload.entityType ?? null,
       entityId: payload.entityId ?? null,
@@ -197,6 +198,7 @@ export class TaskAutomationWorkflowMaterializerService {
         vehicleId: payload.vehicleId,
       },
       idempotencyKey,
+      actionIdempotencyKey: `${idempotencyKey}:action:task.create:0`,
       executionMode: WorkflowExecutionMode.LIVE,
     };
   }

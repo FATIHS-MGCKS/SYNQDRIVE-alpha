@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'workflow-notification-idempotency-v49870-2026-07-26',
+    version: '4.9.870',
+    title: 'V4.9.870 — Notification Engine: Workflow-Idempotenz pro Generation',
+    summary: [
+      'OrgWorkflowRun/ActionRun: notificationId, fingerprint, generation, triggerEventId, correlationId, causationId.',
+      'Action-Idempotency-Key: org + workflowId + notificationId + generation + actionDefinitionId (UNIQUE).',
+      'Retries setzen fehlgeschlagene Runs fort — keine zweite Task/E-Mail/WhatsApp/Notification.',
+      'Reopen mit neuer lifecycleGeneration erlaubt bewusst neue Action-Ausführung.',
+      'Tests: Doppel-Trigger, Worker-Retry, Parallel-Race, neue Generation, zwei Workflow-Definitionen.',
+    ],
+    reason:
+      'Notification-Remediation Prompt 24: Workflow-Aktionen dürfen pro Notification-Generation nicht unkontrolliert mehrfach ausgeführt werden.',
+    previousBehavior:
+      'Run-Idempotency nur auf Workflow-Ebene; ActionRuns ohne generation-scoped Key; Retries konnten Duplikat-Tasks erzeugen.',
+    details:
+      'workflow-notification-idempotency.util.ts, workflow-engine.service.ts, migration 20260726120000_workflow_notification_idempotency.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T02:40:00.000Z',
+  },
+  {
     id: 'notification-workflow-lifecycle-v49869-2026-07-26',
     version: '4.9.869',
     title: 'V4.9.869 — Notification Engine: Workflow-Lifecycle-Events',

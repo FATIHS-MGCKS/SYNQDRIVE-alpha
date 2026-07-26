@@ -14,6 +14,8 @@ export interface NotificationLifecycleWorkflowPayload {
   severity: string;
   occurredAt: string;
   correlationId: string;
+  /** Stable lifecycle transition id used for workflow run idempotency. */
+  triggerEventId: string;
 }
 
 export interface NotificationLifecycleEmitInput {

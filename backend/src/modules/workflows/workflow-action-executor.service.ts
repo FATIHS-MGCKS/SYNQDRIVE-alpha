@@ -21,6 +21,7 @@ import {
   WorkflowExecutionMode,
 } from './workflow-execution-mode';
 import { WorkflowRuntimeRolloutService } from './rollout/workflow-runtime-rollout.service';
+import type { NotificationWorkflowContext } from './workflow-notification-idempotency.util';
 
 export interface ActionExecutionContext {
   organizationId: string;
@@ -28,11 +29,16 @@ export interface ActionExecutionContext {
   workflowRunId: string;
   actionRunId: string;
   actionIndex: number;
+  actionDefinitionId: string;
   eventType: string;
   entityType?: string | null;
   entityId?: string | null;
   payload: Record<string, unknown>;
+  /** Workflow-run scoped idempotency key. */
   idempotencyKey: string;
+  /** Per-action idempotency key (notification generation scoped when applicable). */
+  actionIdempotencyKey: string;
+  notificationContext?: NotificationWorkflowContext;
   executionMode: WorkflowExecutionMode;
 }
 
@@ -160,14 +166,11 @@ export class WorkflowActionExecutorService {
       typeof config.dedupKey === 'string' && config.dedupKey.trim()
         ? config.dedupKey.trim()
         : null;
-    const dedupKey = catalogDedupKey
-      ?? `${ctx.idempotencyKey}:action:${ctx.actionIndex}:task`;
+    const dedupKey = catalogDedupKey ?? ctx.actionIdempotencyKey;
 
-    if (catalogDedupKey) {
-      const existing = await this.tasksService.findActiveByDedup(ctx.organizationId, dedupKey);
-      if (existing) {
-        return { taskId: existing.id, dedupKey, idempotentReplay: true };
-      }
+    const existing = await this.tasksService.findActiveByDedup(ctx.organizationId, dedupKey);
+    if (existing) {
+      return { taskId: existing.id, dedupKey, idempotentReplay: true };
     }
 
     const vehicleId =
@@ -266,7 +269,18 @@ export class WorkflowActionExecutorService {
         : severity === 'high'
           ? 'HIGH'
           : 'NORMAL';
-    const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:alert`;
+    const dedupKey = ctx.actionIdempotencyKey;
+    const existingAlert = await this.tasksService.findActiveByDedup(ctx.organizationId, dedupKey);
+    if (existingAlert) {
+      return {
+        alertTaskId: existingAlert.id,
+        preparedOnly: true,
+        idempotentReplay: true,
+        ...(this.triggeringNotificationId(ctx)
+          ? { triggeringNotificationId: this.triggeringNotificationId(ctx) }
+          : {}),
+      };
+    }
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title: `Alert: ${message.slice(0, 120)}`,
       description: message,
@@ -330,7 +344,18 @@ export class WorkflowActionExecutorService {
     const message =
       (typeof config.message === 'string' && config.message) ||
       'Notification draft prepared by workflow';
-    const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:notification`;
+    const dedupKey = ctx.actionIdempotencyKey;
+    const existingDraft = await this.tasksService.findActiveByDedup(ctx.organizationId, dedupKey);
+    if (existingDraft) {
+      return {
+        preparedOnly: true,
+        taskId: existingDraft.id,
+        idempotentReplay: true,
+        ...(this.triggeringNotificationId(ctx)
+          ? { triggeringNotificationId: this.triggeringNotificationId(ctx) }
+          : {}),
+      };
+    }
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title: 'Notification draft (not sent)',
       description: message,
@@ -380,7 +405,7 @@ export class WorkflowActionExecutorService {
     action: WorkflowActionDef,
     ctx: ActionExecutionContext,
   ): Promise<Record<string, unknown>> {
-    const dedupKey = `${ctx.idempotencyKey}:action:${ctx.actionIndex}:ai_suggest`;
+    const dedupKey = ctx.actionIdempotencyKey;
     const task = await this.tasksService.upsertByDedup(ctx.organizationId, dedupKey, {
       title: 'AI action suggestion (approval required)',
       description:
