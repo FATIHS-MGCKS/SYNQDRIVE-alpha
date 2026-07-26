@@ -987,6 +987,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     icon: Zap,
     color: 'text-[color:var(--status-ai)]',
     apis: [
+      { label: 'Billing production readiness (2B.10)', detail: 'NO-GO full prod — P0 blockers + pilot path — docs/remediation/billing-production-readiness.md' },
       { label: 'Billing (live)', detail: 'modules/billing — SynqDrive-Abo; POST /api/v1/webhooks/stripe + STRIPE_WEBHOOK_SECRET' },
       { label: 'Connect schema (V4.9.435)', detail: 'Prisma: OrganizationPaymentAccount, BookingPaymentRequest, PaymentTransaction (append-only), StripeConnectWebhookEvent — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_SCHEMA_2026-07-14.md' },
       { label: 'Domain logic (V4.9.436)', detail: 'PaymentStatusService + status machine — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_LOGIC_2026-07-14.md' },
