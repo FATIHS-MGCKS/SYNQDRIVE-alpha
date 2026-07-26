@@ -140,6 +140,11 @@ refresh_exporters() {
   if [[ "$AUTO_BOOTSTRAP" != "1" ]]; then
     return 0
   fi
+  if [[ -x "$SCRIPT_DIR/vps-setup-infra-exporters.sh" ]]; then
+    echo "==> Infrastructure exporters: bootstrap via vps-setup-infra-exporters.sh"
+    bash "$SCRIPT_DIR/vps-setup-infra-exporters.sh" || true
+    return 0
+  fi
   if [[ -f "$SCRIPT_DIR/vps-setup-node-exporter.sh" ]]; then
     bash "$SCRIPT_DIR/vps-setup-node-exporter.sh" || true
   fi

@@ -112,6 +112,9 @@ describe('Prometheus infra alert rules', () => {
   it('alerts-infra.yml defines platform and host alerts', () => {
     const yaml = readFileSync(join(root, 'alerts-infra.yml'), 'utf8');
     expect(yaml).toContain('PostgreSQLUnavailable');
+    expect(yaml).toContain('PostgresExporterDown');
+    expect(yaml).toContain('RedisExporterDown');
+    expect(yaml).toContain('NginxStubStatusUnreachable');
     expect(yaml).toContain('RedisUnavailable');
     expect(yaml).toContain('HostDiskSpaceLow');
     expect(yaml).toContain('TlsCertificateExpiringSoon');
@@ -127,6 +130,11 @@ describe('Prometheus infra alert rules', () => {
     expect(yaml).toContain('127.0.0.1:9093');
     expect(yaml).toContain('alerts-infra.yml');
     expect(yaml).toContain('job_name: node');
+    expect(yaml).toContain('job_name: cadvisor');
+    expect(yaml).toContain('job_name: postgres');
+    expect(yaml).toContain('job_name: redis');
+    expect(yaml).toContain('job_name: clickhouse');
+    expect(yaml).toContain('job_name: nginx');
     expect(yaml).toContain('blackbox-ssl');
   });
 });

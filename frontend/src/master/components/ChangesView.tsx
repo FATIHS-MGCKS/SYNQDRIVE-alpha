@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-infrastructure-monitoring-2f3-2026-07-26',
+    version: '4.9.900',
+    title: 'V4.9.900 — Master Admin 2F.3: Infrastructure monitoring exporters',
+    summary: [
+      'Full infra stack: node_exporter, cAdvisor, postgres_exporter, redis_exporter, ClickHouse native :9363, nginx_exporter.',
+      'VPS scripts + prometheus scrape jobs; alerts-infra exporter alert group.',
+      'nginx stub_status snippet (localhost); ClickHouse prometheus.xml.',
+      'All exporters localhost-only; dual-layer with synqdrive_dependency_up.',
+    ],
+    reason:
+      'Phase 2F.3 closes infrastructure monitoring gaps from 2F.1 observability audit.',
+    previousBehavior:
+      'Only node_exporter (2F.2); no Docker/PG/Redis/CH/Nginx dedicated exporters.',
+    details:
+      'docs/remediation/infrastructure-monitoring.md · architecture/MASTER_ADMIN_INFRASTRUCTURE_MONITORING_2026-07-26.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-27T03:00:00.000Z',
+  },
+  {
     id: 'master-admin-alertmanager-2f2-2026-07-26',
     version: '4.9.899',
     title: 'V4.9.899 — Master Admin 2F.2: Alertmanager production deployment',

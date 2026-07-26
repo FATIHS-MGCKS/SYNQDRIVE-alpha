@@ -1,7 +1,7 @@
 # SynqDrive Prometheus — VPS (PM2 backend on host port 3001)
 #
 # Used by backend/scripts/ops/vps-setup-prometheus.sh
-# Scrapes localhost only — never expose /metrics publicly.
+# All scrape targets bind to localhost — never expose publicly.
 
 global:
   scrape_interval: 30s
@@ -37,6 +37,37 @@ scrape_configs:
     static_configs:
       - targets:
           - '127.0.0.1:9100'
+
+  - job_name: cadvisor
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9323'
+
+  - job_name: postgres
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9187'
+
+  - job_name: redis
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9121'
+
+  - job_name: clickhouse
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - '127.0.0.1:9363'
+
+  - job_name: nginx
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '127.0.0.1:9113'
 
   - job_name: blackbox-ssl
     scrape_interval: 5m

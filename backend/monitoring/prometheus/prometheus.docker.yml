@@ -1,9 +1,4 @@
 # SynqDrive Prometheus — local docker-compose (monitoring profile)
-#
-# Targets:
-#   - backend via host-gateway (PM2 or npm run start:dev on host)
-#   - node_exporter, blackbox_exporter (compose services)
-#   - alertmanager on 127.0.0.1:9093
 
 global:
   scrape_interval: 30s
@@ -39,6 +34,31 @@ scrape_configs:
     static_configs:
       - targets:
           - 'node-exporter:9100'
+
+  - job_name: cadvisor
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'cadvisor:8080'
+
+  - job_name: postgres
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'postgres-exporter:9187'
+
+  - job_name: redis
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'redis-exporter:9121'
+
+  - job_name: clickhouse
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'clickhouse:9363'
 
   - job_name: blackbox-ssl
     scrape_interval: 5m

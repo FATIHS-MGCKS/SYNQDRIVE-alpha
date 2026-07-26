@@ -1,8 +1,13 @@
-# SynqDrive infrastructure & platform alert rules (Phase 2F.2)
+# SynqDrive infrastructure & platform alert rules (Phase 2F.2 + 2F.3)
 #
 # Requires scrape targets:
 #   - synqdrive-backend (app metrics incl. synqdrive_dependency_up)
 #   - node (node_exporter host metrics + textfile backup gauge)
+#   - cadvisor (Docker/container metrics)
+#   - postgres (postgres_exporter pg_up)
+#   - redis (redis_exporter redis_up)
+#   - clickhouse (native Prometheus :9363)
+#   - nginx (nginx-prometheus-exporter)
 #   - blackbox-ssl (TLS probe via blackbox_exporter)
 #
 # Low-cardinality labels only. `component` is used by Alertmanager routing.
@@ -215,3 +220,101 @@ groups:
         annotations:
           summary: Database backup metric not present
           description: node_exporter textfile collector has no backup timestamp — run vps-backup-status-textfile.sh after pg_dump.
+
+  - name: synqdrive_exporters
+    rules:
+      - alert: InfrastructureExporterScrapeDown
+        expr: up{job=~"postgres|redis|nginx|cadvisor|clickhouse"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: Infrastructure exporter scrape target down
+          description: Prometheus cannot scrape job {{ $labels.job }} on {{ $labels.instance }}.
+          runbook_url: docs/remediation/infrastructure-monitoring.md#exporter-down
+
+      - alert: PostgresExporterDown
+        expr: pg_up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: postgresql
+        annotations:
+          summary: postgres_exporter reports PostgreSQL down
+          description: pg_up=0 — verify PostgreSQL service and DATA_SOURCE_NAME.
+          runbook_url: docs/remediation/infrastructure-monitoring.md#postgresql-exporter
+
+      - alert: RedisExporterDown
+        expr: redis_up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: redis_exporter reports Redis down
+          description: redis_up=0 — verify Redis service and REDIS_ADDR/password.
+          runbook_url: docs/remediation/infrastructure-monitoring.md#redis-exporter
+
+      - alert: NginxStubStatusUnreachable
+        expr: |
+          up{job="nginx"} == 1
+          and nginx_up{job="nginx"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: nginx
+        annotations:
+          summary: nginx-prometheus-exporter cannot scrape stub_status
+          description: Apply nginx-stub-status.snippet on localhost:8081 and reload nginx.
+          runbook_url: docs/remediation/infrastructure-monitoring.md#nginx-exporter
+
+      - alert: NginxHighActiveConnections
+        expr: nginx_connections_active{job="nginx"} > 500
+        for: 10m
+        labels:
+          severity: warning
+          component: nginx
+        annotations:
+          summary: Nginx active connections elevated
+          description: More than 500 active connections — check traffic spike or slow upstream.
+
+      - alert: ClickHouseExporterScrapeErrors
+        expr: |
+          up{job="clickhouse"} == 1
+          and rate(prometheus_scrape_samples_scraped{job="clickhouse"}[5m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          component: clickhouse
+        annotations:
+          summary: ClickHouse Prometheus endpoint returning no samples
+          description: Verify prometheus.xml is mounted and port 9363 is listening on localhost.
+
+      - alert: PostgresConnectionsHigh
+        expr: |
+          sum(pg_stat_activity_count{job="postgres",state="active"})
+          /
+          clamp_min(sum(pg_settings_max_connections{job="postgres"}), 1)
+          > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: postgresql
+        annotations:
+          summary: PostgreSQL active connections above 80% of max_connections
+          description: Connection pool pressure — review long queries and pool sizes.
+
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes{job="redis"}
+          /
+          clamp_min(redis_memory_max_bytes{job="redis"}, 1)
+          > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: Redis memory usage above 90% of maxmemory
+          description: Risk of evictions — review BullMQ queue depth and key TTLs.

@@ -971,6 +971,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'REST API', detail: 'Vehicles, device status' },
       { label: 'Webhooks', detail: 'DTC codes, ignition events, OBD plug/unplug' },
       { label: 'Identity GraphQL', detail: 'privileged vehicles sync → dimo_vehicles mirror (24h + manual)' },
+      { label: 'Infrastructure monitoring (2F.3)', detail: 'cAdvisor, postgres/redis/nginx exporters, ClickHouse :9363 native Prometheus. Doc: infrastructure-monitoring.md' },
       { label: 'Alertmanager (2F.2)', detail: 'Production AM: severity routing, escalation, maintenance windows. alerts-infra.yml + node/blackbox exporters. Doc: alertmanager.md' },
       { label: 'Observability architecture (2F.1)', detail: 'Full stack audit: ~302 metrics, 100 alerts, 7 dashboards. Alertmanager missing; SaaS/AI/workflows gaps. Doc: observability-architecture.md' },
       { label: 'Production readiness (2E.7)', detail: 'Final verdict: conditional go-live. 7× P1 blockers, DIMO safe after 2E.4. Doc: tenant-production-readiness.md' },
