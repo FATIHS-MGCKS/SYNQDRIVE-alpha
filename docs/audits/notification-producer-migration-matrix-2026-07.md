@@ -163,8 +163,11 @@ Reihenfolge gemäß Remediation-Priorität (Prompt 11):
 |----|------------------|-----|-----|---------|----------|----|----|-----|-----|------|-------|----------|
 | — | `payment-email.processor` | in Domain Event | Separate email queue | — | — | — | — | — | **Bewusst getrennt** von Notification Engine | Billing flags | payment processor specs | — |
 | — | billing-email queues | in Domain Event | Email only | — | — | — | — | — | Optional später: `PAYMENT_FAILED`, `INVOICE_OVERDUE`, `DEPOSIT_PROBLEM` via ingest | `NOTIFICATIONS_V2` | TBD | — |
+| W8-B1 | `billing-operational-notification` → `BillingEventPublisher` listener | **migriert** | V2 `PAYMENT_FAILED`, `INVOICE_OVERDUE` | same | INVOICE | `billing:stripe:{type}:{stripeInvoiceId}` | `PAYMENT_SUCCEEDED` → SUCCESS | CRITICAL/WARNING | Listener auf Domain Events; keine Stripe-Payload in metadata | `NOTIFICATIONS_V2` | `billing-operational-notification.service.spec.ts` | listener off |
+| W8-R1 | `invoice-operational-notification` + overdue scheduler | **migriert** | V2 `INVOICE_OVERDUE` (rental `OrgInvoice`) | same | INVOICE | `rental-invoice:overdue:{id}` | full payment → SUCCESS | WARNING | Scheduler hook nach Status-Transition | `NOTIFICATIONS_V2` | `invoice-operational-notification.service.spec.ts`, scheduler hook spec | hook off |
+| — | `DEPOSIT_PROBLEM` | Registry only | **kein Producer** | — | — | — | — | — | Nicht erfunden (kein operativer Pfad) | — | — | — |
 
-*(Kein P-ID — Registry-Events existieren ohne Producer; siehe Anhang B)*
+*(Stripe subscription billing via W8-B1; rental invoices via W8-R1)*
 
 ### 3.10 W9 — Dokumente & KYC (Legal)
 
@@ -172,7 +175,7 @@ Reihenfolge gemäß Remediation-Priorität (Prompt 11):
 |----|------------------|-----|-----|---------|----------|----|----|-----|-----|------|-------|----------|
 | P-32 | `legal-document-operational-notification` → org readiness | bereits kanonisch | V2 `LEGAL_REQUIRED_*`, `LEGAL_APPROVAL_PENDING`, `LEGAL_DOCUMENT_EXPIRING_SOON`, … | 20× LEGAL_* | ORGANIZATION | `legalOperationalNotificationFingerprintKey` | scope auto-close map | WARNING/CRITICAL | Stabilisieren; remove deprecated org-legal path | `NOTIFICATIONS_V2` | legal notification audit | flag off |
 | P-33 | same → bundle completeness | bereits kanonisch | `LEGAL_BUNDLE_INCOMPLETE`, `LEGAL_DOCUMENT_DELIVERY_FAILED` | LEGAL_* | BOOKING | bundle+booking scoped | bundle complete | WARNING | Behalten | `NOTIFICATIONS_V2` | legal specs | flag off |
-| P-34 | same → `syncPickupGateBlock` | Legacy (dormant) | `LEGAL_PICKUP_BLOCKED_MISSING_PROOF` | same | BOOKING | pickup gate key | proof uploaded | CRITICAL | **Aktivieren** Caller auf pickup gate | `NOTIFICATIONS_V2` | pickup gate e2e | disable hook |
+| P-34 | same → `syncPickupGateBlock` | **migriert** | `LEGAL_PICKUP_BLOCKED_MISSING_PROOF` | same | BOOKING | pickup gate key | proof uploaded | CRITICAL | Caller in `BookingPickupGateService.assertPickupAllowed` | `NOTIFICATIONS_V2` | pickup gate e2e + legal specs | disable hook |
 | P-35 | same → integrity/technical | bereits kanonisch | `LEGAL_INTEGRITY_*`, `LEGAL_TECH_*` | ORG/DOC | integrity scoped | drift cleared | CRITICAL | Behalten | `NOTIFICATIONS_V2` | integrity specs | flag off |
 
 ### 3.11 W10 — Connectivity
@@ -350,8 +353,9 @@ Nach erfolgreichem Sign-off pro Welle — **zählen als zu entfernende Legacy-Pf
 | `DATA_QUALITY_LIMITED` | **kein Producer** | Trip/telemetry hook |
 | `BOOKING_*` / `PICKUP_DUE` / `RETURN_DUE` / `HANDOVER_INCOMPLETE` | **kein Producer** | Booking lifecycle hooks |
 | `REQUIRED_DOCUMENT_MISSING` | **kein Producer** (non-legal) | Documents module |
-| `PAYMENT_FAILED` / `INVOICE_OVERDUE` / `DEPOSIT_PROBLEM` | **kein Producer** | Billing hooks |
-| `INTEGRATION_DISCONNECTED` | **kein Producer** | Integration registry |
+| `PAYMENT_FAILED` / `INVOICE_OVERDUE` | **migriert** (W8-B1, W8-R1) | Billing + rental invoice hooks |
+| `DEPOSIT_PROBLEM` | **kein Producer** | Registry stub only |
+| `INTEGRATION_DISCONNECTED` | **migriert** | `IntegrationOperationalNotificationService` on connect/disconnect/status |
 | `TELEMETRY_*` / `DEVICE_*` / `CONNECTIVITY_*` / `WEBHOOK_FAILURE` | kanonisch (P-31, P-29, P-30) | P-31 |
 
 ### LEGAL_* (20) — alle P-32…P-35
@@ -369,6 +373,10 @@ Nach erfolgreichem Sign-off pro Welle — **zählen als zu entfernende Legacy-Pf
 | `notificationEngine.wob-l7503.test.ts` | FE regression |
 | `connectivity-alert.service.spec.ts` | P-29…P-31 |
 | Legal notification specs | P-32…P-35 |
+| `billing-operational-notification.service.spec.ts` | W8-B1 |
+| `invoice-operational-notification.service.spec.ts` | W8-R1 |
+| `integration-operational-notification.service.spec.ts` | INTEGRATION_DISCONNECTED |
+| `invoice-overdue-scheduler.notification.spec.ts` | W8-R1 scheduler hook |
 
 ---
 
@@ -376,10 +384,13 @@ Nach erfolgreichem Sign-off pro Welle — **zählen als zu entfernende Legacy-Pf
 
 | Artefakt | Aktion |
 |----------|--------|
-| `docs/audits/notification-producer-migration-matrix-2026-07.md` | **Neu** |
-| Produktiver Producer-Code | **Keine Änderung** |
+| `docs/audits/notification-producer-migration-matrix-2026-07.md` | **Aktualisiert** (Prompt 17 — W8 Billing, W8 Rental Invoices, Integrations, P-34 migriert) |
+| `billing-operational-notification.service.ts` | **Neu** — W8-B1 |
+| `invoice-operational-notification.service.ts` | **Neu** — W8-R1 |
+| `integration-operational-notification.service.ts` | **Neu** — INTEGRATION_DISCONNECTED |
+| `booking-pickup-gate.service.ts` | **Wiring** — P-34 `syncPickupGateBlock` |
 
-**Fortsetzung Prompt 12:** Erste Producer-Migration gemäß Welle 1 (ACTIVE_DTC race + Health cutover).
+**Fortsetzung Prompt 18:** Nächste Remediation-Welle gemäß Matrix.
 
 ---
 

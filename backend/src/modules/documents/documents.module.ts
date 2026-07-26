@@ -145,6 +145,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,
     LegalDocumentOperationalNotificationService,
+    LegalDocumentOperationalNotificationService,
     LegalDocumentOrgReadinessLoader,
     BookingDocumentBundleMonitoringService,
     BookingDocumentCompletenessService,
@@ -178,6 +179,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     LegalDocumentStorageReconciliationService,
     LegalDocumentRetentionService,
     LegalDocumentLegalHoldService,
+    LegalDocumentOperationalNotificationService,
   ],
 })
 export class DocumentsModule {}

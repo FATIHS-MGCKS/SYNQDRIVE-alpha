@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
@@ -12,11 +13,13 @@ import { InvoiceTimelineService } from './invoice-timeline.service';
 import { InvoiceOverdueSchedulerService } from './invoice-overdue-scheduler.service';
 import { InvoiceAttachmentsService } from './invoice-attachments.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
+import { InvoiceOperationalNotificationService } from './invoice-operational-notification.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
   imports: [
     TasksModule,
+    NotificationsModule,
     forwardRef(() => DocumentsModule),
     forwardRef(() => OutboundEmailModule),
   ],
@@ -32,7 +35,8 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     InvoiceOverdueSchedulerService,
     InvoiceAttachmentsService,
     InvoicePaymentTaskService,
+    InvoiceOperationalNotificationService,
   ],
-  exports: [InvoicesService, BookingInvoiceLifecycleService, FakePaidCardAuditService, InvoiceDocumentsService, InvoiceTimelineService, InvoiceListReadService, InvoicePaymentTaskService],
+  exports: [InvoicesService, BookingInvoiceLifecycleService, FakePaidCardAuditService, InvoiceDocumentsService, InvoiceTimelineService, InvoiceListReadService, InvoicePaymentTaskService, InvoiceOperationalNotificationService],
 })
 export class InvoicesModule {}

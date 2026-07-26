@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-domain-producers-2026-07-26',
+    version: '4.9.884',
+    title: 'Notification Engine Remediation — migrate remaining domain notification producers (Prompt 17)',
+    summary: [
+      'Billing domain events → V2 PAYMENT_FAILED and INVOICE_OVERDUE via BillingOperationalNotificationListenerService.',
+      'Rental OrgInvoice overdue scheduler + recordPayment resolve → InvoiceOperationalNotificationService.',
+      'Integration connect/disconnect/status → INTEGRATION_DISCONNECTED with stable sourceEventId (no credentials in payload).',
+      'Pickup gate blocked → LegalDocumentOperationalNotificationService.syncPickupGateBlock (P-34 activated).',
+      'Tests per domain; migration matrix updated to migriert for W8 + integrations + P-34.',
+    ],
+    reason:
+      'Remaining operational producers must use the canonical notification contract with correct org/entity assignment and provider dedupe.',
+    previousBehavior:
+      'Billing notifications were email-only; rental overdue had no inbox producer; integrations only updated DB; pickup gate notification hook was dormant.',
+    details:
+      'billing-operational-notification.service.ts, invoice-operational-notification.service.ts, integration-operational-notification.service.ts, invoice-overdue-scheduler.service.ts, booking-pickup-gate.service.ts, docs/audits/notification-producer-migration-matrix-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-26T14:00:00.000Z',
+  },
+  {
     id: 'notification-action-queue-decouple-2026-07-26',
     version: '4.9.883',
     title: 'Notification Engine Remediation — decouple ActionQueue from notification truth (Prompt 16)',

@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
+import { InvoiceOperationalNotificationService } from './invoice-operational-notification.service';
 
 /**
  * Persists overdue invoice status so eligibility queries and notifications
@@ -14,23 +15,41 @@ export class InvoiceOverdueSchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly invoicePaymentTasks: InvoicePaymentTaskService,
+    @Optional()
+    private readonly invoiceNotifications?: InvoiceOperationalNotificationService,
   ) {}
 
   /** Daily at 01:15 UTC — transition open invoices past due date to OVERDUE. */
   @Cron('15 1 * * *')
   async markOverdueInvoices(): Promise<void> {
     const now = new Date();
-    const result = await this.prisma.orgInvoice.updateMany({
+    const overdueCandidates = await this.prisma.orgInvoice.findMany({
       where: {
         dueDate: { lt: now },
         outstandingCents: { gt: 0 },
         status: { in: ['ISSUED', 'SENT', 'PARTIALLY_PAID'] },
       },
+      select: { id: true, organizationId: true },
+    });
+
+    if (overdueCandidates.length === 0) return;
+
+    const result = await this.prisma.orgInvoice.updateMany({
+      where: { id: { in: overdueCandidates.map((row) => row.id) } },
       data: { status: 'OVERDUE' },
     });
-    if (result.count > 0) {
-      this.logger.log(`Marked ${result.count} invoice(s) as OVERDUE`);
-      await this.invoicePaymentTasks.refreshOpenPaymentCheckTasks({ now });
+
+    this.logger.log(`Marked ${result.count} invoice(s) as OVERDUE`);
+    await this.invoicePaymentTasks.refreshOpenPaymentCheckTasks({ now });
+
+    for (const row of overdueCandidates) {
+      await this.invoiceNotifications
+        ?.syncOverdueInvoice(row.organizationId, row.id)
+        .catch((err) => {
+          this.logger.warn(
+            `Overdue notification sync failed for invoice ${row.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
   }
 
