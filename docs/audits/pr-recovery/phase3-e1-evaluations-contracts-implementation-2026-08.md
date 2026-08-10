@@ -110,9 +110,9 @@ the required SynqDrive Changes/Architektur entries.
 |---|---|
 | Targeted metric response/status/money/comparison tests | PASS |
 | Targeted period/timezone/DST tests | PASS |
-| Metric registry/version/provenance regression | PASS — combined E1 suite 73/73 |
+| Metric registry/version/provenance regression | PASS — combined E1 contract and mirror-sync suite 83/83 |
 | Platform timezone primitive regression | PASS — 10/10 |
-| Backend evaluations regression | BASELINE BLOCKER — 156 passed, 2 existing TireCriticalDetector fixture failures |
+| Backend evaluations regression | BASELINE BLOCKER — 207 passed, 2 existing TireCriticalDetector fixture failures |
 | Backend production typecheck | PASS — `tsconfig.build.json` |
 | Backend all-source typecheck | BASELINE BLOCKER — 4 existing Stripe/workflow test-fixture errors |
 | Backend build | PASS |
