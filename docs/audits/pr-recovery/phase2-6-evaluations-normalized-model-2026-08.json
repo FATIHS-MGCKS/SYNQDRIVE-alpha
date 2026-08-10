@@ -6995,7 +6995,9 @@
     }
   ],
   "exclusive_path_owners": {
+    "backend/src/modules/business-insights/evaluations-analytics-summary.": "E4",
     "backend/src/modules/business-insights/predictive/": "E8",
+    "shared/evaluations-insights/evaluations-analytics-summary.": "E4",
     "shared/evaluations-insights/predictive/": "E8"
   },
   "generated_at": "2026-08-10T18:30:00+00:00",
@@ -7422,6 +7424,7 @@
       "required_vps": false,
       "risk": "HIGH",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [],
       "security_gate": "",
       "security_sensitive": false,
       "soft_dependencies": [],
@@ -7533,10 +7536,6 @@
         "backend/src/modules/business-insights/evaluations-analytics-filter.service.spec.ts",
         "backend/src/modules/business-insights/evaluations-analytics-filter.service.ts",
         "backend/src/modules/business-insights/evaluations-analytics-filters.shared.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
         "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
         "backend/src/modules/business-insights/evaluations-insights.controller.ts",
         "backend/src/modules/business-insights/evaluations-tenant-isolation.security.spec.ts",
@@ -7556,8 +7555,6 @@
         "shared/evaluations-insights/evaluations-analytics-filters.spec.ts",
         "shared/evaluations-insights/evaluations-analytics-filters.ts",
         "shared/evaluations-insights/evaluations-analytics-primitives.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.ts",
         "shared/evaluations-insights/evaluations-insight-detail.contract.ts",
         "shared/evaluations-insights/insight-entity-references.contract.ts",
         "shared/evaluations-insights/insight-entity-references.ts",
@@ -7577,7 +7574,32 @@
         "backend/prisma/migrations/20260724110000_dashboard_insights_entity_references/migration.sql",
         "backend/prisma/schema.prisma"
       ],
-      "deferred_file_ownership": [],
+      "deferred_file_ownership": [
+        {
+          "owner_package": "E4",
+          "path": "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "shared/evaluations-insights/evaluations-analytics-summary.contract.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "shared/evaluations-insights/evaluations-analytics-summary.ts"
+        }
+      ],
       "entry_gate": "E1 merged; normalized entity-reference and tenant-scope design reviewed before schema work.",
       "exit_gate": "Contracts, entity persistence and APIs are organization/station scoped; cross-tenant tests fail closed.",
       "feature_flag": "EVALUATIONS_ANALYTICS_V2_MODE=off",
@@ -7621,10 +7643,6 @@
         "backend/src/modules/business-insights/evaluations-analytics-filter.service.spec.ts",
         "backend/src/modules/business-insights/evaluations-analytics-filter.service.ts",
         "backend/src/modules/business-insights/evaluations-analytics-filters.shared.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
         "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
         "backend/src/modules/business-insights/evaluations-insights.controller.ts",
         "backend/src/modules/business-insights/evaluations-tenant-isolation.security.spec.ts",
@@ -7662,8 +7680,6 @@
         "shared/evaluations-insights/evaluations-analytics-filters.spec.ts",
         "shared/evaluations-insights/evaluations-analytics-filters.ts",
         "shared/evaluations-insights/evaluations-analytics-primitives.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.ts",
         "shared/evaluations-insights/evaluations-insight-detail.contract.ts",
         "shared/evaluations-insights/insight-entity-references.contract.ts",
         "shared/evaluations-insights/insight-entity-references.ts",
@@ -7689,6 +7705,10 @@
       "required_vps": false,
       "risk": "CRITICAL",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [
+        "Reimplement entity-reference contracts, persistence and grouping before wiring them into the E2 summary/detail service; do not replay the historical grouping commit as a standalone patch.",
+        "Bind filter period resolution to the E1 canonical period resolver. Analytics-summary services, repositories and shared summary implementations are owned by E4."
+      ],
       "security_gate": "Manual security review plus authenticated tenant/station negative tests.",
       "security_sensitive": true,
       "soft_dependencies": [],
@@ -8018,6 +8038,7 @@
       "required_vps": false,
       "risk": "CRITICAL",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [],
       "security_gate": "",
       "security_sensitive": false,
       "soft_dependencies": [],
@@ -8244,6 +8265,9 @@
       "required_vps": false,
       "risk": "HIGH",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [
+        "Own the analytics-summary service/repository and shared summary implementation; consume E2 tenant-safe contracts and E1 period semantics."
+      ],
       "security_gate": "",
       "security_sensitive": false,
       "soft_dependencies": [],
@@ -8389,9 +8413,6 @@
         "backend/src/modules/business-insights/business-insights.module.ts",
         "backend/src/modules/business-insights/dashboard-insights.controller.ts",
         "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
         "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
         "backend/src/modules/business-insights/evaluations-chart-series.shared.spec.ts",
         "backend/src/modules/business-insights/evaluations-data-quality.service.ts",
@@ -8415,8 +8436,6 @@
         "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
         "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
         "shared/evaluations-insights/evaluations-analytics-primitives.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.ts",
         "shared/evaluations-insights/evaluations-chart-series.spec.ts",
         "shared/evaluations-insights/evaluations-chart-series.ts",
         "shared/evaluations-insights/evaluations-cost-model.contract.ts",
@@ -8447,6 +8466,18 @@
       "database_files": [],
       "deferred_file_ownership": [
         {
+          "owner_package": "E4",
+          "path": "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts"
+        },
+        {
           "owner_package": "E8",
           "path": "backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts"
         },
@@ -8465,6 +8496,14 @@
         {
           "owner_package": "E8",
           "path": "backend/src/modules/business-insights/predictive/predictive-risk.controller.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "shared/evaluations-insights/evaluations-analytics-summary.contract.ts"
+        },
+        {
+          "owner_package": "E4",
+          "path": "shared/evaluations-insights/evaluations-analytics-summary.ts"
         }
       ],
       "entry_gate": "E4 backend merged; central RBAC and business-audit extension plan approved.",
@@ -8518,9 +8557,6 @@
         "backend/src/modules/business-insights/business-insights.module.ts",
         "backend/src/modules/business-insights/dashboard-insights.controller.ts",
         "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
-        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
         "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
         "backend/src/modules/business-insights/evaluations-chart-series.shared.spec.ts",
         "backend/src/modules/business-insights/evaluations-data-quality.service.ts",
@@ -8569,8 +8605,6 @@
         "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
         "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
         "shared/evaluations-insights/evaluations-analytics-primitives.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
-        "shared/evaluations-insights/evaluations-analytics-summary.ts",
         "shared/evaluations-insights/evaluations-chart-series.spec.ts",
         "shared/evaluations-insights/evaluations-chart-series.ts",
         "shared/evaluations-insights/evaluations-cost-model.contract.ts",
@@ -8608,6 +8642,9 @@
       "required_vps": false,
       "risk": "CRITICAL",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [
+        "Add reusable authorization and audit foundations only; concrete analytics-summary files remain E4-owned and predictive backend/shared files remain E8-owned."
+      ],
       "security_gate": "Manual security review plus authenticated tenant/station negative tests.",
       "security_sensitive": true,
       "soft_dependencies": [],
@@ -8924,6 +8961,7 @@
       "required_vps": false,
       "risk": "HIGH",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [],
       "security_gate": "",
       "security_sensitive": false,
       "soft_dependencies": [],
@@ -9172,6 +9210,7 @@
       "required_vps": false,
       "risk": "CRITICAL",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [],
       "security_gate": "Manual security review plus authenticated tenant/station negative tests.",
       "security_sensitive": true,
       "soft_dependencies": [
@@ -9432,6 +9471,7 @@
       "required_vps": false,
       "risk": "CRITICAL",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [],
       "security_gate": "",
       "security_sensitive": false,
       "soft_dependencies": [],
@@ -9541,6 +9581,7 @@
       "required_vps": true,
       "risk": "HIGH",
       "rollback_strategy": "Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.",
+      "scope_notes": [],
       "security_gate": "",
       "security_sensitive": false,
       "soft_dependencies": [
@@ -9719,7 +9760,7 @@
         },
         {
           "expected_code": "EXCLUSIVE_FILE_OWNER_VIOLATION",
-          "name": "predictive_file_in_non_owner_package",
+          "name": "exclusive_file_in_non_owner_package",
           "observed_codes": [
             "EXCLUSIVE_FILE_OWNER_VIOLATION"
           ],

@@ -77,6 +77,11 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_ANALYTICS_V2_MODE=off`
 
+### Capability ownership notes
+
+- Reimplement entity-reference contracts, persistence and grouping before wiring them into the E2 summary/detail service; do not replay the historical grouping commit as a standalone patch.
+- Bind filter period resolution to the E1 canonical period resolver. Analytics-summary services, repositories and shared summary implementations are owned by E4.
+
 <details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
@@ -99,10 +104,6 @@ For every package: `git fetch origin`, create only that package branch from then
 - `backend/src/modules/business-insights/evaluations-analytics-filter.service.spec.ts`
 - `backend/src/modules/business-insights/evaluations-analytics-filter.service.ts`
 - `backend/src/modules/business-insights/evaluations-analytics-filters.shared.spec.ts`
-- `backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts`
-- `backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts`
-- `backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts`
-- `backend/src/modules/business-insights/evaluations-analytics-summary.service.ts`
 - `backend/src/modules/business-insights/evaluations-analytics.controller.ts`
 - `backend/src/modules/business-insights/evaluations-insights.controller.ts`
 - `backend/src/modules/business-insights/evaluations-tenant-isolation.security.spec.ts`
@@ -140,13 +141,22 @@ For every package: `git fetch origin`, create only that package branch from then
 - `shared/evaluations-insights/evaluations-analytics-filters.spec.ts`
 - `shared/evaluations-insights/evaluations-analytics-filters.ts`
 - `shared/evaluations-insights/evaluations-analytics-primitives.contract.ts`
-- `shared/evaluations-insights/evaluations-analytics-summary.contract.ts`
-- `shared/evaluations-insights/evaluations-analytics-summary.ts`
 - `shared/evaluations-insights/evaluations-insight-detail.contract.ts`
 - `shared/evaluations-insights/insight-entity-references.contract.ts`
 - `shared/evaluations-insights/insight-entity-references.ts`
 - `shared/evaluations-insights/insights-analytics.contract.ts`
 - `shared/evaluations-insights/insights-analytics.ts`
+
+</details>
+
+<details><summary>Historical file overlap deferred to its owning package</summary>
+
+- `backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts` → `E4`; do not port in `E2`.
+- `backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts` → `E4`; do not port in `E2`.
+- `backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts` → `E4`; do not port in `E2`.
+- `backend/src/modules/business-insights/evaluations-analytics-summary.service.ts` → `E4`; do not port in `E2`.
+- `shared/evaluations-insights/evaluations-analytics-summary.contract.ts` → `E4`; do not port in `E2`.
+- `shared/evaluations-insights/evaluations-analytics-summary.ts` → `E4`; do not port in `E2`.
 
 </details>
 
@@ -275,6 +285,10 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_ANALYTICS_V2_MODE=off`
 
+### Capability ownership notes
+
+- Own the analytics-summary service/repository and shared summary implementation; consume E2 tenant-safe contracts and E1 period semantics.
+
 <details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
@@ -350,6 +364,10 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_ANALYTICS_V2_MODE=off`
 
+### Capability ownership notes
+
+- Add reusable authorization and audit foundations only; concrete analytics-summary files remain E4-owned and predictive backend/shared files remain E8-owned.
+
 <details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
@@ -373,9 +391,6 @@ For every package: `git fetch origin`, create only that package branch from then
 - `backend/src/modules/business-insights/business-insights.module.ts`
 - `backend/src/modules/business-insights/dashboard-insights.controller.ts`
 - `backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts`
-- `backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts`
-- `backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts`
-- `backend/src/modules/business-insights/evaluations-analytics-summary.service.ts`
 - `backend/src/modules/business-insights/evaluations-analytics.controller.ts`
 - `backend/src/modules/business-insights/evaluations-chart-series.shared.spec.ts`
 - `backend/src/modules/business-insights/evaluations-data-quality.service.ts`
@@ -424,8 +439,6 @@ For every package: `git fetch origin`, create only that package branch from then
 - `shared/evaluations-insights/evaluations-analytics-contract-validation.ts`
 - `shared/evaluations-insights/evaluations-analytics-contracts.index.ts`
 - `shared/evaluations-insights/evaluations-analytics-primitives.contract.ts`
-- `shared/evaluations-insights/evaluations-analytics-summary.contract.ts`
-- `shared/evaluations-insights/evaluations-analytics-summary.ts`
 - `shared/evaluations-insights/evaluations-chart-series.spec.ts`
 - `shared/evaluations-insights/evaluations-chart-series.ts`
 - `shared/evaluations-insights/evaluations-cost-model.contract.ts`
@@ -448,11 +461,16 @@ For every package: `git fetch origin`, create only that package branch from then
 
 <details><summary>Historical file overlap deferred to its owning package</summary>
 
+- `backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts` → `E4`; do not port in `E5`.
+- `backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts` → `E4`; do not port in `E5`.
+- `backend/src/modules/business-insights/evaluations-analytics-summary.service.ts` → `E4`; do not port in `E5`.
 - `backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts` → `E8`; do not port in `E5`.
 - `backend/src/modules/business-insights/predictive/predictive-backtest.service.ts` → `E8`; do not port in `E5`.
 - `backend/src/modules/business-insights/predictive/predictive-feature.controller.ts` → `E8`; do not port in `E5`.
 - `backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts` → `E8`; do not port in `E5`.
 - `backend/src/modules/business-insights/predictive/predictive-risk.controller.ts` → `E8`; do not port in `E5`.
+- `shared/evaluations-insights/evaluations-analytics-summary.contract.ts` → `E4`; do not port in `E5`.
+- `shared/evaluations-insights/evaluations-analytics-summary.ts` → `E4`; do not port in `E5`.
 
 </details>
 
@@ -765,5 +783,6 @@ For every package: `git fetch origin`, create only that package branch from then
 
 - Any cross-tenant/station read, missing central permission check, unconfirmed material action, idempotency gap, audit enqueue failure, mixed-currency sum, PII leakage, future leakage, or predictive default-on is `NO-GO`.
 - Historical migrations are evidence only. Recompute each schema diff and rehearse expand/backfill/switch/contract on current main.
+- Analytics-summary service/repository and shared summary implementation paths are owned by E4. E2 must use E1 period semantics and must not replay historical summary-service refactors from filter/grouping commits.
 - Predictive backend/shared implementation paths are owned exclusively by E8. Earlier RBAC/audit packages may add reusable guards and contracts, but must not port predictive controllers, services or shared predictive implementations.
 - Figma remains visual authority during Phase-3 UI implementation; no UI package may introduce client-owned KPI truth.

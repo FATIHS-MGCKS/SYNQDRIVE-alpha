@@ -78,10 +78,10 @@
 | Package | Change-sets | Files | Mix | Risk | Test burden | Rollback complexity |
 |---|---:|---:|---|---|---|---|
 | `E1` | 4 | 34 | FE/BE | `HIGH` | `MEDIUM` | `MEDIUM` |
-| `E2` | 5 | 68 | FE/BE/DB | `CRITICAL` | `HIGH` | `HIGH` |
+| `E2` | 5 | 62 | FE/BE/DB | `CRITICAL` | `HIGH` | `HIGH` |
 | `E3` | 6 | 88 | FE/BE/DB | `CRITICAL` | `HIGH` | `HIGH` |
 | `E4` | 6 | 54 | FE/BE | `HIGH` | `MEDIUM` | `MEDIUM` |
-| `E5` | 6 | 91 | FE/BE | `CRITICAL` | `HIGH` | `MEDIUM` |
+| `E5` | 6 | 86 | FE/BE | `CRITICAL` | `HIGH` | `MEDIUM` |
 | `E6` | 7 | 83 | FE/BE | `HIGH` | `HIGH` | `MEDIUM` |
 | `E7` | 4 | 59 | FE/BE/DB | `CRITICAL` | `HIGH` | `HIGH` |
 | `E8` | 5 | 64 | FE/BE/DB/Worker | `CRITICAL` | `HIGH` | `HIGH` |
