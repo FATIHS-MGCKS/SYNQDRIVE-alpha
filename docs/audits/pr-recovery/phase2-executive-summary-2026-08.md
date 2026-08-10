@@ -1,6 +1,6 @@
 # Phase 2 — Executive Summary
 
-Generated `2026-08-10T16:49:07Z` against current `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
+Generated `2026-08-10T17:07:53Z` against current `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
 
 ## Counts
 
@@ -13,14 +13,16 @@ Generated `2026-08-10T16:49:07Z` against current `origin/main` `2d721a902feb5610
 | `safe_to_close_patch_equivalent` | 5 |
 | `phase1_classifications_corrected` | 0 |
 | `stack_tips_analyzed` | 93 |
+| `stack_tip_commit_memberships` | 613 |
+| `stack_tip_distinct_commits` | 575 |
 | `unique_non_main_commits` | 611 |
-| `unique_changesets` | 245 |
+| `unique_changesets` | 246 |
 | `planned_recovery_modules` | 26 |
-| `planned_recovery_waves` | 8 |
-| `high_risk_changesets` | 157 |
-| `critical_risk_changesets` | 64 |
-| `tenant_sensitive_changesets` | 85 |
-| `finance_sensitive_changesets` | 42 |
+| `planned_recovery_waves` | 7 |
+| `high_risk_changesets` | 182 |
+| `critical_risk_changesets` | 38 |
+| `tenant_sensitive_changesets` | 51 |
+| `finance_sensitive_changesets` | 33 |
 | `safe_to_close_candidates` | 186 |
 | `do_not_close_phase1_prs` | 439 |
 | `standalone_conflicting_analyzed` | 19 |
@@ -30,12 +32,12 @@ Generated `2026-08-10T16:49:07Z` against current `origin/main` `2d721a902feb5610
 
 | Classification | Count |
 |---|---:|
-| `CONFLICTING_NEEDS_DESIGN_REVIEW` | 124 |
+| `CONFLICTING_NEEDS_DESIGN_REVIEW` | 108 |
 | `DOCS_ONLY` | 7 |
-| `REQUIRED_BUT_NEEDS_PORT` | 94 |
+| `REQUIRED_BUT_NEEDS_PORT` | 110 |
 | `REQUIRED_CURRENT` | 8 |
 | `SUPERSEDED_BY_MAIN` | 3 |
-| `UNKNOWN` | 9 |
+| `UNKNOWN` | 10 |
 
 ## Decision boundary
 

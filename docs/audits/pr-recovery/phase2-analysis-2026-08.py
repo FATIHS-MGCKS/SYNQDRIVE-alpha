@@ -159,18 +159,80 @@ EVALUATION_CAPABILITIES: list[tuple[str, str]] = [
 ]
 EVAL_RX = [(name, re.compile(pattern, re.I | re.S)) for name, pattern in EVALUATION_CAPABILITIES]
 EVAL_ORDER = [name for name, _ in EVALUATION_CAPABILITIES]
-EVAL_RECOVERY_ORDER = [
-    "Analytics Contracts", "Metric Response Contract", "Metric Registry", "Calculation Versioning",
-    "Timezone / Period Model", "Money Domain", "Multi-Currency", "Receivables",
-    "Revenue / Cashflow", "Cost Model", "Utilization", "Analytics Summary", "Grouped Insights",
-    "Driver / Influence Analysis", "Strength Detection", "Weakness Detection", "Data Quality",
-    "Freshness / Lineage", "Tenant Isolation", "Roles / Permissions", "GDPR", "Audit Logging",
-    "Filter Architecture", "Information Architecture", "Metric State UX", "Data Quality Panel",
-    "Executive KPI Strip", "Strength / Weakness Cockpit", "Risk / Cost Visualizations",
-    "Mobile Readiness", "Accessibility / i18n", "Recommendation Domain", "Action Center",
-    "Action Integrations", "Impact Measurement", "Predictive Analytics Architecture",
-    "Feature Store", "Demand / Revenue / Utilization Forecast", "Maintenance / Failure Forecast",
-    "Backtesting / Drift", "Forecast UX",
+EVAL_EXACT_SPECS = [
+    ("Metric Registry", "850b20bc632e", "MAIN_BASELINE"),
+    ("Calculation Versioning", "312ee93f5315", "MAIN_BASELINE"),
+    ("Timezone / Period Model", "f23e6bdab173", "RECOVER"),
+    ("Unified KPI Contract", "59cbd9f1f8f2", "RECOVER"),
+    ("Money Domain", "077ba5060251", "RECOVER"),
+    ("Money Migration", "de17de779d1c", "RECOVER"),
+    ("Receivables", "d966961c2dc9", "RECOVER"),
+    ("Revenue / Cashflow / Result", "e340795d2f22", "RECOVER"),
+    ("Multi-Currency", "efb3abc5feda", "RECOVER"),
+    ("Finance Test Suite", "7ab6d01dac0c", "RECOVER"),
+    ("Summary / Detail Separation", "515cd44e5b4b", "RECOVER"),
+    ("Grouping / Entity References", "da79b28aa4ad", "RECOVER"),
+    ("Analytics Summary", "e65b88dbefb3", "RECOVER"),
+    ("Filter Architecture", "642a210403b6", "RECOVER"),
+    ("Tenant Isolation", "1724bd92bf8e", "RECOVER"),
+    ("Analytics Contracts", "26e4532201c9", "RECOVER"),
+    ("Cost Model", "d96ba7a8c637", "RECOVER"),
+    ("Utilization", "46f533afc431", "RECOVER"),
+    ("Strength Detection", "f5cfe0c5cda1", "RECOVER"),
+    ("Weakness Detection", "32714750f7f1", "RECOVER"),
+    ("Driver / Influence Analysis", "56b9efe22b05", "RECOVER"),
+    ("Data Quality", "2c32183956d3", "RECOVER"),
+    ("Freshness / Lineage", "5de5e0295658", "RECOVER"),
+    ("Metric State UX", "c82e44936217", "RECOVER"),
+    ("Data Quality Panel", "ff34b66f0074", "RECOVER"),
+    ("Information Architecture", "14072b3141bb", "RECOVER"),
+    ("Executive KPI Strip", "2759f2235310", "RECOVER"),
+    ("Strength / Weakness Cockpit", "cb2ced964d28", "RECOVER"),
+    ("Risk / Cost / Failure Visuals", "7f6dde4c8c50", "RECOVER"),
+    ("Mobile Readiness", "304a6ed19da1", "RECOVER"),
+    ("Accessibility / i18n", "ddad560687ad", "RECOVER"),
+    ("Recommendation Domain", "9eae4b1246fc", "RECOVER"),
+    ("Action Center", "364bd93733e3", "RECOVER"),
+    ("Action Integrations", "8829b6a56a06", "RECOVER"),
+    ("Impact Measurement", "038223bc18dc", "RECOVER"),
+    ("Predictive Analytics Architecture", "f988c3664bbe", "RECOVER"),
+    ("Feature Store", "9cb26ece2b38", "RECOVER"),
+    ("Demand / Revenue / Utilization Forecast", "96edda271330", "RECOVER"),
+    ("Maintenance / Failure Forecast", "8488537978d8", "RECOVER"),
+    ("Backtesting / Drift", "e3c8966a51c0", "RECOVER"),
+    ("Forecast UX", "46b905ad6a44", "RECOVER"),
+    ("GDPR", "c8714b1f9e97", "RECOVER"),
+    ("Roles / Permissions", "549c0e237d86", "RECOVER"),
+    ("Audit Logging", "d10d072efce6", "RECOVER"),
+]
+EVAL_RECOVERY_ORDER = [name for name, _, _ in EVAL_EXACT_SPECS]
+EVAL_CANONICAL_PRS = {
+    "Metric Registry": 752, "Calculation Versioning": 752, "Timezone / Period Model": 754,
+    "Unified KPI Contract": 755, "Money Domain": 756, "Money Migration": 756,
+    "Receivables": 757, "Revenue / Cashflow / Result": 760, "Multi-Currency": 762,
+    "Finance Test Suite": 765, "Summary / Detail Separation": 767,
+    "Grouping / Entity References": 770, "Analytics Summary": 773, "Filter Architecture": 774,
+    "Tenant Isolation": 776, "Analytics Contracts": 778, "Cost Model": 780,
+    "Utilization": 782, "Strength Detection": 783, "Weakness Detection": 784,
+    "Driver / Influence Analysis": 786, "Data Quality": 788, "Freshness / Lineage": 790,
+    "Metric State UX": 792, "Data Quality Panel": 793, "Information Architecture": 794,
+    "Executive KPI Strip": 795, "Strength / Weakness Cockpit": 796,
+    "Risk / Cost / Failure Visuals": 798, "Mobile Readiness": 801,
+    "Accessibility / i18n": 803, "Recommendation Domain": 804, "Action Center": 806,
+    "Action Integrations": 807, "Impact Measurement": 808,
+    "Predictive Analytics Architecture": 809, "Feature Store": 810,
+    "Demand / Revenue / Utilization Forecast": 811, "Maintenance / Failure Forecast": 812,
+    "Backtesting / Drift": 813, "Forecast UX": 814, "GDPR": 815,
+    "Roles / Permissions": 816, "Audit Logging": 817,
+}
+EVAL_CHAINS = [
+    ["Timezone / Period Model", "Unified KPI Contract", "Money Domain", "Money Migration", "Receivables", "Revenue / Cashflow / Result", "Multi-Currency", "Finance Test Suite"],
+    ["Summary / Detail Separation", "Grouping / Entity References", "Analytics Summary", "Filter Architecture", "Tenant Isolation", "Analytics Contracts", "Cost Model", "Utilization", "Strength Detection", "Driver / Influence Analysis", "Data Quality", "Freshness / Lineage"],
+    ["Summary / Detail Separation", "Grouping / Entity References", "Analytics Summary", "Filter Architecture", "Tenant Isolation", "Analytics Contracts", "Cost Model", "Utilization", "Weakness Detection", "Driver / Influence Analysis", "Data Quality", "Freshness / Lineage"],
+    ["Metric State UX", "Data Quality Panel", "Information Architecture", "Executive KPI Strip", "Strength / Weakness Cockpit", "Risk / Cost / Failure Visuals", "Mobile Readiness", "Accessibility / i18n"],
+    ["Recommendation Domain", "Action Center", "Action Integrations", "Impact Measurement"],
+    ["Predictive Analytics Architecture", "Feature Store", "Demand / Revenue / Utilization Forecast", "Maintenance / Failure Forecast", "Backtesting / Drift", "Forecast UX"],
+    ["GDPR", "Roles / Permissions", "Audit Logging"],
 ]
 
 
@@ -550,6 +612,160 @@ for (module, cap), contribution in sorted(contributions.items()):
         "missing_current_main_paths": missing_files,
     })
 
+# Replace heuristic evaluation buckets with manually verified one-commit capability units.
+# Any residual evaluation commit is kept explicitly UNKNOWN rather than misattributed.
+generic_eval_items = [item for item in changesets if item["module"] == "evaluations"]
+generic_eval_shas = {sha for item in generic_eval_items for sha in item["source_commits"]}
+changesets = [item for item in changesets if item["module"] != "evaluations"]
+exact_eval_shas = set()
+evaluation_baselines = []
+for capability_name, short_sha, disposition in EVAL_EXACT_SPECS:
+    matches = [sha for sha in catalog if sha.startswith(short_sha)]
+    if len(matches) != 1:
+        raise RuntimeError(f"evaluation capability commit resolution failed: {capability_name} {short_sha} -> {matches}")
+    sha = matches[0]
+    commit = catalog[sha]
+    canonical_source_pr = EVAL_CANONICAL_PRS[capability_name]
+    if disposition == "MAIN_BASELINE":
+        if sha not in main_commits:
+            raise RuntimeError(f"expected evaluations baseline is not reachable from main: {sha}")
+        evaluation_baselines.append({
+            "capability": capability_name,
+            "source_pr": canonical_source_pr,
+            "commit": sha,
+            "status": "EXACTLY_IN_MAIN",
+        })
+        continue
+    exact_eval_shas.add(sha)
+    files = sorted(commit["paths"])
+    migration = commit["flags"]["migration"]
+    security = capability_name in {"Tenant Isolation", "GDPR", "Roles / Permissions", "Audit Logging"}
+    tenant = capability_name == "Tenant Isolation"
+    privacy = capability_name == "GDPR"
+    finance = capability_name in {
+        "Timezone / Period Model", "Unified KPI Contract", "Money Domain", "Money Migration",
+        "Receivables", "Revenue / Cashflow / Result", "Multi-Currency", "Finance Test Suite",
+        "Cost Model",
+    }
+    frontend = any(path.startswith("frontend/") for path in files)
+    backend = any(path.startswith("backend/") for path in files)
+    worker = commit["flags"]["worker"]
+    merge_join = capability_name == "Action Center"
+    missing = [path for path in files if path not in main_paths]
+    risk = "CRITICAL" if migration or (finance and (security or tenant)) else ("HIGH" if finance or security or tenant or privacy or backend or worker else "MEDIUM")
+    tests = []
+    if backend:
+        tests.append("backend evaluations contract/domain/integration tests")
+    if frontend:
+        tests.append("frontend evaluations component and accessibility regression")
+    if finance:
+        tests.append("money precision, period, currency, receivable and financial reconciliation fixtures")
+    if tenant or security:
+        tests.append("cross-tenant negative and RBAC tests")
+    if privacy:
+        tests.append("GDPR purpose, retention and audit evidence review")
+    if migration:
+        tests.append("Prisma migration and rollback rehearsal")
+    changesets.append({
+        "changeset_id": f"cs-evaluations-{slug(capability_name)}",
+        "module": "evaluations",
+        "capability": capability_name,
+        "source_prs": [canonical_source_pr],
+        "containing_prs": commit["source_prs"],
+        "source_commits": [sha],
+        "commit_contributions": [{"commit": sha, "paths": files}],
+        "affected_files_count": len(files),
+        "affected_files": files,
+        "purpose": f"Recover the manually verified {capability_name} evaluations capability.",
+        "dependencies": [],
+        "dependency_capabilities": [],
+        "canonical_domain_owner": "evaluations",
+        "migration_required": migration,
+        "backend_dependency": backend,
+        "frontend_dependency": frontend,
+        "worker_dependency": worker,
+        "infra_dependency": False,
+        "security_impact": "SENSITIVE" if security else "NONE_IDENTIFIED",
+        "tenant_isolation_impact": "SENSITIVE" if tenant else "NONE_IDENTIFIED",
+        "finance_impact": "SENSITIVE" if finance else "NONE_IDENTIFIED",
+        "privacy_impact": "SENSITIVE" if privacy else "NONE_IDENTIFIED",
+        "data_migration_impact": "REQUIRED" if migration else "NONE_IDENTIFIED",
+        "expected_conflicts": [canonical_source_pr] if by_pr[canonical_source_pr]["merge_conflict_status"] == "CONFLICTING" else [],
+        "current_relevance": "Unique commit-level capability; exact patch is absent from current main.",
+        "classification": "REQUIRED_BUT_NEEDS_PORT",
+        "recommended_action": "Port the isolated capability onto current main in the verified dependency order.",
+        "risk_level": risk,
+        "required_tests": sorted(set(tests or ["targeted evaluations unit and integration tests"])),
+        "required_manual_review": ["evaluations domain owner", "security/privacy owner" if security or privacy or tenant else "module owner"],
+        "required_staging_validation": "Required" if risk in {"HIGH", "CRITICAL"} else "Recommended",
+        "required_vps_validation": "Required after staging" if risk in {"HIGH", "CRITICAL"} else "Standard release smoke",
+        "rollback_strategy": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit." if migration else "Revert the isolated recovery commit and redeploy the prior release.",
+        "can_be_cherry_picked": False,
+        "should_be_reimplemented": migration or security or tenant or privacy or worker or merge_join,
+        "should_be_ported_commit_by_commit": True,
+        "recommended_integration_method": "reconstruct merge join after Recommendation Domain and UI parent" if merge_join else ("reimplement on current contracts" if migration or security or tenant or privacy or worker else "port isolated commit after conflict review"),
+        "confidence": "HIGH",
+        "evidence": [
+            f"manually verified canonical source PR #{canonical_source_pr} and commit {sha}",
+            "git cherry reports a unique patch against current origin/main",
+            f"{len(files)} actual commit paths; {len(missing)} absent from current main",
+            "cumulative descendant PRs are excluded from source attribution",
+            "merge join must be reconstructed after both parents; do not ordinary-cherry-pick" if merge_join else "single canonical capability commit",
+        ],
+        "semantic_added_line_coverage": commit["added_line_presence_in_main"],
+        "missing_current_main_paths": missing,
+    })
+
+residual_eval_shas = sorted(generic_eval_shas - exact_eval_shas - {item["commit"] for item in evaluation_baselines})
+if residual_eval_shas:
+    residual_files = sorted({path for sha in residual_eval_shas for path in catalog[sha]["paths"]})
+    residual_prs = sorted({pr for sha in residual_eval_shas for pr in catalog[sha]["source_prs"]})
+    changesets.append({
+        "changeset_id": "cs-evaluations-unresolved-residual",
+        "module": "evaluations",
+        "capability": "Unresolved residual evaluation artifacts",
+        "source_prs": residual_prs,
+        "source_commits": residual_eval_shas,
+        "commit_contributions": [{"commit": sha, "paths": catalog[sha]["paths"]} for sha in residual_eval_shas],
+        "affected_files_count": len(residual_files),
+        "affected_files": residual_files,
+        "purpose": "Protect unmatched evaluation-related commits from accidental loss without assigning unsupported capability semantics.",
+        "dependencies": [],
+        "dependency_capabilities": [],
+        "canonical_domain_owner": "evaluations",
+        "migration_required": any(catalog[sha]["flags"]["migration"] for sha in residual_eval_shas),
+        "backend_dependency": any(path.startswith("backend/") for path in residual_files),
+        "frontend_dependency": any(path.startswith("frontend/") for path in residual_files),
+        "worker_dependency": any(catalog[sha]["flags"]["worker"] for sha in residual_eval_shas),
+        "infra_dependency": False,
+        "security_impact": "UNKNOWN",
+        "tenant_isolation_impact": "UNKNOWN",
+        "finance_impact": "UNKNOWN",
+        "privacy_impact": "UNKNOWN",
+        "data_migration_impact": "REQUIRED" if any(catalog[sha]["flags"]["migration"] for sha in residual_eval_shas) else "UNKNOWN",
+        "expected_conflicts": sorted(pr for pr in residual_prs if pr in by_pr and by_pr[pr]["merge_conflict_status"] == "CONFLICTING"),
+        "current_relevance": "Manual commit-level attribution required; not safe to close or integrate.",
+        "classification": "UNKNOWN",
+        "recommended_action": "Manual review; split bookkeeping/docs artifacts from substantive code before Phase 3.",
+        "risk_level": "HIGH",
+        "required_tests": ["tests determined after manual domain attribution"],
+        "required_manual_review": ["evaluations domain owner", "repository architecture owner"],
+        "required_staging_validation": "Required",
+        "required_vps_validation": "Required after staging",
+        "rollback_strategy": "Do not integrate until split; revert any isolated port.",
+        "can_be_cherry_picked": False,
+        "should_be_reimplemented": True,
+        "should_be_ported_commit_by_commit": True,
+        "recommended_integration_method": "manual attribution and reimplementation",
+        "confidence": "LOW",
+        "evidence": [
+            f"{len(residual_eval_shas)} commits were over-included by heuristic capability matching",
+            "commits remain explicitly covered so no unique patch is lost",
+        ],
+        "semantic_added_line_coverage": None,
+        "missing_current_main_paths": [path for path in residual_files if path not in main_paths],
+    })
+
 changeset_by_key = {(item["module"], item["capability"]): item for item in changesets}
 changeset_by_id = {item["changeset_id"]: item for item in changesets}
 
@@ -558,8 +774,15 @@ edges = []
 eval_sets = [item for item in changesets if item["module"] == "evaluations"]
 eval_position = {name: index for index, name in enumerate(EVAL_RECOVERY_ORDER)}
 eval_sets.sort(key=lambda item: eval_position.get(item["capability"], 10_000))
-for previous, current_set in zip(eval_sets, eval_sets[1:]):
-    edges.append({"from": previous["changeset_id"], "to": current_set["changeset_id"], "type": "same-module ordering", "reason": "evaluations dependency sequence"})
+for chain_index, chain in enumerate(EVAL_CHAINS, 1):
+    chain_sets = [changeset_by_key[("evaluations", name)] for name in chain if ("evaluations", name) in changeset_by_key]
+    for previous, current_set in zip(chain_sets, chain_sets[1:]):
+        edges.append({
+            "from": previous["changeset_id"],
+            "to": current_set["changeset_id"],
+            "type": "hard dependency",
+            "reason": f"manually verified evaluations chain {chain_index}",
+        })
 foundations = {
     "roles-access": "hard dependency",
     "infrastructure": "cross-module dependency",
@@ -663,6 +886,8 @@ for tip in tip_prs:
             f"feature/foreign split uses actual per-commit changed modules; focus={sorted(focus_modules)}",
         ],
     })
+stack_tip_commit_memberships = sum(len(tip["commit_shas"]) for tip in tip_prs)
+stack_tip_distinct_commits = len({sha for tip in tip_prs for sha in tip["commit_shas"]})
 
 # Standalone conflict and documentation analyses.
 conflict_prs = [pr for pr in phase1_prs if pr["preliminary_classification"] == "CONFLICTING"]
@@ -742,45 +967,76 @@ for pr in docs_prs:
         ],
     })
 
-# Evaluation capability matrix from actual commit/file/patch evidence.
-capability_sources = defaultdict(lambda: {"prs": set(), "commits": set(), "files": set(), "active": set(), "main": set()})
-for sha, commit in catalog.items():
-    for module, paths in commit["modules_for_files"].items():
-        if module != "evaluations":
-            continue
-        for cap in capabilities(module, paths, commit["subject"], git("show", "--format=", "--unified=0", sha)):
-            entry = capability_sources[cap]
-            entry["prs"].update(commit["source_prs"])
-            entry["commits"].add(sha)
-            entry["files"].update(paths)
-            (entry["main"] if commit["reachable_from_main"] or commit["patch_equivalent_main_commits"] else entry["active"]).add(sha)
+# Manual current-symbol/architecture review overrides heuristic conflict/docs labels.
+conflict_overrides = {
+    19: ("SAFE_TO_IGNORE", "Container DNS settings do not apply to the current host-PM2 production runtime."),
+    22: ("PORT_REQUIRED", "Current Financial Insights still duplicates InvoiceLite/casts; port only typed API consolidation."),
+    23: ("SUPERSEDED", "Current FinancialInsightsView passes stationId and current cockpit filters by station."),
+    24: ("PORT_REQUIRED", "Current code retains legacy cent/euro threshold and incomplete declared-category handling."),
+    25: ("SUPERSEDED", "Current ActionQueue excludes finance tabs/items and tests assert that behavior."),
+    31: ("DESIGN_REVIEW_REQUIRED", "POI enrichment is absent, but historical read-path writes/external calls/cache are architecturally unsafe."),
+    66: ("DESIGN_REVIEW_REQUIRED", "Current durable DIMO webhook/runtime logic supersedes most code; only verified parser/logging hunks may remain."),
+    83: ("SUPERSEDED", "Current main contains the ClickHouse runtime ADR, URL ping and production boundary guidance."),
+    84: ("SECURITY_REVIEW_REQUIRED", "Current fail-closed metrics guard exists; constant-time comparison/IP allowlist need selective security review."),
+    85: ("SUPERSEDED", "Current main contains ClickHouse diagnostics service, endpoint, registry, types, tests and UI."),
+    86: ("PORT_REQUIRED", "Current HF mirror has guards/idempotency but lacks the low-cardinality skip metric."),
+    87: ("SUPERSEDED", "Current producer registry/diagnostics are broader and include later audit corrections."),
+    88: ("DESIGN_REVIEW_REQUIRED", "Signal expansion requires DIMO schema/unit/privacy verification and cannot replace current query wholesale."),
+    109: ("SUPERSEDED", "Current main contains the expanded tenant-safe outbound email, provider, webhook, document and UI flows."),
+    118: ("DOCS_ONLY", "Current Resend guidance already contains the production setup and webhook/DNS checklist."),
+    121: ("SUPERSEDED", "Current main contains DNS sync scripts, mail identity policy and expanded documentation."),
+    173: ("SUPERSEDED", "Current AppThemeProvider/toggle/bootstrap and tests implement the intended theme behavior."),
+    194: ("DOCS_ONLY", "Historical Stripe baseline is materially obsolete and retained only as dated evidence."),
+    230: ("DESIGN_REVIEW_REQUIRED", "Capability is absent, but historical schedulers bypass current Task Domain and need atomic claims/pagination redesign."),
+}
+for result in conflict_results:
+    classification, reason = conflict_overrides[result["pr_number"]]
+    result["classification"] = classification
+    result["semantic_override_reason"] = reason
+    result["evidence"].append("manual current-symbol/architecture review: " + reason)
+    result["confidence"] = "MEDIUM" if result["pr_number"] in {66, 86, 88} else "HIGH"
+    result["manual_port_plan"] = (
+        "No port; retain as historical evidence."
+        if classification in {"SUPERSEDED", "SAFE_TO_IGNORE", "DOCS_ONLY"}
+        else "Reconstruct only the stated remaining capability on current main; do not merge the historical branch."
+    )
+
+docs_overrides = {
+    233: ("ALREADY_REPRESENTED", "The same current-main Task Domain V2 document evolved with implemented activation/completion behavior."),
+    234: ("ALREADY_REPRESENTED", "The same task-management audit path exists and includes later Task Domain findings."),
+    235: ("ARCHIVE_ONLY", "The missing invoice audit describes findings now contradicted by current document/email/permission/test implementations."),
+}
+for result in docs_results:
+    classification, reason = docs_overrides[result["pr_number"]]
+    result["classification"] = classification
+    result["confidence"] = "HIGH"
+    result["semantic_override_reason"] = reason
+    result["evidence"].append("manual current-document/implementation review: " + reason)
+
+# Evaluation capability matrix uses manually verified canonical commits.
 evaluation_matrix = []
-for name in EVAL_ORDER:
-    source = capability_sources[name]
+for name, short_sha, disposition in EVAL_EXACT_SPECS:
+    sha = next(sha for sha in catalog if sha.startswith(short_sha))
+    commit = catalog[sha]
+    canonical_source = EVAL_CANONICAL_PRS[name]
     related_changesets = [item for item in changesets if item["module"] == "evaluations" and item["capability"] == name]
-    if source["active"] and source["main"]:
-        status = "PARTIALLY_IN_MAIN"
-    elif source["active"]:
-        status = "DRAFT_ONLY"
-    elif source["main"]:
-        status = "FULLY_IN_MAIN"
-    else:
-        status = "NO_PATCH_EVIDENCE_FOUND"
-    if any(item["classification"] == "SUPERSEDED_BY_MAIN" for item in related_changesets):
-        status = "SUPERSEDED_BY_MAIN"
-    if any(item["classification"] == "CONFLICTING_NEEDS_DESIGN_REVIEW" for item in related_changesets):
-        status = "CONFLICTING"
+    status = "EXACTLY_IN_MAIN" if disposition == "MAIN_BASELINE" else "UNIQUE_REQUIRES_RECOVERY"
     evaluation_matrix.append({
         "capability": name,
         "status": status,
-        "source_prs": sorted(source["prs"]),
-        "source_commits": sorted(source["commits"]),
-        "active_unique_commits": sorted(source["active"]),
-        "main_represented_commits": sorted(source["main"]),
-        "affected_files": sorted(source["files"]),
+        "source_prs": [canonical_source],
+        "containing_prs": commit["source_prs"],
+        "source_commits": [sha],
+        "active_unique_commits": [] if disposition == "MAIN_BASELINE" else [sha],
+        "main_represented_commits": [sha] if disposition == "MAIN_BASELINE" else [],
+        "affected_files": commit["paths"],
         "changesets": [item["changeset_id"] for item in related_changesets],
-        "required": status in {"PARTIALLY_IN_MAIN", "DRAFT_ONLY", "CONFLICTING"},
-        "confidence": "LOW" if status == "NO_PATCH_EVIDENCE_FOUND" else "MEDIUM",
+        "required": disposition != "MAIN_BASELINE",
+        "confidence": "HIGH",
+        "evidence": [
+            f"canonical source PR #{canonical_source}, commit {sha}",
+            "direct reachability verified" if disposition == "MAIN_BASELINE" else "git cherry reports unique patch; no patch-equivalent main commit",
+        ],
     })
 
 # Protection lists ensure every one of the 439 active historical PRs remains explicitly non-closeable.
@@ -822,31 +1078,44 @@ for module in package_modules:
         ),
     })
 
-wave_modules = [
-    ("Wave 0", ["cross-cutting-platform", "roles-access", "infrastructure", "observability"], "Shared contracts, security, runtime foundations"),
-    ("Wave 1", ["evaluations"], "Evaluations domain-to-UI recovery"),
-    ("Wave 2", ["connectivity", "vehicle-detail", "fleet", "trips", "health"], "Vehicle telemetry and operational domains"),
-    ("Wave 3", ["bookings", "customers", "documents", "legal-compliance"], "Rental transaction and document lifecycle"),
-    ("Wave 4", ["workflow-automation", "notifications", "operator-app"], "Operational automation and operator UX"),
-    ("Wave 5", ["billing-subscriptions", "stripe-payments"], "Finance and payment correctness"),
-    ("Wave 6", ["voice-ai", "whatsapp-communications", "integrations"], "External communications and providers"),
-    ("Wave 7", ["administration", "master-admin", "documentation", "unknown"], "Administration, governance, and unresolved evidence"),
-]
 waves = []
-for name, modules_in_wave, purpose in wave_modules:
-    selected = [package for package in packages if package["module"] in modules_in_wave and package["changesets"]]
-    selected_sets = [changeset_by_id[change_id] for package in selected for change_id in package["changesets"]]
+unassigned_wave_ids = {item["changeset_id"] for item in changesets}
+wave_specs = [
+    ("Wave 0", "Evidence normalization and unresolved artifact disposition", lambda item: item["classification"] in {"UNKNOWN", "DOCS_ONLY", "SUPERSEDED_BY_MAIN", "OBSOLETE", "EXPERIMENTAL_DO_NOT_MERGE"}),
+    ("Wave 1", "Security and data boundaries", lambda item: item["security_impact"] == "SENSITIVE" or item["tenant_isolation_impact"] == "SENSITIVE" or item["privacy_impact"] == "SENSITIVE"),
+    ("Wave 2", "Persistence, migration, outbox and worker foundations", lambda item: item["migration_required"] or item["worker_dependency"] or item["infra_dependency"]),
+    ("Wave 3", "Canonical providers and state owners", lambda item: item["module"] in {"connectivity", "health", "documents", "notifications", "administration", "voice-ai", "integrations"}),
+    ("Wave 4", "Transactional domains and actions", lambda item: item["module"] in {"bookings", "customers", "workflow-automation", "operator-app", "billing-subscriptions", "stripe-payments", "legal-compliance", "whatsapp-communications"}),
+    ("Wave 5", "Read models, analysis and domain consumers", lambda item: item["module"] in {"evaluations", "vehicle-detail", "fleet", "trips", "master-admin", "observability"}),
+    ("Wave 6", "UI rollout, acceptance and remaining package work", lambda item: True),
+]
+for name, purpose, predicate in wave_specs:
+    selected_sets = [
+        item for item in changesets
+        if item["changeset_id"] in unassigned_wave_ids and predicate(item)
+    ]
+    for item in selected_sets:
+        unassigned_wave_ids.remove(item["changeset_id"])
+    selected_modules = sorted({item["module"] for item in selected_sets})
+    selected_packages = sorted({
+        package["planned_branch"]
+        for package in packages
+        if package["module"] in selected_modules and package["changesets"]
+    })
     waves.append({
         "wave": name,
         "purpose": purpose,
-        "modules": [package["module"] for package in selected],
-        "packages": [package["planned_branch"] for package in selected],
+        "modules": selected_modules,
+        "packages": selected_packages,
+        "changesets": [item["changeset_id"] for item in selected_sets],
         "dependencies": ["previous waves"],
-        "risk": "CRITICAL" if any(item["risk_level"] == "CRITICAL" for item in selected_sets) else ("HIGH" if any(item["risk_level"] == "HIGH" for item in selected_sets) else "MEDIUM"),
+        "risk": "CRITICAL" if any(item["risk_level"] == "CRITICAL" for item in selected_sets) else ("HIGH" if any(item["risk_level"] == "HIGH" for item in selected_sets) else ("MEDIUM" if selected_sets else "NONE")),
         "test_gates": sorted({test for item in selected_sets for test in item["required_tests"]}),
         "vps_gate": "Only after staging acceptance; health, migration, queue, and provider smoke checks as applicable.",
         "expected_conflict_areas": sorted({path for item in selected_sets if item["expected_conflicts"] for path in item["affected_files"]})[:100],
     })
+if unassigned_wave_ids:
+    raise RuntimeError(f"recovery wave assignment incomplete: {sorted(unassigned_wave_ids)}")
 
 generated_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 summary = {
@@ -863,6 +1132,8 @@ summary = {
     "safe_to_close_patch_equivalent": sum(row["classification"] == "SAFE_TO_CLOSE_PATCH_EQUIVALENT" for row in verification_rows),
     "phase1_classifications_corrected": sum(not row["classification"].startswith("SAFE_TO_CLOSE") for row in verification_rows),
     "stack_tips_analyzed": len(stack_results),
+    "stack_tip_commit_memberships": stack_tip_commit_memberships,
+    "stack_tip_distinct_commits": stack_tip_distinct_commits,
     "unique_non_main_commits": len(active_shas),
     "unique_changesets": len(changesets),
     "changeset_classifications": dict(sorted(Counter(item["classification"] for item in changesets).items())),
@@ -993,7 +1264,14 @@ stack_md = [
     "# Phase 2 — Stack-tip Commit/Patch Analysis", "",
     "Each tip is reconstructed commit-by-commit. The cumulative tip-to-main diff is not treated as one feature.", "",
     f"- Primary cumulative tips analyzed: {len(stack_results)}",
+    f"- Tip commit memberships: {stack_tip_commit_memberships}",
+    f"- Distinct tip commits: {stack_tip_distinct_commits}",
     f"- Stack components: {len(components)}", "",
+    "## Interpretation guardrails", "",
+    "- Connected components are ancestry facts, not recovery packages; the giant component is historical branch reuse.",
+    "- PRs #312, #367 and #687 are fan-out checkpoints into unrelated modules, not shared capability dependencies.",
+    "- `ChangesView.tsx`, `ArchitekturView.tsx`, audit documents and release notes are provenance, not package identity.",
+    "- Large tips such as #549, #581, #623 and #838 require introduced-vs-inherited delta extraction; never merge/cherry-pick the whole tip.", "",
 ]
 for result in stack_results:
     stack_md += [
@@ -1031,7 +1309,21 @@ module_md = [
 ]
 for package in packages:
     module_md.append(f"| `{package['module']}` | `{package['planned_branch']}` | {len(package['changesets'])} | `{package['highest_risk']}` | `{package['status']}` |")
-module_md += ["", "## Package contents", ""]
+module_md += [
+    "", "## Capability package boundaries", "",
+    "Historical stack components are not package boundaries. Phase 3 should preserve these capability slices inside the module branches:",
+    "",
+    "1. Dashboard/UI cleanup; 2. TOTP/IAM; 3. ClickHouse trip evidence; 4. Invoice payment command; 5. Generated-document lifecycle;",
+    "6. Fleet operational cache/read models; 7. Battery Health V2; 8. Driving Intelligence V2/canonical trip enrichment;",
+    "9. Document Intake V2 and confirmation/apply safety; 10. Stations V2/state/transfers; 11. Voice AI/Twilio;",
+    "12. Fleet connectivity/DIMO triggers; 13. Fleet service/health-task matching; 14. IAM role versions;",
+    "15. Legal documents/deposits/rental rules; 16. Booking remediation/finance; 17. Data Authorization;",
+    "18. Vehicle Detail aggregation; 19. Evaluations; 20. Workflow Automation; 21. Fleet Chat; 22. Vehicle warnings;",
+    "23. Operator App; 24. Notifications; 25. Master Admin/billing/tenant safety/backup/observability.",
+    "",
+    "Provider/consumer relationships are explicit dependencies; shared audit/changelog files do not create a cross-cutting package.",
+    "", "## Package contents", "",
+]
 for package in packages:
     module_md += [f"### {package['module']}", "", ", ".join(f"`{value}`" for value in package["changesets"]) or "No unique change-set identified.", ""]
 (OUT / "phase2-module-recovery-plan-2026-08.md").write_text("\n".join(module_md) + "\n")
@@ -1077,7 +1369,14 @@ evaluation_sets = [item for item in changesets if item["module"] == "evaluations
 evaluation_sets.sort(key=lambda item: eval_position.get(item["capability"], 10_000))
 eval_md = [
     "# Phase 2 — Evaluations Recovery Plan", "",
-    "Capabilities are mapped from actual commit paths and patch identifiers. Missing evidence is not guessed.", "",
+    "Capabilities use manually verified canonical PR/commit sources. Cumulative descendant PRs are recorded only as containment evidence, never as capability sources.", "",
+    "## Current-main baseline to preserve", "",
+    "- PR #752 / `850b20bc632e…`: Metric Registry — exactly reachable from main.",
+    "- PR #752 / `312ee93f5315…`: Calculation Versioning — exactly reachable from main.",
+    "- PR #818: current evaluation E2E/visual/accessibility fixtures.",
+    "- PR #819: current evaluation observability.",
+    "- PRs #820–#821: verification/readiness evidence.",
+    "- Observability is a preservation/test gate, not an unimplemented dependency.", "",
     "## Capability reconstruction", "",
     "| Order | Capability | Status | Source PRs | Source commits | Files | Recovery change-set | Confidence |",
     "|---:|---|---|---|---:|---:|---|---|",

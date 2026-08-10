@@ -72,13 +72,13 @@ for item in changesets:
 
 expected_eval = {
     "Metric Registry", "Calculation Versioning", "Timezone / Period Model",
-    "Metric Response Contract", "Money Domain", "Receivables", "Revenue / Cashflow",
-    "Multi-Currency", "Analytics Summary", "Grouped Insights", "Filter Architecture",
+    "Unified KPI Contract", "Money Domain", "Money Migration", "Receivables", "Revenue / Cashflow / Result",
+    "Multi-Currency", "Finance Test Suite", "Summary / Detail Separation", "Analytics Summary", "Grouping / Entity References", "Filter Architecture",
     "Tenant Isolation", "Analytics Contracts", "Cost Model", "Utilization",
     "Strength Detection", "Weakness Detection", "Driver / Influence Analysis",
     "Data Quality", "Freshness / Lineage", "Metric State UX", "Data Quality Panel",
     "Information Architecture", "Executive KPI Strip", "Strength / Weakness Cockpit",
-    "Risk / Cost Visualizations", "Mobile Readiness", "Accessibility / i18n",
+    "Risk / Cost / Failure Visuals", "Mobile Readiness", "Accessibility / i18n",
     "Recommendation Domain", "Action Center", "Action Integrations",
     "Impact Measurement", "Predictive Analytics Architecture", "Feature Store",
     "Demand / Revenue / Utilization Forecast", "Maintenance / Failure Forecast",
@@ -86,7 +86,29 @@ expected_eval = {
 }
 actual_eval = {item["capability"] for item in phase2["evaluations_capabilities"]}
 assert actual_eval == expected_eval
-assert all(item["status"] != "NO_PATCH_EVIDENCE_FOUND" for item in phase2["evaluations_capabilities"])
+status_counts = {}
+for item in phase2["evaluations_capabilities"]:
+    status_counts[item["status"]] = status_counts.get(item["status"], 0) + 1
+assert status_counts == {"EXACTLY_IN_MAIN": 2, "UNIQUE_REQUIRES_RECOVERY": 42}
+assert all(len(item["source_prs"]) == len(item["source_commits"]) == 1 for item in phase2["evaluations_capabilities"])
+
+expected_conflicts = {
+    19: "SAFE_TO_IGNORE", 22: "PORT_REQUIRED", 23: "SUPERSEDED", 24: "PORT_REQUIRED",
+    25: "SUPERSEDED", 31: "DESIGN_REVIEW_REQUIRED", 66: "DESIGN_REVIEW_REQUIRED",
+    83: "SUPERSEDED", 84: "SECURITY_REVIEW_REQUIRED", 85: "SUPERSEDED",
+    86: "PORT_REQUIRED", 87: "SUPERSEDED", 88: "DESIGN_REVIEW_REQUIRED",
+    109: "SUPERSEDED", 118: "DOCS_ONLY", 121: "SUPERSEDED", 173: "SUPERSEDED",
+    194: "DOCS_ONLY", 230: "DESIGN_REVIEW_REQUIRED",
+}
+assert {item["pr_number"]: item["classification"] for item in conflicts} == expected_conflicts
+assert {item["pr_number"]: item["classification"] for item in docs} == {
+    233: "ALREADY_REPRESENTED", 234: "ALREADY_REPRESENTED", 235: "ARCHIVE_ONLY",
+}
+
+wave_commits = [change_id for wave in phase2["waves"] for change_id in wave["changesets"]]
+assert len(phase2["waves"]) == 7
+assert len(wave_commits) == len(set(wave_commits)) == len(changesets)
+assert set(wave_commits) == {item["changeset_id"] for item in changesets}
 
 with (OUT / "phase2-safe-to-close-candidates-2026-08.csv").open(newline="") as handle:
     safe_rows = list(csv.DictReader(handle))

@@ -3,7 +3,16 @@
 Each tip is reconstructed commit-by-commit. The cumulative tip-to-main diff is not treated as one feature.
 
 - Primary cumulative tips analyzed: 93
+- Tip commit memberships: 613
+- Distinct tip commits: 575
 - Stack components: 7
+
+## Interpretation guardrails
+
+- Connected components are ancestry facts, not recovery packages; the giant component is historical branch reuse.
+- PRs #312, #367 and #687 are fan-out checkpoints into unrelated modules, not shared capability dependencies.
+- `ChangesView.tsx`, `ArchitekturView.tsx`, audit documents and release notes are provenance, not package identity.
+- Large tips such as #549, #581, #623 and #838 require introduced-vs-inherited delta extraction; never merge/cherry-pick the whole tip.
 
 ## PR #21 — stack-001
 
