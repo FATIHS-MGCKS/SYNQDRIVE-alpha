@@ -84,7 +84,7 @@ describe('canonical evaluations metric response contract', () => {
   });
 
   it('enforces value and comparison discriminants at compile time', () => {
-    if (false) {
+    const compileTimeAssertions = (): void => {
       // @ts-expect-error COUNT values must be numeric.
       buildAvailableEvaluationsMetric({ ...scalarBase, value: 'not-a-count' });
       // @ts-expect-error Calculated deltas cannot carry a no-value status.
@@ -96,8 +96,8 @@ describe('canonical evaluations metric response contract', () => {
         comparisonValue: 1,
         comparisonStatus: 'ERROR',
       });
-    }
-    expect(true).toBe(true);
+    };
+    expect(compileTimeAssertions).toBeInstanceOf(Function);
   });
 
   it.each([
