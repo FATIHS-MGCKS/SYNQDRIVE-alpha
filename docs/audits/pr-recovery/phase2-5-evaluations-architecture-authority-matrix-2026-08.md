@@ -5,7 +5,7 @@
 - Current `origin/main`: `2d721a902feb56101eb9992249f1859ff64024cb`
 - Phase-2 main: `2d721a902feb56101eb9992249f1859ff64024cb`
 - Delta (left/right): `0	0`
-- Generated: `2026-08-10T17:53:54Z`
+- Generated: `2026-08-10T17:58:05Z`
 - Git: `git version 2.43.0`
 - GitHub CLI: `gh version 2.91.0 (2026-04-22)`
 
@@ -15,6 +15,8 @@
 - The direct Phase-2.5 mandate is controlling product authority for this audit.
 - Existing ADRs, canonical platform architecture and current code were checked as lower-level contradiction evidence.
 - Historical recovery PRs were used only as implementation evidence.
+
+- A mismatch with current implementation is classified as a Phase-3 migration gap, not an authority contradiction. The accepted ADRs intentionally supersede interim EUR-only, browser-timezone, client-KPI and coarse-guard behavior where stated.
 
 ## Requirements matrix
 
@@ -46,9 +48,9 @@
 | `EVAL-ADR-003` | `ACCEPTED` | 5 repository sources + direct mandate | None | The `financial-insights` route becomes a modular EvaluationsPage backed only by canonical analytics APIs. |
 | `EVAL-ADR-004` | `ACCEPTED` | 3 repository sources + direct mandate | None | A relational typed-reference authority is paired with immutable display snapshots. |
 | `EVAL-ADR-005` | `ACCEPTED` | 4 repository sources + direct mandate | None | Navigation is direct; material writes use central policies, confirmation, idempotency and audit. |
-| `EVAL-ADR-006` | `ACCEPTED` | 3 repository sources + direct mandate | None | Forecasts require sufficient point-in-time data, backtesting, calibrated uncertainty and versioned release evidence. |
+| `EVAL-ADR-006` | `ACCEPTED` | 4 repository sources + direct mandate | None | Forecasts require sufficient point-in-time data, backtesting, calibrated uncertainty and versioned release evidence. |
 | `EVAL-ADR-007` | `ACCEPTED` | 4 repository sources + direct mandate | None | Evaluations capabilities extend the central module/operational permission model instead of creating a role engine. |
-| `EVAL-ADR-008` | `ACCEPTED` | 4 repository sources + direct mandate | None | Routine aggregate reads are not audited; sensitive details, exports and administration are. |
+| `EVAL-ADR-008` | `ACCEPTED` | 5 repository sources + direct mandate | None | Routine aggregate reads are not audited; sensitive details, exports and administration are. |
 | `EVAL-ADR-009` | `ACCEPTED` | 3 repository sources + direct mandate | None | Predictive APIs and UI are disabled by default and activate only after model release gates. |
 | `EVAL-ADR-010` | `ACCEPTED` | 3 repository sources + direct mandate | None | Reproducible tests and current baselines are authority; historical screenshots are not recovered. |
 

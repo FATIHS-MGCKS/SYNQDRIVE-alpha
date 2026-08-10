@@ -9,23 +9,25 @@
 
 Forecasts require sufficient point-in-time data, backtesting, calibrated uncertainty and versioned release evidence.
 
-The repository does not contain separately identifiable Book I–IV files under the names supplied by the Phase-2.5 mandate. The direct Phase-2.5 mandate is therefore the controlling product instruction; repository ADRs, canonical architecture and current code were checked for contradictions. No contradiction prevents acceptance.
+The repository does not contain separately identifiable Book I–IV files under the names supplied by the Phase-2.5 mandate. The direct Phase-2.5 mandate is therefore the controlling product instruction; repository ADRs, canonical architecture and current code were checked for contradictions. No contradiction prevents acceptance. Differences from current main or unmerged historical designs are implementation/migration gaps, not higher-authority vetoes; this ADR intentionally locks the Phase-3 target.
 
 ## Authority evidence
 
 - `docs/architecture/analytics/evaluations-metric-registry.md — estimate/forecast kind separation`
 - `docs/architecture/analytics/evaluations-calculation-versioning.md — formula and source provenance`
 - `docs/audits/evaluations/evaluations-post-remediation-readiness-2026-07.md — forecast/backtesting absent from main`
+- `historical PR #809/#811 architecture evidence — phased predictive rollout, target-specific history and shadow validation`
 
 ## Decision
 
 - A rule-based estimate, statistical forecast and ML forecast are distinct registered metric kinds and must be labeled as such.
-- Demand/revenue/utilization release requires at least 90 elapsed days, 12 weekly cycles and 80% expected-source coverage. Maintenance/failure release requires at least 180 days plus the target-specific minimum labeled outcomes declared by the model registry; absent labels block release.
+- Demand/utilization release requires at least 90 elapsed days, 12 weekly cycles and 80% expected-source coverage. Revenue/cashflow release requires at least 365 days with 80% expected-source coverage. Maintenance/failure release requires at least 180 days plus the target-specific minimum labeled outcomes declared by the model registry; absent labels block release.
 - Training uses point-in-time feature snapshots with no future leakage. At least three rolling-origin backtest folds are mandatory.
 - A candidate must beat the approved naive baseline by at least 5% on the registered primary error metric, or document a domain-approved non-inferiority margin. Release confidence must be at least 0.70.
 - Prediction intervals are mandatory. The registry declares a nominal coverage between 80% and 95%; rolling backtests must achieve empirical coverage within five percentage points of that target.
 - Every result includes model/version, feature schema version, trained/fitted timestamp, forecast creation/as-of timestamps, horizon, confidence, prediction interval, coverage and data-quality status.
 - Default retention is 24 months for forecast outputs and model metadata and 13 months for feature snapshots, capped by source/privacy retention. Longer retention requires a recorded legal/operational policy.
+- A customer-visible forecast expires 48 hours after generation unless its registry declares a shorter TTL. Every newly promoted model completes at least eight weeks in shadow mode before `on` activation.
 - Failed freshness, drift, coverage or release gates disable the forecast and return an explicit unavailable/degraded state; no fabricated fallback forecast is shown.
 
 ## Non-negotiable constraints
