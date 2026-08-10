@@ -6,7 +6,7 @@
     "phase1_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb",
     "current_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb",
     "main_delta_left_right": "0\t0",
-    "generated_at": "2026-08-10T16:43:57Z",
+    "generated_at": "2026-08-10T16:49:07Z",
     "current_open_prs": 626,
     "current_open_drafts": 623,
     "phase1_prs_revalidated": 625,
@@ -28,8 +28,10 @@
     },
     "planned_recovery_modules": 26,
     "planned_recovery_waves": 8,
-    "high_risk_changesets": 163,
-    "critical_risk_changesets": 58,
+    "high_risk_changesets": 157,
+    "critical_risk_changesets": 64,
+    "tenant_sensitive_changesets": 85,
+    "finance_sensitive_changesets": 42,
     "safe_to_close_candidates": 186,
     "do_not_close_phase1_prs": 439,
     "standalone_conflicting_analyzed": 19,
@@ -587,6 +589,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -824,6 +828,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -890,6 +896,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -1189,6 +1197,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -1210,16 +1220,18 @@
       "current_relevance": "Unique patches overlap current main and touch architecture-sensitive surfaces.",
       "classification": "CONFLICTING_NEEDS_DESIGN_REVIEW",
       "recommended_action": "Reimplement on current main",
-      "risk_level": "HIGH",
+      "risk_level": "CRITICAL",
       "required_tests": [
         "Prisma migration deploy/rollback rehearsal",
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "frontend unit/component tests and focused UI regression",
         "tenant-scoped data integrity checks"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -1341,6 +1353,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -1432,6 +1446,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -1570,6 +1586,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -1672,6 +1690,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -2603,6 +2623,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -3018,6 +3040,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -3171,6 +3195,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -3242,6 +3268,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -3324,6 +3352,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -3401,6 +3431,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -3411,15 +3443,17 @@
       "current_relevance": "Unique patches overlap current main and touch architecture-sensitive surfaces.",
       "classification": "CONFLICTING_NEEDS_DESIGN_REVIEW",
       "recommended_action": "Reimplement on current main",
-      "risk_level": "HIGH",
+      "risk_level": "CRITICAL",
       "required_tests": [
+        "RBAC/authz regression",
+        "cross-tenant negative tests",
         "financial reconciliation fixtures",
         "frontend unit/component tests and focused UI regression",
         "money precision/currency/rounding regression"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -3484,6 +3518,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -3556,6 +3592,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -3686,6 +3724,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -3834,6 +3874,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -4362,6 +4404,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -4646,6 +4690,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -4742,6 +4788,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -4835,6 +4883,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -5581,6 +5631,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -5845,6 +5897,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -6321,6 +6375,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -6450,6 +6506,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -6529,6 +6587,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -6601,6 +6661,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -7014,6 +7076,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -7382,6 +7446,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -7511,6 +7577,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -7604,6 +7672,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -7703,6 +7773,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -7804,6 +7876,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -7885,6 +7959,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -7960,6 +8036,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -8040,6 +8118,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -8135,6 +8215,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -8307,6 +8389,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -8411,6 +8495,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -8422,12 +8508,14 @@
       "risk_level": "HIGH",
       "required_tests": [
         "DIMO request/response and vehicle-access verification via MCP",
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "queue retry/idempotency/dead-letter tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -8674,6 +8762,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -9700,6 +9790,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -9907,6 +9999,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -9998,6 +10092,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -10147,6 +10243,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -10323,6 +10421,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -10471,6 +10571,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -10543,6 +10645,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -10618,6 +10722,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -10708,6 +10814,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -10808,6 +10916,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -10950,6 +11060,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -11315,6 +11427,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -12310,6 +12424,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -12496,6 +12612,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -16366,6 +16484,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -16879,6 +16999,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -17600,6 +17722,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -17972,6 +18096,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -18073,6 +18199,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -18353,6 +18481,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -18379,16 +18509,18 @@
       "current_relevance": "Unique patches overlap current main and touch architecture-sensitive surfaces.",
       "classification": "CONFLICTING_NEEDS_DESIGN_REVIEW",
       "recommended_action": "Reimplement on current main",
-      "risk_level": "HIGH",
+      "risk_level": "CRITICAL",
       "required_tests": [
         "Prisma migration deploy/rollback rehearsal",
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "queue retry/idempotency/dead-letter tests",
         "tenant-scoped data integrity checks"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -18513,6 +18645,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -18528,12 +18662,14 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "queue retry/idempotency/dead-letter tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -18622,6 +18758,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -18694,6 +18832,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -18766,6 +18906,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -19016,6 +19158,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -19210,6 +19354,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -19312,6 +19458,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -19636,6 +19784,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -20448,6 +20598,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -21109,6 +21261,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -21415,6 +21569,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -22232,6 +22388,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -23258,6 +23416,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -23921,6 +24081,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -24760,6 +24922,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -25697,6 +25861,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -26664,6 +26830,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -27773,6 +27941,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -28521,6 +28691,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -28981,6 +29153,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -29682,6 +29856,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -29953,6 +30129,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -30592,6 +30770,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -31012,6 +31192,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -31827,6 +32009,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -32873,6 +33057,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -34106,6 +34292,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -34558,6 +34746,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -35122,6 +35312,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -35373,6 +35565,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -36021,6 +36215,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -36332,6 +36528,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -36883,6 +37081,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -37608,6 +37808,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -38484,6 +38686,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -39322,6 +39526,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -39891,22 +40097,26 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
       "current_relevance": "Unique capability evidence remains, but direct integration is unsafe on current architecture.",
       "classification": "REQUIRED_BUT_NEEDS_PORT",
       "recommended_action": "Reimplement on current main",
-      "risk_level": "HIGH",
+      "risk_level": "CRITICAL",
       "required_tests": [
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "financial reconciliation fixtures",
         "frontend unit/component tests and focused UI regression",
         "money precision/currency/rounding regression"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -41091,6 +41301,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -41523,6 +41735,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -42581,6 +42795,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -43218,6 +43434,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -44562,6 +44780,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -45318,6 +45538,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -46365,6 +46587,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -47608,6 +47832,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -48601,6 +48827,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -49770,6 +49998,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -51060,6 +51290,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -52357,6 +52589,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -53368,6 +53602,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -53664,6 +53900,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -53899,6 +54137,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -53985,6 +54225,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -54090,6 +54332,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -54282,6 +54526,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -54364,6 +54610,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -54461,6 +54709,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -54587,6 +54837,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -54685,6 +54937,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -54766,6 +55020,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -54840,6 +55096,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -55148,6 +55406,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -55313,6 +55573,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -55390,6 +55652,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -55609,6 +55873,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -55829,6 +56095,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -55948,6 +56216,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -56023,6 +56293,8 @@
       "worker_dependency": false,
       "infra_dependency": true,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -56034,11 +56306,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
-        "backend unit/integration tests for the owning module"
+        "RBAC/authz regression",
+        "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -56090,6 +56364,8 @@
       "worker_dependency": false,
       "infra_dependency": true,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -56157,6 +56433,8 @@
       "worker_dependency": false,
       "infra_dependency": true,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -57179,6 +57457,8 @@
       "worker_dependency": true,
       "infra_dependency": true,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -57627,6 +57907,8 @@
       "worker_dependency": true,
       "infra_dependency": true,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -57746,6 +58028,8 @@
       "worker_dependency": false,
       "infra_dependency": true,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -57824,6 +58108,8 @@
       "worker_dependency": false,
       "infra_dependency": true,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -57981,6 +58267,8 @@
       "worker_dependency": true,
       "infra_dependency": true,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -58300,6 +58588,8 @@
       "worker_dependency": true,
       "infra_dependency": true,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -58456,6 +58746,8 @@
       "worker_dependency": false,
       "infra_dependency": true,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -58613,6 +58905,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -58724,6 +59018,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -58821,6 +59117,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -58912,6 +59210,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -58982,6 +59282,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -59215,6 +59517,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -59460,6 +59764,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -60128,6 +60434,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -60292,6 +60600,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -60441,6 +60751,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -60545,6 +60857,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -60621,6 +60935,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -60712,6 +61028,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -60936,6 +61254,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -61112,6 +61432,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -61210,6 +61532,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -61284,6 +61608,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -61295,11 +61621,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
-        "backend unit/integration tests for the owning module"
+        "RBAC/authz regression",
+        "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -61360,6 +61688,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -61480,6 +61810,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -61493,11 +61825,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
+        "RBAC/authz regression",
+        "cross-tenant negative tests",
         "frontend unit/component tests and focused UI regression"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -61588,6 +61922,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -61600,12 +61936,14 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "frontend unit/component tests and focused UI regression"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -61668,6 +62006,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -61679,11 +62019,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
-        "backend unit/integration tests for the owning module"
+        "RBAC/authz regression",
+        "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -61794,6 +62136,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -62124,6 +62468,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -62138,15 +62484,17 @@
       "current_relevance": "Unique patches overlap current main and touch architecture-sensitive surfaces.",
       "classification": "CONFLICTING_NEEDS_DESIGN_REVIEW",
       "recommended_action": "Reimplement on current main",
-      "risk_level": "HIGH",
+      "risk_level": "CRITICAL",
       "required_tests": [
         "Prisma migration deploy/rollback rehearsal",
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "tenant-scoped data integrity checks"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -62266,6 +62614,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -62428,6 +62778,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -62598,6 +62950,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -62791,6 +63145,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -63111,6 +63467,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -63249,6 +63607,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -63429,6 +63789,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -63544,6 +63906,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -63622,6 +63986,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -63879,6 +64245,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -64029,6 +64397,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -64197,6 +64567,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -64470,6 +64842,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -64637,6 +65011,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -64913,6 +65289,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [],
@@ -65077,6 +65455,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -65163,6 +65543,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -65653,6 +66035,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -65782,6 +66166,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -65863,6 +66249,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -66128,6 +66516,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -66270,6 +66660,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -66393,6 +66785,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -66488,6 +66882,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -66590,6 +66986,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -66678,6 +67076,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -66772,6 +67172,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -66844,6 +67246,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -67454,6 +67858,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -67669,6 +68075,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -67757,6 +68165,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -67874,6 +68284,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -67976,6 +68388,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -68067,6 +68481,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -68149,6 +68565,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -68222,6 +68640,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -68308,6 +68728,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -68422,6 +68844,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -68575,6 +68999,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -68757,6 +69183,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -68851,6 +69279,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -68929,6 +69359,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -69023,6 +69455,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -69033,11 +69467,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
-        "backend unit/integration tests for the owning module"
+        "RBAC/authz regression",
+        "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -69157,6 +69593,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -69294,6 +69732,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -69650,6 +70090,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -69759,6 +70201,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -69919,6 +70363,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -69930,11 +70376,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
-        "backend unit/integration tests for the owning module"
+        "RBAC/authz regression",
+        "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -69991,6 +70439,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -71193,6 +71643,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -71371,6 +71823,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -71631,6 +72085,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -71770,6 +72226,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -72632,6 +73090,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -72889,6 +73349,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -74101,6 +74563,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -74637,6 +75101,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -74975,6 +75441,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -75090,6 +75558,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -75344,6 +75814,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -75446,6 +75918,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -75657,6 +76131,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -75796,6 +76272,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -75986,6 +76464,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "SENSITIVE",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -76386,6 +76866,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -76410,17 +76892,19 @@
       "current_relevance": "Unique patches overlap current main and touch architecture-sensitive surfaces.",
       "classification": "CONFLICTING_NEEDS_DESIGN_REVIEW",
       "recommended_action": "Reimplement on current main",
-      "risk_level": "HIGH",
+      "risk_level": "CRITICAL",
       "required_tests": [
         "Prisma migration deploy/rollback rehearsal",
+        "RBAC/authz regression",
         "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests",
         "frontend unit/component tests and focused UI regression",
         "queue retry/idempotency/dead-letter tests",
         "tenant-scoped data integrity checks"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -76555,6 +77039,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -76663,6 +77149,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -77076,6 +77564,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -77268,6 +77758,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
@@ -77597,6 +78089,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -77930,6 +78424,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -78075,6 +78571,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -78085,11 +78583,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
-        "backend unit/integration tests for the owning module"
+        "RBAC/authz regression",
+        "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -78154,6 +78654,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -78262,6 +78764,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -78272,11 +78776,13 @@
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
       "required_tests": [
-        "backend unit/integration tests for the owning module"
+        "RBAC/authz regression",
+        "backend unit/integration tests for the owning module",
+        "cross-tenant negative tests"
       ],
       "required_manual_review": [
         "domain owner",
-        "module owner"
+        "security owner"
       ],
       "required_staging_validation": "Required",
       "required_vps_validation": "Required after staging",
@@ -78343,6 +78849,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -78672,6 +79180,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -79664,6 +80174,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -80031,6 +80543,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -80283,6 +80797,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -80465,6 +80981,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -80891,6 +81409,8 @@
       "worker_dependency": true,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "SENSITIVE",
       "data_migration_impact": "REQUIRED",
       "expected_conflicts": [
@@ -81314,6 +81834,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "SENSITIVE",
+      "tenant_isolation_impact": "SENSITIVE",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -81460,6 +81982,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -81530,6 +82054,8 @@
       "worker_dependency": false,
       "infra_dependency": false,
       "security_impact": "NONE_IDENTIFIED",
+      "tenant_isolation_impact": "NONE_IDENTIFIED",
+      "finance_impact": "NONE_IDENTIFIED",
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [
@@ -83914,7 +84440,7 @@
         "cs-documents-testing-and-validation"
       ],
       "status": "PLANNED",
-      "highest_risk": "HIGH"
+      "highest_risk": "CRITICAL"
     },
     {
       "module": "notifications",
@@ -83930,7 +84456,7 @@
         "cs-notifications-workflows"
       ],
       "status": "PLANNED",
-      "highest_risk": "HIGH"
+      "highest_risk": "CRITICAL"
     },
     {
       "module": "workflow-automation",

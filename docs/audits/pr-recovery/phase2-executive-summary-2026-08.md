@@ -1,6 +1,6 @@
 # Phase 2 — Executive Summary
 
-Generated `2026-08-10T16:43:57Z` against current `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
+Generated `2026-08-10T16:49:07Z` against current `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
 
 ## Counts
 
@@ -17,8 +17,10 @@ Generated `2026-08-10T16:43:57Z` against current `origin/main` `2d721a902feb5610
 | `unique_changesets` | 245 |
 | `planned_recovery_modules` | 26 |
 | `planned_recovery_waves` | 8 |
-| `high_risk_changesets` | 163 |
-| `critical_risk_changesets` | 58 |
+| `high_risk_changesets` | 157 |
+| `critical_risk_changesets` | 64 |
+| `tenant_sensitive_changesets` | 85 |
+| `finance_sensitive_changesets` | 42 |
 | `safe_to_close_candidates` | 186 |
 | `do_not_close_phase1_prs` | 439 |
 | `standalone_conflicting_analyzed` | 19 |
