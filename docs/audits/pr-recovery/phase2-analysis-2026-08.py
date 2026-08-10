@@ -1158,4 +1158,8 @@ executive += [
 ]
 (OUT / "phase2-executive-summary-2026-08.md").write_text("\n".join(executive) + "\n")
 
+# Keep generated Markdown deterministic and compatible with git diff --check.
+for markdown_path in OUT.glob("phase2-*.md"):
+    markdown_path.write_text(markdown_path.read_text().rstrip() + "\n")
+
 print(json.dumps(summary, indent=2))

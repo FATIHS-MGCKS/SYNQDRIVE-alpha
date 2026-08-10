@@ -19,4 +19,3 @@
 ### PR #235
 
 - `docs/audits/invoice-function-current-state.md`
-
