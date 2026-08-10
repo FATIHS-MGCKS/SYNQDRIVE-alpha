@@ -83,6 +83,23 @@ describe('canonical evaluations metric response contract', () => {
     ).toThrow('COUNT metric value must be a finite number');
   });
 
+  it('enforces value and comparison discriminants at compile time', () => {
+    if (false) {
+      // @ts-expect-error COUNT values must be numeric.
+      buildAvailableEvaluationsMetric({ ...scalarBase, value: 'not-a-count' });
+      buildEvaluationsMetricComparison({
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        currentPeriod: period,
+        comparisonPeriod: period,
+        currentValue: 1,
+        comparisonValue: 1,
+        // @ts-expect-error Calculated deltas cannot carry a no-value status.
+        comparisonStatus: 'ERROR',
+      });
+    }
+    expect(true).toBe(true);
+  });
+
   it.each([
     ['ERROR', () => buildErrorEvaluationsMetric({ ...scalarBase, error: 'calculation failed' })],
     [
