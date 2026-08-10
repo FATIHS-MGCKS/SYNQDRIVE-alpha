@@ -211,7 +211,7 @@ describe('canonical evaluations metric response contract', () => {
         currentValue: 25,
         comparisonValue: 20,
         comparisonStatus: 'ERROR',
-      } as Parameters<typeof buildEvaluationsMetricComparison>[0]),
+      } as unknown as Parameters<typeof buildEvaluationsMetricComparison>[0]),
     ).toThrow('comparison deltas must be null');
 
     expect(() =>
