@@ -219,8 +219,23 @@ PACKAGE_META = {
 # implementation owner; earlier packages may establish reusable guards and
 # audit contracts, but must not port the later package's concrete files.
 EXCLUSIVE_PATH_OWNERS = {
+    "backend/src/modules/business-insights/evaluations-analytics-summary.": "E4",
     "backend/src/modules/business-insights/predictive/": "E8",
+    "shared/evaluations-insights/evaluations-analytics-summary.": "E4",
     "shared/evaluations-insights/predictive/": "E8",
+}
+
+PACKAGE_SCOPE_NOTES = {
+    "E2": [
+        "Reimplement entity-reference contracts, persistence and grouping before wiring them into the E2 summary/detail service; do not replay the historical grouping commit as a standalone patch.",
+        "Bind filter period resolution to the E1 canonical period resolver. Analytics-summary services, repositories and shared summary implementations are owned by E4.",
+    ],
+    "E4": [
+        "Own the analytics-summary service/repository and shared summary implementation; consume E2 tenant-safe contracts and E1 period semantics.",
+    ],
+    "E5": [
+        "Add reusable authorization and audit foundations only; concrete analytics-summary files remain E4-owned and predictive backend/shared files remain E8-owned.",
+    ],
 }
 
 
@@ -704,6 +719,7 @@ for package_id in PACKAGE_MEMBERS:
         "affected_files": files,
         "implementation_files": actionable_files,
         "deferred_file_ownership": deferred_file_ownership,
+        "scope_notes": PACKAGE_SCOPE_NOTES.get(package_id, []),
         "frontend_files": frontend_files,
         "backend_files": backend_files,
         "database_files": database_files,
@@ -1147,6 +1163,12 @@ for package in sorted(packages, key=lambda item: item["topological_order"]):
         f"- Rollback: {package['rollback_strategy']}",
         f"- Feature flag: `{package['feature_flag'] or 'none'}`",
         "",
+    ]
+    if package["scope_notes"]:
+        runbook_lines += ["### Capability ownership notes", ""]
+        runbook_lines += [f"- {note}" for note in package["scope_notes"]]
+        runbook_lines += [""]
+    runbook_lines += [
         "<details><summary>Phase-3 implementation file scope</summary>",
         "",
     ]
@@ -1167,6 +1189,7 @@ runbook_lines += [
     "",
     "- Any cross-tenant/station read, missing central permission check, unconfirmed material action, idempotency gap, audit enqueue failure, mixed-currency sum, PII leakage, future leakage, or predictive default-on is `NO-GO`.",
     "- Historical migrations are evidence only. Recompute each schema diff and rehearse expand/backfill/switch/contract on current main.",
+    "- Analytics-summary service/repository and shared summary implementation paths are owned by E4. E2 must use E1 period semantics and must not replay historical summary-service refactors from filter/grouping commits.",
     "- Predictive backend/shared implementation paths are owned exclusively by E8. Earlier RBAC/audit packages may add reusable guards and contracts, but must not port predictive controllers, services or shared predictive implementations.",
     "- Figma remains visual authority during Phase-3 UI implementation; no UI package may introduce client-owned KPI truth.",
 ]
