@@ -52,4 +52,4 @@ Create only the planned package branches, beginning with Wave 0 and the evaluati
 
 - One oversized current-snapshot GraphQL request returned HTTP 502; the lightweight seven-page fallback succeeded.
 - GitHub permission metadata remained non-authoritative (`viewerPermission=null`); authenticated reads and Git fetch worked.
-- DIMO MCP was `loading`, so no DIMO integration claim is treated as verified.
+- DIMO MCP live tool discovery failed, so no DIMO integration claim is treated as verified.
