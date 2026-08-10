@@ -4,6 +4,7 @@ export {
   EVALUATIONS_METRIC_REGISTRY_VERSION,
   EVALUATIONS_METRIC_TAXONOMY_VERSION,
   EvaluationsMetricRegistryError,
+  assertEvaluationsMetricRegistryIntegrity,
   getEvaluationsMetricDefinition,
   getEvaluationsMetricRegistrySnapshot,
   isEvaluationsMetricId,
@@ -19,3 +20,8 @@ export {
   INSIGHT_METRICS_FIELD_LEGACY,
   resolveLegacyEvaluationsMetricId,
 } from './evaluations-metric.legacy-map';
+export {
+  resolveEvaluationsComparisonPeriods,
+  resolveEvaluationsPeriod,
+  resolveEvaluationsTimezone,
+} from './evaluations-period.resolver';

@@ -13,6 +13,7 @@ import {
 import { EVALUATIONS_METRIC_I18N } from '@synq/evaluations-metrics/evaluations-metric.i18n';
 import { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
 import {
+  assertEvaluationsMetricRegistryIntegrity,
   getEvaluationsMetricRegistrySnapshot,
   listEvaluationsMetricDefinitions,
   requireEvaluationsMetricDefinition,
@@ -51,6 +52,18 @@ describe('EvaluationsMetricRegistry', () => {
   it('enforces unique metric ids', () => {
     const ids = metrics.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('fails fast when an injected registry contains duplicate ids', () => {
+    expect(() =>
+      assertEvaluationsMetricRegistryIntegrity([metrics[0], { ...metrics[1], id: metrics[0].id }]),
+    ).toThrow('Duplicate evaluations metric id');
+  });
+
+  it('rejects empty metric ids', () => {
+    expect(() =>
+      assertEvaluationsMetricRegistryIntegrity([{ ...metrics[0], id: '   ' }]),
+    ).toThrow('must not be empty');
   });
 
   it('has complete required fields on every metric', () => {

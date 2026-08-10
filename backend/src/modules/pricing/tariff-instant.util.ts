@@ -1,20 +1,20 @@
 import { BadRequestException } from '@nestjs/common';
+import {
+  DEFAULT_PLATFORM_TIMEZONE,
+  zonedDateOnly as canonicalZonedDateOnly,
+  zonedStartOfDayToUtc as canonicalZonedStartOfDayToUtc,
+} from '@shared/time/iana-timezone.util';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export const DEFAULT_TARIFF_TIMEZONE = 'Europe/Berlin';
+export const DEFAULT_TARIFF_TIMEZONE = DEFAULT_PLATFORM_TIMEZONE;
 
 /** Calendar date `YYYY-MM-DD` for an instant in an IANA timezone. */
 export function zonedDateOnly(
   instant: Date,
   timeZone: string = DEFAULT_TARIFF_TIMEZONE,
 ): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(instant);
+  return canonicalZonedDateOnly(instant, timeZone);
 }
 
 /**
@@ -54,62 +54,16 @@ export function parseTariffEffectiveInstant(
 
 /** Start of calendar day in IANA timezone as UTC instant (handles DST). */
 export function zonedStartOfDayToUtc(dateOnly: string, timeZone: string): Date {
-  const [year, month, day] = dateOnly.split('-').map(Number);
-  if (!year || !month || !day) {
+  try {
+    return canonicalZonedStartOfDayToUtc(dateOnly, timeZone);
+  } catch {
     throw new BadRequestException({
-      message: 'Ungültiges Datum',
+      message: 'Kalendertag konnte in Zeitzone nicht aufgelöst werden',
       code: 'INVALID_TARIFF_INSTANT',
       input: dateOnly,
+      timeZone,
     });
   }
-
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  });
-
-  const localAt = (ms: number) => {
-    const parts = formatter.formatToParts(new Date(ms));
-    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '0';
-    return {
-      year: Number(get('year')),
-      month: Number(get('month')),
-      day: Number(get('day')),
-      hour: Number(get('hour')),
-      minute: Number(get('minute')),
-      second: Number(get('second')),
-    };
-  };
-
-  const lo = Date.UTC(year, month - 2, day, 0, 0, 0);
-  const hi = Date.UTC(year, month, day + 1, 23, 59, 59);
-
-  for (let ms = lo; ms <= hi; ms += 60_000) {
-    const local = localAt(ms);
-    if (
-      local.year === year &&
-      local.month === month &&
-      local.day === day &&
-      local.hour === 0 &&
-      local.minute === 0 &&
-      local.second === 0
-    ) {
-      return new Date(ms);
-    }
-  }
-
-  throw new BadRequestException({
-    message: 'Kalendertag konnte in Zeitzone nicht aufgelöst werden',
-    code: 'INVALID_TARIFF_INSTANT',
-    input: dateOnly,
-    timeZone,
-  });
 }
 
 /** Booking pickup/return — always absolute instants from ISO API input. */

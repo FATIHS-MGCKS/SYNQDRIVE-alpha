@@ -41,6 +41,38 @@ export {
   evaluationsMetricLabelKey,
 } from '@synq/evaluations-metrics/evaluations-metric.i18n';
 
+export type {
+  EvaluationsDataCoverage,
+  EvaluationsMetricComparison,
+  EvaluationsMetricResponse,
+  EvaluationsMetricResponseBundle,
+  EvaluationsMetricStatus,
+  EvaluationsMoney,
+  EvaluationsSourceFreshness,
+  EvaluationsSourceFreshnessState,
+} from '@synq/evaluations-metrics/evaluations-metric-response.contract';
+
+export {
+  EVALUATIONS_METRIC_RESPONSE_SCHEMA_VERSION,
+  EVALUATIONS_METRIC_STATUSES,
+  EVALUATIONS_SOURCE_FRESHNESS_STATES,
+} from '@synq/evaluations-metrics/evaluations-metric-response.contract';
+
+export type {
+  EvaluationsComparisonPeriodPair,
+  EvaluationsComparisonType,
+  EvaluationsPeriodType,
+  EvaluationsPeriodWindow,
+  EvaluationsTimezoneContext,
+  EvaluationsTimezoneSource,
+} from '@synq/evaluations-periods/evaluations-period.contract';
+
+export {
+  EVALUATIONS_COMPARISON_TYPES,
+  EVALUATIONS_PERIOD_TYPES,
+  EVALUATIONS_TIMEZONE_SOURCES,
+} from '@synq/evaluations-periods/evaluations-period.contract';
+
 /** Primary financial KPI ids used by FinancialInsightsView (gradual registry adoption). */
 export const FINANCIAL_INSIGHTS_REGISTRY_METRIC_IDS = {
   mtdIssuedRevenue: 'fin.mtd_issued_revenue',

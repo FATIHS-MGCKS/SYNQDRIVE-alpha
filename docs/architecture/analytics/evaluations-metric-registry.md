@@ -159,7 +159,21 @@ Diese Bezeichner bleiben in UI/Runtime bis Prompt 6+:
 
 ---
 
-## 8. Tests ausführen
+## 8. Phase-3 E1 contract hardening
+
+E1 preserves the 74 stable definitions and existing registry API. Startup validation
+now also rejects empty IDs, unknown enum/unit/classification values, invalid
+dimensions/comparisons, and invalid implementation statuses. Typed units include
+`CURRENCY_MINOR`, seconds/hours, kilometers, and rates for canonical response
+contracts; existing metric formulas and finance calculations are unchanged.
+
+Metric value/status semantics live in
+`evaluations-metric-response-contract.md`. `MONEY` response values require
+`{ amountMinor, currency }`; the registry does not authorize a currency fallback.
+
+---
+
+## 9. Tests ausführen
 
 ```bash
 cd backend && npm run test:evaluations
@@ -171,7 +185,7 @@ cd frontend && npm run build
 
 ---
 
-## 9. Nächste Schritte (Prompt 6+)
+## 10. Nächste Schritte (Prompt 6+)
 
 1. UI-Labels auf `labelKey` / i18n umstellen
 2. Server-seitige Aggregation mit `calculationVersion`-Bump bei Formeländerung
