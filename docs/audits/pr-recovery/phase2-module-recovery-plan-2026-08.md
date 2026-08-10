@@ -4,7 +4,7 @@ These integration branch names are plans only; no recovery branch was created.
 
 | Module | Planned branch | Change-sets | Highest risk | Status |
 |---|---|---:|---|---|
-| `evaluations` | `integration/evaluations-recovery-2026-08` | 42 | `CRITICAL` | `PLANNED` |
+| `evaluations` | `integration/evaluations-recovery-2026-08` | 43 | `CRITICAL` | `PLANNED` |
 | `vehicle-detail` | `integration/vehicle-detail-recovery-2026-08` | 4 | `HIGH` | `PLANNED` |
 | `fleet` | `integration/fleet-recovery-2026-08` | 6 | `HIGH` | `PLANNED` |
 | `trips` | `integration/trips-recovery-2026-08` | 8 | `HIGH` | `PLANNED` |
@@ -31,11 +31,25 @@ These integration branch names are plans only; no recovery branch was created.
 | `documentation` | `integration/documentation-recovery-2026-08` | 7 | `CRITICAL` | `PLANNED` |
 | `unknown` | `integration/unknown-recovery-2026-08` | 14 | `CRITICAL` | `PLANNED` |
 
+## Capability package boundaries
+
+Historical stack components are not package boundaries. Phase 3 should preserve these capability slices inside the module branches:
+
+1. Dashboard/UI cleanup; 2. TOTP/IAM; 3. ClickHouse trip evidence; 4. Invoice payment command; 5. Generated-document lifecycle;
+6. Fleet operational cache/read models; 7. Battery Health V2; 8. Driving Intelligence V2/canonical trip enrichment;
+9. Document Intake V2 and confirmation/apply safety; 10. Stations V2/state/transfers; 11. Voice AI/Twilio;
+12. Fleet connectivity/DIMO triggers; 13. Fleet service/health-task matching; 14. IAM role versions;
+15. Legal documents/deposits/rental rules; 16. Booking remediation/finance; 17. Data Authorization;
+18. Vehicle Detail aggregation; 19. Evaluations; 20. Workflow Automation; 21. Fleet Chat; 22. Vehicle warnings;
+23. Operator App; 24. Notifications; 25. Master Admin/billing/tenant safety/backup/observability.
+
+Provider/consumer relationships are explicit dependencies; shared audit/changelog files do not create a cross-cutting package.
+
 ## Package contents
 
 ### evaluations
 
-`cs-evaluations-accessibility-i18n`, `cs-evaluations-action-center`, `cs-evaluations-action-integrations`, `cs-evaluations-analytics-contracts`, `cs-evaluations-analytics-summary`, `cs-evaluations-audit-logging`, `cs-evaluations-backtesting-drift`, `cs-evaluations-calculation-versioning`, `cs-evaluations-cost-model`, `cs-evaluations-data-quality`, `cs-evaluations-data-quality-panel`, `cs-evaluations-demand-revenue-utilization-forecast`, `cs-evaluations-driver-influence-analysis`, `cs-evaluations-evaluations-core`, `cs-evaluations-executive-kpi-strip`, `cs-evaluations-feature-store`, `cs-evaluations-filter-architecture`, `cs-evaluations-forecast-ux`, `cs-evaluations-freshness-lineage`, `cs-evaluations-gdpr`, `cs-evaluations-grouped-insights`, `cs-evaluations-impact-measurement`, `cs-evaluations-information-architecture`, `cs-evaluations-maintenance-failure-forecast`, `cs-evaluations-metric-registry`, `cs-evaluations-metric-response-contract`, `cs-evaluations-metric-state-ux`, `cs-evaluations-mobile-readiness`, `cs-evaluations-money-domain`, `cs-evaluations-multi-currency`, `cs-evaluations-predictive-analytics-architecture`, `cs-evaluations-receivables`, `cs-evaluations-recommendation-domain`, `cs-evaluations-revenue-cashflow`, `cs-evaluations-risk-cost-visualizations`, `cs-evaluations-roles-permissions`, `cs-evaluations-strength-weakness-cockpit`, `cs-evaluations-strength-detection`, `cs-evaluations-tenant-isolation`, `cs-evaluations-timezone-period-model`, `cs-evaluations-utilization`, `cs-evaluations-weakness-detection`
+`cs-evaluations-timezone-period-model`, `cs-evaluations-unified-kpi-contract`, `cs-evaluations-money-domain`, `cs-evaluations-money-migration`, `cs-evaluations-receivables`, `cs-evaluations-revenue-cashflow-result`, `cs-evaluations-multi-currency`, `cs-evaluations-finance-test-suite`, `cs-evaluations-summary-detail-separation`, `cs-evaluations-grouping-entity-references`, `cs-evaluations-analytics-summary`, `cs-evaluations-filter-architecture`, `cs-evaluations-tenant-isolation`, `cs-evaluations-analytics-contracts`, `cs-evaluations-cost-model`, `cs-evaluations-utilization`, `cs-evaluations-strength-detection`, `cs-evaluations-weakness-detection`, `cs-evaluations-driver-influence-analysis`, `cs-evaluations-data-quality`, `cs-evaluations-freshness-lineage`, `cs-evaluations-metric-state-ux`, `cs-evaluations-data-quality-panel`, `cs-evaluations-information-architecture`, `cs-evaluations-executive-kpi-strip`, `cs-evaluations-strength-weakness-cockpit`, `cs-evaluations-risk-cost-failure-visuals`, `cs-evaluations-mobile-readiness`, `cs-evaluations-accessibility-i18n`, `cs-evaluations-recommendation-domain`, `cs-evaluations-action-center`, `cs-evaluations-action-integrations`, `cs-evaluations-impact-measurement`, `cs-evaluations-predictive-analytics-architecture`, `cs-evaluations-feature-store`, `cs-evaluations-demand-revenue-utilization-forecast`, `cs-evaluations-maintenance-failure-forecast`, `cs-evaluations-backtesting-drift`, `cs-evaluations-forecast-ux`, `cs-evaluations-gdpr`, `cs-evaluations-roles-permissions`, `cs-evaluations-audit-logging`, `cs-evaluations-unresolved-residual`
 
 ### vehicle-detail
 

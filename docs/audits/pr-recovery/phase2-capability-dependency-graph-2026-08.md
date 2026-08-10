@@ -4,47 +4,52 @@ Edge types are explicit; PR ancestry is not used as a capability dependency.
 
 | From | To | Type | Reason |
 |---|---|---|---|
-| `cs-evaluations-analytics-contracts` | `cs-evaluations-metric-response-contract` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-metric-response-contract` | `cs-evaluations-metric-registry` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-metric-registry` | `cs-evaluations-calculation-versioning` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-calculation-versioning` | `cs-evaluations-timezone-period-model` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-timezone-period-model` | `cs-evaluations-money-domain` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-money-domain` | `cs-evaluations-multi-currency` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-multi-currency` | `cs-evaluations-receivables` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-receivables` | `cs-evaluations-revenue-cashflow` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-revenue-cashflow` | `cs-evaluations-cost-model` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-cost-model` | `cs-evaluations-utilization` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-utilization` | `cs-evaluations-analytics-summary` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-analytics-summary` | `cs-evaluations-grouped-insights` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-grouped-insights` | `cs-evaluations-driver-influence-analysis` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-driver-influence-analysis` | `cs-evaluations-strength-detection` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-strength-detection` | `cs-evaluations-weakness-detection` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-weakness-detection` | `cs-evaluations-data-quality` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-data-quality` | `cs-evaluations-freshness-lineage` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-freshness-lineage` | `cs-evaluations-tenant-isolation` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-tenant-isolation` | `cs-evaluations-roles-permissions` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-roles-permissions` | `cs-evaluations-gdpr` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-gdpr` | `cs-evaluations-audit-logging` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-audit-logging` | `cs-evaluations-filter-architecture` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-filter-architecture` | `cs-evaluations-information-architecture` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-information-architecture` | `cs-evaluations-metric-state-ux` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-metric-state-ux` | `cs-evaluations-data-quality-panel` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-data-quality-panel` | `cs-evaluations-executive-kpi-strip` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-executive-kpi-strip` | `cs-evaluations-strength-weakness-cockpit` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-strength-weakness-cockpit` | `cs-evaluations-risk-cost-visualizations` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-risk-cost-visualizations` | `cs-evaluations-mobile-readiness` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-mobile-readiness` | `cs-evaluations-accessibility-i18n` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-accessibility-i18n` | `cs-evaluations-recommendation-domain` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-recommendation-domain` | `cs-evaluations-action-center` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-action-center` | `cs-evaluations-action-integrations` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-action-integrations` | `cs-evaluations-impact-measurement` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-impact-measurement` | `cs-evaluations-predictive-analytics-architecture` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-predictive-analytics-architecture` | `cs-evaluations-feature-store` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-feature-store` | `cs-evaluations-demand-revenue-utilization-forecast` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-demand-revenue-utilization-forecast` | `cs-evaluations-maintenance-failure-forecast` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-maintenance-failure-forecast` | `cs-evaluations-backtesting-drift` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-backtesting-drift` | `cs-evaluations-forecast-ux` | `same-module ordering` | evaluations dependency sequence |
-| `cs-evaluations-forecast-ux` | `cs-evaluations-evaluations-core` | `same-module ordering` | evaluations dependency sequence |
+| `cs-evaluations-timezone-period-model` | `cs-evaluations-unified-kpi-contract` | `hard dependency` | manually verified evaluations chain 1 |
+| `cs-evaluations-unified-kpi-contract` | `cs-evaluations-money-domain` | `hard dependency` | manually verified evaluations chain 1 |
+| `cs-evaluations-money-domain` | `cs-evaluations-money-migration` | `hard dependency` | manually verified evaluations chain 1 |
+| `cs-evaluations-money-migration` | `cs-evaluations-receivables` | `hard dependency` | manually verified evaluations chain 1 |
+| `cs-evaluations-receivables` | `cs-evaluations-revenue-cashflow-result` | `hard dependency` | manually verified evaluations chain 1 |
+| `cs-evaluations-revenue-cashflow-result` | `cs-evaluations-multi-currency` | `hard dependency` | manually verified evaluations chain 1 |
+| `cs-evaluations-multi-currency` | `cs-evaluations-finance-test-suite` | `hard dependency` | manually verified evaluations chain 1 |
+| `cs-evaluations-summary-detail-separation` | `cs-evaluations-grouping-entity-references` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-grouping-entity-references` | `cs-evaluations-analytics-summary` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-analytics-summary` | `cs-evaluations-filter-architecture` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-filter-architecture` | `cs-evaluations-tenant-isolation` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-tenant-isolation` | `cs-evaluations-analytics-contracts` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-analytics-contracts` | `cs-evaluations-cost-model` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-cost-model` | `cs-evaluations-utilization` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-utilization` | `cs-evaluations-strength-detection` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-strength-detection` | `cs-evaluations-driver-influence-analysis` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-driver-influence-analysis` | `cs-evaluations-data-quality` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-data-quality` | `cs-evaluations-freshness-lineage` | `hard dependency` | manually verified evaluations chain 2 |
+| `cs-evaluations-summary-detail-separation` | `cs-evaluations-grouping-entity-references` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-grouping-entity-references` | `cs-evaluations-analytics-summary` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-analytics-summary` | `cs-evaluations-filter-architecture` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-filter-architecture` | `cs-evaluations-tenant-isolation` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-tenant-isolation` | `cs-evaluations-analytics-contracts` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-analytics-contracts` | `cs-evaluations-cost-model` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-cost-model` | `cs-evaluations-utilization` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-utilization` | `cs-evaluations-weakness-detection` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-weakness-detection` | `cs-evaluations-driver-influence-analysis` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-driver-influence-analysis` | `cs-evaluations-data-quality` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-data-quality` | `cs-evaluations-freshness-lineage` | `hard dependency` | manually verified evaluations chain 3 |
+| `cs-evaluations-metric-state-ux` | `cs-evaluations-data-quality-panel` | `hard dependency` | manually verified evaluations chain 4 |
+| `cs-evaluations-data-quality-panel` | `cs-evaluations-information-architecture` | `hard dependency` | manually verified evaluations chain 4 |
+| `cs-evaluations-information-architecture` | `cs-evaluations-executive-kpi-strip` | `hard dependency` | manually verified evaluations chain 4 |
+| `cs-evaluations-executive-kpi-strip` | `cs-evaluations-strength-weakness-cockpit` | `hard dependency` | manually verified evaluations chain 4 |
+| `cs-evaluations-strength-weakness-cockpit` | `cs-evaluations-risk-cost-failure-visuals` | `hard dependency` | manually verified evaluations chain 4 |
+| `cs-evaluations-risk-cost-failure-visuals` | `cs-evaluations-mobile-readiness` | `hard dependency` | manually verified evaluations chain 4 |
+| `cs-evaluations-mobile-readiness` | `cs-evaluations-accessibility-i18n` | `hard dependency` | manually verified evaluations chain 4 |
+| `cs-evaluations-recommendation-domain` | `cs-evaluations-action-center` | `hard dependency` | manually verified evaluations chain 5 |
+| `cs-evaluations-action-center` | `cs-evaluations-action-integrations` | `hard dependency` | manually verified evaluations chain 5 |
+| `cs-evaluations-action-integrations` | `cs-evaluations-impact-measurement` | `hard dependency` | manually verified evaluations chain 5 |
+| `cs-evaluations-predictive-analytics-architecture` | `cs-evaluations-feature-store` | `hard dependency` | manually verified evaluations chain 6 |
+| `cs-evaluations-feature-store` | `cs-evaluations-demand-revenue-utilization-forecast` | `hard dependency` | manually verified evaluations chain 6 |
+| `cs-evaluations-demand-revenue-utilization-forecast` | `cs-evaluations-maintenance-failure-forecast` | `hard dependency` | manually verified evaluations chain 6 |
+| `cs-evaluations-maintenance-failure-forecast` | `cs-evaluations-backtesting-drift` | `hard dependency` | manually verified evaluations chain 6 |
+| `cs-evaluations-backtesting-drift` | `cs-evaluations-forecast-ux` | `hard dependency` | manually verified evaluations chain 6 |
+| `cs-evaluations-gdpr` | `cs-evaluations-roles-permissions` | `hard dependency` | manually verified evaluations chain 7 |
+| `cs-evaluations-roles-permissions` | `cs-evaluations-audit-logging` | `hard dependency` | manually verified evaluations chain 7 |
 | `cs-observability-api-and-domain-contracts` | `cs-administration-api-and-domain-contracts` | `soft dependency` | observability foundation |
 | `cs-roles-access-api-and-domain-contracts` | `cs-administration-administration-core` | `hard dependency` | roles-access foundation |
 | `cs-observability-api-and-domain-contracts` | `cs-administration-administration-core` | `soft dependency` | observability foundation |
@@ -126,83 +131,6 @@ Edge types are explicit; PR ancestry is not used as a capability dependency.
 | `cs-observability-api-and-domain-contracts` | `cs-documents-tenant-and-access-controls` | `soft dependency` | observability foundation |
 | `cs-infrastructure-api-and-domain-contracts` | `cs-documents-testing-and-validation` | `cross-module dependency` | infrastructure foundation |
 | `cs-observability-api-and-domain-contracts` | `cs-documents-testing-and-validation` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-accessibility-i18n` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-accessibility-i18n` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-action-center` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-action-center` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-action-integrations` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-action-integrations` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-analytics-contracts` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-analytics-contracts` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-analytics-summary` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-analytics-summary` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-audit-logging` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-audit-logging` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-backtesting-drift` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-backtesting-drift` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-calculation-versioning` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-calculation-versioning` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-cost-model` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-cost-model` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-data-quality` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-data-quality` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-data-quality-panel` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-data-quality-panel` | `soft dependency` | observability foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-demand-revenue-utilization-forecast` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-driver-influence-analysis` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-driver-influence-analysis` | `soft dependency` | observability foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-evaluations-core` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-executive-kpi-strip` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-executive-kpi-strip` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-feature-store` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-feature-store` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-filter-architecture` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-filter-architecture` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-forecast-ux` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-forecast-ux` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-freshness-lineage` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-freshness-lineage` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-gdpr` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-gdpr` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-grouped-insights` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-grouped-insights` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-information-architecture` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-information-architecture` | `soft dependency` | observability foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-maintenance-failure-forecast` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-metric-registry` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-metric-registry` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-metric-response-contract` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-metric-response-contract` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-metric-state-ux` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-metric-state-ux` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-mobile-readiness` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-mobile-readiness` | `soft dependency` | observability foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-money-domain` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-multi-currency` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-multi-currency` | `soft dependency` | observability foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-predictive-analytics-architecture` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-receivables` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-receivables` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-recommendation-domain` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-recommendation-domain` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-revenue-cashflow` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-revenue-cashflow` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-risk-cost-visualizations` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-risk-cost-visualizations` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-roles-permissions` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-roles-permissions` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-strength-weakness-cockpit` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-strength-weakness-cockpit` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-strength-detection` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-strength-detection` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-tenant-isolation` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-tenant-isolation` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-timezone-period-model` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-timezone-period-model` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-utilization` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-utilization` | `soft dependency` | observability foundation |
-| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-weakness-detection` | `hard dependency` | roles-access foundation |
-| `cs-observability-api-and-domain-contracts` | `cs-evaluations-weakness-detection` | `soft dependency` | observability foundation |
 | `cs-observability-api-and-domain-contracts` | `cs-fleet-api-and-domain-contracts` | `soft dependency` | observability foundation |
 | `cs-observability-api-and-domain-contracts` | `cs-fleet-operational-ui` | `soft dependency` | observability foundation |
 | `cs-roles-access-api-and-domain-contracts` | `cs-fleet-tenant-and-access-controls` | `hard dependency` | roles-access foundation |
@@ -365,6 +293,64 @@ Edge types are explicit; PR ancestry is not used as a capability dependency.
 | `cs-observability-api-and-domain-contracts` | `cs-workflow-automation-testing-and-validation` | `soft dependency` | observability foundation |
 | `cs-observability-api-and-domain-contracts` | `cs-workflow-automation-vehicle-intelligence` | `soft dependency` | observability foundation |
 | `cs-observability-api-and-domain-contracts` | `cs-workflow-automation-workflows` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-timezone-period-model` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-unified-kpi-contract` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-money-domain` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-money-migration` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-receivables` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-revenue-cashflow-result` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-multi-currency` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-finance-test-suite` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-summary-detail-separation` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-grouping-entity-references` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-analytics-summary` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-filter-architecture` | `soft dependency` | observability foundation |
+| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-tenant-isolation` | `hard dependency` | roles-access foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-tenant-isolation` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-tenant-isolation` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-analytics-contracts` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-cost-model` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-utilization` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-strength-detection` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-weakness-detection` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-driver-influence-analysis` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-data-quality` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-freshness-lineage` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-freshness-lineage` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-metric-state-ux` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-data-quality-panel` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-data-quality-panel` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-executive-kpi-strip` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-executive-kpi-strip` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-strength-weakness-cockpit` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-risk-cost-failure-visuals` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-recommendation-domain` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-action-center` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-action-center` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-action-integrations` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-impact-measurement` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-predictive-analytics-architecture` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-predictive-analytics-architecture` | `soft dependency` | observability foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-feature-store` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-demand-revenue-utilization-forecast` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-demand-revenue-utilization-forecast` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-maintenance-failure-forecast` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-maintenance-failure-forecast` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-backtesting-drift` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-backtesting-drift` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-forecast-ux` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-forecast-ux` | `soft dependency` | observability foundation |
+| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-gdpr` | `hard dependency` | roles-access foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-gdpr` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-gdpr` | `soft dependency` | observability foundation |
+| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-roles-permissions` | `hard dependency` | roles-access foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-roles-permissions` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-roles-permissions` | `soft dependency` | observability foundation |
+| `cs-roles-access-api-and-domain-contracts` | `cs-evaluations-audit-logging` | `hard dependency` | roles-access foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-audit-logging` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-audit-logging` | `soft dependency` | observability foundation |
+| `cs-infrastructure-api-and-domain-contracts` | `cs-evaluations-unresolved-residual` | `cross-module dependency` | infrastructure foundation |
+| `cs-observability-api-and-domain-contracts` | `cs-evaluations-unresolved-residual` | `soft dependency` | observability foundation |
 
 ## Change-set nodes
 
@@ -439,48 +425,6 @@ Edge types are explicit; PR ancestry is not used as a capability dependency.
 | `cs-documents-runtime-jobs-and-queues` | `documents` | Runtime jobs and queues | `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
 | `cs-documents-tenant-and-access-controls` | `documents` | Tenant and access controls | `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
 | `cs-documents-testing-and-validation` | `documents` | Testing and validation | `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
-| `cs-evaluations-accessibility-i18n` | `evaluations` | Accessibility / i18n | `cs-evaluations-mobile-readiness`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-action-center` | `evaluations` | Action Center | `cs-evaluations-recommendation-domain`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-action-integrations` | `evaluations` | Action Integrations | `cs-evaluations-action-center`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-analytics-contracts` | `evaluations` | Analytics Contracts | `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-analytics-summary` | `evaluations` | Analytics Summary | `cs-evaluations-utilization`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-audit-logging` | `evaluations` | Audit Logging | `cs-evaluations-gdpr`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-backtesting-drift` | `evaluations` | Backtesting / Drift | `cs-evaluations-maintenance-failure-forecast`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-calculation-versioning` | `evaluations` | Calculation Versioning | `cs-evaluations-metric-registry`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-cost-model` | `evaluations` | Cost Model | `cs-evaluations-revenue-cashflow`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-data-quality` | `evaluations` | Data Quality | `cs-evaluations-weakness-detection`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-data-quality-panel` | `evaluations` | Data Quality Panel | `cs-evaluations-metric-state-ux`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-demand-revenue-utilization-forecast` | `evaluations` | Demand / Revenue / Utilization Forecast | `cs-evaluations-feature-store`, `cs-observability-api-and-domain-contracts` |
-| `cs-evaluations-driver-influence-analysis` | `evaluations` | Driver / Influence Analysis | `cs-evaluations-grouped-insights`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-evaluations-core` | `evaluations` | Evaluations Core | `cs-evaluations-forecast-ux`, `cs-observability-api-and-domain-contracts` |
-| `cs-evaluations-executive-kpi-strip` | `evaluations` | Executive KPI Strip | `cs-evaluations-data-quality-panel`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-feature-store` | `evaluations` | Feature Store | `cs-evaluations-predictive-analytics-architecture`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-filter-architecture` | `evaluations` | Filter Architecture | `cs-evaluations-audit-logging`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-forecast-ux` | `evaluations` | Forecast UX | `cs-evaluations-backtesting-drift`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-freshness-lineage` | `evaluations` | Freshness / Lineage | `cs-evaluations-data-quality`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-gdpr` | `evaluations` | GDPR | `cs-evaluations-roles-permissions`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-grouped-insights` | `evaluations` | Grouped Insights | `cs-evaluations-analytics-summary`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-impact-measurement` | `evaluations` | Impact Measurement | `cs-evaluations-action-integrations` |
-| `cs-evaluations-information-architecture` | `evaluations` | Information Architecture | `cs-evaluations-filter-architecture`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-maintenance-failure-forecast` | `evaluations` | Maintenance / Failure Forecast | `cs-evaluations-demand-revenue-utilization-forecast`, `cs-observability-api-and-domain-contracts` |
-| `cs-evaluations-metric-registry` | `evaluations` | Metric Registry | `cs-evaluations-metric-response-contract`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-metric-response-contract` | `evaluations` | Metric Response Contract | `cs-evaluations-analytics-contracts`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-metric-state-ux` | `evaluations` | Metric State UX | `cs-evaluations-information-architecture`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-mobile-readiness` | `evaluations` | Mobile Readiness | `cs-evaluations-risk-cost-visualizations`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-money-domain` | `evaluations` | Money Domain | `cs-evaluations-timezone-period-model`, `cs-observability-api-and-domain-contracts` |
-| `cs-evaluations-multi-currency` | `evaluations` | Multi-Currency | `cs-evaluations-money-domain`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-predictive-analytics-architecture` | `evaluations` | Predictive Analytics Architecture | `cs-evaluations-impact-measurement`, `cs-observability-api-and-domain-contracts` |
-| `cs-evaluations-receivables` | `evaluations` | Receivables | `cs-evaluations-multi-currency`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-recommendation-domain` | `evaluations` | Recommendation Domain | `cs-evaluations-accessibility-i18n`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-revenue-cashflow` | `evaluations` | Revenue / Cashflow | `cs-evaluations-receivables`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-risk-cost-visualizations` | `evaluations` | Risk / Cost Visualizations | `cs-evaluations-strength-weakness-cockpit`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-roles-permissions` | `evaluations` | Roles / Permissions | `cs-evaluations-tenant-isolation`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-strength-weakness-cockpit` | `evaluations` | Strength / Weakness Cockpit | `cs-evaluations-executive-kpi-strip`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-strength-detection` | `evaluations` | Strength Detection | `cs-evaluations-driver-influence-analysis`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-tenant-isolation` | `evaluations` | Tenant Isolation | `cs-evaluations-freshness-lineage`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-timezone-period-model` | `evaluations` | Timezone / Period Model | `cs-evaluations-calculation-versioning`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-utilization` | `evaluations` | Utilization | `cs-evaluations-cost-model`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
-| `cs-evaluations-weakness-detection` | `evaluations` | Weakness Detection | `cs-evaluations-strength-detection`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
 | `cs-fleet-api-and-domain-contracts` | `fleet` | API and domain contracts | `cs-observability-api-and-domain-contracts` |
 | `cs-fleet-operational-ui` | `fleet` | Operational UI | `cs-observability-api-and-domain-contracts` |
 | `cs-fleet-service-cases` | `fleet` | Service Cases | — |
@@ -615,3 +559,46 @@ Edge types are explicit; PR ancestry is not used as a capability dependency.
 | `cs-workflow-automation-testing-and-validation` | `workflow-automation` | Testing and validation | `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
 | `cs-workflow-automation-vehicle-intelligence` | `workflow-automation` | Vehicle Intelligence | `cs-observability-api-and-domain-contracts` |
 | `cs-workflow-automation-workflows` | `workflow-automation` | Workflows | `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-timezone-period-model` | `evaluations` | Timezone / Period Model | `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-unified-kpi-contract` | `evaluations` | Unified KPI Contract | `cs-evaluations-timezone-period-model`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-money-domain` | `evaluations` | Money Domain | `cs-evaluations-unified-kpi-contract`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-money-migration` | `evaluations` | Money Migration | `cs-evaluations-money-domain`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-receivables` | `evaluations` | Receivables | `cs-evaluations-money-migration`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-revenue-cashflow-result` | `evaluations` | Revenue / Cashflow / Result | `cs-evaluations-receivables`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-multi-currency` | `evaluations` | Multi-Currency | `cs-evaluations-revenue-cashflow-result`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-finance-test-suite` | `evaluations` | Finance Test Suite | `cs-evaluations-multi-currency`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-summary-detail-separation` | `evaluations` | Summary / Detail Separation | `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-grouping-entity-references` | `evaluations` | Grouping / Entity References | `cs-evaluations-summary-detail-separation`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-analytics-summary` | `evaluations` | Analytics Summary | `cs-evaluations-grouping-entity-references`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-filter-architecture` | `evaluations` | Filter Architecture | `cs-evaluations-analytics-summary`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-tenant-isolation` | `evaluations` | Tenant Isolation | `cs-evaluations-filter-architecture`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
+| `cs-evaluations-analytics-contracts` | `evaluations` | Analytics Contracts | `cs-evaluations-tenant-isolation`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-cost-model` | `evaluations` | Cost Model | `cs-evaluations-analytics-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-utilization` | `evaluations` | Utilization | `cs-evaluations-cost-model`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-strength-detection` | `evaluations` | Strength Detection | `cs-evaluations-utilization`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-weakness-detection` | `evaluations` | Weakness Detection | `cs-evaluations-utilization`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-driver-influence-analysis` | `evaluations` | Driver / Influence Analysis | `cs-evaluations-strength-detection`, `cs-evaluations-weakness-detection`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-data-quality` | `evaluations` | Data Quality | `cs-evaluations-driver-influence-analysis`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-freshness-lineage` | `evaluations` | Freshness / Lineage | `cs-evaluations-data-quality`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-metric-state-ux` | `evaluations` | Metric State UX | `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-data-quality-panel` | `evaluations` | Data Quality Panel | `cs-evaluations-metric-state-ux`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-information-architecture` | `evaluations` | Information Architecture | `cs-evaluations-data-quality-panel` |
+| `cs-evaluations-executive-kpi-strip` | `evaluations` | Executive KPI Strip | `cs-evaluations-information-architecture`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-strength-weakness-cockpit` | `evaluations` | Strength / Weakness Cockpit | `cs-evaluations-executive-kpi-strip`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-risk-cost-failure-visuals` | `evaluations` | Risk / Cost / Failure Visuals | `cs-evaluations-strength-weakness-cockpit`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-mobile-readiness` | `evaluations` | Mobile Readiness | `cs-evaluations-risk-cost-failure-visuals` |
+| `cs-evaluations-accessibility-i18n` | `evaluations` | Accessibility / i18n | `cs-evaluations-mobile-readiness` |
+| `cs-evaluations-recommendation-domain` | `evaluations` | Recommendation Domain | `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-action-center` | `evaluations` | Action Center | `cs-evaluations-recommendation-domain`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-action-integrations` | `evaluations` | Action Integrations | `cs-evaluations-action-center`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-impact-measurement` | `evaluations` | Impact Measurement | `cs-evaluations-action-integrations`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-predictive-analytics-architecture` | `evaluations` | Predictive Analytics Architecture | `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-feature-store` | `evaluations` | Feature Store | `cs-evaluations-predictive-analytics-architecture`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-demand-revenue-utilization-forecast` | `evaluations` | Demand / Revenue / Utilization Forecast | `cs-evaluations-feature-store`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-maintenance-failure-forecast` | `evaluations` | Maintenance / Failure Forecast | `cs-evaluations-demand-revenue-utilization-forecast`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-backtesting-drift` | `evaluations` | Backtesting / Drift | `cs-evaluations-maintenance-failure-forecast`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-forecast-ux` | `evaluations` | Forecast UX | `cs-evaluations-backtesting-drift`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
+| `cs-evaluations-gdpr` | `evaluations` | GDPR | `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
+| `cs-evaluations-roles-permissions` | `evaluations` | Roles / Permissions | `cs-evaluations-gdpr`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
+| `cs-evaluations-audit-logging` | `evaluations` | Audit Logging | `cs-evaluations-roles-permissions`, `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts`, `cs-roles-access-api-and-domain-contracts` |
+| `cs-evaluations-unresolved-residual` | `evaluations` | Unresolved residual evaluation artifacts | `cs-infrastructure-api-and-domain-contracts`, `cs-observability-api-and-domain-contracts` |
