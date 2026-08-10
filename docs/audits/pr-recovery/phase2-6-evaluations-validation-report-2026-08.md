@@ -16,7 +16,7 @@ Generated `2026-08-10T18:30:00+00:00` against `origin/main` `2d721a902feb56101eb
 - Unknown final dependencies: 0
 - Unresolved platform prerequisites: 0
 - Validator errors: 0
-- Negative validator tests: 9/9 passed
+- Negative validator tests: 10/10 passed
 - Result: `PASS`
 
 ## Negative fixtures
@@ -30,6 +30,7 @@ Generated `2026-08-10T18:30:00+00:00` against `origin/main` `2d721a902feb56101eb
 - `critical_missing_rollback`: `PASS`; expected `MISSING_ROLLBACK`; observed `MISSING_ROLLBACK`.
 - `predictive_without_off_flag`: `PASS`; expected `PREDICTIVE_FLAG_NOT_OFF`; observed `PREDICTIVE_FLAG_NOT_OFF`.
 - `cross_module_hard_without_prerequisite`: `PASS`; expected `UNKNOWN_CROSS_MODULE_HARD_DEPENDENCY`; observed `UNKNOWN_CROSS_MODULE_HARD_DEPENDENCY, UNKNOWN_DEPENDENCY`.
+- `predictive_file_in_non_owner_package`: `PASS`; expected `EXCLUSIVE_FILE_OWNER_VIOLATION`; observed `EXCLUSIVE_FILE_OWNER_VIOLATION`.
 
 ## ADR consistency spot check
 

@@ -14,7 +14,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #752, #754, #755
 - Source commits: `312ee93f5315af7c8a4474a5014976a68584a7c6`, `59cbd9f1f8f2e5f55601b5f2385f9fc5701c49b2`, `850b20bc632e514acba32e05e38b92c864840779`, `f23e6bdab173c9e4705f56316737a2497d147ae1`
 - Implementation: ALREADY_IN_MAIN_NO_ACTION, REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: None.
+- Migration evidence to regenerate from current main: None.
 - Tests: shared contract tests; timezone/DST boundary tests; calculation provenance regression
 - Staging: required; VPS: not in this package.
 - Entry gate: Fresh current main; preserve the two already-main registry/versioning baselines.
@@ -22,39 +22,20 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `none`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
-- `backend/prisma/migrations/20260724130000_dashboard_insight_calculation_meta/migration.sql`
-- `backend/prisma/schema.prisma`
-- `backend/src/app.module.ts`
-- `backend/src/modules/business-insights/business-insights.service.ts`
-- `backend/src/modules/business-insights/dashboard-insights.repository.ts`
-- `backend/src/modules/business-insights/evaluations-baseline.characterization.spec.ts`
-- `backend/src/modules/business-insights/insight.types.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-calculation-provenance.spec.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-financial-kpi.service.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-kpi.controller.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-metric-calculation-versions.sync.spec.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-metric-response.dto.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-metric-response.spec.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-metric.controller.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-metric.definitions.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-metric.legacy-map.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-metric.module.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-metric.registry.spec.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-metric.registry.ts`
-- `backend/src/modules/evaluations-metrics/evaluations-metric.service.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-period.controller.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-period.resolver.spec.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-period.resolver.ts`
 - `backend/src/modules/evaluations-metrics/evaluations-period.service.ts`
 - `backend/src/modules/evaluations-metrics/financial-kpi.logic.ts`
-- `backend/src/modules/evaluations-metrics/index.ts`
-- `backend/src/modules/evaluations-metrics/insight-calculation-provenance.ts`
 - `backend/tsconfig.json`
-- `docs/architecture/analytics/evaluations-calculation-versioning.md`
-- `docs/architecture/analytics/evaluations-metric-registry.md`
 - `docs/architecture/analytics/evaluations-metric-response-contract.md`
 - `docs/architecture/analytics/evaluations-timezone-period-model.md`
 - `frontend/src/lib/api.ts`
@@ -63,29 +44,18 @@ For every package: `git fetch origin`, create only that package branch from then
 - `frontend/src/rental/components/FinancialInsightsView.tsx`
 - `frontend/src/rental/components/dashboard/runtime/businessPulseSliceBuilder.ts`
 - `frontend/src/rental/components/dashboard/useDashboardViewModel.ts`
-- `frontend/src/rental/lib/evaluations/evaluations-financial-provenance.test.ts`
-- `frontend/src/rental/lib/evaluations/evaluations-financial-provenance.ts`
-- `frontend/src/rental/lib/evaluations/evaluations-metric-registry.ts`
 - `frontend/src/rental/lib/evaluations/evaluations-metric-response.test.ts`
 - `frontend/src/rental/lib/evaluations/evaluations-metric-response.ts`
-- `frontend/src/rental/lib/evaluations/evaluations-metric.contract.test.ts`
-- `frontend/src/rental/lib/evaluations/evaluations-metric.contract.ts`
 - `frontend/src/rental/lib/evaluations/evaluations-period.client.test.ts`
 - `frontend/src/rental/lib/evaluations/evaluations-period.client.ts`
 - `frontend/src/rental/lib/evaluations/useEvaluationsReportingPeriods.ts`
 - `frontend/tsconfig.app.json`
 - `frontend/vite.config.ts`
 - `frontend/vitest.config.ts`
-- `shared/evaluations-metrics/evaluations-calculation-provenance.ts`
-- `shared/evaluations-metrics/evaluations-financial-provenance.ts`
-- `shared/evaluations-metrics/evaluations-metric-calculation-versions.ts`
 - `shared/evaluations-metrics/evaluations-metric-response.builder.ts`
 - `shared/evaluations-metrics/evaluations-metric-response.contract.ts`
 - `shared/evaluations-metrics/evaluations-metric-response.legacy-map.ts`
 - `shared/evaluations-metrics/evaluations-metric-response.validator.ts`
-- `shared/evaluations-metrics/evaluations-metric.contract.ts`
-- `shared/evaluations-metrics/evaluations-metric.i18n.ts`
-- `shared/evaluations-metrics/evaluations-metric.legacy-map.ts`
 - `shared/evaluations-periods/evaluations-period.contract.ts`
 - `shared/evaluations-periods/evaluations-zoned-date.ts`
 
@@ -99,7 +69,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #767, #770, #774, #776, #778
 - Source commits: `1724bd92bf8e4dfab742767ded38fbc18dabb19e`, `26e4532201c94ddf0f72d17c324b42add7dec9cc`, `515cd44e5b4beac30ffe8b9d63f3d941a9fb578b`, `642a210403b63cb719af7566f2019c76044933aa`, `da79b28aa4ad0d84202d332c1f20e10cad8f06dd`
 - Implementation: PORT_PATCH_MANUALLY, REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: `backend/prisma/migrations/20260724100000_dashboard_insights_analytics_index/migration.sql`, `backend/prisma/migrations/20260724110000_dashboard_insights_entity_references/migration.sql`, `backend/prisma/schema.prisma`
+- Migration evidence to regenerate from current main: `backend/prisma/migrations/20260724100000_dashboard_insights_analytics_index/migration.sql`, `backend/prisma/migrations/20260724110000_dashboard_insights_entity_references/migration.sql`, `backend/prisma/schema.prisma`
 - Tests: contract tests; migration dry run; cross-tenant/station negative tests; RBAC guard tests
 - Staging: required; VPS: not in this package.
 - Entry gate: E1 merged; normalized entity-reference and tenant-scope design reviewed before schema work.
@@ -107,7 +77,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_ANALYTICS_V2_MODE=off`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
 - `backend/prisma/migrations/20260724100000_dashboard_insights_analytics_index/migration.sql`
@@ -188,7 +158,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #756, #757, #760, #762, #765
 - Source commits: `077ba5060251eaa4fae983249822be68b6b00293`, `7ab6d01dac0cf6a979c321327b03289ed31afe92`, `d966961c2dc9d6690f5ea21d32d8360b77c0ab1c`, `de17de779d1c3a5de9358268ecbc50da98270849`, `e340795d2f22198c867401becfa99217c321c0f5`, `efb3abc5feda78818a04849b19d24226c8396282`
 - Implementation: REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: `backend/scripts/ops/backfill-evaluations-insight-money-metrics.ts`, `backend/src/shared/money/money-insight-migration.spec.ts`, `docs/migrations/evaluations-money-migration.md`
+- Migration evidence to regenerate from current main: `backend/scripts/ops/backfill-evaluations-insight-money-metrics.ts`, `backend/src/shared/money/money-insight-migration.spec.ts`, `docs/migrations/evaluations-money-migration.md`
 - Tests: money property tests; finance integration tests; migration/backfill dry run; multi-currency reconciliation
 - Staging: required; VPS: not in this package.
 - Entry gate: E2 tenant-safe contract surface merged; EVAL-ADR-001 migration design approved.
@@ -196,7 +166,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_ANALYTICS_V2_MODE=off`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package-lock.json`
 - `backend/package.json`
@@ -297,7 +267,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #773, #780, #782, #783, #784, #786
 - Source commits: `32714750f7f197c5a8e4b9bb304011ca2444a05d`, `46f533afc431d9c68a4486133313e4f5d7888de0`, `56b9efe22b059cedf5aff64188922aef6e10ba37`, `d96ba7a8c6379e533ca17f2f3c77b46bbeb6ee43`, `e65b88dbefb34b99d6c9520a6d785f571a8f33e6`, `f5cfe0c5cda1bef260dca6a0417977701530210e`
 - Implementation: PORT_PATCH_MANUALLY, REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: None.
+- Migration evidence to regenerate from current main: None.
 - Tests: repository/aggregation tests; pagination and large-dataset tests; tenant negative tests; contract compatibility tests
 - Staging: required; VPS: not in this package.
 - Entry gate: E2 contracts/security and E3 canonical finance semantics merged.
@@ -305,7 +275,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_ANALYTICS_V2_MODE=off`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
 - `backend/src/modules/business-insights/business-insights.module.ts`
@@ -372,7 +342,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #788, #790, #792, #815, #816, #817
 - Source commits: `2c32183956d3aa4ce56cd3ce4b02f33bcb3dc9b4`, `549c0e237d862eee491943b87077d3ce931ae8a8`, `5de5e0295658ae3e23f4025e9c316b54193d2872`, `c82e449362177a4c9d30ae308558464a2ab934f4`, `c8714b1f9e9760b29a282a294412bf9ebe31cec2`, `d10d072efce62980e7732d086dd8f6f8f1e2f875`
 - Implementation: PORT_PATCH_MANUALLY, REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: None.
+- Migration evidence to regenerate from current main: None.
 - Tests: data quality/freshness tests; RBAC matrix tests; PII redaction tests; durable audit outbox tests
 - Staging: required; VPS: not in this package.
 - Entry gate: E4 backend merged; central RBAC and business-audit extension plan approved.
@@ -380,7 +350,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_ANALYTICS_V2_MODE=off`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
 - `backend/src/modules/business-audit/business-audit-outbox.processor.ts`
@@ -417,11 +387,6 @@ For every package: `git fetch origin`, create only that package branch from then
 - `backend/src/modules/business-insights/evaluations-strength-detection.service.ts`
 - `backend/src/modules/business-insights/evaluations-weakness-detection.service.ts`
 - `backend/src/modules/business-insights/internal-business-insights.controller.ts`
-- `backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts`
-- `backend/src/modules/business-insights/predictive/predictive-backtest.service.ts`
-- `backend/src/modules/business-insights/predictive/predictive-feature.controller.ts`
-- `backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts`
-- `backend/src/modules/business-insights/predictive/predictive-risk.controller.ts`
 - `backend/src/modules/business-insights/tenant-insight-policy.service.ts`
 - `backend/src/modules/customers/customers.controller.ts`
 - `backend/src/modules/customers/customers.module.ts`
@@ -481,6 +446,16 @@ For every package: `git fetch origin`, create only that package branch from then
 
 </details>
 
+<details><summary>Historical file overlap deferred to its owning package</summary>
+
+- `backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts` → `E8`; do not port in `E5`.
+- `backend/src/modules/business-insights/predictive/predictive-backtest.service.ts` → `E8`; do not port in `E5`.
+- `backend/src/modules/business-insights/predictive/predictive-feature.controller.ts` → `E8`; do not port in `E5`.
+- `backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts` → `E8`; do not port in `E5`.
+- `backend/src/modules/business-insights/predictive/predictive-risk.controller.ts` → `E8`; do not port in `E5`.
+
+</details>
+
 ## 6. E6 — Core Evaluations UI
 
 - Planned branch: `integration/evaluations-e6-core-evaluations-ui-2026-08`
@@ -489,7 +464,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #793, #794, #795, #796, #798, #801, #803
 - Source commits: `14072b3141bbfc5001372334aca8c8df9311df76`, `2759f22353106ac3c3804fce0e95f8e1aef32b25`, `304a6ed19da12e30bde4ed8e78f9784e0984eb49`, `7f6dde4c8c502dc238167d62c508ac9145e91c5c`, `cb2ced964d28bbbec11f1564e7081376cc12710d`, `ddad560687ad7d42ca7a15bb033e85bc06b25187`, `ff34b66f0074e7f5efd155ff6301cae1790cc361`
 - Implementation: PORT_PATCH_MANUALLY, REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: None.
+- Migration evidence to regenerate from current main: None.
 - Tests: frontend typecheck; component/E2E tests; mobile/visual regression; accessibility/i18n
 - Staging: required; VPS: not in this package.
 - Entry gate: E3-E5 backend, finance, quality and security contracts merged; no placeholder API allowed.
@@ -497,7 +472,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `VITE_EVALUATIONS_UI_V2=off`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
 - `backend/src/modules/business-insights/evaluations-data-quality-panel.shared.spec.ts`
@@ -593,7 +568,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #804, #806, #807, #808
 - Source commits: `038223bc18dc475a7f0908baa34c6da22986fd68`, `364bd93733e30c6a98ea579f1707b8a73be2ecd8`, `8829b6a56a0687994edde3ead74d6f95b3122d33`, `9eae4b1246fcbfe5efa7f04caa2bb429600ccf3b`
 - Implementation: PORT_PATCH_MANUALLY, RECONSTRUCT_MERGE_RESULT, REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: `backend/prisma/migrations/20260724120000_org_recommendations/migration.sql`, `backend/prisma/migrations/20260724130000_org_recommendation_impacts/migration.sql`, `backend/prisma/schema.prisma`
+- Migration evidence to regenerate from current main: `backend/prisma/migrations/20260724120000_org_recommendations/migration.sql`, `backend/prisma/migrations/20260724130000_org_recommendation_impacts/migration.sql`, `backend/prisma/schema.prisma`
 - Tests: state-machine tests; authorization/idempotency tests; audit outbox tests; side-effect safety tests
 - Staging: required; VPS: not in this package.
 - Entry gate: E5 authorization/audit and E6 UI shell merged; material-action policy review complete.
@@ -601,7 +576,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_RECOMMENDATIONS_MODE=off;EVALUATIONS_IMPACT_MEASUREMENT_ENABLED=false`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/prisma/migrations/20260724120000_org_recommendations/migration.sql`
 - `backend/prisma/migrations/20260724130000_org_recommendation_impacts/migration.sql`
@@ -673,7 +648,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #809, #810, #811, #812, #813
 - Source commits: `8488537978d8294e8ac04c436866104b99958886`, `96edda271330a5904843034b98e16990f9ed76e7`, `9cb26ece2b380e456fc440c3e97a336dd80dd890`, `e3c8966a51c00a80eadfc2bc69cdca0e398e9b9d`, `f988c3664bbe18edc49ba8a3e762bb1660a8e043`
 - Implementation: REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: `backend/prisma/migrations/20260724140000_org_predictive_feature_snapshots/migration.sql`, `backend/prisma/migrations/20260724150000_org_predictive_forecasts/migration.sql`, `backend/prisma/migrations/20260724160000_org_predictive_risk_forecasts/migration.sql`, `backend/prisma/migrations/20260724170000_org_predictive_backtesting/migration.sql`, `backend/prisma/schema.prisma`
+- Migration evidence to regenerate from current main: `backend/prisma/migrations/20260724140000_org_predictive_feature_snapshots/migration.sql`, `backend/prisma/migrations/20260724150000_org_predictive_forecasts/migration.sql`, `backend/prisma/migrations/20260724160000_org_predictive_risk_forecasts/migration.sql`, `backend/prisma/migrations/20260724170000_org_predictive_backtesting/migration.sql`, `backend/prisma/schema.prisma`
 - Tests: future-leakage tests; rolling backtests; baseline and interval-coverage tests; model release denial tests
 - Staging: required; VPS: not in this package.
 - Entry gate: E4/E5 analytics, quality, tenant and audit foundations merged; model governance review complete.
@@ -681,7 +656,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `EVALUATIONS_PREDICTIVE_MODE=off`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `backend/package.json`
 - `backend/prisma/migrations/20260724140000_org_predictive_feature_snapshots/migration.sql`
@@ -758,7 +733,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Source PRs: #814
 - Source commits: `46b905ad6a441f3c16a3f66c17ff88afc1fa7318`
 - Implementation: REIMPLEMENT_ON_CURRENT_MAIN
-- Migrations: None.
+- Migration evidence to regenerate from current main: None.
 - Tests: forecast component/E2E tests; uncertainty/accessibility tests; release-gate denial tests; staging and rollback smoke
 - Staging: required; VPS: required.
 - Entry gate: E6 UI and E8 model-status/release contracts merged; backend remains default off.
@@ -766,7 +741,7 @@ For every package: `git fetch origin`, create only that package branch from then
 - Rollback: Set package feature modes to off; revert the isolated package commit and redeploy the prior release. For applied schema, use rehearsed roll-forward repair or restore only from a verified backup.
 - Feature flag: `VITE_EVALUATIONS_PREDICTIVE_MODE=off;EVALUATIONS_PREDICTIVE_MODE=off`
 
-<details><summary>Affected files</summary>
+<details><summary>Phase-3 implementation file scope</summary>
 
 - `docs/frontend/evaluations-forecast-ux.md`
 - `frontend/src/lib/api.ts`
@@ -790,4 +765,5 @@ For every package: `git fetch origin`, create only that package branch from then
 
 - Any cross-tenant/station read, missing central permission check, unconfirmed material action, idempotency gap, audit enqueue failure, mixed-currency sum, PII leakage, future leakage, or predictive default-on is `NO-GO`.
 - Historical migrations are evidence only. Recompute each schema diff and rehearse expand/backfill/switch/contract on current main.
+- Predictive backend/shared implementation paths are owned exclusively by E8. Earlier RBAC/audit packages may add reusable guards and contracts, but must not port predictive controllers, services or shared predictive implementations.
 - Figma remains visual authority during Phase-3 UI implementation; no UI package may introduce client-owned KPI truth.

@@ -18,7 +18,7 @@ Generated `2026-08-10T18:30:00+00:00` against current `origin/main` `2d721a902fe
 - Package DAG cycles: 0.
 - Topological package order: E1 → E2 → E3 → E4 → E5 → E6 → E7 → E8 → E9.
 - Validator: `PASS`.
-- Negative tests: `PASS` (9/9).
+- Negative tests: `PASS` (10/10).
 - Open architecture questions: 0.
 - Open UNKNOWNs: 0.
 
