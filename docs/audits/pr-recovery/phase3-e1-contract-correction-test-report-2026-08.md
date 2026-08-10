@@ -79,6 +79,8 @@ scope.
 - Production typecheck/build gates: **PASS**
 - Mirror integrity: **PASS**
 - `NEW_E1_FAILURE`: **0**
-- Repository-wide acceptance: **BLOCKED only by documented current-main
-  failures**, so PR #1018 remains draft.
+- Repository-wide/CI red gates: **ACCEPTED_BASELINE** because every current
+  failure is reproducibly `PRE_EXISTING_IDENTICAL` and no E1-owned file appears
+  in a failure fingerprint.
+- Final status: **E1_READY_FOR_POST_IMPLEMENTATION_AUDIT**.
 

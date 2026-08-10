@@ -122,8 +122,8 @@
       },
       {
         "name": "Dependency advisory count",
-        "classification": "PRE_EXISTING_BUT_CHANGED",
-        "note": "Historical main run used an older advisory state; simultaneous local A/B is identical at 42."
+        "classification": "PRE_EXISTING_IDENTICAL",
+        "note": "Simultaneous local A/B is identical at 42; the historical main run used an older advisory state."
       }
     ]
   },
@@ -131,7 +131,8 @@
     "newE1FailureCount": 0,
     "preExistingIdenticalCommandGroupCount": 5,
     "preExistingIdenticalRawFindingCount": 506,
-    "preExistingButChangedGroupCount": 1,
+    "preExistingButChangedGroupCount": 0,
+    "historicalExternalAdvisoryDriftCount": 1,
     "notReproducibleLocallyCount": 1,
     "result": "PASS_NO_E1_CAUSED_FAILURE"
   }

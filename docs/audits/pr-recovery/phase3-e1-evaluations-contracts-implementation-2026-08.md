@@ -286,9 +286,10 @@ Detailed evidence:
 | Frontend typecheck/build | PASS |
 | Prisma/mirror/no-route/no-DB | PASS |
 | A/B `NEW_E1_FAILURE` | PASS — 0 |
-| Repository-wide/CI | BLOCKED by reproducible current-main failures |
+| Repository-wide/CI | ACCEPTED_BASELINE — all current failures reproduce identically from main |
 
-Final recommendation remains `E1_BLOCKED`, with PR #1018 in draft. E1-owned
-corrections pass; the status is not promoted because the user's acceptance gate
-also requires the repository-wide and GitHub CI gates to be green or formally
-accepted as baseline.
+Final E1.1 status: `E1_READY_FOR_POST_IMPLEMENTATION_AUDIT`. E1-owned
+corrections pass, every current red GitHub failure has a reproducible
+`PRE_EXISTING_IDENTICAL` main fingerprint, and `NEW_E1_FAILURE` is zero. The
+earlier E1 recommendation in section 10 is superseded by this evidence-backed
+E1.1 correction result.

@@ -69,8 +69,8 @@ E1.1's added contract suites all pass inside the B run.
 The simultaneous local A/B uses the current npm advisory database and reports the
 same 42 vulnerabilities. Historical GitHub main run `30221356275` reported 71
 for the same lockfiles; that count drift is external advisory-state change, not an
-E1 code change (`PRE_EXISTING_BUT_CHANGED` historically,
-`PRE_EXISTING_IDENTICAL` in the reproducible local A/B).
+E1 code change. The current failure is `PRE_EXISTING_IDENTICAL`; historical
+advisory-count drift is recorded separately as non-code temporal context.
 
 ## GitHub workflow A/B
 
@@ -90,7 +90,7 @@ Normalized failure roots:
 | Legal lint | 36 errors / 15 warnings | Same | `PRE_EXISTING_IDENTICAL` |
 | Legal migration + integration setup | Prisma `P3018` in legacy `vehicle_trips` migration chain | Same | `PRE_EXISTING_IDENTICAL` |
 | Vehicle Detail Playwright | Fleet-to-detail locator timeout, expected visible / element not found | Same | `PRE_EXISTING_IDENTICAL` |
-| Dependency scan | Critical advisory gate | Same current lockfile/advisory root | `PRE_EXISTING_BUT_CHANGED` across historical run time; local A/B identical |
+| Dependency scan | Critical advisory gate | Same current lockfile/advisory root | `PRE_EXISTING_IDENTICAL`; historical advisory count changed over time |
 
 No GitHub failure references an E1/E1.1-owned file.
 
@@ -115,7 +115,8 @@ unnecessary and therefore none was reverted.
 - `PRE_EXISTING_IDENTICAL`: **5 command-level local failure groups**
   (506 raw current diagnostics/findings: 4 TypeScript, 36 backend lint,
   422 frontend lint, 2 test failures, 42 dependency advisories)
-- `PRE_EXISTING_BUT_CHANGED`: **1 historical advisory-count group**
+- `PRE_EXISTING_BUT_CHANGED`: **0 current failure groups**
+- Historical advisory-count drift: **1 external temporal observation**
 - `NOT_REPRODUCIBLE_LOCALLY`: **1 non-critical main legal-unit rerun**
 - A/B result: **PASS for E1 causality; no E1-owned regression**
 
