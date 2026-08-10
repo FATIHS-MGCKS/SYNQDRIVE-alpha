@@ -139,4 +139,3 @@ Analyzed: 19. No conflict was resolved.
 - Unique commits: `a6d1cca4f9e81abbc0df23980abfe6679d070351`
 - Conflict paths: `backend/prisma/schema.prisma`, `backend/src/app.module.ts`, `backend/src/config/index.ts`, `backend/src/modules/bookings/booking-wizard-draft.service.ts`, `backend/src/modules/bookings/bookings.module.ts`, `backend/src/modules/bookings/bookings.service.ts`, `backend/src/modules/documents/booking-document-bundle.service.ts`, `backend/src/modules/documents/documents.module.ts`, `backend/src/modules/documents/documents.service.spec.ts`, `backend/src/modules/invoices/invoices.module.ts`, `frontend/src/master/components/ArchitekturView.tsx`, `frontend/src/master/components/ChangesView.tsx`
 - Plan: Rebuild only the listed unique commits on current main; do not merge the historical branch.
-
