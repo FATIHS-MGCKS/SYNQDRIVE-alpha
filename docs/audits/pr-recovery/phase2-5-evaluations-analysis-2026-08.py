@@ -506,31 +506,90 @@ write_md(OUT / "phase2-5-evaluations-architecture-decision-matrix-2026-08.md", d
 
 
 RESIDUAL_MAP = {
-    "082464aae4a8eea85350291a0a93f946d712a3cb": ("roles-access", "Provider grant consolidation", "cs-roles-access-tenant-and-access-controls", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Data Authorization capability inherited through branch ancestry."),
-    "14eb5aa433fe2b0c231476a251c478e596ba6c2b": ("workflow-automation", "Typed workflow condition engine", "cs-workflow-automation-api-and-domain-contracts", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Workflow condition domain; no evaluations-owned path."),
-    "198c8e22e090ce337fdcb72545070d917082f2e4": ("trips", "Driving-assessment reason categories", "cs-trips-vehicle-intelligence", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Driving Intelligence/trip assessment capability."),
-    "1b3d814ee0ee1b7ec06ef88927df21efaba2639a": ("trips", "ClickHouse waypoint and activity-window producers", "cs-trips-runtime-jobs-and-queues", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Trip evidence producer and Data Analyse consumer, not Evaluations."),
-    "3a8004c9aa8ec3c66cc3f336f446054f2f3ab93c": ("bookings", "Station booking-rule manual override", "cs-bookings-stations", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Stations/booking rules capability."),
-    "55b8ac4dd743084b6fb17f35772d71e54adf4887": ("documents", "Document Intake required-field registry", "cs-documents-document-extraction", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Document Intake planner capability."),
-    "6434434e750ad6890db6c6ff5f7c6f3e9d3ee36c": ("evaluations-testing", "Historical screenshot artifact path correction", "", "OBSOLETE", "LOW", "PR #818 current visual-test artifact convention", "Binary artifact move only; policy forbids recovering volatile historical screenshots."),
-    "723b566609908ff40d621e30efb8c95cff3f17c3": ("evaluations-testing", "Historical evaluations fixture artifact-path correction", "cs-evaluations-action-center", "SUPERSEDED", "LOW", "PR #818 merged evaluations fixtures", "Path-only fixture correction is replaced by the current baseline convention."),
-    "72ce3ba52ff18c27f0d5a884271c322171c215c6": ("bookings", "Station calendar/timezone booking rules", "cs-bookings-stations", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Station booking-rule authority, unrelated to evaluations periods."),
-    "76a6d686b1f508f134f0f29f3d79694c76313c45": ("trips", "Separate vehicle load from driver conduct", "cs-trips-vehicle-intelligence", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Driving Intelligence semantics, not the evaluations driver-analysis capability."),
-    "77e7a8e5a5a9c684f9b27a74718fbe48959c02ad": ("trips", "Deprecate legacy driving-score readers", "cs-trips-vehicle-intelligence", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Cross-module consumer migration owned by Driving Intelligence."),
-    "8718daad62262893034264f248d239ee621b8181": ("workflow-automation", "Workflow tenant/scope fail-closed enforcement", "cs-workflow-automation-tenant-and-access-controls", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Workflow execution authorization capability."),
-    "9302bd8ba34c206f1c4bc53de8380f7e4e30fe57": ("voice-ai", "Voice automation analytics/settings UI", "cs-voice-ai-operational-ui", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Voice Assistant module analytics, not Auswertungen."),
-    "9c02947e27a477402a2e3b774ab0d001c6fc8206": ("workflow-automation", "Workflow dry-run execution plans", "cs-workflow-automation-runtime-jobs-and-queues", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Workflow runtime simulation capability."),
-    "9d958453bc8afbc7b80ce7aff5f82598f1f2e970": ("roles-access", "Data Authorization deny switch", "cs-roles-access-tenant-and-access-controls", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Cross-cutting data authorization control."),
-    "d571a8491eb3cf15af7e24762cb90ac0e4a71424": ("workflow-automation", "Nested ALL/ANY/NOT workflow conditions", "cs-workflow-automation-database-and-data-model", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Workflow schema and condition engine."),
-    "f69bfbe65bda93235bfbaf7b38a895adca4c1382": ("workflow-automation", "Workflow condition operator matrix", "cs-workflow-automation-database-and-data-model", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Workflow schema/operator expansion."),
+    "082464aae4a8eea85350291a0a93f946d712a3cb": ("data-authorizations/integrations", "Provider grant consolidation", "", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Provider policy/provisioning and webhook behavior are absent from main."),
+    "14eb5aa433fe2b0c231476a251c478e596ba6c2b": ("workflow-automation", "Typed workflow condition engine", "", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "Typed workflow condition domain is absent from main."),
+    "198c8e22e090ce337fdcb72545070d917082f2e4": ("trips/driving-intelligence", "Driving-assessment reason categories", "", "INHERITED_NO_EVALUATIONS_RELEVANCE", "HIGH", "", "PRUEFHINWEIS remains, but the structured category contract and copy are absent."),
+    "1b3d814ee0ee1b7ec06ef88927df21efaba2639a": ("trips/clickhouse", "ClickHouse waypoint and activity-window producers", "cs-trips-database-and-data-model", "SUPERSEDED", "HIGH", "Current ClickHouse trip architecture", "All paths exist in main and 16 blobs are identical."),
+    "3a8004c9aa8ec3c66cc3f336f446054f2f3ab93c": ("administration/stations/bookings", "Station booking-rule manual override", "", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Override persistence, audit, permission guard and migration are absent."),
+    "55b8ac4dd743084b6fb17f35772d71e54adf4887": ("documents/document-extraction", "Document Intake required-field registry", "cs-documents-api-and-domain-contracts", "SUPERSEDED", "HIGH", "Current document-schema-registry", "Main exposes versioned requiredFields across document types."),
+    "6434434e750ad6890db6c6ff5f7c6f3e9d3ee36c": ("evaluations-testing", "Historical screenshot artifact path correction", "cs-evaluations-mobile-readiness", "SUPERSEDED", "LOW", "Current visual-test artifact convention", "Both accidental nested screenshot paths are absent from main."),
+    "723b566609908ff40d621e30efb8c95cff3f17c3": ("evaluations-testing", "Historical evaluations fixture artifact-path correction", "cs-evaluations-action-center", "SUPERSEDED", "LOW", "Current evaluations fixture", "The current fixture removed copyToDocs entirely."),
+    "72ce3ba52ff18c27f0d5a884271c322171c215c6": ("administration/stations/bookings", "Station calendar/timezone booking rules", "cs-bookings-stations", "SUPERSEDED", "HIGH", "Current station-rule engine", "Main calls the station opening-calendar utility with booking instants."),
+    "76a6d686b1f508f134f0f29f3d79694c76313c45": ("trips/customers", "Separate vehicle load from driver conduct", "cs-trips-vehicle-intelligence", "SUPERSEDED", "HIGH", "Current load/conduct contracts", "Main exposes independent vehicleLoad and driverConduct contracts, metrics, services and UI."),
+    "77e7a8e5a5a9c684f9b27a74718fbe48959c02ad": ("trips/driving-impact", "Deprecate legacy driving-score readers", "cs-trips-vehicle-intelligence", "SUPERSEDED", "HIGH", "Current load/conduct architecture", "The newer model no longer exposes the transitional legacy mirror."),
+    "8718daad62262893034264f248d239ee621b8181": ("workflow-automation/security", "Workflow tenant/scope fail-closed enforcement", "cs-workflow-automation-tenant-and-access-controls", "SUPERSEDED", "CRITICAL", "Current workflow scope evaluator", "Main is explicitly fail-closed and its workflow services are organization-scoped."),
+    "9302bd8ba34c206f1c4bc53de8380f7e4e30fe57": ("voice-ai/frontend", "Voice automation analytics/settings UI", "cs-voice-ai-operational-ui", "INHERITED_NO_EVALUATIONS_RELEVANCE", "MEDIUM", "", "Voice panels and operational modules are absent from the current frontend."),
+    "9c02947e27a477402a2e3b774ab0d001c6fc8206": ("workflow-automation", "Workflow dry-run execution plans", "cs-workflow-automation-api-and-domain-contracts", "SUPERSEDED", "HIGH", "Current workflow DRY_RUN architecture", "Every path exists in main and six blobs are identical."),
+    "9d958453bc8afbc7b80ce7aff5f82598f1f2e970": ("data-authorizations/security", "Data Authorization deny switch", "", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Fail-closed deny switch and Redis propagation are absent from main."),
+    "d571a8491eb3cf15af7e24762cb90ac0e4a71424": ("workflow-automation", "Nested ALL/ANY/NOT workflow conditions", "", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Nested condition-tree schema and migration are absent from main."),
+    "f69bfbe65bda93235bfbaf7b38a895adca4c1382": ("workflow-automation", "Workflow condition operator matrix", "", "INHERITED_NO_EVALUATIONS_RELEVANCE", "CRITICAL", "", "Comparison, collection and temporal operators are absent from main."),
+}
+
+RESIDUAL_MODULE_DISPOSITION = {
+    "082464aae4a8eea85350291a0a93f946d712a3cb": "CONFLICTING_NEEDS_DESIGN_REVIEW",
+    "14eb5aa433fe2b0c231476a251c478e596ba6c2b": "REQUIRED_BUT_NEEDS_PORT",
+    "198c8e22e090ce337fdcb72545070d917082f2e4": "REQUIRED_BUT_NEEDS_PORT",
+    "1b3d814ee0ee1b7ec06ef88927df21efaba2639a": "SUPERSEDED_BY_MAIN",
+    "3a8004c9aa8ec3c66cc3f336f446054f2f3ab93c": "CONFLICTING_NEEDS_DESIGN_REVIEW",
+    "55b8ac4dd743084b6fb17f35772d71e54adf4887": "SUPERSEDED_BY_MAIN",
+    "6434434e750ad6890db6c6ff5f7c6f3e9d3ee36c": "SUPERSEDED_BY_MAIN",
+    "723b566609908ff40d621e30efb8c95cff3f17c3": "SUPERSEDED_BY_MAIN",
+    "72ce3ba52ff18c27f0d5a884271c322171c215c6": "SUPERSEDED_BY_MAIN",
+    "76a6d686b1f508f134f0f29f3d79694c76313c45": "SUPERSEDED_BY_MAIN",
+    "77e7a8e5a5a9c684f9b27a74718fbe48959c02ad": "SUPERSEDED_BY_MAIN",
+    "8718daad62262893034264f248d239ee621b8181": "SUPERSEDED_BY_MAIN",
+    "9302bd8ba34c206f1c4bc53de8380f7e4e30fe57": "REQUIRED_BUT_NEEDS_PORT",
+    "9c02947e27a477402a2e3b774ab0d001c6fc8206": "SUPERSEDED_BY_MAIN",
+    "9d958453bc8afbc7b80ce7aff5f82598f1f2e970": "CONFLICTING_NEEDS_DESIGN_REVIEW",
+    "d571a8491eb3cf15af7e24762cb90ac0e4a71424": "CONFLICTING_NEEDS_DESIGN_REVIEW",
+    "f69bfbe65bda93235bfbaf7b38a895adca4c1382": "CONFLICTING_NEEDS_DESIGN_REVIEW",
+}
+
+RESIDUAL_NEW_CHANGESETS = {
+    "082464aae4a8eea85350291a0a93f946d712a3cb": "cs-data-authorizations-provider-grant-consolidation",
+    "14eb5aa433fe2b0c231476a251c478e596ba6c2b": "cs-workflow-automation-condition-engine-base",
+    "198c8e22e090ce337fdcb72545070d917082f2e4": "cs-trips-assessment-review-reason-categories",
+    "3a8004c9aa8ec3c66cc3f336f446054f2f3ab93c": "cs-administration-station-rule-manual-overrides",
+    "9d958453bc8afbc7b80ce7aff5f82598f1f2e970": "cs-data-authorizations-fail-closed-deny-switch",
+    "d571a8491eb3cf15af7e24762cb90ac0e4a71424": "cs-workflow-automation-nested-condition-tree",
+    "f69bfbe65bda93235bfbaf7b38a895adca4c1382": "cs-workflow-automation-condition-operator-matrix",
+}
+
+RESIDUAL_PATCH_IDS = {
+    "082464aae4a8eea85350291a0a93f946d712a3cb": "8565cb1cd24dce4f64a5631850da2e0a3100f1cc",
+    "14eb5aa433fe2b0c231476a251c478e596ba6c2b": "b27db211ee8eed2dc1c7adf91d3d5983d5a0b8dc",
+    "198c8e22e090ce337fdcb72545070d917082f2e4": "773b474ad6588e4362a6a290968f6772b057d350",
+    "1b3d814ee0ee1b7ec06ef88927df21efaba2639a": "23fc1cd847216e42c9d5cbeeb5c6a582d0676598",
+    "3a8004c9aa8ec3c66cc3f336f446054f2f3ab93c": "3109a7c09ed780c50e43bcece3aa643762343f46",
+    "55b8ac4dd743084b6fb17f35772d71e54adf4887": "c8fc7c2997d78dace0af3ef5e01ee4403afab7e9",
+    "6434434e750ad6890db6c6ff5f7c6f3e9d3ee36c": "dfecbcb8407ede751aa4ede37ad1f094e1c1b368",
+    "723b566609908ff40d621e30efb8c95cff3f17c3": "a35c311515a26c23e563d60253552b73a163f9da",
+    "72ce3ba52ff18c27f0d5a884271c322171c215c6": "ffbb139bb82a58e3c6a01d86ea40b652c6d19179",
+    "76a6d686b1f508f134f0f29f3d79694c76313c45": "af807ea03ab32875c30e482df4f1778d227ec5cf",
+    "77e7a8e5a5a9c684f9b27a74718fbe48959c02ad": "91232b0e96ce2aca4793ec0b5be2e50f14b23894",
+    "8718daad62262893034264f248d239ee621b8181": "6d15adbce382fdc7825059f68a1006e0270cc642",
+    "9302bd8ba34c206f1c4bc53de8380f7e4e30fe57": "1476c7a8c3152099f540eaf75d123930556b824e",
+    "9c02947e27a477402a2e3b774ab0d001c6fc8206": "f1eead6fd634ca2b35e91103fbdb108e2d970878",
+    "9d958453bc8afbc7b80ce7aff5f82598f1f2e970": "ec09ca597110d23aab1d9367bfe28bf972647b43",
+    "d571a8491eb3cf15af7e24762cb90ac0e4a71424": "870189587831d93f4b002cc7db205ce0525cab37",
+    "f69bfbe65bda93235bfbaf7b38a895adca4c1382": "a33a821728461b1b228f88312eecf3290bb011ab",
+}
+
+RESIDUAL_CONFIDENCE = {
+    "55b8ac4dd743084b6fb17f35772d71e54adf4887": "MEDIUM",
+    "72ce3ba52ff18c27f0d5a884271c322171c215c6": "MEDIUM",
+    "77e7a8e5a5a9c684f9b27a74718fbe48959c02ad": "MEDIUM",
+    "8718daad62262893034264f248d239ee621b8181": "MEDIUM",
 }
 
 residual = phase2_changesets["cs-evaluations-unresolved-residual"]
 residual_contrib = {item["commit"]: item for item in residual["commit_contributions"]}
 residual_rows = []
 distinct_dispositions = {}
+distinct_module_dispositions = {}
 for sha in residual["source_commits"]:
     module, intent, target, disposition, risk, superseded_by, rationale = RESIDUAL_MAP[sha]
+    module_disposition = RESIDUAL_MODULE_DISPOSITION[sha]
     subject = git("show", "-s", "--format=%s", sha)
     parents = git("show", "-s", "--format=%P", sha).split()
     source_parent = parents[0] if parents else ""
@@ -539,9 +598,10 @@ for sha in residual["source_commits"]:
         pr["pr_number"] for pr in phase1_prs if sha in pr.get("non_main_commit_shas", [])
     )
     already_in_main = git_success("merge-base", "--is-ancestor", sha, "origin/main")
-    cherry = git("cherry", "origin/main", source_parent, sha) if source_parent else ""
+    cherry = git("cherry", "origin/main", sha, source_parent) if source_parent else ""
     patch_equivalent = cherry.startswith("-")
     distinct_dispositions[sha] = disposition
+    distinct_module_dispositions[sha] = module_disposition
     for source_pr in source_prs:
         residual_rows.append({
             "source_pr": source_pr,
@@ -552,25 +612,28 @@ for sha in residual["source_commits"]:
             "actual_module": module,
             "evaluation_relevant": False,
             "existing_changeset": target,
-            "new_changeset": "",
+            "new_changeset": RESIDUAL_NEW_CHANGESETS.get(sha, ""),
             "classification": disposition,
+            "module_disposition": module_disposition,
             "already_in_main": already_in_main,
             "patch_equivalent": patch_equivalent,
+            "patch_id": RESIDUAL_PATCH_IDS[sha],
             "superseded_by": superseded_by,
             "risk": risk,
-            "confidence": "HIGH",
+            "confidence": RESIDUAL_CONFIDENCE.get(sha, "HIGH"),
             "evidence": f"{subject}; first-parent path review ({len(paths)} files); {rationale}; git cherry={cherry or 'n/a'}",
         })
 
 residual_fields = [
     "source_pr", "source_commit", "source_parent", "affected_files", "original_intent",
     "actual_module", "evaluation_relevant", "existing_changeset", "new_changeset",
-    "classification", "already_in_main", "patch_equivalent", "superseded_by",
+    "classification", "module_disposition", "already_in_main", "patch_equivalent", "patch_id", "superseded_by",
     "risk", "confidence", "evidence",
 ]
 write_csv(OUT / "phase2-5-evaluations-residual-attribution-2026-08.csv", residual_fields, residual_rows)
 
 disposition_counts = Counter(distinct_dispositions.values())
+module_disposition_counts = Counter(distinct_module_dispositions.values())
 action_merge_sha = "364bd93733e30c6a98ea579f1707b8a73be2ecd8"
 action_parents = git("show", "-s", "--format=%P", action_merge_sha).split()
 action_merge_base = git("merge-base", action_parents[0], action_parents[1])
@@ -584,23 +647,30 @@ residual_md = [
     "# Phase 2.5 — Evaluations Residual Resolution", "",
     f"`cs-evaluations-unresolved-residual` contained {len(residual['source_commits'])} distinct commits across {len(residual['source_prs'])} containing PRs. It is retired and must not appear in Phase 3.", "",
     "## Exit result", "",
-    f"- Distinct inherited/non-evaluations commits: {disposition_counts['INHERITED_NO_EVALUATIONS_RELEVANCE']}",
-    f"- Superseded evaluation test-path commits: {disposition_counts['SUPERSEDED']}",
-    f"- Obsolete screenshot-only commits: {disposition_counts['OBSOLETE']}",
+    "- Evaluations product commits: 0",
+    "- Non-evaluations product commits: 15",
+    "- Evaluations test-hygiene-only commits: 2",
+    f"- Module disposition — superseded by main: {module_disposition_counts['SUPERSEDED_BY_MAIN']}",
+    f"- Module disposition — required but needs port: {module_disposition_counts['REQUIRED_BUT_NEEDS_PORT']}",
+    f"- Module disposition — conflicting/design review: {module_disposition_counts['CONFLICTING_NEEDS_DESIGN_REVIEW']}",
+    f"- Proposed atomic non-evaluations change-sets: {len(set(RESIDUAL_NEW_CHANGESETS.values()))}",
     "- Already in main: 0",
     "- Patch-equivalent: 0",
     "- New evaluations capabilities: 0",
+    "- Obsolete: 0",
     "- Remaining UNKNOWN: 0", "",
+    "Evaluation relevance and module recovery disposition are separate axes: all 17 commits leave the evaluations scope, while nine need no recovery because current main semantically supersedes them. The other eight remain assigned to their actual modules.", "",
     "## Commit attribution", "",
-    "| Commit | PR memberships | Intent | Actual module | Target/disposition | Confidence |",
-    "|---|---:|---|---|---|---|",
+    "| Commit | PR memberships | Intent | Actual module | Target | Module disposition | Confidence |",
+    "|---|---:|---|---|---|---|---|",
 ]
 for sha in residual["source_commits"]:
     rows = [row for row in residual_rows if row["source_commit"] == sha]
     first = rows[0]
     residual_md.append(
         f"| `{sha}` | {', '.join('#'+str(row['source_pr']) for row in rows)} | {md(first['original_intent'])} | "
-        f"`{first['actual_module']}` | `{first['existing_changeset'] or first['classification']}` / `{first['classification']}` | `HIGH` |"
+        f"`{first['actual_module']}` | `{first['existing_changeset'] or first['new_changeset']}` | "
+        f"`{first['module_disposition']}` | `{first['confidence']}` |"
     )
 residual_md += [
     "", "## Merge-commit check", "",
@@ -610,6 +680,13 @@ residual_md += [
     f"- Parent 2 (UI/a11y chain): `{action_parents[1]}`; delta to merge: {len(action_parent2_paths)} paths; path-list SHA-256 `{hashlib.sha256(chr(10).join(action_parent2_paths).encode()).hexdigest()}`.",
     f"- Parent merge base: `{action_merge_base}`. Combined-diff conflict/result surface: {len(action_combined_paths)} paths.",
     "- The final Action Center change-set keeps only its recommendation/action integration surface and uses `RECONSTRUCT_MERGE_RESULT`; it does not treat either inherited parent delta as the feature.",
+    "", "## Proposed non-evaluations atomic change-sets", "",
+]
+residual_md += [
+    f"- `{changeset}`"
+    for changeset in sorted(set(RESIDUAL_NEW_CHANGESETS.values()))
+]
+residual_md += [
     "", "## Source-PR coverage", "",
     f"All residual source PRs are represented in the CSV: {', '.join('#'+str(value) for value in residual['source_prs'])}.",
 ]
@@ -1050,7 +1127,6 @@ ui_recover = sorted({
     if row["still_needed"] and row["file"].startswith("frontend/src/")
 })
 package_counts = {package["package_id"]: len(package["changesets"]) for package in packages}
-residual_unrelated = disposition_counts["INHERITED_NO_EVALUATIONS_RELEVANCE"]
 summary_lines = [
     "# Phase 2.5 — Executive Summary", "",
     f"Generated `{generated_at}` against `origin/main` `{current_main}`.", "",
@@ -1061,10 +1137,14 @@ summary_lines = [
     f"- Original Phase-2 evaluations change-sets: {final_payload['summary']['original_phase2_evaluation_changesets']} (42 capability sets + 1 residual).",
     f"- Final capability inventory: {len(final_changesets)} (42 recovery + 2 exact-main baselines).",
     "- New evaluations change-sets from residual: 0.",
-    f"- Residual distinct inherited/unrelated commits: {residual_unrelated}.",
+    "- Residual removed from evaluations scope: 17 commits (15 non-evaluations product commits + 2 test-hygiene-only commits).",
+    f"- Residual module dispositions: {module_disposition_counts['SUPERSEDED_BY_MAIN']} superseded by main, "
+    f"{module_disposition_counts['REQUIRED_BUT_NEEDS_PORT']} required ports, "
+    f"{module_disposition_counts['CONFLICTING_NEEDS_DESIGN_REVIEW']} design-review conflicts.",
+    f"- Proposed atomic non-evaluations change-sets: {len(set(RESIDUAL_NEW_CHANGESETS.values()))}.",
     "- Residual already in main: 0.",
-    f"- Residual superseded: {disposition_counts['SUPERSEDED']}.",
-    f"- Residual obsolete: {disposition_counts['OBSOLETE']}.",
+    "- Residual patch-equivalent: 0.",
+    "- Residual obsolete: 0.",
     "- Remaining UNKNOWN: 0.",
     f"- ACCEPTED ADRs: {len(DECISIONS)}.",
     "- Open architecture decisions: 0.",

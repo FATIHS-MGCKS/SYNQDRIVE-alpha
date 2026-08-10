@@ -56,16 +56,27 @@ assert {row["source_commit"] for row in residual_rows} == residual_commits
 assert {int(row["source_pr"]) for row in residual_rows} == residual_prs
 assert not any(row["classification"] == "UNKNOWN" for row in residual_rows)
 assert not any(row["evaluation_relevant"] == "true" for row in residual_rows)
-assert all(row["confidence"] == "HIGH" for row in residual_rows)
+assert all(row["confidence"] in {"HIGH", "MEDIUM"} for row in residual_rows)
+assert not any(row["confidence"] == "LOW" for row in residual_rows)
 distinct_dispositions = {
     sha: next(row["classification"] for row in residual_rows if row["source_commit"] == sha)
     for sha in residual_commits
 }
 assert Counter(distinct_dispositions.values()) == {
-    "INHERITED_NO_EVALUATIONS_RELEVANCE": 15,
-    "SUPERSEDED": 1,
-    "OBSOLETE": 1,
+    "INHERITED_NO_EVALUATIONS_RELEVANCE": 8,
+    "SUPERSEDED": 9,
 }
+distinct_module_dispositions = {
+    sha: next(row["module_disposition"] for row in residual_rows if row["source_commit"] == sha)
+    for sha in residual_commits
+}
+assert Counter(distinct_module_dispositions.values()) == {
+    "SUPERSEDED_BY_MAIN": 9,
+    "REQUIRED_BUT_NEEDS_PORT": 3,
+    "CONFLICTING_NEEDS_DESIGN_REVIEW": 5,
+}
+assert len({row["patch_id"] for row in residual_rows}) == len(residual_commits)
+assert len({row["new_changeset"] for row in residual_rows if row["new_changeset"]}) == 7
 assert not any(row["already_in_main"] == "true" for row in residual_rows)
 assert not any(row["patch_equivalent"] == "true" for row in residual_rows)
 

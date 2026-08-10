@@ -1,6 +1,6 @@
 # Phase 2.5 — Executive Summary
 
-Generated `2026-08-10T17:58:05Z` against `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
+Generated `2026-08-10T18:04:30Z` against `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
 
 ## Result
 
@@ -13,10 +13,12 @@ The evaluations residual is fully retired, all architecture decisions are accept
 - Original Phase-2 evaluations change-sets: 43 (42 capability sets + 1 residual).
 - Final capability inventory: 44 (42 recovery + 2 exact-main baselines).
 - New evaluations change-sets from residual: 0.
-- Residual distinct inherited/unrelated commits: 15.
+- Residual removed from evaluations scope: 17 commits (15 non-evaluations product commits + 2 test-hygiene-only commits).
+- Residual module dispositions: 9 superseded by main, 3 required ports, 5 design-review conflicts.
+- Proposed atomic non-evaluations change-sets: 7.
 - Residual already in main: 0.
-- Residual superseded: 1.
-- Residual obsolete: 1.
+- Residual patch-equivalent: 0.
+- Residual obsolete: 0.
 - Remaining UNKNOWN: 0.
 - ACCEPTED ADRs: 10.
 - Open architecture decisions: 0.
