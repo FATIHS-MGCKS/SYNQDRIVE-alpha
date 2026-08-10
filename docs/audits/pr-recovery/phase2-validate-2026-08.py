@@ -28,6 +28,20 @@ assert summary["safe_to_close_already_in_main"] == 181
 assert summary["safe_to_close_patch_equivalent"] == 5
 assert summary["phase1_classifications_corrected"] == 0
 assert len(stack_tips) == summary["stack_tips_analyzed"] == 93
+assert summary["stack_tip_commit_memberships"] == 651
+assert summary["stack_tip_distinct_commits"] == 578
+assert summary["stack_tip_duplicate_memberships"] == 73
+assert summary["stack_tip_overlap_pair_count"] == 5
+assert {
+    (item["left_tip"], item["right_tip"]): len(item["shared_commits"])
+    for item in phase2["stack_tip_overlap_pairs"]
+} == {
+    (500, 549): 34,
+    (538, 554): 12,
+    (587, 593): 4,
+    (729, 890): 17,
+    (901, 906): 6,
+}
 assert len(conflicts) == summary["standalone_conflicting_analyzed"] == 19
 assert len(docs) == summary["docs_only_analyzed"] == 3
 assert len(protected) == summary["do_not_close_phase1_prs"] == 439

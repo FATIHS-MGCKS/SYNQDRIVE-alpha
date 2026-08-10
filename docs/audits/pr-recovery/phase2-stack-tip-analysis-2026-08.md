@@ -3,8 +3,8 @@
 Each tip is reconstructed commit-by-commit. The cumulative tip-to-main diff is not treated as one feature.
 
 - Primary cumulative tips analyzed: 93
-- Tip commit memberships: 613
-- Distinct tip commits: 575
+- Tip commit memberships: 651
+- Distinct tip commits: 578
 - Stack components: 7
 
 ## Interpretation guardrails
@@ -13,6 +13,17 @@ Each tip is reconstructed commit-by-commit. The cumulative tip-to-main diff is n
 - PRs #312, #367 and #687 are fan-out checkpoints into unrelated modules, not shared capability dependencies.
 - `ChangesView.tsx`, `ArchitekturView.tsx`, audit documents and release notes are provenance, not package identity.
 - Large tips such as #549, #581, #623 and #838 require introduced-vs-inherited delta extraction; never merge/cherry-pick the whole tip.
+
+- Duplicate inherited memberships: 73
+- Exact-overlap tip pairs: 5
+
+## Exact shared tip ancestry
+
+- PR #500 / PR #549: 34 shared commits
+- PR #538 / PR #554: 12 shared commits
+- PR #587 / PR #593: 4 shared commits
+- PR #729 / PR #890: 17 shared commits
+- PR #901 / PR #906: 6 shared commits
 
 ## PR #21 — stack-001
 

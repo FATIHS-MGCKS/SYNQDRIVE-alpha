@@ -886,8 +886,20 @@ for tip in tip_prs:
             f"feature/foreign split uses actual per-commit changed modules; focus={sorted(focus_modules)}",
         ],
     })
-stack_tip_commit_memberships = sum(len(tip["commit_shas"]) for tip in tip_prs)
-stack_tip_distinct_commits = len({sha for tip in tip_prs for sha in tip["commit_shas"]})
+stack_tip_commit_sets = {
+    result["stack_tip_pr"]: set(result["contained_commit_order"])
+    for result in stack_results
+}
+stack_tip_commit_memberships = sum(len(commits) for commits in stack_tip_commit_sets.values())
+stack_tip_distinct_commits = len(set().union(*stack_tip_commit_sets.values()))
+stack_tip_duplicate_memberships = stack_tip_commit_memberships - stack_tip_distinct_commits
+stack_tip_overlap_pairs = []
+tip_numbers = sorted(stack_tip_commit_sets)
+for index, left in enumerate(tip_numbers):
+    for right in tip_numbers[index + 1:]:
+        shared = sorted(stack_tip_commit_sets[left] & stack_tip_commit_sets[right])
+        if shared:
+            stack_tip_overlap_pairs.append({"left_tip": left, "right_tip": right, "shared_commits": shared})
 
 # Standalone conflict and documentation analyses.
 conflict_prs = [pr for pr in phase1_prs if pr["preliminary_classification"] == "CONFLICTING"]
@@ -1134,6 +1146,8 @@ summary = {
     "stack_tips_analyzed": len(stack_results),
     "stack_tip_commit_memberships": stack_tip_commit_memberships,
     "stack_tip_distinct_commits": stack_tip_distinct_commits,
+    "stack_tip_duplicate_memberships": stack_tip_duplicate_memberships,
+    "stack_tip_overlap_pair_count": len(stack_tip_overlap_pairs),
     "unique_non_main_commits": len(active_shas),
     "unique_changesets": len(changesets),
     "changeset_classifications": dict(sorted(Counter(item["classification"] for item in changesets).items())),
@@ -1177,6 +1191,7 @@ payload = {
     "safe_to_close_prs": [row["pr_number"] for row in safe_rows],
     "verification_results": verification_rows,
     "stack_tip_results": stack_results,
+    "stack_tip_overlap_pairs": stack_tip_overlap_pairs,
     "conflicting_pr_results": conflict_results,
     "docs_only_results": docs_results,
     "evaluations_capabilities": evaluation_matrix,
@@ -1266,12 +1281,22 @@ stack_md = [
     f"- Primary cumulative tips analyzed: {len(stack_results)}",
     f"- Tip commit memberships: {stack_tip_commit_memberships}",
     f"- Distinct tip commits: {stack_tip_distinct_commits}",
+    f"- Duplicate inherited memberships: {stack_tip_duplicate_memberships}",
+    f"- Exact-overlap tip pairs: {len(stack_tip_overlap_pairs)}",
     f"- Stack components: {len(components)}", "",
     "## Interpretation guardrails", "",
     "- Connected components are ancestry facts, not recovery packages; the giant component is historical branch reuse.",
     "- PRs #312, #367 and #687 are fan-out checkpoints into unrelated modules, not shared capability dependencies.",
     "- `ChangesView.tsx`, `ArchitekturView.tsx`, audit documents and release notes are provenance, not package identity.",
     "- Large tips such as #549, #581, #623 and #838 require introduced-vs-inherited delta extraction; never merge/cherry-pick the whole tip.", "",
+    "## Exact shared tip ancestry", "",
+]
+for pair in stack_tip_overlap_pairs:
+    stack_md.append(
+        f"- PR #{pair['left_tip']} / PR #{pair['right_tip']}: {len(pair['shared_commits'])} shared commits"
+    )
+stack_md += [
+    "",
 ]
 for result in stack_results:
     stack_md += [
