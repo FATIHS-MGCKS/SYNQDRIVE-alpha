@@ -202,6 +202,29 @@ describe('canonical evaluations metric response contract', () => {
     });
   });
 
+  it('rejects contradictory or non-finite direct comparison builder input at runtime', () => {
+    expect(() =>
+      buildEvaluationsMetricComparison({
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        currentPeriod: period,
+        comparisonPeriod: period,
+        currentValue: 25,
+        comparisonValue: 20,
+        comparisonStatus: 'ERROR',
+      } as Parameters<typeof buildEvaluationsMetricComparison>[0]),
+    ).toThrow('comparison deltas must be null');
+
+    expect(() =>
+      buildEvaluationsMetricComparison({
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        currentPeriod: period,
+        comparisonPeriod: period,
+        currentValue: Number.POSITIVE_INFINITY,
+        comparisonValue: 20,
+      }),
+    ).toThrow('requires absoluteDelta');
+  });
+
   it('rejects contradictory comparison status/delta states', () => {
     const response = buildAvailableEvaluationsMetric({
       ...scalarBase,

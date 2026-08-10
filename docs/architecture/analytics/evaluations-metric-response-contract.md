@@ -63,7 +63,9 @@ must not recompute comparisons in React components.
 
 The shared validator is dependency-free and enforces all discriminants and
 invariants. Builders require explicit values for available/partial/stale responses
-and emit null for unavailable/error/not-applicable responses.
+and emit null for unavailable/error/not-applicable responses. The exported
+comparison builder validates its constructed status/delta state and finiteness before
+returning, so untyped runtime callers cannot bypass the TypeScript discriminant.
 
 The response contract is additive on current main: no existing API payload or route
 is replaced in E1. Existing consumers continue unchanged until later packages bind

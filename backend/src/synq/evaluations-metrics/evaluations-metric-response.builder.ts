@@ -14,7 +14,10 @@ import {
   type EvaluationsSourceFreshness,
   type EvaluationsStringValueType,
 } from './evaluations-metric-response.contract';
-import { assertValidEvaluationsMetricResponse } from './evaluations-metric-response.validator';
+import {
+  assertValidEvaluationsMetricComparison,
+  assertValidEvaluationsMetricResponse,
+} from './evaluations-metric-response.validator';
 import type {
   EvaluationsComparisonType,
   EvaluationsPeriodWindow,
@@ -184,7 +187,7 @@ export function buildEvaluationsMetricComparison(
   input: BuildEvaluationsMetricComparisonInput,
 ): EvaluationsMetricComparison {
   if (input.comparisonValue === null) {
-    return {
+    const comparison: EvaluationsMetricComparison = {
       comparisonType: input.comparisonType,
       currentPeriod: input.currentPeriod,
       comparisonPeriod: input.comparisonPeriod,
@@ -192,9 +195,11 @@ export function buildEvaluationsMetricComparison(
       percentageDelta: null,
       status: input.comparisonStatus ?? 'UNAVAILABLE',
     };
+    assertValidEvaluationsMetricComparison(comparison, input.currentPeriod);
+    return comparison;
   }
   const absoluteDelta = input.currentValue - input.comparisonValue;
-  return {
+  const comparison: EvaluationsMetricComparison = {
     comparisonType: input.comparisonType,
     currentPeriod: input.currentPeriod,
     comparisonPeriod: input.comparisonPeriod,
@@ -203,4 +208,6 @@ export function buildEvaluationsMetricComparison(
       input.comparisonValue === 0 ? null : (absoluteDelta / input.comparisonValue) * 100,
     status: input.comparisonStatus ?? 'AVAILABLE',
   };
+  assertValidEvaluationsMetricComparison(comparison, input.currentPeriod);
+  return comparison;
 }

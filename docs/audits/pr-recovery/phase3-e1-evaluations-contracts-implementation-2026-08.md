@@ -59,7 +59,7 @@ ported because they belong outside E1 or violate its no-new-route gate.
 - Coverage, source freshness, and comparison are separate typed concepts.
 - Comparison status/value states are discriminated; percentage delta is null for a
   zero baseline, never Infinity/NaN, and comparison current period must equal the
-  metric period.
+  metric period. Direct builder output is runtime-validated before return.
 - UTC `[start,endExclusive)` bounds carry the effective IANA timezone and authority
   source.
 - Timezone precedence follows EVAL-ADR-002. Unauthorized report timezone overrides

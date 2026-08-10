@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Canonical shared KPI response with explicit status semantics; unavailable/error/not-applicable never become numeric zero.',
       'DST-safe business-period resolver with report → station → organization timezone authority and typed comparison periods.',
       'Money transport foundation requires amountMinor + assigned ISO currency; registry 1.1.0 separates semantic unit from CURRENCY_MINOR wire encoding.',
-      'Scalar/comparison discriminants, timezone-source validation, explicit DST gap/overlap behavior, and byte-identical backend-mirror sync are enforced.',
+      'Scalar/comparison discriminants (including direct builder runtime guards), timezone-source validation, explicit DST gap/overlap behavior, and byte-identical backend-mirror sync are enforced.',
     ],
     reason:
       'Phase 3 E1 recovers the versioned contract foundation required by later tenant-safe analytics, finance, quality, and UI packages.',

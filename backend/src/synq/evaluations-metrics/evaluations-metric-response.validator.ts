@@ -8,6 +8,7 @@ import {
   EVALUATIONS_METRIC_STATUSES,
   EVALUATIONS_SOURCE_FRESHNESS_STATES,
   type EvaluationsDataCoverage,
+  type EvaluationsMetricComparison,
   type EvaluationsMetricResponse,
   type EvaluationsMetricStatus,
   type EvaluationsMoney,
@@ -159,6 +160,45 @@ function assertScalarValueMatchesType(
   fail(`Unsupported scalar valueType: ${String(valueType)}`, metricId);
 }
 
+export function assertValidEvaluationsMetricComparison(
+  comparison: EvaluationsMetricComparison,
+  expectedCurrentPeriod?: EvaluationsPeriodWindow,
+  metricId?: string,
+): void {
+  if (!EVALUATIONS_COMPARISON_TYPES.includes(comparison.comparisonType)) {
+    fail(`Invalid comparisonType: ${String(comparison.comparisonType)}`, metricId);
+  }
+  assertValidEvaluationsPeriod(comparison.currentPeriod, metricId);
+  assertValidEvaluationsPeriod(comparison.comparisonPeriod, metricId);
+  if (
+    expectedCurrentPeriod &&
+    !areEvaluationsPeriodsEqual(expectedCurrentPeriod, comparison.currentPeriod)
+  ) {
+    fail('comparison.currentPeriod must equal the response period', metricId);
+  }
+  if (!EVALUATIONS_METRIC_STATUSES.includes(comparison.status)) {
+    fail(`Invalid comparison status: ${String(comparison.status)}`, metricId);
+  }
+  if (NULL_VALUE_STATUSES.has(comparison.status)) {
+    if (comparison.absoluteDelta !== null || comparison.percentageDelta !== null) {
+      fail(`${comparison.status} comparison deltas must be null`, metricId);
+    }
+    return;
+  }
+  if (
+    comparison.absoluteDelta === null ||
+    !Number.isFinite(comparison.absoluteDelta)
+  ) {
+    fail(`${comparison.status} comparison requires absoluteDelta`, metricId);
+  }
+  if (
+    comparison.percentageDelta !== null &&
+    !Number.isFinite(comparison.percentageDelta)
+  ) {
+    fail('comparison.percentageDelta must be finite or null', metricId);
+  }
+}
+
 export function assertValidEvaluationsMetricResponse(
   response: EvaluationsMetricResponse,
 ): void {
@@ -247,38 +287,7 @@ export function assertValidEvaluationsMetricResponse(
   }
 
   if (response.comparison) {
-    if (!EVALUATIONS_COMPARISON_TYPES.includes(response.comparison.comparisonType)) {
-      fail(`Invalid comparisonType: ${response.comparison.comparisonType}`, metricId);
-    }
-    assertValidEvaluationsPeriod(response.comparison.currentPeriod, metricId);
-    assertValidEvaluationsPeriod(response.comparison.comparisonPeriod, metricId);
-    if (!areEvaluationsPeriodsEqual(response.period, response.comparison.currentPeriod)) {
-      fail('comparison.currentPeriod must equal the response period', metricId);
-    }
-    if (!EVALUATIONS_METRIC_STATUSES.includes(response.comparison.status)) {
-      fail(`Invalid comparison status: ${String(response.comparison.status)}`, metricId);
-    }
-    if (NULL_VALUE_STATUSES.has(response.comparison.status)) {
-      if (
-        response.comparison.absoluteDelta !== null ||
-        response.comparison.percentageDelta !== null
-      ) {
-        fail(`${response.comparison.status} comparison deltas must be null`, metricId);
-      }
-    } else {
-      if (
-        response.comparison.absoluteDelta === null ||
-        !Number.isFinite(response.comparison.absoluteDelta)
-      ) {
-        fail(`${response.comparison.status} comparison requires absoluteDelta`, metricId);
-      }
-      if (
-        response.comparison.percentageDelta !== null &&
-        !Number.isFinite(response.comparison.percentageDelta)
-      ) {
-        fail('comparison.percentageDelta must be finite or null', metricId);
-      }
-    }
+    assertValidEvaluationsMetricComparison(response.comparison, response.period, metricId);
   }
 }
 
