@@ -87,13 +87,13 @@ describe('canonical evaluations metric response contract', () => {
     if (false) {
       // @ts-expect-error COUNT values must be numeric.
       buildAvailableEvaluationsMetric({ ...scalarBase, value: 'not-a-count' });
+      // @ts-expect-error Calculated deltas cannot carry a no-value status.
       buildEvaluationsMetricComparison({
         comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
         currentPeriod: period,
         comparisonPeriod: period,
         currentValue: 1,
         comparisonValue: 1,
-        // @ts-expect-error Calculated deltas cannot carry a no-value status.
         comparisonStatus: 'ERROR',
       });
     }
