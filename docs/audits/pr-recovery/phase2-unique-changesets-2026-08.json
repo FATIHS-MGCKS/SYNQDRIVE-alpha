@@ -6,7 +6,7 @@
     "phase1_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb",
     "current_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb",
     "main_delta_left_right": "0\t0",
-    "generated_at": "2026-08-10T17:07:53Z",
+    "generated_at": "2026-08-10T17:21:32Z",
     "current_open_prs": 626,
     "current_open_drafts": 623,
     "phase1_prs_revalidated": 625,
@@ -18,6 +18,8 @@
     "stack_tips_analyzed": 93,
     "stack_tip_commit_memberships": 651,
     "stack_tip_distinct_commits": 578,
+    "stack_tip_duplicate_memberships": 73,
+    "stack_tip_overlap_pair_count": 5,
     "unique_non_main_commits": 611,
     "unique_changesets": 246,
     "changeset_classifications": {
@@ -38,9 +40,7 @@
     "do_not_close_phase1_prs": 439,
     "standalone_conflicting_analyzed": 19,
     "docs_only_analyzed": 3,
-    "dimo_mcp_status": "error/unavailable",
-    "stack_tip_duplicate_memberships": 73,
-    "stack_tip_overlap_pair_count": 5
+    "dimo_mcp_status": "error/unavailable"
   },
   "methodology": {
     "titles_used_for_classification": false,
@@ -93876,6 +93876,111 @@
       ]
     }
   ],
+  "stack_tip_overlap_pairs": [
+    {
+      "left_tip": 500,
+      "right_tip": 549,
+      "shared_commits": [
+        "05f97906a2cfe82c503c59d90bfe88d40dc8ae7c",
+        "07f47f3bcb1ae2a29c6143614a3eb0a6a580e611",
+        "13bf3c2f90d76fba370b65918322bae1b4d87614",
+        "168445c6ce129b2f8c64d76790e31f931e672d9b",
+        "343d247d0470407eb390f9e7b6be0abef7dc29c7",
+        "369567a65413d3bac27df6c2774e8722c6ce5fb2",
+        "39c5cef93b19525467f77f0f95d62783ba690b8c",
+        "3a172a22cfa2814d697bfdebb50ec1356c15e74a",
+        "3ee18166fc4ba26b30ec22179c2d8baefbfc93a7",
+        "449da943d8d3d28e01eac74b59c5e578522af069",
+        "45680d3a8b06a57acb8e0772f26943fd3e096bc4",
+        "46f0c33b56ccdac264c9c0bf0e951702c3bb75d9",
+        "470fca6b14b3e3332559e741e6c478d841aa0318",
+        "566a56efcf3e9a4a573d2c62c532f4c424002b1e",
+        "6784ea35ab90721ec4cce5f45d95274c9a6c0e01",
+        "6a4893361d0a3f127a4bdac2ec9deadefba04d3c",
+        "6d03c3ef5b36603c865e7a24af8929363b27677f",
+        "6d21c7419d7085b607358487f5866c833ca97536",
+        "8285a1714907c877aa4a281e8c7c9b985049ae6c",
+        "935130cf73fb6eb21caa3838137062a6a6d1209b",
+        "93877903a20625f11010ee190bf8a45465779e7c",
+        "95ec19e6ea7922a55af0e0a3f2e1871d1298a52f",
+        "9faf5c05a2b8eaf6163b874335796eb8eb6d3da1",
+        "ad17735392e0dea94eba3d3d3744149bbf0d545b",
+        "b63188e38aec82f8537e10f6a08fdd2abf805d54",
+        "c5108ad33bd73414cbfec48a3dbb3708b9cc8fb4",
+        "cbf3b4d83718ddab0d20ef07870455bba25ad857",
+        "cf69bcce66b73e6b2b1e34a7f3d467c77d2fbb31",
+        "d2f53b7d7f2523ebef44d21887354451ab5e3684",
+        "db58a8e55dcdbceb10b73bfcf0ac8dfdea4ff706",
+        "dd1bfff44e330c5e5857ae774630ff751a41db97",
+        "e91f9d7b66b250afc379e2b2339517665cef8f38",
+        "ee3849d546ab9930a28fd702c9b073d0b59856be",
+        "f654507eca15c205660020bce8e441328e8e4fc8"
+      ]
+    },
+    {
+      "left_tip": 538,
+      "right_tip": 554,
+      "shared_commits": [
+        "0d950f0837f7b02934d239d00c45f3727638b3df",
+        "1194d13bf839cc08b10f87991e17c912f2da8ff1",
+        "1b7cddc2891b1de5bff8367426ddbd6895515598",
+        "51fc3d95e3a9c3704f582838b19ca44f3fe6c133",
+        "52248a6beaa79362db0df063d9493f58b8b792fe",
+        "901dbefa3373a68bb54488e4b749cd1200a952a1",
+        "9302bd8ba34c206f1c4bc53de8380f7e4e30fe57",
+        "95a1f5e6c5152b8ab9b860fb0fe8695a5fff7bcc",
+        "9fa458e7d23a00dd72c6de789d7d436699ab9ed3",
+        "9fd7f182f7c596f5e1679e8032b79a9259fc316a",
+        "d57b72f0671cfb5c838ad2e5bcadfdaededaf3ce",
+        "fa0a9f5e0cf4a29d4735b0cce26a8f04b83ebf99"
+      ]
+    },
+    {
+      "left_tip": 587,
+      "right_tip": 593,
+      "shared_commits": [
+        "57ad8f0901f8160db70178748b65810b8b59929c",
+        "648de2ca5377b6de8210614d3fe4c8a2aaeb66b4",
+        "ccdb05911267d30aa70e05cb4adb5be0139f9f9d",
+        "f17eebe79f3349e968e7a81167ff5f20918f5486"
+      ]
+    },
+    {
+      "left_tip": 729,
+      "right_tip": 890,
+      "shared_commits": [
+        "0de01c6fc70c1b2c3f3f999ca7b1740e935d2526",
+        "32fe208bf4a486f3cb39b27bcb81734bfea60e1e",
+        "4ddca93023e8081c4994b049a942102e10d704b3",
+        "516860e9ea1dadb08a028e45ba9a451bbe8541c6",
+        "52ecb5ad141297c8160cd45b8876c4565142440a",
+        "542e7538dc83544eff087c47b93bd5402984be0e",
+        "6646f1120309162f353169d5953e68cae8b55a2f",
+        "73ed54eaa0a557871813273af9dd8801caa69b10",
+        "7a1d23a8a815c8242699b25a860c132e4adef221",
+        "826b62db9406919dbe5b930423223430c64526d0",
+        "8c01b4c4f581efa80619a80288dae01e3b132a48",
+        "a2e87245f07ac96c798c6ad9e51bde02348fd323",
+        "aabfc18c6f84baaa8c1d3f6fa634b94eb28e6954",
+        "c0672c25b5798d19df0026e394df0faa21bb4b0c",
+        "e68a41441ff82874619516358c3c013f4f082f99",
+        "e9f517d47ef58d9e498100ca41eba34b945ff888",
+        "f50bdd745aceac64c21d9007cca82ea472665024"
+      ]
+    },
+    {
+      "left_tip": 901,
+      "right_tip": 906,
+      "shared_commits": [
+        "0ccdc8dbb88bf0f782051df4065405587e455231",
+        "13be403e306d9d72e9dce12fe1e552ef3bb3db82",
+        "4e8909f5879a492016a02c7cc62024e8b59422fa",
+        "5c50f0d06f95505c50fe4419202ac79af47cba4e",
+        "9ab573b908c1623befdfb320e285015e70629c3e",
+        "c672ccfd3b2f8776b48968d5a5ed9e7c8b508f16"
+      ]
+    }
+  ],
   "conflicting_pr_results": [
     {
       "pr_number": 19,
@@ -94802,7 +94907,8 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #752, commit 850b20bc632e514acba32e05e38b92c864840779",
-        "direct reachability verified"
+        "direct reachability verified",
+        "exact commit is reachable from current main"
       ]
     },
     {
@@ -94853,12 +94959,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #752, commit 312ee93f5315af7c8a4474a5014976a68584a7c6",
-        "direct reachability verified"
+        "direct reachability verified",
+        "exact commit is reachable from current main"
       ]
     },
     {
       "capability": "Timezone / Period Model",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         754
       ],
@@ -94909,12 +95016,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #754, commit f23e6bdab173c9e4705f56316737a2497d147ae1",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Unified KPI Contract",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         755
       ],
@@ -94959,12 +95067,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #755, commit 59cbd9f1f8f2e5f55601b5f2385f9fc5701c49b2",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Money Domain",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         756
       ],
@@ -95012,12 +95121,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #756, commit 077ba5060251eaa4fae983249822be68b6b00293",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Money Migration",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         756
       ],
@@ -95068,12 +95178,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #756, commit de17de779d1c3a5de9358268ecbc50da98270849",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Receivables",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         757
       ],
@@ -95122,12 +95233,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #757, commit d966961c2dc9d6690f5ea21d32d8360b77c0ab1c",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Revenue / Cashflow / Result",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         760
       ],
@@ -95175,12 +95287,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #760, commit e340795d2f22198c867401becfa99217c321c0f5",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Multi-Currency",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         762
       ],
@@ -95230,12 +95343,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #762, commit efb3abc5feda78818a04849b19d24226c8396282",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Finance Test Suite",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         765
       ],
@@ -95285,12 +95399,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #765, commit 7ab6d01dac0cf6a979c321327b03289ed31afe92",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Summary / Detail Separation",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         767
       ],
@@ -95357,12 +95472,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #767, commit 515cd44e5b4beac30ffe8b9d63f3d941a9fb578b",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Grouping / Entity References",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         770
       ],
@@ -95428,12 +95544,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #770, commit da79b28aa4ad0d84202d332c1f20e10cad8f06dd",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Analytics Summary",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         773
       ],
@@ -95493,12 +95610,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #773, commit e65b88dbefb34b99d6c9520a6d785f571a8f33e6",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Filter Architecture",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         774
       ],
@@ -95571,12 +95689,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #774, commit 642a210403b63cb719af7566f2019c76044933aa",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Tenant Isolation",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         776
       ],
@@ -95640,12 +95759,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #776, commit 1724bd92bf8e4dfab742767ded38fbc18dabb19e",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Analytics Contracts",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         778
       ],
@@ -95703,12 +95823,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #778, commit 26e4532201c94ddf0f72d17c324b42add7dec9cc",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Cost Model",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         780
       ],
@@ -95765,12 +95886,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #780, commit d96ba7a8c6379e533ca17f2f3c77b46bbeb6ee43",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Utilization",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         782
       ],
@@ -95828,12 +95950,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #782, commit 46f533afc431d9c68a4486133313e4f5d7888de0",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Strength Detection",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         783
       ],
@@ -95888,12 +96011,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #783, commit f5cfe0c5cda1bef260dca6a0417977701530210e",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Weakness Detection",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         784
       ],
@@ -95953,12 +96077,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #784, commit 32714750f7f197c5a8e4b9bb304011ca2444a05d",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Driver / Influence Analysis",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         786
       ],
@@ -96014,12 +96139,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #786, commit 56b9efe22b059cedf5aff64188922aef6e10ba37",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Data Quality",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         788
       ],
@@ -96075,12 +96201,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #788, commit 2c32183956d3aa4ce56cd3ce4b02f33bcb3dc9b4",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Freshness / Lineage",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         790
       ],
@@ -96135,12 +96262,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #790, commit 5de5e0295658ae3e23f4025e9c316b54193d2872",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Metric State UX",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         792
       ],
@@ -96197,12 +96325,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #792, commit c82e449362177a4c9d30ae308558464a2ab934f4",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Data Quality Panel",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         793
       ],
@@ -96252,12 +96381,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #793, commit ff34b66f0074e7f5efd155ff6301cae1790cc361",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Information Architecture",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         794
       ],
@@ -96312,12 +96442,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #794, commit 14072b3141bbfc5001372334aca8c8df9311df76",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Executive KPI Strip",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         795
       ],
@@ -96358,12 +96489,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #795, commit 2759f22353106ac3c3804fce0e95f8e1aef32b25",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Strength / Weakness Cockpit",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         796
       ],
@@ -96407,12 +96539,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #796, commit cb2ced964d28bbbec11f1564e7081376cc12710d",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Risk / Cost / Failure Visuals",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         798
       ],
@@ -96459,12 +96592,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #798, commit 7f6dde4c8c502dc238167d62c508ac9145e91c5c",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Mobile Readiness",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         801
       ],
@@ -96518,12 +96652,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #801, commit 304a6ed19da12e30bde4ed8e78f9784e0984eb49",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Accessibility / i18n",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         803
       ],
@@ -96579,12 +96714,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #803, commit ddad560687ad7d42ca7a15bb033e85bc06b25187",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Recommendation Domain",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         804
       ],
@@ -96624,12 +96760,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #804, commit 9eae4b1246fcbfe5efa7f04caa2bb429600ccf3b",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Action Center",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         806
       ],
@@ -96877,12 +97014,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #806, commit 364bd93733e30c6a98ea579f1707b8a73be2ecd8",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Action Integrations",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         807
       ],
@@ -96932,12 +97070,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #807, commit 8829b6a56a0687994edde3ead74d6f95b3122d33",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Impact Measurement",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         808
       ],
@@ -96982,12 +97121,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #808, commit 038223bc18dc475a7f0908baa34c6da22986fd68",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Predictive Analytics Architecture",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "DOCS_ONLY_UNIQUE",
       "source_prs": [
         809
       ],
@@ -97013,12 +97153,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #809, commit f988c3664bbe18edc49ba8a3e762bb1660a8e043",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "architecture evidence is documentation-only"
       ]
     },
     {
       "capability": "Feature Store",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         810
       ],
@@ -97065,12 +97206,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #810, commit 9cb26ece2b380e456fc440c3e97a336dd80dd890",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Demand / Revenue / Utilization Forecast",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         811
       ],
@@ -97112,12 +97254,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #811, commit 96edda271330a5904843034b98e16990f9ed76e7",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Maintenance / Failure Forecast",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         812
       ],
@@ -97158,12 +97301,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #812, commit 8488537978d8294e8ac04c436866104b99958886",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Backtesting / Drift",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         813
       ],
@@ -97201,12 +97345,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #813, commit e3c8966a51c00a80eadfc2bc69cdca0e398e9b9d",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "Forecast UX",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "UNIQUE_CONFLICTING",
       "source_prs": [
         814
       ],
@@ -97244,12 +97389,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #814, commit 46b905ad6a441f3c16a3f66c17ff88afc1fa7318",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
       ]
     },
     {
       "capability": "GDPR",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         815
       ],
@@ -97294,12 +97440,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #815, commit c8714b1f9e9760b29a282a294412bf9ebe31cec2",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Roles / Permissions",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         816
       ],
@@ -97355,12 +97502,13 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #816, commit 549c0e237d862eee491943b87077d3ce931ae8a8",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     },
     {
       "capability": "Audit Logging",
-      "status": "UNIQUE_REQUIRES_RECOVERY",
+      "status": "PARTIAL_IN_MAIN_CONFLICTING",
       "source_prs": [
         817
       ],
@@ -97405,7 +97553,8 @@
       "confidence": "HIGH",
       "evidence": [
         "canonical source PR #817, commit d10d072efce62980e7732d086dd8f6f8f1e2f875",
-        "git cherry reports unique patch; no patch-equivalent main commit"
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
       ]
     }
   ],
@@ -99640,110 +99789,5 @@
     "AUDIT_EVIDENCE_EXCLUDED_FROM_RECOVERY": [
       1014
     ]
-  },
-  "stack_tip_overlap_pairs": [
-    {
-      "left_tip": 500,
-      "right_tip": 549,
-      "shared_commits": [
-        "05f97906a2cfe82c503c59d90bfe88d40dc8ae7c",
-        "07f47f3bcb1ae2a29c6143614a3eb0a6a580e611",
-        "13bf3c2f90d76fba370b65918322bae1b4d87614",
-        "168445c6ce129b2f8c64d76790e31f931e672d9b",
-        "343d247d0470407eb390f9e7b6be0abef7dc29c7",
-        "369567a65413d3bac27df6c2774e8722c6ce5fb2",
-        "39c5cef93b19525467f77f0f95d62783ba690b8c",
-        "3a172a22cfa2814d697bfdebb50ec1356c15e74a",
-        "3ee18166fc4ba26b30ec22179c2d8baefbfc93a7",
-        "449da943d8d3d28e01eac74b59c5e578522af069",
-        "45680d3a8b06a57acb8e0772f26943fd3e096bc4",
-        "46f0c33b56ccdac264c9c0bf0e951702c3bb75d9",
-        "470fca6b14b3e3332559e741e6c478d841aa0318",
-        "566a56efcf3e9a4a573d2c62c532f4c424002b1e",
-        "6784ea35ab90721ec4cce5f45d95274c9a6c0e01",
-        "6a4893361d0a3f127a4bdac2ec9deadefba04d3c",
-        "6d03c3ef5b36603c865e7a24af8929363b27677f",
-        "6d21c7419d7085b607358487f5866c833ca97536",
-        "8285a1714907c877aa4a281e8c7c9b985049ae6c",
-        "935130cf73fb6eb21caa3838137062a6a6d1209b",
-        "93877903a20625f11010ee190bf8a45465779e7c",
-        "95ec19e6ea7922a55af0e0a3f2e1871d1298a52f",
-        "9faf5c05a2b8eaf6163b874335796eb8eb6d3da1",
-        "ad17735392e0dea94eba3d3d3744149bbf0d545b",
-        "b63188e38aec82f8537e10f6a08fdd2abf805d54",
-        "c5108ad33bd73414cbfec48a3dbb3708b9cc8fb4",
-        "cbf3b4d83718ddab0d20ef07870455bba25ad857",
-        "cf69bcce66b73e6b2b1e34a7f3d467c77d2fbb31",
-        "d2f53b7d7f2523ebef44d21887354451ab5e3684",
-        "db58a8e55dcdbceb10b73bfcf0ac8dfdea4ff706",
-        "dd1bfff44e330c5e5857ae774630ff751a41db97",
-        "e91f9d7b66b250afc379e2b2339517665cef8f38",
-        "ee3849d546ab9930a28fd702c9b073d0b59856be",
-        "f654507eca15c205660020bce8e441328e8e4fc8"
-      ]
-    },
-    {
-      "left_tip": 538,
-      "right_tip": 554,
-      "shared_commits": [
-        "0d950f0837f7b02934d239d00c45f3727638b3df",
-        "1194d13bf839cc08b10f87991e17c912f2da8ff1",
-        "1b7cddc2891b1de5bff8367426ddbd6895515598",
-        "51fc3d95e3a9c3704f582838b19ca44f3fe6c133",
-        "52248a6beaa79362db0df063d9493f58b8b792fe",
-        "901dbefa3373a68bb54488e4b749cd1200a952a1",
-        "9302bd8ba34c206f1c4bc53de8380f7e4e30fe57",
-        "95a1f5e6c5152b8ab9b860fb0fe8695a5fff7bcc",
-        "9fa458e7d23a00dd72c6de789d7d436699ab9ed3",
-        "9fd7f182f7c596f5e1679e8032b79a9259fc316a",
-        "d57b72f0671cfb5c838ad2e5bcadfdaededaf3ce",
-        "fa0a9f5e0cf4a29d4735b0cce26a8f04b83ebf99"
-      ]
-    },
-    {
-      "left_tip": 587,
-      "right_tip": 593,
-      "shared_commits": [
-        "57ad8f0901f8160db70178748b65810b8b59929c",
-        "648de2ca5377b6de8210614d3fe4c8a2aaeb66b4",
-        "ccdb05911267d30aa70e05cb4adb5be0139f9f9d",
-        "f17eebe79f3349e968e7a81167ff5f20918f5486"
-      ]
-    },
-    {
-      "left_tip": 729,
-      "right_tip": 890,
-      "shared_commits": [
-        "0de01c6fc70c1b2c3f3f999ca7b1740e935d2526",
-        "32fe208bf4a486f3cb39b27bcb81734bfea60e1e",
-        "4ddca93023e8081c4994b049a942102e10d704b3",
-        "516860e9ea1dadb08a028e45ba9a451bbe8541c6",
-        "52ecb5ad141297c8160cd45b8876c4565142440a",
-        "542e7538dc83544eff087c47b93bd5402984be0e",
-        "6646f1120309162f353169d5953e68cae8b55a2f",
-        "73ed54eaa0a557871813273af9dd8801caa69b10",
-        "7a1d23a8a815c8242699b25a860c132e4adef221",
-        "826b62db9406919dbe5b930423223430c64526d0",
-        "8c01b4c4f581efa80619a80288dae01e3b132a48",
-        "a2e87245f07ac96c798c6ad9e51bde02348fd323",
-        "aabfc18c6f84baaa8c1d3f6fa634b94eb28e6954",
-        "c0672c25b5798d19df0026e394df0faa21bb4b0c",
-        "e68a41441ff82874619516358c3c013f4f082f99",
-        "e9f517d47ef58d9e498100ca41eba34b945ff888",
-        "f50bdd745aceac64c21d9007cca82ea472665024"
-      ]
-    },
-    {
-      "left_tip": 901,
-      "right_tip": 906,
-      "shared_commits": [
-        "0ccdc8dbb88bf0f782051df4065405587e455231",
-        "13be403e306d9d72e9dce12fe1e552ef3bb3db82",
-        "4e8909f5879a492016a02c7cc62024e8b59422fa",
-        "5c50f0d06f95505c50fe4419202ac79af47cba4e",
-        "9ab573b908c1623befdfb320e285015e70629c3e",
-        "c672ccfd3b2f8776b48968d5a5ed9e7c8b508f16"
-      ]
-    }
-  ]
+  }
 }

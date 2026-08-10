@@ -1,6 +1,6 @@
 # Phase 2 — Executive Summary
 
-Generated `2026-08-10T17:07:53Z` against current `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
+Generated `2026-08-10T17:21:32Z` against current `origin/main` `2d721a902feb56101eb9992249f1859ff64024cb`.
 
 ## Counts
 
