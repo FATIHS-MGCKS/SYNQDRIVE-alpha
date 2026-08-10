@@ -427,6 +427,7 @@ for (module, cap), contribution in sorted(contributions.items()):
     flags = {
         "migration": any("prisma/migrations" in path or path.endswith("schema.prisma") for path in files),
         "security": module == "roles-access" or bool(re.search(r"permission|rbac|(^|[/_.-])auth([/_.-]|$)|mfa|secret|token|guard|tenant.isolation", contribution_text)),
+        "tenant": bool(re.search(r"tenant|organization|org.scope|orgid|organizationid", contribution_text)),
         "privacy": module == "legal-compliance" or bool(re.search(r"gdpr|privacy|personal.data|retention|pii", contribution_text)),
         "finance": module in {"billing-subscriptions", "stripe-payments"} or bool(re.search(r"money domain|receivables|revenue / cashflow|multi-currency|cost model", contribution_text)),
         "worker": bool(re.search(r"worker|queue|job|cron|bullmq|outbox", contribution_text)),
@@ -458,16 +459,16 @@ for (module, cap), contribution in sorted(contributions.items()):
     elif conflict_sources and (flags["security"] or flags["migration"] or len({file_module for path in files for file_module in file_modules(path)}) > 1):
         classification = "CONFLICTING_NEEDS_DESIGN_REVIEW"
         relevance = "Unique patches overlap current main and touch architecture-sensitive surfaces."
-    elif flags["migration"] or flags["security"] or flags["privacy"] or flags["finance"] or flags["worker"] or flags["infra"] or missing_files or conflict_sources:
+    elif flags["migration"] or flags["security"] or flags["tenant"] or flags["privacy"] or flags["finance"] or flags["worker"] or flags["infra"] or missing_files or conflict_sources:
         classification = "REQUIRED_BUT_NEEDS_PORT"
         relevance = "Unique capability evidence remains, but direct integration is unsafe on current architecture."
     else:
         classification = "REQUIRED_CURRENT"
         relevance = "Unique patch content remains and affected current-main paths still exist."
     cross_cutting = module == "cross-cutting-platform"
-    if (flags["finance"] and (flags["migration"] or flags["security"])) or (flags["security"] and flags["migration"]):
+    if (flags["finance"] and (flags["migration"] or flags["security"] or flags["tenant"])) or ((flags["security"] or flags["tenant"]) and flags["migration"]):
         risk = "CRITICAL"
-    elif any((flags["migration"], flags["security"], flags["privacy"], flags["finance"], flags["worker"], flags["infra"], cross_cutting)) or len(conflict_sources) > 0:
+    elif any((flags["migration"], flags["security"], flags["tenant"], flags["privacy"], flags["finance"], flags["worker"], flags["infra"], cross_cutting)) or len(conflict_sources) > 0:
         risk = "HIGH"
     elif module == "documentation" or flags["tests_only"]:
         risk = "LOW"
@@ -482,7 +483,7 @@ for (module, cap), contribution in sorted(contributions.items()):
         tests += ["Prisma migration deploy/rollback rehearsal", "tenant-scoped data integrity checks"]
     if flags["finance"]:
         tests += ["money precision/currency/rounding regression", "financial reconciliation fixtures"]
-    if flags["security"]:
+    if flags["security"] or flags["tenant"]:
         tests += ["cross-tenant negative tests", "RBAC/authz regression"]
     if flags["worker"]:
         tests += ["queue retry/idempotency/dead-letter tests"]
@@ -525,6 +526,8 @@ for (module, cap), contribution in sorted(contributions.items()):
         "worker_dependency": flags["worker"],
         "infra_dependency": flags["infra"],
         "security_impact": "SENSITIVE" if flags["security"] else "NONE_IDENTIFIED",
+        "tenant_isolation_impact": "SENSITIVE" if flags["tenant"] else "NONE_IDENTIFIED",
+        "finance_impact": "SENSITIVE" if flags["finance"] else "NONE_IDENTIFIED",
         "privacy_impact": "SENSITIVE" if flags["privacy"] else "NONE_IDENTIFIED",
         "data_migration_impact": "REQUIRED" if flags["migration"] else "NONE_IDENTIFIED",
         "expected_conflicts": sorted(set(conflict_sources)),
@@ -533,11 +536,11 @@ for (module, cap), contribution in sorted(contributions.items()):
         "recommended_action": "Reimplement on current main" if classification in {"REQUIRED_BUT_NEEDS_PORT", "CONFLICTING_NEEDS_DESIGN_REVIEW", "UNKNOWN"} else "Port isolated commits after review",
         "risk_level": risk,
         "required_tests": sorted(set(tests)),
-        "required_manual_review": ["domain owner", "security owner" if flags["security"] else "module owner"],
+        "required_manual_review": ["domain owner", "security owner" if flags["security"] or flags["tenant"] else "module owner"],
         "required_staging_validation": "Required" if risk in {"HIGH", "CRITICAL"} or classification.startswith("REQUIRED") else "Recommended",
         "required_vps_validation": "Required after staging" if risk in {"HIGH", "CRITICAL"} else "Standard release smoke",
         "rollback_strategy": rollback,
-        "can_be_cherry_picked": len(shas) == 1 and not any((flags["migration"], flags["security"], flags["worker"], flags["infra"])) and not conflict_sources,
+        "can_be_cherry_picked": len(shas) == 1 and not any((flags["migration"], flags["security"], flags["tenant"], flags["worker"], flags["infra"])) and not conflict_sources,
         "should_be_reimplemented": classification in {"REQUIRED_BUT_NEEDS_PORT", "CONFLICTING_NEEDS_DESIGN_REVIEW", "UNKNOWN"},
         "should_be_ported_commit_by_commit": len(shas) > 1,
         "recommended_integration_method": "reimplement" if classification in {"REQUIRED_BUT_NEEDS_PORT", "CONFLICTING_NEEDS_DESIGN_REVIEW", "UNKNOWN"} else ("isolated cherry-pick after verification" if len(shas) == 1 else "port commit-by-commit"),
@@ -867,6 +870,8 @@ summary = {
     "planned_recovery_waves": len(waves),
     "high_risk_changesets": sum(item["risk_level"] == "HIGH" for item in changesets),
     "critical_risk_changesets": sum(item["risk_level"] == "CRITICAL" for item in changesets),
+    "tenant_sensitive_changesets": sum(item["tenant_isolation_impact"] == "SENSITIVE" for item in changesets),
+    "finance_sensitive_changesets": sum(item["finance_impact"] == "SENSITIVE" for item in changesets),
     "safe_to_close_candidates": len(safe_rows),
     "do_not_close_phase1_prs": len(protection["DO_NOT_CLOSE_PHASE1_PRS"]),
     "standalone_conflicting_analyzed": len(conflict_results),
@@ -926,7 +931,7 @@ changeset_columns = [
     "changeset_id", "module", "capability", "source_prs", "source_commits", "affected_files_count",
     "affected_files", "current_relevance", "classification", "dependencies", "risk_level",
     "migration_required", "security_sensitive", "privacy_sensitive", "frontend_change",
-    "backend_change", "worker_change", "infra_change", "conflict_expected",
+    "tenant_sensitive", "finance_sensitive", "backend_change", "worker_change", "infra_change", "conflict_expected",
     "recommended_integration_method", "required_tests", "required_staging_validation",
     "required_vps_validation", "confidence", "evidence",
 ]
@@ -949,6 +954,8 @@ with (OUT / "phase2-unique-changesets-2026-08.csv").open("w", newline="") as han
             "migration_required": str(item["migration_required"]).lower(),
             "security_sensitive": str(item["security_impact"] == "SENSITIVE").lower(),
             "privacy_sensitive": str(item["privacy_impact"] == "SENSITIVE").lower(),
+            "tenant_sensitive": str(item["tenant_isolation_impact"] == "SENSITIVE").lower(),
+            "finance_sensitive": str(item["finance_impact"] == "SENSITIVE").lower(),
             "frontend_change": str(item["frontend_dependency"]).lower(),
             "backend_change": str(item["backend_dependency"]).lower(),
             "worker_change": str(item["worker_dependency"]).lower(),

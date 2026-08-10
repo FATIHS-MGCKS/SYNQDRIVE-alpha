@@ -12,8 +12,8 @@ These integration branch names are plans only; no recovery branch was created.
 | `connectivity` | `integration/connectivity-recovery-2026-08` | 9 | `HIGH` | `PLANNED` |
 | `bookings` | `integration/bookings-recovery-2026-08` | 14 | `CRITICAL` | `PLANNED` |
 | `customers` | `integration/customers-recovery-2026-08` | 5 | `HIGH` | `PLANNED` |
-| `documents` | `integration/documents-recovery-2026-08` | 11 | `HIGH` | `PLANNED` |
-| `notifications` | `integration/notifications-recovery-2026-08` | 8 | `HIGH` | `PLANNED` |
+| `documents` | `integration/documents-recovery-2026-08` | 11 | `CRITICAL` | `PLANNED` |
+| `notifications` | `integration/notifications-recovery-2026-08` | 8 | `CRITICAL` | `PLANNED` |
 | `workflow-automation` | `integration/workflow-automation-recovery-2026-08` | 9 | `CRITICAL` | `PLANNED` |
 | `operator-app` | `integration/operator-app-recovery-2026-08` | 9 | `HIGH` | `PLANNED` |
 | `billing-subscriptions` | `integration/billing-subscriptions-recovery-2026-08` | 8 | `CRITICAL` | `PLANNED` |

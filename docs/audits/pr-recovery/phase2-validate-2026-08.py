@@ -61,6 +61,12 @@ for item in changesets:
         assert item["rollback_strategy"]
     if item["security_impact"] == "SENSITIVE":
         assert any("tenant" in test.lower() or "rbac" in test.lower() for test in item["required_tests"])
+    if item["tenant_isolation_impact"] == "SENSITIVE":
+        assert item["risk_level"] in {"HIGH", "CRITICAL"}
+        assert any("tenant" in test.lower() for test in item["required_tests"])
+    if item["finance_impact"] == "SENSITIVE":
+        assert item["risk_level"] in {"HIGH", "CRITICAL"}
+        assert any("money" in test.lower() or "financial" in test.lower() for test in item["required_tests"])
     if item["migration_required"]:
         assert item["data_migration_impact"] == "REQUIRED"
 
@@ -95,7 +101,7 @@ required_columns = {
     "affected_files_count", "affected_files", "current_relevance", "classification",
     "dependencies", "risk_level", "migration_required", "security_sensitive",
     "privacy_sensitive", "frontend_change", "backend_change", "worker_change",
-    "infra_change", "conflict_expected", "recommended_integration_method",
+    "tenant_sensitive", "finance_sensitive", "infra_change", "conflict_expected", "recommended_integration_method",
     "required_tests", "required_staging_validation", "required_vps_validation",
     "confidence", "evidence",
 }
