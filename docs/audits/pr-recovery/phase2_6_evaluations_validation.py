@@ -352,11 +352,47 @@ def validate_model(model: dict[str, Any]) -> list[dict[str, str]]:
                     "UNSAFE_MATERIAL_ACTION_ORDER",
                     f"{action_changeset} lacks {required}.",
                 )
+        action_package = package_by_id.get(
+            changeset_by_id[action_changeset].get("package_id"), {}
+        )
+        action_gate_text = " ".join(
+            [
+                action_package.get("feature_flag", ""),
+                action_package.get("exit_gate", ""),
+                " ".join(action_package.get("required_tests", [])),
+            ]
+        ).lower()
+        for required_text in ["off", "confirmation", "idempotency", "audit"]:
+            if required_text not in action_gate_text:
+                error(
+                    "INCOMPLETE_MATERIAL_ACTION_GATE",
+                    f"{action_changeset} lacks {required_text}.",
+                )
 
-    predictive_chain = model["readiness_rules"]["predictive_chain"]
-    for dependency, dependent in zip(predictive_chain, predictive_chain[1:]):
-        if dependency not in hard_graph["transitive_dependencies"][dependent]:
-            error("BROKEN_PREDICTIVE_CHAIN", f"{dependency}->{dependent}")
+    full_graph = analyze_graph(
+        changeset_ids,
+        [
+            (edge["dependency_changeset"], edge["dependent_changeset"])
+            for edge in active_edges(model)
+            if edge["dependency_changeset"] in changeset_by_id
+        ],
+    )
+    for chain_name, chain in model["readiness_rules"]["required_chains"].items():
+        for dependency, dependent in zip(chain, chain[1:]):
+            if dependency not in full_graph["transitive_dependencies"][dependent]:
+                error(
+                    "BROKEN_REQUIRED_CHAIN",
+                    f"{chain_name}: {dependency}->{dependent}",
+                )
+
+    for changeset in changesets:
+        changeset_id = changeset["changeset_id"]
+        for gate in changeset.get("minimum_backend_gate", []):
+            if gate not in full_graph["transitive_dependencies"][changeset_id]:
+                error(
+                    "MISSING_UI_BACKEND_GATE_EDGE",
+                    f"{gate}->{changeset_id}",
+                )
 
     return sorted(errors, key=lambda item: (item["code"], item["detail"]))
 

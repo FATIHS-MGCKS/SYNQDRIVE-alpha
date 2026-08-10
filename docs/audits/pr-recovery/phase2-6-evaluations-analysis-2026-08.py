@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from collections import Counter
@@ -69,7 +70,10 @@ phase2_by_id = {item["changeset_id"]: item for item in phase2["changesets"]}
 current_main = git("rev-parse", "origin/main")
 phase25_main = phase25["source_state"]["current_main_sha"]
 main_delta = git("rev-list", "--left-right", "--count", f"{phase25_main}...{current_main}")
-generated_at = datetime.now(timezone.utc).isoformat()
+generated_at = os.environ.get(
+    "PHASE26_GENERATED_AT",
+    datetime.now(timezone.utc).isoformat(),
+)
 
 
 PACKAGE_MEMBERS = {
@@ -711,13 +715,39 @@ model = {
             "cs-evaluations-roles-permissions",
             "cs-evaluations-audit-logging",
         ],
-        "predictive_chain": [
-            "cs-evaluations-predictive-analytics-architecture",
-            "cs-evaluations-feature-store",
-            "cs-evaluations-demand-revenue-utilization-forecast",
-            "cs-evaluations-backtesting-drift",
-            "cs-evaluations-forecast-ux",
-        ],
+        "required_chains": {
+            "finance_migration": [
+                "cs-evaluations-money-domain",
+                "cs-evaluations-money-migration",
+            ],
+            "finance_calculation": [
+                "cs-evaluations-money-domain",
+                "cs-evaluations-receivables",
+                "cs-evaluations-revenue-cashflow-result",
+                "cs-evaluations-multi-currency",
+                "cs-evaluations-finance-test-suite",
+            ],
+            "recommendation_action": [
+                "cs-evaluations-recommendation-domain",
+                "cs-evaluations-action-center",
+                "cs-evaluations-action-integrations",
+                "cs-evaluations-impact-measurement",
+            ],
+            "predictive_demand": [
+                "cs-evaluations-predictive-analytics-architecture",
+                "cs-evaluations-feature-store",
+                "cs-evaluations-demand-revenue-utilization-forecast",
+                "cs-evaluations-backtesting-drift",
+                "cs-evaluations-forecast-ux",
+            ],
+            "predictive_maintenance": [
+                "cs-evaluations-predictive-analytics-architecture",
+                "cs-evaluations-feature-store",
+                "cs-evaluations-maintenance-failure-forecast",
+                "cs-evaluations-backtesting-drift",
+                "cs-evaluations-forecast-ux",
+            ],
+        },
     },
 }
 model = with_recomputed_graphs(model)
@@ -1021,14 +1051,17 @@ diff_lines += [
     "|---|---:|---|---|---|",
     f"| `cs-observability-api-and-domain-contracts` | {sum(dependency == 'cs-observability-api-and-domain-contracts' for dependency, _ in original_external)} | "
     f"PRs {', '.join('#'+str(item) for item in phase2_by_id['cs-observability-api-and-domain-contracts']['source_prs'])}; "
-    f"{len(phase2_by_id['cs-observability-api-and-domain-contracts']['affected_files'])} evaluation-owned metric/finance/UI paths | "
+    f"commits {', '.join('`'+item+'`' for item in phase2_by_id['cs-observability-api-and-domain-contracts']['source_commits'])}; "
+    f"{len(phase2_by_id['cs-observability-api-and-domain-contracts']['affected_files'])} evaluation-owned metric/finance/UI paths; no independent imported observability symbol | "
     "`OBSERVABILITY_ONLY`; preserve current #819/Nest Logger/runbook behavior, but no external recovery change-set. | `false` |",
     f"| `cs-infrastructure-api-and-domain-contracts` | {sum(dependency == 'cs-infrastructure-api-and-domain-contracts' for dependency, _ in original_external)} | "
     f"PRs {', '.join('#'+str(item) for item in phase2_by_id['cs-infrastructure-api-and-domain-contracts']['source_prs'])}; "
-    "`agent-deployment.controller.ts` and `agent-deployment.service.ts` only | "
+    f"commit `{phase2_by_id['cs-infrastructure-api-and-domain-contracts']['source_commits'][0]}`; "
+    "`agent-deployment.controller.ts` and `agent-deployment.service.ts` only; no evaluation import/symbol | "
     "`HISTORICAL_STACK_INHERITANCE`; Voice Assistant deployment has no evaluations import. | `false` |",
     f"| `cs-roles-access-api-and-domain-contracts` | {sum(dependency == 'cs-roles-access-api-and-domain-contracts' for dependency, _ in original_external)} | "
-    f"PRs {', '.join('#'+str(item) for item in phase2_by_id['cs-roles-access-api-and-domain-contracts']['source_prs'])}; booking handover files | "
+    f"PRs {', '.join('#'+str(item) for item in phase2_by_id['cs-roles-access-api-and-domain-contracts']['source_prs'])}; "
+    f"commits {', '.join('`'+item+'`' for item in phase2_by_id['cs-roles-access-api-and-domain-contracts']['source_commits'])}; booking handover files | "
     "`ALREADY_SATISFIED_BY_MAIN`; use `OrgScopingGuard`, `PermissionsGuard`, `RequirePermission`, operational permission registry and versioned role defaults. | `false` |",
     "",
     "## Package size and atomicity review",

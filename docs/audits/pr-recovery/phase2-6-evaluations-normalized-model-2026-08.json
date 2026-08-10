@@ -6994,7 +6994,7 @@
       "resolution": "ACTIVE_NORMALIZED_EDGE"
     }
   ],
-  "generated_at": "2026-08-10T18:47:31.172893+00:00",
+  "generated_at": "2026-08-10T18:30:00+00:00",
   "package_graph": {
     "adjacency": {
       "E1": [
@@ -8964,13 +8964,6 @@
       "cs-evaluations-roles-permissions",
       "cs-evaluations-audit-logging"
     ],
-    "predictive_chain": [
-      "cs-evaluations-predictive-analytics-architecture",
-      "cs-evaluations-feature-store",
-      "cs-evaluations-demand-revenue-utilization-forecast",
-      "cs-evaluations-backtesting-drift",
-      "cs-evaluations-forecast-ux"
-    ],
     "protected_api_changesets": [
       "cs-evaluations-action-center",
       "cs-evaluations-action-integrations",
@@ -8995,6 +8988,39 @@
       "cs-evaluations-utilization",
       "cs-evaluations-weakness-detection"
     ],
+    "required_chains": {
+      "finance_calculation": [
+        "cs-evaluations-money-domain",
+        "cs-evaluations-receivables",
+        "cs-evaluations-revenue-cashflow-result",
+        "cs-evaluations-multi-currency",
+        "cs-evaluations-finance-test-suite"
+      ],
+      "finance_migration": [
+        "cs-evaluations-money-domain",
+        "cs-evaluations-money-migration"
+      ],
+      "predictive_demand": [
+        "cs-evaluations-predictive-analytics-architecture",
+        "cs-evaluations-feature-store",
+        "cs-evaluations-demand-revenue-utilization-forecast",
+        "cs-evaluations-backtesting-drift",
+        "cs-evaluations-forecast-ux"
+      ],
+      "predictive_maintenance": [
+        "cs-evaluations-predictive-analytics-architecture",
+        "cs-evaluations-feature-store",
+        "cs-evaluations-maintenance-failure-forecast",
+        "cs-evaluations-backtesting-drift",
+        "cs-evaluations-forecast-ux"
+      ],
+      "recommendation_action": [
+        "cs-evaluations-recommendation-domain",
+        "cs-evaluations-action-center",
+        "cs-evaluations-action-integrations",
+        "cs-evaluations-impact-measurement"
+      ]
+    },
     "tenant_foundation_changeset": "cs-evaluations-tenant-isolation"
   },
   "schema_version": "phase2.6-evaluations-normalized-v1",

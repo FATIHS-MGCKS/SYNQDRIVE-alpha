@@ -69,9 +69,9 @@
 
 | Historical ID | Evaluation references | Phase-2 source evidence | Current-main authority / decision | P0 |
 |---|---:|---|---|---|
-| `cs-observability-api-and-domain-contracts` | 39 | PRs #754, #755, #756, #757, #760, #762, #765, #792, #793, #794, #795, #796, #798, #801, #803, #806, #807; 30 evaluation-owned metric/finance/UI paths | `OBSERVABILITY_ONLY`; preserve current #819/Nest Logger/runbook behavior, but no external recovery change-set. | `false` |
-| `cs-infrastructure-api-and-domain-contracts` | 13 | PRs #508, #511; `agent-deployment.controller.ts` and `agent-deployment.service.ts` only | `HISTORICAL_STACK_INHERITANCE`; Voice Assistant deployment has no evaluations import. | `false` |
-| `cs-roles-access-api-and-domain-contracts` | 4 | PRs #910, #911, #912, #913, #922, #923, #924; booking handover files | `ALREADY_SATISFIED_BY_MAIN`; use `OrgScopingGuard`, `PermissionsGuard`, `RequirePermission`, operational permission registry and versioned role defaults. | `false` |
+| `cs-observability-api-and-domain-contracts` | 39 | PRs #754, #755, #756, #757, #760, #762, #765, #792, #793, #794, #795, #796, #798, #801, #803, #806, #807; commits `f23e6bdab173c9e4705f56316737a2497d147ae1`, `59cbd9f1f8f2e5f55601b5f2385f9fc5701c49b2`, `7ab6d01dac0cf6a979c321327b03289ed31afe92`, `c82e449362177a4c9d30ae308558464a2ab934f4`, `364bd93733e30c6a98ea579f1707b8a73be2ecd8`; 30 evaluation-owned metric/finance/UI paths; no independent imported observability symbol | `OBSERVABILITY_ONLY`; preserve current #819/Nest Logger/runbook behavior, but no external recovery change-set. | `false` |
+| `cs-infrastructure-api-and-domain-contracts` | 13 | PRs #508, #511; commit `8cec86c19d70882ee860016568ccf98db9707610`; `agent-deployment.controller.ts` and `agent-deployment.service.ts` only; no evaluation import/symbol | `HISTORICAL_STACK_INHERITANCE`; Voice Assistant deployment has no evaluations import. | `false` |
+| `cs-roles-access-api-and-domain-contracts` | 4 | PRs #910, #911, #912, #913, #922, #923, #924; commits `f3bfff7cc8864250b341aeb39154f401756f4380`, `539ac1c28bc31e69c6fdf51ff83d87e740a796e0`; booking handover files | `ALREADY_SATISFIED_BY_MAIN`; use `OrgScopingGuard`, `PermissionsGuard`, `RequirePermission`, operational permission registry and versioned role defaults. | `false` |
 
 ## Package size and atomicity review
 
