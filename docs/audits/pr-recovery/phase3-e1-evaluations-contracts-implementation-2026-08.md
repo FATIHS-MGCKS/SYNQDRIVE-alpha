@@ -108,7 +108,7 @@ the required SynqDrive Changes/Architektur entries.
 |---|---|
 | Targeted metric response/status/money/comparison tests | PASS |
 | Targeted period/timezone/DST tests | PASS |
-| Metric registry/version/provenance regression | PASS |
+| Metric registry/version/provenance regression | PASS — combined E1 suite 73/73 |
 | Platform timezone primitive regression | PASS — 10/10 |
 | Backend evaluations regression | BASELINE BLOCKER — 156 passed, 2 existing TireCriticalDetector fixture failures |
 | Backend production typecheck | PASS — `tsconfig.build.json` |
@@ -125,7 +125,7 @@ the required SynqDrive Changes/Architektur entries.
 | Backend full unit suite | BASELINE BLOCKER — existing failures, then Node heap exhaustion at 4 GiB |
 | Prisma validate | PASS with pre-existing referential-action warning |
 | No-new-routes/diff audit | PASS |
-| CI | PENDING |
+| CI | BLOCKED — GitHub reports no checks for PR #1018 |
 
 The E1-owned targeted suites pass without skipped tests. Baseline failures were
 verified to be in files with no `origin/main...HEAD` diff. They were not modified
@@ -138,7 +138,7 @@ changes.
   - Current main is not globally green for all-source typecheck, full lint, or full
     unit tests. These are external E1 acceptance blockers even though every E1
     target, production build, and production typecheck passes.
-  - CI remains pending.
+  - GitHub reports no CI checks for PR #1018, so CI cannot be marked PASS.
   - Runtime adoption of the new response contract is intentionally deferred to
     later owning packages.
 - Rollback: revert the isolated E1 commits and redeploy the prior release. No
