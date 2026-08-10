@@ -247,7 +247,7 @@ describe('canonical evaluations metric response contract', () => {
       assertValidRegisteredEvaluationsMetricResponse({
         ...response,
         value: { amountMinor: 12_345, currency: 'USD' },
-      }),
+      } as Parameters<typeof assertValidRegisteredEvaluationsMetricResponse>[0]),
     ).not.toThrow();
 
     expect(() => assertValidEvaluationsMoney({ amountMinor: 100, currency: '' })).toThrow(
@@ -516,7 +516,7 @@ describe('canonical evaluations metric response contract', () => {
         assertValidRegisteredEvaluationsMetricResponse({
           ...buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 }),
           unit: 'DAYS',
-        }),
+        } as Parameters<typeof assertValidRegisteredEvaluationsMetricResponse>[0]),
       ).toThrow('transport unit DAYS does not match registry COUNT');
     });
 
