@@ -32,6 +32,7 @@ const REQUIRED_FIELDS: (keyof EvaluationsMetricDefinition)[] = [
   'labelKey',
   'descriptionKey',
   'unit',
+  'transportUnit',
   'valueType',
   'aggregationType',
   'calculationVersion',
@@ -94,7 +95,34 @@ describe('EvaluationsMetricRegistry', () => {
     const allowed = new Set<string>(EVALUATIONS_METRIC_UNITS);
     for (const metric of metrics) {
       expect(allowed.has(metric.unit)).toBe(true);
+      expect(allowed.has(metric.transportUnit)).toBe(true);
     }
+  });
+
+  it('separates semantic and transport units without implicit money encoding', () => {
+    for (const metric of metrics) {
+      expect(metric.transportUnit).toBe(
+        metric.valueType === 'MONEY' ? 'CURRENCY_MINOR' : metric.unit,
+      );
+    }
+  });
+
+  it('rejects incompatible value-type and transport-unit pairs', () => {
+    const money = metrics.find((metric) => metric.valueType === 'MONEY');
+    const scalar = metrics.find((metric) => metric.valueType !== 'MONEY');
+    expect(money).toBeDefined();
+    expect(scalar).toBeDefined();
+
+    expect(() =>
+      assertEvaluationsMetricRegistryIntegrity([
+        { ...money!, transportUnit: 'EUR' },
+      ]),
+    ).toThrow('CURRENCY_MINOR');
+    expect(() =>
+      assertEvaluationsMetricRegistryIntegrity([
+        { ...scalar!, transportUnit: 'CURRENCY_MINOR' },
+      ]),
+    ).toThrow('must equal');
   });
 
   it('uses valid value types', () => {
@@ -176,7 +204,7 @@ describe('EvaluationsMetricRegistry', () => {
   it('exposes stable registry snapshot', () => {
     const snapshot = getEvaluationsMetricRegistrySnapshot();
     expect(snapshot.taxonomyVersion).toBe('1.0.0');
-    expect(snapshot.registryVersion).toBe('1.0.0');
+    expect(snapshot.registryVersion).toBe('1.1.0');
     expect(snapshot.metrics).toBe(EVALUATIONS_METRIC_DEFINITIONS);
   });
 

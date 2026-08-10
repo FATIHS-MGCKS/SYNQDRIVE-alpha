@@ -54,15 +54,33 @@ export interface EvaluationsSourceFreshness {
   readonly state: EvaluationsSourceFreshnessState;
 }
 
-export interface EvaluationsMetricComparison {
+interface EvaluationsMetricComparisonBase {
   readonly comparisonType: EvaluationsComparisonType;
   readonly currentPeriod: EvaluationsPeriodWindow;
   readonly comparisonPeriod: EvaluationsPeriodWindow;
-  readonly absoluteDelta: number | null;
-  /** Null for a zero or unavailable baseline; never Infinity/NaN. */
-  readonly percentageDelta: number | null;
-  readonly status: EvaluationsMetricStatus;
 }
+
+export type EvaluationsMetricValueStatus = 'AVAILABLE' | 'PARTIAL' | 'STALE';
+export type EvaluationsMetricNoValueStatus =
+  | 'UNAVAILABLE'
+  | 'ERROR'
+  | 'NOT_APPLICABLE';
+
+type EvaluationsMetricComparisonValueState =
+  | {
+      readonly status: EvaluationsMetricValueStatus;
+      readonly absoluteDelta: number;
+      /** Null only when the comparison baseline is zero. */
+      readonly percentageDelta: number | null;
+    }
+  | {
+      readonly status: EvaluationsMetricNoValueStatus;
+      readonly absoluteDelta: null;
+      readonly percentageDelta: null;
+    };
+
+export type EvaluationsMetricComparison = EvaluationsMetricComparisonBase &
+  EvaluationsMetricComparisonValueState;
 
 interface EvaluationsMetricResponseBase {
   readonly schemaVersion: typeof EVALUATIONS_METRIC_RESPONSE_SCHEMA_VERSION;
@@ -80,13 +98,29 @@ interface EvaluationsMetricResponseBase {
 
 type EvaluationsValueState<T> =
   | {
-      readonly status: 'AVAILABLE' | 'PARTIAL' | 'STALE';
+      readonly status: EvaluationsMetricValueStatus;
       readonly value: T;
     }
   | {
-      readonly status: 'UNAVAILABLE' | 'ERROR' | 'NOT_APPLICABLE';
+      readonly status: EvaluationsMetricNoValueStatus;
       readonly value: null;
     };
+
+export type EvaluationsNumericValueType =
+  | 'NUMBER'
+  | 'PERCENT'
+  | 'COUNT'
+  | 'RATIO'
+  | 'RATE'
+  | 'DISTANCE_KILOMETERS'
+  | 'DURATION_SECONDS'
+  | 'DURATION_MINUTES'
+  | 'DURATION_HOURS'
+  | 'DURATION_DAYS'
+  | 'DURATION_MILLISECONDS'
+  | 'SCORE';
+
+export type EvaluationsStringValueType = 'DATETIME' | 'ENUM' | 'TEXT';
 
 export type EvaluationsScalarMetricValue =
   | number
@@ -95,16 +129,41 @@ export type EvaluationsScalarMetricValue =
   | readonly unknown[];
 
 export type EvaluationsScalarValueType = Exclude<EvaluationsValueType, 'MONEY'>;
+export type EvaluationsNonMoneyMetricUnit = Exclude<
+  EvaluationsMetricUnit,
+  'CURRENCY_MINOR'
+>;
 
 export type EvaluationsMoneyMetricResponse = EvaluationsMetricResponseBase & {
   readonly valueType: 'MONEY';
   readonly unit: 'CURRENCY_MINOR';
 } & EvaluationsValueState<EvaluationsMoney>;
 
-export type EvaluationsScalarMetricResponse = EvaluationsMetricResponseBase & {
-  readonly valueType: EvaluationsScalarValueType;
-  readonly unit: Exclude<EvaluationsMetricUnit, 'CURRENCY_MINOR'>;
-} & EvaluationsValueState<EvaluationsScalarMetricValue>;
+export type EvaluationsNumericMetricResponse = EvaluationsMetricResponseBase & {
+  readonly valueType: EvaluationsNumericValueType;
+  readonly unit: EvaluationsNonMoneyMetricUnit;
+} & EvaluationsValueState<number>;
+
+export type EvaluationsStringMetricResponse = EvaluationsMetricResponseBase & {
+  readonly valueType: EvaluationsStringValueType;
+  readonly unit: EvaluationsNonMoneyMetricUnit;
+} & EvaluationsValueState<string>;
+
+export type EvaluationsListMetricResponse = EvaluationsMetricResponseBase & {
+  readonly valueType: 'LIST';
+  readonly unit: EvaluationsNonMoneyMetricUnit;
+} & EvaluationsValueState<readonly unknown[]>;
+
+export type EvaluationsBooleanMetricResponse = EvaluationsMetricResponseBase & {
+  readonly valueType: 'BOOLEAN';
+  readonly unit: EvaluationsNonMoneyMetricUnit;
+} & EvaluationsValueState<boolean>;
+
+export type EvaluationsScalarMetricResponse =
+  | EvaluationsNumericMetricResponse
+  | EvaluationsStringMetricResponse
+  | EvaluationsListMetricResponse
+  | EvaluationsBooleanMetricResponse;
 
 /**
  * Canonical KPI payload. A measured zero remains a non-null value with its own

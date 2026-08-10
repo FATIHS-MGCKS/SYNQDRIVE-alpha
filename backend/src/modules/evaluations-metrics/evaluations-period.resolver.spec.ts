@@ -78,6 +78,22 @@ describe('evaluations business-period authority', () => {
         resolveEvaluationsTimezone({ organizationTimezone: 'Not/A_Real_Zone' }),
       ).toThrow('Invalid IANA timezone');
     });
+
+    it('rejects caller-forged timezone authority contexts', () => {
+      expect(() =>
+        resolveEvaluationsPeriod({
+          periodType: 'MONTH',
+          reference: new Date('2026-08-10T12:00:00.000Z'),
+          timezone: {
+            effectiveTimezone: 'Europe/Berlin',
+            source: 'STATION',
+            reportTimezone: null,
+            stationTimezone: 'Europe/London',
+            organizationTimezone: 'Europe/Berlin',
+          },
+        }),
+      ).toThrow('effectiveTimezone to equal stationTimezone');
+    });
   });
 
   describe('calendar and DST boundaries', () => {
@@ -210,6 +226,30 @@ describe('evaluations business-period authority', () => {
         Date.parse(pair.comparisonPeriod.endExclusive) -
           Date.parse(pair.comparisonPeriod.start),
       ).toBe(7 * 24 * 60 * 60 * 1_000);
+    });
+
+    it('moves a comparison reference forward across a DST gap', () => {
+      const pair = resolveEvaluationsComparisonPeriods({
+        periodType: 'MTD',
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        // 02:30 CEST; the shifted 2026-03-29 02:30 local time does not exist.
+        reference: new Date('2026-04-29T00:30:00.000Z'),
+        timezone: organizationTimezone(),
+      });
+
+      expect(pair.comparisonPeriod.endExclusive).toBe('2026-03-29T01:30:00.001Z');
+    });
+
+    it('selects the earlier instant when a comparison lands in a DST overlap', () => {
+      const pair = resolveEvaluationsComparisonPeriods({
+        periodType: 'MTD',
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        // 02:30 CET; the shifted 2026-10-25 02:30 local time occurs twice.
+        reference: new Date('2026-11-25T01:30:00.000Z'),
+        timezone: organizationTimezone(),
+      });
+
+      expect(pair.comparisonPeriod.endExclusive).toBe('2026-10-25T00:30:00.001Z');
     });
   });
 

@@ -15,7 +15,7 @@ import {
 } from '@synq/evaluations-metrics/evaluations-metric.contract';
 import { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
 
-export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.0.0';
+export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.1.0';
 export const EVALUATIONS_METRIC_TAXONOMY_VERSION = '1.0.0';
 
 const CALCULATION_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
@@ -55,6 +55,7 @@ export function assertEvaluationsMetricRegistryIntegrity(
     for (const [field, values, value] of [
       ['category', EVALUATIONS_METRIC_CATEGORIES, def.category],
       ['unit', EVALUATIONS_METRIC_UNITS, def.unit],
+      ['transportUnit', EVALUATIONS_METRIC_UNITS, def.transportUnit],
       ['valueType', EVALUATIONS_VALUE_TYPES, def.valueType],
       ['aggregationType', EVALUATIONS_AGGREGATION_TYPES, def.aggregationType],
       ['dataClassification', EVALUATIONS_DATA_CLASSIFICATIONS, def.dataClassification],
@@ -80,6 +81,17 @@ export function assertEvaluationsMetricRegistryIntegrity(
           `Invalid supported comparison for ${def.id}: ${comparison}`,
         );
       }
+    }
+
+    if (def.valueType === 'MONEY' && def.transportUnit !== 'CURRENCY_MINOR') {
+      throw new EvaluationsMetricRegistryError(
+        `MONEY metric ${def.id} must use transportUnit CURRENCY_MINOR`,
+      );
+    }
+    if (def.valueType !== 'MONEY' && def.transportUnit !== def.unit) {
+      throw new EvaluationsMetricRegistryError(
+        `Scalar metric ${def.id} transportUnit must equal its semantic unit`,
+      );
     }
 
     if (def.supersededBy !== undefined && def.supersededBy === def.id) {

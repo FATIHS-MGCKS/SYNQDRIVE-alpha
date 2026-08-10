@@ -1,7 +1,11 @@
+import { EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE } from '@synq/evaluations-periods/evaluations-period.contract';
+
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Existing platform fallback when organization/station data predates timezone fields. */
-export const DEFAULT_PLATFORM_TIMEZONE = 'Europe/Berlin';
+export const DEFAULT_PLATFORM_TIMEZONE = EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE;
+
+export type ZonedDateTimeDisambiguation = 'REJECT' | 'COMPATIBLE';
 
 export interface ZonedDateTimeParts {
   readonly year: number;
@@ -89,59 +93,76 @@ export function parseDateOnly(dateOnly: string): {
   return { year, month, day };
 }
 
+function wallClockEpoch(parts: ZonedDateTimeParts): number {
+  return Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+    parts.millisecond,
+  );
+}
+
+function sameWallClock(left: ZonedDateTimeParts, right: ZonedDateTimeParts): boolean {
+  return wallClockEpoch(left) === wallClockEpoch(right);
+}
+
+function offsetAt(instant: Date, timeZone: string): number {
+  return wallClockEpoch(zonedDateTimeParts(instant, timeZone)) - instant.getTime();
+}
+
 /**
  * Converts a local wall-clock value in an IANA timezone into its UTC instant.
- * Iterative offset correction avoids assuming a fixed 24-hour calendar day.
+ * COMPATIBLE selects the earlier instant in an overlap and moves a gap forward
+ * by its transition duration, matching calendar arithmetic expectations.
  */
 export function zonedDateTimeToUtc(
   local: ZonedDateTimeParts,
   timeZone: string,
+  disambiguation: ZonedDateTimeDisambiguation = 'REJECT',
 ): Date {
   assertIanaTimezone(timeZone);
-  const targetAsUtc = Date.UTC(
-    local.year,
-    local.month - 1,
-    local.day,
-    local.hour,
-    local.minute,
-    local.second,
-    local.millisecond,
-  );
-  let candidate = targetAsUtc;
+  const targetAsUtc = wallClockEpoch(local);
+  const offsets = new Set<number>();
 
-  for (let iteration = 0; iteration < 4; iteration += 1) {
-    const observed = zonedDateTimeParts(new Date(candidate), timeZone);
-    const observedAsUtc = Date.UTC(
-      observed.year,
-      observed.month - 1,
-      observed.day,
-      observed.hour,
-      observed.minute,
-      observed.second,
-      observed.millisecond,
-    );
-    const correction = targetAsUtc - observedAsUtc;
-    if (correction === 0) {
-      return new Date(candidate);
-    }
-    candidate += correction;
+  for (let hours = -48; hours <= 48; hours += 6) {
+    const sample = new Date(targetAsUtc + hours * 60 * 60 * 1_000);
+    offsets.add(offsetAt(sample, timeZone));
   }
 
-  const resolved = new Date(candidate);
-  const observed = zonedDateTimeParts(resolved, timeZone);
-  if (
-    observed.year !== local.year ||
-    observed.month !== local.month ||
-    observed.day !== local.day ||
-    observed.hour !== local.hour ||
-    observed.minute !== local.minute ||
-    observed.second !== local.second
-  ) {
+  const candidates = [...offsets].map((offset) => new Date(targetAsUtc - offset));
+  const exact = candidates
+    .filter((candidate) => sameWallClock(zonedDateTimeParts(candidate, timeZone), local))
+    .sort((left, right) => left.getTime() - right.getTime());
+
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) {
+    if (disambiguation === 'COMPATIBLE') return exact[0];
     throw new Error(
       `Local date-time does not resolve uniquely in ${timeZone}: ${JSON.stringify(local)}`,
     );
   }
-  return resolved;
+
+  if (disambiguation === 'COMPATIBLE') {
+    const nextValid = candidates
+      .map((candidate) => ({
+        candidate,
+        observedWallClock: wallClockEpoch(zonedDateTimeParts(candidate, timeZone)),
+      }))
+      .filter(({ observedWallClock }) => observedWallClock > targetAsUtc)
+      .sort(
+        (left, right) =>
+          left.observedWallClock - right.observedWallClock ||
+          left.candidate.getTime() - right.candidate.getTime(),
+      )[0];
+    if (nextValid) return nextValid.candidate;
+  }
+
+  throw new Error(
+    `Local date-time does not exist in ${timeZone}: ${JSON.stringify(local)}`,
+  );
 }
 
 export function zonedStartOfDayToUtc(dateOnly: string, timeZone: string): Date {
@@ -155,5 +176,6 @@ export function zonedStartOfDayToUtc(dateOnly: string, timeZone: string): Date {
       millisecond: 0,
     },
     timeZone,
+    'COMPATIBLE',
   );
 }

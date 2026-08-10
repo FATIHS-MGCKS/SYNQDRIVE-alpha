@@ -1,17 +1,18 @@
-import type {
-  EvaluationsMetricKind,
-  EvaluationsMetricUnit,
-  EvaluationsValueType,
-} from './evaluations-metric.contract';
+import type { EvaluationsMetricKind } from './evaluations-metric.contract';
 import {
   EVALUATIONS_METRIC_RESPONSE_SCHEMA_VERSION,
   type EvaluationsDataCoverage,
   type EvaluationsMetricComparison,
+  type EvaluationsMetricNoValueStatus,
   type EvaluationsMetricResponse,
   type EvaluationsMetricStatus,
+  type EvaluationsMetricValueStatus,
   type EvaluationsMoney,
+  type EvaluationsNonMoneyMetricUnit,
+  type EvaluationsNumericValueType,
   type EvaluationsScalarMetricValue,
   type EvaluationsSourceFreshness,
+  type EvaluationsStringValueType,
 } from './evaluations-metric-response.contract';
 import { assertValidEvaluationsMetricResponse } from './evaluations-metric-response.validator';
 import type {
@@ -19,11 +20,9 @@ import type {
   EvaluationsPeriodWindow,
 } from '@synq/evaluations-periods/evaluations-period.contract';
 
-export interface BuildEvaluationsMetricResponseBase {
+interface BuildEvaluationsMetricResponseCommon {
   readonly metricId: string;
   readonly metricKind: EvaluationsMetricKind;
-  readonly valueType: EvaluationsValueType;
-  readonly unit: EvaluationsMetricUnit;
   readonly generatedAt: Date;
   readonly period: EvaluationsPeriodWindow;
   readonly comparison?: EvaluationsMetricComparison | null;
@@ -33,6 +32,52 @@ export interface BuildEvaluationsMetricResponseBase {
   readonly exclusions?: readonly string[];
   readonly warnings?: readonly string[];
 }
+
+type BuildEvaluationsMetricDescriptor =
+  | { readonly valueType: 'MONEY'; readonly unit: 'CURRENCY_MINOR' }
+  | {
+      readonly valueType: EvaluationsNumericValueType;
+      readonly unit: EvaluationsNonMoneyMetricUnit;
+    }
+  | {
+      readonly valueType: EvaluationsStringValueType;
+      readonly unit: EvaluationsNonMoneyMetricUnit;
+    }
+  | { readonly valueType: 'LIST'; readonly unit: EvaluationsNonMoneyMetricUnit }
+  | { readonly valueType: 'BOOLEAN'; readonly unit: EvaluationsNonMoneyMetricUnit };
+
+export type BuildEvaluationsMetricResponseBase =
+  BuildEvaluationsMetricResponseCommon & BuildEvaluationsMetricDescriptor;
+
+export type BuildEvaluationsMetricResponseWithValue =
+  BuildEvaluationsMetricResponseCommon &
+    (
+      | {
+          readonly valueType: 'MONEY';
+          readonly unit: 'CURRENCY_MINOR';
+          readonly value: EvaluationsMoney;
+        }
+      | {
+          readonly valueType: EvaluationsNumericValueType;
+          readonly unit: EvaluationsNonMoneyMetricUnit;
+          readonly value: number;
+        }
+      | {
+          readonly valueType: EvaluationsStringValueType;
+          readonly unit: EvaluationsNonMoneyMetricUnit;
+          readonly value: string;
+        }
+      | {
+          readonly valueType: 'LIST';
+          readonly unit: EvaluationsNonMoneyMetricUnit;
+          readonly value: readonly unknown[];
+        }
+      | {
+          readonly valueType: 'BOOLEAN';
+          readonly unit: EvaluationsNonMoneyMetricUnit;
+          readonly value: boolean;
+        }
+    );
 
 export type BuildEvaluationsMetricValue =
   | EvaluationsScalarMetricValue
@@ -65,14 +110,13 @@ function finalize(
 }
 
 export function buildAvailableEvaluationsMetric(
-  base: BuildEvaluationsMetricResponseBase & { readonly value: BuildEvaluationsMetricValue },
+  base: BuildEvaluationsMetricResponseWithValue,
 ): EvaluationsMetricResponse {
   return finalize(base, 'AVAILABLE', base.value);
 }
 
 export function buildPartialEvaluationsMetric(
-  base: BuildEvaluationsMetricResponseBase & {
-    readonly value: BuildEvaluationsMetricValue;
+  base: BuildEvaluationsMetricResponseWithValue & {
     readonly dataCoverage: EvaluationsDataCoverage;
   },
 ): EvaluationsMetricResponse {
@@ -80,8 +124,7 @@ export function buildPartialEvaluationsMetric(
 }
 
 export function buildStaleEvaluationsMetric(
-  base: BuildEvaluationsMetricResponseBase & {
-    readonly value: BuildEvaluationsMetricValue;
+  base: BuildEvaluationsMetricResponseWithValue & {
     readonly sourceFreshness: EvaluationsSourceFreshness;
   },
 ): EvaluationsMetricResponse {
@@ -121,14 +164,25 @@ export function buildNotApplicableEvaluationsMetric(
   return buildNoValueMetric(base, 'NOT_APPLICABLE', base.reason);
 }
 
-export function buildEvaluationsMetricComparison(input: {
+export type BuildEvaluationsMetricComparisonInput = {
   readonly comparisonType: EvaluationsComparisonType;
   readonly currentPeriod: EvaluationsPeriodWindow;
   readonly comparisonPeriod: EvaluationsPeriodWindow;
   readonly currentValue: number;
-  readonly comparisonValue: number | null;
-  readonly comparisonStatus?: EvaluationsMetricStatus;
-}): EvaluationsMetricComparison {
+} & (
+  | {
+      readonly comparisonValue: number;
+      readonly comparisonStatus?: EvaluationsMetricValueStatus;
+    }
+  | {
+      readonly comparisonValue: null;
+      readonly comparisonStatus?: EvaluationsMetricNoValueStatus;
+    }
+);
+
+export function buildEvaluationsMetricComparison(
+  input: BuildEvaluationsMetricComparisonInput,
+): EvaluationsMetricComparison {
   if (input.comparisonValue === null) {
     return {
       comparisonType: input.comparisonType,

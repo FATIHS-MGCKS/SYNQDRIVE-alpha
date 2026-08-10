@@ -47,9 +47,15 @@ export type {
   EvaluationsMetricResponse,
   EvaluationsMetricResponseBundle,
   EvaluationsMetricStatus,
+  EvaluationsMetricNoValueStatus,
+  EvaluationsMetricValueStatus,
   EvaluationsMoney,
+  EvaluationsNonMoneyMetricUnit,
+  EvaluationsNumericValueType,
+  EvaluationsScalarValueType,
   EvaluationsSourceFreshness,
   EvaluationsSourceFreshnessState,
+  EvaluationsStringValueType,
 } from '@synq/evaluations-metrics/evaluations-metric-response.contract';
 
 export {
@@ -70,6 +76,7 @@ export type {
 export {
   EVALUATIONS_COMPARISON_TYPES,
   EVALUATIONS_PERIOD_TYPES,
+  EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE,
   EVALUATIONS_TIMEZONE_SOURCES,
 } from '@synq/evaluations-periods/evaluations-period.contract';
 

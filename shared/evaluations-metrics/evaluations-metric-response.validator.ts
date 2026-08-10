@@ -11,17 +11,36 @@ import {
   type EvaluationsMetricResponse,
   type EvaluationsMetricStatus,
   type EvaluationsMoney,
+  type EvaluationsNumericValueType,
 } from './evaluations-metric-response.contract';
 import {
   EVALUATIONS_COMPARISON_TYPES,
-  EVALUATIONS_PERIOD_TYPES,
   type EvaluationsPeriodWindow,
 } from '@synq/evaluations-periods/evaluations-period.contract';
+import {
+  areEvaluationsPeriodsEqual,
+  assertValidEvaluationsPeriodWindow,
+} from '@synq/evaluations-periods/evaluations-period.validator';
+import { isIso4217CurrencyCode } from '../money/iso4217-currency-codes';
 
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
 const ISO_4217_PATTERN = /^[A-Z]{3}$/;
 const UTC_ISO_INSTANT_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+const NUMERIC_VALUE_TYPES: ReadonlySet<EvaluationsNumericValueType> = new Set([
+  'NUMBER',
+  'PERCENT',
+  'COUNT',
+  'RATIO',
+  'RATE',
+  'DISTANCE_KILOMETERS',
+  'DURATION_SECONDS',
+  'DURATION_MINUTES',
+  'DURATION_HOURS',
+  'DURATION_DAYS',
+  'DURATION_MILLISECONDS',
+  'SCORE',
+]);
 const NULL_VALUE_STATUSES: ReadonlySet<EvaluationsMetricStatus> = new Set([
   'UNAVAILABLE',
   'ERROR',
@@ -53,33 +72,14 @@ function assertIsoInstant(value: string | null, field: string, metricId?: string
   }
 }
 
-function assertIanaTimezone(value: string, metricId?: string): void {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(0);
-  } catch {
-    fail(`Invalid IANA timezone: ${value}`, metricId);
-  }
-}
-
 export function assertValidEvaluationsPeriod(
   period: EvaluationsPeriodWindow,
   metricId?: string,
 ): void {
-  if (!EVALUATIONS_PERIOD_TYPES.includes(period.periodType)) {
-    fail(`Invalid periodType: ${period.periodType}`, metricId);
-  }
-  assertIsoInstant(period.start, 'period.start', metricId);
-  assertIsoInstant(period.endExclusive, 'period.endExclusive', metricId);
-  assertIsoInstant(period.reference, 'period.reference', metricId);
-  if (Date.parse(period.start) >= Date.parse(period.endExclusive)) {
-    fail('period.start must be before period.endExclusive', metricId);
-  }
-  assertIanaTimezone(period.timezone.effectiveTimezone, metricId);
-  if (
-    period.comparisonBasis !== null &&
-    !EVALUATIONS_COMPARISON_TYPES.includes(period.comparisonBasis)
-  ) {
-    fail(`Invalid comparisonBasis: ${period.comparisonBasis}`, metricId);
+  try {
+    assertValidEvaluationsPeriodWindow(period);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : 'Invalid evaluations period', metricId);
   }
 }
 
@@ -90,8 +90,11 @@ export function assertValidEvaluationsMoney(
   if (!Number.isSafeInteger(money.amountMinor)) {
     fail('Money amountMinor must be a safe integer', metricId);
   }
-  if (!ISO_4217_PATTERN.test(money.currency)) {
-    fail('Money currency must be a non-empty uppercase ISO-4217 code', metricId);
+  if (
+    !ISO_4217_PATTERN.test(money.currency) ||
+    !isIso4217CurrencyCode(money.currency)
+  ) {
+    fail('Money currency must be an assigned uppercase ISO-4217 code', metricId);
   }
 }
 
@@ -122,6 +125,38 @@ function assertCoverage(coverage: EvaluationsDataCoverage, metricId: string): vo
 
 function isMoney(value: unknown): value is EvaluationsMoney {
   return isRecord(value) && 'amountMinor' in value && 'currency' in value;
+}
+
+function assertScalarValueMatchesType(
+  valueType: Exclude<EvaluationsMetricResponse['valueType'], 'MONEY'>,
+  value: unknown,
+  metricId: string,
+): void {
+  if (NUMERIC_VALUE_TYPES.has(valueType as EvaluationsNumericValueType)) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      fail(`${valueType} metric value must be a finite number`, metricId);
+    }
+    return;
+  }
+  if (valueType === 'DATETIME' || valueType === 'ENUM' || valueType === 'TEXT') {
+    if (typeof value !== 'string') {
+      fail(`${valueType} metric value must be a string`, metricId);
+    }
+    return;
+  }
+  if (valueType === 'BOOLEAN') {
+    if (typeof value !== 'boolean') {
+      fail('BOOLEAN metric value must be a boolean', metricId);
+    }
+    return;
+  }
+  if (valueType === 'LIST') {
+    if (!Array.isArray(value)) {
+      fail('LIST metric value must be an array', metricId);
+    }
+    return;
+  }
+  fail(`Unsupported scalar valueType: ${String(valueType)}`, metricId);
 }
 
 export function assertValidEvaluationsMetricResponse(
@@ -168,10 +203,16 @@ export function assertValidEvaluationsMetricResponse(
       }
       assertValidEvaluationsMoney(response.value, metricId);
     }
-  } else if (isMoney(response.value)) {
-    fail('Only MONEY metrics may carry amountMinor/currency values', metricId);
-  } else if (typeof response.value === 'number' && !Number.isFinite(response.value)) {
-    fail('Metric numeric value must be finite', metricId);
+  } else {
+    if (response.unit === 'CURRENCY_MINOR') {
+      fail('Only MONEY metrics may use CURRENCY_MINOR', metricId);
+    }
+    if (response.value !== null) {
+      if (isMoney(response.value)) {
+        fail('Only MONEY metrics may carry amountMinor/currency values', metricId);
+      }
+      assertScalarValueMatchesType(response.valueType, response.value, metricId);
+    }
   }
 
   if (response.status === 'PARTIAL') {
@@ -211,12 +252,31 @@ export function assertValidEvaluationsMetricResponse(
     }
     assertValidEvaluationsPeriod(response.comparison.currentPeriod, metricId);
     assertValidEvaluationsPeriod(response.comparison.comparisonPeriod, metricId);
-    for (const [field, value] of [
-      ['absoluteDelta', response.comparison.absoluteDelta],
-      ['percentageDelta', response.comparison.percentageDelta],
-    ] as const) {
-      if (value !== null && !Number.isFinite(value)) {
-        fail(`comparison.${field} must be finite or null`, metricId);
+    if (!areEvaluationsPeriodsEqual(response.period, response.comparison.currentPeriod)) {
+      fail('comparison.currentPeriod must equal the response period', metricId);
+    }
+    if (!EVALUATIONS_METRIC_STATUSES.includes(response.comparison.status)) {
+      fail(`Invalid comparison status: ${String(response.comparison.status)}`, metricId);
+    }
+    if (NULL_VALUE_STATUSES.has(response.comparison.status)) {
+      if (
+        response.comparison.absoluteDelta !== null ||
+        response.comparison.percentageDelta !== null
+      ) {
+        fail(`${response.comparison.status} comparison deltas must be null`, metricId);
+      }
+    } else {
+      if (
+        response.comparison.absoluteDelta === null ||
+        !Number.isFinite(response.comparison.absoluteDelta)
+      ) {
+        fail(`${response.comparison.status} comparison requires absoluteDelta`, metricId);
+      }
+      if (
+        response.comparison.percentageDelta !== null &&
+        !Number.isFinite(response.comparison.percentageDelta)
+      ) {
+        fail('comparison.percentageDelta must be finite or null', metricId);
       }
     }
   }

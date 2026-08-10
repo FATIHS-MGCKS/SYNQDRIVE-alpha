@@ -21,6 +21,10 @@ Every response includes:
 - nullable typed comparison, coverage, and source-freshness metadata;
 - non-null exclusion and warning arrays.
 
+Scalar responses are discriminated by `valueType`: numeric types require finite
+numbers, `DATETIME`/`ENUM`/`TEXT` require strings, `BOOLEAN` requires a boolean, and
+`LIST` requires an array. Builders and runtime validation enforce the same mapping.
+
 ## Status semantics
 
 | Status | Value rule |
@@ -39,7 +43,8 @@ telemetry state.
 ## Money foundation
 
 Money uses `{ amountMinor, currency }`, where `amountMinor` is a safe integer and
-`currency` is an uppercase ISO-4217 code. A money response must use
+`currency` is an assigned uppercase ISO-4217 code from the canonical shared
+allowlist. A money response must use
 `valueType=MONEY` and `unit=CURRENCY_MINOR`; currency is never inferred.
 
 This is only the E1 transport foundation. Currency conversion, FX provenance,
@@ -49,7 +54,10 @@ historical field migration, reconciliation, and backfill belong to E3.
 
 Comparisons carry typed current/comparison periods, absolute delta, percentage
 delta, and status. A zero baseline yields `percentageDelta=null`, never
-`Infinity`/`NaN`. Consumers must not recompute comparisons in React components.
+`Infinity`/`NaN`. Available/partial/stale comparisons require an absolute delta;
+unavailable/error/not-applicable comparisons require both deltas to be null. The
+comparison current period must exactly match the enclosing metric period. Consumers
+must not recompute comparisons in React components.
 
 ## Runtime validation and compatibility
 

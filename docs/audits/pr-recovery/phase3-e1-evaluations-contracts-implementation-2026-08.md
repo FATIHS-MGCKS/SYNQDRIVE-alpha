@@ -49,17 +49,24 @@ ported because they belong outside E1 or violate its no-new-route gate.
   and `NOT_APPLICABLE`.
 - Available/partial/stale responses carry explicit values. Unavailable/error/not
   applicable responses carry `null`, never a placeholder zero.
+- Scalar response values are discriminated by `valueType` at compile time and at the
+  runtime boundary; invalid type/value combinations fail validation.
 - Money responses are discriminated by `valueType=MONEY`, require
   `unit=CURRENCY_MINOR`, and carry an integer minor amount plus explicit uppercase
-  currency.
+  currency from the shared ISO-4217 allowlist.
+- Registry 1.1.0 preserves the existing semantic `unit` and adds `transportUnit`;
+  MONEY uses `CURRENCY_MINOR` on the wire without rewriting existing display units.
 - Coverage, source freshness, and comparison are separate typed concepts.
-- Comparison percentage delta is null for a zero baseline, never Infinity/NaN.
+- Comparison status/value states are discriminated; percentage delta is null for a
+  zero baseline, never Infinity/NaN, and comparison current period must equal the
+  metric period.
 - UTC `[start,endExclusive)` bounds carry the effective IANA timezone and authority
   source.
 - Timezone precedence follows EVAL-ADR-002. Unauthorized report timezone overrides
-  fail closed; browser timezone is not an input.
+  fail closed; authority metadata is runtime-validated and browser timezone is not an
+  input.
 - Calendar boundaries are DST-aware. Rolling windows are explicit elapsed
-  durations ending at `asOf`.
+  durations ending at `asOf`; gap/overlap disambiguation is explicit and tested.
 - Calculation versions remain semver formula identifiers. A v1→v2 formula change
   requires registry and override changes together; existing v1 provenance remains
   v1 and no E1 backfill occurs.

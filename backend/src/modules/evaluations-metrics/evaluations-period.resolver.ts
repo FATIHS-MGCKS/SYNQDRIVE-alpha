@@ -5,6 +5,7 @@ import type {
   EvaluationsPeriodWindow,
   EvaluationsTimezoneContext,
 } from '@synq/evaluations-periods/evaluations-period.contract';
+import { assertValidEvaluationsTimezoneContext } from '@synq/evaluations-periods/evaluations-period.validator';
 import {
   DEFAULT_PLATFORM_TIMEZONE,
   assertIanaTimezone,
@@ -25,7 +26,6 @@ export interface ResolveEvaluationsTimezoneInput {
   readonly stationTimezone?: string | null;
   readonly hasUniqueStationScope?: boolean;
   readonly organizationTimezone?: string | null;
-  readonly platformFallbackTimezone?: string;
 }
 
 export interface ResolveEvaluationsPeriodInput {
@@ -40,6 +40,13 @@ function normalizedTimezone(value: string | null | undefined): string | null {
   if (!normalized) return null;
   assertIanaTimezone(normalized);
   return normalized;
+}
+
+function validatedTimezoneContext(
+  context: EvaluationsTimezoneContext,
+): EvaluationsTimezoneContext {
+  assertValidEvaluationsTimezoneContext(context);
+  return context;
 }
 
 /**
@@ -59,45 +66,42 @@ export function resolveEvaluationsTimezone(
   }
 
   if (reportTimezone) {
-    return {
+    return validatedTimezoneContext({
       effectiveTimezone: reportTimezone,
       source: 'REPORT_SCOPE',
       reportTimezone,
       stationTimezone,
       organizationTimezone,
-    };
+    });
   }
 
   if (input.hasUniqueStationScope === true && stationTimezone) {
-    return {
+    return validatedTimezoneContext({
       effectiveTimezone: stationTimezone,
       source: 'STATION',
       reportTimezone: null,
       stationTimezone,
       organizationTimezone,
-    };
+    });
   }
 
   if (organizationTimezone) {
-    return {
+    return validatedTimezoneContext({
       effectiveTimezone: organizationTimezone,
       source: 'ORGANIZATION',
       reportTimezone: null,
       stationTimezone,
       organizationTimezone,
-    };
+    });
   }
 
-  const fallback =
-    normalizedTimezone(input.platformFallbackTimezone) ?? DEFAULT_PLATFORM_TIMEZONE;
-  assertIanaTimezone(fallback);
-  return {
-    effectiveTimezone: fallback,
+  return validatedTimezoneContext({
+    effectiveTimezone: DEFAULT_PLATFORM_TIMEZONE,
     source: 'PLATFORM_FALLBACK',
     reportTimezone: null,
     stationTimezone,
     organizationTimezone: null,
-  };
+  });
 }
 
 function daysInMonth(year: number, month: number): number {
@@ -210,6 +214,7 @@ export function resolveEvaluationsPeriod(
   input: ResolveEvaluationsPeriodInput,
 ): EvaluationsPeriodWindow {
   assertValidReference(input.reference);
+  assertValidEvaluationsTimezoneContext(input.timezone);
   const timeZone = input.timezone.effectiveTimezone;
   assertIanaTimezone(timeZone);
   const referenceDateOnly = zonedDateOnly(input.reference, timeZone);
@@ -293,6 +298,7 @@ function shiftReference(
       millisecond: local.millisecond,
     },
     timeZone,
+    'COMPATIBLE',
   );
 }
 

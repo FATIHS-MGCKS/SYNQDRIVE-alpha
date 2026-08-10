@@ -141,7 +141,10 @@ export interface EvaluationsMetricDefinition {
   readonly category: EvaluationsMetricCategory;
   readonly labelKey: string;
   readonly descriptionKey: string;
+  /** Semantic/display unit retained for registry compatibility. */
   readonly unit: EvaluationsMetricUnit;
+  /** Canonical wire encoding; MONEY always uses CURRENCY_MINOR. */
+  readonly transportUnit: EvaluationsMetricUnit;
   readonly valueType: EvaluationsValueType;
   readonly aggregationType: EvaluationsAggregationType;
   readonly calculationVersion: string;

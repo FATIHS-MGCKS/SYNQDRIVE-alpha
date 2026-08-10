@@ -4,6 +4,7 @@ import {
   EVALUATIONS_COMPARISON_TYPES,
   EVALUATIONS_METRIC_STATUSES,
   EVALUATIONS_PERIOD_TYPES,
+  EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE,
   FINANCIAL_INSIGHTS_REGISTRY_METRIC_IDS,
   resolveLegacyEvaluationsMetricId,
 } from './evaluations-metric.contract';
@@ -25,5 +26,6 @@ describe('evaluations metric contract (shared)', () => {
     expect(EVALUATIONS_METRIC_STATUSES).toContain('NOT_APPLICABLE');
     expect(EVALUATIONS_PERIOD_TYPES).toContain('MTD');
     expect(EVALUATIONS_COMPARISON_TYPES).toContain('PREVIOUS_COMPARABLE_PERIOD');
+    expect(EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE).toBe('Europe/Berlin');
   });
 });

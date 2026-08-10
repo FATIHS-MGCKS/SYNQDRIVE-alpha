@@ -26,15 +26,26 @@ describe('evaluations shared contract backend build mirror', () => {
     ).toBe(readRepositoryFile(`shared/evaluations-metrics/${fileName}`));
   });
 
-  it('keeps the period contract byte-identical', () => {
+  it('keeps the period contracts byte-identical', () => {
+    for (const fileName of [
+      'evaluations-period.contract.ts',
+      'evaluations-period.validator.ts',
+    ]) {
+      expect(
+        readRepositoryFile(
+          `backend/src/synq/evaluations-periods/${fileName}`,
+        ),
+      ).toBe(
+        readRepositoryFile(`shared/evaluations-periods/${fileName}`),
+      );
+    }
+  });
+
+  it('keeps the shared money allowlist byte-identical', () => {
     expect(
       readRepositoryFile(
-        'backend/src/synq/evaluations-periods/evaluations-period.contract.ts',
+        'backend/src/synq/money/iso4217-currency-codes.ts',
       ),
-    ).toBe(
-      readRepositoryFile(
-        'shared/evaluations-periods/evaluations-period.contract.ts',
-      ),
-    );
+    ).toBe(readRepositoryFile('shared/money/iso4217-currency-codes.ts'));
   });
 });

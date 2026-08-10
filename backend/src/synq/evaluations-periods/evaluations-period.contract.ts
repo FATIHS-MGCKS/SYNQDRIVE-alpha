@@ -32,6 +32,9 @@ export const EVALUATIONS_COMPARISON_TYPES = [
 
 export type EvaluationsComparisonType = (typeof EVALUATIONS_COMPARISON_TYPES)[number];
 
+/** Legacy-only fallback for records that predate organization/station timezone data. */
+export const EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE = 'Europe/Berlin' as const;
+
 export const EVALUATIONS_TIMEZONE_SOURCES = [
   'REPORT_SCOPE',
   'STATION',

@@ -167,6 +167,11 @@ dimensions/comparisons, and invalid implementation statuses. Typed units include
 `CURRENCY_MINOR`, seconds/hours, kilometers, and rates for canonical response
 contracts; existing metric formulas and finance calculations are unchanged.
 
+Registry version 1.1.0 adds `transportUnit` while preserving the existing semantic
+`unit` field. MONEY definitions retain their compatibility/display unit (currently
+`EUR`) but must declare `transportUnit=CURRENCY_MINOR`; scalar transport units must
+equal their semantic unit. This separates display semantics from wire encoding.
+
 Metric value/status semantics live in
 `evaluations-metric-response-contract.md`. `MONEY` response values require
 `{ amountMinor, currency }`; the registry does not authorize a currency fallback.

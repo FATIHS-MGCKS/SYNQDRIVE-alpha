@@ -42,6 +42,9 @@ database, queue, cache, or provider access.
   they are not aliases for local calendar periods.
 - DST gaps/overlaps are resolved through the runtime IANA timezone database. Local
   calendar days are never implemented as fixed 24-hour intervals.
+- Calendar shifts use explicit compatible disambiguation: a nonexistent wall-clock
+  time moves forward by the DST gap, while a repeated wall-clock time selects the
+  earlier instant.
 
 ## Comparisons
 
@@ -57,5 +60,7 @@ MTD therefore never silently compares to a complete previous month.
 ## Security and compatibility
 
 Timezone selection inputs contain no organization ID and grant no authorization.
-Callers must resolve tenant/station access before invoking the resolver. Existing
-metric and analytics routes remain unchanged; E1 adds no route or query.
+Callers must resolve tenant/station access before invoking the resolver. Runtime
+validation rejects unknown authority sources, mismatches between `effectiveTimezone`
+and its source field, and caller-selected platform fallbacks. Existing metric and
+analytics routes remain unchanged; E1 adds no route or query.

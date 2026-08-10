@@ -73,6 +73,16 @@ describe('canonical evaluations metric response contract', () => {
     expect(isDisplayableEvaluationsMetricValue(response)).toBe(true);
   });
 
+  it('rejects scalar values that do not match their valueType', () => {
+    const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
+    expect(() =>
+      assertValidEvaluationsMetricResponse({
+        ...response,
+        value: 'not-a-count',
+      } as Parameters<typeof assertValidEvaluationsMetricResponse>[0]),
+    ).toThrow('COUNT metric value must be a finite number');
+  });
+
   it.each([
     ['ERROR', () => buildErrorEvaluationsMetric({ ...scalarBase, error: 'calculation failed' })],
     [
@@ -127,6 +137,9 @@ describe('canonical evaluations metric response contract', () => {
     expect(() => assertValidEvaluationsMoney({ amountMinor: 10.5, currency: 'EUR' })).toThrow(
       'safe integer',
     );
+    expect(() => assertValidEvaluationsMoney({ amountMinor: 100, currency: 'ZZZ' })).toThrow(
+      'assigned',
+    );
   });
 
   it('rejects a MONEY response with an implicit or mismatched currency unit', () => {
@@ -156,6 +169,77 @@ describe('canonical evaluations metric response contract', () => {
     expect(comparison.status).toBe('AVAILABLE');
   });
 
+  it('uses null deltas for unavailable comparisons', () => {
+    const comparison = buildEvaluationsMetricComparison({
+      comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+      currentPeriod: period,
+      comparisonPeriod: period,
+      currentValue: 25,
+      comparisonValue: null,
+      comparisonStatus: 'UNAVAILABLE',
+    });
+    expect(comparison).toMatchObject({
+      status: 'UNAVAILABLE',
+      absoluteDelta: null,
+      percentageDelta: null,
+    });
+  });
+
+  it('rejects contradictory comparison status/delta states', () => {
+    const response = buildAvailableEvaluationsMetric({
+      ...scalarBase,
+      value: 25,
+      comparison: buildEvaluationsMetricComparison({
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        currentPeriod: period,
+        comparisonPeriod: period,
+        currentValue: 25,
+        comparisonValue: 20,
+      }),
+    });
+    const invalid = {
+      ...response,
+      comparison: {
+        ...response.comparison!,
+        status: 'ERROR',
+      },
+    };
+    expect(() =>
+      assertValidEvaluationsMetricResponse(
+        invalid as Parameters<typeof assertValidEvaluationsMetricResponse>[0],
+      ),
+    ).toThrow('comparison deltas must be null');
+  });
+
+  it('requires comparison.currentPeriod to equal the response period', () => {
+    const response = buildAvailableEvaluationsMetric({
+      ...scalarBase,
+      value: 25,
+      comparison: buildEvaluationsMetricComparison({
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        currentPeriod: period,
+        comparisonPeriod: period,
+        currentValue: 25,
+        comparisonValue: 20,
+      }),
+    });
+    const invalid = {
+      ...response,
+      comparison: {
+        ...response.comparison!,
+        currentPeriod: {
+          ...response.comparison!.currentPeriod,
+          reference: '2026-08-09T12:00:00.000Z',
+        },
+      },
+    };
+    expect(() =>
+      assertValidEvaluationsMetricResponse(
+        invalid as Parameters<typeof assertValidEvaluationsMetricResponse>[0],
+      ),
+    ).toThrow('must equal the response period');
+  });
+
   it('rejects invalid period invariants at the response boundary', () => {
     const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
     const invalid = {
@@ -177,5 +261,38 @@ describe('canonical evaluations metric response contract', () => {
         invalid as Parameters<typeof assertValidEvaluationsMetricResponse>[0],
       ),
     ).toThrow('UTC ISO-8601');
+  });
+
+  it('rejects forged or inconsistent timezone authority metadata', () => {
+    const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
+    const forged = {
+      ...response,
+      period: {
+        ...response.period,
+        timezone: {
+          ...response.period.timezone,
+          source: 'STATION',
+          stationTimezone: 'Europe/London',
+        },
+      },
+    };
+    expect(() =>
+      assertValidEvaluationsMetricResponse(
+        forged as Parameters<typeof assertValidEvaluationsMetricResponse>[0],
+      ),
+    ).toThrow('effectiveTimezone to equal stationTimezone');
+
+    const unknownSource = {
+      ...response,
+      period: {
+        ...response.period,
+        timezone: { ...response.period.timezone, source: 'BROWSER' },
+      },
+    };
+    expect(() =>
+      assertValidEvaluationsMetricResponse(
+        unknownSource as Parameters<typeof assertValidEvaluationsMetricResponse>[0],
+      ),
+    ).toThrow('Invalid evaluations timezone source');
   });
 });

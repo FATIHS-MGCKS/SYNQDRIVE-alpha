@@ -42,6 +42,7 @@ function m(input: MetricInput): EvaluationsMetricDefinition {
     labelKey: evaluationsMetricLabelKey(input.id),
     descriptionKey: evaluationsMetricDescriptionKey(input.id),
     unit: input.unit,
+    transportUnit: input.valueType === 'MONEY' ? 'CURRENCY_MINOR' : input.unit,
     valueType: input.valueType,
     aggregationType: input.aggregationType,
     calculationVersion: input.calculationVersion,
