@@ -16,8 +16,8 @@
     "safe_to_close_patch_equivalent": 5,
     "phase1_classifications_corrected": 0,
     "stack_tips_analyzed": 93,
-    "stack_tip_commit_memberships": 613,
-    "stack_tip_distinct_commits": 575,
+    "stack_tip_commit_memberships": 651,
+    "stack_tip_distinct_commits": 578,
     "unique_non_main_commits": 611,
     "unique_changesets": 246,
     "changeset_classifications": {
@@ -38,7 +38,9 @@
     "do_not_close_phase1_prs": 439,
     "standalone_conflicting_analyzed": 19,
     "docs_only_analyzed": 3,
-    "dimo_mcp_status": "error/unavailable"
+    "dimo_mcp_status": "error/unavailable",
+    "stack_tip_duplicate_memberships": 73,
+    "stack_tip_overlap_pair_count": 5
   },
   "methodology": {
     "titles_used_for_classification": false,
@@ -99638,5 +99640,110 @@
     "AUDIT_EVIDENCE_EXCLUDED_FROM_RECOVERY": [
       1014
     ]
-  }
+  },
+  "stack_tip_overlap_pairs": [
+    {
+      "left_tip": 500,
+      "right_tip": 549,
+      "shared_commits": [
+        "05f97906a2cfe82c503c59d90bfe88d40dc8ae7c",
+        "07f47f3bcb1ae2a29c6143614a3eb0a6a580e611",
+        "13bf3c2f90d76fba370b65918322bae1b4d87614",
+        "168445c6ce129b2f8c64d76790e31f931e672d9b",
+        "343d247d0470407eb390f9e7b6be0abef7dc29c7",
+        "369567a65413d3bac27df6c2774e8722c6ce5fb2",
+        "39c5cef93b19525467f77f0f95d62783ba690b8c",
+        "3a172a22cfa2814d697bfdebb50ec1356c15e74a",
+        "3ee18166fc4ba26b30ec22179c2d8baefbfc93a7",
+        "449da943d8d3d28e01eac74b59c5e578522af069",
+        "45680d3a8b06a57acb8e0772f26943fd3e096bc4",
+        "46f0c33b56ccdac264c9c0bf0e951702c3bb75d9",
+        "470fca6b14b3e3332559e741e6c478d841aa0318",
+        "566a56efcf3e9a4a573d2c62c532f4c424002b1e",
+        "6784ea35ab90721ec4cce5f45d95274c9a6c0e01",
+        "6a4893361d0a3f127a4bdac2ec9deadefba04d3c",
+        "6d03c3ef5b36603c865e7a24af8929363b27677f",
+        "6d21c7419d7085b607358487f5866c833ca97536",
+        "8285a1714907c877aa4a281e8c7c9b985049ae6c",
+        "935130cf73fb6eb21caa3838137062a6a6d1209b",
+        "93877903a20625f11010ee190bf8a45465779e7c",
+        "95ec19e6ea7922a55af0e0a3f2e1871d1298a52f",
+        "9faf5c05a2b8eaf6163b874335796eb8eb6d3da1",
+        "ad17735392e0dea94eba3d3d3744149bbf0d545b",
+        "b63188e38aec82f8537e10f6a08fdd2abf805d54",
+        "c5108ad33bd73414cbfec48a3dbb3708b9cc8fb4",
+        "cbf3b4d83718ddab0d20ef07870455bba25ad857",
+        "cf69bcce66b73e6b2b1e34a7f3d467c77d2fbb31",
+        "d2f53b7d7f2523ebef44d21887354451ab5e3684",
+        "db58a8e55dcdbceb10b73bfcf0ac8dfdea4ff706",
+        "dd1bfff44e330c5e5857ae774630ff751a41db97",
+        "e91f9d7b66b250afc379e2b2339517665cef8f38",
+        "ee3849d546ab9930a28fd702c9b073d0b59856be",
+        "f654507eca15c205660020bce8e441328e8e4fc8"
+      ]
+    },
+    {
+      "left_tip": 538,
+      "right_tip": 554,
+      "shared_commits": [
+        "0d950f0837f7b02934d239d00c45f3727638b3df",
+        "1194d13bf839cc08b10f87991e17c912f2da8ff1",
+        "1b7cddc2891b1de5bff8367426ddbd6895515598",
+        "51fc3d95e3a9c3704f582838b19ca44f3fe6c133",
+        "52248a6beaa79362db0df063d9493f58b8b792fe",
+        "901dbefa3373a68bb54488e4b749cd1200a952a1",
+        "9302bd8ba34c206f1c4bc53de8380f7e4e30fe57",
+        "95a1f5e6c5152b8ab9b860fb0fe8695a5fff7bcc",
+        "9fa458e7d23a00dd72c6de789d7d436699ab9ed3",
+        "9fd7f182f7c596f5e1679e8032b79a9259fc316a",
+        "d57b72f0671cfb5c838ad2e5bcadfdaededaf3ce",
+        "fa0a9f5e0cf4a29d4735b0cce26a8f04b83ebf99"
+      ]
+    },
+    {
+      "left_tip": 587,
+      "right_tip": 593,
+      "shared_commits": [
+        "57ad8f0901f8160db70178748b65810b8b59929c",
+        "648de2ca5377b6de8210614d3fe4c8a2aaeb66b4",
+        "ccdb05911267d30aa70e05cb4adb5be0139f9f9d",
+        "f17eebe79f3349e968e7a81167ff5f20918f5486"
+      ]
+    },
+    {
+      "left_tip": 729,
+      "right_tip": 890,
+      "shared_commits": [
+        "0de01c6fc70c1b2c3f3f999ca7b1740e935d2526",
+        "32fe208bf4a486f3cb39b27bcb81734bfea60e1e",
+        "4ddca93023e8081c4994b049a942102e10d704b3",
+        "516860e9ea1dadb08a028e45ba9a451bbe8541c6",
+        "52ecb5ad141297c8160cd45b8876c4565142440a",
+        "542e7538dc83544eff087c47b93bd5402984be0e",
+        "6646f1120309162f353169d5953e68cae8b55a2f",
+        "73ed54eaa0a557871813273af9dd8801caa69b10",
+        "7a1d23a8a815c8242699b25a860c132e4adef221",
+        "826b62db9406919dbe5b930423223430c64526d0",
+        "8c01b4c4f581efa80619a80288dae01e3b132a48",
+        "a2e87245f07ac96c798c6ad9e51bde02348fd323",
+        "aabfc18c6f84baaa8c1d3f6fa634b94eb28e6954",
+        "c0672c25b5798d19df0026e394df0faa21bb4b0c",
+        "e68a41441ff82874619516358c3c013f4f082f99",
+        "e9f517d47ef58d9e498100ca41eba34b945ff888",
+        "f50bdd745aceac64c21d9007cca82ea472665024"
+      ]
+    },
+    {
+      "left_tip": 901,
+      "right_tip": 906,
+      "shared_commits": [
+        "0ccdc8dbb88bf0f782051df4065405587e455231",
+        "13be403e306d9d72e9dce12fe1e552ef3bb3db82",
+        "4e8909f5879a492016a02c7cc62024e8b59422fa",
+        "5c50f0d06f95505c50fe4419202ac79af47cba4e",
+        "9ab573b908c1623befdfb320e285015e70629c3e",
+        "c672ccfd3b2f8776b48968d5a5ed9e7c8b508f16"
+      ]
+    }
+  ]
 }

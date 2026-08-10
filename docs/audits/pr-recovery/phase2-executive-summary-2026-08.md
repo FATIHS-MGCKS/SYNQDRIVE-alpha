@@ -13,8 +13,10 @@ Generated `2026-08-10T17:07:53Z` against current `origin/main` `2d721a902feb5610
 | `safe_to_close_patch_equivalent` | 5 |
 | `phase1_classifications_corrected` | 0 |
 | `stack_tips_analyzed` | 93 |
-| `stack_tip_commit_memberships` | 613 |
-| `stack_tip_distinct_commits` | 575 |
+| `stack_tip_commit_memberships` | 651 |
+| `stack_tip_distinct_commits` | 578 |
+| `stack_tip_duplicate_memberships` | 73 |
+| `stack_tip_overlap_pair_count` | 5 |
 | `unique_non_main_commits` | 611 |
 | `unique_changesets` | 246 |
 | `planned_recovery_modules` | 26 |
