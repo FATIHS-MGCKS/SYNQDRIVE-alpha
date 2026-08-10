@@ -199,8 +199,8 @@ describe('canonical evaluations metric response contract', () => {
         value: 8,
         dataCoverage: {
           ...incompleteCoverage,
-          availableRecords: 80,
-          excludedRecords: 21,
+          availableRecords: 8,
+          excludedRecords: 3,
         },
       }),
     ).toThrow('plus excludedRecords cannot exceed');
