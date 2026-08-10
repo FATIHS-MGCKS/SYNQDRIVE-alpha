@@ -1,6 +1,6 @@
 # Evaluations Metric and KPI Response Contract
 
-**Schema version:** 1.0.0  
+**Schema version:** 1.0.0
 **Scope:** Phase 3 E1 contract foundation
 
 ## Canonical response

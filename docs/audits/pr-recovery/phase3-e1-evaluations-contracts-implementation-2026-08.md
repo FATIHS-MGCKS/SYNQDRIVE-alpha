@@ -104,31 +104,48 @@ the required SynqDrive Changes/Architektur entries.
 
 ## 8. Validation results
 
-Validation is recorded here after the pre-test implementation revision is committed
-and pushed. No test will be skipped or disabled.
-
 | Gate | Result |
 |---|---|
-| Targeted metric response/status/money/comparison tests | PENDING |
-| Targeted period/timezone/DST tests | PENDING |
-| Metric registry/version/provenance regression | PENDING |
-| Backend evaluations regression | PENDING |
-| Frontend evaluations regression | PENDING |
-| Backend typecheck/build | PENDING |
-| Backend lint | PENDING |
-| Frontend typecheck/build | PENDING |
-| Frontend lint | PENDING |
-| Prisma validate | PENDING |
-| No-new-routes/diff audit | PENDING |
+| Targeted metric response/status/money/comparison tests | PASS |
+| Targeted period/timezone/DST tests | PASS |
+| Metric registry/version/provenance regression | PASS |
+| Platform timezone primitive regression | PASS — 10/10 |
+| Backend evaluations regression | BASELINE BLOCKER — 156 passed, 2 existing TireCriticalDetector fixture failures |
+| Backend production typecheck | PASS — `tsconfig.build.json` |
+| Backend all-source typecheck | BASELINE BLOCKER — 4 existing Stripe/workflow test-fixture errors |
+| Backend build | PASS |
+| Backend targeted E1 lint | PASS |
+| Backend configured lint | PASS with one pre-existing warning |
+| Backend full lint | BASELINE BLOCKER — 36 errors/15 warnings in untouched files |
+| Frontend typecheck/build | PASS |
+| Frontend targeted E1 lint | PASS |
+| Frontend configured/full lint | BASELINE BLOCKER — errors in untouched document/UI files |
+| Frontend evaluations regression | PASS — 36/36 |
+| Frontend full unit suite | BASELINE BLOCKER — 2235 passed, 7 failed in untouched health/task files; 1 pre-existing skip and 1 todo |
+| Backend full unit suite | BASELINE BLOCKER — existing failures, then Node heap exhaustion at 4 GiB |
+| Prisma validate | PASS with pre-existing referential-action warning |
+| No-new-routes/diff audit | PASS |
 | CI | PENDING |
+
+The E1-owned targeted suites pass without skipped tests. Baseline failures were
+verified to be in files with no `origin/main...HEAD` diff. They were not modified
+because E1 explicitly forbids unrelated cleanup and silent business-expectation
+changes.
 
 ## 9. Residual issues and rollback
 
-- Residual issues: pending validation and CI only. Runtime adoption of the new
-  response contract is intentionally deferred to later owning packages.
+- Residual issues:
+  - Current main is not globally green for all-source typecheck, full lint, or full
+    unit tests. These are external E1 acceptance blockers even though every E1
+    target, production build, and production typecheck passes.
+  - CI remains pending.
+  - Runtime adoption of the new response contract is intentionally deferred to
+    later owning packages.
 - Rollback: revert the isolated E1 commits and redeploy the prior release. No
   database restoration, feature-flag change, or data backfill is required.
 
 ## 10. Recommendation
 
-`PENDING_LOCAL_GATES` until all validation rows above pass.
+`E1_BLOCKED`: keep the PR in draft. Do not mark ready or merge until the current-main
+baseline gates and CI are green or the post-implementation audit explicitly accepts
+the documented external blockers.

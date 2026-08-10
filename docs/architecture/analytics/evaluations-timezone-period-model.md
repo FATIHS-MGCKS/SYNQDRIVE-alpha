@@ -1,6 +1,6 @@
 # Evaluations Timezone and Business-Period Model
 
-**Contract version:** 1.0.0  
+**Contract version:** 1.0.0
 **Authority:** EVAL-ADR-002 (accepted 2026-08-10)
 
 ## Authority and boundaries
