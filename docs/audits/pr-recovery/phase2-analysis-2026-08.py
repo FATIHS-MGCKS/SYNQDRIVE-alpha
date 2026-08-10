@@ -455,7 +455,7 @@ for (module, cap), contribution in sorted(contributions.items()):
         relevance = "Most non-trivial added lines already occur in current main; semantic equivalence remains medium-confidence."
     elif module == "connectivity":
         classification = "UNKNOWN"
-        relevance = "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified."
+        relevance = "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified."
     elif conflict_sources and (flags["security"] or flags["migration"] or len({file_module for path in files for file_module in file_modules(path)}) > 1):
         classification = "CONFLICTING_NEEDS_DESIGN_REVIEW"
         relevance = "Unique patches overlap current main and touch architecture-sensitive surfaces."
@@ -876,7 +876,7 @@ summary = {
     "do_not_close_phase1_prs": len(protection["DO_NOT_CLOSE_PHASE1_PRS"]),
     "standalone_conflicting_analyzed": len(conflict_results),
     "docs_only_analyzed": len(docs_results),
-    "dimo_mcp_status": "loading/unavailable",
+    "dimo_mcp_status": "error/unavailable",
 }
 
 payload = {
@@ -894,7 +894,7 @@ payload = {
         "stack_method": "commit-by-commit rev-list from each tip merge-base plus exact open-head ancestry",
         "limitations": [
             "GitHub data is non-transactional across API calls.",
-            "DIMO MCP remained loading; connectivity classifications are UNKNOWN until canonical integration verification.",
+            "DIMO MCP live tool discovery failed; connectivity classifications are UNKNOWN until canonical integration verification.",
             "Semantic supersession is medium-confidence unless exact reachability or patch identity proves it.",
             "No conflict was resolved and no production branch was created.",
         ],
@@ -1154,7 +1154,7 @@ executive += [
     "", "## Errors and limits", "",
     "- One oversized current-snapshot GraphQL request returned HTTP 502; the lightweight seven-page fallback succeeded.",
     "- GitHub permission metadata remained non-authoritative (`viewerPermission=null`); authenticated reads and Git fetch worked.",
-    "- DIMO MCP was `loading`, so no DIMO integration claim is treated as verified.",
+    "- DIMO MCP live tool discovery failed, so no DIMO integration claim is treated as verified.",
 ]
 (OUT / "phase2-executive-summary-2026-08.md").write_text("\n".join(executive) + "\n")
 

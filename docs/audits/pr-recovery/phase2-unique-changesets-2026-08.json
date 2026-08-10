@@ -36,7 +36,7 @@
     "do_not_close_phase1_prs": 439,
     "standalone_conflicting_analyzed": 19,
     "docs_only_analyzed": 3,
-    "dimo_mcp_status": "loading/unavailable"
+    "dimo_mcp_status": "error/unavailable"
   },
   "methodology": {
     "titles_used_for_classification": false,
@@ -48,7 +48,7 @@
     "stack_method": "commit-by-commit rev-list from each tip merge-base plus exact open-head ancestry",
     "limitations": [
       "GitHub data is non-transactional across API calls.",
-      "DIMO MCP remained loading; connectivity classifications are UNKNOWN until canonical integration verification.",
+      "DIMO MCP live tool discovery failed; connectivity classifications are UNKNOWN until canonical integration verification.",
       "Semantic supersession is medium-confidence unless exact reachability or patch identity proves it.",
       "No conflict was resolved and no production branch was created."
     ]
@@ -7782,7 +7782,7 @@
         21,
         753
       ],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
@@ -7881,7 +7881,7 @@
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "MEDIUM",
@@ -7966,7 +7966,7 @@
       "expected_conflicts": [
         88
       ],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
@@ -8043,7 +8043,7 @@
       "expected_conflicts": [
         753
       ],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
@@ -8123,7 +8123,7 @@
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "MEDIUM",
@@ -8220,7 +8220,7 @@
       "privacy_impact": "NONE_IDENTIFIED",
       "data_migration_impact": "NONE_IDENTIFIED",
       "expected_conflicts": [],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "MEDIUM",
@@ -8399,7 +8399,7 @@
         935,
         936
       ],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
@@ -8502,7 +8502,7 @@
       "expected_conflicts": [
         753
       ],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
@@ -8770,7 +8770,7 @@
         935,
         936
       ],
-      "current_relevance": "DIMO MCP was unavailable (loading); canonical integration compatibility cannot be verified.",
+      "current_relevance": "DIMO MCP live discovery failed; canonical integration compatibility cannot be verified.",
       "classification": "UNKNOWN",
       "recommended_action": "Reimplement on current main",
       "risk_level": "HIGH",
