@@ -193,6 +193,17 @@ describe('canonical evaluations metric response contract', () => {
         dataCoverage: { ...incompleteCoverage, availableRecords: 7.5 },
       }),
     ).toThrow('non-negative integer');
+    expect(() =>
+      buildPartialEvaluationsMetric({
+        ...scalarBase,
+        value: 8,
+        dataCoverage: {
+          ...incompleteCoverage,
+          availableRecords: 80,
+          excludedRecords: 21,
+        },
+      }),
+    ).toThrow('plus excludedRecords cannot exceed');
   });
 
   it('defines zero expected records as zero available with a null ratio', () => {
@@ -494,6 +505,20 @@ describe('canonical evaluations metric response contract', () => {
           calculationVersion: '9.9.9',
         }),
       ).toThrow('calculationVersion 9.9.9 does not match registry 1.0.0');
+    });
+
+    it('rejects an ML_FORECAST response for a DERIVED registry metric', () => {
+      const response = buildAvailableEvaluationsMetric({
+        ...scalarBase,
+        metricId: 'fin.mom_revenue_delta_pct',
+        metricKind: 'ML_FORECAST',
+        valueType: 'PERCENT',
+        unit: 'PERCENT',
+        value: 10,
+      });
+      expect(() => assertValidRegisteredEvaluationsMetricResponse(response)).toThrow(
+        'metricKind ML_FORECAST does not match registry DERIVED',
+      );
     });
 
     it('rejects unsupported comparisons and wrong transport units', () => {

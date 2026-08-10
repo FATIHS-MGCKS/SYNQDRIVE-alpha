@@ -119,6 +119,17 @@ function assertCoverage(coverage: EvaluationsDataCoverage, metricId: string): vo
     fail('dataCoverage.availableRecords cannot exceed expectedRecords', metricId);
   }
   if (
+    coverage.expectedRecords !== null &&
+    coverage.availableRecords !== null &&
+    coverage.excludedRecords !== null &&
+    coverage.availableRecords + coverage.excludedRecords > coverage.expectedRecords
+  ) {
+    fail(
+      'dataCoverage availableRecords plus excludedRecords cannot exceed expectedRecords',
+      metricId,
+    );
+  }
+  if (
     coverage.ratio !== null &&
     (!Number.isFinite(coverage.ratio) || coverage.ratio < 0 || coverage.ratio > 1)
   ) {
