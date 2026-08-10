@@ -204,7 +204,7 @@ export function assertValidEvaluationsMetricResponse(
       assertValidEvaluationsMoney(response.value, metricId);
     }
   } else {
-    if (response.unit === 'CURRENCY_MINOR') {
+    if ((response.unit as string) === 'CURRENCY_MINOR') {
       fail('Only MONEY metrics may use CURRENCY_MINOR', metricId);
     }
     if (response.value !== null) {
