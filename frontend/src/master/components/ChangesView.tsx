@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Canonical shared KPI response with explicit status semantics; unavailable/error/not-applicable never become numeric zero.',
       'DST-safe business-period resolver with report → station → organization timezone authority and typed comparison periods.',
       'Money transport foundation requires amountMinor + ISO currency; no FX logic, finance migration, business query, or new route.',
-      'Registry startup invariants expanded; backend/frontend consume the same period and metric-response contracts.',
+      'Registry startup invariants expanded; backend/frontend consume the same period and metric-response contracts, with a byte-identical backend-mirror sync gate.',
     ],
     reason:
       'Phase 3 E1 recovers the versioned contract foundation required by later tenant-safe analytics, finance, quality, and UI packages.',

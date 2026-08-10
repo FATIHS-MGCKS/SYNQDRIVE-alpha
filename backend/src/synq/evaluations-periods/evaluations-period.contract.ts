@@ -1,6 +1,8 @@
 /**
- * Backend build mirror of the canonical contract in
- * `shared/evaluations-periods/evaluations-period.contract.ts`.
+ * Canonical business-period contract for SynqDrive Evaluations.
+ *
+ * Technical timestamps are UTC ISO-8601 instants. Calendar boundaries are
+ * resolved in the recorded IANA timezone; browser timezone is presentation only.
  */
 
 export const EVALUATIONS_PERIOD_TYPES = [
@@ -40,6 +42,7 @@ export const EVALUATIONS_TIMEZONE_SOURCES = [
 export type EvaluationsTimezoneSource = (typeof EVALUATIONS_TIMEZONE_SOURCES)[number];
 
 export interface EvaluationsTimezoneContext {
+  /** IANA timezone used to resolve all local calendar boundaries. */
   readonly effectiveTimezone: string;
   readonly source: EvaluationsTimezoneSource;
   readonly reportTimezone: string | null;
@@ -47,6 +50,10 @@ export interface EvaluationsTimezoneContext {
   readonly organizationTimezone: string | null;
 }
 
+/**
+ * Query interval uses `[start, endExclusive)` semantics.
+ * `reference` is the UTC as-of instant used to resolve partial periods.
+ */
 export interface EvaluationsPeriodWindow {
   readonly periodType: EvaluationsPeriodType;
   readonly start: string;

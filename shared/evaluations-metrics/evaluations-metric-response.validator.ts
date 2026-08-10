@@ -163,7 +163,9 @@ export function assertValidEvaluationsMetricResponse(
       fail('MONEY metrics must use CURRENCY_MINOR', metricId);
     }
     if (response.value !== null) {
-      if (!isMoney(response.value)) fail('MONEY metric value must include amountMinor and currency', metricId);
+      if (!isMoney(response.value)) {
+        fail('MONEY metric value must include amountMinor and currency', metricId);
+      }
       assertValidEvaluationsMoney(response.value, metricId);
     }
   } else if (isMoney(response.value)) {

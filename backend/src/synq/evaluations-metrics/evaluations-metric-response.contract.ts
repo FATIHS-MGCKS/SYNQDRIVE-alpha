@@ -31,6 +31,7 @@ export const EVALUATIONS_SOURCE_FRESHNESS_STATES = [
 export type EvaluationsSourceFreshnessState =
   (typeof EVALUATIONS_SOURCE_FRESHNESS_STATES)[number];
 
+/** E1 foundation only; conversion and FX provenance belong to E3. */
 export interface EvaluationsMoney {
   readonly amountMinor: number;
   readonly currency: string;
@@ -40,6 +41,7 @@ export interface EvaluationsDataCoverage {
   readonly expectedRecords: number | null;
   readonly availableRecords: number | null;
   readonly excludedRecords: number | null;
+  /** Available/expected ratio in the closed interval [0, 1], when known. */
   readonly ratio: number | null;
   readonly missingSources: readonly string[];
 }
@@ -57,6 +59,7 @@ export interface EvaluationsMetricComparison {
   readonly currentPeriod: EvaluationsPeriodWindow;
   readonly comparisonPeriod: EvaluationsPeriodWindow;
   readonly absoluteDelta: number | null;
+  /** Null for a zero or unavailable baseline; never Infinity/NaN. */
   readonly percentageDelta: number | null;
   readonly status: EvaluationsMetricStatus;
 }
@@ -103,6 +106,10 @@ export type EvaluationsScalarMetricResponse = EvaluationsMetricResponseBase & {
   readonly unit: Exclude<EvaluationsMetricUnit, 'CURRENCY_MINOR'>;
 } & EvaluationsValueState<EvaluationsScalarMetricValue>;
 
+/**
+ * Canonical KPI payload. A measured zero remains a non-null value with its own
+ * status; unavailable/error/not-applicable values are always null.
+ */
 export type EvaluationsMetricResponse =
   | EvaluationsMoneyMetricResponse
   | EvaluationsScalarMetricResponse;

@@ -69,7 +69,9 @@ ported because they belong outside E1 or violate its no-new-route gate.
 - Existing metric IDs, 74 definitions, legacy maps, routes, and current API
   responses remain intact.
 - Backend mirrors under `backend/src/synq/` preserve the current PM2/Nest build
-  topology; frontend aliases consume the repository shared source.
+  topology; frontend aliases consume the repository shared source. A targeted sync
+  test requires every evaluations contract mirror to remain byte-identical to its
+  shared authority.
 - New response and period contracts are additive and are not yet bound to existing
   business-query routes.
 - No permanent duplicate KPI authority or page-owned calculation was introduced.
