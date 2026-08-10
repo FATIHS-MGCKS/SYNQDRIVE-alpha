@@ -225,6 +225,13 @@ EVAL_CANONICAL_PRS = {
     "Backtesting / Drift": 813, "Forecast UX": 814, "GDPR": 815,
     "Roles / Permissions": 816, "Audit Logging": 817,
 }
+EVAL_PARTIAL_CAPABILITIES = {
+    "Money Domain", "Receivables", "Revenue / Cashflow / Result", "Multi-Currency",
+    "Finance Test Suite", "Grouping / Entity References", "Tenant Isolation", "Data Quality",
+    "Freshness / Lineage", "Metric State UX", "Mobile Readiness", "Accessibility / i18n",
+    "GDPR", "Roles / Permissions", "Audit Logging",
+}
+EVAL_DOCS_ONLY_CAPABILITIES = {"Predictive Analytics Architecture"}
 EVAL_CHAINS = [
     ["Timezone / Period Model", "Unified KPI Contract", "Money Domain", "Money Migration", "Receivables", "Revenue / Cashflow / Result", "Multi-Currency", "Finance Test Suite"],
     ["Summary / Detail Separation", "Grouping / Entity References", "Analytics Summary", "Filter Architecture", "Tenant Isolation", "Analytics Contracts", "Cost Model", "Utilization", "Strength Detection", "Driver / Influence Analysis", "Data Quality", "Freshness / Lineage"],
@@ -1032,7 +1039,14 @@ for name, short_sha, disposition in EVAL_EXACT_SPECS:
     commit = catalog[sha]
     canonical_source = EVAL_CANONICAL_PRS[name]
     related_changesets = [item for item in changesets if item["module"] == "evaluations" and item["capability"] == name]
-    status = "EXACTLY_IN_MAIN" if disposition == "MAIN_BASELINE" else "UNIQUE_REQUIRES_RECOVERY"
+    if disposition == "MAIN_BASELINE":
+        status = "EXACTLY_IN_MAIN"
+    elif name in EVAL_PARTIAL_CAPABILITIES:
+        status = "PARTIAL_IN_MAIN_CONFLICTING"
+    elif name in EVAL_DOCS_ONLY_CAPABILITIES:
+        status = "DOCS_ONLY_UNIQUE"
+    else:
+        status = "UNIQUE_CONFLICTING"
     evaluation_matrix.append({
         "capability": name,
         "status": status,
@@ -1048,6 +1062,15 @@ for name, short_sha, disposition in EVAL_EXACT_SPECS:
         "evidence": [
             f"canonical source PR #{canonical_source}, commit {sha}",
             "direct reachability verified" if disposition == "MAIN_BASELINE" else "git cherry reports unique patch; no patch-equivalent main commit",
+            (
+                "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+                if status == "PARTIAL_IN_MAIN_CONFLICTING"
+                else "cumulative source stack conflicts directly with current main"
+                if status == "UNIQUE_CONFLICTING"
+                else "architecture evidence is documentation-only"
+                if status == "DOCS_ONLY_UNIQUE"
+                else "exact commit is reachable from current main"
+            ),
         ],
     })
 
@@ -1402,6 +1425,12 @@ eval_md = [
     "- PR #819: current evaluation observability.",
     "- PRs #820–#821: verification/readiness evidence.",
     "- Observability is a preservation/test gate, not an unimplemented dependency.", "",
+    "## Stack-tip and direct-conflict evidence", "",
+    "- The finance (#765), action/recommendation (#808), and predictive/security (#817) tips have red required checks.",
+    "- Direct merge simulation for #765 conflicts in backend package/TypeScript configuration, `FinancialInsightsView.tsx`, and architecture logs.",
+    "- Direct merge simulation for #808 conflicts in business-insights backend services/contracts, evaluation UI, translations, frontend test/build configuration, and add/add E2E fixtures.",
+    "- Direct merge simulation for #817 conflicts in dashboard/customer/auth configuration, default roles, evaluation UI, and architecture logs.",
+    "- Therefore no cumulative evaluations tip is a safe Phase-3 integration unit; recovery must follow the capability sequence.", "",
     "## Capability reconstruction", "",
     "| Order | Capability | Status | Source PRs | Source commits | Files | Recovery change-set | Confidence |",
     "|---:|---|---|---|---:|---:|---|---|",
@@ -1430,6 +1459,17 @@ eval_md += [
     "4. Recommendations/actions.",
     "5. Forecast infrastructure before forecast UI.",
     "6. Compliance, audit, tests, and observability before production.",
+    "", "## Product and architecture decisions required before integration", "",
+    "1. Confirm persisted FX provenance versus intentional EUR-only reporting.",
+    "2. Choose report timezone precedence among organization, station, user, and explicit report override.",
+    "3. Decide whether the new evaluations page replaces or composes with `FinancialInsightsView.tsx`.",
+    "4. Choose persisted, derived, or gradual migration for typed entity references.",
+    "5. Define which recommendation transitions require confirmation before operational side effects.",
+    "6. Define forecast history, retention, minimum sample size, and confidence policy.",
+    "7. Choose global default-role extensions versus evaluation-local permission policy.",
+    "8. Define sensitive-read audit coverage, retention, and redaction.",
+    "9. Keep predictive APIs disabled until authenticated cross-tenant and GDPR gates pass.",
+    "10. Discard artifact-only screenshot commits in favor of the merged #818 artifact convention.",
 ]
 (OUT / "phase2-evaluations-recovery-plan-2026-08.md").write_text("\n".join(eval_md) + "\n")
 

@@ -11,54 +11,62 @@ Capabilities use manually verified canonical PR/commit sources. Cumulative desce
 - PRs #820–#821: verification/readiness evidence.
 - Observability is a preservation/test gate, not an unimplemented dependency.
 
+## Stack-tip and direct-conflict evidence
+
+- The finance (#765), action/recommendation (#808), and predictive/security (#817) tips have red required checks.
+- Direct merge simulation for #765 conflicts in backend package/TypeScript configuration, `FinancialInsightsView.tsx`, and architecture logs.
+- Direct merge simulation for #808 conflicts in business-insights backend services/contracts, evaluation UI, translations, frontend test/build configuration, and add/add E2E fixtures.
+- Direct merge simulation for #817 conflicts in dashboard/customer/auth configuration, default roles, evaluation UI, and architecture logs.
+- Therefore no cumulative evaluations tip is a safe Phase-3 integration unit; recovery must follow the capability sequence.
+
 ## Capability reconstruction
 
 | Order | Capability | Status | Source PRs | Source commits | Files | Recovery change-set | Confidence |
 |---:|---|---|---|---:|---:|---|---|
 | 1 | Metric Registry | `EXACTLY_IN_MAIN` | #752 | 1 | 22 | — | `HIGH` |
 | 2 | Calculation Versioning | `EXACTLY_IN_MAIN` | #752 | 1 | 19 | — | `HIGH` |
-| 3 | Timezone / Period Model | `UNIQUE_REQUIRES_RECOVERY` | #754 | 1 | 22 | `cs-evaluations-timezone-period-model` | `HIGH` |
-| 4 | Unified KPI Contract | `UNIQUE_REQUIRES_RECOVERY` | #755 | 1 | 17 | `cs-evaluations-unified-kpi-contract` | `HIGH` |
-| 5 | Money Domain | `UNIQUE_REQUIRES_RECOVERY` | #756 | 1 | 21 | `cs-evaluations-money-domain` | `HIGH` |
-| 6 | Money Migration | `UNIQUE_REQUIRES_RECOVERY` | #756 | 1 | 24 | `cs-evaluations-money-migration` | `HIGH` |
-| 7 | Receivables | `UNIQUE_REQUIRES_RECOVERY` | #757 | 1 | 23 | `cs-evaluations-receivables` | `HIGH` |
-| 8 | Revenue / Cashflow / Result | `UNIQUE_REQUIRES_RECOVERY` | #760 | 1 | 23 | `cs-evaluations-revenue-cashflow-result` | `HIGH` |
-| 9 | Multi-Currency | `UNIQUE_REQUIRES_RECOVERY` | #762 | 1 | 26 | `cs-evaluations-multi-currency` | `HIGH` |
-| 10 | Finance Test Suite | `UNIQUE_REQUIRES_RECOVERY` | #765 | 1 | 27 | `cs-evaluations-finance-test-suite` | `HIGH` |
-| 11 | Summary / Detail Separation | `UNIQUE_REQUIRES_RECOVERY` | #767 | 1 | 24 | `cs-evaluations-summary-detail-separation` | `HIGH` |
-| 12 | Grouping / Entity References | `UNIQUE_REQUIRES_RECOVERY` | #770 | 1 | 23 | `cs-evaluations-grouping-entity-references` | `HIGH` |
-| 13 | Analytics Summary | `UNIQUE_REQUIRES_RECOVERY` | #773 | 1 | 17 | `cs-evaluations-analytics-summary` | `HIGH` |
-| 14 | Filter Architecture | `UNIQUE_REQUIRES_RECOVERY` | #774 | 1 | 31 | `cs-evaluations-filter-architecture` | `HIGH` |
-| 15 | Tenant Isolation | `UNIQUE_REQUIRES_RECOVERY` | #776 | 1 | 23 | `cs-evaluations-tenant-isolation` | `HIGH` |
-| 16 | Analytics Contracts | `UNIQUE_REQUIRES_RECOVERY` | #778 | 1 | 18 | `cs-evaluations-analytics-contracts` | `HIGH` |
-| 17 | Cost Model | `UNIQUE_REQUIRES_RECOVERY` | #780 | 1 | 18 | `cs-evaluations-cost-model` | `HIGH` |
-| 18 | Utilization | `UNIQUE_REQUIRES_RECOVERY` | #782 | 1 | 20 | `cs-evaluations-utilization` | `HIGH` |
-| 19 | Strength Detection | `UNIQUE_REQUIRES_RECOVERY` | #783 | 1 | 18 | `cs-evaluations-strength-detection` | `HIGH` |
-| 20 | Weakness Detection | `UNIQUE_REQUIRES_RECOVERY` | #784 | 1 | 24 | `cs-evaluations-weakness-detection` | `HIGH` |
-| 21 | Driver / Influence Analysis | `UNIQUE_REQUIRES_RECOVERY` | #786 | 1 | 21 | `cs-evaluations-driver-influence-analysis` | `HIGH` |
-| 22 | Data Quality | `UNIQUE_REQUIRES_RECOVERY` | #788 | 1 | 22 | `cs-evaluations-data-quality` | `HIGH` |
-| 23 | Freshness / Lineage | `UNIQUE_REQUIRES_RECOVERY` | #790 | 1 | 22 | `cs-evaluations-freshness-lineage` | `HIGH` |
-| 24 | Metric State UX | `UNIQUE_REQUIRES_RECOVERY` | #792 | 1 | 25 | `cs-evaluations-metric-state-ux` | `HIGH` |
-| 25 | Data Quality Panel | `UNIQUE_REQUIRES_RECOVERY` | #793 | 1 | 19 | `cs-evaluations-data-quality-panel` | `HIGH` |
-| 26 | Information Architecture | `UNIQUE_REQUIRES_RECOVERY` | #794 | 1 | 25 | `cs-evaluations-information-architecture` | `HIGH` |
-| 27 | Executive KPI Strip | `UNIQUE_REQUIRES_RECOVERY` | #795 | 1 | 12 | `cs-evaluations-executive-kpi-strip` | `HIGH` |
-| 28 | Strength / Weakness Cockpit | `UNIQUE_REQUIRES_RECOVERY` | #796 | 1 | 16 | `cs-evaluations-strength-weakness-cockpit` | `HIGH` |
-| 29 | Risk / Cost / Failure Visuals | `UNIQUE_REQUIRES_RECOVERY` | #798 | 1 | 20 | `cs-evaluations-risk-cost-failure-visuals` | `HIGH` |
-| 30 | Mobile Readiness | `UNIQUE_REQUIRES_RECOVERY` | #801 | 1 | 28 | `cs-evaluations-mobile-readiness` | `HIGH` |
-| 31 | Accessibility / i18n | `UNIQUE_REQUIRES_RECOVERY` | #803 | 1 | 31 | `cs-evaluations-accessibility-i18n` | `HIGH` |
-| 32 | Recommendation Domain | `UNIQUE_REQUIRES_RECOVERY` | #804 | 1 | 15 | `cs-evaluations-recommendation-domain` | `HIGH` |
-| 33 | Action Center | `UNIQUE_REQUIRES_RECOVERY` | #806 | 1 | 224 | `cs-evaluations-action-center` | `HIGH` |
-| 34 | Action Integrations | `UNIQUE_REQUIRES_RECOVERY` | #807 | 1 | 27 | `cs-evaluations-action-integrations` | `HIGH` |
-| 35 | Impact Measurement | `UNIQUE_REQUIRES_RECOVERY` | #808 | 1 | 22 | `cs-evaluations-impact-measurement` | `HIGH` |
-| 36 | Predictive Analytics Architecture | `UNIQUE_REQUIRES_RECOVERY` | #809 | 1 | 3 | `cs-evaluations-predictive-analytics-architecture` | `HIGH` |
-| 37 | Feature Store | `UNIQUE_REQUIRES_RECOVERY` | #810 | 1 | 24 | `cs-evaluations-feature-store` | `HIGH` |
-| 38 | Demand / Revenue / Utilization Forecast | `UNIQUE_REQUIRES_RECOVERY` | #811 | 1 | 19 | `cs-evaluations-demand-revenue-utilization-forecast` | `HIGH` |
-| 39 | Maintenance / Failure Forecast | `UNIQUE_REQUIRES_RECOVERY` | #812 | 1 | 18 | `cs-evaluations-maintenance-failure-forecast` | `HIGH` |
-| 40 | Backtesting / Drift | `UNIQUE_REQUIRES_RECOVERY` | #813 | 1 | 15 | `cs-evaluations-backtesting-drift` | `HIGH` |
-| 41 | Forecast UX | `UNIQUE_REQUIRES_RECOVERY` | #814 | 1 | 15 | `cs-evaluations-forecast-ux` | `HIGH` |
-| 42 | GDPR | `UNIQUE_REQUIRES_RECOVERY` | #815 | 1 | 22 | `cs-evaluations-gdpr` | `HIGH` |
-| 43 | Roles / Permissions | `UNIQUE_REQUIRES_RECOVERY` | #816 | 1 | 33 | `cs-evaluations-roles-permissions` | `HIGH` |
-| 44 | Audit Logging | `UNIQUE_REQUIRES_RECOVERY` | #817 | 1 | 22 | `cs-evaluations-audit-logging` | `HIGH` |
+| 3 | Timezone / Period Model | `UNIQUE_CONFLICTING` | #754 | 1 | 22 | `cs-evaluations-timezone-period-model` | `HIGH` |
+| 4 | Unified KPI Contract | `UNIQUE_CONFLICTING` | #755 | 1 | 17 | `cs-evaluations-unified-kpi-contract` | `HIGH` |
+| 5 | Money Domain | `PARTIAL_IN_MAIN_CONFLICTING` | #756 | 1 | 21 | `cs-evaluations-money-domain` | `HIGH` |
+| 6 | Money Migration | `UNIQUE_CONFLICTING` | #756 | 1 | 24 | `cs-evaluations-money-migration` | `HIGH` |
+| 7 | Receivables | `PARTIAL_IN_MAIN_CONFLICTING` | #757 | 1 | 23 | `cs-evaluations-receivables` | `HIGH` |
+| 8 | Revenue / Cashflow / Result | `PARTIAL_IN_MAIN_CONFLICTING` | #760 | 1 | 23 | `cs-evaluations-revenue-cashflow-result` | `HIGH` |
+| 9 | Multi-Currency | `PARTIAL_IN_MAIN_CONFLICTING` | #762 | 1 | 26 | `cs-evaluations-multi-currency` | `HIGH` |
+| 10 | Finance Test Suite | `PARTIAL_IN_MAIN_CONFLICTING` | #765 | 1 | 27 | `cs-evaluations-finance-test-suite` | `HIGH` |
+| 11 | Summary / Detail Separation | `UNIQUE_CONFLICTING` | #767 | 1 | 24 | `cs-evaluations-summary-detail-separation` | `HIGH` |
+| 12 | Grouping / Entity References | `PARTIAL_IN_MAIN_CONFLICTING` | #770 | 1 | 23 | `cs-evaluations-grouping-entity-references` | `HIGH` |
+| 13 | Analytics Summary | `UNIQUE_CONFLICTING` | #773 | 1 | 17 | `cs-evaluations-analytics-summary` | `HIGH` |
+| 14 | Filter Architecture | `UNIQUE_CONFLICTING` | #774 | 1 | 31 | `cs-evaluations-filter-architecture` | `HIGH` |
+| 15 | Tenant Isolation | `PARTIAL_IN_MAIN_CONFLICTING` | #776 | 1 | 23 | `cs-evaluations-tenant-isolation` | `HIGH` |
+| 16 | Analytics Contracts | `UNIQUE_CONFLICTING` | #778 | 1 | 18 | `cs-evaluations-analytics-contracts` | `HIGH` |
+| 17 | Cost Model | `UNIQUE_CONFLICTING` | #780 | 1 | 18 | `cs-evaluations-cost-model` | `HIGH` |
+| 18 | Utilization | `UNIQUE_CONFLICTING` | #782 | 1 | 20 | `cs-evaluations-utilization` | `HIGH` |
+| 19 | Strength Detection | `UNIQUE_CONFLICTING` | #783 | 1 | 18 | `cs-evaluations-strength-detection` | `HIGH` |
+| 20 | Weakness Detection | `UNIQUE_CONFLICTING` | #784 | 1 | 24 | `cs-evaluations-weakness-detection` | `HIGH` |
+| 21 | Driver / Influence Analysis | `UNIQUE_CONFLICTING` | #786 | 1 | 21 | `cs-evaluations-driver-influence-analysis` | `HIGH` |
+| 22 | Data Quality | `PARTIAL_IN_MAIN_CONFLICTING` | #788 | 1 | 22 | `cs-evaluations-data-quality` | `HIGH` |
+| 23 | Freshness / Lineage | `PARTIAL_IN_MAIN_CONFLICTING` | #790 | 1 | 22 | `cs-evaluations-freshness-lineage` | `HIGH` |
+| 24 | Metric State UX | `PARTIAL_IN_MAIN_CONFLICTING` | #792 | 1 | 25 | `cs-evaluations-metric-state-ux` | `HIGH` |
+| 25 | Data Quality Panel | `UNIQUE_CONFLICTING` | #793 | 1 | 19 | `cs-evaluations-data-quality-panel` | `HIGH` |
+| 26 | Information Architecture | `UNIQUE_CONFLICTING` | #794 | 1 | 25 | `cs-evaluations-information-architecture` | `HIGH` |
+| 27 | Executive KPI Strip | `UNIQUE_CONFLICTING` | #795 | 1 | 12 | `cs-evaluations-executive-kpi-strip` | `HIGH` |
+| 28 | Strength / Weakness Cockpit | `UNIQUE_CONFLICTING` | #796 | 1 | 16 | `cs-evaluations-strength-weakness-cockpit` | `HIGH` |
+| 29 | Risk / Cost / Failure Visuals | `UNIQUE_CONFLICTING` | #798 | 1 | 20 | `cs-evaluations-risk-cost-failure-visuals` | `HIGH` |
+| 30 | Mobile Readiness | `PARTIAL_IN_MAIN_CONFLICTING` | #801 | 1 | 28 | `cs-evaluations-mobile-readiness` | `HIGH` |
+| 31 | Accessibility / i18n | `PARTIAL_IN_MAIN_CONFLICTING` | #803 | 1 | 31 | `cs-evaluations-accessibility-i18n` | `HIGH` |
+| 32 | Recommendation Domain | `UNIQUE_CONFLICTING` | #804 | 1 | 15 | `cs-evaluations-recommendation-domain` | `HIGH` |
+| 33 | Action Center | `UNIQUE_CONFLICTING` | #806 | 1 | 224 | `cs-evaluations-action-center` | `HIGH` |
+| 34 | Action Integrations | `UNIQUE_CONFLICTING` | #807 | 1 | 27 | `cs-evaluations-action-integrations` | `HIGH` |
+| 35 | Impact Measurement | `UNIQUE_CONFLICTING` | #808 | 1 | 22 | `cs-evaluations-impact-measurement` | `HIGH` |
+| 36 | Predictive Analytics Architecture | `DOCS_ONLY_UNIQUE` | #809 | 1 | 3 | `cs-evaluations-predictive-analytics-architecture` | `HIGH` |
+| 37 | Feature Store | `UNIQUE_CONFLICTING` | #810 | 1 | 24 | `cs-evaluations-feature-store` | `HIGH` |
+| 38 | Demand / Revenue / Utilization Forecast | `UNIQUE_CONFLICTING` | #811 | 1 | 19 | `cs-evaluations-demand-revenue-utilization-forecast` | `HIGH` |
+| 39 | Maintenance / Failure Forecast | `UNIQUE_CONFLICTING` | #812 | 1 | 18 | `cs-evaluations-maintenance-failure-forecast` | `HIGH` |
+| 40 | Backtesting / Drift | `UNIQUE_CONFLICTING` | #813 | 1 | 15 | `cs-evaluations-backtesting-drift` | `HIGH` |
+| 41 | Forecast UX | `UNIQUE_CONFLICTING` | #814 | 1 | 15 | `cs-evaluations-forecast-ux` | `HIGH` |
+| 42 | GDPR | `PARTIAL_IN_MAIN_CONFLICTING` | #815 | 1 | 22 | `cs-evaluations-gdpr` | `HIGH` |
+| 43 | Roles / Permissions | `PARTIAL_IN_MAIN_CONFLICTING` | #816 | 1 | 33 | `cs-evaluations-roles-permissions` | `HIGH` |
+| 44 | Audit Logging | `PARTIAL_IN_MAIN_CONFLICTING` | #817 | 1 | 22 | `cs-evaluations-audit-logging` | `HIGH` |
 
 ## Exact recovery sequence
 
@@ -329,3 +337,16 @@ Capabilities use manually verified canonical PR/commit sources. Cumulative desce
 4. Recommendations/actions.
 5. Forecast infrastructure before forecast UI.
 6. Compliance, audit, tests, and observability before production.
+
+## Product and architecture decisions required before integration
+
+1. Confirm persisted FX provenance versus intentional EUR-only reporting.
+2. Choose report timezone precedence among organization, station, user, and explicit report override.
+3. Decide whether the new evaluations page replaces or composes with `FinancialInsightsView.tsx`.
+4. Choose persisted, derived, or gradual migration for typed entity references.
+5. Define which recommendation transitions require confirmation before operational side effects.
+6. Define forecast history, retention, minimum sample size, and confidence policy.
+7. Choose global default-role extensions versus evaluation-local permission policy.
+8. Define sensitive-read audit coverage, retention, and redaction.
+9. Keep predictive APIs disabled until authenticated cross-tenant and GDPR gates pass.
+10. Discard artifact-only screenshot commits in favor of the merged #818 artifact convention.

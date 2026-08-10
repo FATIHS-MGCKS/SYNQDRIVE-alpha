@@ -103,7 +103,12 @@ assert actual_eval == expected_eval
 status_counts = {}
 for item in phase2["evaluations_capabilities"]:
     status_counts[item["status"]] = status_counts.get(item["status"], 0) + 1
-assert status_counts == {"EXACTLY_IN_MAIN": 2, "UNIQUE_REQUIRES_RECOVERY": 42}
+assert status_counts == {
+    "EXACTLY_IN_MAIN": 2,
+    "PARTIAL_IN_MAIN_CONFLICTING": 15,
+    "UNIQUE_CONFLICTING": 26,
+    "DOCS_ONLY_UNIQUE": 1,
+}
 assert all(len(item["source_prs"]) == len(item["source_commits"]) == 1 for item in phase2["evaluations_capabilities"])
 
 expected_conflicts = {
