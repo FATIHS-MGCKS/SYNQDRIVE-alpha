@@ -20,6 +20,8 @@ import {
 
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
 const ISO_4217_PATTERN = /^[A-Z]{3}$/;
+const UTC_ISO_INSTANT_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const NULL_VALUE_STATUSES: ReadonlySet<EvaluationsMetricStatus> = new Set([
   'UNAVAILABLE',
   'ERROR',
@@ -46,8 +48,8 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
 
 function assertIsoInstant(value: string | null, field: string, metricId?: string): void {
   if (value === null) return;
-  if (!value || Number.isNaN(Date.parse(value))) {
-    fail(`${field} must be an ISO-8601 instant`, metricId);
+  if (!UTC_ISO_INSTANT_PATTERN.test(value) || Number.isNaN(Date.parse(value))) {
+    fail(`${field} must be a UTC ISO-8601 instant`, metricId);
   }
 }
 

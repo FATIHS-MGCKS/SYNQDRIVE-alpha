@@ -196,6 +196,21 @@ describe('evaluations business-period authority', () => {
       expect(pair.comparisonPeriod.start).toBe('2023-02-01T00:00:00.000Z');
       expect(pair.comparisonPeriod.endExclusive).toBe('2023-02-28T12:00:00.001Z');
     });
+
+    it('keeps adjacent rolling comparisons contiguous across DST', () => {
+      const pair = resolveEvaluationsComparisonPeriods({
+        periodType: 'ROLLING_7_DAYS',
+        comparisonType: 'PREVIOUS_COMPARABLE_PERIOD',
+        reference: new Date('2026-03-30T12:00:00.000Z'),
+        timezone: organizationTimezone(),
+      });
+
+      expect(pair.comparisonPeriod.endExclusive).toBe(pair.currentPeriod.start);
+      expect(
+        Date.parse(pair.comparisonPeriod.endExclusive) -
+          Date.parse(pair.comparisonPeriod.start),
+      ).toBe(7 * 24 * 60 * 60 * 1_000);
+    });
   });
 
   it.each(EVALUATIONS_PERIOD_TYPES)('maintains start < end for %s', (periodType) => {

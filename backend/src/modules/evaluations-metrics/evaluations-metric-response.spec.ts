@@ -168,4 +168,14 @@ describe('canonical evaluations metric response contract', () => {
       ),
     ).toThrow('before');
   });
+
+  it('requires UTC transport instants instead of local offsets', () => {
+    const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
+    const invalid = { ...response, generatedAt: '2026-08-10T13:00:00+01:00' };
+    expect(() =>
+      assertValidEvaluationsMetricResponse(
+        invalid as Parameters<typeof assertValidEvaluationsMetricResponse>[0],
+      ),
+    ).toThrow('UTC ISO-8601');
+  });
 });

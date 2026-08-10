@@ -350,9 +350,12 @@ export function resolveEvaluationsComparisonPeriods(input: {
   }
 
   const timeZone = input.timezone.effectiveTimezone;
+  const rolling = rollingDays(input.periodType);
   const shiftedReference =
     input.comparisonType === 'YEAR_OVER_YEAR'
       ? shiftReference(input.reference, timeZone, { years: 1 })
+      : rolling !== null
+        ? new Date(input.reference.getTime() - rolling * DAY_MS)
       : shiftReference(input.reference, timeZone, previousPeriodShift(input.periodType));
   const comparisonPeriodType =
     input.comparisonType === 'PREVIOUS_FULL_PERIOD'
