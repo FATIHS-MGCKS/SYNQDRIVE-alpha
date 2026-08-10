@@ -17,6 +17,7 @@ import {
 } from '@shared/time/iana-timezone.util';
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
+type EvaluationsCalendarPeriodType = 'DAY' | 'WEEK' | 'MONTH' | 'QUARTER' | 'YEAR';
 
 export interface ResolveEvaluationsTimezoneInput {
   readonly reportTimezone?: string | null;
@@ -140,11 +141,20 @@ function rollingDays(periodType: EvaluationsPeriodType): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function isCalendarPeriodType(
+  periodType: EvaluationsPeriodType,
+): periodType is EvaluationsCalendarPeriodType {
+  return (
+    periodType === 'DAY' ||
+    periodType === 'WEEK' ||
+    periodType === 'MONTH' ||
+    periodType === 'QUARTER' ||
+    periodType === 'YEAR'
+  );
+}
+
 function calendarBounds(
-  periodType: Exclude<
-    EvaluationsPeriodType,
-    'MTD' | 'QTD' | 'YTD' | `ROLLING_${number}_DAYS`
-  >,
+  periodType: EvaluationsCalendarPeriodType,
   referenceDateOnly: string,
   timeZone: string,
 ): { readonly start: Date; readonly endExclusive: Date } {
@@ -225,6 +235,9 @@ export function resolveEvaluationsPeriod(
     start = zonedStartOfDayToUtc(formatDateOnly(year, 1, 1), timeZone);
     endExclusive = new Date(input.reference.getTime() + 1);
   } else {
+    if (!isCalendarPeriodType(input.periodType)) {
+      throw new Error(`Unsupported evaluations period: ${input.periodType}`);
+    }
     const bounds = calendarBounds(input.periodType, referenceDateOnly, timeZone);
     start = bounds.start;
     endExclusive = bounds.endExclusive;
@@ -303,10 +316,8 @@ function previousPeriodShift(
     case 'YEAR':
     case 'YTD':
       return { years: 1 };
-    default: {
-      const exhaustive: never = periodType;
-      throw new Error(`Unsupported comparison period: ${exhaustive}`);
-    }
+    default:
+      throw new Error(`Unsupported comparison period: ${periodType}`);
   }
 }
 
