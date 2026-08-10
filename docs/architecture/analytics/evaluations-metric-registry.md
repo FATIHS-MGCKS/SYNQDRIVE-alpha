@@ -1,6 +1,6 @@
 # Evaluations Metric Registry
 
-**Version:** 1.0.0  
+**Version:** 1.2.0
 **Datum:** 2026-07-24  
 **Prompt:** 5/54 — Auswertungen-Professionalisierung  
 **Taxonomie:** `docs/architecture/analytics/evaluations-kpi-taxonomy.md`
@@ -70,12 +70,13 @@ Jede Kennzahl:
   category: EvaluationsMetricCategory;
   labelKey: string;                  // evaluations.metrics.{id}.label
   descriptionKey: string;            // evaluations.metrics.{id}.description
-  unit: EvaluationsMetricUnit;
+  unit: EvaluationsMetricUnit;        // deprecated presentation hint
+  transportUnit: EvaluationsMetricUnit;
   valueType: EvaluationsValueType;
   aggregationType: EvaluationsAggregationType;
   calculationVersion: string;      // semver, z. B. 1.0.0
   supportedDimensions: EvaluationsDimension[];
-  supportedComparisons: EvaluationsComparison[];
+  supportedComparisons: EvaluationsComparisonType[];
   dataClassification: EvaluationsDataClassification;
   metricKind: EvaluationsMetricKind;
   implementationStatus: EvaluationsImplementationStatus;
@@ -167,14 +168,24 @@ dimensions/comparisons, and invalid implementation statuses. Typed units include
 `CURRENCY_MINOR`, seconds/hours, kilometers, and rates for canonical response
 contracts; existing metric formulas and finance calculations are unchanged.
 
-Registry version 1.1.0 adds `transportUnit` while preserving the existing semantic
-`unit` field. MONEY definitions retain their compatibility/display unit (currently
-`EUR`) but must declare `transportUnit=CURRENCY_MINOR`; scalar transport units must
-equal their semantic unit. This separates display semantics from wire encoding.
+Registry version 1.2.0 makes `EvaluationsComparisonType` the only comparison
+taxonomy. `PREVIOUS_COMPARABLE_PERIOD`, `PREVIOUS_FULL_PERIOD`, `YEAR_OVER_YEAR`,
+and `TARGET` are canonical; no-comparison is an empty list. Legacy registry ids
+`none`, `mom`, `yoy`, and `prev_period` are not accepted. In particular, MTD
+capabilities use `PREVIOUS_COMPARABLE_PERIOD`, never a naive full-month mapping.
+
+`transportUnit` is the response wire encoding. MONEY definitions use
+`unit=CURRENCY_MINOR` and `transportUnit=CURRENCY_MINOR`; they carry no fixed
+registry currency. `Money.currency` is the authority for each concrete value, so
+both EUR and USD are valid when supplied by the producer. Scalar transport units
+continue to equal their semantic unit.
 
 Metric value/status semantics live in
 `evaluations-metric-response-contract.md`. `MONEY` response values require
 `{ amountMinor, currency }`; the registry does not authorize a currency fallback.
+The backend registered-response boundary rejects unknown metric ids and validates
+kind, value type, transport unit, calculation version, comparison support, and
+status/value semantics against the owning definition.
 
 ---
 

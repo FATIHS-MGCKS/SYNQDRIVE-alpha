@@ -4,7 +4,6 @@
  */
 export type {
   EvaluationsAggregationType,
-  EvaluationsComparison,
   EvaluationsDataClassification,
   EvaluationsDimension,
   EvaluationsImplementationStatus,
@@ -18,7 +17,6 @@ export type {
 
 export {
   EVALUATIONS_AGGREGATION_TYPES,
-  EVALUATIONS_COMPARISONS,
   EVALUATIONS_DATA_CLASSIFICATIONS,
   EVALUATIONS_DIMENSIONS,
   EVALUATIONS_IMPLEMENTATION_STATUSES,

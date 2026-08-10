@@ -48,4 +48,18 @@ describe('evaluations shared contract backend build mirror', () => {
       ),
     ).toBe(readRepositoryFile('shared/money/iso4217-currency-codes.ts'));
   });
+
+  it('keeps the platform time authority byte-identical', () => {
+    expect(
+      readRepositoryFile(
+        'backend/src/synq/time/platform-time.constants.ts',
+      ),
+    ).toBe(readRepositoryFile('shared/time/platform-time.constants.ts'));
+  });
+
+  it('keeps shared time independent from evaluations contracts', () => {
+    expect(
+      readRepositoryFile('backend/src/shared/time/iana-timezone.util.ts'),
+    ).not.toContain('evaluations-');
+  });
 });

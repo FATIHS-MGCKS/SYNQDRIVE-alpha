@@ -14,6 +14,9 @@ calendar boundaries are resolved from one recorded IANA timezone in this order:
 4. the existing platform fallback (`Europe/Berlin`) only for legacy records without
    organization/station timezone data.
 
+The fallback is owned by `shared/time/platform-time.constants.ts`. Evaluations
+consumes that shared/core authority; shared time never imports evaluations.
+
 An explicit report timezone without upstream authorization fails closed. Browser or
 user timezone is presentation-only and cannot alter metric boundaries.
 
@@ -25,6 +28,7 @@ user timezone is presentation-only and cannot alter metric boundaries.
   and explicit rolling windows);
 - timezone context and selected source;
 - UTC `[start, endExclusive)` bounds;
+- a `reference` invariant of `start <= reference < endExclusive`;
 - typed comparison semantics.
 
 `backend/src/modules/evaluations-metrics/evaluations-period.resolver.ts` is a pure

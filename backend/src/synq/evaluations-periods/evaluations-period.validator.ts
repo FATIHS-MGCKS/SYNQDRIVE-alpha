@@ -1,11 +1,11 @@
 import {
   EVALUATIONS_COMPARISON_TYPES,
   EVALUATIONS_PERIOD_TYPES,
-  EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE,
   EVALUATIONS_TIMEZONE_SOURCES,
   type EvaluationsPeriodWindow,
   type EvaluationsTimezoneContext,
 } from './evaluations-period.contract';
+import { PLATFORM_DEFAULT_TIMEZONE } from '../time/platform-time.constants';
 
 const UTC_ISO_INSTANT_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
@@ -96,10 +96,10 @@ export function assertValidEvaluationsTimezoneContext(
       if (
         context.reportTimezone !== null ||
         context.organizationTimezone !== null ||
-        context.effectiveTimezone !== EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE
+        context.effectiveTimezone !== PLATFORM_DEFAULT_TIMEZONE
       ) {
         throw new EvaluationsPeriodValidationError(
-          `PLATFORM_FALLBACK must use ${EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE}`,
+          `PLATFORM_FALLBACK must use ${PLATFORM_DEFAULT_TIMEZONE}`,
         );
       }
       break;
@@ -117,9 +117,17 @@ export function assertValidEvaluationsPeriodWindow(
   assertUtcInstant(period.start, 'period.start');
   assertUtcInstant(period.endExclusive, 'period.endExclusive');
   assertUtcInstant(period.reference, 'period.reference');
-  if (Date.parse(period.start) >= Date.parse(period.endExclusive)) {
+  const start = Date.parse(period.start);
+  const endExclusive = Date.parse(period.endExclusive);
+  const reference = Date.parse(period.reference);
+  if (start >= endExclusive) {
     throw new EvaluationsPeriodValidationError(
       'period.start must be before period.endExclusive',
+    );
+  }
+  if (reference < start || reference >= endExclusive) {
+    throw new EvaluationsPeriodValidationError(
+      'period.reference must be within [period.start, period.endExclusive)',
     );
   }
   assertValidEvaluationsTimezoneContext(period.timezone);

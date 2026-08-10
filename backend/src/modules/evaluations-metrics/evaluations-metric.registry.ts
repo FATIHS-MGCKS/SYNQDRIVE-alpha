@@ -4,7 +4,6 @@ import type {
 } from '@synq/evaluations-metrics/evaluations-metric.contract';
 import {
   EVALUATIONS_AGGREGATION_TYPES,
-  EVALUATIONS_COMPARISONS,
   EVALUATIONS_DATA_CLASSIFICATIONS,
   EVALUATIONS_DIMENSIONS,
   EVALUATIONS_IMPLEMENTATION_STATUSES,
@@ -13,9 +12,10 @@ import {
   EVALUATIONS_METRIC_UNITS,
   EVALUATIONS_VALUE_TYPES,
 } from '@synq/evaluations-metrics/evaluations-metric.contract';
+import { EVALUATIONS_COMPARISON_TYPES } from '@synq/evaluations-periods/evaluations-period.contract';
 import { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
 
-export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.1.0';
+export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.2.0';
 export const EVALUATIONS_METRIC_TAXONOMY_VERSION = '1.0.0';
 
 const CALCULATION_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
@@ -76,16 +76,19 @@ export function assertEvaluationsMetricRegistryIntegrity(
       }
     }
     for (const comparison of def.supportedComparisons) {
-      if (!allowed(EVALUATIONS_COMPARISONS, comparison)) {
+      if (!allowed(EVALUATIONS_COMPARISON_TYPES, comparison)) {
         throw new EvaluationsMetricRegistryError(
           `Invalid supported comparison for ${def.id}: ${comparison}`,
         );
       }
     }
 
-    if (def.valueType === 'MONEY' && def.transportUnit !== 'CURRENCY_MINOR') {
+    if (
+      def.valueType === 'MONEY' &&
+      (def.unit !== 'CURRENCY_MINOR' || def.transportUnit !== 'CURRENCY_MINOR')
+    ) {
       throw new EvaluationsMetricRegistryError(
-        `MONEY metric ${def.id} must use transportUnit CURRENCY_MINOR`,
+        `MONEY metric ${def.id} must use CURRENCY_MINOR without a fixed registry currency`,
       );
     }
     if (def.valueType !== 'MONEY' && def.transportUnit !== def.unit) {

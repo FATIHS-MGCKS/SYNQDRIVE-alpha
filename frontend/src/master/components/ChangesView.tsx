@@ -37,12 +37,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'evaluations-e1-contract-recovery-v49886-2026-08-10',
     version: '4.9.886',
-    title: 'V4.9.886 — Evaluations E1 Metric, Time & KPI Contracts',
+    title: 'V4.9.886 — Evaluations E1.1 Contract Correction',
     summary: [
-      'Canonical shared KPI response with explicit status semantics; unavailable/error/not-applicable never become numeric zero.',
-      'DST-safe business-period resolver with report → station → organization timezone authority and typed comparison periods.',
-      'Money transport foundation requires amountMinor + assigned ISO currency; registry 1.1.0 separates semantic unit from CURRENCY_MINOR wire encoding.',
-      'Scalar/comparison discriminants (including direct builder runtime guards), timezone-source validation, explicit DST gap/overlap behavior, and byte-identical backend-mirror sync are enforced.',
+      'Registry 1.2.0 uses only canonical comparison IDs; MTD capabilities resolve to PREVIOUS_COMPARABLE_PERIOD and no-comparison is an empty list.',
+      'Registered KPI responses are checked against metric id, kind, value type, transport unit, calculation version, and allowed comparisons.',
+      'Shared/core time owns the Europe/Berlin fallback; period references must remain inside [start, endExclusive).',
+      'COUNT/date-time/range, mathematical coverage, and multi-currency MONEY invariants are enforced with byte-identical contract mirrors.',
     ],
     reason:
       'Phase 3 E1 recovers the versioned contract foundation required by later tenant-safe analytics, finance, quality, and UI packages.',

@@ -2,6 +2,7 @@ import {
   EVALUATIONS_PERIOD_TYPES,
   type EvaluationsTimezoneContext,
 } from '@synq/evaluations-periods/evaluations-period.contract';
+import { assertValidEvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluations-period.validator';
 import {
   resolveEvaluationsComparisonPeriods,
   resolveEvaluationsPeriod,
@@ -250,6 +251,76 @@ describe('evaluations business-period authority', () => {
       });
 
       expect(pair.comparisonPeriod.endExclusive).toBe('2026-10-25T00:30:00.001Z');
+    });
+  });
+
+  describe('period reference invariant', () => {
+    const validPeriod = () =>
+      resolveEvaluationsPeriod({
+        periodType: 'MONTH',
+        reference: new Date('2026-08-10T12:00:00.000Z'),
+        timezone: organizationTimezone(),
+      });
+
+    it('rejects a reference before start', () => {
+      const period = validPeriod();
+      expect(() =>
+        assertValidEvaluationsPeriodWindow({
+          ...period,
+          reference: new Date(Date.parse(period.start) - 1).toISOString(),
+        }),
+      ).toThrow('must be within');
+    });
+
+    it('accepts reference at start and immediately before endExclusive', () => {
+      const period = validPeriod();
+      expect(() =>
+        assertValidEvaluationsPeriodWindow({ ...period, reference: period.start }),
+      ).not.toThrow();
+      expect(() =>
+        assertValidEvaluationsPeriodWindow({
+          ...period,
+          reference: new Date(Date.parse(period.endExclusive) - 1).toISOString(),
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects reference at or after endExclusive', () => {
+      const period = validPeriod();
+      for (const reference of [
+        period.endExclusive,
+        new Date(Date.parse(period.endExclusive) + 1).toISOString(),
+      ]) {
+        expect(() =>
+          assertValidEvaluationsPeriodWindow({ ...period, reference }),
+        ).toThrow('must be within');
+      }
+    });
+
+    it('rejects invalid timezone and non-increasing or invalid boundaries', () => {
+      const period = validPeriod();
+      expect(() =>
+        assertValidEvaluationsPeriodWindow({
+          ...period,
+          timezone: { ...period.timezone, effectiveTimezone: 'Invalid/Zone' },
+        }),
+      ).toThrow('Invalid IANA timezone');
+      expect(() =>
+        assertValidEvaluationsPeriodWindow({
+          ...period,
+          endExclusive: period.start,
+          reference: period.start,
+        }),
+      ).toThrow('must be before');
+      expect(() =>
+        assertValidEvaluationsPeriodWindow({
+          ...period,
+          start: period.endExclusive,
+        }),
+      ).toThrow('must be before');
+      expect(() =>
+        assertValidEvaluationsPeriodWindow({ ...period, start: 'not-an-instant' }),
+      ).toThrow('UTC ISO-8601');
     });
   });
 

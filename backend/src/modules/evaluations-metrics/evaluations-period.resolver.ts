@@ -6,8 +6,8 @@ import type {
   EvaluationsTimezoneContext,
 } from '@synq/evaluations-periods/evaluations-period.contract';
 import { assertValidEvaluationsTimezoneContext } from '@synq/evaluations-periods/evaluations-period.validator';
+import { PLATFORM_DEFAULT_TIMEZONE } from '@shared/time/platform-time.constants';
 import {
-  DEFAULT_PLATFORM_TIMEZONE,
   assertIanaTimezone,
   formatDateOnly,
   parseDateOnly,
@@ -96,7 +96,7 @@ export function resolveEvaluationsTimezone(
   }
 
   return validatedTimezoneContext({
-    effectiveTimezone: DEFAULT_PLATFORM_TIMEZONE,
+    effectiveTimezone: PLATFORM_DEFAULT_TIMEZONE,
     source: 'PLATFORM_FALLBACK',
     reportTimezone: null,
     stationTimezone,

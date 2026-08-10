@@ -2,6 +2,7 @@ import {
   EVALUATIONS_METRIC_KINDS,
   EVALUATIONS_METRIC_UNITS,
   EVALUATIONS_VALUE_TYPES,
+  type EvaluationsMetricDefinition,
 } from './evaluations-metric.contract';
 import {
   EVALUATIONS_METRIC_RESPONSE_SCHEMA_VERSION,
@@ -47,6 +48,7 @@ const NULL_VALUE_STATUSES: ReadonlySet<EvaluationsMetricStatus> = new Set([
   'ERROR',
   'NOT_APPLICABLE',
 ]);
+const COVERAGE_RATIO_TOLERANCE = 1e-9;
 
 export class EvaluationsMetricResponseValidationError extends Error {
   readonly metricId?: string;
@@ -122,6 +124,24 @@ function assertCoverage(coverage: EvaluationsDataCoverage, metricId: string): vo
   ) {
     fail('dataCoverage.ratio must be between 0 and 1', metricId);
   }
+  if (coverage.ratio !== null) {
+    if (coverage.expectedRecords === null || coverage.availableRecords === null) {
+      fail(
+        'dataCoverage.ratio requires expectedRecords and availableRecords',
+        metricId,
+      );
+    }
+    if (coverage.expectedRecords === 0) {
+      fail('dataCoverage.ratio must be null when expectedRecords is zero', metricId);
+    }
+    const calculatedRatio = coverage.availableRecords / coverage.expectedRecords;
+    if (Math.abs(coverage.ratio - calculatedRatio) > COVERAGE_RATIO_TOLERANCE) {
+      fail(
+        'dataCoverage.ratio must equal availableRecords / expectedRecords',
+        metricId,
+      );
+    }
+  }
 }
 
 function isMoney(value: unknown): value is EvaluationsMoney {
@@ -137,9 +157,44 @@ function assertScalarValueMatchesType(
     if (typeof value !== 'number' || !Number.isFinite(value)) {
       fail(`${valueType} metric value must be a finite number`, metricId);
     }
+    switch (valueType) {
+      case 'COUNT':
+        if (!Number.isSafeInteger(value) || value < 0) {
+          fail('COUNT metric value must be a non-negative safe integer', metricId);
+        }
+        return;
+      case 'PERCENT':
+        if (value < 0 || value > 100) {
+          fail('PERCENT metric value must be between 0 and 100', metricId);
+        }
+        return;
+      case 'RATIO':
+        if (value < 0 || value > 1) {
+          fail('RATIO metric value must be between 0 and 1', metricId);
+        }
+        return;
+      case 'DISTANCE_KILOMETERS':
+      case 'DURATION_SECONDS':
+      case 'DURATION_MINUTES':
+      case 'DURATION_HOURS':
+      case 'DURATION_DAYS':
+      case 'DURATION_MILLISECONDS':
+        if (value < 0) {
+          fail(`${valueType} metric value must be non-negative`, metricId);
+        }
+        return;
+      default:
+        return;
+    }
+  }
+  if (valueType === 'DATETIME') {
+    if (typeof value !== 'string') {
+      fail('DATETIME metric value must be a string', metricId);
+    }
+    assertIsoInstant(value, 'DATETIME metric value', metricId);
     return;
   }
-  if (valueType === 'DATETIME' || valueType === 'ENUM' || valueType === 'TEXT') {
+  if (valueType === 'ENUM' || valueType === 'TEXT') {
     if (typeof value !== 'string') {
       fail(`${valueType} metric value must be a string`, metricId);
     }
@@ -288,6 +343,58 @@ export function assertValidEvaluationsMetricResponse(
 
   if (response.comparison) {
     assertValidEvaluationsMetricComparison(response.comparison, response.period, metricId);
+  }
+}
+
+/**
+ * Validates a registered response against the registry definition that owns its
+ * metric id. Lookup remains a backend boundary concern; this shared function
+ * enforces the cross-contract invariants without importing a registry.
+ */
+export function assertValidEvaluationsMetricResponseAgainstDefinition(
+  response: EvaluationsMetricResponse,
+  definition: EvaluationsMetricDefinition,
+): void {
+  assertValidEvaluationsMetricResponse(response);
+  const metricId = response.metricId;
+  if (metricId !== definition.id) {
+    fail(
+      `metricId ${metricId} does not match registry definition ${definition.id}`,
+      metricId,
+    );
+  }
+  if (response.metricKind !== definition.metricKind) {
+    fail(
+      `metricKind ${response.metricKind} does not match registry ${definition.metricKind}`,
+      metricId,
+    );
+  }
+  if (response.valueType !== definition.valueType) {
+    fail(
+      `valueType ${response.valueType} does not match registry ${definition.valueType}`,
+      metricId,
+    );
+  }
+  if (response.unit !== definition.transportUnit) {
+    fail(
+      `transport unit ${response.unit} does not match registry ${definition.transportUnit}`,
+      metricId,
+    );
+  }
+  if (response.calculationVersion !== definition.calculationVersion) {
+    fail(
+      `calculationVersion ${response.calculationVersion} does not match registry ${definition.calculationVersion}`,
+      metricId,
+    );
+  }
+  if (
+    response.comparison !== null &&
+    !definition.supportedComparisons.includes(response.comparison.comparisonType)
+  ) {
+    fail(
+      `comparisonType ${response.comparison.comparisonType} is not supported by ${metricId}`,
+      metricId,
+    );
   }
 }
 

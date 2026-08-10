@@ -1,13 +1,13 @@
 import { BadRequestException } from '@nestjs/common';
+import { PLATFORM_DEFAULT_TIMEZONE } from '@shared/time/platform-time.constants';
 import {
-  DEFAULT_PLATFORM_TIMEZONE,
   zonedDateOnly as canonicalZonedDateOnly,
   zonedStartOfDayToUtc as canonicalZonedStartOfDayToUtc,
 } from '@shared/time/iana-timezone.util';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export const DEFAULT_TARIFF_TIMEZONE = DEFAULT_PLATFORM_TIMEZONE;
+export const DEFAULT_TARIFF_TIMEZONE = PLATFORM_DEFAULT_TIMEZONE;
 
 /** Calendar date `YYYY-MM-DD` for an instant in an IANA timezone. */
 export function zonedDateOnly(

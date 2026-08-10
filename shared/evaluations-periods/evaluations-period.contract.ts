@@ -4,6 +4,7 @@
  * Technical timestamps are UTC ISO-8601 instants. Calendar boundaries are
  * resolved in the recorded IANA timezone; browser timezone is presentation only.
  */
+import { PLATFORM_DEFAULT_TIMEZONE } from '../time/platform-time.constants';
 
 export const EVALUATIONS_PERIOD_TYPES = [
   'DAY',
@@ -32,8 +33,11 @@ export const EVALUATIONS_COMPARISON_TYPES = [
 
 export type EvaluationsComparisonType = (typeof EVALUATIONS_COMPARISON_TYPES)[number];
 
-/** Legacy-only fallback for records that predate organization/station timezone data. */
-export const EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE = 'Europe/Berlin' as const;
+/**
+ * @deprecated Import PLATFORM_DEFAULT_TIMEZONE from shared/time instead.
+ * Compatibility alias only; shared/core time remains the sole authority.
+ */
+export const EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE = PLATFORM_DEFAULT_TIMEZONE;
 
 export const EVALUATIONS_TIMEZONE_SOURCES = [
   'REPORT_SCOPE',

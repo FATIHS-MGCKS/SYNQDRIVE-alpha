@@ -1,9 +1,6 @@
-import { EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE } from '@synq/evaluations-periods/evaluations-period.contract';
+import { PLATFORM_DEFAULT_TIMEZONE } from './platform-time.constants';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** Existing platform fallback when organization/station data predates timezone fields. */
-export const DEFAULT_PLATFORM_TIMEZONE = EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE;
 
 export type ZonedDateTimeDisambiguation = 'REJECT' | 'COMPATIBLE';
 

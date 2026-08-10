@@ -1,6 +1,5 @@
 import {
   EVALUATIONS_AGGREGATION_TYPES,
-  EVALUATIONS_COMPARISONS,
   EVALUATIONS_DATA_CLASSIFICATIONS,
   EVALUATIONS_DIMENSIONS,
   EVALUATIONS_IMPLEMENTATION_STATUSES,
@@ -11,6 +10,7 @@ import {
   type EvaluationsMetricDefinition,
 } from '@synq/evaluations-metrics/evaluations-metric.contract';
 import { EVALUATIONS_METRIC_I18N } from '@synq/evaluations-metrics/evaluations-metric.i18n';
+import { EVALUATIONS_COMPARISON_TYPES } from '@synq/evaluations-periods/evaluations-period.contract';
 import { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
 import {
   assertEvaluationsMetricRegistryIntegrity,
@@ -73,7 +73,6 @@ describe('EvaluationsMetricRegistry', () => {
         expect(metric[field]).toBeDefined();
       }
       expect(metric.supportedDimensions.length).toBeGreaterThan(0);
-      expect(metric.supportedComparisons.length).toBeGreaterThan(0);
     }
   });
 
@@ -101,9 +100,12 @@ describe('EvaluationsMetricRegistry', () => {
 
   it('separates semantic and transport units without implicit money encoding', () => {
     for (const metric of metrics) {
-      expect(metric.transportUnit).toBe(
-        metric.valueType === 'MONEY' ? 'CURRENCY_MINOR' : metric.unit,
-      );
+      if (metric.valueType === 'MONEY') {
+        expect(metric.unit).toBe('CURRENCY_MINOR');
+        expect(metric.transportUnit).toBe('CURRENCY_MINOR');
+      } else {
+        expect(metric.transportUnit).toBe(metric.unit);
+      }
     }
   });
 
@@ -115,9 +117,9 @@ describe('EvaluationsMetricRegistry', () => {
 
     expect(() =>
       assertEvaluationsMetricRegistryIntegrity([
-        { ...money!, transportUnit: 'EUR' },
+        { ...money!, unit: 'EUR', transportUnit: 'EUR' },
       ]),
-    ).toThrow('CURRENCY_MINOR');
+    ).toThrow('without a fixed registry currency');
     expect(() =>
       assertEvaluationsMetricRegistryIntegrity([
         { ...scalar!, transportUnit: 'CURRENCY_MINOR' },
@@ -155,7 +157,7 @@ describe('EvaluationsMetricRegistry', () => {
 
   it('uses valid supported dimensions and comparisons', () => {
     const dimAllowed = new Set<string>(EVALUATIONS_DIMENSIONS);
-    const cmpAllowed = new Set<string>(EVALUATIONS_COMPARISONS);
+    const cmpAllowed = new Set<string>(EVALUATIONS_COMPARISON_TYPES);
     for (const metric of metrics) {
       for (const dim of metric.supportedDimensions) {
         expect(dimAllowed.has(dim)).toBe(true);
@@ -164,6 +166,46 @@ describe('EvaluationsMetricRegistry', () => {
         expect(cmpAllowed.has(cmp)).toBe(true);
       }
     }
+  });
+
+  it('uses one canonical comparison taxonomy without legacy ids', () => {
+    const legacyIds = new Set(['none', 'mom', 'yoy', 'prev_period']);
+    for (const metric of metrics) {
+      for (const comparison of metric.supportedComparisons) {
+        expect(legacyIds.has(comparison)).toBe(false);
+        expect(EVALUATIONS_COMPARISON_TYPES).toContain(comparison);
+      }
+    }
+  });
+
+  it('maps MTD comparison capabilities to comparable partial-period windows', () => {
+    for (const id of [
+      'fin.mtd_issued_revenue',
+      'fin.issued_revenue_strict_mtd',
+      'fin.mom_revenue_delta_pct',
+      'fin.revenue_lost_actual_mtd',
+      'fin.cashflow_net_mtd',
+      'fin.mtd_expenses',
+      'fin.mom_expense_delta_pct',
+      'fin.contribution_margin_mtd',
+      'ops.fleet_utilization_pct',
+      'ops.station_revenue_rank_mtd',
+    ]) {
+      expect(requireEvaluationsMetricDefinition(id).supportedComparisons).toEqual([
+        'PREVIOUS_COMPARABLE_PERIOD',
+      ]);
+    }
+  });
+
+  it('represents no comparison as an empty list and accepts YEAR_OVER_YEAR unambiguously', () => {
+    expect(requireEvaluationsMetricDefinition('fin.mtd_paid_revenue').supportedComparisons).toEqual(
+      [],
+    );
+    expect(() =>
+      assertEvaluationsMetricRegistryIntegrity([
+        { ...metrics[0], supportedComparisons: ['YEAR_OVER_YEAR'] },
+      ]),
+    ).not.toThrow();
   });
 
   it('uses semver calculation versions', () => {
@@ -204,7 +246,7 @@ describe('EvaluationsMetricRegistry', () => {
   it('exposes stable registry snapshot', () => {
     const snapshot = getEvaluationsMetricRegistrySnapshot();
     expect(snapshot.taxonomyVersion).toBe('1.0.0');
-    expect(snapshot.registryVersion).toBe('1.1.0');
+    expect(snapshot.registryVersion).toBe('1.2.0');
     expect(snapshot.metrics).toBe(EVALUATIONS_METRIC_DEFINITIONS);
   });
 

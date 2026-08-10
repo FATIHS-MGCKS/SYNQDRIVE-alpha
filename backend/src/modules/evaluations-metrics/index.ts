@@ -13,6 +13,7 @@ export {
   resolveEvaluationsMetricId,
 } from './evaluations-metric.registry';
 export { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
+export { assertValidRegisteredEvaluationsMetricResponse } from './evaluations-metric-response.registry-validator';
 export {
   AUDIT_LEGACY_TO_EVALUATIONS_METRIC,
   BUSINESS_PULSE_TO_EVALUATIONS_METRIC,

@@ -31,7 +31,10 @@ export const EVALUATIONS_SOURCE_FRESHNESS_STATES = [
 export type EvaluationsSourceFreshnessState =
   (typeof EVALUATIONS_SOURCE_FRESHNESS_STATES)[number];
 
-/** E1 foundation only; conversion and FX provenance belong to E3. */
+/**
+ * E1 foundation only; conversion and FX provenance belong to E3.
+ * `currency` is the sole currency authority for this concrete value.
+ */
 export interface EvaluationsMoney {
   readonly amountMinor: number;
   readonly currency: string;
@@ -41,7 +44,10 @@ export interface EvaluationsDataCoverage {
   readonly expectedRecords: number | null;
   readonly availableRecords: number | null;
   readonly excludedRecords: number | null;
-  /** Available/expected ratio in the closed interval [0, 1], when known. */
+  /**
+   * Available/expected ratio in [0, 1]. It must match the record counts when
+   * present and is null for the explicit 0 expected / 0 available case.
+   */
   readonly ratio: number | null;
   readonly missingSources: readonly string[];
 }

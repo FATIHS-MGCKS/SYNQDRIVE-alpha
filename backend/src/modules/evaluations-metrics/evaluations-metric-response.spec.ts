@@ -18,6 +18,7 @@ import {
   assertValidEvaluationsMoney,
   isDisplayableEvaluationsMetricValue,
 } from '@synq/evaluations-metrics/evaluations-metric-response.validator';
+import { assertValidRegisteredEvaluationsMetricResponse } from './evaluations-metric-response.registry-validator';
 import { resolveEvaluationsPeriod, resolveEvaluationsTimezone } from './evaluations-period.resolver';
 
 const generatedAt = new Date('2026-08-10T12:00:00.000Z');
@@ -83,6 +84,37 @@ describe('canonical evaluations metric response contract', () => {
     ).toThrow('COUNT metric value must be a finite number');
   });
 
+  it.each([
+    ['fractional COUNT', 'COUNT', 1.5, 'non-negative safe integer'],
+    ['negative COUNT', 'COUNT', -1, 'non-negative safe integer'],
+    ['invalid DATETIME', 'DATETIME', 'hello', 'UTC ISO-8601'],
+    ['negative DURATION', 'DURATION_SECONDS', -1, 'non-negative'],
+    ['negative DISTANCE', 'DISTANCE_KILOMETERS', -1, 'non-negative'],
+    ['PERCENT above 100', 'PERCENT', 100.01, 'between 0 and 100'],
+    ['RATIO above one', 'RATIO', 1.01, 'between 0 and 1'],
+  ] as const)('rejects %s values', (_name, valueType, value, message) => {
+    const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
+    expect(() =>
+      assertValidEvaluationsMetricResponse({
+        ...response,
+        valueType,
+        unit:
+          valueType === 'DATETIME'
+            ? 'DATETIME'
+            : valueType === 'DURATION_SECONDS'
+              ? 'SECONDS'
+              : valueType === 'DISTANCE_KILOMETERS'
+                ? 'KILOMETERS'
+                : valueType === 'PERCENT'
+                  ? 'PERCENT'
+                  : valueType === 'RATIO'
+                    ? 'RATE'
+                    : 'COUNT',
+        value,
+      } as Parameters<typeof assertValidEvaluationsMetricResponse>[0]),
+    ).toThrow(message);
+  });
+
   it('enforces value and comparison discriminants at compile time', () => {
     const compileTimeAssertions = (): void => {
       // @ts-expect-error COUNT values must be numeric.
@@ -128,6 +160,70 @@ describe('canonical evaluations metric response contract', () => {
     expect(response.dataCoverage?.ratio).toBe(0.8);
   });
 
+  it('enforces mathematically consistent data coverage', () => {
+    expect(() =>
+      buildPartialEvaluationsMetric({
+        ...scalarBase,
+        value: 8,
+        dataCoverage: { ...incompleteCoverage, ratio: 0.2 },
+      }),
+    ).toThrow('availableRecords / expectedRecords');
+    expect(() =>
+      buildPartialEvaluationsMetric({
+        ...scalarBase,
+        value: 8,
+        dataCoverage: {
+          ...incompleteCoverage,
+          expectedRecords: 50,
+          availableRecords: 80,
+        },
+      }),
+    ).toThrow('cannot exceed');
+    expect(() =>
+      buildPartialEvaluationsMetric({
+        ...scalarBase,
+        value: 8,
+        dataCoverage: { ...incompleteCoverage, expectedRecords: -1 },
+      }),
+    ).toThrow('non-negative integer');
+    expect(() =>
+      buildPartialEvaluationsMetric({
+        ...scalarBase,
+        value: 8,
+        dataCoverage: { ...incompleteCoverage, availableRecords: 7.5 },
+      }),
+    ).toThrow('non-negative integer');
+  });
+
+  it('defines zero expected records as zero available with a null ratio', () => {
+    expect(() =>
+      buildPartialEvaluationsMetric({
+        ...scalarBase,
+        value: 0,
+        dataCoverage: {
+          expectedRecords: 0,
+          availableRecords: 0,
+          excludedRecords: 0,
+          ratio: null,
+          missingSources: ['not-scheduled'],
+        },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      buildPartialEvaluationsMetric({
+        ...scalarBase,
+        value: 0,
+        dataCoverage: {
+          expectedRecords: 0,
+          availableRecords: 0,
+          excludedRecords: 0,
+          ratio: 0,
+          missingSources: ['not-scheduled'],
+        },
+      }),
+    ).toThrow('must be null');
+  });
+
   it('requires explicit stale source metadata for STALE', () => {
     const response = buildStaleEvaluationsMetric({
       ...scalarBase,
@@ -138,7 +234,7 @@ describe('canonical evaluations metric response contract', () => {
     expect(response.sourceFreshness?.state).toBe('STALE');
   });
 
-  it('requires money amountMinor and a non-empty uppercase currency', () => {
+  it('uses Money.currency as the concrete authority for EUR and USD', () => {
     const response = buildAvailableEvaluationsMetric({
       ...scalarBase,
       metricId: 'fin.mtd_issued_revenue',
@@ -147,6 +243,12 @@ describe('canonical evaluations metric response contract', () => {
       value: { amountMinor: 12_345, currency: 'EUR' },
     });
     expect(response.value).toEqual({ amountMinor: 12_345, currency: 'EUR' });
+    expect(() =>
+      assertValidRegisteredEvaluationsMetricResponse({
+        ...response,
+        value: { amountMinor: 12_345, currency: 'USD' },
+      }),
+    ).not.toThrow();
 
     expect(() => assertValidEvaluationsMoney({ amountMinor: 100, currency: '' })).toThrow(
       'currency',
@@ -157,6 +259,20 @@ describe('canonical evaluations metric response contract', () => {
     expect(() => assertValidEvaluationsMoney({ amountMinor: 100, currency: 'ZZZ' })).toThrow(
       'assigned',
     );
+    expect(() =>
+      assertValidEvaluationsMoney({
+        amountMinor: Number.POSITIVE_INFINITY,
+        currency: 'EUR',
+      }),
+    ).toThrow('safe integer');
+  });
+
+  it('rejects missing MONEY currency at runtime', () => {
+    expect(() =>
+      assertValidEvaluationsMoney({
+        amountMinor: 100,
+      } as Parameters<typeof assertValidEvaluationsMoney>[0]),
+    ).toThrow('currency');
   });
 
   it('rejects a MONEY response with an implicit or mismatched currency unit', () => {
@@ -334,5 +450,90 @@ describe('canonical evaluations metric response contract', () => {
         unknownSource as Parameters<typeof assertValidEvaluationsMetricResponse>[0],
       ),
     ).toThrow('Invalid evaluations timezone source');
+  });
+
+  describe('registered response boundary', () => {
+    it('accepts a response whose contract metadata matches the registry', () => {
+      const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
+      expect(() => assertValidRegisteredEvaluationsMetricResponse(response)).not.toThrow();
+    });
+
+    it('rejects unknown metrics instead of mixing ad-hoc and registered responses', () => {
+      const response = buildAvailableEvaluationsMetric({
+        ...scalarBase,
+        metricId: 'adhoc.unregistered',
+        value: 1,
+      });
+      expect(() => assertValidRegisteredEvaluationsMetricResponse(response)).toThrow(
+        'Unknown evaluations metric id',
+      );
+    });
+
+    it('rejects registry MONEY represented as COUNT', () => {
+      const response = buildAvailableEvaluationsMetric({
+        ...scalarBase,
+        metricId: 'fin.mtd_issued_revenue',
+        value: 1,
+      });
+      expect(() => assertValidRegisteredEvaluationsMetricResponse(response)).toThrow(
+        'valueType COUNT does not match registry MONEY',
+      );
+    });
+
+    it('rejects metric kind and calculation version drift', () => {
+      const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
+      expect(() =>
+        assertValidRegisteredEvaluationsMetricResponse({
+          ...response,
+          metricKind: 'ML_FORECAST',
+        }),
+      ).toThrow('metricKind ML_FORECAST does not match registry OBSERVED');
+      expect(() =>
+        assertValidRegisteredEvaluationsMetricResponse({
+          ...response,
+          calculationVersion: '9.9.9',
+        }),
+      ).toThrow('calculationVersion 9.9.9 does not match registry 1.0.0');
+    });
+
+    it('rejects unsupported comparisons and wrong transport units', () => {
+      const comparison = buildEvaluationsMetricComparison({
+        comparisonType: 'YEAR_OVER_YEAR',
+        currentPeriod: period,
+        comparisonPeriod: period,
+        currentValue: 1,
+        comparisonValue: 1,
+      });
+      const response = buildAvailableEvaluationsMetric({
+        ...scalarBase,
+        value: 1,
+        comparison,
+      });
+      expect(() => assertValidRegisteredEvaluationsMetricResponse(response)).toThrow(
+        'comparisonType YEAR_OVER_YEAR is not supported',
+      );
+      expect(() =>
+        assertValidRegisteredEvaluationsMetricResponse({
+          ...buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 }),
+          unit: 'DAYS',
+        }),
+      ).toThrow('transport unit DAYS does not match registry COUNT');
+    });
+
+    it('rejects contradictory status/value combinations before registry matching', () => {
+      const response = buildAvailableEvaluationsMetric({ ...scalarBase, value: 1 });
+      expect(() =>
+        assertValidRegisteredEvaluationsMetricResponse({
+          ...response,
+          status: 'ERROR',
+        } as Parameters<typeof assertValidRegisteredEvaluationsMetricResponse>[0]),
+      ).toThrow('ERROR must use null');
+      expect(() =>
+        assertValidRegisteredEvaluationsMetricResponse({
+          ...response,
+          value: null,
+        } as Parameters<typeof assertValidRegisteredEvaluationsMetricResponse>[0]),
+      ).toThrow('AVAILABLE requires an explicit value');
+    });
   });
 });

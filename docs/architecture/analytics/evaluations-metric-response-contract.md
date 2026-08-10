@@ -21,9 +21,11 @@ Every response includes:
 - nullable typed comparison, coverage, and source-freshness metadata;
 - non-null exclusion and warning arrays.
 
-Scalar responses are discriminated by `valueType`: numeric types require finite
-numbers, `DATETIME`/`ENUM`/`TEXT` require strings, `BOOLEAN` requires a boolean, and
-`LIST` requires an array. Builders and runtime validation enforce the same mapping.
+Scalar responses are discriminated by `valueType`. COUNT is a non-negative safe
+integer; PERCENT is 0..100; RATIO is 0..1; distances and durations are non-negative;
+DATETIME is a UTC ISO-8601 instant. NUMBER, RATE, and SCORE require finite numbers
+(SCORE has no global range unless a definition supplies one). ENUM/TEXT require
+strings, BOOLEAN requires a boolean, and LIST requires an array.
 
 ## Status semantics
 
@@ -40,10 +42,16 @@ Coverage describes source/record completeness only. It is not confidence or a da
 quality score. Freshness describes analytics source age and is not a vehicle
 telemetry state.
 
+When coverage carries a ratio, it must equal
+`availableRecords / expectedRecords` within `1e-9`; record counts are non-negative
+safe integers and available cannot exceed expected. The explicit
+`expectedRecords=0, availableRecords=0` case uses `ratio=null`.
+
 ## Money foundation
 
 Money uses `{ amountMinor, currency }`, where `amountMinor` is a safe integer and
-`currency` is an assigned uppercase ISO-4217 code from the canonical shared
+`currency` is the sole concrete currency authority and must be an assigned
+uppercase ISO-4217 code from the canonical shared
 allowlist. A money response must use
 `valueType=MONEY` and `unit=CURRENCY_MINOR`; currency is never inferred.
 
@@ -66,6 +74,12 @@ invariants. Builders require explicit values for available/partial/stale respons
 and emit null for unavailable/error/not-applicable responses. The exported
 comparison builder validates its constructed status/delta state and finiteness before
 returning, so untyped runtime callers cannot bypass the TypeScript discriminant.
+
+At the backend registry boundary,
+`assertValidRegisteredEvaluationsMetricResponse()` requires the metric id to exist
+and validates id, kind, value type, transport unit, calculation version, and any
+comparison against the owning registry definition. Ad-hoc metrics do not share this
+authority path in E1.
 
 The response contract is additive on current main: no existing API payload or route
 is replaced in E1. Existing consumers continue unchanged until later packages bind
