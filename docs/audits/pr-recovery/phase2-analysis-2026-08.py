@@ -994,14 +994,14 @@ for result in stack_results:
         f"- Ancestor PRs: {', '.join('#'+str(v) for v in result['ancestor_prs']) or 'none'}",
         f"- Direct parents: {', '.join('#'+str(v) for v in result['direct_parent_prs']) or 'none'}",
         f"- Focus modules: {', '.join(result['focus_modules']) or 'unknown'}",
-        f"- Commit order ({len(result['contained_commit_order'])}): " + ", ".join(f"`{sha}`" for sha in result["contained_commit_order"]),
-        f"- Unique not in main ({len(result['unique_not_in_main_commits'])}): " + ", ".join(f"`{sha}`" for sha in result["unique_not_in_main_commits"]),
-        f"- Patch-equivalent ({len(result['patch_equivalent_commits'])}): " + ", ".join(f"`{sha}`" for sha in result["patch_equivalent_commits"]),
-        f"- Inherited foreign-module ({len(result['inherited_foreign_module_commits'])}): " + ", ".join(f"`{sha}`" for sha in result["inherited_foreign_module_commits"]),
-        f"- Likely feature ({len(result['likely_feature_commits'])}): " + ", ".join(f"`{sha}`" for sha in result["likely_feature_commits"]),
-        f"- Conflicting ({len(result['conflicting_commits'])}): " + ", ".join(f"`{sha}`" for sha in result["conflicting_commits"]),
-        f"- Obsolete/experimental ({len(result['obsolete_commits'])}): " + ", ".join(f"`{sha}`" for sha in result["obsolete_commits"]),
-        f"- Documentation ({len(result['documentation_commits'])}): " + ", ".join(f"`{sha}`" for sha in result["documentation_commits"]), "",
+        f"- Commit order ({len(result['contained_commit_order'])}): " + (", ".join(f"`{sha}`" for sha in result["contained_commit_order"]) or "none"),
+        f"- Unique not in main ({len(result['unique_not_in_main_commits'])}): " + (", ".join(f"`{sha}`" for sha in result["unique_not_in_main_commits"]) or "none"),
+        f"- Patch-equivalent ({len(result['patch_equivalent_commits'])}): " + (", ".join(f"`{sha}`" for sha in result["patch_equivalent_commits"]) or "none"),
+        f"- Inherited foreign-module ({len(result['inherited_foreign_module_commits'])}): " + (", ".join(f"`{sha}`" for sha in result["inherited_foreign_module_commits"]) or "none"),
+        f"- Likely feature ({len(result['likely_feature_commits'])}): " + (", ".join(f"`{sha}`" for sha in result["likely_feature_commits"]) or "none"),
+        f"- Conflicting ({len(result['conflicting_commits'])}): " + (", ".join(f"`{sha}`" for sha in result["conflicting_commits"]) or "none"),
+        f"- Obsolete/experimental ({len(result['obsolete_commits'])}): " + (", ".join(f"`{sha}`" for sha in result["obsolete_commits"]) or "none"),
+        f"- Documentation ({len(result['documentation_commits'])}): " + (", ".join(f"`{sha}`" for sha in result["documentation_commits"]) or "none"), "",
     ]
 (OUT / "phase2-stack-tip-analysis-2026-08.md").write_text("\n".join(stack_md) + "\n")
 
