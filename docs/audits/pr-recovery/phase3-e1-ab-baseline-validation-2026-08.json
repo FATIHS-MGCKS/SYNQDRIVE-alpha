@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-08-10T22:10:00.000Z",
+  "mainSha": "2d721a902feb56101eb9992249f1859ff64024cb",
+  "testedE1Sha": "ac2fd40e9cb5d9a377e09b34070a3f8a37f3e2b7",
+  "branch": "integration/evaluations-e1-contracts-2026-08",
+  "mergeBase": "2d721a902feb56101eb9992249f1859ff64024cb",
+  "mainMovedDuringE1": false,
+  "commands": [
+    {
+      "command": "cd backend && npx tsc --noEmit -p tsconfig.json",
+      "mainExitCode": 1,
+      "e1ExitCode": 2,
+      "mainFailureFingerprint": "TS2554 x3 Stripe fixtures; TS2345 x1 workflow fixture",
+      "e1FailureFingerprint": "TS2554 x3 Stripe fixtures; TS2345 x1 workflow fixture",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "command": "cd backend && npx tsc --noEmit -p tsconfig.build.json",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "classification": "PASS"
+    },
+    {
+      "command": "cd frontend && npx tsc -b",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "classification": "PASS"
+    },
+    {
+      "command": "cd backend && npm run lint:all",
+      "mainExitCode": 1,
+      "e1ExitCode": 1,
+      "mainFailureFingerprint": "36 errors, 15 warnings",
+      "e1FailureFingerprint": "36 errors, 15 warnings",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "command": "cd frontend && npm run lint:all",
+      "mainExitCode": 1,
+      "e1ExitCode": 1,
+      "mainFailureFingerprint": "422 errors, 27 warnings",
+      "e1FailureFingerprint": "422 errors, 27 warnings",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "command": "cd backend && npm run build",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "classification": "PASS"
+    },
+    {
+      "command": "cd frontend && npm run build",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "classification": "PASS"
+    },
+    {
+      "command": "cd backend && npm run prisma:validate",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "mainFailureFingerprint": "Existing SetNull referential-action warning",
+      "e1FailureFingerprint": "Existing SetNull referential-action warning",
+      "classification": "PASS_WITH_IDENTICAL_WARNING"
+    },
+    {
+      "command": "cd backend && npm run test:evaluations",
+      "mainExitCode": 1,
+      "e1ExitCode": 1,
+      "mainFailureFingerprint": "TireCriticalDetector pressureContext.tpmsWarning TypeError x2",
+      "e1FailureFingerprint": "TireCriticalDetector pressureContext.tpmsWarning TypeError x2",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "command": "cd frontend && npm run test:evaluations",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "mainFailureFingerprint": null,
+      "e1FailureFingerprint": null,
+      "classification": "PASS"
+    },
+    {
+      "command": "cd frontend && npm run test:legal-documents",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "classification": "PASS"
+    },
+    {
+      "command": "bash scripts/audits/audit-dependencies.sh",
+      "mainExitCode": 1,
+      "e1ExitCode": 1,
+      "mainFailureFingerprint": "42 vulnerabilities: 4 low, 21 moderate, 16 high, 1 critical",
+      "e1FailureFingerprint": "42 vulnerabilities: 4 low, 21 moderate, 16 high, 1 critical",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    }
+  ],
+  "githubRuns": {
+    "main": {
+      "vehicleDetail": 30221356279,
+      "legalDocuments": 30221356275
+    },
+    "e1": {
+      "vehicleDetail": 31436743414,
+      "legalDocuments": 31436743297
+    },
+    "normalizedFailures": [
+      {
+        "name": "Typecheck",
+        "classification": "PRE_EXISTING_IDENTICAL"
+      },
+      {
+        "name": "Legal lint",
+        "classification": "PRE_EXISTING_IDENTICAL"
+      },
+      {
+        "name": "Prisma P3018 legacy migration chain",
+        "classification": "PRE_EXISTING_IDENTICAL"
+      },
+      {
+        "name": "Vehicle Detail Playwright locator timeout",
+        "classification": "PRE_EXISTING_IDENTICAL"
+      },
+      {
+        "name": "Dependency advisory count",
+        "classification": "PRE_EXISTING_BUT_CHANGED",
+        "note": "Historical main run used an older advisory state; simultaneous local A/B is identical at 42."
+      }
+    ]
+  },
+  "summary": {
+    "newE1FailureCount": 0,
+    "preExistingIdenticalCommandGroupCount": 5,
+    "preExistingIdenticalRawFindingCount": 506,
+    "preExistingButChangedGroupCount": 1,
+    "notReproducibleLocallyCount": 1,
+    "result": "PASS_NO_E1_CAUSED_FAILURE"
+  }
+}

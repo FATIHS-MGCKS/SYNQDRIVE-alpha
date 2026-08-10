@@ -163,3 +163,132 @@ changes.
 `E1_BLOCKED`: keep the PR in draft. Do not mark ready or merge until the current-main
 baseline gates and CI are green or the post-implementation audit explicitly accepts
 the documented external blockers.
+
+## 11. E1.1 Post-Implementation Correction Pass
+
+E1.1 corrects only findings from the independent E1 contract audit. Tested code
+revision: `ac2fd40e9cb5d9a377e09b34070a3f8a37f3e2b7`.
+
+### 11.1 Comparison single source
+
+- `EvaluationsComparisonType` is the only registry/period/response taxonomy:
+  `PREVIOUS_COMPARABLE_PERIOD`, `PREVIOUS_FULL_PERIOD`, `YEAR_OVER_YEAR`,
+  `TARGET`.
+- Registry 1.2.0 contains no `none`, `mom`, `yoy`, or `prev_period` authority.
+- No-comparison is an empty list.
+- Every former MoM capability was inspected and mapped to
+  `PREVIOUS_COMPARABLE_PERIOD`; this preserves comparable MTD windows rather than
+  assuming a full previous month.
+- No compatibility adapter was added because repository consumers do not use the
+  removed registry strings outside the definitions/tests.
+
+### 11.2 Registry-aware response validation
+
+- Shared validation now supports explicit response-versus-definition checks
+  without importing the backend registry.
+- The backend registered boundary performs the registry lookup and rejects unknown
+  ids.
+- It enforces metric id, kind, value type, transport unit, calculation version,
+  supported comparison, MONEY shape/currency, and status/value semantics.
+- E1's registered KPI path does not implicitly admit ad-hoc metrics.
+
+### 11.3 Time dependency direction
+
+- `shared/time/platform-time.constants.ts` owns the platform fallback.
+- Backend shared time consumes the shared/core constant and no longer imports an
+  Evaluations contract.
+- Evaluations keeps only a deprecated compatibility alias to the same authority;
+  it does not define another fallback.
+- The established fallback remains `Europe/Berlin`, after report, station, and
+  organization scope.
+
+### 11.4 Period reference invariant
+
+The period validator now requires valid UTC instants and:
+
+```text
+start <= reference < endExclusive
+start < endExclusive
+```
+
+IANA timezone/source consistency and comparison-period validation remain enforced.
+DST gap/overlap behavior remains green.
+
+### 11.5 Value-type hardening
+
+- COUNT: non-negative safe integer.
+- DATETIME: UTC ISO-8601 instant.
+- Distances/durations: finite and non-negative.
+- PERCENT: 0..100.
+- RATIO: 0..1.
+- SCORE: finite; no invented global range.
+
+No general rules engine or unrelated metric policy was introduced.
+
+### 11.6 DataCoverage invariant
+
+- Counts are non-negative safe integers.
+- Available cannot exceed expected.
+- Available plus excluded cannot exceed expected when all are known.
+- A transported ratio must match `available / expected` within `1e-9`.
+- `expected=0, available=0` has explicit `ratio=null` semantics.
+
+### 11.7 Money currency authority
+
+- `Money.currency` is the sole concrete currency authority.
+- MONEY definitions use `CURRENCY_MINOR` for both deprecated unit hint and
+  transport unit, so registry metadata cannot impose EUR.
+- Assigned EUR and USD responses both validate.
+- No FX conversion or E3 migration logic was implemented.
+
+### 11.8 Config diff minimization
+
+The original E1 config delta is limited to TypeScript/Jest/Vite/Vitest aliases and
+includes required to compile the shared period contracts, plus discovery of the
+new E1 tests. The new discovery scope contains only passing E1 suites. E1.1 adds no
+config or lockfile change, so no config line was reverted.
+
+### 11.9 A/B baseline comparison
+
+Clean worktree validation compared
+`origin/main@2d721a902feb56101eb9992249f1859ff64024cb` with the tested E1.1
+revision using identical commands and normalized failure fingerprints.
+
+- Production backend/frontend typechecks and builds pass on both.
+- Prisma validates on both with the same warning.
+- Full typecheck, full lint, evaluations umbrella, and current dependency audit
+  failures reproduce from main with equivalent roots.
+- Historical GitHub runs for the exact main SHA reproduce the current E1.1
+  TypeScript, lint, legacy migration `P3018`, dependency, and Vehicle Detail
+  Playwright failure classes.
+- `NEW_E1_FAILURE`: **0**.
+
+Detailed evidence:
+
+- `docs/audits/pr-recovery/phase3-e1-ab-baseline-validation-2026-08.md`
+- `docs/audits/pr-recovery/phase3-e1-ab-baseline-validation-2026-08.json`
+- `docs/audits/pr-recovery/phase3-e1-contract-correction-test-report-2026-08.md`
+
+### 11.10 Final E1.1 gates and remaining failures
+
+| Gate | E1.1 result |
+|---|---|
+| Comparison authority | PASS |
+| Registry-aware validation | PASS |
+| Time dependency direction | PASS |
+| Period reference | PASS |
+| Value semantics | PASS |
+| Coverage arithmetic | PASS |
+| Money authority | PASS |
+| Focused backend | PASS — 112/112 |
+| Frontend evaluations | PASS — 36/36 |
+| Backend production typecheck/build | PASS |
+| Frontend typecheck/build | PASS |
+| Prisma/mirror/no-route/no-DB | PASS |
+| A/B `NEW_E1_FAILURE` | PASS — 0 |
+| Repository-wide/CI | BLOCKED by reproducible current-main failures |
+
+Final recommendation remains `E1_BLOCKED`, with PR #1018 in draft. E1-owned
+corrections pass; the status is not promoted because the user's acceptance gate
+also requires the repository-wide and GitHub CI gates to be green or formally
+accepted as baseline.
