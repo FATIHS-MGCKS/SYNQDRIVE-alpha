@@ -108,6 +108,14 @@ def mutate_unapproved_cross_module_hard_dependency(model: dict[str, Any]) -> Non
     )
 
 
+def mutate_exclusive_file_owner(model: dict[str, Any]) -> None:
+    next(
+        package for package in model["packages"] if package["package_id"] == "E5"
+    )["implementation_files"].append(
+        "backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts"
+    )
+
+
 CASES: list[tuple[str, str, Callable[[dict[str, Any]], None]]] = [
     ("earlier_package_depends_on_later", "INVALID_PACKAGE_ORDER", mutate_later_package_dependency),
     ("changeset_cycle", "CHANGESET_DAG_CYCLE", mutate_changeset_cycle),
@@ -118,6 +126,7 @@ CASES: list[tuple[str, str, Callable[[dict[str, Any]], None]]] = [
     ("critical_missing_rollback", "MISSING_ROLLBACK", mutate_missing_critical_rollback),
     ("predictive_without_off_flag", "PREDICTIVE_FLAG_NOT_OFF", mutate_predictive_flag),
     ("cross_module_hard_without_prerequisite", "UNKNOWN_CROSS_MODULE_HARD_DEPENDENCY", mutate_unapproved_cross_module_hard_dependency),
+    ("predictive_file_in_non_owner_package", "EXCLUSIVE_FILE_OWNER_VIOLATION", mutate_exclusive_file_owner),
 ]
 
 

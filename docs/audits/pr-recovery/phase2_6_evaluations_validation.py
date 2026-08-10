@@ -304,6 +304,23 @@ def validate_model(model: dict[str, Any]) -> list[dict[str, str]]:
         if package.get("privacy_sensitive") and not package.get("privacy_gate"):
             error("MISSING_PRIVACY_GATE", package["package_id"])
 
+    exclusive_path_owners = model.get("exclusive_path_owners", {})
+    for prefix, owner_package in exclusive_path_owners.items():
+        if owner_package not in package_by_id:
+            error(
+                "UNKNOWN_EXCLUSIVE_FILE_OWNER",
+                f"{prefix}->{owner_package}",
+            )
+    for package in packages:
+        package_id = package["package_id"]
+        for path in package.get("implementation_files", []):
+            for prefix, owner_package in exclusive_path_owners.items():
+                if path.startswith(prefix) and package_id != owner_package:
+                    error(
+                        "EXCLUSIVE_FILE_OWNER_VIOLATION",
+                        f"{path} is owned by {owner_package}, not {package_id}.",
+                    )
+
     for changeset in changesets:
         if changeset.get("risk") in {"HIGH", "CRITICAL"}:
             if not changeset.get("tests"):

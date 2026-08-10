@@ -215,6 +215,15 @@ PACKAGE_META = {
 }
 
 
+# Historical source PRs overlap across packages. These namespaces have one
+# implementation owner; earlier packages may establish reusable guards and
+# audit contracts, but must not port the later package's concrete files.
+EXCLUSIVE_PATH_OWNERS = {
+    "backend/src/modules/business-insights/predictive/": "E8",
+    "shared/evaluations-insights/predictive/": "E8",
+}
+
+
 EDGE_SPECS: list[dict[str, Any]] = []
 
 
@@ -616,12 +625,22 @@ packages = []
 for package_id in PACKAGE_MEMBERS:
     members = [normalized_by_id[changeset_id] for changeset_id in PACKAGE_MEMBERS[package_id]]
     files = sorted({path for item in members for path in item["affected_files"]})
-    actionable_files = sorted({
+    historical_actionable_files = sorted({
         path
         for item in members
         if not item["already_in_main"]
         for path in item["affected_files"]
     })
+    deferred_file_ownership = [
+        {"path": path, "owner_package": owner_package}
+        for path in historical_actionable_files
+        for prefix, owner_package in EXCLUSIVE_PATH_OWNERS.items()
+        if path.startswith(prefix) and owner_package != package_id
+    ]
+    deferred_paths = {item["path"] for item in deferred_file_ownership}
+    actionable_files = [
+        path for path in historical_actionable_files if path not in deferred_paths
+    ]
     frontend_files = [path for path in actionable_files if path.startswith("frontend/")]
     backend_files = [
         path for path in actionable_files if path.startswith(("backend/", "shared/"))
@@ -683,6 +702,8 @@ for package_id in PACKAGE_MEMBERS:
         "source_prs": sorted({pr for item in members for pr in item["source_prs"]}),
         "source_commits": sorted({sha for item in members for sha in item["source_commits"]}),
         "affected_files": files,
+        "implementation_files": actionable_files,
+        "deferred_file_ownership": deferred_file_ownership,
         "frontend_files": frontend_files,
         "backend_files": backend_files,
         "database_files": database_files,
@@ -705,6 +726,7 @@ model = {
     "changesets": normalized_changesets,
     "dependency_edges": dependency_rows,
     "packages": packages,
+    "exclusive_path_owners": EXCLUSIVE_PATH_OWNERS,
     "platform_prerequisites": [],
     "readiness_rules": {
         "tenant_foundation_changeset": "cs-evaluations-tenant-isolation",
@@ -1083,7 +1105,7 @@ for package in sorted(packages, key=lambda item: item["topological_order"]):
     test_burden = "HIGH" if package["risk"] == "CRITICAL" or len(package["changesets"]) >= 7 else "MEDIUM"
     rollback_complexity = "HIGH" if package["database"] else "MEDIUM"
     diff_lines.append(
-        f"| `{package['package_id']}` | {len(package['changesets'])} | {len(package['affected_files'])} | "
+        f"| `{package['package_id']}` | {len(package['changesets'])} | {len(package['implementation_files'])} | "
         f"{mix or 'contracts/docs'} | `{package['risk']}` | `{test_burden}` | `{rollback_complexity}` |"
     )
 diff_lines += [
@@ -1117,7 +1139,7 @@ for package in sorted(packages, key=lambda item: item["topological_order"]):
         f"- Source PRs: {', '.join('#'+str(item) for item in package['source_prs'])}",
         f"- Source commits: {', '.join(f'`{item}`' for item in package['source_commits'])}",
         f"- Implementation: {', '.join(package['integration_methods'])}",
-        f"- Migrations: {', '.join(f'`{item}`' for item in package['database_files']) if package['database_files'] else 'None.'}",
+        f"- Migration evidence to regenerate from current main: {', '.join(f'`{item}`' for item in package['database_files']) if package['database_files'] else 'None.'}",
         f"- Tests: {'; '.join(package['required_tests'])}",
         f"- Staging: {'required' if package['required_staging'] else 'not separately required'}; VPS: {'required' if package['required_vps'] else 'not in this package'}.",
         f"- Entry gate: {package['entry_gate']}",
@@ -1125,16 +1147,27 @@ for package in sorted(packages, key=lambda item: item["topological_order"]):
         f"- Rollback: {package['rollback_strategy']}",
         f"- Feature flag: `{package['feature_flag'] or 'none'}`",
         "",
-        "<details><summary>Affected files</summary>",
+        "<details><summary>Phase-3 implementation file scope</summary>",
         "",
     ]
-    runbook_lines += [f"- `{path}`" for path in package["affected_files"]]
+    runbook_lines += [f"- `{path}`" for path in package["implementation_files"]]
     runbook_lines += ["", "</details>", ""]
+    if package["deferred_file_ownership"]:
+        runbook_lines += [
+            "<details><summary>Historical file overlap deferred to its owning package</summary>",
+            "",
+        ]
+        runbook_lines += [
+            f"- `{item['path']}` → `{item['owner_package']}`; do not port in `{package['package_id']}`."
+            for item in package["deferred_file_ownership"]
+        ]
+        runbook_lines += ["", "</details>", ""]
 runbook_lines += [
     "## Global no-go gates",
     "",
     "- Any cross-tenant/station read, missing central permission check, unconfirmed material action, idempotency gap, audit enqueue failure, mixed-currency sum, PII leakage, future leakage, or predictive default-on is `NO-GO`.",
     "- Historical migrations are evidence only. Recompute each schema diff and rehearse expand/backfill/switch/contract on current main.",
+    "- Predictive backend/shared implementation paths are owned exclusively by E8. Earlier RBAC/audit packages may add reusable guards and contracts, but must not port predictive controllers, services or shared predictive implementations.",
     "- Figma remains visual authority during Phase-3 UI implementation; no UI package may introduce client-owned KPI truth.",
 ]
 write_md(
