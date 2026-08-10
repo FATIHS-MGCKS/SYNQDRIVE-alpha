@@ -127,7 +127,7 @@ the required SynqDrive Changes/Architektur entries.
 | Backend full unit suite | BASELINE BLOCKER — existing failures, then Node heap exhaustion at 4 GiB |
 | Prisma validate | PASS with pre-existing referential-action warning |
 | No-new-routes/diff audit | PASS |
-| CI | BLOCKED — GitHub reports no checks for PR #1018 |
+| CI | BASELINE BLOCKER — 24 checks completed: 15 passed, 7 failed, 2 skipped; no failure references an E1-owned file |
 
 The E1-owned targeted suites pass without skipped tests. Baseline failures were
 verified to be in files with no `origin/main...HEAD` diff. They were not modified
@@ -140,7 +140,12 @@ changes.
   - Current main is not globally green for all-source typecheck, full lint, or full
     unit tests. These are external E1 acceptance blockers even though every E1
     target, production build, and production typecheck passes.
-  - GitHub reports no CI checks for PR #1018, so CI cannot be marked PASS.
+      - PR #1018 CI fails in untouched global areas: existing Stripe/workflow
+        all-source type errors, repository-wide lint debt, the legacy
+        `vehicle_trips` migration chain, legal-document integration/dependency
+        gates, and a Vehicle Detail Playwright expectation. The relevant production
+        builds, unit/security/component tests, accessibility, Prisma validation, and
+        dependency scan in the Vehicle Detail workflow pass.
   - Runtime adoption of the new response contract is intentionally deferred to
     later owning packages.
 - Rollback: revert the isolated E1 commits and redeploy the prior release. No
