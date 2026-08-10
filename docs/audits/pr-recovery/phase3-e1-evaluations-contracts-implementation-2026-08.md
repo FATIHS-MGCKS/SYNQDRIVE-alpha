@@ -21,10 +21,10 @@ authority chain.
 
 | Change-set | Current-main disposition | Historical evidence |
 |---|---|---|
-| `cs-evaluations-metric-registry-baseline` | `ALREADY_SATISFIED_BY_CURRENT_MAIN`; integrity validation extended only | PR #755, commit `850b20bc632e514acba32e05e38b92c864840779` |
+| `cs-evaluations-metric-registry-baseline` | `ALREADY_SATISFIED_BY_CURRENT_MAIN`; integrity validation extended only | PR #752, commit `850b20bc632e514acba32e05e38b92c864840779` |
 | `cs-evaluations-calculation-versioning-baseline` | `ALREADY_SATISFIED_BY_CURRENT_MAIN`; formula migration documentation clarified | PR #752, commit `312ee93f5315af7c8a4474a5014976a68584a7c6` |
 | `cs-evaluations-timezone-period-model` | Reimplemented as shared contract and pure resolver | PR #754, commit `f23e6bdab173c9e4705f56316737a2497d147ae1` |
-| `cs-evaluations-unified-kpi-contract` | Reimplemented as discriminated shared response contract | PR #754, commit `59cbd9f1f8f2e5f55601b5f2385f9fc5701c49b2` |
+| `cs-evaluations-unified-kpi-contract` | Reimplemented as discriminated shared response contract | PR #755, commit `59cbd9f1f8f2e5f55601b5f2385f9fc5701c49b2` |
 
 Historical controller, service, finance-query, and UI wiring changes were not
 ported because they belong outside E1 or violate its no-new-route gate.
