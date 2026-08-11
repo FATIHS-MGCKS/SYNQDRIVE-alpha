@@ -149,3 +149,109 @@ forecasts. `E4_STARTED = NO`. `MERGE_PERFORMED = NO`.
 (the shared `evaluations-finance` calculator, consumed by the backend service).
 The legacy client calculator is a presentation-layer consumer pending delegation,
 documented above; it introduces no second *evaluations authority* engine.
+
+---
+
+# E3.1 — Runtime Authority & Financial Semantics Correction (2026-08-11)
+
+Correction pass on the same branch/PR (#1022) addressing the E3 post-implementation
+audit findings. This is not a new package; it does not re-design the known-good E3
+base (E1 money contract, BigInt arithmetic, no cross-currency add, deposit≠revenue,
+E2 scope reuse, no migration, no deployment).
+
+## 1. Serving path authority
+
+The actual Financial Insights serving path is the client `financial-insights.logic.ts`
+computing over the org invoice list. It is now a thin ADAPTER that delegates all
+classification and money arithmetic to `@synq/evaluations-finance` (the same
+canonical calculator the backend `EvaluationsFinanceService` uses). It contains no
+independent revenue/expense/receivable/margin formula. The receivable KPI in
+`FinancialInsightsView` uses the canonical authoritative CURRENT outstanding balance
+(`currentOpenReceivablesMinor` / `currentOverdueReceivablesMinor`) — fixing the
+legacy `totalCents` receivable bug. `EvaluationsFinanceModule` is registered in
+`AppModule` (canonical authority present in the runtime path).
+
+## 2. Legacy calculator delegation
+
+`financial-insights.logic.ts` row selectors use canonical fact classification and
+`sumCents` uses the canonical BigInt money sum. `PARALLEL_FINANCE_TRUTH_COUNT = 0`
+for the core finance metric scope (revenue/expense/receivable/result/margin);
+legacy wrappers only map/select, they do not compute a competing formula.
+
+## 3. Receivable time semantics
+
+Option B (current-only). Receivables are an explicit CURRENT snapshot of the
+authoritative `outstandingCents`. A clearly historical reference fails closed with
+`HISTORICAL_RECEIVABLE_RECONSTRUCTION_UNAVAILABLE` (never a false past value). The
+ignored `void referenceMs` is removed; `isCurrentReceivableReference` guards the
+snapshot. Available financial history on current main (invoice `issuedAt`, payment
+`paidAt`, `outstandingCents`) is insufficient to reconstruct an arbitrary as-of
+open balance with confidence, so historical reconstruction is intentionally not
+faked.
+
+## 4. Reporting currency authority
+
+Only an ACTIVE, charges-enabled `OrganizationPaymentAccount` (deterministic
+selection by `lastSyncedAt`/`createdAt`) provides the reporting currency used to
+express a true-zero period. A Prisma `@default("EUR")` on a PENDING account is not
+treated as business authority → UNAVAILABLE, never a fabricated 0 EUR. Currency for
+non-empty metrics always comes from the invoice/payment rows.
+
+## 5. Negative margin semantics
+
+Profit margin is served as the additive `SIGNED_PERCENT` value type (finite signed
+percentage; losses beyond -100% allowed). E1's generic `PERCENT` stays bounded
+[0,100]. Only zero-revenue and multi-currency remain NOT_APPLICABLE; no real
+negative margin is hidden; no NaN/Infinity.
+
+## 6. Invoice lifecycle allowlists
+
+Positive finalized-state allowlists replace denylists (see
+`phase3-e3-invoice-lifecycle-finance-matrix-2026-08.md`). `INCOMING + UPLOADED /
+NEEDS_REVIEW / REJECTED` no longer count as expense.
+
+## 7. Payment → invoice tenant integrity
+
+The payment query requires the parent invoice to be same-tenant (`invoice: { is:
+{ organizationId } }`) plus an in-code guard. A payment whose parent invoice
+belongs to another org is excluded (no foreign currency/amount/status/existence
+leak).
+
+## 8. Calculation version reconciliation
+
+Materially changed active metrics bumped to `2.0.0`
+(`fin.mtd_paid_revenue`, `fin.mtd_expenses`, `fin.mtd_net_result`,
+`fin.profit_margin_mtd`, `fin.open_receivables`, `fin.overdue_receivables`,
+`fin.total_outstanding_receivables`) via registry definitions + the override map
+(sync test enforced). `fin.mtd_issued_revenue` stays `1.0.0` (result unchanged).
+Registry version `1.3.0`. No finance metric is marked `active` that the canonical
+E3 authority cannot serve.
+
+## 9. Multi-currency runtime capability
+
+FX conversion foundation is implemented, but no authoritative runtime FX source is
+connected on current main. Therefore mixed-currency aggregates remain fail-closed
+(per-currency or UNAVAILABLE); "full multi-currency aggregation active" is NOT
+claimed.
+
+## 10. Tests
+
+Backend finance suite: 70 tests (`backend/src/modules/evaluations-finance/*.spec.ts`),
+incl. negative/sub-100% margin, lifecycle exclusions, corrupt payment relation,
+pending-account currency, current receivable, historical-reference fail-closed,
+calculation versions. Client serving-path: 21 tests
+(`financial-insights.serving-path.test.ts`,
+`financial-insights-scenarios.characterization.test.ts`,
+`businessPulseSliceBuilder.test.ts`). E1/E2 regression via `npm run test:evaluations`
+(424 passing; 2 pre-existing tire-detector failures unrelated to E3).
+
+## 11. Residual limitations
+
+- Historical (as-of) receivables are intentionally UNAVAILABLE (no reliable
+  reconstruction source); only CURRENT receivables are served.
+- Ledger-based net cashflow with refunds remains `planned` (no unified refund
+  settlement ledger for all payments on current main).
+- Runtime FX source not connected → mixed-currency remains fail-closed.
+- The client presentation breakdowns (daily series, top-N, MoM) remain in the UI as
+  presentation over canonically-classified rows; the core metric money authority is
+  the canonical calculator.

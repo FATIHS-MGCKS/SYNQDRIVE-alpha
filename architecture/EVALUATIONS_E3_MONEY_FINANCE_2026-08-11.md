@@ -48,3 +48,35 @@
 Evidence: `docs/audits/pr-recovery/phase3-e3-*` (source authority matrix,
 semantic matrix, money-migration validation, multi-currency reconciliation,
 finance test report, implementation report).
+
+## E3.1 — Runtime Authority & Financial Semantics Correction
+
+### Changes (E3.1)
+
+- The Financial Insights serving path (`financial-insights.logic.ts`) now
+  delegates all classification and money arithmetic to `@synq/evaluations-finance`
+  (single truth); the receivable KPI uses the canonical authoritative CURRENT
+  outstanding balance (fixes the legacy `totalCents` receivable bug).
+- `EvaluationsFinanceModule` registered in `AppModule`.
+- Receivables are current-only; historical references fail closed
+  (`HISTORICAL_RECEIVABLE_RECONSTRUCTION_UNAVAILABLE`).
+- Reporting currency requires an ACTIVE, charges-enabled payment account
+  (deterministic); schema-default EUR on a PENDING account is not authority.
+- Profit margin served as additive `SIGNED_PERCENT` (negative/sub -100% served).
+- Revenue/expense positive lifecycle allowlists (intake/rejected excluded).
+- Payment→invoice same-tenant defense-in-depth.
+- calculationVersion `2.0.0` for materially changed metrics; registry `1.3.0`.
+
+### Architektur (E3.1)
+
+- Runtime ownership: the canonical `@synq/evaluations-finance` calculator is the
+  single formula authority; both the backend `EvaluationsFinanceService` and the
+  client legacy adapter consume it. No parallel finance truth for the core metric
+  scope.
+- Receivable semantics are explicitly CURRENT-snapshot (Option B); no faked
+  historical reconstruction.
+- Additive E1 value type `SIGNED_PERCENT` added (E1 `PERCENT` remains [0,100]).
+
+Evidence (E3.1): `phase3-e3-invoice-lifecycle-finance-matrix-2026-08.md`,
+`phase3-e3-runtime-financial-semantics-correction-test-report-2026-08.md`,
+updated semantic/source matrices and implementation report.
