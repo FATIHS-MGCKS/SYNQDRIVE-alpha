@@ -101,3 +101,9 @@ uploads/
 backend/*-output.txt
 backend/analyze-*.txt
 tmp/
+
+# Landing page build artefacts and QA output.
+# Raw captures: npm run landing:capture   Built site: npm run landing:build
+landingpage/assets-raw/
+landingpage/dist/
+landingpage/qa/

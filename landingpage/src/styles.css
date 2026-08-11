@@ -1,0 +1,1264 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SynqDrive public landing page
+
+   Tokens mirror the product theme (frontend/src/styles/theme.css) so the
+   marketing surface and the application read as one brand. Values are copied
+   rather than imported because this page ships as standalone static files with
+   no build-time CSS pipeline. The product theme stays the source of truth: if a
+   brand token changes there, mirror it here.
+
+     --ink        #111827   product --foreground / --primary
+     --brand      #4F86E8   product --brand
+     --radius     8px       product --radius
+     --ease       cubic-bezier(0.16, 1, 0.3, 1)   product --ease-out-soft
+
+   Light theme only. The public page is theme locked, so no section inverts.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/assets/fonts/manrope-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/assets/fonts/manrope-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --ink: #111827;
+  --ink-soft: #46505f;
+  --muted: #6b7280;
+  --brand: #4f86e8;
+  --brand-ink: #3266c4;
+
+  --canvas: #ffffff;
+  --canvas-alt: #f7f8fa;
+  --surface: #ffffff;
+  --hairline: rgba(17, 24, 39, 0.09);
+  --hairline-strong: rgba(17, 24, 39, 0.14);
+  --image-outline: rgba(0, 0, 0, 0.1);
+
+  --shadow-frame: 0 1px 2px rgba(17, 24, 39, 0.04), 0 12px 32px rgba(17, 24, 39, 0.06);
+  --shadow-raised: 0 1px 2px rgba(17, 24, 39, 0.05), 0 18px 44px rgba(17, 24, 39, 0.08);
+  --shadow-action: 0 1px 2px rgba(17, 24, 39, 0.16), 0 6px 16px rgba(17, 24, 39, 0.14);
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-frame: 16px;
+
+  --shell: 1240px;
+  --gutter: 24px;
+  --section-y: 128px;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --masthead-h: 68px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Anchor targets clear the sticky masthead. */
+  scroll-padding-top: calc(var(--masthead-h) + 20px);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  z-index: 60;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  transition: top 160ms var(--ease);
+}
+
+.skip-link:focus-visible {
+  top: 14px;
+}
+
+/* ── Masthead ────────────────────────────────────────────────────────────── */
+
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+
+.masthead[data-stuck='true'] {
+  border-bottom-color: var(--hairline);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.03);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .masthead {
+    background: #fff;
+  }
+}
+
+.masthead__inner {
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  height: var(--masthead-h);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  /* Hit area stays 40px tall while the wordmark itself is optically smaller. */
+  min-height: 40px;
+}
+
+.brand img {
+  width: 132px;
+  height: auto;
+}
+
+.mainnav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: auto;
+}
+
+.mainnav__link,
+.mainnav__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: color 160ms var(--ease), background-color 160ms var(--ease);
+}
+
+.mainnav__link:hover,
+.mainnav__trigger:hover {
+  color: var(--ink);
+  background: rgba(17, 24, 39, 0.04);
+}
+
+.mainnav__chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  transition: transform 200ms var(--ease);
+}
+
+.mainnav__group {
+  position: relative;
+}
+
+.mainnav__group[data-open='true'] .mainnav__chevron {
+  transform: rotate(180deg);
+}
+
+.mainnav__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 272px;
+  padding: 6px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  box-shadow: var(--shadow-raised);
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+}
+
+.mainnav__group[data-open='true'] .mainnav__menu {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mainnav__menu a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  font-weight: 600;
+  transition: color 140ms var(--ease), background-color 140ms var(--ease);
+}
+
+.mainnav__menu a:hover {
+  color: var(--ink);
+  background: var(--canvas-alt);
+}
+
+.masthead__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.locale-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: color 160ms var(--ease), background-color 160ms var(--ease);
+}
+
+.locale-switch svg {
+  width: 15px;
+  height: 15px;
+}
+
+.locale-switch:hover {
+  color: var(--ink);
+  background: rgba(17, 24, 39, 0.04);
+}
+
+.masthead__login {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  font-weight: 600;
+  transition: color 160ms var(--ease), background-color 160ms var(--ease);
+}
+
+.masthead__login:hover {
+  color: var(--ink);
+  background: rgba(17, 24, 39, 0.04);
+}
+
+.masthead__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.masthead__toggle svg {
+  width: 19px;
+  height: 19px;
+}
+
+.masthead__toggle-close {
+  display: none;
+}
+
+.masthead__toggle[aria-expanded='true'] .masthead__toggle-open {
+  display: none;
+}
+
+.masthead__toggle[aria-expanded='true'] .masthead__toggle-close {
+  display: block;
+}
+
+.drawer {
+  display: none;
+  padding: 8px var(--gutter) 22px;
+  border-top: 1px solid var(--hairline);
+  background: #fff;
+}
+
+.drawer__list a {
+  display: block;
+  padding: 13px 2px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drawer__actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.drawer__locale {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  color: var(--muted);
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.drawer__locale svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  transition-property: background-color, border-color, color, box-shadow, scale;
+  transition-duration: 170ms;
+  transition-timing-function: var(--ease);
+}
+
+.action:active {
+  scale: 0.96;
+}
+
+.action--primary {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: var(--shadow-action);
+}
+
+.action--primary:hover {
+  background: #1f2937;
+}
+
+.action--secondary,
+.action--ghost {
+  border-color: var(--hairline-strong);
+  background: #fff;
+  color: var(--ink);
+}
+
+.action--secondary:hover,
+.action--ghost:hover {
+  border-color: rgba(17, 24, 39, 0.24);
+  background: var(--canvas-alt);
+}
+
+.action__arrow {
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  transition: transform 200ms var(--ease);
+}
+
+.action--secondary:hover .action__arrow {
+  transform: translateX(3px);
+}
+
+/* Masthead action is denser than in-page actions. */
+.masthead__actions .action--primary {
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14.5px;
+}
+
+/* ── Section scaffolding ─────────────────────────────────────────────────── */
+
+.hero,
+.section,
+.closing__inner,
+.masthead__inner,
+.sitefooter__inner,
+.sitefooter__legal {
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section {
+  padding-block: var(--section-y);
+}
+
+.section + .section {
+  border-top: 1px solid var(--hairline);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 6px 13px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--canvas-alt);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.002em;
+}
+
+.section-head {
+  max-width: 40rem;
+}
+
+.section-head--centered {
+  margin-inline: auto;
+  text-align: center;
+}
+
+/* The lower bound is set by German compound nouns: "Kundenkommunikation" has to
+   fit a 320px viewport without breaking mid-word, and Chromium ships no German
+   hyphenation dictionary to fall back on. */
+.section-title {
+  font-size: clamp(1.55rem, 0.88rem + 3.35vw, 3.15rem);
+}
+
+.section-body {
+  margin-top: 20px;
+  max-width: 34rem;
+  color: var(--ink-soft);
+  font-size: clamp(1rem, 0.97rem + 0.16vw, 1.075rem);
+  line-height: 1.65;
+}
+
+.section-head--centered .section-body {
+  margin-inline: auto;
+}
+
+/* ── Product frame ───────────────────────────────────────────────────────── */
+
+.frame {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-frame);
+  background: #fff;
+  box-shadow: var(--shadow-frame);
+  overflow: hidden;
+}
+
+.frame img {
+  width: 100%;
+  /* Pure black at low alpha, so the edge never picks up a colour cast. */
+  outline: 1px solid var(--image-outline);
+  outline-offset: -1px;
+}
+
+.frame--flush {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.frame--flush img {
+  outline: 0;
+}
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  align-items: center;
+  gap: 56px;
+  padding-block: 96px 120px;
+}
+
+.hero__copy h1 {
+  font-size: clamp(2.35rem, 1.2rem + 4.1vw, 4rem);
+  letter-spacing: -0.03em;
+}
+
+.hero__body {
+  margin-top: 24px;
+  max-width: 31rem;
+  color: var(--ink-soft);
+  font-size: clamp(1.05rem, 1rem + 0.28vw, 1.175rem);
+  line-height: 1.62;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+/* The frame sits inside the shell: the wider grid share already gives the
+   product enough presence, and bleeding past the gutter creates page-level
+   horizontal scroll on every viewport wider than the shell. */
+.hero__media {
+  min-width: 0;
+}
+
+/* ── Split composition (unified operations, AI, communication) ───────────── */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: center;
+  gap: 72px;
+}
+
+.split--mirror .split__media {
+  order: -1;
+}
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 40px;
+}
+
+.capability {
+  padding: 20px;
+  border: 1px solid var(--hairline);
+  /* Concentric: 20px padding inside a 10px inner radius gives 30px outside. */
+  border-radius: 14px;
+  background: var(--canvas-alt);
+  transition: background-color 200ms var(--ease), border-color 200ms var(--ease);
+}
+
+.capability:hover {
+  border-color: var(--hairline-strong);
+  background: #fff;
+}
+
+.capability h3 {
+  margin-top: 14px;
+  font-size: 15.5px;
+  letter-spacing: -0.012em;
+}
+
+.capability p {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13.75px;
+  line-height: 1.55;
+}
+
+.icon-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--brand-ink);
+}
+
+/* ── Notes lists (AI governance, communication points) ───────────────────── */
+
+.notes {
+  display: grid;
+  gap: 22px;
+  margin-top: 36px;
+  max-width: 34rem;
+}
+
+.notes h3 {
+  font-size: 15.5px;
+  letter-spacing: -0.012em;
+}
+
+.notes p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 14.25px;
+  line-height: 1.58;
+}
+
+.notes--divided {
+  gap: 0;
+}
+
+.notes--divided li {
+  padding-block: 22px;
+  border-top: 1px solid var(--hairline);
+}
+
+.notes--divided li:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* ── Vehicle intelligence: one composed panel ────────────────────────────── */
+
+.stage .section-head {
+  margin-bottom: 56px;
+}
+
+.stage__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+  align-items: stretch;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: var(--canvas-alt);
+  box-shadow: var(--shadow-frame);
+  overflow: hidden;
+}
+
+.stage__media {
+  /* The screenshot is taller than the panel, so it crops from the top. */
+  max-height: 520px;
+  overflow: hidden;
+  background: #fff;
+  border-right: 1px solid var(--hairline);
+}
+
+.stage__notes {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 12px 44px;
+}
+
+.stage__notes li {
+  padding-block: 24px;
+}
+
+.stage__notes li + li {
+  border-top: 1px solid var(--hairline);
+}
+
+.stage__notes h3 {
+  font-size: 16.5px;
+  letter-spacing: -0.014em;
+}
+
+.stage__notes p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 14.25px;
+  line-height: 1.58;
+}
+
+/* ── AI flow rail ────────────────────────────────────────────────────────── */
+
+.flow {
+  margin-top: 40px;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  background: var(--canvas-alt);
+}
+
+.flow__label,
+.chain__label {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.004em;
+}
+
+.flow__list {
+  display: grid;
+  gap: 0;
+  margin-top: 6px;
+  counter-reset: flow;
+}
+
+.flow__step {
+  position: relative;
+  padding: 14px 0 14px 26px;
+  counter-increment: flow;
+}
+
+/* Connector marks the sequence without drawing decorative grid lines. */
+.flow__step::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 22px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+.flow__step::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 32px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--hairline-strong);
+}
+
+.flow__step:last-child::after {
+  display: none;
+}
+
+.flow__step h3 {
+  font-size: 14.75px;
+  letter-spacing: -0.01em;
+}
+
+.flow__step p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13.75px;
+  line-height: 1.5;
+}
+
+/* ── Workflow automation: stacked ────────────────────────────────────────── */
+
+.stack .section-head {
+  max-width: 42rem;
+}
+
+.chain {
+  margin-top: 48px;
+}
+
+.chain__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.chain__link {
+  position: relative;
+  padding: 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--canvas-alt);
+}
+
+/* Chevron between chain steps, drawn from the border rather than an icon. */
+.chain__link + .chain__link::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-top: 1.5px solid var(--hairline-strong);
+  border-right: 1.5px solid var(--hairline-strong);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.chain__link h3 {
+  font-size: 15.5px;
+  letter-spacing: -0.012em;
+}
+
+.chain__link p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13.75px;
+  line-height: 1.55;
+}
+
+.stack__media {
+  margin-top: 44px;
+}
+
+/* ── Integration hub ─────────────────────────────────────────────────────── */
+
+.hub .section-head {
+  margin-bottom: 60px;
+}
+
+.hub__grid {
+  position: relative;
+}
+
+.hub__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.hub__tile {
+  padding: 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+
+.hub__tile:hover {
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-frame);
+}
+
+.hub__tile h3 {
+  margin-top: 14px;
+  font-size: 15.5px;
+  letter-spacing: -0.012em;
+}
+
+.hub__tile p {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13.75px;
+  line-height: 1.55;
+}
+
+/* Centre node sits in the grid gap between the two tile rows. */
+.hub__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 9px 20px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-raised);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.008em;
+}
+
+.hub__note {
+  margin-top: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13.75px;
+}
+
+/* ── Closing call to action ──────────────────────────────────────────────── */
+
+.closing {
+  border-top: 1px solid var(--hairline);
+  background: var(--canvas-alt);
+}
+
+.closing__inner {
+  padding-block: 116px;
+  text-align: center;
+}
+
+.closing h2 {
+  max-width: 30rem;
+  margin-inline: auto;
+  font-size: clamp(1.85rem, 1.3rem + 2.2vw, 2.8rem);
+}
+
+.closing p {
+  margin: 20px auto 0;
+  max-width: 30rem;
+  color: var(--ink-soft);
+  font-size: 1.0625rem;
+}
+
+.closing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+.sitefooter {
+  border-top: 1px solid var(--hairline);
+  background: #fff;
+}
+
+.sitefooter__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 48px;
+  padding-block: 60px 44px;
+}
+
+.sitefooter__brand img {
+  width: 138px;
+  height: auto;
+}
+
+.sitefooter__brand p {
+  margin-top: 16px;
+  max-width: 24rem;
+  color: var(--muted);
+  font-size: 14.25px;
+}
+
+.sitefooter__columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.sitefooter__columns h2 {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.sitefooter__columns ul {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.sitefooter__columns a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--ink-soft);
+  font-size: 14.25px;
+  font-weight: 600;
+  transition: color 150ms var(--ease);
+}
+
+.sitefooter__columns a:hover {
+  color: var(--ink);
+}
+
+.sitefooter__legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 22px 30px;
+  border-top: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.sitefooter__legal a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-weight: 600;
+  transition: color 150ms var(--ease);
+}
+
+.sitefooter__legal a:hover {
+  color: var(--ink);
+}
+
+/* ── Reveal on scroll ────────────────────────────────────────────────────── */
+
+/* Only hidden when scripting is available, so a failed script still shows copy.
+   The stagger delay per element is set by script.js from its sibling index. */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition-property: opacity, transform;
+  transition-duration: 620ms;
+  transition-timing-function: var(--ease);
+}
+
+.js [data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  :root {
+    --section-y: 104px;
+  }
+
+  .split {
+    gap: 52px;
+  }
+
+  .stage__notes {
+    padding: 12px 32px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .mainnav {
+    display: none;
+  }
+
+  .masthead__login,
+  .locale-switch {
+    display: none;
+  }
+
+  .masthead__toggle {
+    display: inline-flex;
+  }
+
+  .masthead__inner {
+    gap: 16px;
+    justify-content: space-between;
+  }
+
+  .masthead[data-nav-open='true'] .drawer {
+    display: block;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 44px;
+    padding-block: 64px 88px;
+  }
+
+  .hero__media {
+    margin-right: 0;
+  }
+
+  .hero__body,
+  .section-body {
+    max-width: 38rem;
+  }
+
+  .split,
+  .split--mirror {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 44px;
+  }
+
+  .split--mirror .split__media {
+    order: 0;
+  }
+
+  .stage__panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stage__media {
+    max-height: 420px;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .stage__notes {
+    padding: 8px 28px 20px;
+  }
+
+  .chain__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chain__link + .chain__link::before {
+    left: 50%;
+    top: -12px;
+    transform: translateX(-50%) rotate(135deg);
+  }
+
+  .hub__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The centre node only reads as a hub on the three column layout. */
+  .hub__core {
+    display: none;
+  }
+
+  .sitefooter__inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --section-y: 76px;
+    --gutter: 20px;
+  }
+
+  .closing__inner {
+    padding-block: 80px;
+  }
+
+  .capability-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stage .section-head,
+  .hub .section-head {
+    margin-bottom: 36px;
+  }
+
+  .stage__media {
+    max-height: 360px;
+  }
+
+  .stage__notes {
+    padding: 4px 22px 16px;
+  }
+
+  .hub__tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sitefooter__inner {
+    padding-block: 44px 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* The demo action stays reachable in the drawer, the hero and the closing
+     section, so the masthead keeps only the wordmark and the menu toggle. */
+  .masthead__actions .action--primary {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --gutter: 16px;
+  }
+
+  .hero__actions,
+  .closing__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .action {
+    width: 100%;
+  }
+
+  .brand img {
+    width: 118px;
+  }
+
+  .stage__media {
+    max-height: 300px;
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Has to outweigh `.js [data-reveal]`, so the enter state never applies at all
+     rather than being skipped through by the script. */
+  .js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .action:active {
+    scale: 1;
+  }
+}

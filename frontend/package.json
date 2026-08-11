@@ -46,7 +46,13 @@
     "test:evaluations:e2e:a11y": "playwright test -c e2e/playwright.config.ts evaluations-a11y.spec.ts --project=desktop-1280",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
-    "check:surface": "bash scripts/check-surface-legacy.sh"
+    "check:surface": "bash scripts/check-surface-legacy.sh",
+    "landing:capture": "playwright test -c e2e/playwright.landing-assets.config.ts",
+    "landing:assets": "node ../landingpage/tools/build-assets.mjs",
+    "landing:icons": "node ../landingpage/tools/build-icons.mjs",
+    "landing:build": "node ../landingpage/tools/build-site.mjs",
+    "landing:serve": "python3 -m http.server 4321 --bind 127.0.0.1 --directory ../landingpage/dist",
+    "landing:qa": "playwright test -c e2e/playwright.landing-qa.config.ts"
   },
   "dependencies": {
     "@cardog-icons/react": "^1.2.0",
