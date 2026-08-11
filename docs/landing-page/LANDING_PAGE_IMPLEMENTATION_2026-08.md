@@ -229,6 +229,10 @@ DNS, nameservers, the HTTP to HTTPS redirect and the Let's Encrypt certificate w
 untouched. The deploy replaces the docroot: the two placeholder images now return 404, which
 confirms it is a replacement rather than a merge.
 
+The boundary held. After the deploy `https://app.synqdrive.eu/api/v1/health` returns
+`{"status":"ok"}` with an uptime of roughly eleven days, which spans well before the deploy, so
+the product process was never restarted and the VPS was never involved.
+
 `www.synqdrive.eu` still answers 200 from the same docroot rather than redirecting to the apex.
 That behaviour predates this work; duplicate content is handled by the canonical tag. Adding a
 redirect would mean changing working hosting configuration and was left alone.
