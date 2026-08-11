@@ -1,9 +1,9 @@
-# Phase 3 E1.1 — Contract Correction Test Report
+# Phase 3 E1 — Contract Correction Test Report (E1.1 + E1.2)
 
-Tested code revision:
-`ac2fd40e9cb5d9a377e09b34070a3f8a37f3e2b7`.
+Tested code revision: `9595f6e449fdf33c8b7a3f5e9a645c5b8d4ddded`
+(branch `integration/evaluations-e1-contracts-2026-08`).
 
-## Targeted contract suite
+## Focused E1 contract suite
 
 Command:
 
@@ -14,73 +14,77 @@ npx jest --runInBand \
   src/modules/evaluations-metrics/evaluations-metric-response.spec.ts \
   src/modules/evaluations-metrics/evaluations-period.resolver.spec.ts \
   src/modules/evaluations-metrics/evaluations-shared-contract-mirror.sync.spec.ts \
+  src/modules/evaluations-metrics/evaluations-metric-calculation-versions.sync.spec.ts \
   src/modules/pricing/tariff-instant.util.spec.ts
 ```
 
-Result: **PASS — 5 suites, 112 tests, 0 skipped**.
+Result: **PASS — 6 suites, 115 tests, 0 skipped**.
 
-## Covered corrections
+Targeted evaluations umbrella (`npm run test:evaluations`) on the E1 head:
+**246 passed**, 2 pre-existing `TireCriticalDetector` failures in an untouched
+file (identical on `origin/main`). Frontend evaluations
+(`npm run test:evaluations`): **36 passed**.
 
-| Area | Positive/negative coverage | Result |
+## E1.1 finding gates
+
+| Gate | Coverage | Result |
 |---|---|---|
-| Comparison taxonomy | Canonical IDs only; no legacy `none`/`mom`/`yoy`/`prev_period`; MTD comparable windows; explicit YoY resolver; empty no-comparison list | PASS |
-| Registry-aware response | Valid registry response; unknown id; MONEY-as-COUNT; DERIVED-as-ML_FORECAST; version drift; unsupported comparison; wrong transport unit; status/value contradiction | PASS |
-| Period reference | Before start, at start, immediately before end, at end, after end; invalid instant/timezone; start equal/after end | PASS |
-| DST regression | Berlin 23/25-hour days; gap-forward and overlap-earlier comparison shift | PASS |
-| Value types | COUNT safe/non-negative integer; DATETIME UTC instant; non-negative duration/distance; PERCENT 0..100; RATIO 0..1; finite generic numeric/SCORE | PASS |
-| Data coverage | 100/80/0.8 valid; contradictory ratio; zero/zero null-ratio semantics; available > expected; negative/fractional counts; available + excluded > expected | PASS |
-| MONEY | EUR and USD valid; missing/invalid currency; floating, NaN, Infinity amount; no fixed registry EUR authority | PASS |
-| Mirror integrity | Metric response/validator/contract, period contract/validator, ISO currency list, and platform-time authority byte-identical | PASS |
-| Shared-time dependency | Shared IANA utility contains no Evaluations import | PASS |
-| Pricing time regression | Existing tariff timezone behavior on shared primitive | PASS |
+| Comparison single source | Canonical `EvaluationsComparisonType`; registry uses the same type; no canonical `none`/`mom`/`yoy`/`prev_period`; MTD maps to `PREVIOUS_COMPARABLE_PERIOD`; no-comparison is `[]`; deprecated timezone alias only | PASS |
+| Registry-aware validation | Response checked against definition: `metricId`, `metricKind`, `valueType`, `transportUnit`, `calculationVersion`, `supportedComparisons`; unknown id fails closed | PASS |
+| — unknown metric | `assertValidRegisteredEvaluationsMetricResponse` throws on unregistered id | PASS |
+| — wrong valueType | MONEY-as-COUNT rejected | PASS |
+| — wrong metricKind | DERIVED-as-ML_FORECAST rejected | PASS |
+| — wrong calculationVersion | version drift rejected | PASS |
+| — unsupported comparison | `YEAR_OVER_YEAR` on mom-only metric rejected | PASS |
+| Time dependency direction | `shared/time/platform-time.constants.ts` owns `PLATFORM_DEFAULT_TIMEZONE`; shared IANA util imports it; no evaluations import in shared time | PASS |
+| Period reference invariant | `start <= reference < endExclusive` and `start < endExclusive` enforced | PASS |
+| Timezone | Invalid IANA and unauthorized override rejected; PLATFORM_FALLBACK bound to `Europe/Berlin` | PASS |
+| DST forward/backward | 23h/25h Berlin days; gap-forward and overlap-earlier comparison shift | PASS |
+| Value-type COUNT | non-negative safe integer | PASS |
+| Value-type DATETIME | UTC ISO-8601 instant | PASS |
+| Value-type Duration | finite, non-negative | PASS |
+| Value-type Distance | finite, non-negative | PASS |
+| Value-type Percent/Ratio | PERCENT 0..100, RATIO 0..1 | PASS |
+| DataCoverage | ratio == available/expected within 1e-9; zero/zero null; available + excluded <= expected; non-negative integer counts | PASS |
+| Money EUR | valid | PASS |
+| Money USD | valid (currency authority is `Money.currency`) | PASS |
+| Money invalid currency | missing/invalid/non-ISO rejected; non-finite amount rejected | PASS |
+| Mirror / contract sync | shared vs `backend/src/synq` byte-identical incl. period, response, money, platform-time | PASS |
 
-## Additional validation
+## Build and static gates (E1 head)
 
 | Command | Result |
 |---|---|
-| `cd frontend && npm run test:evaluations` | PASS — 36/36 |
-| Targeted backend E1.1 ESLint | PASS |
-| `cd backend && npx tsc --noEmit -p tsconfig.build.json` | PASS |
-| `cd backend && npm run build` | PASS |
-| `cd frontend && npx tsc -b` | PASS |
-| `cd frontend && npm run build` | PASS |
-| `cd backend && npm run prisma:validate` | PASS with pre-existing warning |
-| `cd backend && npm run test:evaluations` | 246 passed, 2 `PRE_EXISTING_IDENTICAL` Tire detector failures |
-| Backend all-source typecheck | Four `PRE_EXISTING_IDENTICAL` fixture diagnostics |
-| Backend full lint | 36 errors/15 warnings, `PRE_EXISTING_IDENTICAL` |
-| Frontend full lint | 422 errors/27 warnings, `PRE_EXISTING_IDENTICAL` |
+| `npx tsc --noEmit -p tsconfig.build.json` (backend prod typecheck) | PASS |
+| `npm run build` (backend) | PASS |
+| `npx tsc -b` (frontend typecheck) | PASS |
+| `npm run build` (frontend) | PASS |
+| `npm run prisma:validate` | PASS (pre-existing SetNull warning) |
+| `npx tsc --noEmit -p tsconfig.json` (backend all-source) | FAIL — `PRE_EXISTING_IDENTICAL` (4 Stripe/workflow fixtures) |
+| `npm run lint:all` (backend) | FAIL — `PRE_EXISTING_IDENTICAL` (51 problems, untouched files) |
+| `npm run lint:all` (frontend) | FAIL — `PRE_EXISTING_IDENTICAL` (449 problems, untouched files) |
 
-## Scope scans
+## Scope gates
 
-### No new routes
+| Gate | Result |
+|---|---|
+| No-new-routes (`@Controller`/`@Get`/`@Post`/`@Patch`/`@Put`/`@Delete` added) | PASS — 0 added |
+| No-DB-change (`prisma/schema.prisma`, migrations, DB scripts) | PASS — 0 changes |
+| Scope leak (E2 persistence/tenant, E3 finance/FX/receivables, E4 analytics engine, E5 RBAC/audit, E6 UI IA, E7 recommendations, E8/E9 forecasts) | PASS — none |
 
-`git diff --name-only -G'@(Controller|Get|Post|Patch|Delete)\('
-origin/main...HEAD -- backend/src` returned no files.
+## A/B causality
 
-Result: **NO_NEW_ROUTES**.
+Full isolated A/B against `origin/main@2d721a90`:
+`NEW_E1_FAILURE = 0`, `UNKNOWN = 0`. Details in
+`phase3-e1-ab-baseline-validation-2026-08.md` and `.json`.
 
-### No database changes
+## Acceptance
 
-`git diff --name-only origin/main...HEAD -- backend/prisma
-backend/migrations backend/scripts` returned no files.
+- All E1.1 finding gates: **PASS**
+- Focused contract suite: **PASS (115/115)**
+- Production build/typecheck gates: **PASS**
+- Scope gates: **PASS**
+- `NEW_E1_FAILURE`: **0**; `UNKNOWN`: **0**
+- Repository-wide red gates: reproducibly `PRE_EXISTING_IDENTICAL`
 
-Result: **NO_DATABASE_MIGRATION**.
-
-### Config causality
-
-The E1 aliases/includes expose only shared evaluations period contracts, and the
-backend Jest pattern adds only E1 test suites. All added suites pass. No E1.1
-change alters compiler, linter, package-lock, migration, or application discovery
-scope.
-
-## Acceptance result
-
-- Correction-specific gates: **PASS**
-- Production typecheck/build gates: **PASS**
-- Mirror integrity: **PASS**
-- `NEW_E1_FAILURE`: **0**
-- Repository-wide/CI red gates: **ACCEPTED_BASELINE** because every current
-  failure is reproducibly `PRE_EXISTING_IDENTICAL` and no E1-owned file appears
-  in a failure fingerprint.
-- Final status: **E1_READY_FOR_POST_IMPLEMENTATION_AUDIT**.
-
+Status: **E1_READY_FOR_FINAL_MERGE_AUDIT**.

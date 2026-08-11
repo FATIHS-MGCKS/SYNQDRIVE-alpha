@@ -293,3 +293,90 @@ corrections pass, every current red GitHub failure has a reproducible
 `PRE_EXISTING_IDENTICAL` main fingerprint, and `NEW_E1_FAILURE` is zero. The
 earlier E1 recommendation in section 10 is superseded by this evidence-backed
 E1.1 correction result.
+
+## 12. E1.2 Final Evidence & CI Closure
+
+E1.2 adds no business functionality. It establishes reproducible A/B evidence,
+classifies every remaining failure, and closes the CI question for the current PR
+head. No code fix was required because the A/B comparison found no E1-caused
+failure.
+
+### 12.1 Remote-state truth
+
+- `origin/main`: `2d721a902feb56101eb9992249f1859ff64024cb`
+- Remote branch `integration/evaluations-e1-contracts-2026-08`: `9595f6e449fdf33c8b7a3f5e9a645c5b8d4ddded`
+- Local HEAD at evidence time: `9595f6e449fdf33c8b7a3f5e9a645c5b8d4ddded`
+- PR #1018 `headRefOid`: `9595f6e449fdf33c8b7a3f5e9a645c5b8d4ddded`
+- PR #1018 `baseRefOid`: `2d721a902feb56101eb9992249f1859ff64024cb`
+- PR state: OPEN; mergeable: MERGEABLE
+- Branch head equals PR head: PASS (no head-synchronization drift)
+
+`PRE_E1_1_HEAD` = `835c1682`; `E1_1_CORRECTION_COMMITS` include `727fbd41`
+(harden contracts) and `79b7ee11` (registry boundary test), plus follow-up test
+and documentation commits `2f42bb43`, `ac2fd40e`, `5d9de13b`, `9595f6e4`.
+`CURRENT_E1_HEAD` = `9595f6e4` is the authority for all E1.2 tests and reports.
+
+### 12.2 Main drift
+
+`origin/main` is unchanged from the E1 creation base and equals the merge base.
+No E1 file is affected by any later main commit; the A/B comparison is fair and no
+rebase is required.
+
+### 12.3 Isolated A/B method
+
+Two detached worktrees (`/tmp/synqdrive-e1-main-baseline` at main,
+`/tmp/synqdrive-e1-head` at `9595f6e4`), each with its own `npm ci` install and no
+shared build artifacts. Identical commands ran one process at a time. Environment,
+lockfile hashes, and per-command exit codes, durations, and normalized outputs are
+recorded in the A/B markdown and JSON.
+
+### 12.4 Failure classification
+
+| Command | main | E1 | Class |
+|---|---|---|---|
+| backend all-source typecheck | fail | fail | PRE_EXISTING_IDENTICAL |
+| backend production typecheck | pass | pass | PASS |
+| backend `lint:all` | fail | fail | PRE_EXISTING_IDENTICAL |
+| backend prisma validate | pass | pass | PASS |
+| backend build | pass | pass | PASS |
+| backend `test:evaluations` | fail (2) | fail (2) | PRE_EXISTING_IDENTICAL |
+| frontend typecheck | pass | pass | PASS |
+| frontend `lint:all` | fail | fail | PRE_EXISTING_IDENTICAL |
+| frontend build | pass | pass | PASS |
+| frontend `test:evaluations` | pass | pass | PASS |
+| frontend `test:legal-documents` | pass | pass | PASS |
+| focused E1 contract suite | n/a | pass 115/115 | E1_ONLY_PASS |
+
+Counts: `NEW_E1_FAILURE = 0`, `PRE_EXISTING_IDENTICAL = 4`,
+`PRE_EXISTING_CHANGED = 0`, `FIXED_BY_E1 = 0`, `NON_DETERMINISTIC = 0`,
+`NOT_REPRODUCIBLE_LOCALLY = 0`, `ENVIRONMENT_SPECIFIC = 0`, `UNKNOWN = 0`.
+
+### 12.5 Config causality
+
+E1's widened `test:evaluations` scope adds three suites and 92 test cases, all
+passing; the widened frontend type graph still passes. No config change made a
+hidden failure appear, so there is no config-induced `NEW_E1_FAILURE`. The config
+deltas are the minimum required for shared period compilation and testing and are
+retained.
+
+### 12.6 Scope
+
+- New analytics routes: 0
+- Database migration: NO
+- E2–E9 scope leak: NONE
+
+### 12.7 CI closure
+
+Current-head CI failures map one-to-one to the A/B classification: typecheck,
+legal lint, and dependency scan reproduce identically both locally and on the
+same-SHA main CI runs; the PostgreSQL `P3018 vehicle_trips` migration, the legal
+integration precondition, and the Vehicle Detail Playwright Overview-tab timeout
+reproduce identically on the same-SHA main CI runs and require services not
+available in the local matrix. No red check references an E1-owned file.
+
+### 12.8 Final E1.2 status
+
+`E1_READY_FOR_FINAL_MERGE_AUDIT`. `NEW_E1_FAILURE = 0`, `UNKNOWN = 0`, all
+E1-owned contract findings PASS, current CI evidence belongs to the current PR
+head, reports are complete and consistent, scope is clean, no DB migration, and no
+new route. Merge remains gated behind a separate final E1 merge audit.

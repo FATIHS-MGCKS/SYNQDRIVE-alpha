@@ -1,139 +1,258 @@
 {
-  "schemaVersion": "1.0.0",
-  "generatedAt": "2026-08-10T22:10:00.000Z",
+  "schemaVersion": "2.0.0",
+  "phase": "E1.2",
+  "generatedAt": "2026-08-11T03:55:00.000Z",
+  "note": "Fresh isolated A/B run supersedes the E1.1 preliminary baseline. Two clean git worktrees, separate npm ci installs, identical commands, one process at a time.",
   "mainSha": "2d721a902feb56101eb9992249f1859ff64024cb",
-  "testedE1Sha": "ac2fd40e9cb5d9a377e09b34070a3f8a37f3e2b7",
-  "branch": "integration/evaluations-e1-contracts-2026-08",
+  "e1Sha": "9595f6e449fdf33c8b7a3f5e9a645c5b8d4ddded",
   "mergeBase": "2d721a902feb56101eb9992249f1859ff64024cb",
   "mainMovedDuringE1": false,
+  "branch": "integration/evaluations-e1-contracts-2026-08",
+  "environment": {
+    "node": "v22.14.0",
+    "npm": "10.9.8",
+    "git": "2.43.0",
+    "os": "Linux 6.12.94+ x86_64 GNU/Linux",
+    "architecture": "x86_64",
+    "timezone": "UTC",
+    "ci": false,
+    "backendPackageLockSha256": "0d4a732d0d326ff3bf3e51807971118b779ea35954e2f138d3f4091aad4eb01f",
+    "frontendPackageLockSha256": "f16a28f1cf64d15be1ed4894ad862ad7b9825e948b36d3f6ddbde43722df6f88",
+    "mainBackendPackageJsonSha256": "b61d14daa8bfc12df841cad2e78ce5520d2b5cb66c02da94a0bc56fb27a354bb",
+    "e1BackendPackageJsonSha256": "76b979bce8bd89b7b07c36bcdae03d85a4d6884fe22a7a1644f03d871ef4f18c",
+    "frontendPackageJsonSha256": "fbb2d8ee1283a378adbc172d027a3e509afb2f7bc5b98c0f6af63a0034477077"
+  },
   "commands": [
     {
-      "command": "cd backend && npx tsc --noEmit -p tsconfig.json",
-      "mainExitCode": 1,
+      "commandId": "BE_TYPECHECK",
+      "command": "npx tsc --noEmit -p tsconfig.json",
+      "workingDirectory": "backend",
+      "mainExitCode": 2,
       "e1ExitCode": 2,
-      "mainFailureFingerprint": "TS2554 x3 Stripe fixtures; TS2345 x1 workflow fixture",
-      "e1FailureFingerprint": "TS2554 x3 Stripe fixtures; TS2345 x1 workflow fixture",
+      "mainDurationMs": 37737,
+      "e1DurationMs": 35485,
+      "normalizedOutputsIdentical": true,
       "classification": "PRE_EXISTING_IDENTICAL"
     },
     {
-      "command": "cd backend && npx tsc --noEmit -p tsconfig.build.json",
+      "commandId": "BE_PROD_TYPECHECK",
+      "command": "npx tsc --noEmit -p tsconfig.build.json",
+      "workingDirectory": "backend",
       "mainExitCode": 0,
       "e1ExitCode": 0,
+      "mainDurationMs": 39990,
+      "e1DurationMs": 40353,
       "classification": "PASS"
     },
     {
-      "command": "cd frontend && npx tsc -b",
-      "mainExitCode": 0,
-      "e1ExitCode": 0,
-      "classification": "PASS"
-    },
-    {
-      "command": "cd backend && npm run lint:all",
+      "commandId": "BE_LINT",
+      "command": "npm run lint:all",
+      "workingDirectory": "backend",
       "mainExitCode": 1,
       "e1ExitCode": 1,
-      "mainFailureFingerprint": "36 errors, 15 warnings",
-      "e1FailureFingerprint": "36 errors, 15 warnings",
+      "mainDurationMs": 18157,
+      "e1DurationMs": 17985,
+      "normalizedOutputsIdentical": true,
+      "fingerprint": "51 problems (36 errors, 15 warnings)",
       "classification": "PRE_EXISTING_IDENTICAL"
     },
     {
-      "command": "cd frontend && npm run lint:all",
+      "commandId": "BE_PRISMA_VALIDATE",
+      "command": "npm run prisma:validate",
+      "workingDirectory": "backend",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "mainDurationMs": 576,
+      "e1DurationMs": 568,
+      "classification": "PASS"
+    },
+    {
+      "commandId": "BE_BUILD",
+      "command": "npm run build",
+      "workingDirectory": "backend",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "mainDurationMs": 49934,
+      "e1DurationMs": 50906,
+      "classification": "PASS"
+    },
+    {
+      "commandId": "BE_TEST_EVAL",
+      "command": "npm run test:evaluations",
+      "workingDirectory": "backend",
       "mainExitCode": 1,
       "e1ExitCode": 1,
-      "mainFailureFingerprint": "422 errors, 27 warnings",
-      "e1FailureFingerprint": "422 errors, 27 warnings",
+      "mainDurationMs": 29496,
+      "e1DurationMs": 31645,
+      "mainResult": "2 failed, 154 passed, 156 total",
+      "e1Result": "2 failed, 246 passed, 248 total",
+      "sharedFailingTests": [
+        "TireCriticalDetector › alerts WARNING from canonical summary without re-computing thresholds",
+        "TireCriticalDetector › caps CRITICAL estimate at WARNING when not measured"
+      ],
+      "e1AddedSuitesAllPass": true,
       "classification": "PRE_EXISTING_IDENTICAL"
     },
     {
-      "command": "cd backend && npm run build",
+      "commandId": "FE_TYPECHECK",
+      "command": "npx tsc -b",
+      "workingDirectory": "frontend",
       "mainExitCode": 0,
       "e1ExitCode": 0,
+      "mainDurationMs": 31435,
+      "e1DurationMs": 31982,
       "classification": "PASS"
     },
     {
-      "command": "cd frontend && npm run build",
-      "mainExitCode": 0,
-      "e1ExitCode": 0,
-      "classification": "PASS"
-    },
-    {
-      "command": "cd backend && npm run prisma:validate",
-      "mainExitCode": 0,
-      "e1ExitCode": 0,
-      "mainFailureFingerprint": "Existing SetNull referential-action warning",
-      "e1FailureFingerprint": "Existing SetNull referential-action warning",
-      "classification": "PASS_WITH_IDENTICAL_WARNING"
-    },
-    {
-      "command": "cd backend && npm run test:evaluations",
+      "commandId": "FE_LINT",
+      "command": "npm run lint:all",
+      "workingDirectory": "frontend",
       "mainExitCode": 1,
       "e1ExitCode": 1,
-      "mainFailureFingerprint": "TireCriticalDetector pressureContext.tpmsWarning TypeError x2",
-      "e1FailureFingerprint": "TireCriticalDetector pressureContext.tpmsWarning TypeError x2",
+      "mainDurationMs": 14320,
+      "e1DurationMs": 14111,
+      "normalizedOutputsIdentical": true,
+      "fingerprint": "449 problems (422 errors, 27 warnings)",
       "classification": "PRE_EXISTING_IDENTICAL"
     },
     {
-      "command": "cd frontend && npm run test:evaluations",
+      "commandId": "FE_BUILD",
+      "command": "npm run build",
+      "workingDirectory": "frontend",
       "mainExitCode": 0,
       "e1ExitCode": 0,
-      "mainFailureFingerprint": null,
-      "e1FailureFingerprint": null,
+      "mainDurationMs": 45462,
+      "e1DurationMs": 45057,
       "classification": "PASS"
     },
     {
-      "command": "cd frontend && npm run test:legal-documents",
+      "commandId": "FE_TEST_EVAL",
+      "command": "npm run test:evaluations",
+      "workingDirectory": "frontend",
       "mainExitCode": 0,
       "e1ExitCode": 0,
+      "mainDurationMs": 929,
+      "e1DurationMs": 915,
+      "e1Result": "36 passed",
       "classification": "PASS"
     },
     {
-      "command": "bash scripts/audits/audit-dependencies.sh",
-      "mainExitCode": 1,
-      "e1ExitCode": 1,
-      "mainFailureFingerprint": "42 vulnerabilities: 4 low, 21 moderate, 16 high, 1 critical",
-      "e1FailureFingerprint": "42 vulnerabilities: 4 low, 21 moderate, 16 high, 1 critical",
+      "commandId": "FE_TEST_LEGAL",
+      "command": "npm run test:legal-documents",
+      "workingDirectory": "frontend",
+      "mainExitCode": 0,
+      "e1ExitCode": 0,
+      "mainDurationMs": 1872,
+      "e1DurationMs": 1890,
+      "classification": "PASS"
+    },
+    {
+      "commandId": "FOCUSED_E1",
+      "command": "npx jest --runInBand evaluations-metric.registry evaluations-metric-response evaluations-period.resolver evaluations-shared-contract-mirror evaluations-metric-calculation-versions pricing/tariff-instant.util",
+      "workingDirectory": "backend",
+      "mainExitCode": null,
+      "e1ExitCode": 0,
+      "e1Result": "6 suites, 115 tests passed",
+      "classification": "E1_ONLY_PASS"
+    }
+  ],
+  "failures": [
+    {
+      "commandId": "BE_TYPECHECK",
+      "tool": "tsc",
+      "errorCode": "TS2554",
+      "normalizedFile": "src/modules/billing/stripe-webhook.characterization.spec.ts",
+      "normalizedLine": 37,
+      "normalizedMessage": "Expected 4 arguments, but got 3.",
+      "rootCauseCategory": "PRE_EXISTING_TEST_FIXTURE",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "commandId": "BE_TYPECHECK",
+      "tool": "tsc",
+      "errorCode": "TS2554",
+      "normalizedFile": "src/modules/billing/stripe-webhook.characterization.spec.ts",
+      "normalizedLine": 68,
+      "normalizedMessage": "Expected 4 arguments, but got 3.",
+      "rootCauseCategory": "PRE_EXISTING_TEST_FIXTURE",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "commandId": "BE_TYPECHECK",
+      "tool": "tsc",
+      "errorCode": "TS2554",
+      "normalizedFile": "src/modules/billing/stripe-webhook.service.spec.ts",
+      "normalizedLine": 40,
+      "normalizedMessage": "Expected 4 arguments, but got 3.",
+      "rootCauseCategory": "PRE_EXISTING_TEST_FIXTURE",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "commandId": "BE_TYPECHECK",
+      "tool": "tsc",
+      "errorCode": "TS2345",
+      "normalizedFile": "src/modules/workflows/workflow-dry-run.service.spec.ts",
+      "normalizedLine": 214,
+      "normalizedMessage": "ActionExecutionContext missing actionDefinitionId, actionIdempotencyKey",
+      "rootCauseCategory": "PRE_EXISTING_TEST_FIXTURE",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "commandId": "BE_LINT",
+      "tool": "eslint",
+      "errorCode": "LINT_ALL",
+      "normalizedMessage": "51 problems (36 errors, 15 warnings) in untouched non-evaluations modules",
+      "rootCauseCategory": "PRE_EXISTING_REPO_LINT_DEBT",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "commandId": "FE_LINT",
+      "tool": "eslint",
+      "errorCode": "LINT_ALL",
+      "normalizedMessage": "449 problems (422 errors, 27 warnings) in untouched UI modules",
+      "rootCauseCategory": "PRE_EXISTING_REPO_LINT_DEBT",
+      "classification": "PRE_EXISTING_IDENTICAL"
+    },
+    {
+      "commandId": "BE_TEST_EVAL",
+      "tool": "jest",
+      "errorCode": "TypeError",
+      "normalizedFile": "src/modules/business-insights/detectors/tire-critical.detector.ts",
+      "normalizedLine": 82,
+      "testName": "TireCriticalDetector",
+      "normalizedMessage": "Cannot read properties of undefined (reading 'tpmsWarning')",
+      "rootCauseCategory": "PRE_EXISTING_FIXTURE_UNCHANGED_FILE",
       "classification": "PRE_EXISTING_IDENTICAL"
     }
   ],
-  "githubRuns": {
-    "main": {
+  "githubCiComparison": {
+    "e1HeadRuns": {
+      "vehicleDetail": 31437769513,
+      "legalDocuments": 31437769541
+    },
+    "mainSameShaRuns": {
       "vehicleDetail": 30221356279,
       "legalDocuments": 30221356275
     },
-    "e1": {
-      "vehicleDetail": 31436743414,
-      "legalDocuments": 31436743297
-    },
     "normalizedFailures": [
-      {
-        "name": "Typecheck",
-        "classification": "PRE_EXISTING_IDENTICAL"
-      },
-      {
-        "name": "Legal lint",
-        "classification": "PRE_EXISTING_IDENTICAL"
-      },
-      {
-        "name": "Prisma P3018 legacy migration chain",
-        "classification": "PRE_EXISTING_IDENTICAL"
-      },
-      {
-        "name": "Vehicle Detail Playwright locator timeout",
-        "classification": "PRE_EXISTING_IDENTICAL"
-      },
-      {
-        "name": "Dependency advisory count",
-        "classification": "PRE_EXISTING_IDENTICAL",
-        "note": "Simultaneous local A/B is identical at 42; the historical main run used an older advisory state."
-      }
+      { "name": "Typecheck", "classification": "PRE_EXISTING_IDENTICAL", "reproducedLocally": true },
+      { "name": "Legal lint", "classification": "PRE_EXISTING_IDENTICAL", "reproducedLocally": true },
+      { "name": "Security / dependency scan", "classification": "PRE_EXISTING_IDENTICAL", "reproducedLocally": true },
+      { "name": "Migration tests (PostgreSQL) P3018 vehicle_trips", "classification": "PRE_EXISTING_IDENTICAL", "reproducedLocally": false, "evidence": "identical failure on main SHA CI run" },
+      { "name": "Backend integration tests (P3018 precondition)", "classification": "PRE_EXISTING_IDENTICAL", "reproducedLocally": false, "evidence": "identical failure on main SHA CI run" },
+      { "name": "Playwright E2E (Vehicle Detail) Overview tab timeout", "classification": "PRE_EXISTING_IDENTICAL", "reproducedLocally": false, "evidence": "identical failure on main SHA CI run" }
     ]
   },
   "summary": {
-    "newE1FailureCount": 0,
-    "preExistingIdenticalCommandGroupCount": 5,
-    "preExistingIdenticalRawFindingCount": 506,
-    "preExistingButChangedGroupCount": 0,
-    "historicalExternalAdvisoryDriftCount": 1,
-    "notReproducibleLocallyCount": 1,
-    "result": "PASS_NO_E1_CAUSED_FAILURE"
+    "commandsExecuted": 12,
+    "preExistingIdentical": 4,
+    "preExistingChanged": 0,
+    "newE1Failure": 0,
+    "fixedByE1": 0,
+    "nonDeterministic": 0,
+    "notReproducibleLocally": 0,
+    "environmentSpecific": 0,
+    "unknown": 0,
+    "result": "NO_E1_CAUSED_FAILURE"
   }
 }
