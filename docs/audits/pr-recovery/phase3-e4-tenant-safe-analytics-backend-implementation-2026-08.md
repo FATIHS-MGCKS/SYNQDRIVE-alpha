@@ -84,3 +84,19 @@ One orchestration authority (`EvaluationsInsightsService`). Serving path: reques
 ## Explicit Deferrals (E5–E9)
 
 - E5 Data Quality, E6 UI, E7 Recommendations/Actions, E8 Prediction/Forecast, E9 Forecast UI — NOT started. E4 exposes only local section coverage and association-only observations.
+
+## E4.1A — Tenant Integrity & Driver Attribution Hardening (2026-08-11)
+
+`TESTED_CODE_SHA` = `d398c116ea4bd35acea591bcc78a5bdc3a812fa3` (base `PRE_E4_1A_HEAD` = `0dad3e73`). No schema change.
+
+Independent-audit defects fixed on the E4 branch:
+
+- **Customer-as-driver removed.** `loadDriverObservations` no longer uses `assignedDriverId ?? customerId`. The contract customer is never the driver; a booking without an assigned driver is UNATTRIBUTED (`CUSTOMER_AS_DRIVER_FALLBACK_COUNT = 0`). See `phase3-e4-driver-attribution-authority-matrix-2026-08.md` for role classification (CONTRACT_CUSTOMER / AUTHORIZED_DRIVER / ASSIGNED_DRIVER / ACTUAL_DRIVER kept distinct) and the priority (DriverAttribution → validated same-tenant assignedDriver → UNATTRIBUTED). Trip-level `DriverAttribution` integration is deferred to E4.1B.
+- **Same-tenant driver defense.** `Booking.organizationId` does not prove the assigned driver's tenant; the nested `assignedDriver.organizationId` is validated (nested select), so a foreign driver is dropped with no id/name/reference leak (`CROSS_TENANT_DRIVER_ANALYSIS_LEAK_COUNT = 0`). Unattributed events are reported (coverage `excludedRecords`) and never redistributed.
+- **Damage attribution.** `VehicleDamage.customerId` (liable contract party) is no longer used as actual driver; damage stays UNATTRIBUTED for driver analytics while still feeding non-driver cost analytics.
+- **Task→Invoice tenant integrity.** The cost-dedup path now requires the linked invoice to belong to the same organization (nested `invoice.is.organizationId` predicate + in-code guard) before it can affect economic dedup/suppression, so a foreign invoice cannot suppress or alter legitimate ORG_A cost facts (`CROSS_TENANT_COST_RELATION_ACCEPT_COUNT = 0`).
+- **Nested relation audit.** Added nested `vehicle.is.organizationId` predicates to the utilization booking and cost damage queries. `ServiceCase` exposes only a `vehicleId` scalar (no relation object) — tenant safety there rests on its own `organizationId` plus the downstream vehicle map-join (foreign `vehicleId` dropped). Full matrix in `phase3-e4-1-correction-authority-matrix-2026-08.csv`.
+- **No N+1.** All hardening uses nested relational predicates / map-joins, not per-row validation queries.
+- **Real PostgreSQL adversarial tests.** Added `evaluations-insights.tenant-integrity.integration.spec.ts` + harness (env-gated `EVALUATIONS_E4_POSTGRES_INTEGRATION=1`, DB-probed) planting cross-tenant relations (ORG_A booking→ORG_B driver, ORG_A task→ORG_B invoice, ORG_A booking→ORG_B vehicle) and asserting no leakage against a live database. Mocked-repository coverage retained for the always-run suite.
+
+Details and counters: `phase3-e4-1a-tenant-driver-integrity-test-report-2026-08.md`.
