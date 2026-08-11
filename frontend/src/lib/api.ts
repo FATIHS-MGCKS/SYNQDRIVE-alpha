@@ -5871,6 +5871,21 @@ export const api = {
       );
     },
   },
+  evaluations: {
+    /**
+     * Canonical E3 finance insights — the single authority for the Financial
+     * Insights core KPIs. The client formats/displays these values only.
+     */
+    financeInsights: (orgId: string, stationIds?: string[]) => {
+      const qs =
+        stationIds && stationIds.length
+          ? `?stationIds=${encodeURIComponent(stationIds.join(','))}`
+          : '';
+      return get<import('../rental/lib/finance-insights.types').FinancialInsightsBundleDto>(
+        `/organizations/${orgId}/evaluations/finance/insights${qs}`,
+      );
+    },
+  },
   invoices: {
     list: (orgId: string, params?: { type?: string; status?: string; direction?: string }) => {
       const q = new URLSearchParams();

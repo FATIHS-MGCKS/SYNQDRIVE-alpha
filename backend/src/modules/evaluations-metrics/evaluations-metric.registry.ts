@@ -15,7 +15,7 @@ import {
 import { EVALUATIONS_COMPARISON_TYPES } from '@synq/evaluations-periods/evaluations-period.contract';
 import { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
 
-export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.3.0';
+export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.4.0';
 export const EVALUATIONS_METRIC_TAXONOMY_VERSION = '1.0.0';
 
 const CALCULATION_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;

@@ -21,15 +21,23 @@ import { useFleetMapStore } from '../stores/useFleetMapStore';
 import { filterFleetByStation } from './dashboard/dashboardUtils';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import {
-  currentOpenReceivablesMinor,
-  currentOverdueReceivablesMinor,
   expensesInRange,
   mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
   paidRevenueInRange,
-  sumCents,
 } from '../lib/financial-insights.logic';
+import {
+  formatFinanceMoney,
+  formatFinancePercent,
+  isMoneyAvailable,
+  readMoneyMetric,
+  readPercentMetric,
+} from '../lib/finance-insights-adapter';
+import {
+  FINANCE_CORE_METRIC_IDS,
+  type FinancialInsightsBundleDto,
+} from '../lib/finance-insights.types';
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -177,6 +185,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [reportingAnchor, setReportingAnchor] = useState(() => new Date());
   const [invoices, setInvoices] = useState<InvoiceLite[]>([]);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
+  // Canonical E3 finance bundle — single authority for the core KPIs.
+  const [financeBundle, setFinanceBundle] = useState<FinancialInsightsBundleDto | null>(null);
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
@@ -213,6 +223,16 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       } catch {
         customersArr = [];
         setCustomerLoadWarning('Kundendaten konnten nicht geladen werden — Zuordnungen können unvollständig sein.');
+      }
+
+      // Core finance KPIs come exclusively from the canonical E3 backend
+      // endpoint (single truth). On failure they render as unavailable — never a
+      // client-recomputed fallback and never a false zero.
+      try {
+        const bundle = await api.evaluations.financeInsights(orgId);
+        setFinanceBundle(bundle);
+      } catch {
+        setFinanceBundle(null);
       }
 
       setInvoices(invoicesArr);
@@ -257,36 +277,51 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     };
   }, [scopedInvoices, monthStart, prevMonthStart, prevMonthEnd, now]);
 
-  const mtdRevenueCents = useMemo(() => sumCents(bucketed.mtdRevenue), [bucketed.mtdRevenue]);
-  const mtdPaidRevenueCents = useMemo(() => sumCents(bucketed.mtdPaid), [bucketed.mtdPaid]);
-  const mtdExpenseCents = useMemo(() => sumCents(bucketed.mtdExpense), [bucketed.mtdExpense]);
-  const prevRevenueCents = useMemo(() => sumCents(bucketed.prevRevenue), [bucketed.prevRevenue]);
-  const prevExpenseCents = useMemo(() => sumCents(bucketed.prevExpense), [bucketed.prevExpense]);
-  // E3.1: receivable amounts use the canonical authoritative CURRENT outstanding
-  // balance (never a sum of totalCents), so a partially-paid invoice contributes
-  // only its open remainder.
-  const outstandingCents = useMemo(
-    () => currentOpenReceivablesMinor(scopedInvoices, now),
-    [scopedInvoices, now],
+  // ─── Canonical E3 core KPI views (backend authority; display only) ───────
+  // The client performs NO revenue/expense/receivable/result/margin calculation.
+  const revenueView = useMemo(
+    () => readMoneyMetric(financeBundle, FINANCE_CORE_METRIC_IDS.issuedRevenue),
+    [financeBundle],
   );
-  const overdueCents = useMemo(
-    () => currentOverdueReceivablesMinor(scopedInvoices, now),
-    [scopedInvoices, now],
+  const paidView = useMemo(
+    () => readMoneyMetric(financeBundle, FINANCE_CORE_METRIC_IDS.paidRevenue),
+    [financeBundle],
   );
-  const profitCents = mtdRevenueCents - mtdExpenseCents;
-  const profitMargin = mtdRevenueCents > 0 ? (profitCents / mtdRevenueCents) * 100 : 0;
+  const expenseView = useMemo(
+    () => readMoneyMetric(financeBundle, FINANCE_CORE_METRIC_IDS.expenses),
+    [financeBundle],
+  );
+  const netResultView = useMemo(
+    () => readMoneyMetric(financeBundle, FINANCE_CORE_METRIC_IDS.netResult),
+    [financeBundle],
+  );
+  const marginView = useMemo(
+    () => readPercentMetric(financeBundle, FINANCE_CORE_METRIC_IDS.profitMargin),
+    [financeBundle],
+  );
+  const openView = useMemo(
+    () => readMoneyMetric(financeBundle, FINANCE_CORE_METRIC_IDS.openReceivables),
+    [financeBundle],
+  );
+  const overdueView = useMemo(
+    () => readMoneyMetric(financeBundle, FINANCE_CORE_METRIC_IDS.overdueReceivables),
+    [financeBundle],
+  );
+  const netResultPositive = !isMoneyAvailable(netResultView) || (netResultView.amountMinor ?? 0) >= 0;
+  const openReceivablesEurRounded = isMoneyAvailable(openView)
+    ? Math.round((openView.amountMinor ?? 0) / 100)
+    : 0;
+  const overdueEurRounded = isMoneyAvailable(overdueView)
+    ? Math.round((overdueView.amountMinor ?? 0) / 100)
+    : 0;
   const mtdOpenInvoices = useMemo(
     () => bucketed.mtdInvoices.filter((inv) => inv.status !== 'PAID' && inv.status !== 'CANCELLED').length,
     [bucketed.mtdInvoices],
   );
-  const hasPaidCashflowData = bucketed.mtdPaid.length > 0;
-
-  const revenueDeltaPct = prevRevenueCents > 0
-    ? ((mtdRevenueCents - prevRevenueCents) / prevRevenueCents) * 100
-    : null;
-  const expenseDeltaPct = prevExpenseCents > 0
-    ? ((mtdExpenseCents - prevExpenseCents) / prevExpenseCents) * 100
-    : null;
+  // Month-over-month comparison has no canonical backend authority yet → not
+  // recomputed in the browser (no second period-comparison formula).
+  const revenueDeltaPct = null;
+  const expenseDeltaPct = null;
 
   // ─── Derived: daily chart series ─────────────────────────────────────
 
@@ -418,7 +453,23 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   // ─── Render ──────────────────────────────────────────────────────────
 
-  const monthLabel = now.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
+  // Period label follows the backend E1 period authority (its effective
+  // timezone), so the KPI period does not depend on the browser timezone.
+  const monthLabel = useMemo(() => {
+    const period = financeBundle?.period;
+    if (period?.reference) {
+      const ref = new Date(period.reference);
+      const tz = period.timezone?.effectiveTimezone;
+      if (!Number.isNaN(ref.getTime())) {
+        return ref.toLocaleDateString(intlLocale, {
+          month: 'long',
+          year: 'numeric',
+          ...(tz ? { timeZone: tz } : {}),
+        });
+      }
+    }
+    return now.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
+  }, [financeBundle, intlLocale, now]);
 
   if (loading) {
     return (
@@ -451,8 +502,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <InsightsCockpit
         isDarkMode={isDarkMode}
         stationId={selectedStationId}
-        openReceivablesEur={Math.round(outstandingCents / 100)}
-        financialRiskEur={Math.round(overdueCents / 100)}
+        openReceivablesEur={openReceivablesEurRounded}
+        financialRiskEur={overdueEurRounded}
       />
 
       <div className="pt-2 border-t border-border">
@@ -481,7 +532,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         <KpiCard
           label="Issued Revenue MTD"
-          value={fmtEUR(mtdRevenueCents, intlLocale)}
+          value={formatFinanceMoney(revenueView, intlLocale, { maximumFractionDigits: 0 })}
           icon={ArrowUpRight}
           color="green"
           isDarkMode={isDarkMode}
@@ -492,7 +543,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
         <KpiCard
           label="Expenses MTD"
-          value={fmtEUR(mtdExpenseCents, intlLocale)}
+          value={formatFinanceMoney(expenseView, intlLocale, { maximumFractionDigits: 0 })}
           icon={ArrowDownLeft}
           color="red"
           isDarkMode={isDarkMode}
@@ -504,15 +555,15 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
         <KpiCard
           label="Net Profit MTD"
-          value={fmtEUR(profitCents, intlLocale)}
+          value={formatFinanceMoney(netResultView, intlLocale, { maximumFractionDigits: 0 })}
           icon={Wallet}
-          color={profitCents >= 0 ? 'blue' : 'red'}
+          color={netResultPositive ? 'blue' : 'red'}
           isDarkMode={isDarkMode}
-          subtle={`Margin ${fmtPct(profitMargin, 1)} · basierend auf Issued Revenue`}
+          subtle={`Margin ${formatFinancePercent(marginView, 1)} · basierend auf Issued Revenue`}
         />
         <KpiCard
           label="Open Receivables"
-          value={fmtEUR(outstandingCents, intlLocale)}
+          value={formatFinanceMoney(openView, intlLocale, { maximumFractionDigits: 0 })}
           icon={Clock}
           color="purple"
           isDarkMode={isDarkMode}
@@ -520,7 +571,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
         <KpiCard
           label="Overdue"
-          value={fmtEUR(overdueCents, intlLocale)}
+          value={formatFinanceMoney(overdueView, intlLocale, { maximumFractionDigits: 0 })}
           icon={Clock}
           color="red"
           isDarkMode={isDarkMode}
@@ -531,8 +582,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <SummaryCard
           label="Paid revenue MTD"
-          value={hasPaidCashflowData ? fmtEUR(mtdPaidRevenueCents, intlLocale) : '—'}
-          hint={hasPaidCashflowData ? 'nach paidAt' : 'Zahlungsdatum nicht verfügbar'}
+          value={formatFinanceMoney(paidView, intlLocale)}
+          hint="Payment Ledger (settled)"
         />
         <SummaryCard label="Expense invoices" value={String(bucketed.mtdExpense.length)} hint={monthLabel} />
         <SummaryCard label="Paid invoices MTD" value={String(bucketed.mtdPaid.length)} hint="nach paidAt" />
@@ -550,11 +601,11 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
             <div className="flex items-center gap-2 text-xs">
               <div className="text-right">
                 <div className="text-[10px] font-medium text-muted-foreground">Revenue</div>
-                <div className="text-[11px] font-bold text-[color:var(--status-success)]">{fmtEUR(mtdRevenueCents, intlLocale)}</div>
+                <div className="text-[11px] font-bold text-[color:var(--status-success)]">{formatFinanceMoney(revenueView, intlLocale, { maximumFractionDigits: 0 })}</div>
               </div>
               <div className="text-right">
                 <div className="text-[10px] font-medium text-muted-foreground">Expenses</div>
-                <div className="text-[11px] font-bold text-[color:var(--status-critical)]">{fmtEUR(mtdExpenseCents, intlLocale)}</div>
+                <div className="text-[11px] font-bold text-[color:var(--status-critical)]">{formatFinanceMoney(expenseView, intlLocale, { maximumFractionDigits: 0 })}</div>
               </div>
             </div>
           </div>
@@ -635,37 +686,25 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           </div>
           <dl className="space-y-3">
             <SnapRow label="Profit margin">
-              <span className={`text-xs font-bold ${profitCents >= 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-critical)]'}`}>
-                {fmtPct(profitMargin, 1)}
+              <span className={`text-xs font-bold ${netResultPositive ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-critical)]'}`}>
+                {formatFinancePercent(marginView, 1)}
               </span>
             </SnapRow>
+            {/* MoM deltas have no canonical backend comparison authority yet →
+                shown as unavailable (no second client period-comparison formula). */}
             <SnapRow label="MoM revenue">
-              {revenueDeltaPct === null ? (
-                <span className="text-xs text-muted-foreground">—</span>
-              ) : (
-                <span className={`text-xs font-bold ${revenueDeltaPct >= 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-critical)]'}`}>
-                  {fmtPct(revenueDeltaPct, 1)}
-                </span>
-              )}
+              <span className="text-xs text-muted-foreground">—</span>
             </SnapRow>
             <SnapRow label="MoM expenses">
-              {expenseDeltaPct === null ? (
-                <span className="text-xs text-muted-foreground">—</span>
-              ) : (
-                <span className={`text-xs font-bold ${expenseDeltaPct <= 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-critical)]'}`}>
-                  {fmtPct(expenseDeltaPct, 1)}
-                </span>
-              )}
+              <span className="text-xs text-muted-foreground">—</span>
             </SnapRow>
             <SnapRow label="Outstanding">
-              <span className="text-xs font-bold text-foreground">{fmtEUR(outstandingCents, intlLocale)}</span>
+              <span className="text-xs font-bold text-foreground">{formatFinanceMoney(openView, intlLocale)}</span>
             </SnapRow>
             <SnapRow label="Avg invoice">
-              <span className="text-xs font-bold text-foreground">
-                {bucketed.mtdRevenue.length > 0
-                  ? fmtEUR(Math.round(mtdRevenueCents / bucketed.mtdRevenue.length), intlLocale)
-                  : '—'}
-              </span>
+              {/* avg_invoice_value_mtd has no canonical backend owner yet → not
+                  recomputed client-side (downgraded to non-canonical). */}
+              <span className="text-xs font-bold text-muted-foreground">—</span>
             </SnapRow>
           </dl>
         </div>
@@ -785,7 +824,11 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         <BreakdownPopup
           title={activePopup === 'revenue' ? 'Revenue MTD breakdown' : 'Expenses MTD breakdown'}
           monthLabel={monthLabel}
-          totalCents={activePopup === 'revenue' ? mtdRevenueCents : mtdExpenseCents}
+          totalCents={
+            activePopup === 'revenue'
+              ? (revenueView.amountMinor ?? 0)
+              : (expenseView.amountMinor ?? 0)
+          }
           tone={activePopup === 'revenue' ? 'revenue' : 'expense'}
           days={activePopup === 'revenue' ? revenueByDay : expensesByDay}
           expandedDay={expandedDay}
