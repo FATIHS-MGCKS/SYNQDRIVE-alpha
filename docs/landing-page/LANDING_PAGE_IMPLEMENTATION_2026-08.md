@@ -240,8 +240,8 @@ production immediately before the deploy. Restoring it is the same operation as 
 archive that directory and push it to the `synqdrive.eu` vhost. Nothing else changed, so no DNS,
 certificate or proxy state has to be reverted.
 
-Commit deployed: `6a094128`. Later commits on this branch are documentation only and do not
-change the shipped artefact.
+Commit deployed: `1415ea74`, the voice assistant copy correction. Later commits on this branch
+touch only the QA suite and documentation and do not change the shipped artefact.
 
 ## Acceptance
 

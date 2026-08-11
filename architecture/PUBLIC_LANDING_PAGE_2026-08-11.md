@@ -32,6 +32,13 @@
   `landing:icons`, `landing:build`, `landing:serve`, `landing:qa`.
 - **Added** `docs/landing-page/LANDING_PAGE_IMPLEMENTATION_2026-08.md` — implementation report.
 - `.gitignore` — ignores `landingpage/dist/` and `landingpage/qa/` (build and QA output).
+- Copy correction after a capability audit: the voice assistant no longer appears beside
+  WhatsApp, email and notifications as a generally available channel. Live PSTN is per-tenant
+  flag-gated and staging-first (`docs/runbooks/voice-ai-production-release.md`), so both locales
+  now state that it is being rolled out per organisation.
+- `frontend/e2e/landing-page-qa.spec.ts` waits for every image to decode before screenshotting.
+  Against a deployed origin a lazy image could still be in flight when the shutter fired, so the
+  suite passed while emitting an artefact that showed an empty frame on a correct page.
 - No product code changed. `git diff --name-only origin/main...HEAD -- frontend/src backend/`
   is empty: the product was opened for screenshots, never rebuilt for the landing page.
 
