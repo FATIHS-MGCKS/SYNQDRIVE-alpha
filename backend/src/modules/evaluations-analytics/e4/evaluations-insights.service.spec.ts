@@ -128,10 +128,13 @@ function buildService(overrides: {
       vehicleCount: 3,
     }),
     loadBookingOutcomes: jest.fn().mockResolvedValue({ totalOutcomes: 20, cancelledPlusNoShow: 1 }),
-    loadDriverObservations: jest.fn().mockResolvedValue([
-      { driverRef: 'cust-a', dimension: 'BOOKING_CANCELLATIONS', count: 6 },
-      { driverRef: 'cust-b', dimension: 'BOOKING_CANCELLATIONS', count: 4 },
-    ]),
+    loadDriverObservations: jest.fn().mockResolvedValue({
+      observations: [
+        { driverRef: 'driver-a', dimension: 'BOOKING_CANCELLATIONS', count: 6 },
+        { driverRef: 'driver-b', dimension: 'BOOKING_CANCELLATIONS', count: 4 },
+      ],
+      unattributedCount: 2,
+    }),
     ...overrides.repo,
   } as never;
   const service = new EvaluationsInsightsService(financeMock as never, repo as never);
