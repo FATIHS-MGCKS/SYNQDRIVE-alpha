@@ -85,6 +85,8 @@ export interface FinanceMarginMetricInput {
   readonly generatedAt: Date;
   readonly margin: EvaluationsProfitMargin;
   readonly sourceAvailable: boolean;
+  /** Reason for an UNAVAILABLE result when `sourceAvailable` is false. */
+  readonly unavailableReason?: string;
 }
 
 export function mapFinanceMarginMetric(
@@ -102,7 +104,10 @@ export function mapFinanceMarginMetric(
     generatedAt: input.generatedAt,
   };
   if (!input.sourceAvailable) {
-    return buildUnavailableEvaluationsMetric({ ...base, reason: 'FINANCE_SOURCE_UNAVAILABLE' });
+    return buildUnavailableEvaluationsMetric({
+      ...base,
+      reason: input.unavailableReason ?? 'FINANCE_SOURCE_UNAVAILABLE',
+    });
   }
   if (input.margin.kind === 'NOT_APPLICABLE') {
     // Only a genuine no-value case (zero-revenue denominator or multi-currency)

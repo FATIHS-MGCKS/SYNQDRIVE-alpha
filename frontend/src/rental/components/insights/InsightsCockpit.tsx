@@ -13,12 +13,21 @@ import {
 } from '../../lib/insights-categories';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import {
+  formatFinanceMoney,
+  isMoneyAvailable,
+  type FinanceMoneyView,
+} from '../../lib/finance-insights-adapter';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
   stationId?: string | null;
-  financialRiskEur?: number;
-  openReceivablesEur?: number;
+  /**
+   * E3.4: canonical Open Receivables as a status-aware Money view (not an
+   * EUR-shaped number). Preserves status/currency; renders unavailable states
+   * without a false zero and without EUR relabeling.
+   */
+  openReceivables?: FinanceMoneyView | null;
 }
 
 interface InsightKpiCardProps {
@@ -253,8 +262,7 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 export function InsightsCockpit({
   isDarkMode,
   stationId = null,
-  financialRiskEur = 0,
-  openReceivablesEur = 0,
+  openReceivables = null,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
@@ -276,14 +284,18 @@ export function InsightsCockpit({
     [filteredInsights],
   );
 
+  // E3.4: the estimated risk is an INSIGHTS heuristic (financialImpactEur) only.
+  // Canonical Finance overdue receivables are no longer folded in here (that was a
+  // currency relabel + mixed truth); canonical receivables render in their own
+  // status-aware card below.
   const estimatedRisk = useMemo(() => {
-    let sum = financialRiskEur;
+    let sum = 0;
     for (const i of [...businessRisks, ...revenueLeakage]) {
       const e = financialImpactEur(i);
       if (e != null) sum += e;
     }
     return sum;
-  }, [businessRisks, revenueLeakage, financialRiskEur]);
+  }, [businessRisks, revenueLeakage]);
 
   const criticalBookings = businessRisks.filter((i) => i.severity === 'CRITICAL').length;
   const hasRun = response?.hasRun ?? false;
@@ -310,10 +322,10 @@ export function InsightsCockpit({
         />
         <InsightKpiCard
           label="Offene Forderungen"
-          value={`${openReceivablesEur.toLocaleString('de-DE')} €`}
+          value={openReceivables ? formatFinanceMoney(openReceivables, 'de-DE') : '—'}
           icon={Zap}
           tone="info"
-          accent={openReceivablesEur > 0}
+          accent={!!openReceivables && isMoneyAvailable(openReceivables) && (openReceivables.amountMinor ?? 0) > 0}
         />
         <InsightKpiCard
           label="Kritische Buchungen"

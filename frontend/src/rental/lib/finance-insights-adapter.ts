@@ -136,6 +136,38 @@ export function formatFinanceMoney(
   }
 }
 
+/**
+ * Format raw money (an explicit amountMinor + currency, e.g. a source invoice)
+ * for display, using the same canonical ISO-4217 exponent authority as
+ * `formatFinanceMoney` — never a hardcoded /100 or EUR. Invalid/missing currency
+ * yields a guarded label, never an EUR guess. This is presentation only.
+ */
+export function formatRawMoney(
+  amountMinor: number | null | undefined,
+  currency: string | null | undefined,
+  locale: string,
+  opts: { maximumFractionDigits?: number; minimumFractionDigits?: number } = {},
+): string {
+  if (amountMinor === null || amountMinor === undefined || !currency) {
+    return financeUnavailableLabel('UNAVAILABLE');
+  }
+  try {
+    const major = minorToMajorForPresentation(amountMinor, currency);
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      ...(opts.maximumFractionDigits !== undefined
+        ? { maximumFractionDigits: opts.maximumFractionDigits }
+        : {}),
+      ...(opts.minimumFractionDigits !== undefined
+        ? { minimumFractionDigits: opts.minimumFractionDigits }
+        : {}),
+    }).format(major);
+  } catch {
+    return financeUnavailableLabel('ERROR');
+  }
+}
+
 export function formatFinancePercent(view: FinancePercentView, digits = 1): string {
   if (!isPercentAvailable(view) || view.value === null) {
     return view.status === 'NOT_APPLICABLE' ? 'n/a' : financeUnavailableLabel(view.status);

@@ -5,6 +5,7 @@ import { FINANCE_CORE_METRIC_IDS, buildFinanceInsightsPath } from './finance-ins
 import {
   formatFinanceMoney,
   formatFinancePercent,
+  formatRawMoney,
   isMoneyAvailable,
   minorToMajorForPresentation,
   readMoneyMetric,
@@ -166,6 +167,72 @@ describe('finance insights adapter (E3.2 canonical consumption)', () => {
         'en-US',
       );
       expect(out).toBe('Fehler');
+    });
+  });
+
+  describe('E3.4 core money precision (currency-native fraction digits, no false zero)', () => {
+    function view(amountMinor: number, currency: string) {
+      return readMoneyMetric(
+        bundle({ [ids.issuedRevenue]: money(ids.issuedRevenue, 'AVAILABLE', { amountMinor, currency }) }),
+        ids.issuedRevenue,
+      );
+    }
+    it('shows 0.49 EUR for 49 minor (no visual rounding to 0)', () => {
+      const out = formatFinanceMoney(view(49, 'EUR'), 'en-US');
+      expect(out).toMatch(/0\.49/);
+      expect(out).not.toBe('€0');
+    });
+    it('shows -0.49 EUR for -49 minor (sign + precision)', () => {
+      const out = formatFinanceMoney(view(-49, 'EUR'), 'en-US');
+      expect(out).toMatch(/-/);
+      expect(out).toMatch(/0\.49/);
+    });
+    it('shows 1.234 KWD for 1234 minor', () => {
+      expect(formatFinanceMoney(view(1234, 'KWD'), 'en-US')).toMatch(/1\.234/);
+    });
+  });
+
+  describe('E3.4 raw money formatter (Recent Activity, per-invoice currency)', () => {
+    it('formats USD without EUR relabel', () => {
+      const out = formatRawMoney(10000, 'USD', 'en-US');
+      expect(out).toContain('$');
+      expect(out).toMatch(/100\.00/);
+      expect(out).not.toContain('€');
+    });
+    it('formats JPY (0 decimals) and KWD (3 decimals) correctly', () => {
+      expect(formatRawMoney(100, 'JPY', 'en-US')).toMatch(/100/);
+      expect(formatRawMoney(1000, 'KWD', 'en-US')).toMatch(/1\.000/);
+    });
+    it('missing currency → guarded label (no EUR guess)', () => {
+      expect(formatRawMoney(10000, null, 'en-US')).toBe('—');
+    });
+    it('invalid currency → guarded label (no crash, no /100)', () => {
+      expect(formatRawMoney(10000, 'ZZZ', 'en-US')).toBe('Fehler');
+    });
+  });
+
+  describe('E3.4 cockpit money model (status-aware, no false zero, currency-correct)', () => {
+    it('UNAVAILABLE open receivables renders a status label, never 0 €', () => {
+      const v = readMoneyMetric(
+        bundle({
+          [ids.openReceivables]: money(ids.openReceivables, 'UNAVAILABLE', null, [
+            'STATION_SCOPED_FINANCE_UNSUPPORTED',
+          ]),
+        }),
+        ids.openReceivables,
+      );
+      const shown = formatFinanceMoney(v, 'de-DE');
+      expect(shown).toBe('—');
+      expect(shown).not.toMatch(/0/);
+    });
+    it('JPY open receivables renders as JPY (not €)', () => {
+      const v = readMoneyMetric(
+        bundle({ [ids.openReceivables]: money(ids.openReceivables, 'AVAILABLE', { amountMinor: 100, currency: 'JPY' }) }),
+        ids.openReceivables,
+      );
+      const shown = formatFinanceMoney(v, 'en-US');
+      expect(shown).toMatch(/100/);
+      expect(shown).not.toContain('€');
     });
   });
 

@@ -328,6 +328,32 @@ describe('EvaluationsFinanceService (E3)', () => {
     expect(revenue.value).toBeNull();
   });
 
+  it('propagates STATION_SCOPED_FINANCE_UNSUPPORTED to every metric reason (E3.4)', async () => {
+    const data = baseData();
+    data.memberships.push({
+      organizationId: 'ORG_A',
+      userId: 'worker-1',
+      role: 'WORKER',
+      status: 'ACTIVE',
+      stationScope: null,
+      stationIds: ['station-1'],
+    });
+    const service = buildService(data);
+    const result = await service.computeFinancialInsights({
+      actor: { id: 'worker-1', platformRole: null },
+      orgId: 'ORG_A',
+      requestedStationIds: null,
+      reference: REFERENCE,
+      now: REFERENCE,
+    });
+    for (const metricId of Object.values(EVALUATIONS_FINANCE_METRIC_IDS)) {
+      const m = result.metrics[metricId];
+      expect(m.status).toBe('UNAVAILABLE');
+      expect(m.warnings).toContain('STATION_SCOPED_FINANCE_UNSUPPORTED');
+      expect(m.warnings).not.toContain('FINANCE_SOURCE_UNAVAILABLE');
+    }
+  });
+
   it('profit margin is NOT_APPLICABLE for zero revenue', async () => {
     const data = baseData();
     data.memberships.push(ORG_ADMIN('ORG_A'));

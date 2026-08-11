@@ -246,6 +246,7 @@ export class EvaluationsFinanceService {
           generatedAt,
           margin: { kind: 'NOT_APPLICABLE', reason },
           sourceAvailable: false,
+          unavailableReason: reason,
         });
         continue;
       }
@@ -258,6 +259,10 @@ export class EvaluationsFinanceService {
         aggregate: emptyAggregate,
         sourceAvailable: false,
         reportingCurrency: null,
+        // E3.4: propagate the specific upstream reason (e.g.
+        // STATION_SCOPED_FINANCE_UNSUPPORTED) instead of collapsing to the generic
+        // FINANCE_SOURCE_UNAVAILABLE.
+        unavailableReason: reason,
       });
     }
     return { organizationId, period, metrics };

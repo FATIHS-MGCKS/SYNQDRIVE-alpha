@@ -30,6 +30,7 @@ import {
 import {
   formatFinanceMoney,
   formatFinancePercent,
+  formatRawMoney,
   isMoneyAvailable,
   readMoneyMetric,
   readPercentMetric,
@@ -323,12 +324,6 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     [financeBundle],
   );
   const netResultPositive = !isMoneyAvailable(netResultView) || (netResultView.amountMinor ?? 0) >= 0;
-  const openReceivablesEurRounded = isMoneyAvailable(openView)
-    ? Math.round((openView.amountMinor ?? 0) / 100)
-    : 0;
-  const overdueEurRounded = isMoneyAvailable(overdueView)
-    ? Math.round((overdueView.amountMinor ?? 0) / 100)
-    : 0;
   const mtdOpenInvoices = useMemo(
     () => bucketed.mtdInvoices.filter((inv) => inv.status !== 'PAID' && inv.status !== 'CANCELLED').length,
     [bucketed.mtdInvoices],
@@ -498,18 +493,9 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     );
   }
 
-  if (invoiceError) {
-    return (
-      <div className="max-w-[1600px] mx-auto space-y-4" data-testid="evaluations-page">
-        <PageHeader title={t('nav.financialInsights')} />
-        <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} stationId={selectedStationId} />
-        <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
-          <Icon name="alert-circle" className="w-5 h-5" />
-          {invoiceError}
-        </div>
-      </div>
-    );
-  }
+  // E3.4: a raw invoice-detail failure must NOT suppress canonical Core Finance.
+  // The canonical KPI cards render from `financeBundle` independently; the invoice
+  // error is shown as a non-blocking banner affecting only the detail/legacy areas.
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5" data-testid="evaluations-page">
@@ -517,8 +503,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       <InsightsCockpit
         isDarkMode={isDarkMode}
         stationId={selectedStationId}
-        openReceivablesEur={openReceivablesEurRounded}
-        financialRiskEur={overdueEurRounded}
+        openReceivables={openView}
       />
 
       <div className="pt-2 border-t border-border">
@@ -536,6 +521,15 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         </span>
       </div>
 
+      {invoiceError && (
+        <div className="rounded-xl p-3 flex items-center gap-2 sq-tone-warning">
+          <Icon name="alert-circle" className="w-4 h-4" />
+          <p className="text-xs font-medium">
+            {invoiceError} — Detailtabellen/Aktivität eingeschränkt; die kanonischen Kern-KPIs oben bleiben gültig.
+          </p>
+        </div>
+      )}
+
       {customerLoadWarning && (
         <div className="rounded-xl p-3 flex items-center gap-2 sq-tone-warning">
           <Icon name="alert-circle" className="w-4 h-4" />
@@ -551,7 +545,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
             so no misleading breakdown is shown (correct absence > wrong drilldown). */}
         <KpiCard
           label="Issued Revenue MTD"
-          value={formatFinanceMoney(revenueView, intlLocale, { maximumFractionDigits: 0 })}
+          value={formatFinanceMoney(revenueView, intlLocale)}
           icon={ArrowUpRight}
           color="green"
           isDarkMode={isDarkMode}
@@ -560,7 +554,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
         <KpiCard
           label="Expenses MTD"
-          value={formatFinanceMoney(expenseView, intlLocale, { maximumFractionDigits: 0 })}
+          value={formatFinanceMoney(expenseView, intlLocale)}
           icon={ArrowDownLeft}
           color="red"
           isDarkMode={isDarkMode}
@@ -570,7 +564,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
         <KpiCard
           label="Net Profit MTD"
-          value={formatFinanceMoney(netResultView, intlLocale, { maximumFractionDigits: 0 })}
+          value={formatFinanceMoney(netResultView, intlLocale)}
           icon={Wallet}
           color={netResultPositive ? 'blue' : 'red'}
           isDarkMode={isDarkMode}
@@ -578,7 +572,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
         <KpiCard
           label="Open Receivables"
-          value={formatFinanceMoney(openView, intlLocale, { maximumFractionDigits: 0 })}
+          value={formatFinanceMoney(openView, intlLocale)}
           icon={Clock}
           color="purple"
           isDarkMode={isDarkMode}
@@ -586,7 +580,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
         <KpiCard
           label="Overdue"
-          value={formatFinanceMoney(overdueView, intlLocale, { maximumFractionDigits: 0 })}
+          value={formatFinanceMoney(overdueView, intlLocale)}
           icon={Clock}
           color="red"
           isDarkMode={isDarkMode}
@@ -623,11 +617,11 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
             <div className="flex items-center gap-2 text-xs">
               <div className="text-right">
                 <div className="text-[10px] font-medium text-muted-foreground">Revenue</div>
-                <div className="text-[11px] font-bold text-[color:var(--status-success)]">{formatFinanceMoney(revenueView, intlLocale, { maximumFractionDigits: 0 })}</div>
+                <div className="text-[11px] font-bold text-[color:var(--status-success)]">{formatFinanceMoney(revenueView, intlLocale)}</div>
               </div>
               <div className="text-right">
                 <div className="text-[10px] font-medium text-muted-foreground">Expenses</div>
-                <div className="text-[11px] font-bold text-[color:var(--status-critical)]">{formatFinanceMoney(expenseView, intlLocale, { maximumFractionDigits: 0 })}</div>
+                <div className="text-[11px] font-bold text-[color:var(--status-critical)]">{formatFinanceMoney(expenseView, intlLocale)}</div>
               </div>
             </div>
           </div>
@@ -819,7 +813,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
                 </div>
                 <div className="flex flex-col items-end shrink-0">
                   <span className={`text-[12px] font-bold ${meta.tone === 'revenue' ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-attention)]'}`}>
-                    {fmtEUR(inv.totalCents ?? 0, intlLocale)}
+                    {formatRawMoney(inv.totalCents, inv.currency, intlLocale)}
                   </span>
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded ${
