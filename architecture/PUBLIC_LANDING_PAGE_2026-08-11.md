@@ -99,6 +99,35 @@ merge, and keep the coming-soon page only where it already lives as the rollback
 `landingpage/rollback/coming-soon-2026-08-11/`. The boundary record itself should be kept and
 cross-referenced, not deleted.
 
+## Planned extraction into a standalone repository
+
+The marketing site is to live in its own repository so the public surface is versioned and
+deployed independently of the product. The standalone repository has been prepared and verified:
+its build output is byte-identical to the build that produced the live site, and its QA suite
+passes 11 of 11 against it. Two path changes were required, both because the code moved out of
+`landingpage/`: `build-icons.mjs` reads `lucide-react` from its own `node_modules` instead of
+`../frontend/node_modules`, and the QA spec writes screenshots to `qa/` instead of
+`../../landingpage/qa`. `lucide-react` is pinned to the version the product frontend uses, so the
+marketing icons cannot silently drift from the product icons.
+
+**The capture harness stays here.** `frontend/e2e/landing-assets.capture.spec.ts` and
+`frontend/e2e/landing-demo-tenant.ts` drive the real product frontend through
+`npm run dev`, so they cannot run outside this repository. The seam between the two repositories
+is therefore the raw PNG captures:
+
+| Step | Repository | Command |
+|------|-----------|---------|
+| Capture the real product UI against the synthetic tenant | product | `npm run landing:capture` |
+| Hand the raw PNGs over | — | copy into `assets-raw/` |
+| Crop and encode the shipped imagery | landing page | `npm run assets` |
+
+`assets/` is committed in the landing repository, so an ordinary build needs neither this
+repository nor the raw captures. Steps 1 and 2 are only needed when a screenshot is re-taken.
+
+Follow-up once the standalone repository exists: remove `landingpage/` from this repository and
+keep only the capture harness, so there is one source of truth for the marketing site. Do not
+remove it before then. `.gitignore` entries for `landingpage/{assets-raw,dist,qa}/` go with it.
+
 ## Notes
 
 - External "Synqdrive Code → Changes / Architektur" workspace is outside this repo;
