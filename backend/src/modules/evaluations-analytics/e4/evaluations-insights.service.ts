@@ -25,6 +25,7 @@ import {
   type EvaluationsUtilizationSection,
   type EvaluationsWeaknessSection,
   type E4CostCategoryResult,
+  type E4SkippedDimension,
 } from './contracts/evaluations-insights.contract';
 import { aggregateCostEvents } from './domain/evaluations-cost.domain';
 import { computeUtilization } from './domain/evaluations-utilization.domain';
@@ -47,7 +48,7 @@ const COST_FORMULAE: Readonly<Record<string, string>> = {
   DAMAGE_REPAIR:
     'SUM(VehicleDamage.repairCostCents) where status REPAIRED; attributed by repairedAt',
   ESTIMATED_FIXED_COSTS:
-    'SUM(leasingRateCents+insuranceCostCents+taxCostCents) * (periodMs / 30d ms) per vehicle',
+    'UNSUPPORTED on current main: per-vehicle leasing/insurance/tax have no proven currency, periodicity, or effective-date/version → excluded from the authoritative total (no fabricated accrual)',
 };
 
 const COST_SOURCES: Readonly<Record<string, readonly string[]>> = {
@@ -61,6 +62,10 @@ interface E4DetectionContext {
   readonly utilization: EvaluationsUtilizationSection;
   readonly finance: { status: EvaluationsMetricStatus; metrics: Readonly<Record<string, EvaluationsMetricResponse>>; reason: string | null };
   readonly signals: E4DetectionSignals;
+  /** Configured analytical dimensions that were evaluated (source AVAILABLE). */
+  readonly evaluatedDimensions: readonly string[];
+  /** Configured dimensions skipped because their source was not authoritative. */
+  readonly skippedDimensions: readonly E4SkippedDimension[];
 }
 
 /**
@@ -115,7 +120,13 @@ export class EvaluationsInsightsService {
     );
     const context = await isolateAsync(
       () => this.buildDetectionContext(scope, generatedAt, { utilization, finance }),
-      () => ({ utilization, finance, signals: { utilization: null, finance: null, bookings: null } }),
+      () => ({
+        utilization,
+        finance,
+        signals: { utilization: null, finance: null, bookings: null },
+        evaluatedDimensions: [],
+        skippedDimensions: [{ dimension: 'ALL', reason: 'DETECTION_CONTEXT_ERROR' }],
+      }),
     );
     const strengths = isolate(
       () => this.buildStrengthSection(scope, generatedAt, context),
@@ -315,6 +326,11 @@ export class EvaluationsInsightsService {
       occupancyBasis: 'SCHEDULED' as const,
     };
 
+    // `latestState.online` is a CURRENT snapshot, not a historical telemetry
+    // lineage. Only surface it for a live/current period (the period still
+    // includes "now"); for a historical period it is never a period fact.
+    const isCurrentPeriod = generatedAt.getTime() < Date.parse(scope.period.endExclusive);
+
     const unavailableMetric = (reason: string): EvaluationsMetricResponse =>
       buildUnavailableEvaluationsMetric({
         metricId,
@@ -338,6 +354,7 @@ export class EvaluationsInsightsService {
       eligibleVehicles: null,
       overlappingBookingPairs: null,
       telemetryOfflineVehicles: null,
+      telemetrySnapshotAsOf: null,
     };
 
     // Station-scoped historical utilization needs a continuous vehicle→station
@@ -397,7 +414,8 @@ export class EvaluationsInsightsService {
         netCapacityMs: result.netCapacityMs,
         eligibleVehicles: result.eligibleVehicles,
         overlappingBookingPairs: result.overlappingBookingPairs,
-        telemetryOfflineVehicles: facts.telemetryOfflineVehicles,
+        telemetryOfflineVehicles: isCurrentPeriod ? facts.telemetryOfflineVehicles : null,
+        telemetrySnapshotAsOf: isCurrentPeriod ? generatedAt.toISOString() : null,
       };
     }
 
@@ -436,7 +454,8 @@ export class EvaluationsInsightsService {
       netCapacityMs: result.netCapacityMs,
       eligibleVehicles: result.eligibleVehicles,
       overlappingBookingPairs: result.overlappingBookingPairs,
-      telemetryOfflineVehicles: facts.telemetryOfflineVehicles,
+      telemetryOfflineVehicles: isCurrentPeriod ? facts.telemetryOfflineVehicles : null,
+      telemetrySnapshotAsOf: isCurrentPeriod ? generatedAt.toISOString() : null,
     };
   }
 
@@ -551,26 +570,53 @@ export class EvaluationsInsightsService {
     },
   ): Promise<E4DetectionContext> {
     const { utilization, finance } = parts;
+    const evaluated: string[] = [];
+    const skipped: E4SkippedDimension[] = [];
 
-    const financeSignal = this.extractFinanceSignal(finance.metrics);
-    const utilizationSignal =
-      (utilization.status === 'AVAILABLE' || utilization.status === 'PARTIAL') &&
+    // FINANCE dimension — evaluated only when the E3 finance source is AVAILABLE.
+    // A PARTIAL/UNAVAILABLE finance source can never become fully AVAILABLE
+    // detection evidence.
+    const financeSignal =
+      finance.status === 'AVAILABLE' ? this.extractFinanceSignal(finance.metrics) : null;
+    if (finance.status === 'AVAILABLE') {
+      evaluated.push('FINANCE');
+    } else {
+      skipped.push({ dimension: 'FINANCE', reason: `FINANCE_SOURCE_${finance.status}` });
+    }
+
+    // UTILIZATION dimension — evaluated only when the utilization source is fully
+    // AVAILABLE. On current main utilization is structurally coverage-limited
+    // (PARTIAL), so this dimension is skipped rather than treated as authoritative.
+    let utilizationSignal: E4DetectionSignals['utilization'] = null;
+    if (
+      utilization.status === 'AVAILABLE' &&
       utilization.netCapacityMs !== null &&
       utilization.netCapacityMs > 0 &&
       utilization.rentedMs !== null &&
       utilization.eligibleVehicles !== null
-        ? {
-            ratio: utilization.rentedMs / utilization.netCapacityMs,
-            previousRatio: null,
-            eligibleVehicles: utilization.eligibleVehicles,
-            coverageRatio: utilization.coverage?.ratio ?? null,
-          }
-        : null;
+    ) {
+      utilizationSignal = {
+        ratio: utilization.rentedMs / utilization.netCapacityMs,
+        previousRatio: null,
+        eligibleVehicles: utilization.eligibleVehicles,
+        coverageRatio: utilization.coverage?.ratio ?? null,
+      };
+      evaluated.push('UTILIZATION');
+    } else {
+      skipped.push({
+        dimension: 'UTILIZATION',
+        reason:
+          utilization.status === 'PARTIAL'
+            ? 'UTILIZATION_SOURCE_PARTIAL'
+            : `UTILIZATION_SOURCE_${utilization.status}`,
+      });
+    }
 
-    // Bookings signal is only meaningful for an org-wide request (no station
-    // lineage); station scope leaves it null so no detection is fabricated.
+    // BOOKINGS dimension — source computable only for an org-wide request (no
+    // station lineage). Station scope skips it.
     let bookingSignal: E4DetectionSignals['bookings'] = null;
     if (!scope.stationScoped) {
+      evaluated.push('BOOKINGS');
       const outcomes = await this.repository.loadBookingOutcomes(
         scope.organizationId,
         toWindow(scope),
@@ -582,6 +628,8 @@ export class EvaluationsInsightsService {
               totalOutcomes: outcomes.totalOutcomes,
             }
           : null;
+    } else {
+      skipped.push({ dimension: 'BOOKINGS', reason: 'BOOKINGS_STATION_SCOPE_UNSUPPORTED' });
     }
 
     return {
@@ -592,6 +640,8 @@ export class EvaluationsInsightsService {
         finance: financeSignal,
         bookings: bookingSignal,
       },
+      evaluatedDimensions: evaluated,
+      skippedDimensions: skipped,
     };
   }
 
@@ -606,18 +656,29 @@ export class EvaluationsInsightsService {
       scope: this.echoScope(scope),
       generatedAt: generatedAt.toISOString(),
     };
-    if (!this.hasDetectionEvidence(scope, context)) {
-      return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'DETECTION_EVIDENCE_UNAVAILABLE', strengths: [] };
+    const roll = this.detectionCoverage(context);
+    if (roll.status === 'UNAVAILABLE') {
+      return {
+        ...base,
+        status: 'UNAVAILABLE',
+        coverage: roll.coverage,
+        reason: 'DETECTION_EVIDENCE_UNAVAILABLE',
+        strengths: [],
+        evaluatedDimensions: context.evaluatedDimensions,
+        skippedDimensions: context.skippedDimensions,
+      };
     }
     const strengths = detectStrengths(context.signals);
     const weaknesses = detectWeaknesses(context.signals);
     const reconciled = reconcileDetections(strengths, weaknesses);
     return {
       ...base,
-      status: 'AVAILABLE',
-      coverage: null,
-      reason: null,
+      status: roll.status,
+      coverage: roll.coverage,
+      reason: roll.reason,
       strengths: reconciled.strengths,
+      evaluatedDimensions: context.evaluatedDimensions,
+      skippedDimensions: context.skippedDimensions,
     };
   }
 
@@ -632,28 +693,61 @@ export class EvaluationsInsightsService {
       scope: this.echoScope(scope),
       generatedAt: generatedAt.toISOString(),
     };
-    if (!this.hasDetectionEvidence(scope, context)) {
-      return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'DETECTION_EVIDENCE_UNAVAILABLE', weaknesses: [] };
+    const roll = this.detectionCoverage(context);
+    if (roll.status === 'UNAVAILABLE') {
+      return {
+        ...base,
+        status: 'UNAVAILABLE',
+        coverage: roll.coverage,
+        reason: 'DETECTION_EVIDENCE_UNAVAILABLE',
+        weaknesses: [],
+        evaluatedDimensions: context.evaluatedDimensions,
+        skippedDimensions: context.skippedDimensions,
+      };
     }
     const strengths = detectStrengths(context.signals);
     const weaknesses = detectWeaknesses(context.signals);
     const reconciled = reconcileDetections(strengths, weaknesses);
     return {
       ...base,
-      status: 'AVAILABLE',
-      coverage: null,
-      reason: null,
+      status: roll.status,
+      coverage: roll.coverage,
+      reason: roll.reason,
       weaknesses: reconciled.weaknesses,
+      evaluatedDimensions: context.evaluatedDimensions,
+      skippedDimensions: context.skippedDimensions,
     };
   }
 
-  private hasDetectionEvidence(
-    scope: EvaluationsAuthorizedAnalyticsScope,
-    context: E4DetectionContext,
-  ): boolean {
-    if (scope.stationScoped) return false;
-    const { utilization, finance, bookings } = context.signals;
-    return utilization !== null || finance !== null || bookings !== null;
+  /**
+   * Truthful detection-section coverage roll-up:
+   *  - no dimension evaluable → UNAVAILABLE,
+   *  - one or more configured dimensions skipped → PARTIAL (an empty result must
+   *    never imply "everything was checked"),
+   *  - all configured dimensions evaluated → AVAILABLE.
+   */
+  private detectionCoverage(context: E4DetectionContext): {
+    status: EvaluationsMetricStatus;
+    coverage: EvaluationsUtilizationSection['coverage'];
+    reason: string | null;
+  } {
+    const evaluated = context.evaluatedDimensions.length;
+    const skipped = context.skippedDimensions.length;
+    const total = evaluated + skipped;
+    const coverage = {
+      expectedRecords: total,
+      availableRecords: evaluated,
+      excludedRecords: skipped,
+      ratio: total > 0 ? evaluated / total : null,
+      missingSources: context.skippedDimensions.map((s) => s.reason),
+    };
+    if (evaluated === 0) {
+      return { status: 'UNAVAILABLE', coverage, reason: 'DETECTION_EVIDENCE_UNAVAILABLE' };
+    }
+    if (skipped > 0) {
+      return { status: 'PARTIAL', coverage, reason: 'DETECTION_COVERAGE_INCOMPLETE' };
+    }
+    return { status: 'AVAILABLE', coverage, reason: null };
   }
 
   private extractFinanceSignal(
@@ -751,6 +845,7 @@ export class EvaluationsInsightsService {
       eligibleVehicles: null,
       overlappingBookingPairs: null,
       telemetryOfflineVehicles: null,
+      telemetrySnapshotAsOf: null,
     };
   }
 
@@ -761,6 +856,8 @@ export class EvaluationsInsightsService {
       coverage: null,
       reason: 'STRENGTH_SECTION_ERROR',
       strengths: [],
+      evaluatedDimensions: [],
+      skippedDimensions: [],
     };
   }
 
@@ -771,6 +868,8 @@ export class EvaluationsInsightsService {
       coverage: null,
       reason: 'WEAKNESS_SECTION_ERROR',
       weaknesses: [],
+      evaluatedDimensions: [],
+      skippedDimensions: [],
     };
   }
 

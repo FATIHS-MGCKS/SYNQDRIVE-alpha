@@ -27,10 +27,12 @@ export const E4_CALCULATION_VERSIONS = {
   // approximate eligibility → the section is coverage-limited (PARTIAL), never
   // a false-zero on UNAVAILABLE/ERROR.
   utilization: 'utilization-model-e4-v2',
-  // v2 (E4.1C): platform-rule thresholds are labeled PLATFORM_RULE_THRESHOLD,
-  // never ORGANIZATION_TARGET (no tenant target config exists).
-  strengthDetection: 'strength-detection-e4-v2',
-  weaknessDetection: 'weakness-detection-e4-v2',
+  // v3 (E4.2): a rule is evaluated only when its source dimension is AVAILABLE;
+  // a PARTIAL/UNAVAILABLE source dimension is skipped (recorded) and downgrades
+  // the section to PARTIAL — a PARTIAL input can no longer become fully AVAILABLE
+  // detection evidence. (v2 = E4.1C platform-rule threshold labeling.)
+  strengthDetection: 'strength-detection-e4-v3',
+  weaknessDetection: 'weakness-detection-e4-v3',
   driverInfluence: 'driver-influence-e4-v1',
 } as const;
 
@@ -111,7 +113,15 @@ export interface EvaluationsUtilizationSection extends EvaluationsInsightsSectio
   readonly netCapacityMs: number | null;
   readonly eligibleVehicles: number | null;
   readonly overlappingBookingPairs: number | null;
+  /**
+   * A CURRENT telemetry snapshot count (as of `telemetrySnapshotAsOf`), surfaced
+   * only for a live/current period. For a historical period it is `null` — the
+   * current `latestState.online` is never presented as a historical period fact.
+   * It never participates in utilization/downtime math (telemetry offline is not
+   * downtime).
+   */
   readonly telemetryOfflineVehicles: number | null;
+  readonly telemetrySnapshotAsOf: string | null;
 }
 
 // ── Strength / Weakness ─────────────────────────────────────────────────────
@@ -158,12 +168,27 @@ export interface E4WeaknessResult {
   readonly dimension: string;
 }
 
+/**
+ * A configured analytical dimension that could not be evaluated (its source was
+ * not sufficiently authoritative), with a machine-readable reason. Skipped
+ * dimensions downgrade the detection section to PARTIAL so an empty result never
+ * implies "everything was checked".
+ */
+export interface E4SkippedDimension {
+  readonly dimension: string;
+  readonly reason: string;
+}
+
 export interface EvaluationsStrengthSection extends EvaluationsInsightsSectionMeta {
   readonly strengths: readonly E4StrengthResult[];
+  readonly evaluatedDimensions: readonly string[];
+  readonly skippedDimensions: readonly E4SkippedDimension[];
 }
 
 export interface EvaluationsWeaknessSection extends EvaluationsInsightsSectionMeta {
   readonly weaknesses: readonly E4WeaknessResult[];
+  readonly evaluatedDimensions: readonly string[];
+  readonly skippedDimensions: readonly E4SkippedDimension[];
 }
 
 // ── Driver / Influence ──────────────────────────────────────────────────────

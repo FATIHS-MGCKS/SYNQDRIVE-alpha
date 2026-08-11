@@ -37,9 +37,10 @@ export interface E4BookingOutcomeFacts {
 /**
  * Tenant-scoped access to every E4 analytics source. Every query carries an
  * explicit `organizationId` filter (no post-load tenant filtering, no trust in a
- * foreign relation). Currency for cost facts without a per-row currency is taken
- * from the organization's authoritative reporting currency; a missing reporting
- * currency yields no fabricated EUR (the caller degrades to UNAVAILABLE).
+ * foreign relation). Cost facts without a per-row currency (ServiceCase/Damage)
+ * are NOT assigned the organization's current reporting currency — they are
+ * reported as unsupported (see `loadUnsupportedCostSources`); only explicit-
+ * currency invoices are authoritative Money (E4.1B).
  */
 @Injectable()
 export class EvaluationsInsightsRepository {
