@@ -72,6 +72,33 @@
 - **Contact flow:** both calls to action open a prefilled mail draft to `info@synqdrive.eu`, the
   only contact channel the product exposes today. No new CRM or form backend was introduced.
 
+## Relationship to the coming-soon branch
+
+The hosting boundary itself was not established here. It was recorded in
+`architecture/PUBLIC_LANDING_PAGE_HOSTING_BOUNDARY_2026-08-11.md` on the unmerged branch
+`cursor/professional-coming-soon-c50c`, which put the coming-soon page under version control.
+That record's boundary table still holds exactly as written: `synqdrive.eu` on Hostinger static
+hosting, `app.synqdrive.eu` on the VPS, independent deploy paths, and no touching the `app` DNS
+records. This work keeps that boundary and supersedes only its "deployment archive is assembled
+from" section, because the archive is now the output of `landingpage/tools/build-site.mjs` rather
+than three hand-maintained files plus two copied assets.
+
+**Merge hazard.** Neither branch is an ancestor of the other and `main` has neither. The two
+touch `landingpage/` with non-overlapping filenames, so a merge would succeed silently and leave
+two competing implementations side by side:
+
+| Path | Branch | State after a naive merge |
+|------|--------|---------------------------|
+| `landingpage/index.html`, `styles.css`, `script.js` | coming-soon | Stale page beside the build pipeline, deployable by mistake |
+| `landingpage/README.md` | coming-soon | Documents the flat-archive deploy, which no longer matches production |
+| `landingpage/{content,src,tools}/` | this branch | The pipeline that actually produced the live site |
+
+If the coming-soon branch is merged after this one, delete `landingpage/index.html`,
+`landingpage/styles.css`, `landingpage/script.js` and `landingpage/README.md` as part of the
+merge, and keep the coming-soon page only where it already lives as the rollback snapshot in
+`landingpage/rollback/coming-soon-2026-08-11/`. The boundary record itself should be kept and
+cross-referenced, not deleted.
+
 ## Notes
 
 - External "Synqdrive Code → Changes / Architektur" workspace is outside this repo;

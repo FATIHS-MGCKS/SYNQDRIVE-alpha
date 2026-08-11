@@ -240,6 +240,12 @@ production immediately before the deploy. Restoring it is the same operation as 
 archive that directory and push it to the `synqdrive.eu` vhost. Nothing else changed, so no DNS,
 certificate or proxy state has to be reverted.
 
+The snapshot is verifiably faithful, not just a scrape: `index.html`, `styles.css` and `script.js`
+are byte-identical to the source of the coming-soon page on the unmerged branch
+`cursor/professional-coming-soon-c50c`, which is where that page came from. The two brand assets
+it references are included. See `architecture/PUBLIC_LANDING_PAGE_2026-08-11.md` for the merge
+hazard between that branch and this one.
+
 Commit deployed: `1415ea74`, the voice assistant copy correction. Later commits on this branch
 touch only the QA suite and documentation and do not change the shipped artefact.
 
