@@ -42,6 +42,23 @@ const stationScope: EvaluationsAuthorizedAnalyticsScope = {
   period,
 };
 
+// Historical period fully in the past relative to GEN (endExclusive <= GEN).
+const historicalPeriod: EvaluationsPeriodWindow = {
+  ...period,
+  periodType: 'MONTH',
+  start: '2025-12-01T00:00:00.000Z',
+  endExclusive: '2026-01-01T00:00:00.000Z',
+  reference: '2025-12-31T00:00:00.000Z',
+};
+const HIST_START = Date.parse(historicalPeriod.start);
+const HIST_END = Date.parse(historicalPeriod.endExclusive);
+const historicalScope: EvaluationsAuthorizedAnalyticsScope = {
+  organizationId: 'org-a',
+  stationIds: null,
+  stationScoped: false,
+  period: historicalPeriod,
+};
+
 const actor = { id: 'user-1', organizationId: 'org-a', platformRole: 'ORG_ADMIN' };
 
 function financeMetric(
@@ -170,10 +187,18 @@ describe('EvaluationsInsightsService — org scope', () => {
     expect(summary.sections.utilization.occupancyBasis).toBe('SCHEDULED');
     // Blocked has no authoritative source → null, never a synthetic 0.
     expect(summary.sections.utilization.blockedMs).toBeNull();
+    // Current period (GEN < endExclusive) → current telemetry snapshot surfaced.
     expect(summary.sections.utilization.telemetryOfflineVehicles).toBe(1);
-    expect(summary.sections.strengths.status).toBe('AVAILABLE');
-    expect(summary.sections.strengths.strengths.map((s) => s.ruleId)).toEqual(
-      expect.arrayContaining(['HIGH_UTILIZATION', 'LOW_CANCELLATION_RATE']),
+    expect(summary.sections.utilization.telemetrySnapshotAsOf).toBe(GEN.toISOString());
+    // Utilization is PARTIAL → skipped from detection; the section is PARTIAL and
+    // does not emit HIGH_UTILIZATION as fully AVAILABLE evidence. Finance/booking
+    // rules still evaluate.
+    expect(summary.sections.strengths.status).toBe('PARTIAL');
+    expect(summary.sections.strengths.strengths.map((s) => s.ruleId)).toContain('LOW_CANCELLATION_RATE');
+    expect(summary.sections.strengths.strengths.map((s) => s.ruleId)).not.toContain('HIGH_UTILIZATION');
+    expect(summary.sections.strengths.skippedDimensions.map((d) => d.dimension)).toContain('UTILIZATION');
+    expect(summary.sections.strengths.evaluatedDimensions).toEqual(
+      expect.arrayContaining(['FINANCE', 'BOOKINGS']),
     );
     expect(summary.sections.driverInfluence.status).toBe('AVAILABLE');
     expect(summary.sections.driverInfluence.disclaimer).toContain('Correlation is not causation');
@@ -341,5 +366,94 @@ describe('EvaluationsInsightsService — cost currency safety', () => {
     expect(cost.status).toBe('UNAVAILABLE');
     expect(cost.reason).toBe('COST_SOURCES_UNSUPPORTED');
     expect(cost.totalsByCurrency).toEqual([]);
+  });
+});
+
+describe('EvaluationsInsightsService — E4.2 detection coverage & temporal signal', () => {
+  it('PARTIAL utilization cannot produce a fully AVAILABLE HIGH_UTILIZATION strength', async () => {
+    const { service } = buildService({});
+    const strengths = await service.getStrengths(orgScope, actor, GEN);
+    // Utilization is structurally PARTIAL → skipped; section PARTIAL, no HIGH_UTILIZATION.
+    expect(strengths.status).toBe('PARTIAL');
+    expect(strengths.strengths.map((s) => s.ruleId)).not.toContain('HIGH_UTILIZATION');
+    expect(strengths.skippedDimensions.map((d) => d.dimension)).toContain('UTILIZATION');
+    const utilSkip = strengths.skippedDimensions.find((d) => d.dimension === 'UTILIZATION');
+    expect(utilSkip?.reason).toBe('UTILIZATION_SOURCE_PARTIAL');
+  });
+
+  it('PARTIAL utilization (30%) cannot produce a fully AVAILABLE UNDERUTILIZATION weakness', async () => {
+    const { service } = buildService({
+      repo: {
+        loadUtilizationFacts: jest.fn().mockResolvedValue({
+          vehicles: [
+            { vehicleId: 'v1', eligibility: { startMs: START, endExclusiveMs: END }, rented: [{ startMs: START, endExclusiveMs: START + (END - START) * 0.3 }], maintenance: [], blocked: [] },
+            { vehicleId: 'v2', eligibility: { startMs: START, endExclusiveMs: END }, rented: [], maintenance: [], blocked: [] },
+            { vehicleId: 'v3', eligibility: { startMs: START, endExclusiveMs: END }, rented: [], maintenance: [], blocked: [] },
+          ],
+          telemetryOfflineVehicles: 0,
+          vehicleCount: 3,
+        }),
+      },
+    });
+    const weaknesses = await service.getWeaknesses(orgScope, actor, GEN);
+    expect(weaknesses.status).toBe('PARTIAL');
+    expect(weaknesses.weaknesses.map((w) => w.ruleId)).not.toContain('UNDERUTILIZATION');
+    expect(weaknesses.skippedDimensions.map((d) => d.dimension)).toContain('UTILIZATION');
+  });
+
+  it('empty detection items + a skipped dimension does not become fully AVAILABLE', async () => {
+    // Finance healthy (no weakness), bookings evaluated but no cancellation
+    // weakness, utilization PARTIAL (skipped) → weaknesses=[] but section PARTIAL.
+    const { service } = buildService({});
+    const weaknesses = await service.getWeaknesses(orgScope, actor, GEN);
+    expect(weaknesses.weaknesses).toEqual([]);
+    expect(weaknesses.status).toBe('PARTIAL');
+    expect(weaknesses.status).not.toBe('AVAILABLE');
+    expect(weaknesses.skippedDimensions.length).toBeGreaterThan(0);
+  });
+
+  it('summary preserves detection PARTIAL status (no upgrade)', async () => {
+    const { service } = buildService({});
+    const summary = await service.getSummary(orgScope, actor, GEN);
+    expect(summary.sections.strengths.status).toBe('PARTIAL');
+    expect(summary.sections.weaknesses.status).toBe('PARTIAL');
+  });
+
+  it('historical period does not present current latestState.online as a period fact', async () => {
+    const { service } = buildService({
+      repo: {
+        loadUtilizationFacts: jest.fn().mockResolvedValue({
+          vehicles: [
+            { vehicleId: 'v1', eligibility: { startMs: HIST_START, endExclusiveMs: HIST_END }, rented: [{ startMs: HIST_START, endExclusiveMs: HIST_END }], maintenance: [], blocked: [] },
+          ],
+          telemetryOfflineVehicles: 2, // current snapshot count
+          vehicleCount: 1,
+        }),
+      },
+    });
+    const util = await service.getUtilization(historicalScope, GEN);
+    // Historical period → current telemetry snapshot is NOT a period fact.
+    expect(util.telemetryOfflineVehicles).toBeNull();
+    expect(util.telemetrySnapshotAsOf).toBeNull();
+  });
+
+  it('current telemetry snapshot does not change the utilization calculation', async () => {
+    const facts = (offline: number) => ({
+      vehicles: [
+        { vehicleId: 'v1', eligibility: { startMs: START, endExclusiveMs: END }, rented: [{ startMs: START, endExclusiveMs: END }], maintenance: [], blocked: [] },
+      ],
+      telemetryOfflineVehicles: offline,
+      vehicleCount: 1,
+    });
+    const svcA = buildService({ repo: { loadUtilizationFacts: jest.fn().mockResolvedValue(facts(0)) } }).service;
+    const svcB = buildService({ repo: { loadUtilizationFacts: jest.fn().mockResolvedValue(facts(5)) } }).service;
+    const a = await svcA.getUtilization(orgScope, GEN);
+    const b = await svcB.getUtilization(orgScope, GEN);
+    expect(a.utilizationPercent.value).toBe(b.utilizationPercent.value);
+    expect(a.rentedMs).toBe(b.rentedMs);
+    expect(a.netCapacityMs).toBe(b.netCapacityMs);
+    // Only the informational current-snapshot count differs.
+    expect(a.telemetryOfflineVehicles).toBe(0);
+    expect(b.telemetryOfflineVehicles).toBe(5);
   });
 });
