@@ -194,3 +194,111 @@ object depends on them). No data backfill or restore required.
 `E2_READY_FOR_POST_IMPLEMENTATION_AUDIT`. All foundation, entity-reference,
 tenant, filter, summary/detail, database, security, privacy, and quality gates
 pass; no E3–E9 scope leak; `NEW_E2_FAILURE = 0`. Not merged.
+
+---
+
+## 23. E2.1 — Security, Scope & Contract Correction Pass
+
+Correction pass on the same branch/PR (#1020) addressing the independent E2
+post-implementation audit findings. Base `origin/main` unchanged
+(`ab554722a2e6e9ed8e4263310bd2bddf9b62445a`); previous E2 head `01b5354e`.
+
+### 23.1 Status authority fix
+
+Removed the second status taxonomy (`EVALUATIONS_ANALYTICS_STATUSES` const list).
+`EvaluationsAnalyticsStatus` is now a deprecated type alias of the canonical E1
+`EvaluationsMetricStatus`, so `STALE` is retained and there is a single authority.
+Tests assert two-way assignability, `STALE` presence, and that no second constant
+list is exported.
+
+### 23.2 Timezone authority fix
+
+Timezone/period resolution moved server-side into the scope service. It loads the
+real `Organization.timezone` and, for a single authorized station, the real
+`Station.timezone`, then applies the E1 resolver. `organizationTimezone: null` is
+no longer passed unconditionally. Multi-station requests deterministically use the
+organization timezone (no "first station wins"); platform fallback applies only
+when no org/station timezone exists.
+
+### 23.3 Station scope unification
+
+Removed the parallel `filterStationIds` path and dropped `stationIds` from the
+filter contract entirely. Station scope is a single canonical authority
+(`EvaluationsAnalyticsScope.stationIds` → server-resolved
+`EvaluationsAuthorizedAnalyticsScope`). The repository derives its station
+constraint only from the authorized scope; filters can never widen or redefine
+station scope.
+
+### 23.4 Mixed-station fail-closed
+
+A request mixing an authorized station with a foreign/out-of-scope station is
+rejected in full (`403`), never silently narrowed. Duplicates are normalized
+before authorization. Verified by unit and HTTP integration tests.
+
+### 23.5 EntityReference same-tenant integrity
+
+Added a single controlled write path
+(`EvaluationsEntityReferenceWriteService`): every production write validates that
+the organization exists, the `stationId` (and any `STATION` target) belongs to
+that organization, enum validity, PII-free shape, and performs an idempotent
+upsert on `(organizationId, dedupeKey)`. No other module performs direct
+`evaluationsEntityReference` writes.
+
+### 23.6 Current-main migration validation
+
+Applied the full `origin/main` migration chain to a disposable PostgreSQL 16
+database: it stops at the pre-existing `20260325161142_trip_architecture_refactor`
+(`PRE_EXISTING_MIGRATION_BASELINE`). `organizations`/`stations` exist from `init`,
+and the E2 migration was then applied on top of that real current-main schema —
+enums/table/indexes/FK created, FK bound to the real `organizations`, insert +
+org-cascade verified. Details and corrected partial-apply/idempotency semantics
+in `phase3-e2-migration-validation-2026-08.md`. Production migration performed:
+NO.
+
+### 23.7 HTTP security integration tests
+
+Added a real guard-pipeline integration test (auth → OrgScopingGuard →
+PermissionsGuard → FeatureGuard → controller → scope service →
+StationAccessService → service → repository) with 13 HTTP scenarios; central
+security components are not mocked.
+
+### 23.8 StationAccess feature semantics
+
+Documented that cross-tenant isolation is independent of the optional Stations-V2
+flag: org ownership (org-owned station check) and repository organization scoping
+always apply, so the feature flag can never enable cross-tenant access. Only the
+intra-org station restriction follows the central `StationAccessService` (which
+honors Stations-V2). E2 invents no weaker path.
+
+### 23.9 Pagination / input hardening
+
+- `page`: safe integer ≥ 1 and ≤ `EVALUATIONS_ANALYTICS_MAX_PAGE` (100000); the
+  computed offset is checked to be a safe integer.
+- `groupLimit`: safe integer ≥ 1, clamped to the server max; 0/negative/float/
+  non-finite rejected.
+- Identifiers: max length 128; whitespace-trimmed; empty rejected.
+- Filter arrays de-duplicated and length-bounded; sort/grouping allowlisted.
+
+### 23.10 Privacy recheck
+
+Entity references remain PII-free (validator enforced); no station/customer/driver
+label is persisted by any correction. FeatureGuard response semantics documented
+to match runtime (404 when disabled, because the feature gate runs in the
+controller guard chain and returns 404 by design).
+
+### 23.11 A/B failure classification
+
+All repository-wide CI reds remain `PRE_EXISTING_IDENTICAL` vs `origin/main`
+(all-source typecheck fixtures, repo lint debt, greenfield migration P3018,
+dependency audit, Vehicle Detail Playwright). `NEW_E2_FAILURE = 0`,
+`UNKNOWN = 0`.
+
+### 23.12 Residual issues
+
+- DB-level composite `(stationId, organizationId)` FK deferred (write-gate
+  enforces same-tenant station integrity; adding the composite FK would reshape
+  the existing station architecture). Documented in the migration report.
+- Granular evaluations operational permissions and default-role grants remain E5.
+- Full greenfield `migrate deploy` still blocked by the pre-existing P3018.
+
+Final E2.1 status: `E2_READY_FOR_POST_IMPLEMENTATION_AUDIT`.

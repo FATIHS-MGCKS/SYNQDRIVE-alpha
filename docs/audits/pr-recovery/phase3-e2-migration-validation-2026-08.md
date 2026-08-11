@@ -90,6 +90,73 @@ is later in the chain and additive; it was therefore validated against the
 reference precondition and by exact-DDL comparison rather than by a full
 greenfield replay. `prisma validate` passes on the complete schema.
 
+## E2.1 — Current-main schema migration validation
+
+Executed on a disposable PostgreSQL 16 cluster (no Docker; server installed
+locally for validation). Base: `origin/main` `ab554722a2e6e9ed8e4263310bd2bddf9b62445a`.
+
+### Full current-main migration chain
+
+`prisma migrate deploy` over the 283-migration chain stops at the 4th migration
+`20260325161142_trip_architecture_refactor` with `P3018` / `42P01`
+(`relation "vehicle_trips" does not exist`). Classification:
+**`PRE_EXISTING_MIGRATION_BASELINE`** — identical on `origin/main`, unrelated to
+E2 (the repository lacks a `CREATE TABLE vehicle_trips` baseline; documented in
+`phase3-e1-ab-baseline-validation-2026-08.md`). Migrations before it commit, so
+`organizations` and `stations` (from `20260311224040_init`) exist in the
+resulting schema.
+
+### E2 DDL proven against the real current-main schema
+
+The E2 migration was then applied on top of that real partial current-main
+schema (not just a synthetic precondition):
+
+- `E2_APPLIED_ON_CURRENT_MAIN_SCHEMA` — all enums, table, indexes, and the FK
+  created cleanly.
+- The FK `evaluations_entity_references_organization_id_fkey` binds to the real
+  `organizations` table.
+- Inserting a reference for a real `organizations` row works; deleting that
+  organization cascades the reference away (1 → 0).
+
+So the E2 DDL itself is proven valid against the actual current-main object set;
+only the unrelated pre-existing `vehicle_trips` baseline blocks a full greenfield
+replay.
+
+### Partial-apply / idempotency semantics (corrected)
+
+The earlier phrasing ("idempotent because CREATE TABLE is new") was imprecise.
+Accurate behavior:
+
+- Prisma applies each migration in its own transaction and records it in
+  `_prisma_migrations`. A migration that fails mid-way is rolled back by
+  PostgreSQL (no partial objects) and recorded as failed; Prisma then refuses to
+  apply further migrations until the failure is resolved (`migrate resolve`).
+- The E2 migration is a single transaction of `CREATE TYPE` / `CREATE TABLE` /
+  `CREATE INDEX` / `ADD CONSTRAINT`. If it failed partway, PostgreSQL rolls the
+  whole statement batch back — there is no half-created table state to clean up.
+- It is **not** arbitrarily re-runnable as raw SQL (`CREATE TYPE` would error on
+  a second run). Recovery is via Prisma's normal state machine: fix and re-run
+  `migrate deploy` (roll-forward), which is the preferred path. The migration is
+  idempotent at the **Prisma-migration-state** level (applied once, tracked), not
+  as blindly repeatable DDL.
+
+### Station/organization integrity strategy
+
+Same-tenant integrity for `stationId` is enforced by the single controlled
+application write-gate (`EvaluationsEntityReferenceWriteService`): a reference's
+`stationId` (and any `STATION`-typed target) must resolve to a station of the
+reference's `organizationId`, else the write fails closed. A composite
+`(stationId, organizationId)` foreign key was considered but not added in E2.1 to
+avoid reshaping the existing station architecture and because `organizationId`
+already participates in the organization relation; the write-gate is the mandated
+single insert path and is covered by integrity tests. Reads are always
+organization-scoped, so a reference can never surface a foreign tenant's data
+regardless.
+
+### Gates
+
+- `prisma validate`: PASS. Production migration performed: **NO**.
+
 ## Rollback / roll-forward
 
 - Roll-forward repair: re-run `migrate deploy` (idempotent; the migration only

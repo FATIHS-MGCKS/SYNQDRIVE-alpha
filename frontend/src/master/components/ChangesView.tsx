@@ -43,6 +43,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Server-side organization + station scope enforcement with fail-closed cross-tenant and station-injection handling.',
       'Allowlisted, bounded analytics filters and pagination; summary aggregate totals stay separate from top-N and detail pages.',
       'Foundation summary/detail API ships dark behind EVALUATIONS_ANALYTICS_V2_MODE=off; reuses E1 period/metric contracts.',
+      'E2.1 hardening: reuses the E1 status authority directly (keeps STALE), resolves real organization/station timezone, unifies station scope to one fail-closed path, adds a controlled entity-reference write gate, real HTTP guard integration tests, and stricter input bounds.',
     ],
     reason:
       'Phase 3 E2 establishes the tenant-safe contract, persistence, and enforcement foundation required by later analytics, finance, and UI packages.',
