@@ -57,6 +57,23 @@ Global gates that are red were classified by diffing the failing files against
 No E3-authored file appears in any failing gate. `NEW_E3_FAILURE = 0`,
 `UNKNOWN = 0`.
 
+## Live PR CI classification (PR #1022, head `fec6eb3d`)
+
+Two pre-existing CI workflows run on the head (`Vehicle Detail —` and
+`Legal Documents — Production Readiness CI`). Red checks classified from job logs:
+
+| Check | Root cause | Classification |
+|---|---|---|
+| Typecheck | Exact 4 pre-existing errors in `billing/stripe-webhook.*.spec.ts` + `workflows/workflow-dry-run.service.spec.ts` (byte-identical to base) | PRE_EXISTING_IDENTICAL |
+| Lint (`lint:all`, whole backend) | 36 errors across 28 pre-existing files; **0** in any E3 file (E3 files pass `eslint` locally) | PRE_EXISTING_IDENTICAL |
+| Migration tests (PostgreSQL) | `prisma migrate deploy` P3018 baseline (E2 finding); E3 adds no migration | PRE_EXISTING_MIGRATION_BASELINE |
+| Backend integration tests | Fails at the `prisma migrate deploy` setup step (same P3018 chain) before any test runs | PRE_EXISTING_MIGRATION_BASELINE |
+| Security / dependency scan | Dependency scan (one workflow passed, one failed); E3 adds no dependency | ENVIRONMENT_SPECIFIC / PRE_EXISTING |
+
+The scoped Lint (`lint:vehicle-detail`), Prisma validate, backend unit tests,
+backend security tests, frontend component tests, and accessibility checks pass.
+`NEW_E3_FAILURE = 0`, `UNKNOWN = 0` on live CI.
+
 ## Production safety
 
 - `MERGE_PERFORMED = NO`
