@@ -1737,9 +1737,66 @@ model Organization {
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
   refreshTokens                          RefreshToken[]
+  evaluationsEntityReferences            EvaluationsEntityReference[]
 
   @@index([status])
   @@map("organizations")
+}
+
+/// SynqDrive Evaluations tenant-safe analytics foundation (E2).
+/// Normalized, organization-owned typed reference from an analytical object to a
+/// domain entity. Identity is (organizationId, ownerType, ownerId, entityType,
+/// entityId, relationType); it carries no PII of the referenced entity.
+enum EvaluationsReferenceOwnerType {
+  INSIGHT
+  ANALYTICS_GROUP
+}
+
+enum EvaluationsEntityType {
+  VEHICLE
+  BOOKING
+  CUSTOMER
+  DRIVER
+  USER
+  INVOICE
+  PAYMENT
+  TASK
+  SERVICE_CASE
+  DAMAGE
+  DOCUMENT
+  STATION
+}
+
+enum EvaluationsRelationType {
+  PRIMARY_SUBJECT
+  CONTRIBUTOR
+  RELATED
+  SOURCE
+  IMPACTED
+}
+
+model EvaluationsEntityReference {
+  id             String                        @id @default(uuid())
+  organizationId String                        @map("organization_id")
+  stationId      String?                       @map("station_id")
+  ownerType      EvaluationsReferenceOwnerType @map("owner_type")
+  ownerId        String                        @map("owner_id")
+  entityType     EvaluationsEntityType         @map("entity_type")
+  entityId       String                        @map("entity_id")
+  relationType   EvaluationsRelationType       @map("relation_type")
+  dedupeKey      String                        @map("dedupe_key")
+  createdAt      DateTime                      @default(now()) @map("created_at")
+  updatedAt      DateTime                      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, dedupeKey], map: "evaluations_entity_refs_org_dedupe_key")
+  @@index([organizationId])
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, stationId])
+  @@index([organizationId, ownerType, ownerId])
+  @@index([organizationId, createdAt])
+  @@map("evaluations_entity_references")
 }
 
 // ------------------------------------------------

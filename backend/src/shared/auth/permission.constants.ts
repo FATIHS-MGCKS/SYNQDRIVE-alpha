@@ -25,6 +25,7 @@ export const PERMISSION_MODULE_KEYS = [
   'fleet-connectivity',
   'data-analyse',
   'data-authorization',
+  'evaluations',
   'billing',
   'support',
   'payments',

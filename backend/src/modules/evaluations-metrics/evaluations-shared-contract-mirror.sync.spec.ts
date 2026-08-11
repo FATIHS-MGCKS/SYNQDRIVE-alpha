@@ -57,6 +57,21 @@ describe('evaluations shared contract backend build mirror', () => {
     ).toBe(readRepositoryFile('shared/time/platform-time.constants.ts'));
   });
 
+  it('keeps the analytics foundation contracts byte-identical', () => {
+    for (const fileName of [
+      'evaluations-analytics.contract.ts',
+      'evaluations-analytics.validator.ts',
+    ]) {
+      expect(
+        readRepositoryFile(
+          `backend/src/synq/evaluations-analytics/${fileName}`,
+        ),
+      ).toBe(
+        readRepositoryFile(`shared/evaluations-analytics/${fileName}`),
+      );
+    }
+  });
+
   it('keeps shared time independent from evaluations contracts', () => {
     expect(
       readRepositoryFile('backend/src/shared/time/iana-timezone.util.ts'),
