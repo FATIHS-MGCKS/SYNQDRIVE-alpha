@@ -222,4 +222,13 @@ describe('EvaluationsAnalyticsController — HTTP security integration', () => {
       .set(...auth(adminA))
       .expect(400);
   });
+
+  it('16. unknown query parameter is ignored (platform policy), not forwarded', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`${base}/org-a/evaluations/analytics/summary?evilField=1&__proto__=x`)
+      .set(...auth(adminA))
+      .expect(200);
+    expect(res.body.scope.organizationId).toBe('org-a');
+    expect(res.body.aggregateTotal).toBe(2);
+  });
 });
