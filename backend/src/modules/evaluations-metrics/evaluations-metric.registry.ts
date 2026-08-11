@@ -17,7 +17,9 @@ import { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions
 
 // 1.5.0 — E4 activated ops.fleet_utilization_pct (org-scope time-weighted
 // utilization; station scope degraded/fail-closed) as canonically served.
-export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.5.0';
+// 1.6.0 — E4.1C bumped ops.fleet_utilization_pct calculationVersion 1.0.0→2.0.0
+// (scheduled-occupancy, coverage-limited PARTIAL semantics).
+export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.6.0';
 export const EVALUATIONS_METRIC_TAXONOMY_VERSION = '1.0.0';
 
 const CALCULATION_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;

@@ -81,7 +81,7 @@ export function detectStrengths(signals: E4DetectionSignals): E4StrengthResult[]
       results.push({
         ruleId: 'HIGH_UTILIZATION',
         ruleVersion: STRENGTH_VERSION,
-        comparatorBasis: 'ORGANIZATION_TARGET',
+        comparatorBasis: 'PLATFORM_RULE_THRESHOLD',
         evidenceKind: 'OBSERVATION',
         dimension: 'FLEET',
         evidence: {
@@ -128,7 +128,7 @@ export function detectStrengths(signals: E4DetectionSignals): E4StrengthResult[]
       results.push({
         ruleId: 'LOW_CANCELLATION_RATE',
         ruleVersion: STRENGTH_VERSION,
-        comparatorBasis: 'ORGANIZATION_TARGET',
+        comparatorBasis: 'PLATFORM_RULE_THRESHOLD',
         evidenceKind: 'OBSERVATION',
         dimension: 'BOOKINGS',
         evidence: {
@@ -164,7 +164,7 @@ export function detectWeaknesses(signals: E4DetectionSignals): E4WeaknessResult[
         ruleId: 'UNDERUTILIZATION',
         ruleVersion: WEAKNESS_VERSION,
         severity: severityFromGap(gapPercent, 10, 25),
-        comparatorBasis: 'ORGANIZATION_TARGET',
+        comparatorBasis: 'PLATFORM_RULE_THRESHOLD',
         evidenceKind: 'OBSERVATION',
         dimension: 'FLEET',
         evidence: {
@@ -218,7 +218,7 @@ export function detectWeaknesses(signals: E4DetectionSignals): E4WeaknessResult[
         ruleId: 'LOW_MARGIN',
         ruleVersion: WEAKNESS_VERSION,
         severity: severityFromGap(gap, 5, 15),
-        comparatorBasis: 'ORGANIZATION_TARGET',
+        comparatorBasis: 'PLATFORM_RULE_THRESHOLD',
         evidenceKind: 'OBSERVATION',
         dimension: 'ORGANIZATION',
         evidence: {
@@ -241,7 +241,7 @@ export function detectWeaknesses(signals: E4DetectionSignals): E4WeaknessResult[
         ruleId: 'HIGH_CANCELLATION_RATE',
         ruleVersion: WEAKNESS_VERSION,
         severity: severityFromGap(gap, 5, 15),
-        comparatorBasis: 'ORGANIZATION_TARGET',
+        comparatorBasis: 'PLATFORM_RULE_THRESHOLD',
         evidenceKind: 'OBSERVATION',
         dimension: 'BOOKINGS',
         evidence: {

@@ -22,9 +22,15 @@ export const E4_CALCULATION_VERSIONS = {
   // currency/periodicity/effective-date) → section degrades to PARTIAL rather
   // than assigning the current reporting currency or a fake 30-day accrual.
   costModel: 'cost-model-e4-v2',
-  utilization: 'utilization-model-e4-v1',
-  strengthDetection: 'strength-detection-e4-v1',
-  weaknessDetection: 'weakness-detection-e4-v1',
+  // v2 (E4.1C): scheduled-occupancy semantics (booking start/end, not actual
+  // possession), blocked history unsupported (blockedMs unknown, never 0),
+  // approximate eligibility → the section is coverage-limited (PARTIAL), never
+  // a false-zero on UNAVAILABLE/ERROR.
+  utilization: 'utilization-model-e4-v2',
+  // v2 (E4.1C): platform-rule thresholds are labeled PLATFORM_RULE_THRESHOLD,
+  // never ORGANIZATION_TARGET (no tenant target config exists).
+  strengthDetection: 'strength-detection-e4-v2',
+  weaknessDetection: 'weakness-detection-e4-v2',
   driverInfluence: 'driver-influence-e4-v1',
 } as const;
 
@@ -81,22 +87,42 @@ export interface EvaluationsCostModelSection extends EvaluationsInsightsSectionM
 
 // ── Utilization ─────────────────────────────────────────────────────────────
 
+/**
+ * Utilization occupancy basis. On current main only SCHEDULED occupancy (booking
+ * start/end) can be reconstructed; ACTUAL possession would require authoritative
+ * handover/return timestamps and is not claimed.
+ */
+export type E4OccupancyBasis = 'SCHEDULED' | 'ACTUAL';
+
+/**
+ * All numeric quantities are `number | null`: a `null` means the quantity was NOT
+ * observed/calculated (UNAVAILABLE/ERROR, or — for `blockedMs` — no authoritative
+ * historical blocked source exists). A numeric `0` is only ever a real observed
+ * measurement, never a stand-in for "unknown".
+ */
 export interface EvaluationsUtilizationSection extends EvaluationsInsightsSectionMeta {
   readonly utilizationPercent: EvaluationsMetricResponse;
-  readonly capacityMs: number;
-  readonly rentedMs: number;
-  readonly maintenanceMs: number;
-  readonly blockedMs: number;
-  readonly netCapacityMs: number;
-  readonly eligibleVehicles: number;
-  readonly overlappingBookingPairs: number;
-  readonly telemetryOfflineVehicles: number;
+  readonly occupancyBasis: E4OccupancyBasis;
+  readonly capacityMs: number | null;
+  readonly rentedMs: number | null;
+  readonly maintenanceMs: number | null;
+  /** Always null on current main: no authoritative historical blocked source. */
+  readonly blockedMs: number | null;
+  readonly netCapacityMs: number | null;
+  readonly eligibleVehicles: number | null;
+  readonly overlappingBookingPairs: number | null;
+  readonly telemetryOfflineVehicles: number | null;
 }
 
 // ── Strength / Weakness ─────────────────────────────────────────────────────
 
 export type E4ComparatorBasis =
   | 'PREVIOUS_COMPARABLE_PERIOD'
+  // A deterministic platform-defined rule constant (NOT a tenant-configured
+  // target). Used for fixed thresholds like 70% high utilization.
+  | 'PLATFORM_RULE_THRESHOLD'
+  // Only when a real tenant-specific target configuration exists (none does on
+  // current main) — never used for platform constants.
   | 'ORGANIZATION_TARGET'
   | 'PEER_STATION_COHORT';
 

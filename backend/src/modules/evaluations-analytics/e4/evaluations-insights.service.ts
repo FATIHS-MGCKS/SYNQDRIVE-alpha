@@ -5,7 +5,7 @@ import {
 } from '@modules/evaluations-finance/evaluations-finance.service';
 import { requireEvaluationsMetricDefinition } from '@modules/evaluations-metrics';
 import {
-  buildAvailableEvaluationsMetric,
+  buildPartialEvaluationsMetric,
   buildUnavailableEvaluationsMetric,
 } from '@synq/evaluations-metrics/evaluations-metric-response.builder';
 import type {
@@ -312,25 +312,11 @@ export class EvaluationsInsightsService {
       period: scope.period,
       scope: this.echoScope(scope),
       generatedAt: generatedAt.toISOString(),
+      occupancyBasis: 'SCHEDULED' as const,
     };
-    const buildMetric = (
-      status: EvaluationsMetricStatus,
-      ratio: number | null,
-      reason: string | null,
-    ): EvaluationsMetricResponse => {
-      if (status === 'AVAILABLE' && ratio !== null) {
-        return buildAvailableEvaluationsMetric({
-          metricId,
-          metricKind: definition.metricKind,
-          calculationVersion: definition.calculationVersion,
-          period: scope.period,
-          generatedAt,
-          valueType: 'PERCENT',
-          unit: 'PERCENT',
-          value: ratio * 100,
-        });
-      }
-      return buildUnavailableEvaluationsMetric({
+
+    const unavailableMetric = (reason: string): EvaluationsMetricResponse =>
+      buildUnavailableEvaluationsMetric({
         metricId,
         metricKind: definition.metricKind,
         calculationVersion: definition.calculationVersion,
@@ -338,28 +324,33 @@ export class EvaluationsInsightsService {
         generatedAt,
         valueType: 'PERCENT',
         unit: 'PERCENT',
-        reason: reason ?? 'UTILIZATION_UNAVAILABLE',
+        reason,
       });
+
+    // A fully unknown (not observed) section: every analytical quantity is null,
+    // never a synthetic zero. `blockedMs` is null by construction (no source).
+    const unknownFields = {
+      capacityMs: null,
+      rentedMs: null,
+      maintenanceMs: null,
+      blockedMs: null,
+      netCapacityMs: null,
+      eligibleVehicles: null,
+      overlappingBookingPairs: null,
+      telemetryOfflineVehicles: null,
     };
 
     // Station-scoped historical utilization needs a continuous vehicle→station
     // history that does not exist on current main → fail closed (never apply the
-    // current station retroactively).
+    // current station retroactively, never emit false zeros).
     if (scope.stationScoped) {
       return {
         ...base,
         status: 'UNAVAILABLE',
         coverage: null,
         reason: 'STATION_UTILIZATION_HISTORY_UNAVAILABLE',
-        utilizationPercent: buildMetric('UNAVAILABLE', null, 'STATION_UTILIZATION_HISTORY_UNAVAILABLE'),
-        capacityMs: 0,
-        rentedMs: 0,
-        maintenanceMs: 0,
-        blockedMs: 0,
-        netCapacityMs: 0,
-        eligibleVehicles: 0,
-        overlappingBookingPairs: 0,
-        telemetryOfflineVehicles: 0,
+        utilizationPercent: unavailableMetric('STATION_UTILIZATION_HISTORY_UNAVAILABLE'),
+        ...unknownFields,
       };
     }
 
@@ -374,33 +365,74 @@ export class EvaluationsInsightsService {
     const hasDenominator = result.netCapacityMs > 0 && result.eligibleVehicles > 0;
     const coverageRatio =
       facts.vehicleCount > 0 ? result.eligibleVehicles / facts.vehicleCount : null;
-    const status: EvaluationsMetricStatus = !hasDenominator
-      ? 'UNAVAILABLE'
-      : coverageRatio !== null && coverageRatio < 1
-        ? 'PARTIAL'
-        : 'AVAILABLE';
-    const reason = hasDenominator ? null : 'UTILIZATION_DENOMINATOR_ZERO';
+
+    // Missing lineage that structurally limits this metric on current main:
+    // scheduled occupancy is not actual possession, vehicle eligibility history
+    // is not tracked, and there is no authoritative blocked-interval source.
+    const missingSources = [
+      'SCHEDULED_OCCUPANCY_NOT_ACTUAL',
+      'VEHICLE_ELIGIBILITY_HISTORY',
+      'BLOCKED_HISTORY',
+    ];
+
+    if (!hasDenominator) {
+      // No net capacity to divide by → no percentage can be observed.
+      return {
+        ...base,
+        status: 'UNAVAILABLE',
+        coverage: {
+          expectedRecords: facts.vehicleCount,
+          availableRecords: result.eligibleVehicles,
+          excludedRecords: facts.vehicleCount - result.eligibleVehicles,
+          ratio: coverageRatio,
+          missingSources,
+        },
+        reason: 'UTILIZATION_DENOMINATOR_ZERO',
+        utilizationPercent: unavailableMetric('UTILIZATION_DENOMINATOR_ZERO'),
+        // These were genuinely observed from real intervals (real measurements).
+        capacityMs: result.capacityMs,
+        rentedMs: result.rentedMs,
+        maintenanceMs: result.maintenanceMs,
+        blockedMs: null, // unknown: no authoritative blocked source
+        netCapacityMs: result.netCapacityMs,
+        eligibleVehicles: result.eligibleVehicles,
+        overlappingBookingPairs: result.overlappingBookingPairs,
+        telemetryOfflineVehicles: facts.telemetryOfflineVehicles,
+      };
+    }
+
+    // The metric is always coverage-limited (scheduled occupancy, approximate
+    // eligibility, unknown blocked time) → PARTIAL, never AVAILABLE. E1 PARTIAL
+    // permits a value alongside coverage.
+    const coverage = {
+      expectedRecords: facts.vehicleCount,
+      availableRecords: result.eligibleVehicles,
+      excludedRecords: facts.vehicleCount - result.eligibleVehicles,
+      ratio: coverageRatio,
+      missingSources,
+    };
+    const utilizationPercent = buildPartialEvaluationsMetric({
+      metricId,
+      metricKind: definition.metricKind,
+      calculationVersion: definition.calculationVersion,
+      period: scope.period,
+      generatedAt,
+      valueType: 'PERCENT',
+      unit: 'PERCENT',
+      value: (result.utilizationRatio as number) * 100,
+      dataCoverage: coverage,
+    });
 
     return {
       ...base,
-      status,
-      coverage: {
-        expectedRecords: facts.vehicleCount,
-        availableRecords: result.eligibleVehicles,
-        excludedRecords: facts.vehicleCount - result.eligibleVehicles,
-        ratio: coverageRatio,
-        missingSources: [],
-      },
-      reason,
-      utilizationPercent: buildMetric(
-        status === 'UNAVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE',
-        hasDenominator ? result.utilizationRatio : null,
-        reason,
-      ),
+      status: 'PARTIAL',
+      coverage,
+      reason: 'COVERAGE_LIMITED_SCHEDULED_OCCUPANCY',
+      utilizationPercent,
       capacityMs: result.capacityMs,
       rentedMs: result.rentedMs,
       maintenanceMs: result.maintenanceMs,
-      blockedMs: result.blockedMs,
+      blockedMs: null, // unknown: no authoritative blocked source (never synthetic 0)
       netCapacityMs: result.netCapacityMs,
       eligibleVehicles: result.eligibleVehicles,
       overlappingBookingPairs: result.overlappingBookingPairs,
@@ -522,12 +554,13 @@ export class EvaluationsInsightsService {
 
     const financeSignal = this.extractFinanceSignal(finance.metrics);
     const utilizationSignal =
-      utilization.status === 'AVAILABLE' || utilization.status === 'PARTIAL'
+      (utilization.status === 'AVAILABLE' || utilization.status === 'PARTIAL') &&
+      utilization.netCapacityMs !== null &&
+      utilization.netCapacityMs > 0 &&
+      utilization.rentedMs !== null &&
+      utilization.eligibleVehicles !== null
         ? {
-            ratio:
-              utilization.netCapacityMs > 0
-                ? utilization.rentedMs / utilization.netCapacityMs
-                : null,
+            ratio: utilization.rentedMs / utilization.netCapacityMs,
             previousRatio: null,
             eligibleVehicles: utilization.eligibleVehicles,
             coverageRatio: utilization.coverage?.ratio ?? null,
@@ -696,6 +729,7 @@ export class EvaluationsInsightsService {
     return {
       ...this.sectionBase(scope, generatedAt, E4_CALCULATION_VERSIONS.utilization),
       status: 'ERROR',
+      occupancyBasis: 'SCHEDULED',
       coverage: null,
       reason: 'UTILIZATION_SECTION_ERROR',
       utilizationPercent: buildUnavailableEvaluationsMetric({
@@ -708,14 +742,15 @@ export class EvaluationsInsightsService {
         unit: 'PERCENT',
         reason: 'UTILIZATION_SECTION_ERROR',
       }),
-      capacityMs: 0,
-      rentedMs: 0,
-      maintenanceMs: 0,
-      blockedMs: 0,
-      netCapacityMs: 0,
-      eligibleVehicles: 0,
-      overlappingBookingPairs: 0,
-      telemetryOfflineVehicles: 0,
+      // ERROR ≠ empty fleet: nothing was observed → all null, never synthetic 0.
+      capacityMs: null,
+      rentedMs: null,
+      maintenanceMs: null,
+      blockedMs: null,
+      netCapacityMs: null,
+      eligibleVehicles: null,
+      overlappingBookingPairs: null,
+      telemetryOfflineVehicles: null,
     };
   }
 
