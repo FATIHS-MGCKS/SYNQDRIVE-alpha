@@ -458,3 +458,43 @@ finance surface; `fmtEUR` remains only in EUR-scoped legacy degraded surfaces
   as-of receivables remain fail-closed.
 - Evidence: `phase3-e3-final-cockpit-false-zero-currency-correction-2026-08.md`,
   updated UI reconciliation matrix; E3.3 report claims marked `SUPERSEDED_BY_E3_4`.
+
+---
+
+# E3.5 — Final Financial Risk Unit Safety & Render Acceptance (2026-08-11)
+
+Final closure pass (same branch/PR #1022): remove unsafe financial-risk unit
+guessing from the finance surface and add real rendered acceptance coverage. No new
+risk engine, no backend runtime change, no E4.
+
+## Unit-guess removal
+
+Deleted `financialImpactEur()` (magnitude-based `cents > 1000 ? /100 : as-is`,
+mixing `financialImpactCents`/`lostRevenueEur`). No code infers a monetary unit from
+magnitude. `FINANCIAL_UNIT_GUESS_COUNT = 0`.
+
+## Financial-risk suppression
+
+The InsightsCockpit monetary "Finanzrisiko (geschätzt)" `≈ X €` card is replaced by
+a non-monetary "Umsatzrisiken (Hinweise)" count; the per-insight "≈ X € Risiko"
+badge is removed. No noncanonical/guessed money is presented as finance truth.
+
+## Render acceptance
+
+Added real rendered tests (happy-dom + react-dom/client):
+`InsightsCockpit.render.test.tsx` (UNAVAILABLE→no false 0, JPY, KWD, no € risk card)
+and `FinancialInsightsView.render.test.tsx` (invoice-fail/finance-success,
+finance-fail/invoice-success, USD currency, station-scoped unavailable with no org
+fallback / no `0 €`). Previous formatter-only "acceptance" claims are superseded.
+
+## Residual limitations (E3.5)
+
+- Insight financial-impact fields lack an explicit unit/currency contract → not
+  presented as money (surfaced as non-monetary counts). A canonical insight
+  money contract, if ever needed, belongs to a later package.
+- Legacy daily/top-N/MoM/avg-invoice remain non-canonical presentation (labeled
+  Limited); per-station finance attribution, ledger net cashflow with refunds, and
+  historical as-of receivables remain fail-closed.
+- Evidence: `phase3-e3-insights-financial-risk-unit-matrix-2026-08.csv`,
+  `phase3-e3-final-risk-unit-render-acceptance-2026-08.md`; E3.4 report claims marked
+  `SUPERSEDED_BY_E3_5`.

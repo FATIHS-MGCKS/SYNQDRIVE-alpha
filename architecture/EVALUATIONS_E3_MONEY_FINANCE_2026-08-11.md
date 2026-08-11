@@ -164,3 +164,25 @@ implementation report; E3.2 report claims marked `SUPERSEDED_BY_E3_3`.
 Evidence (E3.4): `phase3-e3-final-cockpit-false-zero-currency-correction-2026-08.md`,
 updated UI reconciliation matrix and implementation report; E3.3 report claims marked
 `SUPERSEDED_BY_E3_4`.
+
+## E3.5 — Final Financial Risk Unit Safety & Render Acceptance
+
+### Changes (E3.5)
+
+- Removed the `financialImpactEur()` magnitude-based unit-guessing heuristic.
+- InsightsCockpit: dropped the monetary "Finanzrisiko (geschätzt)" € card (now a
+  non-monetary revenue-risk count) and the per-insight "≈ X € Risiko" badge.
+- Added real rendered acceptance tests for InsightsCockpit and FinancialInsightsView
+  (false-zero, JPY/KWD, error isolation, USD, station-scoped unavailable).
+
+### Architektur (E3.5)
+
+- Insights financial-impact heuristics are no longer presented as money anywhere on
+  the finance surface; only canonical backend Money (via the shared status-aware
+  formatter) is shown as finance value. Insights risk is a non-monetary signal.
+- Rendered acceptance tests lock the E3.4/E3.5 presentation contract (no false zero,
+  currency-correct, error isolation, station fail-closed).
+
+Evidence (E3.5): `phase3-e3-insights-financial-risk-unit-matrix-2026-08.csv`,
+`phase3-e3-final-risk-unit-render-acceptance-2026-08.md`; updated UI reconciliation
+matrix and implementation report; E3.4 report claims marked `SUPERSEDED_BY_E3_5`.

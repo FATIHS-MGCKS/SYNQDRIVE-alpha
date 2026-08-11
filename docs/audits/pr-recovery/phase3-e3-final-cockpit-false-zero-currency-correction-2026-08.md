@@ -1,5 +1,23 @@
 # Phase 3 E3.4 — Final Cockpit, False-Zero & Currency Presentation Correction
 
+> **Independent E3.4 residual audit (corrected in E3.5, 2026-08-11).** The audit
+> found residuals E3.4 left open:
+> - `financialImpactEur()` inferred a monetary unit from a value's magnitude
+>   (`cents > 1000 ? /100 : as-is`) mixing `financialImpactCents`/`lostRevenueEur`
+>   — unsafe unit guessing with no explicit currency.
+> - The InsightsCockpit "Finanzrisiko (geschätzt)" `≈ X €` card and the per-insight
+>   "≈ X € Risiko" badge presented that guessed amount as money.
+> - E3.4 lacked real rendered component/full-view acceptance tests (only formatter
+>   unit tests), so the "Cockpit/Full-Page Acceptance" characterization overclaimed.
+>
+> These are corrected in E3.5 (heuristic removed; monetary risk suppressed; real
+> rendered InsightsCockpit + FinancialInsightsView tests added). The affected E3.4
+> claims (InsightsCockpit money model for the risk card, full-page acceptance) are
+> marked `SUPERSEDED_BY_E3_5`. Evidence:
+> `phase3-e3-final-risk-unit-render-acceptance-2026-08.md`. The E3.4 Open
+> Receivables status-aware money model, false-zero, currency, error-isolation and
+> station-reason claims remain valid.
+
 ## 1. Revision identity
 
 - `CURRENT_MAIN_SHA` = `6acdb24eb84986b25789c01fb544645231c53dc5` (no drift)
