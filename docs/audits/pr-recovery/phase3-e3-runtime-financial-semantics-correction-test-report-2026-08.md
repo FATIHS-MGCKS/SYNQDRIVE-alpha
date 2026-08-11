@@ -69,14 +69,25 @@ tire-detector failures (byte-identical to base, unrelated to E3).
 | fin.cashflow_net_mtd | planned | no (needs refund ledger) | n/a | n/a | yes (planned) |
 | fin.reserved_revenue_mtd | prepared | client presentation | n/a | client selector | yes (prepared) |
 
-## A/B baseline classification (unchanged from E3)
+## Live CI classification (PR #1022 head `aebfcbc1`)
 
-- Backend typecheck errors (billing/workflow specs) — PRE_EXISTING_IDENTICAL.
-- Migration tests / backend integration `prisma migrate deploy` P3018 —
-  PRE_EXISTING_MIGRATION_BASELINE.
-- Lint (`lint:all`) — PRE_EXISTING_IDENTICAL (0 E3 files).
-- tire-critical.detector.spec — PRE_EXISTING_IDENTICAL.
-- `NEW_E3_FAILURE = 0`, `UNKNOWN = 0`.
+Two pre-existing CI workflows run on the head. Red checks:
+
+| Check | Root cause | Classification |
+|---|---|---|
+| Typecheck | 4 pre-existing errors in `billing/stripe-webhook.*.spec.ts` + `workflows/workflow-dry-run.service.spec.ts` (byte-identical to base) | PRE_EXISTING_IDENTICAL |
+| Lint (`lint:all`) | 36 errors in 28 pre-existing files; 0 E3 files | PRE_EXISTING_IDENTICAL |
+| Migration tests (PostgreSQL) | `prisma migrate deploy` P3018 baseline; no E3 migration | PRE_EXISTING_MIGRATION_BASELINE |
+| Backend integration tests | fails at `prisma migrate deploy` setup (same P3018) | PRE_EXISTING_MIGRATION_BASELINE |
+| Security / dependency scan | dependency scan (one workflow passes); E3 adds no dependency | ENVIRONMENT_SPECIFIC |
+| Playwright E2E (Vehicle Detail) | `vehicle-detail-flow.spec.ts #1` visibility timeout; **fails identically on all three branch heads** (`fec6eb3d`, `c4942003` pre-E3.1, `aebfcbc1`); E3.1 touches no Vehicle Detail/Fleet source and `financial-insights.logic`/`FinancialInsightsView` are not imported by those pages | PRE_EXISTING / ENVIRONMENT_SPECIFIC (flaky E2E) |
+
+Passing: backend unit tests, backend security tests, frontend component tests,
+Prisma validate, Playwright E2E (Legal/general), accessibility, production build,
+scoped Lint (`lint:vehicle-detail`).
+
+`NEW_E3_FAILURE = 0`, `UNKNOWN = 0`. `tire-critical.detector.spec` (in the local
+`test:evaluations` run) is also PRE_EXISTING_IDENTICAL (byte-identical to base).
 
 ## Safety
 
