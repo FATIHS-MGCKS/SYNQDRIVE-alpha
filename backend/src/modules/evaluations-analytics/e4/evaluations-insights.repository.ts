@@ -15,8 +15,6 @@ export interface E4SourceWindow {
   readonly endExclusive: Date;
 }
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-
 export interface E4UtilizationVehicleFacts {
   readonly vehicleId: string;
   readonly eligibility: EvaluationsInterval;
@@ -145,108 +143,56 @@ export class EvaluationsInsightsRepository {
   }
 
   /**
-   * Cost events across all E4 categories, each carrying an explicit currency and
-   * a real-world economic key. Invoice↔damage duplicates share the document
-   * extraction key; service-case↔invoice duplicates share the linked invoice key
-   * (both counted once downstream). Recorded costs without a reporting currency
-   * are omitted rather than assigned an implicit currency.
+   * Authoritative cost events (E4.1B).
+   *
+   * Only `OrgInvoice` (incoming expense) is an authoritative Money cost source
+   * because it carries an explicit per-row `currency`. Each event carries that
+   * concrete currency and a real-world economic key (`extraction:*` when the
+   * invoice shares a document extraction, else `invoice:*`).
+   *
+   * ServiceCase / VehicleDamage / per-vehicle leasing-insurance-tax are NOT
+   * returned here: their currency (and, for fixed costs, periodicity + effective-
+   * date) cannot be proven on current main, so they must never be denominated in
+   * the organization's *current* reporting currency and folded into an
+   * authoritative total. They are reported separately by
+   * `loadUnsupportedCostSources` so the section degrades to PARTIAL/UNAVAILABLE
+   * with an explicit reason instead of silently appearing complete.
    */
   async loadCostEvents(
     organizationId: string,
     window: E4SourceWindow,
-    reportingCurrency: string | null,
   ): Promise<E4CostEventInput[]> {
-    const [invoices, serviceCases, damages, orgTaskLinks] = await Promise.all([
-      this.prisma.orgInvoice.findMany({
-        where: {
-          organizationId,
-          OR: [
-            { invoiceDate: { gte: window.start, lt: window.endExclusive } },
-            { createdAt: { gte: window.start, lt: window.endExclusive } },
-          ],
-        },
-        select: {
-          id: true,
-          type: true,
-          status: true,
-          currency: true,
-          totalCents: true,
-          paidCents: true,
-          outstandingCents: true,
-          invoiceDate: true,
-          issuedAt: true,
-          dueDate: true,
-          paidAt: true,
-          createdAt: true,
-          documentExtractionId: true,
-        },
-      }),
-      this.prisma.serviceCase.findMany({
-        where: {
-          organizationId,
-          category: { in: ['REPAIR', 'DIAGNOSTIC'] },
-          status: 'COMPLETED',
-          actualCostCents: { not: null },
-          completedAt: { gte: window.start, lt: window.endExclusive },
-          // ServiceCase exposes only a `vehicleId` scalar (no relation object),
-          // so tenant safety rests on its own `organizationId` plus the vehicle
-          // map-join downstream (a foreign vehicleId is dropped, never attributed).
-        },
-        select: { id: true, actualCostCents: true, completedAt: true },
-      }),
-      this.prisma.vehicleDamage.findMany({
-        where: {
-          organizationId,
-          status: 'REPAIRED',
-          repairCostCents: { not: null },
-          repairedAt: { gte: window.start, lt: window.endExclusive },
-          // Nested tenant proof: the linked vehicle must be same-tenant.
-          vehicle: { is: { organizationId } },
-        },
-        select: {
-          id: true,
-          repairCostCents: true,
-          repairedAt: true,
-          documentExtractionId: true,
-        },
-      }),
-      this.prisma.orgTask.findMany({
-        where: {
-          organizationId,
-          serviceCaseId: { not: null },
-          invoiceId: { not: null },
-          // E4.1A: the outer task tenant is NOT sufficient. The linked invoice
-          // must independently belong to the same organization before its
-          // identity may drive cost dedup/suppression (nested relational
-          // predicate — no per-row validation query).
-          invoice: { is: { organizationId } },
-        },
-        select: {
-          serviceCaseId: true,
-          invoice: { select: { id: true, organizationId: true, documentExtractionId: true } },
-        },
-      }),
-    ]);
+    const invoices = await this.prisma.orgInvoice.findMany({
+      where: {
+        organizationId,
+        OR: [
+          { invoiceDate: { gte: window.start, lt: window.endExclusive } },
+          { createdAt: { gte: window.start, lt: window.endExclusive } },
+        ],
+      },
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        currency: true,
+        totalCents: true,
+        paidCents: true,
+        outstandingCents: true,
+        invoiceDate: true,
+        issuedAt: true,
+        dueDate: true,
+        paidAt: true,
+        createdAt: true,
+        documentExtractionId: true,
+      },
+    });
 
     const invoiceEconomicKey = (
       id: string,
       documentExtractionId: string | null,
     ): string => (documentExtractionId ? `extraction:${documentExtractionId}` : `invoice:${id}`);
 
-    const serviceCaseInvoiceKey = new Map<string, string>();
-    for (const link of orgTaskLinks) {
-      if (!link.serviceCaseId || !link.invoice) continue;
-      // Belt-and-braces: ignore any linked invoice that is not same-tenant so a
-      // foreign invoice can never suppress or alter legitimate cost facts.
-      if (link.invoice.organizationId !== organizationId) continue;
-      serviceCaseInvoiceKey.set(
-        link.serviceCaseId,
-        invoiceEconomicKey(link.invoice.id, link.invoice.documentExtractionId),
-      );
-    }
-
     const events: E4CostEventInput[] = [];
-
     for (const invoice of invoices) {
       const fact = {
         id: invoice.id,
@@ -283,86 +229,63 @@ export class EvaluationsInsightsRepository {
       });
     }
 
-    if (reportingCurrency) {
-      for (const serviceCase of serviceCases) {
-        if (serviceCase.actualCostCents === null || !serviceCase.completedAt) continue;
-        events.push({
-          category: 'UNPLANNED_MAINTENANCE',
-          nature: 'ACTUAL',
-          amountMinor: serviceCase.actualCostCents,
-          currency: reportingCurrency,
-          economicKey:
-            serviceCaseInvoiceKey.get(serviceCase.id) ?? `servicecase:${serviceCase.id}`,
-          businessAtMs: serviceCase.completedAt.getTime(),
-        });
-      }
-      for (const damage of damages) {
-        if (damage.repairCostCents === null || !damage.repairedAt) continue;
-        events.push({
-          category: 'DAMAGE_REPAIR',
-          nature: 'ACTUAL',
-          amountMinor: damage.repairCostCents,
-          currency: reportingCurrency,
-          economicKey: damage.documentExtractionId
-            ? `extraction:${damage.documentExtractionId}`
-            : `damage:${damage.id}`,
-          businessAtMs: damage.repairedAt.getTime(),
-        });
-      }
-    }
-
     return events;
   }
 
   /**
-   * Estimated fixed costs from explicit per-vehicle tenant configuration
-   * (leasing/insurance/tax). Pro-rated by the real elapsed period ms (DST-safe).
-   * Requires a reporting currency; without it no estimate is fabricated.
+   * Counts of cost-source records that EXIST in the period but cannot be turned
+   * into an authoritative Money total on current main (no proven currency and,
+   * for fixed costs, no proven periodicity / effective-date). These drive the
+   * cost section to PARTIAL with explicit unsupported reasons — they are never
+   * fabricated into a total or a false zero. All queries are tenant-scoped; the
+   * damage query also uses a nested vehicle tenant predicate (E4.1A).
    */
-  async loadFixedCostEvents(
+  async loadUnsupportedCostSources(
     organizationId: string,
     window: E4SourceWindow,
-    reportingCurrency: string | null,
-  ): Promise<{ events: E4CostEventInput[]; vehiclesWithConfig: number; vehicleCount: number }> {
-    const vehicles = await this.prisma.vehicle.findMany({
-      where: { organizationId, createdAt: { lt: window.endExclusive } },
-      select: {
-        id: true,
-        leasingRateCents: true,
-        insuranceCostCents: true,
-        taxCostCents: true,
-      },
-    });
+  ): Promise<{
+    serviceCaseCount: number;
+    damageCount: number;
+    fixedConfigVehicleCount: number;
+    vehicleCount: number;
+  }> {
+    const [serviceCaseCount, damageCount, fixedConfigVehicleCount, vehicleCount] =
+      await Promise.all([
+        this.prisma.serviceCase.count({
+          where: {
+            organizationId,
+            category: { in: ['REPAIR', 'DIAGNOSTIC'] },
+            status: 'COMPLETED',
+            actualCostCents: { not: null },
+            completedAt: { gte: window.start, lt: window.endExclusive },
+          },
+        }),
+        this.prisma.vehicleDamage.count({
+          where: {
+            organizationId,
+            status: 'REPAIRED',
+            repairCostCents: { not: null },
+            repairedAt: { gte: window.start, lt: window.endExclusive },
+            vehicle: { is: { organizationId } },
+          },
+        }),
+        this.prisma.vehicle.count({
+          where: {
+            organizationId,
+            createdAt: { lt: window.endExclusive },
+            OR: [
+              { leasingRateCents: { not: null } },
+              { insuranceCostCents: { not: null } },
+              { taxCostCents: { not: null } },
+            ],
+          },
+        }),
+        this.prisma.vehicle.count({
+          where: { organizationId, createdAt: { lt: window.endExclusive } },
+        }),
+      ]);
 
-    const periodMs = window.endExclusive.getTime() - window.start.getTime();
-    const proRate = periodMs / THIRTY_DAYS_MS;
-    const events: E4CostEventInput[] = [];
-    let vehiclesWithConfig = 0;
-
-    if (reportingCurrency) {
-      for (const vehicle of vehicles) {
-        const monthlyMinor =
-          (vehicle.leasingRateCents ?? 0) +
-          (vehicle.insuranceCostCents ?? 0) +
-          (vehicle.taxCostCents ?? 0);
-        const hasConfig =
-          vehicle.leasingRateCents !== null ||
-          vehicle.insuranceCostCents !== null ||
-          vehicle.taxCostCents !== null;
-        if (!hasConfig || monthlyMinor <= 0) continue;
-        vehiclesWithConfig += 1;
-        events.push({
-          category: 'ESTIMATED_FIXED_COSTS',
-          nature: 'ESTIMATED',
-          amountMinor: Math.round(monthlyMinor * proRate),
-          currency: reportingCurrency,
-          economicKey: `vehicle-fixed:${vehicle.id}`,
-          businessAtMs: window.start.getTime(),
-        });
-      }
-    }
-
-    return { events, vehiclesWithConfig, vehicleCount: vehicles.length };
+    return { serviceCaseCount, damageCount, fixedConfigVehicleCount, vehicleCount };
   }
 
   async loadBookingOutcomes(

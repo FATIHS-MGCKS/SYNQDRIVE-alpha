@@ -175,36 +175,18 @@ export class EvaluationsInsightsService {
 
     const window = toWindow(scope);
     const reportingCurrency = await this.repository.resolveReportingCurrency(scope.organizationId);
-    const [costEvents, fixed] = await Promise.all([
-      this.repository.loadCostEvents(scope.organizationId, window, reportingCurrency),
-      this.repository.loadFixedCostEvents(scope.organizationId, window, reportingCurrency),
+    const [costEvents, unsupported] = await Promise.all([
+      this.repository.loadCostEvents(scope.organizationId, window),
+      this.repository.loadUnsupportedCostSources(scope.organizationId, window),
     ]);
 
     const aggregation = aggregateCostEvents(
-      [...costEvents, ...fixed.events],
+      costEvents,
       Date.parse(scope.period.start),
       Date.parse(scope.period.endExclusive),
     );
 
-    if (aggregation.categories.length === 0) {
-      return {
-        ...base,
-        status: 'UNAVAILABLE',
-        coverage: {
-          expectedRecords: fixed.vehicleCount,
-          availableRecords: 0,
-          excludedRecords: null,
-          ratio: null,
-          missingSources: reportingCurrency ? ['NO_COST_SOURCE'] : ['REPORTING_CURRENCY'],
-        },
-        reason: reportingCurrency ? 'NO_COST_SOURCE' : 'REPORTING_CURRENCY_UNAVAILABLE',
-        categories: [],
-        totalsByCurrency: [],
-        reportingCurrency,
-        mixedCurrency: false,
-      };
-    }
-
+    // Authoritative categories (invoices only — explicit per-row currency).
     const categories: E4CostCategoryResult[] = aggregation.categories.map((category) => ({
       category: category.category,
       nature: category.nature,
@@ -216,28 +198,103 @@ export class EvaluationsInsightsService {
       reason: null,
     }));
 
+    // Structurally unsupported categories: source records exist in the period but
+    // lack proven currency (ServiceCase/Damage) or proven periodicity + effective-
+    // date (fixed costs). They are reported as UNAVAILABLE with an explicit
+    // reason — never denominated in the current reporting currency, never accrued
+    // with a fake 30-day month, never a false zero.
+    const unsupportedCategories: E4CostCategoryResult[] = [];
+    const addUnsupported = (
+      category: E4CostCategoryResult['category'],
+      nature: E4CostCategoryResult['nature'],
+      count: number,
+      reason: string,
+    ) => {
+      if (count <= 0) return;
+      unsupportedCategories.push({
+        category,
+        nature,
+        status: 'UNAVAILABLE',
+        totalsByCurrency: [],
+        eventCount: count,
+        formula: COST_FORMULAE[category] ?? '',
+        sources: COST_SOURCES[category] ?? [],
+        reason,
+      });
+    };
+    addUnsupported(
+      'UNPLANNED_MAINTENANCE',
+      'ACTUAL',
+      unsupported.serviceCaseCount,
+      'SERVICECASE_COST_CURRENCY_UNPROVEN',
+    );
+    addUnsupported(
+      'DAMAGE_REPAIR',
+      'ACTUAL',
+      unsupported.damageCount,
+      'DAMAGE_COST_CURRENCY_UNPROVEN',
+    );
+    addUnsupported(
+      'ESTIMATED_FIXED_COSTS',
+      'ESTIMATED',
+      unsupported.fixedConfigVehicleCount,
+      'FIXED_COST_PERIODICITY_AND_HISTORY_UNPROVEN',
+    );
+
+    const allCategories = [...categories, ...unsupportedCategories];
+    if (allCategories.length === 0) {
+      return {
+        ...base,
+        status: 'UNAVAILABLE',
+        coverage: {
+          expectedRecords: unsupported.vehicleCount,
+          availableRecords: 0,
+          excludedRecords: null,
+          ratio: null,
+          missingSources: ['NO_COST_SOURCE'],
+        },
+        reason: 'NO_COST_SOURCE',
+        categories: [],
+        totalsByCurrency: [],
+        reportingCurrency,
+        mixedCurrency: false,
+      };
+    }
+
     const mixedCurrency = aggregation.currencies.length > 1;
-    // Recorded costs are omitted when the reporting currency is unknown → PARTIAL.
-    const recordedOmitted = !reportingCurrency;
-    const status: EvaluationsMetricStatus =
-      mixedCurrency || recordedOmitted ? 'PARTIAL' : 'AVAILABLE';
+    const hasUnsupported = unsupportedCategories.length > 0;
+    const hasAuthoritative = categories.length > 0;
+
+    let status: EvaluationsMetricStatus;
+    let reason: string | null;
+    if (!hasAuthoritative) {
+      // Only unsupported sources exist → no authoritative Money can be produced.
+      status = 'UNAVAILABLE';
+      reason = 'COST_SOURCES_UNSUPPORTED';
+    } else if (mixedCurrency) {
+      status = 'PARTIAL';
+      reason = 'MIXED_CURRENCY_SEGMENTED';
+    } else if (hasUnsupported) {
+      status = 'PARTIAL';
+      reason = 'COST_MODEL_INCOMPLETE_UNSUPPORTED_CATEGORIES';
+    } else {
+      status = 'AVAILABLE';
+      reason = null;
+    }
 
     return {
       ...base,
       status,
       coverage: {
-        expectedRecords: fixed.vehicleCount,
-        availableRecords: fixed.vehiclesWithConfig,
-        excludedRecords: null,
+        expectedRecords: unsupported.vehicleCount,
+        availableRecords: aggregation.categories.reduce((sum, c) => sum + c.eventCount, 0),
+        excludedRecords:
+          unsupported.serviceCaseCount + unsupported.damageCount + unsupported.fixedConfigVehicleCount,
         ratio: null,
-        missingSources: recordedOmitted ? ['REPORTING_CURRENCY'] : [],
+        missingSources: unsupportedCategories.map((c) => c.reason as string),
       },
-      reason: mixedCurrency
-        ? 'MIXED_CURRENCY_SEGMENTED'
-        : recordedOmitted
-          ? 'REPORTING_CURRENCY_UNAVAILABLE'
-          : null,
-      categories,
+      reason,
+      categories: allCategories,
       totalsByCurrency: aggregation.totalsByCurrency,
       reportingCurrency,
       mixedCurrency,

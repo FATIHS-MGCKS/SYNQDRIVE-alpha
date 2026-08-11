@@ -17,7 +17,11 @@ import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluati
 /** Stable E4 calculation versions. Historical *-v1 identifiers are evidence only. */
 export const E4_CALCULATION_VERSIONS = {
   summary: 'analytics-summary-e4-v1',
-  costModel: 'cost-model-e4-v1',
+  // v2 (E4.1B): authoritative source set narrowed to explicit-currency invoices;
+  // recorded (ServiceCase/Damage) + fixed costs are unsupported (unproven
+  // currency/periodicity/effective-date) → section degrades to PARTIAL rather
+  // than assigning the current reporting currency or a fake 30-day accrual.
+  costModel: 'cost-model-e4-v2',
   utilization: 'utilization-model-e4-v1',
   strengthDetection: 'strength-detection-e4-v1',
   weaknessDetection: 'weakness-detection-e4-v1',
