@@ -40,12 +40,25 @@ const SECTION_IDS = {
  * rendered against one synthetic demo tenant (frontend/e2e/landing-demo-tenant.ts).
  */
 const MEDIA = {
-  hero: { file: 'landing-hero-operations', width: 2200, height: 978 },
-  unified: { file: 'landing-unified-operations', width: 1900, height: 1516 },
-  vehicle: { file: 'landing-connected-vehicle', width: 980, height: 1296 },
-  ai: { file: 'landing-ai-orchestration', width: 1900, height: 1237 },
-  workflow: { file: 'landing-workflow-automation', width: 1900, height: 1205 },
-  communication: { file: 'landing-communications', width: 1900, height: 1372 },
+  hero: { file: 'landing-hero-operations', width: 1700, height: 1192 },
+  unified: {
+    file: 'landing-unified-operations',
+    width: 1968,
+    height: 1458,
+    // The fleet plan and the workflow list are the two wide captures. Below
+    // 760px they switch to a tighter crop of the same screenshot, because
+    // scaling the full width into a phone column makes the labels unreadable.
+    mobile: { file: 'landing-unified-operations-mobile', width: 956, height: 724 },
+  },
+  vehicle: { file: 'landing-connected-vehicle', width: 1284, height: 992 },
+  ai: { file: 'landing-ai-orchestration', width: 1368, height: 1444 },
+  workflow: {
+    file: 'landing-workflow-automation',
+    width: 1900,
+    height: 1205,
+    mobile: { file: 'landing-workflow-automation-mobile', width: 904, height: 808 },
+  },
+  communication: { file: 'landing-communications', width: 1390, height: 1310 },
 };
 
 const en = {
@@ -89,7 +102,12 @@ const en = {
     secondary: 'See the platform',
     media: MEDIA.hero,
     mediaAlt:
-      'SynqDrive operations dashboard showing fleet readiness, today\u2019s rentals, revenue, open receivables and prioritised notifications.',
+      'SynqDrive operations dashboard showing fleet readiness, today\u2019s rentals, revenue and open receivables for one station group.',
+    proof: [
+      'Rental, fleet and billing in one data model',
+      'Connected vehicle data on the operational record',
+      'Automation and AI with human approval',
+    ],
   },
   unified: {
     id: SECTION_IDS.platform,
@@ -303,7 +321,12 @@ const de = {
     secondary: 'Plattform entdecken',
     media: MEDIA.hero,
     mediaAlt:
-      'SynqDrive Betriebsübersicht mit Fahrzeugverfügbarkeit, laufenden Vermietungen, Umsatz, offenen Forderungen und priorisierten Hinweisen.',
+      'SynqDrive Betriebsübersicht mit Fahrzeugverfügbarkeit, laufenden Vermietungen, Umsatz und offenen Forderungen für eine Stationsgruppe.',
+    proof: [
+      'Vermietung, Flotte und Abrechnung in einem Datenmodell',
+      'Vernetzte Fahrzeugdaten am operativen Datensatz',
+      'Automatisierung und KI mit menschlicher Freigabe',
+    ],
   },
   unified: {
     id: SECTION_IDS.platform,

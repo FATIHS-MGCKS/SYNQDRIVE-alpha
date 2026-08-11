@@ -563,14 +563,16 @@ svg {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
   align-items: center;
   gap: 56px;
   padding-block: 96px 120px;
 }
 
+/* Upper bound is set by the German headline: "Betriebssystem" has to sit on one
+   line inside the copy column at the widest layout. */
 .hero__copy h1 {
-  font-size: clamp(2.35rem, 1.2rem + 4.1vw, 4rem);
+  font-size: clamp(2.15rem, 1.1rem + 3.6vw, 3.25rem);
   letter-spacing: -0.03em;
 }
 
@@ -589,6 +591,24 @@ svg {
   margin-top: 36px;
 }
 
+/* Three short statements, set as a quiet rule-separated list rather than icon
+   cards, so the hero keeps one visual focus. */
+.hero__proof {
+  margin-top: 44px;
+  border-top: 1px solid var(--hairline);
+}
+
+.hero__proof li {
+  padding: 11px 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.hero__proof li + li {
+  border-top: 1px solid var(--hairline);
+}
+
 /* The frame sits inside the shell: the wider grid share already gives the
    product enough presence, and bleeding past the gutter creates page-level
    horizontal scroll on every viewport wider than the shell. */
@@ -596,7 +616,7 @@ svg {
   min-width: 0;
 }
 
-/* ── Split composition (unified operations, AI, communication) ───────────── */
+/* ── Split composition (AI, communication) ───────────────────────────────── */
 
 .split {
   display: grid;
@@ -607,6 +627,25 @@ svg {
 
 .split--mirror .split__media {
   order: -1;
+}
+
+/* ── Brief composition (unified operations) ──────────────────────────────── */
+
+/* Header and capability grid share one row, the fleet plan runs full width
+   underneath because it is only readable at that size. */
+.brief__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr);
+  align-items: start;
+  gap: 72px;
+}
+
+.brief .capability-grid {
+  margin-top: 6px;
+}
+
+.brief .stack__media {
+  margin-top: 64px;
 }
 
 .capability-grid {
@@ -708,9 +747,8 @@ svg {
 }
 
 .stage__media {
-  /* The screenshot is taller than the panel, so it crops from the top. */
-  max-height: 520px;
-  overflow: hidden;
+  /* The asset is already cropped to a whole number of vehicle rows, so nothing
+     is clipped here: the notes column centres against the panel height. */
   background: #fff;
   border-right: 1px solid var(--hairline);
 }
@@ -871,22 +909,65 @@ svg {
   margin-bottom: 60px;
 }
 
-.hub__grid {
-  position: relative;
+/* Two tile columns flanking the centre node, joined by dashed connectors that
+   run through the grid gaps. The gap width is shared with the connectors so the
+   lines always meet the node. */
+.hub__diagram {
+  --hub-gap: 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--hub-gap);
 }
 
-.hub__tiles {
+.hub__column {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
+/* Vertical bus that each column's tiles connect onto, so no connector line ends
+   in empty space beside the centre node. */
+.hub__column::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed var(--hairline-strong);
+}
+
+.hub__column--left::after {
+  left: calc(100% + var(--hub-gap) / 2);
+}
+
+.hub__column--right::after {
+  right: calc(100% + var(--hub-gap) / 2);
+}
+
 .hub__tile {
-  padding: 24px;
+  position: relative;
+  padding: 20px 22px;
   border: 1px solid var(--hairline);
   border-radius: 14px;
   background: #fff;
   transition: border-color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+
+/* Stub from each tile to the bus. Decorative, so it carries no text. */
+.hub__tile::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: calc(var(--hub-gap) / 2);
+  border-top: 1px dashed var(--hairline-strong);
+}
+
+.hub__column--left .hub__tile::after {
+  left: 100%;
+}
+
+.hub__column--right .hub__tile::after {
+  right: 100%;
 }
 
 .hub__tile:hover {
@@ -907,21 +988,42 @@ svg {
   line-height: 1.55;
 }
 
-/* Centre node sits in the grid gap between the two tile rows. */
+/* Sits above the connectors so the dashed lines stop at its edge. */
 .hub__core {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  padding: 9px 20px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 172px;
+  height: 172px;
   border: 1px solid var(--hairline-strong);
-  border-radius: 999px;
+  border-radius: 22px;
   background: #fff;
   box-shadow: var(--shadow-raised);
-  color: var(--ink);
-  font-size: 13.5px;
-  font-weight: 700;
-  letter-spacing: -0.008em;
+}
+
+.hub__core img {
+  width: 116px;
+  height: auto;
+}
+
+/* Bus into the node. */
+.hub__core::before,
+.hub__core::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: calc(var(--hub-gap) / 2);
+  border-top: 1px dashed var(--hairline-strong);
+}
+
+.hub__core::before {
+  right: 100%;
+}
+
+.hub__core::after {
+  left: 100%;
 }
 
 .hub__note {
@@ -1070,7 +1172,8 @@ svg {
     --section-y: 104px;
   }
 
-  .split {
+  .split,
+  .brief__head {
     gap: 52px;
   }
 
@@ -1108,19 +1211,24 @@ svg {
     padding-block: 64px 88px;
   }
 
-  .hero__media {
-    margin-right: 0;
-  }
-
   .hero__body,
   .section-body {
     max-width: 38rem;
   }
 
   .split,
-  .split--mirror {
+  .split--mirror,
+  .brief__head {
     grid-template-columns: minmax(0, 1fr);
     gap: 44px;
+  }
+
+  .brief .capability-grid {
+    margin-top: 0;
+  }
+
+  .brief .stack__media {
+    margin-top: 44px;
   }
 
   .split--mirror .split__media {
@@ -1132,7 +1240,6 @@ svg {
   }
 
   .stage__media {
-    max-height: 420px;
     border-right: 0;
     border-bottom: 1px solid var(--hairline);
   }
@@ -1151,11 +1258,16 @@ svg {
     transform: translateX(-50%) rotate(135deg);
   }
 
-  .hub__tiles {
+  /* Below the desktop breakpoint the diagram becomes two plain tile columns:
+     the centre node and its connectors only read as a hub at full width. */
+  .hub__diagram {
+    --hub-gap: 16px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 
-  /* The centre node only reads as a hub on the three column layout. */
+  .hub__tile::after,
+  .hub__column::after,
   .hub__core {
     display: none;
   }
@@ -1185,15 +1297,11 @@ svg {
     margin-bottom: 36px;
   }
 
-  .stage__media {
-    max-height: 360px;
-  }
-
   .stage__notes {
     padding: 4px 22px 16px;
   }
 
-  .hub__tiles {
+  .hub__diagram {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1228,10 +1336,6 @@ svg {
 
   .brand img {
     width: 118px;
-  }
-
-  .stage__media {
-    max-height: 300px;
   }
 }
 

@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import { SITE, locales } from '../content/site.mjs';
 import {
+  HERO_SIZES,
   ai,
   communication,
   finalCta,
@@ -36,8 +37,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'src');
 const DIST = path.join(ROOT, 'dist');
 
-const HERO_IMAGE = 'landing-hero-operations';
-const OG_IMAGE = `${SITE.origin}/assets/${HERO_IMAGE}.webp`;
+/** Preloaded because it is the largest contentful paint on every page. */
+const HERO = locales[0].hero.media;
+
+/** Fixed 1200x630 JPEG, see the social card target in build-assets.mjs. */
+const SOCIAL_CARD = { url: `${SITE.origin}/assets/landing-social-card.jpg`, width: 1200, height: 630 };
 
 /** Both locales plus x-default, emitted identically on every page. */
 function hreflangTags() {
@@ -104,22 +108,24 @@ function document(locale) {
     <meta property="og:url" content="${canonical}" />
     <meta property="og:title" content="${locale.meta.ogTitle}" />
     <meta property="og:description" content="${locale.meta.ogDescription}" />
-    <meta property="og:image" content="${OG_IMAGE}" />
-    <meta property="og:image:width" content="2200" />
-    <meta property="og:image:height" content="978" />
+    <meta property="og:image" content="${SOCIAL_CARD.url}" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="${SOCIAL_CARD.width}" />
+    <meta property="og:image:height" content="${SOCIAL_CARD.height}" />
     <meta property="og:image:alt" content="${locale.hero.mediaAlt}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${locale.meta.ogTitle}" />
     <meta name="twitter:description" content="${locale.meta.ogDescription}" />
-    <meta name="twitter:image" content="${OG_IMAGE}" />
+    <meta name="twitter:image" content="${SOCIAL_CARD.url}" />
+    <meta name="twitter:image:alt" content="${locale.hero.mediaAlt}" />
 
     <link rel="preload" href="/assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link
       rel="preload"
       as="image"
-      href="/assets/${HERO_IMAGE}.webp"
-      imagesrcset="/assets/${HERO_IMAGE}-sm.webp 1100w, /assets/${HERO_IMAGE}.webp 2200w"
-      imagesizes="(max-width: 900px) 92vw, 52vw"
+      href="/assets/${HERO.file}.webp"
+      imagesrcset="/assets/${HERO.file}-sm.webp ${Math.round(HERO.width / 2)}w, /assets/${HERO.file}.webp ${HERO.width}w"
+      imagesizes="${HERO_SIZES}"
       fetchpriority="high"
     />
     <link rel="stylesheet" href="/styles.css" />

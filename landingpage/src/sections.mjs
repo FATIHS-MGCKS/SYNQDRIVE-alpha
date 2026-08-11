@@ -5,16 +5,23 @@
  * renders them. Each section deliberately uses a different composition so the
  * page does not read as six repeated text-beside-screenshot rows:
  *
- *   hero            text column beside a wide product frame that bleeds right
- *   unified         text plus a 2x2 capability grid beside a product frame
+ *   hero            text column beside an upright product frame
+ *   unified         header beside a 2x2 capability grid, full width frame below
  *   vehicle         one composed panel holding the product frame and its notes
  *   ai              mirrored split, product frame first, flow rail under text
  *   workflow        stacked, full width chain band above a full width frame
  *   communication   text column with notes beside a product frame
  *   integrations    centred capability hub
+ *
+ * Screenshot aspect drives the choice: the fleet plan and the workflow list are
+ * wide artefacts that stay readable only at full width, while the dashboard, the
+ * vehicle list, the assistant and the inbox are upright enough to sit in a split.
  */
 import { icon } from './icons.generated.mjs';
 import { action, esc, iconMark, productFrame, sectionHead } from './primitives.mjs';
+
+/** Exported so the <link rel="preload"> in the document head cannot drift. */
+export const HERO_SIZES = '(max-width: 900px) 92vw, 50vw';
 
 export function header(c, other) {
   const platformItems = c.nav.platformItems
@@ -92,6 +99,8 @@ export function header(c, other) {
 
 export function hero(c) {
   const h = c.hero;
+  const proof = h.proof.map((line) => `<li>${esc(line)}</li>`).join('');
+
   return `<section class="hero" aria-labelledby="hero-title">
       <div class="hero__copy">
         <p class="eyebrow" data-reveal>${esc(h.eyebrow)}</p>
@@ -101,13 +110,14 @@ export function hero(c) {
           ${action({ href: 'mailto:info@synqdrive.eu?subject=SynqDrive%20demo%20request', label: h.primary, variant: 'primary' })}
           ${action({ href: `#${c.unified.id}`, label: h.secondary, variant: 'secondary' })}
         </div>
+        <ul class="hero__proof" data-reveal>${proof}</ul>
       </div>
       <div class="hero__media" data-reveal>
         ${productFrame({
           media: h.media,
           alt: h.mediaAlt,
           priority: true,
-          sizes: '(max-width: 900px) 92vw, 52vw',
+          sizes: HERO_SIZES,
         })}
       </div>
     </section>`;
@@ -125,13 +135,13 @@ export function unified(c) {
     )
     .join('');
 
-  return `<section class="section split" id="${s.id}" aria-labelledby="${s.id}-title">
-      <div class="split__copy">
+  return `<section class="section brief" id="${s.id}" aria-labelledby="${s.id}-title">
+      <div class="brief__head">
         ${sectionHead({ eyebrow: s.eyebrow, title: s.title, body: s.body, id: s.id })}
         <ul class="capability-grid">${cards}</ul>
       </div>
-      <div class="split__media" data-reveal>
-        ${productFrame({ media: s.media, alt: s.mediaAlt, sizes: '(max-width: 900px) 92vw, 46vw' })}
+      <div class="stack__media" data-reveal>
+        ${productFrame({ media: s.media, alt: s.mediaAlt, sizes: '(max-width: 900px) 92vw, 88vw' })}
       </div>
     </section>`;
 }
@@ -250,15 +260,17 @@ export function communication(c) {
 
 export function integrations(c) {
   const s = c.integrations;
-  const tiles = s.tiles
-    .map(
-      (tile) => `<li class="hub__tile" data-reveal>
-            ${iconMark(tile.icon)}
-            <h3>${esc(tile.title)}</h3>
-            <p>${esc(tile.body)}</p>
-          </li>`,
-    )
-    .join('');
+  const tile = (item) => `<li class="hub__tile" data-reveal>
+            ${iconMark(item.icon)}
+            <h3>${esc(item.title)}</h3>
+            <p>${esc(item.body)}</p>
+          </li>`;
+
+  // Two flanking columns around a centre node. The list order stays meaningful
+  // when the diagram collapses to a single column below the desktop breakpoint.
+  const half = Math.ceil(s.tiles.length / 2);
+  const left = s.tiles.slice(0, half).map(tile).join('');
+  const right = s.tiles.slice(half).map(tile).join('');
 
   return `<section class="section hub" id="${s.id}" aria-labelledby="${s.id}-title">
       ${sectionHead({
@@ -268,9 +280,12 @@ export function integrations(c) {
         id: s.id,
         className: 'section-head--centered',
       })}
-      <div class="hub__grid">
-        <ul class="hub__tiles">${tiles}</ul>
-        <p class="hub__core" aria-hidden="true"><span>SynqDrive</span></p>
+      <div class="hub__diagram">
+        <ul class="hub__column hub__column--left">${left}</ul>
+        <p class="hub__core">
+          <img src="/assets/synqdrive-logo.png" width="1024" height="216" alt="SynqDrive" />
+        </p>
+        <ul class="hub__column hub__column--right">${right}</ul>
       </div>
       <p class="hub__note">${esc(s.note)}</p>
     </section>`;
