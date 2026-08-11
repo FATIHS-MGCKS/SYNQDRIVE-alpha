@@ -1046,6 +1046,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Public Landing Page Hosting — V4.9.887',
+    icon: Globe,
+    color: 'text-[color:var(--brand)]',
+    apis: [
+      { label: 'Root domain', detail: 'synqdrive.eu → Hostinger static hosting; versionierte Quelle in landingpage/' },
+      { label: 'Deployment', detail: 'Flaches Static-Archiv via Hostinger Website Deployment API; kein Buildprozess und keine Runtime-Abhängigkeiten' },
+      { label: 'Application boundary', detail: 'app.synqdrive.eu bleibt separat auf dem Produktions-VPS; Landingpage-Deployments ändern weder App-DNS noch VPS-Releases' },
+      { label: 'Brand assets', detail: 'Kanonisches Logo und Favicon werden aus den vorhandenen Frontend-Assets in das Deployment-Archiv übernommen' },
+      { label: 'Architecture record', detail: 'architecture/PUBLIC_LANDING_PAGE_HOSTING_BOUNDARY_2026-08-11.md' },
+    ],
+  },
+  {
     name: 'Twilio Programmable Voice — PSTN + ElevenLabs bridge (V4.9.584)',
     icon: Radio,
     color: 'text-[color:var(--brand)]',

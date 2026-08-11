@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'public-landing-page-hostinger-boundary-v49887-2026-08-11',
+    version: '4.9.887',
+    title: 'V4.9.887 — Professionelle SynqDrive Coming-soon-Landingpage',
+    summary: [
+      'Die öffentliche Root-Domain synqdrive.eu erhält eine neue responsive Coming-soon-Seite mit kanonischem SynqDrive-Logo, klarer Enterprise-Fleet-Positionierung und reduziertem Motion-System.',
+      'Die Seite ist statisch, dependency-frei und berücksichtigt Reduced Motion, Tastaturfokus, semantische Struktur, SEO-Metadaten sowie mobile Layouts.',
+      'Die Runtime-Grenze ist dokumentiert: synqdrive.eu bleibt auf Hostinger Static Hosting; app.synqdrive.eu und der VPS-Releasepfad werden nicht verändert.',
+    ],
+    reason:
+      'Der öffentliche Markenauftritt soll während der Produktvorbereitung professionell wirken, ohne die produktive SaaS-Anwendung oder deren Deploymentpfad zu berühren.',
+    previousBehavior:
+      'Die bisherige Hostinger-Seite nutzte eine generische, inhaltlich breite Coming-soon-Darstellung ohne versionierte Quelle im SynqDrive-Repository.',
+    details:
+      'landingpage/{index.html,styles.css,script.js,README.md}, architecture/PUBLIC_LANDING_PAGE_HOSTING_BOUNDARY_2026-08-11.md',
+    affectsArchitecture: true,
+    module: 'Public Website',
+    createdAt: '2026-08-11T09:05:00.000Z',
+  },
+  {
     id: 'evaluations-e1-contract-recovery-v49886-2026-08-10',
     version: '4.9.886',
     title: 'V4.9.886 — Evaluations E1.1 Contract Correction',
