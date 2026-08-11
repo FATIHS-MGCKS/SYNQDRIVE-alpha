@@ -219,6 +219,10 @@ screenshots are byte-identical to the locally approved build.
 ## Known remaining points
 
 - Pricing, Solutions and Resources navigation entries are deferred until pages exist behind them.
+- The product visuals are English on both locales. Serving German screenshots would mean a second
+  capture pass with the app in German and the demo tenant's own strings translated, then a second
+  set of assets behind the `<picture>` switch. Deferred rather than half-done; the surrounding
+  copy is fully German.
 - Both calls to action open a prefilled mail draft to `info@synqdrive.eu`, which is the only
   contact channel the product exposes today. A demo request form would be a separate change.
 - `www.synqdrive.eu` does not redirect to the apex, as above.
