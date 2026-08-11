@@ -1,0 +1,266 @@
+import { requireEvaluationsMetricDefinition } from '@modules/evaluations-metrics';
+import {
+  buildAvailableEvaluationsMetric,
+  buildUnavailableEvaluationsMetric,
+} from '@synq/evaluations-metrics/evaluations-metric-response.builder';
+import type { EvaluationsMetricResponse } from '@synq/evaluations-metrics/evaluations-metric-response.contract';
+import type { EvaluationsAuthorizedAnalyticsScope } from '@synq/evaluations-analytics/evaluations-analytics.contract';
+import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluations-period.contract';
+import { EvaluationsInsightsService } from './evaluations-insights.service';
+
+const GEN = new Date('2026-01-31T12:00:00.000Z');
+
+const period: EvaluationsPeriodWindow = {
+  periodType: 'MTD',
+  start: '2026-01-01T00:00:00.000Z',
+  endExclusive: '2026-02-01T00:00:00.000Z',
+  reference: '2026-01-31T00:00:00.000Z',
+  timezone: {
+    effectiveTimezone: 'Europe/Berlin',
+    source: 'ORGANIZATION',
+    reportTimezone: null,
+    stationTimezone: null,
+    organizationTimezone: 'Europe/Berlin',
+  },
+  comparisonBasis: null,
+};
+
+const START = Date.parse(period.start);
+const END = Date.parse(period.endExclusive);
+
+const orgScope: EvaluationsAuthorizedAnalyticsScope = {
+  organizationId: 'org-a',
+  stationIds: null,
+  stationScoped: false,
+  period,
+};
+
+const stationScope: EvaluationsAuthorizedAnalyticsScope = {
+  organizationId: 'org-a',
+  stationIds: ['st-1'],
+  stationScoped: true,
+  period,
+};
+
+const actor = { id: 'user-1', organizationId: 'org-a', platformRole: 'ORG_ADMIN' };
+
+function financeMetric(
+  id: string,
+  kind: 'money' | 'percent',
+  value: unknown,
+): EvaluationsMetricResponse {
+  const def = requireEvaluationsMetricDefinition(id);
+  return buildAvailableEvaluationsMetric({
+    metricId: id,
+    metricKind: def.metricKind,
+    calculationVersion: def.calculationVersion,
+    period,
+    generatedAt: GEN,
+    ...(kind === 'money'
+      ? { valueType: 'MONEY', unit: 'CURRENCY_MINOR', value: value as never }
+      : { valueType: 'SIGNED_PERCENT', unit: 'PERCENT', value: value as never }),
+  });
+}
+
+function availableFinance(): Record<string, EvaluationsMetricResponse> {
+  return {
+    'fin.mtd_issued_revenue': financeMetric('fin.mtd_issued_revenue', 'money', {
+      amountMinor: 100000,
+      currency: 'EUR',
+    }),
+    'fin.profit_margin_mtd': financeMetric('fin.profit_margin_mtd', 'percent', 25),
+  };
+}
+
+function unavailableFinance(): Record<string, EvaluationsMetricResponse> {
+  const def = requireEvaluationsMetricDefinition('fin.mtd_issued_revenue');
+  return {
+    'fin.mtd_issued_revenue': buildUnavailableEvaluationsMetric({
+      metricId: 'fin.mtd_issued_revenue',
+      metricKind: def.metricKind,
+      calculationVersion: def.calculationVersion,
+      period,
+      generatedAt: GEN,
+      valueType: 'MONEY',
+      unit: 'CURRENCY_MINOR',
+      reason: 'STATION_SCOPED_FINANCE_UNSUPPORTED',
+    }),
+  };
+}
+
+function fullyRentedVehicle() {
+  return {
+    vehicleId: `v-${Math.random()}`,
+    eligibility: { startMs: START, endExclusiveMs: END },
+    rented: [{ startMs: START, endExclusiveMs: END }],
+    maintenance: [],
+    blocked: [],
+  };
+}
+
+function buildService(overrides: {
+  financeMetrics?: Record<string, EvaluationsMetricResponse>;
+  repo?: Partial<Record<string, jest.Mock>>;
+}) {
+  const financeMock = {
+    computeFinancialInsights: jest.fn().mockResolvedValue({
+      organizationId: 'org-a',
+      period,
+      metrics: overrides.financeMetrics ?? availableFinance(),
+    }),
+  };
+  const repo = {
+    resolveReportingCurrency: jest.fn().mockResolvedValue('EUR'),
+    loadCostEvents: jest.fn().mockResolvedValue([
+      {
+        category: 'OPERATING_EXPENSES',
+        nature: 'ACTUAL',
+        amountMinor: 5000,
+        currency: 'EUR',
+        economicKey: 'invoice:1',
+        businessAtMs: START + 1000,
+      },
+    ]),
+    loadFixedCostEvents: jest.fn().mockResolvedValue({ events: [], vehiclesWithConfig: 0, vehicleCount: 3 }),
+    loadUtilizationFacts: jest.fn().mockResolvedValue({
+      vehicles: [fullyRentedVehicle(), fullyRentedVehicle(), fullyRentedVehicle()],
+      telemetryOfflineVehicles: 1,
+      vehicleCount: 3,
+    }),
+    loadBookingOutcomes: jest.fn().mockResolvedValue({ totalOutcomes: 20, cancelledPlusNoShow: 1 }),
+    loadDriverObservations: jest.fn().mockResolvedValue([
+      { driverRef: 'cust-a', dimension: 'BOOKING_CANCELLATIONS', count: 6 },
+      { driverRef: 'cust-b', dimension: 'BOOKING_CANCELLATIONS', count: 4 },
+    ]),
+    ...overrides.repo,
+  } as never;
+  const service = new EvaluationsInsightsService(financeMock as never, repo as never);
+  return { service, financeMock, repo: repo as unknown as Record<string, jest.Mock> };
+}
+
+describe('EvaluationsInsightsService — org scope', () => {
+  it('composes all sections and delegates finance to E3 verbatim', async () => {
+    const { service, financeMock } = buildService({});
+    const summary = await service.getSummary(orgScope, actor, GEN);
+
+    expect(financeMock.computeFinancialInsights).toHaveBeenCalledTimes(1);
+    expect(financeMock.computeFinancialInsights).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: 'org-a', requestedStationIds: null }),
+    );
+    expect(summary.sections.finance.status).toBe('AVAILABLE');
+    expect(summary.sections.finance.metrics['fin.mtd_issued_revenue'].value).toEqual({
+      amountMinor: 100000,
+      currency: 'EUR',
+    });
+    expect(summary.sections.costModel.status).toBe('AVAILABLE');
+    expect(summary.sections.costModel.totalsByCurrency).toEqual([{ amountMinor: 5000, currency: 'EUR' }]);
+    expect(summary.sections.utilization.status).toBe('AVAILABLE');
+    expect(summary.sections.utilization.utilizationPercent.value).toBe(100);
+    expect(summary.sections.utilization.telemetryOfflineVehicles).toBe(1);
+    expect(summary.sections.strengths.status).toBe('AVAILABLE');
+    expect(summary.sections.strengths.strengths.map((s) => s.ruleId)).toEqual(
+      expect.arrayContaining(['HIGH_UTILIZATION', 'LOW_CANCELLATION_RATE']),
+    );
+    expect(summary.sections.driverInfluence.status).toBe('AVAILABLE');
+    expect(summary.sections.driverInfluence.disclaimer).toContain('Correlation is not causation');
+  });
+
+  it('never surfaces unsafe financial-exposure heuristics', async () => {
+    const { service } = buildService({});
+    const summary = await service.getSummary(orgScope, actor, GEN);
+    const serialized = JSON.stringify(summary);
+    expect(serialized).not.toContain('estimatedFinancialExposure');
+    expect(serialized).not.toContain('financialImpactEur');
+    expect(serialized).not.toContain('lostRevenue');
+  });
+
+  it('reconciles direct endpoints with summary sections (no mismatch)', async () => {
+    const { service } = buildService({});
+    const summary = await service.getSummary(orgScope, actor, GEN);
+    const directStrengths = await service.getStrengths(orgScope, actor, GEN);
+    const directWeaknesses = await service.getWeaknesses(orgScope, actor, GEN);
+    expect(directStrengths.strengths).toEqual(summary.sections.strengths.strengths);
+    expect(directWeaknesses.weaknesses).toEqual(summary.sections.weaknesses.weaknesses);
+  });
+
+  it('scopes every repository query to the request organization', async () => {
+    const { service, repo } = buildService({});
+    await service.getSummary(orgScope, actor, GEN);
+    for (const method of ['loadCostEvents', 'loadUtilizationFacts', 'loadDriverObservations', 'loadBookingOutcomes']) {
+      expect(repo[method]).toHaveBeenCalled();
+      expect(repo[method].mock.calls[0][0]).toBe('org-a');
+    }
+  });
+});
+
+describe('EvaluationsInsightsService — station scope fails closed (no org fallback, no false zero)', () => {
+  it('degrades cost/utilization/driver/detection to UNAVAILABLE with specific reasons', async () => {
+    const { service, repo } = buildService({ financeMetrics: unavailableFinance() });
+    const summary = await service.getSummary(stationScope, actor, GEN);
+
+    expect(summary.sections.finance.status).toBe('UNAVAILABLE');
+    expect(summary.sections.costModel.status).toBe('UNAVAILABLE');
+    expect(summary.sections.costModel.reason).toBe('COST_STATION_LINEAGE_UNAVAILABLE');
+    expect(summary.sections.costModel.totalsByCurrency).toEqual([]);
+    expect(summary.sections.utilization.status).toBe('UNAVAILABLE');
+    expect(summary.sections.utilization.reason).toBe('STATION_UTILIZATION_HISTORY_UNAVAILABLE');
+    expect(summary.sections.utilization.utilizationPercent.value).toBeNull();
+    expect(summary.sections.driverInfluence.status).toBe('UNAVAILABLE');
+    expect(summary.sections.strengths.status).toBe('UNAVAILABLE');
+    expect(summary.sections.strengths.strengths).toEqual([]);
+    expect(summary.sections.weaknesses.status).toBe('UNAVAILABLE');
+
+    // No org-wide source read happened under a station scope (no fallback).
+    expect(repo.loadCostEvents).not.toHaveBeenCalled();
+    expect(repo.loadUtilizationFacts).not.toHaveBeenCalled();
+    expect(repo.loadDriverObservations).not.toHaveBeenCalled();
+    expect(repo.loadBookingOutcomes).not.toHaveBeenCalled();
+  });
+});
+
+describe('EvaluationsInsightsService — section isolation', () => {
+  it('keeps valid sections when one section fails (no zeroing)', async () => {
+    const { service } = buildService({
+      repo: { loadUtilizationFacts: jest.fn().mockRejectedValue(new Error('db down')) },
+    });
+    const summary = await service.getSummary(orgScope, actor, GEN);
+    expect(summary.sections.utilization.status).toBe('ERROR');
+    expect(summary.sections.utilization.reason).toBe('UTILIZATION_SECTION_ERROR');
+    // Unrelated sections survive.
+    expect(summary.sections.finance.status).toBe('AVAILABLE');
+    expect(summary.sections.costModel.status).toBe('AVAILABLE');
+  });
+});
+
+describe('EvaluationsInsightsService — cost currency safety', () => {
+  it('segments mixed currency without a false blended total (PARTIAL)', async () => {
+    const { service } = buildService({
+      repo: {
+        loadCostEvents: jest.fn().mockResolvedValue([
+          { category: 'OPERATING_EXPENSES', nature: 'ACTUAL', amountMinor: 5000, currency: 'EUR', economicKey: 'invoice:1', businessAtMs: START + 1000 },
+          { category: 'OPERATING_EXPENSES', nature: 'ACTUAL', amountMinor: 7000, currency: 'USD', economicKey: 'invoice:2', businessAtMs: START + 2000 },
+        ]),
+      },
+    });
+    const cost = await service.getCostModel(orgScope, GEN);
+    expect(cost.status).toBe('PARTIAL');
+    expect(cost.mixedCurrency).toBe(true);
+    expect(cost.totalsByCurrency).toEqual([
+      { amountMinor: 5000, currency: 'EUR' },
+      { amountMinor: 7000, currency: 'USD' },
+    ]);
+  });
+
+  it('returns UNAVAILABLE (not €0) when there are no cost sources', async () => {
+    const { service } = buildService({
+      repo: {
+        loadCostEvents: jest.fn().mockResolvedValue([]),
+        loadFixedCostEvents: jest.fn().mockResolvedValue({ events: [], vehiclesWithConfig: 0, vehicleCount: 3 }),
+      },
+    });
+    const cost = await service.getCostModel(orgScope, GEN);
+    expect(cost.status).toBe('UNAVAILABLE');
+    expect(cost.totalsByCurrency).toEqual([]);
+    expect(cost.reason).toBe('NO_COST_SOURCE');
+  });
+});

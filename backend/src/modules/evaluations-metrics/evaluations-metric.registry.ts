@@ -15,7 +15,9 @@ import {
 import { EVALUATIONS_COMPARISON_TYPES } from '@synq/evaluations-periods/evaluations-period.contract';
 import { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
 
-export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.4.0';
+// 1.5.0 — E4 activated ops.fleet_utilization_pct (org-scope time-weighted
+// utilization; station scope degraded/fail-closed) as canonically served.
+export const EVALUATIONS_METRIC_REGISTRY_VERSION = '1.5.0';
 export const EVALUATIONS_METRIC_TAXONOMY_VERSION = '1.0.0';
 
 const CALCULATION_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;

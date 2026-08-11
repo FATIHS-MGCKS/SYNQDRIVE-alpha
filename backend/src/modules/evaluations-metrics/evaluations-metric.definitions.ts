@@ -493,7 +493,10 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: ['PREVIOUS_COMPARABLE_PERIOD'],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'planned',
+    // E4: served by the canonical E4 utilization capability at organization
+    // scope (time-weighted). Station scope fails closed (no continuous vehicle→
+    // station history on current main) → degraded, not fully active.
+    implementationStatus: 'active_degraded',
   }),
 
   // ─── Fleet availability & stations ───────────────────────────────────────
