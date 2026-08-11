@@ -344,16 +344,24 @@ Repository has no write methods; the only production write path is
 `rg "evaluationsEntityReference\.(create|createMany|update|upsert|delete)"`
 excluding specs).
 
-### 24.5 Station access policy decision
+### 24.5 Station access policy decision — `SUPERSEDED_BY_E2_3`
 
-Authority: `docs/architecture/stations-v2-permissions.md` (PG-01…PG-05) +
-central `StationAccessService`. Decision (Option A, grounded in the platform
-doc): Stations-V2 OFF is the documented legacy org-wide behavior
-(StationAccessService bypass → an evaluations reader sees all stations in their
-own organization); Stations-V2 ON enforces station scope from membership. In both
-modes the organization boundary is always enforced and the flag can never enable
-cross-tenant access. `MULTI_STATION_TIMEZONE_POLICY` = organization timezone
-(unchanged). No new station policy was invented.
+> **SUPERSEDED_BY_E2_3.** The E2.2 conclusion below ("Option A": Stations-V2 OFF =
+> legacy org-wide analytics for any reader) was an incorrect interpretation. The
+> authority (`docs/architecture/stations-v2-permissions.md`, PG-01…PG-05)
+> defines station scope as an authorization gate that a rollout flag must not
+> weaken; `STATION_ACCESS_BYPASS` on V2-OFF is the legacy *implementation* state,
+> not the target authorization. E2.3 (§25) corrects this: evaluations derives
+> station authorization from canonical role/membership scope, flag-independent.
+
+Original E2.2 text (retained for audit history): Authority
+`docs/architecture/stations-v2-permissions.md` (PG-01…PG-05) + central
+`StationAccessService`. Decision (Option A): Stations-V2 OFF is the documented
+legacy org-wide behavior (StationAccessService bypass → an evaluations reader sees
+all stations in their own organization); Stations-V2 ON enforces station scope
+from membership. In both modes the organization boundary is always enforced and
+the flag can never enable cross-tenant access. `MULTI_STATION_TIMEZONE_POLICY` =
+organization timezone (unchanged).
 
 ### 24.6 Unknown query parameter policy
 
@@ -392,3 +400,78 @@ All repository-wide CI reds remain `PRE_EXISTING_IDENTICAL` vs `origin/main`.
 - Full greenfield `migrate deploy` remains blocked by the pre-existing P3018.
 
 Final E2.2 status: `E2_READY_FOR_FINAL_MERGE_AUDIT`.
+
+---
+
+## 25. E2.3 — Station Scope Authority Correction & Final CI Closure
+
+Correction pass on the same branch/PR (#1020). Base `origin/main` unchanged
+(`ab554722a2e6e9ed8e4263310bd2bddf9b62445a`); previous E2.2 head `63dc29d4`;
+tested code SHA `6f578c6b`.
+
+### 25.1 The corrected finding
+
+E2.2 treated Stations-V2 OFF (`STATION_ACCESS_BYPASS`) as canonical org-wide
+analytics authorization. That is wrong: per
+`docs/architecture/stations-v2-permissions.md` (PG-01…PG-05), permission and
+station scope are two independent authorization gates; org membership alone is not
+sufficient; WORKER/SUB_ADMIN are ASSIGNED_STATIONS, ORG_ADMIN/MASTER_ADMIN are
+ALL_STATIONS; KPIs and lists must be station-scoped; silent bypasses are the
+legacy implementation state, not the target policy. A feature flag must never
+widen the security boundary.
+
+### 25.2 The fix
+
+`resolveEvaluationsAuthorizedStationScope` computes the actor's effective station
+scope from canonical role/membership data via `computeEffectiveAccess` with the
+V2 scope path **forced on** (`stationsScopeV2Enabled: true`). Evaluations no
+longer uses `StationAccessService.resolve` (which bypasses on V2-OFF). The scope
+service now:
+
+- ALL_STATIONS actor + no filter → org-wide (`stationIds = null`).
+- ASSIGNED_STATIONS actor + no filter → exactly the assigned stations.
+- NO_STATIONS actor → empty population (`stationIds = []`).
+- requested stations must be org-owned AND within the authorized scope, else the
+  whole request fails closed (no silent narrowing).
+
+`stationIds = null` (ALL) is strictly distinguished from `stationIds = []` (none).
+
+### 25.3 Feature-flag independence
+
+For the same membership, Stations-V2 ON and OFF now produce identical authorized
+station populations (only internal reasons differ). An assigned-station worker
+stays limited to their station with the flag OFF — the E2.2 intra-tenant
+privilege escalation is fixed. `FEATURE_FLAG_SCOPE_ESCALATION_COUNT = 0`.
+
+### 25.4 Role matrix (canonical authority)
+
+| Role | Station authorization |
+|---|---|
+| MASTER_ADMIN | ALL_STATIONS within the explicitly targeted org (no cross-tenant bypass) |
+| ORG_ADMIN | ALL_STATIONS within own org |
+| SUB_ADMIN | ASSIGNED_STATIONS |
+| WORKER | ASSIGNED_STATIONS |
+| DRIVER / non-member / inactive | NO_STATIONS |
+
+### 25.5 Data-level regression evidence
+
+Same-org data at station A and station B: an ORG_ADMIN sees both (2 rows); a
+WORKER assigned to A sees only A (1 row) — proven through the real repository
+query (`evaluations-analytics.tenant-isolation.spec.ts`). Cross-tenant is denied
+ON and OFF. `INTRA_TENANT_STATION_LEAKAGE_COUNT = 0`,
+`CROSS_TENANT_STATION_LEAKAGE_COUNT = 0`.
+
+### 25.6 E2.2 core regression
+
+Target/owner tenant integrity, DB cross-tenant write (0 rows), HTTP security,
+unknown-query, input bounds, summary/detail, and migration validation all remain
+green after the station fix. No schema change was required.
+
+### 25.7 Tests / quality
+
+Focused E2 suites: **12 suites, 116 tests pass** (+ 4 gated DB-integration tests
+passing against disposable PG 16). Backend production typecheck/build PASS; full
+typecheck adds 0 new errors (4 pre-existing baseline); ESLint PASS; `prisma
+validate` PASS. `NEW_E2_FAILURE = 0`, `UNKNOWN = 0`.
+
+Final E2.3 status: `E2_READY_FOR_FINAL_MERGE_AUDIT`.

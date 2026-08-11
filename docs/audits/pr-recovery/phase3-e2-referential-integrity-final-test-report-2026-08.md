@@ -12,9 +12,9 @@ Tested head: E2.2 correction revision on
 | Target Tenant Integrity | PASS | evaluations-entity-reference.resolver.spec.ts; evaluations-entity-reference-write.service.spec.ts |
 | Owner Tenant Integrity | PASS | evaluations-entity-reference.resolver.spec.ts; write.service.spec.ts |
 | Owner/Target Same Tenant | PASS | write.service.spec.ts (anchored on relation org); db-integration.spec.ts |
-| Station Policy Authority | PASS (Option A, docs/architecture/stations-v2-permissions.md) | station-policy.spec.ts |
-| Stations-V2 ON | PASS | station-policy.spec.ts (scoped worker; foreign denied) |
-| Stations-V2 OFF | PASS | station-policy.spec.ts (org-wide; foreign denied) |
+| Station Policy Authority | ~~PASS (Option A)~~ **SUPERSEDED_BY_E2_3** — Option A was an incorrect org-wide interpretation; corrected in `phase3-e2-station-scope-authority-final-test-report-2026-08.md` | station-policy.spec.ts (rewritten in E2.3) |
+| Stations-V2 ON | superseded → see E2.3 report | station-policy.spec.ts |
+| Stations-V2 OFF | ~~PASS (org-wide)~~ superseded → see E2.3 report (assigned members stay scoped) | station-policy.spec.ts |
 | Cross-Tenant Read | PASS (0 leakage) | tenant-isolation.spec.ts; http-security.integration.spec.ts |
 | Cross-Tenant Write | PASS (0 leakage) | write.service.spec.ts; db-integration.spec.ts |
 | Unknown Query Policy | PASS (ignored top-level; filter keys rejected) | http-security.integration.spec.ts (16); validator.spec.ts |
