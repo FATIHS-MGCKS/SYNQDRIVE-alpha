@@ -224,7 +224,7 @@ const en = {
     points: [
       {
         title: 'One conversation layer',
-        body: 'WhatsApp, email, in-app notifications and the voice assistant share the same customer record.',
+        body: 'WhatsApp, email and in-app notifications share the same customer record. The voice assistant is being rolled out per organisation.',
       },
       {
         title: 'Every message has context',
@@ -443,7 +443,7 @@ const de = {
     points: [
       {
         title: 'Eine Kommunikationsebene',
-        body: 'WhatsApp, E-Mail, Benachrichtigungen und der Sprachassistent nutzen denselben Kundendatensatz.',
+        body: 'WhatsApp, E-Mail und Benachrichtigungen nutzen denselben Kundendatensatz. Der Sprachassistent wird organisationsweise ausgerollt.',
       },
       {
         title: 'Jede Nachricht hat Kontext',
