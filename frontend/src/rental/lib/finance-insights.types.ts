@@ -13,6 +13,18 @@ export interface FinancialInsightsBundleDto {
   readonly metrics: Readonly<Record<string, EvaluationsMetricResponse>>;
 }
 
+/**
+ * Build the canonical finance insights request path. A concrete selected station
+ * is passed as a REQUESTED narrowing (`stationIds`); no station selected → no
+ * station filter (org-wide, subject to backend E2 authorization). The client
+ * never sets organization/currency/period/timezone as trusted authority.
+ */
+export function buildFinanceInsightsPath(orgId: string, stationIds?: readonly string[]): string {
+  const cleaned = (stationIds ?? []).map((s) => s.trim()).filter((s) => s.length > 0);
+  const qs = cleaned.length ? `?stationIds=${encodeURIComponent(cleaned.join(','))}` : '';
+  return `/organizations/${orgId}/evaluations/finance/insights${qs}`;
+}
+
 /** Canonical core finance metric ids served by the endpoint. */
 export const FINANCE_CORE_METRIC_IDS = {
   issuedRevenue: 'fin.mtd_issued_revenue',

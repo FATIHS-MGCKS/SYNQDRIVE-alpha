@@ -1,5 +1,6 @@
 import { getToken, clearAuth } from './auth';
 import { getStepUpToken } from './mfa';
+import { buildFinanceInsightsPath } from '../rental/lib/finance-insights.types';
 import {
   buildFleetRentalHealthQueryString,
   fetchAllFleetRentalHealth as collectFleetRentalHealthPages,
@@ -5876,15 +5877,10 @@ export const api = {
      * Canonical E3 finance insights — the single authority for the Financial
      * Insights core KPIs. The client formats/displays these values only.
      */
-    financeInsights: (orgId: string, stationIds?: string[]) => {
-      const qs =
-        stationIds && stationIds.length
-          ? `?stationIds=${encodeURIComponent(stationIds.join(','))}`
-          : '';
-      return get<import('../rental/lib/finance-insights.types').FinancialInsightsBundleDto>(
-        `/organizations/${orgId}/evaluations/finance/insights${qs}`,
-      );
-    },
+    financeInsights: (orgId: string, stationIds?: string[]) =>
+      get<import('../rental/lib/finance-insights.types').FinancialInsightsBundleDto>(
+        buildFinanceInsightsPath(orgId, stationIds),
+      ),
   },
   invoices: {
     list: (orgId: string, params?: { type?: string; status?: string; direction?: string }) => {

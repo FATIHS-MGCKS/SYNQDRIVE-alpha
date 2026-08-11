@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { EvaluationsMetricResponse } from '@synq/evaluations-metrics/evaluations-metric-response.contract';
 import type { FinancialInsightsBundleDto } from './finance-insights.types';
-import { FINANCE_CORE_METRIC_IDS } from './finance-insights.types';
+import { FINANCE_CORE_METRIC_IDS, buildFinanceInsightsPath } from './finance-insights.types';
 import {
   formatFinanceMoney,
   formatFinancePercent,
   isMoneyAvailable,
+  minorToMajorForPresentation,
   readMoneyMetric,
   readPercentMetric,
 } from './finance-insights-adapter';
@@ -118,6 +119,70 @@ describe('finance insights adapter (E3.2 canonical consumption)', () => {
     const view = readMoneyMetric(bundle({}), ids.openReceivables);
     expect(view.status).toBe('MISSING');
     expect(view.amountMinor).toBeNull();
+  });
+
+  describe('ISO-4217 money presentation (E3.3, no hardcoded /100)', () => {
+    it.each([
+      ['EUR', 12345, 123.45],
+      ['USD', 12345, 123.45],
+      ['JPY', 100, 100],
+      ['KWD', 1000, 1],
+      ['EUR', -5000, -50],
+      ['EUR', 0, 0],
+    ])('%s %d minor → %f major', (currency, minor, major) => {
+      expect(minorToMajorForPresentation(minor as number, currency as string)).toBeCloseTo(
+        major as number,
+        6,
+      );
+    });
+
+    function moneyView(amountMinor: number, currency: string) {
+      return bundle({
+        [ids.issuedRevenue]: money(ids.issuedRevenue, 'AVAILABLE', { amountMinor, currency }),
+      });
+    }
+
+    it('formats JPY without a 2-decimal /100 error (100 minor = 100 JPY)', () => {
+      const out = formatFinanceMoney(readMoneyMetric(moneyView(100, 'JPY'), ids.issuedRevenue), 'en-US');
+      expect(out).toMatch(/100/);
+      expect(out).not.toMatch(/1\.00\b/);
+    });
+
+    it('formats KWD with 3 decimals (1000 minor = 1.000 KWD, not 10)', () => {
+      const out = formatFinanceMoney(readMoneyMetric(moneyView(1000, 'KWD'), ids.issuedRevenue), 'en-US');
+      expect(out).toMatch(/1\.000/);
+      expect(out).not.toMatch(/(^|\D)10(\D|$)/);
+    });
+
+    it('formats negative EUR without absolute-value accident', () => {
+      const out = formatFinanceMoney(readMoneyMetric(moneyView(-5000, 'EUR'), ids.issuedRevenue), 'en-US');
+      expect(out).toMatch(/-/);
+      expect(out).toMatch(/50/);
+    });
+
+    it('returns a guarded state for an invalid currency (no crash, no /100 guess)', () => {
+      const out = formatFinanceMoney(
+        readMoneyMetric(moneyView(12345, 'ZZZ'), ids.issuedRevenue),
+        'en-US',
+      );
+      expect(out).toBe('Fehler');
+    });
+  });
+
+  describe('station scope request path (E3.3)', () => {
+    it('includes the requested station narrowing when a station is selected', () => {
+      expect(buildFinanceInsightsPath('ORG_A', ['st-1'])).toBe(
+        '/organizations/ORG_A/evaluations/finance/insights?stationIds=st-1',
+      );
+    });
+    it('omits any station filter when none is selected (org-wide)', () => {
+      expect(buildFinanceInsightsPath('ORG_A')).toBe(
+        '/organizations/ORG_A/evaluations/finance/insights',
+      );
+      expect(buildFinanceInsightsPath('ORG_A', [])).toBe(
+        '/organizations/ORG_A/evaluations/finance/insights',
+      );
+    });
   });
 
   it('reads the partial-payment receivable/paid values from the backend as-is', () => {

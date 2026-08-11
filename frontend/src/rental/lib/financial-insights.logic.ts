@@ -71,8 +71,9 @@ export function isEurInvoice(inv: InvoiceSlice): boolean {
 function toEurFact(inv: InvoiceSlice): EvaluationsInvoiceFact {
   const total = inv.totalCents ?? 0;
   const paid = inv.paidCents ?? 0;
-  const outstanding =
-    inv.outstandingCents != null ? inv.outstandingCents : Math.max(0, total - paid);
+  // E3.3: no invented outstanding. Missing authoritative outstanding contributes
+  // 0 (excluded from receivables) rather than a derived `total - paid` amount.
+  const outstanding = inv.outstandingCents ?? 0;
   return {
     id: inv.id,
     direction: isIncomingInvoice(inv.type) ? 'INCOMING' : 'OUTGOING',

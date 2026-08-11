@@ -1,6 +1,6 @@
 import { ArrowDownLeft, ArrowUpRight, Clock, Receipt, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -187,6 +187,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   // Canonical E3 finance bundle — single authority for the core KPIs.
   const [financeBundle, setFinanceBundle] = useState<FinancialInsightsBundleDto | null>(null);
+  const loadGenRef = useRef(0);
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
@@ -196,14 +197,24 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   }, [invoices, scopedVehicleIds]);
 
   const load = useCallback(async () => {
+    // Generation guard: a later station/org change invalidates an in-flight load
+    // so a stale response can never overwrite the currently-selected scope.
+    const gen = loadGenRef.current + 1;
+    loadGenRef.current = gen;
+    const isStale = () => gen !== loadGenRef.current;
+
     if (!orgId) {
       setInvoices([]);
       setCustomers([]);
+      setFinanceBundle(null);
       setLoading(false);
       return;
     }
     setInvoiceError(null);
     setCustomerLoadWarning(null);
+    // The selected station is a REQUESTED narrowing only; backend E2 remains the
+    // authorization authority. When no station is selected the request is org-wide.
+    const requestedStationIds = selectedStationId ? [selectedStationId] : undefined;
     try {
       let invoicesArr: InvoiceLite[] = [];
       try {
@@ -211,7 +222,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         invoicesArr = Array.isArray(iList) ? (iList as InvoiceLite[]) : [];
       } catch {
         invoicesArr = [];
-        setInvoiceError('Finanzdaten konnten nicht geladen werden.');
+        if (!isStale()) setInvoiceError('Finanzdaten konnten nicht geladen werden.');
       }
 
       let customersArr: CustomerLite[] = [];
@@ -222,26 +233,30 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           : ((cList as { data?: CustomerLite[] })?.data ?? []);
       } catch {
         customersArr = [];
-        setCustomerLoadWarning('Kundendaten konnten nicht geladen werden — Zuordnungen können unvollständig sein.');
+        if (!isStale())
+          setCustomerLoadWarning('Kundendaten konnten nicht geladen werden — Zuordnungen können unvollständig sein.');
       }
 
-      // Core finance KPIs come exclusively from the canonical E3 backend
-      // endpoint (single truth). On failure they render as unavailable — never a
-      // client-recomputed fallback and never a false zero.
+      // Core finance KPIs come exclusively from the canonical E3 backend endpoint
+      // (single truth) for the SAME requested scope as the rest of the surface. On
+      // failure / station-scoped fail-closed they render as unavailable — never a
+      // client-recomputed fallback, never an org-wide fallback, never a false zero.
       try {
-        const bundle = await api.evaluations.financeInsights(orgId);
-        setFinanceBundle(bundle);
+        const bundle = await api.evaluations.financeInsights(orgId, requestedStationIds);
+        if (!isStale()) setFinanceBundle(bundle);
       } catch {
-        setFinanceBundle(null);
+        if (!isStale()) setFinanceBundle(null);
       }
 
-      setInvoices(invoicesArr);
-      setCustomers(customersArr);
-      setReportingAnchor(new Date());
+      if (!isStale()) {
+        setInvoices(invoicesArr);
+        setCustomers(customersArr);
+        setReportingAnchor(new Date());
+      }
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, selectedStationId]);
 
   useEffect(() => {
     setLoading(true);
@@ -530,6 +545,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
       {/* ─── KPI Row ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+        {/* E3.3: Core KPI cards are display-only over canonical backend values.
+            No client-derived contributing counts/drilldown are attached (they used
+            different, non-canonical semantics — issued∪paid mixing / scope drift),
+            so no misleading breakdown is shown (correct absence > wrong drilldown). */}
         <KpiCard
           label="Issued Revenue MTD"
           value={formatFinanceMoney(revenueView, intlLocale, { maximumFractionDigits: 0 })}
@@ -537,9 +556,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           color="green"
           isDarkMode={isDarkMode}
           delta={revenueDeltaPct}
-          subtle={`${bucketed.mtdRevenue.length} Umsatzpositionen (MTD)`}
-          onClick={() => setActivePopup('revenue')}
-          clickable
+          subtle="Finalisierte Rechnungen (canonical)"
         />
         <KpiCard
           label="Expenses MTD"
@@ -549,9 +566,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           isDarkMode={isDarkMode}
           delta={expenseDeltaPct}
           deltaInverted
-          subtle={`${bucketed.mtdExpense.length} invoices`}
-          onClick={() => setActivePopup('expenses')}
-          clickable
+          subtle="Freigegebene Ausgaben (canonical)"
         />
         <KpiCard
           label="Net Profit MTD"
@@ -559,7 +574,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           icon={Wallet}
           color={netResultPositive ? 'blue' : 'red'}
           isDarkMode={isDarkMode}
-          subtle={`Margin ${formatFinancePercent(marginView, 1)} · basierend auf Issued Revenue`}
+          subtle={`Margin ${formatFinancePercent(marginView, 1)} · Issued Revenue`}
         />
         <KpiCard
           label="Open Receivables"
@@ -567,7 +582,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           icon={Clock}
           color="purple"
           isDarkMode={isDarkMode}
-          subtle={`${bucketed.outstandingRevenue.length} offen gesamt`}
+          subtle="Offener Saldo (canonical)"
         />
         <KpiCard
           label="Overdue"
@@ -575,7 +590,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           icon={Clock}
           color="red"
           isDarkMode={isDarkMode}
-          subtle={`${bucketed.overdueRevenue.length} überfällig`}
+          subtle="Überfälliger Saldo (canonical)"
         />
       </div>
 
@@ -595,8 +610,15 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         <div className="lg:col-span-2 surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Daily Revenue & Expenses</h3>
-              <p className="text-[10px] mt-0.5 text-muted-foreground">{monthLabel} · daily breakdown</p>
+              <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
+                Daily Revenue &amp; Expenses
+                <span className="ml-2 px-1.5 py-px rounded text-[9px] font-bold uppercase tracking-wider sq-tone-neutral align-middle">
+                  Limited · non-canonical
+                </span>
+              </h3>
+              <p className="text-[10px] mt-0.5 text-muted-foreground">
+                {monthLabel} · daily breakdown (legacy presentation, not an E3 canonical metric)
+              </p>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <div className="text-right">
@@ -713,7 +735,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       {/* ─── Top customers + top vehicles + recent activity ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <ListCard
-          title="Top customers (MTD)"
+          title="Top customers (MTD) · Limited"
           icon={TrendingUp}
           tone="green"
           isDarkMode={isDarkMode}
@@ -734,7 +756,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         </ListCard>
 
         <ListCard
-          title="Top vehicles (MTD)"
+          title="Top vehicles (MTD) · Limited"
           icon={TrendingUp}
           tone="blue"
           isDarkMode={isDarkMode}
@@ -819,27 +841,9 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         </ListCard>
       </div>
 
-      {/* ─── Drill-down popups ─── */}
-      {activePopup && (
-        <BreakdownPopup
-          title={activePopup === 'revenue' ? 'Revenue MTD breakdown' : 'Expenses MTD breakdown'}
-          monthLabel={monthLabel}
-          totalCents={
-            activePopup === 'revenue'
-              ? (revenueView.amountMinor ?? 0)
-              : (expenseView.amountMinor ?? 0)
-          }
-          tone={activePopup === 'revenue' ? 'revenue' : 'expense'}
-          days={activePopup === 'revenue' ? revenueByDay : expensesByDay}
-          expandedDay={expandedDay}
-          onExpand={(iso) => setExpandedDay((prev) => (prev === iso ? null : iso))}
-          onClose={() => { setActivePopup(null); setExpandedDay(null); }}
-          isDarkMode={isDarkMode}
-          intlLocale={intlLocale}
-          customerById={customerById}
-          vehicleById={vehicleById}
-        />
-      )}
+      {/* E3.3: Core KPI drill-down popups removed — they used non-canonical,
+          issued∪paid client rows that do not reconcile with the canonical Core
+          KPI values. A canonical contribution drilldown is deferred (E4/E6). */}
     </div>
   );
 }
