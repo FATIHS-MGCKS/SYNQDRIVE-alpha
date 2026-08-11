@@ -30,6 +30,23 @@ describe('E4 strength detection', () => {
     expect(strengths.map((s) => s.ruleId)).toContain('REVENUE_GROWTH');
   });
 
+  it('labels fixed platform thresholds as PLATFORM_RULE_THRESHOLD, never ORGANIZATION_TARGET', () => {
+    const strengths = detectStrengths(
+      signals({
+        utilization: { ratio: 0.9, previousRatio: null, eligibleVehicles: 5, coverageRatio: 1 },
+        bookings: { cancelledPlusNoShow: 0, totalOutcomes: 50 },
+      }),
+    );
+    const highUtil = strengths.find((s) => s.ruleId === 'HIGH_UTILIZATION');
+    expect(highUtil?.comparatorBasis).toBe('PLATFORM_RULE_THRESHOLD');
+    expect(strengths.every((s) => s.comparatorBasis !== 'ORGANIZATION_TARGET')).toBe(true);
+    // Previous-period comparators remain correctly labeled.
+    const growth = detectStrengths(
+      signals({ finance: { marginPercent: 20, revenueMinor: 12000, previousRevenueMinor: 10000 } }),
+    ).find((s) => s.ruleId === 'REVENUE_GROWTH');
+    expect(growth?.comparatorBasis).toBe('PREVIOUS_COMPARABLE_PERIOD');
+  });
+
   it('does not emit a strength when evidence is insufficient (too few vehicles / low coverage)', () => {
     expect(
       detectStrengths(signals({ utilization: { ratio: 0.95, previousRatio: null, eligibleVehicles: 1, coverageRatio: 1 } })),

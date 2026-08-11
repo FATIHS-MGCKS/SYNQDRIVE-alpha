@@ -123,6 +123,17 @@ const LIVE = process.env.EVALUATIONS_E4_POSTGRES_INTEGRATION === '1';
       expect(JSON.stringify(facts)).not.toContain(fx.orgBId);
     });
 
+    it('D. blocked has no authoritative historical source: ServiceCase downtime binds maintenance, blocked stays empty (never synthesized)', async () => {
+      const facts = await repo.loadUtilizationFacts(fx.orgAId, win());
+      const vehicleA = facts.vehicles.find((v) => v.vehicleId === fx.vehicleAId);
+      // The rental-blocking ServiceCase downtime is bound as MAINTENANCE.
+      expect((vehicleA?.maintenance.length ?? 0)).toBeGreaterThanOrEqual(1);
+      // There is no separate authoritative blocked source → blocked is not
+      // synthesized (empty at the repository adapter; reported as null/unknown by
+      // the service, never a synthetic 0).
+      expect(vehicleA?.blocked).toEqual([]);
+    });
+
     it('E. same-tenant valid relations still work end-to-end (no over-blocking)', async () => {
       const { observations } = await repo.loadDriverObservations(fx.orgAId, win());
       expect(observations.filter((o) => o.driverRef === fx.driverAId).length).toBe(5);

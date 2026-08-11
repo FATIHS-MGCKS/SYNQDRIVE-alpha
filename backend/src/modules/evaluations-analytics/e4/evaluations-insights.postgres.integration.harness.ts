@@ -26,6 +26,7 @@ export interface E4TenantFixture {
   readonly orgBInvoiceId: string;
   readonly linkedServiceCaseId: string; // ORG_A service case linked to ORG_B invoice
   readonly dedupServiceCaseId: string; // ORG_A service case linked to ORG_A invoice
+  readonly blockingServiceCaseId: string; // ORG_A ServiceCase with rental-blocking downtime
 }
 
 export async function probeE4Database(prisma: PrismaClient): Promise<boolean> {
@@ -182,6 +183,7 @@ export async function createE4TenantFixture(prisma: PrismaClient): Promise<E4Ten
 
   const linkedServiceCaseId = `e4pg-scLinked-${tag}`;
   const dedupServiceCaseId = `e4pg-scDedup-${tag}`;
+  const blockingServiceCaseId = `e4pg-scBlocking-${tag}`;
   await prisma.serviceCase.createMany({
     data: [
       {
@@ -203,6 +205,20 @@ export async function createE4TenantFixture(prisma: PrismaClient): Promise<E4Ten
         status: 'COMPLETED',
         actualCostCents: 3000,
         completedAt: E4_PG_WINDOW.mid,
+      },
+      {
+        // The one canonical historical rental-blocking source (ServiceCase
+        // downtime). It must appear as maintenance downtime; there is NO separate
+        // authoritative "blocked" source to bind.
+        id: blockingServiceCaseId,
+        organizationId: orgAId,
+        vehicleId: vehicleAId,
+        title: 'ORG_A rental-blocking downtime',
+        category: 'REPAIR',
+        status: 'IN_PROGRESS',
+        blocksRental: true,
+        downtimeStart: new Date('2026-01-10T00:00:00.000Z'),
+        downtimeEnd: new Date('2026-01-12T00:00:00.000Z'),
       },
     ],
   });
@@ -240,6 +256,7 @@ export async function createE4TenantFixture(prisma: PrismaClient): Promise<E4Ten
     orgBInvoiceId,
     linkedServiceCaseId,
     dedupServiceCaseId,
+    blockingServiceCaseId,
   };
 }
 

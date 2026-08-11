@@ -162,8 +162,14 @@ describe('EvaluationsInsightsService — org scope', () => {
     });
     expect(summary.sections.costModel.status).toBe('AVAILABLE');
     expect(summary.sections.costModel.totalsByCurrency).toEqual([{ amountMinor: 5000, currency: 'EUR' }]);
-    expect(summary.sections.utilization.status).toBe('AVAILABLE');
+    // Coverage-limited (scheduled occupancy, approximate eligibility, unknown
+    // blocked) → PARTIAL, never AVAILABLE; value + PARTIAL + coverage.
+    expect(summary.sections.utilization.status).toBe('PARTIAL');
+    expect(summary.sections.utilization.utilizationPercent.status).toBe('PARTIAL');
     expect(summary.sections.utilization.utilizationPercent.value).toBe(100);
+    expect(summary.sections.utilization.occupancyBasis).toBe('SCHEDULED');
+    // Blocked has no authoritative source → null, never a synthetic 0.
+    expect(summary.sections.utilization.blockedMs).toBeNull();
     expect(summary.sections.utilization.telemetryOfflineVehicles).toBe(1);
     expect(summary.sections.strengths.status).toBe('AVAILABLE');
     expect(summary.sections.strengths.strengths.map((s) => s.ruleId)).toEqual(
@@ -213,6 +219,16 @@ describe('EvaluationsInsightsService — station scope fails closed (no org fall
     expect(summary.sections.utilization.status).toBe('UNAVAILABLE');
     expect(summary.sections.utilization.reason).toBe('STATION_UTILIZATION_HISTORY_UNAVAILABLE');
     expect(summary.sections.utilization.utilizationPercent.value).toBeNull();
+    // UNAVAILABLE ≠ zero: every analytical quantity is null, not a synthetic 0.
+    const util = summary.sections.utilization;
+    expect(util.capacityMs).toBeNull();
+    expect(util.rentedMs).toBeNull();
+    expect(util.maintenanceMs).toBeNull();
+    expect(util.blockedMs).toBeNull();
+    expect(util.netCapacityMs).toBeNull();
+    expect(util.eligibleVehicles).toBeNull();
+    expect(util.overlappingBookingPairs).toBeNull();
+    expect(util.telemetryOfflineVehicles).toBeNull();
     expect(summary.sections.driverInfluence.status).toBe('UNAVAILABLE');
     expect(summary.sections.strengths.status).toBe('UNAVAILABLE');
     expect(summary.sections.strengths.strengths).toEqual([]);
@@ -234,6 +250,10 @@ describe('EvaluationsInsightsService — section isolation', () => {
     const summary = await service.getSummary(orgScope, actor, GEN);
     expect(summary.sections.utilization.status).toBe('ERROR');
     expect(summary.sections.utilization.reason).toBe('UTILIZATION_SECTION_ERROR');
+    // ERROR ≠ empty fleet: no synthetic zeros.
+    expect(summary.sections.utilization.capacityMs).toBeNull();
+    expect(summary.sections.utilization.eligibleVehicles).toBeNull();
+    expect(summary.sections.utilization.blockedMs).toBeNull();
     // Unrelated sections survive.
     expect(summary.sections.finance.status).toBe('AVAILABLE');
     expect(summary.sections.costModel.status).toBe('AVAILABLE');
