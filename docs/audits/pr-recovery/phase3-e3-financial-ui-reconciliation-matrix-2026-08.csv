@@ -1,0 +1,21 @@
+ui_metric,metric_id,display_value_source,period_source,currency_source,station_scope_source,count_source,drilldown_source,canonical,degraded,reconciles,notes
+Issued Revenue MTD (card),fin.mtd_issued_revenue,backend metric value,backend E1 period,backend Money.currency,backend (requested station via endpoint),none (removed),none (removed),YES,NO,YES,E3.3 removed issued∪paid client count/drilldown
+Expenses MTD (card),fin.mtd_expenses,backend metric value,backend E1 period,backend Money.currency,backend,none (removed),none (removed),YES,NO,YES,positive expense allowlist backend
+Net Profit MTD (card),fin.mtd_net_result,backend metric value,backend E1 period,backend Money.currency,backend,none,none,YES,NO,YES,revenue-expenses backend
+Profit Margin (card subtle),fin.profit_margin_mtd,backend metric value (SIGNED_PERCENT),backend E1 period,n/a (percent),backend,none,none,YES,NO,YES,negative served; NOT_APPLICABLE at zero revenue
+Open Receivables (card),fin.open_receivables,backend metric value,backend current reference,backend Money.currency,backend,none (removed),none (removed),YES,NO,YES,current outstanding; historical fail-closed
+Overdue (card),fin.overdue_receivables,backend metric value,backend current reference,backend Money.currency,backend,none (removed),none (removed),YES,NO,YES,current overdue outstanding
+Paid revenue MTD (summary),fin.mtd_paid_revenue,backend metric value,backend E1 period,backend Money.currency,backend,none,none,YES,NO,YES,payment ledger; not invoice status
+Daily Revenue & Expenses (chart),fin.daily_revenue_mtd/fin.daily_expenses_mtd,client daily aggregation (presentation),client month (presentation),EUR presentation scope,client scopedInvoices,n/a,n/a,NO,YES,N/A,E3.3 labeled "Limited · non-canonical"; header totals show canonical backend values
+Top customers (MTD),fin.top_customers_mtd,client top-N (presentation),client month,EUR presentation,client scopedInvoices,client invoiceCount,n/a,NO,YES,N/A,E3.3 title suffixed "· Limited"
+Top vehicles (MTD),fin.top_vehicles_mtd,client top-N (presentation),client month,EUR presentation,client scopedInvoices,client invoiceCount,n/a,NO,YES,N/A,E3.3 title suffixed "· Limited"
+Recent activity,fin.recent_invoice_activity,client invoice list (presentation),client,per-invoice invoice.currency (formatRawMoney),client scopedInvoices,client,n/a,NO,NO,N/A,E3.4: each invoice formatted in its own currency (no EUR relabel); missing/invalid currency → guarded label
+Snapshot: MoM revenue,fin.mom_revenue_delta_pct,unavailable (—),n/a,n/a,n/a,n/a,n/a,NO,YES,N/A,no canonical comparison owner; shown as —
+Snapshot: MoM expenses,fin.mom_expense_delta_pct,unavailable (—),n/a,n/a,n/a,n/a,n/a,NO,YES,N/A,no canonical comparison owner; shown as —
+Snapshot: Avg invoice,fin.avg_invoice_value_mtd,unavailable (—),n/a,n/a,n/a,n/a,n/a,NO,YES,N/A,no canonical owner; not recomputed client-side
+Expense invoices (summary count),fin.mtd_expense_invoice_count,client count (presentation),client month,n/a,client scopedInvoices,client,n/a,NO,NO,N/A,observed COUNT presentation
+Paid invoices MTD (summary count),fin.mtd_paid_invoice_count,client count (presentation),client month,n/a,client scopedInvoices,client,n/a,NO,NO,N/A,observed COUNT presentation
+Open invoices (summary count),fin.mtd_open_invoice_count,client count (presentation),client month,n/a,client scopedInvoices,client,n/a,NO,NO,N/A,observed COUNT presentation
+InsightsCockpit Offene Forderungen,fin.open_receivables,backend status-aware Money view (formatFinanceMoney),backend current reference,backend Money.currency,backend,none,none,YES,NO,YES,E3.4: passes FinanceMoneyView (not EUR number); status/currency preserved; UNAVAILABLE → label (no false zero); reconciles with Core Open Receivables card
+InsightsCockpit Umsatzrisiken (Hinweise),ins.revenue_leakage_count,NONE (non-monetary count),n/a,n/a,insights,revenueLeakage.length,n/a,NO,YES,YES,E3.5: replaced the guessed monetary "Finanzrisiko (geschätzt)" € card with a non-monetary count; no €, no guessed unit; financialImpactEur heuristic removed
+Per-insight financial impact badge,n/a (removed),NONE,n/a,n/a,insights,n/a,n/a,NO,YES,YES,E3.5: "≈ X € Risiko" badge removed (was magnitude-based unit guess); insight content retained

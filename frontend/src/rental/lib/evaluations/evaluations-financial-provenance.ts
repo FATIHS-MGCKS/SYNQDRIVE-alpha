@@ -53,6 +53,12 @@ export function buildDefaultFinancialInsightsProvenanceBundle(input: {
   organizationId: string;
   timezone: string;
   invoiceRowCount: number;
+  /**
+   * Explicit currency scope of the legacy client calculation. The legacy
+   * Financial Insights path filters to EUR invoices, so callers pass 'EUR'
+   * explicitly — there is no hidden default (E3 no-implicit-EUR rule).
+   */
+  currencyFilter: string;
   isPartial?: boolean;
 }) {
   return buildFinancialInsightsProvenanceBundle({

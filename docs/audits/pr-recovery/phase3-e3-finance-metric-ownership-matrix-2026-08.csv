@@ -1,0 +1,29 @@
+metric_id,registry_status,calculation_version,canonical_owner,backend_service,frontend_consumer,legacy_calculator,served_live,safe_active,notes
+fin.mtd_issued_revenue,active,1.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; issued invoices only (no paid mixing)
+fin.mtd_paid_revenue,active,2.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; confirmed payment ledger (partial payments correct)
+fin.mtd_expenses,active,2.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; positive expense allowlist
+fin.mtd_net_result,active,2.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; revenue-expenses backend
+fin.profit_margin_mtd,active,2.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; SIGNED_PERCENT (negative served); NOT_APPLICABLE at zero revenue
+fin.open_receivables,active,2.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; current outstanding; historical fail-closed
+fin.overdue_receivables,active,2.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; current overdue outstanding
+fin.total_outstanding_receivables,active,2.0.0,EvaluationsFinanceService,yes,FinancialInsightsView (backend endpoint),none,YES,YES,E3.2 core; open+overdue current
+fin.issued_revenue_strict_mtd,active_degraded,1.0.0,NONE,no,none,legacy,NO,YES,E3.2 downgrade; strict variant not served by canonical endpoint
+fin.avg_invoice_value_mtd,active_degraded,1.0.0,NONE,no,none (shown as non-canonical),legacy,NO,YES,E3.2 downgrade; no canonical backend owner
+fin.daily_revenue_mtd,active_degraded,1.0.0,NONE (presentation),no,FinancialInsightsView chart (presentation),legacy,NO,YES,E3.2 downgrade; daily chart presentation only
+fin.daily_expenses_mtd,active_degraded,1.0.0,NONE (presentation),no,FinancialInsightsView chart (presentation),legacy,NO,YES,E3.2 downgrade; daily chart presentation only
+fin.daily_net_result_mtd,active_degraded,1.0.0,NONE (presentation),no,FinancialInsightsView chart (presentation),legacy,NO,YES,E3.2 downgrade; daily chart presentation only
+fin.mom_revenue_delta_pct,active_degraded,1.0.0,NONE,no,none (shown as unavailable),legacy,NO,YES,E3.2 downgrade; no canonical period comparison owner
+fin.mom_expense_delta_pct,active_degraded,1.0.0,NONE,no,none (shown as unavailable),legacy,NO,YES,E3.2 downgrade; no canonical period comparison owner
+fin.top_customers_mtd,active_degraded,1.0.0,NONE (presentation),no,FinancialInsightsView top-N (presentation),legacy,NO,YES,pre-existing degraded; PII top-N presentation
+fin.top_vehicles_mtd,active_degraded,1.0.0,NONE (presentation),no,FinancialInsightsView top-N (presentation),legacy,NO,YES,E3.2 downgrade; top-N presentation
+fin.reserved_revenue_mtd,prepared,1.0.0,NONE,no,FinancialInsightsView reserved (presentation),legacy,NO,YES,pre-existing prepared; prepaid draft reserved revenue
+fin.cashflow_net_mtd,planned,1.0.0,NONE,no,none,none,NO,YES,planned; needs unified refund settlement ledger
+fin.revenue_lost_actual_mtd,planned,1.0.0,NONE,no,none,none,NO,YES,planned
+fin.contribution_margin_mtd,planned,1.0.0,NONE,no,none,none,NO,YES,planned; needs E4 cost model
+fin.cash_inflow_mtd,deprecated,1.0.0,superseded by fin.mtd_paid_revenue,no,none,none,NO,YES,deprecated alias
+fin.recent_invoice_activity,active,1.0.0,observed count (presentation),no,FinancialInsightsView activity list,legacy,PRESENTATION,YES,observed list; not a finance value calculation
+fin.mtd_open_invoice_count,active,1.0.0,observed count (presentation),no,FinancialInsightsView,legacy,PRESENTATION,YES,observed COUNT; not a finance value calculation
+fin.mtd_paid_invoice_count,active,1.0.0,observed count (presentation),no,FinancialInsightsView,legacy,PRESENTATION,YES,observed COUNT; not a finance value calculation
+fin.mtd_expense_invoice_count,active,1.0.0,observed count (presentation),no,FinancialInsightsView,legacy,PRESENTATION,YES,observed COUNT; not a finance value calculation
+fin.org_invoice_count,active,1.0.0,observed count (presentation),no,FinancialInsightsView,legacy,PRESENTATION,YES,observed COUNT; not a finance value calculation
+ins.open_receivables_cockpit,deprecated,1.0.0,superseded by fin.open_receivables,no,none,none,NO,YES,deprecated alias

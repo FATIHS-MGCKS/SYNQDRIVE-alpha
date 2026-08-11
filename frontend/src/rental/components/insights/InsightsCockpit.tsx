@@ -6,19 +6,27 @@ import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { api, type MisuseCaseRecord } from '../../../lib/api';
 import {
-  financialImpactEur,
   insightRecommendation,
   matchesStationIdFilter,
   partitionInsights,
 } from '../../lib/insights-categories';
 import { EmptyState } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import {
+  formatFinanceMoney,
+  isMoneyAvailable,
+  type FinanceMoneyView,
+} from '../../lib/finance-insights-adapter';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
   stationId?: string | null;
-  financialRiskEur?: number;
-  openReceivablesEur?: number;
+  /**
+   * E3.4: canonical Open Receivables as a status-aware Money view (not an
+   * EUR-shaped number). Preserves status/currency; renders unavailable states
+   * without a false zero and without EUR relabeling.
+   */
+  openReceivables?: FinanceMoneyView | null;
 }
 
 interface InsightKpiCardProps {
@@ -108,7 +116,6 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDarkMode: boolean }) {
-  const impact = financialImpactEur(insight);
   const rec = insightRecommendation(insight);
   const m = insight.metrics as Record<string, unknown> | null | undefined;
   const bookingId = (m?.bookingId ?? insight.timeContext?.bookingId) as string | undefined;
@@ -123,9 +130,10 @@ function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDar
         <SeverityBadge severity={insight.severity} />
       </div>
       <p className="text-[11px] text-muted-foreground leading-relaxed">{insight.message}</p>
-      {(impact != null || bookingId || customerId) && (
+      {/* E3.5: removed the "≈ X € Risiko" badge — it derived from magnitude-based
+          unit guessing (financialImpactEur), which is not a safe Money value. */}
+      {(bookingId || customerId) && (
         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
-          {impact != null && <span className="sq-tone-warning px-1.5 py-0.5 rounded-md">≈ {impact} € Risiko</span>}
           {bookingId && <span className="px-1.5 py-0.5 rounded-md border border-border">Buchung</span>}
           {customerId && <span className="px-1.5 py-0.5 rounded-md border border-border">Kunde</span>}
         </div>
@@ -253,8 +261,7 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
 export function InsightsCockpit({
   isDarkMode,
   stationId = null,
-  financialRiskEur = 0,
-  openReceivablesEur = 0,
+  openReceivables = null,
 }: InsightsCockpitProps) {
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
@@ -276,14 +283,11 @@ export function InsightsCockpit({
     [filteredInsights],
   );
 
-  const estimatedRisk = useMemo(() => {
-    let sum = financialRiskEur;
-    for (const i of [...businessRisks, ...revenueLeakage]) {
-      const e = financialImpactEur(i);
-      if (e != null) sum += e;
-    }
-    return sum;
-  }, [businessRisks, revenueLeakage, financialRiskEur]);
+  // E3.5: no estimated monetary financial risk. The prior amount came from
+  // magnitude-based unit guessing (financialImpactEur), which is not a safe Money
+  // value and is not a canonical Finance metric. We surface a non-monetary count
+  // of revenue-risk insights instead (no €, no guessed unit).
+  const revenueRiskCount = revenueLeakage.length;
 
   const criticalBookings = businessRisks.filter((i) => i.severity === 'CRITICAL').length;
   const hasRun = response?.hasRun ?? false;
@@ -302,18 +306,18 @@ export function InsightsCockpit({
           accent={businessRisks.length > 0}
         />
         <InsightKpiCard
-          label="Finanzrisiko (geschätzt)"
-          value={`≈ ${estimatedRisk.toLocaleString('de-DE')} €`}
+          label="Umsatzrisiken (Hinweise)"
+          value={String(revenueRiskCount)}
           icon={TrendingDown}
           tone="watch"
-          accent={estimatedRisk > 0}
+          accent={revenueRiskCount > 0}
         />
         <InsightKpiCard
           label="Offene Forderungen"
-          value={`${openReceivablesEur.toLocaleString('de-DE')} €`}
+          value={openReceivables ? formatFinanceMoney(openReceivables, 'de-DE') : '—'}
           icon={Zap}
           tone="info"
-          accent={openReceivablesEur > 0}
+          accent={!!openReceivables && isMoneyAvailable(openReceivables) && (openReceivables.amountMinor ?? 0) > 0}
         />
         <InsightKpiCard
           label="Kritische Buchungen"

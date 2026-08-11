@@ -115,6 +115,7 @@ type EvaluationsValueState<T> =
 export type EvaluationsNumericValueType =
   | 'NUMBER'
   | 'PERCENT'
+  | 'SIGNED_PERCENT'
   | 'COUNT'
   | 'RATIO'
   | 'RATE'

@@ -69,6 +69,10 @@ export const EVALUATIONS_VALUE_TYPES = [
   'MONEY',
   'NUMBER',
   'PERCENT',
+  // E3.1: signed percentage for financial ratios that can legitimately be
+  // negative (e.g. a loss-making profit margin). Distinct from PERCENT, which
+  // stays bounded to [0, 100]; SIGNED_PERCENT is a finite signed value.
+  'SIGNED_PERCENT',
   'COUNT',
   'RATIO',
   'RATE',

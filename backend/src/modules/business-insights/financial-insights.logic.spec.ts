@@ -92,13 +92,19 @@ describe('financial-insights.logic (Insights cockpit)', () => {
     expect(mtdPaid.map((r) => r.id)).toEqual(['paid-mtd']);
   });
 
-  it('expenses exclude draft and cancelled incoming', () => {
+  it('expenses use the positive finalized-state allowlist (E3.1)', () => {
     const rows = [
-      inv({ id: 'exp', type: 'INCOMING_VENDOR', invoiceDate: '2026-06-03' }),
+      // APPROVED/BOOKED incoming invoices are finalized payables → expense.
+      inv({ id: 'exp', type: 'INCOMING_VENDOR', status: 'APPROVED', invoiceDate: '2026-06-03' }),
+      inv({ id: 'booked', type: 'INCOMING_VENDOR', status: 'BOOKED', invoiceDate: '2026-06-03' }),
+      // Intake / rejected / draft states are NOT expenses.
+      inv({ id: 'uploaded', type: 'INCOMING_UPLOADED', status: 'UPLOADED', invoiceDate: '2026-06-03' }),
+      inv({ id: 'review', type: 'INCOMING_VENDOR', status: 'NEEDS_REVIEW', invoiceDate: '2026-06-03' }),
+      inv({ id: 'rejected', type: 'INCOMING_VENDOR', status: 'REJECTED', invoiceDate: '2026-06-03' }),
       inv({ id: 'draft', type: 'INCOMING_VENDOR', status: 'DRAFT', invoiceDate: '2026-06-03' }),
     ];
     const exp = expensesInRange(rows, monthStart, now);
-    expect(exp.map((r) => r.id)).toEqual(['exp']);
+    expect(exp.map((r) => r.id).sort()).toEqual(['booked', 'exp']);
   });
 
   it('sumCents aggregates totals', () => {

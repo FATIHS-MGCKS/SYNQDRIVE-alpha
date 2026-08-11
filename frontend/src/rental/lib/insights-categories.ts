@@ -66,14 +66,12 @@ export function insightRecommendation(insight: DashboardInsight): string {
   }
 }
 
-export function financialImpactEur(insight: DashboardInsight): number | null {
-  const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const cents = m?.financialImpactCents ?? m?.lostRevenueEur;
-  if (typeof cents === 'number' && Number.isFinite(cents)) {
-    return cents > 1000 ? Math.round(cents / 100) : Math.round(cents);
-  }
-  return null;
-}
+// E3.5: `financialImpactEur()` was removed. It inferred a monetary unit from a
+// value's magnitude (`cents > 1000 ? /100 : as-is`) and mixed `financialImpactCents`
+// with `lostRevenueEur` — unsafe unit guessing with no explicit currency. Insight
+// financial-impact amounts are not a canonical Finance metric and are no longer
+// presented as money. Canonical Finance Money is served exclusively by the E3
+// backend and rendered via the shared status-aware formatter.
 
 export function matchesStationIdFilter(
   insight: DashboardInsight,

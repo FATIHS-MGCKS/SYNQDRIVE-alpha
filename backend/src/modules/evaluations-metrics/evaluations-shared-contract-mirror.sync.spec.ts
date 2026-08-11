@@ -72,6 +72,19 @@ describe('evaluations shared contract backend build mirror', () => {
     }
   });
 
+  it('keeps the E3 finance domain contracts byte-identical', () => {
+    for (const fileName of [
+      'evaluations-money.ts',
+      'evaluations-fx.ts',
+      'evaluations-finance-facts.ts',
+      'evaluations-finance-calculator.ts',
+    ]) {
+      expect(
+        readRepositoryFile(`backend/src/synq/evaluations-finance/${fileName}`),
+      ).toBe(readRepositoryFile(`shared/evaluations-finance/${fileName}`));
+    }
+  });
+
   it('keeps shared time independent from evaluations contracts', () => {
     expect(
       readRepositoryFile('backend/src/shared/time/iana-timezone.util.ts'),

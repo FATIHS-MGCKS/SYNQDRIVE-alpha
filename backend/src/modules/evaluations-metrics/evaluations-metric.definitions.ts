@@ -82,7 +82,9 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: ['PREVIOUS_COMPARABLE_PERIOD'],
     dataClassification: 'AGGREGATE',
     metricKind: 'OBSERVED',
-    implementationStatus: 'active',
+    // E3.2: strict issued-revenue variant is not served by the canonical E3
+    // endpoint (which serves fin.mtd_issued_revenue) → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.mtd_paid_revenue',
@@ -90,7 +92,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     unit: 'CURRENCY_MINOR',
     valueType: 'MONEY',
     aggregationType: 'SUM',
-    calculationVersion: '1.0.0',
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG,
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
@@ -135,7 +137,8 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'active',
+    // E3.2: no canonical backend owner yet (was client-derived) → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.daily_revenue_mtd',
@@ -148,7 +151,8 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
     metricKind: 'OBSERVED',
-    implementationStatus: 'active',
+    // E3.2: daily series is client presentation, not canonically served → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.top_customers_mtd',
@@ -174,7 +178,8 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'active',
+    // E3.2: client-derived top-N, no canonical backend owner → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.mom_revenue_delta_pct',
@@ -187,7 +192,8 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: ['PREVIOUS_COMPARABLE_PERIOD'],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'active',
+    // E3.2: no canonical backend period-comparison owner yet → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.revenue_lost_actual_mtd',
@@ -225,7 +231,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     unit: 'CURRENCY_MINOR',
     valueType: 'MONEY',
     aggregationType: 'SUM',
-    calculationVersion: '1.0.0',
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG,
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
@@ -238,7 +244,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     unit: 'CURRENCY_MINOR',
     valueType: 'MONEY',
     aggregationType: 'SUM',
-    calculationVersion: '1.0.0',
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG,
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
@@ -251,7 +257,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     unit: 'CURRENCY_MINOR',
     valueType: 'MONEY',
     aggregationType: 'SUM',
-    calculationVersion: '1.0.0',
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG,
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
@@ -280,7 +286,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     unit: 'CURRENCY_MINOR',
     valueType: 'MONEY',
     aggregationType: 'SUM',
-    calculationVersion: '1.0.0',
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG,
     supportedComparisons: ['PREVIOUS_COMPARABLE_PERIOD'],
     dataClassification: 'AGGREGATE',
@@ -298,7 +304,8 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
     metricKind: 'OBSERVED',
-    implementationStatus: 'active',
+    // E3.2: daily series is client presentation, not canonically served → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.mom_expense_delta_pct',
@@ -311,7 +318,8 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: ['PREVIOUS_COMPARABLE_PERIOD'],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'active',
+    // E3.2: no canonical backend period-comparison owner yet → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.mtd_net_result',
@@ -319,7 +327,7 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     unit: 'CURRENCY_MINOR',
     valueType: 'MONEY',
     aggregationType: 'SUM',
-    calculationVersion: '1.0.0',
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG,
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
@@ -330,9 +338,9 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     id: 'fin.profit_margin_mtd',
     category: 'REVENUE',
     unit: 'PERCENT',
-    valueType: 'PERCENT',
+    valueType: 'SIGNED_PERCENT',
     aggregationType: 'RATIO',
-    calculationVersion: '1.0.0',
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG,
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
@@ -350,7 +358,8 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     supportedComparisons: [],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'active',
+    // E3.2: daily series is client presentation, not canonically served → degraded.
+    implementationStatus: 'active_degraded',
   }),
   m({
     id: 'fin.contribution_margin_mtd',
