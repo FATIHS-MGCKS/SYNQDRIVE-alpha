@@ -1,0 +1,23 @@
+{
+  "name": "synqdrive-landing-page",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Public marketing site for SynqDrive, served at https://synqdrive.eu",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node tools/build-site.mjs",
+    "serve": "cd dist && python3 -m http.server 4321 --bind 127.0.0.1",
+    "qa": "playwright test -c e2e/playwright.landing-qa.config.ts",
+    "qa:prod": "LANDING_QA_BASE_URL=https://synqdrive.eu LANDING_QA_LABEL=prod playwright test -c e2e/playwright.landing-qa.config.ts",
+    "assets": "node tools/build-assets.mjs",
+    "icons": "node tools/build-icons.mjs",
+    "package": "cd dist && tar -czf ../synqdrive-landing-page.tar.gz ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "lucide-react": "^0.577.0"
+  }
+}
