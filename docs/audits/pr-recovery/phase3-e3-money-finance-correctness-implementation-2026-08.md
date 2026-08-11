@@ -401,3 +401,60 @@ Frontend Core KPI = display only.
 - Ledger net cashflow with refunds and historical as-of receivables remain fail-closed.
 - See `phase3-e3-financial-ui-reconciliation-matrix-2026-08.csv` and
   `phase3-e3-final-ui-scope-money-presentation-test-report-2026-08.md`.
+
+---
+
+# E3.4 — Final Cockpit, False-Zero & Currency Presentation Correction (2026-08-11)
+
+Final narrow presentation correction (same branch/PR #1022) closing the residual
+UI defects found by the independent post-E3.3 audit. No finance redesign, no E4.
+
+## InsightsCockpit money model
+
+The cockpit no longer receives EUR-shaped numbers. Open Receivables is passed as a
+status-aware `FinanceMoneyView` and rendered via the shared `formatFinanceMoney`
+(status/currency preserved; UNAVAILABLE → label, never `0 €`; JPY/KWD correct). The
+canonical overdue amount is no longer folded into the insight risk heuristic
+(`financialRiskEur` prop removed) — that was a currency relabel + mixed truth.
+
+## False zero + precision
+
+Core KPI cards dropped the forced `maximumFractionDigits: 0`; currency-native
+precision (EUR `0.49`, KWD 3 decimals, negative preserved). No UNAVAILABLE→0 and no
+rounding-to-zero.
+
+## Recent Activity currency
+
+Each invoice is formatted in its own currency (`formatRawMoney`), never
+EUR-relabeled; missing/invalid currency → guarded label.
+
+## Error isolation
+
+The `invoiceError` early-return is removed — a raw invoice-detail failure shows a
+non-blocking banner and cannot suppress canonical Core Finance; a finance failure is
+never reconstructed from raw invoices.
+
+## Station reason propagation
+
+`buildUnavailableBundle` propagates the specific reason to every money AND margin
+metric; station-scoped finance surfaces `STATION_SCOPED_FINANCE_UNSUPPORTED` on all
+Core metrics (no collapse).
+
+## Money formatter consolidation
+
+One shared canonical presentation authority (`finance-insights-adapter`:
+`formatFinanceMoney` / `formatRawMoney` / `minorToMajorForPresentation`) for the
+finance surface; `fmtEUR` remains only in EUR-scoped legacy degraded surfaces
+(daily/top-N) and dead drilldown code.
+
+## Residual limitations (E3.4)
+
+- Insights "Finanzrisiko (geschätzt)" remains an insights-domain EUR heuristic
+  (`ins.estimated_financial_exposure_eur`), explicitly estimated, not canonical E3
+  finance.
+- Legacy daily/top-N/MoM/avg-invoice remain non-canonical presentation (labeled
+  Limited / shown unavailable), pending E4/E6.
+- Per-station finance attribution, ledger net cashflow with refunds, and historical
+  as-of receivables remain fail-closed.
+- Evidence: `phase3-e3-final-cockpit-false-zero-currency-correction-2026-08.md`,
+  updated UI reconciliation matrix; E3.3 report claims marked `SUPERSEDED_BY_E3_4`.

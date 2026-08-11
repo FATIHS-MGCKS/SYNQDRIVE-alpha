@@ -138,3 +138,29 @@ implementation report and semantic matrix; E3.1 serving-path claim marked
 Evidence (E3.3): `phase3-e3-financial-ui-reconciliation-matrix-2026-08.csv`,
 `phase3-e3-final-ui-scope-money-presentation-test-report-2026-08.md`; updated
 implementation report; E3.2 report claims marked `SUPERSEDED_BY_E3_3`.
+
+## E3.4 — Final Cockpit, False-Zero & Currency Presentation Correction
+
+### Changes (E3.4)
+
+- InsightsCockpit takes a status-aware canonical Open Receivables Money view (not an
+  EUR number); shared formatter; no false zero, no EUR relabel, JPY/KWD correct;
+  canonical overdue removed from the insight risk sum.
+- Core KPI cards use currency-native precision (removed forced 0 fraction digits).
+- Recent Activity formats each invoice in its own currency (`formatRawMoney`).
+- Raw invoice-detail failure no longer suppresses canonical Core Finance (removed
+  early-return; non-blocking banner).
+- Backend: station-scoped unavailable reason propagated to every money + margin
+  metric.
+
+### Architektur (E3.4)
+
+- One status-aware money presentation authority for the finance surface; every
+  visible canonical finance value flows backend → status-aware view → shared
+  formatter → display. Canonical Core Finance rendering is independent of the raw
+  invoice-detail data source (error isolation). Insights risk heuristics stay in the
+  insights domain, separate from canonical E3 finance.
+
+Evidence (E3.4): `phase3-e3-final-cockpit-false-zero-currency-correction-2026-08.md`,
+updated UI reconciliation matrix and implementation report; E3.3 report claims marked
+`SUPERSEDED_BY_E3_4`.

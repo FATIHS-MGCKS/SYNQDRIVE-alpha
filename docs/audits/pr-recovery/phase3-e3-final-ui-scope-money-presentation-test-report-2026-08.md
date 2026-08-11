@@ -1,5 +1,24 @@
 # Phase 3 E3.3 — Final UI Scope, Drilldown Reconciliation & Money Presentation Test Report
 
+> **Independent post-E3.3 audit residuals (corrected in E3.4, 2026-08-11).** The
+> audit found presentation defects E3.3 did not cover, so some E3.3 counters
+> overclaimed zero residual presentation failures. Residuals:
+> - `InsightsCockpit` received EUR-shaped numeric Money props (`openReceivablesEur`,
+>   `financialRiskEur`) → UNAVAILABLE became `0 €`, JPY/KWD misrepresented, non-EUR
+>   relabeled as EUR, and canonical overdue was folded into an insight risk sum.
+> - Recent Activity formatted arbitrary-currency invoices with EUR.
+> - Core KPI cards forced `maximumFractionDigits: 0` (49 EUR minor → `€0`).
+> - A raw invoice-detail fetch failure suppressed otherwise-valid canonical Core
+>   Finance (early return).
+> - Station-scoped unavailable reason collapsed to `FINANCE_SOURCE_UNAVAILABLE`.
+>
+> The affected E3.3 claims (InsightsCockpit money, false-zero, currency
+> presentation, error isolation, station reason) are marked `SUPERSEDED_BY_E3_4`.
+> Corrections and evidence:
+> `phase3-e3-final-cockpit-false-zero-currency-correction-2026-08.md`. All other
+> E3.3 results (station propagation, KPI/drilldown removal, minor-exponent helper,
+> outstanding-derivation removal) remain valid.
+
 ## 1. Revision identity
 
 - `CURRENT_MAIN_SHA` = `6acdb24eb84986b25789c01fb544645231c53dc5` (no drift)
@@ -135,7 +154,7 @@ frontend/backend, finance tests, and E3 docs. No E4–E9 code.
 | CLIENT_MIXED_CURRENCY_SILENT_DROP_COUNT | 0 |
 | LEGACY_MIXED_CURRENCY_SILENT_DROP_COUNT | 0 |
 | LEGACY_OUTSTANDING_DERIVATION_COUNT | 0 |
-| MONEY_MINOR_EXPONENT_PRESENTATION_FAILURE_COUNT | 0 |
+| MONEY_MINOR_EXPONENT_PRESENTATION_FAILURE_COUNT | 0 (Core adapter; InsightsCockpit/Recent-Activity/precision **SUPERSEDED_BY_E3_4**) |
 | ACTIVE_BUT_NOT_CANONICALLY_SERVED | 0 |
 | CROSS_TENANT_FINANCE_READ_LEAKAGE_COUNT | 0 |
 | STATION_SCOPE_FINANCE_LEAKAGE_COUNT | 0 |
