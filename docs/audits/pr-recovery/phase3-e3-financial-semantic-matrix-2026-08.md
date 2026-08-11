@@ -7,6 +7,14 @@
 > allowlists; reporting currency requires an ACTIVE account; the client serving path
 > now delegates to the canonical calculator; several calculation versions bumped to
 > `2.0.0`.
+>
+> **E3.2 update (2026-08-11).** The live Financial Insights UI now consumes the
+> canonical backend endpoint (`GET /organizations/:orgId/evaluations/finance/insights`)
+> for all eight core metrics; the browser performs no core-KPI calculation,
+> periodisation, currency filtering, classification, or margin math. The UI/live
+> path therefore matches the backend definitions in this matrix. Registry `1.4.0`;
+> client-only finance value metrics downgraded to `active_degraded` (see
+> `phase3-e3-finance-metric-ownership-matrix-2026-08.csv`).
 
 Base main SHA: `6acdb24eb84986b25789c01fb544645231c53dc5`
 Branch: `integration/evaluations-e3-money-finance-correctness-2026-08`

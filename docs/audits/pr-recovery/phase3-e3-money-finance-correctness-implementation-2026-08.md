@@ -255,3 +255,85 @@ calculation versions. Client serving-path: 21 tests
 - The client presentation breakdowns (daily series, top-N, MoM) remain in the UI as
   presentation over canonically-classified rows; the core metric money authority is
   the canonical calculator.
+
+---
+
+# E3.2 — Canonical Live Serving Path & Finance Metric Ownership (2026-08-11)
+
+Correction pass (same branch/PR #1022) closing the remaining live-serving and
+single-truth gaps found by the E3.1 audit.
+
+## Old live path
+
+`FinancialInsightsView` → `GET /organizations/:orgId/invoices` (raw invoices) →
+client `financial-insights.logic.ts` computed the core KPIs in the browser
+(issued+paid mixing, invoice-status paid revenue, client net result/margin,
+browser `new Date()` period, EUR-hardcoded formatting/filtering).
+
+## New live path
+
+`FinancialInsightsView` → `api.evaluations.financeInsights` →
+`GET /organizations/:orgId/evaluations/finance/insights`
+(`EvaluationsFinanceController`) → `EvaluationsFinanceService` (E2 scope + E1
+period) → canonical calculator/repository → canonical finance source records.
+The browser only formats/displays the returned values via a status-aware adapter.
+
+## Client calculations removed (core KPIs)
+
+Issued revenue, paid revenue, expenses, net result, profit margin, open/overdue/
+total receivables are no longer computed in the browser. Removed: `sumCents`-based
+KPI sums, `profitCents`/`profitMargin` client math, issued∪paid mixing for the
+revenue card, browser-period KPI boundaries, EUR-hardcoded KPI formatting, and the
+`currentOpenReceivablesMinor` client receivable KPI. Raw invoices remain only for
+the detail table, daily chart, top-N and drilldown popups (presentation), which are
+downgraded to non-canonical (see ownership matrix).
+
+## Canonical backend endpoint
+
+`GET /organizations/:orgId/evaluations/finance/insights` — guarded by
+OrgScopingGuard + RolesGuard + PermissionsGuard (`invoices:read`, matching the
+existing audience). Returns `{ organizationId, period, metrics }` where each metric
+is an E1 metric response (`MONEY` → `{amountMinor,currency}`, margin →
+`SIGNED_PERCENT`, with status/warnings). Not dark-gated because it replaces an
+existing live capability.
+
+## Period / time authority
+
+The KPI period comes from the backend E1 period window; the period label is
+rendered in the backend's effective timezone, so KPI values/labels no longer depend
+on the browser timezone.
+
+## Multi-currency UI behavior
+
+The adapter surfaces the backend status: mixed-currency-without-FX → UNAVAILABLE is
+shown as a status label (no silent USD drop, no false EUR subtotal). Zero with a
+known currency → formatted zero; unknown reporting currency → unavailable, not €0.
+
+## Metric ownership reconciliation
+
+The 8 core metrics are canonically served (active). Client-only finance value
+metrics (`fin.issued_revenue_strict_mtd`, `fin.avg_invoice_value_mtd`,
+`fin.daily_revenue_mtd`, `fin.daily_expenses_mtd`, `fin.daily_net_result_mtd`,
+`fin.mom_revenue_delta_pct`, `fin.mom_expense_delta_pct`, `fin.top_vehicles_mtd`)
+are downgraded to `active_degraded`. Registry version `1.4.0`. Observed COUNT
+metrics remain active as presentation (not finance value calculations). A registry
+ownership test enforces `ACTIVE_BUT_NOT_CANONICALLY_SERVED = 0` for finance value
+metrics. See `phase3-e3-finance-metric-ownership-matrix-2026-08.csv`.
+
+## Tests
+
+Backend finance suite: 76 (adds controller + ownership specs). Frontend finance:
+adapter + serving-path + characterization + provenance + businessPulse. E1/E2/E3.1
+regression via `npm run test:evaluations` (430 passing; 2 pre-existing tire
+failures). Frontend typecheck + production build PASS.
+
+## Residual limitations (E3.2)
+
+- Station-scoped finance remains fail-closed (no per-station attribution); the core
+  finance KPI surface is org-scoped canonical.
+- MoM deltas and avg-invoice have no canonical backend owner yet → shown as
+  unavailable / non-canonical (not recomputed client-side).
+- Daily chart and top-N remain client presentation (downgraded, EUR-scoped),
+  explicitly non-canonical.
+- Ledger-based net cashflow with refunds and historical as-of receivables remain
+  out of scope (fail-closed), as in E3/E3.1.

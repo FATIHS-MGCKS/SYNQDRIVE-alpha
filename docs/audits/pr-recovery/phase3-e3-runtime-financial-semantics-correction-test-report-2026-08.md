@@ -1,5 +1,17 @@
 # Phase 3 E3.1 — Runtime Authority & Financial Semantics Correction Test Report
 
+> **SUPERSEDED note (E3.2, 2026-08-11).** The E3.1 "Serving Path Authority" and
+> "Legacy Delegation" PASS claims below were made when the client
+> `financial-insights.logic.ts` delegated to the shared calculator in-browser. An
+> independent audit found that this still left client-side finance authorities on
+> the live path. E3.2 corrects this: the core KPIs are now served by the canonical
+> backend endpoint `GET /organizations/:orgId/evaluations/finance/insights`, and
+> the browser performs no core-KPI calculation. Those two claims are marked
+> `SUPERSEDED_BY_E3_2`; all other E3.1 claims (receivable time, reporting currency,
+> signed margin, lifecycle allowlists, payment→invoice tenant, calc versions,
+> multi-currency) remain valid. See
+> `phase3-e3-canonical-live-serving-path-test-report-2026-08.md`.
+
 - `PRE_E3_1_HEAD` = `c4942003d5a29c6c96b93fcce862a604002a3b68`
 - `TESTED_HEAD_SHA` = the E3.1 branch head after the reports commit (see the PR
   Final Output / `gh pr view 1022`). Branch == PR head is verified there.
@@ -10,8 +22,8 @@
 
 | Gate | Result |
 |---|---|
-| Serving Path Authority (client delegates to canonical E3) | PASS |
-| Legacy Delegation (no independent legacy formula) | PASS |
+| Serving Path Authority (client delegates to canonical E3) | PASS → **SUPERSEDED_BY_E3_2** |
+| Legacy Delegation (no independent legacy formula) | PASS → **SUPERSEDED_BY_E3_2** |
 | Current Receivable (partial payment = open remainder) | PASS |
 | Historical Receivable Semantics (fail closed) | PASS |
 | Reporting Currency Authority (ACTIVE account only) | PASS |

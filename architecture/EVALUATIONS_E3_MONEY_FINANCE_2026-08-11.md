@@ -80,3 +80,32 @@ finance test report, implementation report).
 Evidence (E3.1): `phase3-e3-invoice-lifecycle-finance-matrix-2026-08.md`,
 `phase3-e3-runtime-financial-semantics-correction-test-report-2026-08.md`,
 updated semantic/source matrices and implementation report.
+
+## E3.2 — Canonical Live Serving Path & Finance Metric Ownership
+
+### Changes (E3.2)
+
+- New canonical live endpoint `GET /organizations/:orgId/evaluations/finance/insights`
+  (`EvaluationsFinanceController`, OrgScoping+Roles+Permissions `invoices:read`).
+- `FinancialInsightsView` core KPIs now come from the backend via a status-aware
+  finance adapter; client-side KPI summation/period/margin/EUR authority removed.
+- Registry ownership reconciliation: client-only finance value metrics downgraded
+  to `active_degraded`; registry `1.4.0`; ownership test enforces
+  `ACTIVE_BUT_NOT_CANONICALLY_SERVED = 0` for finance value metrics.
+
+### Architektur (E3.2)
+
+- Runtime boundary: the browser is a pure presentation consumer of canonical
+  finance values; the backend `EvaluationsFinanceService` is the single live
+  authority for the eight core finance metrics. Data flow:
+  `UI → finance endpoint → finance service → E1 period + E2 scope + calculator →
+  canonical source records`.
+- Period/timezone authority is server-side; KPI values are browser-timezone
+  independent.
+- Presentation-only breakdowns (daily chart, top-N, MoM, avg invoice) are
+  explicitly non-canonical (downgraded), not KPI authority.
+
+Evidence (E3.2): `phase3-e3-finance-metric-ownership-matrix-2026-08.csv`,
+`phase3-e3-canonical-live-serving-path-test-report-2026-08.md`, updated
+implementation report and semantic matrix; E3.1 serving-path claim marked
+`SUPERSEDED_BY_E3_2`.
