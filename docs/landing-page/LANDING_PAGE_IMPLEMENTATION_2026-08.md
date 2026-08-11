@@ -18,8 +18,16 @@ own artefact rather than bolted onto the product app.
 
 - Seven reference images supplied with the brief, used for structure, information hierarchy,
   copy-to-visual ratio and section rhythm. Their placeholder dashboards were not used as assets.
-- SynqDrive Books I to IV plus the modules in `backend/src/modules` and `frontend/src/rental`
-  as the factual source for every capability claim.
+- The brief names a Documentation Suite (Books I to IV) as the factual authority. **Those files do
+  not exist in this repository** under any name, in any branch, or in git history; the only
+  reference to them is the external "Synqdrive Code" workspace noted in
+  `architecture/CLOUD_AGENTS_2026-06-30.md`. The available authority chain was used instead:
+  the 222 records in `architecture/`, the Master Admin `SynqDrive Code` views
+  (`ArchitekturView`, `HealthTrackingView`, `ChangesView`), the readiness audits and runbooks in
+  `docs/`, and the shipped modules in `backend/src/modules` and `frontend/src/rental`.
+- Every capability claim on the page is traceable to shipped code, and anything the audits mark
+  as gated, shadow-mode or coming soon is either omitted or explicitly qualified. See
+  "Capability claims" below.
 - `.agents/skills/design-taste-frontend`, `.agents/skills/image-to-code`,
   `.agents/skills/minimalist-ui`, `.agents/skills/make-interfaces-feel-better`.
   Dials: design variance 4, motion intensity 3, visual density 3.
@@ -77,6 +85,28 @@ The product ships German and English, and the previous public site was German on
 stays at `/` as the canonical root and English is served from `/en/`, with `hreflang` alternates
 and `x-default` pointing at German. No hardcoded second implementation: both pages are rendered
 from `content/site.mjs`.
+
+## Capability claims
+
+Each claim on the page against the code that backs it, and what was deliberately left out.
+
+| Claim on the page | Backed by | Note |
+|---|---|---|
+| One data model across rental, fleet, bookings, customers, billing | `backend/src/modules/{rental,fleet,booking,customer,billing}`, rental SPA | Rental module is Active |
+| Connected vehicle data, trips, condition, warnings | DIMO integration, snapshot polling worker, trip detection V3, health modules | Shipped |
+| Health systems: brakes, tires, battery, error codes, service, oil | `backend/src/modules` health services, `HealthTrackingView` | Shipped as distinct modules |
+| Assistant answers grounded in operational data, with named sources | AI fleet chat orchestrator, structured JSON responses, audit logging | Shipped with guardrails |
+| Automation runs with human approval | Workflow runtime, maker-checker, approval gates | Runtime is shadow-mode gated, so the copy claims approval rather than autonomous execution |
+| Extraction is never applied before someone confirms | Document Intake V2 confirm-before-apply, plausibility blockers | Shipped |
+| WhatsApp, email and in-app notifications share the customer record | Meta Cloud API, Resend, notification engine | Shipped |
+| Voice assistant "being rolled out per organisation" | Six `voice-*` backend modules, control plane, ADRs, release runbook | **Qualified on purpose**: live PSTN is per-tenant flag-gated and staging-first |
+| Open API, webhooks, per-organisation capabilities | Public API, webhook ingestion, org feature flags | Shipped |
+
+Left off the page entirely: the Fleet Solution as a separate licensed product and Taxi Dispatch
+(both not generally available), WooCommerce and Shopify (early context document only), and any
+unified analytics or KPI product surface (contracts exist, product surface is partial). No metric,
+percentage, uptime figure, customer name, logo or testimonial appears anywhere, because there is
+no verifiable public source for any of them.
 
 ## Screenshot sources and privacy
 
@@ -173,6 +203,12 @@ errors, failed requests, horizontal overflow at nine widths, and touch target si
 dropdown by pointer and keyboard, the mobile drawer, the locale switch and cumulative layout
 shift.
 
+The screenshot step waits for every image to report `complete` with a non-zero `naturalWidth`
+before the shutter. Without that it passed while emitting a misleading artefact: against a
+deployed origin a lazy image could still be in flight and got captured as an empty frame, so a
+correct page looked broken in the screenshot. A fixed settle delay was enough on localhost and
+not over the network.
+
 ## Deployment
 
 `synqdrive.eu` is a main vhost on Hostinger shared hosting (LiteSpeed, hPanel), docroot
@@ -182,8 +218,11 @@ script in `.cursor/scripts/cloud-agent-deploy.sh` does not apply and was not use
 ```bash
 node landingpage/tools/build-assets.mjs   # only when re-cropping captures
 node landingpage/tools/build-site.mjs     # writes landingpage/dist
-# archive the contents of landingpage/dist at top level, then deploy it to the
-# synqdrive.eu vhost with the Hostinger static website deploy endpoint
+
+# The archive must hold the files at top level, not nested inside a dist/ folder,
+# because the deploy extracts it straight into the docroot.
+cd landingpage/dist && tar -czf "/tmp/dist_$(date +%Y%m%d_%H%M%S).tar.gz" .
+# then Hostinger hosting_deployStaticWebsite with domain synqdrive.eu and that path
 ```
 
 DNS, nameservers, the HTTP to HTTPS redirect and the Let's Encrypt certificate were left
