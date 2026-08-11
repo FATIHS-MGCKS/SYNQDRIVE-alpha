@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e2-tenant-analytics-foundation-v49887-2026-08-11',
+    version: '4.9.887',
+    title: 'V4.9.887 — Evaluations E2 Tenant-Safe Analytics Foundation',
+    summary: [
+      'Typed, organization-owned entity references (no PII snapshots) with a normalized table and additive migration.',
+      'Server-side organization + station scope enforcement with fail-closed cross-tenant and station-injection handling.',
+      'Allowlisted, bounded analytics filters and pagination; summary aggregate totals stay separate from top-N and detail pages.',
+      'Foundation summary/detail API ships dark behind EVALUATIONS_ANALYTICS_V2_MODE=off; reuses E1 period/metric contracts.',
+    ],
+    reason:
+      'Phase 3 E2 establishes the tenant-safe contract, persistence, and enforcement foundation required by later analytics, finance, and UI packages.',
+    previousBehavior:
+      'Analytics had no canonical tenant-safe entity-reference contract, scope resolver, or summary-vs-detail separation.',
+    details:
+      'shared/evaluations-analytics, backend/src/modules/evaluations-analytics/*, backend/prisma/migrations/20260811060000_evaluations_entity_references, docs/audits/pr-recovery/phase3-e2-*',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-11T05:00:00.000Z',
+  },
+  {
     id: 'evaluations-e1-contract-recovery-v49886-2026-08-10',
     version: '4.9.886',
     title: 'V4.9.886 — Evaluations E1.1 Contract Correction',
