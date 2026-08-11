@@ -426,7 +426,10 @@ export class EvaluationsInsightsService {
     }
 
     const window = toWindow(scope);
-    const observations = await this.repository.loadDriverObservations(scope.organizationId, window);
+    const { observations, unattributedCount } = await this.repository.loadDriverObservations(
+      scope.organizationId,
+      window,
+    );
     const influence = computeDriverInfluence(observations, E4_DEFAULT_DRIVER_CONFIG);
 
     const status: EvaluationsMetricStatus =
@@ -437,7 +440,9 @@ export class EvaluationsInsightsService {
       coverage: {
         expectedRecords: null,
         availableRecords: influence.factors.length,
-        excludedRecords: null,
+        // Unattributed events are surfaced for transparency and are never
+        // redistributed to named drivers.
+        excludedRecords: unattributedCount,
         ratio: null,
         missingSources: influence.dimensionsSkippedInsufficient,
       },

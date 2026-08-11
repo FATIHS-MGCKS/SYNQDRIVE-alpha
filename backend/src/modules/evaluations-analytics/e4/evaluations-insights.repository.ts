@@ -77,6 +77,8 @@ export class EvaluationsInsightsRepository {
           status: { in: ['ACTIVE', 'COMPLETED'] },
           startDate: { lt: window.endExclusive },
           endDate: { gt: window.start },
+          // Nested tenant proof: only bookings whose vehicle is same-tenant.
+          vehicle: { is: { organizationId } },
         },
         select: { vehicleId: true, startDate: true, endDate: true },
       }),
@@ -86,6 +88,9 @@ export class EvaluationsInsightsRepository {
           blocksRental: true,
           downtimeStart: { lt: window.endExclusive },
           downtimeEnd: { gt: window.start },
+          // ServiceCase exposes only a `vehicleId` scalar (no relation object);
+          // its own organizationId + the vehicle map-join (foreign vehicleId is
+          // dropped) provide tenant safety.
         },
         select: { vehicleId: true, downtimeStart: true, downtimeEnd: true },
       }),
@@ -183,6 +188,9 @@ export class EvaluationsInsightsRepository {
           status: 'COMPLETED',
           actualCostCents: { not: null },
           completedAt: { gte: window.start, lt: window.endExclusive },
+          // ServiceCase exposes only a `vehicleId` scalar (no relation object),
+          // so tenant safety rests on its own `organizationId` plus the vehicle
+          // map-join downstream (a foreign vehicleId is dropped, never attributed).
         },
         select: { id: true, actualCostCents: true, completedAt: true },
       }),
@@ -192,6 +200,8 @@ export class EvaluationsInsightsRepository {
           status: 'REPAIRED',
           repairCostCents: { not: null },
           repairedAt: { gte: window.start, lt: window.endExclusive },
+          // Nested tenant proof: the linked vehicle must be same-tenant.
+          vehicle: { is: { organizationId } },
         },
         select: {
           id: true,
@@ -205,10 +215,15 @@ export class EvaluationsInsightsRepository {
           organizationId,
           serviceCaseId: { not: null },
           invoiceId: { not: null },
+          // E4.1A: the outer task tenant is NOT sufficient. The linked invoice
+          // must independently belong to the same organization before its
+          // identity may drive cost dedup/suppression (nested relational
+          // predicate — no per-row validation query).
+          invoice: { is: { organizationId } },
         },
         select: {
           serviceCaseId: true,
-          invoice: { select: { id: true, documentExtractionId: true } },
+          invoice: { select: { id: true, organizationId: true, documentExtractionId: true } },
         },
       }),
     ]);
@@ -221,6 +236,9 @@ export class EvaluationsInsightsRepository {
     const serviceCaseInvoiceKey = new Map<string, string>();
     for (const link of orgTaskLinks) {
       if (!link.serviceCaseId || !link.invoice) continue;
+      // Belt-and-braces: ignore any linked invoice that is not same-tenant so a
+      // foreign invoice can never suppress or alter legitimate cost facts.
+      if (link.invoice.organizationId !== organizationId) continue;
       serviceCaseInvoiceKey.set(
         link.serviceCaseId,
         invoiceEconomicKey(link.invoice.id, link.invoice.documentExtractionId),
@@ -381,50 +399,68 @@ export class EvaluationsInsightsRepository {
   }
 
   /**
-   * Driver-attributed observations (org-scoped). The driver reference is the
-   * booking's assigned driver or contract customer id — always a column on an
-   * organization-scoped row, so a foreign-tenant driver can never appear.
+   * Driver-attributed observations (org-scoped, actual/assigned driver only).
+   *
+   * E4.1A hardening:
+   *  - The contract customer (`Booking.customerId`) is NEVER treated as the
+   *    driver (no `assignedDriverId ?? customerId` fallback). A booking with no
+   *    assigned driver is UNATTRIBUTED and simply produces no named observation.
+   *  - The assigned driver must independently belong to the same organization.
+   *    `Booking.organizationId` does not prove the assigned driver's tenant, so
+   *    the nested `assignedDriver.organizationId` is validated explicitly; a
+   *    foreign driver is dropped (no id/name/reference leaks).
+   *  - `VehicleDamage.customerId` is the liable contract party, NOT the actual
+   *    driver, so it never becomes driver attribution here. Damage still
+   *    contributes to non-driver analytics (cost model) via its own path.
+   *
+   * The canonical actual-driver authority for trip-level attribution is
+   * `DriverAttribution` (org-scoped, with `driverId` + `attributionType` +
+   * confidence). Trip-level driver attribution is deferred to E4.1B; cancelled/
+   * no-show bookings have no trip, so only the validated assigned driver is used.
+   *
+   * `unattributedCount` is reported for evidence but is NEVER redistributed to
+   * named drivers.
    */
   async loadDriverObservations(
     organizationId: string,
     window: E4SourceWindow,
-  ): Promise<E4DriverObservationInput[]> {
-    const [bookings, damages] = await Promise.all([
-      this.prisma.booking.findMany({
-        where: {
-          organizationId,
-          status: { in: ['CANCELLED', 'NO_SHOW'] },
-          OR: [
-            { cancelledAt: { gte: window.start, lt: window.endExclusive } },
-            { startDate: { gte: window.start, lt: window.endExclusive } },
-          ],
-        },
-        select: { customerId: true, assignedDriverId: true },
-      }),
-      this.prisma.vehicleDamage.findMany({
-        where: {
-          organizationId,
-          customerId: { not: null },
-          OR: [
-            { repairedAt: { gte: window.start, lt: window.endExclusive } },
-            { createdAt: { gte: window.start, lt: window.endExclusive } },
-          ],
-        },
-        select: { customerId: true },
-      }),
-    ]);
+  ): Promise<{ observations: E4DriverObservationInput[]; unattributedCount: number }> {
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        organizationId,
+        status: { in: ['CANCELLED', 'NO_SHOW'] },
+        OR: [
+          { cancelledAt: { gte: window.start, lt: window.endExclusive } },
+          { startDate: { gte: window.start, lt: window.endExclusive } },
+        ],
+      },
+      select: {
+        assignedDriverId: true,
+        // Nested select for explicit same-tenant proof of the assigned driver.
+        assignedDriver: { select: { organizationId: true } },
+      },
+    });
 
     const observations: E4DriverObservationInput[] = [];
+    let unattributedCount = 0;
     for (const booking of bookings) {
-      const driverRef = booking.assignedDriverId ?? booking.customerId;
-      if (!driverRef) continue;
-      observations.push({ driverRef, dimension: 'BOOKING_CANCELLATIONS', count: 1 });
+      // No assigned driver, or assigned driver is foreign / missing → UNATTRIBUTED.
+      if (
+        !booking.assignedDriverId ||
+        !booking.assignedDriver ||
+        booking.assignedDriver.organizationId !== organizationId
+      ) {
+        unattributedCount += 1;
+        continue;
+      }
+      observations.push({
+        driverRef: booking.assignedDriverId,
+        dimension: 'BOOKING_CANCELLATIONS',
+        count: 1,
+      });
     }
-    for (const damage of damages) {
-      if (!damage.customerId) continue;
-      observations.push({ driverRef: damage.customerId, dimension: 'DAMAGE_EVENTS', count: 1 });
-    }
-    return observations;
+
+    return { observations, unattributedCount };
   }
 }
 
