@@ -120,6 +120,9 @@ test.describe('landing product assets', () => {
   });
 
   test('fleet command with live telemetry', async ({ page }) => {
+    // Wider viewport so the vehicle list column is roomy enough to render its
+    // status filters in full instead of clipping the last one.
+    await page.setViewportSize({ width: 1720, height: 940 });
     await openRental(page, { synqdrive_rental_fleet_tab: 'status' });
     await clickSidebarNav(page, 'Fleet');
     await expect(page.getByRole('heading', { name: /^Fleet$/ })).toBeVisible({ timeout: 45_000 });
