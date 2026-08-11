@@ -46,9 +46,28 @@ Command: `npx jest src/modules/evaluations-metrics src/modules/evaluations-analy
 | Prisma | `npx prisma validate` | Valid; no schema diff (`E4_SCHEMA_MIGRATION_REQUIRED = NO`) |
 | Lint (E4 files) | `npx eslint "src/modules/evaluations-analytics/e4/**/*.ts"` | PASS (exit 0) |
 
-## Baseline A/B
+## Baseline A/B (exact-head CI on PR #1024, `PR_HEAD_SHA = 06def405`)
 
-Targeted evaluations suites + typecheck + build + frontend typecheck are all green on the E4 candidate. No global red gate was encountered in the exercised scope, so no A/B split was required for those. `NEW_E4_FAILURE_COUNT = 0`, `UNKNOWN_COUNT = 0`.
+The repository has pre-existing global-red CI gates. Every failing check was classified against the exact PR head; none touch E4/evaluations files.
+
+| CI check | Result | Classification | Evidence |
+|---|---|---|---|
+| Backend unit tests | PASS | — | includes all evaluations suites |
+| Production build | PASS | — | both workflow runs |
+| Prisma validate | PASS | — | no schema change |
+| Frontend component tests | PASS | — | — |
+| Backend security tests | PASS | — | — |
+| Accessibility (axe) | PASS | — | — |
+| Typecheck (`tsc -p tsconfig.json`, incl. specs) | fail | PRE_EXISTING_IDENTICAL | 4 errors, all in `src/modules/billing/*.spec.ts` + `src/modules/workflows/workflow-dry-run.service.spec.ts` — files E4 never touched; local candidate `tsc -p tsconfig.json` reproduces exactly these 4 and zero E4/evaluations errors |
+| Lint (`npm run lint:all`, whole repo) | fail | PRE_EXISTING_IDENTICAL | `no-control-regex`/`no-fallthrough`/`no-useless-catch`/`no-empty-object-type` in pre-existing files; `eslint src/modules/evaluations-analytics/e4/**` passes clean; passes in the sibling workflow run |
+| Backend integration tests | fail | ENVIRONMENT_SPECIFIC | `P3018 relation "vehicle_trips" does not exist` during `prisma migrate deploy` — pre-existing migration chain; E4 adds no migration |
+| Migration tests (PostgreSQL) | fail | ENVIRONMENT_SPECIFIC | same `vehicle_trips` migration failure |
+| Security / dependency scan | fail | PRE_EXISTING_IDENTICAL | `npm audit` vulnerabilities in existing deps; passes in sibling run |
+| Playwright E2E (Vehicle Detail) | fail | PRE_EXISTING/ENVIRONMENT | UI E2E; E4 makes no frontend change |
+
+`CHECK_RUN_HEAD_SHA = 06def405eb7dbe17ea6d6a9e96b305182b6cf1c0` (matches `PR_HEAD_SHA`). No stale check evidence.
+
+`NEW_E4_FAILURE_COUNT = 0`, `UNKNOWN_COUNT = 0`. The E4-relevant gates (backend unit tests incl. evaluations, production build, Prisma validate) are green; the red gates are pre-existing/environment and independent of this change.
 
 ## Diff scope audit (STEP 78)
 
