@@ -35,18 +35,10 @@ export class EvaluationsEntityReferenceRepository {
 
   private resolveStationConstraint(
     scope: EvaluationsAuthorizedAnalyticsScope,
-    filters: EvaluationsAnalyticsFilters,
   ): Prisma.EvaluationsEntityReferenceWhereInput['stationId'] | undefined {
-    const authorized = scope.stationIds === null ? null : new Set(scope.stationIds);
-    const requested = filters.stationIds;
-
-    if (requested !== undefined) {
-      const effective =
-        authorized === null ? requested : requested.filter((id) => authorized.has(id));
-      return { in: [...effective] };
-    }
-    if (authorized === null) return undefined;
-    return { in: [...authorized] };
+    // Station scope is authority-derived only; filters can never widen it.
+    if (scope.stationIds === null) return undefined;
+    return { in: [...scope.stationIds] };
   }
 
   buildWhere(
@@ -59,7 +51,7 @@ export class EvaluationsEntityReferenceRepository {
       createdAt: { gte: new Date(period.start), lt: new Date(period.endExclusive) },
     };
 
-    const stationConstraint = this.resolveStationConstraint(scope, filters);
+    const stationConstraint = this.resolveStationConstraint(scope);
     if (stationConstraint !== undefined) where.stationId = stationConstraint;
 
     if (filters.entityTypes?.length) where.entityType = { in: [...filters.entityTypes] };

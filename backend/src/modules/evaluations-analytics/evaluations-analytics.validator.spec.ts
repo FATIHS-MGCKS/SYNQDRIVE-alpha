@@ -3,11 +3,15 @@ import {
   assertValidEvaluationsEntityReference,
   EvaluationsAnalyticsValidationError,
   normalizeEvaluationsAnalyticsFilters,
+  normalizeEvaluationsAnalyticsGroupLimit,
   normalizeEvaluationsAnalyticsPage,
   normalizeEvaluationsRequestedStationIds,
 } from '@synq/evaluations-analytics/evaluations-analytics.validator';
 import {
   EVALUATIONS_ANALYTICS_MAX_FILTER_IDS,
+  EVALUATIONS_ANALYTICS_MAX_GROUP_LIMIT,
+  EVALUATIONS_ANALYTICS_MAX_ID_LENGTH,
+  EVALUATIONS_ANALYTICS_MAX_PAGE,
   EVALUATIONS_ANALYTICS_MAX_PAGE_SIZE,
   EVALUATIONS_ANALYTICS_MAX_STATION_IDS,
   type EvaluationsEntityReference,
@@ -82,6 +86,19 @@ describe('evaluations analytics filter normalization', () => {
     ).toThrow('Unsupported filter key');
   });
 
+  it('rejects stationIds as a filter (station scope is authorization-only)', () => {
+    expect(() =>
+      normalizeEvaluationsAnalyticsFilters({ stationIds: ['s1'] }),
+    ).toThrow('Unsupported filter key');
+  });
+
+  it('rejects oversized identifiers in id filters', () => {
+    const huge = 'x'.repeat(EVALUATIONS_ANALYTICS_MAX_ID_LENGTH + 1);
+    expect(() =>
+      normalizeEvaluationsAnalyticsFilters({ vehicleIds: [huge] }),
+    ).toThrow('too long');
+  });
+
   it('deduplicates and preserves allowlisted id filters', () => {
     const filters = normalizeEvaluationsAnalyticsFilters({
       vehicleIds: ['v1', 'v1', 'v2'],
@@ -113,15 +130,7 @@ describe('evaluations analytics filter normalization', () => {
     });
   });
 
-  it('bounds station and id filter sizes', () => {
-    const tooManyStations = Array.from(
-      { length: EVALUATIONS_ANALYTICS_MAX_STATION_IDS + 1 },
-      (_, i) => `s${i}`,
-    );
-    expect(() =>
-      normalizeEvaluationsAnalyticsFilters({ stationIds: tooManyStations }),
-    ).toThrow('stationIds');
-
+  it('bounds id filter sizes', () => {
     const tooManyIds = Array.from(
       { length: EVALUATIONS_ANALYTICS_MAX_FILTER_IDS + 1 },
       (_, i) => `v${i}`,
@@ -189,6 +198,15 @@ describe('evaluations analytics pagination normalization', () => {
     expect(() => normalizeEvaluationsAnalyticsPage({ page: 1.5 })).toThrow();
   });
 
+  it('rejects an excessive page number (offset overflow guard)', () => {
+    expect(() =>
+      normalizeEvaluationsAnalyticsPage({ page: EVALUATIONS_ANALYTICS_MAX_PAGE + 1 }),
+    ).toThrow('page exceeds');
+    expect(() =>
+      normalizeEvaluationsAnalyticsPage({ page: Number.MAX_SAFE_INTEGER }),
+    ).toThrow();
+  });
+
   it('allowlists sort fields and directions', () => {
     expect(() =>
       normalizeEvaluationsAnalyticsPage({ sortBy: 'organizationId' as never }),
@@ -210,5 +228,22 @@ describe('evaluations analytics group dimension validation', () => {
     expect(() =>
       assertValidEvaluationsAnalyticsGroupDimension('customer_email'),
     ).toThrow('group dimension');
+  });
+});
+
+describe('evaluations analytics group limit normalization', () => {
+  it('defaults when unset and clamps above the maximum', () => {
+    expect(normalizeEvaluationsAnalyticsGroupLimit(undefined)).toBeGreaterThanOrEqual(1);
+    expect(normalizeEvaluationsAnalyticsGroupLimit(100000)).toBe(
+      EVALUATIONS_ANALYTICS_MAX_GROUP_LIMIT,
+    );
+  });
+
+  it('rejects zero, negative, fractional and non-finite group limits', () => {
+    for (const bad of [0, -1, 1.5, Number.POSITIVE_INFINITY, Number.NaN]) {
+      expect(() => normalizeEvaluationsAnalyticsGroupLimit(bad)).toThrow(
+        EvaluationsAnalyticsValidationError,
+      );
+    }
   });
 });

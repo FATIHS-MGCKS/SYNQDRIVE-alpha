@@ -1,4 +1,3 @@
-import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluations-period.contract';
 import { EvaluationsAnalyticsScopeService } from './evaluations-analytics-scope.service';
 import { EvaluationsAnalyticsService } from './evaluations-analytics.service';
 import { EvaluationsEntityReferenceRepository } from './evaluations-entity-reference.repository';
@@ -23,20 +22,7 @@ interface Row {
   createdAt: Date;
 }
 
-const PERIOD: EvaluationsPeriodWindow = {
-  periodType: 'YEAR',
-  start: '2026-01-01T00:00:00.000Z',
-  endExclusive: '2027-01-01T00:00:00.000Z',
-  reference: '2026-08-10T00:00:00.000Z',
-  timezone: {
-    effectiveTimezone: 'Europe/Berlin',
-    source: 'PLATFORM_FALLBACK',
-    reportTimezone: null,
-    stationTimezone: null,
-    organizationTimezone: null,
-  },
-  comparisonBasis: null,
-};
+const REFERENCE = new Date('2026-08-10T00:00:00.000Z');
 
 function matches(row: Row, where: Record<string, unknown>): boolean {
   if (where.organizationId && row.organizationId !== where.organizationId) return false;
@@ -68,6 +54,9 @@ function matches(row: Row, where: Record<string, unknown>): boolean {
 
 function makeFakePrisma(rows: Row[], stations: Array<{ id: string; organizationId: string }>) {
   return {
+    organization: {
+      findUnique: async () => ({ timezone: 'Europe/Berlin' }),
+    },
     station: {
       findMany: async (args: {
         where: { organizationId: string; id: { in: string[] } };
@@ -80,6 +69,12 @@ function makeFakePrisma(rows: Row[], stations: Array<{ id: string; organizationI
               args.where.id.in.includes(s.id),
           )
           .map((s) => ({ id: s.id })),
+      findFirst: async (args: { where: { id: string; organizationId: string } }) => {
+        const found = stations.find(
+          (s) => s.id === args.where.id && s.organizationId === args.where.organizationId,
+        );
+        return found ? { timezone: 'Europe/Berlin' } : null;
+      },
     },
     evaluationsEntityReference: {
       count: async (args: { where: Record<string, unknown> }) =>
@@ -153,7 +148,8 @@ describe('Evaluations analytics tenant isolation (org-a vs org-b)', () => {
       actor: { id: 'u-a', organizationId: 'org-a' },
       orgId: 'org-a',
       requestedStationIds: null,
-      period: PERIOD,
+      periodType: 'YEAR',
+      reference: REFERENCE,
     });
     const summary = await service.getSummary({ scope, filters: {}, groupBy: 'ENTITY_TYPE' });
     expect(summary.aggregateTotal).toBe(2); // only a1, a2
@@ -171,7 +167,8 @@ describe('Evaluations analytics tenant isolation (org-a vs org-b)', () => {
       actor: { id: 'u-a', organizationId: 'org-a' },
       orgId: 'org-a',
       requestedStationIds: null,
-      period: PERIOD,
+      periodType: 'YEAR',
+      reference: REFERENCE,
     });
     const detail = await service.getDetail({
       scope,
@@ -190,7 +187,8 @@ describe('Evaluations analytics tenant isolation (org-a vs org-b)', () => {
       actor: { id: 'u-a', organizationId: 'org-a' },
       orgId: 'org-a',
       requestedStationIds: null,
-      period: PERIOD,
+      periodType: 'YEAR',
+      reference: REFERENCE,
     });
     const detail = await service.getDetail({ scope, filters: {} });
     expect(detail.totalCount).toBe(1);

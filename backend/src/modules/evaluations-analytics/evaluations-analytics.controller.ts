@@ -17,6 +17,7 @@ import {
 } from '@synq/evaluations-periods/evaluations-period.contract';
 import {
   normalizeEvaluationsAnalyticsFilters,
+  normalizeEvaluationsAnalyticsGroupLimit,
   normalizeEvaluationsRequestedStationIds,
   assertValidEvaluationsAnalyticsGroupDimension,
   EvaluationsAnalyticsValidationError,
@@ -26,10 +27,6 @@ import type {
   EvaluationsAnalyticsGroupDimension,
   EvaluationsAnalyticsSummaryResponse,
 } from '@synq/evaluations-analytics/evaluations-analytics.contract';
-import {
-  resolveEvaluationsPeriod,
-  resolveEvaluationsTimezone,
-} from '@modules/evaluations-metrics/evaluations-period.resolver';
 import { EVALUATIONS_MODULE } from './evaluations-analytics.constants';
 import { EvaluationsAnalyticsFeatureGuard } from './evaluations-analytics-feature.guard';
 import {
@@ -82,7 +79,6 @@ export class EvaluationsAnalyticsController {
 
   private buildFilters(query: Record<string, unknown>) {
     return normalizeEvaluationsAnalyticsFilters({
-      stationIds: toStringArray(query.filterStationIds),
       vehicleIds: toStringArray(query.vehicleIds),
       customerIds: toStringArray(query.customerIds),
       entityTypes: toStringArray(query.entityTypes),
@@ -96,12 +92,6 @@ export class EvaluationsAnalyticsController {
     query: Record<string, unknown>,
   ) {
     const periodType = resolvePeriodType(query.periodType);
-    const timezone = resolveEvaluationsTimezone({ organizationTimezone: null });
-    const period = resolveEvaluationsPeriod({
-      periodType,
-      reference: new Date(),
-      timezone,
-    });
     const requestedStationIds = normalizeEvaluationsRequestedStationIds(
       toStringArray(query.stationIds) ?? null,
     );
@@ -109,7 +99,7 @@ export class EvaluationsAnalyticsController {
       actor,
       orgId,
       requestedStationIds,
-      period,
+      periodType,
     });
   }
 
@@ -127,12 +117,13 @@ export class EvaluationsAnalyticsController {
         assertValidEvaluationsAnalyticsGroupDimension(query.groupBy);
         groupBy = query.groupBy;
       }
+      const groupLimit = normalizeEvaluationsAnalyticsGroupLimit(query.groupLimit);
       const scope = await this.resolveScope(actor, orgId, query);
       return await this.analytics.getSummary({
         scope,
         filters,
         groupBy,
-        groupLimit: toOptionalInt(query.groupLimit),
+        groupLimit,
       });
     } catch (error) {
       if (error instanceof EvaluationsAnalyticsValidationError) {

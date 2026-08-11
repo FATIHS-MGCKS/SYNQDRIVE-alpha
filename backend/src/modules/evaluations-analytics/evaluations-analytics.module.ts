@@ -5,6 +5,7 @@ import { EvaluationsAnalyticsController } from './evaluations-analytics.controll
 import { EvaluationsAnalyticsScopeService } from './evaluations-analytics-scope.service';
 import { EvaluationsAnalyticsService } from './evaluations-analytics.service';
 import { EvaluationsEntityReferenceRepository } from './evaluations-entity-reference.repository';
+import { EvaluationsEntityReferenceWriteService } from './evaluations-entity-reference-write.service';
 
 @Module({
   imports: [PrismaModule, StationsModule],
@@ -13,11 +14,13 @@ import { EvaluationsEntityReferenceRepository } from './evaluations-entity-refer
     EvaluationsAnalyticsScopeService,
     EvaluationsAnalyticsService,
     EvaluationsEntityReferenceRepository,
+    EvaluationsEntityReferenceWriteService,
   ],
   exports: [
     EvaluationsAnalyticsScopeService,
     EvaluationsAnalyticsService,
     EvaluationsEntityReferenceRepository,
+    EvaluationsEntityReferenceWriteService,
   ],
 })
 export class EvaluationsAnalyticsModule {}

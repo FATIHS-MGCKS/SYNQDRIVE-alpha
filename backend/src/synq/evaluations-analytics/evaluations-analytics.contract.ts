@@ -20,6 +20,7 @@
  * defining a second taxonomy.
  */
 import type { EvaluationsPeriodWindow } from '../evaluations-periods/evaluations-period.contract';
+import type { EvaluationsMetricStatus } from '../evaluations-metrics/evaluations-metric-response.contract';
 
 export const EVALUATIONS_ANALYTICS_CONTRACT_SCHEMA_VERSION = '1.0.0' as const;
 
@@ -143,8 +144,13 @@ export interface EvaluationsAuthorizedAnalyticsScope {
 
 /* ─── Filters (allowlisted, bounded, normalized) ─────────────────────────── */
 
+/**
+ * Business filter dimensions. Station scope is intentionally NOT a filter: it is
+ * an authorization concern owned solely by {@link EvaluationsAnalyticsScope}
+ * (`stationIds`) and resolved server-side. A filter can therefore never widen or
+ * re-define the authorized station scope.
+ */
 export const EVALUATIONS_ANALYTICS_FILTER_KEYS = [
-  'stationIds',
   'vehicleIds',
   'customerIds',
   'entityTypes',
@@ -155,8 +161,10 @@ export type EvaluationsAnalyticsFilterKey =
 
 export const EVALUATIONS_ANALYTICS_MAX_FILTER_IDS = 200;
 
+/** Maximum accepted length of any single identifier value (anti-DoS). */
+export const EVALUATIONS_ANALYTICS_MAX_ID_LENGTH = 128;
+
 export interface EvaluationsAnalyticsFilters {
-  readonly stationIds?: readonly string[];
   readonly vehicleIds?: readonly string[];
   readonly customerIds?: readonly string[];
   readonly entityTypes?: readonly EvaluationsEntityType[];
@@ -167,6 +175,11 @@ export interface EvaluationsAnalyticsFilters {
 
 export const EVALUATIONS_ANALYTICS_DEFAULT_PAGE_SIZE = 20;
 export const EVALUATIONS_ANALYTICS_MAX_PAGE_SIZE = 100;
+/** Upper bound on the page number so a computed offset can never overflow. */
+export const EVALUATIONS_ANALYTICS_MAX_PAGE = 100_000;
+
+export const EVALUATIONS_ANALYTICS_DEFAULT_GROUP_LIMIT = 20;
+export const EVALUATIONS_ANALYTICS_MAX_GROUP_LIMIT = 100;
 
 export const EVALUATIONS_ANALYTICS_DETAIL_SORT_FIELDS = [
   'createdAt',
@@ -221,18 +234,14 @@ export interface EvaluationsAnalyticsGroup {
 /* ─── Summary vs detail responses ────────────────────────────────────────── */
 
 /**
- * E1-compatible availability status reused verbatim so summary/detail responses
- * distinguish an empty-but-successful result from an error/unavailable result.
+ * Analytics responses reuse the canonical E1 metric status authority directly
+ * (single source of truth) rather than defining a second taxonomy. This alias
+ * exists only for readable naming at analytics call sites; it resolves to the
+ * exact E1 union and therefore includes `STALE`.
+ *
+ * @see EvaluationsMetricStatus (shared/evaluations-metrics)
  */
-export const EVALUATIONS_ANALYTICS_STATUSES = [
-  'AVAILABLE',
-  'PARTIAL',
-  'UNAVAILABLE',
-  'ERROR',
-  'NOT_APPLICABLE',
-] as const;
-export type EvaluationsAnalyticsStatus =
-  (typeof EVALUATIONS_ANALYTICS_STATUSES)[number];
+export type EvaluationsAnalyticsStatus = EvaluationsMetricStatus;
 
 export interface EvaluationsAnalyticsScopeEcho {
   readonly organizationId: string;

@@ -54,13 +54,14 @@ describe('EvaluationsEntityReferenceRepository.buildWhere', () => {
     expect(where.stationId).toEqual({ in: ['s1', 's2'] });
   });
 
-  it('intersects a station filter with the authorized station subset', () => {
+  it('derives the station constraint solely from the authorized scope', () => {
     const where = repo.buildWhere(
       scope({ stationIds: ['s1', 's2'], stationScoped: true }),
-      { stationIds: ['s2', 's3'] },
+      { vehicleIds: ['v1'] },
       PERIOD,
     );
-    expect(where.stationId).toEqual({ in: ['s2'] });
+    // Station scope comes from authority only; filters cannot widen or alter it.
+    expect(where.stationId).toEqual({ in: ['s1', 's2'] });
   });
 
   it('applies entity and relation type filters', () => {

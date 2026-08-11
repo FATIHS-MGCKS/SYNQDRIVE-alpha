@@ -8,11 +8,15 @@
  * injection-shaped input from ever reaching a query builder.
  */
 import {
+  EVALUATIONS_ANALYTICS_DEFAULT_GROUP_LIMIT,
   EVALUATIONS_ANALYTICS_DEFAULT_PAGE_SIZE,
   EVALUATIONS_ANALYTICS_DETAIL_SORT_FIELDS,
   EVALUATIONS_ANALYTICS_FILTER_KEYS,
   EVALUATIONS_ANALYTICS_GROUP_DIMENSIONS,
   EVALUATIONS_ANALYTICS_MAX_FILTER_IDS,
+  EVALUATIONS_ANALYTICS_MAX_GROUP_LIMIT,
+  EVALUATIONS_ANALYTICS_MAX_ID_LENGTH,
+  EVALUATIONS_ANALYTICS_MAX_PAGE,
   EVALUATIONS_ANALYTICS_MAX_PAGE_SIZE,
   EVALUATIONS_ANALYTICS_MAX_STATION_IDS,
   EVALUATIONS_ANALYTICS_SORT_DIRECTIONS,
@@ -96,6 +100,9 @@ function normalizeIdList(value: unknown, label: string): string[] | undefined {
   for (const raw of value) {
     if (!isNonEmptyString(raw)) fail(`Filter "${label}" contains an empty value`);
     const trimmed = raw.trim();
+    if (trimmed.length > EVALUATIONS_ANALYTICS_MAX_ID_LENGTH) {
+      fail(`Filter "${label}" contains an identifier that is too long`);
+    }
     if (seen.has(trimmed)) continue;
     seen.add(trimmed);
     cleaned.push(trimmed);
@@ -146,22 +153,11 @@ export function normalizeEvaluationsAnalyticsFilters(
   }
 
   const filters: {
-    stationIds?: string[];
     vehicleIds?: string[];
     customerIds?: string[];
     entityTypes?: EvaluationsEntityType[];
     relationTypes?: EvaluationsRelationType[];
   } = {};
-
-  const stationIds = normalizeIdList(raw.stationIds, 'stationIds');
-  if (stationIds !== undefined) {
-    if (stationIds.length > EVALUATIONS_ANALYTICS_MAX_STATION_IDS) {
-      fail(
-        `Filter "stationIds" exceeds the maximum of ${EVALUATIONS_ANALYTICS_MAX_STATION_IDS} values`,
-      );
-    }
-    filters.stationIds = stationIds;
-  }
 
   const vehicleIds = normalizeIdList(raw.vehicleIds, 'vehicleIds');
   if (vehicleIds !== undefined) filters.vehicleIds = vehicleIds;
@@ -216,11 +212,18 @@ export function normalizeEvaluationsAnalyticsPage(
   request: EvaluationsAnalyticsPageRequest | undefined,
 ): EvaluationsAnalyticsNormalizedPage {
   const page = normalizePositiveInt(request?.page, 1);
+  if (page > EVALUATIONS_ANALYTICS_MAX_PAGE) {
+    fail(`page exceeds the maximum of ${EVALUATIONS_ANALYTICS_MAX_PAGE}`);
+  }
   const requestedSize = normalizePositiveInt(
     request?.pageSize,
     EVALUATIONS_ANALYTICS_DEFAULT_PAGE_SIZE,
   );
   const pageSize = Math.min(requestedSize, EVALUATIONS_ANALYTICS_MAX_PAGE_SIZE);
+  const skip = (page - 1) * pageSize;
+  if (!Number.isSafeInteger(skip)) {
+    fail('pagination offset is out of range');
+  }
 
   let sortBy: EvaluationsAnalyticsDetailSortField = 'createdAt';
   if (request?.sortBy !== undefined) {
@@ -241,11 +244,26 @@ export function normalizeEvaluationsAnalyticsPage(
   return {
     page,
     pageSize,
-    skip: (page - 1) * pageSize,
+    skip,
     take: pageSize,
     sortBy,
     sortDir,
   };
+}
+
+/**
+ * Validate and normalize a requested group limit. Must be a safe integer >= 1;
+ * values above the server maximum are clamped, invalid values are rejected.
+ */
+export function normalizeEvaluationsAnalyticsGroupLimit(value: unknown): number {
+  if (value === undefined || value === null) {
+    return EVALUATIONS_ANALYTICS_DEFAULT_GROUP_LIMIT;
+  }
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    fail('groupLimit must be a safe integer of at least 1');
+  }
+  return Math.min(parsed, EVALUATIONS_ANALYTICS_MAX_GROUP_LIMIT);
 }
 
 /* ─── Group dimension validation ─────────────────────────────────────────── */

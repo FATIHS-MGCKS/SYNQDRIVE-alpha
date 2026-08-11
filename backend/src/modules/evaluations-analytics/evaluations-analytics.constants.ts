@@ -7,8 +7,8 @@ import type { PermissionModuleKey } from '@shared/auth/permission.constants';
  */
 export const EVALUATIONS_MODULE: PermissionModuleKey = 'evaluations';
 
-/** Default cap on summary top-N groups; always distinct from the aggregate total. */
-export const EVALUATIONS_ANALYTICS_DEFAULT_GROUP_LIMIT = 20;
-
-/** Hard upper bound on summary top-N groups. */
-export const EVALUATIONS_ANALYTICS_MAX_GROUP_LIMIT = 100;
+// Group-limit bounds live in the shared contract as the single source of truth.
+export {
+  EVALUATIONS_ANALYTICS_DEFAULT_GROUP_LIMIT,
+  EVALUATIONS_ANALYTICS_MAX_GROUP_LIMIT,
+} from '@synq/evaluations-analytics/evaluations-analytics.contract';
